@@ -6,6 +6,7 @@ import tempfile
 import pytest
 import requests
 from typing import List
+import h5py
 
 from ilastik.applets.dataSelection import DatasetInfo
 
@@ -76,16 +77,20 @@ def h5_colon_path_stack_with_inner_paths(h5_colon_path_stack) -> str:
 def h5_star_stack(h5_stack_dir) -> str:
     return dir_to_star_glob(h5_stack_dir)
 
+@pytest.fixture
+def empty_project_file() -> h5py.File:
+    return h5py.File(tempfile.mkstemp()[1], 'r+')
+
 def test_create_nickname(h5_colon_path_stack):
-    nickname, _ = DatasetInfo.create_nickname(h5_colon_path_stack)
+    nickname, _ = DatasetInfo.process_filepath(h5_colon_path_stack)
     assert nickname == '2d_apoptotic_binary_'
 
 def test_create_nickname_for_single_file_does_not_contain_extension(h5_colon_path_stack):
-    nickname, _ = DatasetInfo.create_nickname(h5_colon_path_stack.split(os.path.pathsep)[0])
+    nickname, _ = DatasetInfo.process_filepath(h5_colon_path_stack.split(os.path.pathsep)[0])
     assert nickname == '2d_apoptotic_binary_0'
 
 def test_create_nickname_with_internal_paths(h5_colon_path_stack_with_inner_paths):
-    nickname, expanded_paths= DatasetInfo.create_nickname(h5_colon_path_stack_with_inner_paths)
+    nickname, expanded_paths= DatasetInfo.process_filepath(h5_colon_path_stack_with_inner_paths)
     assert nickname == '2d_apoptotic_binary_-volume-data'
     assert len(expanded_paths) == 3
 
@@ -115,35 +120,43 @@ def test_expand_path(h5_stack_dir):
 def test_stack_via_star_glob(png_star_stack:str):
     info = DatasetInfo(png_star_stack, sequence_axis='z')
     assert info.nickname == 'c_cells_'
-    assert info.fromstack
     assert info.location == DatasetInfo.Location.FileSystem
 
-def test_default_via_star_glob(png_star_stack:str):
-    info = DatasetInfo.default(png_star_stack, sequence_axis='z')
+def test_saving_internally_via_star_glob(png_star_stack:str, empty_project_file):
+    inner_group_path = 'some/inner/group'
+    info = DatasetInfo(
+        png_star_stack,
+        sequence_axis='z',
+        location=DatasetInfo.Location.ProjectInternal,
+        project_file=empty_project_file,
+        inner_group_path=inner_group_path)
+
+    saved_data = empty_project_file[info.filePath]
+    assert info.nickname == 'c_cells_'
+    assert info.laneDtype == saved_data.dtype == numpy.uint8
+    assert info.laneShape == saved_data.shape == (3,520,697,3)
+    assert info.location == DatasetInfo.Location.ProjectInternal
+    assert info.axiskeys == 'zyxc'
+
+
+def test_relative_paths():
+    """please implement me!!!"""
+
+def test_star_glob(png_colon_path_stack:str):
+    info = DatasetInfo(png_colon_path_stack, sequence_axis='z')
     assert info.nickname == 'c_cells_'
     assert info.laneDtype == numpy.uint8
     assert info.laneShape == (3,520,697,3)
-    assert info.fromstack
-    assert info.location == DatasetInfo.Location.FileSystem
-
-def test_default_via_star_glob(png_colon_path_stack:str):
-    info = DatasetInfo.default(png_colon_path_stack, sequence_axis='z')
-    assert info.nickname == 'c_cells_'
-    assert info.laneDtype == numpy.uint8
-    assert info.laneShape == (3,520,697,3)
-    assert info.fromstack
     assert info.location == DatasetInfo.Location.FileSystem
 
 def test_stack_via_colon_glob(png_colon_path_stack):
     info = DatasetInfo(png_colon_path_stack, sequence_axis='t')
     assert info.nickname == 'c_cells_'
-    assert info.fromstack
     assert info.location == DatasetInfo.Location.FileSystem
 
-def test_h5_stack_via_colon_glob(h5_colon_path_stack):
-    info = DatasetInfo(h5_colon_path_stack, sequence_axis='t')
-    assert info.nickname == '2d_apoptotic_binary_'
-    assert info.fromstack
+def test_h5_stack_via_colon_glob(h5_colon_path_stack_with_inner_paths):
+    info = DatasetInfo(h5_colon_path_stack_with_inner_paths, sequence_axis='t')
+    assert info.nickname == '2d_apoptotic_binary_-volume-data'
     assert info.location == DatasetInfo.Location.FileSystem
 
 def test_h5_stack_via_star_file_glob_and_defined_inner_path(h5_stack_dir):
@@ -152,14 +165,12 @@ def test_h5_stack_via_star_file_glob_and_defined_inner_path(h5_stack_dir):
     total_path = os.path.join(h5_stack_dir, '*.h5', internal_path)
     info = DatasetInfo(total_path, sequence_axis='z')
     assert info.nickname == '2d_apoptotic_binary_-volume-data'
-    assert info.fromstack
     assert info.location == DatasetInfo.Location.FileSystem
 
 def test_h5_stack_via_star_file_glob_and_stared_internal_path(h5_stack_dir):
     star_glob = os.path.join(h5_stack_dir, '*.h5/*')
     info = DatasetInfo(star_glob, sequence_axis='z')
     assert info.nickname == '2d_apoptotic_binary_-volume-data'
-    assert info.fromstack
     assert info.location == DatasetInfo.Location.FileSystem
 
     expected_filepath = os.path.pathsep.join([os.path.join(h5_stack_dir, '2d_apoptotic_binary_0.h5/volume/data'),

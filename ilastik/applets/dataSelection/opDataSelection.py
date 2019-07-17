@@ -23,8 +23,10 @@ import os
 import uuid
 import copy
 from enum import Enum, unique
-from typing import List
+from typing import List, Iterable, Tuple, Callable
+from numbers import Number
 import re
+import functools
 
 import numpy
 import vigra
@@ -33,9 +35,8 @@ import z5py
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.metaDict import MetaDict
-from lazyflow.operators.ioOperators import (
-    OpStreamingH5N5Reader, OpStreamingH5N5SequenceReaderS, OpInputDataReader
-)
+from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
+from lazyflow.operators.ioOperators import OpInputDataReader, OpH5N5WriterBigDataset
 from lazyflow.operators.valueProviders import OpMetadataInjector, OpZeroDefault
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -47,7 +48,11 @@ from lazyflow.utility import PathComponents, isUrl, make_absolute
 from lazyflow.utility.pathHelpers import splitPath, globH5N5
 from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.graph import Graph
 
+def getTypeRange(numpy_type):
+    type_info = numpy.iinfo(numpy_type)
+    return (type_info.min, type_info.max)
 
 class DatasetInfo(object):
     """
@@ -59,18 +64,19 @@ class DatasetInfo(object):
         ProjectInternal = 1
         PreloadedArray = 2
 
-    def __init__(self, filepath=None, jsonNamespace=None, cwd=None,
-                 preloaded_array=None, sequence_axis=None, allowLabels=None,
+    def __init__(self, filepath=None, jsonNamespace=None, project_file:h5py.File=None,
+                 preloaded_array=None, sequence_axis=None, allowLabels=True,
                  subvolume_roi=None, location=Location.FileSystem,
-                 axistags=None, drange=None, display_mode='default',
-                 nickname='', original_axistags=None, laneShape=None, normalizeDisplay:bool=None,
-                 laneDtype=None):
+                 axistags=None, display_mode='default',
+                 nickname='', original_axistags=None,
+                 normalizeDisplay:bool=None, drange:Tuple[Number, Number]=None,
+                 inner_group_path:str=None,
+                 progress_signal:Callable[[int], None]=lambda x: None
+    ):
         """
         filepath: may be a globstring or a full hdf5 path+dataset
 
         jsonNamespace: If provided, overrides default settings after filepath is applied
-
-        cwd: The working directory for interpeting relative paths.  If not provided, os.getcwd() is used.
 
         preloaded_array: Instead of providing a filepath to read from, a pre-loaded array can be directly provided.
                          In that case, you'll probably want to configure the axistags member, or provide a tagged
@@ -78,45 +84,61 @@ class DatasetInfo(object):
 
         sequence_axis: Axis along which to stack (only applicable for stacks).
         """
-        assert preloaded_array is None or not filepath, "You can't provide filepath and a preloaded_array"
-        cwd = cwd or os.getcwd()
-        self.preloaded_array = preloaded_array  # See description above.
-        # The original path to the data (also used as a fallback if the data isn't in the project yet)
-        self.filePath = filepath
+        assert (preloaded_array is not None) ^ bool(filepath), "Provide either preloaded_array or filepath"
+        self.preloaded_array = preloaded_array
+        self.project_file = project_file
         # OBSOLETE: Whether or not this dataset should be used for training a classifier.
-        self.allowLabels = allowLabels if allowLabels is not None else True
-        self.drange = drange
-        self.normalizeDisplay = (drange is not None) if normalizeDisplay is None else normalizeDisplay
+        self.allowLabels = allowLabels
         self.sequenceAxis = sequence_axis
-        self.axistags = axistags
         self.original_axistags = original_axistags
-        # Necessary in headless mode in order to recover the shape of the raw data
-        self.laneShape = laneShape
-        self.laneDtype = laneDtype
         # A flag indicating whether the dataset is backed by a real source (e.g. file)
         # or by the fake provided (e.g. in headless mode when raw data are not necessary)
-        self.realDataSource = True
         self.subvolume_roi = subvolume_roi
-        self.location = location
         self.display_mode = display_mode  # choices: default, grayscale, rgba, random-colortable, binary-mask.
-        self.fromstack = False
         self.original_paths = splitPath(filepath)
+        self.location = location
+        self.drange = drange
+        self.normalizeDisplay = (self.drange is not None) if normalizeDisplay is None else normalizeDisplay
+        self.axistags = axistags
+        self.expanded_paths = []
 
         if self.preloaded_array:
-            self.location = Location.PreloadedArray
             self.nickname = "preloaded-{}-array".format(self.preloaded_array.dtype.name)
-            if hasattr(self.preloaded_array, 'axistags'):
-                self.axistags = self.preloaded_array.axistags
-        elif filepath and not isUrl(filepath) and location == self.Location.FileSystem:
-            self.location = self.Location.FileSystem
-            self.nickname, self.expanded_paths = self.create_nickname(filepath, cwd=cwd)
+            self.laneShape = preloaded_array.shape
+            self.laneDtype = preloaded_array.dtype
+            self.location = self.Location.PreloadedArray
+            self.axistags = getattr(self.preloaded_array, 'axistags', axistags)
+        elif filepath and not isUrl(filepath):
+            cwd = os.path.abspath(project_file.filename) if project_file else os.getcwd()
+            self.nickname, self.expanded_paths = self.process_filepath(filepath, cwd=cwd)
             self.filePath = os.path.pathsep.join(self.expanded_paths)
-            self.fromstack = len(self.expanded_paths) > 1
-            if self.fromstack and not sequence_axis:
-                raise Exception("sequence_axis must be specified when creating DatasetInfo out of stacks")
-            self.sequenceAxis = sequence_axis
-        else:
+
+            op_reader = OpInputDataReader(graph=Graph(),
+                                          WorkingDirectory=cwd,
+                                          FilePath=self.filePath,
+                                          SequenceAxis=sequence_axis)
+            meta = op_reader.Output.meta
+            self.axistags = axistags or meta.axistags
+            self.laneShape = meta.shape
+            self.laneDtype = meta.dtype
+            self.drange = drange or meta.get('drange')
+            if location == self.Location.ProjectInternal:
+                self.filePath = os.path.join(inner_group_path, self.generate_id())
+                progress_signal(0)
+                try:
+                    opWriter = OpH5N5WriterBigDataset(graph=Graph(),
+                                                      h5N5File=project_file,
+                                                      h5N5Path=self.filePath,
+                                                      CompressionEnabled=False,
+                                                      BatchSize=1,
+                                                      Image=op_reader.Output)
+                    opWriter.progressSignal.subscribe(progress_signal)
+                    success = opWriter.WriteImage.value
+                finally:
+                    progress_signal(100)
+        else: # path is url
             self.filePath = filepath
+            self.expanded_paths = [filepath]
 
         if jsonNamespace is not None:
             self.updateFromJson(jsonNamespace)
@@ -125,7 +147,7 @@ class DatasetInfo(object):
             self.nickname = nickname
 
     @classmethod
-    def create_nickname(cls, filepath:str, cwd=None):
+    def process_filepath(cls, filepath:str, cwd=None):
         expanded_paths = cls.expandPath(filepath, cwd=cwd)
         components = [PathComponents(ep) for ep in expanded_paths]
         if any(comp.extension !=  components[0].extension for comp in components):
@@ -136,7 +158,7 @@ class DatasetInfo(object):
             external_nickname = external_nickname.split(os.path.sep)[-1]
         else:
             external_nickname = "stack_at-" + PathComponents(expanded_paths[0]).externalPath
-        internal_nickname = os.path.commonprefix([PathComponents(ep).internalPath or "" for ep in expanded_paths]).lstrip('/')
+        internal_nickname = os.path.commonprefix([comp.internalPath or "" for comp in components]).lstrip('/')
         nickname = external_nickname + ('-' + internal_nickname.replace('/', '-') if internal_nickname else '')
         return nickname, expanded_paths
 
@@ -152,6 +174,18 @@ class DatasetInfo(object):
             else:
                 return self.original_paths[:]
 
+    @property
+    @functools.lru_cache()
+    def relative_paths(self) -> List[str]:
+        if self.location != self.Location.FileSystem:
+            return []
+        cwd = os.path.abspath(self.project_file.filename)
+        external_paths = [Path(PathComponents(path).externalPath) for path in self.expanded_paths]
+        try:
+            return [ext_path.absolute().relative_to(cwd) for ext_path in external_paths]
+        except ValueError:
+            return []
+
     def is_path_relative(self):
         return not any(isUrl(p) or os.path.isabs(p) for p in self.original_paths)
 
@@ -164,29 +198,6 @@ class DatasetInfo(object):
         for k, v in kwargs.items():
             setattr(info, k, v)
         return info
-
-    @classmethod
-    def default(cls, filepath:str, sequence_axis=None, **kwargs) -> 'DatasetInfo':
-        op_reader = OpInputDataReader(graph=Graph(),
-                                      WorkingDirectory=kwargs.get('cwd', None),
-                                      FilePath=filepath,
-                                      SequenceAxis=sequence_axis)
-        return cls.from_slot(op_reader.Output, filepath, sequence_axis=sequence_axis, **kwargs)
-
-    @classmethod
-    def from_slot(cls, slot, filepath:str, **kwargs):
-        meta = slot.meta
-        info_params = {
-            'filepath': filepath,
-            'axistags': meta.axistags,
-            'laneShape': meta.shape,
-            'laneDtype': meta.dtype
-        }
-        for key in ('drange', 'display_mode', 'normalizeDisplay'):
-            if key in meta:
-                info_params[key] = meta[key]
-        info_params.update(kwargs)
-        return cls(**info_params)
 
     @classmethod
     def generate_id(cls) -> str:
@@ -378,7 +389,8 @@ class OpDataSelection(Operator):
         def __str__(self):
             return self.message
 
-    def __init__(self, forceAxisOrder=['tczyx'], *args, **kwargs):
+    def __init__(self, forceAxisOrder:List[str]=['tczyx'], ProjectFile:h5py.File=None, ProjectDataGroup=None,
+                 WorkingDirectory=None, Dataset:DatasetInfo=None, *args, **kwargs):
         """
         forceAxisOrder: How to auto-reorder the input data before connecting it to the rest of the workflow.
                         Should be a list of input orders that are allowed by the workflow
@@ -394,9 +406,16 @@ class OpDataSelection(Operator):
         # If the gui calls disconnect() on an input slot without replacing it with something else,
         #  we still need to clean up the internal operator that was providing our data.
         self.ProjectFile.notifyUnready(self.internalCleanup)
+        self.ProjectFile.setOrConnectIfAvailable(ProjectFile)
+
         self.ProjectDataGroup.notifyUnready(self.internalCleanup)
+        self.ProjectDataGroup.setOrConnectIfAvailable(ProjectDataGroup)
+
         self.WorkingDirectory.notifyUnready(self.internalCleanup)
+        self.WorkingDirectory.setOrConnectIfAvailable(WorkingDirectory)
+
         self.Dataset.notifyUnready(self.internalCleanup)
+        self.Dataset.setOrConnectIfAvailable(Dataset)
 
     def internalCleanup(self, *args):
         if len(self._opReaders) > 0:
@@ -428,24 +447,12 @@ class OpDataSelection(Operator):
                 opReader.Input.setValue(preloaded_array)
                 providerSlot = opReader.Output
             else:
-                if datasetInfo.realDataSource:
-                    # Use a normal (filesystem) reader
-                    opReader = OpInputDataReader(parent=self)
-                    if datasetInfo.subvolume_roi is not None:
-                        opReader.SubVolumeRoi.setValue(datasetInfo.subvolume_roi)
-                    opReader.WorkingDirectory.setValue(self.WorkingDirectory.value)
-                    opReader.SequenceAxis.setValue(datasetInfo.sequenceAxis)
-                    opReader.FilePath.setValue(datasetInfo.filePath)
-                else:
-                    # Use fake reader: allows to run the project in a headless
-                    # mode without the raw data
-                    opReader = OpZeroDefault(parent=self)
-                    opReader.MetaInput.meta = MetaDict(
-                        shape=datasetInfo.laneShape,
-                        dtype=datasetInfo.laneDtype,
-                        drange=datasetInfo.drange,
-                        axistags=datasetInfo.axistags)
-                    opReader.MetaInput.setValue(numpy.zeros(datasetInfo.laneShape, dtype=datasetInfo.laneDtype))
+                opReader = OpInputDataReader(parent=self)
+                if datasetInfo.subvolume_roi is not None:
+                    opReader.SubVolumeRoi.setValue(datasetInfo.subvolume_roi)
+                opReader.WorkingDirectory.setValue(self.WorkingDirectory.value)
+                opReader.SequenceAxis.setValue(datasetInfo.sequenceAxis)
+                opReader.FilePath.setValue(datasetInfo.filePath)
                 providerSlot = opReader.Output
             self._opReaders.append(opReader)
 
