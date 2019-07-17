@@ -27,6 +27,7 @@ from typing import List, Iterable, Tuple, Callable
 from numbers import Number
 import re
 import functools
+from pathlib import Path
 
 import numpy
 import vigra
@@ -64,7 +65,7 @@ class DatasetInfo(object):
         ProjectInternal = 1
         PreloadedArray = 2
 
-    def __init__(self, filepath=None, jsonNamespace=None, project_file:h5py.File=None,
+    def __init__(self, *, project_file:h5py.File=None, filepath=None, jsonNamespace=None,
                  preloaded_array=None, sequence_axis=None, allowLabels=True,
                  subvolume_roi=None, location=Location.FileSystem,
                  axistags=None, display_mode='default',
@@ -151,7 +152,7 @@ class DatasetInfo(object):
         expanded_paths = cls.expandPath(filepath, cwd=cwd)
         components = [PathComponents(ep) for ep in expanded_paths]
         if any(comp.extension !=  components[0].extension for comp in components):
-            raise Exception(f"Multiple extensions unsupported as a single data source: {filePath}")
+            raise Exception(f"Multiple extensions unsupported as a single data source: {filepath}")
 
         external_nickname = os.path.commonprefix([re.sub(comp.extension + '$', '', comp.externalPath) for comp in components])
         if external_nickname:
@@ -179,10 +180,10 @@ class DatasetInfo(object):
     def relative_paths(self) -> List[str]:
         if self.location != self.Location.FileSystem:
             return []
-        cwd = os.path.abspath(self.project_file.filename)
+        cwd = Path(self.project_file.filename).absolute().parent
         external_paths = [Path(PathComponents(path).externalPath) for path in self.expanded_paths]
         try:
-            return [ext_path.absolute().relative_to(cwd) for ext_path in external_paths]
+            return sorted([str(ext_path.absolute().relative_to(cwd)) for ext_path in external_paths])
         except ValueError:
             return []
 

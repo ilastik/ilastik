@@ -1,7 +1,6 @@
 import os
 import numpy
 import shutil
-from pathlib import Path
 import tempfile
 import pytest
 import requests
@@ -117,15 +116,15 @@ def test_expand_path(h5_stack_dir):
     assert expansions == expected_file_paths
 
 
-def test_stack_via_star_glob(png_star_stack:str):
-    info = DatasetInfo(png_star_stack, sequence_axis='z')
+def test_stack_via_star_glob(png_star_stack:str, empty_project_file):
+    info = DatasetInfo(filepath=png_star_stack, sequence_axis='z', project_file=empty_project_file)
     assert info.nickname == 'c_cells_'
     assert info.location == DatasetInfo.Location.FileSystem
 
 def test_saving_internally_via_star_glob(png_star_stack:str, empty_project_file):
     inner_group_path = 'some/inner/group'
     info = DatasetInfo(
-        png_star_stack,
+        filepath=png_star_stack,
         sequence_axis='z',
         location=DatasetInfo.Location.ProjectInternal,
         project_file=empty_project_file,
@@ -139,23 +138,37 @@ def test_saving_internally_via_star_glob(png_star_stack:str, empty_project_file)
     assert info.axiskeys == 'zyxc'
 
 
-def test_relative_paths():
-    """please implement me!!!"""
+def test_relative_paths(png_stack_dir:str, monkeypatch):
+    with h5py.File(os.path.join(png_stack_dir, 'myproj.ilp'), 'w') as project_file:
+        info = DatasetInfo(
+            filepath=os.path.join(png_stack_dir, '*.png'),
+            project_file=project_file,
+            sequence_axis='z')
+        assert info.relative_paths == ['c_cells_0.png', 'c_cells_1.png', 'c_cells_2.png']
+
+def test_no_relative_paths_when_project_file_not_in_same_tree_as_files(png_stack_dir:str, monkeypatch):
+    with h5py.File(os.path.join(tempfile.mkdtemp(), 'myproj.ilp'), 'w') as project_file:
+        info = DatasetInfo(
+            filepath=os.path.join(png_stack_dir, '*.png'),
+            project_file=project_file,
+            sequence_axis='z')
+        assert info.relative_paths == []
+
 
 def test_star_glob(png_colon_path_stack:str):
-    info = DatasetInfo(png_colon_path_stack, sequence_axis='z')
+    info = DatasetInfo(filepath=png_colon_path_stack, sequence_axis='z')
     assert info.nickname == 'c_cells_'
     assert info.laneDtype == numpy.uint8
     assert info.laneShape == (3,520,697,3)
     assert info.location == DatasetInfo.Location.FileSystem
 
 def test_stack_via_colon_glob(png_colon_path_stack):
-    info = DatasetInfo(png_colon_path_stack, sequence_axis='t')
+    info = DatasetInfo(filepath=png_colon_path_stack, sequence_axis='t')
     assert info.nickname == 'c_cells_'
     assert info.location == DatasetInfo.Location.FileSystem
 
 def test_h5_stack_via_colon_glob(h5_colon_path_stack_with_inner_paths):
-    info = DatasetInfo(h5_colon_path_stack_with_inner_paths, sequence_axis='t')
+    info = DatasetInfo(filepath=h5_colon_path_stack_with_inner_paths, sequence_axis='t')
     assert info.nickname == '2d_apoptotic_binary_-volume-data'
     assert info.location == DatasetInfo.Location.FileSystem
 
@@ -163,13 +176,13 @@ def test_h5_stack_via_star_file_glob_and_defined_inner_path(h5_stack_dir):
     h5_external_star_glob = os.path.join(h5_stack_dir, '*.h5')
     internal_path = DatasetInfo.globInternalPaths(h5_external_star_glob, '*')[0]
     total_path = os.path.join(h5_stack_dir, '*.h5', internal_path)
-    info = DatasetInfo(total_path, sequence_axis='z')
+    info = DatasetInfo(filepath=total_path, sequence_axis='z')
     assert info.nickname == '2d_apoptotic_binary_-volume-data'
     assert info.location == DatasetInfo.Location.FileSystem
 
 def test_h5_stack_via_star_file_glob_and_stared_internal_path(h5_stack_dir):
     star_glob = os.path.join(h5_stack_dir, '*.h5/*')
-    info = DatasetInfo(star_glob, sequence_axis='z')
+    info = DatasetInfo(filepath=star_glob, sequence_axis='z')
     assert info.nickname == '2d_apoptotic_binary_-volume-data'
     assert info.location == DatasetInfo.Location.FileSystem
 
