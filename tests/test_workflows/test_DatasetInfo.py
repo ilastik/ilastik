@@ -154,6 +154,13 @@ def test_no_relative_paths_when_project_file_not_in_same_tree_as_files(png_stack
             sequence_axis='z')
         assert info.relative_paths == []
 
+def test_create_using_paths_relative_to_project_file(png_stack_dir:str):
+    with h5py.File(os.path.join(png_stack_dir, 'myproj.ilp'), 'w') as project_file:
+        info = DatasetInfo(
+            filepath='*.png',
+            project_file=project_file,
+            sequence_axis='z')
+        assert info.relative_paths == ['c_cells_0.png', 'c_cells_1.png', 'c_cells_2.png']
 
 def test_star_glob(png_colon_path_stack:str):
     info = DatasetInfo(filepath=png_colon_path_stack, sequence_axis='z')

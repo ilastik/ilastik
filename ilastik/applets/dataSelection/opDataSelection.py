@@ -110,7 +110,7 @@ class DatasetInfo(object):
             self.location = self.Location.PreloadedArray
             self.axistags = getattr(self.preloaded_array, 'axistags', axistags)
         elif filepath and not isUrl(filepath):
-            cwd = os.path.abspath(project_file.filename) if project_file else os.getcwd()
+            cwd = str(Path(project_file.filename).absolute().parent) if project_file else os.getcwd()
             self.nickname, self.expanded_paths = self.process_filepath(filepath, cwd=cwd)
             self.filePath = os.path.pathsep.join(self.expanded_paths)
 
