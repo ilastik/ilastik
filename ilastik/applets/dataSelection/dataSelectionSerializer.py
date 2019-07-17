@@ -93,41 +93,6 @@ class DataSelectionSerializer( AppletSerializer ):
         # Write any missing local datasets to the local_data group
         localDataGroup = getOrCreateGroup(topGroup, 'local_data')
         wroteInternalData = False
-        for laneIndex, multislot in enumerate(self.topLevelOperator.DatasetGroup):
-            for roleIndex, slot in enumerate( multislot ):
-                if not slot.ready():
-                    continue
-                info = slot.value
-                # If this dataset should be stored in the project, but it isn't there yet
-                if  info.location == DatasetInfo.Location.ProjectInternal and info.filePath not in topGroup.file:
-                    # Obtain the data from the corresponding output and store it to the project.
-                    dataSlot = self.topLevelOperator._NonTransposedImageGroup[laneIndex][roleIndex]
-
-                    try:    
-                        opWriter = OpH5N5WriterBigDataset(parent=self.topLevelOperator.parent, graph=self.topLevelOperator.graph)
-                        # Compression slows down browsing a lot, and raw data tends
-                        # to be noisy and doesn't compress very well, anyway.
-                        opWriter.CompressionEnabled.setValue(False)
-                        opWriter.h5N5File.setValue(localDataGroup.file)
-                        opWriter.h5N5Path.setValue(info.filePath) #FIXME: double check that this actually works
-                        opWriter.Image.connect(dataSlot)
-        
-                        # Trigger the copy
-                        success = opWriter.WriteImage.value
-                        assert success
-                    finally:
-                        opWriter.cleanUp()
-    
-                    # Add axistags and drange attributes, in case someone uses this dataset outside ilastik
-                    localDataGroup[info.datasetId].attrs['axistags'] = dataSlot.meta.axistags.toJSON().encode('utf-8')
-                    if dataSlot.meta.drange is not None:
-                        localDataGroup[info.datasetId].attrs['drange'] = dataSlot.meta.drange
-    
-                    # Make sure the dataSlot's axistags are updated with the dataset as we just wrote it
-                    # (The top-level operator may use an OpReorderAxes, which changed the axisorder)
-                    info.axistags = dataSlot.meta.axistags #FIXME: stop modifying datasetinfo from the outside
-    
-                    wroteInternalData = True
 
         # Construct a list of all the local dataset ids we want to keep
         localDatasetIds = set()
@@ -176,7 +141,6 @@ class DataSelectionSerializer( AppletSerializer ):
                     infoGroup.create_dataset('filePath', data=datasetInfo.filePath.encode('utf-8'))
                     infoGroup.create_dataset('allowLabels', data=datasetInfo.allowLabels)
                     infoGroup.create_dataset('nickname', data=datasetInfo.nickname.encode('utf-8'))
-                    infoGroup.create_dataset('fromstack', data=datasetInfo.fromstack)
                     infoGroup.create_dataset('display_mode', data=datasetInfo.display_mode.encode('utf-8'))
                     if datasetInfo.drange is not None:
                         infoGroup.create_dataset('drange', data=datasetInfo.drange)
@@ -198,102 +162,6 @@ class DataSelectionSerializer( AppletSerializer ):
                         infoGroup.create_dataset('subvolume_roi', data=datasetInfo.subvolume_roi)
 
         self._dirty = False
-
-    def importStackAsLocalDataset(self, globstring:str, sequence_axis='t') -> str:
-        """
-        Add the given stack data to the project file as a local dataset.
-        Does not update the topLevelOperator.
-        
-        :param info: A DatasetInfo object.
-                     Note: info.filePath must be a str which lists the stack files, delimited with os.path.pathsep
-                     Note: info will be MODIFIED by this function.  Use the modified info when assigning it to a dataset.
-        """
-        self.progressSignal(0)
-
-        # Use absolute path
-        cwd = self.topLevelOperator.WorkingDirectory.value
-        abs_paths =  [getPathVariants(p) if isRelative(p) else p for p in splitPath(globstring)]
-        globstring = os.path.pathsep.join(abs_paths)
-
-        firstPathParts = PathComponents(abs_paths[0])
-
-        if firstPathParts.extension.lower() in OpTiffReader.TIFF_EXTS:
-            # Special loader for TIFFs
-            opLoader = OpTiffSequenceReader( parent=self.topLevelOperator.parent )
-            opLoader.SequenceAxis.setValue(sequence_axis)
-            opLoader.GlobString.setValue(globstring)
-            data_slot = opLoader.Output
-        elif firstPathParts.extension.lower() in (OpStreamingH5N5SequenceReaderM.H5EXTS
-                                                  + OpStreamingH5N5SequenceReaderM.N5EXTS):
-            # Now use the .checkGlobString method of the stack readers
-            isSingleFile = True
-            try:
-                OpStreamingH5N5SequenceReaderS.checkGlobString(globstring)
-            except (OpStreamingH5N5SequenceReaderS.NoInternalPlaceholderError,
-                    OpStreamingH5N5SequenceReaderS.NotTheSameFileError,
-                    OpStreamingH5N5SequenceReaderS.ExternalPlaceholderError):
-                isSingleFile = False
-
-            isMultiFile = True
-            try:
-                OpStreamingH5N5SequenceReaderM.checkGlobString(globstring)
-            except (OpStreamingH5N5SequenceReaderM.NoExternalPlaceholderError,
-                    OpStreamingH5N5SequenceReaderM.SameFileError,
-                    OpStreamingH5N5SequenceReaderM.InternalPlaceholderError):
-                isMultiFile = False
-
-            assert (not(isMultiFile and isSingleFile)), (
-                "Something is wrong, glob string shouldn't allow both")
-            assert (isMultiFile or isSingleFile), (
-                "Glob string doesn't conform to h5 stack glob string rules")
-
-            if isSingleFile:
-                opLoader = OpStreamingH5N5SequenceReaderS(parent=self.topLevelOperator.parent)
-            elif isMultiFile:
-                opLoader = OpStreamingH5N5SequenceReaderM(parent=self.topLevelOperator.parent)
-
-            opLoader.SequenceAxis.setValue(sequence_axis)
-            opLoader.GlobString.setValue(globstring)
-            data_slot = opLoader.OutputImage
-        else:
-            # All other sequences (e.g. pngs, jpegs, etc.)
-            opLoader = OpStackLoader( parent=self.topLevelOperator.parent )
-            opLoader.SequenceAxis.setValue(sequence_axis)
-            opLoader.globstring.setValue(globstring)
-            data_slot = opLoader.stack
-
-        try:
-            internal_data_id = DatasetInfo.generate_id()
-            internal_path = self.topGroupName + '/local_data/' + internal_data_id
-            projectFileHdf5 = self.topLevelOperator.ProjectFile.value
-            opWriter = OpH5N5WriterBigDataset(parent=self.topLevelOperator.parent)
-            opWriter.h5N5File.setValue(projectFileHdf5)
-            opWriter.h5N5Path.setValue(internal_path)
-            opWriter.CompressionEnabled.setValue(False)
-            # We assume that the main bottleneck is the hard disk, 
-            #  so adding lots of threads to access it at once seems like a bad idea.
-            opWriter.BatchSize.setValue(1)
-            opWriter.Image.connect( data_slot )
-                
-            # Forward progress from the writer directly to our applet                
-            opWriter.progressSignal.subscribe(self.progressSignal)
-            success = opWriter.WriteImage.value
-
-            nickname, _ = DatasetInfo.create_nickname(globstring, cwd)
-
-            return DatasetInfo(filepath=internal_path,
-                               nickname=nickname,
-                               cwd=cwd,
-                               axistags=data_slot.meta.axistags,
-                               laneShape=data_slot.meta.shape,
-                               laneDtype=data_slot.meta.dtype,
-                               sequence_axis=sequence_axis,
-                               location=DatasetInfo.Location.ProjectInternal)
-        finally:
-            opWriter.cleanUp()
-            opLoader.cleanUp()
-            self.progressSignal(100)
-
 
     def initWithoutTopGroup(self, hdf5File, projectFilePath):
         """
@@ -433,7 +301,7 @@ class DataSelectionSerializer( AppletSerializer ):
                 if isUrl(path) or os.path.exists(path):
                     restored_paths.append(path)
                     continue
-                if headless:
+                if headless: #FIXME: though this should be fixed elsewhere, load some preloaded array here
                     raise Exception(f"File not found: {path}")
                 # Try to get a new path for the lost file from the user
                 dirty = True

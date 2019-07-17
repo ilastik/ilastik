@@ -187,6 +187,9 @@ class DataSelectionGui(QWidget):
         assert hasattr(opWorkflow.shell, 'onSaveProjectActionTriggered'), \
             "This class uses the IlastikShell.onSaveProjectActionTriggered function.  Did you rename it?"
 
+    @property
+    def project_file(self) -> h5py.File:
+        return self.topLevelOperator.ProjectFile.value
 
     def _initCentralUic(self):
         """
@@ -442,10 +445,6 @@ class DataSelectionGui(QWidget):
                 self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
                 return
 
-            # Now check the resulting slots.
-            # If they should be copied to the project file, say so.
-            self._reconfigureDatasetLocations(roleIndex, startingLane, endingLane)
-
             self._checkDataFormatWarnings(roleIndex, startingLane, endingLane)
 
             # Show the first image
@@ -573,50 +572,11 @@ class DataSelectionGui(QWidget):
                         raise DataSelectionGui.UserCancelledError()
             data_path = data_path / re.sub('^/', '', selected_dataset)
 
-        return DatasetInfo.default(
+        return DatasetInfo(
             filepath=str(data_path),
-            cwd=cwd,
+            project_file=self.project_file,
             allowLabels=(self.guiMode == GuiMode.Normal),
             subvolume_roi=roi)
-
-    def _opTopRemoveDset(self, laneNum, laneIndex, roleIndex):
-        """
-        Removes a dataset in topLevelOperator and sets the number of lanes to laneNum
-        :param laneNum: total number of lanes after the cleanup
-        :param laneIndex: the lane index of the dataset which is to be removed
-        :param roleIndex: role index of the dataset
-        """
-        self.topLevelOperator.DatasetGroup.resize(laneNum)
-        self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(None)
-
-    def _reconfigureDatasetLocations(self, roleIndex, startingLane, endingLane):
-        """
-        Check the metadata for the given slots.  
-        If the data is stored a format that is poorly optimized for 3D access, 
-        then configure it to be copied to the project file.
-        Finally, save the project if we changed something. 
-        """
-        save_needed = False
-        opTop = self.topLevelOperator
-        for lane_index in range(startingLane, endingLane+1):
-            output_slot = opTop.ImageGroup[lane_index][roleIndex]
-            if output_slot.meta.prefer_2d and 'z' in output_slot.meta.axistags:
-                shape = numpy.array(output_slot.meta.shape)
-                total_volume = numpy.prod(shape)
-                
-                # Only copy to the project file if the total volume is reasonably small
-                if total_volume < 0.5e9:
-                    info_slot = opTop.DatasetGroup[lane_index][roleIndex]
-                    info = info_slot.value
-                    info.location = DatasetInfo.Location.ProjectInternal
-                    info_slot.setValue( info, check_changed=False )
-                    save_needed = True
-
-        if save_needed:
-            logger.info("Some of your data cannot be accessed efficiently in 3D in its current format."
-                        "  It will now be copied to the project file.")
-            opWorkflow = self.topLevelOperator.parent
-            opWorkflow.shell.onSaveProjectActionTriggered()
 
     def _checkDataFormatWarnings(self, roleIndex, startingLane, endingLane):
         warn_needed = False
@@ -641,21 +601,19 @@ class DataSelectionGui(QWidget):
         if stackDlg.result() != QDialog.Accepted or len(stackDlg.selectedFiles) == 0:
             return
         globstring = os.path.pathsep.join(stackDlg.selectedFiles)
-        sequence_axis = stackDlg.sequence_axis
-        cwd = self.topLevelOperator.WorkingDirectory.value
+        #FIXME: ask first if stack should be internalized to project file
+        # also, check prefer_2d, size/volume and presence of 'z' to determine this
+        location = DatasetInfo.Location.ProjectInternal
         self.parentApplet.busy = True
-        info = self.serializer.importStackAsLocalDataset(globstring, sequence_axis)
+        info = DatasetInfo( #FIXME: do this inside a Request
+            filepath=globstring,
+            sequence_axis=stackDlg.sequence_axis,
+            location=location,
+            project_file=self.project_file,
+            inner_group_path=self.serializer.topGroupName + '/local_data/'
+        )
         self.parentApplet.busy = False
         self.addLanes([info], roleIndex, laneIndex)
-
-    @threadRouted
-    def handleFailedStackLoad(self, files, originalNumLanes, exc, exc_info):
-        msg = "Failed to load stack due to the following error:\n{}".format( exc )
-        msg += "\nAttempted stack files were:\n"
-        msg += "\n".join(files)
-        log_exception( logger, msg, exc_info )
-        QMessageBox.critical(self, "Failed to load image stack", msg)
-        self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
 
     def handleClearDatasets(self, roleIndex, selectedRows):
         for row in selectedRows:
