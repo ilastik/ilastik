@@ -21,6 +21,10 @@ from __future__ import division
 #		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
+
+from ilastik.workflows import PixelClassificationWorkflow
+from ilastik.workflows.newAutocontext.newAutocontextWorkflow import NewAutocontextWorkflowBase
+from ilastik.workflows.objectClassification.objectClassificationWorkflow import ObjectClassificationWorkflow
 from past.utils import old_div
 import os
 import threading
@@ -167,11 +171,18 @@ class DataExportGui(QWidget):
         self.drawer.deleteAllButton.setIcon( QIcon(ilastikIcons.Clear) )
         
         @threadRoutedWithRouter(self.threadRouter)
-        def _handleNewSelectionNames( *args ):
-            input_names = self.topLevelOperator.SelectionNames.value
-            self.drawer.inputSelectionCombo.addItems( input_names )
-        self.topLevelOperator.SelectionNames.notifyDirty( _handleNewSelectionNames )
-        _handleNewSelectionNames()
+        def _handleNewSelectionNames(slot, *args):
+            self.drawer.inputSelectionCombo.clear()
+            for index, selection_name in enumerate(slot.value):
+                self.drawer.inputSelectionCombo.addItem(selection_name)
+                # Disable all items until the relevant slots are ready.
+                if isinstance(self.topLevelOperator.parent,
+                              (PixelClassificationWorkflow, ObjectClassificationWorkflow, NewAutocontextWorkflowBase)):
+                    self.drawer.inputSelectionCombo.model().item(index).setEnabled(False)
+
+        self.topLevelOperator.SelectionNames.notifyDirty(_handleNewSelectionNames)
+
+        _handleNewSelectionNames(self.topLevelOperator.SelectionNames)
 
         self.drawer.inputSelectionCombo.currentIndexChanged.connect(self._handleInputComboSelectionChanged)
 
@@ -182,6 +193,20 @@ class DataExportGui(QWidget):
         else:
             self.topLevelOperator.TableOnly.setValue(False)
             self.topLevelOperator.InputSelection.setValue( index )
+
+    def handleExportSourceReady(self, slot, *args, source_name=None):
+        """
+        Used to enable the given source_name in the self.drawer.inputSelectionCombo.
+        To be called when a given source becomes ready. See e.g. PixelClassificationWorkflow#connectLanes
+        """
+        assert source_name is not None
+        index = self.topLevelOperator.SelectionNames.value.index(source_name)
+        self.drawer.inputSelectionCombo.model().item(index).setEnabled(True)
+        # if the first item (Probabilities) is enabled already do nothing, otherwise set the current source name
+        if not self.drawer.inputSelectionCombo.model().item(0).isEnabled():
+            self.drawer.inputSelectionCombo.setCurrentIndex(index)
+        else:
+            self.drawer.inputSelectionCombo.setCurrentIndex(0)
 
     def initCentralUic(self):
         """

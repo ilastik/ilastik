@@ -114,7 +114,7 @@ class NewAutocontextWorkflowBase(Workflow):
         for pcApplet in self.pcApplets:
             pcApplet.topLevelOperator.FreezePredictions.notifyDirty( sync_freeze_predictions_settings )
 
-        self.dataExportApplet = PixelClassificationDataExportApplet(self, "Prediction Export")
+        self.dataExportApplet = PixelClassificationDataExportApplet(self, "Data Export")
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.PmapColors.connect( opFinalClassify.PmapColors )
         opDataExport.LabelNames.connect( opFinalClassify.LabelNames )
@@ -311,6 +311,25 @@ class NewAutocontextWorkflowBase(Workflow):
             opDataExport.Inputs[num_items_per_stage*reverse_stage_index+3].connect( opPc.FeatureImages )
             opDataExport.Inputs[num_items_per_stage*reverse_stage_index+4].connect( opPc.LabelImages )
             opDataExport.Inputs[num_items_per_stage*reverse_stage_index+5].connect( opPc.InputImages ) # Input must come last due to an assumption in PixelClassificationDataExportGui
+            if not (self.batchProcessingApplet.busy or self._headless):
+                opDataExport.Inputs[num_items_per_stage * reverse_stage_index + 0].notifyReady(
+                    partial(self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
+                            source_name=f'Probabilities Stage {stage_index + 1}'))
+                opDataExport.Inputs[num_items_per_stage * reverse_stage_index + 1].notifyReady(
+                    partial(self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
+                            source_name=f'Simple Segmentation Stage {stage_index + 1}'))
+                opDataExport.Inputs[num_items_per_stage * reverse_stage_index + 2].notifyReady(
+                    partial(self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
+                            source_name=f'Uncertainty Stage {stage_index + 1}'))
+                opDataExport.Inputs[num_items_per_stage * reverse_stage_index + 3].notifyReady(
+                    partial(self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
+                            source_name=f'Features Stage {stage_index + 1}'))
+                opDataExport.Inputs[num_items_per_stage * reverse_stage_index + 4].notifyReady(
+                    partial(self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
+                            source_name=f'Labels Stage {stage_index + 1}'))
+                opDataExport.Inputs[num_items_per_stage * reverse_stage_index + 5].notifyReady(
+                    partial(self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
+                            source_name=f'Input Stage {stage_index + 1}'))
 
         # One last export slot for all probabilities, all stages
         opAllStageStacker = OpMultiArrayStacker(parent=self)
@@ -338,7 +357,6 @@ class NewAutocontextWorkflowBase(Workflow):
         """
         # If no data, nothing else is ready.
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        input_ready = len(opDataSelection.ImageGroup) > 0 and not self.dataSelectionApplet.busy
 
         # First, determine various 'ready' states for each pixel classification stage (features+prediction)
         StageFlags = collections.namedtuple("StageFlags", 'input_ready features_ready invalid_classifier predictions_ready live_update_active')
@@ -371,11 +389,6 @@ class NewAutocontextWorkflowBase(Workflow):
             
             stage_flags += [ StageFlags(input_ready, features_ready, invalid_classifier, predictions_ready, live_update_active) ]
 
-
-
-        opDataExport = self.dataExportApplet.topLevelOperator
-        opPixelClassification = self.pcApplets[0].topLevelOperator
-
         # Problems can occur if the features or input data are changed during live update mode.
         # Don't let the user do that.
         any_live_update = any(flags.live_update_active for flags in stage_flags)
@@ -386,7 +399,6 @@ class NewAutocontextWorkflowBase(Workflow):
         self._shell.setAppletEnabled(self.dataSelectionApplet, not any_live_update and not batch_processing_busy)
 
         for stage_index, (featureSelectionApplet, pcApplet) in enumerate(zip(self.featureSelectionApplets, self.pcApplets)):
-            upstream_live_update = any(flags.live_update_active for flags in stage_flags[:stage_index])
             this_stage_live_update = stage_flags[stage_index].live_update_active
             downstream_live_update = any(flags.live_update_active for flags in stage_flags[stage_index+1:])
             
@@ -395,12 +407,12 @@ class NewAutocontextWorkflowBase(Workflow):
                                                                  and not downstream_live_update \
                                                                  and not batch_processing_busy)
             
-            self._shell.setAppletEnabled(pcApplet, stage_flags[stage_index].features_ready \
-                                                   #and not downstream_live_update \ # Not necessary because live update modes are synced -- labels can't be added in live update.
-                                                   and not batch_processing_busy)
+            self._shell.setAppletEnabled(pcApplet, stage_flags[stage_index].features_ready and not batch_processing_busy)
 
-        self._shell.setAppletEnabled(self.dataExportApplet, stage_flags[-1].predictions_ready and not batch_processing_busy)
-        self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not batch_processing_busy)
+        # enable export and batch processing if any of the features from any stage are ready
+        features_ready_any_stage = any(sf.features_ready for sf in stage_flags) and not batch_processing_busy
+        self._shell.setAppletEnabled(self.dataExportApplet, features_ready_any_stage)
+        self._shell.setAppletEnabled(self.batchProcessingApplet, features_ready_any_stage)
     
         # Lastly, check for certain "busy" conditions, during which we 
         #  should prevent the shell from closing the project.

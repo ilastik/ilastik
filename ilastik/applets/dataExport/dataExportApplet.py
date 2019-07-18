@@ -101,14 +101,18 @@ class DataExportApplet( Applet ):
     def prepare_for_entire_export(self):
         """Called before the entire export process starts"""
         pass
+
     def prepare_lane_for_export(self, lane_index):
         """Called before each lane is exported."""
         pass
+
     def post_process_lane_export(self, lane_index):
         """Called immediately after each lane is exported."""
         pass
+
     def post_process_entire_export(self):
         """Called after the entire export process finishes."""
+        pass
 
     @classmethod
     def make_cmdline_parser(cls, starting_parser=None):

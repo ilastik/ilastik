@@ -52,8 +52,8 @@ class ExportingOperator(object):
                 "ok": partial(progress.safe_popup, "information", "Information", "Export successful!"),
                 "cancel": partial(progress.safe_popup, "information", "Information", "Export cancelled!"),
                 "fail": partial(progress.safe_popup, "critical", "Critical", "Export failed!"),
-                "unlock": self.unlock_gui,
-                "lock": self.lock_gui
+                "unlock": self.parent.dataExportApplet.getMultiLaneGui().unlock_gui,
+                "lock": self.parent.dataExportApplet.getMultiLaneGui().lock_gui
             }
             progress_display = gui["dialog"]
             self.save_export_progress_dialog(progress_display)

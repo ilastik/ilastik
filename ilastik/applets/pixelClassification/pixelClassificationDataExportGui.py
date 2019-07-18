@@ -64,25 +64,25 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
         if selection.startswith('Probabilities'):
             exportedLayers = self._initPredictionLayers(opLane.ImageOnDisk)
             for layer in exportedLayers:
-                layer.visible = True
+                layer.visible = False
                 layer.name = layer.name + "- Exported"
             layers += exportedLayers
             
             previewLayers = self._initPredictionLayers(opLane.ImageToExport)
             for layer in previewLayers:
-                layer.visible = False
+                layer.visible = True
                 layer.name = layer.name + "- Preview"
             layers += previewLayers
         elif selection.startswith("Simple Segmentation") or selection.startswith("Labels"):
             exportedLayer = self._initColortablelayer(opLane.ImageOnDisk)
             if exportedLayer:
-                exportedLayer.visible = True
+                exportedLayer.visible = False
                 exportedLayer.name = selection + " - Exported"
                 layers.append( exportedLayer )
 
             previewLayer = self._initColortablelayer(opLane.ImageToExport)
             if previewLayer:
-                previewLayer.visible = False
+                previewLayer.visible = True
                 previewLayer.name = selection + " - Preview"
                 layers.append( previewLayer )
         elif selection.startswith("Uncertainty"):
@@ -93,7 +93,7 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                                                     range=(0.0, 1.0),
                                                     normalize=(0.0,1.0) )
                 previewLayer.opacity = 0.5
-                previewLayer.visible = False
+                previewLayer.visible = True
                 previewLayer.name = "Uncertainty - Preview"
                 layers.append(previewLayer)
             if opLane.ImageOnDisk.ready():
@@ -103,7 +103,7 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                                                      range=(0.0, 1.0),
                                                      normalize=(0.0,1.0) )
                 exportedLayer.opacity = 0.5
-                exportedLayer.visible = True
+                exportedLayer.visible = False
                 exportedLayer.name = "Uncertainty - Exported"
                 layers.append(exportedLayer)
         
@@ -114,13 +114,13 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
 
             if opLane.ImageToExport.ready():
                 previewLayer = self.createStandardLayerFromSlot( opLane.ImageToExport )
-                previewLayer.visible = False
+                previewLayer.visible = True
                 previewLayer.name = "{} - Preview".format( selection )
                 previewLayer.set_normalize( 0, None )
                 layers.append(previewLayer)
             if opLane.ImageOnDisk.ready():
                 exportedLayer = self.createStandardLayerFromSlot( opLane.ImageOnDisk )
-                exportedLayer.visible = True
+                exportedLayer.visible = False
                 exportedLayer.name = "{} - Exported".format( selection )
                 exportedLayer.set_normalize( 0, None )
                 layers.append(exportedLayer)

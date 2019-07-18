@@ -19,13 +19,15 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
-from builtins import range
+
 import enum
 import sys
 import copy
 import argparse
 import itertools
 import logging
+from functools import partial
+
 logger = logging.getLogger(__name__)
 
 import numpy
@@ -113,7 +115,7 @@ class PixelClassificationWorkflow(Workflow):
         self.pcApplet = self.createPixelClassificationApplet()
         opClassify = self.pcApplet.topLevelOperator
 
-        self.dataExportApplet = PixelClassificationDataExportApplet(self, "Prediction Export")
+        self.dataExportApplet = PixelClassificationDataExportApplet(self, "Data Export")
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.PmapColors.connect( opClassify.PmapColors )
         opDataExport.LabelNames.connect( opClassify.LabelNames )
@@ -237,6 +239,40 @@ class PixelClassificationWorkflow(Workflow):
         opDataExport.Inputs[self.ExportNames.UNCERTAINTY].connect( opClassify.HeadlessUncertaintyEstimate )
         opDataExport.Inputs[self.ExportNames.FEATURES].connect( opClassify.FeatureImages )
         opDataExport.Inputs[self.ExportNames.LABELS].connect( opClassify.LabelImages )
+
+        # Subscribe to slot readiness changes to handle export
+        opDataExport.Inputs[self.ExportNames.PROBABILITIES].notifyReady(
+            partial(
+                self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
+                source_name='Probabilities'
+            )
+        )
+        opDataExport.Inputs[self.ExportNames.SIMPLE_SEGMENTATION].notifyReady(
+            partial(
+                self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
+                source_name='Simple Segmentation'
+            )
+        )
+        opDataExport.Inputs[self.ExportNames.UNCERTAINTY].notifyReady(
+            partial(
+                self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
+                source_name='Uncertainty'
+            )
+        )
+
+        opDataExport.Inputs[self.ExportNames.FEATURES].notifyReady(
+            partial(
+                self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
+                source_name='Features'
+            )
+        )
+        opDataExport.Inputs[self.ExportNames.LABELS].notifyReady(
+            partial(
+                self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
+                source_name='Labels'
+            )
+        )
+
         for slot in opDataExport.Inputs:
             assert slot.upstream_slot is not None
 
@@ -256,18 +292,7 @@ class PixelClassificationWorkflow(Workflow):
                          featureOutput[0].ready() and \
                          (TinyVector(featureOutput[0].meta.shape) > 0).all()
 
-        opDataExport = self.dataExportApplet.topLevelOperator
         opPixelClassification = self.pcApplet.topLevelOperator
-
-        invalid_classifier = opPixelClassification.classifier_cache.fixAtCurrent.value and \
-                             opPixelClassification.classifier_cache.Output.ready() and\
-                             opPixelClassification.classifier_cache.Output.value is None
-
-        predictions_ready = features_ready and \
-                            not invalid_classifier and \
-                            len(opDataExport.Inputs) > 0 and \
-                            opDataExport.Inputs[0][0].ready() and \
-                            (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
 
         # Problems can occur if the features or input data are changed during live update mode.
         # Don't let the user do that.
@@ -279,10 +304,10 @@ class PixelClassificationWorkflow(Workflow):
         self._shell.setAppletEnabled(self.dataSelectionApplet, not live_update_active and not batch_processing_busy)
         self._shell.setAppletEnabled(self.featureSelectionApplet, input_ready and not live_update_active and not batch_processing_busy)
         self._shell.setAppletEnabled(self.pcApplet, features_ready and not batch_processing_busy)
-        self._shell.setAppletEnabled(self.dataExportApplet, predictions_ready and not batch_processing_busy)
+        self._shell.setAppletEnabled(self.dataExportApplet, features_ready and not batch_processing_busy)
 
         if self.batchProcessingApplet is not None:
-            self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not batch_processing_busy)
+            self._shell.setAppletEnabled(self.batchProcessingApplet, features_ready and not batch_processing_busy)
 
         # Lastly, check for certain "busy" conditions, during which we
         #  should prevent the shell from closing the project.
