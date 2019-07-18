@@ -6,11 +6,12 @@ import pytest
 import requests
 import tempfile
 import uuid
+import h5py
 
 import numpy
 from PyQt5.QtCore import Qt
 
-from ilastik.applets.dataSelection.datasetInfoEditorWidget import DatasetInfoEditorWidget, StorageLocation
+from ilastik.applets.dataSelection.datasetInfoEditorWidget import DatasetInfoEditorWidget
 from ilastik.applets.dataSelection import DatasetInfo
 
 def download_test_image(url, suffix:str):
@@ -28,8 +29,7 @@ def image_yxc_path():
 
 @pytest.fixture(scope='function')
 def image_yxc_info(image_yxc_path):
-    return DatasetInfo.default(image_yxc_path)
-
+    return DatasetInfo(filepath=image_yxc_path)
 
 @pytest.fixture(scope='function')
 def another_image_yxc_path():
@@ -41,6 +41,9 @@ def another_image_yxc_path():
 def image_zyxc_stack_path(image_yxc_path, another_image_yxc_path):
     return image_yxc_path + os.path.pathsep + another_image_yxc_path
 
+@pytest.fixture
+def empty_project_file() -> h5py.File:
+    return h5py.File(tempfile.mkstemp()[1], 'r+')
 
 DONT_SET_NORMALIZE = object()
 
@@ -53,7 +56,7 @@ def create_and_modify_widget(
     normalizeDisplay:bool=DONT_SET_NORMALIZE,
     drange:Tuple[Number, Number]=None,
     display_mode:str=None,
-    storage:StorageLocation=None
+    location:DatasetInfo.Location=None
 ):
     widget = DatasetInfoEditorWidget(None, infos, project_file_dir)
     qtbot.addWidget(widget)
@@ -81,8 +84,8 @@ def create_and_modify_widget(
         index = widget.displayModeComboBox.findData(display_mode)
         widget.displayModeComboBox.setCurrentIndex(index)
 
-    if storage is not None:
-        comboIndex = widget.storageComboBox.findData(storage)
+    if location is not None:
+        comboIndex = widget.storageComboBox.findData(location)
         widget.storageComboBox.setCurrentIndex(comboIndex)
 
     return widget
@@ -91,11 +94,11 @@ def accept_widget(qtbot, widget:DatasetInfoEditorWidget) -> List[DatasetInfo]:
     qtbot.mouseClick(widget.okButton, Qt.LeftButton)
     return widget.edited_infos
 
-def test_datasetinfo_editor_widget_shows_correct_data_on_single_info(qtbot, image_yxc_path):
-    info = DatasetInfo.default(image_yxc_path)
+def test_datasetinfo_editor_widget_shows_correct_data_on_single_info(qtbot, image_yxc_path, empty_project_file):
+    info = DatasetInfo(filepath=image_yxc_path, project_file=empty_project_file)
     assert info.axiskeys == 'yxc'
-    assert info.dtype == numpy.uint8
-    assert info.shape == (520, 697, 3)
+    assert info.laneDtype == numpy.uint8
+    assert info.laneShape == (520, 697, 3)
 
     editor_widget = DatasetInfoEditorWidget(None, [info], Path(image_yxc_path).parent)
     qtbot.addWidget(editor_widget)
@@ -111,8 +114,8 @@ def test_datasetinfo_editor_widget_shows_correct_data_on_single_info(qtbot, imag
     edited_info = accept_widget(qtbot, editor_widget)[0]
     assert editor_widget.edited_infos[0].axistags == info.axistags
 
-def test_datasetinfo_editor_widget_modifies_single_info(qtbot, image_yxc_path):
-    info = DatasetInfo.default(image_yxc_path)
+def test_datasetinfo_editor_widget_modifies_single_info(qtbot, image_yxc_path, empty_project_file):
+    info = DatasetInfo(filepath=image_yxc_path, project_file=empty_project_file)
     project_file_dir = str(Path(image_yxc_path).parent)
     widget = create_and_modify_widget(qtbot,
                                       [info],
@@ -122,19 +125,19 @@ def test_datasetinfo_editor_widget_modifies_single_info(qtbot, image_yxc_path):
                                       normalizeDisplay=True,
                                       drange=(10,20),
                                       display_mode="alpha-modulated",
-                                      storage=StorageLocation.RelativeLink)
+                                      location=DatasetInfo.Location.FileSystemRelativePath)
     edited_info = accept_widget(qtbot, widget)[0]
     assert edited_info.axiskeys == "xyc"
     assert edited_info.nickname == "SOME_NICKNAME"
     assert edited_info.normalizeDisplay == True
     assert edited_info.drange == (10, 20)
     assert edited_info.display_mode == 'alpha-modulated'
-    assert edited_info.location == DatasetInfo.Location.FileSystem
-    assert edited_info.filePath == Path(image_yxc_path).name
+    assert edited_info.location == DatasetInfo.Location.FileSystemRelativePath
+    assert edited_info.filePath == str(Path(image_yxc_path).absolute())
 
-def test_datasetinfo_editor_widget_shows_correct_data_on_multiple_info(qtbot, image_yxc_path, another_image_yxc_path):
-    info = DatasetInfo.default(image_yxc_path)
-    info_2 = DatasetInfo.default(another_image_yxc_path)
+def test_datasetinfo_editor_widget_shows_correct_data_on_multiple_info(qtbot, image_yxc_path, another_image_yxc_path, empty_project_file):
+    info = DatasetInfo(filepath=image_yxc_path, project_file=empty_project_file)
+    info_2 = DatasetInfo(filepath=another_image_yxc_path, project_file=empty_project_file)
     project_file_dir = str(Path(image_yxc_path).parent)
 
     widget = create_and_modify_widget(qtbot,
@@ -146,9 +149,9 @@ def test_datasetinfo_editor_widget_shows_correct_data_on_multiple_info(qtbot, im
     assert not widget.nicknameEdit.isEnabled()
     assert widget.nicknameEdit.text() == Path(image_yxc_path).stem + ', ' + Path(another_image_yxc_path).stem
 
-def test_datasetinfo_editor_widget_shows_edits_data_on_multiple_infos_with_same_dimensionality(qtbot, image_yxc_path, another_image_yxc_path):
-    info_1 = DatasetInfo.default(image_yxc_path)
-    info_2 = DatasetInfo.default(another_image_yxc_path)
+def test_datasetinfo_editor_widget_shows_edits_data_on_multiple_infos_with_same_dimensionality(qtbot, image_yxc_path, another_image_yxc_path, empty_project_file):
+    info_1 = DatasetInfo(filepath=image_yxc_path, project_file=empty_project_file)
+    info_2 = DatasetInfo(filepath=another_image_yxc_path, project_file=empty_project_file)
     project_file_dir = str(Path(image_yxc_path).parent)
 
     widget = create_and_modify_widget(qtbot,
@@ -166,8 +169,8 @@ def test_datasetinfo_editor_widget_shows_edits_data_on_multiple_infos_with_same_
     assert all(info.drange == (20,40) for info in edited_infos)
 
 def test_cannot_edit_axis_tags_on_images_of_different_dimensionality(qtbot, image_yxc_path, image_zyxc_stack_path):
-    info_1 = DatasetInfo.default(image_yxc_path)
-    info_2 = DatasetInfo.default(image_zyxc_stack_path, sequence_axis="z")
+    info_1 = DatasetInfo(filepath=image_yxc_path)
+    info_2 = DatasetInfo(filepath=image_zyxc_stack_path, sequence_axis="z")
     project_file_dir = str(Path(image_yxc_path).parent)
 
     widget = create_and_modify_widget(qtbot, [info_1, info_2], project_file_dir)
@@ -177,12 +180,12 @@ def test_cannot_edit_axis_tags_on_images_of_different_dimensionality(qtbot, imag
     assert edited_infos[0].axiskeys == info_1.axiskeys  and edited_infos[1].axiskeys == info_2.axiskeys
 
 def test_immediate_accept_does_not_change_values(qtbot, image_yxc_path, image_zyxc_stack_path):
-    info_1 = DatasetInfo.default(image_yxc_path,
-                                 normalizeDisplay=False)
-    info_2 = DatasetInfo.default(image_zyxc_stack_path,
-                                 sequence_axis="z",
-                                 normalizeDisplay=True,
-                                 drange=(56, 78))
+    info_1 = DatasetInfo(filepath=image_yxc_path,
+                         normalizeDisplay=False)
+    info_2 = DatasetInfo(filepath=image_zyxc_stack_path,
+                         sequence_axis="z",
+                         normalizeDisplay=True,
+                         drange=(56, 78))
     project_file_dir = str(Path(image_yxc_path).parent)
 
     widget = create_and_modify_widget(qtbot, [info_1, info_2], project_file_dir)

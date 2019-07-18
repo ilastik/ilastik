@@ -64,10 +64,12 @@ class DatasetInfo(object):
         FileSystem = 0
         ProjectInternal = 1
         PreloadedArray = 2
+        FileSystemRelativePath = 3
+        FileSystemAbsolutePath = 4
 
     def __init__(self, *, project_file:h5py.File=None, filepath=None, jsonNamespace=None,
                  preloaded_array=None, sequence_axis=None, allowLabels=True,
-                 subvolume_roi=None, location=Location.FileSystem,
+                 subvolume_roi=None, location=None,
                  axistags=None, display_mode='default',
                  nickname='', original_axistags=None,
                  normalizeDisplay:bool=None, drange:Tuple[Number, Number]=None,
@@ -102,6 +104,7 @@ class DatasetInfo(object):
         self.normalizeDisplay = (self.drange is not None) if normalizeDisplay is None else normalizeDisplay
         self.axistags = axistags
         self.expanded_paths = []
+        self.base_dir = str(Path(project_file.filename).absolute().parent) if project_file else os.getcwd()
 
         if self.preloaded_array:
             self.nickname = "preloaded-{}-array".format(self.preloaded_array.dtype.name)
@@ -110,12 +113,11 @@ class DatasetInfo(object):
             self.location = self.Location.PreloadedArray
             self.axistags = getattr(self.preloaded_array, 'axistags', axistags)
         elif filepath and not isUrl(filepath):
-            cwd = str(Path(project_file.filename).absolute().parent) if project_file else os.getcwd()
-            self.nickname, self.expanded_paths = self.process_filepath(filepath, cwd=cwd)
+            self.nickname, self.expanded_paths = self.process_filepath(filepath, cwd=self.base_dir)
             self.filePath = os.path.pathsep.join(self.expanded_paths)
 
             op_reader = OpInputDataReader(graph=Graph(),
-                                          WorkingDirectory=cwd,
+                                          WorkingDirectory=self.base_dir,
                                           FilePath=self.filePath,
                                           SequenceAxis=sequence_axis)
             meta = op_reader.Output.meta
@@ -147,6 +149,15 @@ class DatasetInfo(object):
         if nickname:
             self.nickname = nickname
 
+        if self.location is None:
+            if self.relative_paths:
+                self.location = self.Location.FileSystemRelativePath
+            else:
+                self.location = self.Location.FileSystemAbsolutePath
+
+        if self.location == self.Location.FileSystemRelativePath and not self.relative_paths:
+            raise Exception(f"\"{self.original_paths}\" can't be expressed relative to {self.base_dir}")
+
     @classmethod
     def process_filepath(cls, filepath:str, cwd=None):
         expanded_paths = cls.expandPath(filepath, cwd=cwd)
@@ -169,48 +180,38 @@ class DatasetInfo(object):
             return []
         elif self.location == self.Location.ProjectInternal:
             return [self.filePath]
-        elif self.location == self.Location.FileSystem:
-            if self.is_path_absolute():
-                return self.expanded_paths[:]
-            else:
-                return self.original_paths[:]
+        elif self.location == self.Location.FileSystemRelativePath:
+            return self.relative_paths
+        elif self.location == self.Location.FileSystemAbsolutePath:
+            return self.expanded_paths[:]
+        else:
+            raise Exception(f"Bad location: {self.location}")
 
     @property
-    @functools.lru_cache()
     def relative_paths(self) -> List[str]:
-        if self.location != self.Location.FileSystem:
+        if self.location in (self.Location.ProjectInternal, self.Location.PreloadedArray):
             return []
-        cwd = Path(self.project_file.filename).absolute().parent
         external_paths = [Path(PathComponents(path).externalPath) for path in self.expanded_paths]
         try:
-            return sorted([str(ext_path.absolute().relative_to(cwd)) for ext_path in external_paths])
+            return sorted([str(ext_path.absolute().relative_to(self.base_dir)) for ext_path in external_paths])
         except ValueError:
             return []
-
-    def is_path_relative(self):
-        return not any(isUrl(p) or os.path.isabs(p) for p in self.original_paths)
-
-    def is_path_absolute(self):
-        return not self.is_path_relative()
-
-    def modified_with(self, **kwargs):
-        #FIXME: call the constructor again
-        info = copy.copy(self)
-        for k, v in kwargs.items():
-            setattr(info, k, v)
-        return info
 
     @classmethod
     def generate_id(cls) -> str:
         return str(uuid.uuid1())
 
     @property
-    def externalPath(self) -> str:
-        return PathComponents(self.filePath).externalPath
+    def external_paths(self) -> List[str]:
+        return [PathComponents(ep).externalPath for ep in self.expanded_paths]
 
     @property
-    def internalPath(self) -> str:
-        return PathComponents(self.filePath).internalPath
+    def internal_paths(self) -> List[str]:
+        return [PathComponents(ep).internalPath for ep in self.expanded_paths]
+
+    @property
+    def file_extensions(self) -> str:
+        return [PathComponents(ep).extension for ep in self.expanded_paths]
 
     @classmethod
     def expandPath(cls, file_path:str, cwd:str=None) -> List[str]:
@@ -251,23 +252,19 @@ class DatasetInfo(object):
                     f.close()
         return sorted(common_internal_paths)
 
-    @property
-    def fileExtension(self) -> str:
-        return os.path.splitext(self.externalPath)[1]
-
     @classmethod
     def pathIsHdf5(cls, path:str) -> bool:
         return PathComponents(path).extension in ['.ilp', '.h5', '.hdf5']
 
     def isHdf5(self) -> bool:
-        return self.pathIsHdf5(self.externalPath)
+        return any(self.pathIsHdf5(ep) for ep in self.external_paths)
 
     @classmethod
     def pathIsN5(cls, path:str) -> bool:
         return PathComponents(path).extension in ['.n5']
 
     def isN5(self) -> bool:
-        return self.pathIsN5(self.externalPath)
+        return any(self.pathIsN5(ep) for ep in self.external_paths)
 
     @classmethod
     def fileHasInternalPaths(cls, path:str) -> bool:
@@ -278,24 +275,27 @@ class DatasetInfo(object):
         datasetNames = []
 
         if cls.pathIsHdf5(file_path):
+            def accumulateDatasetPaths(name, val):
+                if type(val) == h5py._hl.dataset.Dataset and min_ndim <= len(val.shape) <= max_ndim:
+                    datasetNames.append(name)
             with h5py.File(file_path, 'r') as f:
-                def accumulateDatasetPaths(name, val):
-                    if type(val) == h5py._hl.dataset.Dataset and min_ndim <= len(val.shape) <= max_ndim:
-                        datasetNames.append( '/' + name )
                 f.visititems(accumulateDatasetPaths)
         elif cls.pathIsN5(file_path):
+            def accumulate_names(path, val):
+                if isinstance(val, z5py.dataset.Dataset) and min_ndim <= len(val.shape) <= max_ndim:
+                    name = path.replace(file_path, '')  #FIXME: re.sub(r'^' + file_path, ...) ?
+                    datasetNames.append(name)
             with z5py.N5File(file_path, mode='r+') as f:
-                def accumulate_names(path, val):
-                    if isinstance(val, z5py.dataset.Dataset) and min_ndim <= len(val.shape) <= max_ndim:
-                        name = path.replace(file_path, '')  #FIXME: re.sub(r'^' + file_path, ...) ?
-                        datasetNames.append(name)
                 f.visititems(accumulate_names)
 
         return datasetNames
 
     def getPossibleInternalPaths(self):
-        assert self.fileHasInternalPaths(self.externalPath)
-        return self.getPossibleInternalPathsFor(self.externalPath)
+        possible_internal_paths = set()
+        for expanded_path in self.expanded_paths:
+            external_path = PathComponents(expanded_path).externalPath
+            possible_internal_paths |= set(self.getPossibleInternalPathsFor(external_path))
+        return possible_internal_paths
 
     @property
     def datasetId(self):
@@ -321,8 +321,6 @@ class DatasetInfo(object):
         if self.drange:
             s += "drange: {},\n".format(self.drange)
         s += "normalizeDisplay: {}\n".format(self.normalizeDisplay)
-        if self.fromstack:
-            s += "fromstack: {}\n".format(self.fromstack)
         if self.subvolume_roi:
             s += "subvolume_roi: {},\n".format(self.subvolume_roi)
         s += " }\n"
