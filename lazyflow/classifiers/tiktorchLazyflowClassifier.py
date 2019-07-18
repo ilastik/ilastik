@@ -34,7 +34,15 @@ from lazyflow.roi import roiToSlice
 
 from tiktorch import serializers  # noqa
 from tiktorch.launcher import LocalServerLauncher, RemoteSSHServerLauncher, SSHCred
-from tiktorch.types import NDArray, LabeledNDArray, NDArrayBatch, LabeledNDArrayBatch, SetDeviceReturnType
+from tiktorch.types import (
+    NDArray,
+    LabeledNDArray,
+    NDArrayBatch,
+    LabeledNDArrayBatch,
+    SetDeviceReturnType,
+    Model,
+    ModelState,
+)
 from tiktorch.rpc_interface import INeuralNetworkAPI
 from tiktorch.rpc import Client, TCPConnConf
 
@@ -64,17 +72,12 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
     VERSION = 1
     halo: Tuple[int, int, int, int, int]
 
-    def load_model(
-        self, config: dict, binary_model: bytes, binary_state: bytes, binary_optimizer_state: bytes
-    ) -> Optional[Exception]:
-        conf = self._model_conf = SimpleNamespace(**{"name": "tiktorch model", **config})
-        # self._out_reorderer =
-        # self._opReorderAxesInImg.AxisOrder.setValue(conf.input_axis_order)
-        # self._opReorderAxesInLabel.AxisOrder.setValue(conf.input_axis_order)
+    def load_model(self, model: Model, state: ModelState) -> Optional[Exception]:
+        conf = self._model_conf = SimpleNamespace(**{"name": "tiktorch model", **model.config})
         self.set_halo(conf.halo)
 
-        logger.debug("loading tiktorch model with config: %s", config)
-        fut = self._tikTorchClient.load_model(config, binary_model, binary_state, binary_optimizer_state, self._devices)
+        logger.debug("loading tiktorch model with config: %s", model.config)
+        fut = self._tikTorchClient.load_model(model, state, self._devices)
 
         try:
             ret: SetDeviceReturnType = fut.result(timeout=30)
@@ -111,7 +114,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
     def model(self):
         return self._model_conf
 
-    def __init__(self, server_config: dict) -> None:
+    def __init__(self, server_config) -> None:
         # default values for config:
         # config: dict, binary_model: bytes, binary_state: bytes, binary_optimizer_state: bytes,
 
@@ -122,30 +125,25 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         # Privates
         self._tikTorchClassifier = None
         self._train_model = None
+        self._shutdown_sent = False
         # self._opReorderAxesInImg = OpReorderAxes(graph=Graph())
         # self._opReorderAxesInLabel = OpReorderAxes(graph=Graph())
         # self._opReorderAxesOut = OpReorderAxes(graph=Graph())
 
-        addr, port1, port2 = (
-            socket.gethostbyname(server_config["address"]),
-            server_config["port1"],
-            server_config["port2"],
-        )
+        addr, port1, port2 = (socket.gethostbyname(server_config.address), server_config.port1, server_config.port2)
         conn_conf = TCPConnConf(addr, port1, port2)
 
         if addr == "127.0.0.1":
             self.launcher = LocalServerLauncher(conn_conf)
         else:
             self.launcher = RemoteSSHServerLauncher(
-                conn_conf, cred=SSHCred(server_config["username"], server_config["password"])
+                conn_conf, cred=SSHCred(server_config.username, server_config.password)
             )
 
         self.launcher.start()
-        self._shutdown_sent = False
 
         self._tikTorchClient = Client(INeuralNetworkAPI(), conn_conf)
-        assert all([isinstance(d[2], bool) for d in server_config["devices"]])
-        self._devices = [d[0] for d in server_config["devices"] if d[2]]
+        self._devices = [d.id for d in server_config.devices if d.enabled]
 
     def _reorder_out(self, arr, axes_tags):
         reorderer = ReorderAxes(self.model.input_axis_order)
