@@ -87,7 +87,7 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
                              'Object Probabilities', 
                              'Blockwise Object Predictions', 
                              'Blockwise Object Probabilities',
-                             'Feature Table',
+                             'Object Feature Table',
                              'Pixel Probabilities']
     
         if selection in ("Object Predictions", "Blockwise Object Predictions"):
@@ -130,7 +130,7 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
                 layer.visible = True
                 layer.name = layer.name + "- Preview"
             layers += previewLayers
-        elif selection == 'Feature Table':
+        elif selection == 'Object Feature Table':
             # No layers to show in case of Feature Table
             pass
         else:

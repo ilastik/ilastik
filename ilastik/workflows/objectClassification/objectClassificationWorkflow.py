@@ -289,31 +289,31 @@ class ObjectClassificationWorkflow(Workflow):
             opDataExport.Inputs[self.ExportNames.OBJECT_PREDICTIONS].notifyReady(
                 partial(
                     self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
-                    source_name='Object Predictions'
+                    source_name=self.ExportNames.OBJECT_PREDICTIONS.displayName
                 )
             )
             opDataExport.Inputs[self.ExportNames.OBJECT_PROBABILITIES].notifyReady(
                 partial(
                     self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
-                    source_name='Object Probabilities'
+                    source_name=self.ExportNames.OBJECT_PROBABILITIES.displayName
                 )
             )
             opDataExport.Inputs[self.ExportNames.BLOCKWISE_OBJECT_PREDICTIONS].notifyReady(
                 partial(
                     self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
-                    source_name='Blockwise Object Predictions'
+                    source_name=self.ExportNames.BLOCKWISE_OBJECT_PREDICTIONS.displayName
                 )
             )
             opDataExport.Inputs[self.ExportNames.BLOCKWISE_OBJECT_PROBABILITIES].notifyReady(
                 partial(
                     self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
-                    source_name='Blockwise Object Probabilities'
+                    source_name=self.ExportNames.BLOCKWISE_OBJECT_PROBABILITIES.displayName
                 )
             )
             opDataExport.Inputs[self.ExportNames.OBJECT_FEATURE_TABLE].notifyDirty(
                 partial(
                     self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
-                    source_name='Feature Table'
+                    source_name=self.ExportNames.OBJECT_FEATURE_TABLE.displayName
                 )
             )
 

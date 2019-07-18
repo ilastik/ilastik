@@ -8,7 +8,7 @@ class OpObjectClassificationDataExport(OpDataExport):
     """
 
     # Feature Table export source name
-    ObjectFeaturesTable = 'Feature Table'
+    ObjectFeaturesTable = 'Object Feature Table'
 
     def __init__(self, *args, **kwargs):
         super(OpObjectClassificationDataExport, self).__init__(*args, **kwargs)
