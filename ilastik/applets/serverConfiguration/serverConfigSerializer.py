@@ -16,16 +16,11 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot
 
 
 class ServerConfigSerializer(AppletSerializer):
-
     def __init__(self, projectFileGroupName, operator):
-        super().__init__(projectFileGroupName, [
-            SerialDictSlot(operator.LocalServerConfig),
-            SerialDictSlot(operator.RemoteServerConfig),
-            SerialSlot(operator.UseLocalServer)
-        ])
+        super().__init__(projectFileGroupName, [SerialSlot(operator.ServerId)])

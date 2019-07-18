@@ -72,6 +72,7 @@ filename: in
 
 cfg = configparser.SafeConfigParser()
 
+CONFIG_PATH = os.path.expanduser("~/.ilastikrc")
 
 def init_ilastik_config(userConfig=None):
     global cfg
@@ -82,7 +83,7 @@ def init_ilastik_config(userConfig=None):
             "ilastik config file does not exist: {}".format(userConfig))
 
     if userConfig is None:
-        userConfig = os.path.expanduser("~/.ilastikrc")
+        userConfig = os.path.expanduser(CONFIG_PATH)
     if os.path.exists(userConfig):
         cfg.read(userConfig)
 

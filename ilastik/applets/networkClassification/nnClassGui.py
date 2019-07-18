@@ -55,7 +55,8 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.utility import PreferencesManager
 
-from tiktorch.types import ModelState
+from tiktorch.types import ModelState, Model
+from tiktorch.utils_client import read_model
 from tiktorch.configkeys import TRAINING, NUM_ITERATIONS_DONE, NUM_ITERATIONS_MAX
 
 from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
@@ -671,14 +672,13 @@ class NNClassGui(LabelingGui):
                 self.updatePredictions()  # update one last time
                 try:
                     model_state = factory.get_model_state()
-                    print("SET MODEL STATE")
-                    config = self.topLevelOperatorView.TiktorchConfig.value
+                    model = self.topLevelOperatorView.model
+                    config = model.config
                     config[TRAINING][NUM_ITERATIONS_DONE] = model_state.num_iterations_done
                     config[TRAINING][NUM_ITERATIONS_MAX] = model_state.num_iterations_max
-                    self.topLevelOperatorView.TiktorchConfig.disconnect()
-                    self.topLevelOperatorView.BinaryModelState.setValue(model_state.model_state)
-                    self.topLevelOperatorView.BinaryOptimizerState.setValue(model_state.optimizer_state)
-                    self.topLevelOperatorView.TiktorchConfig.setValue(config)
+                    self.topLevelOperatorView.Model.disconnect()
+                    self.topLevelOperatorView.ModelState.setValue(model_state)
+                    self.topLevelOperatorView.Model.setValue(model)
                 except Exception as e:
                     logger.warning(f"Could not retrieve updated model state due to {e}")
 
@@ -753,44 +753,16 @@ class NNClassGui(LabelingGui):
         """
         Adds the chosen FilePath to the classifierDictionary and to the ComboBox
         """
-        print("ADD NN CLASSIFIER", folder_path)
-
         # clear first the comboBox or addItems will duplicate names
         # self.labelingDrawerUi.comboBox.clear()
         # self.labelingDrawerUi.comboBox.addItems(self.classifiers)
         self.labelingDrawerUi.liveTraining.setEnabled(True)
         self.labelingDrawerUi.livePrediction.setEnabled(True)
 
-        # Read tiktorch config
-        config_file_name = os.path.join(folder_path, "tiktorch_config.yml")
-        if not os.path.exists(config_file_name):
-            raise FileNotFoundError(f"Config file not found at: {config_file_name}.")
+        res = read_model(folder_path)
+        config = res.model.config
 
-        with open(config_file_name, "r") as f:
-            tiktorch_config = yaml.load(f, Loader=yaml.SafeLoader)
-
-        if "name" not in tiktorch_config:
-            tiktorch_config["name"] = os.path.basename(os.path.normpath(folder_path))
-
-        # Read model.py
-        file_name = os.path.join(folder_path, "model.py")
-        if not os.path.exists(file_name):
-            raise FileNotFoundError(f"Model file not found at: {file_name}.")
-
-        with open(file_name, "rb") as f:
-            binary_model_file = f.read()
-
-        # Read model and optimizer states if they exist
-        binary_states = []
-        for fn in ["state.nn", "optimizer.nn"]:
-            fn = os.path.join(folder_path, fn)
-            if os.path.exists(fn):
-                with open(fn, "rb") as f:
-                    binary_states.append(f.read())
-            else:
-                binary_states.append(b"")
-
-        success = self.topLevelOperatorView.set_classifier(tiktorch_config, binary_model_file, *binary_states)
+        success = self.topLevelOperatorView.set_classifier(res.model, res.state)
         if success:
             num_classes = len(self.topLevelOperatorView.opModel.TiktorchModel.value.known_classes)
             self.minLabelNumber = num_classes
@@ -800,7 +772,7 @@ class NNClassGui(LabelingGui):
             # self.setupLayers()
             self.updateAllLayers()
 
-            self.set_NN_classifier_name(tiktorch_config["name"])
+            self.set_NN_classifier_name(config["name"])
         else:
             self.set_NN_classifier_name("no model")
 

@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Form</class>
+ <widget class="QWidget" name="Form">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>527</width>
+    <height>603</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout_4">
+   <item row="0" column="0">
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="2" column="0">
+      <widget class="QFrame" name="serverConfigBox">
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
+       </property>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_2">
+        <item row="0" column="0" colspan="2">
+         <layout class="QGridLayout" name="gridLayout_3">
+          <item row="9" column="0">
+           <widget class="QLabel" name="port2Label">
+            <property name="text">
+             <string>Port 2:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="addressEdit"/>
+          </item>
+          <item row="10" column="1">
+           <widget class="QListWidget" name="deviceList">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>40</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="usernameLabel">
+            <property name="text">
+             <string>Username:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QLineEdit" name="usernameEdit"/>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="addressLabel">
+            <property name="text">
+             <string>Address:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QLineEdit" name="sshKeyEdit"/>
+          </item>
+          <item row="8" column="1">
+           <widget class="QLineEdit" name="port1Edit"/>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="sshKeyLabel">
+            <property name="text">
+             <string>SSH Key:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="10" column="0">
+           <widget class="QPushButton" name="getDevicesBtn">
+            <property name="text">
+             <string>Get Devices</string>
+            </property>
+           </widget>
+          </item>
+          <item row="9" column="1">
+           <widget class="QLineEdit" name="port2Edit"/>
+          </item>
+          <item row="8" column="0">
+           <widget class="QLabel" name="port1Label">
+            <property name="text">
+             <string>Port 1:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="nameEdit"/>
+          </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="nameLabel">
+            <property name="text">
+             <string>Name:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QComboBox" name="typeList"/>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="typeLabel">
+            <property name="text">
+             <string>Type:</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="1" column="0">
+         <widget class="QPushButton" name="editBtn">
+          <property name="text">
+           <string>Edit</string>
+          </property>
+          <property name="autoDefault">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QPushButton" name="saveBtn">
+          <property name="text">
+           <string>Save</string>
+          </property>
+          <property name="autoDefault">
+           <bool>true</bool>
+          </property>
+          <property name="default">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>nameEdit</tabstop>
+  <tabstop>addressEdit</tabstop>
+  <tabstop>typeList</tabstop>
+  <tabstop>usernameEdit</tabstop>
+  <tabstop>sshKeyEdit</tabstop>
+  <tabstop>port1Edit</tabstop>
+  <tabstop>port2Edit</tabstop>
+  <tabstop>getDevicesBtn</tabstop>
+  <tabstop>deviceList</tabstop>
+  <tabstop>saveBtn</tabstop>
+  <tabstop>editBtn</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>

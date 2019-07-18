@@ -22,6 +22,7 @@ from functools import partial
 import numpy
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow import stype
 from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
 from lazyflow.operators import (
     OpMultiArraySlicer2,
@@ -30,13 +31,19 @@ from lazyflow.operators import (
     OpClassifierPredict,
     OpTrainClassifierBlocked,
 )
-from lazyflow.operators.tiktorchClassifierOperators import OpTikTorchTrainClassifierBlocked, OpTikTorchClassifierPredict
+from lazyflow.operators.tiktorchClassifierOperators import (
+    OpTikTorchTrainClassifierBlocked,
+    OpTikTorchClassifierPredict,
+)
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
-from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline, DatasetConstraintError
+from ilastik.applets.pixelClassification.opPixelClassification import (
+    OpLabelPipeline,
+    DatasetConstraintError,
+)
 
-from tiktorch.types import ModelState
+from tiktorch.types import Model, ModelState
 from tiktorch.configkeys import TRAINING, NUM_ITERATIONS_MAX
 
 import logging
@@ -45,7 +52,7 @@ logger = logging.getLogger(__name__)
 
 
 class OpTiktorchFactory(Operator):
-    ServerConfig = InputSlot()
+    ServerConfig = InputSlot(stype=stype.Opaque)
     Tiktorch = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -57,10 +64,13 @@ class OpTiktorchFactory(Operator):
             if self.ServerConfig.value == self.__conf:
                 return
 
+        self.Tiktorch.meta.NOTREADY = False
         try:
             tiktorch = TikTorchLazyflowClassifierFactory(self.ServerConfig.value)
         except Exception as e:
-            logger.info("Could not statt Tiktorch server with %s", self.ServerConfig.value, exc_info=e)
+            logger.exception(
+                "Could not start Tiktorch server with %s", self.ServerConfig.value
+            )
             self.Tiktorch.meta.NOTREADY = True
         else:
             self.__conf = self.ServerConfig.value
@@ -91,10 +101,8 @@ class OpTiktorchFactory(Operator):
 
 class OpModel(Operator):
     TiktorchFactory = InputSlot()  #  OpTiktorchFactory.TikTorch
-    TiktorchConfig = InputSlot()
-    BinaryModel = InputSlot()
-    BinaryModelState = InputSlot()
-    BinaryOptimizerState = InputSlot()
+    Model = InputSlot(stype=stype.Opaque)
+    ModelState = InputSlot(stype=stype.Opaque)
 
     TiktorchModel = OutputSlot()  #  OpTiktorchFactory.TikTorch
 
@@ -105,28 +113,11 @@ class OpModel(Operator):
     def setupOutputs(self):
         tiktorch = self.TiktorchFactory.value
 
-        # todo: Deserialize sequences as tuple of ints, not as numpy.ndarray
-        # (which is a weird, implicit default in SerialDictSlot)
-        # also note: converting form numpy.int32, etc to python's int
-        def make_good(bad):
-            good = bad
-            if isinstance(bad, dict):
-                good = {}
-                for key, bad_value in bad.items():
-                    good[key] = make_good(bad_value)
-            elif isinstance(bad, numpy.integer):
-                good = int(bad)
-            elif isinstance(bad, numpy.ndarray):
-                good = tuple(make_good(v) for v in bad)
-            return good
+        model = self.Model.value
+        state = self.ModelState.value
 
-        tiktorch_config = make_good(self.TiktorchConfig.value)
+        exept = tiktorch.load_model(model, state)
 
-        model_binary = bytes(self.BinaryModel.value)
-        model_state = bytes(self.BinaryModelState.value)
-        opt_state = bytes(self.BinaryOptimizerState.value)
-
-        exept = tiktorch.load_model(tiktorch_config, model_binary, model_state, opt_state)
         if exept is None:
             self.TiktorchModel.setValue(tiktorch)
             try:
@@ -136,10 +127,18 @@ class OpModel(Operator):
                 # restore labels  # todo: clean up this workaround for resetting the user label block shape
                 top_group_name = applet.dataSerializers[0].topGroupName
                 group_name = "LabelSets"
-                label_serial_block_slot = [s for s in applet.dataSerializers[0].serialSlots if s.name == group_name][0]
-                label_serial_block_slot.deserialize(projectManager.currentProjectFile[top_group_name])
+                label_serial_block_slot = [
+                    s
+                    for s in applet.dataSerializers[0].serialSlots
+                    if s.name == group_name
+                ][0]
+                label_serial_block_slot.deserialize(
+                    projectManager.currentProjectFile[top_group_name]
+                )
             except:
-                logger.debug("Could not restore labels after setting TikTorchLazyflowClassifierFactory.")
+                logger.debug(
+                    "Could not restore labels after setting TikTorchLazyflowClassifierFactory."
+                )
         else:
             self.TiktorchModel.meta.NOTREADY = True
 
@@ -165,16 +164,16 @@ class OpNNClassification(Operator):
     LabelInputs = InputSlot(optional=True, level=1)
     FreezePredictions = InputSlot(stype="bool", value=False, nonlane=True)
     ClassifierFactory = InputSlot()
-    TiktorchConfig = InputSlot()
-    BinaryModel = InputSlot()
-    BinaryModelState = InputSlot()
-    BinaryOptimizerState = InputSlot()
+    Model = InputSlot(stype=stype.Opaque)
+    ModelState = InputSlot(stype=stype.Opaque)
 
     Classifier = OutputSlot()
     PredictionProbabilities = OutputSlot(
         level=1
     )  # Classification predictions (via feature cache for interactive speed)
-    PredictionProbabilityChannels = OutputSlot(level=2)  # Classification predictions, enumerated by channel
+    PredictionProbabilityChannels = OutputSlot(
+        level=2
+    )  # Classification predictions, enumerated by channel
     CachedPredictionProbabilities = OutputSlot(level=1)
     LabelImages = OutputSlot(level=1)
     NonzeroLabelBlocks = OutputSlot(level=1)
@@ -200,7 +199,9 @@ class OpNNClassification(Operator):
         self.PmapColors.meta.shape = (numClasses,)
 
         if self.opBlockShape.BlockShapeInference.ready():
-            self.opPredictionPipeline.BlockShape.connect(self.opBlockShape.BlockShapeInference)
+            self.opPredictionPipeline.BlockShape.connect(
+                self.opBlockShape.BlockShapeInference
+            )
 
     def cleanUp(self):
         try:
@@ -236,15 +237,15 @@ class OpNNClassification(Operator):
 
         self.opModel = OpModel(parent=self.parent)
         self.opModel.TiktorchFactory.connect(self.opTiktorchFactory.Tiktorch)
-        self.opModel.TiktorchConfig.connect(self.TiktorchConfig)
-        self.opModel.BinaryModel.connect(self.BinaryModel)
-        self.opModel.BinaryModelState.connect(self.BinaryModelState)
-        self.opModel.BinaryOptimizerState.connect(self.BinaryOptimizerState)
+        self.opModel.Model.connect(self.Model)
+        self.opModel.ModelState.connect(self.ModelState)
 
         self.ClassifierFactory.connect(self.opModel.TiktorchModel)
 
         # Hook up Labeling Pipeline
-        self.opLabelPipeline = OpMultiLaneWrapper(OpLabelPipeline, parent=self, broadcastingSlotNames=["DeleteLabel"])
+        self.opLabelPipeline = OpMultiLaneWrapper(
+            OpLabelPipeline, parent=self, broadcastingSlotNames=["DeleteLabel"]
+        )
         self.opLabelPipeline.RawImage.connect(self.InputImages)
         self.opLabelPipeline.LabelInput.connect(self.LabelInputs)
         self.opLabelPipeline.DeleteLabel.setValue(-1)
@@ -268,15 +269,23 @@ class OpNNClassification(Operator):
         self.Classifier.connect(self.classifier_cache.Output)
 
         # Hook up the prediction pipeline inputs
-        self.opPredictionPipeline = OpMultiLaneWrapper(OpPredictionPipeline, parent=self)
+        self.opPredictionPipeline = OpMultiLaneWrapper(
+            OpPredictionPipeline, parent=self
+        )
         self.opPredictionPipeline.RawImage.connect(self.InputImages)
         self.opPredictionPipeline.Classifier.connect(self.classifier_cache.Output)
         self.opPredictionPipeline.NumClasses.connect(self.NumClasses)
         self.opPredictionPipeline.FreezePredictions.connect(self.FreezePredictions)
 
-        self.PredictionProbabilities.connect(self.opPredictionPipeline.PredictionProbabilities)
-        self.CachedPredictionProbabilities.connect(self.opPredictionPipeline.CachedPredictionProbabilities)
-        self.PredictionProbabilityChannels.connect(self.opPredictionPipeline.PredictionProbabilityChannels)
+        self.PredictionProbabilities.connect(
+            self.opPredictionPipeline.PredictionProbabilities
+        )
+        self.CachedPredictionProbabilities.connect(
+            self.opPredictionPipeline.CachedPredictionProbabilities
+        )
+        self.PredictionProbabilityChannels.connect(
+            self.opPredictionPipeline.PredictionProbabilityChannels
+        )
 
         def inputResizeHandler(slot, oldsize, newsize):
             if newsize == 0:
@@ -317,22 +326,17 @@ class OpNNClassification(Operator):
                     s1.notifyRemoved(partial(removeSlot, s2))
 
     def set_model_state(self, model_state: ModelState):
-        config = self.TiktorchConfig.value
+        model = self.Model.value
+        config = model.config
         config[TRAINING][NUM_ITERATIONS_MAX] = model_state.num_iterations_max
-        model = self.BinaryModel.value
-        self.set_classifier(config, model, model_state.model_state, model_state.optimizer_state)
+        self.set_classifier(model, model_state)
 
-    def set_classifier(
-        self, tiktorch_config: dict, model_file: bytes, model_state: bytes, optimizer_state: bytes
-    ) -> bool:
-        # self.TiktorchConfig.disconnect()  # do not create TiktorchClassifierFactory with invalid intermediate settings
-        # self.ClassifierFactory.disconnect()
-        # self.FreezePredictions.setValue(False)
-        self.BinaryModel.setValue(model_file)
-        self.BinaryModelState.setValue(model_state)
-        self.BinaryOptimizerState.setValue(optimizer_state)
-        # now all non-server settings are up to date...
-        self.TiktorchConfig.setValue(tiktorch_config)  # ...setupOutputs can initialize a tiktorchClassifierFactory
+    def set_classifier(self, model: Model, state: ModelState) -> bool:
+        self.Model.disconnect()  # do not create TiktorchClassifierFactory with invalid intermediate settings
+        self.ModelState.setValue(state)
+        self.Model.setValue(
+            model
+        )  # ...setupOutputs can initialize a tiktorchClassifierFactory
         return self.opModel.TiktorchModel.ready()
 
     def update_config(self, partial_config: dict):
@@ -415,7 +419,9 @@ class OpNNClassification(Operator):
 
     def addLane(self, laneIndex):
         numLanes = len(self.InputImages)
-        assert numLanes == laneIndex, f"Image lanes must be appended. {numLanes}, {laneIndex})"
+        assert (
+            numLanes == laneIndex
+        ), f"Image lanes must be appended. {numLanes}, {laneIndex})"
         self.InputImages.resize(numLanes + 1)
 
     def removeLane(self, laneIndex, finalLength):
@@ -432,7 +438,9 @@ class OpNNClassification(Operator):
         old_names = self.LabelNames.value
         old_max = len(old_names)
         if new_max > old_max:
-            new_names = old_names + ["Label {}".format(x) for x in range(old_max + 1, new_max + 1)]
+            new_names = old_names + [
+                "Label {}".format(x) for x in range(old_max + 1, new_max + 1)
+            ]
             self.LabelNames.setValue(new_names)
 
             # Make some default colors, too
@@ -449,7 +457,9 @@ class OpNNClassification(Operator):
 
     def mergeLabels(self, from_label, into_label):
         for laneIndex in range(len(self.InputImages)):
-            self.getLane(laneIndex).opLabelPipeline.opLabelArray.mergeLabels(from_label, into_label)
+            self.getLane(laneIndex).opLabelPipeline.opLabelArray.mergeLabels(
+                from_label, into_label
+            )
 
     def clearLabel(self, label_value):
         for laneIndex in range(len(self.InputImages)):
@@ -477,13 +487,18 @@ class OpBlockShape(Operator):
         # total halo = 2 * halo per axis
         total_halo = 2 * numpy.array(halo)
         shrinkage = tikmodel.shrinkage
-        shrunk_training_shape_wo_halo = numpy.array(training_shape) - numpy.array(shrinkage) - total_halo
+        shrunk_training_shape_wo_halo = (
+            numpy.array(training_shape) - numpy.array(shrinkage) - total_halo
+        )
         blockDims = dict(zip("tczyx", shrunk_training_shape_wo_halo))
         blockDims["c"] = 9999  # always request all channels
         axisOrder = self.RawImage.meta.getAxisKeys()
         ret = tuple(blockDims[a] for a in axisOrder)
         logger.debug(
-            "got training shape %s and axisorder %s => Set BlockShapeTrain to %s", training_shape, axisOrder, ret
+            "got training shape %s and axisorder %s => Set BlockShapeTrain to %s",
+            training_shape,
+            axisOrder,
+            ret,
         )
         return ret
 
@@ -494,7 +509,8 @@ class OpBlockShape(Operator):
         total_halo = 2 * numpy.array(halo)
         shrinkage = tikmodel.shrinkage
         shrunk_valid_tczyx_shapes_wo_halo = [
-            numpy.array(shape) - numpy.array(shrinkage) - total_halo for shape in valid_tczyx_shapes
+            numpy.array(shape) - numpy.array(shrinkage) - total_halo
+            for shape in valid_tczyx_shapes
         ]
         largest_valid_shape = shrunk_valid_tczyx_shapes_wo_halo[-1]
 
@@ -560,7 +576,9 @@ class OpPredictionPipeline(Operator):
         self.PredictionProbabilityChannels.connect(self.opPredictionSlicer.Slices)
 
     def execute(self, slot, subindex, roi, result):
-        assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
+        assert (
+            False
+        ), "Shouldn't get here.  Output is assigned a value in setupOutputs()"
 
     def propagateDirty(self, slot, subindex, roi):
         # Our output changes when the input changed shape, not when it becomes dirty.

@@ -32,6 +32,7 @@ from lazyflow.utility.orderedSignal import OrderedSignal
 from ilastik.utility.maybe import maybe
 from ilastik.utility.commandLineProcessing import convertStringToList
 import os
+import json
 import sys
 import re
 import tempfile
@@ -47,6 +48,13 @@ from lazyflow.slot import OutputSlot
 #######################
 # Convenience methods #
 #######################
+def json_dumps_binary(value):
+    return json.dumps(value, ensure_ascii=False).encode("utf-8")
+
+
+def json_loads_binary(value):
+    return json.loads(value.decode("utf-8"))
+
 
 def getOrCreateGroup(parentGroup, groupName):
     """Returns parentGroup[groupName], creating first it if
@@ -58,7 +66,7 @@ def getOrCreateGroup(parentGroup, groupName):
 
 def deleteIfPresent(parentGroup, name):
     """Deletes parentGroup[name], if it exists."""
-    # Check first. If we try to delete a non-existent key, 
+    # Check first. If we try to delete a non-existent key,
     # hdf5 will complain on the console.
     if name in parentGroup:
         del parentGroup[name]
@@ -87,7 +95,7 @@ def stringToSlicing(strSlicing):
     """
     if isinstance(strSlicing, bytes):
         strSlicing = strSlicing.decode('utf-8')
-    
+
     slicing = []
     strSlicing = strSlicing[1:-1] # Drop brackets
     sliceStrings = strSlicing.split(',')
@@ -277,7 +285,7 @@ class SerialSlot(object):
             # e.g. [(0,'0'), (2, '2'), (3, '3')]
             # Note that in some cases an index might be intentionally skipped.
             indexes_to_keys = { int(k) : k for k in list(subgroup.keys()) }
-            
+
             # Ensure the slot is at least big enough to deserialize into.
             if list(indexes_to_keys.keys()) == []:
                 max_index = 0
@@ -290,7 +298,7 @@ class SerialSlot(object):
             for i, subslot in enumerate(slot):
                 if i in indexes_to_keys:
                     key = indexes_to_keys[i]
-                    # Sadly, we can't use the following assertion because it would break  
+                    # Sadly, we can't use the following assertion because it would break
                     #  backwards compatibility with a bug we used to have in the key names.
                     #assert key == self.subname.format(i)
                     self._deserialize(subgroup[key], subslot)
@@ -345,7 +353,7 @@ class SerialListSlot(SerialSlot):
         if transform is None:
             transform = lambda x: x
         self.transform = transform
-        
+
         self._iterable = iterable
         self._store_transform = store_transform
         if store_transform is None:
@@ -355,9 +363,9 @@ class SerialListSlot(SerialSlot):
         isempty = (len(value) == 0)
         if isempty:
             value = numpy.empty((1,))
-        
+
         data = list(map(self._store_transform, value))
-        
+
         # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
         for i in range(len(data)):
             if isinstance(data[i], str):
@@ -384,7 +392,7 @@ class SerialListSlot(SerialSlot):
                 return
             else:
                 data = list(map(self.transform, subgroup[()]))
-                
+
                 # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
                 for i in range(len(data)):
                     if isinstance(data[i], bytes):
@@ -398,7 +406,7 @@ class SerialBlockSlot(SerialSlot):
                  default=None, depends=None, selfdepends=True, shrink_to_bb=False, compression_level=0):
         """
         :param blockslot: provides non-zero blocks.
-        :param shrink_to_bb: If true, reduce each block of data from the slot to  
+        :param shrink_to_bb: If true, reduce each block of data from the slot to
                              its nonzero bounding box before feeding saving it.
 
         """
@@ -491,7 +499,7 @@ class SerialBlockSlot(SerialSlot):
                         block_slicing = roiToSlice( block_bounding_box_start, block_bounding_box_stop )
                         bounding_box_roi = numpy.array([block_bounding_box_start, block_bounding_box_stop])
                         bounding_box_roi += block_start
-                        
+
                         # Overwrite the vars that are written to the file
                         slicing = roiToSlice(*bounding_box_roi)
                         block = block[block_slicing]
@@ -509,7 +517,7 @@ class SerialBlockSlot(SerialSlot):
                                                    compression_opts=compression_level)
                     else:
                         block_group.create_dataset("data", data=block.data)
-                        
+
                     block_group.create_dataset(
                         "mask",
                         data=block.mask,
@@ -572,7 +580,7 @@ class SerialHdf5BlockSlot(SerialBlockSlot):
             subgroup = mygroup.create_group(subname)
             cleanBlockRois = self.blockslot[index].value
             for roi in cleanBlockRois:
-                # The protocol for hdf5 slots is that they create appropriately 
+                # The protocol for hdf5 slots is that they create appropriately
                 #  named datasets within the subgroup that we provide via writeInto()
                 req = self.slot[index]( *roi )
                 req.writeInto( subgroup )
@@ -582,7 +590,7 @@ class SerialHdf5BlockSlot(SerialBlockSlot):
         num = len(mygroup)
         if len(self.inslot) < num:
             self.inslot.resize(num)
-        
+
         # Annoyingly, some applets store their groups with names like, img0,img1,img2,..,img9,img10,img11
         # which means that sorted() needs a special key to avoid sorting img10 before img2
         # We have to find the index and sort according to its numerical value.
@@ -609,7 +617,7 @@ class SerialClassifierSlot(SerialSlot):
         self.cache = cache
         if self.name is None:
             self.name = slot.name
-        
+
         # We want to bind to the INPUT, not Output:
         # - if the input becomes dirty, we want to make sure the cache is deleted
         # - if the input becomes dirty and then the cache is reloaded, we'll save the classifier.
@@ -644,7 +652,7 @@ class SerialClassifierSlot(SerialSlot):
             # For compatibility with old project files, choose the default classifier.
             from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier
             classifier_type = ParallelVigraRfLazyflowClassifier
-        
+
         try:
             classifier = classifier_type.deserialize_hdf5( classifierGroup )
         except:
@@ -846,7 +854,7 @@ class SerialClassifierFactorySlot(SerialSlot):
         assert slot.ready(), \
             "ClassifierFactory slots must be given a default value "\
             "(in case the classifier can't be deserialized in a future version of ilastik)."
-    
+
     def _saveValue(self, group, name, value):
         pickled = pickle.dumps( value, 0 )
         group.create_dataset(name, data=pickled)
@@ -863,7 +871,7 @@ class SerialClassifierFactorySlot(SerialSlot):
         try:
             # Attempt to unpickle
             value = pickle.loads(pickled)
-            
+
             # Verify that the VERSION of the classifier factory in the currently executing code
             #  has not changed since this classifier was stored.
             assert 'VERSION' in value.__dict__ and value.VERSION == type(value).VERSION
@@ -1081,10 +1089,10 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
 
         :param projectFilePath: The path to the given file handle.
             (Most serializers do not use this parameter.)
-        
+
         :param headless: Are we called in headless mode?
             (in headless mode corrupted files cannot be fixed via the GUI)
-        
+
         """
         self.progressSignal(0)
 
@@ -1112,9 +1120,9 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
 
     def repairFile(self,path,filt = None):
         """get new path to lost file"""
-        
+
         from PyQt5.QtWidgets import QFileDialog,QMessageBox
-        
+
         text = "The file at {} could not be found any more. Do you want to search for it at another directory?".format(path)
         logger.info(text)
         c = QMessageBox.critical(None, "update external data",text, QMessageBox.Ok | QMessageBox.Cancel)
