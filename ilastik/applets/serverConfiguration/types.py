@@ -35,7 +35,7 @@ class ServerConfig:
     id: str = attr.ib(validator=_validate_id)
     type: str = attr.ib()
     address: str = attr.ib(validator=_non_empty)
-    path: str = attr.ib(validator=_non_empty)
+    path: str = attr.ib()
     port1: str = attr.ib(validator=_non_empty)
     port2: str = attr.ib(validator=_non_empty)
     devices: typing.List[Device] = attr.ib()
