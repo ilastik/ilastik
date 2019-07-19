@@ -88,6 +88,9 @@ class ServerConfigGui(QWidget):
         local_dir = os.path.split(__file__)[0] + "/"
         self._drawer = uic.loadUi(local_dir + "/serverConfigDrawer.ui")
 
+    def stopAndCleanUp(self):
+        pass
+
 
 class ServerFormItemDelegate(QItemDelegate):
     def setEditorData(self, editor: QWidget, index: QModelIndex) -> None:
@@ -110,10 +113,10 @@ def _fetch_devices(config: types.ServerConfig):
         conn_conf = TCPConnConf(addr, port1, port2)
 
         if addr == "127.0.0.1":
-            launcher = LocalServerLauncher(conn_conf)
+            launcher = LocalServerLauncher(conn_conf, path=config.path)
         else:
             launcher = RemoteSSHServerLauncher(
-                conn_conf, cred=SSHCred(user=config.username, key_path=config.ssh_key)
+                conn_conf, cred=SSHCred(user=config.username, key_path=config.ssh_key), path=config.path
             )
 
         try:
