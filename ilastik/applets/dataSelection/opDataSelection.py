@@ -61,19 +61,21 @@ class DatasetInfo(object):
     """
     @unique
     class Location(Enum):
-        FileSystem = 0
+        FileSystem = 0 #deprecated
         ProjectInternal = 1
         PreloadedArray = 2
         FileSystemRelativePath = 3
         FileSystemAbsolutePath = 4
 
-    def __init__(self, *, project_file:h5py.File=None, filepath=None, jsonNamespace=None,
-                 preloaded_array=None, sequence_axis=None, allowLabels=True,
+    def __init__(self, *, project_file:h5py.File=None, filepath:str=None,
+                 preloaded_array=None,
+                 sequence_axis=None, allowLabels=True,
                  subvolume_roi=None, location=None,
                  axistags=None, display_mode='default',
                  nickname='', original_axistags=None,
                  normalizeDisplay:bool=None, drange:Tuple[Number, Number]=None,
                  inner_group_path:str=None,
+                 jsonNamespace=None,
                  progress_signal:Callable[[int], None]=lambda x: None
     ):
         """
@@ -105,6 +107,7 @@ class DatasetInfo(object):
         self.axistags = axistags
         self.expanded_paths = []
         self.base_dir = str(Path(project_file.filename).absolute().parent) if project_file else os.getcwd()
+        assert os.path.isabs(self.base_dir) #FIXME: if file_project was opened as a relative path, this would break
 
         if self.preloaded_array:
             self.nickname = "preloaded-{}-array".format(self.preloaded_array.dtype.name)
@@ -158,8 +161,11 @@ class DatasetInfo(object):
         if self.location == self.Location.FileSystemRelativePath and not self.relative_paths:
             raise Exception(f"\"{self.original_paths}\" can't be expressed relative to {self.base_dir}")
 
+    def is_in_filesystem(self) -> bool:
+        return self.location in (self.Location.FileSystemRelativePath, self.Location.FileSystemAbsolutePath)
+
     @classmethod
-    def process_filepath(cls, filepath:str, cwd=None):
+    def process_filepath(cls, filepath:str, cwd=None) -> Tuple[str, str]:
         expanded_paths = cls.expandPath(filepath, cwd=cwd)
         components = [PathComponents(ep) for ep in expanded_paths]
         if any(comp.extension !=  components[0].extension for comp in components):
@@ -225,7 +231,7 @@ class DatasetInfo(object):
                 externalPath = os.path.join(cwd, components.externalPath)
             unglobbed_paths = glob.glob(os.path.expanduser(externalPath))
             if not unglobbed_paths:
-                raise Exception(f"Could not find file at {components.externalPath}")
+                raise FileNotFoundError(externalPath)
             for ext_path in unglobbed_paths:
                 if not cls.fileHasInternalPaths(ext_path) or not components.internalPath:
                     expanded_paths.append(ext_path)
