@@ -467,7 +467,7 @@ class SerialBlockSlot(SerialSlot):
                 if self._shrink_to_bb:
                     nonzero_coords = numpy.nonzero(block)
                     if len(nonzero_coords[0]) > 0:
-                        block_start = sliceToRoi( slicing, (0,)*len(slicing) )[0]
+                        block_start = sliceToRoi( slicing, [sl.stop for sl in slicing] )[0]
                         block_bounding_box_start = numpy.array( list(map( numpy.min, nonzero_coords )) )
                         block_bounding_box_stop = 1 + numpy.array( list(map( numpy.max, nonzero_coords )) )
                         block_slicing = roiToSlice( block_bounding_box_start, block_bounding_box_stop )
