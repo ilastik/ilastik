@@ -134,10 +134,10 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         conn_conf = TCPConnConf(addr, port1, port2)
 
         if addr == "127.0.0.1":
-            self.launcher = LocalServerLauncher(conn_conf)
+            self.launcher = LocalServerLauncher(conn_conf, path=server_config.path)
         else:
             self.launcher = RemoteSSHServerLauncher(
-                conn_conf, cred=SSHCred(server_config.username, server_config.password)
+                conn_conf, cred=SSHCred(server_config.username, server_config.password), path=server_config.path
             )
 
         self.launcher.start()
