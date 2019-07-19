@@ -42,21 +42,6 @@ from .opDataSelection import OpDataSelection, DatasetInfo
 import logging
 logger = logging.getLogger(__name__)
 
-@unique
-class StorageLocation(Enum):
-    Default = "Default"
-    ProjectFile = "Copied into Project File"
-    AbsoluteLink = "Absolute Link"
-    RelativeLink = "Relative Link"
-
-    @classmethod
-    def from_datasetinfo(cls, info:DatasetInfo):
-        if info.location == DatasetInfo.Location.ProjectInternal:
-            return cls.ProjectFile
-        if isUrl(info.filePath) or os.path.isabs(info.filePath):
-            return cls.AbsoluteLink
-        return cls.RelativeLink
-
 def get_dtype_info(dtype):
     try:
         return numpy.iinfo(dtype)
@@ -71,14 +56,14 @@ class DatasetInfoEditorWidget(QDialog):
     This dialog allows the user to edit the settings of one **OR MORE** datasets for a given role.
     """
 
-    def __init__(self, parent, infos:List[DatasetInfo], projectFileDir:str):
+    def __init__(self, parent, infos:List[DatasetInfo], project_file:h5py.File):
         """
         :param infos: DatasetInfo infos to be edited by this widget
         :param projectFileDir: path containing the current project file
         """
         super( DatasetInfoEditorWidget, self ).__init__(parent)
         self.current_infos = infos
-        self.projectFileDir = projectFileDir
+        self.project_file = project_file
         self.edited_infos = []
 
         # Load the ui file into this class (find it in our own directory)
@@ -142,39 +127,25 @@ class DatasetInfoEditorWidget(QDialog):
         self.normalizeDisplayComboBox.setCurrentIndex(selected_normalize_index)
 
         hdf5_infos = [info for info in infos if info.isHdf5()]
+        self.internalDatasetNameComboBox.setEnabled(False)
         if not hdf5_infos:
             self.internalDatasetNameLabel.setVisible(False)
             self.internalDatasetNameComboBox.setVisible(False)
-            self.internalDatasetNameComboBox.setEnabled(False)
         else:
-            allInternalPaths = set()
-            commonInternalPaths = None
-            for info in hdf5_infos:
-                internalPaths = set(info.getPossibleInternalPaths())
-                commonInternalPaths = commonInternalPaths or internalPaths
-                allInternalPaths |= internalPaths
-                commonInternalPaths &= internalPaths
-                if len( commonInternalPaths ) == 0:
-                    self.internalDatasetNameComboBox.addItem( "Couldn't find a dataset name common to all selected files." )
-                    self.internalDatasetNameComboBox.setEnabled(False)
-                    break
+            common_internal_paths = set(hdf5_infos[0].getPossibleInternalPaths())
+            current_internal_paths = set(hdf5_infos[0].internal_paths)
+            for info in hdf5_infos[1:]:
+                commonInternalPaths &= set(info.getPossibleInternalPaths())
+                current_internal_paths &= set(info.internal_paths)
 
-            # Add all common paths to the combo
             for path in sorted(commonInternalPaths):
                 self.internalDatasetNameComboBox.addItem( path )
+                self.internalDatasetNameComboBox.setEnabled(True)
 
-            # Add the remaining ones, but disable them since they aren't common to all files:
-            for path in sorted(allInternalPaths - commonInternalPaths):
-                self.internalDatasetNameComboBox.addItem( path )
-                # http://theworldwideinternet.blogspot.com/2011/01/disabling-qcombobox-items.html
-                model = self.internalDatasetNameComboBox.model()
-                index = model.index( self.internalDatasetNameComboBox.count()-1, 0 )
-                model.setData( index, 0, Qt.UserRole-1 )
-
-            internalPaths = [info.internalPath for info in hdf5_infos]
-            self.internalDatasetNameComboBox.setCurrentIndex(-1)
-            if all(ip == internalPaths[0] for ip in internalPaths):
-                self.internalDatasetNameComboBox.setCurrentText(internalPaths[0])
+            if len(common_internal_paths) == 1:
+                self.internalDatasetNameComboBox.setCurrentText(common_internal_paths.pop())
+            else:
+                self.internalDatasetNameComboBox.setCurrentIndex(-1)
 
         self.displayModeComboBox.addItem("Default", userData="default")
         self.displayModeComboBox.addItem("Grayscale", userData="grayscale")
@@ -190,33 +161,19 @@ class DatasetInfoEditorWidget(QDialog):
             self.displayModeComboBox.setCurrentIndex(0)
 
 
-        self.storageComboBox.addItem(StorageLocation.Default.value, userData=StorageLocation.Default)
-        self.storageComboBox.addItem(StorageLocation.ProjectFile.value, userData=StorageLocation.ProjectFile)
-        self.storageComboBox.addItem(StorageLocation.AbsoluteLink.value, userData=StorageLocation.AbsoluteLink)
-        for info in infos:
-            try:
-                Path(info.filePath).relative_to(projectFileDir)
-            except ValueError:
-                break
-        else:
-            self.storageComboBox.addItem(StorageLocation.RelativeLink.value, userData=StorageLocation.RelativeLink)
+        self.storageComboBox.addItem('Default', userData=None)
+        self.storageComboBox.addItem('Copy into project file', userData=DatasetInfo.Location.ProjectInternal)
+        if not any(info.location == DatasetInfo.Location.ProjectInternal for info in infos):
+            self.storageComboBox.addItem('Store absolute path', userData=DatasetInfo.Location.FileSystemAbsolutePath)
+            if all(info.relative_paths for info in infos):
+                self.storageComboBox.addItem('Store relative path', userData=DatasetInfo.Location.FileSystemRelativePath)
 
-        current_locations = {StorageLocation.from_datasetinfo(info) for info in infos}
+        current_locations = {info.location for info in infos}
         if len(current_locations) == 1:
             comboIndex = self.storageComboBox.findData(current_locations.pop())
         else:
             comboIndex = self.storageComboBox.findData(StorageLocation.Default)
         self.storageComboBox.setCurrentIndex(comboIndex)
-
-        if any(info.location == DatasetInfo.ProjectInternal for info in self.current_infos):
-            # If any of the files copyed into the project file, then you can't refer to them via a link.
-            absIndex = self.storageComboBox.findData( StorageLocation.AbsoluteLink )
-            relIndex = self.storageComboBox.findData( StorageLocation.RelativeLink )
-
-            # http://theworldwideinternet.blogspot.com/2011/01/disabling-qcombobox-items.html
-            model = self.storageComboBox.model()
-            model.setData( model.index( absIndex, 0 ), 0, Qt.UserRole-1 )
-            model.setData( model.index( relIndex, 0 ), 0, Qt.UserRole-1 )
 
     def get_new_axes_tags(self):
         if self.axesEdit.isEnabled() and self.axesEdit.text():
@@ -262,37 +219,28 @@ class DatasetInfoEditorWidget(QDialog):
     def accept(self):
         normalize = self.get_new_normalization()
         new_drange = self.get_new_drange()
-        newStorageLocation = self.storageComboBox.currentData()
+        new_location = self.storageComboBox.currentData()
         new_display_mode = self.displayModeComboBox.currentData()
+        if self.internalDatasetNameComboBox.isEnabled() and self.internalDatasetNameComboBox.currentIndex() != -1:
+            internal_path = self.internalDatasetNameComboBox.currentText()
+        else:
+            internal_path = ''
 
         self.edited_infos = []
         for info in self.current_infos:
-            if self.internalDatasetNameComboBox.isEnabled():
-                pathComponents = PathComponents(info.filePath)
-                pathComponents.internalPath = self.internalDatasetNameComboBox.currentText()
-                filePath = pathComponents.totalPath()
-            else:
-                filePath = info.filePath
+            location = info.location if new_location is None else new_location
+            new_full_paths = [Path(ep) / internal_path for ep in info.external_paths]
+            filepath = os.path.pathsep.join(str(path) for path in new_full_paths)
 
-            if newStorageLocation == StorageLocation.ProjectFile:
-                location = DatasetInfo.Location.ProjectInternal
-            elif newStorageLocation == StorageLocation.Default:
-                location = info.location
-            else:
-                location = DatasetInfo.Location.FileSystem
-                if newStorageLocation == StorageLocation.RelativeLink:
-                    filePath = Path(filePath).absolute().relative_to(self.projectFileDir).as_posix()
-                else:
-                    filePath = Path(filePath).absolute().as_posix()
-
-            edited_info = info.modified_with(
+            edited_info = DatasetInfo(
+                filepath=filepath,
+                project_file=self.project_file,
                 nickname=self.nicknameEdit.text() if self.nicknameEdit.isEnabled() else info.nickname,
                 axistags=self.get_new_axes_tags() or info.axistags,
                 normalizeDisplay=info.normalizeDisplay if normalize is None else normalize,
                 drange=(info.laneDtype(new_drange[0]), info.laneDtype(new_drange[1])) if normalize else info.drange,
                 display_mode=new_display_mode if new_display_mode != 'default' else info.display_mode,
-                location=location,
-                filePath=filePath)
+                location=location)
             self.edited_infos.append(edited_info)
         super(DatasetInfoEditorWidget, self).accept()
 
