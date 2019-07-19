@@ -46,7 +46,7 @@ from PyQt5.QtWidgets import (
     QComboBox,
 )
 
-from ilastik.applets.networkClassification.tiktorchWizard import MagicWizard
+#from ilastik.applets.networkClassification.tiktorchWizard import MagicWizard
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.utility.gui import threadRouted
 from ilastik.utility import bind

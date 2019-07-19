@@ -60,6 +60,7 @@ class ServerConfigForm(QWidget):
 
         # Trigger state updates
         self.nameEdit.textChanged.connect(self._updateConfigFromFields)
+        self.pathEdit.textChanged.connect(self._updateConfigFromFields)
         self.addressEdit.textChanged.connect(self._updateConfigFromFields)
         self.typeList.currentTextChanged.connect(self._updateConfigFromFields)
         self.port1Edit.textChanged.connect(self._updateConfigFromFields)
@@ -148,6 +149,7 @@ class ServerConfigForm(QWidget):
             return
 
         self._config.name = self.nameEdit.text()
+        self._config.path = self.pathEdit.text()
         self._config.address = self.addressEdit.text()
         self._config.type = self.typeList.currentText()
         self._config.port1 = self.port1Edit.text()
@@ -159,6 +161,7 @@ class ServerConfigForm(QWidget):
     def _updateFieldsFromConfig(self):
         with self._batch_update_fields():
             self.nameEdit.setText(self._config.name)
+            self.pathEdit.setText(self._config.path)
             self.addressEdit.setText(self._config.address)
             self.typeList.setCurrentText(self._config.type)
             self.port1Edit.setText(self._config.port1)
