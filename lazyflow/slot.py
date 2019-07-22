@@ -1117,11 +1117,15 @@ class Slot(object):
         else:
             # _value case
             return self._value
+
+        if self.stype == Opaque:
+            return temp
+
         if isinstance(temp, numpy.ndarray):
             if temp.shape == (1,):
                 return temp[0]
             return temp
-        elif isinstance(temp, list) and self.stype != Opaque:
+        elif isinstance(temp, list):
             return temp[0]
         else:
             warnings.warn(
