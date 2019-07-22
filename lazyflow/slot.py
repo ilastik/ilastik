@@ -1128,9 +1128,10 @@ class Slot(object):
         elif isinstance(temp, list):
             return temp[0]
         else:
-            warnings.warn(
-                "FIXME: Slot.value for slot {} is {}," " which should be wrapped in an ndarray.".format(self.name, temp)
-            )
+            # FIXME(m-novikov): Disabled warning
+            # warnings.warn(
+            #     "FIXME: Slot.value for slot {} is {}," " which should be wrapped in an ndarray.".format(self.name, temp)
+            # )
             return temp
 
     @is_setup_fn
