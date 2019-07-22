@@ -12,8 +12,10 @@ import numpy
 from PyQt5.QtCore import Qt
 
 from ilastik.applets.dataSelection.datasetInfoEditorWidget import DatasetInfoEditorWidget
+from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
+from ilastik.applets.dataSelection.opDataSelection import OpDataSelectionGroup
 from ilastik.applets.dataSelection import DatasetInfo
-
+from lazyflow.graph import Graph
 
 def download_test_image(url, suffix:str):
     resp = requests.get(url)
@@ -29,7 +31,7 @@ def image_yxc_path():
     os.remove(path)
 
 @pytest.fixture(scope='function')
-def image_yxc_info(image_yxc_path):
+def image_yxc_fs_info(image_yxc_path):
     return DatasetInfo(filepath=image_yxc_path)
 
 @pytest.fixture(scope='function')
@@ -47,6 +49,7 @@ def empty_project_file() -> h5py.File:
     return h5py.File(tempfile.mkstemp()[1], 'r+')
 
 DONT_SET_NORMALIZE = object()
+TOP_GROUP_NAME = 'my_group'
 
 def create_and_modify_widget(
     qtbot,
@@ -59,7 +62,14 @@ def create_and_modify_widget(
     display_mode:str=None,
     location:DatasetInfo.Location=None
 ):
-    widget = DatasetInfoEditorWidget(None, infos, project_file)
+    project_file = project_file or empty_project_file()
+
+    opDataSelectionGroup = OpDataSelectionGroup(graph=Graph())
+    opDataSelectionGroup.ProjectFile.setValue(project_file)
+    opDataSelectionGroup.ProjectDataGroup.setValue(TOP_GROUP_NAME)
+
+    serializer = DataSelectionSerializer(opDataSelectionGroup, TOP_GROUP_NAME)
+    widget = DatasetInfoEditorWidget(None, infos, serializer)
     qtbot.addWidget(widget)
     widget.show()
 
@@ -101,9 +111,7 @@ def test_datasetinfo_editor_widget_shows_correct_data_on_single_info(qtbot, imag
     assert info.laneDtype == numpy.uint8
     assert info.laneShape == (520, 697, 3)
 
-    editor_widget = DatasetInfoEditorWidget(None, [info], empty_project_file)
-    qtbot.addWidget(editor_widget)
-    editor_widget.show()
+    editor_widget = create_and_modify_widget(qtbot, [info], empty_project_file)
 
     assert editor_widget.axesEdit.maxLength() == 3
     assert "".join(tag.key for tag in editor_widget.get_new_axes_tags()) == 'yxc'
@@ -197,14 +205,23 @@ def test_immediate_accept_does_not_change_values(qtbot, image_yxc_path, image_zy
     assert info_2.drange == edited_infos[1].drange == (56, 78)
 
 
-def test_too_few_axeskeys_shows_error(qtbot, image_yxc_info, empty_project_file):
-    widget = create_and_modify_widget(qtbot, [image_yxc_info], empty_project_file, axiskeys="xy")
+def test_too_few_axeskeys_shows_error(qtbot, image_yxc_fs_info, empty_project_file):
+    widget = create_and_modify_widget(qtbot, [image_yxc_fs_info], empty_project_file, axiskeys="xy")
     assert widget.axes_error_display.text() != ''
 
-def test_garbled_axeskeys_shows_error(qtbot, image_yxc_info):
-    widget = create_and_modify_widget(qtbot, [image_yxc_info], empty_project_file, axiskeys="ab")
+def test_garbled_axeskeys_shows_error(qtbot, image_yxc_fs_info):
+    widget = create_and_modify_widget(qtbot, [image_yxc_fs_info], empty_project_file, axiskeys="ab")
     assert widget.axes_error_display.text() != ''
 
-def test_repeated_axeskeys_shows_error(qtbot, image_yxc_info):
-    widget = create_and_modify_widget(qtbot, [image_yxc_info], empty_project_file, axiskeys="yy")
+def test_repeated_axeskeys_shows_error(qtbot, image_yxc_fs_info):
+    widget = create_and_modify_widget(qtbot, [image_yxc_fs_info], empty_project_file, axiskeys="yy")
     assert widget.axes_error_display.text() != ''
+
+def test_switch_to_project_internal_saves_data_to_project(qtbot, image_yxc_fs_info, empty_project_file):
+    widget = create_and_modify_widget(qtbot,
+                                      infos=[image_yxc_fs_info],
+                                      project_file=empty_project_file,
+                                      location=DatasetInfo.Location.ProjectInternal)
+    new_info = accept_widget(qtbot, widget)[0]
+    assert new_info.filePath in empty_project_file
+    

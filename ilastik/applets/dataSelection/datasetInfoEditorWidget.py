@@ -36,6 +36,7 @@ from PyQt5.QtWidgets import QDialog, QMessageBox, QDoubleSpinBox, QApplication
 
 from ilastik.utility import log_exception
 from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 from lazyflow.utility import getPathVariants, PathComponents, isUrl
 from .opDataSelection import OpDataSelection, DatasetInfo
 
@@ -56,14 +57,14 @@ class DatasetInfoEditorWidget(QDialog):
     This dialog allows the user to edit the settings of one **OR MORE** datasets for a given role.
     """
 
-    def __init__(self, parent, infos:List[DatasetInfo], project_file:h5py.File):
+    def __init__(self, parent, infos:List[DatasetInfo], serializer:DataSelectionSerializer):
         """
         :param infos: DatasetInfo infos to be edited by this widget
         :param projectFileDir: path containing the current project file
         """
         super( DatasetInfoEditorWidget, self ).__init__(parent)
         self.current_infos = infos
-        self.project_file = project_file
+        self.serializer = serializer
         self.edited_infos = []
 
         # Load the ui file into this class (find it in our own directory)
@@ -104,9 +105,8 @@ class DatasetInfoEditorWidget(QDialog):
             self.nicknameEdit.setEnabled(False)
             self.nicknameEdit.setToolTip("Edit a single lane to modify its nickname")
 
-
         self.shapeLabel.setText(", ".join(str(info.laneShape) for info in infos))
-        self.dtypeLabel.setText(", ".join(info.laneDtype.__name__ for info in infos))
+        self.dtypeLabel.setText(", ".join(numpy.dtype(info.laneDtype).name for info in infos))
 
         self.normalizeDisplayComboBox.addItem("True", userData=True)
         self.normalizeDisplayComboBox.addItem("False", userData=False)
@@ -135,7 +135,7 @@ class DatasetInfoEditorWidget(QDialog):
             common_internal_paths = set(hdf5_infos[0].getPossibleInternalPaths())
             current_internal_paths = set(hdf5_infos[0].internal_paths)
             for info in hdf5_infos[1:]:
-                commonInternalPaths &= set(info.getPossibleInternalPaths())
+                common_internal_paths &= set(info.getPossibleInternalPaths())
                 current_internal_paths &= set(info.internal_paths)
 
             for path in sorted(commonInternalPaths):
@@ -229,12 +229,18 @@ class DatasetInfoEditorWidget(QDialog):
         self.edited_infos = []
         for info in self.current_infos:
             location = info.location if new_location is None else new_location
-            new_full_paths = [Path(ep) / internal_path for ep in info.external_paths]
-            filepath = os.path.pathsep.join(str(path) for path in new_full_paths)
+            filepath = info.filePath
+            if location == DatasetInfo.Location.ProjectInternal != info.location:
+                filepath = self.serializer.importStackAsLocalDataset(abs_paths=info.expanded_paths,
+                                                                    sequence_axis=info.sequenceAxis)
+            if location in (DatasetInfo.Location.FileSystemRelativePath, DatasetInfo.Location.FileSystemAbsolutePath):
+                new_full_paths = [Path(ep) / internal_path for ep in info.external_paths]
+                filepath = os.path.pathsep.join(str(path) for path in new_full_paths)
 
             edited_info = DatasetInfo(
                 filepath=filepath,
-                project_file=self.project_file,
+                project_file=self.serializer.topLevelOperator.ProjectFile.value,
+                sequence_axis=info.sequenceAxis,
                 nickname=self.nicknameEdit.text() if self.nicknameEdit.isEnabled() else info.nickname,
                 axistags=self.get_new_axes_tags() or info.axistags,
                 normalizeDisplay=info.normalizeDisplay if normalize is None else normalize,
@@ -243,9 +249,6 @@ class DatasetInfoEditorWidget(QDialog):
                 location=location)
             self.edited_infos.append(edited_info)
         super(DatasetInfoEditorWidget, self).accept()
-
-    def _do_accept(self, normalize:bool, new_drange:Tuple[Number, Number], newStorageLocation):
-        pass
 
     def clearNormalization(self):
         selected_normalize_index = self.normalizeDisplayComboBox.findData(None)

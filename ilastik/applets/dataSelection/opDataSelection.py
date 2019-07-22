@@ -67,16 +67,16 @@ class DatasetInfo(object):
         FileSystemRelativePath = 3
         FileSystemAbsolutePath = 4
 
-    def __init__(self, *, project_file:h5py.File=None, filepath:str=None,
+    def __init__(self, *,
+                 filepath:str=None,
+                 project_file:h5py.File=None,
                  preloaded_array=None,
                  sequence_axis=None, allowLabels=True,
                  subvolume_roi=None, location=None,
                  axistags=None, display_mode='default',
                  nickname='', original_axistags=None,
                  normalizeDisplay:bool=None, drange:Tuple[Number, Number]=None,
-                 inner_group_path:str=None,
                  jsonNamespace=None,
-                 progress_signal:Callable[[int], None]=lambda x: None
     ):
         """
         filepath: may be a globstring or a full hdf5 path+dataset
@@ -90,6 +90,7 @@ class DatasetInfo(object):
         sequence_axis: Axis along which to stack (only applicable for stacks).
         """
         assert (preloaded_array is not None) ^ bool(filepath), "Provide either preloaded_array or filepath"
+        self.filePath = filepath
         self.preloaded_array = preloaded_array
         self.project_file = project_file
         # OBSOLETE: Whether or not this dataset should be used for training a classifier.
@@ -115,33 +116,27 @@ class DatasetInfo(object):
             self.laneDtype = preloaded_array.dtype
             self.location = self.Location.PreloadedArray
             self.axistags = getattr(self.preloaded_array, 'axistags', axistags)
+        elif location == self.Location.ProjectInternal:
+            dataset = project_file[filepath]
+            self.axistags = vigra.AxisTags.fromJSON(dataset.attrs['axistags'])
+            self.laneShape = dataset.shape
+            self.laneDtype = dataset.dtype
         elif filepath and not isUrl(filepath):
-            self.nickname, self.expanded_paths = self.process_filepath(filepath, cwd=self.base_dir)
+            self.expanded_paths = self.expand_path(filepath, cwd=self.base_dir)
+            assert len(self.expanded_paths) == 1 or self.sequenceAxis
+            if len({PathComponents(ep).extension for ep in self.expanded_paths}) > 1:
+                raise Exception(f"Multiple extensions unsupported as a single data source: {self.expanded_paths}")
+            self.nickname = self.create_nickname(self.expanded_paths)
             self.filePath = os.path.pathsep.join(self.expanded_paths)
-
             op_reader = OpInputDataReader(graph=Graph(),
                                           WorkingDirectory=self.base_dir,
                                           FilePath=self.filePath,
-                                          SequenceAxis=sequence_axis)
+                                          SequenceAxis=self.sequenceAxis)
             meta = op_reader.Output.meta
             self.axistags = axistags or meta.axistags
             self.laneShape = meta.shape
             self.laneDtype = meta.dtype
             self.drange = drange or meta.get('drange')
-            if location == self.Location.ProjectInternal:
-                self.filePath = os.path.join(inner_group_path, self.generate_id())
-                progress_signal(0)
-                try:
-                    opWriter = OpH5N5WriterBigDataset(graph=Graph(),
-                                                      h5N5File=project_file,
-                                                      h5N5Path=self.filePath,
-                                                      CompressionEnabled=False,
-                                                      BatchSize=1,
-                                                      Image=op_reader.Output)
-                    opWriter.progressSignal.subscribe(progress_signal)
-                    success = opWriter.WriteImage.value
-                finally:
-                    progress_signal(100)
         else: # path is url
             self.filePath = filepath
             self.expanded_paths = [filepath]
@@ -165,20 +160,16 @@ class DatasetInfo(object):
         return self.location in (self.Location.FileSystemRelativePath, self.Location.FileSystemAbsolutePath)
 
     @classmethod
-    def process_filepath(cls, filepath:str, cwd=None) -> Tuple[str, str]:
-        expanded_paths = cls.expandPath(filepath, cwd=cwd)
+    def create_nickname(cls, expanded_paths:List[str]):
         components = [PathComponents(ep) for ep in expanded_paths]
-        if any(comp.extension !=  components[0].extension for comp in components):
-            raise Exception(f"Multiple extensions unsupported as a single data source: {filepath}")
-
         external_nickname = os.path.commonprefix([re.sub(comp.extension + '$', '', comp.externalPath) for comp in components])
         if external_nickname:
             external_nickname = external_nickname.split(os.path.sep)[-1]
         else:
-            external_nickname = "stack_at-" + PathComponents(expanded_paths[0]).externalPath
+            external_nickname = "stack_at-" + components[0].filenameBase
         internal_nickname = os.path.commonprefix([comp.internalPath or "" for comp in components]).lstrip('/')
         nickname = external_nickname + ('-' + internal_nickname.replace('/', '-') if internal_nickname else '')
-        return nickname, expanded_paths
+        return nickname
 
     @property
     def effective_uris(self):
@@ -220,7 +211,8 @@ class DatasetInfo(object):
         return [PathComponents(ep).extension for ep in self.expanded_paths]
 
     @classmethod
-    def expandPath(cls, file_path:str, cwd:str=None) -> List[str]:
+    def expand_path(cls, file_path:str, cwd:str=None) -> List[str]:
+        """Expands path with globs and colons into a list of absolute paths"""
         cwd = cwd or os.getcwd()
         pathComponents = [PathComponents(path) for path in splitPath(file_path)]
         expanded_paths = []
@@ -243,7 +235,7 @@ class DatasetInfo(object):
     @classmethod
     def globInternalPaths(cls, file_path:str, glob_str:str, cwd:str=None) -> List[str]:
         common_internal_paths = set()
-        for path in cls.expandPath(file_path, cwd=cwd):
+        for path in cls.expand_path(file_path, cwd=cwd):
             f = None
             try:
                 if cls.pathIsHdf5(path):

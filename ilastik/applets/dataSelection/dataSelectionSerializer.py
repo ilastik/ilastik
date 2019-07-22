@@ -20,10 +20,11 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from typing import List
+from typing import List, Tuple, Callable
+from pathlib import Path
 
 from .opDataSelection import OpDataSelection, DatasetInfo
-from lazyflow.operators.ioOperators import OpStackLoader, OpH5N5WriterBigDataset
+from lazyflow.operators.ioOperators import OpInputDataReader, OpStackLoader, OpH5N5WriterBigDataset
 from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
 from lazyflow.operators.ioOperators.opTiffSequenceReader import OpTiffSequenceReader
 from lazyflow.operators.ioOperators.opStreamingH5N5SequenceReaderM import (
@@ -32,6 +33,7 @@ from lazyflow.operators.ioOperators.opStreamingH5N5SequenceReaderM import (
 from lazyflow.operators.ioOperators.opStreamingH5N5SequenceReaderS import (
     OpStreamingH5N5SequenceReaderS
 )
+from lazyflow.graph import Graph
 
 import os
 import vigra
@@ -55,7 +57,9 @@ class DataSelectionSerializer( AppletSerializer ):
     The model operator for this serializer is the ``OpMultiLaneDataSelectionGroup``
     """
     # Constants    
-    LocationStrings = { DatasetInfo.Location.FileSystem      : u'FileSystem',
+    LocationStrings = { None      : u'FileSystem',
+                        DatasetInfo.Location.FileSystemRelativePath : u'RelativePath',
+                        DatasetInfo.Location.FileSystemAbsolutePath : u'AbsolutePath',
                         DatasetInfo.Location.ProjectInternal : u'ProjectInternal' }
 
     def __init__(self, topLevelOperator, projectFileGroupName):
@@ -162,6 +166,37 @@ class DataSelectionSerializer( AppletSerializer ):
                         infoGroup.create_dataset('subvolume_roi', data=datasetInfo.subvolume_roi)
 
         self._dirty = False
+
+    def importStackAsLocalDataset(
+        self,
+        abs_paths:List[str],
+        sequence_axis:str='z',
+        progress_signal:Callable[[int], None]=lambda x: None
+    ):
+        progress_signal(0)
+        try:
+            colon_paths = os.path.pathsep.join(abs_paths)
+            op_reader = OpInputDataReader(graph=Graph(),
+                                          FilePath=colon_paths,
+                                          SequenceAxis=sequence_axis)
+            axistags = op_reader.Output.meta.axistags
+            inner_path = (Path(self.topGroupName) / 'local_data' / DatasetInfo.generate_id()).as_posix()
+            project_file = self.topLevelOperator.ProjectFile.value
+            opWriter = OpH5N5WriterBigDataset(graph=Graph(),
+                                              h5N5File=project_file,
+                                              h5N5Path=inner_path,
+                                              CompressionEnabled=False,
+                                              BatchSize=1,
+                                              Image=op_reader.Output)
+            opWriter.progressSignal.subscribe(progress_signal)
+            success = opWriter.WriteImage.value
+            for index, tag in enumerate(axistags):
+                project_file[inner_path].dims[index].label = tag.key
+            project_file[inner_path].attrs['axistags'] = axistags.toJSON()
+            return inner_path
+        finally:
+            progress_signal(100)
+
 
     def initWithoutTopGroup(self, hdf5File, projectFilePath):
         """
@@ -288,40 +323,28 @@ class DataSelectionSerializer( AppletSerializer ):
             start, stop = list(map( tuple, infoGroup['subvolume_roi'].value ))
             subvolume_roi = (start, stop)
 
-        project_dir_path = os.path.split(projectFilePath)[0]
-        info_params['cwd'] = project_dir_path
+        info_params['project_file'] = infoGroup.file
         dirty = False
 
-        if location == DatasetInfo.Location.FileSystem:
+        if 'datasetId' in infoGroup:
+            dataset_id = infoGroup['datasetId'].value.decode('utf-8')
+            filepath = localDataGroup.name + '/' + dataset_id
+        else:
             filepath = infoGroup['filePath'].value.decode('utf-8')
-            expanded_paths = DatasetInfo.expandPath(filepath, cwd=project_dir_path)
-            restored_paths = []
-            # If the data is supposed to exist outside the project, make sure it really does.
-            for path in expanded_paths:
-                if isUrl(path) or os.path.exists(path):
-                    restored_paths.append(path)
-                    continue
-                if headless: #FIXME: though this should be fixed elsewhere, load some preloaded array here
-                    raise Exception(f"File not found: {path}")
-                # Try to get a new path for the lost file from the user
-                dirty = True
-                filt = "Image files (" + ' '.join('*.' + x for x in OpDataSelection.SupportedExtensions) + ')'
-                newpath = self.repairFile(path, filt) #FIXME: make repairFile also show interpath-picking dialog
-                restored_paths.append(newpath)
-            filepath = os.path.pathsep.join(restored_paths)
-        else: #ProjectInternal
-            if 'datasetId' in infoGroup:
-                dataset_id = infoGroup['datasetId'].value.decode('utf-8')
-                filepath = localDataGroup.name + '/' + dataset_id
-            else:
-                filepath = infoGroup['filePath'].value.decode('utf-8')
 
-            saved_data = localDataGroup.file[filepath].value
-            laneShape = saved_data.shape
-            laneDtype = saved_data.dtype
+        saved_data = localDataGroup.file[filepath].value
+        laneShape = saved_data.shape
+        laneDtype = saved_data.dtype
         info_params['filepath'] = filepath
 
-        datasetInfo = DatasetInfo(**info_params)
+        try:
+            datasetInfo = DatasetInfo(**info_params)
+        except FileNotFoundError as e:
+            raise Exception("FXIME: repair file {e.filename}")
+#            for missing_path in e.paths_not_found:
+#                dirty = True
+#                filt = "Image files (" + ' '.join('*.' + x for x in OpDataSelection.SupportedExtensions) + ')'
+#                newpath = self.repairFile(path, filt) #FIXME: make repairFile also show interpath-picking dialog
 
         return datasetInfo, dirty
 

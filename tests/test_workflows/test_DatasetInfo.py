@@ -81,30 +81,32 @@ def empty_project_file() -> h5py.File:
     return h5py.File(tempfile.mkstemp()[1], 'r+')
 
 def test_create_nickname(h5_colon_path_stack):
-    nickname, _ = DatasetInfo.process_filepath(h5_colon_path_stack)
+    expanded_paths = DatasetInfo.expand_path(h5_colon_path_stack)
+    nickname = DatasetInfo.create_nickname(expanded_paths)
     assert nickname == '2d_apoptotic_binary_'
 
 def test_create_nickname_for_single_file_does_not_contain_extension(h5_colon_path_stack):
-    nickname, _ = DatasetInfo.process_filepath(h5_colon_path_stack.split(os.path.pathsep)[0])
+    expanded_paths = DatasetInfo.expand_path(h5_colon_path_stack)
+    nickname = DatasetInfo.create_nickname(expanded_paths[0:1])
     assert nickname == '2d_apoptotic_binary_0'
 
 def test_create_nickname_with_internal_paths(h5_colon_path_stack_with_inner_paths):
-    nickname, expanded_paths= DatasetInfo.process_filepath(h5_colon_path_stack_with_inner_paths)
+    expanded_paths = DatasetInfo.expand_path(h5_colon_path_stack_with_inner_paths)
+    nickname = DatasetInfo.create_nickname(expanded_paths)
     assert nickname == '2d_apoptotic_binary_-volume-data'
-    assert len(expanded_paths) == 3
 
 def test_expand_path(h5_stack_dir):
-    expansions = DatasetInfo.expandPath(os.path.join(h5_stack_dir, '*'))
+    expansions = DatasetInfo.expand_path(os.path.join(h5_stack_dir, '*'))
     expected_file_paths = [os.path.join(h5_stack_dir, '2d_apoptotic_binary_0.h5'),
                            os.path.join(h5_stack_dir, '2d_apoptotic_binary_1.h5'),
                            os.path.join(h5_stack_dir, '2d_apoptotic_binary_2.h5')]
     assert expansions == expected_file_paths
 
     expected_dataset_paths = [os.path.join(fp, 'volume/data') for fp in expected_file_paths]
-    expansions = DatasetInfo.expandPath(os.path.join(h5_stack_dir, '*.h5', 'vol*'))
+    expansions = DatasetInfo.expand_path(os.path.join(h5_stack_dir, '*.h5', 'vol*'))
     assert expansions == expected_dataset_paths
 
-    expansions = DatasetInfo.expandPath(os.path.join(h5_stack_dir, '2d_apoptotic_binary_1.h5'))
+    expansions = DatasetInfo.expand_path(os.path.join(h5_stack_dir, '2d_apoptotic_binary_1.h5'))
     assert expansions == expected_file_paths[1:2]
 
 
@@ -112,7 +114,7 @@ def test_expand_path(h5_stack_dir):
                       '2d_apoptotic_binary_1.h5',
                       '2d_apoptotic_binary_2.h5']
     relative_paths_with_colon = os.path.pathsep.join(relative_paths)
-    expansions = DatasetInfo.expandPath(relative_paths_with_colon, cwd=h5_stack_dir)
+    expansions = DatasetInfo.expand_path(relative_paths_with_colon, cwd=h5_stack_dir)
     assert expansions == expected_file_paths
 
 
@@ -122,23 +124,6 @@ def test_stack_via_star_glob(png_star_stack:str, empty_project_file):
 
     #empty project lies in /tmp, so paths should be relative
     assert info.location == DatasetInfo.Location.FileSystemRelativePath
-
-def test_saving_internally_via_star_glob(png_star_stack:str, empty_project_file):
-    inner_group_path = 'some/inner/group'
-    info = DatasetInfo(
-        filepath=png_star_stack,
-        sequence_axis='z',
-        location=DatasetInfo.Location.ProjectInternal,
-        project_file=empty_project_file,
-        inner_group_path=inner_group_path)
-
-    saved_data = empty_project_file[info.filePath]
-    assert info.nickname == 'c_cells_'
-    assert info.laneDtype == saved_data.dtype == numpy.uint8
-    assert info.laneShape == saved_data.shape == (3,520,697,3)
-    assert info.location == DatasetInfo.Location.ProjectInternal
-    assert info.axiskeys == 'zyxc'
-
 
 def test_relative_paths(png_stack_dir:str, monkeypatch):
     with h5py.File(os.path.join(png_stack_dir, 'myproj.ilp'), 'w') as project_file:
