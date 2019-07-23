@@ -126,18 +126,6 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             return len(self._op.DatasetRoles.value)
         return 0
 
-    def hasInternalPaths(self):
-        for mslot in self._op.DatasetGroup:
-            if self._roleIndex < len(mslot):
-                slot = mslot[self._roleIndex]
-                if slot.ready():
-                    datasetInfo = slot.value
-                    filePathComponents = PathComponents(datasetInfo.filePath)
-                    if ( datasetInfo.location == DatasetInfo.Location.FileSystem
-                         and filePathComponents.internalPath is not None ):
-                        return True
-        return False                
-    
     def columnCount(self, parent=QModelIndex()):
         return DatasetDetailedInfoColumn.NumColumns
 
@@ -193,7 +181,6 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             return UninitializedDisplayData[ index.column() ]
         
         datasetInfo = self._op.DatasetGroup[laneIndex][self._roleIndex].value
-        filePathComponents = PathComponents( datasetInfo.filePath )
 
         ## Input meta-data fields
 
@@ -203,19 +190,20 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
         # Location
         if index.column() == DatasetDetailedInfoColumn.Location:
-            if datasetInfo.location == DatasetInfo.Location.FileSystem:
-                if datasetInfo.is_path_absolute():
-                    return f"Absolute Link: {datasetInfo.effective_uris}"
-                else:
-                    return f"Relative Link: {datasetInfo.effective_uris}"
-            else:
+            if datasetInfo.location == DatasetInfo.Location.FileSystemAbsolutePath:
+                return f"Absolute Link: {datasetInfo.effective_uris}"
+            elif datasetInfo.location == DatasetInfo.Location.FileSystemRelativePath:
+                return f"Relative Link: {datasetInfo.effective_uris}"
+            elif datasetInfo.location == DatasetInfo.Location.ProjectInternal:
                 return f"Project File: {datasetInfo.effective_uris}"
+            elif datasetInfo.location == DatasetInfo.Location.PreloadedArray:
+                return f"Preloaded array {datasetInfo.laneDtype} {datasetInfo.laneShape}"
+            else:
+                raise Exception(f"Bad location: {datasetInfo.location}")
 
         # Internal ID        
         if index.column() == DatasetDetailedInfoColumn.InternalID:
-            if datasetInfo.location == DatasetInfo.Location.FileSystem:
-                return filePathComponents.internalPath
-            return ""
+            return str(datasetInfo.internal_paths or "")
 
         ## Output meta-data fields
         
@@ -249,10 +237,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
         # Range
         if index.column() == DatasetDetailedInfoColumn.Range:
-            drange = imageSlot.meta.drange
-            if drange is None:
-                return ""
-            return str(drange)
+            return str(datasetInfo.drange or '')
 
         assert False, "Unknown column: row={}, column={}".format( index.row(), index.column() )
 

@@ -457,8 +457,6 @@ class DataSelectionGui(QWidget):
 
             # Notify the workflow that something that could affect applet readyness has occurred.
             self.parentApplet.appletStateUpdateRequested()
-
-            self.updateInternalPathVisiblity()
         except Exception as e:
             self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
             QMessageBox.critical(self, "File selection error", str(e))
@@ -479,7 +477,7 @@ class DataSelectionGui(QWidget):
                     except DatasetConstraintError as e:
                         if fixed_once:
                             QMessageBox.warning(self, "Incompatible dataset", str(e))
-                        info_editor = DatasetInfoEditorWidget(self, [new_info], self.topLevelOperator.WorkingDirectory.value)
+                        info_editor = DatasetInfoEditorWidget(self, [new_info], self.serializer)
                         fixed_once = True
                         if info_editor.exec_() == QDialog.Rejected:
                             revert()
@@ -600,17 +598,21 @@ class DataSelectionGui(QWidget):
         stackDlg.exec_()
         if stackDlg.result() != QDialog.Accepted or len(stackDlg.selectedFiles) == 0:
             return
-        globstring = os.path.pathsep.join(stackDlg.selectedFiles)
         #FIXME: ask first if stack should be internalized to project file
         # also, check prefer_2d, size/volume and presence of 'z' to determine this
+        nickname = DatasetInfo.create_nickname(stackDlg.selectedFiles)
         location = DatasetInfo.Location.ProjectInternal
+        #FIXME: do this inside a Request
+        inner_path = self.serializer.importStackAsLocalDataset(abs_paths=stackDlg.selectedFiles,
+                                                               sequence_axis=stackDlg.sequence_axis)
+
         self.parentApplet.busy = True
-        info = DatasetInfo( #FIXME: do this inside a Request
-            filepath=globstring,
+        info = DatasetInfo(
+            filepath=inner_path,
+            nickname=nickname,
             sequence_axis=stackDlg.sequence_axis,
             location=location,
-            project_file=self.project_file,
-            inner_group_path=self.serializer.topGroupName + '/local_data/'
+            project_file=self.project_file
         )
         self.parentApplet.busy = False
         self.addLanes([info], roleIndex, laneIndex)
@@ -635,15 +637,9 @@ class DataSelectionGui(QWidget):
         all_info_slots = self.getInfoSlots(roleIndex)
         selected_info_slots = [all_info_slots[idx] for idx in laneIndexes]
         infos = [slot.value for slot in selected_info_slots]
-        editorDlg = DatasetInfoEditorWidget(self, infos, self.topLevelOperator.WorkingDirectory.value)
+        editorDlg = DatasetInfoEditorWidget(self, infos, self.serializer)
         if editorDlg.exec_() == QDialog.Accepted:
             self.applyDatasetInfos(editorDlg.edited_infos, selected_info_slots, fixed_once=True)
-
-    def updateInternalPathVisiblity(self):
-        for view in self._detailViewerWidgets:
-            model = view.model()
-            view.setColumnHidden(DatasetDetailedInfoColumn.InternalID,
-                                 not model.hasInternalPaths())
 
     def addPrecomputedVolume(self, roleIndex, laneIndex):
         # add history...

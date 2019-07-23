@@ -173,7 +173,9 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
             return PathComponents( datasetInfo.filePath ).filename
 
         if datasetInfoIndex == DatasetInfoColumn.Location:
-            LocationNames = { DatasetInfo.Location.FileSystem : "External File",
+            LocationNames = { DatasetInfo.Location.FileSystemRelativePath : "External File",
+                              DatasetInfo.Location.FileSystemAbsolutePath : "External File",
+                              DatasetInfo.Location.PreloadedArray : "Preloaded Array",
                               DatasetInfo.Location.ProjectInternal : "Project File" }
             return LocationNames[ datasetInfo.location ]
 

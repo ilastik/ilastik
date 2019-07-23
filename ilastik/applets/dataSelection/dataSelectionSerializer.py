@@ -317,7 +317,7 @@ class DataSelectionSerializer( AppletSerializer ):
                     # Skip if there is no dataset in this lane/role combination yet.
                     continue
                 datasetInfo = slot.value
-                if datasetInfo.location == DatasetInfo.Location.FileSystem:
+                if datasetInfo.location == DatasetInfo.Location.FileSystemRelativePath:
                     
                     #construct absolute path and recreate relative to the new path
                     fp = PathComponents(datasetInfo.filePath,olddir).totalPath()
