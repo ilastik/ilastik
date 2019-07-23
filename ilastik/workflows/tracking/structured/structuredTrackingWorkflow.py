@@ -206,7 +206,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
                 filename,
                 exportPlugin,
                 checkOverwriteFiles,
-                additionalPluginArgumentsSlot
+                plugArgsSlot
             )
         )
 
