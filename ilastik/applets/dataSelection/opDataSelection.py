@@ -185,6 +185,10 @@ class DatasetInfo(object):
             raise Exception(f"Bad location: {self.location}")
 
     @property
+    def persistent_path(self) -> str:
+        return os.path.pathsep.join(self.effective_uris)
+
+    @property
     def relative_paths(self) -> List[str]:
         if self.location in (self.Location.ProjectInternal, self.Location.PreloadedArray):
             return []

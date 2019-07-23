@@ -172,7 +172,7 @@ class DatasetInfoEditorWidget(QDialog):
         if len(current_locations) == 1:
             comboIndex = self.storageComboBox.findData(current_locations.pop())
         else:
-            comboIndex = self.storageComboBox.findData(StorageLocation.Default)
+            comboIndex = self.storageComboBox.findData(None)
         self.storageComboBox.setCurrentIndex(comboIndex)
 
     def get_new_axes_tags(self):
