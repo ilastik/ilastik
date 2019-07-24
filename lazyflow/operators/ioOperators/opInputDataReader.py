@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-from builtins import next
 import sys
 
 if sys.version_info.major >= 3:
@@ -78,6 +77,7 @@ import vigra
 import os
 import re
 import logging
+from typing import List, Tuple
 
 from lazyflow.utility.io_util.multiprocessHdf5File import MultiProcessHdf5File
 
@@ -135,11 +135,18 @@ class OpInputDataReader(Operator):
     class DatasetReadError(Exception):
         pass
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, WorkingDirectory:str=None, FilePath:str=None,
+                 SequenceAxis:str=None, SubVolumeRoi:Tuple[int,int]=None,
+                 *args, **kwargs):
         super(OpInputDataReader, self).__init__(*args, **kwargs)
         self.internalOperators = []
         self.internalOutput = None
         self._file = None
+
+        self.WorkingDirectory.setOrConnectIfAvailable(WorkingDirectory)
+        self.FilePath.setOrConnectIfAvailable(FilePath)
+        self.SequenceAxis.setOrConnectIfAvailable(SequenceAxis)
+        self.SubVolumeRoi.setOrConnectIfAvailable(SubVolumeRoi)
 
     def cleanUp(self):
         super(OpInputDataReader, self).cleanUp()
