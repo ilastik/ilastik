@@ -156,6 +156,7 @@ class DatasetInfo(object):
             else:
                 self.location = self.Location.FileSystemAbsolutePath
 
+        assert len(self.axistags) == len(self.laneShape)
         if self.location == self.Location.FileSystemRelativePath and not self.relative_paths:
             raise Exception(f"\"{self.original_paths}\" can't be expressed relative to {self.base_dir}")
 
@@ -470,7 +471,7 @@ class OpDataSelection(Operator):
             else:
                 num_channels = providerSlot.meta.getTaggedShape()['c']
             if num_channels > 1:
-                metadata['channel_names'] = ["{}-{}".format(role_name, i) for i in range(num_channels)]
+                metadata['channel_names'] = [f"{role_name}-{i}" for i in range(num_channels)]
             else:
                 metadata['channel_names'] = [role_name]
 
@@ -481,26 +482,7 @@ class OpDataSelection(Operator):
             if datasetInfo.normalizeDisplay is not None:
                 metadata['normalizeDisplay'] = datasetInfo.normalizeDisplay
             if datasetInfo.axistags is not None:
-                info_keys = [tag.key for tag in datasetInfo.axistags]
-                provider_shape = providerSlot.meta.shape
-                provider_keys = providerSlot.meta.getAxisKeys()
-                provider_squeezed_shape = providerSlot.meta.getShape5D().to_squeezed_dict()
-                if len(info_keys) == len(provider_shape):
-                    metadata['axistags'] = datasetInfo.axistags
-                elif len(info_keys) == len(provider_shape) - 1 and set(provider_keys) - set(info_keys) == set('c'):
-                    metadata['axistags'] = vigra.defaultAxistags(''.join(info_keys) + 'c')
-                elif len(info_keys) == len(provider_squeezed_shape.keys()):
-                    dummy_axes = set(Point5D.LABELS) - set(info_keys)
-                    out_axes = ""
-                    for k, v in providerSlot.meta.getTaggedShape().items():
-                        if k in provider_squeezed_shape:
-                            out_axes += info_keys.pop(0)
-                        else:
-                            out_axes += dummy_axes.pop()
-                    metadata['axistags'] = vigra.defaultAxistags(out_axes)
-                else:
-                    raise Exception(f"Cannot reinterpret input with shape {providerSlot.meta.getTaggedShape()} using "
-                                    f"given axis order of {info_keys}")
+                metadata['axistags'] = datasetInfo.axistags
             if datasetInfo.original_axistags is not None:
                 metadata['original_axistags'] = datasetInfo.original_axistags
 
