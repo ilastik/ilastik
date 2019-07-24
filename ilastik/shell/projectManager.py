@@ -353,6 +353,11 @@ class ProjectManager(object):
         - Current project file is still open, but has a new name.
         - Current project file has been saved (it is in sync with the applet states)
         """
+
+        #FIXME this makes saving take the same path in all platforms, but we are needlessly
+        #sacrificing cache
+        return self._takeSnapshotAndLoadIt(newPath)
+
         # If our project is read-only, we can't be efficient.
         # We have to take a snapshot, then close our current project and open the snapshot
         # Furthermore, windows does not permit renaming an open file, so we must take this approach.
