@@ -106,7 +106,7 @@ class DatasetInfoEditorWidget(QDialog):
             self.nicknameEdit.setToolTip("Edit a single lane to modify its nickname")
 
         self.shapeLabel.setText(", ".join(str(info.laneShape) for info in infos))
-        self.dtypeLabel.setText(", ".join(numpy.dtype(info.laneDtype).name for info in infos))
+        self.dtypeLabel.setText(", ".join(info.laneDtype.__name__ for info in infos))
 
         self.normalizeDisplayComboBox.addItem("True", userData=True)
         self.normalizeDisplayComboBox.addItem("False", userData=False)
@@ -138,7 +138,7 @@ class DatasetInfoEditorWidget(QDialog):
                 common_internal_paths &= set(info.getPossibleInternalPaths())
                 current_internal_paths &= set(info.internal_paths)
 
-            for path in sorted(commonInternalPaths):
+            for path in sorted(common_internal_paths):
                 self.internalDatasetNameComboBox.addItem( path )
                 self.internalDatasetNameComboBox.setEnabled(True)
 

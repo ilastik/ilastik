@@ -141,6 +141,9 @@ class DatasetInfo(object):
             self.filePath = filepath
             self.expanded_paths = [filepath]
 
+        if isinstance(self.laneDtype, numpy.dtype):
+            self.laneDtype = numpy.typeDict[self.laneDtype.name]
+
         if jsonNamespace is not None:
             self.updateFromJson(jsonNamespace)
 
