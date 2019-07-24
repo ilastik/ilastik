@@ -97,8 +97,6 @@ class DatasetInfo(object):
         self.allowLabels = allowLabels
         self.sequenceAxis = sequence_axis
         self.original_axistags = original_axistags
-        # A flag indicating whether the dataset is backed by a real source (e.g. file)
-        # or by the fake provided (e.g. in headless mode when raw data are not necessary)
         self.subvolume_roi = subvolume_roi
         self.display_mode = display_mode  # choices: default, grayscale, rgba, random-colortable, binary-mask.
         self.original_paths = splitPath(filepath)
@@ -110,12 +108,13 @@ class DatasetInfo(object):
         self.base_dir = str(Path(project_file.filename).absolute().parent) if project_file else os.getcwd()
         assert os.path.isabs(self.base_dir) #FIXME: if file_project was opened as a relative path, this would break
 
-        if self.preloaded_array:
+        if location == self.Location.PreloadedArray:
+            assert preloaded_array is not None
             self.nickname = "preloaded-{}-array".format(self.preloaded_array.dtype.name)
             self.laneShape = preloaded_array.shape
             self.laneDtype = preloaded_array.dtype
             self.location = self.Location.PreloadedArray
-            self.axistags = getattr(self.preloaded_array, 'axistags', axistags)
+            self.axistags = getattr(self.preloaded_array, 'axistags')
         elif location == self.Location.ProjectInternal:
             dataset = project_file[filepath]
             self.axistags = vigra.AxisTags.fromJSON(dataset.attrs['axistags'])
@@ -133,7 +132,7 @@ class DatasetInfo(object):
                                           FilePath=self.filePath,
                                           SequenceAxis=self.sequenceAxis)
             meta = op_reader.Output.meta
-            self.axistags = axistags or meta.axistags
+            self.axistags = meta.axistags
             self.laneShape = meta.shape
             self.laneDtype = meta.dtype
             self.drange = drange or meta.get('drange')
@@ -146,9 +145,10 @@ class DatasetInfo(object):
 
         if jsonNamespace is not None:
             self.updateFromJson(jsonNamespace)
-
         if nickname:
             self.nickname = nickname
+        if axistags:
+            self.axistags = axistags
 
         if self.location is None:
             if self.relative_paths:
@@ -442,7 +442,6 @@ class OpDataSelection(Operator):
                 providerSlot = opReader.OutputImage
             elif datasetInfo.location == DatasetInfo.Location.PreloadedArray:
                 preloaded_array = datasetInfo.preloaded_array
-                assert preloaded_array is not None
                 if not hasattr(preloaded_array, 'axistags'):
                     axisorder = get_default_axisordering(preloaded_array.shape)
                     preloaded_array = vigra.taggedView(preloaded_array, axisorder)
