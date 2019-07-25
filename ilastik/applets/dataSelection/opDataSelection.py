@@ -43,7 +43,6 @@ from lazyflow.operators.opArrayPiper import OpArrayPiper
 from ilastik.applets.base.applet import DatasetConstraintError
 
 from ilastik.utility import OpMultiLaneWrapper
-from ndstructs import Point5D
 from lazyflow.graph import Graph
 from lazyflow.utility import PathComponents, isUrl, make_absolute
 from lazyflow.utility.pathHelpers import splitPath, globH5N5
@@ -73,7 +72,8 @@ class DatasetInfo(object):
                  preloaded_array=None,
                  sequence_axis=None, allowLabels=True,
                  subvolume_roi=None, location=None,
-                 axistags=None, display_mode='default',
+                 axistags=None, fill_in_dummy_axes:bool=False,
+                 display_mode='default',
                  nickname='', original_axistags=None,
                  normalizeDisplay:bool=None, drange:Tuple[Number, Number]=None,
                  jsonNamespace=None,
@@ -90,7 +90,7 @@ class DatasetInfo(object):
         sequence_axis: Axis along which to stack (only applicable for stacks).
         """
         assert (preloaded_array is not None) ^ bool(filepath), "Provide either preloaded_array or filepath"
-        self.filePath = filepath
+        self.filePath = filepath or ''
         self.preloaded_array = preloaded_array
         self.project_file = project_file
         # OBSOLETE: Whether or not this dataset should be used for training a classifier.
@@ -99,28 +99,29 @@ class DatasetInfo(object):
         self.original_axistags = original_axistags
         self.subvolume_roi = subvolume_roi
         self.display_mode = display_mode  # choices: default, grayscale, rgba, random-colortable, binary-mask.
-        self.original_paths = splitPath(filepath)
+        self.original_paths = []
         self.location = location
         self.drange = drange
         self.normalizeDisplay = (self.drange is not None) if normalizeDisplay is None else normalizeDisplay
-        self.axistags = axistags
         self.expanded_paths = []
         self.base_dir = str(Path(project_file.filename).absolute().parent) if project_file else os.getcwd()
         assert os.path.isabs(self.base_dir) #FIXME: if file_project was opened as a relative path, this would break
 
         if location == self.Location.PreloadedArray:
             assert preloaded_array is not None
+            self.preloaded_array = vigra.taggedView(preloaded_array, axistags or get_default_axisordering(preloaded_array.shape))
             self.nickname = "preloaded-{}-array".format(self.preloaded_array.dtype.name)
             self.laneShape = preloaded_array.shape
             self.laneDtype = preloaded_array.dtype
             self.location = self.Location.PreloadedArray
-            self.axistags = getattr(self.preloaded_array, 'axistags')
+            default_tags = getattr(self.preloaded_array, 'axistags')
         elif location == self.Location.ProjectInternal:
             dataset = project_file[filepath]
-            self.axistags = vigra.AxisTags.fromJSON(dataset.attrs['axistags'])
+            default_tags = vigra.AxisTags.fromJSON(dataset.attrs['axistags'])
             self.laneShape = dataset.shape
             self.laneDtype = dataset.dtype
         elif filepath and not isUrl(filepath):
+            self.original_paths = splitPath(filepath)
             self.expanded_paths = self.expand_path(filepath, cwd=self.base_dir)
             assert len(self.expanded_paths) == 1 or self.sequenceAxis
             if len({PathComponents(ep).extension for ep in self.expanded_paths}) > 1:
@@ -132,7 +133,7 @@ class DatasetInfo(object):
                                           FilePath=self.filePath,
                                           SequenceAxis=self.sequenceAxis)
             meta = op_reader.Output.meta
-            self.axistags = meta.axistags
+            default_tags = meta.axistags
             self.laneShape = meta.shape
             self.laneDtype = meta.dtype
             self.drange = drange or meta.get('drange')
@@ -147,8 +148,26 @@ class DatasetInfo(object):
             self.updateFromJson(jsonNamespace)
         if nickname:
             self.nickname = nickname
-        if axistags:
-            self.axistags = axistags
+
+        self.axistags = axistags or default_tags
+        if len(self.axistags) != len(self.laneShape):
+            if not fill_in_dummy_axes:
+                raise Exception("Axistags {self.axistags} don't fit data shape {self.laneShape}")
+            default_keys = [tag.key for tag in default_tags]
+            tagged_shape = {k: v for k, v in zip(default_keys, self.laneShape)}
+            squeezed_shape = {k: v for k, v in tagged_shape.items() if v != 1}
+            requested_keys = [tag.key for tag in axistags]
+            if len(requested_keys) == len(squeezed_shape):
+                dummy_axes = [key for key in 'ctzxy' if key not in requested_keys]
+                out_axes = ""
+                for k, v in tagged_shape.items():
+                    if v > 1:
+                        out_axes += requested_keys.pop(0)
+                    else:
+                        out_axes += dummy_axes.pop()
+                self.axistags = vigra.defaultAxistags(out_axes)
+            else:
+                raise Exception(f"Cannot reinterpret input with shape {self.laneShape} using aksiskeys {requested_keys}")
 
         if self.location is None:
             if self.relative_paths:
@@ -156,7 +175,6 @@ class DatasetInfo(object):
             else:
                 self.location = self.Location.FileSystemAbsolutePath
 
-        assert len(self.axistags) == len(self.laneShape)
         if self.location == self.Location.FileSystemRelativePath and not self.relative_paths:
             raise Exception(f"\"{self.original_paths}\" can't be expressed relative to {self.base_dir}")
 
@@ -442,13 +460,8 @@ class OpDataSelection(Operator):
                 opReader.InternalPath.setValue(datasetInfo.filePath)
                 providerSlot = opReader.OutputImage
             elif datasetInfo.location == DatasetInfo.Location.PreloadedArray:
-                preloaded_array = datasetInfo.preloaded_array
-                if not hasattr(preloaded_array, 'axistags'):
-                    axisorder = get_default_axisordering(preloaded_array.shape)
-                    preloaded_array = vigra.taggedView(preloaded_array, axisorder)
-
                 opReader = OpArrayPiper(parent=self)
-                opReader.Input.setValue(preloaded_array)
+                opReader.Input.setValue(datasetInfo.preloaded_array)
                 providerSlot = opReader.Output
             else:
                 opReader = OpInputDataReader(parent=self)

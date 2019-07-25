@@ -117,6 +117,7 @@ class DataSelectionSerializer( AppletSerializer ):
                     locationString = self.LocationStrings[datasetInfo.location]
                     infoGroup.create_dataset('location', data=locationString.encode('utf-8'))
                     infoGroup.create_dataset('filePath', data=datasetInfo.persistent_path.encode('utf-8'))
+                    infoGroup.create_dataset('shape', data=datasetInfo.laneShape)
                     infoGroup.create_dataset('allowLabels', data=datasetInfo.allowLabels)
                     infoGroup.create_dataset('nickname', data=datasetInfo.nickname.encode('utf-8'))
                     infoGroup.create_dataset('display_mode', data=datasetInfo.display_mode.encode('utf-8'))
@@ -292,6 +293,12 @@ class DataSelectionSerializer( AppletSerializer ):
         try:
             datasetInfo = DatasetInfo(**info_params)
         except FileNotFoundError as e:
+            if headless:
+                shape = tuple(infoGroup['shape'])
+                info_params['filepath'] = None
+                info_params['location'] = DatasetInfo.Location.PreloadedArray
+                info_params['preloaded_array'] = numpy.zeros(shape, dtype=numpy.uint8)
+                return DatasetInfo(**info_params), True
             raise Exception(f"FIXME: repair file {e.filename}")
 #            for missing_path in e.paths_not_found:
 #                dirty = True

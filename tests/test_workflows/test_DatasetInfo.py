@@ -1,11 +1,13 @@
 import os
 import numpy
+import vigra
 import shutil
 import tempfile
 import pytest
 import requests
 from typing import List
 import h5py
+from PIL import Image as PilImage
 
 from ilastik.applets.dataSelection import DatasetInfo
 
@@ -33,6 +35,33 @@ def png_stack_dir():
     stack_dir = download_stack(urls, "c_cells_")
     yield stack_dir
     shutil.rmtree(stack_dir)
+
+@pytest.fixture
+def temp_dir():
+    dir_path = tempfile.mkdtemp()
+    yield dir_path
+    shutil.rmtree(dir_path)
+
+@pytest.fixture
+def tmp_file(temp_dir):
+    _, filepath = tempfile.mkstemp(prefix=os.path.join(temp_dir, ''))
+    yield filepath
+    os.remove(filepath)
+
+@pytest.fixture
+def png_image(tmp_file) -> str:
+    pil_image = PilImage.fromarray((numpy.random.rand(100, 200) * 255).astype(numpy.uint8))
+    with open(tmp_file, "wb") as png_file:
+        pil_image.save(png_file, "png")
+    return tmp_file
+
+@pytest.fixture
+def h5_1_100_200_1_1(temp_dir):
+    _, h5_path = tempfile.mkstemp(prefix=os.path.join(temp_dir, ''), suffix='.h5')
+    raw = (numpy.random.rand(1, 100, 200, 1, 1) * 255).astype(numpy.uint8)
+    with h5py.File(h5_path, 'w') as f:
+        f['some_data'] = raw
+    return h5_path
 
 @pytest.fixture
 def h5_stack_dir():
@@ -184,4 +213,11 @@ def test_h5_stack_via_star_file_glob_and_stared_internal_path(h5_stack_dir):
                                               os.path.join(h5_stack_dir, '2d_apoptotic_binary_2.h5/volume/data')])
 
     assert info.filePath == expected_filepath
+
+def test_fill_in_dummy_axes(h5_1_100_200_1_1):
+    info = DatasetInfo(filepath=h5_1_100_200_1_1,
+                       axistags = vigra.defaultAxistags('yx'),
+                       fill_in_dummy_axes=True,
+                       sequence_axis='z')
+    assert info.axiskeys[1:3] == 'yx'
 
