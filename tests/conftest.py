@@ -1,3 +1,7 @@
+from pathlib import Path
+import os
+import shutil
+import tempfile
 import threading
 import time
 import queue
@@ -243,3 +247,32 @@ def _sorted_guitests(iterable):
         return cls.__module__, cls.__name__, obj.name
 
     return sorted(iterable, key=_keyfunc)
+
+
+@pytest.fixture(scope='function')
+def tmp_dir() -> Path:
+    dir_path = Path(tempfile.mkdtemp())
+    yield dir_path
+    shutil.rmtree(dir_path)
+
+@pytest.fixture(scope='function')
+def tmp_file(tmp_dir:Path) -> Path:
+    _, filepath = tempfile.mkstemp(prefix=os.path.join(tmp_dir, ''))
+    filepath = Path(filepath)
+    yield filepath
+    os.remove(filepath)
+
+@pytest.fixture(scope='function')
+def tmp_h5_file(tmp_dir:Path) -> Path:
+    _, filepath = tempfile.mkstemp(prefix=os.path.join(tmp_dir, ''))
+    h5_path = Path(filepath).with_suffix('.h5')
+    os.rename(filepath, h5_path)
+    yield h5_path
+    os.remove(h5_path)
+
+@pytest.fixture
+def png_image(tmp_file) -> Path:
+    pil_image = PilImage.fromarray((numpy.random.rand(100, 200) * 255).astype(numpy.uint8))
+    with open(tmp_file, "wb") as png_file:
+        pil_image.save(png_file, "png")
+    return tmp_file
