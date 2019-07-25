@@ -118,6 +118,7 @@ class DataSelectionSerializer( AppletSerializer ):
                     infoGroup.create_dataset('location', data=locationString.encode('utf-8'))
                     infoGroup.create_dataset('filePath', data=datasetInfo.persistent_path.encode('utf-8'))
                     infoGroup.create_dataset('shape', data=datasetInfo.laneShape)
+                    infoGroup.create_dataset('dtype', data=str(numpy.dtype(datasetInfo.laneDtype)).encode('utf-8'))
                     infoGroup.create_dataset('allowLabels', data=datasetInfo.allowLabels)
                     infoGroup.create_dataset('nickname', data=datasetInfo.nickname.encode('utf-8'))
                     infoGroup.create_dataset('display_mode', data=datasetInfo.display_mode.encode('utf-8'))

@@ -13,6 +13,9 @@ import itertools
 from concurrent import futures
 
 import pytest
+import h5py
+from PIL import Image as PilImage
+import numpy
 
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QTimer
@@ -23,6 +26,7 @@ import ilastik.config
 from ilastik.utility.gui.threadRouter import ThreadRouter
 from ilastik.utility.itertools import pairwise
 from ilastik.shell.gui.startShellGui import launchShell
+from lazyflow.graph import Graph
 
 # Every function starting with pytest_ in this module is a pytest hook
 # that modifies specific behavior of test life cycle
@@ -249,30 +253,48 @@ def _sorted_guitests(iterable):
     return sorted(iterable, key=_keyfunc)
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture
 def tmp_dir() -> Path:
     dir_path = Path(tempfile.mkdtemp())
     yield dir_path
     shutil.rmtree(dir_path)
 
-@pytest.fixture(scope='function')
+@pytest.fixture
 def tmp_file(tmp_dir:Path) -> Path:
     _, filepath = tempfile.mkstemp(prefix=os.path.join(tmp_dir, ''))
     filepath = Path(filepath)
     yield filepath
     os.remove(filepath)
 
-@pytest.fixture(scope='function')
+@pytest.fixture
 def tmp_h5_file(tmp_dir:Path) -> Path:
-    _, filepath = tempfile.mkstemp(prefix=os.path.join(tmp_dir, ''))
-    h5_path = Path(filepath).with_suffix('.h5')
-    os.rename(filepath, h5_path)
-    yield h5_path
-    os.remove(h5_path)
+    _, filepath = tempfile.mkstemp(prefix=os.path.join(tmp_dir, ''), suffix='.h5')
+    yield filepath
+    os.remove(filepath)
 
 @pytest.fixture
-def png_image(tmp_file) -> Path:
+def tmp_npy_file(tmp_dir:Path) -> Path:
+    _, filepath = tempfile.mkstemp(prefix=os.path.join(tmp_dir, ''), suffix='.npy')
+    yield filepath
+    os.remove(filepath)
+
+@pytest.fixture
+def png_image(tmp_dir) -> Path:
+    _, filepath = tempfile.mkstemp(prefix=os.path.join(tmp_dir, ''), suffix='.png')
     pil_image = PilImage.fromarray((numpy.random.rand(100, 200) * 255).astype(numpy.uint8))
-    with open(tmp_file, "wb") as png_file:
+    with open(filepath, "wb") as png_file:
         pil_image.save(png_file, "png")
-    return tmp_file
+    yield filepath
+    os.remove(filepath)
+
+@pytest.fixture
+def empty_project_file() -> h5py.File:
+    project_path = Path(tempfile.mkstemp(suffix='.ilp')[1])
+    f = h5py.File(project_path, 'r+')
+    yield f
+    f.close()
+    os.remove(project_path)
+
+@pytest.fixture
+def graph():
+    return Graph()

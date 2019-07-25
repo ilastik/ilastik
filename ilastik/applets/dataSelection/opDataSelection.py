@@ -120,6 +120,7 @@ class DatasetInfo(object):
             default_tags = vigra.AxisTags.fromJSON(dataset.attrs['axistags'])
             self.laneShape = dataset.shape
             self.laneDtype = dataset.dtype
+            self.nickname = nickname
         elif filepath and not isUrl(filepath):
             self.original_paths = splitPath(filepath)
             self.expanded_paths = self.expand_path(filepath, cwd=self.base_dir)
