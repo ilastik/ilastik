@@ -117,7 +117,10 @@ class DatasetInfo(object):
             default_tags = getattr(self.preloaded_array, 'axistags')
         elif location == self.Location.ProjectInternal:
             dataset = project_file[filepath]
-            default_tags = vigra.AxisTags.fromJSON(dataset.attrs['axistags'])
+            if 'axistags' in dataset.attrs:
+                default_tags = vigra.AxisTags.fromJSON(dataset.attrs['axistags'])
+            else:
+                default_tags = vigra.defaultAxistags(get_default_axisordering(dataset.shape))
             self.laneShape = dataset.shape
             self.laneDtype = dataset.dtype
             self.nickname = nickname
@@ -468,7 +471,7 @@ class OpDataSelection(Operator):
             # If we should find the data in the project file, use a dataset reader
             if datasetInfo.location == DatasetInfo.Location.ProjectInternal:
                 opReader = OpStreamingH5N5Reader(parent=self)
-                opReader.H5N5File.setValue(self.ProjectFile.value)
+                opReader.H5N5File.setValue(datasetInfo.project_file)
                 opReader.InternalPath.setValue(datasetInfo.filePath)
                 providerSlot = opReader.OutputImage
             elif datasetInfo.location == DatasetInfo.Location.PreloadedArray:

@@ -31,6 +31,7 @@ from pathlib import Path
 from PIL import Image
 
 from lazyflow.utility.pathHelpers import PathComponents
+from lazyflow.graph import Graph
 from lazyflow.graph import OperatorWrapper
 from ilastik.applets.dataSelection.opDataSelection import OpMultiLaneDataSelectionGroup, OpDataSelection, DatasetInfo
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
@@ -183,7 +184,6 @@ class TestOpDataSelection_Basic2D(object):
             reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
-            reader.ProjectDataGroup.setValue('DataSelection/local_data')
 
             info = DatasetInfo(filepath=fileName)
 
@@ -210,7 +210,6 @@ class TestOpDataSelection_Basic2D(object):
             reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
-            reader.ProjectDataGroup.setValue('DataSelection/local_data')
 
             info = DatasetInfo(filepath=fileName)
 
@@ -238,7 +237,6 @@ class TestOpDataSelection_Basic2D(object):
             reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
             reader.ProjectFile.setValue(empty_project_file)
             reader.WorkingDirectory.setValue(str(Path(empty_project_file.filename).parent))
-            reader.ProjectDataGroup.setValue('DataSelection/local_data')
 
             # From project
             inner_path = serializer.importStackAsLocalDataset([fileName])
@@ -359,7 +357,6 @@ class TestOpDataSelection_Basic_native_3D(object):
             reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
-            reader.ProjectDataGroup.setValue('DataSelection/local_data')
             reader.Dataset.setValues([DatasetInfo(filepath=fileName)])
 
             # Read the test files using the data selection operator and verify the contents
@@ -414,14 +411,23 @@ class TestOpDataSelection_Basic_native_3D(object):
             numpy.testing.assert_array_equal(imgData3Dc, self.imgData3Dc)
 
     def test3DProjectLocalData(self, serializer, empty_project_file):
-        for fileName in self.generatedImages3Dc:
-            graph = lazyflow.graph.Graph()
-            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
-            reader.ProjectFile.setValue(empty_project_file)
-            reader.WorkingDirectory.setValue(str(Path(empty_project_file.filename).parent))
-            reader.ProjectDataGroup.setValue('DataSelection/local_data')
+        empty_project_file.create_group('DataSelection')
+        empty_project_file['DataSelection'].create_group('local_data')
+        empty_project_file['DataSelection/local_data'].create_dataset('dataset1', data=self.imgData3Dc)
+        reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={'forceAxisOrder': False})
+        reader.WorkingDirectory.setValue(str(Path(empty_project_file.filename).parent))
+        info = DatasetInfo(
+            filepath='DataSelection/local_data/dataset1',
+            project_file=empty_project_file,
+            location=DatasetInfo.Location.ProjectInternal
+        )
+        reader.Dataset.setValues([info])
 
-            # From project
+        projectInternalData = reader.Image[0][...].wait()
+        assert projectInternalData.shape == self.imgData3Dc.shape, (projectInternalData.shape, self.imgData3Dc.shape)
+        assert (projectInternalData == self.imgData3Dc).all()
+
+        for fileName in self.generatedImages3Dc:
             inner_path = serializer.importStackAsLocalDataset([fileName])
             info = DatasetInfo(
                 location=DatasetInfo.Location.ProjectInternal,
