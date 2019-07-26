@@ -448,6 +448,8 @@ class TestOpDataSelection_3DStacks(object):
     def setup_class(cls):
         cls.tmpdir = tempfile.mkdtemp()
         cls.imgFileNameGlobs2D = []
+        cls.imgFileNameGlobs2DNicknames = []
+
         cls.imgFileNameGlobs2Dc = []
 
         cls.imgFileLists2D = defaultdict(list)
@@ -514,14 +516,13 @@ class TestOpDataSelection_3DStacks(object):
             cls.vigraExtensions.pop(cls.vigraExtensions.index(extension))
 
         for extension in cls.vigraExtensions:
-            cls.imgFileNameGlobs2D.append(
-                os.path.join(cls.tmpdir, "testImage2D_*.{}".format(extension)))
-        cls.imgFileNameGlobs2D.extend([
-            os.path.join(cls.tmpdir, "testimage2D_*.h5/test/data"),
-            # uncomment once support is implemented
-            # os.path.join(cls.tmpdir, "testimage2D_*.npz/data"),
-            # os.path.join(cls.tmpdir, "testimage2D_*.npy"),
-        ])
+            cls.imgFileNameGlobs2D.append(os.path.join(cls.tmpdir, "testImage2D_*.{}".format(extension)))
+            cls.imgFileNameGlobs2DNicknames.append("testImage2D_0")
+        cls.imgFileNameGlobs2D.append(os.path.join(cls.tmpdir, "testimage2D_*.h5/test/data"))
+        cls.imgFileNameGlobs2DNicknames.append("testimage2D_0-test-data")
+        # uncomment once support is implemented
+        # os.path.join(cls.tmpdir, "testimage2D_*.npz/data"),
+        # os.path.join(cls.tmpdir, "testimage2D_*.npy"),
 
         # 2Dc Stacks ##
         cls.imgData3Dc = numpy.random.randint(0, 255, (9, 10, 11, 3)).astype(numpy.uint8)
@@ -600,29 +601,19 @@ class TestOpDataSelection_3DStacks(object):
         except OSError as e:
             print('Exception caught while deleting temporary files: {}'.format(e))
 
-    def testBasic3DstackFromGlobString(self):
+    def testBasic3DstackFromGlobString(self, empty_project_file):
         """Test if stacked 2d files are loaded correctly"""
-        for fileName in self.imgFileNameGlobs2D:
-            graph = lazyflow.graph.Graph()
-            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
-            reader.ProjectFile.setValue(self.projectFile)
-            reader.WorkingDirectory.setValue(os.getcwd())
-            reader.ProjectDataGroup.setValue('DataSelection/local_data')
 
-            info = DatasetInfo()
-            # Will be read from the filesystem since the data won't be found in the project file.
-            info.location = DatasetInfo.Location.ProjectInternal
-            info.filePath = fileName
-            info.invertColors = False
-            info.convertToGrayscale = False
-
-            reader.Dataset.setValues([info])
+        reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={'forceAxisOrder': False})
+        reader.WorkingDirectory.setValue(str(Path(empty_project_file.filename).parent))
+        for fileName, nickname in zip(self.imgFileNameGlobs2D, self.imgFileNameGlobs2DNicknames):
+            reader.Dataset.setValues([DatasetInfo(filepath=fileName, sequence_axis='z')])
 
             # Read the test files using the data selection operator and verify the contents
             imgData3D = reader.Image[0][...].wait()
 
             # Check the file name output
-            assert reader.ImageName[0].value == fileName
+            assert reader.ImageName[0].value == nickname
             # Check raw images
             assert imgData3D.shape == self.imgData3D.shape, (imgData3D.shape, self.imgData3D.shape)
             # skip this if image was saved compressed:
@@ -631,22 +622,13 @@ class TestOpDataSelection_3DStacks(object):
                 continue
             numpy.testing.assert_array_equal(imgData3D, self.imgData3D)
 
-    def testBasic3DstacksFromFileList(self):
+    def testBasic3DstacksFromFileList(self, empty_project_file):
         for ext, fileNames in list(self.imgFileLists2D.items()):
             fileNameString = os.path.pathsep.join(fileNames)
-            graph = lazyflow.graph.Graph()
-            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
-            reader.ProjectFile.setValue(self.projectFile)
-            reader.WorkingDirectory.setValue(os.getcwd())
-            reader.ProjectDataGroup.setValue('DataSelection/local_data')
+            reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={'forceAxisOrder': False})
+            reader.WorkingDirectory.setValue(str(Path(empty_project_file.filename).parent))
 
-            info = DatasetInfo(filepath=fileNameString)
-            # Will be read from the filesystem since the data won't be found in the project file.
-            info.location = DatasetInfo.Location.ProjectInternal
-            info.invertColors = False
-            info.convertToGrayscale = False
-
-            reader.Dataset.setValues([info])
+            reader.Dataset.setValues([DatasetInfo(filepath=fileNameString, sequence_axis='z')])
 
             # Read the test files using the data selection operator and verify the contents
             imgData3D = reader.Image[0][...].wait()
