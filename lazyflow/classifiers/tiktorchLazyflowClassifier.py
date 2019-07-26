@@ -194,15 +194,23 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         # TODO: check whether loaded network has the same number of classes as specified in ilastik!
         images = []
         labels = []
+        to_remove = []
 
         for img, label, id_ in zip(feature_images, label_images, image_ids):
+            id_str = ",".join(str(v) for v in id_)
+            if not label.any():
+                to_remove.append(id_str)
+                continue
+
             out_img = self._reorder_out(img, axistags)
             out_label = self._reorder_out(label, axistags)
             out_label = out_label.astype(numpy.uint8)
-            images.append(NDArray(out_img, id_))
-            labels.append(NDArray(out_label, id_))
+
+            images.append(NDArray(out_img, id_str))
+            labels.append(NDArray(out_label, id_str))
 
         self.tikTorchClient.update_training_data(NDArrayBatch(images), NDArrayBatch(labels))
+        self.tikTorchClient.remove_data("training", to_remove)
 
     def get_model_state(self):
         return self.tikTorchClient.get_model_state()
