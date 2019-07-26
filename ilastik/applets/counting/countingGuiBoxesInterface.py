@@ -842,7 +842,7 @@ class BoxInterpreter(QObject):
             and self.rubberBand.isVisible()
         ):
             self.rubberBand.hide()
-            self.leftClickReleased.emit(roi2rect(("x", "y"), self.originpos[1:3], self._posModel.cursorPos[:2]))
+            self.leftClickReleased.emit(roi2rect(self.originpos[1:3], self._posModel.cursorPos[:2]))
 
         # Event is always forwarded to the navigation interpreter.
         return self.baseInterpret.eventFilter(watched, event)

@@ -477,7 +477,7 @@ class CountingGui(LabelingGui):
             for roi in self.op.boxViewer.rois[idx].value:
                 if type(roi) is not list or len(roi) is not 2:
                     continue
-                self.boxController.addNewBox(roi2rect(axes, *roi))
+                self.boxController.addNewBox(roi2rect(*roi, axes))
                 #boxIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.Fix)
                 #iconIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.FixIcon)
                 #self.boxController.boxListModel.setData(boxIndex,val)
@@ -490,7 +490,7 @@ class CountingGui(LabelingGui):
                 roi, val = constr
                 if type(roi) is not list or len(roi) is not 2:
                     continue
-                self.boxController.addNewBox(roi2rect(axes, *roi))
+                self.boxController.addNewBox(roi2rect(*roi, axes))
                 boxIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.Fix)
                 iconIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.FixIcon)
                 self.boxController.boxListModel.setData(boxIndex,val)

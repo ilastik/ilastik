@@ -24,15 +24,15 @@ from typing import Sequence
 from PyQt5.QtCore import QRect
 
 
-def roi2rect(axes: Sequence[str], start: Sequence[int], stop: Sequence[int]) -> QRect:
+def roi2rect(start: Sequence[int], stop: Sequence[int],axes: Sequence[str] = ("x", "y")) -> QRect:
     """Convert ROI to QRect, accounting for the specified axis order.
 
     ROI elements are swapped if necessary.
 
     Args:
-        axes: Sequence of axis names that includes ``x`` and ``y``.
         start: ROI start.
         stop: ROI stop.
+        axes: Sequence of axis names that includes ``x`` and ``y``.
 
     Returns:
         QRect with non-negative width and height.
@@ -41,15 +41,20 @@ def roi2rect(axes: Sequence[str], start: Sequence[int], stop: Sequence[int]) -> 
         ValueError: Invalid ROI, missing axes or invalid ROI/axes combination.
 
     Examples:
-        >>> roi2rect(["spam", "y", "x"], [0, 2, 3], [0, 12, 103])
+        >>> roi2rect([0, 2, 3], [0, 12, 103], ["spam", "y", "x"])
         PyQt5.QtCore.QRect(3, 2, 100, 10)
-        >>> roi2rect(["spam", "y", "x"], [0, 12, 103], [0, 2, 3])
+        >>> roi2rect([0, 12, 103], [0, 2, 3], ["spam", "y", "x"])
         PyQt5.QtCore.QRect(3, 2, 100, 10)
-        >>> roi2rect(["spam", "y"], [0, 2, 3], [0, 12, 103])  # doctest: +IGNORE_EXCEPTION_DETAIL
+        >>> roi2rect([0, 2, 3], [0, 12, 103], ["spam", "y"])  # doctest: +IGNORE_EXCEPTION_DETAIL
         Traceback (most recent call last):
           ...
         ValueError
+        >>> roi2rect([1, 2], [8, 9])
+        PyQt5.QtCore.QRect(1, 2, 7, 7)
     """
+    if len(start) != len(stop) != len(axes):
+        raise ValueError(f"axes {axes}, start {start}, stop {stop} have different lengths")
+
     try:
         ix = axes.index("x")
         iy = axes.index("y")
