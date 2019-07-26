@@ -45,7 +45,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.utility import OpMultiLaneWrapper
 from lazyflow.graph import Graph
 from lazyflow.utility import PathComponents, isUrl, make_absolute
-from lazyflow.utility.pathHelpers import splitPath, globH5N5
+from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz
 from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.graph import Graph
@@ -261,21 +261,25 @@ class DatasetInfo(object):
 
     @classmethod
     def globInternalPaths(cls, file_path:str, glob_str:str, cwd:str=None) -> List[str]:
-        common_internal_paths = set()
+        glob_str = glob_str.lstrip('/')
+        internal_paths = set()
         for path in cls.expand_path(file_path, cwd=cwd):
             f = None
             try:
-                if cls.pathIsHdf5(path):
+                if cls.pathIsNpz(path):
+                    internal_paths |= set(globNpz(path, glob_str))
+                    continue
+                elif cls.pathIsHdf5(path):
                     f = h5py.File(path, 'r')
                 elif cls.pathIsN5(path):
                     f = z5py.N5File(path) #FIXME
                 else:
                     raise Exception(f"{path} is not an 'n5' or 'h5' file")
-                common_internal_paths |= set(globH5N5(f, glob_str.lstrip('/')))
+                internal_paths |= set(globH5N5(f, glob_str))
             finally:
                 if f is not None:
                     f.close()
-        return sorted(common_internal_paths)
+        return sorted(internal_paths)
 
     @classmethod
     def pathIsHdf5(cls, path:str) -> bool:
@@ -283,6 +287,13 @@ class DatasetInfo(object):
 
     def isHdf5(self) -> bool:
         return any(self.pathIsHdf5(ep) for ep in self.external_paths)
+
+    @classmethod
+    def pathIsNpz(cls, path:str) -> bool:
+        return PathComponents(path).extension in ['.npz']
+
+    def isNpz(self) -> bool:
+        return any(self.pathIsNpz(ep) for ep in self.external_paths)
 
     @classmethod
     def pathIsN5(cls, path:str) -> bool:
@@ -293,7 +304,7 @@ class DatasetInfo(object):
 
     @classmethod
     def fileHasInternalPaths(cls, path:str) -> bool:
-        return cls.pathIsHdf5(path) or cls.pathIsN5(path)
+        return cls.pathIsHdf5(path) or cls.pathIsN5(path) or cls.pathIsNpz(path)
 
     @classmethod
     def getPossibleInternalPathsFor(cls, file_path:str, min_ndim=2, max_ndim=5):
