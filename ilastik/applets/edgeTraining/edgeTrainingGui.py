@@ -85,16 +85,36 @@ class EdgeTrainingGui(LayerViewerGui):
         self._init_probability_colortable()
 
     def _after_init(self):
-        super(EdgeTrainingGui, self)._after_init()
-        self.update_probability_edges()
+        super( EdgeTrainingGui, self )._after_init()
+        op = self.topLevelOperatorView
+        def enable_live_update_on_edges_available(*args, **kwargs):
+            lane_dicts_ready = [(bool(dct.value) and dct.ready()) for dct in op.viewed_operator().EdgeLabelsDict]
+            have_edges = any(lane_dicts_ready)
+            self.live_update_button.setEnabled(have_edges)
+            self.live_update_button.setChecked(have_edges)
+            return have_edges
 
-        # Initialize everything with the operator's initial values
         self.configure_gui_from_operator()
-        # Make sure, Live Update is unchecked on init. It might have been checked by previous function.
-        self.live_update_button.setChecked(False)
+
+        have_edges = enable_live_update_on_edges_available()  # init button
+        if have_edges:  # update if there are already labeled edges
+            op.EdgeLabelsDict.setDirty()
+
+        if not self.topLevelOperatorView.FreezeClassifier.value:
+            self.getLayerByName('Edge Probabilities').visible = True
+        # set the hooks after we initialized everything that might be needed by them
+        self.live_update_button.toggled.connect(self.configure_operator_from_gui)
+        cleanup_fn = op.FreezeClassifier.notifyDirty(self.configure_gui_from_operator, defer=True)
+        self.__cleanup_fns.append(cleanup_fn)
+
+        self.train_from_gt_button.clicked.connect(
+            lambda: op.FreezeClassifier.setValue(False))
+
+        cleanup_fn = op.EdgeLabelsDict.notifyDirty(
+            enable_live_update_on_edges_available)
+        self.__cleanup_fns.append(cleanup_fn)
 
     def createDrawerControls(self):
-        op = self.topLevelOperatorView
 
         def configure_update_handlers(qt_signal, op_slot):
             qt_signal.connect(self.configure_operator_from_gui)
@@ -102,42 +122,24 @@ class EdgeTrainingGui(LayerViewerGui):
             self.__cleanup_fns.append(cleanup_fn)
 
         # Controls
-        feature_selection_button = QPushButton(
-            text="Select Features",
-            icon=QIcon(ilastikIcons.AddSel),
-            toolTip="Select edge/superpixel features to use for classification.",
-            clicked=self._open_feature_selection_dlg,
-        )
-        self.train_from_gt_button = QPushButton(
-            text="Auto-label",
-            icon=QIcon(ilastikIcons.Segment),
-            toolTip="Automatically label all edges according to your pre-loaded groundtruth volume.",
-            clicked=self._handle_label_from_gt_clicked,
-        )
-        self.clear_labels_button = QPushButton(
-            text="Clear Labels",
-            icon=QIcon(ilastikIcons.Clear),
-            toolTip="Remove all edge labels. (Start over on this image.)",
-            clicked=self._handle_clear_labels_clicked,
-        )
-        self.live_update_button = QPushButton(
-            text="Live Predict",
-            checkable=True,
-            icon=QIcon(ilastikIcons.Play),
-            toolTip="Update the edge classifier predictions",
-            clicked=self._handle_live_update_clicked,
-            enabled=False,
-        )
-        configure_update_handlers(self.live_update_button.toggled, op.FreezeCache)
-
-        self.train_from_gt_button.clicked.connect(lambda: op.FreezeClassifier.setValue(False))
-
-        def enable_live_update_on_edges_available(*args, **kwargs):
-            have_edges = op.EdgeLabelsDict.ready() and bool(op.EdgeLabelsDict.value)
-            self.live_update_button.setEnabled(have_edges)
-
-        cleanup_fn = op.EdgeLabelsDict.notifyDirty(enable_live_update_on_edges_available)
-        self.__cleanup_fns.append(cleanup_fn)
+        feature_selection_button = QPushButton(text="Select Features",
+                                               icon=QIcon(ilastikIcons.AddSel),
+                                               toolTip="Select edge/superpixel features to use for classification.",
+                                               clicked=self._open_feature_selection_dlg)
+        self.train_from_gt_button = QPushButton(text="Auto-label",
+                                                icon=QIcon(ilastikIcons.Segment),
+                                                toolTip="Automatically label all edges according to your pre-loaded groundtruth volume.",
+                                                clicked=self._handle_label_from_gt_clicked)
+        self.clear_labels_button = QPushButton(text="Clear Labels",
+                                               icon=QIcon(ilastikIcons.Clear),
+                                               toolTip="Remove all edge labels. (Start over on this image.)",
+                                               clicked=self._handle_clear_labels_clicked)
+        self.live_update_button = QPushButton(text="Live Predict",
+                                              checkable=True,
+                                              icon=QIcon(ilastikIcons.Play),
+                                              toolTip="Update the edge classifier predictions",
+                                              clicked=self._handle_live_update_clicked,
+                                              enabled=False)
 
         # Layout
         label_layout = QHBoxLayout()
@@ -256,7 +258,8 @@ class EdgeTrainingGui(LayerViewerGui):
             if new_label == 0:
                 del new_labels[sp_id_pair]
 
-        op.EdgeLabelsDict.setValue(new_labels)
+        op.EdgeLabelsDict.setValue( new_labels )
+        [dct.setDirty() for dct in op.viewed_operator().EdgeLabelsDict]  # be sure to update all lanes
 
     def _handle_label_from_gt_clicked(self):
         def train_from_gt():

@@ -81,19 +81,29 @@ class MulticutGuiMixin(object):
         self.__init_disagreement_label_colortable()
 
     def _after_init(self):
-        pass
+        self.configure_gui_from_operator()
+        op = self.__topLevelOperatorView
+        def configure_update_handlers( qt_signal, op_slot ):
+            qt_signal.connect( self.configure_operator_from_gui )
+            op_slot.notifyDirty( self.configure_gui_from_operator )
+            self.__cleanup_fns.append( partial( op_slot.unregisterDirty, self.configure_gui_from_operator ) )
+
+        # Extra: Auto-show the multicut edges if necessary.
+        def auto_show_multicut_layer(checked):
+            if checked:
+                self.getLayerByName("Multicut Edges").visible = True
+
+        # set the hooks after we initialized everything that might be needed by them
+        configure_update_handlers(self.beta_box.valueChanged, op.Beta)
+        self.live_multicut_button.toggled.connect(auto_show_multicut_layer)
+        configure_update_handlers(self.live_multicut_button.toggled, op.FreezeCache)
+        configure_update_handlers(self.solver_name_combo.currentIndexChanged, op.SolverName)
 
     def createDrawerControls(self):
         """
         This is a separate function from initAppletDrawer() so that it can be
         called and used within another applet (this class is a mixin).
         """
-        op = self.__topLevelOperatorView
-
-        def configure_update_handlers(qt_signal, op_slot):
-            qt_signal.connect(self.configure_operator_from_gui)
-            op_slot.notifyDirty(self.configure_gui_from_operator)
-            self.__cleanup_fns.append(partial(op_slot.unregisterDirty, self.configure_gui_from_operator))
 
         def control_layout(label_text, widget):
             row_layout = QHBoxLayout()
@@ -106,14 +116,8 @@ class MulticutGuiMixin(object):
         drawer_layout.setSpacing(1)
 
         # Beta
-        beta_box = QDoubleSpinBox(
-            decimals=2,
-            minimum=0.01,
-            maximum=0.99,
-            singleStep=0.1,
-            toolTip="Bias parameter for the multicut optimization.",
-        )
-        configure_update_handlers(beta_box.valueChanged, op.Beta)
+        beta_box = QDoubleSpinBox(decimals=2, minimum=0.01, maximum=0.99, singleStep=0.1,
+                                  toolTip="Bias parameter for the multicut optimization.")
         beta_layout = control_layout("Beta", beta_box)
         drawer_layout.addLayout(beta_layout)
         self.beta_box = beta_box
@@ -124,23 +128,16 @@ class MulticutGuiMixin(object):
         )
         for solver_name in AVAILABLE_SOLVER_NAMES:
             solver_name_combo.addItem(solver_name)
-        configure_update_handlers(solver_name_combo.currentIndexChanged, op.SolverName)
-        drawer_layout.addLayout(control_layout("Solver", solver_name_combo))
+        drawer_layout.addLayout( control_layout( "Solver", solver_name_combo ) )
         self.solver_name_combo = solver_name_combo
 
         button_layout = QHBoxLayout()
 
         # Live Multicut Button
-        live_multicut_button = QPushButton(text="Live Multicut", checkable=True, icon=QIcon(ilastikIcons.Play))
-        configure_update_handlers(live_multicut_button.toggled, op.FreezeCache)
-
-        # Extra: Auto-show the multicut edges if necessary.
-        def auto_show_multicut_layer(checked):
-            if checked:
-                self.getLayerByName("Multicut Edges").visible = True
-
-        live_multicut_button.toggled.connect(auto_show_multicut_layer)
-
+        live_multicut_button = QPushButton(text="Live Multicut",
+                                           checkable=True,
+                                           icon=QIcon(ilastikIcons.Play))
+        
         button_layout.addWidget(live_multicut_button)
         self.live_multicut_button = live_multicut_button
 
@@ -164,18 +161,12 @@ class MulticutGuiMixin(object):
         mgr = ShortcutManager()
         ActionInfo = ShortcutManager.ActionInfo
         shortcut_group = "Multicut"
-        mgr.register(
-            "u",
-            ActionInfo(
-                shortcut_group,
-                "UpdateMulticut",
-                "Run the multicut optimization using the current edge probabilities",
-                update_button.click,
-                update_button,
-                update_button,
-            ),
-        )
-
+        mgr.register( "u", ActionInfo( shortcut_group,
+                                       "UpdateMulticut",
+                                       "Run the multicut optimization using the current edge probabilities",
+                                       update_button.click,
+                                       update_button,
+                                       update_button ) )
         return drawer
 
     def __init_probability_colortable(self):
