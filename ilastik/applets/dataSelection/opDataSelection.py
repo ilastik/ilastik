@@ -107,7 +107,7 @@ class DatasetInfo(object):
         self.base_dir = str(Path(project_file.filename).absolute().parent) if project_file else os.getcwd()
         assert os.path.isabs(self.base_dir) #FIXME: if file_project was opened as a relative path, this would break
 
-        if location == self.Location.PreloadedArray:
+        if location == self.Location.PreloadedArray or preloaded_array is not None:
             assert preloaded_array is not None
             self.preloaded_array = vigra.taggedView(preloaded_array, axistags or get_default_axisordering(preloaded_array.shape))
             self.nickname = "preloaded-{}-array".format(self.preloaded_array.dtype.name)

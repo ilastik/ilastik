@@ -451,6 +451,7 @@ class TestOpDataSelection_3DStacks(object):
         cls.imgFileNameGlobs2DNicknames = []
 
         cls.imgFileNameGlobs2Dc = []
+        cls.imgFileNameGlobs2DcNicknames = []
 
         cls.imgFileLists2D = defaultdict(list)
 
@@ -575,15 +576,14 @@ class TestOpDataSelection_3DStacks(object):
             cls.vigraExtensions.pop(cls.vigraExtensions.index(extension))
 
         for extension in cls.vigraExtensions:
-            cls.imgFileNameGlobs2Dc.append(
-                os.path.join(cls.tmpdir, "testImage2Dc_*.{}".format(extension)))
+            cls.imgFileNameGlobs2Dc.append(os.path.join(cls.tmpdir, "testImage2Dc_*.{}".format(extension)))
+            cls.imgFileNameGlobs2DcNicknames.append('testImage2Dc_0')
 
-        cls.imgFileNameGlobs2Dc.extend([
-            os.path.join(cls.tmpdir, "testimage2Dc_*.h5/test/data"),
-            # uncomment once support is implemented
-            # os.path.join(cls.tmpdir, "testimage2Dc_*.npz/data"),
-            # os.path.join(cls.tmpdir, "testimage2Dc_*.npy"),
-        ])
+        cls.imgFileNameGlobs2Dc.append(os.path.join(cls.tmpdir, "testimage2Dc_*.h5/test/data"))
+        cls.imgFileNameGlobs2DcNicknames.append('testimage2Dc_0-test-data')
+        # uncomment once support is implemented
+        # os.path.join(cls.tmpdir, "testimage2Dc_*.npz/data"),
+        # os.path.join(cls.tmpdir, "testimage2Dc_*.npy"),
 
         # Create a 'project' file and give it some data
         cls.projectFile = h5py.File(cls.projectFileName)
@@ -641,35 +641,24 @@ class TestOpDataSelection_3DStacks(object):
                 continue
             numpy.testing.assert_array_equal(imgData3D, self.imgData3D)
 
-    def testBasic3DcStackFromGlobString(self):
+    def testBasic3DcStackFromGlobString(self, empty_project_file):
         """Test if stacked 2d 3-channel files are loaded correctly"""
         # For some reason vigra saves 2D+c data compressed in gifs, so skip!
-        self.compressedExtensions.append('.gif')
-        for fileName in self.imgFileNameGlobs2Dc:
-            graph = lazyflow.graph.Graph()
-            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
-            reader.ProjectFile.setValue(self.projectFile)
-            reader.WorkingDirectory.setValue(os.getcwd())
-            reader.ProjectDataGroup.setValue('DataSelection/local_data')
+        for fileName, nickname in zip(self.imgFileNameGlobs2Dc, self.imgFileNameGlobs2DcNicknames):
+            reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={'forceAxisOrder': False})
+            reader.WorkingDirectory.setValue(str(Path(empty_project_file.filename).parent))
 
-            info = DatasetInfo()
-            # Will be read from the filesystem since the data won't be found in the project file.
-            info.location = DatasetInfo.Location.ProjectInternal
-            info.filePath = fileName
-            info.invertColors = False
-            info.convertToGrayscale = False
-
-            reader.Dataset.setValues([info])
+            reader.Dataset.setValues([DatasetInfo(filepath=fileName, sequence_axis='z')])
 
             # Read the test files using the data selection operator and verify the contents
             imgData3Dc = reader.Image[0][...].wait()
 
             # Check the file name output
-            assert reader.ImageName[0].value == fileName
+            assert reader.ImageName[0].value == nickname
             # Check raw images
             assert imgData3Dc.shape == self.imgData3Dc.shape, (imgData3Dc.shape, self.imgData3Dc.shape)
             # skip this if image was saved compressed:
-            if any(x in fileName.lower() for x in self.compressedExtensions):
+            if any(x in fileName.lower() for x in self.compressedExtensions + ['.gif']):
                 print("Skipping raw comparison for compressed data: {}".format(fileName))
                 continue
             numpy.testing.assert_array_equal(imgData3Dc, self.imgData3Dc)
@@ -716,19 +705,10 @@ class TestOpDataSelection_SingleFileH5Stacks():
             print('Exception caught while deleting temporary files: {}'.format(e))
 
     def test_load_single_file_with_glob(self):
-        graph = lazyflow.graph.Graph()
-        reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
-        reader.ProjectFile.setValue(self.projectFile)
+        reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={'forceAxisOrder': False})
         reader.WorkingDirectory.setValue(os.getcwd())
-        reader.ProjectDataGroup.setValue('DataSelection/local_data')
 
-        info = DatasetInfo(filepath=self.glob_string)
-        # Will be read from the filesystem since the data won't be found in the project file.
-        info.location = DatasetInfo.Location.ProjectInternal
-        info.invertColors = False
-        info.convertToGrayscale = False
-
-        reader.Dataset.setValues([info])
+        reader.Dataset.setValues([DatasetInfo(filepath=self.glob_string, sequence_axis='t')])
 
         # Read the test files using the data selection operator and verify the contents
         imgData = reader.Image[0][...].wait()
@@ -739,18 +719,11 @@ class TestOpDataSelection_SingleFileH5Stacks():
         numpy.testing.assert_array_equal(imgData, self.imgData3Dct)
 
     def test_load_single_file_with_list(self):
-        graph = lazyflow.graph.Graph()
-        reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
-        reader.ProjectFile.setValue(self.projectFile)
+        reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={'forceAxisOrder': False})
         reader.WorkingDirectory.setValue(os.getcwd())
-        reader.ProjectDataGroup.setValue('DataSelection/local_data')
 
         fileNameString = os.path.pathsep.join(self.file_names)
-        info = DatasetInfo(filepath=fileNameString)
-        # Will be read from the filesystem since the data won't be found in the project file.
-        info.location = DatasetInfo.Location.ProjectInternal
-        info.invertColors = False
-        info.convertToGrayscale = False
+        info = DatasetInfo(filepath=fileNameString, sequence_axis='t')
 
         reader.Dataset.setValues([info])
 
@@ -797,23 +770,11 @@ class TestOpDataSelection_FakeDataReader():
             print('Exception caught while deleting temporary files: {}'.format(e))
 
     def test_real_data_source(self):
-        graph = lazyflow.graph.Graph()
-        reader = OperatorWrapper(OpDataSelection, graph=graph,
+        reader = OperatorWrapper(OpDataSelection, graph=Graph(),
                                  operator_kwargs={'forceAxisOrder': False})
-        reader.ProjectFile.setValue(self.projectFile)
         reader.WorkingDirectory.setValue(os.getcwd())
-        reader.ProjectDataGroup.setValue('DataSelection/local_data')
 
-        info = DatasetInfo()
-        # Will be read from the filesystem since the data won't be found in the project file.
-        info.location = DatasetInfo.Location.ProjectInternal
-        info.filePath = self.testRawDataFileName
-        info.invertColors = False
-        info.convertToGrayscale = False
-        #Use real data source
-        info.realDataSource = True
-
-        reader.Dataset.setValues([info])
+        reader.Dataset.setValues([DatasetInfo(filepath=self.testRawDataFileName)])
 
         # Read the test file using the data selection operator and verify the contents
         imgData = reader.Image[0][...].wait()
@@ -829,17 +790,10 @@ class TestOpDataSelection_FakeDataReader():
         reader.WorkingDirectory.setValue(os.getcwd())
         reader.ProjectDataGroup.setValue('DataSelection/local_data')
 
-        info = DatasetInfo()
-        # Will be read from the filesystem since the data won't be found in the project file.
-        info.location = DatasetInfo.Location.ProjectInternal
-        info.filePath = self.testRawDataFileName
-        info.invertColors = False
-        info.convertToGrayscale = False
-        # Use *fake* data source
-        info.realDataSource = False
-        info.axistags = vigra.defaultAxistags('tczyx')
-        info.laneShape = self.imgData.shape
-        info.laneDtype = self.imgData.dtype
+        info = DatasetInfo(
+            preloaded_array=self.imgData,
+            axistags = vigra.defaultAxistags('tczyx')
+        )
 
         reader.Dataset.setValues([info])
 
@@ -849,8 +803,7 @@ class TestOpDataSelection_FakeDataReader():
 
         assert imgData.shape == self.imgData.shape
         assert imgData.dtype == self.imgData.dtype
-        expected_fake_data = numpy.zeros(info.laneShape, dtype=info.laneDtype)
-        numpy.testing.assert_array_equal(imgData, expected_fake_data)
+        numpy.testing.assert_array_equal(imgData, imgData)
 
 
 class TestOpDataSelection_stack_along_parameter:
@@ -923,11 +876,9 @@ class TestOpDataSelection_stack_along_parameter:
 
     def _test_stack_along(self, name, extension, sequence_axis, expected):
         fileName = os.path.join(self.tmpdir, f'{name}{extension}')
-        graph = lazyflow.graph.Graph()
-        reader = OpDataSelection(graph=graph, forceAxisOrder=False)
+        reader = OpDataSelection(graph=Graph(), forceAxisOrder=False)
         reader.WorkingDirectory.setValue(os.getcwd())
-        info = DatasetInfo(fileName, sequence_axis=sequence_axis)
-        reader.Dataset.setValue(info)
+        reader.Dataset.setValue(DatasetInfo(filepath=fileName, sequence_axis=sequence_axis))
         read = reader.Image[...].wait()
 
         assert numpy.allclose(read, expected), f'{name}: {read.shape}, {expected.shape}'
@@ -936,32 +887,32 @@ class TestOpDataSelection_stack_along_parameter:
 
         testcases = [
             ['rgb*0c', '.h5/data', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)],
-            ['rgb*0c', '.png    ', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=2).transpose(1, 0, 2
+            ['rgb*0c', '.png'    , 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=2).transpose(1, 0, 2
                                                                                                                ) * 255],
-            ['rgb*0c', '.tiff   ', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)],
+            ['rgb*0c', '.tiff'   , 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)],
             ['rgb*1c', '.h5/data', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=2)],
-            ['rgb*1c', '.png    ', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=2).transpose(1, 0, 2
+            ['rgb*1c', '.png'    , 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=2).transpose(1, 0, 2
                                                                                                                ) * 255],
             ['rgb*3c', '.h5/data', 'c', numpy.concatenate([self.rgb03c, self.rgb13c, self.rgb23c], axis=2)],
-            ['rgb*3c', '.png    ', 'c', numpy.concatenate([self.rgb03c, self.rgb13c, self.rgb23c], axis=2).transpose(
+            ['rgb*3c', '.png'    , 'c', numpy.concatenate([self.rgb03c, self.rgb13c, self.rgb23c], axis=2).transpose(
                 1, 0, 2) * 255],
-            ['rgb*3c', '.tiff   ', 'c', numpy.concatenate([self.rgb03c, self.rgb13c, self.rgb23c], axis=2) * 255],
+            ['rgb*3c', '.tiff'   , 'c', numpy.concatenate([self.rgb03c, self.rgb13c, self.rgb23c], axis=2) * 255],
             ['rgb*0c', '.h5/data', 'z', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
-            ['rgb*0c', '.png    ', 'z', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None] * 255],
-            ['rgb*0c', '.tiff   ', 'z', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
+            ['rgb*0c', '.png'    , 'z', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None] * 255],
+            ['rgb*0c', '.tiff'   , 'z', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
             ['rgb*1c', '.h5/data', 'z', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
-            ['rgb*1c', '.png    ', 'z', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None] * 255],
+            ['rgb*1c', '.png'    , 'z', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None] * 255],
             ['rgb*3c', '.h5/data', 'z', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0)],
-            ['rgb*3c', '.png    ', 'z', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0) * 255],
-            ['rgb*3c', '.tiff   ', 'z', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0) * 255],
+            ['rgb*3c', '.png'    , 'z', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0) * 255],
+            ['rgb*3c', '.tiff'   , 'z', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0) * 255],
             ['rgb*0c', '.h5/data', 't', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
-            ['rgb*0c', '.png    ', 't', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None] * 255],
-            ['rgb*0c', '.tiff   ', 't', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
+            ['rgb*0c', '.png'    , 't', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None] * 255],
+            ['rgb*0c', '.tiff'   , 't', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
             ['rgb*1c', '.h5/data', 't', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
-            ['rgb*1c', '.png    ', 't', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None] * 255],
+            ['rgb*1c', '.png'    , 't', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None] * 255],
             ['rgb*3c', '.h5/data', 't', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0)],
-            ['rgb*3c', '.png    ', 't', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0) * 255],
-            ['rgb*3c', '.tiff   ', 't', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0) * 255],
+            ['rgb*3c', '.png'    , 't', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0) * 255],
+            ['rgb*3c', '.tiff'   , 't', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0) * 255],
         ]
 
         for name, extension, sequence_axis, expected in testcases:
