@@ -161,7 +161,9 @@ class DatasetInfo(object):
             tagged_shape = {k: v for k, v in zip(default_keys, self.laneShape)}
             squeezed_shape = {k: v for k, v in tagged_shape.items() if v != 1}
             requested_keys = [tag.key for tag in axistags]
-            if len(requested_keys) == len(squeezed_shape):
+            if set(requested_keys).issubset(set(default_keys)) and set(default_keys) - set(requested_keys) == set('c'):
+                self.axistags = default_tags #allow missing 'c' in axistags; not sure if this is a good idea
+            elif len(requested_keys) == len(squeezed_shape):
                 dummy_axes = [key for key in 'ctzxy' if key not in requested_keys]
                 out_axes = ""
                 for k, v in tagged_shape.items():

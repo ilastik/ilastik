@@ -114,7 +114,8 @@ class BatchProcessingApplet(Applet):
                     role_info = DatasetInfo(
                         filepath=role_input_path,
                         axistags=vigra.defaultAxistags(input_axes) if input_axes else role_axis_tags,
-                        sequence_axis=sequence_axis
+                        sequence_axis=sequence_axis,
+                        fill_in_dummy_axes=True #FIXME: add cmd line param to negate this
                     )
                     batch_lane.DatasetGroup[role_index].setValue(role_info)
             self.workflow().handleNewLanesAdded()
