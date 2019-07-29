@@ -1326,15 +1326,15 @@ class OpRelabelSegmentation(Operator):
         self.Output.meta.dtype = self.ObjectMap.meta.mapping_dtype
 
     def execute(self, slot, subindex, roi, result):
-        tStart = time.time()
+        tStart = time.perf_counter()
         
-        tIMG = time.time()
+        tIMG = time.perf_counter()
         img = self.Image(roi.start, roi.stop).wait()
-        tIMG = 1000.0*(time.time()-tIMG)
+        tIMG = 1000.0*(time.perf_counter()-tIMG)
         
         for t in range(roi.start[0], roi.stop[0]):
             
-            tMAP = time.time()
+            tMAP = time.perf_counter()
             map_ = self.ObjectMap([t]).wait()
             tmap = map_[t]
             # FIXME: necessary because predictions are returned
@@ -1347,24 +1347,24 @@ class OpRelabelSegmentation(Operator):
                 result[t-roi.start[0]][:] = 0
                 return result
             
-            tMAP = 1000.0*(time.time()-tMAP)
+            tMAP = 1000.0*(time.perf_counter()-tMAP)
             #FIXME: This should be cached (and reset when the input becomes dirty)")
-            tMAX = time.time()
+            tMAX = time.perf_counter()
             idx = img.max()
             
             if len(tmap) <= idx:
                 newTmap = numpy.zeros((idx + 1,)) # And maybe this should be cached, too?
                 newTmap[:len(tmap)] = tmap[:]
                 tmap = newTmap
-            tMAX = 1000.0*(time.time()-tMAX)
+            tMAX = 1000.0*(time.perf_counter()-tMAX)
             
             #do the work thing
-            tWORK = time.time()
+            tWORK = time.perf_counter()
             result[t-roi.start[0]] = tmap[img[t-roi.start[0]]]
-            tWORK = 1000.0*(time.time()-tWORK)
+            tWORK = 1000.0*(time.perf_counter()-tWORK)
             
         if self.logger.getEffectiveLevel() >= logging.DEBUG:
-            tStart = 1000.0*(time.time()-tStart)
+            tStart = 1000.0*(time.perf_counter()-tStart)
             self.logger.debug("took %f msec. (img: %f, wait ObjectMap: %f, do work: %f, max: %f)" % (tStart, tIMG, tMAP, tWORK, tMAX))
 
         return result
