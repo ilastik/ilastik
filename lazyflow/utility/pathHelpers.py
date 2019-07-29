@@ -30,6 +30,7 @@ from typing import List
 
 import h5py
 import z5py
+import numpy
 
 
 class PathComponents(object):
@@ -401,6 +402,9 @@ def globH5N5(fileObject, globString):
     matches = globList(pathlist, globString)
     return sorted(matches)
 
+def globNpz(path:str, globString:str):
+    with numpy.load(path, mmap_mode='r') as f:
+        return sorted(globList(f.files, globString))
 
 def globList(listOfPaths, globString):
     matches = [x for x in listOfPaths if fnmatch.fnmatch(x, globString)]
