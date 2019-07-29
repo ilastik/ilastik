@@ -399,9 +399,7 @@ class Operator(metaclass=OperatorMetaClass):
         for s in list(self.inputs.values()) + list(self.outputs.values()):
             # See note about the externally_managed flag in Operator.__init__
             downstream_slots = list(
-                p
-                for p in s.downstream_slots
-                if p.getRealOperator() is not None and not p.getRealOperator().externally_managed
+                p for p in s.downstream_slots if p.operator is not None and not p.operator.externally_managed
             )
             if len(downstream_slots) > 0:
                 msg = (
@@ -410,7 +408,7 @@ class Operator(metaclass=OperatorMetaClass):
                     " operators!\n".format(self.name, s.name)
                 )
                 for i, p in enumerate(s.downstream_slots):
-                    msg += "Downstream Partner {}: {}.{}".format(i, p.getRealOperator().name, p.name)
+                    msg += "Downstream Partner {}: {}.{}".format(i, p.operator.name, p.name)
                 raise RuntimeError(msg)
 
         self._parent = None
