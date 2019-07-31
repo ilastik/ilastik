@@ -33,7 +33,6 @@ import atexit
 # lazyflow
 from lazyflow.utility import OrderedSignal
 from lazyflow.utility import Singleton
-from lazyflow.utility import PriorityQueue
 from lazyflow.utility import log_exception
 from lazyflow.utility import Memory
 
@@ -210,31 +209,28 @@ class CacheMemoryManager(with_metaclass(Singleton, threading.Thread)):
             if total <= self._max_usage * cache_memory:
                 return
 
-            # === we need a cache cleanup ===
+            cache_entries = []
+            cache_entries += [
+                (cache.lastAccessTime(), cache.name, cache.freeMemory) for cache in list(self._managed_caches)
+            ]
+            cache_entries += [
+                (lastAccessTime, f"{cache.name}: {blockKey}", functools.partial(cache.freeBlock, blockKey))
+                for cache in list(self._managed_blocked_caches)
+                for blockKey, lastAccessTime in cache.getBlockAccessTimes()
+            ]
+            cache_entries.sort(key=lambda entry: entry[0])
 
-            # queue holds time stamps and cleanup functions
-            q = PriorityQueue()
-            caches = list(self._managed_caches)
-            for c in caches:
-                q.push((c.lastAccessTime(), c.name, c.freeMemory))
-            caches = list(self._managed_blocked_caches)
-            for c in caches:
-                for k, t in c.getBlockAccessTimes():
-                    cleanupFun = functools.partial(c.freeBlock, k)
-                    info = "{}: {}".format(c.name, k)
-                    q.push((t, info, cleanupFun))
-            c = None
-            caches = None
-
-            while total > self._target_usage * cache_memory and len(q) > 0:
-                t, info, cleanupFun = q.pop()
+            for lastAccessTime, info, cleanupFun in cache_entries:
+                if total <= self._target_usage * cache_memory:
+                    break
                 mem = cleanupFun()
-                logger.debug("Cleaned up {} ({})".format(info, Memory.format(mem)))
+                logger.debug(f"Cleaned up {info} ({Memory.format(mem)})")
                 total -= mem
-            gc.collect()
-            # don't keep a reference until next loop iteration
+
+            # Remove references to cache entries before triggering garbage collection.
             cleanupFun = None
-            q = None
+            cache_entries = None
+            gc.collect()
 
             msg = "Done cleaning up, cache memory usage is now at {}".format(Memory.format(total))
             if cache_memory > 0:
