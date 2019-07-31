@@ -22,11 +22,14 @@ install:
   # replace with whatever version of lazyflow triggered the appveyor
   - ps: cp -recurse C:\projects\lazyflow $env:ILASTIK_ROOT\ilastik-meta\lazyflow
   - timeout 10
-  - cd %ILASTIK_ROOT%\ilastik-meta
   - >
-    python ilastik/scripts/devenv.py create -n %ENV_NAME%
-    -p ilastik-dependencies-no-solvers pytest-cov coveralls black
-    -c ilastik-forge conda-forge defaults
+    conda create -n %ENV_NAME%
+    -c ilastik-forge -c conda-forge -c defaults
+    ilastik-dependencies-no-solvers
+    pytest-cov
+    coveralls
+    black
+  - conda remove -n %ENV_NAME% --force ilastik-meta
 
 build: off
 
@@ -35,7 +38,7 @@ test_script:
   - activate %ENV_NAME%
   - cd %ILASTIK_ROOT%\ilastik-meta\lazyflow
   - >
-      pytest
+      python -m pytest
       --capture=no
       --junitxml=nosetests.lazyflow.xml
 
