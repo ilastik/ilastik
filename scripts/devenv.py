@@ -153,15 +153,18 @@ def timed(func: Callable, *args: Any, **kwargs: Any) -> (float, Any):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    ap.add_argument("-n", "--name", help="name of the conda environment", default="ilastik-devel")
+    def add_global_args(argparser: argparse.ArgumentParser) -> None:
+        argparser.add_argument("-n", "--name", help="name of the conda environment", default="ilastik-devel")
 
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     sub = ap.add_subparsers(dest="command", metavar="COMMAND")
     sub.required = True
 
     create_ap = sub.add_parser(
         "create", help="create a new development environment", formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
+    create_ap.set_defaults(func=command_create)
+    add_global_args(create_ap)
     create_ap.add_argument(
         "-p",
         "--package",
@@ -189,7 +192,6 @@ def main():
         const=None,
         default=str(pathlib.Path(".").resolve()),
     )
-    create_ap.set_defaults(func=command_create)
 
     remove_ap = sub.add_parser(
         "remove",
@@ -197,6 +199,7 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     remove_ap.set_defaults(func=command_remove)
+    add_global_args(remove_ap)
 
     args = ap.parse_args()
 

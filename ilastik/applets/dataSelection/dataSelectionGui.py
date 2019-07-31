@@ -422,10 +422,8 @@ class DataSelectionGui(QWidget):
         if ilastik_config.getboolean("ilastik", "debug"):
             # use Qt dialog in debug mode (more portable?)
             file_dialog.setOption(QFileDialog.DontUseNativeDialog, True)
-            #file_dialog.setNameFilterDetailsVisible(False)
-            # select multiple files
-            file_dialog.setFileMode(QFileDialog.ExistingFiles)
 
+        file_dialog.setFileMode(QFileDialog.ExistingFiles)
         if not file_dialog.exec_():
             return []
         return cls.cleanFileList(file_dialog.selectedFiles())

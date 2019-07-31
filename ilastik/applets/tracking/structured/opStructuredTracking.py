@@ -27,6 +27,18 @@ except ImportError:
         logger.warning("Could not find any ILP solver")
 
 
+class AnnotationHypothesisgraphMismatchException(Exception):
+    def __init__(self, source_object_id, track_ids):
+        msg = (
+            "Annotated arc that you are setting 'value' of is NOT in the hypotheses graph. "
+            "Your two objects have either very dissimilar features or they are spatially distant. "
+            "Increase maxNearestNeighbors in your project or force the addition of this arc by changing the code here :)\n"
+            f"source_object_id({source_object_id!r}) ----> destination_object_id({source_object_id!r}"
+            f"Annotated track ids: {track_ids!r}\n"
+        )
+        super().__init__(msg)
+
+
 class OpStructuredTracking(OpConservationTracking):
     Labels = InputSlot(stype=Opaque, rtype=List)
     Divisions = InputSlot(stype=Opaque, rtype=List)
@@ -280,7 +292,7 @@ class OpStructuredTracking(OpConservationTracking):
                                             # print "Looking at in edge {} of node {}, searching for ({},{})".format(edge, sink, time-1, previous_label)
                                             if edge[0][0] == time-1 and edge[0][1] == int(previous_label): # every node 'id' is a tuple (timestep, label), so we need the in-edge coming from previous_label
                                                 foundAllArcs = True
-                                                hypothesesGraph._graph.edge[edge[0]][edge[1]]['value'] = int(trackCountIntersection)
+                                                hypothesesGraph._graph.edges[edge[0], edge[1]]['value'] = int(trackCountIntersection)
                                                 break
                                         if not foundAllArcs:
                                             logger.info("[structuredTrackingGui] Increasing max nearest neighbors! LABELS/MERGERS t:{} id:{}".format(time-1, int(previous_label)))
@@ -336,7 +348,7 @@ class OpStructuredTracking(OpConservationTracking):
                                 for edge in hypothesesGraph._graph.out_edges(parentNode): # an edge is a tuple of source and target nodes
                                     if edge[1][0] == time+1 and edge[1][1] == int(child): # every node 'id' is a tuple (timestep, label), so we need the in-edge coming from previous_label
                                         foundAllArcs = True
-                                        hypothesesGraph._graph.edge[edge[0]][edge[1]]['value'] = 1
+                                        hypothesesGraph._graph.edges[edge[0], edge[1]]['value'] = 1
                                         break
                                 if not foundAllArcs:
                                     break
@@ -531,19 +543,22 @@ class OpStructuredTracking(OpConservationTracking):
             elif type != None:
                 return [type]
 
-    def getLabel(self, time, track, labels):
+    @staticmethod
+    def getLabel(time, track, labels):
         for label in list(labels[time].keys()):
             if labels[time][label] == set([track]):
                 return label
         return False
 
-    def getLabelT(self, track, labelsT):
+    @staticmethod
+    def getLabelT(track, labelsT):
         for label in list(labelsT.keys()):
             if labelsT[label] == set([track]):
                 return label
         return False
 
-    def insertAnnotationsToHypothesesGraph(self, traxelgraph, annotations,misdetectionLabel=-1):
+    @classmethod
+    def insertAnnotationsToHypothesesGraph(cls, traxelgraph, annotations, misdetectionLabel=-1):
         '''
         Add solution values to nodes and arcs from annotations.
         The resulting graph (=model) gets an additional property "value" that represents the number of objects inside a detection/arc
@@ -565,36 +580,43 @@ class OpStructuredTracking(OpConservationTracking):
         labels = annotations['labels']
         divisions = annotations['divisions']
 
-        for t in list(labels.keys()):
+        for t in labels.keys():
             for obj in labels[t]:
                 trackSet = labels[t][obj]
-                if (not -1 in trackSet) and str(obj) in list(traxelToUuidMap[str(t)].keys()):
-                    traxelgraph._graph.node[(t,obj)]['value'] = len(trackSet)
+                if (misdetectionLabel not in trackSet) and str(obj) in list(traxelToUuidMap[str(t)].keys()):
+                    traxelgraph._graph.nodes[(t,obj)]['value'] = len(trackSet)
 
-        for t in list(labels.keys()):
-            if t < max(list(labels.keys())):
-                for source in list(labels[t].keys()):
-                    if (misdetectionLabel not in labels[t][source]) and t+1 in list(labels.keys()):
-                        for dest in list(labels[t+1].keys()):
-                            if (misdetectionLabel not in labels[t+1][dest]):
-                                intersectSet = labels[t][source].intersection(labels[t+1][dest])
-                                lenIntersectSet = len(intersectSet)
-                                assert ((t,source) in list(traxelgraph._graph.edge.keys()) and (t+1,dest) in list(traxelgraph._graph.edge[(t,source)].keys()),
-                                        "Annotated arc that you are setting 'value' of is NOT in the hypotheses graph. " + \
-                                        "Your two objects have either very dissimilar features or they are spatially distant. " + \
-                                        "Increase maxNearestNeighbors in your project or force the addition of this arc by changing the code here :)" + \
-                                        "source ---- dest "+str(source)+"--->"+str(dest)+"       : "+str(lenIntersectSet)+" , "+str(intersectSet))
-                                if lenIntersectSet > 0:
-                                    traxelgraph._graph.edge[(t,source)][(t+1,dest)]['value'] = lenIntersectSet
+        # over time
+        for t in sorted(labels.keys())[:-1:]:
+            for source_object_id in labels[t].keys():
 
+                # check not marked as misdetection, if there is an annotation at all in the next frame
+                if (misdetectionLabel in labels[t][source_object_id]) or (t+1 not in labels.keys()):
+                    continue
+
+                # check object ids in the following frame
+                for destination_object_id in labels[t+1].keys():
+                    # skip if misdetection inside
+                    if (misdetectionLabel in labels[t+1][destination_object_id]):
+                        continue
+
+                    intersectSet = labels[t][source_object_id].intersection(labels[t+1][destination_object_id])
+                    lenIntersectSet = len(intersectSet)
+                    if lenIntersectSet > 0:
+                        if ((t, source_object_id), (t+1, destination_object_id)) not in traxelgraph._graph.edges.keys():
+                            raise AnnotationHypothesisgraphMismatchException(source_object_id, intersectSet)
+
+                        traxelgraph._graph.edges[((t, source_object_id), (t+1, destination_object_id))]['value'] = lenIntersectSet
+
+        # check divisions
         for parentTrack in list(divisions.keys()):
             t = divisions[parentTrack][1]
             childrenTracks = divisions[parentTrack][0]
-            parent = self.getLabelT(parentTrack,labels[t])
+            parent = cls.getLabelT(parentTrack, labels[t])
             for childTrack in childrenTracks:
-                child = self.getLabelT(childTrack,labels[t+1])
-                traxelgraph._graph.edge[(t,parent)][(t+1,child)]['value'] = 1
-                traxelgraph._graph.edge[(t,parent)][(t+1,child)]['gap'] = 1
+                child = cls.getLabelT(childTrack, labels[t+1])
+                traxelgraph._graph.edges[((t,parent), (t+1,child))]['value'] = 1
+                traxelgraph._graph.edges[((t,parent), (t+1,child))]['gap'] = 1
             traxelgraph._graph.node[(t,parent)]['divisionValue'] = True
 
         return traxelgraph

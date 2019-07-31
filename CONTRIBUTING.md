@@ -151,7 +151,7 @@ source ~/.bash_profile  # MAC
 
 **Note:** the following steps guide you through the manual process of creating a development environment.
 For convenience, there is a `ilastik-meta/ilastik/scripts/devenv.py` script that automates this process.
-Ensure that your current working directory is `ilastik-meta` and run `python ilastik/scripts/devenv.py -n idev create`.
+Ensure that your current working directory is `ilastik-meta` and run `python ilastik/scripts/devenv.py create -n idev`.
 
 Create the ilastik development environment (we assume that the dev-environment will have the name _idev_, but you can, of course choose a name to your liking):
 ```bash
