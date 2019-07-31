@@ -683,7 +683,7 @@ def determine_optimal_request_blockshape(
 
     # Need to stack the ideal_blockshape to come up with something larger.
     # Start with an isotropic block, clipped to the nearest multiple of the atomic_blockshape
-    blockshape = numpy.array(determineBlockShape(max_blockshape, target_block_volume_pixels))
+    blockshape = numpy.array(determineBlockShape(clipped_ideal_blockshape, target_block_volume_pixels))
     blockshape -= blockshape % atomic_blockshape
 
     while True:
