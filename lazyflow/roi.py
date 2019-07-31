@@ -364,7 +364,7 @@ def nonzero_bounding_box(data):
         >>> data = numpy.zeros( (10,100,100) )
         >>> data[4, 30:40, 50:60] = 1
         >>> data[7, 45:55, 30:35] = 255
-        >>> nonzero_bounding_box(data)
+        >>> nonzero_bounding_box(data).astype("int")
         array([[ 4, 30, 30],
                [ 8, 55, 60]])
 
@@ -484,14 +484,14 @@ def getIntersectingBlocks(blockshape, roi, asarray=False):
     >>> block_starts = getIntersectingBlocks( (10, 20), [(15, 25),(23, 40)] )
     >>> block_starts.shape
     (2, 2)
-    >>> print block_starts
+    >>> print(block_starts)
     [[10 20]
      [20 20]]
 
     >>> block_starts = getIntersectingBlocks( (10, 20), [(15, 25),(23, 41)] )
     >>> block_starts.shape
     (4, 2)
-    >>> print block_starts
+    >>> print(block_starts)
     [[10 20]
      [10 40]
      [20 20]
@@ -502,7 +502,7 @@ def getIntersectingBlocks(blockshape, roi, asarray=False):
     >>> block_start_matrix = getIntersectingBlocks( (10, 20), [(15, 25),(23, 40)], asarray=True )
     >>> block_start_matrix.shape
     (2, 1, 2)
-    >>> print block_start_matrix
+    >>> print(block_start_matrix)
     [[[10 20]]
     <BLANKLINE>
      [[20 20]]]
@@ -510,7 +510,7 @@ def getIntersectingBlocks(blockshape, roi, asarray=False):
     >>> block_start_matrix = getIntersectingBlocks( (10, 20), [(15, 25),(23, 41)], asarray=True )
     >>> block_start_matrix.shape
     (2, 2, 2)
-    >>> print block_start_matrix
+    >>> print(block_start_matrix)
     [[[10 20]
       [10 40]]
     <BLANKLINE>
@@ -521,7 +521,7 @@ def getIntersectingBlocks(blockshape, roi, asarray=False):
     This function works for negative rois, too.
 
     >>> block_starts = getIntersectingBlocks( (10, 20), [(-10, -5),(5, 5)] )
-    >>> print block_starts
+    >>> print(block_starts)
     [[-10 -20]
      [-10   0]
      [  0 -20]

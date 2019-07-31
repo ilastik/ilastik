@@ -39,14 +39,14 @@ def blockwise_view(a, blockshape, aslist=False, require_aligned_blocks=True):
     Here's a 2D example (this function also works for ND):
 
     >>> a = numpy.arange(1,21).reshape(4,5)
-    >>> print a
+    >>> print(a)
     [[ 1  2  3  4  5]
      [ 6  7  8  9 10]
      [11 12 13 14 15]
      [16 17 18 19 20]]
 
-    >>> view = blockwise_view(a, (2,2), False)
-    >>> print view
+    >>> view = blockwise_view(a, (2,2), require_aligned_blocks=False)
+    >>> print(view)
     [[[[ 1  2]
        [ 6  7]]
     <BLANKLINE>

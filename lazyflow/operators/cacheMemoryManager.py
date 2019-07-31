@@ -62,16 +62,20 @@ class CacheMemoryManager(with_metaclass(Singleton, threading.Thread)):
     thread.
 
     Interface:
-    The manager provides a signal you can subscribe to
-    >>> def writeFunction(x): print("total mem: {}".format(x))
-    >>> mgr = CacheMemoryManager()
-    >>> mgr.totalCacheMemory.subscribe(writeFunction)
+    The manager provides a signal you can subscribe to::
+
+        def writeFunction(x): print("total mem: {}".format(x))
+            mgr = CacheMemoryManager()
+            mgr.totalCacheMemory.subscribe(writeFunction)
+
     which emits the size of all observable caches, combined, in regular
     intervals.
 
     The update interval (for the signal and for automated cache release)
-    can be set with a call to a class method
-    >>> CacheMemoryManager().setRefreshInterval(5)
+    can be set with a call to a class method::
+
+        CacheMemoryManager().setRefreshInterval(5)
+
     the interval is measured in seconds. Each change of refresh interval
     triggers cleanup.
     """

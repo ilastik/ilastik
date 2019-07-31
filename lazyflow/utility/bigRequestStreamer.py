@@ -82,14 +82,14 @@ class BigRequestStreamer(object):
     >>> # Optional: Subscribe to progress updates
     >>> def handle_progress(progress):
     ...     if progress == 0:
-    ...         sys.stdout.write("Progress: ")
-    ...     sys.stdout.write( "{} ".format( progress ) )
+    ...         sys.stdout.write("Progress:")
+    ...     sys.stdout.write(f" {progress}")
     >>> streamer.progressSignal.subscribe( handle_progress )
 
     >>> # Execute the batch of requests, and block for the result.
     >>> streamer.execute()
     Progress: 0 16 33 50 66 83 100 100
-    >>> print "Processed {} result blocks with a total sum of: {}".format( result_count[0], result_total_sum[0] )
+    >>> print(f"Processed {result_count[0]} result blocks with a total sum of: {result_total_sum[0]}")
     Processed 6 result blocks with a total sum of: 68400
     """
 
