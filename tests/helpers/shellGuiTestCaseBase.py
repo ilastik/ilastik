@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,31 +16,23 @@ from __future__ import division
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
-from past.utils import old_div
-import sys
-import os
-import threading
-import traceback
+
 import atexit
-import platform
-from functools import partial
+import threading
 
 import pytest
-
-from PyQt5.QtCore import Qt, QEvent, QPoint, QTimer
-from PyQt5.QtGui import QPixmap, QMouseEvent
+from ilastik.ilastik_logging import default_config
+from past.utils import old_div
+from PyQt5.QtCore import QEvent, QPoint, Qt
+from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtWidgets import QApplication, qApp
 
-import ilastik.config
-from ilastik.shell.gui.startShellGui import launchShell
-from ilastik.utility.gui.threadRouter import ThreadRouter
-from .mainThreadHelpers import wait_for_main_func, run_in_main_thread
+from .mainThreadHelpers import wait_for_main_func
 
-from ilastik.ilastik_logging import default_config
 default_config.init(output_mode=default_config.OutputMode.CONSOLE)
+
 
 @atexit.register
 def quitApp():
@@ -52,6 +42,7 @@ def quitApp():
 
 class MainThreadException(Exception):
     """Raised if GUI tests are run from main thread. Can't start QT app."""
+
     pass
 
 
@@ -61,7 +52,7 @@ def run_shell_test(filename):
     import pytest
 
     def run_test():
-        pytest.main([filename, '--capture=no'])
+        pytest.main([filename, "--capture=no"])
 
     testThread = threading.Thread(target=run_test)
     testThread.start()
@@ -83,6 +74,7 @@ class ShellGuiTestCaseBase(object):
     - Subclasses must specify the workflow they are testing by overriding the workflowClass() classmethod.
     - Subclasses may access the shell and workflow via the shell and workflow class members.
     """
+
     mainThreadEvent = threading.Event()
     app = None
 
@@ -112,7 +104,6 @@ class ShellGuiTestCaseBase(object):
         cls.shell.thunkEventHandler.post(impl)
         QApplication.processEvents()
         testFinished.wait()
-
 
     @classmethod
     def workflowClass(cls):
@@ -157,52 +148,68 @@ class ShellGuiTestCaseBase(object):
 
         return img.pixel(point)
 
-    def moveMouseFromCenter(self, imgView, coords ,modifier =Qt.NoModifier ):
+    def moveMouseFromCenter(self, imgView, coords, modifier=Qt.NoModifier):
         centerPoint = old_div(imgView.rect().bottomRight(), 2)
         point = QPoint(*coords) + centerPoint
-        move = QMouseEvent( QEvent.MouseMove, point, Qt.NoButton, Qt.NoButton, modifier  )
-        QApplication.sendEvent(imgView, move )
+        move = QMouseEvent(QEvent.MouseMove, point, Qt.NoButton, Qt.NoButton, modifier)
+        QApplication.sendEvent(imgView, move)
         QApplication.processEvents()
 
-    def strokeMouseFromCenter(self, imgView, start, end, modifier = Qt.NoModifier,numSteps = 10):
+    def strokeMouse(self, imgView, start, end, modifier=Qt.NoModifier, numSteps=10):
+        """Drag the mouse between 2 points.
+
+        Args:
+            imgView: View that will receive events.
+            start: Start (x, y) coordinates, inclusive.
+            stop:  End (x, y) coordinates, *also inclusive*.
+            modifier: This modifier will be active when pressing, moving and releasing.
+            numSteps: The number of mouse move events.
+
+        See Also:
+            :func:`strokeMouseFromCenter`.
+        """
+        self._strokeMouse(imgView, start, end, modifier, numSteps, (0, 0))
+
+    def strokeMouseFromCenter(self, imgView, start, end, modifier=Qt.NoModifier, numSteps=10):
         """
         Drag the mouse between two coordinates.
         A modifier can be specified that will be keep pressed
         default no modifier
         """
+        bottom_right = imgView.rect().bottomRight()
+        center = bottom_right.x() // 2, bottom_right.y() // 2
+        self._strokeMouse(imgView, start, end, modifier, numSteps, center)
 
-
-
-        centerPoint = old_div(imgView.rect().bottomRight(), 2)
-
-        startPoint = QPoint(*start) + centerPoint
-        endPoint = QPoint(*end) + centerPoint
+    def _strokeMouse(self, imgView, start, end, modifier, numSteps, offset):
+        offsetPoint = QPoint(*offset)
+        startPoint = QPoint(*start) + offsetPoint
+        endPoint = QPoint(*end) + offsetPoint
 
         # Note: Due to the implementation of volumina.EventSwitch.eventFilter(),
         #       mouse events intended for the ImageView MUST go through the viewport.
 
         # Move to start
-        move = QMouseEvent( QEvent.MouseMove, startPoint, Qt.NoButton, Qt.NoButton, modifier )
-        QApplication.sendEvent(imgView.viewport(), move )
+        move = QMouseEvent(QEvent.MouseMove, startPoint, Qt.NoButton, Qt.NoButton, modifier)
+        QApplication.sendEvent(imgView.viewport(), move)
 
         # Press left button
-        press = QMouseEvent( QEvent.MouseButtonPress, startPoint, Qt.LeftButton, Qt.NoButton, modifier)
-        QApplication.sendEvent(imgView.viewport(), press )
+        press = QMouseEvent(QEvent.MouseButtonPress, startPoint, Qt.LeftButton, Qt.NoButton, modifier)
+        QApplication.sendEvent(imgView.viewport(), press)
 
         # Move to end in several steps
-        #numSteps = numSteps
+        # numSteps = numSteps
         for i in range(numSteps):
-            nextPoint = startPoint + (endPoint - startPoint) * ( old_div(float(i), numSteps) )
-            move = QMouseEvent( QEvent.MouseMove, nextPoint, Qt.NoButton, Qt.NoButton, modifier )
-            QApplication.sendEvent(imgView.viewport(), move )
+            nextPoint = startPoint + (endPoint - startPoint) * (old_div(float(i), numSteps))
+            move = QMouseEvent(QEvent.MouseMove, nextPoint, Qt.NoButton, Qt.NoButton, modifier)
+            QApplication.sendEvent(imgView.viewport(), move)
 
         # Move to end
-        move = QMouseEvent( QEvent.MouseMove, endPoint, Qt.NoButton, Qt.NoButton, modifier )
-        QApplication.sendEvent(imgView.viewport(), move )
+        move = QMouseEvent(QEvent.MouseMove, endPoint, Qt.NoButton, Qt.NoButton, modifier)
+        QApplication.sendEvent(imgView.viewport(), move)
 
         # Release left button
-        release = QMouseEvent( QEvent.MouseButtonRelease, endPoint, Qt.LeftButton, Qt.NoButton, modifier )
-        QApplication.sendEvent(imgView.viewport(), release )
+        release = QMouseEvent(QEvent.MouseButtonRelease, endPoint, Qt.LeftButton, Qt.NoButton, modifier)
+        QApplication.sendEvent(imgView.viewport(), release)
 
         # Wait for the gui to catch up
         QApplication.processEvents()
