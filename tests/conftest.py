@@ -55,22 +55,21 @@ def pytest_pyfunc_call(pyfuncitem):
     if not is_gui_test(pyfuncitem):
         return
 
-    exc_info = None
+    fut = futures.Future()
 
     def testfunc():
+        nonlocal fut
         try:
-            # Call actual test function
-            return pyfuncitem.obj()
-        except Exception:
-            nonlocal exc_info
-            exc_info = sys.exc_info()
+            result = pyfuncitem.obj()
+            fut.set_result(result)
+        except Exception as e:
+            fut.set_exception(e)
 
-    with futures.ThreadPoolExecutor(max_workers=1) as executor:
-        fut = executor.submit(testfunc)
-        fut.result(timeout=GUI_TEST_TIMEOUT)
+    runner = threading.Thread(target=testfunc)
+    runner.daemon = True
+    runner.start()
 
-    if exc_info:
-        raise exc_info[1].with_traceback(exc_info[2])
+    fut.result(timeout=GUI_TEST_TIMEOUT)
 
     return True
 
@@ -90,9 +89,6 @@ def pytest_runtest_makereport(item, call):
 
         if rep.failed and call.excinfo is not None:
             item.parent._failed = item
-            if call.excinfo.errisinstance(futures.TimeoutError):
-                rep.wasxfail = "reason: Timeout"
-                rep.outcome = "skipped"
 
 
 def pytest_runtest_setup(item):
