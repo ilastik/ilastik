@@ -34,7 +34,7 @@ from PyQt5.QtCore import Qt, QObject, pyqtSignal, QEvent, QTimer, QPointF
 from PyQt5.QtWidgets import QApplication, QGraphicsEllipseItem
 
 
-from volumina.pixelpipeline.datasources import LazyflowSource
+from volumina.api import createDataSource
 from volumina.api import Viewer
 from volumina.layer import ColortableLayer
 from volumina.colortables import jet
@@ -360,7 +360,7 @@ if __name__=="__main__":
     do()
     
     cron.timeout.connect(do)
-    ds = LazyflowSource( op.Output )
+    ds = createDataSource( op.Output )
     layer = ColortableLayer(ds,jet())
      
     mainwin=Viewer()

@@ -33,7 +33,7 @@ from PyQt5.QtWidgets import QWidget, QLabel, QSpinBox, QDoubleSpinBox, QVBoxLayo
                             QMenu, QAction, QCheckBox
 
 from ilastik.utility.gui import threadRouted
-from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
+from volumina.api import createDataSource, ArraySource
 from volumina.layer import GrayscaleLayer, ColortableLayer, generateRandomColors
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
@@ -300,7 +300,7 @@ class WsdtGui(LayerViewerGui):
 
         # Superpixels
         if op.Superpixels.ready():
-            layer = ColortableLayer( LazyflowSource(op.Superpixels), self._sp_colortable )
+            layer = ColortableLayer( createDataSource(op.Superpixels), self._sp_colortable )
             layer.colortableIsRandom = True
             layer.name = "Superpixels"
             layer.visible = True
@@ -327,7 +327,7 @@ class WsdtGui(LayerViewerGui):
 
         # Threshold
         if op.ThresholdedInput.ready():
-            layer = ColortableLayer( LazyflowSource(op.ThresholdedInput), self._threshold_colortable )
+            layer = ColortableLayer( createDataSource(op.ThresholdedInput), self._threshold_colortable )
             layer.name = "Thresholded Input"
             layer.visible = True
             layer.opacity = 1.0

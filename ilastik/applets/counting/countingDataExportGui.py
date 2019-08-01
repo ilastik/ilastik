@@ -25,7 +25,7 @@ from PyQt5.QtWidgets import QMessageBox, QFileDialog
 
 from lazyflow.operators.generic import OpMultiArraySlicer2
 
-from volumina.api import LazyflowSource, ColortableLayer
+from volumina.api import createDataSource, ColortableLayer
 from volumina import colortables
 from .countingGui import countingColorTable
 
@@ -116,7 +116,7 @@ class CountingResultsViewer(DataExportLayerViewerGui):
         opLane = self.topLevelOperatorView
         if predictionSlot.ready() and self.topLevelOperatorView.UpperBound.ready():
             upperBound = self.topLevelOperatorView.UpperBound.value
-            layer = ColortableLayer(LazyflowSource(predictionSlot), colorTable = countingColorTable, normalize =
+            layer = ColortableLayer(createDataSource(predictionSlot), colorTable = countingColorTable, normalize =
                                (0,upperBound))
             layer.name = "Density"
             layers.append(layer)
@@ -138,7 +138,7 @@ class CountingResultsViewer(DataExportLayerViewerGui):
 #        for channel, channelSlot in enumerate(opSlicer.Slices):
 #            if channelSlot.ready() and channel < len(colors) and channel < len(names):
 #                drange = channelSlot.meta.drange or (0.0, 1.0)
-#                predictsrc = LazyflowSource(channelSlot)
+#                predictsrc = createDataSource(channelSlot)
 #                predictLayer = AlphaModulatedLayer( predictsrc,
 #                                                    tintColor=QColor(*colors[channel]),
 #                                                    # FIXME: This is weird.  Why are range and normalize both set to the same thing?

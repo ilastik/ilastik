@@ -33,7 +33,7 @@ from PyQt5.QtWidgets import QApplication, QSplitter, QPushButton, \
                             QVBoxLayout, QWidget, QHBoxLayout, QMainWindow, qApp
 
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
-from volumina.pixelpipeline.datasources import LazyflowSource, ConstantSource
+from volumina.api import createDataSource, ConstantSource
 from volumina.pixelpipeline._testing import OpDataProvider
 from volumina._testing.from_lazyflow import OpDataProvider5D, OpDelay
 from volumina.layer import GrayscaleLayer, RGBALayer, ColortableLayer
@@ -41,7 +41,7 @@ from volumina.widgets.layerwidget import LayerWidget
 from volumina.layerstack import LayerStackModel
 from volumina.volumeEditor import VolumeEditor
 from volumina.volumeEditorWidget import VolumeEditorWidget
-from volumina.pixelpipeline.datasources import ArraySource, LazyflowSinkSource
+from volumina.api import ArraySource, LazyflowSinkSource
 
 
 
@@ -78,7 +78,7 @@ class Main(QMainWindow):
         readerNew.inputs["Filenames"].setValue(["scripts/CB_compressed_XY.h5","scripts/CB_compressed_XZ.h5","scripts/CB_compressed_YZ.h5"])
         readerNew.inputs["hdf5Path"].setValue("volume/data")
         
-        datasrc = LazyflowSource(readerNew.outputs["Output"])
+        datasrc = createDataSource(readerNew.outputs["Output"])
         
         layer1 = GrayscaleLayer( datasrc )
         layer1.name = "Big Data"

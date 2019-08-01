@@ -35,7 +35,7 @@ from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
-from volumina.pixelpipeline.datasources import LazyflowSource
+from volumina.api import createDataSource
 from volumina.layer import SegmentationEdgesLayer, LabelableSegmentationEdgesLayer
 from volumina.utility import ShortcutManager
 
@@ -360,7 +360,7 @@ class EdgeTrainingGui(LayerViewerGui):
         # Superpixels -- Edge Labels 
         if op.Superpixels.ready() and op.EdgeLabelsDict.ready():
             edge_labels = op.EdgeLabelsDict.value
-            layer = LabelableSegmentationEdgesLayer( LazyflowSource(op.Superpixels), self.edge_label_pen_table, edge_labels )
+            layer = LabelableSegmentationEdgesLayer( createDataSource(op.Superpixels), self.edge_label_pen_table, edge_labels )
             layer.name = "Edge Labels"
             layer.visible = True
             layer.opacity = 1.0
@@ -383,7 +383,7 @@ class EdgeTrainingGui(LayerViewerGui):
 
         # Superpixels -- Edge Probabilities
         if op.Superpixels.ready() and op.EdgeProbabilitiesDict.ready():
-            layer = SegmentationEdgesLayer( LazyflowSource(op.Superpixels) )
+            layer = SegmentationEdgesLayer( createDataSource(op.Superpixels) )
             layer.name = "Edge Probabilities" # Name is hard-coded in multiple places: grep before changing.
             layer.visible = False
             layer.opacity = 1.0
@@ -408,7 +408,7 @@ class EdgeTrainingGui(LayerViewerGui):
         if op.Superpixels.ready():
             default_pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
             default_pen.setColor(Qt.yellow)
-            layer = SegmentationEdgesLayer( LazyflowSource(op.Superpixels), default_pen )
+            layer = SegmentationEdgesLayer( createDataSource(op.Superpixels), default_pen )
             layer.name = "Superpixel Edges"
             layer.visible = True
             layer.opacity = 1.0

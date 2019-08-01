@@ -27,7 +27,7 @@ import numpy
 
 import torch
 
-from volumina.api import LazyflowSource, AlphaModulatedLayer
+from volumina.api import createDataSource, AlphaModulatedLayer
 from volumina.utility import PreferencesManager
 
 from PyQt5 import uic
@@ -277,7 +277,7 @@ class NNClassGui(LayerViewerGui):
 
         for channel, predictionSlot in enumerate(self.topLevelOperator.PredictionProbabilityChannels):
             if predictionSlot.ready():
-                predictsrc = LazyflowSource(predictionSlot)
+                predictsrc = createDataSource(predictionSlot)
                 predictionLayer = AlphaModulatedLayer(predictsrc, range=(0.0, 1.0), normalize=(0.0, 1.0))
                 predictionLayer.visible = self.drawer.liveUpdateButton.isChecked()
                 predictionLayer.opacity = 0.25

@@ -44,7 +44,7 @@ from lazyflow.operators import OpSingleChannelSelector, OpWrapSlot
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 #volumina
-from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, AlphaModulatedLayer, LayerStackModel, generateRandomColors
+from volumina.api import createDataSource, GrayscaleLayer, RGBALayer, ColortableLayer, AlphaModulatedLayer, LayerStackModel, generateRandomColors
 from volumina.volumeEditor import VolumeEditor
 from volumina.utility import ShortcutManager
 from volumina.interpreter import ClickReportingInterpreter
@@ -313,7 +313,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
     def _create_grayscale_layer_from_slot(cls, slot, n_channels):
         #FIXME: move all of this stuff into the class constructor. Same for all
         # _create_*layer_from_slot methods.
-        source = LazyflowSource(slot)
+        source = createDataSource(slot)
         layer = GrayscaleLayer(source, window_leveling=True)
         layer.numberOfChannels = n_channels
         layer.set_range(0, slot.meta.drange)
@@ -324,13 +324,13 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
     @classmethod
     def _create_random_colortable_layer_from_slot(cls, slot, num_colors=256):
         colortable = generateRandomColors(num_colors, clamp={'v': 1.0, 's' : 0.5}, zeroIsTransparent=True)
-        layer = ColortableLayer(LazyflowSource(slot), colortable)
+        layer = ColortableLayer(createDataSource(slot), colortable)
         layer.colortableIsRandom = True
         return layer
 
     @classmethod
     def _create_alpha_modulated_layer_from_slot(cls, slot):
-        layer = AlphaModulatedLayer( LazyflowSource(slot),
+        layer = AlphaModulatedLayer( createDataSource(slot),
                                      tintColor=QColor( Qt.cyan ),
                                      range=(0.0, 1.0),
                                      normalize=(0.0, 1.0) )
@@ -344,7 +344,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         # But why would you use uint32 for a binary mask anyway? 
         colortable = [QColor(0,0,0,255).rgba()]
         colortable += 255*[QColor(0,0,0,0).rgba()]
-        layer = ColortableLayer(LazyflowSource(slot), colortable)
+        layer = ColortableLayer(createDataSource(slot), colortable)
         return layer
         
     @classmethod
@@ -368,7 +368,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
             redProvider = OpSingleChannelSelector(parent=slot.getRealOperator().parent)
             redProvider.Input.connect(slot)
             redProvider.Index.setValue( rindex )
-            redSource = LazyflowSource( redProvider.Output )
+            redSource = createDataSource( redProvider.Output )
             redSource.additional_owned_ops.append( redProvider )
         
         greenSource = None
@@ -376,7 +376,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
             greenProvider = OpSingleChannelSelector(parent=slot.getRealOperator().parent)
             greenProvider.Input.connect(slot)
             greenProvider.Index.setValue( gindex )
-            greenSource = LazyflowSource( greenProvider.Output )
+            greenSource = createDataSource( greenProvider.Output )
             greenSource.additional_owned_ops.append( greenProvider )
         
         blueSource = None
@@ -384,7 +384,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
             blueProvider = OpSingleChannelSelector(parent=slot.getRealOperator().parent)
             blueProvider.Input.connect(slot)
             blueProvider.Index.setValue( bindex )
-            blueSource = LazyflowSource( blueProvider.Output )
+            blueSource = createDataSource( blueProvider.Output )
             blueSource.additional_owned_ops.append( blueProvider )
 
         alphaSource = None
@@ -392,7 +392,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
             alphaProvider = OpSingleChannelSelector(parent=slot.getRealOperator().parent)
             alphaProvider.Input.connect(slot)
             alphaProvider.Index.setValue( aindex )
-            alphaSource = LazyflowSource( alphaProvider.Output )
+            alphaSource = createDataSource( alphaProvider.Output )
             alphaSource.additional_owned_ops.append( alphaProvider )
         
         layer = RGBALayer( red=redSource, green=greenSource, blue=blueSource, alpha=alphaSource)
@@ -415,7 +415,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         else:
             # If we don't know the range of the data and normalization is allowed
             # by the user, create a layer that is auto-normalized.
-            # See volumina.pixelpipeline.datasources for details.
+            # See volumina.api for details.
             #
             # Even in the case of integer data, which has more than 255 possible values,
             # (like uint16), it seems reasonable to use this setting as default

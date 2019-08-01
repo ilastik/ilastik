@@ -40,7 +40,7 @@ from PyQt5.QtGui import QColor, QIcon, QCursor
     
 
 # HCI
-from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer, ColortableLayer
+from volumina.api import createDataSource, AlphaModulatedLayer, GrayscaleLayer, ColortableLayer
 from volumina.utility import ShortcutManager, PreferencesManager
 
 from lazyflow.utility import PathComponents
@@ -575,7 +575,7 @@ class PixelClassificationGui(LabelingGui):
             # Add the label projection layer.
             labelProjectionSlot = self.topLevelOperatorView.opLabelPipeline.opLabelArray.Projection2D
             if labelProjectionSlot.ready():
-                projectionSrc = LazyflowSource(labelProjectionSlot)
+                projectionSrc = createDataSource(labelProjectionSlot)
                 try:
                     # This colortable requires matplotlib
                     from volumina.colortables import jet
@@ -602,7 +602,7 @@ class PixelClassificationGui(LabelingGui):
         # Add the uncertainty estimate layer
         uncertaintySlot = self.topLevelOperatorView.UncertaintyEstimate
         if uncertaintySlot.ready():
-            uncertaintySrc = LazyflowSource(uncertaintySlot)
+            uncertaintySrc = createDataSource(uncertaintySlot)
             uncertaintyLayer = AlphaModulatedLayer( uncertaintySrc,
                                                     tintColor=QColor( Qt.cyan ),
                                                     range=(0.0, 1.0),
@@ -624,7 +624,7 @@ class PixelClassificationGui(LabelingGui):
         for channel, segmentationSlot in enumerate(self.topLevelOperatorView.SegmentationChannels):
             if segmentationSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
-                segsrc = LazyflowSource(segmentationSlot)
+                segsrc = createDataSource(segmentationSlot)
                 segLayer = AlphaModulatedLayer( segsrc,
                                                 tintColor=ref_label.pmapColor(),
                                                 range=(0.0, 1.0),
@@ -674,7 +674,7 @@ class PixelClassificationGui(LabelingGui):
         for channel, predictionSlot in enumerate(self.topLevelOperatorView.PredictionProbabilityChannels):
             if predictionSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
-                predictsrc = LazyflowSource(predictionSlot)
+                predictsrc = createDataSource(predictionSlot)
                 predictLayer = AlphaModulatedLayer( predictsrc,
                                                     tintColor=ref_label.pmapColor(),
                                                     range=(0.0, 1.0),
