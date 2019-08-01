@@ -30,19 +30,6 @@ import warnings
 from functools import reduce
 
 
-def warn_deprecated(msg, stacklevel=0):
-    warnings.warn("DEPRECATION WARNING: " + msg, stacklevel=stacklevel + 2)
-
-
-# deprecation warning decorator
-def deprecated(fn):
-    def warner(*args, **kwargs):
-        warn_deprecated(fn.__name__)
-        return fn(*args, **kwargs)
-
-    return warner
-
-
 def nonzero_coord_array(a):
     """
     Equivalent to np.transpose(a.nonzero()), but much
