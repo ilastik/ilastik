@@ -25,7 +25,7 @@ import numpy
 import vigra
 from lazyflow.graph import Graph
 from lazyflow.operators import OpVigraWatershed
-from lazyflow.utility.slicingtools import sl, slicing2shape
+from lazyflow.utility.slicingtools import slicing2shape
 
 
 class TestOpVigraWatershed(object):
@@ -47,7 +47,7 @@ class TestOpVigraWatershed(object):
         """
         Bare-minimum test: Just make sure we can request the output without crashing.
         """
-        slicing = sl[0:1, 0:5, 6:20, 30:40, 0:1]
+        slicing = numpy.s_[0:1, 0:5, 6:20, 30:40, 0:1]
         result = self.op.Output[slicing].wait()
         assert result.shape == slicing2shape(slicing)
 
@@ -58,7 +58,7 @@ class TestOpVigraWatershed(object):
         seeds = numpy.zeros(self.inputData.shape, dtype=numpy.uint32)
         self.op.SeedImage.setValue(seeds)
 
-        slicing = sl[0:1, 0:5, 6:20, 30:40, 0:1]
+        slicing = numpy.s_[0:1, 0:5, 6:20, 30:40, 0:1]
         result = self.op.Output[slicing].wait()
 
         assert result.shape == slicing2shape(slicing)
@@ -75,7 +75,7 @@ class TestOpVigraWatershed(object):
 
         self.op.SeedImage.setValue(seeds)
 
-        slicing = sl[0:1, 0:5, 6:20, 30:40, 0:1]
+        slicing = numpy.s_[0:1, 0:5, 6:20, 30:40, 0:1]
         result = self.op.Output[slicing].wait()
 
         assert result.shape == slicing2shape(slicing)
@@ -91,13 +91,13 @@ class TestOpVigraWatershed(object):
             dirtyRois.append(roi)
 
         self.op.Output.notifyDirty(handleDirty)
-        self.op.InputImage.setDirty(sl[0:1, 5:6, 45:55, 5:15, 0:1])
+        self.op.InputImage.setDirty(numpy.s_[0:1, 5:6, 45:55, 5:15, 0:1])
 
         assert len(dirtyRois) == 1, "Didn't get dirty notification"
 
         # Dirty region should include the padding (10 pixels)
         dirtySlice = dirtyRois[0].toSlice()
-        assert dirtySlice == sl[0:1, 0:10, 35:65, 0:25, 0:1]
+        assert dirtySlice == numpy.s_[0:1, 0:10, 35:65, 0:25, 0:1]
 
     def testDirtySeeds(self):
         """
@@ -112,13 +112,13 @@ class TestOpVigraWatershed(object):
             dirtyRois.append(roi)
 
         self.op.Output.notifyDirty(handleDirty)
-        self.op.SeedImage.setDirty(sl[0:1, 5:6, 45:55, 5:15, 0:1])
+        self.op.SeedImage.setDirty(numpy.s_[0:1, 5:6, 45:55, 5:15, 0:1])
 
         assert len(dirtyRois) == 1, "Didn't get dirty notification"
 
         # Dirty region should include the padding (10 pixels)
         dirtySlice = dirtyRois[0].toSlice()
-        assert dirtySlice == sl[0:1, 0:10, 35:65, 0:25, 0:1]
+        assert dirtySlice == numpy.s_[0:1, 0:10, 35:65, 0:25, 0:1]
 
 
 if __name__ == "__main__":

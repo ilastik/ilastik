@@ -25,7 +25,6 @@ import numpy
 import vigra
 from lazyflow.graph import Graph
 from lazyflow.operators import OpFilterLabels
-from lazyflow.utility.slicingtools import sl, slicing2shape
 
 
 class TestOpFilterLabels(object):

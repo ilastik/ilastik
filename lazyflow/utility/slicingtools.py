@@ -38,25 +38,6 @@ from builtins import range
 from builtins import object
 import numpy as np
 
-# *******************************************************************************
-# S l                                                                          *
-# *******************************************************************************
-
-
-class Sl(object):
-    """Helper to create slicings using nice subsprict syntax.
-
-    sl = Sl()
-    slicing = sl[1:2,:]
-
-    """
-
-    def __getitem__(self, slicing):
-        return slicing
-
-
-sl = Sl()
-
 
 def box(sl, seq=tuple):
     """Wraps a single slice with a sequence.
@@ -249,21 +230,16 @@ class SliceProjection(object):
 import unittest as ut
 
 
-class SlTest(ut.TestCase):
-    def runTest(self):
-        self.assertEqual(sl[1, :34, :], (1, slice(34), slice(None)))
-
-
 class toolsTest(ut.TestCase):
     def testIntersection(self):
-        i = intersection(sl[5:8, 3:7, 2:9], sl[0:50, 0:50, 4:5])
-        self.assertEqual(i, sl[5:8, 3:7, 4:5])
-        ni = intersection(sl[5:8, 3:7, 2:9], sl[0:50, 0:50, 9:10])
+        i = intersection(np.s_[5:8, 3:7, 2:9], np.s_[0:50, 0:50, 4:5])
+        self.assertEqual(i, np.s_[5:8, 3:7, 4:5])
+        ni = intersection(np.s_[5:8, 3:7, 2:9], np.s_[0:50, 0:50, 9:10])
         self.assertEqual(ni, None)
 
     def testIndex2slice(self):
-        pure = index2slice(sl[3:4, 5, :, 10])
-        self.assertEqual(pure, sl[3:4, 5:6, :, 10:11])
+        pure = index2slice(np.s_[3:4, 5, :, 10])
+        self.assertEqual(pure, np.s_[3:4, 5:6, :, 10:11])
 
 
 class SliceProjectionTest(ut.TestCase):
