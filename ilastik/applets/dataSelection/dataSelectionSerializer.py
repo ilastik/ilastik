@@ -110,6 +110,7 @@ class DataSelectionSerializer( AppletSerializer ):
 
         # Rebuild the list of infos
         roleNames = self.topLevelOperator.DatasetRoles.value
+        internal_datasets_to_keep = set()
         for laneIndex, multislot in enumerate(self.topLevelOperator.DatasetGroup):
             laneGroupName = 'lane{:04d}'.format(laneIndex)
             laneGroup = infoDir.create_group( laneGroupName )
@@ -117,6 +118,8 @@ class DataSelectionSerializer( AppletSerializer ):
                 infoGroup = laneGroup.create_group( roleNames[roleIndex] )
                 if slot.ready():
                     datasetInfo = slot.value
+                    if datasetInfo.location == DatasetInfo.Location.ProjectInternal:
+                        internal_datasets_to_keep.add(hdf5File[datasetInfo.filePath])
                     locationString = self.LocationStrings[datasetInfo.location]
                     infoGroup.create_dataset('location', data=locationString.encode('utf-8'))
                     infoGroup.create_dataset('filePath', data=datasetInfo.persistent_path.encode('utf-8'))
@@ -131,6 +134,10 @@ class DataSelectionSerializer( AppletSerializer ):
                         infoGroup.create_dataset('drange', data=datasetInfo.drange)
                     if datasetInfo.subvolume_roi is not None:
                         infoGroup.create_dataset('subvolume_roi', data=datasetInfo.subvolume_roi)
+        if self.local_data_path.as_posix() in hdf5File:
+            for dataset in hdf5File[self.local_data_path.as_posix()].values():
+                if dataset not in internal_datasets_to_keep:
+                    del hdf5File[dataset.name]
         self._dirty = False
 
     def importStackAsLocalDataset(
