@@ -252,48 +252,25 @@ def _sorted_guitests(iterable):
 
     return sorted(iterable, key=_keyfunc)
 
+@pytest.fixture
+def tmp_h5_file(tmp_path:Path) -> Path:
+    tmp_path_trailing_slash = os.path.join(tmp_path, '')
+    _, filepath = tempfile.mkstemp(prefix=tmp_path_trailing_slash, suffix='.h5')
+    return filepath
 
 @pytest.fixture
-def tmp_dir() -> Path:
-    dir_path = Path(tempfile.mkdtemp())
-    yield dir_path
-    shutil.rmtree(dir_path)
-
-@pytest.fixture
-def tmp_file(tmp_dir:Path) -> Path:
-    _, filepath = tempfile.mkstemp(prefix=os.path.join(tmp_dir, ''))
-    filepath = Path(filepath)
-    yield filepath
-    os.remove(filepath)
-
-@pytest.fixture
-def tmp_h5_file(tmp_dir:Path) -> Path:
-    _, filepath = tempfile.mkstemp(prefix=os.path.join(tmp_dir, ''), suffix='.h5')
-    yield filepath
-    os.remove(filepath)
-
-@pytest.fixture
-def tmp_npy_file(tmp_dir:Path) -> Path:
-    _, filepath = tempfile.mkstemp(prefix=os.path.join(tmp_dir, ''), suffix='.npy')
-    yield filepath
-    os.remove(filepath)
-
-@pytest.fixture
-def png_image(tmp_dir) -> Path:
-    _, filepath = tempfile.mkstemp(prefix=os.path.join(tmp_dir, ''), suffix='.png')
+def png_image(tmp_path) -> Path:
+    _, filepath = tempfile.mkstemp(prefix=os.path.join(tmp_path, ''), suffix='.png')
     pil_image = PilImage.fromarray((numpy.random.rand(100, 200) * 255).astype(numpy.uint8))
     with open(filepath, "wb") as png_file:
         pil_image.save(png_file, "png")
-    yield filepath
-    os.remove(filepath)
+    return Path(filepath)
 
 @pytest.fixture
-def empty_project_file() -> h5py.File:
-    project_path = Path(tempfile.mkstemp(suffix='.ilp')[1])
+def empty_project_file(tmp_path) -> h5py.File:
+    project_path = tmp_path / tempfile.mkstemp(suffix='.ilp')[1]
     f = h5py.File(project_path, 'r+')
-    yield f
-    f.close()
-    os.remove(project_path)
+    return f
 
 @pytest.fixture
 def graph():

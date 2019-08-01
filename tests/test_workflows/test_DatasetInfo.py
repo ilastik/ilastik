@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import numpy
 import vigra
 import shutil
@@ -28,49 +29,33 @@ def download_stack(urls:List[str], prefix:str):
     return stack_dir
 
 @pytest.fixture
-def png_stack_dir():
-    urls = ["http://data.ilastik.org/pixel-classification/2d/c_cells_1.png",
-            "http://data.ilastik.org/pixel-classification/2d/c_cells_2.png",
-            "http://data.ilastik.org/pixel-classification/2d/c_cells_1.png"]
-    stack_dir = download_stack(urls, "c_cells_")
-    yield stack_dir
-    shutil.rmtree(stack_dir)
+def png_stack_dir(tmp_path) -> Path:
+    for i in range(3):
+        _, filepath = tempfile.mkstemp(prefix=os.path.join(tmp_path, ''), suffix='.png')
+        pil_image = PilImage.fromarray((numpy.random.rand(520, 697, 3) * 255).astype(numpy.uint8))
+        with open(filepath, "wb") as png_file:
+            pil_image.save(png_file, "png")
+        os.rename(filepath, Path(filepath).absolute().parent / f'c_cells_{i}.png')
+    return tmp_path
 
 @pytest.fixture
-def temp_dir():
-    dir_path = tempfile.mkdtemp()
-    yield dir_path
-    shutil.rmtree(dir_path)
-
-@pytest.fixture
-def tmp_file(temp_dir):
-    _, filepath = tempfile.mkstemp(prefix=os.path.join(temp_dir, ''))
-    yield filepath
-    os.remove(filepath)
-
-@pytest.fixture
-def png_image(tmp_file) -> str:
-    pil_image = PilImage.fromarray((numpy.random.rand(100, 200) * 255).astype(numpy.uint8))
-    with open(tmp_file, "wb") as png_file:
-        pil_image.save(png_file, "png")
-    return tmp_file
-
-@pytest.fixture
-def h5_1_100_200_1_1(temp_dir):
-    _, h5_path = tempfile.mkstemp(prefix=os.path.join(temp_dir, ''), suffix='.h5')
+def h5_1_100_200_1_1(tmp_path):
+    _, h5_path = tempfile.mkstemp(prefix=os.path.join(tmp_path, ''), suffix='.h5')
     raw = (numpy.random.rand(1, 100, 200, 1, 1) * 255).astype(numpy.uint8)
     with h5py.File(h5_path, 'w') as f:
         f['some_data'] = raw
     return h5_path
 
 @pytest.fixture
-def h5_stack_dir():
-    urls = ["http://data.ilastik.org/object-classification/2d_apoptotic_binary.h5",
-            "http://data.ilastik.org/object-classification/2d_apoptotic_binary.h5",
-            "http://data.ilastik.org/object-classification/2d_apoptotic_binary.h5"]
-    stack_dir = download_stack(urls, "2d_apoptotic_binary_")
-    yield stack_dir
-    shutil.rmtree(stack_dir)
+def h5_stack_dir(tmp_path):
+    for i in range(3):
+        _, h5_path = tempfile.mkstemp(prefix=os.path.join(tmp_path, ''), suffix='.h5')
+        raw = (numpy.random.rand(1, 100, 200, 1, 1) * 255).astype(numpy.uint8)
+        with h5py.File(h5_path, 'w') as f:
+            f.create_group('volume')
+            f['volume/data'] = raw
+        os.rename(h5_path, Path(h5_path).absolute().parent / f'2d_apoptotic_binary_{i}.h5')
+    return tmp_path
 
 def dir_to_colon_glob(dir_path:str):
     return os.path.pathsep.join(os.path.join(dir_path, file_path) for file_path in  os.listdir(dir_path))

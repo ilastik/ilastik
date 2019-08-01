@@ -82,7 +82,8 @@ class TestConservationTrackingHeadless(object):
                 pass
 
     @timeLogged(logger)
-    def testTrackingHeadless(self, tmp_h5_file):
+    def testTrackingHeadless(self, tmp_path):
+        output_path = tmp_path / 'testTrackingHeadlessOutput.h5'
         # Skip test because there are missing files
         if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
             pytest.xfail("Test files not found.")
@@ -93,7 +94,7 @@ class TestConservationTrackingHeadless(object):
         args += ' --export_source=Tracking-Result'
         args += ' --raw_data '+self.RAW_DATA_FILE+'/data'
         args += ' --segmentation_image '+self.BINARY_SEGMENTATION_FILE+'/exported_data'
-        args += ' --output_filename_format=' + str(tmp_h5_file)
+        args += ' --output_filename_format=' + str(output_path)
 
         sys.argv = ['ilastik.py'] # Clear the existing commandline args so it looks like we're starting fresh.
         sys.argv += args.split()
@@ -102,7 +103,7 @@ class TestConservationTrackingHeadless(object):
         self.ilastik_startup.main()
         
         # Examine the HDF5 output for basic attributes
-        with h5py.File(tmp_h5_file, 'r') as f:
+        with h5py.File(output_path, 'r') as f:
             assert 'exported_data' in f, 'Dataset does not exist in tracking result file'
             shape = f['exported_data'].shape
             assert shape == self.EXPECTED_SHAPE, 'Exported data has wrong shape: {}'.format(shape)
