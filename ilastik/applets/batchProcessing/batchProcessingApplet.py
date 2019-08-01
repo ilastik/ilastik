@@ -16,6 +16,7 @@ from ilastik.utility import log_exception
 from ilastik.applets.base.applet import Applet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, OpMultiLaneDataSelectionGroup
+from functools import partial
 
 
 class BatchProcessingApplet(Applet):
@@ -69,11 +70,16 @@ class BatchProcessingApplet(Applet):
         try:
             results = []
             for batch_dataset_index, role_input_paths in enumerate(batches):
-                def emit_progress(dataset_percent):
-                    overall_progress = (batch_dataset_index + dataset_percent / 100.0) / len(batches)
+                def emit_progress(dataset_index, dataset_percent):
+                    overall_progress = (dataset_index + dataset_percent / 100.0) / len(batches)
                     self.progressSignal(100 * overall_progress)
                 result = self.export_dataset(
-                    role_input_paths, input_axes=input_axes, export_to_array=export_to_array, sequence_axis=sequence_axis, progress_callback=emit_progress)
+                    role_input_paths,
+                    input_axes=input_axes,
+                    export_to_array=export_to_array,
+                    sequence_axis=sequence_axis,
+                    progress_callback=partial(emit_progress, batch_dataset_index)
+                )
                 results.append(result)
             return results
         finally:
