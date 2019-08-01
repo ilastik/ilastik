@@ -243,55 +243,6 @@ class TinyVector(list):
         return answer
 
 
-def expandSlicing(s, shape):
-    """
-    Args:
-        s: Anything that can be used as a numpy array index:
-           - int
-           - slice
-           - Ellipsis (i.e. ...)
-           - Some combo of the above as a tuple or list
-
-        shape: The shape of the array that will be accessed
-
-    Returns:
-        A tuple of length N where N=len(shape)
-        slice(None) is inserted in missing positions so as not to change the meaning of the slicing.
-        e.g. if shape=(1,2,3,4,5):
-            0 --> (0,:,:,:,:)
-            (0:1) --> (0:1,:,:,:,:)
-            : --> (:,:,:,:,:)
-            ... --> (:,:,:,:,:)
-            (0,0,...,4) --> (0,0,:,:,4)
-    """
-    if type(s) == list:
-        s = tuple(s)
-    if type(s) != tuple:
-        # Convert : to (:,), or 5 to (5,)
-        s = (s,)
-
-    # Compute number of axes missing from the slicing
-    if len(shape) - len(s) < 0:
-        assert s == (Ellipsis,) or s == (slice(None),), (
-            "Slicing must not have more elements than the shape, except for [:] and [...] slices.\n"
-            "Your slicing: {}, your shape: {}".format(s, shape)
-        )
-
-    # Replace Ellipsis with (:,:,:)
-    if Ellipsis in s:
-        ei = s.index(Ellipsis)  # Ellipsis Index
-        s = s[0:ei] + (len(shape) - len(s) + 1) * (slice(None),) + s[ei + 1 :]
-
-    # Append (:,) until we get the right length
-    s += (len(shape) - len(s)) * (slice(None),)
-
-    # Special case: we allow [:] and [...] for empty shapes ()
-    if shape == ():
-        s = ()
-
-    return s
-
-
 def sliceToRoi(
     slicing: Union[numbers.Integral, slice, "ellipsis", Sequence[Union[numbers.Integral, slice, "ellipsis"]]],
     shape: Sequence[numbers.Integral],

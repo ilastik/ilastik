@@ -55,7 +55,6 @@ from .opObjectFeatures import OpObjectFeatures
 from .opCompressedCache import OpCompressedCache
 from .opCompressedUserLabelArray import OpCompressedUserLabelArray
 from .opLabelImage import OpLabelImage
-from .opCachedLabelImage import OpCachedLabelImage
 from .opInterpMissingData import OpInterpMissingData
 from .opReorderAxes import OpReorderAxes
 from .opLabelVolume import OpLabelVolume
