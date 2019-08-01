@@ -1,9 +1,3 @@
-from __future__ import division
-
-from builtins import zip
-from builtins import map
-from builtins import range
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -26,6 +20,15 @@ from builtins import range
 # 		   http://ilastik.org/license/
 ###############################################################################
 
+import collections
+import numbers
+from functools import partial
+from itertools import combinations
+from math import ceil, floor, log10, pow
+from typing import Sequence, Tuple, Union
+
+import numpy
+
 if __name__ == "__main__":
     # When executing this file directly for doctest purposes,
     #  we must remove the lazyflow module from sys.path
@@ -36,14 +39,6 @@ if __name__ == "__main__":
 
     assert sys.path[0].endswith("lazyflow/lazyflow")
     sys.path.pop(0)
-
-import numpy
-from math import ceil, floor, pow, log10
-import collections
-import numbers
-from functools import partial
-from itertools import combinations
-from typing import Sequence, Tuple, Union
 
 
 class TinyVector(list):
@@ -247,7 +242,7 @@ def sliceToRoi(
     slicing: Union[numbers.Integral, slice, "ellipsis", Sequence[Union[numbers.Integral, slice, "ellipsis"]]],
     shape: Sequence[numbers.Integral],
     *,
-    extendSingleton: bool = True
+    extendSingleton: bool = True,
 ) -> Tuple[Sequence[int], Sequence[int]]:
     """Convert slicing to ROI.
 
