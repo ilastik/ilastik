@@ -149,7 +149,7 @@ class OpMultiArraySlicer2(Operator):
         stop.pop(indexAxis)
 
         start.insert(indexAxis, sliceIndex)
-        stop.insert(indexAxis, sliceIndex)
+        stop.insert(indexAxis, sliceIndex + 1)
 
         newKey = roi.roiToSlice(numpy.array(start), numpy.array(stop))
 

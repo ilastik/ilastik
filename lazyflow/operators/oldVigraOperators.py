@@ -392,7 +392,7 @@ class OpPixelFeaturesPresmoothed(Operator):
 
             oldstart, oldstop = roi.sliceToRoi(key, shape)
 
-            start, stop = roi.sliceToRoi(subkey, subkey)
+            start, stop = roi.sliceToRoi(subkey, subshape)
             maxSigma = max(0.7, self.maxSigma)  # we use 0.7 as an approximation of not doing any smoothing
             # smoothing was already applied previously
 
@@ -699,7 +699,7 @@ class OpBaseFilter(Operator):
 
         oldstart, oldstop = roi.sliceToRoi(key, shape)
 
-        start, stop = roi.sliceToRoi(subkey, subkey)
+        start, stop = roi.sliceToRoi(subkey, subshape)
 
         if sourceArray is not None and zAxis < len(axistags):
             if timeAxis > zAxis:

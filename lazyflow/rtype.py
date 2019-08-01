@@ -137,7 +137,7 @@ class SubRegion(Roi):
                 # AND if the key has the correct length
                 assert slicingtools.is_bounded(pslice)
                 # Supply a dummy shape
-                shape = [0] * len(pslice)
+                shape = [sl.stop for sl in pslice]
             self.start, self.stop = sliceToRoi(pslice, shape)
         elif start is None and pslice is None:
             assert shape is not None, "Can't create a default subregion without a slot and a shape."
@@ -278,8 +278,8 @@ class SubRegion(Roi):
             self.stop = TinyVector(stop)
         return self
 
-    def toSlice(self, hardBind=False):
-        return roiToSlice(self.start, self.stop, hardBind)
+    def toSlice(self):
+        return roiToSlice(self.start, self.stop)
 
     def __eq__(self, other):
         if type(self) != type(other):

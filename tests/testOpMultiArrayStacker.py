@@ -107,7 +107,7 @@ class OpMultiArraySlicer_REDUCE_DIM(Operator):
         indexAxis = self.inputs["Input"].meta.axistags.index(flag)
 
         start.insert(indexAxis, index)
-        stop.insert(indexAxis, index)
+        stop.insert(indexAxis, index + 1)
 
         newKey = roiToSlice(numpy.array(start), numpy.array(stop))
 
