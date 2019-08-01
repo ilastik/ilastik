@@ -19,137 +19,81 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-# Built-in
+
 import atexit
-import threading
-import time
-import ctypes
 import logging
+import queue
+import threading
+from typing import Callable, List
 
 logger = logging.getLogger(__name__)
 
 
-from lazyflow.utility.priorityQueue import PriorityQueue
-
-
 class ThreadPool:
+    """Manages a set of worker threads and dispatches tasks to them.
+
+    Attributes:
+        num_workers: The number of worker threads.
     """
-    Manages a set of worker threads and dispatches tasks to them.
-    """
 
-    # _DefaultQueueType = FifoQueue
-    # _DefaultQueueType = LifoQueue
-    _DefaultQueueType = PriorityQueue
+    def __init__(self, num_workers: int):
+        """Start all workers."""
+        self.unassigned_tasks = queue.PriorityQueue()
 
-    def __init__(self, num_workers, queue_type=_DefaultQueueType):
-        """
-        Constructor.  Starts all workers.
+        self.workers = {_Worker(self, i) for i in range(num_workers)}
+        for w in self.workers:
+            w.start()
 
-        :param num_workers: The number of worker threads to create.
-        :param queue_type: The type of queue to use for prioritizing tasks.  Possible queue types include :py:class:`PriorityQueue`,
-                           :py:class:`FifoQueue`, and :py:class:`LifoQueue`, or any class with ``push()``, ``pop()``, and ``__len__()`` methods.
-        """
-        self.job_condition = threading.Condition()
-        self.unassigned_tasks = queue_type()
-        # self.memory = MemoryWatcher(self)
-        # self.memory.start()
-        self.num_workers = num_workers
-        self.workers = self._start_workers(num_workers, queue_type)
-
-        # ThreadPools automatically stop upon program exit
         atexit.register(self.stop)
 
-    def wake_up(self, task):
-        """
-        Schedule the given task on the worker that is assigned to it.
+    @property
+    def num_workers(self):
+        return len(self.workers)
+
+    def wake_up(self, task: Callable[[], None]) -> None:
+        """Schedule the given task on the worker that is assigned to it.
+
         If it has no assigned worker yet, assign it to the first worker that becomes available.
         """
-        # Once a task has been assigned, it must always be processed in the same worker
         if hasattr(task, "assigned_worker") and task.assigned_worker is not None:
             task.assigned_worker.wake_up(task)
         else:
-            self.unassigned_tasks.push(task)
-            # Notify all currently waiting workers that there's new work
-            self._notify_all_workers()
+            self.unassigned_tasks.put_nowait(task)
+            for worker in self.workers:
+                with worker.job_queue_condition:
+                    worker.job_queue_condition.notify()
 
-    def stop(self):
-        """
-        Stop all threads in the pool, and block for them to complete.
-        Postcondition: All worker threads have stopped.  Unfinished tasks are simply dropped.
-        """
-        # self.memory.stop()
+    def stop(self) -> None:
+        """Stop all threads in the pool, and block for them to complete.
 
+        Postcondition: All worker threads have stopped, unfinished tasks are simply dropped.
+        """
         for w in self.workers:
             w.stop()
 
         for w in self.workers:
             w.join()
 
-    def get_states(self):
+    def get_states(self) -> List[str]:
         return [w.state for w in self.workers]
-
-    def _start_workers(self, num_workers, queue_type):
-        """
-        Start a set of workers and return the set.
-        """
-        workers = set()
-        for i in range(num_workers):
-            w = _Worker(self, i, queue_type=queue_type)
-            workers.add(w)
-            w.start()
-        return workers
-
-    def _notify_all_workers(self):
-        """
-        Wake up all worker threads that are currently waiting for work.
-        """
-        for worker in self.workers:
-            with worker.job_queue_condition:
-                worker.job_queue_condition.notify()
-
-    def _wait_for_idle(self):
-        """
-        Useful for testing only.
-        Wait until there are no tasks left in the threadpool.
-        """
-        done = False
-        while not done:
-            while self.unassigned_tasks:
-                time.sleep(0.1)
-
-            for worker in self.workers:
-                while worker.job_queue:
-                    time.sleep(0.1)
-
-            # Second pass: did any of those completing tasks launch new tasks?
-            done = True
-            for worker in self.workers:
-                if len(worker.job_queue) > 0:
-                    done = False
-            if self.unassigned_tasks:
-                done = False
 
 
 class _Worker(threading.Thread):
-    """
-    Runs in a loop until stopped.
+    """Run in a loop until stopped.
+
     The loop pops one task from the threadpool and executes it.
     """
 
-    def __init__(self, thread_pool, index, queue_type):
-        name = "Worker #{}".format(index)
-        super(_Worker, self).__init__(name=name)
-        self.daemon = True  # kill automatically on application exit!
+    def __init__(self, thread_pool, index):
+        super().__init__(name=f"Worker #{index}", daemon=True)
         self.thread_pool = thread_pool
         self.stopped = False
         self.job_queue_condition = threading.Condition()
-        self.job_queue = queue_type()
+        self.job_queue = queue.PriorityQueue()
         self.state = "initialized"
 
     def run(self):
-        """
-        Keep executing available tasks until we're stopped.
-        """
+        """Keep executing available tasks until we're stopped."""
         # Try to get some work.
         self.state = "waiting"
         next_task = self._get_next_job()
@@ -175,8 +119,8 @@ class _Worker(threading.Thread):
             next_task = self._get_next_job()
 
     def stop(self):
-        """
-        Tell this worker to stop running.
+        """Tell this worker to stop running.
+
         Does not block for thread completion.
         """
         self.stopped = True
@@ -185,21 +129,19 @@ class _Worker(threading.Thread):
             self.job_queue_condition.notify()
 
     def wake_up(self, task):
-        """
-        Add this task to the queue of tasks that are ready to be processed.
+        """Add this task to the queue of tasks that are ready to be processed.
+
         The task may or not be started already.
         """
         assert task.assigned_worker is self
         with self.job_queue_condition:
-            self.job_queue.push(task)
+            self.job_queue.put_nowait(task)
             self.job_queue_condition.notify()
 
     def _get_next_job(self):
-        """
-        Get the next available job to perform.
-        If necessary, block until:
-            - a task is available (return it) OR
-            - the worker has been stopped (might return None)
+        """Get the next available job to perform.
+
+        If necessary, block until a task is available (return it) or the worker has been stopped (might return None).
         """
         # Keep trying until we get a job
         with self.job_queue_condition:
@@ -221,25 +163,22 @@ class _Worker(threading.Thread):
         return next_task
 
     def _pop_job(self):
-        """
-        Non-blocking.
-        If possible, get a job from our own job queue.
-        Otherwise, get one from the global job queue.
-        Return None if neither queue has work to do.
-        """
-        # Try our own queue first
-        if len(self.job_queue) > 0:
-            return self.job_queue.pop()
+        """If possible, get a job from our own job queue; otherwise, get one from the global job queue.
 
-        # Otherwise, try to claim a job from the global unassigned list
+        Return None if neither queue has work to do.
+
+        Non-blocking.
+        """
         try:
-            # task = self.thread_pool.memory.filter(self.thread_pool.unassigned_tasks.pop())
-            task = self.thread_pool.unassigned_tasks.pop()
-        except IndexError:
-            return None
-        else:
-            task.assigned_worker = (
-                self
-            )  # If this fails, then your callable is some built-in that doesn't allow arbitrary
-            #  members (e.g. .assigned_worker) to be "monkey-patched" onto it.  You may have to wrap it in a custom class first.
-            return task
+            return self.job_queue.get_nowait()
+        except queue.Empty:
+            try:
+                task = self.thread_pool.unassigned_tasks.get_nowait()
+            except queue.Empty:
+                return None
+            else:
+                # If this fails, then your callable is some built-in that doesn't allow arbitrary
+                # members (e.g. .assigned_worker) to be "monkey-patched" onto it.
+                # You may have to wrap it in a custom class first.
+                task.assigned_worker = self
+                return task
