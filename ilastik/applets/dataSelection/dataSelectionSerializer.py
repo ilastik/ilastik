@@ -144,8 +144,9 @@ class DataSelectionSerializer( AppletSerializer ):
         self,
         abs_paths: List[str],
         sequence_axis: str = "z",
-        progress_signal: Callable[[int], None] = lambda x: None,
+        progress_signal: Callable[[int], None] = None,
     ):
+        progress_signal = progress_signal or self.progressSignal
         progress_signal(0)
         try:
             colon_paths = os.path.pathsep.join(abs_paths)
