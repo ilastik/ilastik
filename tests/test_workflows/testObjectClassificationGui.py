@@ -145,11 +145,9 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             # Add our input files:
             opDataSelection = workflow.dataSelectionApplet.topLevelOperator
             opDataSelection.DatasetGroup.resize(1)
-            info_raw = DatasetInfo()
-            info_raw.filePath = self.sample_data_raw
+            info_raw = DatasetInfo(filepath=self.sample_data_raw, project_file=self.shell.projectManager.currentProjectFile)
             opDataSelection.DatasetGroup[0][0].setValue(info_raw)
-            info_prob = DatasetInfo()
-            info_prob.filePath = self.sample_data_prob
+            info_prob = DatasetInfo(filepath=self.sample_data_prob)
             info_raw.nickname = 'test_data'
             opDataSelection.DatasetGroup[0][1].setValue(info_prob)
 

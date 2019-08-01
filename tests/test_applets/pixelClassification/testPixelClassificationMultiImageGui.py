@@ -97,8 +97,7 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
             opDataSelection = workflow.dataSelectionApplet.topLevelOperator
             for i, dataFile in enumerate(self.SAMPLE_DATA):        
                 # Add a file
-                info = DatasetInfo()
-                info.filePath = dataFile
+                info = DatasetInfo(filepath=dataFile, project_file=self.shell.projectManager.currentProjectFile)
                 opDataSelection.DatasetGroup.resize(i+1)
                 opDataSelection.DatasetGroup[i][0].setValue(info)
             

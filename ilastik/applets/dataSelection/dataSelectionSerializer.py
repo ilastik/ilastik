@@ -406,29 +406,27 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
         
         self.topLevelOperator.DatasetGroup.resize( len(dataDir) )
         for index, (datasetDirName, datasetDir) in enumerate( sorted(dataDir.items()) ):
-            datasetInfo = DatasetInfo()
-
-            # We'll set up the link to the dataset in the old project file, 
-            #  but we'll set the location to ProjectInternal so that it will 
-            #  be copied to the new file when the project is saved.    
-            datasetInfo.location = DatasetInfo.Location.ProjectInternal
-            
             # Some older versions of ilastik 0.5 stored the data in tzyxc order.
             # Some power-users can enable a command-line flag that tells us to 
             #  transpose the data back to txyzc order when we import the old project.
+            axistags = None
             default_axis_order = ilastik.utility.globals.ImportOptions.default_axis_order
             if default_axis_order is not None:
                 import warnings
                 # todo:axisorder: this will apply for other old ilastik projects as well... adapt the formulation.
                 warnings.warn( "Using a strange axis order to import ilastik 0.5 projects: {}".format( default_axis_order ) )
-                datasetInfo.axistags = vigra.defaultAxistags(default_axis_order)
-            
-            # Write to the 'private' members to avoid resetting the dataset id
+                axistags = vigra.defaultAxistags(default_axis_order)
+
             totalDatasetPath = str(projectFilePath + '/DataSets/' + datasetDirName + '/data' )
-            datasetInfo._filePath = totalDatasetPath
-            datasetInfo._datasetId = datasetDirName # Use the old dataset name as the new dataset id
-            datasetInfo.nickname = "{} (imported from v0.5)".format( datasetDirName )
-            
+            import pydevd; pydevd.settrace()
+            datasetInfo = DatasetInfo(
+                # We'll set up the link to the dataset in the old project file,
+                #  but we'll set the location to ProjectInternal so that it will
+                #  be copied to the new file when the project is saved.
+                location=DatasetInfo.Location.ProjectInternal,
+                axistags=axistags,
+                nickname=f"{datasetDirName} (imported from v0.5)"
+            )
             # Give the new info to the operator
             self.topLevelOperator.DatasetGroup[index][0].setValue(datasetInfo)
 
