@@ -29,7 +29,7 @@ class SerialRagSlot(SerialSlot):
         super(SerialRagSlot, self).__init__(slot, name='Rags')
         self.cache = cache
         self.labels_slot = labels_slot
-        
+
         # We want to bind to the INPUT, not Output:
         # - if the input becomes dirty, we want to make sure the cache is deleted
         # - if the input becomes dirty and then the cache is reloaded, we'll save the rag.
@@ -37,7 +37,7 @@ class SerialRagSlot(SerialSlot):
 
     def _serialize(self, parent_group, name, multislot):
         rags_group = parent_group.create_group( name )
-        
+
         for lane_index, slot in enumerate(multislot):
             # Is the cache up-to-date?
             # if not, we'll just return (don't recompute the classifier just to save it)
@@ -45,7 +45,7 @@ class SerialRagSlot(SerialSlot):
                 continue
 
             rag = self.cache[lane_index].Output.value
-    
+
             # Rag can be None if there isn't any training data yet.
             if rag is None:
                 continue
@@ -65,7 +65,7 @@ class SerialRagSlot(SerialSlot):
             label_img = self.labels_slot[lane_index][:].wait()
             label_img = vigra.taggedView( label_img, self.labels_slot.meta.axistags )
             label_img = label_img.dropChannelAxis()
-            
+
             rag = Rag.deserialize_hdf5( rag_group, label_img )
             self.cache[lane_index].forceValue( rag )
 
@@ -101,7 +101,7 @@ class SerialCachedDataFrameSlot(SerialSlot):
         self.cache = cache
         if self.name is None:
             self.name = slot.name
-        
+
         # We want to bind to the INPUT, not Output:
         # - if the input becomes dirty, we want to make sure the cache is deleted
         # - if the input becomes dirty and then the cache is reloaded, we'll save the classifier.
@@ -115,13 +115,13 @@ class SerialCachedDataFrameSlot(SerialSlot):
             inner_op = self.cache.getLane( slot_index )
             if inner_op._dirty:
                 return
-    
+
             dataframe = inner_op.Output.value
-    
+
             # Can be None if the user didn't actually compute features yet.
             if dataframe is None:
                 return
-    
+
             df_group = group.create_group( name )
             dataframe_to_hdf5( df_group, dataframe )
         else:
@@ -133,7 +133,7 @@ class SerialCachedDataFrameSlot(SerialSlot):
     def _deserialize(self, subgroup, slot):
         if slot.level == 0:
             dataframe = dataframe_from_hdf5( subgroup )
-            slot_index = slot.operator.index(slot)
+            slot_index = slot.subindex[0]
             inner_op = self.cache.getLane( slot_index )
             inner_op.forceValue( dataframe )
         else:
@@ -141,7 +141,7 @@ class SerialCachedDataFrameSlot(SerialSlot):
             # e.g. [(0,'0'), (2, '2'), (3, '3')]
             # Note that in some cases an index might be intentionally skipped.
             indexes_to_keys = { int(k) : k for k in list(subgroup.keys()) }
-            
+
             # Ensure the slot is at least big enough to deserialize into.
             max_index = max( [0] + list(indexes_to_keys.keys()) )
             if len(slot) < max_index+1:
