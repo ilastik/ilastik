@@ -29,7 +29,7 @@ from ilastik.shell.gui.startShellGui import launchShell
 # that hooks will be executed until first not None result is found.
 
 
-GUI_TEST_TIMEOUT = 20  # Seconds
+GUI_TEST_TIMEOUT = 60  # Seconds
 
 
 @pytest.fixture(scope='session', autouse=True)
