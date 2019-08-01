@@ -28,6 +28,7 @@ import os, numpy, itertools, copy
 from lazyflow.roi import TinyVector, roiToSlice
 import warnings
 from functools import reduce
+from typing import Tuple
 
 
 def nonzero_coord_array(a):
@@ -264,8 +265,8 @@ class newIterator(object):
         return retSlice.__iter__()
 
 
-def get_default_axisordering(shape):
-    """Given a data shape, return the default axis ordering
+def get_default_axisordering(shape: Tuple[int, ...]) -> str:
+    """Given a data shape, return the default axis ordering.
 
     For data types that do not support axistags, we assume a default axis
     ordering, given the shape, and implicitly the number of dimensions.
@@ -275,22 +276,42 @@ def get_default_axisordering(shape):
 
     Returns:
         str: String, each position represents one axis.
+
+    Examples:
+        >>> get_default_axisordering((10, 20))
+        'yx'
+        >>> get_default_axisordering((10, 20, 30))
+        'zyx'
+        >>> get_default_axisordering((10, 20, 30, 3))
+        'zyxc'
+        >>> get_default_axisordering((5, 10, 20, 20, 3))
+        'tzyxc'
+        >>> get_default_axisordering((10, 20, 4))
+        'yxc'
+        >>> get_default_axisordering(())  # doctest: +IGNORE_EXCEPTION_DETAIL
+        Traceback (most recent call last):
+          ...
+        ValueError
+        >>> get_default_axisordering((1,))  # doctest: +IGNORE_EXCEPTION_DETAIL
+        Traceback (most recent call last):
+          ...
+        ValueError
+        >>> get_default_axisordering((1, 2, 3, 4, 5, 6))  # doctest: +IGNORE_EXCEPTION_DETAIL
+        Traceback (most recent call last):
+          ...
+        ValueError
     """
     axisorders = {2: "yx", 3: "zyx", 4: "zyxc", 5: "tzyxc"}
     ndim = len(shape)
 
-    if ndim in [0, 1]:
-        raise ValueError("Got 'ndim' == {dim}. {dim}-D data not yet supported".format(dim=ndim))
-    elif ndim > 5:
-        raise ValueError("Got 'ndim' == {dim} dim. No Support for data with more than 5 " "dimensions".format(dim=ndim))
-
-    axisorder = axisorders[ndim]
-
+    # Special case for 2D multi-channel data.
     if ndim == 3 and shape[2] <= 4:
-        # Special case: If the 3rd dim is small, assume it's 'c', not 'z'
-        axisorder = "yxc"
+        return "yxc"
 
-    return axisorder
+    try:
+        return axisorders[ndim]
+    except KeyError:
+        raise ValueError(f"cannot infer axis order for {ndim}-dimensional shape")
 
 
 if __name__ == "__main__":
