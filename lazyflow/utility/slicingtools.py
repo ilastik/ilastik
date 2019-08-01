@@ -19,24 +19,16 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-"""
-This file duplicates all the functionality from volumina.slicing tools EXCEPT for anything that requires PyQt.
 
-Provide tools to work with collections of slice instances.
+"""Utilities for numpy-like indices and shapes.
 
-A n-dimensional slicing is a sequence of n slice objects, for example:
-slicing = [slice(10,23), slice(None), slice(14,None)]
-
-The sequence has to support __iter__, __setitem__, and __getitem__,
-as the common Python sequence types tuple and list do.
-
-Additionally, a 1-dimensional slicing may consist of a single slice instance
-not wrapped in a sequence.
-
+Adapted from "slicingtools.py" in volumina.
 """
 from builtins import range
 from builtins import object
+import collections.abc
 import numpy as np
+from typing import Sequence, Tuple, Union
 
 
 def box(sl, seq=tuple):
@@ -63,10 +55,26 @@ def unbox(slicing, axis=0):
     return slicing
 
 
-def is_bounded(slicing):
-    """For all dimensions: stop value of slice is not None """
-    slicing = box(slicing)
-    return all((sl.stop != None for sl in slicing))
+def is_bounded(slicing: Union[slice, Sequence[slice]]) -> bool:
+    """Do all slices have upper bounds?
+
+    Examples:
+        >>> is_bounded(slice(None, None))
+        False
+        >>> is_bounded(slice(1, None))
+        False
+        >>> is_bounded(slice(None, 5))
+        True
+        >>> is_bounded(slice(1, 5))
+        True
+        >>> is_bounded(slice(1, 5, 2))
+        True
+        >>> is_bounded((slice(1, 5), slice(6, None)))
+        False
+    """
+    if not isinstance(slicing, collections.abc.Sequence):
+        slicing = (slicing,)
+    return all(sl.stop is not None for sl in slicing)
 
 
 def is_pure_slicing(slicing):
@@ -95,12 +103,39 @@ def is_pure_slicing(slicing):
 #    return seq((slice(qrect.y(), qrect.y()+qrect.height()), slice(qrect.x(), qrect.x()+qrect.width())))
 
 
-def slicing2shape(slicing):
-    assert is_bounded(slicing)
-    slicing = box(slicing)
+def slicing2shape(slicing: Union[slice, Sequence[slice]]) -> Tuple[int, ...]:
+    """``X[slicing].shape``, where ``X`` is a sufficiently large array with the same number of dimensions.
+
+    Raises:
+        ValueError: Some slice is not bounded or not contiguous.
+
+    Examples:
+        >>> slicing2shape(())
+        ()
+        >>> slicing2shape(slice(2, 5))
+        (3,)
+        >>> slicing2shape([slice(2, 5), slice(4, 8)])
+        (3, 4)
+        >>> slicing2shape(slice(2, None))  # doctest: +IGNORE_EXCEPTION_DETAIL
+        Traceback (most recent call last):
+          ...
+        ValueError
+        >>> slicing2shape(slice(2, 5, 2))  # doctest: +IGNORE_EXCEPTION_DETAIL
+        Traceback (most recent call last):
+          ...
+        ValueError
+    """
+    items = slicing
+    if not isinstance(slicing, collections.abc.Sequence):
+        items = (slicing,)
+
     shape = []
-    for sl in slicing:
-        shape.append(sl.stop - sl.start)
+
+    for sl in items:
+        if sl.stop is None or sl.step is not None and sl.step != 1:
+            raise ValueError(f"slicing {slicing} is not bounded or contiguous")
+        shape.append(sl.stop - (sl.start or 0))
+
     return tuple(shape)
 
 
