@@ -5,7 +5,7 @@ from pathlib import Path
 from PyQt5.QtWidgets import QFileDialog
 
 from volumina.utility import PreferencesManager
-from .opDataSelection import OpDataSelection, DatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import OpDataSelection
 from ilastik.config import cfg as ilastik_config
 
 class ImageFileDialog(QFileDialog):

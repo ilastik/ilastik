@@ -34,7 +34,7 @@ from volumina.utility import PreferencesManager
 from ilastik.utility import log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui # We borrow the file selection window function.
-from ilastik.applets.dataSelection.dataSelectionGui import ImageFileDialog
+from ilastik.widgets.ImageFileDialog import ImageFileDialog
 
 class BatchProcessingGui( QTabWidget ):
     """

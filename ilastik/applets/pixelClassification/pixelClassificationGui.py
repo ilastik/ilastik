@@ -56,7 +56,7 @@ from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, H5N5VolumeSelectionDlg
-from ilastik.applets.dataSelection.dataSelectionGui import ImageFileDialog
+from ilastik.widgets.ImageFileDialog import ImageFileDialog
 from ilastik.shell.gui.variableImportanceDialog import VariableImportanceDialog
 from ilastik.applets.dataSelection import DatasetInfo
 

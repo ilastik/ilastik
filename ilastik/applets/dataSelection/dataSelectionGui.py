@@ -60,7 +60,8 @@ from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, H
 from .datasetDetailedInfoTableModel import DatasetDetailedInfoColumn, DatasetDetailedInfoTableModel
 from .datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 from .precomputedVolumeBrowser import PrecomputedVolumeBrowser
-from .ImageFileDialog import ImageFileDialog
+from ilastik.widgets.ImageFileDialog import ImageFileDialog
+
 
 try:
     import libdvid

@@ -49,7 +49,7 @@ from lazyflow.operators.valueProviders import OpMetadataInjector
 
 # ilastik
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui
-from ilastik.applets.dataSelection.dataSelectionGui import ImageFileDialog
+from ilastik.widgets.ImageFileDialog import ImageFileDialog
 
 def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
     """

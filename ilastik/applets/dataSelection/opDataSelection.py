@@ -28,6 +28,7 @@ from numbers import Number
 import re
 import functools
 from pathlib import Path
+import errno
 
 import numpy
 import vigra
@@ -243,25 +244,35 @@ class DatasetInfo(object):
         return [PathComponents(ep).extension for ep in self.expanded_paths]
 
     @classmethod
-    def expand_path(cls, file_path:str, cwd:str=None) -> List[str]:
+    def expand_path(cls, file_path: str, cwd: str = None) -> List[str]:
         """Expands path with globs and colons into a list of absolute paths"""
         cwd = cwd or os.getcwd()
         pathComponents = [PathComponents(path) for path in splitPath(file_path)]
         expanded_paths = []
+        missing_files = []
         for components in pathComponents:
             if os.path.isabs(components.externalPath):
                 externalPath = components.externalPath
             else:
                 externalPath = os.path.join(cwd, components.externalPath)
-            unglobbed_paths = glob.glob(os.path.expanduser(externalPath))
+            expanded_path = os.path.expanduser(externalPath)
+            unglobbed_paths = glob.glob(expanded_path)
             if not unglobbed_paths:
-                raise FileNotFoundError(externalPath)
+                missing_files.append(expanded_path)
+                continue
             for ext_path in unglobbed_paths:
                 if not cls.fileHasInternalPaths(ext_path) or not components.internalPath:
                     expanded_paths.append(ext_path)
                     continue
                 internal_paths = cls.globInternalPaths(ext_path, components.internalPath)
-                expanded_paths.extend([os.path.join(ext_path, int_path) for int_path in internal_paths])
+                expanded_paths.extend(
+                    [os.path.join(ext_path, int_path) for int_path in internal_paths]
+                )
+
+        if missing_files:
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), os.path.pathsep.join(missing_files)
+            )
         return sorted(expanded_paths)
 
     @classmethod

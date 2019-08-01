@@ -23,6 +23,8 @@ from __future__ import absolute_import
 from typing import List, Tuple, Callable
 from pathlib import Path
 
+from PyQt5.QtWidgets import QMessageBox
+
 from .opDataSelection import OpDataSelection, DatasetInfo
 from lazyflow.operators.ioOperators import OpInputDataReader, OpStackLoader, OpH5N5WriterBigDataset
 from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
@@ -43,6 +45,7 @@ from lazyflow.utility.timer import timeLogged
 from ilastik.utility import bind
 from lazyflow.utility.pathHelpers import getPathVariants, isUrl, isRelative, splitPath
 import ilastik.utility.globals
+from ilastik.widgets.ImageFileDialog import ImageFileDialog
 
 from ilastik.applets.base.appletSerializer import \
     AppletSerializer, getOrCreateGroup, deleteIfPresent
@@ -300,11 +303,26 @@ class DataSelectionSerializer( AppletSerializer ):
                 info_params['location'] = DatasetInfo.Location.PreloadedArray
                 info_params['preloaded_array'] = numpy.zeros(shape, dtype=numpy.uint8)
                 return DatasetInfo(**info_params), True
-            raise Exception(f"FIXME: repair file {e.filename}")
-#            for missing_path in e.paths_not_found:
-#                dirty = True
-#                filt = "Image files (" + ' '.join('*.' + x for x in OpDataSelection.SupportedExtensions) + ')'
-#                newpath = self.repairFile(path, filt) #FIXME: make repairFile also show interpath-picking dialog
+            repaired_paths = []
+            #import pydevd; pydevd.settrace()
+            for missing_path in e.filename.split(os.path.pathsep):
+                should_repair = QMessageBox.question(
+                    None,
+                    "Missing file",
+                    (f"File {missing_path} could not be found "
+                     "(maybe you moved either that file or the .ilp project file). "
+                     "Would you like to look for it elsewhere?"),
+                    QMessageBox.Yes|QMessageBox.No
+                )
+                if should_repair == QMessageBox.No:
+                    raise e
+                paths = ImageFileDialog(None).getSelectedPaths()
+                if not paths:
+                    raise e
+                dirty = True
+                repaired_paths.extend([str(p) for p in paths])
+            info_params['filepath'] = os.path.pathsep.join(repaired_paths)
+            datasetInfo = DatasetInfo(**info_params)
 
         return datasetInfo, dirty
 
