@@ -20,7 +20,7 @@
 ###############################################################################
 
 from lazyflow.operators.generic import OpMultiArraySlicer2
-from volumina.api import LazyflowSource, AlphaModulatedLayer
+from volumina.api import createDataSource, AlphaModulatedLayer
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 
 class NNClassificationDataExportGui(DataExportGui):
@@ -81,7 +81,7 @@ class NNClassificationResultsViewer(DataExportLayerViewerGui):
 
         for channel, predictionSlot in enumerate(opSlicer.Slices):
             if predictionSlot.ready():
-                predictsrc = LazyflowSource(predictionSlot)
+                predictsrc = createDataSource(predictionSlot)
                 predictLayer = AlphaModulatedLayer(predictsrc, range=(0.0, 1.0), normalize=(0.0, 1.0))
                 predictLayer.opacity = 0.25
                 predictLayer.visible = True

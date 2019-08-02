@@ -42,7 +42,7 @@ from ilastik.utility.gui import threadRouted
 from ilastik.utility import log_exception
 from ilastik.config import cfg as ilastik_config
 
-from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
+from volumina.api import createDataSource, GrayscaleLayer, ColortableLayer
 import volumina.colortables as colortables
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
@@ -422,7 +422,7 @@ class ObjectExtractionGui(LayerViewerGui):
         layers = []
 
         if mainOperator.ObjectCenterImage.ready():
-            self.centerimagesrc = LazyflowSource(mainOperator.ObjectCenterImage)
+            self.centerimagesrc = createDataSource(mainOperator.ObjectCenterImage)
             redct = [0, QColor(255, 0, 0).rgba()]
             layer = ColortableLayer(self.centerimagesrc, redct)
             layer.name = "Object centers"
@@ -432,7 +432,7 @@ class ObjectExtractionGui(LayerViewerGui):
 
         ct = colortables.create_default_16bit()
         if mainOperator.LabelImage.ready():
-            self.objectssrc = LazyflowSource(mainOperator.LabelImage)
+            self.objectssrc = createDataSource(mainOperator.LabelImage)
             self.objectssrc.setObjectName("LabelImage LazyflowSrc")
             ct[0] = QColor(0, 0, 0, 0).rgba() # make 0 transparent
             layer = ColortableLayer(self.objectssrc, ct)
@@ -446,7 +446,7 @@ class ObjectExtractionGui(LayerViewerGui):
         binct = [QColor(255, 255, 255, 255).rgba()]*65536
         binct[0] = 0
         if mainOperator.BinaryImage.ready():
-            self.binaryimagesrc = LazyflowSource(mainOperator.BinaryImage)
+            self.binaryimagesrc = createDataSource(mainOperator.BinaryImage)
             self.binaryimagesrc.setObjectName("Binary LazyflowSrc")
             layer = ColortableLayer(self.binaryimagesrc, binct)
             layer.name = "Binary image"
@@ -455,7 +455,7 @@ class ObjectExtractionGui(LayerViewerGui):
 
         ## raw data layer
         self.rawsrc = None
-        self.rawsrc = LazyflowSource(mainOperator.RawImage)
+        self.rawsrc = createDataSource(mainOperator.RawImage)
         self.rawsrc.setObjectName("Raw Lazyflow Src")
         layerraw = GrayscaleLayer(self.rawsrc)
         layerraw.name = "Raw data"
@@ -480,7 +480,7 @@ class ObjectExtractionGui(LayerViewerGui):
 
         if slot is self.topLevelOperatorView.RawImage:
             if slot.meta.shape and not self.rawsrc:
-                self.rawsrc = LazyflowSource(self.topLevelOperatorView.RawImage)
+                self.rawsrc = createDataSource(self.topLevelOperatorView.RawImage)
                 layerraw = GrayscaleLayer(self.rawsrc)
                 layerraw.name = "Raw data"
                 self.layerstack.append(layerraw)
@@ -488,7 +488,7 @@ class ObjectExtractionGui(LayerViewerGui):
     def _onReady(self, slot):
         if slot is self.topLevelOperatorView.RawImage:
             if slot.meta.shape and not self.rawsrc:
-                self.rawsrc = LazyflowSource(self.topLevelOperatorView.RawImage)
+                self.rawsrc = createDataSource(self.topLevelOperatorView.RawImage)
                 layerraw = GrayscaleLayer(self.rawsrc)
                 layerraw.name = "Raw data"
                 self.layerstack.append(layerraw)

@@ -36,7 +36,7 @@ from PyQt5.QtWidgets import QMessageBox, QShortcut, QPushButton, QWidget, QAppli
 
 # HCI
 from lazyflow.utility import traceLogged
-from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer, LazyflowSinkSource
+from volumina.api import createDataSource, AlphaModulatedLayer, ColortableLayer, LazyflowSinkSource
 from volumina.utility import ShortcutManager
 from ilastik.widgets.labelListView import Label
 from ilastik.widgets.boxListModel import BoxListModel,BoxLabel
@@ -625,7 +625,7 @@ class CountingGui(LabelingGui):
         for name, (slot, opacity) in list(slots.items()):
             if slot.ready():
                 layer = ColortableLayer(
-                    LazyflowSource(slot),
+                    createDataSource(slot),
                     colorTable=countingColorTable,
                     normalize=(0, self.upperBound))
                 layer.name = name

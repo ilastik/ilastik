@@ -30,7 +30,7 @@ from PyQt5.QtWidgets import QWidget, QLabel, QDoubleSpinBox, QComboBox, QVBoxLay
                             QHBoxLayout, QSpacerItem, QSizePolicy, QPushButton
 
 from ilastik.utility.gui import threadRouted
-from volumina.pixelpipeline.datasources import LazyflowSource
+from volumina.api import createDataSource
 from volumina.layer import SegmentationEdgesLayer
 from volumina.utility import ShortcutManager, PreferencesManager
 
@@ -323,7 +323,7 @@ class MulticutGuiMixin(object):
         # Final segmentation -- Edges
         default_pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
         default_pen.setColor(Qt.transparent)
-        layer = SegmentationEdgesLayer( LazyflowSource(op.Superpixels), default_pen )
+        layer = SegmentationEdgesLayer( createDataSource(op.Superpixels), default_pen )
         layer.name = "Multicut Disagreements"
         layer.visible = False # Off by default...
         layer.opacity = 1.0
@@ -349,7 +349,7 @@ class MulticutGuiMixin(object):
         # Final segmentation -- Edges
         default_pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
         default_pen.setColor(Qt.blue)
-        layer = SegmentationEdgesLayer( LazyflowSource(op.Output), default_pen )
+        layer = SegmentationEdgesLayer( createDataSource(op.Output), default_pen )
         layer.name = "Multicut Edges"
         layer.visible = False # Off by default...
         layer.opacity = 1.0
@@ -394,7 +394,7 @@ class MulticutGuiMixin(object):
         # We use the RAG's superpixels, which may have different IDs
         self.superpixel_edge_layer = None
         if op.Superpixels.ready() and op.EdgeProbabilitiesDict.ready():
-            layer = SegmentationEdgesLayer( LazyflowSource(op.Superpixels) )
+            layer = SegmentationEdgesLayer( createDataSource(op.Superpixels) )
             layer.name = "Superpixel Edge Probabilities"
             layer.visible = True
             layer.opacity = 1.0
@@ -407,7 +407,7 @@ class MulticutGuiMixin(object):
         if op.Superpixels.ready():
             default_pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
             default_pen.setColor(Qt.yellow)
-            layer = SegmentationEdgesLayer( LazyflowSource(op.Superpixels), default_pen )
+            layer = SegmentationEdgesLayer( createDataSource(op.Superpixels), default_pen )
             layer.name = "Superpixel Edges"
             layer.visible = False
             layer.opacity = 1.0

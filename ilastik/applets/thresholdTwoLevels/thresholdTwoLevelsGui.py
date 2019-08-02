@@ -34,7 +34,7 @@ from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtGui import QColor, QPixmap, QIcon
 from PyQt5.QtWidgets import QMessageBox
 
-from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
+from volumina.api import createDataSource, AlphaModulatedLayer, ColortableLayer
 from volumina import colortables
 from volumina.colortables import create_default_16bit
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
@@ -329,7 +329,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         # Show the cached output, since it goes through a blocked cache
 
         if op.CachedOutput.ready():
-            outputSrc = LazyflowSource(op.CachedOutput)
+            outputSrc = createDataSource(op.CachedOutput)
             outputLayer = ColortableLayer(outputSrc, ct)
             outputLayer.name = "Final output"
             outputLayer.visible = False
@@ -347,7 +347,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                 drange = slot_drange
             else:
                 drange = (0.0, 1.0)
-            channelSrc = LazyflowSource(channelProvider.Output)
+            channelSrc = createDataSource(channelProvider.Output)
             inputChannelLayer = AlphaModulatedLayer(
                 channelSrc, tintColor=input_channel_colors[channel],
                 range=drange, normalize=drange)
@@ -363,7 +363,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             curIndex = op.CurOperator.value
             if curIndex in (1, 3):
                 if op.FilteredSmallLabels.ready():
-                    filteredSmallLabelsSrc = LazyflowSource(op.FilteredSmallLabels)
+                    filteredSmallLabelsSrc = createDataSource(op.FilteredSmallLabels)
                     #filteredSmallLabelsLayer = self.createStandardLayerFromSlot( op.FilteredSmallLabels )
                     filteredSmallLabelsLayer = ColortableLayer(filteredSmallLabelsSrc, DebugLayerCmap.BINARY_SHADE_1.value)
                     filteredSmallLabelsLayer.name = "After high threshold and size filter"
@@ -373,7 +373,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                                                          followed by the size filter")
                     layers.append(filteredSmallLabelsLayer)
                 if op.SmallRegions.ready():
-                    highThresholdSrc = LazyflowSource(op.SmallRegions)
+                    highThresholdSrc = createDataSource(op.SmallRegions)
                     highThresholdLayer = ColortableLayer(highThresholdSrc, DebugLayerCmap.BINARY_SHADE_0.value)
                     highThresholdLayer.name = "After high threshold"
                     highThresholdLayer.visible = False
@@ -381,7 +381,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                     highThresholdLayer.setToolTip("Results of thresholding with the high pixel value threshold")
                     layers.append(highThresholdLayer)
                 if op.BigRegions.ready():
-                    lowThresholdSrc = LazyflowSource(op.BigRegions)
+                    lowThresholdSrc = createDataSource(op.BigRegions)
                     lowThresholdLayer = ColortableLayer(lowThresholdSrc, DebugLayerCmap.BINARY_WHITE.value)
                     lowThresholdLayer.name = "After low threshold"
                     lowThresholdLayer.visible = False
@@ -391,7 +391,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
             elif curIndex==0:
                 if op.BeforeSizeFilter.ready():
-                    thSrc = LazyflowSource(op.BeforeSizeFilter)
+                    thSrc = createDataSource(op.BeforeSizeFilter)
                     thLayer = ColortableLayer(thSrc, DebugLayerCmap.BINARY_WHITE.value)
                     thLayer.name = "Before size filter"
                     thLayer.visible = False

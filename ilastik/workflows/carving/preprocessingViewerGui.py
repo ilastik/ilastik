@@ -23,7 +23,7 @@ import numpy
 
 from PyQt5.QtGui import QColor
 
-from volumina.pixelpipeline.datasources import LazyflowSource
+from volumina.api import createDataSource
 from volumina.layer import ColortableLayer
 
 #ilastik
@@ -45,7 +45,7 @@ class PreprocessingViewerGui( LayerViewerGui ):
             for i in range(256):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
                 colortable.append(QColor(r,g,b).rgba())
-            watershedLayer = ColortableLayer(LazyflowSource(watershedSlot), colortable)
+            watershedLayer = ColortableLayer(createDataSource(watershedSlot), colortable)
             watershedLayer.name = "Watershed"
             watershedLayer.visible = False
 

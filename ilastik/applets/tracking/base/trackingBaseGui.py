@@ -24,7 +24,7 @@ from PyQt5.QtWidgets import QFileDialog, QMessageBox, QMenu, QWidgetAction, QLab
 from PyQt5.QtGui import QColor, QIcon
 
 
-from volumina.api import LazyflowSource, ColortableLayer
+from volumina.api import createDataSource, ColortableLayer
 import volumina.colortables as colortables
 
 from lazyflow.operators.generic import axisTagsToString
@@ -108,9 +108,9 @@ class TrackingBaseGui( LayerViewerGui ):
             merger_ct = self.tracking_colortable
 
             if self.topLevelOperatorView.MergerCachedOutput.ready():
-                self.mergersrc = LazyflowSource( self.topLevelOperatorView.MergerCachedOutput )
+                self.mergersrc = createDataSource( self.topLevelOperatorView.MergerCachedOutput )
             else:
-                self.mergersrc = LazyflowSource( self.topLevelOperatorView.zeroProvider.Output )
+                self.mergersrc = createDataSource( self.topLevelOperatorView.zeroProvider.Output )
 
             mergerLayer = ColortableLayer( self.mergersrc, merger_ct )
             mergerLayer.name = "Merger"
@@ -123,7 +123,7 @@ class TrackingBaseGui( LayerViewerGui ):
             layers.append(mergerLayer)
 
         if self.topLevelOperatorView.CachedOutput.ready():
-            self.trackingsrc = LazyflowSource( self.topLevelOperatorView.CachedOutput )
+            self.trackingsrc = createDataSource( self.topLevelOperatorView.CachedOutput )
             trackingLayer = ColortableLayer( self.trackingsrc, self.tracking_colortable )
             trackingLayer.name = "Tracking"
             trackingLayer.visible = True
@@ -132,7 +132,7 @@ class TrackingBaseGui( LayerViewerGui ):
 
         elif self.topLevelOperatorView.zeroProvider.Output.ready():
             # provide zeros while waiting for the tracking result
-            self.trackingsrc = LazyflowSource( self.topLevelOperatorView.zeroProvider.Output )
+            self.trackingsrc = createDataSource( self.topLevelOperatorView.zeroProvider.Output )
             trackingLayer = ColortableLayer( self.trackingsrc, self.tracking_colortable )
             trackingLayer.name = "Tracking"
             trackingLayer.visible = True
@@ -141,12 +141,12 @@ class TrackingBaseGui( LayerViewerGui ):
 
         if "RelabeledImage" in self.topLevelOperatorView.outputs:
             if self.topLevelOperatorView.RelabeledCachedOutput.ready():
-                self.objectssrc = LazyflowSource( self.topLevelOperatorView.RelabeledCachedOutput )
+                self.objectssrc = createDataSource( self.topLevelOperatorView.RelabeledCachedOutput )
             else:
-                self.objectssrc = LazyflowSource( self.topLevelOperatorView.zeroProvider.Output )
+                self.objectssrc = createDataSource( self.topLevelOperatorView.zeroProvider.Output )
         else:
             if self.topLevelOperatorView.LabelImage.ready():
-                self.objectssrc = LazyflowSource( self.topLevelOperatorView.LabelImage )
+                self.objectssrc = createDataSource( self.topLevelOperatorView.LabelImage )
         ct = colortables.create_random_16bit()
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
         objLayer = ColortableLayer( self.objectssrc, ct )

@@ -58,7 +58,7 @@ class OpDivisionFeatures(Operator):
         timeIndex = list(taggedShape.keys()).index('t')
         
         import time
-        start = time.time()
+        start = time.perf_counter()
         
         vroi_start = len(self.LabelVolume.meta.shape) * [0,]
         vroi_stop = list(self.LabelVolume.meta.shape)
@@ -92,7 +92,7 @@ class OpDivisionFeatures(Operator):
             res = self.featureManager.computeFeatures_at(feats_cur, feats_next, img_next, divisionFeatNames)
             result[t][config.features_division_name] = res 
         
-        stop = time.time()
+        stop = time.perf_counter()
         logger.debug("TIMING: computing division features took {:.3f}s".format(stop-start))
         return result
     

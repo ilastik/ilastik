@@ -23,7 +23,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
 
 from lazyflow.operators import OpMultiArraySlicer2
-from volumina.api import LazyflowSource, AlphaModulatedLayer
+from volumina.api import createDataSource, AlphaModulatedLayer
 from volumina import colortables
 from ilastik.utility import bind
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
@@ -80,7 +80,7 @@ class PredictionViewerGui( LayerViewerGui ):
 
         for channel, channelSlot in enumerate(opSlicer.Slices):
             if channelSlot.ready() and channel < len(colors) and channel < len(names):
-                predictsrc = LazyflowSource(channelSlot)
+                predictsrc = createDataSource(channelSlot)
                 predictLayer = AlphaModulatedLayer( predictsrc,
                                                     tintColor=colors[channel],
                                                     range=(0.0, 1.0),

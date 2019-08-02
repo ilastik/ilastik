@@ -88,8 +88,8 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
 
             def handleDatasetInfoChanged(slot):
                 # Get the row of this slot
-                laneSlot = slot.operator
-                laneIndex = laneSlot.operator.index( laneSlot )
+                assert slot.subindex, f"BUG: Excpected nested slot {slot}"
+                laneIndex = slot.subindex[0]
                 # FIXME: For now, we update the whole row.
                 #        Later, update only the columns that correspond to this dataset.
                 firstIndex = self.createIndex(laneIndex, 0)
@@ -98,7 +98,7 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
 
             def handleNewDatasetInserted(mslot, index):
                 mslot[index].notifyDirty( bind(handleDatasetInfoChanged) )
-            
+
             for laneIndex, datasetMultiSlot in enumerate(self._op.DatasetGroup):
                 datasetMultiSlot.notifyInserted( bind(handleNewDatasetInserted) )
                 for roleIndex, datasetSlot in enumerate(datasetMultiSlot):
@@ -112,7 +112,7 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
             self.endRemoveRows()
         self._op.DatasetGroup.notifyRemoved( bind(handleLaneRemoved) )
 
-        # Any lanes that already exist must be added now.        
+        # Any lanes that already exist must be added now.
         for laneIndex, slot in enumerate(self._op.DatasetGroup):
             handleNewLane( self._op.DatasetGroup, laneIndex )
 
@@ -121,20 +121,20 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
             return 0
         roles = self._op.DatasetRoles.value
         return LaneColumn.NumColumns + DatasetInfoColumn.NumColumns * len(roles)
-    
+
     def rowCount(self, parent=QModelIndex()):
         return len( self._op.ImageGroup )
-    
+
     def data(self, index, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
             return self._getDisplayRoleData(index)
-    
+
     def index(self, row, column, parent=QModelIndex()):
         return self.createIndex( row, column, object=None )
-    
+
     def parent(self, index):
         return QModelIndex()
-    
+
     def headerData(self, section, orientation, role=Qt.DisplayRole ):
         if role != Qt.DisplayRole:
             return None
@@ -148,25 +148,25 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
                 return self._op.DatasetRoles.value[roleIndex]
             return ""
         assert False, "Unknown header column: {}".format( section )
-            
+
     def _getDisplayRoleData(self, index):
         laneIndex = index.row()
         ## Dataset info item
         roleIndex = (index.column() - LaneColumn.NumColumns) // DatasetInfoColumn.NumColumns
         datasetInfoIndex = (index.column() - LaneColumn.NumColumns) % DatasetInfoColumn.NumColumns
-        
+
         datasetSlot = self._op.DatasetGroup[laneIndex][roleIndex]
         if not datasetSlot.ready():
             return ""
 
         UninitializedDisplayData = { DatasetInfoColumn.Name : "<please select>" }
-        
+
         datasetSlot = self._op.DatasetGroup[laneIndex][roleIndex]
         if datasetSlot.ready():
             datasetInfo = self._op.DatasetGroup[laneIndex][roleIndex].value
         else:
             return UninitializedDisplayData[ datasetInfoIndex ]
-        
+
         if datasetInfoIndex == DatasetInfoColumn.Name:
             if datasetInfo.nickname is not None and datasetInfo.nickname != "":
                 return datasetInfo.nickname
