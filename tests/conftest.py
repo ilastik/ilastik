@@ -77,11 +77,7 @@ def pytest_pyfunc_call(pyfuncitem):
     runner = TestThread(target=testfunc)
     runner.start()
 
-    try:
-        fut.result(timeout=GUI_TEST_TIMEOUT)
-    except futures.TimeoutError:
-        runner.terminate()
-        raise
+    fut.result(timeout=GUI_TEST_TIMEOUT)
 
     return True
 
