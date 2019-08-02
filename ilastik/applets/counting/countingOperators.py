@@ -417,7 +417,7 @@ class OpPredictCounter(Operator):
         self.PMaps.meta.drange = (0.0, 1.0)
 
     def execute(self, slot, subindex, roi, result):
-        t1 = time.time()
+        t1 = time.perf_counter()
         key = roi.toSlice()
         nlabels=self.inputs["LabelsCount"].value
 
@@ -443,7 +443,7 @@ class OpPredictCounter(Operator):
 
         predictions = [0]*len(forests)
 
-        t2 = time.time()
+        t2 = time.perf_counter()
 
         pool = RequestPool()
         
@@ -468,7 +468,7 @@ class OpPredictCounter(Operator):
         #for c in range(result.shape[-1]):
         #    result[...,c] = prediction[...,min(c+key[-1].start, prediction.shape[-1]-1)]
 
-        t3 = time.time()
+        t3 = time.perf_counter()
 
         logger.debug("Predict took %fseconds, actual RF time was %fs, feature time was %fs" % (t3-t1, t3-t2, t2-t1))
         return result

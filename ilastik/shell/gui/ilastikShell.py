@@ -1461,7 +1461,7 @@ class IlastikShell(QMainWindow):
                 for index, app in enumerate(self.projectManager.workflow.applets):
                     self.addApplet(index, app)
 
-                start = time.time()
+                start = time.perf_counter()
                 #load the project data from file
                 if importFromPath is None:
                     #FIXME: load the project asynchronously
@@ -1483,7 +1483,7 @@ class IlastikShell(QMainWindow):
                 QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + str(ex))
 
             else:
-                stop = time.time()
+                stop = time.perf_counter()
                 logger.debug("Loading the project took {:.2f} sec.".format(stop - start))
 
                 #add file and workflow to users preferences
