@@ -44,10 +44,9 @@ from PyQt5.QtWidgets import (
     QStylePainter,
 )
 from volumina import colortables
-from volumina.api import Viewer
+from volumina.api import Viewer, createDataSource
 from volumina.colortables import jet
 from volumina.layer import ColortableLayer
-from volumina.pixelpipeline.datasources import LazyflowSource
 
 logger = logging.getLogger(__name__)
 
@@ -1157,7 +1156,7 @@ if __name__ == "__main__":
     do()
 
     cron.timeout.connect(do)
-    ds = LazyflowSource(op.Output)
+    ds = createDataSource(op.Output)
     layer = ColortableLayer(ds, jet())
 
     mainwin = Viewer()

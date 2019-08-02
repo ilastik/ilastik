@@ -27,7 +27,7 @@ import warnings
 
 from lazyflow.operators.generic import OpMultiArraySlicer2
 
-from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
+from volumina.api import createDataSource, AlphaModulatedLayer, ColortableLayer
 from volumina import colortables
 
 from ilastik.utility import bind
@@ -87,7 +87,7 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 layers.append( previewLayer )
         elif selection.startswith("Uncertainty"):
             if opLane.ImageToExport.ready():
-                previewUncertaintySource = LazyflowSource(opLane.ImageToExport)
+                previewUncertaintySource = createDataSource(opLane.ImageToExport)
                 previewLayer = AlphaModulatedLayer( previewUncertaintySource,
                                                     tintColor=QColor(0,255,255), # cyan
                                                     range=(0.0, 1.0),
@@ -97,7 +97,7 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 previewLayer.name = "Uncertainty - Preview"
                 layers.append(previewLayer)
             if opLane.ImageOnDisk.ready():
-                exportedUncertaintySource = LazyflowSource(opLane.ImageOnDisk)
+                exportedUncertaintySource = createDataSource(opLane.ImageOnDisk)
                 exportedLayer = AlphaModulatedLayer( exportedUncertaintySource,
                                                      tintColor=QColor(0,255,255), # cyan
                                                      range=(0.0, 1.0),
@@ -148,7 +148,7 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
         colortable.append( QColor(0,0,0,0).rgba() ) # transparent
         for color in colors:
             colortable.append( QColor(*color).rgba() )
-        segsrc = LazyflowSource( segSlot )
+        segsrc = createDataSource( segSlot )
         seglayer = ColortableLayer( segsrc, colortable )
         return seglayer
 
@@ -180,7 +180,7 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
         for channel, channelSlot in enumerate(opSlicer.Slices):
             if channelSlot.ready() and channel < len(colors) and channel < len(names):
                 drange = channelSlot.meta.drange or (0.0, 1.0)
-                predictsrc = LazyflowSource(channelSlot)
+                predictsrc = createDataSource(channelSlot)
                 predictLayer = AlphaModulatedLayer( predictsrc,
                                                     tintColor=QColor(*colors[channel]),
                                                     # FIXME: This is weird.  Why are range and normalize both set to the same thing?

@@ -39,7 +39,7 @@ from PyQt5 import uic
 from PyQt5.QtCore import QRect, Qt, pyqtSlot
 from PyQt5.QtGui import QColor, QIcon
 from PyQt5.QtWidgets import QApplication, QMessageBox
-from volumina.api import ColortableLayer, LazyflowSinkSource, LazyflowSource
+from volumina.api import ColortableLayer, LazyflowSinkSource, createDataSource
 from volumina.navigationController import NavigationInterpreter
 from volumina.utility import ShortcutManager
 
@@ -602,7 +602,7 @@ class CountingGui(LabelingGui):
         for name, (slot, opacity) in list(slots.items()):
             if slot.ready():
                 layer = ColortableLayer(
-                    LazyflowSource(slot),
+                    createDataSource(slot),
                     colorTable=countingColorTable,
                     normalize=(0, self.upperBound))
                 layer.name = name

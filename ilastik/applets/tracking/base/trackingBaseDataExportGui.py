@@ -26,7 +26,7 @@ from ilastik.plugins import pluginManager
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
 import volumina.colortables as colortables
-from volumina.api import LazyflowSource, ColortableLayer
+from volumina.api import createDataSource, ColortableLayer
 
 
 from ilastik.applets.tracking.base.pluginExportOptionsDlg import PluginExportOptionsDlg
@@ -226,14 +226,14 @@ class TrackingBaseResultsViewer(DataExportLayerViewerGui):
 
         fromDiskSlot = self.topLevelOperatorView.ImageOnDisk
         if fromDiskSlot.ready():
-            exportLayer = ColortableLayer( LazyflowSource(fromDiskSlot), colorTable=self.ct )
+            exportLayer = ColortableLayer( createDataSource(fromDiskSlot), colorTable=self.ct )
             exportLayer.name = "Selected Output - Exported"
             exportLayer.visible = True
             layers.append(exportLayer)
 
         previewSlot = self.topLevelOperatorView.ImageToExport
         if previewSlot.ready():
-            previewLayer = ColortableLayer( LazyflowSource(previewSlot), colorTable=self.ct )
+            previewLayer = ColortableLayer( createDataSource(previewSlot), colorTable=self.ct )
             previewLayer.name = "Selected Output - Preview"
             previewLayer.visible = False
             layers.append(previewLayer)

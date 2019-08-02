@@ -44,7 +44,7 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 from ilastik.applets.base.applet import DatasetConstraintError
 
 import volumina.colortables as colortables
-from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
+from volumina.api import createDataSource, GrayscaleLayer, ColortableLayer
 from volumina.utility import ShortcutManager
 
 from ilastik.config import cfg as ilastik_config
@@ -451,7 +451,7 @@ class AnnotationsGui(LayerViewerGui):
 
         if slot is self.mainOperator.RawImage:    
             if slot.meta.shape and not self.rawsrc:    
-                self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+                self.rawsrc = createDataSource( self.mainOperator.RawImage )
                 layerraw = GrayscaleLayer( self.rawsrc )
                 layerraw.name = "Raw"
                 self.layerstack.append( layerraw )
@@ -459,7 +459,7 @@ class AnnotationsGui(LayerViewerGui):
     def _onReady( self, slot ):
         if slot is self.mainOperator.RawImage:
             if slot.meta.shape and not self.rawsrc:
-                self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+                self.rawsrc = createDataSource( self.mainOperator.RawImage )
                 layerraw = GrayscaleLayer( self.rawsrc )    
                 layerraw.name = "Raw"
                 self.layerstack.append( layerraw )
@@ -619,7 +619,7 @@ class AnnotationsGui(LayerViewerGui):
         self.ct[-1] = QColor(0,0,0,255).rgba()       
         
         if self.topLevelOperatorView.TrackImage.ready():
-            self.trackingsrc = LazyflowSource( self.topLevelOperatorView.TrackImage )
+            self.trackingsrc = createDataSource( self.topLevelOperatorView.TrackImage )
             trackingLayer = ColortableLayer( self.trackingsrc, self.ct )
             trackingLayer.name = "Tracking Annotations"
             trackingLayer.visible = True
@@ -643,7 +643,7 @@ class AnnotationsGui(LayerViewerGui):
             for i in range(len(ct)):
                 ct[i] = QColor(230,0,0,150).rgba() 
             ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-            self.untrackedsrc = LazyflowSource( self.topLevelOperatorView.UntrackedImage )
+            self.untrackedsrc = createDataSource( self.topLevelOperatorView.UntrackedImage )
             untrackedLayer = ColortableLayer( self.untrackedsrc, ct )
             untrackedLayer.name = "Untracked Objects"
             untrackedLayer.visible = False
@@ -655,7 +655,7 @@ class AnnotationsGui(LayerViewerGui):
             for i in range(len(ct)):
                 ct[i] = QColor(255,255,0,100).rgba()
             ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-            self.objectssrc = LazyflowSource( self.topLevelOperatorView.LabelImage )             
+            self.objectssrc = createDataSource( self.topLevelOperatorView.LabelImage )             
             objLayer = ColortableLayer( self.objectssrc, ct )
             objLayer.name = "Objects"
             objLayer.opacity = 0.8
@@ -675,7 +675,7 @@ class AnnotationsGui(LayerViewerGui):
 
 
         if self.mainOperator.RawImage.ready():
-            self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+            self.rawsrc = createDataSource( self.mainOperator.RawImage )
             rawLayer = GrayscaleLayer( self.rawsrc )
             rawLayer.name = "Raw"        
             layers.insert( len(layers), rawLayer )   
