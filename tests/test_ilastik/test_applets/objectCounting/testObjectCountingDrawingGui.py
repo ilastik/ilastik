@@ -23,7 +23,7 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtCore import QEvent,Qt
 from ilastik.workflows.counting import CountingWorkflow
-from tests.helpers import ShellGuiTestCaseBase
+from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 import os
 
@@ -239,6 +239,5 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
 
 
 if __name__ == "__main__":
-    from tests.helpers.shellGuiTestCaseBase import run_shell_test
+    from tests.test_ilastik.helpers.shellGuiTestCaseBase import run_shell_test
     run_shell_test(__file__)
-

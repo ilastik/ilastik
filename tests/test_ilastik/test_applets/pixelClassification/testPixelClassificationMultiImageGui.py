@@ -23,7 +23,7 @@ import os
 import numpy
 from PyQt5.QtWidgets import QApplication
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
-from tests.helpers import ShellGuiTestCaseBase
+from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 
 from ilastik.applets.pixelClassification.pixelClassificationApplet import PixelClassificationApplet
@@ -32,11 +32,11 @@ PIXEL_CLASSIFICATION_INDEX = 2
 class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
     """
     Run a set of GUI-based tests on the pixel classification workflow.
-    
+
     Note: These tests are named in order so that simple cases are tried before complex ones.
           Additionally, later tests may depend on earlier ones to run properly.
     """
-    
+
     @classmethod
     def workflowClass(cls):
         return PixelClassificationWorkflow
@@ -50,7 +50,7 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
     def setup_class(cls):
         # Base class first
         super(TestPixelClassificationGuiMultiImage, cls).setup_class()
-        
+
         if hasattr(cls, 'SAMPLE_DATA'):
             cls.using_random_data = False
         else:
@@ -88,20 +88,20 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
         def impl():
             projFilePath = self.PROJECT_FILE
             shell = self.shell
-            
+
             # New project
             shell.createAndLoadNewProject(projFilePath, self.workflowClass())
             workflow = shell.projectManager.workflow
 
             from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
             opDataSelection = workflow.dataSelectionApplet.topLevelOperator
-            for i, dataFile in enumerate(self.SAMPLE_DATA):        
+            for i, dataFile in enumerate(self.SAMPLE_DATA):
                 # Add a file
                 info = DatasetInfo()
                 info.filePath = dataFile
                 opDataSelection.DatasetGroup.resize(i+1)
                 opDataSelection.DatasetGroup[i][0].setValue(info)
-            
+
             # Set some features
             opFeatures = workflow.featureSelectionApplet.topLevelOperator
             #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
@@ -112,7 +112,7 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
                                        [False, False, False, False, False, False, False],
                                        [False, False, False, False, False, False, False]] )
             opFeatures.SelectionMatrix.setValue(selections)
-      
+
             # Save and close
             shell.projectManager.saveProject()
             shell.ensureNoCurrentProject(assertClean=True)
@@ -139,7 +139,7 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
-    
+
     # These points are relative to the CENTER of the view
     LABEL_START = (-20,-20)
     LABEL_STOP = (20,20)
@@ -159,13 +159,13 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
 
             # Select the labeling drawer
             self.shell.setSelectedAppletDrawer(PIXEL_CLASSIFICATION_INDEX)
-            
+
             # Turn off the huds and so we can capture the raw image
             viewMenu = gui.currentGui().menus()[0]
             viewMenu.actionToggleAllHuds.trigger()
 
             ## Turn off the slicing position lines
-            ## FIXME: This disables the lines without unchecking the position  
+            ## FIXME: This disables the lines without unchecking the position
             ##        box in the VolumeEditorWidget, making the checkbox out-of-sync
             #gui.currentGui().editor.navCtrl.indicateSliceIntersection = False
 
@@ -205,7 +205,7 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
                 imgView = gui.currentGui().editor.imageViews[i]
                 observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
                 expectedColor = gui.currentGui()._colorTable16[i+1]
-                assert observedColor == expectedColor, "Label was not drawn correctly.  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )                
+                assert observedColor == expectedColor, "Label was not drawn correctly.  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )
 
             # Save the project
             self.shell.onSaveProjectActionTriggered()
@@ -271,13 +271,13 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
             # Re-add all labels
             self.test_4_AddLabels()
 
-            # Enable interactive mode            
+            # Enable interactive mode
             assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
             gui.currentGui()._labelControlUi.liveUpdateButton.click()
 
             self.waitForViews(gui.currentGui().editor.imageViews)
 
-            # Disable iteractive mode.            
+            # Disable iteractive mode.
             gui.currentGui()._labelControlUi.liveUpdateButton.click()
 
             self.waitForViews(gui.currentGui().editor.imageViews)
@@ -303,7 +303,7 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
                 imgView = gui.currentGui().editor.imageViews[i]
                 observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
                 expectedColor = gui.currentGui()._colorTable16[i+1]
-                assert observedColor == expectedColor, "Label is missing (should have been drawn in a previous test).  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )                
+                assert observedColor == expectedColor, "Label is missing (should have been drawn in a previous test).  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )
 
             # Select the second image
             self.shell.imageSelectionCombo.setCurrentIndex(1)
@@ -327,19 +327,11 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
                 imgView = gui.currentGui().editor.imageViews[i]
                 observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
                 expectedColor = gui.currentGui()._colorTable16[i+1]
-                assert observedColor == expectedColor, "Label is missing (should have been drawn in a previous test).  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )                
+                assert observedColor == expectedColor, "Label is missing (should have been drawn in a previous test).  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
 if __name__ == "__main__":
-    from tests.helpers.shellGuiTestCaseBase import run_shell_test
+    from tests.test_ilastik.helpers.shellGuiTestCaseBase import run_shell_test
     run_shell_test(__file__)
-
-
-
-
-
-
-
-

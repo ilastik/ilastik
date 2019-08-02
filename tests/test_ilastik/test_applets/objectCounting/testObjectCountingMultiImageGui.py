@@ -35,7 +35,7 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtCore import QEvent,Qt
 from ilastik.workflows.counting import CountingWorkflow
-from tests.helpers import ShellGuiTestCaseBase
+from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 
 from ilastik.applets.counting.countingApplet import CountingApplet
@@ -249,7 +249,7 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
             true_idx = numpy.array([center + dot for dot in dot_start_list])
             idx = numpy.where(labelData)
             test_idx = numpy.array((idx[0],idx[1])).transpose()
-            
+
             # This test doesn't require *exact* pixel locations to match due to rounding differences in mouse strokes.
             # Instead, we just require them to be close.
             # FIXME: This should be fixable by ensuring that the image is properly zoomed to 1-1 scale before the test.
@@ -651,10 +651,10 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
 
             assert abs(displayedDensity - operatorDensity) < 1E-1, "Density mismatch:, the displayed Density {} is not\
             equal to the internal density from the Operator {}".format(displayedDensity, operatorDensity)
-            
+
             assert abs(operatorDensity - sumDensity) < 1E-1, "Density mismatch: the Sum operator {} does not return the same\
             result as using numpy.sum {}".format(operatorDensity, sumDensity)
-            
+
 
         self.exec_in_shell(impl)
 
@@ -780,13 +780,5 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
 
 
 if __name__ == "__main__":
-    from tests.helpers.shellGuiTestCaseBase import run_shell_test
+    from tests.test_ilastik.helpers.shellGuiTestCaseBase import run_shell_test
     run_shell_test(__file__)
-
-
-
-
-
-
-
-

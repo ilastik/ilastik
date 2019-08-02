@@ -39,7 +39,7 @@ from lazyflow.utility.timer import Timer, timeLogged
 from ilastik.applets.counting.countingApplet import CountingApplet
 COUNTING_APPLET_INDEX = 2
 
-from tests.helpers import ShellGuiTestCaseBase
+from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 
 import logging
 logger = logging.getLogger(__name__)
@@ -514,5 +514,5 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
 
 
 if __name__ == "__main__":
-    from tests.helpers.shellGuiTestCaseBase import run_shell_test
+    from tests.test_ilastik.helpers.shellGuiTestCaseBase import run_shell_test
     run_shell_test(__file__)
