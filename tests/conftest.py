@@ -11,7 +11,7 @@ from concurrent import futures
 import pytest
 
 from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, QThread
 from _pytest.main import pytest_runtestloop as _pytest_runtestloop
 
 import ilastik.config
@@ -45,6 +45,15 @@ def pytest_addoption(parser):
                      help="runs legacy gui tests")
 
 
+class TestThread(QThread):
+    def __init__(self, *args, target, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._target = target
+
+    def run(self):
+        self._target()
+
+
 def pytest_pyfunc_call(pyfuncitem):
     """
     Defines protocol for legacy GUI test execution
@@ -65,11 +74,14 @@ def pytest_pyfunc_call(pyfuncitem):
         except Exception as e:
             fut.set_exception(e)
 
-    runner = threading.Thread(target=testfunc)
-    runner.daemon = True
+    runner = TestThread(target=testfunc)
     runner.start()
 
-    fut.result(timeout=GUI_TEST_TIMEOUT)
+    try:
+        fut.result(timeout=GUI_TEST_TIMEOUT)
+    except futures.TimeoutError:
+        runner.terminate()
+        raise
 
     return True
 
