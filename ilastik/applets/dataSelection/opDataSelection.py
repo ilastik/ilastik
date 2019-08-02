@@ -67,17 +67,24 @@ class DatasetInfo(object):
         FileSystemRelativePath = 3
         FileSystemAbsolutePath = 4
 
-    def __init__(self, *,
-                 filepath:str=None,
-                 project_file:h5py.File=None,
-                 preloaded_array=None,
-                 sequence_axis=None, allowLabels=True,
-                 subvolume_roi=None, location=None,
-                 axistags=None, fill_in_dummy_axes:bool=False,
-                 display_mode='default',
-                 nickname='', original_axistags=None,
-                 normalizeDisplay:bool=None, drange:Tuple[Number, Number]=None,
-                 jsonNamespace=None,
+    def __init__(
+        self,
+        *,
+        filepath:str=None,
+        project_file:h5py.File=None,
+        preloaded_array=None,
+        sequence_axis=None,
+        allowLabels=True,
+        subvolume_roi=None,
+        location=None,
+        axistags=None,
+        fill_in_dummy_axes:bool=False,
+        display_mode='default',
+        nickname='',
+        original_axistags=None,
+        normalizeDisplay:bool=None,
+        drange:Tuple[Number, Number]=None,
+        jsonNamespace=None,
     ):
         """
         filepath: may be a globstring or a full hdf5 path+dataset
@@ -92,18 +99,19 @@ class DatasetInfo(object):
         """
         assert (preloaded_array is not None) ^ bool(filepath), "Provide either preloaded_array or filepath"
         self.filePath = filepath or ''
-        self.preloaded_array = preloaded_array
         self.project_file = project_file
-        # OBSOLETE: Whether or not this dataset should be used for training a classifier.
-        self.allowLabels = allowLabels
+        self.preloaded_array = preloaded_array
         self.sequenceAxis = sequence_axis
-        self.original_axistags = original_axistags
+        self.allowLabels = allowLabels
         self.subvolume_roi = subvolume_roi
-        self.display_mode = display_mode  # choices: default, grayscale, rgba, random-colortable, binary-mask.
-        self.original_paths = []
         self.location = location
+        self.axistags = axistags
+        self.normalizeDisplay = normalizeDisplay
         self.drange = drange
-        self.normalizeDisplay = (self.drange is not None) if normalizeDisplay is None else normalizeDisplay
+
+        self.display_mode = display_mode  # choices: default, grayscale, rgba, random-colortable, binary-mask.
+        self.original_axistags = original_axistags
+        self.original_paths = []
         self.expanded_paths = []
         self.base_dir = str(Path(project_file.filename).absolute().parent) if project_file else os.getcwd()
         assert os.path.isabs(self.base_dir) #FIXME: if file_project was opened as a relative path, this would break
@@ -111,7 +119,7 @@ class DatasetInfo(object):
         if location == self.Location.PreloadedArray or preloaded_array is not None:
             assert preloaded_array is not None
             self.preloaded_array = vigra.taggedView(preloaded_array, axistags or get_default_axisordering(preloaded_array.shape))
-            self.nickname = "preloaded-{}-array".format(self.preloaded_array.dtype.name)
+            self.nickname = nickname or "preloaded-{}-array".format(self.preloaded_array.dtype.name)
             self.laneShape = preloaded_array.shape
             self.laneDtype = preloaded_array.dtype
             self.location = self.Location.PreloadedArray
@@ -131,7 +139,7 @@ class DatasetInfo(object):
             assert len(self.expanded_paths) == 1 or self.sequenceAxis
             if len({PathComponents(ep).extension for ep in self.expanded_paths}) > 1:
                 raise Exception(f"Multiple extensions unsupported as a single data source: {self.expanded_paths}")
-            self.nickname = self.create_nickname(self.expanded_paths)
+            self.nickname = nickname or self.create_nickname(self.expanded_paths)
             self.filePath = os.path.pathsep.join(self.expanded_paths)
             op_reader = OpInputDataReader(graph=Graph(),
                                           WorkingDirectory=self.base_dir,
@@ -151,8 +159,7 @@ class DatasetInfo(object):
 
         if jsonNamespace is not None:
             self.updateFromJson(jsonNamespace)
-        if nickname:
-            self.nickname = nickname
+        self.normalizeDisplay = (self.drange is not None) if normalizeDisplay is None else normalizeDisplay
 
         self.axistags = axistags or default_tags
         if len(self.axistags) != len(self.laneShape):
@@ -171,7 +178,7 @@ class DatasetInfo(object):
                     if v > 1:
                         out_axes += requested_keys.pop(0)
                     else:
-                        out_axes += dummy_axes.pop()
+                        out_axes += dummy_axes.pop(0)
                 self.axistags = vigra.defaultAxistags(out_axes)
             else:
                 raise Exception(f"Cannot reinterpret input with shape {self.laneShape} using aksiskeys {requested_keys}")

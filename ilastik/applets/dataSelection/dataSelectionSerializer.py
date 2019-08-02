@@ -23,7 +23,6 @@ from __future__ import absolute_import
 from typing import List, Tuple, Callable
 from pathlib import Path
 
-from PyQt5.QtWidgets import QMessageBox
 
 from .opDataSelection import OpDataSelection, DatasetInfo
 from lazyflow.operators.ioOperators import OpInputDataReader, OpStackLoader, OpH5N5WriterBigDataset
@@ -45,7 +44,6 @@ from lazyflow.utility.timer import timeLogged
 from ilastik.utility import bind
 from lazyflow.utility.pathHelpers import getPathVariants, isUrl, isRelative, splitPath
 import ilastik.utility.globals
-from ilastik.widgets.ImageFileDialog import ImageFileDialog
 
 from ilastik.applets.base.appletSerializer import \
     AppletSerializer, getOrCreateGroup, deleteIfPresent
@@ -311,8 +309,10 @@ class DataSelectionSerializer( AppletSerializer ):
                 info_params['location'] = DatasetInfo.Location.PreloadedArray
                 info_params['preloaded_array'] = numpy.zeros(shape, dtype=numpy.uint8)
                 return DatasetInfo(**info_params), True
+
+            from PyQt5.QtWidgets import QMessageBox
+            from ilastik.widgets.ImageFileDialog import ImageFileDialog
             repaired_paths = []
-            #import pydevd; pydevd.settrace()
             for missing_path in e.filename.split(os.path.pathsep):
                 should_repair = QMessageBox.question(
                     None,
@@ -444,7 +444,6 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
                 axistags = vigra.defaultAxistags(default_axis_order)
 
             totalDatasetPath = str(projectFilePath + '/DataSets/' + datasetDirName + '/data' )
-            import pydevd; pydevd.settrace()
             datasetInfo = DatasetInfo(
                 # We'll set up the link to the dataset in the old project file,
                 #  but we'll set the location to ProjectInternal so that it will

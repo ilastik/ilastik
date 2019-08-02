@@ -254,7 +254,11 @@ class DatasetInfoEditorWidget(QDialog):
         selected_normalize_index = self.normalizeDisplayComboBox.findData(None)
         self.normalizeDisplayComboBox.setCurrentIndex(selected_normalize_index)
         self.rangeMinSpinBox.setValue(self.rangeMinSpinBox.minimum())
-        self.rangeMaxSpinBox.setValue(self.rangeMaxSpinBox.maximum())
+        float_types = (numpy.float16, numpy.float32, numpy.float64)
+        if all(info.laneDtype in float_types for info in self.current_infos):
+            self.rangeMaxSpinBox.setValue(1.0)
+        else:
+            self.rangeMaxSpinBox.setValue(self.rangeMaxSpinBox.maximum())
 
     def _handleNormalizeDisplayChanged(self):
         normalize = bool(self.normalizeDisplayComboBox.currentData())
