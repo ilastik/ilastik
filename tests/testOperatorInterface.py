@@ -34,6 +34,7 @@ from lazyflow import graph
 from lazyflow import stype
 from lazyflow import slot
 from lazyflow import operators
+from lazyflow import operator
 from lazyflow.graph import OperatorWrapper
 
 import numpy
@@ -821,6 +822,54 @@ class TestCompatibilityChecks:
     def test_arraylike_retun_non_arraylike_object_raises(self, op):
         with pytest.raises(stype.InvalidResult):
             assert op.OutputUnsupportedType.value
+
+
+class TestOperatorStackFormatter:
+    class BrokenOp(operator.Operator):
+        Out = slot.OutputSlot()
+
+        def setupOutputs(self):
+            self.Out.meta.shape = (1,)
+            self.Out.meta.dtype = object
+
+        def execute(self, *args, **kwargs):
+            raise Exception()
+
+        def propagateDirty(self, *args, **kwargs):
+            pass
+
+    def test_operator_except_formatting(self):
+        op = self.BrokenOp(graph=graph.Graph())
+
+        exc = None
+
+        try:
+            op.Out.value
+        except Exception as e:
+            exc = e
+
+        assert exc
+
+        stack = operator.format_operator_stack(exc.__traceback__)
+        assert stack
+        assert len(stack) == 1
+        assert "TestOperatorStackFormatter.BrokenOp.execute" in stack[0]
+
+
+def test_operator_str():
+    g = graph.Graph()
+
+    class OpA(graph.Operator):
+        Input = graph.InputSlot(level=2)
+
+    op = OpA(graph=g)
+    op.Input.resize(2)
+
+    assert "level=1" in str(op.Input[0])
+    assert "index=(0,)" in str(op.Input[0])
+
+    assert "len=2" in str(op.Input)
+    assert "index" not in str(op.Input)
 
 
 if __name__ == "__main__":

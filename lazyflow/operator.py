@@ -23,9 +23,12 @@ import collections
 import functools
 import logging
 import threading
+import sys
+import inspect
 
 from abc import ABCMeta
-from typing import Optional
+from contextlib import contextmanager
+from traceback import walk_tb, FrameSummary, format_list
 
 # lazyflow
 from lazyflow.slot import InputSlot, OutputSlot, Slot
@@ -396,9 +399,7 @@ class Operator(metaclass=OperatorMetaClass):
         for s in list(self.inputs.values()) + list(self.outputs.values()):
             # See note about the externally_managed flag in Operator.__init__
             downstream_slots = list(
-                p
-                for p in s.downstream_slots
-                if p.getRealOperator() is not None and not p.getRealOperator().externally_managed
+                p for p in s.downstream_slots if p.operator is not None and not p.operator.externally_managed
             )
             if len(downstream_slots) > 0:
                 msg = (
@@ -407,7 +408,7 @@ class Operator(metaclass=OperatorMetaClass):
                     " operators!\n".format(self.name, s.name)
                 )
                 for i, p in enumerate(s.downstream_slots):
-                    msg += "Downstream Partner {}: {}.{}".format(i, p.getRealOperator().name, p.name)
+                    msg += "Downstream Partner {}: {}.{}".format(i, p.operator.name, p.name)
                 raise RuntimeError(msg)
 
         self._parent = None
@@ -598,3 +599,61 @@ class Operator(metaclass=OperatorMetaClass):
 #    @debug_text.setter
 #    def debug_text(self, text):
 #        self._debug_text = text
+
+
+def format_operator_stack(tb):
+    """
+    Extract operator stacktrace from traceback
+    """
+    operator_stack = []
+    for frame, lineno in walk_tb(tb):
+        code = frame.f_code
+        filename = code.co_filename
+        locals_ = frame.f_locals
+        mod_name = frame.f_globals["__name__"]
+
+        maybe_op = locals_.get("self", None)
+        if not isinstance(maybe_op, Operator):
+            continue
+
+        op_name = type(maybe_op).__qualname__
+        qualname = f"{mod_name}.{op_name}.{code.co_name}"
+
+        if op_name:
+            operator_stack.append(FrameSummary(filename, lineno, qualname, lookup_line=False, locals=None))
+
+    operator_stack.reverse()
+
+    if operator_stack:
+        return format_list(operator_stack)
+
+
+_original_excepthook = sys.excepthook
+
+
+def print_operator_stack(exc_type, exc, tb):
+    """
+    Enrich default exception output with operator stacktrace
+    """
+    _original_excepthook(exc_type, exc, tb)
+
+    formatted = format_operator_stack(tb)
+    if formatted:
+        print("\n===Operator stack===\n", file=sys.stderr)
+        print("".join(formatted), end="", file=sys.stderr)
+        print("\n===Operator stack end===\n", file=sys.stderr)
+
+
+def install_except_hook():
+    sys.excepthook = print_operator_stack
+
+
+def uninstall_except_hook():
+    sys.excepthook = _original_excepthook
+
+
+@contextmanager
+def except_hook():
+    install_except_hook()
+    yield
+    uninstall_except_hook()
