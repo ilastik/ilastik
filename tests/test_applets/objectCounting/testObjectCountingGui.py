@@ -1,5 +1,3 @@
-from __future__ import division
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,35 +18,31 @@ from __future__ import division
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+
 # TODO: refactor
 # TODO: test erase dots and brush strokes
 # TODO: test remove the box
 # TODO: test switch to a new image
 # TODO: test load a referecence project
 
-
+import logging
 import os
 import sys
+
 import numpy
-import vigra
-from PyQt5.QtWidgets import QApplication
-from lazyflow.operators import OpPixelFeaturesPresmoothed
-
-
-from lazyflow.utility.timer import Timer, timeLogged
-
-from ilastik.applets.counting.countingApplet import CountingApplet
-
-COUNTING_APPLET_INDEX = 2
-
 from tests.helpers import ShellGuiTestCaseBase
 
-import logging
+import vigra
+from ilastik.applets.counting.countingApplet import CountingApplet
+from lazyflow.utility.timer import Timer, timeLogged
+from PyQt5.QtCore import QPoint
+from PyQt5.QtWidgets import QApplication
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stdout))
-# logger.setLevel(logging.INFO)
 logger.setLevel(logging.DEBUG)
+
+COUNTING_APPLET_INDEX = 2
 
 
 class TestObjectCountingGui(ShellGuiTestCaseBase):
@@ -440,14 +434,10 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
             imgView = gui.currentGui().editor.imageViews[2]
 
             for start, stop in self.BOX_ROIS:
-                point_start = imgView.mapFromScene(*start)
-                view_start = point_start.x(), point_start.y()
-
+                start = imgView.mapFromScene(*start)
                 # "stop" in strokeMouse is inclusive, but our ROIs are exclusive.
-                point_stop = imgView.mapFromScene(*stop)
-                view_stop = point_stop.x() - 1, point_stop.y() - 1
-
-                self.strokeMouse(imgView, view_start, view_stop)
+                stop = imgView.mapFromScene(*stop) - QPoint(1, 1)
+                self.strokeMouse(imgView, start, stop)
 
             added_boxes = len(gui.currentGui()._labelControlUi.boxListModel._elements)
             assert added_boxes == 3, " Not all boxes added to the model curr = %d" % added_boxes
