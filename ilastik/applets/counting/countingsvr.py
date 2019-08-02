@@ -502,11 +502,9 @@ class SVR(object):
         return res.reshape(resShape)
 
     def writeHDF5(self, cachePath, targetname):
-        serialized = pickle.dumps(self)
+        data = (np.void(pickle.dumps(self)),)
         with h5py.File(cachePath) as f:
-            dtype = np.dtype(("V", len(serialized)))
-            dataset = f.create_dataset(targetname, shape=(1,), dtype=dtype)
-            dataset[0] = np.void(serialized)
+            f.create_dataset(targetname, data=data)
 
     def get_params(self):
         return {
