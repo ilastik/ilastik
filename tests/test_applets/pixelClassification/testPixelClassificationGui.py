@@ -37,18 +37,16 @@ PIXEL_CLASSIFICATION_INDEX = 2
 
 import logging
 logger = logging.getLogger(__name__)
-logger.addHandler( logging.StreamHandler(sys.stdout) )
-#logger.setLevel(logging.INFO)
-logger.setLevel(logging.DEBUG)
+
 
 class TestPixelClassificationGui(ShellGuiTestCaseBase):
     """
     Run a set of GUI-based tests on the pixel classification workflow.
-    
+
     Note: These tests are named in order so that simple cases are tried before complex ones.
           Additionally, later tests may depend on earlier ones to run properly.
     """
-    
+
     @classmethod
     def workflowClass(cls):
         return PixelClassificationWorkflow
@@ -61,7 +59,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
     def setup_class(cls):
         # Base class first
         super(TestPixelClassificationGui, cls).setup_class()
-        
+
         if hasattr(cls, 'SAMPLE_DATA'):
             cls.using_random_data = False
         else:
@@ -70,7 +68,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             data = numpy.random.random((1,200,200,50,1))
             data *= 256
             numpy.save(cls.SAMPLE_DATA, data.astype(numpy.uint8))
-        
+
         # Start the timer
         cls.timer = Timer()
         cls.timer.unpause()
@@ -79,7 +77,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
     def teardown_class(cls):
         cls.timer.pause()
         logger.debug( "Total Time: {} seconds".format( cls.timer.seconds() ) )
-        
+
         # Call our base class so the app quits!
         super(TestPixelClassificationGui, cls).teardown_class()
 
@@ -88,7 +86,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         if cls.using_random_data:
             removeFiles += [ TestPixelClassificationGui.SAMPLE_DATA ]
 
-        for f in removeFiles:        
+        for f in removeFiles:
             try:
                 os.remove(f)
             except:
@@ -100,13 +98,13 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         """
         def impl():
             projFilePath = self.PROJECT_FILE
-        
+
             shell = self.shell
-            
+
             # New project
             shell.createAndLoadNewProject(projFilePath, self.workflowClass())
             workflow = shell.projectManager.workflow
-        
+
             # Add a file
             from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
             info = DatasetInfo()
@@ -114,7 +112,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             opDataSelection = workflow.dataSelectionApplet.topLevelOperator
             opDataSelection.DatasetGroup.resize(1)
             opDataSelection.DatasetGroup[0][0].setValue(info)
-            
+
             # Set some features
             opFeatures = workflow.featureSelectionApplet.topLevelOperator
             #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
@@ -126,7 +124,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
                                        [False, False, False, False, False, False, False]] )
 
             opFeatures.SelectionMatrix.setValue(selections)
-        
+
             # Save and close
             shell.projectManager.saveProject()
             shell.ensureNoCurrentProject(assertClean=True)
@@ -153,7 +151,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
-    
+
     # These points are relative to the CENTER of the view
     LABEL_START = (-20,-20)
     LABEL_STOP = (20,20)
@@ -174,13 +172,13 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
             # Select the labeling drawer
             self.shell.setSelectedAppletDrawer(PIXEL_CLASSIFICATION_INDEX)
-            
+
             # Turn off the huds and so we can capture the raw image
             viewMenu = gui.currentGui().menus()[0]
             viewMenu.actionToggleAllHuds.trigger()
 
             ## Turn off the slicing position lines
-            ## FIXME: This disables the lines without unchecking the position  
+            ## FIXME: This disables the lines without unchecking the position
             ##        box in the VolumeEditorWidget, making the checkbox out-of-sync
             #gui.currentGui().editor.navCtrl.indicateSliceIntersection = False
 
@@ -189,7 +187,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
             assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
-            
+
             # Add label classes. we want three for the following tests. Two are initially added by the constructors.
             # Add one to the two existing ones:
             gui.currentGui()._labelControlUi.AddLabelButton.click()
@@ -210,7 +208,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             for i in range(3):
                 # Post this as an event to ensure sequential execution.
                 gui.currentGui()._labelControlUi.labelListModel.select(i)
-                
+
                 imgView = gui.currentGui().editor.imageViews[i]
                 self.strokeMouseFromCenter( imgView, self.LABEL_START, self.LABEL_STOP )
 
@@ -225,7 +223,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
                 imgView = gui.currentGui().editor.imageViews[i]
                 observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
                 expectedColor = gui.currentGui()._colorTable16[i+1]
-                assert observedColor == expectedColor, "Label was not drawn correctly.  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )                
+                assert observedColor == expectedColor, "Label was not drawn correctly.  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )
 
             # Save the project
             saveThread = self.shell.onSaveProjectActionTriggered()
@@ -273,10 +271,10 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
             # Let the GUI catch up: Process all events
             QApplication.processEvents()
-            
+
             # Selection should auto-reset back to the first row.
             assert gui.currentGui()._labelControlUi.labelListModel.selectedRow() == 0, "Row {} was selected.".format(gui.currentGui()._labelControlUi.labelListModel.selectedRow())
-            
+
             # Did the label get removed from the label array?
             labelData = opPix.LabelImages[0][:].wait()
             assert labelData.max() == 2, "Max label value did not decrement after the label was deleted.  Expected 2, got {}".format( labelData.max() )
@@ -288,7 +286,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
                 imgView = gui.currentGui().editor.imageViews[i]
                 observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
                 expectedColor = originalLabelColors[i]
-                assert observedColor == expectedColor, "Label was not drawn correctly.  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )                
+                assert observedColor == expectedColor, "Label was not drawn correctly.  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )
 
             # Make sure we actually deleted the third label(it should no longer be visible)
             for i in [2]:
@@ -296,11 +294,11 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
                 observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
                 oldColor = originalLabelColors[i]
                 assert observedColor != oldColor, "Label was not deleted."
-            
+
             # Original layer should not be anywhere in the layerstack.
             for layer in gui.currentGui().layerstack:
                 assert layer.name is not originalLabelNames[1], "Layer {} was still present in the stack.".format(layer.name)
-            
+
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
@@ -319,7 +317,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
             assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
-            
+
             # Use the first view for this test
             imgView = gui.currentGui().editor.imageViews[0]
 
@@ -332,7 +330,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Hide labels and sample raw data
             labelLayer = gui.currentGui().layerstack[0]
             assert labelLayer.name == "Labels", "Layer name was wrong: {}".labelLayer.name
-            labelLayer.visible = False            
+            labelLayer.visible = False
             self.waitForViews([imgView])
             rawDataColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
             assert rawDataColor != labelColor, "Pixel color was not correct after label was hidden.  rawDataColor: {}, labelColor: {}".format(hex(rawDataColor), hex(labelColor))
@@ -343,13 +341,13 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             gui.currentGui()._labelControlUi.eraserToolButton.click()
             gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(3)
             self.waitForViews([imgView])
-            
+
             # Erase and verify
             self.strokeMouseFromCenter( imgView, self.LABEL_ERASE_START, self.LABEL_ERASE_STOP )
             self.waitForViews([imgView])
             erasedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
             assert erasedColor == rawDataColor, "Pixel color was not correct after label was erased.  Expected {}, got {}".format(hex(rawDataColor), hex(erasedColor))
-        
+
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
@@ -370,9 +368,9 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
 
-            labelData = opPix.LabelImages[0][:].wait()            
+            labelData = opPix.LabelImages[0][:].wait()
             assert labelData.max() == 2, "Max label value was wrong. Expected 2, got {}".format( labelData.max()  )
-            
+
             # Use the second view for this test (which has the max label value)
             imgView = gui.currentGui().editor.imageViews[1]
 
@@ -385,7 +383,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Hide labels and sample raw data
             labelLayer = gui.currentGui().layerstack[0]
             assert labelLayer.name == "Labels"
-            labelLayer.visible = False            
+            labelLayer.visible = False
             self.waitForViews([imgView])
             rawDataColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
             assert rawDataColor != labelColor, "Pixel color was not correct after label was hidden.  rawDataColor: {}, labelColor: {}".format(hex(rawDataColor), hex(labelColor))
@@ -396,7 +394,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             gui.currentGui()._labelControlUi.eraserToolButton.click()
             gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(3)
             self.waitForViews([imgView])
-            
+
             # Erase and verify
             self.strokeMouseFromCenter( imgView, self.LABEL_START, self.LABEL_STOP )
             self.waitForViews([imgView])
@@ -404,14 +402,14 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             assert erasedColor == rawDataColor, "Eraser did not remove labels! Expected {}, got {}".format( hex(rawDataColor), hex(erasedColor) )
 
             # We just erased all the labels of value 2, so the max label value should be reduced.
-            labelData = opPix.LabelImages[0][:].wait()            
+            labelData = opPix.LabelImages[0][:].wait()
             assert labelData.max() == 1, "Max label value was wrong. Expected 2, got {}".format( labelData.max()  )
 
             # Now stroke the eraser once more.
             # The new stroke should make NO DIFFERENCE to the image.
             rawDataColor = self.getPixelColor(imgView, (5,-5))
             self.strokeMouseFromCenter( imgView, (10,-10), (0,0) )
-            
+
             # Move the cursor out of the way so we can sample the image
             self.moveMouseFromCenter(imgView, (20,20))
 
@@ -437,16 +435,16 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
             # Re-add all labels
             self.test_4_AddLabels()
-            
+
             # Make sure the entire slice is visible
             viewMenu = gui.currentGui().menus()[0]
             viewMenu.actionFitToScreen.trigger()
 
             with Timer() as timer:
-                # Enable interactive mode            
+                # Enable interactive mode
                 assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
                 gui.currentGui()._labelControlUi.liveUpdateButton.click()
-    
+
                 # Do to the way we wait for the views to finish rendering, the GUI hangs while we wait.
                 self.waitForViews(gui.currentGui().editor.imageViews)
 
@@ -459,7 +457,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
                 try:
                     index = gui.currentGui().layerstack.findMatchingIndex(lambda layer: labelName in layer.name)
                     layer = gui.currentGui().layerstack[index]
-                    
+
                     # Check the color
                     assert isinstance(layer, AlphaModulatedLayer), "layer is {}".format( layer )
                     assert layer.tintColor.rgba() == labelColors[i], "Expected {}, got {}".format( hex(labelColors[i]), hex(layer.tintColor.rgba()) )
@@ -474,7 +472,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
-    
+
 
 
 

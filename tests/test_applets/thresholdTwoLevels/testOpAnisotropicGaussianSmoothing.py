@@ -28,8 +28,6 @@ from lazyflow.operators import OpReorderAxes
 
 from ilastik.applets.thresholdTwoLevels.thresholdingTools import OpAnisotropicGaussianSmoothing5d
 
-import ilastik.ilastik_logging
-ilastik.ilastik_logging.default_config.init()
 import unittest
 
 

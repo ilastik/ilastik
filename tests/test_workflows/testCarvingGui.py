@@ -26,8 +26,6 @@ from volumina.widgets.exportHelper import get_export_operator
 from ilastik.utility import bind
 
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler(sys.stdout))
-logger.setLevel(logging.DEBUG)
 
 
 class TestCarvingnGui(ShellGuiTestCaseBase):

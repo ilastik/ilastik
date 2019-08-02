@@ -35,7 +35,6 @@ from lazyflow.utility.timer import timeLogged
 
 import logging
 logger = logging.getLogger(__name__)
-# logger.setLevel(logging.DEBUG)
 
 
 class TestDataConversionWorkflow(object):

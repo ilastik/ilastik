@@ -36,19 +36,16 @@ PIXEL_CLASSIFICATION_INDEX = 2
 
 import logging
 logger = logging.getLogger(__name__)
-logger.addHandler( logging.StreamHandler(sys.stdout) )
-#logger.setLevel(logging.INFO)
-logger.setLevel(logging.DEBUG)
 
 
 class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
     """
     Run a set of GUI-based tests on the pixel classification workflow.
-    
+
     Note: These tests are named in order so that simple cases are tried before complex ones.
           Additionally, later tests may depend on earlier ones to run properly.
     """
-    
+
     @classmethod
     def workflowClass(cls):
         return PixelClassificationWorkflow
@@ -74,7 +71,7 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
             data = numpy.random.random((1,512,512,128,1))
             data *= 256
             numpy.save(cls.SAMPLE_DATA, data.astype(numpy.uint8))
-        
+
         # Start the timer
         cls.timer = Timer()
         cls.timer.unpause()
@@ -82,7 +79,7 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
     @classmethod
     def teardown_class(cls):
         logger.debug( "Total Time: {} seconds".format( cls.timer.seconds() ) )
-        
+
         # Call our base class so the app quits!
         super(TestPixelClassificationGuiBenchmarking, cls).teardown_class()
 
@@ -91,7 +88,7 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
         if cls.using_random_data:
             removeFiles += [ TestPixelClassificationGuiBenchmarking.SAMPLE_DATA ]
 
-        for f in removeFiles:        
+        for f in removeFiles:
             try:
                 os.remove(f)
             except:
@@ -103,13 +100,13 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
         """
         def impl():
             projFilePath = self.PROJECT_FILE
-        
+
             shell = self.shell
-            
+
             # New project
             shell.createAndLoadNewProject(projFilePath, self.workflowClass())
             workflow = shell.projectManager.workflow
-        
+
             # Add a file
             from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
             info = DatasetInfo()
@@ -117,7 +114,7 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
             opDataSelection = workflow.dataSelectionApplet.topLevelOperator
             opDataSelection.DatasetGroup.resize(1)
             opDataSelection.DatasetGroup[0][0].setValue(info)
-            
+
             # Set some features
             opFeatures = workflow.featureSelectionApplet.topLevelOperator
             #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
@@ -129,7 +126,7 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
                                        [True, True, True, True, True, True, False]] )
 
             opFeatures.SelectionMatrix.setValue(selections)
-        
+
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
@@ -153,13 +150,13 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
             # Select the labeling drawer
             self.shell.setSelectedAppletDrawer(PIXEL_CLASSIFICATION_INDEX)
             assert isinstance(self.shell.workflow.applets[PIXEL_CLASSIFICATION_INDEX], PixelClassificationApplet)
-            
+
             # Turn off the huds and so we can capture the raw image
             viewMenu = gui.currentGui().menus()[0]
             viewMenu.actionToggleAllHuds.trigger()
 
             ## Turn off the slicing position lines
-            ## FIXME: This disables the lines without unchecking the position  
+            ## FIXME: This disables the lines without unchecking the position
             ##        box in the VolumeEditorWidget, making the checkbox out-of-sync
             #gui.currentGui().editor.navCtrl.indicateSliceIntersection = False
 
@@ -169,7 +166,7 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
             assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2,\
                 "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
-            
+
             # Add label classes
             for i in range(3):
                 gui.currentGui()._labelControlUi.AddLabelButton.click()
@@ -189,7 +186,7 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
             for i in range(3):
                 # Post this as an event to ensure sequential execution.
                 gui.currentGui()._labelControlUi.labelListModel.select(i)
-                
+
                 imgView = gui.currentGui().editor.imageViews[i]
                 self.strokeMouseFromCenter( imgView, self.LABEL_START, self.LABEL_STOP )
 
@@ -200,7 +197,7 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
                 imgView = gui.currentGui().editor.imageViews[i]
                 observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
                 expectedColor = gui.currentGui()._colorTable16[i+1]
-                assert observedColor == expectedColor, "Label was not drawn correctly.  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )                
+                assert observedColor == expectedColor, "Label was not drawn correctly.  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )
 
             # Save the project
             saveThread = self.shell.onSaveProjectActionTriggered()
@@ -223,10 +220,10 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
             viewMenu.actionFitToScreen.trigger()
 
             with Timer() as timer:
-                # Enable interactive mode            
+                # Enable interactive mode
                 assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
                 gui.currentGui()._labelControlUi.liveUpdateButton.click()
-    
+
                 # Do to the way we wait for the views to finish rendering, the GUI hangs while we wait.
                 self.waitForViews(gui.currentGui().editor.imageViews)
 
@@ -234,7 +231,7 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
-    
+
     def test_4_SwitchSlice(self):
         """
         Move the z-window by 1 slice.  The data should already be cached, so this is really measuring the performance of cache access.
@@ -246,7 +243,7 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
 
             with Timer() as timer:
                 gui.currentGui().editor.posModel.slicingPos = (0,0,1)
-    
+
                 # Do to the way we wait for the views to finish rendering, the GUI hangs while we wait.
                 self.waitForViews(gui.currentGui().editor.imageViews)
 
@@ -254,7 +251,7 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
-    
+
 
 
 

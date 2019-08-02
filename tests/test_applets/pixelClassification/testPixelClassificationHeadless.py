@@ -39,10 +39,10 @@ from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 
 import logging
 logger = logging.getLogger(__name__)
-#logger.setLevel(logging.DEBUG)
+
 
 class TestPixelClassificationHeadless(object):
-    
+
     # Project and data are kept in different directories so we can test both absolute and relative paths.
     project_dir = tempfile.mkdtemp()
     data_dir = tempfile.mkdtemp()
@@ -61,7 +61,7 @@ class TestPixelClassificationHeadless(object):
         ilastik_entry_file_path = os.path.join( os.path.split( os.path.realpath(ilastik.__file__) )[0], "../ilastik.py" )
         if not os.path.exists( ilastik_entry_file_path ):
             raise RuntimeError("Couldn't find ilastik.py startup script: {}".format( ilastik_entry_file_path ))
-            
+
         print('starting setup...')
         cls.original_cwd = os.getcwd()
         os.chdir(cls.data_dir)
@@ -99,13 +99,13 @@ class TestPixelClassificationHeadless(object):
     def create_new_project(cls, project_file_path, dataset_path):
         # Instantiate 'shell'
         shell = HeadlessShell()
-        
+
         # Create a blank project file and load it.
         newProjectFile = ProjectManager.createBlankProjectFile(project_file_path, PixelClassificationWorkflow, [])
         newProjectFile.close()
         shell.openProjectFile(project_file_path)
         workflow = shell.workflow
-        
+
         # Add a file
         from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
         info = DatasetInfo()
@@ -113,10 +113,10 @@ class TestPixelClassificationHeadless(object):
         opDataSelection = workflow.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetGroup.resize(1)
         opDataSelection.DatasetGroup[0][0].setValue(info)
-        
-        
+
+
         # Set some features
-        ScalesList = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]    
+        ScalesList = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
         FeatureIds = [ 'GaussianSmoothing',
                        'LaplacianOfGaussian',
                        'StructureTensorEigenvalues',
@@ -136,7 +136,7 @@ class TestPixelClassificationHeadless(object):
                                    [False, False, False, False, False, False, False],
                                    [False, False, False, False, False, False, False]] )
         opFeatures.SelectionMatrix.setValue(selections)
-    
+
         # Add some labels directly to the operator
         opPixelClass = workflow.pcApplet.topLevelOperator
 
@@ -157,7 +157,7 @@ class TestPixelClassificationHeadless(object):
         # Save and close
         shell.projectManager.saveProject()
         del shell
-        
+
     @timeLogged(logger)
     def testBasic(self):
         # NOTE: In this test, cmd-line args to tests will also end up getting "parsed" by ilastik.
@@ -165,7 +165,7 @@ class TestPixelClassificationHeadless(object):
         #       See if __name__ == __main__ section, below.
         args = "--project=" + self.PROJECT_FILE
         args += " --headless"
-        
+
         #args += " --sys_tmp_dir=/tmp"
 
         # Batch export options
@@ -187,7 +187,7 @@ class TestPixelClassificationHeadless(object):
             self.ilastik_startup.main()
         finally:
             sys.argv = old_sys_argv
-        
+
         # Examine the output for basic attributes
         output_path = self.SAMPLE_DATA[:-4] + "_prediction.h5"
         with h5py.File(output_path, 'r') as f:
@@ -196,12 +196,12 @@ class TestPixelClassificationHeadless(object):
             # Assume channel is last axis
             assert pred_shape[:-1] == (2, 20, 20, 5), "Prediction volume has wrong shape: {}".format( pred_shape )
             assert pred_shape[-1] == 2, "Prediction volume has wrong shape: {}".format( pred_shape )
-        
+
     @timeLogged(logger)
     def testLotsOfOptions(self):
         #OLD_LAZYFLOW_STATUS_MONITOR_SECONDS = os.getenv("LAZYFLOW_STATUS_MONITOR_SECONDS", None)
         #os.environ["LAZYFLOW_STATUS_MONITOR_SECONDS"] = "1"
-        
+
         # NOTE: In this test, cmd-line args to tests will also end up getting "parsed" by ilastik.
         #       That shouldn't be an issue, since the pixel classification workflow ignores unrecognized options.
         #       See if __name__ == __main__ section, below.
@@ -209,24 +209,24 @@ class TestPixelClassificationHeadless(object):
         args.append( "--project=" + self.PROJECT_FILE )
         args.append( "--headless" )
         #args.append( "--sys_tmp_dir=/tmp" )
- 
+
         # Batch export options
         args.append( '--export_source=Simple Segmentation' )
         args.append( '--output_format=png sequence' ) # If we were actually launching from the command line, 'png sequence' would be in quotes...
         args.append( "--output_filename_format={dataset_dir}/{nickname}_segmentation_z{slice_index}.png" )
         args.append( "--export_dtype=uint8" )
         args.append( "--output_axis_order=zxyc" )
-         
+
         args.append( "--pipeline_result_drange=(0,2)" )
         args.append( "--export_drange=(0,255)" )
- 
+
         args.append( "--cutout_subregion=[(0,10,10,0,0), (1, 20, 20, 5, 1)]" )
         args.append( self.SAMPLE_DATA )
- 
+
         old_sys_argv = list(sys.argv)
         sys.argv = ['ilastik.py'] # Clear the existing commandline args so it looks like we're starting fresh.
         sys.argv += args
- 
+
         # Start up the ilastik.py entry script as if we had launched it from the command line
         # This will execute the batch mode script
         try:
@@ -235,22 +235,22 @@ class TestPixelClassificationHeadless(object):
             sys.argv = old_sys_argv
 #             if OLD_LAZYFLOW_STATUS_MONITOR_SECONDS:
 #                 os.environ["LAZYFLOW_STATUS_MONITOR_SECONDS"] = OLD_LAZYFLOW_STATUS_MONITOR_SECONDS
- 
+
         output_path = self.SAMPLE_DATA[:-4] + "_segmentation_z{slice_index}.png"
         globstring = output_path.format( slice_index=999 )
         globstring = globstring.replace('999', '*')
- 
+
         opReader = OpStackLoader( graph=Graph() )
         opReader.globstring.setValue( globstring )
- 
+
         # (The OpStackLoader produces txyzc order.)
         opReorderAxes = OpReorderAxes( graph=Graph() )
         opReorderAxes.AxisOrder.setValue( 'tzyxc' )
         opReorderAxes.Input.connect( opReader.stack )
-         
+
         try:
             readData = opReorderAxes.Output[:].wait()
-     
+
             # Check basic attributes
             assert readData.shape[:-1] == (1, 10, 10, 5), readData.shape[:-1]  # Assume channel is last axis
             assert readData.shape[-1] == 1, "Wrong number of channels.  Expected 1, got {}".format( readData.shape[-1] )

@@ -30,8 +30,6 @@ from ilastik.applets.thresholdTwoLevels.thresholdingTools import OpSelectLabels
 
 from ilastik.applets.thresholdTwoLevels.opGraphcutSegment import haveGraphCut
 
-import ilastik.ilastik_logging
-ilastik.ilastik_logging.default_config.init()
 import unittest
 
 ##
@@ -304,12 +302,12 @@ class TestThresholdOneLevel(Generator1):
 #         super(TestObjectsSegment, self).setUp()
 #         self.curOperator = 2
 #         self.usePreThreshold = True
-# 
+#
 #     # time axes not implemented
 #     @unittest.expectedFailure
 #     def testEvenFunnierAxes(self):
 #         super(TestObjectsSegment, self).testEvenFunnierAxes()
-# 
+#
 #     # NoOp uses threshold value -> not meaningful for graphcut
 #     @unittest.skip("Makes no sense with graph cut")
 #     def testNoOp(self):
@@ -633,7 +631,7 @@ class TestThresholdTwoLevels(Generator2):
 
         ref = output*output2
         idx = np.where(ref != output)
-        
+
 #         print(str(oper.Output.meta.getTaggedShape()))
 #         print(str(output.shape))
 #         print(str(idx))
@@ -660,10 +658,10 @@ class TestThresholdTwoLevels(Generator2):
 
 
 # class TestThresholdGC(Generator2):
-# 
+#
 #     def setUp(self):
 #         super(TestThresholdGC, self).setUp()
-# 
+#
 #     def testWithout(self):
 #         oper5d = OpThresholdTwoLevels(graph=Graph())
 #         oper5d.InputImage.setValue(self.data5d)
@@ -676,10 +674,10 @@ class TestThresholdTwoLevels(Generator2):
 #         oper5d.CoreChannel.setValue(0)
 #         oper5d.CurOperator.setValue(2)
 #         oper5d.UsePreThreshold.setValue(False)
-# 
+#
 #         out5d = oper5d.CachedOutput[:].wait()
 #         numpy.testing.assert_array_equal(out5d.shape, self.data5d.shape)
-# 
+#
 #     def testWith(self):
 #         oper5d = OpThresholdTwoLevels(graph=Graph())
 #         oper5d.InputImage.setValue(self.data5d)
@@ -692,14 +690,14 @@ class TestThresholdTwoLevels(Generator2):
 #         oper5d.CoreChannel.setValue(0)
 #         oper5d.CurOperator.setValue(2)
 #         oper5d.UsePreThreshold.setValue(True)
-# 
+#
 #         out5d = oper5d.CachedOutput[:].wait()
 #         numpy.testing.assert_array_equal(out5d.shape, self.data5d.shape)
-# 
+#
 #     def testStrangeAxesWith(self):
 #         pred = np.zeros((20, 22, 21, 3), dtype=np.uint32)
 #         pred = vigra.taggedView(pred, axistags='tyxc')
-# 
+#
 #         oper5d = OpThresholdTwoLevels(graph=Graph())
 #         oper5d.InputImage.setValue(pred)
 #         oper5d.MinSize.setValue(self.minSize)
@@ -711,13 +709,13 @@ class TestThresholdTwoLevels(Generator2):
 #         oper5d.CoreChannel.setValue(0)
 #         oper5d.CurOperator.setValue(2)
 #         oper5d.UsePreThreshold.setValue(True)
-# 
+#
 #         out5d = oper5d.CachedOutput[:].wait()
-# 
+#
 #     def testStrangeAxesWithout(self):
 #         pred = np.zeros((20, 22, 21, 3), dtype=np.uint32)
 #         pred = vigra.taggedView(pred, axistags='tyxc')
-# 
+#
 #         oper5d = OpThresholdTwoLevels(graph=Graph())
 #         oper5d.InputImage.setValue(pred)
 #         oper5d.MinSize.setValue(self.minSize)
@@ -729,7 +727,7 @@ class TestThresholdTwoLevels(Generator2):
 #         oper5d.CoreChannel.setValue(0)
 #         oper5d.CurOperator.setValue(2)
 #         oper5d.UsePreThreshold.setValue(False)
-# 
+#
 #         out5d = oper5d.CachedOutput[:].wait()
 
 

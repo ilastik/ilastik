@@ -43,8 +43,6 @@ from tests.helpers import ShellGuiTestCaseBase
 from volumina.layer import AlphaModulatedLayer
 
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler(sys.stdout))
-logger.setLevel(logging.DEBUG)
 
 
 class TestObjectClassificationGui(ShellGuiTestCaseBase):

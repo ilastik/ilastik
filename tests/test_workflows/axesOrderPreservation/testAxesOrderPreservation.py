@@ -39,7 +39,6 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.utility.timer import timeLogged
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 
 def detect_edges(img):
