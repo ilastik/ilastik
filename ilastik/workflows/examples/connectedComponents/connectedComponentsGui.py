@@ -27,7 +27,7 @@ from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMessageBox
 
-from volumina.api import LazyflowSource, ColortableLayer
+from volumina.api import createDataSource, ColortableLayer
 from volumina.colortables import create_default_16bit
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility.gui import threadRouted
@@ -118,7 +118,7 @@ class ConnectedComponentsGui(LayerViewerGui):
 
         # Show the cached output, since it goes through a blocked cache
         if op.CachedOutput.ready():
-            outputSrc = LazyflowSource(op.CachedOutput)
+            outputSrc = createDataSource(op.CachedOutput)
             outputLayer = ColortableLayer(outputSrc, ct)
             outputLayer.name = "Connected Components"
             outputLayer.visible = False
@@ -127,7 +127,7 @@ class ConnectedComponentsGui(LayerViewerGui):
             layers.append(outputLayer)
 
         if op.Input.ready():
-            rawSrc = LazyflowSource(op.Input)
+            rawSrc = createDataSource(op.Input)
             rawLayer = ColortableLayer(outputSrc, binct)
             #rawLayer = self.createStandardLayerFromSlot(op.Input)
             rawLayer.name = "Raw data"

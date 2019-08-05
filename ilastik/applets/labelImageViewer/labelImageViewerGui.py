@@ -22,7 +22,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
 
 from lazyflow.operators import OpMultiArraySlicer2
-from volumina.api import LazyflowSource, ColortableLayer
+from volumina.api import createDataSource, ColortableLayer
 from volumina import colortables
 from ilastik.utility import bind
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
@@ -39,7 +39,7 @@ class LabelImageViewerGui( LayerViewerGui ):
 
         labelSlot = opLane.LabelImage
         if labelSlot.ready():
-            labelImageLayer = ColortableLayer( LazyflowSource(labelSlot),
+            labelImageLayer = ColortableLayer( createDataSource(labelSlot),
                                                colorTable=self._colorTable16 )
             labelImageLayer.name = "Label Image"
             labelImageLayer.visible = True

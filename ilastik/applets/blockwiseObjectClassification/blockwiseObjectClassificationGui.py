@@ -29,7 +29,7 @@ from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtGui import QColor
 
 from ilastik.utility.gui import threadRouted
-from volumina.api import LazyflowSource, ColortableLayer
+from volumina.api import createDataSource, ColortableLayer
 from volumina import colortables
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
@@ -89,7 +89,7 @@ class BlockwiseObjectClassificationGui( LayerViewerGui ):
         predictionSlot = self.topLevelOperatorView.PredictionImage
         if predictionSlot.ready():
             
-            predictLayer = ColortableLayer( LazyflowSource(predictionSlot),
+            predictLayer = ColortableLayer( createDataSource(predictionSlot),
                                                  colorTable=self._colorTable16 )
             predictLayer.name = "Blockwise prediction"
             predictLayer.visible = False
@@ -101,7 +101,7 @@ class BlockwiseObjectClassificationGui( LayerViewerGui ):
         if binarySlot.ready():
             ct_binary = [QColor(0, 0, 0, 0).rgba(),
                          QColor(255, 255, 255, 255).rgba()]
-            binaryLayer = ColortableLayer(LazyflowSource(binarySlot), ct_binary)
+            binaryLayer = ColortableLayer(createDataSource(binarySlot), ct_binary)
             binaryLayer.name = "Binary Image"
             layers.append(binaryLayer)
             

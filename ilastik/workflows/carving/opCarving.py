@@ -703,7 +703,7 @@ class OpCarving(Operator):
             noBiasBelow = self.NoBiasBelow.value
 
             logger.info( "compute new carving results with bg priority = %f, no bias below %d" % (bgPrio, noBiasBelow) )
-            t1 = time.time()
+            t1 = time.perf_counter()
             labelCount = 2
             params = dict()
             params["prios"] = [1.0, bgPrio, 1.0]
@@ -712,7 +712,7 @@ class OpCarving(Operator):
             
             unaries =  numpy.zeros((self._mst.numNodes+1,labelCount+1), dtype=numpy.float32)
             self._mst.run(unaries, **params)
-            logger.info( " ... carving took %f sec." % (time.time()-t1) )
+            logger.info( " ... carving took %f sec." % (time.perf_counter()-t1) )
 
             self.Segmentation.setDirty(slice(None))
             self.DoneSegmentation.setDirty(slice(None))

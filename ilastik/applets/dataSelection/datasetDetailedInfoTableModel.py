@@ -41,7 +41,7 @@ class DatasetDetailedInfoColumn(object):
 
 @rowOfButtonsProxy
 class DatasetDetailedInfoTableModel(QAbstractItemModel):
-    
+
     def __init__(self, parent, topLevelOperator, roleIndex):
         """
         :param topLevelOperator: An instance of OpMultiLaneDataSelectionGroup
@@ -49,7 +49,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         # super does not work here in Python 2.x, decorated class confuses it
         QAbstractItemModel.__init__(self, parent)
         self.threadRouter = ThreadRouter(self)
-        
+
         self._op = topLevelOperator
         self._roleIndex = roleIndex
         self._currently_inserting = False
@@ -61,7 +61,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         self._op.DatasetGroup.notifyRemove( self.handleLaneRemove )   # pre
         self._op.DatasetGroup.notifyRemoved( self.handleLaneRemoved ) # post
 
-        # Any lanes that already exist must be added now.        
+        # Any lanes that already exist must be added now.
         for laneIndex, slot in enumerate(self._op.DatasetGroup):
             self.prepareForNewLane( self._op.DatasetGroup, laneIndex )
             self.handleNewLane( self._op.DatasetGroup, laneIndex )
@@ -70,7 +70,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
     def prepareForNewLane(self, multislot, laneIndex, *args):
         assert multislot is self._op.DatasetGroup
         self.beginInsertRows( QModelIndex(), laneIndex, laneIndex )
-        self._currently_inserting = True            
+        self._currently_inserting = True
 
     @threadRouted
     def handleNewLane(self, multislot, laneIndex, *args):
@@ -82,7 +82,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             datasetMultiSlot.notifyInserted( bind(self.handleNewDatasetInserted) )
             if self._roleIndex < len(datasetMultiSlot):
                 self.handleNewDatasetInserted(datasetMultiSlot, self._roleIndex)
-    
+
     @threadRouted
     def handleLaneRemove( self, multislot, laneIndex, *args ):
         assert multislot is self._op.DatasetGroup
@@ -98,19 +98,12 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
     @threadRouted
     def handleDatasetInfoChanged(self, slot):
         # Get the row of this slot
-        laneSlot = slot.operator
-        if laneSlot is None or laneSlot.operator is None: # This can happen during disconnect
-            return
-        try:
-            laneIndex = laneSlot.operator.index( laneSlot )
-        except ValueError:
-            # If the slot doesn't exist in the lane, 
-            #  then this dataset is in the process of being removed.
-            return
+        assert slot.subindex, f"BUG: Expected nested slot {slot}"
+        laneIndex = slot.subindex[0]
         firstIndex = self.createIndex(laneIndex, 0)
         lastIndex = self.createIndex(laneIndex, self.columnCount()-1)
         self.dataChanged.emit(firstIndex, lastIndex)
-    
+
     @threadRouted
     def handleNewDatasetInserted(self, slot, index):
         if index == self._roleIndex:
@@ -136,24 +129,24 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
                     if ( datasetInfo.location == DatasetInfo.Location.FileSystem
                          and filePathComponents.internalPath is not None ):
                         return True
-        return False                
-    
+        return False
+
     def columnCount(self, parent=QModelIndex()):
         return DatasetDetailedInfoColumn.NumColumns
 
     def rowCount(self, parent=QModelIndex()):
         return len( self._op.DatasetGroup )
-    
+
     def data(self, index, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
             return self._getDisplayRoleData(index)
-    
+
     def index(self, row, column, parent=QModelIndex()):
         return self.createIndex( row, column, object=None )
-    
+
     def parent(self, index):
         return QModelIndex()
-    
+
     def headerData(self, section, orientation, role=Qt.DisplayRole ):
         if  role != Qt.DisplayRole:
             return None
@@ -171,7 +164,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
     def isEmptyRow(self, index):
         return not self._op.DatasetGroup[index][self._roleIndex].ready()
-            
+
     def _getDisplayRoleData(self, index):
         laneIndex = index.row()
 
@@ -191,7 +184,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         # Default
         if not datasetSlot.ready():
             return UninitializedDisplayData[ index.column() ]
-        
+
         datasetInfo = self._op.DatasetGroup[laneIndex][self._roleIndex].value
         filePathComponents = PathComponents( datasetInfo.filePath )
 
@@ -213,20 +206,20 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             else:
                 return "Project File"
 
-        # Internal ID        
+        # Internal ID
         if index.column() == DatasetDetailedInfoColumn.InternalID:
             if datasetInfo.location == DatasetInfo.Location.FileSystem:
                 return filePathComponents.internalPath
             return ""
 
         ## Output meta-data fields
-        
-        # Defaults        
+
+        # Defaults
         imageSlot = self._op.ImageGroup[laneIndex][self._roleIndex]
         if not imageSlot.ready():
             return UninitializedDisplayData[index.column()]
 
-        # Axis order            
+        # Axis order
         if index.column() == DatasetDetailedInfoColumn.AxisOrder:
             if imageSlot.meta.original_axistags is not None:
                 return "".join( imageSlot.meta.getOriginalAxisKeys() )
@@ -257,33 +250,3 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             return str(drange)
 
         assert False, "Unknown column: row={}, column={}".format( index.row(), index.column() )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -20,7 +20,7 @@ from lazyflow.operators import OpFeatureMatrixCache
 from ilastik.utility import OpMultiLaneWrapper
 from lazyflow import graph
 
-from os import times
+import time
 import re
 
 
@@ -588,7 +588,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
             self.opFeatureSelection.setupOutputs()
             # self.opFeatureSelection.change_feature_cache_size()
 
-        start_time = times()[4]
+        start_time = time.perf_counter()
 
         old_live_update_value = self.pixelClassificationApplet.isLiveUpdateEnabled()
         self.pixelClassificationApplet.setLiveUpdateEnabled(True)
@@ -617,7 +617,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
                 single_layer_of_segmentation = single_layer_of_segmentation.transpose()
             segmentation[single_layer_of_segmentation != 0] = i
 
-        end_time = times()[4]
+        end_time = time.perf_counter()
 
         oob_err = 100. * numpy.mean(self.opPixelClassification.opTrain.outputs['Classifier'].value.oobs)
 
