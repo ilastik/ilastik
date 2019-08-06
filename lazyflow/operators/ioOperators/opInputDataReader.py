@@ -135,9 +135,15 @@ class OpInputDataReader(Operator):
     class DatasetReadError(Exception):
         pass
 
-    def __init__(self, WorkingDirectory:str=None, FilePath:str=None,
-                 SequenceAxis:str=None, SubVolumeRoi:Tuple[int,int]=None,
-                 *args, **kwargs):
+    def __init__(
+        self,
+        WorkingDirectory: str = None,
+        FilePath: str = None,
+        SequenceAxis: str = None,
+        SubVolumeRoi: Tuple[int, int] = None,
+        *args,
+        **kwargs,
+    ):
         super(OpInputDataReader, self).__init__(*args, **kwargs)
         self.internalOperators = []
         self.internalOutput = None
@@ -166,7 +172,7 @@ class OpInputDataReader(Operator):
         for path in path_components:
             if isRelative(path):
                 if cwd is None:
-                    return #FIXME: this mirrors old logic but I'm not sure if it's safe
+                    return  # FIXME: this mirrors old logic but I'm not sure if it's safe
                 abs_paths.append(os.path.normpath(os.path.join(cwd, path)).replace("\\", "/"))
             else:
                 abs_paths.append(path)

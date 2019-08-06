@@ -292,15 +292,18 @@ def isUrl(path):
     # For now, the simplest rule will work.
     return "://" in path
 
-def isRelative(path:str) -> bool:
+
+def isRelative(path: str) -> bool:
     return not isUrl(path) and not os.path.isabs(path)
 
-def splitPath(path:str) -> List[str]:
+
+def splitPath(path: str) -> List[str]:
     """Splits a string using path separator (e.g.: ':' in unix) without clobbering
     protocol URLs like http://example.com"""
 
-    NOT_FOLLOWED_BY_DOUBLE_SLASH = r'(?!//)'
+    NOT_FOLLOWED_BY_DOUBLE_SLASH = r"(?!//)"
     return re.split(os.path.pathsep + NOT_FOLLOWED_BY_DOUBLE_SLASH, path)
+
 
 def make_absolute(path, cwd=os.getcwd()):
     return PathComponents(path, cwd).totalPath()
@@ -402,9 +405,11 @@ def globH5N5(fileObject, globString):
     matches = globList(pathlist, globString)
     return sorted(matches)
 
-def globNpz(path:str, globString:str):
-    with numpy.load(path, mmap_mode='r') as f:
+
+def globNpz(path: str, globString: str):
+    with numpy.load(path, mmap_mode="r") as f:
         return sorted(globList(f.files, globString))
+
 
 def globList(listOfPaths, globString):
     matches = [x for x in listOfPaths if fnmatch.fnmatch(x, globString)]

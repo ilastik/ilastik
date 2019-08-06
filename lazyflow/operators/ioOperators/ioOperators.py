@@ -546,7 +546,16 @@ class OpH5N5WriterBigDataset(Operator):
     logger = logging.getLogger(loggingName)
     traceLogger = logging.getLogger("TRACE." + loggingName)
 
-    def __init__(self, h5N5File=None, h5N5Path=None, Image=None, BatchSize:int=None, CompressionEnabled:bool=None, *args, **kwargs):
+    def __init__(
+        self,
+        h5N5File=None,
+        h5N5Path=None,
+        Image=None,
+        BatchSize: int = None,
+        CompressionEnabled: bool = None,
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
 
         self.progressSignal = OrderedSignal()
