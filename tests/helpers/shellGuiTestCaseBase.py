@@ -236,7 +236,7 @@ class ShellGuiTestCaseBase(object):
         if not isinstance(end, QPoint):
             end = QPoint(*end)
 
-        # center = imgView.rect().center()  # Correct "center".
-        # FIXME: This "center" is broken because it ignores QRect.topLeft.
+        # FIXME: The simpler "center" calculation below breaks tests on CI.
+        # center = imgView.rect().center()
         center = imgView.rect().bottomRight() / 2
         self.strokeMouse(imgView, start + center, end + center, modifier, numSteps)
