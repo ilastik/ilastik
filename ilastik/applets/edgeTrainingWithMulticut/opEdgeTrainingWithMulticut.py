@@ -35,10 +35,10 @@ class OpEdgeTrainingWithMulticut(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpEdgeTrainingWithMulticut, self).__init__(*args, **kwargs)
+        
+        opEdgeTraining = OpEdgeTraining( parent=self )
 
-        opEdgeTraining = OpEdgeTraining(parent=self)
-
-        opEdgeTraining.EdgeLabelsDict.connect(self.EdgeLabelsDict)
+        opEdgeTraining.EdgeLabelsDict.connect( self.EdgeLabelsDict )
 
         # This is necessary because OpEdgeTraining occasionally calls self.EdgeLabelsDict.setValue()
         opEdgeTraining.EdgeLabelsDict.backpropagate_values = True

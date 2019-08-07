@@ -91,7 +91,6 @@ class EdgeTrainingGui(LayerViewerGui):
             lane_dicts_ready = [(bool(dct.value) and dct.ready()) for dct in op.viewed_operator().EdgeLabelsDict]
             have_edges = any(lane_dicts_ready)
             self.live_update_button.setEnabled(have_edges)
-            self.live_update_button.setChecked(have_edges)
             return have_edges
 
         self.configure_gui_from_operator()
@@ -259,7 +258,6 @@ class EdgeTrainingGui(LayerViewerGui):
                 del new_labels[sp_id_pair]
 
         op.EdgeLabelsDict.setValue( new_labels )
-        [dct.setDirty() for dct in op.viewed_operator().EdgeLabelsDict]  # be sure to update all lanes
 
     def _handle_label_from_gt_clicked(self):
         def train_from_gt():
@@ -314,6 +312,7 @@ class EdgeTrainingGui(LayerViewerGui):
         self.__cleanup_fns.append(cleanup_fn)
 
     def update_probability_edges(self, *args):
+        op = self.topLevelOperatorView
         def _impl():
             op = self.topLevelOperatorView
             if not self.getLayerByName("Edge Probabilities"):

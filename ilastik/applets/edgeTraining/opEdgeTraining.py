@@ -122,10 +122,9 @@ class OpEdgeTraining(Operator):
 
                     def insertSlot(a, b, position, finalsize):
                         a.insertSlot(position, finalsize)
+                    s1.notifyInserted( partial(insertSlot, s2 ) )
 
-                    s1.notifyInserted(partial(insertSlot, s2))
-
-                    def removeSlot(a, b, position, finalsize):
+                    def removeSlot( a, b, position, finalsize ):
                         a.removeSlot(position, finalsize)
 
                     s1.notifyRemoved(partial(removeSlot, s2))
@@ -280,8 +279,9 @@ class OpComputeEdgeFeatures(Operator):
             edge_feature_dfs.append(edge_features_df)
 
         # Could use join() or merge() here, but we know the rows are already in the right order, and concat() should be faster.
-        all_edge_features_df = pd.DataFrame(rag.edge_ids, columns=["sp1", "sp2"])
-        all_edge_features_df = pd.concat([all_edge_features_df] + edge_feature_dfs, axis=1, copy=False)
+        all_edge_features_df = pd.DataFrame( rag.edge_ids, columns=['sp1', 'sp2'] )
+        all_edge_features_df = pd.concat([all_edge_features_df] + edge_feature_dfs, axis=1, copy=False)\
+            .astype(np.float32)  # in case there sre no features selected, dtype will be uint32 as it is in the rag.
         result[0] = all_edge_features_df
 
     def propagateDirty(self, slot, subindex, roi):
