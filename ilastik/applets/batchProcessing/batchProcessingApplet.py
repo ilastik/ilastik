@@ -1,17 +1,19 @@
-import copy
+import logging
 import weakref
 from collections import OrderedDict
-import logging
-import typing
-logger = logging.getLogger(__name__)  # noqa
+from typing import Dict, Hashable, List, Optional, Union, Mapping, Iterable
 
 import numpy
 import vigra
 from lazyflow.request import Request
-from ilastik.utility import log_exception
+
 from ilastik.applets.base.applet import Applet
 from ilastik.applets.dataSelection import DataSelectionApplet
-from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, OpMultiLaneDataSelectionGroup
+from ilastik.applets.dataSelection.opDataSelection import (
+    DatasetInfo, OpMultiLaneDataSelectionGroup)
+from ilastik.utility import log_exception
+
+logger = logging.getLogger(__name__)  # noqa
 
 
 class BatchProcessingApplet(Applet):
@@ -65,13 +67,13 @@ class BatchProcessingApplet(Applet):
 
     def run_export(
         self,
-        role_data_dict: typing.Dict[
-            typing.Hashable, typing.List[typing.Union[str, DatasetInfo]]
+        role_data_dict: Mapping[
+            Hashable, Iterable[Union[str, DatasetInfo]]
         ],
-        input_axes: typing.Optional[str] = None,
+        input_axes: Optional[str] = None,
         export_to_array: bool = False,
-        sequence_axis: typing.Optional[str] = None,
-    ) -> typing.List[typing.Union[str, numpy.array]]:
+        sequence_axis: Optional[str] = None,
+    ) -> Union[List[str], List[numpy.array]]:
         """Run the export for each dataset listed in role_data_dict
 
         For each dataset:
@@ -92,7 +94,7 @@ class BatchProcessingApplet(Applet):
             role_data_dict: dict with role_name: list(paths) of data that should be processed.
               You may pass either filepaths OR preconfigured DatasetInfo objects.
               The latter is useful if you are batch processing data that already exists in memory as a numpy array.
-              (See DatasetInfo.preloaded_array for how to provide a numpy array instead of a filepath.)
+              (See :meth: `DatasetInfo.preloaded_array` for how to provide a numpy array instead of a filepath.)
             input_axes: axis description to override from the default role
             export_to_array: If True do NOT export to disk as usual.
               Instead, export the results to a list of arrays, which is returned.

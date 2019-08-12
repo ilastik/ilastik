@@ -18,24 +18,23 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
-import os
 import logging
+import os
 import typing
 from collections import OrderedDict
 from functools import partial
 
-from PyQt5.QtCore import QTimer, Qt, QUrl
-from PyQt5.QtWidgets import (
-    QApplication, QHBoxLayout, QLabel, QListWidget, QMessageBox, QPushButton,
-    QSizePolicy, QSpacerItem, QTabWidget, QVBoxLayout, QWidget,
-)
-
 from lazyflow.request import Request
+from PyQt5.QtCore import Qt, QTimer, QUrl
+from PyQt5.QtWidgets import (QApplication, QHBoxLayout, QLabel, QListWidget,
+                             QMessageBox, QPushButton, QSizePolicy,
+                             QSpacerItem, QTabWidget, QVBoxLayout, QWidget)
 from volumina.utility import PreferencesManager
+
+from ilastik.applets.dataSelection.dataSelectionGui import \
+    DataSelectionGui  # We borrow the file selection window function.
 from ilastik.utility import log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui  # We borrow the file selection window function.
-
 
 logger = logging.getLogger(__name__)
 
@@ -47,14 +46,9 @@ class BatchProcessingDataConstraintException(Exception):
 class FileListWidget(QListWidget):
     """QListWidget with custom drag-n-drop for file paths
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
-    # Drag-and-drop
     def dropEvent(self, dropEvent):
         urls = dropEvent.mimeData().urls()
-        filepaths = list(map(QUrl.toLocalFile, urls))
-        filepaths = list(map(str, filepaths))
         self.clear()
         self.addItems(qurl.path() for qurl in urls)
 
@@ -103,7 +97,8 @@ class BatchRoleWidget(QWidget):
 
         self.setLayout(main_layout)
 
-    def get_all_item_strings(self) -> typing.List[str]:
+    @property
+    def filepaths(self) -> typing.List[str]:
         """
         Utility function.
         Return all items in the given QListWidget as a list of strings.
@@ -114,9 +109,9 @@ class BatchRoleWidget(QWidget):
         return all_item_strings
 
     def select_files(self):
-        preference_name = 'recent-dir-role-{}'.format(self._role_name)
+        preference_name = f"recent-dir-role-{self._role_name}"
         recent_processing_directory = PreferencesManager().get(
-            'BatchProcessing', preference_name, default=os.path.normpath('~'))
+            'BatchProcessing', preference_name, default=os.path.expanduser('~'))
         file_paths = DataSelectionGui.getImageFileNamesToOpen(self, recent_processing_directory)
         if file_paths:
             recent_processing_directory = os.path.dirname(file_paths[0])
@@ -167,7 +162,7 @@ class BatchProcessingGui( QTabWidget ):
     def __init__(self, parentApplet):
         super().__init__()
         self.parentApplet = parentApplet
-        self.threadRouter = ThreadRouter(self)  # For using @threadRouted
+        self.threadRouter = ThreadRouter(self)
         self._drawer = None
         self._data_role_widgets = {}
         self.initMainUi()
@@ -212,20 +207,23 @@ class BatchProcessingGui( QTabWidget ):
 
         # Prepare file lists in an OrderedDict
         role_path_dict = OrderedDict(
-            (role_name, self._data_role_widgets[role_name].get_all_item_strings())
+            (role_name, self._data_role_widgets[role_name].filepaths)
             for role_name
             in role_names
         )
         dominant_role_name = role_names[0]
-        num_datasets = len(role_path_dict[dominant_role_name])
+        num_paths = len(role_path_dict[dominant_role_name])
 
         for role_name in role_names[1:]:
-            datasets = role_path_dict[role_name]
-            if len(datasets) == 0:
-                role_path_dict[role_name] = [None] * num_datasets
+            paths = role_path_dict[role_name]
+            if len(paths) == 0:
+                role_path_dict[role_name] = [None] * num_paths
 
-            if len(role_path_dict[role_name]) != num_datasets:
-                raise BatchProcessingDataConstraintException(f"Number of files for '{role_name}' does not match ")
+            if len(role_path_dict[role_name]) != num_paths:
+                raise BatchProcessingDataConstraintException(
+                    f"Number of files for '{role_name!r}' does not match! "
+                    f"Exptected {num_paths} files."
+                )
 
         # Run the export in a separate thread
         export_req = Request(partial(self.parentApplet.run_export, role_path_dict))
@@ -275,4 +273,3 @@ class BatchProcessingGui( QTabWidget ):
         self.handle_batch_processing_finished()
         self.handle_batch_processing_complete()
         QMessageBox.information(self, "Batch Processing Cancelled.", "Batch Processing Cancelled.")
-            
