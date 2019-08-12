@@ -214,6 +214,9 @@ class BatchProcessingGui( QTabWidget ):
         dominant_role_name = role_names[0]
         num_paths = len(role_path_dict[dominant_role_name])
 
+        if num_paths == 0:
+            return
+
         for role_name in role_names[1:]:
             paths = role_path_dict[role_name]
             if len(paths) == 0:
