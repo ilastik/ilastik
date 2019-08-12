@@ -57,7 +57,7 @@ class FileListWidget(QListWidget):
         if not event.mimeData().hasUrls():
             return
         urls = event.mimeData().urls()
-        if all(map(QUrl.isLocalFile, urls)):
+        if all(url.isLocalFile() for url in urls):
             event.acceptProposedAction()
 
     def dragMoveEvent(self, event):
