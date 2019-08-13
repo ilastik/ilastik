@@ -89,6 +89,9 @@ class CondaEnv:
         """Remove a package in this environment."""
         run("conda", "remove", "--yes", "--force" if force else None, "--name", self.name, package)
 
+    def develop(self, path: pathlib.Path):
+        run("conda", "develop", "--name", self.name, str(path))
+
     @property
     def _info(self):
         if self._info_cache is not None:
@@ -186,7 +189,7 @@ def main():
     create_ap.add_argument(
         "-l",
         "--location",
-        help="local ilastik-meta directory; skip DIR to keep the original ilastik-meta package",
+        help="local ilastik-meta directory",
         metavar="DIR",
         nargs="?",
         const=None,
@@ -234,18 +237,11 @@ def command_create(args: argparse.Namespace, env: CondaEnv) -> None:
     if location is None:
         return
 
-    logging.info(f"remove package 'ilastik-meta'")
-    env.remove_package("ilastik-meta", force=True)
-
-    env_repo_path = env.prefix_path / "ilastik-meta"
-    logging.info(f"symlink {env_repo_path} to {location}")
-    env_repo_path.symlink_to(location)
-
-    pth_path = env.site_packages_path / "ilastik-meta.pth"
     packages = "lazyflow", "volumina", "ilastik"
-    pth_content = "\n".join(f"{env_repo_path / pkg}" for pkg in packages)
-    logging.info(f"create {pth_path}")
-    pth_path.write_text(pth_content)
+    package_locations = [location / pkg for pkg in packages]
+
+    for package_location in package_locations:
+        env.develop(package_location)
 
 
 def command_remove(_args: argparse.Namespace, env: CondaEnv) -> None:
