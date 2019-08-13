@@ -38,11 +38,14 @@ class ImageFileDialog(QFileDialog):
     def getSelectedPaths(self) -> List[Path]:
         if not super().exec_():
             return []
-        filePaths = [Path(selected_file) for selected_file in self.selectedFiles()]
-        self.preferences_manager.set(self.preferences_group, self.preferences_setting, filePaths[0].as_posix())
-        # For the n5 extension the attributes.json file has to be selected in the file dialog.
-        # However we need just the *.n5 directory-file.
-        for i, path in enumerate(filePaths):
-            if path.name.lower() == "attributes.json" and any(p.suffix.lower() == ".n5" for p in filePath.parents):
-                filePaths[i] = filePath.parent
+        self.preferences_manager.set(self.preferences_group, self.preferences_setting, self.selectedFiles()[0])
+        filePaths = []
+        for selected_file in self.selectedFiles():
+            path = Path(selected_file)
+            if path.name.lower() == "attributes.json" and any(p.suffix.lower() == ".n5" for p in path.parents):
+                # For the n5 extension the attributes.json file has to be selected in the file dialog.
+                # However we need just the *.n5 directory-file.
+                filePaths.append(path.parent)
+            else:
+                filePaths.append(path)
         return filePaths

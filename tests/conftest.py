@@ -14,6 +14,7 @@ from concurrent import futures
 
 import pytest
 import h5py
+import z5py
 from PIL import Image as PilImage
 import numpy
 
@@ -40,17 +41,16 @@ from lazyflow.graph import Graph
 GUI_TEST_TIMEOUT = 60  # Seconds
 
 
-@pytest.fixture(scope='session', autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 def config_app_settings(qapp):
     # Allows to map application to a specific workspace
     # useful when running tests
-    qapp.setApplicationName('TestIlastik')
+    qapp.setApplicationName("TestIlastik")
 
 
 def pytest_addoption(parser):
     """Add command-line flags for pytest."""
-    parser.addoption("--run-legacy-gui", action="store_true",
-                     help="runs legacy gui tests")
+    parser.addoption("--run-legacy-gui", action="store_true", help="runs legacy gui tests")
 
 
 def pytest_pyfunc_call(pyfuncitem):
@@ -117,6 +117,7 @@ class GuiTestSuite:
     GUI test suite runner
     poll function should be scheduled from timer for periodic updates
     """
+
     def __init__(self, queue: queue.Queue, shell):
         self._queue = queue
         self._shell = shell
@@ -167,14 +168,12 @@ def pytest_runtestloop(session):
     guitests, session.items = split_guitests(session.items)
     _pytest_runtestloop(session)
 
-    if session.config.getoption('run_legacy_gui'):
+    if session.config.getoption("run_legacy_gui"):
         for tstcls, gui_test_bag in itertools.groupby(_sorted_guitests(guitests), get_guitest_cls):
             run_gui_tests(tstcls, gui_test_bag)
 
     elif guitests:
-        warnings.warn(
-            "Skipping legacy GUI test to enable please use --run-legacy-gui option\n"
-        )
+        warnings.warn("Skipping legacy GUI test to enable please use --run-legacy-gui option\n")
 
     return True
 
@@ -189,7 +188,7 @@ def run_gui_tests(tstcls, gui_test_bag):
     tstcls.shell = launchShell(None, [], [])
 
     platform_str = platform.platform().lower()
-    if 'ubuntu' in platform_str or 'fedora' in platform_str:
+    if "ubuntu" in platform_str or "fedora" in platform_str:
         QApplication.setAttribute(Qt.AA_X11InitThreads, True)
 
     if ilastik.config.cfg.getboolean("ilastik", "debug"):
@@ -215,7 +214,7 @@ def run_gui_tests(tstcls, gui_test_bag):
 
 
 def is_gui_test(item) -> bool:
-    return bool(item.get_marker('guitest'))
+    return bool(item.get_marker("guitest"))
 
 
 def split_guitests(items):
@@ -236,7 +235,7 @@ def split_guitests(items):
 def get_guitest_cls(item):
     cls = item.getparent(pytest.Class)
     if not cls:
-        raise Exception('GUI test should be inherited from ShellGuiTestCaseBase')
+        raise Exception("GUI test should be inherited from ShellGuiTestCaseBase")
 
     return cls.obj
 
@@ -248,25 +247,46 @@ def _sorted_guitests(iterable):
 
     return sorted(iterable, key=_keyfunc)
 
+
 @pytest.fixture
-def tmp_h5_file(tmp_path:Path) -> Path:
-    tmp_path_trailing_slash = os.path.join(tmp_path, '')
-    _, filepath = tempfile.mkstemp(prefix=tmp_path_trailing_slash, suffix='.h5')
+def tmp_h5_file(tmp_path: Path) -> Path:
+    tmp_path_trailing_slash = os.path.join(tmp_path, "")
+    _, filepath = tempfile.mkstemp(prefix=tmp_path_trailing_slash, suffix=".h5")
     return filepath
+
+
+@pytest.fixture
+def tmp_n5_file(tmp_path: Path) -> Path:
+    n5_dir_path = tmp_path / "my_tmp_file.n5"
+    f = z5py.File(n5_dir_path)
+    ds = f.create_dataset("data", shape=(1000, 1000), chunks=(100, 100), dtype="float32")
+
+    # write array to a roi
+    x = numpy.random.random_sample(size=(500, 500)).astype("float32")
+    ds[:500, :500] = x
+
+    # broadcast a scalar to a roi
+    ds[500:, 500:] = 42.0
+    f.close()
+
+    return n5_dir_path
+
 
 @pytest.fixture
 def png_image(tmp_path) -> Path:
-    _, filepath = tempfile.mkstemp(prefix=os.path.join(tmp_path, ''), suffix='.png')
+    _, filepath = tempfile.mkstemp(prefix=os.path.join(tmp_path, ""), suffix=".png")
     pil_image = PilImage.fromarray((numpy.random.rand(100, 200) * 255).astype(numpy.uint8))
     with open(filepath, "wb") as png_file:
         pil_image.save(png_file, "png")
     return Path(filepath)
 
+
 @pytest.fixture
 def empty_project_file(tmp_path) -> h5py.File:
-    project_path = tmp_path / tempfile.mkstemp(suffix='.ilp')[1]
-    f = h5py.File(project_path, 'r+')
+    project_path = tmp_path / tempfile.mkstemp(suffix=".ilp")[1]
+    f = h5py.File(project_path, "r+")
     return f
+
 
 @pytest.fixture
 def graph():
