@@ -89,7 +89,8 @@ class CondaEnv:
         """Remove a package in this environment."""
         run("conda", "remove", "--yes", "--force" if force else None, "--name", self.name, package)
 
-    def develop(self, path: pathlib.Path):
+    def install_pacakge_dev(self, path: pathlib.Path) -> None:
+        """Install a local package with conda develop"""
         run("conda", "develop", "--name", self.name, str(path))
 
     @property
@@ -238,10 +239,10 @@ def command_create(args: argparse.Namespace, env: CondaEnv) -> None:
         return
 
     packages = "lazyflow", "volumina", "ilastik"
-    package_locations = [location / pkg for pkg in packages]
 
-    for package_location in package_locations:
-        env.develop(package_location)
+    logging.info(f"Installing local ilastik packages in development mode.")
+    for pkg in packages:
+        env.install_pacakge_dev(location / pkg)
 
 
 def command_remove(_args: argparse.Namespace, env: CondaEnv) -> None:
