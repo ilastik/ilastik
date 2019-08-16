@@ -51,11 +51,12 @@ from ilastik.applets.base.applet import DatasetConstraintError
 from .opDataSelection import DatasetInfo
 from .dataLaneSummaryTableModel import DataLaneSummaryTableModel
 from .datasetInfoEditorWidget import DatasetInfoEditorWidget
-from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, H5N5VolumeSelectionDlg
+from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, SubvolumeSelectionDlg
 from .datasetDetailedInfoTableModel import DatasetDetailedInfoTableModel
 from .datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 from .precomputedVolumeBrowser import PrecomputedVolumeBrowser
 from ilastik.widgets.ImageFileDialog import ImageFileDialog
+from lazyflow.slot import Slot
 
 
 class LocationOptions(object):
@@ -396,7 +397,7 @@ class DataSelectionGui(QWidget):
 
     def addFileNames(self, paths: List[Path], roleIndex: int, startingLane: int):
         # If the user didn't cancel
-        if len(paths) > 0:
+        if paths:
             try:
                 new_infos = self._createDatasetInfos(roleIndex, paths)
                 self.addLanes(new_infos, roleIndex=roleIndex, startingLane=startingLane)
@@ -458,7 +459,7 @@ class DataSelectionGui(QWidget):
             self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
             QMessageBox.critical(self, "File selection error", str(e))
 
-    def applyDatasetInfos(self, new_infos: List[DatasetInfo], info_slots: List["Slot"], fixed_once=False):
+    def applyDatasetInfos(self, new_infos: List[DatasetInfo], info_slots: List[Slot], fixed_once=False):
         original_infos = []
 
         def revert():
@@ -503,19 +504,14 @@ class DataSelectionGui(QWidget):
             assert startingLane < len(self.topLevelOperator.DatasetGroup)
             max_files = len(self.topLevelOperator.DatasetGroup) - startingLane
             if len(infos) > max_files:
-                msg = (
-                    "You selected {num_selected} files for {num_slots} "
-                    "slots. To add new files use the 'Add new...' option "
-                    "in the context menu or the button in the last row.".format(
-                        num_selected=len(infos), num_slots=max_files
-                    )
+                raise Exception(
+                    f"You selected {len(infos)} files for {max_files} slots. To add new files use "
+                    "the 'Add new...' option in the context menu or the button in the last row."
                 )
-                raise Exception(msg)
             endingLane = min(startingLane + len(infos) - 1, len(self.topLevelOperator.DatasetGroup))
 
         if self._max_lanes and endingLane >= self._max_lanes:
-            msg = "You may not add more than {} file(s) to this workflow.  Please try again.".format(self._max_lanes)
-            raise Exception(msg)
+            raise Exception("You may not add more than {self._max_lanes} file(s) to this workflow.  Please try again.")
 
         return (startingLane, endingLane)
 
@@ -524,7 +520,6 @@ class DataSelectionGui(QWidget):
         Create a list of DatasetInfos for the given filePaths and rois
         rois may be None, in which case it is ignored.
         """
-        filePaths = [Path(p) for p in filePaths]
         if rois is None:
             rois = [None] * len(filePaths)
         assert len(rois) == len(filePaths)
@@ -567,7 +562,7 @@ class DataSelectionGui(QWidget):
                     selected_dataset = auto_inner_paths.pop()
                 else:
                     # Ask the user which dataset to choose
-                    dlg = H5N5VolumeSelectionDlg(datasetNames, self)
+                    dlg = SubvolumeSelectionDlg(datasetNames, self)
                     if dlg.exec_() == QDialog.Accepted:
                         selected_index = dlg.combo.currentIndex()
                         selected_dataset = str(datasetNames[selected_index])
@@ -604,29 +599,30 @@ class DataSelectionGui(QWidget):
         """
         The user clicked the "Import Stack Files" button.
         """
-        stackDlg = StackFileSelectionWidget(self)
-        stackDlg.exec_()
-        if stackDlg.result() != QDialog.Accepted or len(stackDlg.selectedFiles) == 0:
-            return
-        # FIXME: ask first if stack should be internalized to project file
-        # also, check prefer_2d, size/volume and presence of 'z' to determine this
-        nickname = DatasetInfo.create_nickname(stackDlg.selectedFiles)
-        location = DatasetInfo.Location.ProjectInternal
-        # FIXME: do this inside a Request
-        inner_path = self.serializer.importStackAsLocalDataset(
-            abs_paths=stackDlg.selectedFiles, sequence_axis=stackDlg.sequence_axis
-        )
-
-        self.parentApplet.busy = True
-        info = DatasetInfo(
-            filepath=inner_path,
-            nickname=nickname,
-            sequence_axis=stackDlg.sequence_axis,
-            location=location,
-            project_file=self.project_file,
-        )
-        self.parentApplet.busy = False
-        self.addLanes([info], roleIndex, laneIndex)
+        try:
+            stackDlg = StackFileSelectionWidget(self)
+            stackDlg.exec_()
+            if stackDlg.result() != QDialog.Accepted or not stackDlg.selectedFiles:
+                return
+            # FIXME: ask first if stack should be internalized to project file
+            # also, check prefer_2d, size/volume and presence of 'z' to determine this
+            nickname = DatasetInfo.create_nickname(stackDlg.selectedFiles)
+            location = DatasetInfo.Location.ProjectInternal
+            # FIXME: do this inside a Request
+            self.parentApplet.busy = True
+            inner_path = self.serializer.importStackAsLocalDataset(
+                abs_paths=stackDlg.selectedFiles, sequence_axis=stackDlg.sequence_axis
+            )
+            info = DatasetInfo(
+                filepath=inner_path,
+                nickname=nickname,
+                sequence_axis=stackDlg.sequence_axis,
+                location=location,
+                project_file=self.project_file,
+            )
+            self.addLanes([info], roleIndex, laneIndex)
+        finally:
+            self.parentApplet.busy = False
 
     def handleClearDatasets(self, roleIndex, selectedRows):
         for row in selectedRows:
@@ -687,7 +683,7 @@ class DataSelectionGui(QWidget):
 
         rois = None
         hostname, repo_uuid, volume_name, node_uuid, typename = browser.get_selection()
-        dvid_url = "http://{hostname}/api/node/{node_uuid}/{volume_name}".format(**locals())
+        dvid_url = f"http://{hostname}/api/node/{node_uuid}/{volume_name}"
         subvolume_roi = browser.get_subvolume_roi()
 
         # Relocate host to top of 'recent' list, and limit list to 10 items.

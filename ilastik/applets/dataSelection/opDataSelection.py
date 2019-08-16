@@ -70,7 +70,7 @@ class DatasetInfo(object):
     def __init__(
         self,
         *,
-        filepath: str = None,
+        filepath: str = "",
         project_file: h5py.File = None,
         preloaded_array=None,
         sequence_axis=None,
@@ -78,7 +78,7 @@ class DatasetInfo(object):
         subvolume_roi=None,
         location=None,
         axistags=None,
-        fill_in_dummy_axes: bool = False,
+        guess_tags_for_singleton_axes: bool = False,
         display_mode="default",
         nickname="",
         original_axistags=None,
@@ -98,7 +98,11 @@ class DatasetInfo(object):
         sequence_axis: Axis along which to stack (only applicable for stacks).
         """
         assert (preloaded_array is not None) ^ bool(filepath), "Provide either preloaded_array or filepath"
-        self.filePath = filepath or ""
+        if filepath is None:
+            import pydevd
+
+            pydevd.settrace()
+        self.filePath = filepath
         self.project_file = project_file
         self.preloaded_array = preloaded_array
         self.sequenceAxis = sequence_axis
@@ -164,7 +168,7 @@ class DatasetInfo(object):
 
         self.axistags = axistags or default_tags
         if len(self.axistags) != len(self.laneShape):
-            if not fill_in_dummy_axes:
+            if not guess_tags_for_singleton_axes:
                 raise Exception("Axistags {self.axistags} don't fit data shape {self.laneShape}")
             default_keys = [tag.key for tag in default_tags]
             tagged_shape = {k: v for k, v in zip(default_keys, self.laneShape)}

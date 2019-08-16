@@ -6,6 +6,7 @@ import weakref
 from collections import OrderedDict
 from typing import List, Callable, Dict, Iterable
 import logging
+
 logger = logging.getLogger(__name__)  # noqa
 
 import numpy
@@ -26,18 +27,17 @@ class BatchProcessingApplet(Applet):
     """
 
     def __init__(self, workflow, title, dataSelectionApplet, dataExportApplet):
-        super(BatchProcessingApplet, self).__init__(
-            "Batch Processing", syncWithImageIndex=False)
+        super(BatchProcessingApplet, self).__init__("Batch Processing", syncWithImageIndex=False)
         self.workflow = weakref.ref(workflow)
         self.dataSelectionApplet = dataSelectionApplet
         self.dataExportApplet = dataExportApplet
-        assert isinstance(
-            self.dataSelectionApplet.topLevelOperator, OpMultiLaneDataSelectionGroup)
+        assert isinstance(self.dataSelectionApplet.topLevelOperator, OpMultiLaneDataSelectionGroup)
         self._gui = None  # Created on first access
 
     def getMultiLaneGui(self):
         if self._gui is None:
             from .batchProcessingGui import BatchProcessingGui
+
             self._gui = BatchProcessingGui(self)
         return self._gui
 
@@ -64,21 +64,29 @@ class BatchProcessingApplet(Applet):
         role_path_dict = self.dataSelectionApplet.role_paths_from_parsed_args(parsed_args)
         return self.run_export(role_path_dict, parsed_args.input_axes, sequence_axis=parsed_args.stack_along)
 
-    def run_export(self, role_data_dict:Dict[int, List[str]], input_axes:str=None, export_to_array:bool=False, sequence_axis:str=None):
+    def run_export(
+        self,
+        role_data_dict: Dict[int, List[str]],
+        input_axes: str = None,
+        export_to_array: bool = False,
+        sequence_axis: str = None,
+    ):
         self.progressSignal(0)
         batches = list(zip(*role_data_dict.values()))
         try:
             results = []
             for batch_dataset_index, role_input_paths in enumerate(batches):
+
                 def emit_progress(dataset_index, dataset_percent):
                     overall_progress = (dataset_index + dataset_percent / 100.0) / len(batches)
                     self.progressSignal(100 * overall_progress)
+
                 result = self.export_dataset(
                     role_input_paths,
                     input_axes=input_axes,
                     export_to_array=export_to_array,
                     sequence_axis=sequence_axis,
-                    progress_callback=partial(emit_progress, batch_dataset_index)
+                    progress_callback=partial(emit_progress, batch_dataset_index),
                 )
                 results.append(result)
             return results
@@ -95,7 +103,14 @@ class BatchProcessingApplet(Applet):
             infos.append(info_slot.value.axistags if info_slot.ready() else None)
         return infos
 
-    def export_dataset(self, role_input_paths:List[str], input_axes:str=None, export_to_array:bool=False, sequence_axis:str=None, progress_callback:Callable=None):
+    def export_dataset(
+        self,
+        role_input_paths: List[str],
+        input_axes: str = None,
+        export_to_array: bool = False,
+        sequence_axis: str = None,
+        progress_callback: Callable = None,
+    ):
         """
         Configures a lane using the paths specified in the paths from role_input_paths and runs the workflow.
 
@@ -121,7 +136,7 @@ class BatchProcessingApplet(Applet):
                         filepath=role_input_path,
                         axistags=vigra.defaultAxistags(input_axes) if input_axes else role_axis_tags,
                         sequence_axis=sequence_axis,
-                        fill_in_dummy_axes=True #FIXME: add cmd line param to negate this
+                        guess_tags_for_singleton_axes=True,  # FIXME: add cmd line param to negate this
                     )
                     batch_lane.DatasetGroup[role_index].setValue(role_info)
             self.workflow().handleNewLanesAdded()
@@ -152,6 +167,6 @@ class BatchProcessingApplet(Applet):
     def role_names(self) -> int:
         return self.dataSelectionApplet.topLevelOperator.DatasetRoles.value
 
-    def get_template_info(self, role_index:int) -> DatasetInfo:
+    def get_template_info(self, role_index: int) -> DatasetInfo:
         if self.num_lanes == 0:
             return DatasetInfo

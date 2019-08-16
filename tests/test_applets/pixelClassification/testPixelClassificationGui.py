@@ -28,7 +28,7 @@ import numpy
 from PyQt5.QtWidgets import QApplication, QAction
 from volumina.layer import AlphaModulatedLayer
 from lazyflow.operators import OpPixelFeaturesPresmoothed
-from ilastik.widgets.stackFileSelectionWidget import H5N5VolumeSelectionDlg
+from ilastik.widgets.stackFileSelectionWidget import SubvolumeSelectionDlg
 
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 from lazyflow.utility.timer import Timer, timeLogged
@@ -141,7 +141,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         file_dialog.accept()
 
     def select_inner_path(self, inner_path: str):
-        wait_until(lambda: isinstance(QApplication.instance().activeModalWidget(), H5N5VolumeSelectionDlg))
+        wait_until(lambda: isinstance(QApplication.instance().activeModalWidget(), SubvolumeSelectionDlg))
         inner_path_dialog = QApplication.instance().activeModalWidget()
         matching_idx = inner_path_dialog.combo.findText(inner_path)
         assert matching_idx >= 0
