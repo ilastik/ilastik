@@ -19,7 +19,7 @@ from PIL import Image as PilImage
 import numpy
 
 from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, Qt
 from _pytest.main import pytest_runtestloop as _pytest_runtestloop
 
 import ilastik.config
@@ -253,6 +253,30 @@ def tmp_h5_file(tmp_path: Path) -> Path:
     tmp_path_trailing_slash = os.path.join(tmp_path, "")
     _, filepath = tempfile.mkstemp(prefix=tmp_path_trailing_slash, suffix=".h5")
     return filepath
+
+
+@pytest.fixture
+def tmp_h5_single_dataset(tmp_path: Path) -> Path:
+    file_path = tmp_path / "single_dataset.h5"
+    with h5py.File(file_path, "w") as f:
+        f.create_group("test_group")
+        f["/test_group/test_data"] = numpy.random.rand(100, 200)
+    return file_path
+
+
+@pytest.fixture
+def tmp_h5_multiple_dataset(tmp_path: Path) -> Path:
+    file_path = tmp_path / "multiple_datasets.h5"
+    with h5py.File(file_path, "w") as f:
+        f.create_group("test_group")
+        f["/test_group_2d/test_data_2d"] = numpy.random.rand(20, 30)
+
+        f.create_group("another_test_group")
+        f["/test_group_3d/test_data_3d"] = numpy.random.rand(20, 30, 3)
+
+        f.create_group("one_more_test_group")
+        f["/test_group_4d/test_data_4d"] = numpy.random.rand(20, 30, 40, 5)
+    return file_path
 
 
 @pytest.fixture

@@ -18,7 +18,6 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from functools import partial
 import os
 import time
 from pathlib import Path
@@ -26,9 +25,7 @@ import sys
 import tempfile
 import pytest
 import numpy
-from types import Callable
 from PyQt5.QtWidgets import QApplication, QAction
-from PyQt5.QtCore import QTimer
 from volumina.layer import AlphaModulatedLayer
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 from ilastik.widgets.stackFileSelectionWidget import H5N5VolumeSelectionDlg
@@ -52,36 +49,14 @@ logger.setLevel(logging.DEBUG)
 
 
 def wait_until(f, timeout=10):
-    result = None
+    result = f()
     while not result and timeout:
         timeout -= 1
         time.sleep(1)
         result = f()
     if not result:
-        raise Exception("TIMEOUT!")
+        raise Exception(f"TIMEOUT! waiting for {f}")
     return result
-
-
-def select_file(path: Path, inner_path: str = "", callback: Callable = lambda: None):
-    file_dialog = wait_until(QApplication.instance().activeModalWidget)
-    file_dialog.selectFile(path.as_posix())
-    lineEdit = file_dialog.focusWidget()
-    lineEdit.setText(path.as_posix())
-
-    if inner_path:
-
-        def pick_inner_path():
-            wait_until(lambda: isinstance(QApplication.instance().activeModalWidget(), H5N5VolumeSelectionDlg))
-            inner_path_dialog = QApplication.instance().activeModalWidget()
-            matching_idx = inner_path_dialog.combo.findText(inner_path)
-
-            print("=====================lllllllllllll>>>", inner_path_dialog.combo.currentText())
-            assert matching_idx > 0
-            inner_path_dialog.combo.setCurrentIndex(matching_idx)
-            inner_path_dialog.accept()
-
-        QTimer.singleShot(1000, pick_inner_path)
-    file_dialog.accept()
 
 
 class TestPixelClassificationGui(ShellGuiTestCaseBase):
@@ -93,15 +68,13 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
     """
 
     @pytest.fixture(autouse=True)
-    def initenv(
-        self, monkeypatch, tmp_path: Path, tmp_h5_single_dataset: Path, tmp_h5_multiple_dataset: Path, ui_interactor
-    ):
+    def initenv(self, qtbot, monkeypatch, tmp_path: Path, tmp_h5_single_dataset: Path, tmp_h5_multiple_dataset: Path):
         # FIXME: it might be a good idea to have this apply globally, for every test, so we don't polute the real HOME
         monkeypatch.setenv("HOME", str(tmp_path))
+        self.qtbot = qtbot
         self.tmp_path = tmp_path
         self.tmp_h5_single_dataset = tmp_h5_single_dataset
         self.tmp_h5_multiple_dataset = tmp_h5_multiple_dataset
-        self.ui_interactor = ui_interactor
 
     @classmethod
     def workflowClass(cls):
@@ -148,37 +121,64 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             except:
                 pass
 
+    @property
+    def data_selection_gui(self):
+        return self.shell.workflow.applets[DATA_SELECTION_INDEX].getMultiLaneGui()
+
+    def add_file(self, path: Path, inner_path: str = ""):
+        add_file_role_0_button = self.data_selection_gui.laneSummaryTableView.addFilesButtons[0]
+        add_file_role_0_button.click()
+        add_file_role_0_button.menu().actions()[0].activate(QAction.Trigger)
+        self.select_file(path)
+        if inner_path:
+            self.select_inner_path(inner_path)
+
+    def select_file(self, path: Path):
+        file_dialog = wait_until(QApplication.instance().activeModalWidget)
+        file_dialog.selectFile(path.as_posix())
+        lineEdit = file_dialog.focusWidget()
+        lineEdit.setText(path.as_posix())
+        file_dialog.accept()
+
+    def select_inner_path(self, inner_path: str):
+        wait_until(lambda: isinstance(QApplication.instance().activeModalWidget(), H5N5VolumeSelectionDlg))
+        inner_path_dialog = QApplication.instance().activeModalWidget()
+        matching_idx = inner_path_dialog.combo.findText(inner_path)
+        assert matching_idx >= 0
+        inner_path_dialog.combo.setCurrentIndex(matching_idx)
+        inner_path_dialog.accept()
+
+    def remove_first_dataset(self):
+        self.data_selection_gui._detailViewerWidgets[0].overlay.placeAtRow(0)
+        self.data_selection_gui._detailViewerWidgets[0].overlay.current_row = 0
+        time.sleep(3)  # FIXME: there should be a way to wait for whatever is happening behind the scenes
+        self.data_selection_gui._detailViewerWidgets[0].overlay.click()
+
     def test_1_NewProject(self):
         """
         Create a blank project, manipulate few couple settings, and save it.
         """
+        self.exec_in_shell(self.shell.createAndLoadNewProject, self.PROJECT_FILE, self.workflowClass())
+        workflow = self.shell.projectManager.workflow
+        opDataSelection = workflow.dataSelectionApplet.topLevelOperator
+
+        # opens multi dataset file and expects second dialog to choose inner path
+        self.add_file(self.tmp_h5_multiple_dataset, "test_group_3d/test_data_3d")
+        self.remove_first_dataset()
+
+        # opens multi dataset file and expects inner path to be picked automatically
+        self.add_file(self.tmp_h5_multiple_dataset)
+        self.remove_first_dataset()
+
+        # opens single dataset file and expects inner path to be picked automatically
+        self.add_file(self.tmp_h5_single_dataset)
+        self.remove_first_dataset()
 
         def impl():
-            projFilePath = self.PROJECT_FILE
-
-            shell = self.shell
-
-            # New project
-            shell.createAndLoadNewProject(projFilePath, self.workflowClass())
-            workflow = shell.projectManager.workflow
-
-            # Test ading different files
-            print(f"\n\nHOME: =================+>>>>>>>>>>>>>>>>>>>>>>>> {os.environ['HOME']}\n\n")
-            data_selection_gui = self.shell.workflow.applets[DATA_SELECTION_INDEX].getMultiLaneGui()
-            add_file_role_0_button = data_selection_gui.laneSummaryTableView.addFilesButtons[0]
-
-            QTimer.singleShot(500, partial(add_file_role_0_button.menu().actions()[0].activate, QAction.Trigger))
-            QTimer.singleShot(1000, partial(select_file, self.tmp_h5_multiple_dataset, "test_group/test_data"))
-
-            add_file_role_0_button.click()
-
-            raise Exception("----------------EXCEPTION =) -----------------")
-
             # Add a file
             from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 
             info = DatasetInfo(filepath=self.SAMPLE_DATA, project_file=self.shell.projectManager.currentProjectFile)
-            opDataSelection = workflow.dataSelectionApplet.topLevelOperator
             opDataSelection.DatasetGroup.resize(1)
             opDataSelection.DatasetGroup[0][0].setValue(info)
 
@@ -199,8 +199,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             opFeatures.SelectionMatrix.setValue(selections)
 
             # Save and close
-            shell.projectManager.saveProject()
-            shell.ensureNoCurrentProject(assertClean=True)
+            self.shell.projectManager.saveProject()
+            self.shell.ensureNoCurrentProject(assertClean=True)
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)

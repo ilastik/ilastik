@@ -23,10 +23,9 @@ import os
 import uuid
 import copy
 from enum import Enum, unique
-from typing import List, Iterable, Tuple, Callable
+from typing import List, Tuple
 from numbers import Number
 import re
-import functools
 from pathlib import Path
 import errno
 
@@ -36,32 +35,33 @@ import h5py
 import z5py
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
-from lazyflow.metaDict import MetaDict
 from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
-from lazyflow.operators.ioOperators import OpInputDataReader, OpH5N5WriterBigDataset
-from lazyflow.operators.valueProviders import OpMetadataInjector, OpZeroDefault
+from lazyflow.operators.ioOperators import OpInputDataReader
+from lazyflow.operators.valueProviders import OpMetadataInjector
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from ilastik.applets.base.applet import DatasetConstraintError
 
 from ilastik.utility import OpMultiLaneWrapper
-from lazyflow.graph import Graph
-from lazyflow.utility import PathComponents, isUrl, make_absolute
+from lazyflow.utility import PathComponents, isUrl
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz
 from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.graph import Graph
 
+
 def getTypeRange(numpy_type):
     type_info = numpy.iinfo(numpy_type)
     return (type_info.min, type_info.max)
+
 
 class DatasetInfo(object):
     """
     Struct-like class for describing dataset info.
     """
+
     @unique
     class Location(Enum):
-        FileSystem = 0 #deprecated
+        FileSystem = 0  # deprecated
         ProjectInternal = 1
         PreloadedArray = 2
         FileSystemRelativePath = 3
@@ -70,20 +70,20 @@ class DatasetInfo(object):
     def __init__(
         self,
         *,
-        filepath:str=None,
-        project_file:h5py.File=None,
+        filepath: str = None,
+        project_file: h5py.File = None,
         preloaded_array=None,
         sequence_axis=None,
         allowLabels=True,
         subvolume_roi=None,
         location=None,
         axistags=None,
-        fill_in_dummy_axes:bool=False,
-        display_mode='default',
-        nickname='',
+        fill_in_dummy_axes: bool = False,
+        display_mode="default",
+        nickname="",
         original_axistags=None,
-        normalizeDisplay:bool=None,
-        drange:Tuple[Number, Number]=None,
+        normalizeDisplay: bool = None,
+        drange: Tuple[Number, Number] = None,
         jsonNamespace=None,
     ):
         """
@@ -98,7 +98,7 @@ class DatasetInfo(object):
         sequence_axis: Axis along which to stack (only applicable for stacks).
         """
         assert (preloaded_array is not None) ^ bool(filepath), "Provide either preloaded_array or filepath"
-        self.filePath = filepath or ''
+        self.filePath = filepath or ""
         self.project_file = project_file
         self.preloaded_array = preloaded_array
         self.sequenceAxis = sequence_axis
@@ -114,20 +114,22 @@ class DatasetInfo(object):
         self.original_paths = []
         self.expanded_paths = []
         self.base_dir = str(Path(project_file.filename).absolute().parent) if project_file else os.getcwd()
-        assert os.path.isabs(self.base_dir) #FIXME: if file_project was opened as a relative path, this would break
+        assert os.path.isabs(self.base_dir)  # FIXME: if file_project was opened as a relative path, this would break
 
         if location == self.Location.PreloadedArray or preloaded_array is not None:
             assert preloaded_array is not None
-            self.preloaded_array = vigra.taggedView(preloaded_array, axistags or get_default_axisordering(preloaded_array.shape))
+            self.preloaded_array = vigra.taggedView(
+                preloaded_array, axistags or get_default_axisordering(preloaded_array.shape)
+            )
             self.nickname = nickname or "preloaded-{}-array".format(self.preloaded_array.dtype.name)
             self.laneShape = preloaded_array.shape
             self.laneDtype = preloaded_array.dtype
             self.location = self.Location.PreloadedArray
-            default_tags = getattr(self.preloaded_array, 'axistags')
+            default_tags = getattr(self.preloaded_array, "axistags")
         elif location == self.Location.ProjectInternal:
             dataset = project_file[filepath]
-            if 'axistags' in dataset.attrs:
-                default_tags = vigra.AxisTags.fromJSON(dataset.attrs['axistags'])
+            if "axistags" in dataset.attrs:
+                default_tags = vigra.AxisTags.fromJSON(dataset.attrs["axistags"])
             else:
                 default_tags = vigra.defaultAxistags(get_default_axisordering(dataset.shape))
             self.laneShape = dataset.shape
@@ -141,16 +143,15 @@ class DatasetInfo(object):
                 raise Exception(f"Multiple extensions unsupported as a single data source: {self.expanded_paths}")
             self.nickname = nickname or self.create_nickname(self.expanded_paths)
             self.filePath = os.path.pathsep.join(self.expanded_paths)
-            op_reader = OpInputDataReader(graph=Graph(),
-                                          WorkingDirectory=self.base_dir,
-                                          FilePath=self.filePath,
-                                          SequenceAxis=self.sequenceAxis)
+            op_reader = OpInputDataReader(
+                graph=Graph(), WorkingDirectory=self.base_dir, FilePath=self.filePath, SequenceAxis=self.sequenceAxis
+            )
             meta = op_reader.Output.meta
             default_tags = meta.axistags
             self.laneShape = meta.shape
             self.laneDtype = meta.dtype
-            self.drange = drange or meta.get('drange')
-        else: # path is url
+            self.drange = drange or meta.get("drange")
+        else:  # path is url
             self.filePath = filepath
             self.expanded_paths = [filepath]
 
@@ -169,10 +170,10 @@ class DatasetInfo(object):
             tagged_shape = {k: v for k, v in zip(default_keys, self.laneShape)}
             squeezed_shape = {k: v for k, v in tagged_shape.items() if v != 1}
             requested_keys = [tag.key for tag in axistags]
-            if set(requested_keys).issubset(set(default_keys)) and set(default_keys) - set(requested_keys) == set('c'):
-                self.axistags = default_tags #allow missing 'c' in axistags; not sure if this is a good idea
+            if set(requested_keys).issubset(set(default_keys)) and set(default_keys) - set(requested_keys) == set("c"):
+                self.axistags = default_tags  # allow missing 'c' in axistags; not sure if this is a good idea
             elif len(requested_keys) == len(squeezed_shape):
-                dummy_axes = [key for key in 'ctzxy' if key not in requested_keys]
+                dummy_axes = [key for key in "ctzxy" if key not in requested_keys]
                 out_axes = ""
                 for k, v in tagged_shape.items():
                     if v > 1:
@@ -181,7 +182,9 @@ class DatasetInfo(object):
                         out_axes += dummy_axes.pop(0)
                 self.axistags = vigra.defaultAxistags(out_axes)
             else:
-                raise Exception(f"Cannot reinterpret input with shape {self.laneShape} using aksiskeys {requested_keys}")
+                raise Exception(
+                    f"Cannot reinterpret input with shape {self.laneShape} using aksiskeys {requested_keys}"
+                )
 
         if self.location is None:
             if self.relative_paths:
@@ -190,21 +193,23 @@ class DatasetInfo(object):
                 self.location = self.Location.FileSystemAbsolutePath
 
         if self.location == self.Location.FileSystemRelativePath and not self.relative_paths:
-            raise Exception(f"\"{self.original_paths}\" can't be expressed relative to {self.base_dir}")
+            raise Exception(f'"{self.original_paths}" can\'t be expressed relative to {self.base_dir}')
 
     def is_in_filesystem(self) -> bool:
         return self.location in (self.Location.FileSystemRelativePath, self.Location.FileSystemAbsolutePath)
 
     @classmethod
-    def create_nickname(cls, expanded_paths:List[str]):
+    def create_nickname(cls, expanded_paths: List[str]):
         components = [PathComponents(ep) for ep in expanded_paths]
-        external_nickname = os.path.commonprefix([re.sub(comp.extension + '$', '', comp.externalPath) for comp in components])
+        external_nickname = os.path.commonprefix(
+            [re.sub(comp.extension + "$", "", comp.externalPath) for comp in components]
+        )
         if external_nickname:
             external_nickname = external_nickname.split(os.path.sep)[-1]
         else:
             external_nickname = "stack_at-" + components[0].filenameBase
-        internal_nickname = os.path.commonprefix([comp.internalPath or "" for comp in components]).lstrip('/')
-        nickname = external_nickname + ('-' + internal_nickname.replace('/', '-') if internal_nickname else '')
+        internal_nickname = os.path.commonprefix([comp.internalPath or "" for comp in components]).lstrip("/")
+        nickname = external_nickname + ("-" + internal_nickname.replace("/", "-") if internal_nickname else "")
         return nickname
 
     @property
@@ -272,19 +277,15 @@ class DatasetInfo(object):
                     expanded_paths.append(ext_path)
                     continue
                 internal_paths = cls.globInternalPaths(ext_path, components.internalPath)
-                expanded_paths.extend(
-                    [os.path.join(ext_path, int_path) for int_path in internal_paths]
-                )
+                expanded_paths.extend([os.path.join(ext_path, int_path) for int_path in internal_paths])
 
         if missing_files:
-            raise FileNotFoundError(
-                errno.ENOENT, os.strerror(errno.ENOENT), os.path.pathsep.join(missing_files)
-            )
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), os.path.pathsep.join(missing_files))
         return sorted(expanded_paths)
 
     @classmethod
-    def globInternalPaths(cls, file_path:str, glob_str:str, cwd:str=None) -> List[str]:
-        glob_str = glob_str.lstrip('/')
+    def globInternalPaths(cls, file_path: str, glob_str: str, cwd: str = None) -> List[str]:
+        glob_str = glob_str.lstrip("/")
         internal_paths = set()
         for path in cls.expand_path(file_path, cwd=cwd):
             f = None
@@ -293,9 +294,9 @@ class DatasetInfo(object):
                     internal_paths |= set(globNpz(path, glob_str))
                     continue
                 elif cls.pathIsHdf5(path):
-                    f = h5py.File(path, 'r')
+                    f = h5py.File(path, "r")
                 elif cls.pathIsN5(path):
-                    f = z5py.N5File(path) #FIXME
+                    f = z5py.N5File(path)  # FIXME
                 else:
                     raise Exception(f"{path} is not an 'n5' or 'h5' file")
                 internal_paths |= set(globH5N5(f, glob_str))
@@ -305,46 +306,50 @@ class DatasetInfo(object):
         return sorted(internal_paths)
 
     @classmethod
-    def pathIsHdf5(cls, path:str) -> bool:
-        return PathComponents(path).extension in ['.ilp', '.h5', '.hdf5']
+    def pathIsHdf5(cls, path: Path) -> bool:
+        return PathComponents(Path(path).as_posix()).extension in [".ilp", ".h5", ".hdf5"]
 
     def isHdf5(self) -> bool:
         return any(self.pathIsHdf5(ep) for ep in self.external_paths)
 
     @classmethod
-    def pathIsNpz(cls, path:str) -> bool:
-        return PathComponents(path).extension in ['.npz']
+    def pathIsNpz(cls, path: Path) -> bool:
+        return PathComponents(Path(path).as_posix()).extension in [".npz"]
 
     def isNpz(self) -> bool:
         return any(self.pathIsNpz(ep) for ep in self.external_paths)
 
     @classmethod
-    def pathIsN5(cls, path:str) -> bool:
-        return PathComponents(path).extension in ['.n5']
+    def pathIsN5(cls, path: Path) -> bool:
+        return PathComponents(Path(path).as_posix()).extension in [".n5"]
 
     def isN5(self) -> bool:
         return any(self.pathIsN5(ep) for ep in self.external_paths)
 
     @classmethod
-    def fileHasInternalPaths(cls, path:str) -> bool:
+    def fileHasInternalPaths(cls, path: str) -> bool:
         return cls.pathIsHdf5(path) or cls.pathIsN5(path) or cls.pathIsNpz(path)
 
     @classmethod
-    def getPossibleInternalPathsFor(cls, file_path:str, min_ndim=2, max_ndim=5):
+    def getPossibleInternalPathsFor(cls, file_path: Path, min_ndim=2, max_ndim=5) -> List[str]:
         datasetNames = []
 
         if cls.pathIsHdf5(file_path):
+
             def accumulateDatasetPaths(name, val):
                 if type(val) == h5py._hl.dataset.Dataset and min_ndim <= len(val.shape) <= max_ndim:
                     datasetNames.append(name)
-            with h5py.File(file_path, 'r') as f:
+
+            with h5py.File(file_path, "r") as f:
                 f.visititems(accumulateDatasetPaths)
         elif cls.pathIsN5(file_path):
+
             def accumulate_names(path, val):
                 if isinstance(val, z5py.dataset.Dataset) and min_ndim <= len(val.shape) <= max_ndim:
-                    name = path.replace(file_path, '')  #FIXME: re.sub(r'^' + file_path, ...) ?
+                    name = path.replace(file_path, "")  # FIXME: re.sub(r'^' + file_path, ...) ?
                     datasetNames.append(name)
-            with z5py.N5File(file_path, mode='r+') as f:
+
+            with z5py.N5File(file_path, mode="r+") as f:
                 f.visititems(accumulate_names)
 
         return datasetNames
@@ -358,10 +363,10 @@ class DatasetInfo(object):
 
     @property
     def datasetId(self):
-        #FIXME: this prop should not be necessary, we should just trust
-        #the filePath to retrieve the data out of the .ilp file
+        # FIXME: this prop should not be necessary, we should just trust
+        # the filePath to retrieve the data out of the .ilp file
         assert self.location == self.Location.ProjectInternal
-        return self.filePath.split(os.path.sep)[-1] #is this a problem in windows?
+        return self.filePath.split(os.path.sep)[-1]  # is this a problem in windows?
 
     @property
     def axiskeys(self):
@@ -370,10 +375,13 @@ class DatasetInfo(object):
     def __str__(self):
         s = "{ "
         s += "filepath: {},\n".format(self.filePath)
-        s += "location: {}\n".format({DatasetInfo.Location.FileSystem: "FileSystem",
-                                      DatasetInfo.Location.ProjectInternal: "ProjectInternal",
-                                      DatasetInfo.Location.PreloadedArray: "PreloadedArray"
-                                      }[self.location])
+        s += "location: {}\n".format(
+            {
+                DatasetInfo.Location.FileSystem: "FileSystem",
+                DatasetInfo.Location.ProjectInternal: "ProjectInternal",
+                DatasetInfo.Location.PreloadedArray: "PreloadedArray",
+            }[self.location]
+        )
         s += "nickname: {},\n".format(self.nickname)
         if self.axistags:
             s += "axistags: {},\n".format(self.axistags)
@@ -410,32 +418,34 @@ class DatasetInfo(object):
         result.nickname = default_info.nickname
         return result
 
+
 class OpDataSelection(Operator):
     """
     The top-level operator for the data selection applet, implemented as a single-image operator.
     The applet uses an OperatorWrapper to make it suitable for use in a workflow.
     """
+
     name = "OpDataSelection"
     category = "Top-level"
 
     SupportedExtensions = OpInputDataReader.SupportedExtensions
 
     # Inputs
-    RoleName = InputSlot(stype='string', value='')
-    ProjectFile = InputSlot(stype='object', optional=True)  # : The project hdf5 File object (already opened)
+    RoleName = InputSlot(stype="string", value="")
+    ProjectFile = InputSlot(stype="object", optional=True)  # : The project hdf5 File object (already opened)
     # : The internal path to the hdf5 group where project-local datasets are stored within the project file
-    ProjectDataGroup = InputSlot(stype='string', optional=True)
-    WorkingDirectory = InputSlot(stype='filestring')  # : The filesystem directory where the project file is located
-    Dataset = InputSlot(stype='object')  # : A DatasetInfo object
+    ProjectDataGroup = InputSlot(stype="string", optional=True)
+    WorkingDirectory = InputSlot(stype="filestring")  # : The filesystem directory where the project file is located
+    Dataset = InputSlot(stype="object")  # : A DatasetInfo object
 
     # Outputs
     Image = OutputSlot()  # : The output image
-    AllowLabels = OutputSlot(stype='bool')  # : A bool indicating whether or not this image can be used for training
+    AllowLabels = OutputSlot(stype="bool")  # : A bool indicating whether or not this image can be used for training
 
     # : The output slot, in the data's original axis ordering (regardless of forceAxisOrder)
     _NonTransposedImage = OutputSlot()
 
-    ImageName = OutputSlot(stype='string')  # : The name of the output image
+    ImageName = OutputSlot(stype="string")  # : The name of the output image
 
     class InvalidDimensionalityError(Exception):
         """Raised if the user tries to replace the dataset with a new one of differing dimensionality."""
@@ -447,8 +457,16 @@ class OpDataSelection(Operator):
         def __str__(self):
             return self.message
 
-    def __init__(self, forceAxisOrder:List[str]=['tczyx'], ProjectFile:h5py.File=None, ProjectDataGroup=None,
-                 WorkingDirectory=None, Dataset:DatasetInfo=None, *args, **kwargs):
+    def __init__(
+        self,
+        forceAxisOrder: List[str] = ["tczyx"],
+        ProjectFile: h5py.File = None,
+        ProjectDataGroup=None,
+        WorkingDirectory=None,
+        Dataset: DatasetInfo = None,
+        *args,
+        **kwargs,
+    ):
         """
         forceAxisOrder: How to auto-reorder the input data before connecting it to the rest of the workflow.
                         Should be a list of input orders that are allowed by the workflow
@@ -511,31 +529,31 @@ class OpDataSelection(Operator):
             # Inject metadata if the dataset info specified any.
             # Also, inject if if dtype is uint8, which we can reasonably assume has drange (0,255)
             metadata = {}
-            metadata['display_mode'] = datasetInfo.display_mode
+            metadata["display_mode"] = datasetInfo.display_mode
 
             role_name = self.RoleName.value
-            if 'c' not in providerSlot.meta.getTaggedShape():
+            if "c" not in providerSlot.meta.getTaggedShape():
                 num_channels = 0
             else:
-                num_channels = providerSlot.meta.getTaggedShape()['c']
+                num_channels = providerSlot.meta.getTaggedShape()["c"]
             if num_channels > 1:
-                metadata['channel_names'] = [f"{role_name}-{i}" for i in range(num_channels)]
+                metadata["channel_names"] = [f"{role_name}-{i}" for i in range(num_channels)]
             else:
-                metadata['channel_names'] = [role_name]
+                metadata["channel_names"] = [role_name]
 
             if datasetInfo.drange is not None:
-                metadata['drange'] = datasetInfo.drange
+                metadata["drange"] = datasetInfo.drange
             elif providerSlot.meta.dtype == numpy.uint8:
-                metadata['drange'] = (0, 255)
+                metadata["drange"] = (0, 255)
             if datasetInfo.normalizeDisplay is not None:
-                metadata['normalizeDisplay'] = datasetInfo.normalizeDisplay
+                metadata["normalizeDisplay"] = datasetInfo.normalizeDisplay
             if datasetInfo.axistags is not None:
-                metadata['axistags'] = datasetInfo.axistags
+                metadata["axistags"] = datasetInfo.axistags
             if datasetInfo.original_axistags is not None:
-                metadata['original_axistags'] = datasetInfo.original_axistags
+                metadata["original_axistags"] = datasetInfo.original_axistags
 
             if datasetInfo.subvolume_roi is not None:
-                metadata['subvolume_roi'] = datasetInfo.subvolume_roi
+                metadata["subvolume_roi"] = datasetInfo.subvolume_roi
 
                 # FIXME: We are overwriting the axistags metadata to intentionally allow
                 #        the user to change our interpretation of which axis is which.
@@ -553,13 +571,15 @@ class OpDataSelection(Operator):
             self._NonTransposedImage.connect(providerSlot)
 
             # make sure that x and y axes are present in the selected axis order
-            if 'x' not in providerSlot.meta.axistags or 'y' not in providerSlot.meta.axistags:
-                raise DatasetConstraintError("DataSelection",
-                                             "Data must always have at leaset the axes x and y for ilastik to work.")
+            if "x" not in providerSlot.meta.axistags or "y" not in providerSlot.meta.axistags:
+                raise DatasetConstraintError(
+                    "DataSelection", "Data must always have at leaset the axes x and y for ilastik to work."
+                )
 
             if self.forceAxisOrder:
-                assert isinstance(self.forceAxisOrder, list), \
-                    "forceAxisOrder should be a *list* of preferred axis orders"
+                assert isinstance(
+                    self.forceAxisOrder, list
+                ), "forceAxisOrder should be a *list* of preferred axis orders"
 
                 # Before we re-order, make sure no non-singleton
                 #  axes would be dropped by the forced order.
@@ -572,8 +592,10 @@ class OpDataSelection(Operator):
                 candidate_orders = [order for order in candidate_orders if minimal_axes.issubset(set(order))]
 
                 if len(candidate_orders) == 0:
-                    msg = (f"The axes of your dataset ({providerSlot.meta.getAxisKeys()}) are not compatible with "
-                           f"any of the allowed axis configurations used by this workflow ({self.forceAxisOrder}).")
+                    msg = (
+                        f"The axes of your dataset ({providerSlot.meta.getAxisKeys()}) are not compatible with "
+                        f"any of the allowed axis configurations used by this workflow ({self.forceAxisOrder})."
+                    )
                     raise DatasetConstraintError("DataSelection", msg)
 
                 output_order = sorted(candidate_orders, key=len)[0]  # the shortest one
@@ -583,8 +605,8 @@ class OpDataSelection(Operator):
                 # output order: it is assumed by the export-applet, that the
                 # an OpReorderAxes operator is added in the beginning
                 output_order = providerSlot.meta.getAxisKeys()
-            if 'c' not in output_order:
-                output_order += 'c'
+            if "c" not in output_order:
+                output_order += "c"
 
             op5 = OpReorderAxes(parent=self, AxisOrder=output_order, Input=providerSlot)
             self._opReaders.append(op5)
@@ -616,13 +638,13 @@ class OpDataSelection(Operator):
 
 class OpDataSelectionGroup(Operator):
     # Inputs
-    ProjectFile = InputSlot(stype='object', optional=True)
-    ProjectDataGroup = InputSlot(stype='string', optional=True)
-    WorkingDirectory = InputSlot(stype='filestring')
-    DatasetRoles = InputSlot(stype='object')
+    ProjectFile = InputSlot(stype="object", optional=True)
+    ProjectDataGroup = InputSlot(stype="string", optional=True)
+    WorkingDirectory = InputSlot(stype="filestring")
+    DatasetRoles = InputSlot(stype="object")
 
     # Must mark as optional because not all subslots are required.
-    DatasetGroup = InputSlot(stype='object', level=1, optional=True)
+    DatasetGroup = InputSlot(stype="object", level=1, optional=True)
 
     # Outputs
     ImageGroup = OutputSlot(level=1)
@@ -633,7 +655,7 @@ class OpDataSelectionGroup(Operator):
     Image = OutputSlot()  # The first dataset. Equivalent to ImageGroup[0]
     Image1 = OutputSlot()  # The second dataset. Equivalent to ImageGroup[1]
     Image2 = OutputSlot()  # The third dataset. Equivalent to ImageGroup[2]
-    AllowLabels = OutputSlot(stype='bool')  # Pulled from the first dataset only.
+    AllowLabels = OutputSlot(stype="bool")  # Pulled from the first dataset only.
 
     _NonTransposedImageGroup = OutputSlot(level=1)
 
@@ -650,6 +672,7 @@ class OpDataSelectionGroup(Operator):
 
         def handleNewRoles(*args):
             self.DatasetGroup.resize(len(self.DatasetRoles.value))
+
         self.DatasetRoles.notifyReady(handleNewRoles)
 
     def setupOutputs(self):
@@ -665,10 +688,12 @@ class OpDataSelectionGroup(Operator):
             if self._opDatasets is not None:
                 self._opDatasets.cleanUp()
 
-            self._opDatasets = OperatorWrapper(OpDataSelection, parent=self,
-                                               operator_kwargs={'forceAxisOrder': self._forceAxisOrder},
-                                               broadcastingSlotNames=['ProjectFile', 'ProjectDataGroup',
-                                                                      'WorkingDirectory'])
+            self._opDatasets = OperatorWrapper(
+                OpDataSelection,
+                parent=self,
+                operator_kwargs={"forceAxisOrder": self._forceAxisOrder},
+                broadcastingSlotNames=["ProjectFile", "ProjectDataGroup", "WorkingDirectory"],
+            )
             self.ImageGroup.connect(self._opDatasets.Image)
             self._NonTransposedImageGroup.connect(self._opDatasets._NonTransposedImage)
             self._opDatasets.Dataset.connect(self.DatasetGroup)
@@ -720,9 +745,12 @@ class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):
     # TODO: Provide output slots DatasetsByRole and ImagesByRole as a convenience
     #       to save clients the trouble of instantiating/using OpTransposeSlots.
     def __init__(self, forceAxisOrder=False, *args, **kwargs):
-        kwargs.update({'operator_kwargs': {'forceAxisOrder': forceAxisOrder},
-                       'broadcastingSlotNames': ['ProjectFile', 'ProjectDataGroup', 'WorkingDirectory',
-                                                 'DatasetRoles']})
+        kwargs.update(
+            {
+                "operator_kwargs": {"forceAxisOrder": forceAxisOrder},
+                "broadcastingSlotNames": ["ProjectFile", "ProjectDataGroup", "WorkingDirectory", "DatasetRoles"],
+            }
+        )
         super(OpMultiLaneDataSelectionGroup, self).__init__(OpDataSelectionGroup, *args, **kwargs)
 
         # 'value' slots
