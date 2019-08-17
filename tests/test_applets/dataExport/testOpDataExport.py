@@ -21,6 +21,7 @@
 import os
 import tempfile
 import shutil
+from pathlib import Path
 
 import numpy
 import vigra
@@ -28,6 +29,7 @@ import vigra
 from lazyflow.graph import Graph
 from lazyflow.roi import roiToSlice
 from lazyflow.operators.ioOperators import OpInputDataReader
+from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
 
 from ilastik.applets.dataExport.opDataExport import OpDataExport
 
@@ -41,18 +43,17 @@ class TestOpDataExport(object):
     def teardown_class(cls):
         shutil.rmtree(cls._tmpdir) 
 
-    def testBasic(self):
+    def testBasic(self, tmp_h5_single_dataset:Path):
         graph = Graph()
         opExport = OpDataExport(graph=graph)
         try:
             opExport.TransactionSlot.setValue(True)        
             opExport.WorkingDirectory.setValue( self._tmpdir )
-            
-            # Simulate the important fields of a DatasetInfo object
-            class MockDatasetInfo(object): pass
-            rawInfo = MockDatasetInfo()
-            rawInfo.nickname = 'test_nickname'
-            rawInfo.filePath = './somefile.h5'
+
+            rawInfo = FilesystemDatasetInfo(filePath=str(tmp_h5_single_dataset / 'test_group/test_data'),
+                                            nickname='test_nickname')
+
+
             opExport.RawDatasetInfo.setValue( rawInfo )
     
             opExport.SelectionNames.setValue(['Mock Export Data'])
@@ -76,10 +77,9 @@ class TestOpDataExport(object):
             assert opExport.ImageToExport.ready()
             assert opExport.ExportPath.ready()
             
-            expected_path = self._tmpdir + '/' + rawInfo.nickname + '_export_x10-90_y20-80.h5/volume/data'
+            expected_path = tmp_h5_single_dataset.parent.joinpath(rawInfo.nickname + '_export_x10-90_y20-80.h5/volume/data').as_posix()
             computed_path = opExport.ExportPath.value
-            assert os.path.normpath(computed_path) == os.path.normpath(expected_path), \
-                "Expected {}\nGot: {}".format( expected_path, computed_path )
+            assert os.path.normpath(computed_path) == os.path.normpath(expected_path)
             opExport.run_export()
         finally:
             opExport.cleanUp()

@@ -27,12 +27,13 @@ import glob
 import argparse
 import collections
 import logging
+
 logger = logging.getLogger(__name__)  # noqa
 
 import vigra
 from lazyflow.utility import PathComponents, isUrl
 from ilastik.applets.base.applet import Applet
-from .opDataSelection import OpMultiLaneDataSelectionGroup, DatasetInfo
+from .opDataSelection import OpMultiLaneDataSelectionGroup, FilesystemDatasetInfo
 from .dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
 
 
@@ -218,9 +219,10 @@ class DataSelectionApplet(Applet):
             #  we generate hdf5 volumes in a temporary directory and use those files instead.
             if parsed_args.preconvert_stacks:
                 import tempfile
+
                 input_paths = self.convertStacksToH5(input_paths, tempfile.gettempdir())
 
-            input_infos = [DatasetInfo(p) if p else None for p in input_paths]
+            input_infos = [FilesystemDatasetInfo(filepath=p) if p else None for p in input_paths]
             if parsed_args.input_axes:
                 for info in [_f for _f in input_infos if _f]:
                     info.axistags = vigra.defaultAxistags(parsed_args.input_axes)
@@ -307,26 +309,3 @@ class DataSelectionApplet(Applet):
                     assert success, "Something went wrong when generating an hdf5 file from an image sequence."
 
         return filePaths
-
-    def configureRoleFromJson(self, lane, role, dataset_info_namespace):
-        assert sys.version_info.major == 2, "Alert! This function has not been tested "\
-            "under python 3. Please remove this assetion and be wary of any strnage behavior you encounter"
-        opDataSelection = self.topLevelOperator
-        logger.debug("Configuring dataset for role {}".format(role))
-        logger.debug("Params: {}".format(dataset_info_namespace))
-        datasetInfo = DatasetInfo()
-        datasetInfo.updateFromJson(dataset_info_namespace)
-
-        # Check for globstring, which means we need to import the stack first.
-        if '*' in datasetInfo.filePath:
-            totalProgress = [-100]
-
-            def handleStackImportProgress(progress):
-                if progress // 10 != totalProgress[0] // 10:
-                    totalProgress[0] = progress
-                    logger.info("Importing stack: {}%".format(totalProgress[0]))
-            serializer = self.dataSerializers[0]
-            serializer.progressSignal.subscribe(handleStackImportProgress)
-            serializer.importStackAsLocalDataset(datasetInfo)
-
-        opDataSelection.DatasetGroup[lane][role].setValue(datasetInfo)

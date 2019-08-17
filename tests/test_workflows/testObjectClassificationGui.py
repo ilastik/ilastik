@@ -33,7 +33,7 @@ import h5py
 import numpy
 
 from ilastik.workflows import ObjectClassificationWorkflowPrediction
-from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, FilesystemDatasetInfo
 from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog, FILE_TYPES
 
 
@@ -145,9 +145,9 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             # Add our input files:
             opDataSelection = workflow.dataSelectionApplet.topLevelOperator
             opDataSelection.DatasetGroup.resize(1)
-            info_raw = DatasetInfo(filepath=self.sample_data_raw, project_file=self.shell.projectManager.currentProjectFile)
+            info_raw = FilesystemDatasetInfo(filePath=self.sample_data_raw, project_file=self.shell.projectManager.currentProjectFile)
             opDataSelection.DatasetGroup[0][0].setValue(info_raw)
-            info_prob = DatasetInfo(filepath=self.sample_data_prob)
+            info_prob = FilesystemDatasetInfo(filePath=self.sample_data_prob)
             info_raw.nickname = 'test_data'
             opDataSelection.DatasetGroup[0][1].setValue(info_prob)
 

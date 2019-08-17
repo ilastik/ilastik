@@ -311,7 +311,6 @@ def empty_project_file(tmp_path) -> h5py.File:
     f = h5py.File(project_path, "r+")
     return f
 
-
 @pytest.fixture
 def graph():
     return Graph()

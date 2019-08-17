@@ -27,7 +27,8 @@ from pathlib import Path
 import unittest
 import pytest
 
-from ilastik.applets.dataSelection.opDataSelection import OpMultiLaneDataSelectionGroup, DatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import OpMultiLaneDataSelectionGroup, DatasetInfo, ProjectInternalDatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import ProjectInternalDatasetInfo
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 
 
@@ -48,13 +49,12 @@ def serializer(empty_project_file, graph):
     return serializer
 
 @pytest.fixture
-def internal_datasetinfo(serializer, png_image) -> DatasetInfo:
+def internal_datasetinfo(serializer, png_image) -> ProjectInternalDatasetInfo:
     inner_path = serializer.importStackAsLocalDataset([str(png_image)])
     project_file = serializer.topLevelOperator.ProjectFile.value
-    info = DatasetInfo(
-        filepath=inner_path,
-        project_file=project_file,
-        location=DatasetInfo.Location.ProjectInternal
+    info = ProjectInternalDatasetInfo(
+        inner_path=inner_path,
+        project_file=project_file
     )
     return info
 
@@ -67,11 +67,11 @@ def test06(serializer, internal_datasetinfo, empty_project_file, graph):
     serializer.serializeToHdf5(empty_project_file, empty_project_file.filename)
 
     # Check for dataset existence
-    dataset = empty_project_file[internal_datasetinfo.filePath]
+    dataset = empty_project_file[internal_datasetinfo.inner_path]
 
     # Check axistags attribute
     assert 'axistags' in dataset.attrs
-    axistags_json = empty_project_file[internal_datasetinfo.filePath].attrs['axistags']
+    axistags_json = empty_project_file[internal_datasetinfo.inner_path].attrs['axistags']
     axistags = vigra.AxisTags.fromJSON(axistags_json)
 
     originalShape = serializer.topLevelOperator.Image[0].meta.shape
@@ -94,33 +94,3 @@ def test06(serializer, internal_datasetinfo, empty_project_file, graph):
 
     assert operatorToLoad.Image[0].meta.shape == serializer.topLevelOperator.Image[0].meta.shape
     assert operatorToLoad.Image[0].meta.axistags == serializer.topLevelOperator.Image[0].meta.axistags
-
-def testShapeAndDtypeSerialization(empty_project_file, serializer, internal_datasetinfo, graph):
-    """
-    Test the serialization of additional shape and dtype attributes added
-    in order to re-create the metadata in headless mode with no raw data
-    """
-    # Serialize
-    serializer.topLevelOperator.DatasetGroup[0][0].setValue(internal_datasetinfo)
-    serializer.serializeToHdf5(empty_project_file, empty_project_file.filename)
-
-    # Assert lane's dtype and shape attributes exist
-    rawDataPath = TOP_GROUP_NAME + '/infos/lane0000/Raw Data'
-    assert 'shape' in empty_project_file[rawDataPath]
-    assert 'dtype' in empty_project_file[rawDataPath]
-
-    # Assert their values are correct
-    assert tuple(empty_project_file[rawDataPath + '/shape'].value) == serializer.topLevelOperator.Image[0].meta.shape
-    assert numpy.dtype(empty_project_file[rawDataPath + '/dtype'].value.decode('utf-8')) == serializer.topLevelOperator.Image[0].meta.dtype
-
-    # Deserialize and check datasetInfo
-    operatorToLoad = OpMultiLaneDataSelectionGroup(graph=graph)
-    operatorToLoad.DatasetRoles.setValue(['Raw Data'])
-
-    deserializer = DataSelectionSerializer(operatorToLoad, TOP_GROUP_NAME)
-    deserializer.deserializeFromHdf5(empty_project_file, empty_project_file.filename)
-
-    datasetInfo = operatorToLoad.DatasetGroup[0][0][:].wait()[0]
-
-    assert datasetInfo.laneShape == operatorToLoad.Image[0].meta.shape
-    assert datasetInfo.laneDtype == operatorToLoad.Image[0].meta.dtype

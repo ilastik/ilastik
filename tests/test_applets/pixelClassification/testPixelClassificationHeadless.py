@@ -107,8 +107,8 @@ class TestPixelClassificationHeadless(object):
         workflow = shell.workflow
         
         # Add a file
-        from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
-        info = DatasetInfo(filepath=dataset_path)
+        from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
+        info = FilesystemDatasetInfo(filePath=dataset_path)
         opDataSelection = workflow.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetGroup.resize(1)
         opDataSelection.DatasetGroup[0][0].setValue(info)

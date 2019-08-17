@@ -109,11 +109,11 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
             shell.createAndLoadNewProject(projFilePath, self.workflowClass())
             workflow = shell.projectManager.workflow
 
-            from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
+            from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, FilesystemDatasetInfo
             opDataSelection = workflow.dataSelectionApplet.topLevelOperator
             for i, dataFile in enumerate(self.SAMPLE_DATA):
                 # Add a file
-                info = DatasetInfo(filepath=dataFile, axistags=vigra.defaultAxistags('xyc'), project_file=self.shell.projectManager.currentProjectFile)
+                info = FilesystemDatasetInfo(filePath=dataFile, axistags=vigra.defaultAxistags('xyc'), project_file=self.shell.projectManager.currentProjectFile)
 
                 opDataSelection.DatasetGroup.resize(i+1)
                 opDataSelection.DatasetGroup[i][0].setValue(info)

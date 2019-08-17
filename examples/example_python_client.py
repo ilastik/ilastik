@@ -11,7 +11,7 @@ import numpy
 import vigra
 
 import ilastik_main
-from ilastik.applets.dataSelection import DatasetInfo
+from ilastik.applets.dataSelection import DatasetInfo, PreloadedArrayDatasetInfo
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 
 # Before we start ilastik, optionally prepare these environment variable settings.
@@ -56,8 +56,8 @@ print(label_names, label_colors, probability_colors)
 
 # Construct an OrderedDict of role-names -> DatasetInfos
 # (See PixelClassificationWorkflow.ROLE_NAMES)
-role_data_dict = OrderedDict([ ("Raw Data", [ DatasetInfo(preloaded_array=input_data1),
-                                              DatasetInfo(preloaded_array=input_data2) ]) ]) 
+role_data_dict = OrderedDict([ ("Raw Data", [ PreloadedArrayDatasetInfo(preloaded_array=input_data1),
+                                              PreloadedArrayDatasetInfo(preloaded_array=input_data2) ]) ])
 
 ## Note: If you want to pull your data from disk instead of in-memory, just provide filepaths like so:
 # role_data_dict = OrderedDict([ ("Raw Data", [ '/path/to/input-file-1.png',

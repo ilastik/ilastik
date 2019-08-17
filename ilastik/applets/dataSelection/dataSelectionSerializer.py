@@ -24,7 +24,8 @@ from typing import List, Tuple, Callable
 from pathlib import Path
 
 
-from .opDataSelection import OpDataSelection, DatasetInfo
+from .opDataSelection import OpDataSelection, DatasetInfo, FilesystemDatasetInfo, RelativeFilesystemDatasetInfo
+from .opDataSelection import PreloadedArrayDatasetInfo, ProjectInternalDatasetInfo
 from lazyflow.operators.ioOperators import OpInputDataReader, OpStackLoader, OpH5N5WriterBigDataset
 from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
 from lazyflow.operators.ioOperators.opTiffSequenceReader import OpTiffSequenceReader
@@ -56,11 +57,12 @@ class DataSelectionSerializer(AppletSerializer):
     """
 
     # Constants
-    LocationStrings = {
-        None: "FileSystem",
-        DatasetInfo.Location.FileSystemRelativePath: "RelativePath",
-        DatasetInfo.Location.FileSystemAbsolutePath: "AbsolutePath",
-        DatasetInfo.Location.ProjectInternal: "ProjectInternal",
+    LocationStrings = {"FileSystem": FilesystemDatasetInfo,
+                       "ProjectInternal": ProjectInternalDatasetInfo} 
+    InfoClassNames = {
+        ProjectInternalDatasetInfo.__name__: ProjectInternalDatasetInfo,
+        FilesystemDatasetInfo.__name__: FilesystemDatasetInfo,
+        RelativeFilesystemDatasetInfo.__name__: RelativeFilesystemDatasetInfo
     }
 
     def __init__(self, topLevelOperator, projectFileGroupName):
@@ -118,22 +120,11 @@ class DataSelectionSerializer(AppletSerializer):
                 infoGroup = laneGroup.create_group(roleNames[roleIndex])
                 if slot.ready():
                     datasetInfo = slot.value
-                    if datasetInfo.location == DatasetInfo.Location.ProjectInternal:
-                        internal_datasets_to_keep.add(hdf5File[datasetInfo.filePath])
-                    locationString = self.LocationStrings[datasetInfo.location]
-                    infoGroup.create_dataset("location", data=locationString.encode("utf-8"))
-                    infoGroup.create_dataset("filePath", data=datasetInfo.persistent_path.encode("utf-8"))
-                    infoGroup.create_dataset("shape", data=datasetInfo.laneShape)
-                    infoGroup.create_dataset("dtype", data=str(numpy.dtype(datasetInfo.laneDtype)).encode("utf-8"))
-                    infoGroup.create_dataset("allowLabels", data=datasetInfo.allowLabels)
-                    infoGroup.create_dataset("nickname", data=datasetInfo.nickname.encode("utf-8"))
-                    infoGroup.create_dataset("display_mode", data=datasetInfo.display_mode.encode("utf-8"))
-                    infoGroup.create_dataset("axistags", data=datasetInfo.axistags.toJSON().encode("utf-8"))
-                    infoGroup.create_dataset("axisorder", data=datasetInfo.axiskeys.encode("utf-8"))
-                    if datasetInfo.drange is not None:
-                        infoGroup.create_dataset("drange", data=datasetInfo.drange)
-                    if datasetInfo.subvolume_roi is not None:
-                        infoGroup.create_dataset("subvolume_roi", data=datasetInfo.subvolume_roi)
+                    if isinstance(datasetInfo, ProjectInternalDatasetInfo):
+                        internal_datasets_to_keep.add(hdf5File[datasetInfo.inner_path])
+                    for k, v in datasetInfo.to_json_data().items():
+                        if v is not None:
+                            infoGroup.create_dataset(k, data=v)
         if self.local_data_path.as_posix() in hdf5File:
             for dataset in hdf5File[self.local_data_path.as_posix()].values():
                 if dataset not in internal_datasets_to_keep:
@@ -260,52 +251,18 @@ class DataSelectionSerializer(AppletSerializer):
         if len(infoGroup) == 0:
             return None, False
 
-        info_params = {}
-
-        # Make a reverse-lookup of the location storage strings
-        LocationLookup = {v: k for k, v in list(self.LocationStrings.items())}
-        location = LocationLookup[infoGroup["location"].value.decode("utf-8")]
-        info_params["location"] = location
-
-        if location == DatasetInfo.Location.ProjectInternal and "datasetId" in infoGroup:
-            dataset_id = infoGroup["datasetId"].value.decode("utf-8")
-            info_params["filepath"] = self.local_data_path.joinpath(dataset_id).as_posix()
+        if 'location' in infoGroup:
+            info_class = self.LocationStrings[infoGroup["location"][()].decode('utf-8')]
         else:
-            info_params["filepath"] = infoGroup["filePath"].value.decode("utf-8")
+            info_class = self.InfoClassNames[infoGroup["__class__"][()].decode('utf-8')]
 
-        if "allowLabels" in infoGroup:
-            info_params["allowLabels"] = infoGroup["allowLabels"].value
-
-        if "drange" in infoGroup:
-            info_params["drange"] = tuple(infoGroup["drange"].value)
-
-        if "display_mode" in infoGroup:
-            info_params["display_mode"] = infoGroup["display_mode"].value.decode("utf-8")
-
-        if "nickname" in infoGroup:
-            info_params["nickname"] = infoGroup["nickname"].value.decode("utf-8")
-
-        if "axisorder" in infoGroup:
-            # Old projects just have an 'axisorder' field instead of full axistags
-            axisorder = infoGroup["axisorder"].value.decode("utf-8")
-            info_params["axistags"] = vigra.defaultAxistags(axisorder)
-
-        if "subvolume_roi" in infoGroup:
-            start, stop = list(map(tuple, infoGroup["subvolume_roi"].value))
-            subvolume_roi = (start, stop)
-
-        info_params["project_file"] = infoGroup.file
         dirty = False
-
         try:
-            datasetInfo = DatasetInfo(**info_params)
+            datasetInfo = info_class.from_h5_group(infoGroup)
         except FileNotFoundError as e:
             if headless:
-                shape = tuple(infoGroup["shape"])
-                del info_params["filepath"]
-                info_params["location"] = DatasetInfo.Location.PreloadedArray
-                info_params["preloaded_array"] = numpy.zeros(shape, dtype=numpy.uint8)
-                return DatasetInfo(**info_params), True
+                shape = tuple(infoGroup['shape'])
+                return PreloadedArrayDatasetInfo(preloaded_array=numpy.zeros(shape, dtype=numpy.uint8)), True
 
             from PyQt5.QtWidgets import QMessageBox
             from ilastik.widgets.ImageFileDialog import ImageFileDialog
@@ -329,8 +286,8 @@ class DataSelectionSerializer(AppletSerializer):
                     raise e
                 dirty = True
                 repaired_paths.extend([str(p) for p in paths])
-            info_params["filepath"] = os.path.pathsep.join(repaired_paths)
-            datasetInfo = DatasetInfo(**info_params)
+            infoGroup["filePath"] = os.path.pathsep.join(repaired_paths)
+            datasetInfo = info_class.from_h5_group(infoGroup)
 
         return datasetInfo, dirty
 

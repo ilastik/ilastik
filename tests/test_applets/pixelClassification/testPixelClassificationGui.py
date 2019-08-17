@@ -176,9 +176,9 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
         def impl():
             # Add a file
-            from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
+            from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, FilesystemDatasetInfo
 
-            info = DatasetInfo(filepath=self.SAMPLE_DATA, project_file=self.shell.projectManager.currentProjectFile)
+            info = FilesystemDatasetInfo(filePath=self.SAMPLE_DATA, project_file=self.shell.projectManager.currentProjectFile)
             opDataSelection.DatasetGroup.resize(1)
             opDataSelection.DatasetGroup[0][0].setValue(info)
 
@@ -220,7 +220,6 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
     def test_3_OpenProject(self):
         def impl():
             self.shell.openProjectFile(self.PROJECT_FILE)
-            # import pydevd; pydevd.settrace()
             assert self.shell.projectManager.currentProjectFile is not None
             assert isinstance(self.shell.workflow.applets[PIXEL_CLASSIFICATION_INDEX], PixelClassificationApplet)
 

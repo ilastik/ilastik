@@ -48,7 +48,7 @@ from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.base.applet import DatasetConstraintError
 
-from .opDataSelection import DatasetInfo
+from .opDataSelection import DatasetInfo, RelativeFilesystemDatasetInfo, FilesystemDatasetInfo
 from .dataLaneSummaryTableModel import DataLaneSummaryTableModel
 from .datasetInfoEditorWidget import DatasetInfoEditorWidget
 from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, SubvolumeSelectionDlg
@@ -539,7 +539,7 @@ class DataSelectionGui(QWidget):
         previous_paths = self.preferences.get("Data Selection", "inner_paths__role{roleIndex}", set())
         return previous_paths.copy()
 
-    def _createDatasetInfo(self, roleIndex: int, filePath: Path, roi=None):
+    def _createDatasetInfo(self, roleIndex: int, filePath: Path, roi=None) -> FilesystemDatasetInfo:
         """
         Create a DatasetInfo object for the given filePath and roi.
         roi may be None, in which case it is ignored.
@@ -571,8 +571,8 @@ class DataSelectionGui(QWidget):
             self._add_default_inner_path(roleIndex=roleIndex, inner_path=selected_dataset)
             data_path = data_path / re.sub("^/", "", selected_dataset)
 
-        return DatasetInfo(
-            filepath=data_path.as_posix(),
+        return FilesystemDatasetInfo(
+            filePath=data_path.as_posix(),
             project_file=self.project_file,
             allowLabels=(self.guiMode == GuiMode.Normal),
             subvolume_roi=roi,
@@ -613,11 +613,10 @@ class DataSelectionGui(QWidget):
             inner_path = self.serializer.importStackAsLocalDataset(
                 abs_paths=stackDlg.selectedFiles, sequence_axis=stackDlg.sequence_axis
             )
-            info = DatasetInfo(
-                filepath=inner_path,
+            info = FilesystemDatasetInfo(
+                filePath=inner_path,
                 nickname=nickname,
                 sequence_axis=stackDlg.sequence_axis,
-                location=location,
                 project_file=self.project_file,
             )
             self.addLanes([info], roleIndex, laneIndex)

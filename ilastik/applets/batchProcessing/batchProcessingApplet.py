@@ -16,7 +16,7 @@ from lazyflow.request import Request
 from ilastik.utility import log_exception
 from ilastik.applets.base.applet import Applet
 from ilastik.applets.dataSelection import DataSelectionApplet
-from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, OpMultiLaneDataSelectionGroup
+from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo, OpMultiLaneDataSelectionGroup
 from functools import partial
 
 
@@ -132,8 +132,9 @@ class BatchProcessingApplet(Applet):
         try:
             for role_index, (role_input_path, role_axis_tags) in enumerate(zip(role_input_paths, previous_axes_tags)):
                 if role_input_path:
-                    role_info = DatasetInfo(
-                        filepath=role_input_path,
+                    role_info = FilesystemDatasetInfo(
+                        filePath=role_input_path,
+                        project_file=None,
                         axistags=vigra.defaultAxistags(input_axes) if input_axes else role_axis_tags,
                         sequence_axis=sequence_axis,
                         guess_tags_for_singleton_axes=True,  # FIXME: add cmd line param to negate this
@@ -166,7 +167,3 @@ class BatchProcessingApplet(Applet):
     @property
     def role_names(self) -> int:
         return self.dataSelectionApplet.topLevelOperator.DatasetRoles.value
-
-    def get_template_info(self, role_index: int) -> DatasetInfo:
-        if self.num_lanes == 0:
-            return DatasetInfo

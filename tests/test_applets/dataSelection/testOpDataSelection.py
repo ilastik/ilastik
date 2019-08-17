@@ -34,6 +34,8 @@ from lazyflow.utility.pathHelpers import PathComponents
 from lazyflow.graph import Graph
 from lazyflow.graph import OperatorWrapper
 from ilastik.applets.dataSelection.opDataSelection import OpMultiLaneDataSelectionGroup, OpDataSelection, DatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo, ProjectInternalDatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import PreloadedArrayDatasetInfo
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 from ilastik.applets.base.applet import DatasetConstraintError
 
@@ -185,7 +187,7 @@ class TestOpDataSelection_Basic2D(object):
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
 
-            info = DatasetInfo(filepath=fileName)
+            info = FilesystemDatasetInfo(filePath=fileName)
 
             reader.Dataset.setValues([info])
 
@@ -211,7 +213,7 @@ class TestOpDataSelection_Basic2D(object):
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
 
-            info = DatasetInfo(filepath=fileName)
+            info = FilesystemDatasetInfo(filePath=fileName)
 
             reader.Dataset.setValues([info])
 
@@ -240,10 +242,9 @@ class TestOpDataSelection_Basic2D(object):
 
             # From project
             inner_path = serializer.importStackAsLocalDataset([fileName])
-            info = DatasetInfo(
-                location=DatasetInfo.Location.ProjectInternal,
+            info = ProjectInternalDatasetInfo(
                 project_file=empty_project_file,
-                filepath=inner_path
+                inner_path=inner_path
             )
 
             reader.Dataset.setValues([info])
@@ -357,7 +358,7 @@ class TestOpDataSelection_Basic_native_3D(object):
             reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
-            reader.Dataset.setValues([DatasetInfo(filepath=fileName)])
+            reader.Dataset.setValues([FilesystemDatasetInfo(filePath=fileName)])
 
             # Read the test files using the data selection operator and verify the contents
             imgData3D = reader.Image[0][...].wait()
@@ -378,7 +379,7 @@ class TestOpDataSelection_Basic_native_3D(object):
             reader.WorkingDirectory.setValue(os.getcwd())
             reader.ProjectDataGroup.setValue('DataSelection/local_data')
 
-            info = DatasetInfo(filepath=fileName, axistags=vigra.defaultAxistags('tzyc'))
+            info = FilesystemDatasetInfo(filePath=fileName, axistags=vigra.defaultAxistags('tzyc'))
 
             try:
                 reader.Dataset.setValues([info])
@@ -398,7 +399,7 @@ class TestOpDataSelection_Basic_native_3D(object):
             reader.WorkingDirectory.setValue(os.getcwd())
             reader.ProjectDataGroup.setValue('DataSelection/local_data')
 
-            reader.Dataset.setValues([DatasetInfo(filepath=fileName)])
+            reader.Dataset.setValues([FilesystemDatasetInfo(filePath=fileName)])
 
             # Read the test files using the data selection operator and verify the contents
             imgData3Dc = reader.Image[0][...].wait()
@@ -416,10 +417,9 @@ class TestOpDataSelection_Basic_native_3D(object):
         empty_project_file['DataSelection/local_data'].create_dataset('dataset1', data=self.imgData3Dc)
         reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={'forceAxisOrder': False})
         reader.WorkingDirectory.setValue(str(Path(empty_project_file.filename).parent))
-        info = DatasetInfo(
-            filepath='DataSelection/local_data/dataset1',
+        info = ProjectInternalDatasetInfo(
+            inner_path='DataSelection/local_data/dataset1',
             project_file=empty_project_file,
-            location=DatasetInfo.Location.ProjectInternal
         )
         reader.Dataset.setValues([info])
 
@@ -429,10 +429,9 @@ class TestOpDataSelection_Basic_native_3D(object):
 
         for fileName in self.generatedImages3Dc:
             inner_path = serializer.importStackAsLocalDataset([fileName])
-            info = DatasetInfo(
-                location=DatasetInfo.Location.ProjectInternal,
+            info = ProjectInternalDatasetInfo(
                 project_file=empty_project_file,
-                filepath=inner_path
+                inner_path=inner_path
             )
 
             reader.Dataset.setValues([info])
@@ -607,7 +606,7 @@ class TestOpDataSelection_3DStacks(object):
         reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={'forceAxisOrder': False})
         reader.WorkingDirectory.setValue(str(Path(empty_project_file.filename).parent))
         for fileName, nickname in zip(self.imgFileNameGlobs2D, self.imgFileNameGlobs2DNicknames):
-            reader.Dataset.setValues([DatasetInfo(filepath=fileName, sequence_axis='z')])
+            reader.Dataset.setValues([FilesystemDatasetInfo(filePath=fileName, sequence_axis='z')])
 
             # Read the test files using the data selection operator and verify the contents
             imgData3D = reader.Image[0][...].wait()
@@ -628,7 +627,7 @@ class TestOpDataSelection_3DStacks(object):
             reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={'forceAxisOrder': False})
             reader.WorkingDirectory.setValue(str(Path(empty_project_file.filename).parent))
 
-            reader.Dataset.setValues([DatasetInfo(filepath=fileNameString, sequence_axis='z')])
+            reader.Dataset.setValues([FilesystemDatasetInfo(filePath=fileNameString, sequence_axis='z')])
 
             # Read the test files using the data selection operator and verify the contents
             imgData3D = reader.Image[0][...].wait()
@@ -648,7 +647,7 @@ class TestOpDataSelection_3DStacks(object):
             reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={'forceAxisOrder': False})
             reader.WorkingDirectory.setValue(str(Path(empty_project_file.filename).parent))
 
-            reader.Dataset.setValues([DatasetInfo(filepath=fileName, sequence_axis='z')])
+            reader.Dataset.setValues([FilesystemDatasetInfo(filePath=fileName, sequence_axis='z')])
 
             # Read the test files using the data selection operator and verify the contents
             imgData3Dc = reader.Image[0][...].wait()
@@ -708,7 +707,7 @@ class TestOpDataSelection_SingleFileH5Stacks():
         reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={'forceAxisOrder': False})
         reader.WorkingDirectory.setValue(os.getcwd())
 
-        reader.Dataset.setValues([DatasetInfo(filepath=self.glob_string, sequence_axis='t')])
+        reader.Dataset.setValues([FilesystemDatasetInfo(filePath=self.glob_string, sequence_axis='t')])
 
         # Read the test files using the data selection operator and verify the contents
         imgData = reader.Image[0][...].wait()
@@ -723,7 +722,7 @@ class TestOpDataSelection_SingleFileH5Stacks():
         reader.WorkingDirectory.setValue(os.getcwd())
 
         fileNameString = os.path.pathsep.join(self.file_names)
-        info = DatasetInfo(filepath=fileNameString, sequence_axis='t')
+        info = FilesystemDatasetInfo(filePath=fileNameString, sequence_axis='t')
 
         reader.Dataset.setValues([info])
 
@@ -774,7 +773,7 @@ class TestOpDataSelection_FakeDataReader():
                                  operator_kwargs={'forceAxisOrder': False})
         reader.WorkingDirectory.setValue(os.getcwd())
 
-        reader.Dataset.setValues([DatasetInfo(filepath=self.testRawDataFileName)])
+        reader.Dataset.setValues([FilesystemDatasetInfo(filePath=self.testRawDataFileName)])
 
         # Read the test file using the data selection operator and verify the contents
         imgData = reader.Image[0][...].wait()
@@ -790,7 +789,7 @@ class TestOpDataSelection_FakeDataReader():
         reader.WorkingDirectory.setValue(os.getcwd())
         reader.ProjectDataGroup.setValue('DataSelection/local_data')
 
-        info = DatasetInfo(
+        info = PreloadedArrayDatasetInfo(
             preloaded_array=self.imgData,
             axistags = vigra.defaultAxistags('tczyx')
         )
@@ -878,7 +877,7 @@ class TestOpDataSelection_stack_along_parameter:
         fileName = os.path.join(self.tmpdir, f'{name}{extension}')
         reader = OpDataSelection(graph=Graph(), forceAxisOrder=False)
         reader.WorkingDirectory.setValue(os.getcwd())
-        reader.Dataset.setValue(DatasetInfo(filepath=fileName, sequence_axis=sequence_axis))
+        reader.Dataset.setValue(FilesystemDatasetInfo(filePath=fileName, sequence_axis=sequence_axis))
         read = reader.Image[...].wait()
 
         assert numpy.allclose(read, expected), f'{name}: {read.shape}, {expected.shape}'

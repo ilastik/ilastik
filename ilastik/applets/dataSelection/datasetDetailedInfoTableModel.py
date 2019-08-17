@@ -183,17 +183,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
         # Location
         if index.column() == DatasetDetailedInfoColumn.Location:
-            if datasetInfo.location == DatasetInfo.Location.FileSystemAbsolutePath:
-                return f"Absolute Link: {datasetInfo.effective_uris}"
-            elif datasetInfo.location == DatasetInfo.Location.FileSystemRelativePath:
-                return f"Relative Link: {datasetInfo.effective_uris}"
-            elif datasetInfo.location == DatasetInfo.Location.ProjectInternal:
-                return f"Project File: {datasetInfo.effective_uris}"
-            elif datasetInfo.location == DatasetInfo.Location.PreloadedArray:
-                return f"Preloaded array {datasetInfo.laneDtype} {datasetInfo.laneShape}"
-            else:
-                raise Exception(f"Bad location: {datasetInfo.location}")
-
+            return datasetInfo.display_string
         # Internal ID
         if index.column() == DatasetDetailedInfoColumn.InternalID:
             return str(datasetInfo.internal_paths or "")

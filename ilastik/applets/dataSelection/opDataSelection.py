@@ -18,19 +18,21 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+from abc import abstractproperty, ABC
 import glob
 import os
 import uuid
-import copy
 from enum import Enum, unique
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from numbers import Number
 import re
 from pathlib import Path
 import errno
+import inspect
 
 import numpy
 import vigra
+from vigra import AxisTags
 import h5py
 import z5py
 
@@ -42,23 +44,25 @@ from lazyflow.operators.opArrayPiper import OpArrayPiper
 from ilastik.applets.base.applet import DatasetConstraintError
 
 from ilastik.utility import OpMultiLaneWrapper
-from lazyflow.utility import PathComponents, isUrl
-from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz
+from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents
 from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.graph import Graph
+from lazyflow.graph import Graph, Operator
 
 
 def getTypeRange(numpy_type):
     type_info = numpy.iinfo(numpy_type)
     return (type_info.min, type_info.max)
 
+class CantSaveAsRelativePathsException(Exception):
+    def __init__(self, file_path:str, base_dir:str):
+        super().__init__(f"Can't represent {file_path} relative to {base_dir}")
 
-class DatasetInfo(object):
-    """
-    Struct-like class for describing dataset info.
-    """
+class UnsuitedAxistagsException(Exception):
+    def __init__(self, axistags, shape):
+        super().__init__(f"Axistags {axistags} don't fit data shape {shape}")
 
+class DatasetInfo(ABC):
     @unique
     class Location(Enum):
         FileSystem = 0  # deprecated
@@ -70,106 +74,33 @@ class DatasetInfo(object):
     def __init__(
         self,
         *,
-        filepath: str = "",
-        project_file: h5py.File = None,
-        preloaded_array=None,
-        sequence_axis=None,
-        allowLabels=True,
-        subvolume_roi=None,
-        location=None,
-        axistags=None,
-        guess_tags_for_singleton_axes: bool = False,
-        display_mode="default",
-        nickname="",
-        original_axistags=None,
+        laneShape: Tuple,
+        laneDtype: type,
+        default_tags: AxisTags,
+        allowLabels: bool=True,
+        subvolume_roi: Tuple=None,
+        axistags: AxisTags = None,
+        display_mode: str="default",
+        nickname: str="",
         normalizeDisplay: bool = None,
         drange: Tuple[Number, Number] = None,
-        jsonNamespace=None,
+        guess_tags_for_singleton_axes: bool = False,
     ):
-        """
-        filepath: may be a globstring or a full hdf5 path+dataset
-
-        jsonNamespace: If provided, overrides default settings after filepath is applied
-
-        preloaded_array: Instead of providing a filepath to read from, a pre-loaded array can be directly provided.
-                         In that case, you'll probably want to configure the axistags member, or provide a tagged
-                         vigra.VigraArray.
-
-        sequence_axis: Axis along which to stack (only applicable for stacks).
-        """
-        assert (preloaded_array is not None) ^ bool(filepath), "Provide either preloaded_array or filepath"
-        if filepath is None:
-            import pydevd
-
-            pydevd.settrace()
-        self.filePath = filepath
-        self.project_file = project_file
-        self.preloaded_array = preloaded_array
-        self.sequenceAxis = sequence_axis
-        self.allowLabels = allowLabels
-        self.subvolume_roi = subvolume_roi
-        self.location = location
-        self.axistags = axistags
-        self.normalizeDisplay = normalizeDisplay
-        self.drange = drange
-
-        self.display_mode = display_mode  # choices: default, grayscale, rgba, random-colortable, binary-mask.
-        self.original_axistags = original_axistags
-        self.original_paths = []
-        self.expanded_paths = []
-        self.base_dir = str(Path(project_file.filename).absolute().parent) if project_file else os.getcwd()
-        assert os.path.isabs(self.base_dir)  # FIXME: if file_project was opened as a relative path, this would break
-
-        if location == self.Location.PreloadedArray or preloaded_array is not None:
-            assert preloaded_array is not None
-            self.preloaded_array = vigra.taggedView(
-                preloaded_array, axistags or get_default_axisordering(preloaded_array.shape)
-            )
-            self.nickname = nickname or "preloaded-{}-array".format(self.preloaded_array.dtype.name)
-            self.laneShape = preloaded_array.shape
-            self.laneDtype = preloaded_array.dtype
-            self.location = self.Location.PreloadedArray
-            default_tags = getattr(self.preloaded_array, "axistags")
-        elif location == self.Location.ProjectInternal:
-            dataset = project_file[filepath]
-            if "axistags" in dataset.attrs:
-                default_tags = vigra.AxisTags.fromJSON(dataset.attrs["axistags"])
-            else:
-                default_tags = vigra.defaultAxistags(get_default_axisordering(dataset.shape))
-            self.laneShape = dataset.shape
-            self.laneDtype = dataset.dtype
-            self.nickname = nickname
-        elif filepath and not isUrl(filepath):
-            self.original_paths = splitPath(filepath)
-            self.expanded_paths = self.expand_path(filepath, cwd=self.base_dir)
-            assert len(self.expanded_paths) == 1 or self.sequenceAxis
-            if len({PathComponents(ep).extension for ep in self.expanded_paths}) > 1:
-                raise Exception(f"Multiple extensions unsupported as a single data source: {self.expanded_paths}")
-            self.nickname = nickname or self.create_nickname(self.expanded_paths)
-            self.filePath = os.path.pathsep.join(self.expanded_paths)
-            op_reader = OpInputDataReader(
-                graph=Graph(), WorkingDirectory=self.base_dir, FilePath=self.filePath, SequenceAxis=self.sequenceAxis
-            )
-            meta = op_reader.Output.meta
-            default_tags = meta.axistags
-            self.laneShape = meta.shape
-            self.laneDtype = meta.dtype
-            self.drange = drange or meta.get("drange")
-        else:  # path is url
-            self.filePath = filepath
-            self.expanded_paths = [filepath]
-
+        self.laneShape = laneShape
+        self.laneDtype = laneDtype
         if isinstance(self.laneDtype, numpy.dtype):
             self.laneDtype = numpy.typeDict[self.laneDtype.name]
-
-        if jsonNamespace is not None:
-            self.updateFromJson(jsonNamespace)
+        self.allowLabels = allowLabels
+        self.subvolume_roi = subvolume_roi
+        self.axistags = axistags
+        self.drange = drange
+        self.display_mode = display_mode  # choices: default, grayscale, rgba, random-colortable, binary-mask.
+        self.nickname = nickname
         self.normalizeDisplay = (self.drange is not None) if normalizeDisplay is None else normalizeDisplay
-
         self.axistags = axistags or default_tags
         if len(self.axistags) != len(self.laneShape):
             if not guess_tags_for_singleton_axes:
-                raise Exception("Axistags {self.axistags} don't fit data shape {self.laneShape}")
+                raise UnsuitedAxistagsException(self.axistags, self.laneShape)
             default_keys = [tag.key for tag in default_tags]
             tagged_shape = {k: v for k, v in zip(default_keys, self.laneShape)}
             squeezed_shape = {k: v for k, v in tagged_shape.items() if v != 1}
@@ -186,21 +117,53 @@ class DatasetInfo(object):
                         out_axes += dummy_axes.pop(0)
                 self.axistags = vigra.defaultAxistags(out_axes)
             else:
-                raise Exception(
-                    f"Cannot reinterpret input with shape {self.laneShape} using aksiskeys {requested_keys}"
-                )
+                raise UnsuitedAxistagsException(requested_keys, self.laneShape)
 
-        if self.location is None:
-            if self.relative_paths:
-                self.location = self.Location.FileSystemRelativePath
-            else:
-                self.location = self.Location.FileSystemAbsolutePath
+    def to_json_data(self) -> Dict:
+        return {
+            "axistags": self.axistags.toJSON().encode('utf-8'),
+            "shape": self.laneShape,
+            "allowLabels": self.allowLabels,
+            "subvolume_roi": self.subvolume_roi,
+            "display_mode": self.display_mode.encode('utf-8'),
+            "nickname": self.nickname.encode('utf-8'),
+            "normalizeDisplay": self.normalizeDisplay,
+            "drange": self.drange,
+            "__class__": self.__class__.__name__.encode('utf-8'),
+        }
 
-        if self.location == self.Location.FileSystemRelativePath and not self.relative_paths:
-            raise Exception(f'"{self.original_paths}" can\'t be expressed relative to {self.base_dir}')
+    @classmethod
+    def from_h5_group(cls, data:h5py.Group, params:Dict=None):
+        params = params or {}
+        params.update({
+            "axistags": AxisTags.fromJSON(data['axistags'][()].decode('utf-8')),
+            "allowLabels": data['allowLabels'][()],
+            "nickname": data['nickname'][()].decode('utf-8'),
+            'project_file': data.file
+        })
+        if "subvolume_roi" in data:
+            params['subvolume_roi'] = tuple(data['subvolume_roi'][()])
+        if 'normalizeDisplay' in data:
+            params["normalizeDisplay"] = data['normalizeDisplay'][()],
+        if 'drange' in data:
+            params["drange"] = tuple(data['drange']),
+        if "display_mode" in data:
+            params["display_mode"] = data['display_mode'][()].decode('utf-8')
+        return cls(**params)
 
     def is_in_filesystem(self) -> bool:
-        return self.location in (self.Location.FileSystemRelativePath, self.Location.FileSystemAbsolutePath)
+        return False
+
+    def is_hierarchical(self):
+        return False
+
+    @abstractproperty
+    def display_string(self) -> str:
+        pass
+
+    @property
+    def default_output_dir(self) -> Path:
+        return Path.home()
 
     @classmethod
     def create_nickname(cls, expanded_paths: List[str]):
@@ -216,48 +179,9 @@ class DatasetInfo(object):
         nickname = external_nickname + ("-" + internal_nickname.replace("/", "-") if internal_nickname else "")
         return nickname
 
-    @property
-    def effective_uris(self):
-        if self.location == self.Location.PreloadedArray:
-            return []
-        elif self.location == self.Location.ProjectInternal:
-            return [self.filePath]
-        elif self.location == self.Location.FileSystemRelativePath:
-            return self.relative_paths
-        elif self.location == self.Location.FileSystemAbsolutePath:
-            return self.expanded_paths[:]
-        else:
-            raise Exception(f"Bad location: {self.location}")
-
-    @property
-    def persistent_path(self) -> str:
-        return os.path.pathsep.join(self.effective_uris)
-
-    @property
-    def relative_paths(self) -> List[str]:
-        if self.location in (self.Location.ProjectInternal, self.Location.PreloadedArray):
-            return []
-        external_paths = [Path(PathComponents(path).externalPath) for path in self.expanded_paths]
-        try:
-            return sorted([str(ext_path.absolute().relative_to(self.base_dir)) for ext_path in external_paths])
-        except ValueError:
-            return []
-
     @classmethod
     def generate_id(cls) -> str:
         return str(uuid.uuid1())
-
-    @property
-    def external_paths(self) -> List[str]:
-        return [PathComponents(ep).externalPath for ep in self.expanded_paths]
-
-    @property
-    def internal_paths(self) -> List[str]:
-        return [PathComponents(ep).internalPath for ep in self.expanded_paths]
-
-    @property
-    def file_extensions(self) -> str:
-        return [PathComponents(ep).extension for ep in self.expanded_paths]
 
     @classmethod
     def expand_path(cls, file_path: str, cwd: str = None) -> List[str]:
@@ -313,22 +237,13 @@ class DatasetInfo(object):
     def pathIsHdf5(cls, path: Path) -> bool:
         return PathComponents(Path(path).as_posix()).extension in [".ilp", ".h5", ".hdf5"]
 
-    def isHdf5(self) -> bool:
-        return any(self.pathIsHdf5(ep) for ep in self.external_paths)
-
     @classmethod
     def pathIsNpz(cls, path: Path) -> bool:
         return PathComponents(Path(path).as_posix()).extension in [".npz"]
 
-    def isNpz(self) -> bool:
-        return any(self.pathIsNpz(ep) for ep in self.external_paths)
-
     @classmethod
     def pathIsN5(cls, path: Path) -> bool:
         return PathComponents(Path(path).as_posix()).extension in [".n5"]
-
-    def isN5(self) -> bool:
-        return any(self.pathIsN5(ep) for ep in self.external_paths)
 
     @classmethod
     def fileHasInternalPaths(cls, path: str) -> bool:
@@ -358,6 +273,216 @@ class DatasetInfo(object):
 
         return datasetNames
 
+    @property
+    def axiskeys(self):
+        return "".join(tag.key for tag in self.axistags)
+
+    def __str__(self):
+        return str(self.__dict__)
+
+
+class ProjectInternalDatasetInfo(DatasetInfo):
+    def __init__(self, *, inner_path: str, project_file: h5py.File, nickname:str='', axistags=None, **info_kwargs):
+        self.inner_path = inner_path
+        self.project_file = project_file
+        self.dataset = project_file[inner_path]
+        if "axistags" in self.dataset.attrs:
+            default_tags = vigra.AxisTags.fromJSON(self.dataset.attrs["axistags"])
+        else:
+            default_tags = vigra.defaultAxistags(get_default_axisordering(self.dataset.shape))
+        super().__init__(
+            default_tags=default_tags,
+            laneShape=self.dataset.shape,
+            laneDtype=self.dataset.dtype,
+            nickname=nickname or os.path.split(self.inner_path)[-1],
+            **info_kwargs
+        )
+
+    def to_json_data(self) -> Dict:
+        out = super().to_json_data()
+        out["inner_path"] = self.inner_path.encode('utf-8')
+        return out
+
+    @classmethod
+    def from_h5_group(cls, data:h5py.Group, params:Dict=None):
+        params = params or {}
+        if "datasetId" in data and 'inner_path' not in data: #legacy format
+            dataset_id = data["datasetId"][()].decode('utf-8')
+            inner_path = None
+            def grab_inner_path(h5_path, dataset):
+                nonlocal inner_path
+                if h5_path.endswith(dataset_id):
+                    inner_path = h5_path
+            data.visititems(grab_inner_path)
+            params['inner_path'] = inner_path
+        else:
+            params['inner_path'] = data['inner_path'][()].decode('utf-8')
+        return super().from_h5_group(data, params)
+
+    @property
+    def effective_path(self):
+        return self.inner_path
+
+    @property
+    def display_string(self) -> str:
+        return "Project Internal: " + self.inner_path
+
+    def get_provider_slot(self, parent:Operator):
+        opReader = OpStreamingH5N5Reader(parent=parent)
+        opReader.H5N5File.setValue(self.project_file)
+        opReader.InternalPath.setValue(self.inner_path)
+        return opReader.OutputImage
+
+
+class PreloadedArrayDatasetInfo(DatasetInfo):
+    def __init__(self, *, preloaded_array: numpy.ndarray, axistags: AxisTags = None, nickname: str = "", **info_kwargs):
+        self.preloaded_array = vigra.taggedView(
+            preloaded_array, axistags or get_default_axisordering(preloaded_array.shape)
+        )
+        super().__init__(
+            nickname=nickname or "preloaded-{}-array".format(self.preloaded_array.dtype.name),
+            default_tags=self.preloaded_array.axistags,
+            laneShape=preloaded_array.shape,
+            laneDtype=preloaded_array.dtype,
+            **info_kwargs,
+        )
+
+    def to_json_data(self) -> Dict:
+        out = super().to_json_data()
+        out["preloaded_array"] = self.preloaded_array
+        return out
+
+    @property
+    def display_string(self) -> str:
+        return "Preloaded Array"
+
+    def get_provider_slot(self, parent:Operator) -> OutputSlot:
+        opReader = OpArrayPiper(parent=parent)
+        opReader.Input.setValue(self.preloaded_array)
+        return opReader.Output
+
+
+class UrlDatasetInfo(DatasetInfo):
+    def __init__(self, *, url: str, **info_kwargs):
+        self.url = url
+        super().__init__(**info_kwargs)
+
+    @property
+    def display_string(self):
+        return "Remote: " + self.url
+
+    def to_json_data(self) -> Dict:
+        out = super().to_json_data()
+        out["url"] = self.url
+        return out
+
+
+class FilesystemDatasetInfo(DatasetInfo):
+    def __init__(
+        self,
+        *,
+        filePath: str,
+        project_file: h5py.File = None,
+        sequence_axis: str = None,
+        nickname: str = "",
+        drange: Tuple[Number, Number] = None,
+        **info_kwargs,
+    ):
+        """
+        sequence_axis: Axis along which to stack (only applicable for stacks).
+        """
+        self.sequence_axis = sequence_axis
+        self.base_dir = str(Path(project_file.filename).absolute().parent) if project_file else os.getcwd()
+        assert os.path.isabs(self.base_dir)  # FIXME: if file_project was opened as a relative path, this would break
+        self.expanded_paths = self.expand_path(filePath, cwd=self.base_dir)
+        assert len(self.expanded_paths) == 1 or self.sequence_axis
+        if len({PathComponents(ep).extension for ep in self.expanded_paths}) > 1:
+            raise Exception(f"Multiple extensions unsupported as a single data source: {self.expanded_paths}")
+        self.filePath = os.path.pathsep.join(self.expanded_paths)
+
+        self.op_reader = OpInputDataReader(
+            graph=Graph(), WorkingDirectory=self.base_dir, FilePath=self.filePath, SequenceAxis=self.sequence_axis
+        )
+        meta = self.op_reader.Output.meta
+
+        super().__init__(
+            default_tags=meta.axistags,
+            nickname=nickname or self.create_nickname(self.expanded_paths),
+            laneShape=meta.shape,
+            laneDtype=meta.dtype,
+            drange=drange or meta.get("drange"),
+            **info_kwargs,
+        )
+
+    @property
+    def default_output_dir(self) -> Path:
+        first_external_path = PathComponents(self.filePath.split(os.path.pathsep)[0]).externalPath
+        return Path(first_external_path).parent
+
+    def get_provider_slot(self, parent:Operator):
+        op_reader = OpInputDataReader(
+            parent=parent, WorkingDirectory=self.base_dir, FilePath=self.filePath, SequenceAxis=self.sequence_axis
+        )
+        return op_reader.Output
+
+    def to_json_data(self) -> Dict:
+        out = super().to_json_data()
+        out["filePath"] = self.effective_path.encode('utf-8')
+        return out
+
+    @classmethod
+    def from_h5_group(cls, group:h5py.Group):
+        return super().from_h5_group(group, {'filePath': group['filePath'][()].decode('utf-8')})
+
+    def isHdf5(self) -> bool:
+        return any(self.pathIsHdf5(ep) for ep in self.external_paths)
+
+    def isNpz(self) -> bool:
+        return any(self.pathIsNpz(ep) for ep in self.external_paths)
+
+    def isN5(self) -> bool:
+        return any(self.pathIsN5(ep) for ep in self.external_paths)
+
+    def is_hierarchical(self):
+        return self.isHdf5() or self.isNpz() or self.isN5()
+
+    def is_in_filesystem(self) -> bool:
+        return True
+
+    @property
+    def display_string(self):
+        return "Absolute Link: " + self.effective_path
+
+    @property
+    def effective_path(self) -> str:
+        return os.path.pathsep.join(self.expanded_paths)
+
+    def is_under_project_file(self) -> bool:
+        try:
+            self.get_relative_paths()
+            return True
+        except CantSaveAsRelativePathsException:
+            return False
+
+    def get_relative_paths(self) -> List[str]:
+        external_paths = [Path(PathComponents(path).externalPath) for path in self.expanded_paths]
+        try:
+            return sorted([str(ep.absolute().relative_to(self.base_dir)) for ep in external_paths])
+        except ValueError:
+            raise CantSaveAsRelativePathsException(self.filePath, self.base_dir)
+
+    @property
+    def external_paths(self) -> List[str]:
+        return [PathComponents(ep).externalPath for ep in self.expanded_paths]
+
+    @property
+    def internal_paths(self) -> List[str]:
+        return [PathComponents(ep).internalPath for ep in self.expanded_paths]
+
+    @property
+    def file_extensions(self) -> str:
+        return [PathComponents(ep).extension for ep in self.expanded_paths]
+
     def getPossibleInternalPaths(self):
         possible_internal_paths = set()
         for expanded_path in self.expanded_paths:
@@ -365,63 +490,19 @@ class DatasetInfo(object):
             possible_internal_paths |= set(self.getPossibleInternalPathsFor(external_path))
         return possible_internal_paths
 
-    @property
-    def datasetId(self):
-        # FIXME: this prop should not be necessary, we should just trust
-        # the filePath to retrieve the data out of the .ilp file
-        assert self.location == self.Location.ProjectInternal
-        return self.filePath.split(os.path.sep)[-1]  # is this a problem in windows?
+class RelativeFilesystemDatasetInfo(FilesystemDatasetInfo):
+    def __init__(self, **fs_info_kwargs):
+        super().__init__(**fs_info_kwargs)
+        if not self.is_under_project_file():
+            raise CantSaveAsRelativePathsException(self.filePath, self.base_dir)
 
     @property
-    def axiskeys(self):
-        return "".join(tag.key for tag in self.axistags)
+    def display_string(self):
+        return "Relative Link: " + self.effective_path
 
-    def __str__(self):
-        s = "{ "
-        s += "filepath: {},\n".format(self.filePath)
-        s += "location: {}\n".format(
-            {
-                DatasetInfo.Location.FileSystem: "FileSystem",
-                DatasetInfo.Location.ProjectInternal: "ProjectInternal",
-                DatasetInfo.Location.PreloadedArray: "PreloadedArray",
-            }[self.location]
-        )
-        s += "nickname: {},\n".format(self.nickname)
-        if self.axistags:
-            s += "axistags: {},\n".format(self.axistags)
-        if self.drange:
-            s += "drange: {},\n".format(self.drange)
-        s += "normalizeDisplay: {}\n".format(self.normalizeDisplay)
-        if self.subvolume_roi:
-            s += "subvolume_roi: {},\n".format(self.subvolume_roi)
-        s += " }\n"
-        return s
-
-    def updateFromJson(self, namespace):
-        """
-        Given a namespace object returned by a JsonConfigParser,
-        update the corresponding non-None fields of this DatasetInfo.
-        """
-        self.filePath = namespace.filepath or self.filePath
-        self.drange = namespace.drange or self.drange
-        self.nickname = namespace.nickname or self.nickname
-        if namespace.axistags is not None:
-            self.axistags = vigra.defaultAxistags(namespace.axistags)
-        self.subvolume_roi = namespace.subvolume_roi or self.subvolume_roi
-
-    @classmethod
-    def from_file_path(cls, instance, file_path):
-        """
-        Creates a shallow copy of a given DatasetInfo instance
-        with filePath and related attributes overridden
-        """
-        default_info = cls(file_path)
-        result = copy.copy(instance)
-        result.filePath = default_info.filePath
-        result.location = default_info.location
-        result.nickname = default_info.nickname
-        return result
-
+    @property
+    def effective_path(self) -> str:
+        return os.path.pathsep.join(self.relative_paths)
 
 class OpDataSelection(Operator):
     """
@@ -510,24 +591,8 @@ class OpDataSelection(Operator):
         datasetInfo = self.Dataset.value
 
         try:
-            # If we should find the data in the project file, use a dataset reader
-            if datasetInfo.location == DatasetInfo.Location.ProjectInternal:
-                opReader = OpStreamingH5N5Reader(parent=self)
-                opReader.H5N5File.setValue(datasetInfo.project_file)
-                opReader.InternalPath.setValue(datasetInfo.filePath)
-                providerSlot = opReader.OutputImage
-            elif datasetInfo.location == DatasetInfo.Location.PreloadedArray:
-                opReader = OpArrayPiper(parent=self)
-                opReader.Input.setValue(datasetInfo.preloaded_array)
-                providerSlot = opReader.Output
-            else:
-                opReader = OpInputDataReader(parent=self)
-                if datasetInfo.subvolume_roi is not None:
-                    opReader.SubVolumeRoi.setValue(datasetInfo.subvolume_roi)
-                opReader.WorkingDirectory.setValue(self.WorkingDirectory.value)
-                opReader.SequenceAxis.setValue(datasetInfo.sequenceAxis)
-                opReader.FilePath.setValue(datasetInfo.filePath)
-                providerSlot = opReader.Output
+            providerSlot = datasetInfo.get_provider_slot(parent=self)
+            opReader = providerSlot.operator
             self._opReaders.append(opReader)
 
             # Inject metadata if the dataset info specified any.
@@ -553,8 +618,6 @@ class OpDataSelection(Operator):
                 metadata["normalizeDisplay"] = datasetInfo.normalizeDisplay
             if datasetInfo.axistags is not None:
                 metadata["axistags"] = datasetInfo.axistags
-            if datasetInfo.original_axistags is not None:
-                metadata["original_axistags"] = datasetInfo.original_axistags
 
             if datasetInfo.subvolume_roi is not None:
                 metadata["subvolume_roi"] = datasetInfo.subvolume_roi
@@ -622,10 +685,7 @@ class OpDataSelection(Operator):
             if self.Image.meta.nickname is not None:
                 datasetInfo.nickname = self.Image.meta.nickname
 
-            imageName = datasetInfo.nickname
-            if imageName == "":
-                imageName = datasetInfo.filePath
-            self.ImageName.setValue(imageName)
+            self.ImageName.setValue(datasetInfo.nickname)
 
         except:
             self.internalCleanup()

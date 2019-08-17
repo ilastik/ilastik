@@ -14,7 +14,8 @@ from PyQt5.QtCore import Qt
 from ilastik.applets.dataSelection.datasetInfoEditorWidget import DatasetInfoEditorWidget
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 from ilastik.applets.dataSelection.opDataSelection import OpDataSelectionGroup
-from ilastik.applets.dataSelection import DatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, FilesystemDatasetInfo, FilesystemDatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import RelativeFilesystemDatasetInfo, ProjectInternalDatasetInfo
 from lazyflow.graph import Graph
 
 def download_test_image(url, suffix:str):
@@ -31,8 +32,8 @@ def image_yxc_path():
     os.remove(path)
 
 @pytest.fixture(scope='function')
-def image_yxc_fs_info(image_yxc_path):
-    return DatasetInfo(filepath=image_yxc_path)
+def image_yxc_fs_info(image_yxc_path, empty_project_file):
+    return FilesystemDatasetInfo(filePath=image_yxc_path, project_file=empty_project_file)
 
 @pytest.fixture(scope='function')
 def another_image_yxc_path():
@@ -60,7 +61,7 @@ def create_and_modify_widget(
     normalizeDisplay:bool=DONT_SET_NORMALIZE,
     drange:Tuple[Number, Number]=None,
     display_mode:str=None,
-    location:DatasetInfo.Location=None
+    location:type=None
 ):
     project_file = project_file or empty_project_file()
 
@@ -106,7 +107,7 @@ def accept_widget(qtbot, widget:DatasetInfoEditorWidget) -> List[DatasetInfo]:
     return widget.edited_infos
 
 def test_datasetinfo_editor_widget_shows_correct_data_on_single_info(qtbot, image_yxc_path, empty_project_file):
-    info = DatasetInfo(filepath=image_yxc_path, project_file=empty_project_file)
+    info = FilesystemDatasetInfo(filePath=image_yxc_path, project_file=empty_project_file)
     assert info.axiskeys == 'yxc'
     assert info.laneDtype == numpy.uint8
     assert info.laneShape == (520, 697, 3)
@@ -124,7 +125,7 @@ def test_datasetinfo_editor_widget_shows_correct_data_on_single_info(qtbot, imag
     assert editor_widget.edited_infos[0].axistags == info.axistags
 
 def test_datasetinfo_editor_widget_modifies_single_info(qtbot, image_yxc_path, empty_project_file):
-    info = DatasetInfo(filepath=image_yxc_path, project_file=empty_project_file)
+    info = FilesystemDatasetInfo(filePath=image_yxc_path, project_file=empty_project_file)
     widget = create_and_modify_widget(qtbot,
                                       [info],
                                       project_file=empty_project_file,
@@ -133,19 +134,19 @@ def test_datasetinfo_editor_widget_modifies_single_info(qtbot, image_yxc_path, e
                                       normalizeDisplay=True,
                                       drange=(10,20),
                                       display_mode="alpha-modulated",
-                                      location=DatasetInfo.Location.FileSystemRelativePath)
+                                      location=RelativeFilesystemDatasetInfo)
     edited_info = accept_widget(qtbot, widget)[0]
     assert edited_info.axiskeys == "xyc"
     assert edited_info.nickname == "SOME_NICKNAME"
     assert edited_info.normalizeDisplay == True
     assert edited_info.drange == (10, 20)
     assert edited_info.display_mode == 'alpha-modulated'
-    assert edited_info.location == DatasetInfo.Location.FileSystemRelativePath
+    assert isinstance(edited_info, RelativeFilesystemDatasetInfo)
     assert edited_info.filePath == str(Path(image_yxc_path).absolute())
 
 def test_datasetinfo_editor_widget_shows_correct_data_on_multiple_info(qtbot, image_yxc_path, another_image_yxc_path, empty_project_file):
-    info = DatasetInfo(filepath=image_yxc_path, project_file=empty_project_file)
-    info_2 = DatasetInfo(filepath=another_image_yxc_path, project_file=empty_project_file)
+    info = FilesystemDatasetInfo(filePath=image_yxc_path, project_file=empty_project_file)
+    info_2 = FilesystemDatasetInfo(filePath=another_image_yxc_path, project_file=empty_project_file)
 
     widget = create_and_modify_widget(qtbot=qtbot,
                                      infos=[info, info_2],
@@ -157,8 +158,8 @@ def test_datasetinfo_editor_widget_shows_correct_data_on_multiple_info(qtbot, im
     assert widget.nicknameEdit.text() == Path(image_yxc_path).stem + ', ' + Path(another_image_yxc_path).stem
 
 def test_datasetinfo_editor_widget_shows_edits_data_on_multiple_infos_with_same_dimensionality(qtbot, image_yxc_path, another_image_yxc_path, empty_project_file):
-    info_1 = DatasetInfo(filepath=image_yxc_path, project_file=empty_project_file)
-    info_2 = DatasetInfo(filepath=another_image_yxc_path, project_file=empty_project_file)
+    info_1 = FilesystemDatasetInfo(filePath=image_yxc_path, project_file=empty_project_file)
+    info_2 = FilesystemDatasetInfo(filePath=another_image_yxc_path, project_file=empty_project_file)
     project_file_dir = str(Path(image_yxc_path).parent)
 
     widget = create_and_modify_widget(qtbot,
@@ -176,8 +177,8 @@ def test_datasetinfo_editor_widget_shows_edits_data_on_multiple_infos_with_same_
     assert all(info.drange == (20,40) for info in edited_infos)
 
 def test_cannot_edit_axis_tags_on_images_of_different_dimensionality(qtbot, image_yxc_path, image_zyxc_stack_path, empty_project_file):
-    info_1 = DatasetInfo(filepath=image_yxc_path)
-    info_2 = DatasetInfo(filepath=image_zyxc_stack_path, sequence_axis="z")
+    info_1 = FilesystemDatasetInfo(filePath=image_yxc_path, project_file=empty_project_file)
+    info_2 = FilesystemDatasetInfo(filePath=image_zyxc_stack_path, sequence_axis="z", project_file=empty_project_file)
 
     widget = create_and_modify_widget(qtbot, [info_1, info_2], project_file=empty_project_file)
     assert not widget.axesEdit.isEnabled()
@@ -186,12 +187,14 @@ def test_cannot_edit_axis_tags_on_images_of_different_dimensionality(qtbot, imag
     assert edited_infos[0].axiskeys == info_1.axiskeys  and edited_infos[1].axiskeys == info_2.axiskeys
 
 def test_immediate_accept_does_not_change_values(qtbot, image_yxc_path, image_zyxc_stack_path, empty_project_file):
-    info_1 = DatasetInfo(filepath=image_yxc_path,
-                         normalizeDisplay=False)
-    info_2 = DatasetInfo(filepath=image_zyxc_stack_path,
-                         sequence_axis="z",
-                         normalizeDisplay=True,
-                         drange=(56, 78))
+    info_1 = FilesystemDatasetInfo(filePath=image_yxc_path, normalizeDisplay=False, project_file=empty_project_file)
+    info_2 = FilesystemDatasetInfo(
+        filePath=image_zyxc_stack_path,
+        project_file=empty_project_file,
+        sequence_axis="z",
+        normalizeDisplay=True,
+        drange=(56, 78)
+    )
     project_file_dir = str(Path(image_yxc_path).parent)
 
     widget = create_and_modify_widget(qtbot, [info_1, info_2], project_file=empty_project_file)
@@ -221,7 +224,7 @@ def test_switch_to_project_internal_saves_data_to_project(qtbot, image_yxc_fs_in
     widget = create_and_modify_widget(qtbot,
                                       infos=[image_yxc_fs_info],
                                       project_file=empty_project_file,
-                                      location=DatasetInfo.Location.ProjectInternal)
+                                      location=ProjectInternalDatasetInfo)
     new_info = accept_widget(qtbot, widget)[0]
-    assert new_info.filePath in empty_project_file
+    assert new_info.inner_path in empty_project_file
     

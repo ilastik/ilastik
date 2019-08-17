@@ -25,6 +25,7 @@ from enum import Enum, unique
 from pathlib import Path
 from typing import List, Tuple
 from numbers import Number
+from functools import partial
 
 import h5py
 import numpy
@@ -38,7 +39,7 @@ from ilastik.utility import log_exception
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 from lazyflow.utility import getPathVariants, PathComponents, isUrl
-from .opDataSelection import OpDataSelection, DatasetInfo
+from .opDataSelection import OpDataSelection, DatasetInfo, ProjectInternalDatasetInfo, FilesystemDatasetInfo, RelativeFilesystemDatasetInfo
 
 import logging
 logger = logging.getLogger(__name__)
@@ -126,20 +127,20 @@ class DatasetInfoEditorWidget(QDialog):
         selected_normalize_index = self.normalizeDisplayComboBox.findData(normalize)
         self.normalizeDisplayComboBox.setCurrentIndex(selected_normalize_index)
 
-        hdf5_infos = [info for info in infos if info.isHdf5()]
+        hierarchical_infos = [info for info in infos if info.is_hierarchical()]
         self.internalDatasetNameComboBox.setEnabled(False)
-        if not hdf5_infos:
+        if not hierarchical_infos:
             self.internalDatasetNameLabel.setVisible(False)
             self.internalDatasetNameComboBox.setVisible(False)
         else:
-            common_internal_paths = set(hdf5_infos[0].getPossibleInternalPaths())
-            current_internal_paths = set(hdf5_infos[0].internal_paths)
-            for info in hdf5_infos[1:]:
+            common_internal_paths = set(hierarchical_infos[0].getPossibleInternalPaths())
+            current_internal_paths = set(hierarchical_infos[0].internal_paths)
+            for info in hierarchical_infos[1:]:
                 common_internal_paths &= set(info.getPossibleInternalPaths())
                 current_internal_paths &= set(info.internal_paths)
 
             for path in sorted(common_internal_paths):
-                self.internalDatasetNameComboBox.addItem( path )
+                self.internalDatasetNameComboBox.addItem(path)
                 self.internalDatasetNameComboBox.setEnabled(True)
 
             if len(common_internal_paths) == 1:
@@ -162,13 +163,13 @@ class DatasetInfoEditorWidget(QDialog):
 
 
         self.storageComboBox.addItem('Default', userData=None)
-        self.storageComboBox.addItem('Copy into project file', userData=DatasetInfo.Location.ProjectInternal)
-        if not any(info.location == DatasetInfo.Location.ProjectInternal for info in infos):
-            self.storageComboBox.addItem('Store absolute path', userData=DatasetInfo.Location.FileSystemAbsolutePath)
-            if all(info.relative_paths for info in infos):
-                self.storageComboBox.addItem('Store relative path', userData=DatasetInfo.Location.FileSystemRelativePath)
+        self.storageComboBox.addItem('Copy into project file', userData=ProjectInternalDatasetInfo)
+        if all(info.is_in_filesystem() for info in infos):
+            self.storageComboBox.addItem('Store absolute path', userData=FilesystemDatasetInfo)
+            if all(info.is_under_project_file() for info in infos):
+                self.storageComboBox.addItem('Store relative path', userData=RelativeFilesystemDatasetInfo)
 
-        current_locations = {info.location for info in infos}
+        current_locations = {info.__class__ for info in infos}
         if len(current_locations) == 1:
             comboIndex = self.storageComboBox.findData(current_locations.pop())
         else:
@@ -219,34 +220,36 @@ class DatasetInfoEditorWidget(QDialog):
     def accept(self):
         normalize = self.get_new_normalization()
         new_drange = self.get_new_drange()
-        new_location = self.storageComboBox.currentData()
         new_display_mode = self.displayModeComboBox.currentData()
         if self.internalDatasetNameComboBox.isEnabled() and self.internalDatasetNameComboBox.currentIndex() != -1:
             internal_path = self.internalDatasetNameComboBox.currentText()
         else:
-            internal_path = ''
+            internal_path = ""
 
         self.edited_infos = []
         for info in self.current_infos:
-            location = info.location if new_location is None else new_location
-            filepath = info.filePath
-            if location == DatasetInfo.Location.ProjectInternal != info.location:
-                filepath = self.serializer.importStackAsLocalDataset(abs_paths=info.expanded_paths,
-                                                                    sequence_axis=info.sequenceAxis)
-            if location in (DatasetInfo.Location.FileSystemRelativePath, DatasetInfo.Location.FileSystemAbsolutePath):
+            new_info_class = self.storageComboBox.currentData() or info.__class__
+            if new_info_class == ProjectInternalDatasetInfo:
+                project_inner_path = getattr(info, 'inner_path', self.serializer.importStackAsLocalDataset(
+                    abs_paths=info.expanded_paths, sequence_axis=info.sequence_axis
+                ))
+                info_constructor = partial(ProjectInternalDatasetInfo, inner_path=project_inner_path)
+            else:
                 new_full_paths = [Path(ep) / internal_path for ep in info.external_paths]
-                filepath = os.path.pathsep.join(str(path) for path in new_full_paths)
+                info_constructor = partial(
+                    new_info_class,
+                    filePath=os.path.pathsep.join(str(path) for path in new_full_paths),
+                    sequence_axis=getattr(info, 'sequence_axis')
+                )
 
-            edited_info = DatasetInfo(
-                filepath=filepath,
+            edited_info = info_constructor(
                 project_file=self.serializer.topLevelOperator.ProjectFile.value,
-                sequence_axis=info.sequenceAxis,
                 nickname=self.nicknameEdit.text() if self.nicknameEdit.isEnabled() else info.nickname,
                 axistags=self.get_new_axes_tags() or info.axistags,
                 normalizeDisplay=info.normalizeDisplay if normalize is None else normalize,
                 drange=(info.laneDtype(new_drange[0]), info.laneDtype(new_drange[1])) if normalize else info.drange,
-                display_mode=new_display_mode if new_display_mode != 'default' else info.display_mode,
-                location=location)
+                display_mode=new_display_mode if new_display_mode != "default" else info.display_mode,
+            )
             self.edited_infos.append(edited_info)
         super(DatasetInfoEditorWidget, self).accept()
 
@@ -274,26 +277,6 @@ class DatasetInfoEditorWidget(QDialog):
         self.axes_error_display.setText("")
         self.okButton.setEnabled(True)
 
-    def validate_data(self, *args, **kwargs):
-        if not new_axiskeys:
-            return self.handle_valid_axeskeys()
-
-        dataset_dims = self.axesEdit.maxLength()
-        if 0 != len(new_axiskeys) < dataset_dims:
-            return self.handle_invalid_axeskeys(f"Dataset has {dataset_dims} dimensions, so you need to provide that many axes keys")
-
-        if not set(new_axiskeys).issubset(set("xyztc")):
-            return self.handle_invalid_axeskeys("Axes must be a combination of \"xyztc\"")
-
-        if len(set(new_axiskeys)) < len(new_axiskeys):
-            return self.handle_invalid_axeskeys("Repeated axis keys")
-
-        if not set('xy').issubset(set(new_axiskeys)):
-            return self.handle_invalid_axeskeys("x and y need to be present")
-
-        self.handle_valid_axeskeys()
-
     def validate_new_drange(self, new_value):
         if not self.normalizeDisplayComboBox.currentData():
             self.okButton.setEnabled()
-

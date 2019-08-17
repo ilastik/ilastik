@@ -10,26 +10,7 @@ from typing import List
 import h5py
 from PIL import Image as PilImage
 
-from ilastik.applets.dataSelection import DatasetInfo
-
-
-def download_test_image(url, suffix: str):
-    resp = requests.get(url)
-    _, image_path = tempfile.mkstemp(suffix="-" + suffix)
-    with open(image_path, "wb") as f:
-        f.write(resp.content)
-    return image_path
-
-
-def download_stack(urls: List[str], prefix: str):
-    stack_dir = tempfile.mkdtemp()
-    extensions = [u.split(".")[-1] for u in urls]
-    for idx, url in enumerate(urls):
-        suffix = f"{prefix}{idx}.{extensions[idx]}"
-        path = download_test_image(url, suffix)
-        shutil.move(path, os.path.join(stack_dir, suffix))
-    return stack_dir
-
+from ilastik.applets.dataSelection import DatasetInfo, FilesystemDatasetInfo
 
 @pytest.fixture
 def png_stack_dir(tmp_path) -> Path:
@@ -149,66 +130,71 @@ def test_expand_path(h5_stack_dir):
 
 
 def test_stack_via_star_glob(png_star_stack: str, empty_project_file):
-    info = DatasetInfo(filepath=png_star_stack, sequence_axis="z", project_file=empty_project_file)
+    info = FilesystemDatasetInfo(filePath=png_star_stack, sequence_axis="z", project_file=empty_project_file)
     assert info.nickname == "c_cells_"
 
     # empty project lies in /tmp, so paths should be relative
-    assert info.location == DatasetInfo.Location.FileSystemRelativePath
+    assert info.is_under_project_file()
 
 
 def test_relative_paths(png_stack_dir: str, monkeypatch):
     with h5py.File(os.path.join(png_stack_dir, "myproj.ilp"), "w") as project_file:
-        info = DatasetInfo(filepath=os.path.join(png_stack_dir, "*.png"), project_file=project_file, sequence_axis="z")
-        assert info.relative_paths == ["c_cells_0.png", "c_cells_1.png", "c_cells_2.png"]
+        info = FilesystemDatasetInfo(
+            filePath=os.path.join(png_stack_dir, "*.png"), project_file=project_file, sequence_axis="z"
+        )
+        assert info.is_under_project_file()
+        assert info.get_relative_paths() == ["c_cells_0.png", "c_cells_1.png", "c_cells_2.png"]
 
 
 def test_no_relative_paths_when_project_file_not_in_same_tree_as_files(png_stack_dir: str, monkeypatch):
     with h5py.File(os.path.join(tempfile.mkdtemp(), "myproj.ilp"), "w") as project_file:
-        info = DatasetInfo(filepath=os.path.join(png_stack_dir, "*.png"), project_file=project_file, sequence_axis="z")
-        assert info.relative_paths == []
+        info = FilesystemDatasetInfo(
+            filePath=os.path.join(png_stack_dir, "*.png"), project_file=project_file, sequence_axis="z"
+        )
+        assert not info.is_under_project_file()
 
 
 def test_create_using_paths_relative_to_project_file(png_stack_dir: str):
     with h5py.File(os.path.join(png_stack_dir, "myproj.ilp"), "w") as project_file:
-        info = DatasetInfo(filepath="*.png", project_file=project_file, sequence_axis="z")
-        assert info.relative_paths == ["c_cells_0.png", "c_cells_1.png", "c_cells_2.png"]
+        info = FilesystemDatasetInfo(filePath="*.png", project_file=project_file, sequence_axis="z")
+        assert info.get_relative_paths() == ["c_cells_0.png", "c_cells_1.png", "c_cells_2.png"]
 
 
-def test_star_glob(png_colon_path_stack: str):
-    info = DatasetInfo(
-        filepath=png_colon_path_stack, sequence_axis="z", location=DatasetInfo.Location.FileSystemAbsolutePath
-    )
+def test_star_glob(png_colon_path_stack: str, empty_project_file:h5py.File):
+    info = FilesystemDatasetInfo(filePath=png_colon_path_stack, sequence_axis="z", project_file=empty_project_file)
     assert info.nickname == "c_cells_"
     assert info.laneDtype == numpy.uint8
     assert info.laneShape == (3, 520, 697, 3)
-    assert info.location == DatasetInfo.Location.FileSystemAbsolutePath
+    assert info.is_under_project_file()
 
 
-def test_stack_via_colon_glob(png_colon_path_stack):
-    info = DatasetInfo(filepath=png_colon_path_stack, sequence_axis="t")
+def test_stack_via_colon_glob(png_colon_path_stack, empty_project_file:h5py.File):
+    info = FilesystemDatasetInfo(filePath=png_colon_path_stack, sequence_axis="t", project_file=empty_project_file)
     assert info.nickname == "c_cells_"
-    assert info.location == DatasetInfo.Location.FileSystemAbsolutePath
+    assert info.is_under_project_file()
 
 
-def test_h5_stack_via_colon_glob(h5_colon_path_stack_with_inner_paths):
-    info = DatasetInfo(filepath=h5_colon_path_stack_with_inner_paths, sequence_axis="t")
+def test_h5_stack_via_colon_glob(h5_colon_path_stack_with_inner_paths, empty_project_file):
+    info = FilesystemDatasetInfo(
+        filePath=h5_colon_path_stack_with_inner_paths, sequence_axis="t", project_file=empty_project_file
+    )
     assert info.nickname == "2d_apoptotic_binary_-volume-data"
 
 
-def test_h5_stack_via_star_file_glob_and_defined_inner_path(h5_stack_dir):
+def test_h5_stack_via_star_file_glob_and_defined_inner_path(h5_stack_dir, empty_project_file:h5py.File):
     h5_external_star_glob = os.path.join(h5_stack_dir, "*.h5")
     internal_path = DatasetInfo.globInternalPaths(h5_external_star_glob, "*")[0]
     total_path = os.path.join(h5_stack_dir, "*.h5", internal_path)
-    info = DatasetInfo(filepath=total_path, sequence_axis="z")
+    info = FilesystemDatasetInfo(filePath=total_path, sequence_axis="z", project_file=empty_project_file)
     assert info.nickname == "2d_apoptotic_binary_-volume-data"
-    assert info.location == DatasetInfo.Location.FileSystemAbsolutePath
+    assert info.is_under_project_file()
 
 
-def test_h5_stack_via_star_file_glob_and_stared_internal_path(h5_stack_dir):
+def test_h5_stack_via_star_file_glob_and_stared_internal_path(h5_stack_dir, empty_project_file):
     star_glob = os.path.join(h5_stack_dir, "*.h5/*")
-    info = DatasetInfo(filepath=star_glob, sequence_axis="z")
+    info = FilesystemDatasetInfo(filePath=star_glob, sequence_axis="z", project_file=empty_project_file)
     assert info.nickname == "2d_apoptotic_binary_-volume-data"
-    assert info.location == DatasetInfo.Location.FileSystemAbsolutePath
+    assert info.is_under_project_file()
 
     expected_filepath = os.path.pathsep.join(
         [
@@ -221,9 +207,10 @@ def test_h5_stack_via_star_file_glob_and_stared_internal_path(h5_stack_dir):
     assert info.filePath == expected_filepath
 
 
-def test_guess_tags_for_singleton_axes(h5_1_100_200_1_1):
-    info = DatasetInfo(
-        filepath=h5_1_100_200_1_1,
+def test_guess_tags_for_singleton_axes(h5_1_100_200_1_1, empty_project_file):
+    info = FilesystemDatasetInfo(
+        filePath=h5_1_100_200_1_1,
+        project_file=empty_project_file,
         axistags=vigra.defaultAxistags("yx"),
         guess_tags_for_singleton_axes=True,
         sequence_axis="z",
