@@ -12,7 +12,6 @@ jobs:
       VOLUMINA_SHOW_3D_WIDGET: 0
     docker:
     - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
-      command: /sbin/init
     steps:
     # add interpolated environment variables (CircleCI 2.0 does not support direct interpolation)
     - run: echo 'export PATH=${CONDA_ROOT}/bin:${PATH}' >> $BASH_ENV
@@ -63,7 +62,7 @@ jobs:
     - run: >
         conda activate ${TEST_ENV_NAME} &&
         cd ${ILASTIK_ROOT}/ilastik-meta/ilastik/tests &&
-        pytest --run-legacy-gui
+        xvfb-run --server-args="-screen 0 1024x768x24" pytest --run-legacy-gui
     # Teardown
     #   If you break your build into multiple jobs with workflows, you will probably want to do the parts of this that are relevant in each
     # Save test results
