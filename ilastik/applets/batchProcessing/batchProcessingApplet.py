@@ -165,5 +165,5 @@ class BatchProcessingApplet(Applet):
         return len(self.dataSelectionApplet.topLevelOperator.DatasetGroup)
 
     @property
-    def role_names(self) -> int:
+    def role_names(self) -> List[str]:
         return self.dataSelectionApplet.topLevelOperator.DatasetRoles.value

@@ -249,13 +249,6 @@ def _sorted_guitests(iterable):
 
 
 @pytest.fixture
-def tmp_h5_file(tmp_path: Path) -> Path:
-    tmp_path_trailing_slash = os.path.join(tmp_path, "")
-    _, filepath = tempfile.mkstemp(prefix=tmp_path_trailing_slash, suffix=".h5")
-    return filepath
-
-
-@pytest.fixture
 def tmp_h5_single_dataset(tmp_path: Path) -> Path:
     file_path = tmp_path / "single_dataset.h5"
     with h5py.File(file_path, "w") as f:

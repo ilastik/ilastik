@@ -102,7 +102,7 @@ class DatasetInfo(ABC):
             if not guess_tags_for_singleton_axes:
                 raise UnsuitedAxistagsException(self.axistags, self.laneShape)
             default_keys = [tag.key for tag in default_tags]
-            tagged_shape = {k: v for k, v in zip(default_keys, self.laneShape)}
+            tagged_shape = dict(zip(default_keys, self.laneShape))
             squeezed_shape = {k: v for k, v in tagged_shape.items() if v != 1}
             requested_keys = [tag.key for tag in axistags]
             if set(requested_keys).issubset(set(default_keys)) and set(default_keys) - set(requested_keys) == set("c"):
@@ -256,7 +256,7 @@ class DatasetInfo(ABC):
         if cls.pathIsHdf5(file_path):
 
             def accumulateDatasetPaths(name, val):
-                if type(val) == h5py._hl.dataset.Dataset and min_ndim <= len(val.shape) <= max_ndim:
+                if isinstance(val, h5py.Dataset) and min_ndim <= len(val.shape) <= max_ndim:
                     datasetNames.append(name)
 
             with h5py.File(file_path, "r") as f:
@@ -480,7 +480,7 @@ class FilesystemDatasetInfo(DatasetInfo):
         return [PathComponents(ep).internalPath for ep in self.expanded_paths]
 
     @property
-    def file_extensions(self) -> str:
+    def file_extensions(self) -> List[str]:
         return [PathComponents(ep).extension for ep in self.expanded_paths]
 
     def getPossibleInternalPaths(self):

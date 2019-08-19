@@ -382,10 +382,10 @@ class DataSelectionGui(QWidget):
         self.viewerStack.setCurrentWidget(viewer)
         self._viewerControlWidgetStack.setCurrentWidget(viewer.viewerControlWidget())
 
-    def handleReplaceFile(self, roleIndex, startingLane):
-        self.addFiles(roleIndex, startingLane)
+    def handleReplaceFile(self, roleIndex, startingLaneNum):
+        self.addFiles(roleIndex, startingLaneNum)
 
-    def addFiles(self, roleIndex, startingLane=None):
+    def addFiles(self, roleIndex, startingLaneNum=None):
         """
         The user clicked the "Add File" button.
         Ask him to choose a file (or several) and add them to both
@@ -393,14 +393,14 @@ class DataSelectionGui(QWidget):
         """
         # Launch the "Open File" dialog
         paths = ImageFileDialog(self).getSelectedPaths()
-        self.addFileNames(paths, roleIndex, startingLane)
+        self.addFileNames(paths, roleIndex, startingLaneNum)
 
-    def addFileNames(self, paths: List[Path], roleIndex: int, startingLane: int):
+    def addFileNames(self, paths: List[Path], roleIndex: int, startingLaneNum: int):
         # If the user didn't cancel
         if paths:
             try:
                 new_infos = self._createDatasetInfos(roleIndex, paths)
-                self.addLanes(new_infos, roleIndex=roleIndex, startingLane=startingLane)
+                self.addLanes(new_infos, roleIndex=roleIndex, startingLaneNum=startingLaneNum)
             except DataSelectionGui.UserCancelledError:
                 pass
             except Exception as ex:
@@ -425,31 +425,29 @@ class DataSelectionGui(QWidget):
     def getInfoSlots(self, roleIndex: int):
         return [self.topLevelOperator.DatasetGroup[laneIndex][roleIndex] for laneIndex in range(self.getNumLanes())]
 
-    def addLanes(self, new_infos: List[DatasetInfo], roleIndex, startingLane=None, rois=None):
+    def addLanes(self, new_infos: List[DatasetInfo], roleIndex, startingLaneNum=None):
         """
         Add the given filenames to both the GUI table and the top-level operator inputs.
-        If startingLane is None, the filenames will be *appended* to the role's list of files.
-        
-        If rois is provided, it must be a list of (start,stop) tuples (one for each fileName)
+        If startingLaneNum is None, the filenames will be *appended* to the role's list of files.
         """
         originalNumLanes = self.getNumLanes()
-        startingLane, endingLane = self._determineLaneRange(new_infos, startingLane)
-        if originalNumLanes < endingLane + 1:
-            self.topLevelOperator.DatasetGroup.resize(endingLane + 1)
-        info_slots = self.getInfoSlots(roleIndex)[startingLane : endingLane + 1]
+        startingLaneNum, endingLaneNum = self._determineLaneRange(new_infos, startingLaneNum)
+        if originalNumLanes < endingLaneNum + 1:
+            self.topLevelOperator.DatasetGroup.resize(endingLaneNum + 1)
+        info_slots = self.getInfoSlots(roleIndex)[startingLaneNum : endingLaneNum + 1]
 
         try:
             if not self.applyDatasetInfos(new_infos, info_slots):
                 self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
                 return
 
-            self._checkDataFormatWarnings(roleIndex, startingLane, endingLane)
+            self._checkDataFormatWarnings(roleIndex, startingLaneNum, endingLaneNum)
 
             # Show the first image
-            self.showDataset(startingLane, roleIndex)
+            self.showDataset(startingLaneNum, roleIndex)
 
             # if only adding new lanes, notify the workflow
-            if startingLane >= originalNumLanes:
+            if startingLaneNum >= originalNumLanes:
                 workflow = self.parentApplet.topLevelOperator.parent
                 workflow.handleNewLanesAdded()
 
@@ -490,30 +488,30 @@ class DataSelectionGui(QWidget):
         finally:
             self.parentApplet.appletStateUpdateRequested()
 
-    def _determineLaneRange(self, infos: List[DatasetInfo], startingLane=None):
+    def _determineLaneRange(self, infos: List[DatasetInfo], startingLaneNum=None):
         """
         Determine which lanes should be configured if the user wants to add the 
-            given infos to the specified role, starting at startingLane.
-        If startingLane is None, assume the user wants to APPEND the 
+            given infos to the specified role, starting at startingLaneNum.
+        If startingLaneNum is None, assume the user wants to APPEND the 
             files to the role's slots.
         """
-        if startingLane is None or startingLane == -1:
-            startingLane = len(self.topLevelOperator.DatasetGroup)
-            endingLane = startingLane + len(infos) - 1
+        if startingLaneNum is None or startingLaneNum == -1:
+            startingLaneNum = len(self.topLevelOperator.DatasetGroup)
+            endingLane = startingLaneNum + len(infos) - 1
         else:
-            assert startingLane < len(self.topLevelOperator.DatasetGroup)
-            max_files = len(self.topLevelOperator.DatasetGroup) - startingLane
+            assert startingLaneNum < len(self.topLevelOperator.DatasetGroup)
+            max_files = len(self.topLevelOperator.DatasetGroup) - startingLaneNum
             if len(infos) > max_files:
                 raise Exception(
                     f"You selected {len(infos)} files for {max_files} slots. To add new files use "
                     "the 'Add new...' option in the context menu or the button in the last row."
                 )
-            endingLane = min(startingLane + len(infos) - 1, len(self.topLevelOperator.DatasetGroup))
+            endingLane = min(startingLaneNum + len(infos) - 1, len(self.topLevelOperator.DatasetGroup))
 
         if self._max_lanes and endingLane >= self._max_lanes:
             raise Exception("You may not add more than {self._max_lanes} file(s) to this workflow.  Please try again.")
 
-        return (startingLane, endingLane)
+        return (startingLaneNum, endingLane)
 
     def _createDatasetInfos(self, roleIndex: int, filePaths: List[Path], rois=None):
         """
@@ -578,10 +576,10 @@ class DataSelectionGui(QWidget):
             subvolume_roi=roi,
         )
 
-    def _checkDataFormatWarnings(self, roleIndex, startingLane, endingLane):
+    def _checkDataFormatWarnings(self, roleIndex, startingLaneNum, endingLane):
         warn_needed = False
         opTop = self.topLevelOperator
-        for lane_index in range(startingLane, endingLane + 1):
+        for lane_index in range(startingLaneNum, endingLane + 1):
             output_slot = opTop.ImageGroup[lane_index][roleIndex]
             if output_slot.meta.inefficient_format:
                 warn_needed = True

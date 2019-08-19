@@ -61,7 +61,7 @@ class DatasetInfoEditorWidget(QDialog):
     def __init__(self, parent, infos:List[DatasetInfo], serializer:DataSelectionSerializer):
         """
         :param infos: DatasetInfo infos to be edited by this widget
-        :param projectFileDir: path containing the current project file
+        :param serializer: a configured DataSelectionSerializer
         """
         super( DatasetInfoEditorWidget, self ).__init__(parent)
         self.current_infos = infos
@@ -196,7 +196,7 @@ class DatasetInfoEditorWidget(QDialog):
         new_axiskeys = self.axesEdit.text()
         if new_axiskeys:
             dataset_dims = self.axesEdit.maxLength()
-            if 0 != len(new_axiskeys) < dataset_dims:
+            if len(new_axiskeys) in range(1, dataset_dims):
                 axis_error_msg = f"Dataset has {dataset_dims} dimensions, so you need to provide that many axes keys"
             elif not set(new_axiskeys).issubset(set("xyztc")):
                 axis_error_msg = "Axes must be a combination of \"xyztc\""
@@ -257,8 +257,7 @@ class DatasetInfoEditorWidget(QDialog):
         selected_normalize_index = self.normalizeDisplayComboBox.findData(None)
         self.normalizeDisplayComboBox.setCurrentIndex(selected_normalize_index)
         self.rangeMinSpinBox.setValue(self.rangeMinSpinBox.minimum())
-        float_types = (numpy.float16, numpy.float32, numpy.float64)
-        if all(info.laneDtype in float_types for info in self.current_infos):
+        if all(numpy.dtype(info.laneDtype).kind == "f" for info in self.current_infos):
             self.rangeMaxSpinBox.setValue(1.0)
         else:
             self.rangeMaxSpinBox.setValue(self.rangeMaxSpinBox.maximum())

@@ -182,8 +182,8 @@ class DataSelectionApplet(Applet):
 
         return parsed_args, unused_args
 
-    @classmethod
-    def _role_name_to_arg_name(cls, role_name):
+    @staticmethod
+    def _role_name_to_arg_name(role_name):
         return role_name.lower().replace(' ', '_').replace('-', '_')
 
     def role_paths_from_parsed_args(self, parsed_args):

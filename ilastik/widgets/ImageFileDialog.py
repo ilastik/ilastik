@@ -25,14 +25,13 @@ class ImageFileDialog(QFileDialog):
         if mostRecentImageFile is None:
             defaultDirectory = os.path.expanduser("~")
         else:
-            defaultDirectory = os.path.split(str(mostRecentImageFile))[0]
+            defaultDirectory = os.path.dirname(str(mostRecentImageFile))
 
         extensions = OpDataSelection.SupportedExtensions
-        filter_strs = ["*." + x for x in extensions]
-        filters = [f"{filt} ({filt})" for filt in filter_strs]
-        filt_all_str = "Image files (" + " ".join(filter_strs) + ")"
+        ext_str = " ".join(f"*.{ext} (*.{ext})" for ext in extensions)
+        filters = f"Image files ({ext_str})"
 
-        super().__init__(parent_window, caption="Select Images", directory=defaultDirectory, filter=filt_all_str)
+        super().__init__(parent_window, caption="Select Images", directory=defaultDirectory, filter=filters)
         self.setFileMode(QFileDialog.ExistingFiles)
 
     def getSelectedPaths(self) -> List[Path]:
