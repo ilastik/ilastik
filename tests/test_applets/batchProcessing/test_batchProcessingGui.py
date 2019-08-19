@@ -1,6 +1,8 @@
 from unittest import mock
+from contextlib import contextmanager, nullcontext
 
 import pytest
+from pytestqt.exceptions import capture_exceptions
 from ilastik.applets.batchProcessing.batchProcessingGui import (
     BatchProcessingDataConstraintException,
     BatchProcessingGui,
@@ -10,8 +12,7 @@ from ilastik.applets.batchProcessing.batchProcessingGui import (
 from PyQt5.QtCore import Qt, QUrl
 
 
-def construct_widget(qtbot, widget_class, *args, **kwargs):
-    widget = widget_class(*args, **kwargs)
+def prepare_widget(qtbot, widget):
     qtbot.addWidget(widget)
     widget.show()
     qtbot.waitForWindowShown(widget)
@@ -20,12 +21,12 @@ def construct_widget(qtbot, widget_class, *args, **kwargs):
 
 @pytest.fixture
 def file_list_widget(qtbot):
-    return construct_widget(qtbot, FileListWidget)
+    return prepare_widget(qtbot, FileListWidget())
 
 
 @pytest.fixture
 def batch_role_widget(qtbot):
-    return construct_widget(qtbot, BatchRoleWidget, "TestRoleName")
+    return prepare_widget(qtbot, BatchRoleWidget("TestRoleName"))
 
 
 @pytest.fixture()
@@ -44,7 +45,7 @@ def parent_applet(role_names):
 
 @pytest.fixture()
 def batch_processing_gui(qtbot, parent_applet):
-    return construct_widget(qtbot, BatchProcessingGui, parent_applet)
+    return prepare_widget(qtbot, BatchProcessingGui(parent_applet))
 
 
 @pytest.fixture
@@ -78,8 +79,8 @@ def test_FileListWidget_drag_n_drop(file_list_widget, drag_n_drop_event, filenam
 
 
 def test_BatchRoleWidget(qtbot, batch_role_widget, filenames):
-    assert batch_role_widget.select_button.text() == f"Select TestRoleName Files..."
-    assert batch_role_widget.clear_button.text() == f"Clear TestRoleName Files"
+    assert "TestRoleName" in batch_role_widget.select_button.text()
+    assert "TestRoleName" in batch_role_widget.clear_button.text()
 
     assert batch_role_widget.list_widget.count() == 0
 
@@ -90,56 +91,59 @@ def test_BatchRoleWidget(qtbot, batch_role_widget, filenames):
     assert len(batch_role_widget.filepaths) == 0
 
 
-class RequestMock:
-    _instances = []
+def RequestMock(instances=None):
+    if instances is None:
+        instances = []
 
-    def __new__(cls, *args, **kwargs):
-        instance = mock.Mock()
-        cls._instances.append(instance)
-        return instance
+    def inner(*args, **kwargs):
+        instances.append(mock.Mock())
+        return instances[-1]
 
-
-def assert_buttons_in_init_state(batch_processing_gui):
-    assert batch_processing_gui.run_button.isEnabled() is True
-    assert batch_processing_gui.cancel_button.isVisible() is False
+    return inner
 
 
-def assert_buttons_in_running_state(batch_processing_gui):
-    assert batch_processing_gui.run_button.isEnabled() is False
-    assert batch_processing_gui.cancel_button.isVisible() is True
-    assert batch_processing_gui.cancel_button.isEnabled() is True
+def assert_gui_in_init_state(batch_processing_gui):
+    gui = batch_processing_gui
+    assert gui.run_button.isEnabled() and not gui.cancel_button.isVisible()
+
+
+def assert_gui_in_running_state(batch_processing_gui):
+    gui = batch_processing_gui
+    assert not gui.run_button.isEnabled() and gui.cancel_button.isVisible() and gui.cancel_button.isEnabled()
 
 
 def test_BatchProcessingGui_execution(qtbot, batch_processing_gui, role_names, filenames):
     assert batch_processing_gui.count() == len(role_names)
-    assert_buttons_in_init_state(batch_processing_gui)
+    assert_gui_in_init_state(batch_processing_gui)
 
-    with mock.patch("ilastik.applets.batchProcessing.batchProcessingGui.Request", new=RequestMock):
+    request_instances = []
+    request_mock = RequestMock(request_instances)
+    with mock.patch("ilastik.applets.batchProcessing.batchProcessingGui.Request", new=request_mock):
         qtbot.mouseClick(batch_processing_gui.run_button, Qt.LeftButton, delay=1)
-        assert len(RequestMock._instances) == 0
+        assert len(request_instances) == 0
 
         # add some data
         batch_processing_gui._data_role_widgets[role_names[0]].list_widget.addItems(filenames)
 
         qtbot.mouseClick(batch_processing_gui.run_button, Qt.LeftButton, delay=1)
-        assert len(RequestMock._instances) == 1
-        assert_buttons_in_running_state(batch_processing_gui)
+        assert len(request_instances) == 1
+        assert_gui_in_running_state(batch_processing_gui)
 
         # pretend we were successful:
-        req = RequestMock._instances[0]
+        req = request_instances.pop()
         success_args, success_kwargs = req.notify_finished.call_args
         assert len(success_args) == 1
         success_args[0]()
 
-        assert_buttons_in_init_state(batch_processing_gui)
+        assert_gui_in_init_state(batch_processing_gui)
 
         qtbot.mouseClick(batch_processing_gui.run_button, Qt.LeftButton, delay=1)
-        assert len(RequestMock._instances) == 2
-        assert_buttons_in_running_state(batch_processing_gui)
+        assert len(request_instances) == 1
+        assert_gui_in_running_state(batch_processing_gui)
 
         # cancel:
         qtbot.mouseClick(batch_processing_gui.cancel_button, Qt.LeftButton, delay=1)
-        req = RequestMock._instances[1]
+        req = request_instances.pop()
         req.cancel.assert_called_once()
         cancel_args, cancel_kwargs = req.notify_cancelled.call_args
         assert len(cancel_args) == 1
@@ -151,14 +155,14 @@ def test_BatchProcessingGui_execution(qtbot, batch_processing_gui, role_names, f
             cancel_args[0]()
             info_messagebox.assert_called_once()
 
-        assert_buttons_in_init_state(batch_processing_gui)
+        assert_gui_in_init_state(batch_processing_gui)
 
         # failure:
         qtbot.mouseClick(batch_processing_gui.run_button, Qt.LeftButton, delay=1)
-        assert len(RequestMock._instances) == 3
-        assert_buttons_in_running_state(batch_processing_gui)
+        assert len(request_instances) == 1
+        assert_gui_in_running_state(batch_processing_gui)
 
-        req = RequestMock._instances[2]
+        req = request_instances.pop()
         failed_args, failed_kwargs = req.notify_failed.call_args
         assert len(failed_args) == 1
 
@@ -169,7 +173,7 @@ def test_BatchProcessingGui_execution(qtbot, batch_processing_gui, role_names, f
             failed_args[0](mock.MagicMock(Exception), None)
             critical_messagebox.assert_called_once()
 
-        assert_buttons_in_init_state(batch_processing_gui)
+        assert_gui_in_init_state(batch_processing_gui)
 
 
 def test_BatchProcessingGui_clear(qtbot, batch_processing_gui, role_names, filenames):
@@ -184,20 +188,37 @@ def test_BatchProcessingGui_clear(qtbot, batch_processing_gui, role_names, filen
         assert current_data_role_widget.list_widget.count() == 0
 
 
+does_not_raise = nullcontext()
+
+
+@contextmanager
+def assert_raises(exception_type):
+    with capture_exceptions() as exp:
+        yield
+        if not exp:
+            raise AssertionError("No exception raised")
+        elif issubclass(exp[0][0], exception_type):
+            return
+        else:
+            raise AssertionError(f"Assertion type {exp[0][0]} does not match expected type {exception_type}")
+
+
 @pytest.mark.parametrize(
-    "secondary_files",
-    [tuple(), ("sec1",), ("sec1", "sec2"), ("sec1", "sec2", "sec3"), ("sec1", "sec2", "sec3", "sec4")],
+    "secondary_files,expectation",
+    [
+        (tuple(), does_not_raise),
+        (("sec1",), assert_raises(BatchProcessingDataConstraintException)),
+        (("sec1", "sec2"), does_not_raise),
+        (("sec1", "sec2", "sec3"), assert_raises(BatchProcessingDataConstraintException)),
+        (("sec1", "sec2", "sec3", "sec4"), assert_raises(BatchProcessingDataConstraintException)),
+    ],
 )
-def test_BatchProcessingGui_nonmatching_raises(qtbot, batch_processing_gui, role_names, filenames, secondary_files):
+def test_BatchProcessingGui_nonmatching_raises(
+    qtbot, batch_processing_gui, role_names, filenames, secondary_files, expectation
+):
     batch_processing_gui._data_role_widgets[role_names[0]].list_widget.addItems(filenames)
     secondary_data_role = batch_processing_gui._data_role_widgets[role_names[1]]
-    with mock.patch("ilastik.applets.batchProcessing.batchProcessingGui.Request", new=RequestMock):
+    with mock.patch("ilastik.applets.batchProcessing.batchProcessingGui.Request", new=RequestMock()):
         secondary_data_role.list_widget.addItems(secondary_files)
-        if len(secondary_files) > 0 and (len(secondary_files) != len(filenames)):
-            with qtbot.capture_exceptions() as exceptions:
-                qtbot.mouseClick(batch_processing_gui.run_button, Qt.LeftButton, delay=1)
-            assert len(exceptions) == 1
-            exc_class, exc_instance, exc_traceback = exceptions[0]
-            assert exc_class == BatchProcessingDataConstraintException
-        else:
+        with expectation:
             qtbot.mouseClick(batch_processing_gui.run_button, Qt.LeftButton, delay=1)
