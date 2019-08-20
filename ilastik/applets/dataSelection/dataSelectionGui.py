@@ -48,7 +48,7 @@ from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.base.applet import DatasetConstraintError
 
-from .opDataSelection import DatasetInfo, RelativeFilesystemDatasetInfo, FilesystemDatasetInfo
+from .opDataSelection import DatasetInfo, FilesystemDatasetInfo, ProjectInternalDatasetInfo
 from .dataLaneSummaryTableModel import DataLaneSummaryTableModel
 from .datasetInfoEditorWidget import DatasetInfoEditorWidget
 from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, SubvolumeSelectionDlg
@@ -611,10 +611,9 @@ class DataSelectionGui(QWidget):
             inner_path = self.serializer.importStackAsLocalDataset(
                 abs_paths=stackDlg.selectedFiles, sequence_axis=stackDlg.sequence_axis
             )
-            info = FilesystemDatasetInfo(
-                filePath=inner_path,
+            info = ProjectInternalDatasetInfo(
+                inner_path=inner_path,
                 nickname=nickname,
-                sequence_axis=stackDlg.sequence_axis,
                 project_file=self.project_file,
             )
             self.addLanes([info], roleIndex, laneIndex)

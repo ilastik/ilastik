@@ -159,10 +159,9 @@ class DatasetInfoEditorWidget(QDialog):
             index = self.displayModeComboBox.findData(modes.pop())
             self.displayModeComboBox.setCurrentIndex(index)
         else:
-            self.displayModeComboBox.setCurrentIndex(0)
+            self.displayModeComboBox.setCurrentIndex(-1)
 
 
-        self.storageComboBox.addItem('Default', userData=None)
         self.storageComboBox.addItem('Copy into project file', userData=ProjectInternalDatasetInfo)
         if all(info.is_in_filesystem() for info in infos):
             self.storageComboBox.addItem('Store absolute path', userData=FilesystemDatasetInfo)
@@ -173,7 +172,7 @@ class DatasetInfoEditorWidget(QDialog):
         if len(current_locations) == 1:
             comboIndex = self.storageComboBox.findData(current_locations.pop())
         else:
-            comboIndex = self.storageComboBox.findData(None)
+            comboIndex = -1
         self.storageComboBox.setCurrentIndex(comboIndex)
 
     def get_new_axes_tags(self):
@@ -220,7 +219,6 @@ class DatasetInfoEditorWidget(QDialog):
     def accept(self):
         normalize = self.get_new_normalization()
         new_drange = self.get_new_drange()
-        new_display_mode = self.displayModeComboBox.currentData()
         if self.internalDatasetNameComboBox.isEnabled() and self.internalDatasetNameComboBox.currentIndex() != -1:
             internal_path = self.internalDatasetNameComboBox.currentText()
         else:
@@ -228,11 +226,12 @@ class DatasetInfoEditorWidget(QDialog):
 
         self.edited_infos = []
         for info in self.current_infos:
+            new_display_mode = self.displayModeComboBox.currentData() or info.display_mode
             new_info_class = self.storageComboBox.currentData() or info.__class__
             if new_info_class == ProjectInternalDatasetInfo:
-                project_inner_path = getattr(info, 'inner_path', self.serializer.importStackAsLocalDataset(
+                project_inner_path = getattr(info, 'inner_path', None) or self.serializer.importStackAsLocalDataset(
                     abs_paths=info.expanded_paths, sequence_axis=info.sequence_axis
-                ))
+                )
                 info_constructor = partial(ProjectInternalDatasetInfo, inner_path=project_inner_path)
             else:
                 new_full_paths = [Path(ep) / internal_path for ep in info.external_paths]
@@ -248,7 +247,7 @@ class DatasetInfoEditorWidget(QDialog):
                 axistags=self.get_new_axes_tags() or info.axistags,
                 normalizeDisplay=info.normalizeDisplay if normalize is None else normalize,
                 drange=(info.laneDtype(new_drange[0]), info.laneDtype(new_drange[1])) if normalize else info.drange,
-                display_mode=new_display_mode if new_display_mode != "default" else info.display_mode,
+                display_mode=new_display_mode
             )
             self.edited_infos.append(edited_info)
         super(DatasetInfoEditorWidget, self).accept()

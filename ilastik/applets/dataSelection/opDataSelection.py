@@ -313,7 +313,7 @@ class ProjectInternalDatasetInfo(DatasetInfo):
                 nonlocal inner_path
                 if h5_path.endswith(dataset_id):
                     inner_path = h5_path
-            data.visititems(grab_inner_path)
+            data.file.visititems(grab_inner_path)
             params['inner_path'] = inner_path
         else:
             params['inner_path'] = data['inner_path'][()].decode('utf-8')
@@ -332,6 +332,10 @@ class ProjectInternalDatasetInfo(DatasetInfo):
         opReader.H5N5File.setValue(self.project_file)
         opReader.InternalPath.setValue(self.inner_path)
         return opReader.OutputImage
+
+    @property
+    def internal_paths(self) -> List[str]:
+        return [self.inner_path]
 
 
 class PreloadedArrayDatasetInfo(DatasetInfo):
@@ -502,7 +506,7 @@ class RelativeFilesystemDatasetInfo(FilesystemDatasetInfo):
 
     @property
     def effective_path(self) -> str:
-        return os.path.pathsep.join(self.relative_paths)
+        return os.path.pathsep.join(self.get_relative_paths())
 
 class OpDataSelection(Operator):
     """

@@ -227,4 +227,31 @@ def test_switch_to_project_internal_saves_data_to_project(qtbot, image_yxc_fs_in
                                       location=ProjectInternalDatasetInfo)
     new_info = accept_widget(qtbot, widget)[0]
     assert new_info.inner_path in empty_project_file
-    
+
+def test_switch_from_absolute_to_relative(qtbot, image_yxc_fs_info, empty_project_file):
+    widget = create_and_modify_widget(qtbot,
+                                      infos=[image_yxc_fs_info],
+                                      project_file=empty_project_file,
+                                      location=RelativeFilesystemDatasetInfo)
+    new_info = accept_widget(qtbot, widget)[0]
+    assert isinstance(new_info, RelativeFilesystemDatasetInfo)
+    relative_path = Path(image_yxc_fs_info.filePath).relative_to(Path(empty_project_file.filename).parent)
+    assert new_info.effective_path == str(relative_path)
+
+def test_modify_project_internal_datasetinfo(qtbot, image_yxc_fs_info, empty_project_file):
+    widget = create_and_modify_widget(qtbot,
+                                      infos=[image_yxc_fs_info],
+                                      project_file=empty_project_file,
+                                      location=ProjectInternalDatasetInfo)
+    new_info = accept_widget(qtbot, widget)[0]
+    assert isinstance(new_info, ProjectInternalDatasetInfo)
+    assert new_info.inner_path in empty_project_file
+
+    widget = create_and_modify_widget(qtbot,
+                                      infos=[new_info],
+                                      project_file=empty_project_file,
+                                      display_mode='grayscale')
+    new_info = accept_widget(qtbot, widget)[0]
+
+    assert isinstance(new_info, ProjectInternalDatasetInfo)
+    assert new_info.display_mode == 'grayscale'
