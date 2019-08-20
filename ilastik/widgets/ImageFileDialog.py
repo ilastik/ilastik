@@ -27,8 +27,7 @@ class ImageFileDialog(QFileDialog):
         else:
             defaultDirectory = os.path.dirname(str(mostRecentImageFile))
 
-        extensions = OpDataSelection.SupportedExtensions
-        ext_str = " ".join(f"*.{ext} (*.{ext})" for ext in extensions)
+        ext_str = " ".join(f"*.{ext}" for ext in OpDataSelection.SupportedExtensions)
         filters = f"Image files ({ext_str})"
 
         super().__init__(parent_window, caption="Select Images", directory=defaultDirectory, filter=filters)
