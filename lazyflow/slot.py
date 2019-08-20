@@ -895,11 +895,9 @@ class Slot(object):
         return "Couldn't find an upstream problem slot."
 
     class RequestExecutionWrapper:
-        __slots__ = ("started", "finished", "slot", "operator", "roi")
+        __slots__ = ("slot", "operator", "roi")
 
         def __init__(self, slot, roi):
-            self.started = False
-            self.finished = False
             self.slot = slot
             self.operator = slot.operator
             self.roi = roi
@@ -918,53 +916,24 @@ class Slot(object):
                         "Slot generates {}, but you gave {}".format(self.slot.meta.dtype, destination.dtype)
                     )
 
-            # We are executing the operator. Incremement the execution
-            # count to protect against simultaneous setupOutputs()
-            # calls.
-            self._incrementOperatorExecutionCount()
+            # Execute the workload, which might not ever return
+            # (if we get cancelled).
+            result_op = self.operator.call_execute(self.slot.top_level_slot, self.slot.subindex, self.roi, destination)
 
-            try:
-                # Execute the workload, which might not ever return
-                # (if we get cancelled).
-                result_op = self.operator.execute(self.slot.top_level_slot, self.slot.subindex, self.roi, destination)
+            # copy data from result_op to destination, if
+            # destination was actually given by the user, and the
+            # returned result_op is different from destination.
+            # (but don't copy if result_op is None, this means
+            # legacy op which wrote into destination anyway)
+            if result_op is not None:
+                self.slot.stype.check_result_valid(self.roi, result_op)
 
-                # copy data from result_op to destination, if
-                # destination was actually given by the user, and the
-                # returned result_op is different from destination.
-                # (but don't copy if result_op is None, this means
-                # legacy op which wrote into destination anyway)
-                if result_op is not None:
-                    self.slot.stype.check_result_valid(self.roi, result_op)
+                if destination_given and result_op is not destination:
+                    self.slot.stype.copy_data(dst=destination, src=result_op)
+                else:
+                    destination = result_op
 
-                    if destination_given and result_op is not destination:
-                        self.slot.stype.copy_data(dst=destination, src=result_op)
-                    else:
-                        destination = result_op
-
-                return destination
-
-            finally:
-                self._decrementOperatorExecutionCount()
-
-        def _incrementOperatorExecutionCount(self):
-            self.started = True
-            assert self.operator._executionCount >= 0, "BUG: How did the execution count get negative?"
-            # We can't execute while the operator is in the middle of
-            # setupOutputs
-            with self.operator._condition:
-                while self.operator._settingUp:
-                    self.operator._condition.wait()
-                self.operator._executionCount += 1
-
-        def _decrementOperatorExecutionCount(self):
-            # Only do this once per execution. If we were cancelled
-            # after we finished working, don't do anything
-            if self.started and not self.finished:
-                assert self.operator._executionCount > 0, "BUG: Can't decrement the execution count below zero!"
-                self.finished = True
-                with self.operator._condition:
-                    self.operator._executionCount -= 1
-                    self.operator._condition.notifyAll()
+            return destination
 
     @is_setup_fn
     def setDirty(self, *args, **kwargs):
