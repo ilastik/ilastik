@@ -490,10 +490,8 @@ class DataSelectionGui(QWidget):
 
     def _determineLaneRange(self, infos: List[DatasetInfo], startingLaneNum=None):
         """
-        Determine which lanes should be configured if the user wants to add the 
-            given infos to the specified role, starting at startingLaneNum.
-        If startingLaneNum is None, assume the user wants to APPEND the 
-            files to the role's slots.
+        Determine which lanes should be configured if the user wants to add the given infos starting at startingLaneNum.
+        If startingLaneNum is None, assume the user wants to APPEND the files to the role's slots.
         """
         if startingLaneNum is None or startingLaneNum == -1:
             startingLaneNum = len(self.topLevelOperator.DatasetGroup)

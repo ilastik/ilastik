@@ -297,12 +297,19 @@ def png_image(tmp_path) -> Path:
         pil_image.save(png_file, "png")
     return Path(filepath)
 
+@pytest.fixture
+def another_png_image(tmp_path) -> Path:
+    _, filepath = tempfile.mkstemp(prefix=os.path.join(tmp_path, ""), suffix=".png")
+    pil_image = PilImage.fromarray((numpy.random.rand(100, 200) * 255).astype(numpy.uint8))
+    with open(filepath, "wb") as png_file:
+        pil_image.save(png_file, "png")
+    return Path(filepath)
 
 @pytest.fixture
 def empty_project_file(tmp_path) -> h5py.File:
     project_path = tmp_path / tempfile.mkstemp(suffix=".ilp")[1]
-    f = h5py.File(project_path, "r+")
-    return f
+    with h5py.File(project_path, "r+") as f:
+        yield f
 
 @pytest.fixture
 def graph():

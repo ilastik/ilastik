@@ -107,8 +107,7 @@ class DataSelectionSerializer(AppletSerializer):
         infoDir = getOrCreateGroup(topGroup, "infos")
 
         # Delete all infos
-        for infoName in list(infoDir.keys()):
-            del infoDir[infoName]
+        infoDir.clear()
 
         # Rebuild the list of infos
         roleNames = self.topLevelOperator.DatasetRoles.value
@@ -138,7 +137,7 @@ class DataSelectionSerializer(AppletSerializer):
         progress_signal(0)
         try:
             colon_paths = os.path.pathsep.join(abs_paths)
-            op_reader = OpInputDataReader(graph=Graph(), FilePath=colon_paths, SequenceAxis=sequence_axis)
+            op_reader = OpInputDataReader(graph=self.topLevelOperator.graph, FilePath=colon_paths, SequenceAxis=sequence_axis)
             axistags = op_reader.Output.meta.axistags
             inner_path = self.local_data_path.joinpath(DatasetInfo.generate_id()).as_posix()
             project_file = self.topLevelOperator.ProjectFile.value

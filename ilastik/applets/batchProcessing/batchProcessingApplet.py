@@ -149,7 +149,7 @@ class BatchProcessingApplet(Applet):
                 logger.info("Exporting to in-memory array.")
                 result = opDataExport.run_export_to_array()
             else:
-                logger.info("Exporting to {}".format(opDataExport.ExportPath.value))
+                logger.info(f"Exporting to {opDataExport.ExportPath.value}")
                 opDataExport.run_export()
                 result = opDataExport.ExportPath.value
 
