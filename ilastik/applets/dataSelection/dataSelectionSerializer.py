@@ -168,6 +168,7 @@ class DataSelectionSerializer(AppletSerializer):
         # The 'working directory' for the purpose of constructing absolute
         #  paths from relative paths is the project file's directory.
         projectDir = os.path.split(projectFilePath)[0]
+        self.topLevelOperator.DatasetGroup.resize(0)
         self.topLevelOperator.WorkingDirectory.setValue(projectDir)
         self.topLevelOperator.ProjectDataGroup.setValue(self.topGroupName + "/local_data")
         self.topLevelOperator.ProjectFile.setValue(hdf5File)
