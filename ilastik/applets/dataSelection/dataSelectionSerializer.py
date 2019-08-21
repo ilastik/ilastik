@@ -308,7 +308,7 @@ class DataSelectionSerializer(AppletSerializer):
                     # Skip if there is no dataset in this lane/role combination yet.
                     continue
                 datasetInfo = slot.value
-                if datasetInfo.location == DatasetInfo.Location.FileSystemRelativePath:
+                if isinstance(datasetInfo, FilesystemDatasetInfo):
 
                     # construct absolute path and recreate relative to the new path
                     fp = PathComponents(datasetInfo.filePath, olddir).totalPath()
@@ -366,7 +366,6 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
         pass
 
     def deserializeFromHdf5(self, hdf5File, projectFilePath, headless=False):
-        # FIXME: convert old file to new schema
         # Check the overall file version
         ilastikVersion = hdf5File["ilastikVersion"].value
 
@@ -377,44 +376,40 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
         # The 'working directory' for the purpose of constructing absolute
         #  paths from relative paths is the project file's directory.
         projectDir = os.path.split(projectFilePath)[0]
-        self.topLevelOperator.WorkingDirectory.setValue(projectDir)
+        self.topLevelOperator.WorkingDirectory.setValue( projectDir )
 
         # Access the top group and the info group
         try:
-            # dataset = hdf5File["DataSets"]["dataItem00"]["data"]
+            #dataset = hdf5File["DataSets"]["dataItem00"]["data"]
             dataDir = hdf5File["DataSets"]
         except KeyError:
             # If our group (or subgroup) doesn't exist, then make sure the operator is empty
-            self.topLevelOperator.DatasetGroup.resize(0)
+            self.topLevelOperator.DatasetGroup.resize( 0 )
             return
 
-        self.topLevelOperator.DatasetGroup.resize(len(dataDir))
-        for index, (datasetDirName, datasetDir) in enumerate(sorted(dataDir.items())):
+        self.topLevelOperator.DatasetGroup.resize( len(dataDir) )
+        for index, (datasetDirName, datasetDir) in enumerate( sorted(dataDir.items()) ):
             # Some older versions of ilastik 0.5 stored the data in tzyxc order.
             # Some power-users can enable a command-line flag that tells us to
             #  transpose the data back to txyzc order when we import the old project.
-            axistags = None
             default_axis_order = ilastik.utility.globals.ImportOptions.default_axis_order
             if default_axis_order is not None:
                 import warnings
-
                 # todo:axisorder: this will apply for other old ilastik projects as well... adapt the formulation.
-                warnings.warn(
-                    "Using a strange axis order to import ilastik 0.5 projects: {}".format(default_axis_order)
-                )
-                axistags = vigra.defaultAxistags(default_axis_order)
+                warnings.warn( "Using a strange axis order to import ilastik 0.5 projects: {}".format( default_axis_order ) )
+                datasetInfo.axistags = vigra.defaultAxistags(default_axis_order)
 
-            totalDatasetPath = str(projectFilePath + "/DataSets/" + datasetDirName + "/data")
-            datasetInfo = DatasetInfo(
-                # We'll set up the link to the dataset in the old project file,
-                #  but we'll set the location to ProjectInternal so that it will
-                #  be copied to the new file when the project is saved.
-                location=DatasetInfo.Location.ProjectInternal,
-                axistags=axistags,
-                nickname=f"{datasetDirName} (imported from v0.5)",
+            # We'll set up the link to the dataset in the old project file,
+            #  but we'll set the location to ProjectInternal so that it will
+            #  be copied to the new file when the project is saved.
+            datasetInfo = ProjectInternalDatasetInfo(
+                inner_path=str(projectFilePath + '/DataSets/' + datasetDirName + '/data' ),
+                nickname = f"{datasetDirName} (imported from v0.5)"
             )
+
             # Give the new info to the operator
             self.topLevelOperator.DatasetGroup[index][0].setValue(datasetInfo)
+
 
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         assert False
