@@ -354,8 +354,7 @@ def lsH5N5(h5N5FileObject, minShape=2, maxShape=5):
             return
         if isinstance(h5N5FileObject, z5py.N5File):
             # make sure we get a path with forward slashes on windows
-            objectName = pathlib.Path(objectName)
-            objectName = objectName.relative_to(h5N5FileObject.path).as_posix()  # Need only the internal path here
+            objectName = pathlib.Path(objectName).as_posix()
         listOfDatasets.append({"name": objectName, "object": obj})
 
     h5N5FileObject.visititems(addObjectNames)
