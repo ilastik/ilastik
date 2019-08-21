@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,6 +19,7 @@ from __future__ import absolute_import
 #		   http://ilastik.org/license.html
 ###############################################################################
 
-from .thunkEvent import ThunkEvent, ThunkEventHandler
+from .roi import roi2rect
 from .threadRouter import ThreadRouter, threadRouted, threadRoutedWithRouter
+from .thunkEvent import ThunkEvent, ThunkEventHandler
 from .widgets import enable_when_ready

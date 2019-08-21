@@ -18,23 +18,109 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
-import os
 import logging
+import os
+import typing
 from collections import OrderedDict
 from functools import partial
-logger = logging.getLogger(__name__)
-
-from PyQt5.QtCore import QTimer, Qt
-from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QVBoxLayout, QPushButton, QHBoxLayout, \
-                        QLabel, QSpacerItem, QSizePolicy, QListWidget, QMessageBox
 
 from lazyflow.request import Request
+from PyQt5.QtCore import Qt, QTimer, QUrl
+from PyQt5.QtWidgets import (QApplication, QHBoxLayout, QLabel, QListWidget,
+                             QMessageBox, QPushButton, QSizePolicy,
+                             QSpacerItem, QTabWidget, QVBoxLayout, QWidget)
 from volumina.utility import PreferencesManager
+
 from ilastik.utility import log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui # We borrow the file selection window function.
 from ilastik.widgets.ImageFileDialog import ImageFileDialog
+
+logger = logging.getLogger(__name__)
+
+
+class BatchProcessingDataConstraintException(Exception):
+    pass
+
+
+class FileListWidget(QListWidget):
+    """QListWidget with custom drag-n-drop for file paths
+    """
+
+    def dropEvent(self, dropEvent):
+        urls = dropEvent.mimeData().urls()
+        self.clear()
+        self.addItems(qurl.path() for qurl in urls)
+
+    def dragEnterEvent(self, event):
+        # Only accept drag-and-drop events that consist of urls to local files.
+        if not event.mimeData().hasUrls():
+            return
+        urls = event.mimeData().urls()
+        if all(url.isLocalFile() for url in urls):
+            event.acceptProposedAction()
+
+    def dragMoveEvent(self, event):
+        # Must override this or else the QTableView base class steals dropEvents from us.
+        pass
+
+
+class BatchRoleWidget(QWidget):
+    """Container Widget for Batch File list and buttons
+    """
+    def __init__(self, role_name: str, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._role_name = role_name
+        self._init_ui()
+
+    def _init_ui(self):
+        self.select_button = QPushButton(f"Select {self._role_name} Files...")
+        self.clear_button = QPushButton(f"Clear {self._role_name} Files")
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(self.select_button)
+        button_layout.addSpacerItem(QSpacerItem(0, 0, hPolicy=QSizePolicy.Expanding))
+        button_layout.addWidget(self.clear_button)
+        button_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.list_widget = FileListWidget(parent=self)
+        self.list_widget.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding))
+        self.list_widget.setAcceptDrops(True)
+
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addLayout(button_layout)
+        main_layout.addWidget(self.list_widget)
+
+        self.clear_button.clicked.connect(self.clear)
+        self.select_button.clicked.connect(self.select_files)
+
+        self.setLayout(main_layout)
+
+    @property
+    def filepaths(self) -> typing.List[str]:
+        """
+        Utility function.
+        Return all items in the given QListWidget as a list of strings.
+        """
+        all_item_strings = []
+        for row in range(self.list_widget.count()):
+            all_item_strings.append(self.list_widget.item(row).text())
+        return all_item_strings
+
+    def select_files(self):
+        preference_name = f"recent-dir-role-{self._role_name}"
+        file_paths = ImageFileDialog(self, preferences_group='BatchProcessing', preferences_setting=preference_name).getSelectedPaths()
+        if file_paths:
+            recent_processing_directory = os.path.dirname(file_paths[0])
+            PreferencesManager().set('BatchProcessing', preference_name, recent_processing_directory)
+
+            self.clear()
+            self.list_widget.addItems(map(str, file_paths))
+
+    def clear(self):
+        """Remove all items from the list"""
+        self.list_widget.clear()
+
 
 class BatchProcessingGui( QTabWidget ):
     """
@@ -71,46 +157,24 @@ class BatchProcessingGui( QTabWidget ):
     ###########################################
     
     def __init__(self, parentApplet):
-        super(BatchProcessingGui, self).__init__()
+        super().__init__()
         self.parentApplet = parentApplet
-        self.threadRouter = ThreadRouter(self) # For using @threadRouted
+        self.threadRouter = ThreadRouter(self)
         self._drawer = None
+        self._data_role_widgets = {}
         self.initMainUi()
         self.initAppletDrawerUi()
         self.export_req = None
 
     def initMainUi(self):
+
         role_names = self.parentApplet.dataSelectionApplet.topLevelOperator.DatasetRoles.value
-        self.list_widgets = []
-        
         # Create a tab for each role
-        for role_index, role_name in enumerate(role_names):
-            select_button = QPushButton("Select " + role_name + " Files...", 
-                                        clicked=partial(self.select_files, role_index) )
-            clear_button = QPushButton("Clear " + role_name + " Files",
-                                       clicked=partial(self.clear_files, role_index) )
-            button_layout = QHBoxLayout()
-            button_layout.addWidget(select_button)
-            button_layout.addSpacerItem( QSpacerItem(0,0,hPolicy=QSizePolicy.Expanding) )
-            button_layout.addWidget(clear_button)
-            button_layout.setContentsMargins(0, 0, 0, 0)
-            
-            button_layout_widget = QWidget()
-            button_layout_widget.setLayout(button_layout)
-            button_layout_widget.setSizePolicy( QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum) )
-
-            list_widget = QListWidget(parent=self)
-            list_widget.setSizePolicy( QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding) )
-            self.list_widgets.append( list_widget )
-
-            tab_layout = QVBoxLayout()
-            tab_layout.setContentsMargins(0, 0, 0, 0)
-            tab_layout.addWidget( button_layout_widget )
-            tab_layout.addWidget( list_widget )
-            
-            layout_widget = QWidget(parent=self)
-            layout_widget.setLayout(tab_layout)
-            self.addTab(layout_widget, role_name)
+        for role_name in role_names:
+            assert role_name not in self._data_role_widgets
+            data_role_widget = BatchRoleWidget(role_name=role_name, parent=self)
+            self.addTab(data_role_widget, role_name)
+            self._data_role_widgets[role_name] = data_role_widget
 
     def initAppletDrawerUi(self):
         instructions_label = QLabel(
@@ -134,31 +198,32 @@ class BatchProcessingGui( QTabWidget ):
 
         self._drawer = QWidget(parent=self)
         self._drawer.setLayout(layout)
-        
-    def select_files(self, role_index):
-        preference_name = 'recent-dir-role-{}'.format(role_index)
-        file_paths = ImageFileDialog(self, preferences_group='BatchProcessing', preferences_setting=preference_name).getSelectedPaths()
-        if file_paths:
-            self.list_widgets[role_index].clear()
-            self.list_widgets[role_index].addItems(str(path) for path in file_paths)
 
-    def clear_files(self, role_index):
-        self.list_widgets[role_index].clear()
-    
     def run_export(self):
         role_names = self.parentApplet.dataSelectionApplet.topLevelOperator.DatasetRoles.value
 
         # Prepare file lists in an OrderedDict
-        role_path_dict = OrderedDict()
-        role_path_dict[0] = BatchProcessingGui.get_all_item_strings(self.list_widgets[0])
-        num_datasets = len(role_path_dict[0])
+        role_path_dict = OrderedDict(
+            (role_name, self._data_role_widgets[role_name].filepaths)
+            for role_name
+            in role_names
+        )
+        dominant_role_name = role_names[0]
+        num_paths = len(role_path_dict[dominant_role_name])
 
-        for role_index, list_widget in enumerate(self.list_widgets[1:], start=1):
-            role_path_dict[role_index] = BatchProcessingGui.get_all_item_strings(self.list_widgets[role_index])
-            assert len(role_path_dict[role_index]) <= num_datasets, \
-                "Too many files given for role: '{}'".format( role_names[role_index] )
-            if len(role_path_dict[role_index]) < num_datasets:
-                role_path_dict[role_index] += [None] * (num_datasets-len(role_path_dict[role_index]))
+        if num_paths == 0:
+            return
+
+        for role_name in role_names[1:]:
+            paths = role_path_dict[role_name]
+            if len(paths) == 0:
+                role_path_dict[role_name] = [None] * num_paths
+
+            if len(role_path_dict[role_name]) != num_paths:
+                raise BatchProcessingDataConstraintException(
+                    f"Number of files for '{role_name!r}' does not match! "
+                    f"Exptected {num_paths} files."
+                )
 
         # Run the export in a separate thread
         export_req = Request(partial(self.parentApplet.run_export, role_path_dict))
@@ -208,15 +273,3 @@ class BatchProcessingGui( QTabWidget ):
         self.handle_batch_processing_finished()
         self.handle_batch_processing_complete()
         QMessageBox.information(self, "Batch Processing Cancelled.", "Batch Processing Cancelled.")
-
-    @staticmethod
-    def get_all_item_strings(list_widget):
-        """
-        Utility function.
-        Return all items in the given QListWidget as a list of strings.
-        """
-        all_item_strings = []
-        for row in range(list_widget.count()):
-            all_item_strings.append( str(list_widget.item(row).text()) )
-        return all_item_strings
-            

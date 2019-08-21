@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,45 +18,34 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-# Built-in
-import os
-import logging
-import threading
-from functools import partial
+
 import importlib
+import logging
+import os
+from typing import Sequence
 
-# Third-party
 import numpy
-from PyQt5 import uic
-from PyQt5.QtCore import Qt, pyqtSlot, QObject, QRect, QSize, pyqtSignal, QEvent, QPoint
-from PyQt5.QtGui import QBrush, QColor, QKeySequence, QIcon, QPen, qRed, QPalette
-from PyQt5.QtWidgets import QMessageBox, QShortcut, QPushButton, QWidget, QApplication, QAction, \
-                            QRubberBand, QRubberBand, QGraphicsColorizeEffect, QStylePainter
 
-# HCI
-from lazyflow.utility import traceLogged
-from volumina.api import createDataSource, AlphaModulatedLayer, ColortableLayer, LazyflowSinkSource
-from volumina.utility import ShortcutManager
-from ilastik.widgets.labelListView import Label
-from ilastik.widgets.boxListModel import BoxListModel,BoxLabel
-from ilastik.widgets.labelListModel import LabelListModel
-from lazyflow.rtype import SubRegion
-from volumina.navigationController import NavigationInterpreter
-
-# ilastik
-from ilastik.utility import bind
-from ilastik.utility.gui import threadRouted
-from ilastik.shell.gui.iconMgr import ilastikIcons
+from ilastik.applets.counting.countingGuiBoxesInterface import BoxController, BoxInterpreter, Tool
+from ilastik.applets.counting.countingGuiDotsInterface import DotCrosshairController, DotInterpreter
 from ilastik.applets.labeling.labelingGui import LabelingGui
-from ilastik.applets.base.applet import ShellRequest
+from ilastik.shell.gui.iconMgr import ilastikIcons
+from ilastik.utility import bind
+from ilastik.utility.gui import roi2rect, threadRouted
+from ilastik.widgets.boxListModel import BoxListModel
 from lazyflow.operators.opReorderAxes import OpReorderAxes
-from ilastik.applets.counting.countingGuiDotsInterface import DotCrosshairController,DotInterpreter
-from ilastik.applets.base.appletSerializer import SerialListSlot
+from lazyflow.utility import traceLogged
+from PyQt5 import uic
+from PyQt5.QtCore import QRect, Qt, pyqtSlot
+from PyQt5.QtGui import QColor, QIcon
+from PyQt5.QtWidgets import QApplication, QMessageBox
+from volumina.api import ColortableLayer, LazyflowSinkSource, createDataSource
+from volumina.navigationController import NavigationInterpreter
+from volumina.utility import ShortcutManager
 
-
-# Loggers
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
+
 
 def _listReplace(old, new):
     if len(old) > len(new):
@@ -65,11 +53,6 @@ def _listReplace(old, new):
     else:
         return new
 
-
-
-
-
-from .countingGuiBoxesInterface import BoxController,BoxInterpreter,Tool
 
 class CallToGui(object):
     def __init__(self,opslot,setfun):
@@ -319,9 +302,6 @@ class CountingGui(LabelingGui):
         CallToGui(op.SelectedOption,_setoption)
         idx = self.op.current_view_index()
 
-        
-
-
     def _setUIParameters(self):
 
         self.labelingDrawerUi.SigmaBox.setKeyboardTracking(False)
@@ -482,26 +462,26 @@ class CountingGui(LabelingGui):
         id = self.op.current_view_index()
         self.op.boxViewer.rois[id].setValue(boxes["rois"])
 
-
     def _loadViewBoxes(self):
         op = self.op.opTrain
         fix = op.fixClassifier.value
         op.fixClassifier.setValue(True)
 
         idx = self.op.current_view_index()
+        axes = self.density5d.Output.meta.getAxisKeys()
         boxCounter = 0
+
         if self.op.boxViewer.rois.ready() and len(self.op.boxViewer.rois[idx].value) > 0:
             #if fixed boxes are existent, make column visible
             #self.labelingDrawerUi.boxListView._table.setColumnHidden(self.boxController.boxListModel.ColumnID.Fix, False)
             for roi in self.op.boxViewer.rois[idx].value:
                 if type(roi) is not list or len(roi) is not 2:
                     continue
-                self.boxController.addNewBox(roi[0], roi[1])
+                self.boxController.addNewBox(roi2rect(*roi, axes))
                 #boxIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.Fix)
                 #iconIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.FixIcon)
                 #self.boxController.boxListModel.setData(boxIndex,val)
                 boxCounter = boxCounter + 1
-
 
         if op.BoxConstraintRois.ready() and len(op.BoxConstraintRois[idx].value) > 0:
             #if fixed boxes are existent, make column visible
@@ -510,19 +490,16 @@ class CountingGui(LabelingGui):
                 roi, val = constr
                 if type(roi) is not list or len(roi) is not 2:
                     continue
-                self.boxController.addNewBox(roi[0], roi[1])
+                self.boxController.addNewBox(roi2rect(*roi, axes))
                 boxIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.Fix)
                 iconIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.FixIcon)
                 self.boxController.boxListModel.setData(boxIndex,val)
                 boxCounter = boxCounter + 1
-        
+
         op.fixClassifier.setValue(fix)
-
-
 
     def _debug(self):
         go.db
-
 
     @traceLogged(traceLogger)
     def initViewerControlUi(self):
@@ -566,7 +543,7 @@ class CountingGui(LabelingGui):
         mgr = ShortcutManager()
         ActionInfo = ShortcutManager.ActionInfo
         shortcutGroupName = "Predictions"
-        
+
         mgr.register( "p", ActionInfo( shortcutGroupName,
                                        "Toggle Prediction",
                                        "Toggle Prediction Layer Visibility",

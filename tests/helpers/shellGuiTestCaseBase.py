@@ -1,6 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,28 +18,19 @@ from __future__ import division
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
-from past.utils import old_div
-import sys
-import os
-import threading
-import traceback
+
 import atexit
-import platform
-from functools import partial
+import threading
+from typing import Iterable, Union
 
 import pytest
-
-from PyQt5.QtCore import Qt, QEvent, QPoint, QTimer
-from PyQt5.QtGui import QPixmap, QMouseEvent
-from PyQt5.QtWidgets import QApplication, qApp
-
-import ilastik.config
-from ilastik.shell.gui.startShellGui import launchShell
-from ilastik.utility.gui.threadRouter import ThreadRouter
-from .mainThreadHelpers import wait_for_main_func, run_in_main_thread
-
 from ilastik.ilastik_logging import default_config
+from past.utils import old_div
+from PyQt5.QtCore import QEvent, QPoint, Qt
+from PyQt5.QtGui import QMouseEvent
+from PyQt5.QtWidgets import QAbstractScrollArea, QApplication, qApp
+
+from .mainThreadHelpers import wait_for_main_func
 
 default_config.init(output_mode=default_config.OutputMode.CONSOLE)
 
@@ -168,44 +156,87 @@ class ShellGuiTestCaseBase(object):
         QApplication.sendEvent(imgView, move)
         QApplication.processEvents()
 
-    def strokeMouseFromCenter(self, imgView, start, end, modifier=Qt.NoModifier, numSteps=10):
-        """
-        Drag the mouse between two coordinates.
-        A modifier can be specified that will be keep pressed
-        default no modifier
-        """
+    def strokeMouse(
+        self,
+        imgView: QAbstractScrollArea,
+        start: Union[QPoint, Iterable[int]],
+        end: Union[QPoint, Iterable[int]],
+        modifier: int = Qt.NoModifier,
+        numSteps: int = 10,
+    ) -> None:
+        """Drag the mouse between 2 points.
 
-        centerPoint = old_div(imgView.rect().bottomRight(), 2)
+        Args:
+            imgView: View that will receive mouse events.
+            start: Start coordinates, inclusive.
+            end:  End coordinates, *also inclusive*.
+            modifier: This modifier will be active when pressing, moving and releasing.
+            numSteps: The number of mouse move events.
 
-        startPoint = QPoint(*start) + centerPoint
-        endPoint = QPoint(*end) + centerPoint
+        See Also:
+            :func:`strokeMouseFromCenter`.
+        """
+        if not isinstance(start, QPoint):
+            start = QPoint(*start)
+        if not isinstance(end, QPoint):
+            end = QPoint(*end)
 
         # Note: Due to the implementation of volumina.EventSwitch.eventFilter(),
         #       mouse events intended for the ImageView MUST go through the viewport.
 
         # Move to start
-        move = QMouseEvent(QEvent.MouseMove, startPoint, Qt.NoButton, Qt.NoButton, modifier)
+        move = QMouseEvent(QEvent.MouseMove, start, Qt.NoButton, Qt.NoButton, modifier)
         QApplication.sendEvent(imgView.viewport(), move)
 
         # Press left button
-        press = QMouseEvent(QEvent.MouseButtonPress, startPoint, Qt.LeftButton, Qt.NoButton, modifier)
+        press = QMouseEvent(QEvent.MouseButtonPress, start, Qt.LeftButton, Qt.NoButton, modifier)
         QApplication.sendEvent(imgView.viewport(), press)
 
         # Move to end in several steps
         # numSteps = numSteps
         for i in range(numSteps):
-            nextPoint = startPoint + (endPoint - startPoint) * (old_div(float(i), numSteps))
+            nextPoint = start + (end - start) * (old_div(float(i), numSteps))
             move = QMouseEvent(QEvent.MouseMove, nextPoint, Qt.NoButton, Qt.NoButton, modifier)
             QApplication.sendEvent(imgView.viewport(), move)
 
         # Move to end
-        move = QMouseEvent(QEvent.MouseMove, endPoint, Qt.NoButton, Qt.NoButton, modifier)
+        move = QMouseEvent(QEvent.MouseMove, end, Qt.NoButton, Qt.NoButton, modifier)
         QApplication.sendEvent(imgView.viewport(), move)
 
         # Release left button
-        release = QMouseEvent(QEvent.MouseButtonRelease, endPoint, Qt.LeftButton, Qt.NoButton, modifier)
+        release = QMouseEvent(QEvent.MouseButtonRelease, end, Qt.LeftButton, Qt.NoButton, modifier)
         QApplication.sendEvent(imgView.viewport(), release)
 
         # Wait for the gui to catch up
         QApplication.processEvents()
         self.waitForViews([imgView])
+
+    def strokeMouseFromCenter(
+        self,
+        imgView: QAbstractScrollArea,
+        start: Union[QPoint, Iterable[int]],
+        end: Union[QPoint, Iterable[int]],
+        modifier: int = Qt.NoModifier,
+        numSteps: int = 10,
+    ) -> None:
+        """Drag the mouse between 2 points, relative to the view's center.
+
+        Args:
+            imgView: View that will receive mouse events.
+            start: Start offset from the `imgView` center, inclusive.
+            end:  End offset from the `imgView` center, *also inclusive*.
+            modifier: This modifier will be active when pressing, moving and releasing.
+            numSteps: The number of mouse move events.
+
+        See Also:
+            :func:`strokeMouse`.
+        """
+        if not isinstance(start, QPoint):
+            start = QPoint(*start)
+        if not isinstance(end, QPoint):
+            end = QPoint(*end)
+
+        # FIXME: The simpler "center" calculation below breaks tests on CI.
+        # center = imgView.rect().center()
+        center = imgView.rect().bottomRight() / 2
+        self.strokeMouse(imgView, start + center, end + center, modifier, numSteps)

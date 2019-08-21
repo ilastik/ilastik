@@ -1,23 +1,18 @@
-from __future__ import division
-from __future__ import absolute_import
-from builtins import range
-import copy
+import logging
 import weakref
 from collections import OrderedDict
-from typing import List, Callable, Dict, Iterable
-import logging
-
-logger = logging.getLogger(__name__)  # noqa
-
+from typing import Callable, Dict, Hashable, List, Optional, Union, Mapping, Iterable
 import numpy
 import vigra
 from vigra.vigranumpycore import AxisTags
 from lazyflow.request import Request
-from ilastik.utility import log_exception
+from functools import partial
+
 from ilastik.applets.base.applet import Applet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo, OpMultiLaneDataSelectionGroup
-from functools import partial
+
+logger = logging.getLogger(__name__)  # noqa
 
 
 class BatchProcessingApplet(Applet):
@@ -66,11 +61,39 @@ class BatchProcessingApplet(Applet):
 
     def run_export(
         self,
-        role_data_dict: Dict[int, List[str]],
-        input_axes: str = None,
+        role_data_dict: Mapping[Hashable, Iterable[str]],
+        input_axes: Optional[str] = None,
         export_to_array: bool = False,
-        sequence_axis: str = None,
-    ):
+        sequence_axis: Optional[str] = None,
+    ) -> Union[List[str], List[numpy.array]]:
+        """Run the export for each dataset listed in role_data_dict
+
+        For each dataset:
+                1. Append a lane to the workflow
+                2. Configure the new lane's DataSelection inputs with the new file (or files, if there is more than one
+                   role).
+                3. Export the results from the new lane
+                4. Remove the lane from the workflow.
+
+            By appending/removing the batch lane for EACH dataset we process, we trigger the workflow's usual
+            prepareForNewLane() and connectLane() logic, which ensures that we get a fresh new lane that's
+            ready to process data.
+
+            After each lane is processed, the given post-processing callback will be executed.
+            signature: lane_postprocessing_callback(batch_lane_index)
+
+        Args:
+            role_data_dict: dict with role_name: list(paths) of data that should be processed.
+            input_axes: axis description to override from the default role
+            export_to_array: If True do NOT export to disk as usual.
+              Instead, export the results to a list of arrays, which is returned.
+              If False, return a list of the filenames we produced to.
+            sequence_axis: stack along this axis, overrides setting from default role
+
+        Returns:
+            list containing either strings of paths to exported files,
+              or numpy.arrays (depending on export_to_array)
+        """
         self.progressSignal(0)
         batches = list(zip(*role_data_dict.values()))
         try:
@@ -93,7 +116,7 @@ class BatchProcessingApplet(Applet):
         finally:
             self.progressSignal(100)
 
-    def get_previous_axes_tags(self) -> List[AxisTags]:
+    def get_previous_axes_tags(self) -> List[Optional[AxisTags]]:
         if self.num_lanes == 0:
             return [None] * len(self.role_names)
 
@@ -106,19 +129,13 @@ class BatchProcessingApplet(Applet):
     def export_dataset(
         self,
         role_input_paths: List[str],
-        input_axes: str = None,
+        input_axes: Optional[str] = None,
         export_to_array: bool = False,
-        sequence_axis: str = None,
-        progress_callback: Callable = None,
-    ):
+        sequence_axis: Optional[str] = None,
+        progress_callback: Optional[Callable[[int], None]] = None,
+    ) -> Union[str, numpy.array]:
         """
         Configures a lane using the paths specified in the paths from role_input_paths and runs the workflow.
-
-        input_axes: specifies how to reinterpret the axes of the data sources
-        sequence_axis: specifies the axis along which a collection of input files is stacked
-        export_to_array: If True do NOT export to disk as usual.
-                         Instead, export the results to a list of arrays, which is returned.
-                         If False, return a list of the filenames we produced to.
         """
         progress_callback = progress_callback or self.progressSignal
         original_num_lanes = self.num_lanes

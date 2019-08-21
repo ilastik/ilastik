@@ -13,7 +13,7 @@ from volumina.widgets import layerwidget
 from volumina import volumeEditorWidget
 from volumina.layer import ColortableLayer, GrayscaleLayer, RGBALayer
 from volumina import colortables
-from volumina.pixelpipeline.datasourcefactories import createDataSource
+from volumina.api import createDataSource
 
 from ilastik.applets.pixelClassification import opPixelClassification
 from lazyflow.operators import OpFeatureMatrixCache
