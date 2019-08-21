@@ -55,8 +55,8 @@ jobs:
         conda activate base &&
         cd ${ILASTIK_ROOT}/ilastik-meta &&
         python ilastik/scripts/devenv.py create -n ${TEST_ENV_NAME}
-        -p pytest-qt ilastik-dependencies-no-solvers black
-        -c ilastik-forge conda-forge defaults
+        -p pytest-qt ilastik-dependencies-no-solvers black elf
+        -c ilastik-forge conda-forge cpape defaults
     # Save dependency cache
     - save_cache:
         key: v1.33b7-dep-{{ .Branch }}-{{ epoch }}
