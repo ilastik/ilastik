@@ -136,54 +136,55 @@ class WsdtGui(LayerViewerGui):
         threshold_box.setMinimum(0.00)
         threshold_box.setMaximum(1.0)
         threshold_box.setSingleStep(0.1)
-        configure_update_handlers(threshold_box.valueChanged, op.Pmin)
+        configure_update_handlers( threshold_box.valueChanged, op.Threshold )
         threshold_box.setToolTip("Boundary probability threshold")
         drawer_layout.addLayout(control_layout("Threshold", threshold_box))
         self.threshold_box = threshold_box
 
-        membrane_size_box = QSpinBox()
-        membrane_size_box.setMinimum(0)
-        membrane_size_box.setMaximum(1000000)
-        configure_update_handlers(membrane_size_box.valueChanged, op.MinMembraneSize)
-        membrane_size_box.setToolTip("Size filter for boundary pieces, in pixels")
-        drawer_layout.addLayout(control_layout("Min Boundary Size", membrane_size_box))
-        self.membrane_size_box = membrane_size_box
+        min_size_box = QSpinBox()
+        min_size_box.setMinimum(0)
+        min_size_box.setMaximum(1000000)
+        configure_update_handlers( min_size_box.valueChanged, op.MinSize )
+        min_size_box.setToolTip("Mininum size of the watershed segments")
+        drawer_layout.addLayout( control_layout( "Min Boundary Size", min_size_box ) )
+        self.min_size_box = min_size_box
 
-        seed_presmoothing_box = QDoubleSpinBox()
-        seed_presmoothing_box.setDecimals(1)
-        seed_presmoothing_box.setMinimum(0.0)
-        seed_presmoothing_box.setMaximum(10.0)
-        seed_presmoothing_box.setSingleStep(0.1)
-        configure_update_handlers(seed_presmoothing_box.valueChanged, op.SigmaMinima)
-        seed_presmoothing_box.setToolTip("Smooth the distance transform map with this sigma")
-        drawer_layout.addLayout(control_layout("Presmooth before Seeds", seed_presmoothing_box))
-        self.seed_presmoothing_box = seed_presmoothing_box
+        sigma_seeds_box = QDoubleSpinBox()
+        sigma_seeds_box.setDecimals(1)
+        sigma_seeds_box.setMinimum(0.0)
+        sigma_seeds_box.setMaximum(10.0)
+        sigma_seeds_box.setSingleStep(0.1)
+        configure_update_handlers( sigma_seeds_box.valueChanged, op.SigmaSeeds )
+        sigma_seeds_box.setToolTip("Smooth the watershed seed map with this sigma")
+        drawer_layout.addLayout( control_layout( "Seeds Smooth", sigma_seeds_box ) )
+        self.sigma_seeds_box = sigma_seeds_box
 
-        seed_method_combo = QComboBox()
-        seed_method_combo.addItem("Connected")
-        seed_method_combo.addItem("Clustered")
-        configure_update_handlers(seed_method_combo.currentIndexChanged, op.GroupSeeds)
-        seed_method_combo.setToolTip(
-            "Connected: combine directly adjacent pixels into seeds (more superpixels). Clustered: group pixels into seeds by distance heuristic (less superpixels)"
-        )
-        drawer_layout.addLayout(control_layout("Seed Labeling", seed_method_combo))
-        self.seed_method_combo = seed_method_combo
+        alpha_box = QDoubleSpinBox()
+        alpha_box.setDecimals(1)
+        alpha_box.setMinimum(0.0)
+        alpha_box.setMaximum(10.0)
+        alpha_box.setSingleStep(0.1)
+        configure_update_handlers( alpha_box.valueChanged, op.Alpha )
+        alpha_box.setToolTip("Used to blend boundaries and the distance transform in order to obtain the watershed weight map")
+        drawer_layout.addLayout( control_layout( "Alpha", alpha_box ) )
+        self.alpha_box = alpha_box
 
-        superpixel_size_box = QSpinBox()
-        superpixel_size_box.setMinimum(0)
-        superpixel_size_box.setMaximum(1000000)
-        configure_update_handlers(superpixel_size_box.valueChanged, op.MinSegmentSize)
-        superpixel_size_box.setToolTip("Minimal size of a superpixel")
-        drawer_layout.addLayout(control_layout("Min Superpixel Size", superpixel_size_box))
-        self.superpixel_size_box = superpixel_size_box
+        sigma_weights_box = QDoubleSpinBox()
+        sigma_weights_box.setDecimals(1)
+        sigma_weights_box.setMinimum(0.0)
+        sigma_weights_box.setMaximum(10.0)
+        sigma_weights_box.setSingleStep(0.1)
+        sigma_weights_box.setValue(2.0) # Default
+        configure_update_handlers( sigma_weights_box.valueChanged, op.SigmaSeeds )
+        sigma_weights_box.setToolTip("Smooth the watershed weight map with this sigma")
+        drawer_layout.addLayout( control_layout( "Weight Smooth", sigma_weights_box ) )
+        self.sigma_weights_box = sigma_weights_box
 
-        preserve_pmaps_box = QCheckBox()
-        configure_update_handlers(preserve_pmaps_box.toggled, op.PreserveMembranePmaps)
-        preserve_pmaps_box.setToolTip(
-            "Preserve thin structures. Use that option when some of your foreground objects have long and thin parts"
-        )
-        drawer_layout.addLayout(control_layout("Preserve Thin Structures", preserve_pmaps_box))
-        self.preserve_pmaps_box = preserve_pmaps_box
+        apply_nonmax_suppression_box = QCheckBox()
+        configure_update_handlers( apply_nonmax_suppression_box.toggled, op.ApplyNonmaxSuppression )
+        apply_nonmax_suppression_box.setToolTip("Filter out seeds. Use that option when some of your foreground objects have long and thin parts.")
+        drawer_layout.addLayout( control_layout( "Nonmax Suppression", apply_nonmax_suppression_box ) )
+        self.apply_nonmax_suppression_box = apply_nonmax_suppression_box
 
         enable_debug_box = QCheckBox()
         configure_update_handlers(enable_debug_box.toggled, op.EnableDebugOutputs)
@@ -232,16 +233,13 @@ class WsdtGui(LayerViewerGui):
                 self.channel_button.setText("Please Select")
             else:
                 self.channel_button.setText(",".join(map(str, channel_selections)))
-
-            self.threshold_box.setValue(op.Pmin.value)
-            self.membrane_size_box.setValue(op.MinMembraneSize.value)
-            self.superpixel_size_box.setValue(op.MinSegmentSize.value)
-            self.seed_presmoothing_box.setValue(op.SigmaMinima.value)
-            self.seed_method_combo.setCurrentIndex(int(op.GroupSeeds.value))
-            self.preserve_pmaps_box.setChecked(op.PreserveMembranePmaps.value)
-            self.enable_debug_box.setChecked(op.EnableDebugOutputs.value)
-
-            self.update_ws_button.setEnabled(op.Superpixels.ready())
+            
+            self.threshold_box.setValue( op.Threshold.value )
+            self.min_size_box.setValue( op.MinSize.value )
+            self.alpha_box.setValue( op.Alpha.value )
+            self.enable_debug_box.setChecked( op.EnableDebugOutputs.value )
+            self.apply_nonmax_suppression_box.setChecked( op.ApplyNonmaxSuppression.value )
+            self.update_ws_button.setEnabled( op.Superpixels.ready() )
 
     def configure_operator_from_gui(self):
         if self._currently_updating:
@@ -254,14 +252,12 @@ class WsdtGui(LayerViewerGui):
                 if self.channel_actions[ch].isChecked():
                     channel_selections.append(ch)
 
-            op.ChannelSelections.setValue(channel_selections)
-            op.Pmin.setValue(self.threshold_box.value())
-            op.MinMembraneSize.setValue(self.membrane_size_box.value())
-            op.MinSegmentSize.setValue(self.superpixel_size_box.value())
-            op.SigmaMinima.setValue(self.seed_presmoothing_box.value())
-            op.GroupSeeds.setValue(bool(self.seed_method_combo.currentIndex()))
-            op.PreserveMembranePmaps.setValue(self.preserve_pmaps_box.isChecked())
-            op.EnableDebugOutputs.setValue(self.enable_debug_box.isChecked())
+            op.ChannelSelections.setValue( channel_selections )
+            op.Threshold.setValue( self.threshold_box.value() )
+            op.MinSize.setValue( self.min_size_box.value() )
+            op.Alpha.setValue ( self.alpha_box.value() )
+            op.ApplyNonmaxSuppression.setValue( self.apply_nonmax_suppression_box.isChecked() )
+            op.EnableDebugOutputs.setValue( self.enable_debug_box.isChecked() )
 
         # The GUI may need to respond to some changes in the operator outputs.
         self.configure_gui_from_operator()
@@ -304,11 +300,11 @@ class WsdtGui(LayerViewerGui):
         """
         self.threshold_box.setEnabled(enable)
         self.channel_button.setEnabled(enable)
-        self.membrane_size_box.setEnabled(enable)
-        self.seed_presmoothing_box.setEnabled(enable)
-        self.seed_method_combo.setEnabled(enable)
-        self.superpixel_size_box.setEnabled(enable)
-        self.preserve_pmaps_box.setEnabled(enable)
+        self.min_size_box.setEnabled(enable)
+        self.sigma_seeds_box.setEnabled(enable)
+        self.sigma_weights_box.setEnabled(enable)
+        self.alpha_box.setEnabled(enable)
+        self.apply_nonmax_suppression_box.setEnabled(enable)
         self.enable_debug_box.setEnabled(enable)
         self.update_ws_button.setEnabled(enable)
 

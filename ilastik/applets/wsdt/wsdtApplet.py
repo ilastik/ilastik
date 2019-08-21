@@ -41,17 +41,14 @@ class WsdtApplet(StandardApplet):
 
     @property
     def broadcastingSlots(self):
-        return [
-            "FreezeCache",
-            "ChannelSelections",
-            "Pmin",
-            "MinMembraneSize",
-            "MinSegmentSize",
-            "SigmaMinima",
-            "SigmaWeights",
-            "GroupSeeds",
-            "PreserveMembranePmaps",
-        ]
+        return [ 'FreezeCache',
+                 'ChannelSelections',
+                 'Threshold',
+                 'MinSize',
+                 'Sigma',
+                 'Alpha',
+                 'PixelPitch',
+                 'ApplyNonmaxSuppression']
 
     @property
     def singleLaneGuiClass(self):
