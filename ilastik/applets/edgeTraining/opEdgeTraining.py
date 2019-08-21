@@ -33,12 +33,15 @@ class OpEdgeTraining(Operator):
     VoxelData = InputSlot(level=1)
     Superpixels = InputSlot(level=1)
     GroundtruthSegmentation = InputSlot(level=1, optional=True)
-    RawData = InputSlot(level=1, optional=True)  # Used by the GUI for display only
-
+    RawData = InputSlot(level=1, optional=True) # Used by the GUI for display only
+    ProbabilityPenTable = InputSlot(level=1)
+    
     Rag = OutputSlot(level=1)
     EdgeProbabilities = OutputSlot(level=1)
     EdgeProbabilitiesDict = OutputSlot(level=1)  # A dict of id_pair -> probabilities
     NaiveSegmentation = OutputSlot(level=1)
+    Edges = OutputSlot(level=1) # just superpixels handed through to keep dirtyness of edge-changes at at the output
+    Pens = OutputSlot(level=1)
 
     def __init__(self, *args, **kwargs):
         super(OpEdgeTraining, self).__init__(*args, **kwargs)
@@ -67,51 +70,48 @@ class OpEdgeTraining(Operator):
 
         # classifier cache input is set after training.
         self.opClassifierCache = OpValueCache(parent=self)
-        self.opClassifierCache.Input.connect(self.opTrainEdgeClassifier.EdgeClassifier)
-        self.opClassifierCache.fixAtCurrent.connect(self.FreezeClassifier)
-        self.opClassifierCache.name = "opClassifierCache"
+        self.opClassifierCache.Input.connect( self.opTrainEdgeClassifier.EdgeClassifier )
+        self.opClassifierCache.fixAtCurrent.connect( self.FreezeClassifier )
+        self.opClassifierCache.name = 'opClassifierCache'
+        
+        self.opPredictEdgeProbabilities = OpMultiLaneWrapper( OpPredictEdgeProbabilities, parent=self, broadcastingSlotNames=['EdgeClassifier'] )
+        self.opPredictEdgeProbabilities.EdgeClassifier.connect( self.opClassifierCache.Output )
+        self.opPredictEdgeProbabilities.EdgeFeaturesDataFrame.connect( self.opEdgeFeaturesCache.Output )
+        
+        self.opEdgeProbabilitiesCache = OpMultiLaneWrapper( OpValueCache, parent=self, broadcastingSlotNames=['fixAtCurrent'] )
+        self.opEdgeProbabilitiesCache.Input.connect( self.opPredictEdgeProbabilities.EdgeProbabilities )
+        self.opEdgeProbabilitiesCache.name = 'opEdgeProbabilitiesCache'
+        self.opEdgeProbabilitiesCache.fixAtCurrent.connect( self.FreezeClassifier )
 
-        self.opPredictEdgeProbabilities = OpMultiLaneWrapper(
-            OpPredictEdgeProbabilities, parent=self, broadcastingSlotNames=["EdgeClassifier"]
-        )
-        self.opPredictEdgeProbabilities.EdgeClassifier.connect(self.opClassifierCache.Output)
-        self.opPredictEdgeProbabilities.EdgeFeaturesDataFrame.connect(self.opEdgeFeaturesCache.Output)
+        self.opEdgeProbabilitiesDict = OpMultiLaneWrapper( OpEdgeProbabilitiesDict, parent=self )
+        self.opEdgeProbabilitiesDict.Rag.connect( self.opRagCache.Output )
+        self.opEdgeProbabilitiesDict.EdgeProbabilities.connect( self.opEdgeProbabilitiesCache.Output )
+        
+        self.opEdgeProbabilitiesDictCache = OpMultiLaneWrapper( OpValueCache, parent=self, broadcastingSlotNames=['fixAtCurrent'] )
+        self.opEdgeProbabilitiesDictCache.Input.connect( self.opEdgeProbabilitiesDict.EdgeProbabilitiesDict )
+        self.opEdgeProbabilitiesDictCache.name = 'opEdgeProbabilitiesDictCache'
 
-        self.opEdgeProbabilitiesCache = OpMultiLaneWrapper(
-            OpValueCache, parent=self, broadcastingSlotNames=["fixAtCurrent"]
-        )
-        self.opEdgeProbabilitiesCache.Input.connect(self.opPredictEdgeProbabilities.EdgeProbabilities)
-        self.opEdgeProbabilitiesCache.name = "opEdgeProbabilitiesCache"
-        self.opEdgeProbabilitiesCache.fixAtCurrent.connect(self.FreezeClassifier)
+        self.opNaiveSegmentation = OpMultiLaneWrapper( OpNaiveSegmentation, parent=self )
+        self.opNaiveSegmentation.Superpixels.connect( self.Superpixels )
+        self.opNaiveSegmentation.Rag.connect( self.opRagCache.Output )
+        self.opNaiveSegmentation.EdgeProbabilities.connect( self.opEdgeProbabilitiesCache.Output )
 
-        self.opEdgeProbabilitiesDict = OpMultiLaneWrapper(OpEdgeProbabilitiesDict, parent=self)
-        self.opEdgeProbabilitiesDict.Rag.connect(self.opRagCache.Output)
-        self.opEdgeProbabilitiesDict.EdgeProbabilities.connect(self.opEdgeProbabilitiesCache.Output)
+        self.opCreatePens = OpMultiLaneWrapper(OpCreatePens, parent=self)
+        self.opCreatePens.Superpixels.connect(self.Superpixels)
+        self.opCreatePens.ProbabilityPenTable.connect(self.ProbabilityPenTable)
+        self.opCreatePens.EdgeProbabilitiesDict.connect(self.opEdgeProbabilitiesDictCache.Output)
 
-        self.opEdgeProbabilitiesDictCache = OpMultiLaneWrapper(
-            OpValueCache, parent=self, broadcastingSlotNames=["fixAtCurrent"]
-        )
-        self.opEdgeProbabilitiesDictCache.Input.connect(self.opEdgeProbabilitiesDict.EdgeProbabilitiesDict)
-        self.opEdgeProbabilitiesDictCache.name = "opEdgeProbabilitiesDictCache"
-
-        self.opNaiveSegmentation = OpMultiLaneWrapper(OpNaiveSegmentation, parent=self)
-        self.opNaiveSegmentation.Superpixels.connect(self.Superpixels)
-        self.opNaiveSegmentation.Rag.connect(self.opRagCache.Output)
-        self.opNaiveSegmentation.EdgeProbabilities.connect(self.opEdgeProbabilitiesCache.Output)
-
-        self.opNaiveSegmentationCache = OpMultiLaneWrapper(
-            OpBlockedArrayCache,
-            parent=self,
-            broadcastingSlotNames=["CompressionEnabled", "fixAtCurrent", "BypassModeEnabled"],
-        )
+        self.opNaiveSegmentationCache = OpMultiLaneWrapper( OpBlockedArrayCache, parent=self, broadcastingSlotNames=['CompressionEnabled', 'fixAtCurrent', 'BypassModeEnabled'] )
         self.opNaiveSegmentationCache.CompressionEnabled.setValue(True)
         self.opNaiveSegmentationCache.Input.connect(self.opNaiveSegmentation.Output)
         self.opNaiveSegmentationCache.name = "opNaiveSegmentationCache"
 
-        self.Rag.connect(self.opRagCache.Output)
-        self.EdgeProbabilities.connect(self.opEdgeProbabilitiesCache.Output)
-        self.EdgeProbabilitiesDict.connect(self.opEdgeProbabilitiesDictCache.Output)
-        self.NaiveSegmentation.connect(self.opNaiveSegmentationCache.Output)
+        self.Rag.connect( self.opRagCache.Output )
+        self.EdgeProbabilities.connect( self.opEdgeProbabilitiesCache.Output )
+        self.EdgeProbabilitiesDict.connect( self.opEdgeProbabilitiesDictCache.Output )
+        self.NaiveSegmentation.connect( self.opNaiveSegmentationCache.Output )
+        self.Edges.connect(self.opCreatePens.Edges)
+        self.Pens.connect(self.opCreatePens.Pens)
 
         # All input multi-slots should be kept in sync
         # Output multi-slots will auto-sync via the graph
@@ -226,6 +226,39 @@ class OpCreateRag(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         self.Rag.setDirty()
+
+
+class OpCreatePens(Operator):
+    Superpixels = InputSlot()
+    EdgeProbabilitiesDict = InputSlot()
+    ProbabilityPenTable = InputSlot()
+
+    Pens = OutputSlot()
+    Edges = OutputSlot()
+
+    def execute(self, slot, subindex, roi, result):
+        if slot.name == 'Edges':
+            self.Pens.setDirty()
+            return self.Superpixels.value
+        elif slot.name == 'Pens':
+            edge_probs = self.EdgeProbabilitiesDict.value
+            probability_pen_table = self.ProbabilityPenTable.value
+
+            if isinstance(edge_probs, dict):
+                new_pens = {}
+                for id_pair, probability in list(edge_probs.items()):
+                    new_pens[id_pair] = probability_pen_table[int(probability * 100)]
+                result[0] = new_pens
+            else:
+                result[0] = None
+
+    def setupOutputs(self):
+        self.Pens.meta.shape = (1,)
+        self.Pens.meta.dtype = object
+        self.Edges.meta.assignFrom( self.Superpixels.meta )
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.Edges.setDirty()
 
 
 def decodeToStringIfBytes(s):

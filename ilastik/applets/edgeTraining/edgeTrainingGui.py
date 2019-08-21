@@ -306,36 +306,27 @@ class EdgeTrainingGui(LayerViewerGui):
             pen.setColor(color)
             self.probability_pen_table.append(pen)
 
-        # When the edge probabilities are dirty, update the probability edge layer pens
+        # When the edge edge labels are dirty, update the probability edge layer pens
         op = self.topLevelOperatorView
-        cleanup_fn = op.EdgeProbabilitiesDict.notifyDirty(self.update_probability_edges, defer=True)
-        self.__cleanup_fns.append(cleanup_fn)
-
-    def update_probability_edges(self, *args):
-        op = self.topLevelOperatorView
-        def _impl():
-            op = self.topLevelOperatorView
-            if not self.getLayerByName("Edge Probabilities"):
-                return
-            edge_probs = op.EdgeProbabilitiesDict.value
-            new_pens = {}
-            for id_pair, probability in list(edge_probs.items()):
-                new_pens[id_pair] = self.probability_pen_table[int(probability * 100)]
-            self.apply_new_probability_edges(new_pens)
-
-        # submit the worklaod in a request and return immediately
-        req = Request(_impl).submit()
-
-        # Now that we've trained the classifier, the workflow may wish to enable downstream applets.
-        self.parentApplet.appletStateUpdateRequested()
+        op.ProbabilityPenTable.setValue(self.probability_pen_table)
 
     @threadRouted
-    def apply_new_probability_edges(self, new_pens):
+    def overwrite_edge_pens(self, new_pens):
         # This function is threadRouted because you can't
         # touch the layer colortable outside the main thread.
-        superpixel_edge_layer = self.getLayerByName("Edge Probabilities")
-        if superpixel_edge_layer:
-            superpixel_edge_layer.pen_table.overwrite(new_pens)
+        edge_layer = self.getLayerByName("Edge Probabilities")
+        if edge_layer and new_pens is not None:
+            edge_layer.pen_table.overwrite(new_pens)
+
+    def update_probability_edges(self, *args):
+        # def _impl():
+        if not self.getLayerByName("Edge Probabilities") or len(args) == 0:
+            return
+        self.overwrite_edge_pens(args[0].value)
+
+        # req = Request(_impl).submit()
+        # Now that we've trained the classifier, the workflow may wish to enable downstream applets.
+        self.parentApplet.appletStateUpdateRequested()
 
     @contextmanager
     def set_updating(self):
@@ -411,27 +402,25 @@ class EdgeTrainingGui(LayerViewerGui):
             del layer
 
         # Superpixels -- Edge Probabilities
-        if op.Superpixels.ready() and op.EdgeProbabilitiesDict.ready():
-            layer = SegmentationEdgesLayer(createDataSource(op.Superpixels))
-            layer.name = "Edge Probabilities"  # Name is hard-coded in multiple places: grep before changing.
+        if op.Edges.ready() and op.EdgeProbabilitiesDict.ready():
+            layer = SegmentationEdgesLayer( createDataSource(op.Edges) )
+            layer.name = "Edge Probabilities" # Name is hard-coded in multiple places: grep before changing.
             layer.visible = False
             layer.opacity = 1.0
-            self.update_probability_edges()  # Initialize
+            op.Pens.notifyDirty(self.update_probability_edges, defer=True)
 
-            layer.contexts.append(self.create_prefetch_menu("Edge Probabilities"))
+            layer.contexts.append( self.create_prefetch_menu("Edge Probabilities") )
 
-            layer.shortcutRegistration = (
-                "p",
-                ActionInfo(
-                    "Edge Training Layers",
-                    "EdgePredictionsVisibility",
-                    "Show/Hide Edge Predictions",
-                    layer.toggleVisible,
-                    self.viewerControlWidget(),
-                    layer,
-                ),
-            )
 
+            layer.shortcutRegistration = ( "p",
+                                           ActionInfo(
+                                               "Edge Training Layers",
+                                                "EdgePredictionsVisibility",
+                                                "Show/Hide Edge Predictions",
+                                                layer.toggleVisible,
+                                                self.viewerControlWidget(),
+                                                layer ) )
+            
             layers.append(layer)
             del layer
 
