@@ -603,7 +603,6 @@ class DataSelectionGui(QWidget):
             # FIXME: ask first if stack should be internalized to project file
             # also, check prefer_2d, size/volume and presence of 'z' to determine this
             nickname = DatasetInfo.create_nickname(stackDlg.selectedFiles)
-            location = DatasetInfo.Location.ProjectInternal
             # FIXME: do this inside a Request
             self.parentApplet.busy = True
             inner_path = self.serializer.importStackAsLocalDataset(

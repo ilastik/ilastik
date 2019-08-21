@@ -23,7 +23,9 @@ from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
 
 from lazyflow.utility import PathComponents
 from ilastik.utility import bind
-from .opDataSelection import DatasetInfo
+from .opDataSelection import RelativeFilesystemDatasetInfo, FilesystemDatasetInfo
+from.opDataSelection import PreloadedArrayDatasetInfo, ProjectInternalDatasetInfo, UrlDatasetInfo
+
 
 class LaneColumn(object):
     NumColumns = 0
@@ -173,10 +175,11 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
             return PathComponents( datasetInfo.filePath ).filename
 
         if datasetInfoIndex == DatasetInfoColumn.Location:
-            LocationNames = { DatasetInfo.Location.FileSystemRelativePath : "External File",
-                              DatasetInfo.Location.FileSystemAbsolutePath : "External File",
-                              DatasetInfo.Location.PreloadedArray : "Preloaded Array",
-                              DatasetInfo.Location.ProjectInternal : "Project File" }
-            return LocationNames[ datasetInfo.location ]
+            LocationNames = {RelativeFilesystemDatasetInfo : "External File",
+                             FilesystemDatasetInfo : "External File",
+                             UrlDatasetInfo: "Remove Data",
+                             PreloadedArrayDatasetInfo : "Preloaded Array",
+                             ProjectInternalDatasetInfo : "Project File"}
+            return LocationNames[ datasetInfo.__class__ ]
 
         assert False, "Unknown column"

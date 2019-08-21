@@ -63,14 +63,6 @@ class UnsuitedAxistagsException(Exception):
         super().__init__(f"Axistags {axistags} don't fit data shape {shape}")
 
 class DatasetInfo(ABC):
-    @unique
-    class Location(Enum):
-        FileSystem = 0  # deprecated
-        ProjectInternal = 1
-        PreloadedArray = 2
-        FileSystemRelativePath = 3
-        FileSystemAbsolutePath = 4
-
     def __init__(
         self,
         *,
@@ -370,6 +362,14 @@ class UrlDatasetInfo(DatasetInfo):
     def __init__(self, *, url: str, **info_kwargs):
         self.url = url
         super().__init__(**info_kwargs)
+
+    @property
+    def effective_path(self) -> str:
+        return self.url
+
+    def get_provider_slot(self, parent):
+        op_reader = OpInputDataReader(parent=parent, FilePath=self.effective_path)
+        return op_reader.Output
 
     @property
     def display_string(self):
