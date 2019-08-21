@@ -238,8 +238,12 @@ class OpCreatePens(Operator):
 
     def execute(self, slot, subindex, roi, result):
         if slot.name == 'Edges':
+            # This is just a dummy hand-through such that we can set the edge pobability layer dirty
+            # withouth setting the superpixels dirty when, in fact they aren't.
+            # the hook in edgeTrainingGui for dirtyness of pens should only be executed
+            # when Edges are requested
             self.Pens.setDirty()
-            return self.Superpixels.value
+            return self.Superpixels.get(roi).wait()  # execute is already be wrapped by a request object.This should be okay
         elif slot.name == 'Pens':
             edge_probs = self.EdgeProbabilitiesDict.value
             probability_pen_table = self.ProbabilityPenTable.value

@@ -90,7 +90,10 @@ class EdgeTrainingGui(LayerViewerGui):
         def enable_live_update_on_edges_available(*args, **kwargs):
             lane_dicts_ready = [(bool(dct.value) and dct.ready()) for dct in op.viewed_operator().EdgeLabelsDict]
             have_edges = any(lane_dicts_ready)
+            if not have_edges:
+                self.live_update_button.setChecked(False)
             self.live_update_button.setEnabled(have_edges)
+            self.configure_operator_from_gui()
             return have_edges
 
         self.configure_gui_from_operator()
@@ -258,6 +261,7 @@ class EdgeTrainingGui(LayerViewerGui):
                 del new_labels[sp_id_pair]
 
         op.EdgeLabelsDict.setValue( new_labels )
+        [slot.setDirty() for slot in op.viewed_operator().EdgeLabelsDict]  # set all the labels dirty, since they are used across lanes
 
     def _handle_label_from_gt_clicked(self):
         def train_from_gt():
@@ -284,7 +288,8 @@ class EdgeTrainingGui(LayerViewerGui):
         )
         if response == QMessageBox.Ok:
             op = self.topLevelOperatorView
-            op.EdgeLabelsDict.setValue({})
+            op.EdgeLabelsDict.setValue( {} )
+            [slot.setDirty() for slot in op.viewed_operator().EdgeLabelsDict]  # set all the labels dirty, since they are used across lanes
 
     def _handle_live_update_clicked(self, checked):
         if checked:
