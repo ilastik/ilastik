@@ -149,15 +149,15 @@ class WsdtGui(LayerViewerGui):
         drawer_layout.addLayout( control_layout( "Min Boundary Size", min_size_box ) )
         self.min_size_box = min_size_box
 
-        sigma_seeds_box = QDoubleSpinBox()
-        sigma_seeds_box.setDecimals(1)
-        sigma_seeds_box.setMinimum(0.0)
-        sigma_seeds_box.setMaximum(10.0)
-        sigma_seeds_box.setSingleStep(0.1)
-        configure_update_handlers( sigma_seeds_box.valueChanged, op.SigmaSeeds )
-        sigma_seeds_box.setToolTip("Smooth the watershed seed map with this sigma")
-        drawer_layout.addLayout( control_layout( "Seeds Smooth", sigma_seeds_box ) )
-        self.sigma_seeds_box = sigma_seeds_box
+        sigma_box = QDoubleSpinBox()
+        sigma_box.setDecimals(1)
+        sigma_box.setMinimum(0.0)
+        sigma_box.setMaximum(10.0)
+        sigma_box.setSingleStep(0.1)
+        configure_update_handlers( sigma_box.valueChanged, op.Sigma )
+        sigma_box.setToolTip("Smooth the watershed seed and weight map with this sigma. Lower values will produce oversegmented superpixels.")
+        drawer_layout.addLayout( control_layout( "Smooth", sigma_box ) )
+        self.sigma_box = sigma_box
 
         alpha_box = QDoubleSpinBox()
         alpha_box.setDecimals(1)
@@ -168,23 +168,6 @@ class WsdtGui(LayerViewerGui):
         alpha_box.setToolTip("Used to blend boundaries and the distance transform in order to obtain the watershed weight map")
         drawer_layout.addLayout( control_layout( "Alpha", alpha_box ) )
         self.alpha_box = alpha_box
-
-        sigma_weights_box = QDoubleSpinBox()
-        sigma_weights_box.setDecimals(1)
-        sigma_weights_box.setMinimum(0.0)
-        sigma_weights_box.setMaximum(10.0)
-        sigma_weights_box.setSingleStep(0.1)
-        sigma_weights_box.setValue(2.0) # Default
-        configure_update_handlers( sigma_weights_box.valueChanged, op.SigmaSeeds )
-        sigma_weights_box.setToolTip("Smooth the watershed weight map with this sigma")
-        drawer_layout.addLayout( control_layout( "Weight Smooth", sigma_weights_box ) )
-        self.sigma_weights_box = sigma_weights_box
-
-        apply_nonmax_suppression_box = QCheckBox()
-        configure_update_handlers( apply_nonmax_suppression_box.toggled, op.ApplyNonmaxSuppression )
-        apply_nonmax_suppression_box.setToolTip("Filter out seeds. Use that option when some of your foreground objects have long and thin parts.")
-        drawer_layout.addLayout( control_layout( "Nonmax Suppression", apply_nonmax_suppression_box ) )
-        self.apply_nonmax_suppression_box = apply_nonmax_suppression_box
 
         enable_debug_box = QCheckBox()
         configure_update_handlers(enable_debug_box.toggled, op.EnableDebugOutputs)
@@ -233,12 +216,12 @@ class WsdtGui(LayerViewerGui):
                 self.channel_button.setText("Please Select")
             else:
                 self.channel_button.setText(",".join(map(str, channel_selections)))
-            
+
             self.threshold_box.setValue( op.Threshold.value )
             self.min_size_box.setValue( op.MinSize.value )
+            self.sigma_box.setValue( op.Sigma.value )
             self.alpha_box.setValue( op.Alpha.value )
             self.enable_debug_box.setChecked( op.EnableDebugOutputs.value )
-            self.apply_nonmax_suppression_box.setChecked( op.ApplyNonmaxSuppression.value )
             self.update_ws_button.setEnabled( op.Superpixels.ready() )
 
     def configure_operator_from_gui(self):
@@ -254,9 +237,9 @@ class WsdtGui(LayerViewerGui):
 
             op.ChannelSelections.setValue( channel_selections )
             op.Threshold.setValue( self.threshold_box.value() )
+            op.Sigma.setValue( self.sigma_box.value() )
             op.MinSize.setValue( self.min_size_box.value() )
             op.Alpha.setValue ( self.alpha_box.value() )
-            op.ApplyNonmaxSuppression.setValue( self.apply_nonmax_suppression_box.isChecked() )
             op.EnableDebugOutputs.setValue( self.enable_debug_box.isChecked() )
 
         # The GUI may need to respond to some changes in the operator outputs.
@@ -301,10 +284,8 @@ class WsdtGui(LayerViewerGui):
         self.threshold_box.setEnabled(enable)
         self.channel_button.setEnabled(enable)
         self.min_size_box.setEnabled(enable)
-        self.sigma_seeds_box.setEnabled(enable)
-        self.sigma_weights_box.setEnabled(enable)
+        self.sigma_box.setEnabled(enable)
         self.alpha_box.setEnabled(enable)
-        self.apply_nonmax_suppression_box.setEnabled(enable)
         self.enable_debug_box.setEnabled(enable)
         self.update_ws_button.setEnabled(enable)
 

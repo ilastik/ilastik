@@ -1,7 +1,6 @@
 from collections import OrderedDict
 import numpy as np
 
-from wsdt import wsDtSegmentation
 from elf.segmentation.watershed import distance_transform_watershed
 
 from lazyflow.utility import OrderedSignal
@@ -21,8 +20,7 @@ class OpWsdt(Operator):
 
     Threshold = InputSlot(value=0.5)
     MinSize = InputSlot(value=100)
-    SigmaSeeds = InputSlot(value=3.0)
-    SigmaWeights = InputSlot(value=2.0)
+    Sigma = InputSlot(value=3.0)
     Alpha = InputSlot(value=0.9)
     PixelPitch = InputSlot(value=[])
     ApplyNonmaxSuppression = InputSlot(value=False)
@@ -71,15 +69,15 @@ class OpWsdt(Operator):
 
         ws, max_id = distance_transform_watershed( pmap[...,0],
                                                    self.Threshold.value,
-                                                   self.SigmaSeeds.value,
-                                                   self.SigmaWeights.value,
+                                                   self.Sigma.value,
+						   self.Sigma.value,
                                                    self.MinSize.value,
                                                    self.Alpha.value,
                                                    pixel_pitch_to_pass,
                                                    self.ApplyNonmaxSuppression.value)
 
         result[...,0] = ws
-        
+
         self.watershed_completed()
 
     def propagateDirty(self, slot, subindex, roi):
@@ -96,8 +94,7 @@ class OpCachedWsdt(Operator):
 
     Threshold = InputSlot(value=0.5)
     MinSize = InputSlot(value=100)
-    SigmaSeeds = InputSlot(value=3.0)
-    SigmaWeights = InputSlot(value=2.0)
+    Sigma = InputSlot(value=3.0)
     Alpha = InputSlot(value=0.9)
     PixelPitch = InputSlot(value=[])
     ApplyNonmaxSuppression = InputSlot(value=False)
@@ -119,24 +116,22 @@ class OpCachedWsdt(Operator):
         super(OpCachedWsdt, self).__init__(*args, **kwargs)
         my_slot_names = set([slot.name for slot in self.inputSlots + self.outputSlots])
         wsdt_slot_names = set([slot.name for slot in OpWsdt.inputSlots + OpWsdt.outputSlots])
-        assert wsdt_slot_names.issubset(my_slot_names), (
-            "OpCachedWsdt should have all of the slots that OpWsdt has (and maybe more). "
+        assert wsdt_slot_names.issubset(my_slot_names),(
+            "OpCachedWsdt should have all of the slots that OpWsdt has (and maybe more)."
             "Did you add a slot to OpWsdt and forget to add it to OpCachedWsdt?"
-        
+        )
+
         self._opWsdt = OpWsdt( parent=self )
         self._opWsdt.Input.connect( self.Input )
         self._opWsdt.ChannelSelections.connect( self.ChannelSelections )
         self._opWsdt.Threshold.connect( self.Threshold )
         self._opWsdt.MinSize.connect( self.MinSize )
-        self._opWsdt.SigmaSeeds.connect( self.SigmaSeeds )
-        self._opWsdt.SigmaWeights.connect( self.SigmaWeights )
+        self._opWsdt.Sigma.connect( self.Sigma )
         self._opWsdt.Alpha.connect( self.Alpha )
         self._opWsdt.PixelPitch.connect( self.PixelPitch )
         self._opWsdt.ApplyNonmaxSuppression.connect( self.ApplyNonmaxSuppression )
         self._opWsdt.EnableDebugOutputs.connect( self.EnableDebugOutputs )
-    
-        EnableDebugOutputs = InputSlot(value=False)
-        
+
         self._opCache = OpBlockedArrayCache( parent=self )
         self._opCache.fixAtCurrent.connect( self.FreezeCache )
         self._opCache.Input.connect( self._opWsdt.Superpixels )

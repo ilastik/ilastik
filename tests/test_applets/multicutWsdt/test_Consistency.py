@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2019, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -32,7 +32,7 @@ from ilastik.applets.wsdt.opWsdt import OpCachedWsdt
 
 from elf.segmentation.watershed import distance_transform_watershed
 
-DATA_PATH = './../../data/inputdata/3d2c_Probabilities.h5'
+DATA_PATH = './data/inputdata/3d2c_Probabilities.h5'
 DATASET_NAME = 'exported_data'
 AXIS_TAGS = "zyxc"
 
@@ -40,8 +40,7 @@ AXIS_TAGS = "zyxc"
 # Same as the defaults.
 WS_PARAMS = {
 	'threshold' : 0.5,
-	'sigma_seeds' : 3.0,
-	'sigma_weights' : 2.0,
+	'sigma' : 3.0,
 	'min_size' : 100,
 	'alpha' : 0.9,
 	'pixel_pitch' : None,
@@ -64,8 +63,8 @@ def get_result_function(input_data):
 	ws, max_id = distance_transform_watershed(
 						input_data[...,0],
 						WS_PARAMS['threshold'],
-						WS_PARAMS['sigma_seeds'],
-						WS_PARAMS['sigma_weights'],
+						WS_PARAMS['sigma'],
+						WS_PARAMS['sigma'],
 						WS_PARAMS['min_size'],
 						WS_PARAMS['alpha'],
 						WS_PARAMS['pixel_pitch'],
