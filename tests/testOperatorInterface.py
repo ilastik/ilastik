@@ -852,7 +852,7 @@ class TestOperatorStackFormatter:
 
         stack = operator.format_operator_stack(exc.__traceback__)
         assert stack
-        assert len(stack) == 1
+        assert len(stack) == 2
         assert "TestOperatorStackFormatter.BrokenOp.execute" in stack[0]
 
 
