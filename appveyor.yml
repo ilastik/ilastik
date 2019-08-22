@@ -10,6 +10,7 @@ install:
   - set "PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
+  - conda install -c conda-forge conda-build
   - activate base
   - cd \
   # Get the current master of all submodules
@@ -23,13 +24,10 @@ install:
   - ps: cp -recurse C:\projects\lazyflow $env:ILASTIK_ROOT\ilastik-meta\lazyflow
   - timeout 10
   - >
-    conda create -n %ENV_NAME%
-    -c ilastik-forge -c conda-forge -c defaults
-    ilastik-dependencies-no-solvers
-    pytest-cov
-    coveralls
-    black
-  - conda remove -n %ENV_NAME% --force ilastik-meta
+    cd %ILASTIK_ROOT%\ilastik-meta &&
+    python ilastik\scripts\devenv.py create -n %ENV_NAME%
+    -p ilastik-dependencies-no-solvers pytest-cov coveralls black
+    -c ilastik-forge conda-forge defaults
 
 build: off
 
