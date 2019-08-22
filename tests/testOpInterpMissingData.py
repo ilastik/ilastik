@@ -40,7 +40,6 @@ try:
 except ImportError:
     haveScipy = False
 
-# np.set_printoptions(precision=3, linewidth=80)
 
 _testDescriptions = [
     "large block empty",
