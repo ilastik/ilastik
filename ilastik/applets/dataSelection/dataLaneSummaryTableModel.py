@@ -177,7 +177,7 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
         if datasetInfoIndex == DatasetInfoColumn.Location:
             LocationNames = {RelativeFilesystemDatasetInfo : "External File",
                              FilesystemDatasetInfo : "External File",
-                             UrlDatasetInfo: "Remove Data",
+                             UrlDatasetInfo: "Remote Data",
                              PreloadedArrayDatasetInfo : "Preloaded Array",
                              ProjectInternalDatasetInfo : "Project File"}
             return LocationNames[ datasetInfo.__class__ ]
