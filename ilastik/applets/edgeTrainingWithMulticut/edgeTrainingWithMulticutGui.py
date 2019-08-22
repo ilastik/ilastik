@@ -1,5 +1,27 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2019, the ilastik developers
+#                                <team@ilastik.org>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
+#
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#           http://ilastik.org/license.html
+##############################################################################
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QSpacerItem, QSizePolicy
+from PyQt5.QtGui import QIcon
 
+from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.edgeTraining.edgeTrainingGui import EdgeTrainingGui
 from ilastik.applets.multicut.multicutGui import MulticutGuiMixin
 import ilastik.utility.gui as guiutil
@@ -8,10 +30,31 @@ import ilastik.utility.gui as guiutil
 class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
     def __init__(self, parentApplet, topLevelOperatorView):
         self.__cleanup_fns = []
+        self.topLevelOperatorView = topLevelOperatorView
         MulticutGuiMixin.__init__(self, parentApplet, topLevelOperatorView)
         EdgeTrainingGui.__init__(self, parentApplet, topLevelOperatorView)
 
+    def enable_live_update_on_edges_available(self, *args, **kwargs):
+        op = self.topLevelOperatorView
+        lane_dicts_ready = [(bool(dct.value) and dct.ready()) for dct in op.viewed_operator().EdgeLabelsDict]
+        have_edges = any(lane_dicts_ready)
+        if not have_edges:
+            self.live_multicut_button.setChecked(False)
+            self.live_update_button.setChecked(False)
+            self.live_multicut_button.setIcon(QIcon(ilastikIcons.Play))
+            self.live_update_button.setIcon(QIcon(ilastikIcons.Play))
+        self.live_update_button.setEnabled(have_edges)
+        self.configure_operator_from_gui()
+        return have_edges
+
     def _after_init(self):
+        def syncLiveUpdate():
+            if self.live_multicut_button.isChecked():
+                self.live_update_button.setChecked(True)
+                self.live_update_button.setIcon(QIcon(ilastikIcons.Pause))
+
+        self.live_multicut_button.toggled.connect(syncLiveUpdate)
+        self.live_update_button.toggled.connect(syncLiveUpdate)
         EdgeTrainingGui._after_init(self)
         MulticutGuiMixin._after_init(self)
 
@@ -90,3 +133,5 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
     def configure_operator_from_gui(self):
         EdgeTrainingGui.configure_operator_from_gui(self)
         MulticutGuiMixin.configure_operator_from_gui(self)
+        self.configure_gui_from_operator()
+

@@ -84,21 +84,23 @@ class EdgeTrainingGui(LayerViewerGui):
         self._init_edge_label_colortable()
         self._init_probability_colortable()
 
+    def enable_live_update_on_edges_available(self, *args, **kwargs):
+        lane_dicts_ready = [(bool(dct.value) and dct.ready()) for dct in op.viewed_operator().EdgeLabelsDict]
+        have_edges = any(lane_dicts_ready)
+        if not have_edges:
+            self.live_update_button.setChecked(False)
+            self.live_update_button.setIcon(QIcon(ilastikIcons.Play))
+        self.live_update_button.setEnabled(have_edges)
+        self.configure_operator_from_gui()
+        return have_edges
+
     def _after_init(self):
         super( EdgeTrainingGui, self )._after_init()
         op = self.topLevelOperatorView
-        def enable_live_update_on_edges_available(*args, **kwargs):
-            lane_dicts_ready = [(bool(dct.value) and dct.ready()) for dct in op.viewed_operator().EdgeLabelsDict]
-            have_edges = any(lane_dicts_ready)
-            if not have_edges:
-                self.live_update_button.setChecked(False)
-            self.live_update_button.setEnabled(have_edges)
-            self.configure_operator_from_gui()
-            return have_edges
 
         self.configure_gui_from_operator()
 
-        have_edges = enable_live_update_on_edges_available()  # init button
+        have_edges = self.enable_live_update_on_edges_available()  # init live update button
         if have_edges:  # update if there are already labeled edges
             op.EdgeLabelsDict.setDirty()
 
@@ -113,16 +115,10 @@ class EdgeTrainingGui(LayerViewerGui):
             lambda: op.FreezeClassifier.setValue(False))
 
         cleanup_fn = op.EdgeLabelsDict.notifyDirty(
-            enable_live_update_on_edges_available)
+            self.enable_live_update_on_edges_available)
         self.__cleanup_fns.append(cleanup_fn)
 
     def createDrawerControls(self):
-
-        def configure_update_handlers(qt_signal, op_slot):
-            qt_signal.connect(self.configure_operator_from_gui)
-            cleanup_fn = op_slot.notifyDirty(self.configure_gui_from_operator, defer=True)
-            self.__cleanup_fns.append(cleanup_fn)
-
         # Controls
         feature_selection_button = QPushButton(text="Select Features",
                                                icon=QIcon(ilastikIcons.AddSel),
@@ -345,8 +341,9 @@ class EdgeTrainingGui(LayerViewerGui):
             return False
         with self.set_updating():
             op = self.topLevelOperatorView
-            self.train_from_gt_button.setEnabled(op.GroundtruthSegmentation.ready())
-            self.live_update_button.setChecked(not op.FreezeClassifier.value)
+            self.train_from_gt_button.setEnabled( op.GroundtruthSegmentation.ready() )
+            self.live_update_button.setChecked( not op.FreezeClassifier.value )
+            self._handle_live_update_clicked(not op.FreezeClassifier.value)
             if op.FreezeClassifier.value:
                 self.live_update_button.setIcon(QIcon(ilastikIcons.Play))
             else:
@@ -412,7 +409,8 @@ class EdgeTrainingGui(LayerViewerGui):
             layer.name = "Edge Probabilities" # Name is hard-coded in multiple places: grep before changing.
             layer.visible = False
             layer.opacity = 1.0
-            op.Pens.notifyDirty(self.update_probability_edges, defer=True)
+            cleanup_fn = op.Pens.notifyDirty(self.update_probability_edges, defer=True)
+            self.__cleanup_fns.append(cleanup_fn)
 
             layer.contexts.append( self.create_prefetch_menu("Edge Probabilities") )
 

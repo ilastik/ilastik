@@ -85,17 +85,11 @@ class MulticutGuiMixin(object):
         op = self.__topLevelOperatorView
         def configure_update_handlers( qt_signal, op_slot ):
             qt_signal.connect( self.configure_operator_from_gui )
-            op_slot.notifyDirty( self.configure_gui_from_operator )
+            op_slot.notifyDirty(self.configure_gui_from_operator, defer=True)
             self.__cleanup_fns.append( partial( op_slot.unregisterDirty, self.configure_gui_from_operator ) )
-
-        # Extra: Auto-show the multicut edges if necessary.
-        def auto_show_multicut_layer(checked):
-            if checked:
-                self.getLayerByName("Multicut Edges").visible = True
 
         # set the hooks after we initialized everything that might be needed by them
         configure_update_handlers(self.beta_box.valueChanged, op.Beta)
-        self.live_multicut_button.toggled.connect(auto_show_multicut_layer)
         configure_update_handlers(self.live_multicut_button.toggled, op.FreezeCache)
         configure_update_handlers(self.solver_name_combo.currentIndexChanged, op.SolverName)
 
@@ -136,6 +130,7 @@ class MulticutGuiMixin(object):
         # Live Multicut Button
         live_multicut_button = QPushButton(text="Live Multicut",
                                            checkable=True,
+                                           clicked = self._auto_show_multicut_layer,
                                            icon=QIcon(ilastikIcons.Play))
         
         button_layout.addWidget(live_multicut_button)
@@ -201,6 +196,13 @@ class MulticutGuiMixin(object):
         # submit the worklaod in a request and return immediately
         Request(_impl).submit()
 
+    # Extra: Auto-show the multicut edges if necessary.
+    def _auto_show_multicut_layer(self, checked):
+        if checked:
+            edge_layer = self.getLayerByName("Multicut Edges")
+            if edge_layer:
+                edge_layer.visible = True
+    
     @threadRouted
     def __apply_new_probability_edges(self, new_pens):
         # This function is threadRouted because you can't
@@ -263,8 +265,9 @@ class MulticutGuiMixin(object):
             return False
         with self.set_updating():
             op = self.__topLevelOperatorView
-            self.update_button.setEnabled(op.FreezeCache.value)
-            self.live_multicut_button.setChecked(not op.FreezeCache.value)
+            self.update_button.setEnabled( op.FreezeCache.value )
+            self.live_multicut_button.setChecked( not op.FreezeCache.value )
+            self._auto_show_multicut_layer(not op.FreezeCache.value)
             if op.FreezeCache.value:
                 self.live_multicut_button.setIcon(QIcon(ilastikIcons.Play))
             else:
@@ -291,10 +294,6 @@ class MulticutGuiMixin(object):
             op.Beta.setValue(self.beta_box.value())
             op.SolverName.setValue(str(self.solver_name_combo.currentText()))
             op.FreezeCache.setValue(not self.live_multicut_button.isChecked())
-
-        # The GUI may need to respond to some changes in the operator outputs
-        # (e.g. the FreezeCache setting).
-        self.configure_gui_from_operator()
 
     def _handle_mulicut_update_clicked(self):
         def updateThread():
