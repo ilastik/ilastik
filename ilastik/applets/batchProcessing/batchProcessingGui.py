@@ -111,9 +111,6 @@ class BatchRoleWidget(QWidget):
         preference_name = f"recent-dir-role-{self._role_name}"
         file_paths = ImageFileDialog(self, preferences_group='BatchProcessing', preferences_setting=preference_name).getSelectedPaths()
         if file_paths:
-            recent_processing_directory = os.path.dirname(file_paths[0])
-            PreferencesManager().set('BatchProcessing', preference_name, recent_processing_directory)
-
             self.clear()
             self.list_widget.addItems(map(str, file_paths))
 
