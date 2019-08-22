@@ -1,4 +1,3 @@
-from __future__ import print_function
 from builtins import zip
 from builtins import range
 
@@ -516,10 +515,6 @@ class TestInterpMissingData(unittest.TestCase):
             (volume, _, expected) = _getTestVolume(desc, interpolationMethod)
             self.op.InputVolume.setValue(volume)
             self.op.PatchSize.setValue(volume.shape[0])
-            print(self.op.Output[:].wait().view(np.ndarray)[0, 0, :])
-            print(self.op.Missing[:].wait().view(np.ndarray)[0, 0, :])
-            print(" != ")
-            print(expected.view(np.ndarray)[0, 0, :])
             assert_array_almost_equal(
                 self.op.Output[:].wait().view(np.ndarray),
                 expected.view(np.ndarray),
