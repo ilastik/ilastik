@@ -142,7 +142,7 @@ class DataSelectionSerializer(AppletSerializer):
             inner_path = self.local_data_path.joinpath(DatasetInfo.generate_id()).as_posix()
             project_file = self.topLevelOperator.ProjectFile.value
             opWriter = OpH5N5WriterBigDataset(
-                graph=Graph(),
+                graph=self.topLevelOperator.graph,
                 h5N5File=project_file,
                 h5N5Path=inner_path,
                 CompressionEnabled=False,
