@@ -1,4 +1,3 @@
-from __future__ import print_function
 from __future__ import division
 
 from builtins import zip
@@ -934,7 +933,6 @@ class TestOpCompressedCache(object):
         opData = OpArrayPiper(graph=graph)
 
         # 1) input has valid ideal_blockshape, no block shape given
-        print("1)")
         ideal = (33, 33, 33)
         opData.Input.meta.ideal_blockshape = ideal
         opData.Input.setValue(sampleData)
@@ -945,7 +943,6 @@ class TestOpCompressedCache(object):
         assert_array_equal(op.Output.meta.ideal_blockshape, op._blockshape)
 
         # 2) input has invalid ideal_blockshape
-        print("2)")
         ideal = (33, 33)
         opData.Input.meta.ideal_blockshape = ideal
         opData.Input.setValue(None)
@@ -957,7 +954,6 @@ class TestOpCompressedCache(object):
         assert len(op.Output.meta.ideal_blockshape) == 3
 
         # 3) input has valid ideal_blockshape, but BlockShape is incompatible
-        print("3)")
         ideal = (33, 33, 33)
         blockShape = (50, 50, 50)
         opData.Input.meta.ideal_blockshape = ideal

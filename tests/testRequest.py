@@ -1,4 +1,3 @@
-from __future__ import print_function
 from builtins import range
 from builtins import object
 
@@ -684,7 +683,6 @@ class TestRequest(unittest.TestCase):
         finally:
             # Set it back to what it was
             Request.reset_thread_pool(num_workers)
-            print("done")
 
 
 class TestRequestExceptions(object):

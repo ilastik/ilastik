@@ -1,4 +1,3 @@
-from __future__ import print_function
 from builtins import range
 import numpy as np
 import vigra
@@ -73,12 +72,10 @@ class TestVigra(unittest.TestCase):
 
         out = op.Output[...].wait()
         tags = op.Output.meta.getTaggedShape()
-        print(tags)
         out = vigra.taggedView(out, axistags="".join([s for s in tags]))
 
         for c in range(out.shape[3]):
             for t in range(out.shape[4]):
-                print("t={}, c={}".format(t, c))
                 assertEquivalentLabeling(blocks[..., c, t], out[..., c, t])
 
     def testSingletonZ(self):
@@ -100,12 +97,10 @@ class TestVigra(unittest.TestCase):
 
         out = op.Output[...].wait()
         tags = op.Output.meta.getTaggedShape()
-        print(tags)
         out = vigra.taggedView(out, axistags="".join([s for s in tags]))
 
         for c in range(out.shape[3]):
             for t in range(out.shape[4]):
-                print("t={}, c={}".format(t, c))
                 assertEquivalentLabeling(blocks[..., c, t], out[..., c, t])
 
     def testConsistency(self):
