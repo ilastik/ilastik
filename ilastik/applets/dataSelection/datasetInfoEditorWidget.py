@@ -21,9 +21,8 @@ from __future__ import absolute_import
 ###############################################################################
 import os
 import copy
-from enum import Enum, unique
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from numbers import Number
 from functools import partial
 
@@ -183,7 +182,7 @@ class DatasetInfoEditorWidget(QDialog):
     def get_new_normalization(self) -> bool:
         return self.normalizeDisplayComboBox.currentData()
 
-    def get_new_drange(self) -> Tuple[Number, Number]:
+    def get_new_drange(self) -> Optional[Tuple[Number, Number]]:
         if self.get_new_normalization():
             return (self.rangeMinSpinBox.value(), self.rangeMaxSpinBox.value())
         return None
@@ -266,15 +265,3 @@ class DatasetInfoEditorWidget(QDialog):
         self.rangeMinSpinBox.setEnabled(normalize)
         self.rangeMaxSpinBox.setEnabled(normalize)
         self.clearRangeButton.setEnabled(normalize)
-
-    def handle_invalid_axeskeys(self, message:str):
-        self.axes_error_display.setText(message)
-        self.okButton.setEnabled(False)
-
-    def handle_valid_edition(self):
-        self.axes_error_display.setText("")
-        self.okButton.setEnabled(True)
-
-    def validate_new_drange(self, new_value):
-        if not self.normalizeDisplayComboBox.currentData():
-            self.okButton.setEnabled()
