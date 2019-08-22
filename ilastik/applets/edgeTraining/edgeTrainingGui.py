@@ -120,7 +120,7 @@ class EdgeTrainingGui(LayerViewerGui):
 
     def createDrawerControls(self):
         # Controls
-        feature_selection_button = QPushButton(text="Select Features",
+        self.feature_selection_button = QPushButton(text="Select Features",
                                                icon=QIcon(ilastikIcons.AddSel),
                                                toolTip="Select edge/superpixel features to use for classification.",
                                                clicked=self._open_feature_selection_dlg)
@@ -146,7 +146,7 @@ class EdgeTrainingGui(LayerViewerGui):
         label_layout.setSpacing(1)
 
         layout = QVBoxLayout()
-        layout.addWidget(feature_selection_button)
+        layout.addWidget(self.feature_selection_button)
         layout.setSpacing(1)
         layout.addLayout(label_layout)
         layout.addWidget(self.live_update_button)
@@ -340,6 +340,7 @@ class EdgeTrainingGui(LayerViewerGui):
             op = self.topLevelOperatorView
             self.train_from_gt_button.setEnabled( op.GroundtruthSegmentation.ready() )
             self.live_update_button.setChecked( not op.FreezeClassifier.value )
+            self.feature_selection_button.setEnabled(op.FreezeClassifier.value)
             self._handle_live_update_clicked(not op.FreezeClassifier.value)
             if op.FreezeClassifier.value:
                 self.live_update_button.setIcon(QIcon(ilastikIcons.Play))
