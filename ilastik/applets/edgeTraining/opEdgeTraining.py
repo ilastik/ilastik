@@ -402,10 +402,18 @@ class OpPredictEdgeProbabilities(Operator):
         classifier = self.EdgeClassifier.value
 
         # Classifier can be None if no labels have been selected
-        if classifier is None or len(classifier.known_classes) < 2:
+        if classifier is None or len(classifier.known_classes) == 0:
             result[0] = np.zeros((len(edge_features_df),), dtype=np.float32)
             return
 
+        if len(classifier.known_classes) == 1:
+            if classifier.known_classes[0] == 2:
+                result[0] = np.ones((len(edge_features_df),), dtype=np.float32)
+                return
+            else:
+                result[0] = np.zeros((len(edge_features_df),), dtype=np.float32)
+                return
+        
         logger.info("Predicting edge probabilities...")
         feature_matrix = edge_features_df.iloc[:, 2:].values  # Discard [sp1, sp2]
         assert feature_matrix.dtype == np.float32, "Unexpected feature dtype: {}".format(feature_matrix.dtype)
