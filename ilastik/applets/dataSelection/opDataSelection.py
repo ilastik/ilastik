@@ -274,7 +274,7 @@ class DatasetInfo(ABC):
 
 
 class ProjectInternalDatasetInfo(DatasetInfo):
-    def __init__(self, *, inner_path: str, project_file: h5py.File, nickname:str='', axistags=None, **info_kwargs):
+    def __init__(self, *, inner_path: str, project_file: h5py.File, nickname:str='', **info_kwargs):
         self.inner_path = inner_path
         self.project_file = project_file
         self.dataset = project_file[inner_path]

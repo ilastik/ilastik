@@ -236,3 +236,19 @@ def test_modify_project_internal_datasetinfo(qtbot, image_yxc_fs_info, empty_pro
 
     assert isinstance(new_info, ProjectInternalDatasetInfo)
     assert new_info.display_mode == 'grayscale'
+
+def test_modify_axistags_in_stack(qtbot, png_image, another_png_image, empty_project_file):
+    info = FilesystemDatasetInfo(
+        filePath=str(png_image) + os.path.pathsep + str(another_png_image),
+        sequence_axis='t'
+    )
+    widget = create_and_modify_widget(qtbot, infos=[info], project_file=empty_project_file, axiskeys='zxyc')
+    new_info = accept_widget(qtbot, widget)[0]
+    assert new_info.axiskeys == "zxyc"
+
+
+    widget2 = create_and_modify_widget(
+        qtbot, infos=[new_info], project_file=empty_project_file, axiskeys='txyc', location=ProjectInternalDatasetInfo
+    )
+    new_info2 = accept_widget(qtbot, widget2)[0]
+    assert new_info2.axiskeys == "txyc"
