@@ -98,18 +98,19 @@ class BatchProcessingApplet(Applet):
         batches = list(zip(*role_data_dict.values()))
         try:
             results = []
-            for batch_dataset_index, role_input_paths in enumerate(batches):
+            for batch_index, role_input_paths in enumerate(batches):
+                def lerpProgressSignal(a, b, p):
+                    self.progressSignal((100 - p) * a + p * b)
 
-                def emit_progress(dataset_index, dataset_percent):
-                    overall_progress = (dataset_index + dataset_percent / 100.0) / len(batches)
-                    self.progressSignal(100 * overall_progress)
+                global_progress_start = batch_index / len(batches)
+                global_progress_end = (batch_index + 1) / len(batches)
 
                 result = self.export_dataset(
                     role_input_paths,
                     input_axes=input_axes,
                     export_to_array=export_to_array,
                     sequence_axis=sequence_axis,
-                    progress_callback=partial(emit_progress, batch_dataset_index),
+                    progress_callback=partial(lerpProgressSignal, global_progress_start, global_progress_end)
                 )
                 results.append(result)
             return results
