@@ -307,7 +307,6 @@ class EdgeTrainingGui(LayerViewerGui):
             pen.setColor(color)
             self.probability_pen_table.append(pen)
 
-        # When the edge edge labels are dirty, update the probability edge layer pens
         op = self.topLevelOperatorView
         op.ProbabilityPenTable.setValue(self.probability_pen_table)
 
@@ -324,8 +323,6 @@ class EdgeTrainingGui(LayerViewerGui):
         if not self.getLayerByName("Edge Probabilities") or len(args) == 0:
             return
         self.overwrite_edge_pens(args[0].value)
-
-        # req = Request(_impl).submit()
         # Now that we've trained the classifier, the workflow may wish to enable downstream applets.
         self.parentApplet.appletStateUpdateRequested()
 
