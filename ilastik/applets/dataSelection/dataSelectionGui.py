@@ -48,7 +48,7 @@ from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.base.applet import DatasetConstraintError
 
-from .opDataSelection import DatasetInfo, FilesystemDatasetInfo, ProjectInternalDatasetInfo
+from .opDataSelection import DatasetInfo, FilesystemDatasetInfo, ProjectInternalDatasetInfo, UrlDatasetInfo
 from .dataLaneSummaryTableModel import DataLaneSummaryTableModel
 from .datasetInfoEditorWidget import DatasetInfoEditorWidget
 from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, SubvolumeSelectionDlg
@@ -695,8 +695,4 @@ class DataSelectionGui(QWidget):
         recent_nodes[hostname] = node_uuid
         recent_nodes_pref.set(recent_nodes)
 
-        if subvolume_roi is None:
-            self.addFileNames([dvid_url], roleIndex, laneIndex)
-        else:
-            start, stop = subvolume_roi
-            self.addFileNames([dvid_url], roleIndex, laneIndex, [(start, stop)])
+        self.addLanes([UrlDatasetInfo(url=dvid_url, subvolume_roi=subvolume_roi)], roleIndex)
