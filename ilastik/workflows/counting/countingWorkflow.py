@@ -77,6 +77,7 @@ class CountingWorkflow(Workflow):
 
         self.countingApplet = CountingApplet(workflow=self)
         opCounting = self.countingApplet.topLevelOperator
+        opCounting.WorkingDirectory.connect(opDataSelection.WorkingDirectory)
 
         self.dataExportApplet = CountingDataExportApplet(self, "Density Export", opCounting)
 
