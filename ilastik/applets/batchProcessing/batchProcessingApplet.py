@@ -113,6 +113,7 @@ class BatchProcessingApplet(Applet):
                     progress_callback=partial(lerpProgressSignal, global_progress_start, global_progress_end)
                 )
                 results.append(result)
+            self.dataExportApplet.post_process_entire_export()
             return results
         finally:
             self.progressSignal(100)
@@ -173,7 +174,6 @@ class BatchProcessingApplet(Applet):
 
             # Call customization hook
             self.dataExportApplet.post_process_lane_export(self.num_lanes - 1)
-            self.dataExportApplet.post_process_entire_export()
             return result
         finally:
             self.dataSelectionApplet.topLevelOperator.removeLane(original_num_lanes, original_num_lanes)
