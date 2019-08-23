@@ -666,54 +666,46 @@ class BoxInterpreter(QObject):
         items = watched.scene().items(QPointF(*pos[1:3]))
         items = [el for el in items if isinstance(el, QGraphicsResizableRect)]
 
-        # Keyboard interaction
-        if event.type() == QEvent.KeyPress:
+        if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Space:
             # Switch selection
-            if event.key() == Qt.Key_Space:
-                if len(items) > 1:
-                    items[-1].setZValue(items[0].zValue() + 1)
-                    items[0].setSelected(False)
-                    items[-1].setSelected(True)
+            if len(items) > 1:
+                items[-1].setZValue(items[0].zValue() + 1)
+                items[0].setSelected(False)
+                items[-1].setSelected(True)
 
-            if event.key() == Qt.Key_Control:
-                QApplication.setOverrideCursor(Qt.OpenHandCursor)
+        elif event.type() == QEvent.KeyPress and event.key() == Qt.Key_Control:
+            QApplication.setOverrideCursor(Qt.OpenHandCursor)
 
-        if event.type() == QEvent.KeyRelease:
-            if event.key() == Qt.Key_Control:
-                QApplication.restoreOverrideCursor()
+        elif event.type() == QEvent.KeyRelease and event.key() == Qt.Key_Control:
+            QApplication.restoreOverrideCursor()
 
-        # Pressing mouse and menaging rubber band
-        if event.type() == QEvent.MouseButtonPress:
-            if event.button() == Qt.LeftButton:
-                self.origin = QPoint(event.pos())
-                self.originpos = pos
-                self.rubberBand.setGeometry(QRect(self.origin, QSize()))
+        elif event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
+            # Pressing mouse and menaging rubber band
 
-                itemsall = watched.scene().items(QPointF(*pos[1:3]))
-                itemsall = [el for el in itemsall if isinstance(el, ResizeHandle)]
+            self.origin = QPoint(event.pos())
+            self.originpos = pos
+            self.rubberBand.setGeometry(QRect(self.origin, QSize()))
 
-                modifiers = QApplication.keyboardModifiers()
-                if (
-                    modifiers != Qt.ControlModifier and modifiers != Qt.ShiftModifier and len(itemsall) == 0
-                ):  # show rubber band if Ctrl is not pressed
-                    self.rubberBand.show()
+            itemsall = watched.scene().items(QPointF(*pos[1:3]))
+            itemsall = [el for el in itemsall if isinstance(el, ResizeHandle)]
 
-                gPos = watched.mapToGlobal(event.pos())
+            modifiers = QApplication.keyboardModifiers()
+            if modifiers != Qt.ControlModifier and modifiers != Qt.ShiftModifier and len(itemsall) == 0:  # show rubber band if Ctrl is not pressed
+                self.rubberBand.show()
 
-            if event.button() == Qt.RightButton:
-                gPos = watched.mapToGlobal(event.pos())
+            gPos = watched.mapToGlobal(event.pos())
 
-        if event.type() == QEvent.MouseMove:
+        elif event.type() == QEvent.MouseButtonPress and event.button() == Qt.RightButton:
+            gPos = watched.mapToGlobal(event.pos())
+
+        elif event.type() == QEvent.MouseMove:
             if not self.origin.isNull():
                 self.rubberBand.setGeometry(QRect(self.origin, event.pos()).normalized())
 
-        if (
-            event.type() == QEvent.MouseButtonRelease
-            and event.button() == Qt.LeftButton
-            and self.rubberBand.isVisible()
-        ):
-            self.rubberBand.hide()
-            self.leftClickReleased.emit(roi2rect(self.originpos[1:3], self._posModel.cursorPos[:2]))
+        elif event.type() == QEvent.MouseButtonRelease and event.button() == Qt.LeftButton:
+            if self.rubberBand.isVisible():
+                self.rubberBand.hide()
+                self.leftClickReleased.emit(roi2rect(self.originpos[1:3], self._posModel.cursorPos[:2]))
 
         # Event is always forwarded to the navigation interpreter.
         return self.baseInterpret.eventFilter(watched, event)
