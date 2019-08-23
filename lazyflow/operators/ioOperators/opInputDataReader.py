@@ -1,10 +1,3 @@
-from __future__ import absolute_import
-from builtins import next
-import sys
-
-if sys.version_info.major >= 3:
-    unicode = str
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -45,7 +38,7 @@ from lazyflow.operators.ioOperators import (
     OpImageReader,
 )
 from lazyflow.utility.jsonConfig import JsonConfigParser
-from lazyflow.utility.pathHelpers import lsH5N5, isUrl, PathComponents
+from lazyflow.utility.pathHelpers import lsH5N5, isUrl, isRelative, splitPath, PathComponents
 
 from .opStreamingUfmfReader import OpStreamingUfmfReader
 from .opStreamingMmfReader import OpStreamingMmfReader
@@ -78,6 +71,7 @@ import vigra
 import os
 import re
 import logging
+from typing import List, Tuple
 
 from lazyflow.utility.io_util.multiprocessHdf5File import MultiProcessHdf5File
 
@@ -135,11 +129,24 @@ class OpInputDataReader(Operator):
     class DatasetReadError(Exception):
         pass
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+        self,
+        WorkingDirectory: str = None,
+        FilePath: str = None,
+        SequenceAxis: str = None,
+        SubVolumeRoi: Tuple[int, int] = None,
+        *args,
+        **kwargs,
+    ):
         super(OpInputDataReader, self).__init__(*args, **kwargs)
         self.internalOperators = []
         self.internalOutput = None
         self._file = None
+
+        self.WorkingDirectory.setOrConnectIfAvailable(WorkingDirectory)
+        self.FilePath.setOrConnectIfAvailable(FilePath)
+        self.SequenceAxis.setOrConnectIfAvailable(SequenceAxis)
+        self.SubVolumeRoi.setOrConnectIfAvailable(SubVolumeRoi)
 
     def cleanUp(self):
         super(OpInputDataReader, self).cleanUp()
@@ -152,21 +159,18 @@ class OpInputDataReader(Operator):
         Inspect the file name and instantiate and connect an internal operator of the appropriate type.
         TODO: Handle datasets of non-standard (non-5d) dimensions.
         """
-        filePath = self.FilePath.value
-        assert isinstance(filePath, (str, unicode)), "Error: filePath is not of type str.  It's of type {}".format(
-            type(filePath)
-        )
+        path_components = splitPath(self.FilePath.value)
 
-        # Does this look like a relative path?
-        useRelativePath = not isUrl(filePath) and not os.path.isabs(filePath)
-
-        if useRelativePath:
-            # If using a relative path, we need both inputs before proceeding
-            if not self.WorkingDirectory.ready():
-                return
+        cwd = self.WorkingDirectory.value if self.WorkingDirectory.ready() else None
+        abs_paths = []
+        for path in path_components:
+            if isRelative(path):
+                if cwd is None:
+                    return  # FIXME: this mirrors old logic but I'm not sure if it's safe
+                abs_paths.append(os.path.normpath(os.path.join(cwd, path)).replace("\\", "/"))
             else:
-                # Convert this relative path into an absolute path
-                filePath = os.path.normpath(os.path.join(self.WorkingDirectory.value, filePath)).replace("\\", "/")
+                abs_paths.append(path)
+        filePath = os.path.pathsep.join(abs_paths)
 
         # Clean up before reconfiguring
         if self.internalOperators:
