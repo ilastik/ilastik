@@ -654,7 +654,6 @@ class BoxInterpreter(QObject):
         self.boxController = BoxContr
 
         self.leftClickReleased.connect(BoxContr.addNewBox)
-        self.rightClickReceived.connect(BoxContr.onChangedPos)
 
         self.origin = QPoint()
         self.originpos = object()
@@ -757,9 +756,6 @@ class BoxController(QObject):
 
         boxListModel.boxRemoved.connect(self.deleteItem)
 
-    def getCurrentActiveBox(self):
-        pass
-
     def addNewBox(self, pos: QRect) -> None:
         if QApplication.keyboardModifiers() == Qt.ControlModifier:
             return
@@ -813,20 +809,6 @@ class BoxController(QObject):
                 boxes["rois"].append([rect.getStart(), rect.getStop()])
 
         self.viewBoxesChanged.emit(boxes)
-
-    def itemsAtPos(self, pos5D):
-        pos5D = pos5D[1:3]
-        items = self.scene.items(QPointF(*pos5D))
-        items = [el for el in items if isinstance(el, ResizeHandle)]
-        return items
-
-    def onChangedPos(self, pos, gpos):
-        pos = pos[1:3]
-        items = self.scene.items(QPointF(*pos))
-        # print items
-        items = [el for el in items if isinstance(el, QGraphicsResizableRect)]
-
-        self.itemsAtpos = items
 
     def deleteSelectedItems(self):
         tmp = []
