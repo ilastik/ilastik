@@ -66,6 +66,7 @@
         "workflows":                                                { "level":"INFO" },
         "volumina":                                                 { "level":"INFO" },
         "volumina.pixelpipeline":                                   { "level":"INFO" },
+        "volumina.tiling":                                          { "level":"WARN" },
         "volumina.imageScene2D":                                    { "level":"INFO" },
         "volumina.utility.shortcutManager":                         { "level":"INFO" },
 
