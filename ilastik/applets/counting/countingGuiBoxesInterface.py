@@ -626,11 +626,7 @@ class CoupledRectangleElement(object):
 
 
 class BoxInterpreter(QObject):
-    rightClickReceived = pyqtSignal(object, QPoint)  # list of indexes, global window coordinate of click
-    leftClickReceived = pyqtSignal(object, QPoint)
     leftClickReleased = pyqtSignal(QRect)
-    cursorPositionChanged = pyqtSignal(object)
-    deleteSelectedItemsSignal = pyqtSignal()  # send the signal that we want to delete the currently selected item
 
     acceptBoxManipulation = True
 
@@ -705,14 +701,11 @@ class BoxInterpreter(QObject):
                     self.rubberBand.show()
 
                 gPos = watched.mapToGlobal(event.pos())
-                self.leftClickReceived.emit(pos, gPos)
 
             if event.button() == Qt.RightButton:
                 gPos = watched.mapToGlobal(event.pos())
-                self.rightClickReceived.emit(pos, gPos)
 
         if event.type() == QEvent.MouseMove:
-            self.cursorPositionChanged.emit(event.pos())
             if not self.origin.isNull():
                 self.rubberBand.setGeometry(QRect(self.origin, event.pos()).normalized())
 
