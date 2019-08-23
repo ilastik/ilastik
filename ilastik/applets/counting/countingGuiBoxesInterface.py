@@ -106,7 +106,7 @@ class ResizeHandle(QGraphicsRectItem):
         self._hoverOver = True
         self._updateColor()
         if hasattr(self.parentItem(), "_editor") and self.parentItem()._editor:
-            if hasattr(self.parentItem()._editor.eventSwitch.interpreter, "acceptBoxManipulation"):
+            if isinstance(self.parentItem()._editor.eventSwitch.interpreter, BoxInterpreter):
                 if self._constrainAxis == 0:
                     QApplication.setOverrideCursor(Qt.SplitVCursor)
                 else:
@@ -627,8 +627,6 @@ class CoupledRectangleElement(object):
 
 class BoxInterpreter(QObject):
     leftClickReleased = pyqtSignal(QRect)
-
-    acceptBoxManipulation = True
 
     def __init__(self, navigationInterpreter, positionModel, BoxContr, widget):
         """
