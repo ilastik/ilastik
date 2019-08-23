@@ -164,7 +164,7 @@ class DatasetInfo(ABC):
             [re.sub(comp.extension + "$", "", comp.externalPath) for comp in components]
         )
         if external_nickname:
-            external_nickname = external_nickname.split(os.path.sep)[-1]
+            external_nickname = Path(external_nickname).name
         else:
             external_nickname = "stack_at-" + components[0].filenameBase
         internal_nickname = os.path.commonprefix([comp.internalPath or "" for comp in components]).lstrip("/")
@@ -201,7 +201,7 @@ class DatasetInfo(ABC):
 
         if missing_files:
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), os.path.pathsep.join(missing_files))
-        return sorted(expanded_paths)
+        return sorted(p.replace('\\', '/') for p in expanded_paths)
 
     @classmethod
     def globInternalPaths(cls, file_path: str, glob_str: str, cwd: str = None) -> List[str]:
