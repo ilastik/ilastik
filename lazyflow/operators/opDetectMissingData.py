@@ -84,7 +84,6 @@ def SVC(*args, **kwargs):
     # new ones don't and default to True
     if not svcTakesScaleC and "scale_C" in kwargs:
         del kwargs["scale_C"]
-    print(kwargs)
     return _SVC(*args, **kwargs)
 
 

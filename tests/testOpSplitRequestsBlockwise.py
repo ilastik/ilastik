@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -90,9 +88,6 @@ class TestOpSplitRequestsBlockwise(unittest.TestCase):
             SubRegion(slot, (10, 30, 10), (20, 45, 20)),
             SubRegion(slot, (10, 30, 20), (20, 45, 30)),
         ]
-
-        for req in self.piper.requests:
-            print(req)
 
         for roi in expected:
             filtered = [x for x in self.piper.requests if x == roi]

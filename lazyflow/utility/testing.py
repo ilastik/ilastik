@@ -61,7 +61,6 @@ def assertEquivalentLabeling(labelImage, referenceImage):
         refblock = y[idx]
         # check that labels are the same
         corner = [a[0] for a in idx]
-        print("Inspecting region of size {} at {}".format(refblock.size, corner))
 
         assert np.all(
             refblock == refblock[0]

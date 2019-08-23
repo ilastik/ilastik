@@ -188,7 +188,7 @@ class ArrayLike(SlotType):
         return destination
 
     def isCompatible(self, value):
-        warnings.warn("ArrayLike.isCompatible: FIXME here")
+        # FIXME ArrayLike.isCompatible
         return True
 
     def setupMetaForValue(self, value):

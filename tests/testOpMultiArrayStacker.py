@@ -1,4 +1,3 @@
-from __future__ import print_function
 from builtins import zip
 from builtins import range
 
@@ -153,7 +152,6 @@ class OpTrackedOutputProvider(OpOutputProvider):
         self._lock = threading.Lock()
 
     def execute(self, slot, subindex, roi, result):
-        print("Requesting roi: {}".format(roi))
         with self._lock:
             self.requested_rois.append(copy.copy(roi))
         super(OpTrackedOutputProvider, self).execute(slot, subindex, roi, result)
@@ -216,7 +214,6 @@ def testFullAllocate():
     newdata = stackerX.outputs["Output"][:].wait()
     assert_array_equal(newdata, stack.view(numpy.ndarray))
 
-    print("1st part ok.................")
     # merge stuff that already has an x dimension
     stack2 = vigra.VigraArray((nx - 1, ny, nz, nc), axistags=vigra.defaultAxistags("xyzc"))
     stack2[...] = numpy.random.rand(nx - 1, ny, nz, nc)
@@ -242,7 +239,6 @@ def testFullAllocate():
     assert_array_equal(newdata, bothstacks.view(numpy.ndarray))
     # print newdata.shape, bothstacks.shape
 
-    print("2nd part ok.................")
     # print "------------------------------------------------------------"
     # print "------------------------------------------------------------"
     # print "------------------------------------------------------------"
@@ -263,7 +259,6 @@ def testFullAllocate():
     newdata = stackerC.outputs["Output"][:].wait()
     assert_array_equal(newdata, stack.view(numpy.ndarray))
 
-    print("3rd part ok.................")
     # print "STACKER: ", stackerC.outputs["Output"].meta.shape
 
     # merge stuff that already has an x dimension
@@ -283,7 +278,6 @@ def testFullAllocate():
     newdata = stackerC2.outputs["Output"][:].wait()
     bothstacks = numpy.concatenate((stack, stack3), axis=3)
     assert_array_equal(newdata, bothstacks.view(numpy.ndarray))
-    print("4th part ok.................")
 
 
 def testPartialAllocate():
@@ -311,7 +305,6 @@ def testPartialAllocate():
     key = (slice(2, 3, None), slice(15, 18, None), slice(12, 15, None), slice(0, 7, None))
     newdata = stackerX.outputs["Output"][key].wait()
     substack = stack[key]
-    print(newdata.shape, substack.shape)
     assert_array_equal(newdata, substack.view(numpy.ndarray))
 
 
@@ -345,9 +338,6 @@ class TestAxisIndex(unittest.TestCase):
             Input = InputSlot()
 
             def propagateDirty(self, slot, subindex, roi):
-                print("also here")
-                print(roi.stop)
-                print(self.Input.meta.shape)
                 assert len(roi.stop) == len(self.Input.meta.shape)
                 for x, y in zip(roi.stop, self.Input.meta.shape):
                     assert x <= y, "{} > {}".format(x, y)
