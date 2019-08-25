@@ -1,4 +1,5 @@
 import pytest
+import os
 from pathlib import Path
 
 from PyQt5.QtCore import QTimer
@@ -23,12 +24,13 @@ def image(tmp_path) -> Path:
     image_path.touch()
     return image_path
 
-
+@pytest.mark.skipif(os.name == 'nt', reason="Unimportant tests that either hang of segfaults on windows")
 def test_default_image_directory_is_home_with_blank_preferences_file(blank_preferences: PreferencesManager):
     dialog = ImageFileDialog(None, preferences_manager=blank_preferences)
     assert dialog.directory().absolutePath() == Path("~").expanduser().absolute().as_posix()
 
 
+@pytest.mark.skipif(os.name == 'nt', reason="Unimportant tests that either hang of segfaults on windows")
 def test_picking_file_updates_default_image_directory_to_previously_used(blank_preferences_file: Path, image: Path):
     dialog = ImageFileDialog(None, preferences_manager=PreferencesManager(blank_preferences_file))
     assert dialog.directory().absolutePath() == Path("~").expanduser().absolute().as_posix()
@@ -39,7 +41,7 @@ def test_picking_file_updates_default_image_directory_to_previously_used(blank_p
     dialog = ImageFileDialog(None, preferences_manager=PreferencesManager(blank_preferences_file))
     assert Path(dialog.directory().absolutePath()) == blank_preferences_file.parent
 
-
+@pytest.mark.skipif(os.name == 'nt', reason="Unimportant tests that either hang of segfaults on windows")
 def test_picking_n5_json_file_returns_directory_path(tmp_n5_file: Path, blank_preferences: PreferencesManager):
     dialog = ImageFileDialog(None, preferences_manager=blank_preferences)
     dialog.selectFile(tmp_n5_file.joinpath("attributes.json").as_posix())
