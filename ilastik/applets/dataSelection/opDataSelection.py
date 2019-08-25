@@ -404,10 +404,11 @@ class FilesystemDatasetInfo(DatasetInfo):
             raise Exception(f"Multiple extensions unsupported as a single data source: {self.expanded_paths}")
         self.filePath = os.path.pathsep.join(self.expanded_paths)
 
-        self.op_reader = OpInputDataReader(
+        op_reader = OpInputDataReader(
             graph=Graph(), WorkingDirectory=self.base_dir, FilePath=self.filePath, SequenceAxis=self.sequence_axis
         )
-        meta = self.op_reader.Output.meta
+        meta = op_reader.Output.meta.copy()
+        op_reader.cleanUp()
 
         super().__init__(
             default_tags=meta.axistags,

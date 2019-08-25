@@ -135,13 +135,15 @@ class DataSelectionSerializer(AppletSerializer):
     ):
         progress_signal = progress_signal or self.progressSignal
         progress_signal(0)
+        op_reader = None
+        op_writer = None
         try:
             colon_paths = os.path.pathsep.join(abs_paths)
             op_reader = OpInputDataReader(graph=self.topLevelOperator.graph, FilePath=colon_paths, SequenceAxis=sequence_axis)
             axistags = op_reader.Output.meta.axistags
             inner_path = self.local_data_path.joinpath(DatasetInfo.generate_id()).as_posix()
             project_file = self.topLevelOperator.ProjectFile.value
-            opWriter = OpH5N5WriterBigDataset(
+            op_writer = OpH5N5WriterBigDataset(
                 graph=self.topLevelOperator.graph,
                 h5N5File=project_file,
                 h5N5Path=inner_path,
@@ -149,8 +151,8 @@ class DataSelectionSerializer(AppletSerializer):
                 BatchSize=1,
                 Image=op_reader.Output,
             )
-            opWriter.progressSignal.subscribe(progress_signal)
-            success = opWriter.WriteImage.value
+            op_writer.progressSignal.subscribe(progress_signal)
+            success = op_writer.WriteImage.value
             for index, tag in enumerate(axistags):
                 project_file[inner_path].dims[index].label = tag.key
             project_file[inner_path].attrs["axistags"] = axistags.toJSON()
@@ -158,6 +160,10 @@ class DataSelectionSerializer(AppletSerializer):
                 project_file[inner_path].attrs["drange"] = op_reader.Output.meta.get("drange")
             return inner_path
         finally:
+            if op_writer:
+                op_writer.Image.disconnect()
+            if op_reader:
+                op_reader.cleanUp()
             progress_signal(100)
 
     def initWithoutTopGroup(self, hdf5File, projectFilePath):
