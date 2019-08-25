@@ -123,7 +123,7 @@ def test_datasetinfo_editor_widget_modifies_single_info(qtbot, png_image, empty_
     assert edited_info.drange == (10, 20)
     assert edited_info.display_mode == 'alpha-modulated'
     assert isinstance(edited_info, RelativeFilesystemDatasetInfo)
-    assert edited_info.filePath == str(Path(png_image).absolute())
+    assert edited_info.filePath == Path(png_image).absolute().as_posix()
 
 def test_datasetinfo_editor_widget_shows_correct_data_on_multiple_info(qtbot, png_image, another_png_image, empty_project_file):
     info = FilesystemDatasetInfo(filePath=str(png_image), project_file=empty_project_file)
