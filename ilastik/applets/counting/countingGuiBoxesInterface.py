@@ -650,7 +650,7 @@ class BoxInterpreter(QObject):
         self.leftClickReleased.connect(BoxContr.addNewBox)
 
         self.origin = QPoint()
-        self.originpos = object()
+        self.originpos = None
 
     def start(self):
         self.baseInterpret.start()
@@ -659,11 +659,10 @@ class BoxInterpreter(QObject):
         self.baseInterpret.stop()
 
     def eventFilter(self, watched, event):
-        pos = [int(i) for i in self._posModel.cursorPos]
-        pos = [self._posModel.time] + pos + [self._posModel.channel]
+        pos = tuple(map(int, self._posModel.cursorPos[:2]))
 
         # Rectangles under the current point
-        items = watched.scene().items(QPointF(*pos[1:3]))
+        items = watched.scene().items(QPointF(*pos))
         items = [el for el in items if isinstance(el, QGraphicsResizableRect)]
 
         if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Space:
@@ -686,7 +685,7 @@ class BoxInterpreter(QObject):
             self.originpos = pos
             self.rubberBand.setGeometry(QRect(self.origin, QSize()))
 
-            itemsall = watched.scene().items(QPointF(*pos[1:3]))
+            itemsall = watched.scene().items(QPointF(*pos))
             itemsall = [el for el in itemsall if isinstance(el, ResizeHandle)]
 
             modifiers = QApplication.keyboardModifiers()
@@ -700,7 +699,8 @@ class BoxInterpreter(QObject):
         elif event.type() == QEvent.MouseButtonRelease and event.button() == Qt.LeftButton:
             if self.rubberBand.isVisible():
                 self.rubberBand.hide()
-                self.leftClickReleased.emit(roi2rect(self.originpos[1:3], self._posModel.cursorPos[:2]))
+                self.leftClickReleased.emit(roi2rect(self.originpos, pos))
+                self.originpos = None
 
         # Event is always forwarded to the navigation interpreter.
         return self.baseInterpret.eventFilter(watched, event)
