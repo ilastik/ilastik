@@ -649,7 +649,7 @@ class BoxInterpreter(QObject):
 
         self.leftClickReleased.connect(BoxContr.addNewBox)
 
-        self.origin = QPoint()
+        self.origin = None
         self.originpos = None
 
     def start(self):
@@ -683,7 +683,7 @@ class BoxInterpreter(QObject):
 
             self.origin = QPoint(event.pos())
             self.originpos = pos
-            self.rubberBand.setGeometry(QRect(self.origin, QSize()))
+            self.rubberBand.setGeometry(self.origin.x(), self.origin.y(), 0, 0)
 
             itemsall = watched.scene().items(QPointF(*pos))
             itemsall = [el for el in itemsall if isinstance(el, ResizeHandle)]
@@ -693,13 +693,19 @@ class BoxInterpreter(QObject):
                 self.rubberBand.show()
 
         elif event.type() == QEvent.MouseMove:
-            if not self.origin.isNull():
-                self.rubberBand.setGeometry(QRect(self.origin, event.pos()).normalized())
+            if self.rubberBand.isVisible():
+                self.rubberBand.setGeometry(
+                    min(self.origin.x(), event.pos().x()),
+                    min(self.origin.y(), event.pos().y()),
+                    abs(self.origin.x() - event.pos().x()),
+                    abs(self.origin.y() - event.pos().y()),
+                )
 
         elif event.type() == QEvent.MouseButtonRelease and event.button() == Qt.LeftButton:
             if self.rubberBand.isVisible():
                 self.rubberBand.hide()
                 self.leftClickReleased.emit(roi2rect(self.originpos, pos))
+                self.origin = None
                 self.originpos = None
 
         # Event is always forwarded to the navigation interpreter.
