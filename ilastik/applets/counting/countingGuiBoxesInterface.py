@@ -693,11 +693,6 @@ class BoxInterpreter(QObject):
             if modifiers != Qt.ControlModifier and modifiers != Qt.ShiftModifier and len(itemsall) == 0:  # show rubber band if Ctrl is not pressed
                 self.rubberBand.show()
 
-            gPos = watched.mapToGlobal(event.pos())
-
-        elif event.type() == QEvent.MouseButtonPress and event.button() == Qt.RightButton:
-            gPos = watched.mapToGlobal(event.pos())
-
         elif event.type() == QEvent.MouseMove:
             if not self.origin.isNull():
                 self.rubberBand.setGeometry(QRect(self.origin, event.pos()).normalized())
