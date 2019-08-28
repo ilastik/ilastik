@@ -28,14 +28,11 @@ from typing import Iterable, TextIO, Tuple
 
 import numpy as np
 
-import vigra
 from ilastik.utility.gui import roi2rect
-from ilastik.widgets.boxListModel import BoxLabel, BoxListModel
-from lazyflow.graph import Graph, Operator, OutputSlot
-from lazyflow.operator import InputSlot
+from ilastik.widgets.boxListModel import BoxLabel
 from lazyflow.operators.generic import OpSubRegion
 from past.utils import old_div
-from PyQt5.QtCore import QEvent, QObject, QPoint, QPointF, QRect, QRectF, QSize, Qt, QTimer, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QEvent, QObject, QPoint, QPointF, QRect, QRectF, Qt, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QBrush, QColor, QFont, QPen
 from PyQt5.QtWidgets import (
     QApplication,
@@ -44,11 +41,11 @@ from PyQt5.QtWidgets import (
     QGraphicsTextItem,
     QRubberBand,
     QStylePainter,
+    QWidget,
 )
 from volumina import colortables
-from volumina.api import Viewer, createDataSource
-from volumina.colortables import jet
-from volumina.layer import ColortableLayer
+from volumina.eventswitch import InterpreterABC
+from volumina.positionModel import PositionModel
 
 logger = logging.getLogger(__name__)
 
@@ -626,51 +623,41 @@ class CoupledRectangleElement(object):
 
 
 class BoxInterpreter(QObject):
-    leftClickReleased = pyqtSignal(QRect)
+    boxDrawn = pyqtSignal(QRect)
 
-    def __init__(self, navigationInterpreter, positionModel, BoxContr, widget):
+    def __init__(self, base: InterpreterABC, posModel: PositionModel, newBoxParent: QWidget):
+        """Create new BoxInterpreter.
+
+        Args:
+            newBoxParent: Parent for the widget that is temporarily shown when a user draws a new box.
         """
-        Class which interacts directly with the image scene
+        super().__init__()
 
-        :param navigationInterpreter:
-        :param positionModel:
-        :param BoxContr:
-        :param widget: The main widget
+        self._base = base
+        self._posModel = posModel
+        self._rubberBand = RedRubberBand(QRubberBand.Rectangle, newBoxParent)
 
-        """
+        self._origin = None
+        self._originPos = None
 
-        QObject.__init__(self)
+    def start(self) -> None:
+        self._base.start()
 
-        self.baseInterpret = navigationInterpreter
-        self._posModel = positionModel
-        self.rubberBand = RedRubberBand(QRubberBand.Rectangle, widget)
+    def stop(self) -> None:
+        self._base.stop()
 
-        self.boxController = BoxContr
-
-        self.leftClickReleased.connect(BoxContr.addNewBox)
-
-        self.origin = None
-        self.originpos = None
-
-    def start(self):
-        self.baseInterpret.start()
-
-    def stop(self):
-        self.baseInterpret.stop()
-
-    def eventFilter(self, watched, event):
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
         pos = tuple(map(int, self._posModel.cursorPos[:2]))
 
-        # Rectangles under the current point
-        items = watched.scene().items(QPointF(*pos))
-        items = [el for el in items if isinstance(el, QGraphicsResizableRect)]
-
         if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Space:
-            # Switch selection
-            if len(items) > 1:
-                items[-1].setZValue(items[0].zValue() + 1)
-                items[0].setSelected(False)
-                items[-1].setSelected(True)
+            # Bring to front and select the box at the bottom of the stack.
+            items = watched.scene().items(QPointF(*pos))
+            rects = [item for item in items if isinstance(item, QGraphicsResizableRect)]
+
+            if len(rects) > 1:
+                rects[-1].setZValue(rects[0].zValue() + 1)
+                rects[0].setSelected(False)
+                rects[-1].setSelected(True)
 
         elif event.type() == QEvent.KeyPress and event.key() == Qt.Key_Control:
             QApplication.setOverrideCursor(Qt.OpenHandCursor)
@@ -679,37 +666,37 @@ class BoxInterpreter(QObject):
             QApplication.restoreOverrideCursor()
 
         elif event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
-            # Pressing mouse and menaging rubber band
+            # Start new box rectangle.
+            self._origin = QPoint(event.pos())
+            self._originPos = pos
+            self._rubberBand.setGeometry(self._origin.x(), self._origin.y(), 0, 0)
 
-            self.origin = QPoint(event.pos())
-            self.originpos = pos
-            self.rubberBand.setGeometry(self.origin.x(), self.origin.y(), 0, 0)
-
-            itemsall = watched.scene().items(QPointF(*pos))
-            itemsall = [el for el in itemsall if isinstance(el, ResizeHandle)]
+            items = watched.scene().items(QPointF(*pos))
+            handles = [item for item in items if isinstance(item, ResizeHandle)]
 
             modifiers = QApplication.keyboardModifiers()
-            if modifiers != Qt.ControlModifier and modifiers != Qt.ShiftModifier and len(itemsall) == 0:  # show rubber band if Ctrl is not pressed
-                self.rubberBand.show()
+            if modifiers != Qt.ControlModifier and modifiers != Qt.ShiftModifier and not handles:
+                self._rubberBand.show()
 
         elif event.type() == QEvent.MouseMove:
-            if self.rubberBand.isVisible():
-                self.rubberBand.setGeometry(
-                    min(self.origin.x(), event.pos().x()),
-                    min(self.origin.y(), event.pos().y()),
-                    abs(self.origin.x() - event.pos().x()),
-                    abs(self.origin.y() - event.pos().y()),
+            if self._rubberBand.isVisible():
+                # Resize new box rectangle.
+                self._rubberBand.setGeometry(
+                    min(self._origin.x(), event.pos().x()),
+                    min(self._origin.y(), event.pos().y()),
+                    abs(self._origin.x() - event.pos().x()),
+                    abs(self._origin.y() - event.pos().y()),
                 )
 
         elif event.type() == QEvent.MouseButtonRelease and event.button() == Qt.LeftButton:
-            if self.rubberBand.isVisible():
-                self.rubberBand.hide()
-                self.leftClickReleased.emit(roi2rect(self.originpos, pos))
-                self.origin = None
-                self.originpos = None
+            if self._rubberBand.isVisible():
+                # Finish new box rectangle.
+                self._rubberBand.hide()
+                self.boxDrawn.emit(roi2rect(self._originPos, pos))
+                self._origin = None
+                self._originPos = None
 
-        # Event is always forwarded to the navigation interpreter.
-        return self.baseInterpret.eventFilter(watched, event)
+        return self._base.eventFilter(watched, event)
 
 
 class BoxController(QObject):

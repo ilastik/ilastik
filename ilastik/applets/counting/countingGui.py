@@ -206,14 +206,12 @@ class CountingGui(LabelingGui):
 
         self.labelingDrawerUi.DensityButton.clicked.connect(self.updateSum)
 
-        mainwin = self
         self.density5d = OpReorderAxes(graph=self.op.graph, parent=self.op.parent)  #
 
         self.density5d.Input.connect(self.op.Density)
-        self.boxController = BoxController(mainwin.editor, self.density5d.Output, self.labelingDrawerUi.boxListModel)
-        self.boxInterpreter = BoxInterpreter(
-            mainwin.editor.navInterpret, mainwin.editor.posModel, self.boxController, mainwin.centralWidget()
-        )
+        self.boxController = BoxController(self.editor, self.density5d.Output, self.labelingDrawerUi.boxListModel)
+        self.boxInterpreter = BoxInterpreter(self.editor.navInterpret, self.editor.posModel, self.centralWidget())
+        self.boxInterpreter.boxDrawn.connect(self.boxController.addNewBox)
 
         self.navigationInterpreterDefault = self.editor.navInterpret
 
