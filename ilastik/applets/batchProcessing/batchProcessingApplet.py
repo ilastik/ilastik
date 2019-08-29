@@ -1,17 +1,16 @@
 import logging
 import weakref
 from collections import OrderedDict
-from typing import Dict, Hashable, List, Optional, Union, Mapping, Iterable
-
+from typing import Callable, Dict, Hashable, List, Optional, Union, Mapping, Iterable
 import numpy
 import vigra
+from vigra.vigranumpycore import AxisTags
 from lazyflow.request import Request
+from functools import partial
 
 from ilastik.applets.base.applet import Applet
 from ilastik.applets.dataSelection import DataSelectionApplet
-from ilastik.applets.dataSelection.opDataSelection import (
-    DatasetInfo, OpMultiLaneDataSelectionGroup)
-from ilastik.utility import log_exception
+from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo, OpMultiLaneDataSelectionGroup
 
 logger = logging.getLogger(__name__)  # noqa
 
@@ -23,18 +22,17 @@ class BatchProcessingApplet(Applet):
     """
 
     def __init__(self, workflow, title, dataSelectionApplet, dataExportApplet):
-        super(BatchProcessingApplet, self).__init__(
-            "Batch Processing", syncWithImageIndex=False)
+        super(BatchProcessingApplet, self).__init__("Batch Processing", syncWithImageIndex=False)
         self.workflow = weakref.ref(workflow)
         self.dataSelectionApplet = dataSelectionApplet
         self.dataExportApplet = dataExportApplet
-        assert isinstance(
-            self.dataSelectionApplet.topLevelOperator, OpMultiLaneDataSelectionGroup)
+        assert isinstance(self.dataSelectionApplet.topLevelOperator, OpMultiLaneDataSelectionGroup)
         self._gui = None  # Created on first access
 
     def getMultiLaneGui(self):
         if self._gui is None:
             from .batchProcessingGui import BatchProcessingGui
+
             self._gui = BatchProcessingGui(self)
         return self._gui
 
@@ -51,25 +49,19 @@ class BatchProcessingApplet(Applet):
 
     def parse_known_cmdline_args(self, cmdline_args):
         # We use the same parser as the DataSelectionApplet
-        role_names = self.dataSelectionApplet.topLevelOperator.DatasetRoles.value
-        parsed_args, unused_args = DataSelectionApplet.parse_known_cmdline_args(
-            cmdline_args, role_names)
+        parsed_args, unused_args = DataSelectionApplet.parse_known_cmdline_args(cmdline_args, self.role_names)
         return parsed_args, unused_args
 
     def run_export_from_parsed_args(self, parsed_args):
         """
         Run the export for each dataset listed in parsed_args (we use the same parser as DataSelectionApplet).
         """
-        role_names = self.dataSelectionApplet.topLevelOperator.DatasetRoles.value
-        role_path_dict = self.dataSelectionApplet.role_paths_from_parsed_args(
-            parsed_args, role_names)
+        role_path_dict = self.dataSelectionApplet.role_paths_from_parsed_args(parsed_args)
         return self.run_export(role_path_dict, parsed_args.input_axes, sequence_axis=parsed_args.stack_along)
 
     def run_export(
         self,
-        role_data_dict: Mapping[
-            Hashable, Iterable[Union[str, DatasetInfo]]
-        ],
+        role_data_dict: Mapping[Hashable, Iterable[str]],
         input_axes: Optional[str] = None,
         export_to_array: bool = False,
         sequence_axis: Optional[str] = None,
@@ -92,9 +84,6 @@ class BatchProcessingApplet(Applet):
 
         Args:
             role_data_dict: dict with role_name: list(paths) of data that should be processed.
-              You may pass either filepaths OR preconfigured DatasetInfo objects.
-              The latter is useful if you are batch processing data that already exists in memory as a numpy array.
-              (See :meth: `DatasetInfo.preloaded_array` for how to provide a numpy array instead of a filepath.)
             input_axes: axis description to override from the default role
             export_to_array: If True do NOT export to disk as usual.
               Instead, export the results to a list of arrays, which is returned.
@@ -105,178 +94,94 @@ class BatchProcessingApplet(Applet):
             list containing either strings of paths to exported files,
               or numpy.arrays (depending on export_to_array)
         """
-        results = []
-
         self.progressSignal(0)
+        batches = list(zip(*role_data_dict.values()))
         try:
-            assert isinstance(role_data_dict, OrderedDict)
+            results = []
+            for batch_index, role_input_paths in enumerate(batches):
+                def lerpProgressSignal(a, b, p):
+                    self.progressSignal((100 - p) * a + p * b)
 
-            template_infos = self._get_template_dataset_infos(input_axes, sequence_axis)
-            # Invert dict from [role][batch_index] -> path to a list-of-tuples, indexed by batch_index:
-            # [ (role-1-path, role-2-path, ...),
-            #   (role-1-path, role-2-path,...) ]
-            datas_by_batch_index = list(zip(*list(role_data_dict.values())))
+                global_progress_start = batch_index / len(batches)
+                global_progress_end = (batch_index + 1) / len(batches)
 
-            # Call customization hook
-            self.dataExportApplet.prepare_for_entire_export()
-
-            batch_lane_index = len(self.dataSelectionApplet.topLevelOperator)
-            for batch_dataset_index, role_input_datas in enumerate(datas_by_batch_index):
-                # Add a lane to the end of the workflow for batch processing
-                # (Expanding OpDataSelection by one has the effect of expanding the whole workflow.)
-                self.dataSelectionApplet.topLevelOperator.addLane(
-                    batch_lane_index)
-                try:
-                    # The above setup can take a long time for a big workflow.
-                    # If the user has ALREADY cancelled, quit now instead of waiting for the first request to begin.
-                    Request.raise_if_cancelled()
-
-                    def emit_progress(dataset_percent):
-                        overall_progress = (
-                            batch_dataset_index + dataset_percent / 100.0) / len(datas_by_batch_index)
-                        self.progressSignal(100 * overall_progress)
-
-                    # Now use the new lane to export the batch results for the current file.
-                    result = self._run_export_with_empty_batch_lane(role_input_datas,
-                                                                    batch_lane_index,
-                                                                    template_infos,
-                                                                    emit_progress,
-                                                                    export_to_array=export_to_array)
-                    if export_to_array:
-                        assert isinstance(result, numpy.ndarray)
-                    else:
-                        assert isinstance(result, str)
-                    results.append(result)
-                finally:
-                    # Remove the batch lane.  See docstring above for explanation.
-                    try:
-                        self.dataSelectionApplet.topLevelOperator.removeLane(
-                            batch_lane_index, batch_lane_index)
-                    except Request.CancellationException:
-                        log_exception(logger)
-                        # If you see this, something went wrong in a graph setup operation.
-                        raise RuntimeError(
-                            "Encountered an unexpected CancellationException while removing the batch lane.")
-                    assert len(
-                        self.dataSelectionApplet.topLevelOperator.DatasetGroup) == batch_lane_index
-
-            # Call customization hook
+                result = self.export_dataset(
+                    role_input_paths,
+                    input_axes=input_axes,
+                    export_to_array=export_to_array,
+                    sequence_axis=sequence_axis,
+                    progress_callback=partial(lerpProgressSignal, global_progress_start, global_progress_end)
+                )
+                results.append(result)
             self.dataExportApplet.post_process_entire_export()
-
             return results
         finally:
             self.progressSignal(100)
 
-    def _get_template_dataset_infos(self, input_axes=None, sequence_axis=None):
+    def get_previous_axes_tags(self) -> List[Optional[AxisTags]]:
+        if self.num_lanes == 0:
+            return [None] * len(self.role_names)
+
+        infos = []
+        for role_index, _ in enumerate(self.role_names):
+            info_slot = self.dataSelectionApplet.topLevelOperator.DatasetGroup[self.num_lanes - 1][role_index]
+            infos.append(info_slot.value.axistags if info_slot.ready() else None)
+        return infos
+
+    def export_dataset(
+        self,
+        role_input_paths: List[str],
+        input_axes: Optional[str] = None,
+        export_to_array: bool = False,
+        sequence_axis: Optional[str] = None,
+        progress_callback: Optional[Callable[[int], None]] = None,
+    ) -> Union[str, numpy.array]:
         """
-        Sometimes the default settings for an input file are not suitable (e.g. the axistags need to be changed).
-        We assume the LAST non-batch input in the workflow has settings that will work for all batch processing inputs.
-        Here, we get the DatasetInfo objects from that lane and store them as 'templates' to modify for all batch-
-        processing files.
+        Configures a lane using the paths specified in the paths from role_input_paths and runs the workflow.
         """
-        template_infos = {}
-
-        # If there isn't an available dataset to use as a template
-        if len(self.dataSelectionApplet.topLevelOperator.DatasetGroup) == 0:
-            num_roles = len(
-                self.dataSelectionApplet.topLevelOperator.DatasetRoles.value)
-            for role_index in range(num_roles):
-                template_infos[role_index] = DatasetInfo()
-                if input_axes:
-                    template_infos[role_index].axistags = vigra.defaultAxistags(
-                        input_axes)
-                if sequence_axis:
-                    template_infos[role_index].sequenceAxis = sequence_axis
-            return template_infos
-
-        # Use the LAST non-batch input file as our 'template' for DatasetInfo settings (e.g. axistags)
-        template_lane = len(
-            self.dataSelectionApplet.topLevelOperator.DatasetGroup) - 1
-        opDataSelectionTemplateView = self.dataSelectionApplet.topLevelOperator.getLane(
-            template_lane)
-
-        for role_index, info_slot in enumerate(opDataSelectionTemplateView.DatasetGroup):
-            if info_slot.ready():
-                template_infos[role_index] = info_slot.value
-            else:
-                template_infos[role_index] = DatasetInfo()
-            if input_axes:
-                # Support the --input_axes arg to override input axis order, same as DataSelection applet.
-                template_infos[role_index].axistags = vigra.defaultAxistags(
-                    input_axes)
-            if sequence_axis:
-                template_infos[role_index].sequenceAxis = sequence_axis
-        return template_infos
-
-    def _run_export_with_empty_batch_lane(self, role_input_datas, batch_lane_index, template_infos, progress_callback,
-                                          export_to_array):
-        """
-        Configure the fresh batch lane with the given input files, and export the results.
-
-        role_input_datas: A list of str or DatasetInfo, one item for each dataset-role.
-                          (For example, a workflow might have two roles: Raw Data and Binary Segmentation.)
-
-        batch_lane_index: The lane index used as the batch export lane.
-
-        template_infos: A dict of DatasetInfo objects.
-                        Settings like axistags, etc. that cannot be automatically inferred
-                        from the filepath will be copied from these template objects.
-                        (See explanation in _get_template_dataset_infos(), above.)
-
-        progress_callback: Export progress for the current lane is reported via this callback.
-        """
-        assert role_input_datas[
-            0], "At least one file must be provided for each dataset (the first role)."
-        opDataSelectionBatchLaneView = self.dataSelectionApplet.topLevelOperator.getLane(
-            batch_lane_index)
-
-        # Apply new settings for each role
-        for role_index, data_for_role in enumerate(role_input_datas):
-            if not data_for_role:
-                continue
-
-            if isinstance(data_for_role, DatasetInfo):
-                # Caller provided a pre-configured DatasetInfo instead of a just a path
-                info = data_for_role
-            else:
-                # Copy the template info, but override filepath, etc.
-                template_info = template_infos[role_index]
-                info = DatasetInfo.from_file_path(template_info, data_for_role)
-
-            # Force real data source when in headless mode.
-            # If raw data doesn't exist in headless mode, we use fake data reader
-            # (datasetInfo.realDataSource = False). Now we need to ensure that
-            # the flag is set to True for new image lanes.
-            info.realDataSource = True
-            # Apply to the data selection operator
-            opDataSelectionBatchLaneView.DatasetGroup[role_index].setValue(info)
-
-        # Make sure nothing went wrong
-        opDataExportBatchlaneView = self.dataExportApplet.topLevelOperator.getLane(
-            batch_lane_index)
-        # New lanes were added.
-        # Give the workflow a chance to restore anything that was unecessarily invalidated (e.g. classifiers)
-        self.workflow().handleNewLanesAdded()
-
-        assert opDataExportBatchlaneView.ImageToExport.ready()
-        assert opDataExportBatchlaneView.ExportPath.ready()
-
+        progress_callback = progress_callback or self.progressSignal
+        original_num_lanes = self.num_lanes
+        previous_axes_tags = self.get_previous_axes_tags()
         # Call customization hook
-        self.dataExportApplet.prepare_lane_for_export(batch_lane_index)
+        self.dataExportApplet.prepare_for_entire_export()
+        # Add a lane to the end of the workflow for batch processing
+        # (Expanding OpDataSelection by one has the effect of expanding the whole workflow.)
+        self.dataSelectionApplet.topLevelOperator.addLane(self.num_lanes)
+        batch_lane = self.dataSelectionApplet.topLevelOperator.getLane(self.num_lanes - 1)
+        try:
+            for role_index, (role_input_path, role_axis_tags) in enumerate(zip(role_input_paths, previous_axes_tags)):
+                if role_input_path:
+                    role_info = FilesystemDatasetInfo(
+                        filePath=role_input_path,
+                        project_file=None,
+                        axistags=vigra.defaultAxistags(input_axes) if input_axes else role_axis_tags,
+                        sequence_axis=sequence_axis,
+                        guess_tags_for_singleton_axes=True,  # FIXME: add cmd line param to negate this
+                    )
+                    batch_lane.DatasetGroup[role_index].setValue(role_info)
+            self.workflow().handleNewLanesAdded()
+            # Call customization hook
+            self.dataExportApplet.prepare_lane_for_export(self.num_lanes - 1)
+            opDataExport = self.dataExportApplet.topLevelOperator.getLane(self.num_lanes - 1)
+            opDataExport.progressSignal.subscribe(progress_callback)
+            if export_to_array:
+                logger.info("Exporting to in-memory array.")
+                result = opDataExport.run_export_to_array()
+            else:
+                logger.info(f"Exporting to {opDataExport.ExportPath.value}")
+                opDataExport.run_export()
+                result = opDataExport.ExportPath.value
 
-        # Finally, run the export
-        opDataExportBatchlaneView.progressSignal.subscribe(progress_callback)
+            # Call customization hook
+            self.dataExportApplet.post_process_lane_export(self.num_lanes - 1)
+            return result
+        finally:
+            self.dataSelectionApplet.topLevelOperator.removeLane(original_num_lanes, original_num_lanes)
 
-        if export_to_array:
-            logger.info("Exporting to in-memory array.")
-            result = opDataExportBatchlaneView.run_export_to_array()
-        else:
-            logger.info("Exporting to {}".format(
-                opDataExportBatchlaneView.ExportPath.value))
-            opDataExportBatchlaneView.run_export()
-            result = opDataExportBatchlaneView.ExportPath.value
+    @property
+    def num_lanes(self) -> int:
+        return len(self.dataSelectionApplet.topLevelOperator.DatasetGroup)
 
-        # Call customization hook
-        self.dataExportApplet.post_process_lane_export(batch_lane_index)
-
-        return result
+    @property
+    def role_names(self) -> List[str]:
+        return self.dataSelectionApplet.topLevelOperator.DatasetRoles.value

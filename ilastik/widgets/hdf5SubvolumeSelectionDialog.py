@@ -19,8 +19,15 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 from PyQt5.QtWidgets import (
-    QDialogButtonBox, QButtonGroup, QComboBox, QDialog, QLabel, QLineEdit,
-    QTextEdit, QVBoxLayout, QWidget
+    QDialogButtonBox,
+    QButtonGroup,
+    QComboBox,
+    QDialog,
+    QLabel,
+    QLineEdit,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
 
 from PyQt5.QtCore import Qt
@@ -28,14 +35,16 @@ from PyQt5.QtCore import Qt
 from lazyflow.utility import globList
 
 
-class H5N5VolumeSelectionDlg(QDialog):
+class SubvolumeSelectionDlg(QDialog):
     """
     A window to ask the user to choose between multiple HDF5 datasets in a single file.
     """
+
     def __init__(self, datasetNames, parent):
-        super(H5N5VolumeSelectionDlg, self).__init__(parent)
-        label = QLabel("Your HDF5/N5 File contains multiple image volumes.\n"
-                       "Please select the one you would like to open.")
+        super().__init__(parent)
+        label = QLabel(
+            "Your HDF5/N5 File contains multiple image volumes.\n" "Please select the one you would like to open."
+        )
 
         self.combo = QComboBox()
         for name in datasetNames:
@@ -59,7 +68,7 @@ class Hdf5StackSelectionWidget(QWidget):
         super(Hdf5StackSelectionWidget, self).__init__(parent)
         self.input_text = QLineEdit()
         if pattern is None:
-            pattern = '*'
+            pattern = "*"
         self.input_text.setText(pattern)
         self.list_of_paths = list_of_paths
         self.selected_paths = list_of_paths
@@ -67,11 +76,11 @@ class Hdf5StackSelectionWidget(QWidget):
         self.info_text = QTextEdit()
         self.info_text.setReadOnly(True)
         self.info_text.setToolTip(
-            'Images included in the stack are displayed in black.\n'
-            'Images not included in the stack are shown in grey.')
-        info_label = QLabel(
-            'Resulting images used for stacking:\n')
-        self.n_label = QLabel('')
+            "Images included in the stack are displayed in black.\n"
+            "Images not included in the stack are shown in grey."
+        )
+        info_label = QLabel("Resulting images used for stacking:\n")
+        self.n_label = QLabel("")
 
         layout = QVBoxLayout()
         layout.addWidget(self.input_text)
@@ -86,10 +95,9 @@ class Hdf5StackSelectionWidget(QWidget):
         self.validate_globstring(pattern)
 
     def validate_globstring(self, globstring):
-        color_inside = '{}'
+        color_inside = "{}"
         color_outside = '<font color ="#777">{}</font>'
-        self.selected_paths = globList(
-            self.list_of_paths, str(self.input_text.text()))
+        self.selected_paths = globList(self.list_of_paths, str(self.input_text.text()))
 
         with_color = []
         for path in self.list_of_paths:
@@ -98,28 +106,27 @@ class Hdf5StackSelectionWidget(QWidget):
             else:
                 with_color.append(color_outside.format(path))
         self.info_text.setText("<br>".join(with_color))
-        self.n_label.setText(
-            'Selected {} images'.format(len(self.selected_paths)))
+        self.n_label.setText("Selected {} images".format(len(self.selected_paths)))
 
 
 class H5N5StackingDlg(QDialog):
     """Dialogue for subvolume stack selection within single HDF5/N5 files"""
+
     def __init__(self, parent=None, list_of_paths=None):
         super(H5N5StackingDlg, self).__init__(parent)
-        self.setWindowTitle('Select images for stacking')
+        self.setWindowTitle("Select images for stacking")
         if list_of_paths is None:
             list_of_paths = []
 
         self.list_of_paths = list_of_paths
 
         self.radio_group = QButtonGroup(parent=self)
-        label = QLabel("Your HDF5/N5 File contains multiple images.\n"
-                       "Please specify a pattern in order to stack multiple images.")
+        label = QLabel(
+            "Your HDF5/N5 File contains multiple images.\n"
+            "Please specify a pattern in order to stack multiple images."
+        )
 
-        self.stack_widget = Hdf5StackSelectionWidget(
-            parent=self,
-            list_of_paths=list_of_paths,
-            pattern='*')
+        self.stack_widget = Hdf5StackSelectionWidget(parent=self, list_of_paths=list_of_paths, pattern="*")
         layout = QVBoxLayout()
         layout.addWidget(label)
         layout.addWidget(self.stack_widget)
@@ -146,6 +153,6 @@ if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
 
     app = QApplication([])
-    w = H5N5StackingDlg(list_of_paths=['a/1', 'a/2', 'a/3', 'b/1', 'b/2'])
+    w = H5N5StackingDlg(list_of_paths=["a/1", "a/2", "a/3", "b/1", "b/2"])
     w.show()
     app.exec_()

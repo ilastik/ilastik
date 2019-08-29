@@ -1,3 +1,7 @@
+from pathlib import Path
+import os
+import shutil
+import tempfile
 import threading
 import time
 import queue
@@ -9,9 +13,13 @@ import itertools
 from concurrent import futures
 
 import pytest
+import h5py
+import z5py
+from PIL import Image as PilImage
+import numpy
 
 from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, Qt
 from _pytest.main import pytest_runtestloop as _pytest_runtestloop
 
 import ilastik.config
@@ -19,6 +27,7 @@ import ilastik.config
 from ilastik.utility.gui.threadRouter import ThreadRouter
 from ilastik.utility.itertools import pairwise
 from ilastik.shell.gui.startShellGui import launchShell
+from lazyflow.graph import Graph
 
 # Every function starting with pytest_ in this module is a pytest hook
 # that modifies specific behavior of test life cycle
@@ -32,17 +41,16 @@ from ilastik.shell.gui.startShellGui import launchShell
 GUI_TEST_TIMEOUT = 60  # Seconds
 
 
-@pytest.fixture(scope='session', autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 def config_app_settings(qapp):
     # Allows to map application to a specific workspace
     # useful when running tests
-    qapp.setApplicationName('TestIlastik')
+    qapp.setApplicationName("TestIlastik")
 
 
 def pytest_addoption(parser):
     """Add command-line flags for pytest."""
-    parser.addoption("--run-legacy-gui", action="store_true",
-                     help="runs legacy gui tests")
+    parser.addoption("--run-legacy-gui", action="store_true", help="runs legacy gui tests")
 
 
 def pytest_pyfunc_call(pyfuncitem):
@@ -109,6 +117,7 @@ class GuiTestSuite:
     GUI test suite runner
     poll function should be scheduled from timer for periodic updates
     """
+
     def __init__(self, queue: queue.Queue, shell):
         self._queue = queue
         self._shell = shell
@@ -159,14 +168,12 @@ def pytest_runtestloop(session):
     guitests, session.items = split_guitests(session.items)
     _pytest_runtestloop(session)
 
-    if session.config.getoption('run_legacy_gui'):
+    if session.config.getoption("run_legacy_gui"):
         for tstcls, gui_test_bag in itertools.groupby(_sorted_guitests(guitests), get_guitest_cls):
             run_gui_tests(tstcls, gui_test_bag)
 
     elif guitests:
-        warnings.warn(
-            "Skipping legacy GUI test to enable please use --run-legacy-gui option\n"
-        )
+        warnings.warn("Skipping legacy GUI test to enable please use --run-legacy-gui option\n")
 
     return True
 
@@ -181,7 +188,7 @@ def run_gui_tests(tstcls, gui_test_bag):
     tstcls.shell = launchShell(None, [], [])
 
     platform_str = platform.platform().lower()
-    if 'ubuntu' in platform_str or 'fedora' in platform_str:
+    if "ubuntu" in platform_str or "fedora" in platform_str:
         QApplication.setAttribute(Qt.AA_X11InitThreads, True)
 
     if ilastik.config.cfg.getboolean("ilastik", "debug"):
@@ -207,7 +214,7 @@ def run_gui_tests(tstcls, gui_test_bag):
 
 
 def is_gui_test(item) -> bool:
-    return bool(item.get_marker('guitest'))
+    return bool(item.get_marker("guitest"))
 
 
 def split_guitests(items):
@@ -228,7 +235,7 @@ def split_guitests(items):
 def get_guitest_cls(item):
     cls = item.getparent(pytest.Class)
     if not cls:
-        raise Exception('GUI test should be inherited from ShellGuiTestCaseBase')
+        raise Exception("GUI test should be inherited from ShellGuiTestCaseBase")
 
     return cls.obj
 
@@ -239,3 +246,71 @@ def _sorted_guitests(iterable):
         return cls.__module__, cls.__name__, obj.name
 
     return sorted(iterable, key=_keyfunc)
+
+
+@pytest.fixture
+def tmp_h5_single_dataset(tmp_path: Path) -> Path:
+    file_path = tmp_path / "single_dataset.h5"
+    with h5py.File(file_path, "w") as f:
+        f.create_group("test_group")
+        f["/test_group/test_data"] = numpy.random.rand(100, 200)
+    return file_path
+
+
+@pytest.fixture
+def tmp_h5_multiple_dataset(tmp_path: Path) -> Path:
+    file_path = tmp_path / "multiple_datasets.h5"
+    with h5py.File(file_path, "w") as f:
+        f.create_group("test_group")
+        f["/test_group_2d/test_data_2d"] = numpy.random.rand(20, 30)
+
+        f.create_group("another_test_group")
+        f["/test_group_3d/test_data_3d"] = numpy.random.rand(20, 30, 3)
+
+        f.create_group("one_more_test_group")
+        f["/test_group_4d/test_data_4d"] = numpy.random.rand(20, 30, 40, 5)
+    return file_path
+
+
+@pytest.fixture
+def tmp_n5_file(tmp_path: Path) -> Path:
+    n5_dir_path = tmp_path / "my_tmp_file.n5"
+    f = z5py.File(n5_dir_path)
+    ds = f.create_dataset("data", shape=(1000, 1000), chunks=(100, 100), dtype="float32")
+
+    # write array to a roi
+    x = numpy.random.random_sample(size=(500, 500)).astype("float32")
+    ds[:500, :500] = x
+
+    # broadcast a scalar to a roi
+    ds[500:, 500:] = 42.0
+    f.close()
+
+    return n5_dir_path
+
+
+@pytest.fixture
+def png_image(tmp_path) -> Path:
+    _, filepath = tempfile.mkstemp(prefix=os.path.join(tmp_path, ""), suffix=".png")
+    pil_image = PilImage.fromarray((numpy.random.rand(100, 200) * 255).astype(numpy.uint8))
+    with open(filepath, "wb") as png_file:
+        pil_image.save(png_file, "png")
+    return Path(filepath)
+
+@pytest.fixture
+def another_png_image(tmp_path) -> Path:
+    _, filepath = tempfile.mkstemp(prefix=os.path.join(tmp_path, ""), suffix=".png")
+    pil_image = PilImage.fromarray((numpy.random.rand(100, 200) * 255).astype(numpy.uint8))
+    with open(filepath, "wb") as png_file:
+        pil_image.save(png_file, "png")
+    return Path(filepath)
+
+@pytest.fixture
+def empty_project_file(tmp_path) -> h5py.File:
+    project_path = tmp_path / tempfile.mkstemp(suffix=".ilp")[1]
+    with h5py.File(project_path, "r+") as f:
+        yield f
+
+@pytest.fixture
+def graph():
+    return Graph()

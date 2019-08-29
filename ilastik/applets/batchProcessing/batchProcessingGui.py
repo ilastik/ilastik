@@ -31,10 +31,9 @@ from PyQt5.QtWidgets import (QApplication, QHBoxLayout, QLabel, QListWidget,
                              QSpacerItem, QTabWidget, QVBoxLayout, QWidget)
 from volumina.utility import PreferencesManager
 
-from ilastik.applets.dataSelection.dataSelectionGui import \
-    DataSelectionGui  # We borrow the file selection window function.
 from ilastik.utility import log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
+from ilastik.widgets.ImageFileDialog import ImageFileDialog
 
 logger = logging.getLogger(__name__)
 
@@ -110,15 +109,10 @@ class BatchRoleWidget(QWidget):
 
     def select_files(self):
         preference_name = f"recent-dir-role-{self._role_name}"
-        recent_processing_directory = PreferencesManager().get(
-            'BatchProcessing', preference_name, default=os.path.expanduser('~'))
-        file_paths = DataSelectionGui.getImageFileNamesToOpen(self, recent_processing_directory)
+        file_paths = ImageFileDialog(self, preferences_group='BatchProcessing', preferences_setting=preference_name).getSelectedPaths()
         if file_paths:
-            recent_processing_directory = os.path.dirname(file_paths[0])
-            PreferencesManager().set('BatchProcessing', preference_name, recent_processing_directory)
-
             self.clear()
-            self.list_widget.addItems(file_paths)
+            self.list_widget.addItems(map(str, file_paths))
 
     def clear(self):
         """Remove all items from the list"""

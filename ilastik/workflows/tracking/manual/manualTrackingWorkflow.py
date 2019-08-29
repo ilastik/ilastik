@@ -131,7 +131,7 @@ class ManualTrackingWorkflow( Workflow ):
         settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
         if settings:
             raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][0].value
-            if raw_dataset_info.location == DatasetInfo.Location.FileSystem:
+            if raw_dataset_info.is_in_filesystem():
                 filename_suffix = raw_dataset_info.nickname
             else:
                 filename_suffix = str(lane_index)

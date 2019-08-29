@@ -89,7 +89,7 @@ class ShellGuiTestCaseBase(object):
         pass
 
     @classmethod
-    def exec_in_shell(cls, func):
+    def exec_in_shell(cls, func, *args, **kwargs):
         """
         Execute the given function within the shell event loop.
         Block until the function completes.
@@ -99,7 +99,7 @@ class ShellGuiTestCaseBase(object):
 
         def impl():
             try:
-                func()
+                func(*args, **kwargs)
             finally:
                 testFinished.set()
 

@@ -25,6 +25,7 @@ import numpy
 import vigra
 from lazyflow.graph import Graph
 from ilastik.applets.dataSelection.opDataSelection import OpDataSelectionGroup, DatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
 
 class TestOpDataSelectionGroup(object):
 
@@ -45,14 +46,10 @@ class TestOpDataSelectionGroup(object):
         """
         Make sure that the dataset roles work the way we expect them to.
         """
-        infoA = DatasetInfo()
-        infoA.filePath = self.group1Data[0][0]
+        infoA = FilesystemDatasetInfo(filePath=self.group1Data[0][0])
+        infoC = FilesystemDatasetInfo(filePath=self.group1Data[1][0])
         
-        infoC = DatasetInfo()
-        infoC.filePath = self.group1Data[1][0]
-        
-        graph = Graph()
-        op = OpDataSelectionGroup( graph=graph )
+        op = OpDataSelectionGroup( graph=Graph() )
         op.WorkingDirectory.setValue( self.workingDir )
         op.DatasetRoles.setValue( ['RoleA', 'RoleB', 'RoleC'] )
 
@@ -93,12 +90,9 @@ class TestOpDataSelectionGroup(object):
         expected_data = numpy.random.random( (3,100,100) )
         numpy.save(weirdAxisFilename, expected_data)
 
-        info = DatasetInfo()
-        info.filePath = weirdAxisFilename
-        info.axistags = vigra.defaultAxistags('cxy')
-        
-        graph = Graph()
-        op = OpDataSelectionGroup(graph=graph, forceAxisOrder=False)
+        info = FilesystemDatasetInfo(filePath=weirdAxisFilename, axistags=vigra.defaultAxistags('cxy'))
+
+        op = OpDataSelectionGroup(graph=Graph(), forceAxisOrder=False)
         op.WorkingDirectory.setValue( self.workingDir )
         op.DatasetRoles.setValue( ['RoleA'] )
 
@@ -129,12 +123,9 @@ class TestOpDataSelectionGroup(object):
         noChannelData = numpy.random.random( (100,100) )
         numpy.save(noChannelFilename, noChannelData)
 
-        info = DatasetInfo()
-        info.filePath = noChannelFilename
-        info.axistags = vigra.defaultAxistags('xy')
-        
-        graph = Graph()
-        op = OpDataSelectionGroup( graph=graph )
+        info = FilesystemDatasetInfo(filePath=noChannelFilename, axistags = vigra.defaultAxistags('xy'))
+
+        op = OpDataSelectionGroup(graph=Graph())
         op.WorkingDirectory.setValue( self.workingDir )
         op.DatasetRoles.setValue( ['RoleA'] )
 

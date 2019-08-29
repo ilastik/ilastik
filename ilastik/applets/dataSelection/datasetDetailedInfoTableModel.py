@@ -119,18 +119,6 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             return len(self._op.DatasetRoles.value)
         return 0
 
-    def hasInternalPaths(self):
-        for mslot in self._op.DatasetGroup:
-            if self._roleIndex < len(mslot):
-                slot = mslot[self._roleIndex]
-                if slot.ready():
-                    datasetInfo = slot.value
-                    filePathComponents = PathComponents(datasetInfo.filePath)
-                    if ( datasetInfo.location == DatasetInfo.Location.FileSystem
-                         and filePathComponents.internalPath is not None ):
-                        return True
-        return False
-
     def columnCount(self, parent=QModelIndex()):
         return DatasetDetailedInfoColumn.NumColumns
 
@@ -186,7 +174,6 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             return UninitializedDisplayData[ index.column() ]
 
         datasetInfo = self._op.DatasetGroup[laneIndex][self._roleIndex].value
-        filePathComponents = PathComponents( datasetInfo.filePath )
 
         ## Input meta-data fields
 
@@ -196,21 +183,10 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
         # Location
         if index.column() == DatasetDetailedInfoColumn.Location:
-            if datasetInfo.location == DatasetInfo.Location.FileSystem:
-                if isUrl(datasetInfo.filePath) or os.path.isabs(datasetInfo.filePath):
-                    text = "Absolute Link: {}".format( filePathComponents.externalPath )
-                    return text
-                else:
-                    text = "Relative Link: {}".format( filePathComponents.externalPath )
-                    return text
-            else:
-                return "Project File"
-
+            return datasetInfo.display_string
         # Internal ID
         if index.column() == DatasetDetailedInfoColumn.InternalID:
-            if datasetInfo.location == DatasetInfo.Location.FileSystem:
-                return filePathComponents.internalPath
-            return ""
+            return str(getattr(datasetInfo, 'internal_paths', ""))
 
         ## Output meta-data fields
 
@@ -244,9 +220,6 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
         # Range
         if index.column() == DatasetDetailedInfoColumn.Range:
-            drange = imageSlot.meta.drange
-            if drange is None:
-                return ""
-            return str(drange)
+            return str(datasetInfo.drange or '')
 
         assert False, "Unknown column: row={}, column={}".format( index.row(), index.column() )

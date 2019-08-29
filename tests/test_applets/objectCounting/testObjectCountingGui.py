@@ -122,10 +122,9 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
             workflow = shell.projectManager.workflow
 
             # Add a file
-            from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
+            from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, FilesystemDatasetInfo
 
-            info = DatasetInfo()
-            info.filePath = self.SAMPLE_DATA
+            info = FilesystemDatasetInfo(filePath=self.SAMPLE_DATA, project_file=self.shell.projectManager.currentProjectFile)
             opDataSelection = workflow.dataSelectionApplet.topLevelOperator
             opDataSelection.DatasetGroup.resize(1)
             opDataSelection.DatasetGroup[0][0].setValue(info)

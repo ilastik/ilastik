@@ -349,7 +349,7 @@ class ObjectClassificationWorkflow(Workflow):
         settings, selected_features = self.objectClassificationApplet.topLevelOperator.get_table_export_settings()
         if settings:
             raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][self.InputImageRoles.RAW_DATA].value
-            if raw_dataset_info.location == DatasetInfo.Location.FileSystem:
+            if raw_dataset_info.is_in_filesystem():
                 filename_suffix = raw_dataset_info.nickname
             else:
                 filename_suffix = str(lane_index)

@@ -26,6 +26,7 @@ import sys
 import pytest
 import shutil
 import vigra
+import tempfile
 
 import ilastik
 from lazyflow.utility.timer import timeLogged
@@ -45,10 +46,10 @@ class TestConservationTrackingHeadless(object):
     BDV_XML_FILE = ilastik_tests_file_path+'data/inputdata/smallVideoBdv.xml'
     BINARY_SEGMENTATION_FILE = ilastik_tests_file_path+'data/inputdata/smallVideoSimpleSegmentation.h5'
 
-    EXPECTED_TRACKING_RESULT_FILE = ilastik_tests_file_path+'data/inputdata/smallVideo_Tracking-Result.h5'
+    EXPECTED_TRACKING_RESULT_FILE = ilastik_tests_file_path+'data/inputdata/smallVideo-data_Tracking-Result.h5'
     EXPECTED_SHAPE = (7, 408, 408, 1) # Expected shape for tracking results HDF5 files
     
-    EXPECTED_CSV_FILE = ilastik_tests_file_path+'data/inputdata/smallVideo_CSV-Table.csv'
+    EXPECTED_CSV_FILE = ilastik_tests_file_path+'data/inputdata/smallVideo-data_CSV-Table.csv'
     EXPECTED_NUM_ROWS = 23 # Number of lines expected in exported csv file
     EXPECTED_NUM_LINEAGES = 3
     EXPECTED_MERGER_NUM = 2 # Number of mergers expected in exported csv file
@@ -81,7 +82,8 @@ class TestConservationTrackingHeadless(object):
                 pass
 
     @timeLogged(logger)
-    def testTrackingHeadless(self):        
+    def testTrackingHeadless(self, tmp_path):
+        output_path = tmp_path / 'testTrackingHeadlessOutput.h5'
         # Skip test because there are missing files
         if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
             pytest.xfail("Test files not found.")
@@ -92,6 +94,7 @@ class TestConservationTrackingHeadless(object):
         args += ' --export_source=Tracking-Result'
         args += ' --raw_data '+self.RAW_DATA_FILE+'/data'
         args += ' --segmentation_image '+self.BINARY_SEGMENTATION_FILE+'/exported_data'
+        args += ' --output_filename_format=' + str(output_path)
 
         sys.argv = ['ilastik.py'] # Clear the existing commandline args so it looks like we're starting fresh.
         sys.argv += args.split()
@@ -100,7 +103,7 @@ class TestConservationTrackingHeadless(object):
         self.ilastik_startup.main()
         
         # Examine the HDF5 output for basic attributes
-        with h5py.File(self.EXPECTED_TRACKING_RESULT_FILE, 'r') as f:
+        with h5py.File(output_path, 'r') as f:
             assert 'exported_data' in f, 'Dataset does not exist in tracking result file'
             shape = f['exported_data'].shape
             assert shape == self.EXPECTED_SHAPE, 'Exported data has wrong shape: {}'.format(shape)
@@ -176,7 +179,7 @@ class TestConservationTrackingHeadless(object):
         self.ilastik_startup.main()
 
         # check res_track file exists
-        resTrackFilename = os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_CellTrackingChallenge', 'res_track.txt')
+        resTrackFilename = os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo-data_CellTrackingChallenge', 'res_track.txt')
         assert os.path.exists(resTrackFilename), "res_track not found"
         a = np.genfromtxt(resTrackFilename, dtype=np.uint32, delimiter=' ')
         assert a.shape == (5, 4)
@@ -189,15 +192,15 @@ class TestConservationTrackingHeadless(object):
 
         # check whether images exist
         for i in range(7):
-            assert os.path.exists(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_CellTrackingChallenge', f'mask00{i}.tif')), f"Missing frame {i}"
+            assert os.path.exists(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo-data_CellTrackingChallenge', f'mask00{i}.tif')), f"Missing frame {i}"
         
         # check that the first frame contains consecutive trackIDs starting at 1, where 0 is background
-        imagePath = os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_CellTrackingChallenge', 'mask000.tif')
+        imagePath = os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo-data_CellTrackingChallenge', 'mask000.tif')
         image = vigra.impex.readImage(imagePath, dtype=np.uint32)
         assert set(np.unique(image)) == set(range(image.max() + 1)), "First frame does not contain consecutive IDs starting at 1!"
 
         # cleanup
-        shutil.rmtree(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_CellTrackingChallenge'))
+        shutil.rmtree(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo-data_CellTrackingChallenge'))
 
     @timeLogged(logger)
     def testHDF5Export(self):
@@ -222,8 +225,8 @@ class TestConservationTrackingHeadless(object):
 
         # check output files exist
         for i in range(7):
-            assert os.path.exists(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_H5-Event-Sequence', f'0000{i}.h5')), f"Missing frame {i}"
-        shutil.rmtree(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_H5-Event-Sequence'))
+            assert os.path.exists(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo-data_H5-Event-Sequence', f'0000{i}.h5')), f"Missing frame {i}"
+        shutil.rmtree(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo-data_H5-Event-Sequence'))
 
     @timeLogged(logger)
     def testMamutExport(self):
@@ -252,7 +255,7 @@ class TestConservationTrackingHeadless(object):
         self.ilastik_startup.main()
 
         # check output files exist
-        files = [os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_Fiji-MaMuT_mamut.xml')]
+        files = [os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo-data_Fiji-MaMuT_mamut.xml')]
         
         for f in files:
             assert os.path.exists(f)
@@ -284,8 +287,8 @@ class TestConservationTrackingHeadless(object):
         self.ilastik_startup.main()
 
         # check output files exist
-        files = [os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_JSON_graph.json'),
-                 os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_JSON_result.json')]
+        files = [os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo-data_JSON_graph.json'),
+                 os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo-data_JSON_result.json')]
         
         for f in files:
             assert os.path.exists(f)

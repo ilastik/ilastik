@@ -541,7 +541,6 @@ class SerialBlockSlot(SerialSlot):
                     )
                 else:
                     blockArray = blockData[...]
-
                 self.inslot[index][slicing] = blockArray
 
 class SerialHdf5BlockSlot(SerialBlockSlot):

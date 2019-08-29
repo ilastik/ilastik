@@ -23,154 +23,74 @@ import h5py
 import vigra
 import numpy
 import tempfile
+from pathlib import Path
 import unittest
+import pytest
 
-from lazyflow.graph import Graph
-from ilastik.applets.dataSelection.opDataSelection import OpMultiLaneDataSelectionGroup, DatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import OpMultiLaneDataSelectionGroup, DatasetInfo, ProjectInternalDatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import ProjectInternalDatasetInfo
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
+
 
 import logging
 logger = logging.getLogger(__name__)
 
+TOP_GROUP_NAME = 'some_group'
 
-class TestDataSelectionSerializer(unittest.TestCase):
+@pytest.fixture
+def serializer(empty_project_file, graph):
+    opDataSelectionGroup = OpMultiLaneDataSelectionGroup(graph=graph)
+    opDataSelectionGroup.ProjectFile.setValue(empty_project_file)
+    opDataSelectionGroup.WorkingDirectory.setValue(Path(empty_project_file.filename).parent)
+    opDataSelectionGroup.DatasetRoles.setValue(['Raw Data'])
+    opDataSelectionGroup.DatasetGroup.resize(1)
 
-    def setUp(self):
-        self.tmpDir = tempfile.mkdtemp()
-        self.tmpFilePath = os.path.join(self.tmpDir, "testDataSelection.npy")
+    serializer = DataSelectionSerializer(opDataSelectionGroup, TOP_GROUP_NAME)
+    return serializer
 
-        self.testProjectName = os.path.join(self.tmpDir, 'test_project.ilp')
+@pytest.fixture
+def internal_datasetinfo(serializer, png_image) -> ProjectInternalDatasetInfo:
+    inner_path = serializer.importStackAsLocalDataset([str(png_image)])
+    project_file = serializer.topLevelOperator.ProjectFile.value
+    info = ProjectInternalDatasetInfo(
+        inner_path=inner_path,
+        project_file=project_file
+    )
+    return info
 
-        self.cleanupFiles = [self.tmpFilePath, self.testProjectName]
+def test06(serializer, internal_datasetinfo, empty_project_file, graph):
+    """
+    Test the basic functionality of the v0.6 project format serializer.
+    """
+    serializer.topLevelOperator.DatasetGroup[0][0].setValue(internal_datasetinfo)
+    empty_project_file.create_dataset("ilastikVersion", data=b"1.0.0")
+    serializer.serializeToHdf5(empty_project_file, empty_project_file.filename)
 
-        data = numpy.indices((1,10,10,10,2)).sum(0)
-        numpy.save(self.tmpFilePath, data)
+    # Check for dataset existence
+    dataset = empty_project_file[internal_datasetinfo.inner_path]
 
-    def tearDown(self):
-        for f in self.cleanupFiles:
-            try:
-                os.remove(f)
-            except:
-                pass
+    # Check axistags attribute
+    assert 'axistags' in dataset.attrs
+    axistags_json = empty_project_file[internal_datasetinfo.inner_path].attrs['axistags']
+    axistags = vigra.AxisTags.fromJSON(axistags_json)
 
-        try:
-            os.removedirs(self.tmpDir)
-        except:
-            pass
+    originalShape = serializer.topLevelOperator.Image[0].meta.shape
+    originalAxisTags = serializer.topLevelOperator.Image[0].meta.axistags
 
-    def test06(self):
-        """
-        Test the basic functionality of the v0.6 project format serializer.
-        """
-        # Create an empty project
-        with h5py.File(self.testProjectName) as testProject:
-            testProject.create_dataset("ilastikVersion", data=b"1.0.0")
+    # Now we can directly compare the shape and axis ordering
+    assert dataset.shape == originalShape
+    assert axistags == originalAxisTags
 
-            ##
-            ## Serialization
-            ##
+    # Create an empty operator
+    operatorToLoad = OpMultiLaneDataSelectionGroup(graph=graph)
+    operatorToLoad.DatasetRoles.setValue( ['Raw Data'] )
 
-            # Create an operator to work with and give it some input
-            graph = Graph()
-            groupName = 'DataSelectionTest'
-            info = self._createDatasetInfo()
-            operatorToSave = self._createOperatorToSave(graph, testProject,
-                                                        info, groupName)
+    deserializer = DataSelectionSerializer(operatorToLoad, serializer.topGroupName) # Copy the group name from the serializer we used.
+    assert deserializer.base_initialized
+    deserializer.deserializeFromHdf5(empty_project_file, empty_project_file.filename)
 
-            serializer = DataSelectionSerializer(operatorToSave, groupName)
-            assert serializer.base_initialized
+    assert len(operatorToLoad.DatasetGroup) == len(serializer.topLevelOperator.DatasetGroup)
+    assert len(operatorToLoad.Image) == len(serializer.topLevelOperator.Image)
 
-            # Now serialize!
-            serializer.serializeToHdf5(testProject, self.testProjectName)
-
-            # Check for dataset existence
-            datasetInternalPath = serializer.topGroupName + '/local_data/' + info.datasetId
-            dataset = testProject[datasetInternalPath][...]
-
-            # Check axistags attribute
-            assert 'axistags' in testProject[datasetInternalPath].attrs
-            axistags_json = testProject[datasetInternalPath].attrs['axistags']
-            axistags = vigra.AxisTags.fromJSON(axistags_json)
-
-            originalShape = operatorToSave.Image[0].meta.shape
-            originalAxisTags = operatorToSave.Image[0].meta.axistags
-
-            # Now we can directly compare the shape and axis ordering
-            assert dataset.shape == originalShape
-            assert axistags == originalAxisTags
-
-            ##
-            ## Deserialization
-            ##
-
-            # Create an empty operator
-            graph = Graph()
-            operatorToLoad = OpMultiLaneDataSelectionGroup( graph=graph )
-            operatorToLoad.DatasetRoles.setValue( ['Raw Data'] )
-
-            deserializer = DataSelectionSerializer(operatorToLoad, serializer.topGroupName) # Copy the group name from the serializer we used.
-            assert deserializer.base_initialized
-            deserializer.deserializeFromHdf5(testProject, self.testProjectName)
-
-            assert len(operatorToLoad.DatasetGroup) == len(operatorToSave.DatasetGroup)
-            assert len(operatorToLoad.Image) == len(operatorToSave.Image)
-
-            assert operatorToLoad.Image[0].meta.shape == operatorToSave.Image[0].meta.shape
-            assert operatorToLoad.Image[0].meta.axistags == operatorToSave.Image[0].meta.axistags
-
-    def testShapeAndDtypeSerialization(self):
-        """
-        Test the serialization of additional shape and dtype attributes added
-        in order to re-create the metadata in headless mode with no raw data
-        """
-        # Create an empty project
-        with h5py.File(self.testProjectName) as testProject:
-            # Create an operator to work with and give it some input
-            graph = Graph()
-            groupName = 'DataSelectionTest'
-            info = self._createDatasetInfo()
-            operatorToSave = self._createOperatorToSave(graph, testProject,
-                                                        info, groupName)
-
-            # Serialize
-            serializer = DataSelectionSerializer(operatorToSave, groupName)
-            serializer.serializeToHdf5(testProject, self.testProjectName)
-
-            # Assert lane's dtype and shape attributes exist
-            rawDataPath = groupName + '/infos/lane0000/Raw Data'
-            assert 'shape' in testProject[rawDataPath]
-            assert 'dtype' in testProject[rawDataPath]
-
-            # Assert their values are correct
-            assert tuple(testProject[rawDataPath + '/shape'].value) == operatorToSave.Image[0].meta.shape
-            assert numpy.dtype(testProject[rawDataPath + '/dtype'].value.decode('utf-8')) == operatorToSave.Image[0].meta.dtype
-
-            # Deserialize and check datasetInfo
-            graph = Graph()
-            operatorToLoad = OpMultiLaneDataSelectionGroup(graph=graph)
-            operatorToLoad.DatasetRoles.setValue(['Raw Data'])
-
-            deserializer = DataSelectionSerializer(operatorToLoad, groupName)
-            deserializer.deserializeFromHdf5(testProject, self.testProjectName)
-
-            datasetInfo = operatorToLoad.DatasetGroup[0][0][:].wait()[0]
-
-            assert datasetInfo.laneShape == operatorToLoad.Image[0].meta.shape
-            assert datasetInfo.laneDtype == operatorToLoad.Image[0].meta.dtype
-
-
-    def _createOperatorToSave(self, graph, projectFile, info, groupName):
-        operatorToSave = OpMultiLaneDataSelectionGroup(graph=graph)
-        operatorToSave.ProjectFile.setValue(projectFile)
-        operatorToSave.WorkingDirectory.setValue(os.path.split(__file__)[0])
-        operatorToSave.ProjectDataGroup.setValue(f'{groupName}/local_data')
-        operatorToSave.DatasetRoles.setValue(['Raw Data'])
-        operatorToSave.DatasetGroup.resize(1)
-        operatorToSave.DatasetGroup[0][0].setValue(info)
-        return operatorToSave
-
-    def _createDatasetInfo(self):
-        info = DatasetInfo()
-        info.filePath = self.tmpFilePath
-        info.location = DatasetInfo.Location.ProjectInternal
-        return info
+    assert operatorToLoad.Image[0].meta.shape == serializer.topLevelOperator.Image[0].meta.shape
+    assert operatorToLoad.Image[0].meta.axistags == serializer.topLevelOperator.Image[0].meta.axistags

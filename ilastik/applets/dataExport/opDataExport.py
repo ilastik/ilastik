@@ -209,11 +209,7 @@ class OpDataExport(Operator):
             return
         self._opFormattedExport.Input.connect( self.Inputs[selection_index] )
 
-        if os.path.pathsep in rawInfo.filePath:
-            first_dataset = rawInfo.filePath.split(os.path.pathsep)[0]
-            dataset_dir = PathComponents(first_dataset).externalDirectory
-        else:
-            dataset_dir = PathComponents(rawInfo.filePath).externalDirectory
+        dataset_dir = str(rawInfo.default_output_dir)
         abs_dataset_dir, _ = getPathVariants(dataset_dir, self.WorkingDirectory.value)
         known_keys = {}        
         known_keys['dataset_dir'] = abs_dataset_dir
