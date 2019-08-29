@@ -457,7 +457,7 @@ class DataSelectionGui(QWidget):
             self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
             QMessageBox.critical(self, "File selection error", str(e))
 
-    def applyDatasetInfos(self, new_infos: List[DatasetInfo], info_slots: List[Slot], fixed_once=False):
+    def applyDatasetInfos(self, new_infos: List[DatasetInfo], info_slots: List[Slot]):
         original_infos = []
 
         def revert():
@@ -473,10 +473,8 @@ class DataSelectionGui(QWidget):
                         info_slot.setValue(new_info)
                         break
                     except DatasetConstraintError as e:
-                        if fixed_once:
-                            QMessageBox.warning(self, "Incompatible dataset", str(e))
+                        QMessageBox.warning(self, "Incompatible dataset", str(e))
                         info_editor = DatasetInfoEditorWidget(self, [new_info], self.serializer)
-                        fixed_once = True
                         if info_editor.exec_() == QDialog.Rejected:
                             revert()
                             return False
@@ -642,7 +640,7 @@ class DataSelectionGui(QWidget):
         infos = [slot.value for slot in selected_info_slots]
         editorDlg = DatasetInfoEditorWidget(self, infos, self.serializer)
         if editorDlg.exec_() == QDialog.Accepted:
-            self.applyDatasetInfos(editorDlg.edited_infos, selected_info_slots, fixed_once=True)
+            self.applyDatasetInfos(editorDlg.edited_infos, selected_info_slots)
 
     def addPrecomputedVolume(self, roleIndex, laneIndex):
         # add history...
