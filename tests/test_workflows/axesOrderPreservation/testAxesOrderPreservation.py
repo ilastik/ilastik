@@ -623,7 +623,7 @@ class TestAxesOrderPreservation(object):
         # would be in quotes...
         # args.append('--output_format=png sequence')
         args.append("--export_source=Tracking-Result")
-        output_filename = os.path.join(self.dir, f"output{variant}.h5")
+        output_filename = os.path.join(self.dir, f"{dims}{variant}{input_axes}.h5")
         args.append("--output_filename_format=" + output_filename)
         args.append("--export_dtype=uint8")
         # args.append("--output_axis_order=" + input_axes)
@@ -693,7 +693,7 @@ class TestAxesOrderPreservation(object):
         opReaderResult = OpInputDataReader(graph=Graph())
         opReaderResult.FilePath.setValue(output_filename)
 
-        compare_name = os.path.abspath(os.path.join(self.dir, f'{dims}{variant}_Tracking-Result.h5'))
+        compare_name = os.path.abspath(os.path.join(self.dir, f'{dims}{variant}{input_axes}_Tracking-Result.h5'))
 
         if variant == '_wPred':
             self.compare_results(opReaderResult, compare_name, input_axes)
