@@ -595,14 +595,16 @@ class DataSelectionGui(QWidget):
         """
         The user clicked the "Import Stack Files" button.
         """
+        stackDlg = StackFileSelectionWidget(self)
+        stackDlg.exec_()
+        if stackDlg.result() != QDialog.Accepted or not stackDlg.selectedFiles:
+            return
+
+        # FIXME: ask first if stack should be internalized to project file
+        # also, check prefer_2d, size/volume and presence of 'z' to determine this
+        nickname = DatasetInfo.create_nickname(stackDlg.selectedFiles)
+
         try:
-            stackDlg = StackFileSelectionWidget(self)
-            stackDlg.exec_()
-            if stackDlg.result() != QDialog.Accepted or not stackDlg.selectedFiles:
-                return
-            # FIXME: ask first if stack should be internalized to project file
-            # also, check prefer_2d, size/volume and presence of 'z' to determine this
-            nickname = DatasetInfo.create_nickname(stackDlg.selectedFiles)
             # FIXME: do this inside a Request
             self.parentApplet.busy = True
             inner_path = self.serializer.importStackAsLocalDataset(
@@ -613,9 +615,10 @@ class DataSelectionGui(QWidget):
                 nickname=nickname,
                 project_file=self.project_file,
             )
-            self.addLanes([info], roleIndex, laneIndex)
         finally:
             self.parentApplet.busy = False
+
+        self.addLanes([info], roleIndex, laneIndex)
 
     def handleClearDatasets(self, roleIndex, selectedRows):
         for row in selectedRows:
