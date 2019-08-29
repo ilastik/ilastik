@@ -7,6 +7,13 @@ from PyQt5.QtCore import QTimer
 
 from ilastik.widgets.ImageFileDialog import ImageFileDialog
 
+# Single shot delay time seems to be critical, much higher (~1000) values result
+# freezes on windows
+# Lower ones (~10) result in freezes on linux
+# This whole weird setup is necessary because dialogs spin up their own event
+# loop in exec_.
+SINGLE_SHOT_DELAY = 100
+
 
 @pytest.fixture
 def blank_preferences():
@@ -33,7 +40,7 @@ def test_picking_file_updates_default_image_directory_to_previously_used(blank_p
     assert dialog.directory().absolutePath() == Path("~").expanduser().absolute().as_posix()
     dialog.selectFile(image.as_posix())
 
-    QTimer.singleShot(10, dialog.accept)
+    QTimer.singleShot(SINGLE_SHOT_DELAY, dialog.accept)
     assert dialog.getSelectedPaths() == [image]
 
     preferences.set.assert_called_once_with(dialog.preferences_group, dialog.preferences_setting, image.as_posix())
@@ -44,5 +51,5 @@ def test_picking_n5_json_file_returns_directory_path(tmp_n5_file: Path, blank_pr
     dialog.setDirectory(str(tmp_n5_file))
     dialog.selectFile("attributes.json")
 
-    QTimer.singleShot(10, dialog.accept)
+    QTimer.singleShot(SINGLE_SHOT_DELAY, dialog.accept)
     assert dialog.getSelectedPaths() == [tmp_n5_file]
