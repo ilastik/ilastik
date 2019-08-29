@@ -22,7 +22,6 @@
 import importlib
 import logging
 import os
-from typing import Sequence
 
 import numpy
 
@@ -36,9 +35,9 @@ from ilastik.widgets.boxListModel import BoxListModel
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.utility import traceLogged
 from PyQt5 import uic
-from PyQt5.QtCore import QRect, Qt, pyqtSlot
+from PyQt5.QtCore import Qt, pyqtSlot
 from PyQt5.QtGui import QColor, QIcon
-from PyQt5.QtWidgets import QApplication, QMessageBox
+from PyQt5.QtWidgets import QApplication, QFileDialog, QMessageBox
 from volumina.api import ColortableLayer, LazyflowSinkSource, createDataSource
 from volumina.navigationController import NavigationInterpreter
 from volumina.utility import ShortcutManager
@@ -85,6 +84,7 @@ class CallToGui(object):
             self.setfun(val)
 
 class CountingGui(LabelingGui):
+    _FILE_DIALOG_FILTER = "CSV (*.csv)"
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
@@ -260,7 +260,11 @@ class CountingGui(LabelingGui):
 
         #Debug interface only available to advanced users
         self.labelingDrawerUi.DebugButton.pressed.connect(self._debug)
+
         self.labelingDrawerUi.boxListView.resetEmptyMessage("no boxes defined yet")
+        self.labelingDrawerUi.boxListView.importTriggered.connect(self._importBoxes)
+        self.labelingDrawerUi.boxListView.exportTriggered.connect(self._exportBoxes)
+
         self.labelingDrawerUi.SVROptions.currentIndexChanged.connect(self._updateSVROptions)
         self.labelingDrawerUi.CBox.valueChanged.connect(self._updateC)
 
@@ -283,6 +287,62 @@ class CountingGui(LabelingGui):
         self._updateSigma()
         self._updateNtrees()
         self._updateMaxDepth()
+
+    def _importBoxes(self) -> None:
+        """Show file dialog and import boxes from the selected file."""
+        filename, _filter = QFileDialog.getOpenFileName(
+            self, "Import Boxes", self._cwd, self._FILE_DIALOG_FILTER, self._FILE_DIALOG_FILTER
+        )
+
+        if not filename:
+            return
+
+        try:
+            with open(filename) as f:
+                self.boxController.csvRead(f)
+        except Exception as e:
+            msg = "Box import error"
+            logger.exception(msg)
+            QMessageBox.critical(self, msg.title(), str(e))
+
+    def _exportBoxes(self) -> None:
+        """Show file dialog and export boxes to the selected file."""
+        filename, _filter = QFileDialog.getSaveFileName(
+            self, "Export Boxes", self._cwd, self._FILE_DIALOG_FILTER, self._FILE_DIALOG_FILTER
+        )
+
+        if not filename:
+            return
+
+        filename, ext = os.path.splitext(filename)
+        filename += ext or ".csv"
+
+        try:
+            with open(filename, "w") as f:
+                self.boxController.csvWrite(f)
+        except Exception as e:
+            msg = "Box export error"
+            logger.exception(msg)
+            QMessageBox.critical(self, msg.title(), str(e))
+            os.remove(filename)
+
+    @property
+    def _cwd(self) -> str:
+        """Current working directory, or user's home directory if the real cwd is unavailable."""
+        home = os.path.expanduser("~")
+
+        if not self.op.WorkingDirectory.ready():
+            return home
+
+        value = self.op.WorkingDirectory.value
+        if value is None:
+            return home
+
+        value = value.strip()
+        if not value:
+            return home
+
+        return value
 
     def _registerOperatorsToGuiCallbacks(self):
 

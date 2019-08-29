@@ -25,9 +25,12 @@
 # TODO: test switch to a new image
 # TODO: test load a referecence project
 
+import csv
+import io
 import logging
 import os
 import sys
+import textwrap
 
 import numpy
 from tests.helpers import ShellGuiTestCaseBase
@@ -35,7 +38,6 @@ from tests.helpers import ShellGuiTestCaseBase
 import vigra
 from ilastik.applets.counting.countingApplet import CountingApplet
 from lazyflow.utility.timer import Timer, timeLogged
-from PyQt5.QtCore import QPoint
 from PyQt5.QtWidgets import QApplication
 
 logger = logging.getLogger(__name__)
@@ -62,14 +64,8 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
     PROJECT_FILE = os.path.join(os.path.split(__file__)[0], "test_project-counting.ilp")
     # SAMPLE_DATA = os.path.join(os.path.split(__file__)[0], 'synapse_small.npy')
 
-    # Structure: sequence of (start, stop) pairs of (x, y) coordinates.
-    # fmt: off
-    BOX_ROIS = (
-        ((0, 0), (100, 100)),
-        ((0, 21), (22, 32)),
-        ((0, 1), (50, 20)),
-    )
-    # fmt: on
+    # Structure: sequence of (start_x, start_y, stop_x, stop_y).
+    BOX_ROIS = ((0, 0, 100, 100), (0, 21, 22, 32), (0, 1, 50, 20))
 
     @classmethod
     def setup_class(cls):
@@ -111,7 +107,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
             except:
                 pass
 
-    def test_1_loadSerializedProject(self):
+    def test_01_loadSerializedProject(self):
         """
         Create a blank project, manipulate few couple settings, and save it.
         """
@@ -171,7 +167,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
-    def test_2_ClosedState(self):
+    def test_02_ClosedState(self):
         """
         Check the state of various shell and gui members when no project is currently loaded.
         """
@@ -183,7 +179,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
-    def test_3_OpenProject(self):
+    def test_03_OpenProject(self):
         def impl():
             self.shell.openProjectFile(self.PROJECT_FILE)
             assert self.shell.projectManager.currentProjectFile is not None
@@ -195,7 +191,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
         self.exec_in_shell(impl)
 
     @timeLogged(logger, logging.INFO)
-    def test_4_AddDots(self):
+    def test_04_AddDots(self):
         """
         Add labels and draw them in the volume editor.
         """
@@ -284,7 +280,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
     LABEL_ERASE_STOP = (5, -15)
 
     @timeLogged(logger, logging.INFO)
-    def test_5_AddDotsAndBackground(self):
+    def test_05_AddDotsAndBackground(self):
         """
         Add labels and draw them in the volume editor.
         """
@@ -383,7 +379,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
         self.exec_in_shell(impl)
 
     @timeLogged(logger, logging.INFO)
-    def test_6_AddBox(self):
+    def test_06_AddBox(self):
         """
         Add boxes and draw them in the volume editor.
         """
@@ -433,14 +429,14 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
 
             imgView = gui.currentGui().editor.imageViews[2]
 
-            for start, stop in self.BOX_ROIS:
-                start = imgView.mapFromScene(*start)
-                # "stop" in strokeMouse is inclusive, but our ROIs are exclusive.
-                stop = imgView.mapFromScene(*stop) - QPoint(1, 1)
-                self.strokeMouse(imgView, start, stop)
+            for roi in self.BOX_ROIS:
+                startX, startY, stopX, stopY = roi
+                topLeft = imgView.mapFromScene(startX, startY)
+                bottomRight = imgView.mapFromScene(stopX, stopY)
+                self.strokeMouse(imgView, topLeft, bottomRight)
 
-            added_boxes = len(gui.currentGui()._labelControlUi.boxListModel._elements)
-            assert added_boxes == 3, " Not all boxes added to the model curr = %d" % added_boxes
+            controller = gui.currentGui().boxController
+            assert tuple(controller.rois()) == self.BOX_ROIS
             self.waitForViews([imgView])
 
             # Save the project
@@ -450,7 +446,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
-    def test_7_InteractiveMode(self):
+    def test_07_InteractiveMode(self):
         """
         Click the "interactive mode" to see if anything crashes for each of the available counting modalities.
 
@@ -486,7 +482,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
-    def test_8_changeSigmaValue(self):
+    def test_08_changeSigmaValue(self):
         """
         Change the sigma value and check that works
 
@@ -507,7 +503,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
-    def test_9_boxPositionsAreCorrectlyLoadedFromSavedProject(self):
+    def test_09_boxPositionsAreCorrectlyLoadedFromSavedProject(self):
         def impl():
             self.shell.projectManager.saveProject()
             self.shell.ensureNoCurrentProject(assertClean=True)
@@ -518,16 +514,47 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
             workflow = self.shell.projectManager.workflow
             gui = workflow.countingApplet.getMultiLaneGui().currentGui()
 
+            assert tuple(gui.boxController.rois()) == self.BOX_ROIS
+
+        self.exec_in_shell(impl)
+
+    def test_10_boxesAreCorrectlyExported(self):
+        def impl():
+            workflow = self.shell.projectManager.workflow
+            gui = workflow.countingApplet.getMultiLaneGui().currentGui()
+
+            out = io.StringIO()
+            gui.boxController.csvWrite(out)
+            out.seek(0)
+
+            names = "StartX", "StartY", "StopX", "StopY"
             rois = []
-            for box in gui.boxController._currentBoxesList:
-                item = box.getRectItem()
-                left, top = item.topLeftDataPos()
-                right, bottom = item.bottomRightDataPos()
-                start = left, top
-                stop = right + 1, bottom + 1
-                rois.append((start, stop))
+            for row in csv.DictReader(out):
+                roi = tuple(int(row[col]) for col in names)
+                rois.append(roi)
 
             assert tuple(rois) == self.BOX_ROIS
+
+        self.exec_in_shell(impl)
+
+    def test_11_boxesAreCorrectlyImported(self):
+        csv_text = """\
+            StartX,StartY,StopX,StopY
+            0,5,10,25
+            42,310,567,890
+        """
+        csv_text = textwrap.dedent(csv_text)
+
+        def impl():
+            workflow = self.shell.projectManager.workflow
+            gui = workflow.countingApplet.getMultiLaneGui().currentGui()
+            controller = gui.boxController
+
+            controller.deleteAll()
+            assert not tuple(controller.rois())
+
+            controller.csvRead(io.StringIO(csv_text))
+            assert tuple(controller.rois()) == ((0, 5, 10, 25), (42, 310, 567, 890))
 
         self.exec_in_shell(impl)
 

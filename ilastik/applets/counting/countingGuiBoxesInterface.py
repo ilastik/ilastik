@@ -20,9 +20,11 @@
 ###############################################################################
 
 import colorsys
+import csv
 import logging
 import time
 import warnings
+from typing import Iterable, TextIO, Tuple
 
 import numpy as np
 
@@ -204,6 +206,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
 
         QGraphicsRectItem.__init__(self, 0, 0, w, h, parent=parent)
         self.Signaller = QGraphicsResizableRectSignaller(parent=parent)
+
 
         scene.addItem(self)
 
@@ -819,7 +822,6 @@ class BoxInterpreter(QObject):
 
 
 class BoxController(QObject):
-
     fixedBoxesChanged = pyqtSignal(dict)
     viewBoxesChanged = pyqtSignal(dict)
 
@@ -848,7 +850,6 @@ class BoxController(QObject):
         self.scene.selectionChanged.connect(self.handleSelectionChange)
 
         boxListModel.boxRemoved.connect(self.deleteItem)
-        boxListModel.signalSaveAllBoxesToCSV.connect(self.saveBoxesToCSV)
 
     def getCurrentActiveBox(self):
         pass
@@ -937,6 +938,19 @@ class BoxController(QObject):
         # super(type(self.boxListModel),self.boxListModel).removeRow(index)
         el.release()
 
+    def deleteAll(self) -> None:
+        """Delete all boxes."""
+        for i in reversed(range(len(self._currentBoxesList))):
+            self.deleteItem(i)
+
+    def rois(self) -> Iterable[Tuple[int, int, int, int]]:
+        """Start X, start Y, end X and end Y box coordinates (start inclusive, end exclusive)."""
+        for box in self._currentBoxesList:
+            item = box.getRectItem()
+            left, top = item.topLeftDataPos()
+            right, bottom = item.bottomRightDataPos()
+            yield left, top, right, bottom
+
     def selectBoxItem(self, index):
         [el._rectItem.setSelected(False) for el in self._currentBoxesList]  # deselect the others
         self._currentBoxesList[index]._rectItem.setSelected(True)
@@ -969,42 +983,76 @@ class BoxController(QObject):
         color = next(self._RandomColorGenerator)
         return color
 
-    def saveBoxesToCSV(self, filename):
-        import os, csv
+    def csvRead(self, src: TextIO) -> None:
+        """Read box coordinates from CSV.
 
-        b, ext = os.path.splitext(str(filename))
-        assert ext == ".txt", "wrong filename or extension %s" % str(filename)
-        try:
-            with open(filename, "wb") as fh:
+        The first row should contain columns' names.
 
-                header = ["ID", "StartX", "StartY", "StopX", "StopY", "Count", "Average density", "Std density"]
+        Required columns:
 
-                fh.write(" , ".join(header) + "\n")
+        - StartX
+        - StartY
+        - StopX
+        - StopY
 
-                for k, box in enumerate(self._currentBoxesList):
-                    start = box.getStart()
-                    stop = box.getStop()
-                    region = box.getSubRegion()
-                    count = np.sum(region)
-                    averagedens = np.mean(region)
-                    stddensity = np.std(region)
+        Raises:
+            ValueError: Required column is missing or has an invalid format.
+        """
+        names = "StartX", "StartY", "StopX", "StopY"
+        boxes = []
 
-                    line = [
-                        "%5.5d" % k,
-                        "%5.5d" % start[1],
-                        "%5.5d" % start[2],
-                        "%5.5d" % stop[1],
-                        "%5.5d" % stop[2],
-                        "%5.2f" % count,
-                        "%5.2f" % averagedens,
-                        "%5.2f" % stddensity,
-                    ]
-                    logger.debug("line " + ",".join(line))
-                    fh.write(",".join(line) + "\n")
+        # The first line is consumed by DictReader.
+        for line, row in enumerate(csv.DictReader(src), 2):
+            cols = []
 
-        except IOError as e:
-            logger.error(e)
-            raise IOError
+            for name in names:
+                try:
+                    cols.append(int(row[name]))
+
+                except KeyError:
+                    names_repr = ", ".join(map(repr, names))
+                    raise ValueError(f"Line {line}: missing column {name!r} (required columns: {names_repr})")
+
+                except ValueError:
+                    raise ValueError(f"Line {line}: column {name!r} is not an integer")
+
+            boxes.append(roi2rect(cols[:2], cols[2:]))
+
+        for box in boxes:
+            self.addNewBox(box)
+
+    def csvWrite(self, dest: TextIO) -> None:
+        """Write box coordinates and statistics to CSV.
+
+        Columns:
+
+        - StartX
+        - StartY
+        - StopX
+        - StopY
+        - Count
+        - AverageDensity
+        - StdDensity
+        """
+        names = "StartX", "StartY", "StopX", "StopY", "Count", "AverageDensity", "StdDensity"
+        writer = csv.DictWriter(dest, fieldnames=names, quoting=csv.QUOTE_MINIMAL)
+        writer.writeheader()
+
+        for box in self._currentBoxesList:
+            rect = box.getRectItem()
+            startX, startY = rect.topLeftDataPos()
+            stopX, stopY = rect.bottomRightDataPos()
+            region = box.getSubRegion()
+            row = {
+                "StartX": format(startX, "d"),
+                "StartY": format(startY, "d"),
+                "StopX": format(stopX, "d"),
+                "StopY": format(stopY, "d"),
+                "Count": format(np.sum(region), "f"),
+                "AverageDensity": format(np.mean(region), "f"),
+                "StdDensity": format(np.std(region), "f"),
+            }
+            writer.writerow(row)
 
 
 # ===============================================================================

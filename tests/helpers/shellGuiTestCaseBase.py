@@ -20,13 +20,14 @@
 ###############################################################################
 
 import atexit
+import numbers
 import threading
 from typing import Iterable, Union
 
 import pytest
 from ilastik.ilastik_logging import default_config
 from past.utils import old_div
-from PyQt5.QtCore import QEvent, QPoint, Qt
+from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
 from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtWidgets import QAbstractScrollArea, QApplication, qApp
 
@@ -159,8 +160,8 @@ class ShellGuiTestCaseBase(object):
     def strokeMouse(
         self,
         imgView: QAbstractScrollArea,
-        start: Union[QPoint, Iterable[int]],
-        end: Union[QPoint, Iterable[int]],
+        startPoint: Union[QPointF, QPoint, Iterable[numbers.Real]],
+        endPoint: Union[QPointF, QPoint, Iterable[numbers.Real]],
         modifier: int = Qt.NoModifier,
         numSteps: int = 10,
     ) -> None:
@@ -168,43 +169,37 @@ class ShellGuiTestCaseBase(object):
 
         Args:
             imgView: View that will receive mouse events.
-            start: Start coordinates, inclusive.
-            end:  End coordinates, *also inclusive*.
+            startPoint: Start coordinates, inclusive.
+            endPoint:  End coordinates, also inclusive.
             modifier: This modifier will be active when pressing, moving and releasing.
             numSteps: The number of mouse move events.
 
         See Also:
             :func:`strokeMouseFromCenter`.
         """
-        if not isinstance(start, QPoint):
-            start = QPoint(*start)
-        if not isinstance(end, QPoint):
-            end = QPoint(*end)
+        startPoint = _asQPointF(startPoint)
+        endPoint = _asQPointF(endPoint)
 
         # Note: Due to the implementation of volumina.EventSwitch.eventFilter(),
         #       mouse events intended for the ImageView MUST go through the viewport.
 
         # Move to start
-        move = QMouseEvent(QEvent.MouseMove, start, Qt.NoButton, Qt.NoButton, modifier)
+        move = QMouseEvent(QEvent.MouseMove, startPoint, Qt.NoButton, Qt.NoButton, modifier)
         QApplication.sendEvent(imgView.viewport(), move)
 
         # Press left button
-        press = QMouseEvent(QEvent.MouseButtonPress, start, Qt.LeftButton, Qt.NoButton, modifier)
+        press = QMouseEvent(QEvent.MouseButtonPress, startPoint, Qt.LeftButton, Qt.NoButton, modifier)
         QApplication.sendEvent(imgView.viewport(), press)
 
         # Move to end in several steps
-        # numSteps = numSteps
-        for i in range(numSteps):
-            nextPoint = start + (end - start) * (old_div(float(i), numSteps))
+        for i in range(1, numSteps + 1):
+            a = i / numSteps
+            nextPoint = (1 - a) * startPoint + a * endPoint
             move = QMouseEvent(QEvent.MouseMove, nextPoint, Qt.NoButton, Qt.NoButton, modifier)
             QApplication.sendEvent(imgView.viewport(), move)
 
-        # Move to end
-        move = QMouseEvent(QEvent.MouseMove, end, Qt.NoButton, Qt.NoButton, modifier)
-        QApplication.sendEvent(imgView.viewport(), move)
-
         # Release left button
-        release = QMouseEvent(QEvent.MouseButtonRelease, end, Qt.LeftButton, Qt.NoButton, modifier)
+        release = QMouseEvent(QEvent.MouseButtonRelease, endPoint, Qt.LeftButton, Qt.NoButton, modifier)
         QApplication.sendEvent(imgView.viewport(), release)
 
         # Wait for the gui to catch up
@@ -214,8 +209,8 @@ class ShellGuiTestCaseBase(object):
     def strokeMouseFromCenter(
         self,
         imgView: QAbstractScrollArea,
-        start: Union[QPoint, Iterable[int]],
-        end: Union[QPoint, Iterable[int]],
+        startPoint: Union[QPointF, QPoint, Iterable[numbers.Real]],
+        endPoint: Union[QPointF, QPoint, Iterable[numbers.Real]],
         modifier: int = Qt.NoModifier,
         numSteps: int = 10,
     ) -> None:
@@ -223,20 +218,23 @@ class ShellGuiTestCaseBase(object):
 
         Args:
             imgView: View that will receive mouse events.
-            start: Start offset from the `imgView` center, inclusive.
-            end:  End offset from the `imgView` center, *also inclusive*.
+            startPoint: Start offset from the `imgView` center, inclusive.
+            endPoint:  End offset from the `imgView` center, also inclusive.
             modifier: This modifier will be active when pressing, moving and releasing.
             numSteps: The number of mouse move events.
 
         See Also:
             :func:`strokeMouse`.
         """
-        if not isinstance(start, QPoint):
-            start = QPoint(*start)
-        if not isinstance(end, QPoint):
-            end = QPoint(*end)
-
         # FIXME: The simpler "center" calculation below breaks tests on CI.
         # center = imgView.rect().center()
         center = imgView.rect().bottomRight() / 2
-        self.strokeMouse(imgView, start + center, end + center, modifier, numSteps)
+        self.strokeMouse(imgView, _asQPointF(startPoint) + center, _asQPointF(endPoint) + center, modifier, numSteps)
+
+
+def _asQPointF(x: Union[QPointF, QPoint, Iterable[numbers.Real]]) -> QPointF:
+    if isinstance(x, QPointF):
+        return x
+    if isinstance(x, QPoint):
+        return QPointF(x)
+    return QPointF(*x)

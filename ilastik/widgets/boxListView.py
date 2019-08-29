@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,21 +18,18 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-import os
-import logging
 
-from PyQt5.QtWidgets import QTableView, QColorDialog, \
-                            QAbstractItemView, QVBoxLayout, QPushButton, \
-                            QWidget, QHeaderView, QDialog, QStackedWidget, \
-                            QLabel, QSizePolicy, QMenu, QAction
-from PyQt5.QtGui import QColor
-from PyQt5 import QtWidgets
-from PyQt5.QtCore import Qt, QModelIndex, pyqtSignal, QItemSelectionModel
+import logging
+import os
+
+from ilastik.widgets.listView import ListView
 from PyQt5 import uic
-from .labelListModel import LabelListModel, Label
-from .listView import ListView
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QAction, QColorDialog, QDialog, QLabel, QMenu, QPushButton, QVBoxLayout, QWidget
 
 logger = logging.getLogger(__name__)
+
 
 class BoxDialog(QDialog):
 
@@ -137,11 +133,9 @@ class BoxDialog(QDialog):
         self.ui.checkLineWidthGlobal.setCheckState(Qt.Unchecked)
 
 
-
-
 class BoxListView(ListView):
-
-    signalSaveAllBoxesToCSV=pyqtSignal(str)
+    importTriggered = pyqtSignal()
+    exportTriggered = pyqtSignal()
 
     def __init__(self, parent = None):
         super(BoxListView, self).__init__(parent=parent)
@@ -231,35 +225,12 @@ class BoxListView(ListView):
     def allowFixIcon(self, allow):
         self._table.setColumnHidden(self.model.ColumnID.FixIcon, not allow)
 
-
-    def contextMenuEvent(self,event):
-        # idx = self.model.indexAt(event.pos())
-        # box = self.model[idx.row()]
-        menu = QMenu("Menu", self)
-
-        def saveCSVList():
-            import os
-            filename, _filter = QtWidgets.QFileDialog.getSaveFileName(None, 'Save Boxes to txt', os.path.expanduser("~"), ".txt")
-            filename=str(filename)
-
-
-            if filename!="" and self.model!=None:
-                a,b=os.path.splitext(filename)
-                if b!=".txt": filename=a+".txt"
-                self.model.signalSaveAllBoxesToCSV.emit(filename)
-
-
-        export = QAction("Export list of boxes",menu)
-        export.setStatusTip("Export List of boxes")
-        export.triggered.connect(saveCSVList)
-
-        menu.addAction(export)
-
+    def contextMenuEvent(self, event):
+        menu = QMenu(self)
+        menu.addAction(QAction("Import...", self, triggered=self.importTriggered))
+        if self.model:
+            menu.addAction(QAction("Export...", self, triggered=self.exportTriggered))
         menu.exec_(self.mapToGlobal(event.pos()))
-
-
-
-
 
 
 #==============================================================================

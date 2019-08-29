@@ -41,7 +41,7 @@ from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
 
 from lazyflow.request import Request, RequestPool
 from lazyflow.roi import roiToSlice, sliceToRoi, determineBlockShape
-                               
+
 from ilastik.applets.counting.countingOperators import OpTrainCounter, OpPredictCounter, OpLabelPreviewer
 
 #ilastik
@@ -141,11 +141,11 @@ class OpUpperBound(Operator):
         self.UpperBound.meta.shape = (1,)
 
     def execute(self, slot, subindex, roi, result):
-            
+
         sigma = self.Sigma.value
         result[...] = old_div(3, (2 * math.pi * sigma**2))
         return result
-    
+
     def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
         self.UpperBound.setDirty( key[:-1] )
@@ -196,9 +196,9 @@ class OpCounting( Operator ):
     """
     name="OpCounting"
     category = "Top-level"
-    
+
     # Graph inputs
-    
+
     InputImages = InputSlot(level=1) # Original input data.  Used for display only.
 
     LabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
@@ -215,7 +215,7 @@ class OpCounting( Operator ):
 
     #PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
     #SegmentationChannels = OutputSlot(level=2) # Binary image of the final selections.
-    
+
     LabelImages = OutputSlot(level=1) # Labels from the user
     BoxLabelImages= OutputSlot(level=1) # Input for providing label data from an external source
     NonzeroLabelBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
@@ -238,20 +238,21 @@ class OpCounting( Operator ):
     Density = OutputSlot(level=1)
     LabelPreview = OutputSlot(level=1)
     OutputSum = OutputSlot(level=1)
+    WorkingDirectory = OutputSlot()
 
     def __init__( self, *args, **kwargs ):
         """
         Instantiate all internal operators and connect them together.
         """
         super(OpCounting, self).__init__(*args, **kwargs)
-        
+
         # Default values for some input slots
         self.FreezePredictions.setValue(True)
         self.LabelNames.setValue( ["Foreground", "Background"] )
         self.LabelColors.setValue( [ (255,0,0), (0,255,0) ] )
         self.PmapColors.setValue( [ (255,0,0), (0,255,0) ] )
 
-        # SPECIAL connection: The LabelInputs slot doesn't get it's data  
+        # SPECIAL connection: The LabelInputs slot doesn't get it's data
         #  from the InputImages slot, but it's shape must match.
         self.LabelInputs.connect( self.InputImages )
         self.BoxLabelInputs.connect( self.InputImages )
@@ -267,7 +268,7 @@ class OpCounting( Operator ):
         self.opLabelPipeline.BoxLabelInput.connect( self.BoxLabelInputs )
         self.LabelImages.connect( self.opLabelPipeline.Output )
         self.NonzeroLabelBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
-                
+
         self.BoxLabelImages.connect( self.opLabelPipeline.BoxOutput)
 
         self.opExtractForegroundLabels = OpMultiLaneWrapper(OpPixelOperator, parent=self)
@@ -343,7 +344,7 @@ class OpCounting( Operator ):
                 self._checkConstraints(index)
                 self.setupCaches( multislot.index(slot) )
             multislot[index].notifyReady(handleInputReady)
-                
+
         self.InputImages.notifyInserted( handleNewInputImage )
 
         # All input multi-slots should be kept in sync
@@ -355,12 +356,12 @@ class OpCounting( Operator ):
                     def insertSlot( a, b, position, finalsize ):
                         a.insertSlot(position, finalsize)
                     s1.notifyInserted( partial(insertSlot, s2 ) )
-                    
+
                     def removeSlot( a, b, position, finalsize ):
                         a.removeSlot(position, finalsize)
                     s1.notifyRemoved( partial(removeSlot, s2 ) )
-        
-        
+
+
         self.options = self.opTrain.options
 
     def setupOutputs(self):
@@ -380,7 +381,7 @@ class OpCounting( Operator ):
 #        if numImages != len(self.FeatureImages) or \
 #           numImages != len(self.CachedFeatureImages):
 #            return
-#        
+#
 #        self.LabelImages.resize(numImages)
         self.LabelInputs.resize(numImages)
         self.BoxLabelInputs.resize(numImages)
@@ -403,18 +404,18 @@ class OpCounting( Operator ):
         pass
 
     def propagateDirty(self, slot, subindex, roi):
-        # Nothing to do here: All outputs are directly connected to 
+        # Nothing to do here: All outputs are directly connected to
         #  internal operators that handle their own dirty propagation.
         pass
 
     def addLane(self, laneIndex):
         numLanes = len(self.InputImages)
-        assert numLanes == laneIndex, "Image lanes must be appended."        
+        assert numLanes == laneIndex, "Image lanes must be appended."
         self.InputImages.resize(numLanes+1)
         self.opTrain.BoxConstraintRois.resize(numLanes + 1)
         self.opTrain.BoxConstraintValues.resize(numLanes + 1)
         self.boxViewer.rois.resize(numLanes + 1)
-        
+
     def removeLane(self, laneIndex, finalLength):
         self.InputImages.removeSlot(laneIndex, finalLength)
         self.opTrain.BoxConstraintRois.removeSlot(laneIndex, finalLength)
@@ -432,10 +433,10 @@ class OpCounting( Operator ):
         """
         Ensure that all input images must be 2D and have the same number of channels
         """
-        
-        
+
+
         thisLaneTaggedShape = self.InputImages[laneIndex].meta.getTaggedShape()
-        
+
         if 'z' in thisLaneTaggedShape:
             raise DatasetConstraintError(
                 "Objects Counting Workflow",
@@ -443,7 +444,7 @@ class OpCounting( Operator ):
                 "Your new image has {} z dimension"\
                 .format( thisLaneTaggedShape['z']))
                 # Find a different lane and use it for comparison
-        
+
         if 't' in thisLaneTaggedShape:
             raise DatasetConstraintError(
                 "Objects Counting Workflow",
@@ -451,20 +452,20 @@ class OpCounting( Operator ):
                 "Your new image has {} t dimension"\
                 .format( thisLaneTaggedShape['t']))
                 # Find a different lane and use it for comparison
-        
+
         validShape = thisLaneTaggedShape
         for i, slot in enumerate(self.InputImages):
             if slot.ready() and i != laneIndex:
                 validShape = slot.meta.getTaggedShape()
                 break
-        
+
         if len(validShape) != len(thisLaneTaggedShape):
             raise DatasetConstraintError(
                  "Objects Couting Workflow Counting",
                  "All input images must have the same dimensionality.  "\
                  "Your new image has {} dimensions (including channel), but your other images have {} dimensions."\
                  .format( len(thisLaneTaggedShape), len(validShape) ) )
-            
+
         if validShape['c'] != thisLaneTaggedShape['c']:
             raise DatasetConstraintError(
                  "Objects Counting Workflow",
@@ -548,7 +549,7 @@ class OpPredictionPipelineNoCache(Operator):
     MaxLabel = InputSlot()
     Classifier = InputSlot()
     PredictionsFromDisk = InputSlot( optional=True )
-    
+
     HeadlessPredictionProbabilities = OutputSlot() # drange is 0.0 to 1.0
     #HeadlessUint8PredictionProbabilities = OutputSlot() # drange 0 to 255
     OutputSum = OutputSlot()
@@ -557,11 +558,11 @@ class OpPredictionPipelineNoCache(Operator):
         super( OpPredictionPipelineNoCache, self ).__init__( *args, **kwargs )
 
         # Random forest prediction using the raw feature image slot (not the cached features)
-        # This would be bad for interactive labeling, but it's good for headless flows 
-        #  because it avoids the overhead of cache.        
+        # This would be bad for interactive labeling, but it's good for headless flows
+        #  because it avoids the overhead of cache.
         self.cacheless_predict = OpPredictCounter( parent=self )
         self.cacheless_predict.name = "OpPredictCounter (Cacheless Path)"
-        self.cacheless_predict.inputs['Classifier'].connect(self.Classifier) 
+        self.cacheless_predict.inputs['Classifier'].connect(self.Classifier)
         self.cacheless_predict.inputs['Image'].connect(self.FeatureImages) # <--- Not from cache
         self.cacheless_predict.inputs['LabelsCount'].connect(self.MaxLabel)
         self.meaner = OpMean(parent = self)
@@ -574,7 +575,7 @@ class OpPredictionPipelineNoCache(Operator):
         self.OutputSum.connect( self.opVolumeSum.Output )
 
         # Alternate headless output: uint8 instead of float.
-        # Note that drange is automatically updated.        
+        # Note that drange is automatically updated.
         #self.opConvertToUint8 = OpPixelOperator( parent=self )
         #self.opConvertToUint8.Input.connect( self.cacheless_predict.PMaps )
         #self.opConvertToUint8.Function.setValue( lambda a: (255*a).astype(numpy.uint8) )
@@ -608,7 +609,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         # Random forest prediction using CACHED features.
         self.predict = OpPredictCounter( parent=self )
         self.predict.name = "OpPredictCounter"
-        self.predict.inputs['Classifier'].connect(self.Classifier) 
+        self.predict.inputs['Classifier'].connect(self.Classifier)
         self.predict.inputs['Image'].connect(self.CachedFeatureImages)
         self.predict.inputs['LabelsCount'].connect(self.MaxLabel)
         self.PredictionProbabilities.connect( self.predict.PMaps )
@@ -666,14 +667,14 @@ class OpEnsembleMargin(Operator):
         roi.start[chanAxis] = 0
         roi.stop[chanAxis] = taggedShape['c']
         pmap = self.Input.get(roi).wait()
-        
+
         pmap_sort = numpy.sort(pmap, axis=self.Input.meta.axistags.index('c')).view(vigra.VigraArray)
         pmap_sort.axistags = self.Input.meta.axistags
 
         res = pmap_sort.bindAxis('c', -1) - pmap_sort.bindAxis('c', -2)
         res = res.withAxes( *list(taggedShape.keys()) ).view(numpy.ndarray)
         result[...] = res
-        return result 
+        return result
 
     def propagateDirty(self, inputSlot, subindex, roi):
         roi = roi.copy()

@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,14 +18,14 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt5 import uic
-from PyQt5.QtGui import QColor, QPixmap, QIcon, QPainter, QPen, QImage
-from PyQt5.QtWidgets import QDialog, QColorDialog, QGraphicsTextItem
-from PyQt5.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal, QItemSelectionModel
-from .listModel import ListModel, ListElement, _NPIXELS
-#from labelListModel import LabelListModel
+
 import logging
 import os
+
+from ilastik.widgets.listModel import _NPIXELS, ListElement, ListModel
+from PyQt5.QtCore import QItemSelectionModel, QModelIndex, Qt, pyqtSignal
+from PyQt5.QtGui import QColor, QIcon, QPixmap
+
 logger = logging.getLogger(__name__)
 
 #===============================================================================
@@ -175,14 +174,8 @@ class BoxLabel(ListElement):
             self.name, self._color)
 
 
-
-
-
-
-
 class BoxListModel(ListModel):
     boxRemoved = pyqtSignal(int)
-    signalSaveAllBoxesToCSV = pyqtSignal(str)
 
     class ColumnID(object):
         Color   = 0
@@ -339,14 +332,9 @@ class BoxListModel(ListModel):
             except:
                 return False
 
-
-
     def select(self, row):
         self._selectionModel.clear()
         self._selectionModel.select(self.index(row, self.ColumnID.Color),
                                     QItemSelectionModel.Select)
         self._selectionModel.select(self.index(row, self.ColumnID.Name),
                                     QItemSelectionModel.Select)
-
-
-
