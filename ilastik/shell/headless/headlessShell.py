@@ -27,6 +27,8 @@ from lazyflow.utility import isUrl
 from ilastik.shell.shellAbc import ShellABC
 from ilastik.shell.projectManager import ProjectManager
 
+
+@ShellABC.register
 class HeadlessShell(object):
     """
     For now, this class is just a stand-in for the GUI shell (used when running from the command line).
@@ -58,8 +60,8 @@ class HeadlessShell(object):
     @classmethod
     def downloadProjectFromDvid(cls, dvid_key_url):
         dvid_key_url = str(dvid_key_url)
-        
-        # By convention, command-line users specify the location of the project 
+
+        # By convention, command-line users specify the location of the project
         # keyvalue data using the same format that the DVID API itself uses.
         url_format = "^protocol://hostname/api/node/uuid/kv_instance_name(/key/keyname)?"
         for field in ['protocol', 'hostname', 'uuid', 'kv_instance_name', 'keyname']:
@@ -71,13 +73,13 @@ class HeadlessShell(object):
             # So if it looks like the user gave a URL that isn't a valid DVID node, then error.
             raise RuntimeError("Invalid URL format for DVID key-value data: {}".format(projectFilePath))
 
-        fields = match.groupdict()            
+        fields = match.groupdict()
         projectFilePath = ProjectManager.downloadProjectFromDvid( fields['hostname'],
                                                                   fields['uuid'],
                                                                   fields['kv_instance_name'],
                                                                   fields['keyname'] )
         return projectFilePath
-        
+
     def openProjectFile(self, projectFilePath, force_readonly=False):
         # If the user gave a URL to a DVID key, then download the project file from dvid first.
         # (So far, DVID is the only type of URL access we support for project files.)
@@ -92,8 +94,8 @@ class HeadlessShell(object):
             hdf5File, workflow_class, readOnly = ProjectManager.openProjectFile(projectFilePath, force_readonly)
 
             # If there are any "creation-time" command-line args saved to the project file,
-            #  load them so that the workflow can be instantiated with the same settings 
-            #  that were used when the project was first created. 
+            #  load them so that the workflow can be instantiated with the same settings
+            #  that were used when the project was first created.
             project_creation_args = []
             if "workflow_cmdline_args" in list(hdf5File.keys()):
                 if len(hdf5File["workflow_cmdline_args"]) > 0:
@@ -105,8 +107,8 @@ class HeadlessShell(object):
                 workflow_class = ilastik.workflows.pixelClassification.PixelClassificationWorkflow
                 import warnings
                 warnings.warn( "Your project file ({}) does not specify a workflow type.  "
-                               "Assuming Pixel Classification".format( projectFilePath ) )            
-            
+                               "Assuming Pixel Classification".format( projectFilePath ) )
+
             # Create our project manager
             # This instantiates the workflow and applies all settings from the project.
             self.projectManager = ProjectManager( self,
@@ -118,12 +120,12 @@ class HeadlessShell(object):
 
         except ProjectManager.FileMissingError:
             logger.error("Couldn't find project file: {}".format( projectFilePath ))
-            raise            
+            raise
         except ProjectManager.ProjectVersionError:
             # Couldn't open project.  Try importing it.
             oldProjectFilePath = projectFilePath
             name, ext = os.path.splitext(oldProjectFilePath)
-    
+
             # Create a brand new project file.
             projectFilePath = name + "_imported" + ext
             logger.info("Importing project as '" + projectFilePath + "'")
@@ -164,6 +166,3 @@ class HeadlessShell(object):
             self.projectManager._closeCurrentProject()
             self.projectManager.cleanUp()
             self.projectManager = None
-
-
-assert issubclass(HeadlessShell, ShellABC), "HeadlessShell does not satisfy the generic shell interface!"

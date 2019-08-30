@@ -174,7 +174,7 @@ class ProgressDisplayManager(QObject):
         self.requestTimer.start()
 
         self.statusBar.addPermanentWidget(self.requestStatus)
-        
+
         self.memoryWidget = MemoryWidget()
         self.memoryWidget.showDialogButton.clicked.connect(self.parent().showMemUsageDialog)
         self.statusBar.addPermanentWidget(self.memoryWidget)
@@ -186,11 +186,11 @@ class ProgressDisplayManager(QObject):
 
         mgr.totalCacheMemory.subscribe(printIt)
 
-        # Route all signals we get through a queued connection, 
+        # Route all signals we get through a queued connection,
         #  to ensure that they are handled in the GUI thread
-        # Important: AutoConnection (the default type) is not okay here: that would cause 
-        #            progress signals coming from the main thread to "cut in line"  
-        #            in front of progress notifications that were previously sent, 
+        # Important: AutoConnection (the default type) is not okay here: that would cause
+        #            progress signals coming from the main thread to "cut in line"
+        #            in front of progress notifications that were previously sent,
         #            but from other threads.
         self.dispatchSignal.connect(self.handleAppletProgressImpl, Qt.QueuedConnection)
 
@@ -272,6 +272,7 @@ def styleStartScreenButton(button, icon):
     button.setIcon(QIcon(icon))
 
 
+@ShellABC.register
 class IlastikShell(QMainWindow):
     """
     The GUI's main window.  Simply a standard 'container' GUI for one or more applets.
@@ -393,7 +394,7 @@ class IlastikShell(QMainWindow):
         # No applet can be enabled unless his disableCount == 0
 
         self._refreshDrawerRecursionGuard = False
-        
+
         self._applet_enabled_states = {}
 
         self.setupOpenFileButtons()
@@ -413,8 +414,8 @@ class IlastikShell(QMainWindow):
             # Hence, show it now before doing our calculations.
             self.show()
 
-            # Qt offers no function for setting the size of the entire frame, 
-            # so instead we have to calculate the target size of the internal geometry.            
+            # Qt offers no function for setting the size of the entire frame,
+            # so instead we have to calculate the target size of the internal geometry.
             frame_padding_width = self.frameGeometry().width() - self.geometry().size().width()
             frame_padding_height = self.frameGeometry().height() - self.geometry().size().height()
             self.resize(w - frame_padding_width, h - frame_padding_height)
@@ -519,7 +520,7 @@ class IlastikShell(QMainWindow):
         if _has_dvid_support:
             shellActions.downloadProjectFromDvidAction = menu.addAction("&Download Project from DVID...")
             shellActions.downloadProjectFromDvidAction.setIcon(QIcon(ilastikIcons.Open))
-            shellActions.downloadProjectFromDvidAction.triggered.connect(self.onDownloadProjectFromDvidActionTriggered)    
+            shellActions.downloadProjectFromDvidAction.triggered.connect(self.onDownloadProjectFromDvidActionTriggered)
 
         shellActions.closeAction = menu.addAction("&Close")
         shellActions.closeAction.setIcon(QIcon(ilastikIcons.ProcessStop))
@@ -554,7 +555,7 @@ class IlastikShell(QMainWindow):
 
                 b.clicked.connect(partial(self.openFileAndCloseStartscreen, path))
 
-                # Insert the new button after all the other controls, 
+                # Insert the new button after all the other controls,
                 #  but before the vertical spacer at the end of the list.
                 insertion_index = self.startscreen.VL1.count() - 1
                 self.startscreen.VL1.insertWidget(insertion_index, b)
@@ -574,7 +575,7 @@ class IlastikShell(QMainWindow):
 
             import zipfile
             import tempfile
-            
+
             with tempfile.TemporaryDirectory() as tmp_dir:
                 with zipfile.ZipFile(os.path.join(localDir, 'ilastik-logo-alternative.zip'), 'r') as z:
                     z.setpassword(clearkey)
@@ -706,7 +707,7 @@ class IlastikShell(QMainWindow):
                 pstats_path = os.path.splitext(stats_path)[0] + '.pstats'
                 PreferencesManager().set('shell', 'recent sorted profile stats', stats_path)
 
-                # Export the yappi stats to builtin pstats format, 
+                # Export the yappi stats to builtin pstats format,
                 #  since pstats provides nicer printing IMHO
                 stats = yappi.get_func_stats()
                 stats.save(pstats_path, type='pstat')
@@ -737,7 +738,7 @@ class IlastikShell(QMainWindow):
             if stats_path:
                 PreferencesManager().set('shell', 'recent sorted profile stats', stats_path)
 
-                # Export the yappi stats to builtin pstats format, 
+                # Export the yappi stats to builtin pstats format,
                 #  since pstats provides nicer printing IMHO
                 stats = yappi.get_thread_stats()
                 stats.sort(sortby)
@@ -782,7 +783,7 @@ class IlastikShell(QMainWindow):
         self._allocation_threshold = PreferencesManager().get('shell', 'allocation tracking threshold')
         if self._allocation_threshold is None:
             self._allocation_threshold = 1000000 # 1 MB by default
-        
+
         self._traceback_depth = PreferencesManager().get('shell', 'allocation tracking traceback depth')
         if self._traceback_depth is None:
             self._traceback_depth = 3 # default
@@ -850,7 +851,7 @@ class IlastikShell(QMainWindow):
                 defaultPath = os.path.join(os.path.expanduser('~'), filename)
             else:
                 defaultPath = os.path.join(os.path.split(recentPath)[0], filename)
-            
+
             html_path, _filter = QFileDialog.getSaveFileName(
                 self, "Export allocation tracking table", defaultPath, "HTML files (*.html)",
                 options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
@@ -861,7 +862,7 @@ class IlastikShell(QMainWindow):
 
                 # As a convenience, go ahead and open it.
                 QDesktopServices.openUrl(QUrl.fromLocalFile(html_path))
-        
+
         startAction = allocationTrackingSubmenu.addAction("Start")
         startAction.triggered.connect(_startAllocationTracking)
         startAction.setIcon(QIcon(ilastikIcons.Record))
@@ -873,7 +874,7 @@ class IlastikShell(QMainWindow):
 
         configureAction = allocationTrackingSubmenu.addAction("Configure...")
         configureAction.triggered.connect(_configureSettings)
-        
+
         return allocationTrackingSubmenu
 
     def showMemUsageDialog(self):
@@ -1053,7 +1054,7 @@ class IlastikShell(QMainWindow):
     @property
     def currentImageIndex(self):
         return self._currentImageIndex
-    
+
     def handleAppletBarItemExpanded(self, modelIndex):
         """
         The user wants to view a different applet bar item.
@@ -1067,11 +1068,11 @@ class IlastikShell(QMainWindow):
         if self._refreshDrawerRecursionGuard is False:
             assert threading.current_thread().name == "MainThread"
             self._refreshDrawerRecursionGuard = True
-            
+
             prev_applet_index = self.currentAppletIndex
             self.currentAppletIndex = applet_index
             self.currentAppletChanged.emit(prev_applet_index, self.currentAppletIndex)
-            
+
             # Collapse all drawers in the applet bar...
             # ...except for the newly selected item.
             self._appletBarMgr.focusApplet(applet_index)
@@ -1235,8 +1236,8 @@ class IlastikShell(QMainWindow):
         newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath, workflow_class,
                                                                self._workflow_cmdline_args, h5_file_kwargs)
         self._loadProject(newProjectFile, newProjectFilePath, workflow_class, readOnly=False)
-        
-        # If load failed, projectManager is None 
+
+        # If load failed, projectManager is None
         if self.projectManager:
             self.projectManager.saveProject()
 
@@ -1312,7 +1313,7 @@ class IlastikShell(QMainWindow):
 
     def onDownloadProjectFromDvidActionTriggered(self):
         logger.debug("Download Project From DVID")
-        
+
         recent_hosts_pref = PreferencesManager.Setting("DataSelection", "Recent DVID Hosts")
         recent_hosts = recent_hosts_pref.get()
         if not recent_hosts:
@@ -1342,7 +1343,7 @@ class IlastikShell(QMainWindow):
         except ValueError:
             pass
         finally:
-            recent_hosts.insert(0, hostname)        
+            recent_hosts.insert(0, hostname)
             recent_hosts = recent_hosts[:10]
 
         # Save pref
@@ -1433,8 +1434,8 @@ class IlastikShell(QMainWindow):
             return
 
         # If there are any "creation-time" command-line args saved to the project file,
-        #  load them so that the workflow can be instantiated with the same settings 
-        #  that were used when the project was first created. 
+        #  load them so that the workflow can be instantiated with the same settings
+        #  that were used when the project was first created.
         project_creation_args = []
         if "workflow_cmdline_args" in list(hdf5File.keys()):
             if len(hdf5File["workflow_cmdline_args"]) > 0:
@@ -1474,7 +1475,7 @@ class IlastikShell(QMainWindow):
                 self.closeCurrentProject()
 
                 # _loadProject failed, so we cannot expect it to clean up
-                # the hdf5 file (but it might have cleaned it up, so we catch 
+                # the hdf5 file (but it might have cleaned it up, so we catch
                 # the error)
                 try:
                     hdf5File.close()
@@ -1735,8 +1736,8 @@ class IlastikShell(QMainWindow):
             self.setAppletEnabled(applet, enabled)
 
     def setAppletEnabled(self, applet, enabled):
-        # We immediately track the enabled status in a member dict instead 
-        #  of checking with the applet gui itself, in case isAppletEnabled() 
+        # We immediately track the enabled status in a member dict instead
+        #  of checking with the applet gui itself, in case isAppletEnabled()
         #  gets called before _setAppletEnabled gets a chance to execute.
         self._applet_enabled_states[applet] = enabled
 
@@ -1796,6 +1797,3 @@ class IlastikShell(QMainWindow):
         else:
             applet.getMultiLaneGui().setEnabled(enabled)
             self._appletBarMgr.setEnabled(applet_index, enabled)
-
-
-assert issubclass(IlastikShell, ShellABC), "IlastikShell does not satisfy the generic shell interface!"
