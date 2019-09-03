@@ -228,7 +228,7 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
 
     def test_5_InteractiveMode(self):
         """
-        Click the "interactive mode" checkbox and see if any errors occur.
+        Click the "interactive mode" button and see if any errors occur.
         """
 
         def impl():
@@ -306,7 +306,7 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
-    def test_6_SwitchImages(self):
+    def test_6_SwitchImages_labeling_consitency(self):
         """
         Switch back and forth between a labeled image and an unlabeled one.  Labels should disappear and then reappear.
         """
@@ -358,6 +358,65 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
                 ), "Label is missing (should have been drawn in a previous test).  Expected {}, got {}".format(
                     hex(expectedColor), hex(observedColor)
                 )
+
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
+
+    def test_7_SwitchImages_live_update_consitency(self):
+        """
+        Switch back and forth between a labeled image and an unlabeled one.  Labels should disappear and then reappear.
+        """
+
+        def assert_not_in_live_update_state(shell, gui, pix_applet, image_index):
+            assert shell._currentImageIndex == image_index
+            current_gui = gui.currentGui()
+            assert not current_gui._labelControlUi.liveUpdateButton.isChecked()
+            assert pix_applet.topLevelOperator.FreezePredictions.value
+            assert current_gui._labelControlUi.AddLabelButton.isEnabled()
+            assert current_gui._labelControlUi.suggestFeaturesButton.isEnabled()
+
+        def assert_in_live_update_state(shell, gui, pix_applet, image_index):
+            assert shell._currentImageIndex == image_index
+            current_gui = gui.currentGui()
+            assert current_gui._labelControlUi.liveUpdateButton.isChecked()
+            assert not pix_applet.topLevelOperator.FreezePredictions.value
+            assert not current_gui._labelControlUi.AddLabelButton.isEnabled()
+            assert not current_gui._labelControlUi.suggestFeaturesButton.isEnabled()
+            assert current_gui._viewerControlUi.checkShowPredictions.isChecked()
+
+        def impl():
+            workflow = self.shell.projectManager.workflow
+            pixClassApplet = workflow.pcApplet
+            gui = pixClassApplet.getMultiLaneGui()
+            assert_not_in_live_update_state(self.shell, gui, pixClassApplet, 0)
+
+            # Select the second image
+            self.shell.imageSelectionCombo.setCurrentIndex(1)
+            gui.currentGui().editor.posModel.slicingPos = (0, 0, 0)
+            self.waitForViews(gui.currentGui().editor.imageViews)
+            assert_not_in_live_update_state(self.shell, gui, pixClassApplet, 1)
+
+            # switch on live update mode, in the second image
+            gui.currentGui()._labelControlUi.liveUpdateButton.click()
+            self.waitForViews(gui.currentGui().editor.imageViews)
+            assert_in_live_update_state(self.shell, gui, pixClassApplet, 1)
+
+            # Select the first image again
+            self.shell.imageSelectionCombo.setCurrentIndex(0)
+            gui.currentGui().editor.posModel.slicingPos = (0, 0, 0)
+            self.waitForViews(gui.currentGui().editor.imageViews)
+            assert_in_live_update_state(self.shell, gui, pixClassApplet, 0)
+
+            # disable live update mode again, this time in the first image
+            gui.currentGui()._labelControlUi.liveUpdateButton.click()
+            self.waitForViews(gui.currentGui().editor.imageViews)
+            assert_not_in_live_update_state(self.shell, gui, pixClassApplet, 0)
+
+            # Check if it worked in the second image
+            self.shell.imageSelectionCombo.setCurrentIndex(1)
+            gui.currentGui().editor.posModel.slicingPos = (0, 0, 0)
+            self.waitForViews(gui.currentGui().editor.imageViews)
+            assert_not_in_live_update_state(self.shell, gui, pixClassApplet, 1)
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
