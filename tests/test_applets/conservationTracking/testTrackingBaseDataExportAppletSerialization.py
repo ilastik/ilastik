@@ -1,3 +1,5 @@
+from typing import Mapping, Any
+
 import h5py
 
 import pytest
@@ -7,52 +9,41 @@ from lazyflow.operator import Operator
 
 
 @pytest.fixture
-def project_file(tmp_path):
-    return tmp_path / "test_tracking_project.ilp"
-
-
-def test_applet_serialization(project_file):
-    g = Graph()
-    op = Operator(graph=g)
+def project_path(tmp_path):
+    op = Operator(graph=Graph())
     dataExportApplet = TrackingBaseDataExportApplet(op, "Tracking Result Export")
     dataExportSerializer = dataExportApplet.dataSerializers[0]
 
-    with h5py.File(project_file) as testProject:
-        opTrackingBaseDataExport = dataExportApplet.topLevelOperator
-        opTrackingBaseDataExport.SelectedPlugin.setValue("Fiji-MaMuT")
-        opTrackingBaseDataExport.SelectedExportSource.setValue("Plugin")
-        opTrackingBaseDataExport.AdditionalPluginArguments.setValue({"bdvFilePath": "/tmp/bdv.xml"})
+    opTrackingBaseDataExport = dataExportApplet.topLevelOperator
+    opTrackingBaseDataExport.SelectedPlugin.setValue("Fiji-MaMuT")
+    opTrackingBaseDataExport.SelectedExportSource.setValue("Plugin")
+    opTrackingBaseDataExport.AdditionalPluginArguments.setValue({"bdvFilePath": "/tmp/bdv.xml"})
 
-        dataExportSerializer.serializeToHdf5(testProject, project_file)
+    path = tmp_path / "test_tracking_project.ilp"
 
-    # check serialized values
-    with h5py.File(project_file) as testProject:
-        assert testProject["Tracking Result Export/SelectedPlugin"].value.decode() == "Fiji-MaMuT"
-        assert testProject["Tracking Result Export/SelectedExportSource"].value.decode() == "Plugin"
+    with h5py.File(path) as project:
+        dataExportSerializer.serializeToHdf5(project, path)
+
+    return path
+
+
+def test_applet_serialization(project_path):
+    with h5py.File(project_path) as project:
+        assert project["Tracking Result Export/SelectedPlugin"].value.decode() == "Fiji-MaMuT"
+        assert project["Tracking Result Export/SelectedExportSource"].value.decode() == "Plugin"
         assert (
-            testProject["Tracking Result Export/AdditionalPluginArguments/bdvFilePath"].value.decode() == "/tmp/bdv.xml"
+            project["Tracking Result Export/AdditionalPluginArguments/bdvFilePath"].value.decode() == "/tmp/bdv.xml"
         )
 
 
-def test_applet_deserialization(project_file):
-    g = Graph()
-    op = Operator(graph=g)
+def test_applet_deserialization(project_path):
+    op = Operator(graph=Graph())
     dataExportApplet = TrackingBaseDataExportApplet(op, "Tracking Result Export")
     dataExportSerializer = dataExportApplet.dataSerializers[0]
 
-    with h5py.File(project_file) as testProject:
-        # serialize TrackingBaseDataExportApplet's topLevelOperator
-        opTrackingBaseDataExport = dataExportApplet.topLevelOperator
-        opTrackingBaseDataExport.SelectedPlugin.setValue("Fiji-MaMuT")
-        opTrackingBaseDataExport.SelectedExportSource.setValue("Plugin")
-        opTrackingBaseDataExport.AdditionalPluginArguments.setValue({"bdvFilePath": "/tmp/bdv.xml"})
-        dataExportSerializer.serializeToHdf5(testProject, project_file)
+    with h5py.File(project_path) as project:
+        dataExportSerializer.deserializeFromHdf5(project, project_path)
 
-        # create new instance of TrackingBaseDataExportApplet and deserialize its topLevelOperator
-        dataExportApplet = TrackingBaseDataExportApplet(op, "Tracking Result Export")
-        dataExportSerializer = dataExportApplet.dataSerializers[0]
-        dataExportSerializer.deserializeFromHdf5(testProject, project_file)
-        # check deserialized values in applet's topLevelOperator
-        assert dataExportSerializer.topLevelOperator.SelectedPlugin.value == "Fiji-MaMuT"
-        assert dataExportSerializer.topLevelOperator.SelectedExportSource.value == "Plugin"
-        assert dataExportSerializer.topLevelOperator.AdditionalPluginArguments.value["bdvFilePath"] == "/tmp/bdv.xml"
+    assert dataExportSerializer.topLevelOperator.SelectedPlugin.value == "Fiji-MaMuT"
+    assert dataExportSerializer.topLevelOperator.SelectedExportSource.value == "Plugin"
+    assert dataExportSerializer.topLevelOperator.AdditionalPluginArguments.value["bdvFilePath"] == "/tmp/bdv.xml"
