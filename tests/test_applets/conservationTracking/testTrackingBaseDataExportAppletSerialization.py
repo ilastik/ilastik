@@ -1,71 +1,55 @@
-import os
+from typing import Any, Mapping
 
 import h5py
+
+import pytest
+from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
 from lazyflow.graph import Graph
 from lazyflow.operator import Operator
 
-import ilastik
-from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
+
+@pytest.fixture
+def project_path(tmp_path):
+    return str(tmp_path / "test_tracking_project.ilp")
 
 
-class OpFake(Operator):
-    def __init__(self, *args, **kwargs):
-        super(OpFake, self).__init__(*args, **kwargs)
+@pytest.fixture
+def data_export_applet():
+    op = Operator(graph=Graph())
+    dataExportApplet = TrackingBaseDataExportApplet(op, "Tracking Result Export")
+
+    opTrackingBaseDataExport = dataExportApplet.topLevelOperator
+    opTrackingBaseDataExport.SelectedPlugin.setValue("Fiji-MaMuT")
+    opTrackingBaseDataExport.SelectedExportSource.setValue("Plugin")
+    opTrackingBaseDataExport.AdditionalPluginArguments.setValue({"bdvFilePath": "/tmp/bdv.xml"})
+
+    return dataExportApplet
 
 
-class TestTrackingBaseDataExportAppletSerialization(object):
-    ilastik_tests_file_path = os.path.join(os.path.split(os.path.realpath(ilastik.__file__))[0], "../tests/")
-    TEST_PROJECT_FILE = os.path.join(ilastik_tests_file_path, 'test_tracking_project.ilp')
+def test_applet_serialization(project_path, data_export_applet):
+    with h5py.File(project_path) as project_file:
+        data_export_applet.dataSerializers[0].serializeToHdf5(project_file, project_path)
 
-    def tearDown(self):
-        os.remove(self.TEST_PROJECT_FILE)
-
-    def testAppletSerialization(self):
-        g = Graph()
-        op = OpFake(graph=g)
-        dataExportApplet = TrackingBaseDataExportApplet(op, "Tracking Result Export")
-        dataExportSerializer = dataExportApplet.dataSerializers[0]
-
-        with h5py.File(self.TEST_PROJECT_FILE) as testProject:
-            opTrackingBaseDataExport = dataExportApplet.topLevelOperator
-            opTrackingBaseDataExport.SelectedPlugin.setValue('Fiji-MaMuT')
-            opTrackingBaseDataExport.SelectedExportSource.setValue('Plugin')
-            opTrackingBaseDataExport.AdditionalPluginArguments.setValue({'bdvFilePath': '/tmp/bdv.xml'})
-
-            dataExportSerializer.serializeToHdf5(testProject, self.TEST_PROJECT_FILE)
-
-        # check serialized values
-        with h5py.File(self.TEST_PROJECT_FILE) as testProject:
-            assert testProject["Tracking Result Export/SelectedPlugin"].value.decode() == 'Fiji-MaMuT'
-            assert testProject["Tracking Result Export/SelectedExportSource"].value.decode() == 'Plugin'
-            assert testProject["Tracking Result Export/AdditionalPluginArguments/bdvFilePath"].value.decode() == '/tmp/bdv.xml'
-
-    def testAppletDeserialization(self):
-        g = Graph()
-        op = OpFake(graph=g)
-        dataExportApplet = TrackingBaseDataExportApplet(op, "Tracking Result Export")
-        dataExportSerializer = dataExportApplet.dataSerializers[0]
-
-        with h5py.File(self.TEST_PROJECT_FILE) as testProject:
-            # serialize TrackingBaseDataExportApplet's topLevelOperator
-            opTrackingBaseDataExport = dataExportApplet.topLevelOperator
-            opTrackingBaseDataExport.SelectedPlugin.setValue('Fiji-MaMuT')
-            opTrackingBaseDataExport.SelectedExportSource.setValue('Plugin')
-            opTrackingBaseDataExport.AdditionalPluginArguments.setValue({'bdvFilePath': '/tmp/bdv.xml'})
-            dataExportSerializer.serializeToHdf5(testProject, self.TEST_PROJECT_FILE)
-
-            # create new instance of TrackingBaseDataExportApplet and deserialize its topLevelOperator
-            dataExportApplet = TrackingBaseDataExportApplet(op, "Tracking Result Export")
-            dataExportSerializer = dataExportApplet.dataSerializers[0]
-            dataExportSerializer.deserializeFromHdf5(testProject, self.TEST_PROJECT_FILE)
-            # check deserialized values in applet's topLevelOperator
-            assert dataExportSerializer.topLevelOperator.SelectedPlugin.value == 'Fiji-MaMuT'
-            assert dataExportSerializer.topLevelOperator.SelectedExportSource.value == 'Plugin'
-            assert dataExportSerializer.topLevelOperator.AdditionalPluginArguments.value['bdvFilePath'] == '/tmp/bdv.xml'
+    with h5py.File(project_path) as project_file:
+        assert project_file["Tracking Result Export/SelectedPlugin"].value.decode() == "Fiji-MaMuT"
+        assert project_file["Tracking Result Export/SelectedExportSource"].value.decode() == "Plugin"
+        assert (
+            project_file["Tracking Result Export/AdditionalPluginArguments/bdvFilePath"].value.decode()
+            == "/tmp/bdv.xml"
+        )
 
 
+def test_applet_deserialization(project_path, data_export_applet):
+    with h5py.File(project_path) as project_file:
+        data_export_applet.dataSerializers[0].serializeToHdf5(project_file, project_path)
 
-if __name__ == "__main__":
-    import nose
+    op = Operator(graph=Graph())
+    data_export_applet = TrackingBaseDataExportApplet(op, "Tracking Result Export")
 
-    nose.main(defaultTest=__file__)
+    with h5py.File(project_path) as project_file:
+        data_export_applet.dataSerializers[0].deserializeFromHdf5(project_file, project_path)
+
+    opTrackingBaseDataExport = data_export_applet.dataSerializers[0].topLevelOperator
+    assert opTrackingBaseDataExport.SelectedPlugin.value == "Fiji-MaMuT"
+    assert opTrackingBaseDataExport.SelectedExportSource.value == "Plugin"
+    assert opTrackingBaseDataExport.AdditionalPluginArguments.value["bdvFilePath"] == "/tmp/bdv.xml"
