@@ -45,11 +45,7 @@ def convertStringToList(some_string):
     assert isinstance(some_string, str), "Expected a string!"
 
     # replace round brackets:
-    replace_values = {
-        '(': '[',
-        ')': ']',
-        'None': 'null',
-    }
+    replace_values = {"(": "[", ")": "]", "None": "null"}
     to_parse = some_string
     for k, v in replace_values.items():
         to_parse = to_parse.replace(k, v)
@@ -65,8 +61,7 @@ def convertStringToList(some_string):
 
     if not isinstance(parsed, list):
         message = (
-            f"Expected a list encoded as a string, e.g. '[0, 1]' but got '{some_string}' -> "
-            f"type {type(parsed)}."
+            f"Expected a list encoded as a string, e.g. '[0, 1]' but got '{some_string}' -> " f"type {type(parsed)}."
         )
         raise ValueError(message)
 
@@ -76,6 +71,7 @@ def convertStringToList(some_string):
 class ParseListFromString(argparse.Action):
     """Little helper action in order to parse lists encoded as strings
     """
+
     def __call__(self, parser, namespace, values, option_string=None):
         try:
             parsed = convertStringToList(values)
@@ -85,9 +81,9 @@ class ParseListFromString(argparse.Action):
         setattr(namespace, self.dest, parsed)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('this', action=ParseListFromString)
+    parser.add_argument("this", action=ParseListFromString)
     args = parser.parse_args(["[0, 1]"])
     print(args)
     assert isinstance(args.this, list)

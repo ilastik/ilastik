@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,7 +18,7 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import os
 import copy
@@ -38,10 +39,18 @@ from ilastik.utility import log_exception
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 from lazyflow.utility import getPathVariants, PathComponents, isUrl
-from .opDataSelection import OpDataSelection, DatasetInfo, ProjectInternalDatasetInfo, FilesystemDatasetInfo, RelativeFilesystemDatasetInfo
+from .opDataSelection import (
+    OpDataSelection,
+    DatasetInfo,
+    ProjectInternalDatasetInfo,
+    FilesystemDatasetInfo,
+    RelativeFilesystemDatasetInfo,
+)
 
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 def get_dtype_info(dtype):
     try:
@@ -49,27 +58,29 @@ def get_dtype_info(dtype):
     except ValueError:
         return numpy.finfo(dtype)
 
+
 class InvalidDatasetinfoException(Exception):
     pass
+
 
 class DatasetInfoEditorWidget(QDialog):
     """
     This dialog allows the user to edit the settings of one **OR MORE** datasets for a given role.
     """
 
-    def __init__(self, parent, infos:List[DatasetInfo], serializer:DataSelectionSerializer):
+    def __init__(self, parent, infos: List[DatasetInfo], serializer: DataSelectionSerializer):
         """
         :param infos: DatasetInfo infos to be edited by this widget
         :param serializer: a configured DataSelectionSerializer
         """
-        super( DatasetInfoEditorWidget, self ).__init__(parent)
+        super(DatasetInfoEditorWidget, self).__init__(parent)
         self.current_infos = infos
         self.serializer = serializer
         self.edited_infos = []
 
         # Load the ui file into this class (find it in our own directory)
         localDir = os.path.split(__file__)[0]
-        uiFilePath = os.path.join( localDir, 'datasetInfoEditorWidget.ui' )
+        uiFilePath = os.path.join(localDir, "datasetInfoEditorWidget.ui")
         uic.loadUi(uiFilePath, self)
 
         self.rangeMinSpinBox.valueChanged.connect(self.validate_new_data)
@@ -97,8 +108,7 @@ class DatasetInfoEditorWidget(QDialog):
             self.axesEdit.setToolTip(axes_uneditable_reason)
             self.axesEdit.setEnabled(False)
 
-
-        self.nicknameEdit.setText(', '.join(str(info.nickname) for info in self.current_infos))
+        self.nicknameEdit.setText(", ".join(str(info.nickname) for info in self.current_infos))
         if len(infos) == 1:
             self.nicknameEdit.setEnabled(True)
         else:
@@ -160,12 +170,11 @@ class DatasetInfoEditorWidget(QDialog):
         else:
             self.displayModeComboBox.setCurrentIndex(-1)
 
-
-        self.storageComboBox.addItem('Copy into project file', userData=ProjectInternalDatasetInfo)
+        self.storageComboBox.addItem("Copy into project file", userData=ProjectInternalDatasetInfo)
         if all(info.is_in_filesystem() for info in infos):
-            self.storageComboBox.addItem('Store absolute path', userData=FilesystemDatasetInfo)
+            self.storageComboBox.addItem("Store absolute path", userData=FilesystemDatasetInfo)
             if all(info.is_under_project_file() for info in infos):
-                self.storageComboBox.addItem('Store relative path', userData=RelativeFilesystemDatasetInfo)
+                self.storageComboBox.addItem("Store relative path", userData=RelativeFilesystemDatasetInfo)
 
         current_locations = {info.__class__ for info in infos}
         if len(current_locations) == 1:
@@ -197,19 +206,18 @@ class DatasetInfoEditorWidget(QDialog):
             if len(new_axiskeys) in range(1, dataset_dims):
                 axis_error_msg = f"Dataset has {dataset_dims} dimensions, so you need to provide that many axes keys"
             elif not set(new_axiskeys).issubset(set("xyztc")):
-                axis_error_msg = "Axes must be a combination of \"xyztc\""
+                axis_error_msg = 'Axes must be a combination of "xyztc"'
             elif len(set(new_axiskeys)) < len(new_axiskeys):
                 axis_error_msg = "Repeated axis keys"
-            elif not set('xy').issubset(set(new_axiskeys)):
+            elif not set("xy").issubset(set(new_axiskeys)):
                 axis_error_msg = "x and y need to be present"
         self.axes_error_display.setText(axis_error_msg)
         invalid_inputs |= bool(axis_error_msg)
 
-
         drange_error_msg = ""
         new_drange = self.get_new_drange()
         if self.get_new_normalization() and new_drange[0] >= new_drange[1]:
-                drange_error_msg = "MIN must be lesser than MAX."
+            drange_error_msg = "MIN must be lesser than MAX."
         self.drange_error_display.setText(drange_error_msg)
         invalid_inputs = invalid_inputs or bool(drange_error_msg)
 
@@ -228,7 +236,7 @@ class DatasetInfoEditorWidget(QDialog):
             new_display_mode = self.displayModeComboBox.currentData() or info.display_mode
             new_info_class = self.storageComboBox.currentData() or info.__class__
             if new_info_class == ProjectInternalDatasetInfo:
-                project_inner_path = getattr(info, 'inner_path', None) or self.serializer.importStackAsLocalDataset(
+                project_inner_path = getattr(info, "inner_path", None) or self.serializer.importStackAsLocalDataset(
                     abs_paths=info.expanded_paths, sequence_axis=info.sequence_axis
                 )
                 info_constructor = partial(ProjectInternalDatasetInfo, inner_path=project_inner_path)
@@ -237,7 +245,7 @@ class DatasetInfoEditorWidget(QDialog):
                 info_constructor = partial(
                     new_info_class,
                     filePath=os.path.pathsep.join(str(path) for path in new_full_paths),
-                    sequence_axis=getattr(info, 'sequence_axis')
+                    sequence_axis=getattr(info, "sequence_axis"),
                 )
 
             edited_info = info_constructor(
@@ -246,7 +254,7 @@ class DatasetInfoEditorWidget(QDialog):
                 axistags=self.get_new_axes_tags() or info.axistags,
                 normalizeDisplay=info.normalizeDisplay if normalize is None else normalize,
                 drange=(info.laneDtype(new_drange[0]), info.laneDtype(new_drange[1])) if normalize else info.drange,
-                display_mode=new_display_mode
+                display_mode=new_display_mode,
             )
             self.edited_infos.append(edited_info)
         super(DatasetInfoEditorWidget, self).accept()

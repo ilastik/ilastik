@@ -1,6 +1,7 @@
-import contextlib    
+import contextlib
 import tempfile
 import shutil
+
 
 @contextlib.contextmanager
 def autocleaned_tempdir(autoclean=True):

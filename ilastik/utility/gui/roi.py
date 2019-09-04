@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 
 from typing import Sequence
@@ -24,7 +24,7 @@ from typing import Sequence
 from PyQt5.QtCore import QRect
 
 
-def roi2rect(start: Sequence[int], stop: Sequence[int],axes: Sequence[str] = ("x", "y")) -> QRect:
+def roi2rect(start: Sequence[int], stop: Sequence[int], axes: Sequence[str] = ("x", "y")) -> QRect:
     """Convert ROI to QRect, accounting for the specified axis order.
 
     ROI elements are swapped if necessary.

@@ -16,14 +16,15 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.dataExport.opDataExport import OpDataExport
 from lazyflow.graph import InputSlot
 
+
 class OpTrackingBaseDataExport(OpDataExport):
     # class variable containing the default name of the plugin export source
-    PluginOnlyName = 'Plugin'
+    PluginOnlyName = "Plugin"
 
     # These slots get populated from within ``TrackingBaseDataExportGui``
     # or when parsing the command line in ``TrackingBaseDataExportApplet``
@@ -39,8 +40,8 @@ class OpTrackingBaseDataExport(OpDataExport):
         super(OpTrackingBaseDataExport, self).__init__(*args, **kwargs)
 
     def run_export(self):
-        '''
+        """
         We only run the export method of the parent export operator if we are not exporting via a plugin
-        '''
+        """
         if self.SelectedExportSource.value != self.PluginOnlyName:
             super(OpTrackingBaseDataExport, self).run_export()

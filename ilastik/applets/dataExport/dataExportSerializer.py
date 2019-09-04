@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from functools import partial
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialListSlot
@@ -24,14 +24,20 @@ import numpy
 
 
 _ALLOWED_TYPES = [
-    numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64,
-    numpy.int8, numpy.int16, numpy.int32, numpy.int64,
-    numpy.float32, numpy.float64
+    numpy.uint8,
+    numpy.uint16,
+    numpy.uint32,
+    numpy.uint64,
+    numpy.int8,
+    numpy.int16,
+    numpy.int32,
+    numpy.int64,
+    numpy.float32,
+    numpy.float64,
 ]
 
 
 class SerialDtypeSlot(SerialSlot):
-    
     def __init__(self, slot, *args, **kwargs):
         super(SerialDtypeSlot, self).__init__(slot, *args, **kwargs)
         self._slot = slot
@@ -48,38 +54,37 @@ class SerialDtypeSlot(SerialSlot):
             raise ValueError(f"Datatype {val.name} not allowed!")
         slot.setValue(val)
 
+
 class DataExportSerializer(AppletSerializer):
     """
     Serializes the user's data export settings to the project file.
     """
+
     def __init__(self, operator, projectFileGroupName, extraSerialSlots=[]):
         self.topLevelOperator = operator
-        SerialRoiSlot = partial( SerialListSlot,
-                                 store_transform=lambda x: -1 if x is None else x,
-                                 transform=lambda x: None if x == -1 else x,
-                                 iterable=tuple )
+        SerialRoiSlot = partial(
+            SerialListSlot,
+            store_transform=lambda x: -1 if x is None else x,
+            transform=lambda x: None if x == -1 else x,
+            iterable=tuple,
+        )
         slots = [
             SerialRoiSlot(operator.RegionStart),
             SerialRoiSlot(operator.RegionStop),
-
             SerialSlot(operator.InputMin),
             SerialSlot(operator.InputMax),
             SerialSlot(operator.ExportMin),
             SerialSlot(operator.ExportMax),
-            
             SerialDtypeSlot(operator.ExportDtype),
             SerialSlot(operator.OutputAxisOrder),
-            
             SerialSlot(operator.OutputFilenameFormat),
             SerialSlot(operator.OutputInternalPath),
-            
             SerialSlot(operator.OutputFormat),
         ]
-        
+
         slots += extraSerialSlots
 
-        super(DataExportSerializer, self).__init__(projectFileGroupName,
-                                                   slots=slots)
+        super(DataExportSerializer, self).__init__(projectFileGroupName, slots=slots)
 
     def deserializeFromHdf5(self, *args):
         """
@@ -89,8 +94,7 @@ class DataExportSerializer(AppletSerializer):
         # Disconnect the transaction slot to prevent setupOutput() calls while we do this.
         self.topLevelOperator.TransactionSlot.disconnect()
 
-        super( DataExportSerializer, self ).deserializeFromHdf5(*args)
-        
+        super(DataExportSerializer, self).deserializeFromHdf5(*args)
+
         # Give the slot a value again to complete the 'transaction' (call setupOutputs)
         self.topLevelOperator.TransactionSlot.setValue(True)
-        

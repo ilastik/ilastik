@@ -12,11 +12,12 @@ from PIL import Image as PilImage
 
 from ilastik.applets.dataSelection import DatasetInfo, FilesystemDatasetInfo
 
+
 @pytest.fixture
 def png_stack_dir(tmp_path) -> Path:
     for i in range(3):
         pil_image = PilImage.fromarray((numpy.random.rand(520, 697, 3) * 255).astype(numpy.uint8))
-        with open(tmp_path / f"c_cells_{i}.png" , "wb") as png_file:
+        with open(tmp_path / f"c_cells_{i}.png", "wb") as png_file:
             pil_image.save(png_file, "png")
     return tmp_path
 
@@ -108,7 +109,7 @@ def test_expand_path(h5_stack_dir):
     expected_file_paths = [
         Path(h5_stack_dir) / "2d_apoptotic_binary_0.h5",
         Path(h5_stack_dir) / "2d_apoptotic_binary_1.h5",
-        Path(h5_stack_dir) / "2d_apoptotic_binary_2.h5"
+        Path(h5_stack_dir) / "2d_apoptotic_binary_2.h5",
     ]
     assert expansions == expected_file_paths
 
@@ -156,7 +157,7 @@ def test_create_using_paths_relative_to_project_file(png_stack_dir: str):
         assert info.get_relative_paths() == ["c_cells_0.png", "c_cells_1.png", "c_cells_2.png"]
 
 
-def test_star_glob(png_colon_path_stack: str, empty_project_file:h5py.File):
+def test_star_glob(png_colon_path_stack: str, empty_project_file: h5py.File):
     info = FilesystemDatasetInfo(filePath=png_colon_path_stack, sequence_axis="z", project_file=empty_project_file)
     assert info.nickname == "c_cells_"
     assert info.laneDtype == numpy.uint8
@@ -164,7 +165,7 @@ def test_star_glob(png_colon_path_stack: str, empty_project_file:h5py.File):
     assert info.is_under_project_file()
 
 
-def test_stack_via_colon_glob(png_colon_path_stack, empty_project_file:h5py.File):
+def test_stack_via_colon_glob(png_colon_path_stack, empty_project_file: h5py.File):
     info = FilesystemDatasetInfo(filePath=png_colon_path_stack, sequence_axis="t", project_file=empty_project_file)
     assert info.nickname == "c_cells_"
     assert info.is_under_project_file()
@@ -177,7 +178,7 @@ def test_h5_stack_via_colon_glob(h5_colon_path_stack_with_inner_paths, empty_pro
     assert info.nickname == "2d_apoptotic_binary_-volume-data"
 
 
-def test_h5_stack_via_star_file_glob_and_defined_inner_path(h5_stack_dir, empty_project_file:h5py.File):
+def test_h5_stack_via_star_file_glob_and_defined_inner_path(h5_stack_dir, empty_project_file: h5py.File):
     h5_external_star_glob = os.path.join(h5_stack_dir, "*.h5")
     internal_path = DatasetInfo.globInternalPaths(h5_external_star_glob, "*")[0]
     total_path = os.path.join(h5_stack_dir, "*.h5", internal_path)
@@ -196,7 +197,7 @@ def test_h5_stack_via_star_file_glob_and_stared_internal_path(h5_stack_dir, empt
         [
             Path(h5_stack_dir).joinpath("2d_apoptotic_binary_0.h5/volume/data").as_posix(),
             Path(h5_stack_dir).joinpath("2d_apoptotic_binary_1.h5/volume/data").as_posix(),
-            Path(h5_stack_dir).joinpath("2d_apoptotic_binary_2.h5/volume/data").as_posix()
+            Path(h5_stack_dir).joinpath("2d_apoptotic_binary_2.h5/volume/data").as_posix(),
         ]
     )
 

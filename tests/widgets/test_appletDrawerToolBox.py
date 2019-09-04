@@ -68,6 +68,7 @@ class IAppletDrawer:
     def appletDrawer(self) -> QWidget:
         pass
 
+
 class IMultilaneGui:
     @property
     def name(self) -> str:
@@ -93,7 +94,7 @@ def applet_provider(widget: QWidget, name: str) -> IMultilaneGui:
 
 
 def test_applet_manager_adds_widget(qtbot, widget, widget_mngr):
-    applet = QLabel('MyApplet')
+    applet = QLabel("MyApplet")
     name = "widget name"
     provider = applet_provider(applet, name)
 
@@ -104,7 +105,7 @@ def test_applet_manager_adds_widget(qtbot, widget, widget_mngr):
     widget_mngr.addApplet(100, provider)
     assert applet.isVisible()
 
-    assert widget.itemText(0) == f'1. {name}'
+    assert widget.itemText(0) == f"1. {name}"
 
 
 def test_applet_manager_not_interactive(qtbot, widget, widget_mngr):
@@ -152,8 +153,8 @@ def test_applet_manager_item_title(qtbot, widget, widget_mngr):
     widget_mngr.addApplet(100, prov)
     widget_mngr.addApplet(200, prov2)
 
-    assert widget.itemText(0) == '1. test'
-    assert widget.itemText(1) == '2. test another'
+    assert widget.itemText(0) == "1. test"
+    assert widget.itemText(1) == "2. test another"
 
 
 def test_update_applet_title(qtbot, widget, widget_mngr):
@@ -162,10 +163,10 @@ def test_update_applet_title(qtbot, widget, widget_mngr):
 
     widget_mngr.addApplet(100, prov)
 
-    assert widget.itemText(0) == '1. test'
+    assert widget.itemText(0) == "1. test"
 
-    widget_mngr.updateAppletTitle(100, 'my new title')
-    assert widget.itemText(0) == '1. my new title'
+    widget_mngr.updateAppletTitle(100, "my new title")
+    assert widget.itemText(0) == "1. my new title"
 
 
 def test_disabling_applet(qtbot, widget, widget_mngr):

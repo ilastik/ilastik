@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -24,13 +25,15 @@ from ilastik.applets.base.standardApplet import StandardApplet
 from .opMulticut import OpMulticut
 from .multicutSerializer import MulticutSerializer
 
-class MulticutApplet( StandardApplet ):
+
+class MulticutApplet(StandardApplet):
     """
     Multicut applet
     """
-    def __init__( self, workflow, guiName, projectFileGroupName ):
+
+    def __init__(self, workflow, guiName, projectFileGroupName):
         super(MulticutApplet, self).__init__(guiName, workflow)
-        self._serializableItems = [ MulticutSerializer(self.topLevelOperator, projectFileGroupName) ]
+        self._serializableItems = [MulticutSerializer(self.topLevelOperator, projectFileGroupName)]
 
     @property
     def singleLaneOperatorClass(self):
@@ -38,11 +41,12 @@ class MulticutApplet( StandardApplet ):
 
     @property
     def broadcastingSlots(self):
-        return ['Beta', 'SolverName', 'FreezeCache']
+        return ["Beta", "SolverName", "FreezeCache"]
 
     @property
     def singleLaneGuiClass(self):
         from .multicutGui import MulticutGui
+
         return MulticutGui
 
     @property

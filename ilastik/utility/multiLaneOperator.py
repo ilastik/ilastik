@@ -16,13 +16,15 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from abc import ABCMeta, abstractmethod
 from future.utils import with_metaclass
 
-def _has_attribute( cls, attr ):
+
+def _has_attribute(cls, attr):
     return True if any(attr in B.__dict__ for B in cls.__mro__) else False
+
 
 class MultiLaneOperatorABC(with_metaclass(ABCMeta, object)):
     """
@@ -72,7 +74,7 @@ class MultiLaneOperatorABC(with_metaclass(ABCMeta, object)):
         The object may be an operator, or may merely be an operator-like "view" object.
         """
         raise NotImplementedError
-    
+
     @classmethod
     def __subclasshook__(cls, C):
         """
@@ -81,8 +83,8 @@ class MultiLaneOperatorABC(with_metaclass(ABCMeta, object)):
         """
         if cls is MultiLaneOperatorABC:
             retval = True
-            retval &= _has_attribute( C, 'addLane' )
-            retval &= _has_attribute( C, 'removeLane' )
-            retval &= _has_attribute( C, 'getLane' )
+            retval &= _has_attribute(C, "addLane")
+            retval &= _has_attribute(C, "removeLane")
+            retval &= _has_attribute(C, "getLane")
             return retval
         return NotImplemented

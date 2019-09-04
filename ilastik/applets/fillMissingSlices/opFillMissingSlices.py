@@ -16,13 +16,14 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpInterpMissingData, OpBlockedArrayCache
 from lazyflow.stype import Opaque
 
 import logging
+
 loggerName = __name__
 logger = logging.getLogger(loggerName)
 logger.setLevel(logging.DEBUG)
@@ -34,8 +35,8 @@ class OpFillMissingSlicesNoCache(Operator):
     Input = InputSlot()
     Output = OutputSlot()
 
-    DetectionMethod = InputSlot(value='classic')
-    OverloadDetector = InputSlot(value='')
+    DetectionMethod = InputSlot(value="classic")
+    OverloadDetector = InputSlot(value="")
     PatchSize = InputSlot(value=128)
     HaloSize = InputSlot(value=30)
 
@@ -90,6 +91,7 @@ class OpFillMissingSlices(OpFillMissingSlicesNoCache):
     Extends the cacheless operator above with a cached output.
     Suitable for use in a GUI, but not in a headless workflow.
     """
+
     CachedOutput = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -105,8 +107,6 @@ class OpFillMissingSlices(OpFillMissingSlicesNoCache):
         self.CachedOutput.connect(self._opCache.Output)
 
     def setupOutputs(self):
-        blockdims = {'t': 1, 'x': 256, 'y': 256, 'z': 100, 'c': 1}
-        blockshape = list(map(
-            blockdims.get, list(self.Input.meta.getTaggedShape().keys())))
+        blockdims = {"t": 1, "x": 256, "y": 256, "z": 100, "c": 1}
+        blockshape = list(map(blockdims.get, list(self.Input.meta.getTaggedShape().keys())))
         self._opCache.BlockShape.setValue(tuple(blockshape))
-

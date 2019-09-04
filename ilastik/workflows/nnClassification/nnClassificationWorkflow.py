@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
 import argparse
@@ -31,17 +31,19 @@ from lazyflow.graph import Graph
 
 logger = logging.getLogger(__name__)
 
+
 class NNClassificationWorkflow(Workflow):
     """
     Workflow for the Neural Network Classification Applet
     """
+
     workflowName = "Neural Network Classification"
     workflowDescription = "This is obviously self-explanatory."
-    defaultAppletIndex = 0 # show DataSelection by default
+    defaultAppletIndex = 0  # show DataSelection by default
 
     DATA_ROLE_RAW = 0
-    ROLE_NAMES = ['Raw Data']
-    EXPORT_NAMES = ['Probabilities']
+    ROLE_NAMES = ["Raw Data"]
+    EXPORT_NAMES = ["Probabilities"]
 
     @property
     def applets(self):
@@ -62,7 +64,9 @@ class NNClassificationWorkflow(Workflow):
 
         # Create a graph to be shared by all operators
         graph = Graph()
-        super(NNClassificationWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
+        super(NNClassificationWorkflow, self).__init__(
+            shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs
+        )
         self._applets = []
         self._workflow_cmdline_args = workflow_cmdline_args
         # Parse workflow-specific command-line args
@@ -76,8 +80,10 @@ class NNClassificationWorkflow(Workflow):
         parsed_args, unused_args = parser.parse_known_args(workflow_cmdline_args)
         # self.print_labels_by_slice = parsed_args.print_labels_by_slice
 
-        data_instructions = "Select your input data using the 'Raw Data' tab shown on the right.\n\n"\
-                            "Power users: Optionally use the 'Prediction Mask' tab to supply a binary image that tells ilastik where it should avoid computations you don't need."
+        data_instructions = (
+            "Select your input data using the 'Raw Data' tab shown on the right.\n\n"
+            "Power users: Optionally use the 'Prediction Mask' tab to supply a binary image that tells ilastik where it should avoid computations you don't need."
+        )
 
         # Applets for training (interactive) workflow
         self.dataSelectionApplet = self.createDataSelectionApplet()
@@ -88,17 +94,16 @@ class NNClassificationWorkflow(Workflow):
 
         self.nnClassificationApplet = NNClassApplet(self, "NNClassApplet")
 
-        self.dataExportApplet = NNClassificationDataExportApplet(self, 'Data Export')
+        self.dataExportApplet = NNClassificationDataExportApplet(self, "Data Export")
 
         # Configure global DataExport settings
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.WorkingDirectory.connect(opDataSelection.WorkingDirectory)
         opDataExport.SelectionNames.setValue(self.EXPORT_NAMES)
 
-        self.batchProcessingApplet = BatchProcessingApplet(self,
-                                                           "Batch Processing",
-                                                           self.dataSelectionApplet,
-                                                           self.dataExportApplet)
+        self.batchProcessingApplet = BatchProcessingApplet(
+            self, "Batch Processing", self.dataSelectionApplet, self.dataExportApplet
+        )
 
         # Expose for shell
         self._applets.append(self.dataSelectionApplet)
@@ -123,12 +128,9 @@ class NNClassificationWorkflow(Workflow):
         special parameters to initialize the DataSelectionApplet.
         """
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
-        return DataSelectionApplet(self,
-                                   "Input Data",
-                                   "Input Data",
-                                   supportIlastik05Import=True,
-                                   instructionText=data_instructions)
-
+        return DataSelectionApplet(
+            self, "Input Data", "Input Data", supportIlastik05Import=True, instructionText=data_instructions
+        )
 
     def connectLane(self, laneIndex):
         """
@@ -163,10 +165,9 @@ class NNClassificationWorkflow(Workflow):
 
         opDataExport = self.dataExportApplet.topLevelOperator
 
-        predictions_ready = input_ready and \
-                            len(opDataExport.Inputs) > 0
-                            # opDataExport.Inputs[0][0].ready()
-                            # (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
+        predictions_ready = input_ready and len(opDataExport.Inputs) > 0
+        # opDataExport.Inputs[0][0].ready()
+        # (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
 
         # Problems can occur if the features or input data are changed during live update mode.
         # Don't let the user do that.
@@ -177,7 +178,9 @@ class NNClassificationWorkflow(Workflow):
 
         self._shell.setAppletEnabled(self.dataSelectionApplet, not batch_processing_busy)
         self._shell.setAppletEnabled(self.nnClassificationApplet, input_ready and not batch_processing_busy)
-        self._shell.setAppletEnabled(self.dataExportApplet, predictions_ready and not batch_processing_busy and not live_update_active)
+        self._shell.setAppletEnabled(
+            self.dataExportApplet, predictions_ready and not batch_processing_busy and not live_update_active
+        )
 
         if self.batchProcessingApplet is not None:
             self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not batch_processing_busy)
@@ -190,11 +193,3 @@ class NNClassificationWorkflow(Workflow):
         busy |= self.dataExportApplet.busy
         busy |= self.batchProcessingApplet.busy
         self._shell.enableProjectChanges(not busy)
-
-
-
-
-
-
-
-

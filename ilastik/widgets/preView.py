@@ -1,4 +1,5 @@
 from __future__ import division
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,51 +18,49 @@ from __future__ import division
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from past.utils import old_div
 from PyQt5.QtGui import QPixmap, QPainter, QBrush, QPen, QPalette, QColor
 from PyQt5.QtWidgets import QGraphicsView, QVBoxLayout, QLabel, QGraphicsScene
 from PyQt5.QtCore import Qt, QRect, QSize, QEvent
 
-#===============================================================================
+# ===============================================================================
 # PreView
-#===============================================================================
+# ===============================================================================
 class PreView(QGraphicsView):
     def __init__(self):
-        QGraphicsView.__init__(self)    
-        
+        QGraphicsView.__init__(self)
+
         self.zoom = 2
-        self.scale(self.zoom, self.zoom) 
+        self.scale(self.zoom, self.zoom)
         self.lastSize = 0
-        
+
         self.setDragMode(QGraphicsView.ScrollHandDrag)
-#        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-#        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        #        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        #        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.installEventFilter(self)
-                
+
         self.hudLayout = QVBoxLayout(self)
-        self.hudLayout.setContentsMargins(0,0,0,0)
-        
-        self.ellipseLabel =  QLabel()
+        self.hudLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.ellipseLabel = QLabel()
         self.ellipseLabel.setMinimumWidth(self.width())
         self.hudLayout.addWidget(self.ellipseLabel)
-        self.ellipseLabel.setAttribute(Qt.WA_TransparentForMouseEvents, True)  
+        self.ellipseLabel.setAttribute(Qt.WA_TransparentForMouseEvents, True)
 
-        
     def setPreviewImage(self, previewImage):
         self.grscene = QGraphicsScene()
         pixmapImage = QPixmap(previewImage)
         self.grscene.addPixmap(pixmapImage)
         self.setScene(self.grscene)
-        
 
     def eventFilter(self, obj, event):
-        if(event.type()==QEvent.Resize):
+        if event.type() == QEvent.Resize:
             self.ellipseLabel.setMinimumWidth(self.width())
             self.updateFilledCircle(self.lastSize)
         return False
-    
+
     def sizeHint(self):
         return QSize(200, 200)
 
@@ -69,7 +68,7 @@ class PreView(QGraphicsView):
         size = s * self.zoom
         pixmap = QPixmap(self.width(), self.height())
         pixmap.fill(Qt.transparent)
-        #painter filled ellipse
+        # painter filled ellipse
         p = QPalette()
         painter = QPainter()
         painter.begin(pixmap)
@@ -77,18 +76,21 @@ class PreView(QGraphicsView):
         brush = QBrush(p.link().color())
         painter.setBrush(brush)
         painter.setOpacity(0.4)
-        painter.drawEllipse(QRect(old_div(self.width(),2) - old_div(size,2), old_div(self.height(),2) - old_div(size,2), size, size))
+        painter.drawEllipse(
+            QRect(old_div(self.width(), 2) - old_div(size, 2), old_div(self.height(), 2) - old_div(size, 2), size, size)
+        )
         painter.end()
-        #painter ellipse 2
+        # painter ellipse 2
         painter2 = QPainter()
         painter2.begin(pixmap)
         painter2.setRenderHint(QPainter.Antialiasing)
         pen2 = QPen(Qt.green)
         pen2.setWidth(1)
         painter2.setPen(pen2)
-        painter2.drawEllipse(QRect(old_div(self.width(),2) - old_div(size,2), old_div(self.height(),2) - old_div(size,2), size, size))
+        painter2.drawEllipse(
+            QRect(old_div(self.width(), 2) - old_div(size, 2), old_div(self.height(), 2) - old_div(size, 2), size, size)
+        )
         painter2.end()
-        
+
         self.ellipseLabel.setPixmap(QPixmap(pixmap))
         self.lastSize = s
-

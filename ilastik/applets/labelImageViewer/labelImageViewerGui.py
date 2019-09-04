@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
@@ -27,32 +27,30 @@ from volumina import colortables
 from ilastik.utility import bind
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
-class LabelImageViewerGui( LayerViewerGui ):
-    
+
+class LabelImageViewerGui(LayerViewerGui):
     def __init__(self, *args, **kwargs):
         super(LabelImageViewerGui, self).__init__(*args, **kwargs)
         self._colorTable16 = colortables.default16_new
-    
+
     def setupLayers(self):
         layers = []
         opLane = self.topLevelOperatorView
 
         labelSlot = opLane.LabelImage
         if labelSlot.ready():
-            labelImageLayer = ColortableLayer( createDataSource(labelSlot),
-                                               colorTable=self._colorTable16 )
+            labelImageLayer = ColortableLayer(createDataSource(labelSlot), colorTable=self._colorTable16)
             labelImageLayer.name = "Label Image"
             labelImageLayer.visible = True
             layers.append(labelImageLayer)
-        
+
         # If available, also show the raw data layer
         rawSlot = opLane.RawImage
         if rawSlot.ready():
-            rawLayer = self.createStandardLayerFromSlot( rawSlot )
+            rawLayer = self.createStandardLayerFromSlot(rawSlot)
             rawLayer.name = "Raw Data"
             rawLayer.visible = True
             rawLayer.opacity = 1.0
-            layers.append( rawLayer )
+            layers.append(rawLayer)
 
         return layers
-

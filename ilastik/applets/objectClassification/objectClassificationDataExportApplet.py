@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,15 +18,17 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 
-class ObjectClassificationDataExportApplet( DataExportApplet ):
+
+class ObjectClassificationDataExportApplet(DataExportApplet):
     """
     This a specialization of the generic data export applet that
     provides a special viewer for object classification predictions.
     """
+
     def __init__(self, *args, **kwargs):
         super(ObjectClassificationDataExportApplet, self).__init__(*args, **kwargs)
         self.exporting_op = None
@@ -37,11 +40,7 @@ class ObjectClassificationDataExportApplet( DataExportApplet ):
         if self._gui is None:
             # Gui is a special subclass of the generic gui
             from .objectClassificationDataExportGui import ObjectClassificationDataExportGui
-            self._gui = ObjectClassificationDataExportGui( self, self.topLevelOperator )
+
+            self._gui = ObjectClassificationDataExportGui(self, self.topLevelOperator)
             self._gui.set_exporting_operator(self.exporting_op)
         return self._gui
-
-
-
-
-

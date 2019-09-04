@@ -16,11 +16,13 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import os
-currentdir = os.path.dirname(__file__) 
+
+currentdir = os.path.dirname(__file__)
 import ctypes
+
 libraryname = "libcplexwrapper.so"
 dllname = "cplexwrapper.dll"
 HAS_CPLEX = False
@@ -39,7 +41,6 @@ for path in paths:
         HAS_CPLEX = True
     except:
         pass
-
 
 
 if not HAS_CPLEX:

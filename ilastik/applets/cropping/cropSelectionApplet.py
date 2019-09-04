@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,20 +18,22 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 
 from ilastik.applets.base.standardApplet import StandardApplet
 from .opCropSelection import OpCropSelection
 from .cropSelectionSerializer import CropSelectionSerializer
 
-class CropSelectionApplet( StandardApplet ):
+
+class CropSelectionApplet(StandardApplet):
     """
     This is a simple applet facilitating crop selection
     """
-    def __init__( self, workflow, guiName, projectFileGroupName ):
+
+    def __init__(self, workflow, guiName, projectFileGroupName):
         super(CropSelectionApplet, self).__init__(guiName, workflow)
-        self._serializableItems = [ CropSelectionSerializer(self.topLevelOperator, projectFileGroupName) ]
+        self._serializableItems = [CropSelectionSerializer(self.topLevelOperator, projectFileGroupName)]
         self.predictionSerializer = self._serializableItems[0]
 
     @property
@@ -39,11 +42,12 @@ class CropSelectionApplet( StandardApplet ):
 
     @property
     def broadcastingSlots(self):
-        return ['MinValueT', 'MaxValueT','MinValueX', 'MaxValueX','MinValueY', 'MaxValueY','MinValueZ', 'MaxValueZ']
-    
+        return ["MinValueT", "MaxValueT", "MinValueX", "MaxValueX", "MinValueY", "MaxValueY", "MinValueZ", "MaxValueZ"]
+
     @property
     def singleLaneGuiClass(self):
         from .cropSelectionGui import CropSelectionGui
+
         return CropSelectionGui
 
     @property

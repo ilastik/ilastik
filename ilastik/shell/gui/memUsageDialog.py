@@ -1,5 +1,6 @@
 from __future__ import print_function
 from __future__ import division
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,26 +19,26 @@ from __future__ import division
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
-#SciPy
+# SciPy
 from builtins import range
 from past.utils import old_div
 import numpy
 
-#PyQt
+# PyQt
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QTreeWidget, QTreeWidgetItem
 
-#lazyflow
+# lazyflow
 from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 from lazyflow.operators.opCache import MemInfoNode
 
 import warnings
 
-#===------------------------------------------------------------------------===
-#=== MemUsageDialog                                                         ===
-#===------------------------------------------------------------------------===
+# ===------------------------------------------------------------------------===
+# === MemUsageDialog                                                         ===
+# ===------------------------------------------------------------------------===
 
 
 class TreeNode(QTreeWidgetItem):
@@ -77,7 +78,7 @@ class TreeNode(QTreeWidgetItem):
     def _makeTreeWidgetItemData(self, report):
         l = []
         l.append("%r" % report.name)
-        l.append("%1.1f MB" % (old_div(report.usedMemory,1024**2.0)))
+        l.append("%1.1f MB" % (old_div(report.usedMemory, 1024 ** 2.0)))
         if report.roi is not None:
             l.append("%r\n%r" % (list(report.roi[0]), list(report.roi[1])))
         else:
@@ -98,7 +99,7 @@ class TreeNode(QTreeWidgetItem):
             l.append("")
 
         t = str(report.type)
-        t = t[len("<type '")+1:-len("'>")]
+        t = t[len("<type '") + 1 : -len("'>")]
         t = t.split(".")[-1]
         l.append(t)
         l.append(report.info)
@@ -144,8 +145,7 @@ class MemUsageDialog(QDialog):
         self._tracked_caches = {}
 
         # tree setup code
-        self.tree.setHeaderLabels(
-            ["cache", "memory", "roi", "dtype", "type", "info", "id"])
+        self.tree.setHeaderLabels(["cache", "memory", "roi", "dtype", "type", "info", "id"])
         self._idIndex = self.tree.columnCount() - 1
         self.tree.setColumnHidden(self._idIndex, True)
         self.tree.setSortingEnabled(True)
@@ -166,8 +166,7 @@ class MemUsageDialog(QDialog):
             r = MemInfoNode()
             c.generateReport(r)
             reports.append(r)
-        self._root.handleChildrenReports(
-            reports, root=self.tree.invisibleRootItem())
+        self._root.handleChildrenReports(reports, root=self.tree.invisibleRootItem())
 
     def hideEvent(self, event):
         self.timer.stop()
@@ -176,7 +175,7 @@ class MemUsageDialog(QDialog):
         # update once so we don't have to wait for initial report
         self._updateReport()
         # update every 5 sec.
-        self.timer.start(5*1000)
+        self.timer.start(5 * 1000)
 
 
 if __name__ == "__main__":
@@ -185,7 +184,7 @@ if __name__ == "__main__":
 
     app = QApplication([])
 
-    f = open("/tmp/reports.pickle", 'r')
+    f = open("/tmp/reports.pickle", "r")
     reports = pickle.load(f)
 
     dlg = MemUsageDialog(update=False)

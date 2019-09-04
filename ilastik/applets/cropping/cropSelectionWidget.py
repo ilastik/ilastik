@@ -17,13 +17,14 @@
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 from os import path
 
 from PyQt5 import uic
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QWidget, QButtonGroup
+
 
 class CropSelectionWidget(QWidget):
     valueChanged = pyqtSignal(str, str, int)
@@ -35,9 +36,9 @@ class CropSelectionWidget(QWidget):
         if not p:
             p = "."
 
-        self.uiPath = p+"/cropSelectionWidget.ui"
+        self.uiPath = p + "/cropSelectionWidget.ui"
         uic.loadUi(self.uiPath, self)
-        self.setRange(0,0,0,0,0,0,0,0)
+        self.setRange(0, 0, 0, 0, 0, 0, 0, 0)
 
         self._minSliderT.valueChanged.connect(self._onMinSliderTMoved)
         self._maxSliderT.valueChanged.connect(self._onMaxSliderTMoved)
@@ -63,106 +64,105 @@ class CropSelectionWidget(QWidget):
     def _onMinSliderTMoved(self, v):
         if v > self._maxSliderT.value():
             self._maxSliderT.setValue(v)
-        self.valueChanged.emit('T','min',self._minSliderT.value())
+        self.valueChanged.emit("T", "min", self._minSliderT.value())
         self._minSpinT.setValue(v)
 
     def _onMaxSliderTMoved(self, v):
         if v < self._minSliderT.value():
             self._minSliderT.setValue(v)
-        self.valueChanged.emit('T','max',self._maxSliderT.value())
+        self.valueChanged.emit("T", "max", self._maxSliderT.value())
         self._maxSpinT.setValue(v)
 
     def _onMinSpinTMoved(self, v):
         if v > self._maxSpinT.value():
             self._maxSpinT.setValue(v)
-        self.valueChanged.emit('T','min',self._minSpinT.value())
+        self.valueChanged.emit("T", "min", self._minSpinT.value())
         self._minSliderT.setValue(v)
 
     def _onMaxSpinTMoved(self, v):
         if v < self._minSpinT.value():
             self._minSpinT.setValue(v)
-        self.valueChanged.emit('T','max',self._maxSpinT.value())
+        self.valueChanged.emit("T", "max", self._maxSpinT.value())
         self._maxSliderT.setValue(v)
 
     # x
     def _onMinSliderXMoved(self, v):
         if v > self._maxSliderX.value():
             self._maxSliderX.setValue(v)
-        self.valueChanged.emit('X','min',self._minSliderX.value())
+        self.valueChanged.emit("X", "min", self._minSliderX.value())
         self._minSpinX.setValue(v)
 
     def _onMaxSliderXMoved(self, v):
         if v < self._minSliderX.value():
             self._minSliderX.setValue(v)
-        self.valueChanged.emit('X','max',self._maxSliderX.value())
+        self.valueChanged.emit("X", "max", self._maxSliderX.value())
         self._maxSpinX.setValue(v)
 
     def _onMinSpinXMoved(self, v):
         if v > self._maxSpinX.value():
             self._maxSpinX.setValue(v)
-        self.valueChanged.emit('X','min',self._minSpinX.value())
+        self.valueChanged.emit("X", "min", self._minSpinX.value())
         self._minSliderX.setValue(v)
 
     def _onMaxSpinXMoved(self, v):
         if v < self._minSpinX.value():
             self._minSpinX.setValue(v)
-        self.valueChanged.emit('X','max',self._maxSpinX.value())
+        self.valueChanged.emit("X", "max", self._maxSpinX.value())
         self._maxSliderX.setValue(v)
 
     # y
     def _onMinSliderYMoved(self, v):
         if v > self._maxSliderY.value():
             self._maxSliderY.setValue(v)
-        self.valueChanged.emit('Y','min',self._minSliderY.value())
+        self.valueChanged.emit("Y", "min", self._minSliderY.value())
         self._minSpinY.setValue(v)
 
     def _onMaxSliderYMoved(self, v):
         if v < self._minSliderY.value():
             self._minSliderY.setValue(v)
-        self.valueChanged.emit('Y','max',self._maxSliderY.value())
+        self.valueChanged.emit("Y", "max", self._maxSliderY.value())
         self._maxSpinY.setValue(v)
 
     def _onMinSpinYMoved(self, v):
         if v > self._maxSpinY.value():
             self._maxSpinY.setValue(v)
-        self.valueChanged.emit('Y','min',self._minSpinY.value())
+        self.valueChanged.emit("Y", "min", self._minSpinY.value())
         self._minSliderY.setValue(v)
 
     def _onMaxSpinYMoved(self, v):
         if v < self._minSpinY.value():
             self._minSpinY.setValue(v)
-        self.valueChanged.emit('Y','max',self._maxSpinY.value())
+        self.valueChanged.emit("Y", "max", self._maxSpinY.value())
         self._maxSliderY.setValue(v)
 
     # z
     def _onMinSliderZMoved(self, v):
         if v > self._maxSliderZ.value():
             self._maxSliderZ.setValue(v)
-        self.valueChanged.emit('Z','min',self._minSliderZ.value())
+        self.valueChanged.emit("Z", "min", self._minSliderZ.value())
         self._minSpinZ.setValue(v)
 
     def _onMaxSliderZMoved(self, v):
         if v < self._minSliderZ.value():
             self._minSliderZ.setValue(v)
-        self.valueChanged.emit('Z','max',self._maxSliderZ.value())
+        self.valueChanged.emit("Z", "max", self._maxSliderZ.value())
         self._maxSpinZ.setValue(v)
 
     def _onMinSpinZMoved(self, v):
         if v > self._maxSpinZ.value():
             self._maxSpinZ.setValue(v)
-        self.valueChanged.emit('Z','min',self._minSpinZ.value())
+        self.valueChanged.emit("Z", "min", self._minSpinZ.value())
         self._minSliderZ.setValue(v)
 
     def _onMaxSpinZMoved(self, v):
         if v < self._minSpinZ.value():
             self._minSpinZ.setValue(v)
-        self.valueChanged.emit('Z','max',self._maxSpinZ.value())
+        self.valueChanged.emit("Z", "max", self._maxSpinZ.value())
         self._maxSliderZ.setValue(v)
-
 
     def setLayername(self, n):
         self._layerLabel.setText("Layer <b>%s</b>" % n)
-        
+
     def setRange(self, minimumT, maximumT, minimumX, maximumX, minimumY, maximumY, minimumZ, maximumZ):
 
         # t
@@ -241,11 +241,13 @@ class CropSelectionWidget(QWidget):
 
     def getValues(self):
 
-        return (self._minSliderT.value(),
-                self._maxSliderT.value(),
-                self._minSliderX.value(),
-                self._maxSliderX.value(),
-                self._minSliderY.value(),
-                self._maxSliderY.value(),
-                self._minSliderZ.value(),
-                self._maxSliderZ.value())
+        return (
+            self._minSliderT.value(),
+            self._maxSliderT.value(),
+            self._minSliderX.value(),
+            self._maxSliderX.value(),
+            self._minSliderY.value(),
+            self._maxSliderY.value(),
+            self._minSliderZ.value(),
+            self._maxSliderZ.value(),
+        )

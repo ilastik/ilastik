@@ -31,8 +31,10 @@ class FeatureSelectionApplet(StandardApplet):
 
     def __init__(self, workflow, guiName, projectFileGroupName):
         super(FeatureSelectionApplet, self).__init__(guiName, workflow)
-        self._serializableItems = [FeatureSelectionSerializer(self.topLevelOperator, projectFileGroupName),
-                                   Ilastik05FeatureSelectionDeserializer(self.topLevelOperator)]
+        self._serializableItems = [
+            FeatureSelectionSerializer(self.topLevelOperator, projectFileGroupName),
+            Ilastik05FeatureSelectionDeserializer(self.topLevelOperator),
+        ]
         self.busy = False
 
     @property
@@ -41,18 +43,19 @@ class FeatureSelectionApplet(StandardApplet):
 
     @property
     def broadcastingSlots(self):
-        return ['Scales', 'ComputeIn2d', 'FeatureIds', 'SelectionMatrix']
+        return ["Scales", "ComputeIn2d", "FeatureIds", "SelectionMatrix"]
 
     @property
     def singleLaneGuiClass(self):
         from .featureSelectionGui import FeatureSelectionGui
+
         return FeatureSelectionGui
 
-#    def createSingleLaneGui( self , laneIndex):
-#        from featureSelectionGui import FeatureSelectionGui
-#        opFeat = self.topLevelOperator.getLane(laneIndex)
-#        gui = FeatureSelectionGui( opFeat, self )
-#        return gui
+    #    def createSingleLaneGui( self , laneIndex):
+    #        from featureSelectionGui import FeatureSelectionGui
+    #        opFeat = self.topLevelOperator.getLane(laneIndex)
+    #        gui = FeatureSelectionGui( opFeat, self )
+    #        return gui
 
     @property
     def dataSerializers(self):
