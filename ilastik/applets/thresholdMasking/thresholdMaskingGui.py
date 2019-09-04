@@ -29,7 +29,7 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 class ThresholdMaskingGui(LayerViewerGui):
     """
-    Simple example of an applet tha  
+    Simple example of an applet tha
     """
 
     ###########################################

@@ -269,7 +269,7 @@ class OpClusterize(Operator):
     def _prepareDestination(self):
         """
         - If the result file doesn't exist yet, create it (and the dataset)
-        - If the result file already exists, return a list of the rois that 
+        - If the result file already exists, return a list of the rois that
         are NOT needed (their data already exists in the final output)
         """
         originalDescription = BlockwiseFileset.readDescription(self.OutputDatasetDescription.value)

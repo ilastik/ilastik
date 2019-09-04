@@ -85,7 +85,7 @@ class TestOpDataSelectionGroup(object):
 
     def testWeirdAxisInfos(self):
         """
-        If we add a dataset that has the channel axis in the wrong place, 
+        If we add a dataset that has the channel axis in the wrong place,
         the operator should automatically transpose it to be last.
         """
         weirdAxisFilename = os.path.join(self.workingDir, "WeirdAxes.npy")
@@ -118,7 +118,7 @@ class TestOpDataSelectionGroup(object):
 
     def testNoChannelAxis(self):
         """
-        If we add a dataset that is missing a channel axis altogether, 
+        If we add a dataset that is missing a channel axis altogether,
         the operator should automatically append a channel axis.
         """
         noChannelFilename = os.path.join(self.workingDir, "NoChannelAxis.npy")

@@ -1,7 +1,7 @@
 """
-This script provides an example of how a pre-trained ilastik 
-PixelClassification project can be used to generate predictions 
-from within Python, without the need to read/write data from disk. 
+This script provides an example of how a pre-trained ilastik
+PixelClassification project can be used to generate predictions
+from within Python, without the need to read/write data from disk.
 Once the project is loaded, this script doesn't touch the hard-disk.
 """
 from __future__ import print_function

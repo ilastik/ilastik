@@ -4,7 +4,7 @@ Create a new project from scratch using a grayscale volume and label volume of t
 At this time, this script does not provide a command-line API for selecting the features to train with.
 Edit the feature matrix in the code below.
 
-Also, this script's cmdline API supports only a single grayscale and label volume as input, 
+Also, this script's cmdline API supports only a single grayscale and label volume as input,
 so just write your own API that calls generate_trained_project_file() if you need more than that.
 
 Note that this example makes no attempt to be careful with RAM usage. In particular, it loads each
@@ -26,7 +26,7 @@ Example usage:
 Note for Mac users: Use ./ilastik-1.1.7-OSX.app/Contents/ilastik-release/bin/python
 
 Note: This script does not make any attempt to be efficient with RAM usage.
-      (The entire label volume is loaded at once.)  As a result, each image volume you 
+      (The entire label volume is loaded at once.)  As a result, each image volume you
       train with must be significantly smaller than the available RAM on your machine.
 """
 from __future__ import print_function
@@ -113,10 +113,10 @@ def generate_trained_project_file(
     Create a new project file from scratch, add the given raw data files,
     inject the corresponding labels, configure the given feature selections,
     and (if provided) override the classifier type ('factory').
-    
+
     Finally, request the classifier object from the pipeline (which forces training),
     and save the project.
-    
+
     new_project_path: Where to save the new project file
     raw_data_paths: A list of paths to the raw data images to train with
     label_data_paths: A list of paths to the label image data to train with

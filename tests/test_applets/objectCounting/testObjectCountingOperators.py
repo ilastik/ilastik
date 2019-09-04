@@ -71,7 +71,7 @@ from ilastik.applets.counting.countingOperators import OpTrainCounter, OpPredict
 #
 def emptyImage():
     """
-    an empty 5D image 
+    an empty 5D image
     """
     img = np.zeros((2, 50, 50, 50, 0), dtype=np.int)
     img = img.view(vigra.VigraArray)
@@ -81,7 +81,7 @@ def emptyImage():
 
 def imageWithRandomNoise():
     """
-    an empty 5D image 
+    an empty 5D image
     """
     img = np.random.rand(2 * 50 * 50 * 50).reshape(2, 50, 50, 50, 1)
 

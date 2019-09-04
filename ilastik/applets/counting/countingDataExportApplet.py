@@ -73,7 +73,7 @@ class CountingDataExportApplet(DataExportApplet):
 
     def write_csv_results(self, export_file, lane_index):
         """
-        Write the counting sum for the given lane to the 
+        Write the counting sum for the given lane to the
         given export file object (which must be open already).
         """
         info_slot = self.topLevelOperator.getLane(lane_index).RawDatasetInfo

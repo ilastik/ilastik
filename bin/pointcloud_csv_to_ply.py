@@ -18,11 +18,11 @@ Point3D = collections.namedtuple("Point3D", "x_px y_px z_px")
 def pointcloud_csv_to_ply(csv_filepath, ply_filepath, offset=None, scale=None):
     """
     Convert the given ilastik csv pointcloud file to Stanford PLY format.
-    
+
     csv_filepath: input path
     ply_filepath: output path to overwrite
     offset: If provided, will be subtracted from all points before export. (Can be either scalar or XYZ vector.)
-    scale: If provided, will be divided from all points before export. (Can be either scalar or XYZ vector.)    
+    scale: If provided, will be divided from all points before export. (Can be either scalar or XYZ vector.)
     """
     logger.debug("Reading input: {}".format(csv_filepath))
     points = []

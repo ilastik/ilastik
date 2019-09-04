@@ -90,7 +90,7 @@ def is_bounded(slicing):
 def is_pure_slicing(slicing):
     """Test if slicing is a single slice instance or sequence of instances.
 
-    Impure slicings may additionally contain integer indices, 
+    Impure slicings may additionally contain integer indices,
     ellipses, booleans, or newaxis.
     """
     slicing = box(slicing)

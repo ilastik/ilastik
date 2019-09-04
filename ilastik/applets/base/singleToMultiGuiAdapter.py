@@ -20,7 +20,7 @@
 ###############################################################################
 class SingleToMultiGuiAdapter(object):
     """
-    Utility class used by the StandardApplet to wrap several single-image 
+    Utility class used by the StandardApplet to wrap several single-image
     GUIs into one multi-image GUI, which is what the shell/Applet API requires.
     """
 

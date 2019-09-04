@@ -94,9 +94,9 @@ class DvidDataSelectionBrowser(ContentsBrowser):
     def _update_subvol_widget(self, node_uuid, dataname, typename):
         """
         Update the subvolume widget with the min/max extents of the given node and dataname.
-        Note: The node and dataname do not necessarily have to match the currently 
+        Note: The node and dataname do not necessarily have to match the currently
               selected node and dataname.
-              This enables the right-click behavior, which can be used to  
+              This enables the right-click behavior, which can be used to
               limit your data volume to the size of a different data volume.
         """
         error_msg = None

@@ -53,7 +53,7 @@ class ThresholdTwoLevelsSerializer(AppletSerializer):
         """
         Override from AppletSerializer.
         Implement any additional deserialization that wasn't already accomplished by our list of serializable slots.
-        
+
         In our case, we use this function to maintain backwards compatibility with old projects, which used different slots.
         """
         # We used to store a separate threshold value for the 'simple' threshold parameter,

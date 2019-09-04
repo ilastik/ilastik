@@ -22,10 +22,10 @@ class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
     def export(self, filename, hypothesesGraph, pluginExportContext):
         """
         Export the contours and corresponding IDs for all objects on the video
-        
-         Each .outline file consists of a line for each frame the animal is tracked for. 
-         The first number on this line is the timestamp of the frame, followed by the id, 
-         and unknown number, and then the rest of numbers are the (x,y) coordinates of 
+
+         Each .outline file consists of a line for each frame the animal is tracked for.
+         The first number on this line is the timestamp of the frame, followed by the id,
+         and unknown number, and then the rest of numbers are the (x,y) coordinates of
          the contour points (in what units?).
 
         :param filename: string of the FILE where to save the result (different .xml files were)

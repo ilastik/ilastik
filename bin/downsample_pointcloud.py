@@ -27,20 +27,20 @@ def downsample_pointcloud(
     output_dtype=None,
 ):
     """
-    Generate an intensity image volume from the given pointcloud 
+    Generate an intensity image volume from the given pointcloud
     file as described in density_volume_from_pointcloud(), below.
-    
+
     Write the resulting volume to either hdf5 or tiff.
-    Optionally, perform gaussian smoothing on the downsampled 
+    Optionally, perform gaussian smoothing on the downsampled
     volume before it is saved to disk.
-    
+
     pointcloud_csv_filepath: The input pointcloud csv file.
     output_filepath: The path to store the output image volume.  Either .h5 or .tif
-    
-    smoothing_sigma_xyz: A float or tuple to use with vigra.filters.gaussianSmoothing, in XYZ order.    
+
+    smoothing_sigma_xyz: A float or tuple to use with vigra.filters.gaussianSmoothing, in XYZ order.
     normalize_with_max: If provided, renormalize the intensities with the given max value
     output_dtype: If provided, convert the image to the given dtype before export
-    
+
     other parameters: See density_volume_from_pointcloud(), below.
     """
     density_volume_zyx = density_volume_from_pointcloud(
@@ -79,13 +79,13 @@ def density_volume_from_pointcloud(
     pointcloud_csv_filepath, scale_xyz=None, offset_xyz=None, volume_shape_xyz=None, method="by_count"
 ):
     """
-    Read the given pointcloud file and generate a downsampled intensity volume 
+    Read the given pointcloud file and generate a downsampled intensity volume
     according to how many points fall within each downsampled pixel.
-    
+
     Optionally, also weight the intensity of each downsampled pixel according to the size of each point.
-    
+
     NOTE: This function depends on numpy.add.at(), which requires numpy v1.8.0
-    
+
     pointcloud_csv_filepath: The input pointcloud file.  Must include
     scale_xyz: (optional) The downsampling factor, specified as a tuple in XYZ order, e.g. (10,10,1).
                 If not provided, (1,1,1) is assumed.
@@ -96,7 +96,7 @@ def density_volume_from_pointcloud(
     method: One of the following:
                - 'binary': Produce a binary image.  No scaling for downsampled voxels containing more than one detection.
                - 'by_count': Each downsampled voxel represents the count of points contained within it.
-               - 'by_size': Weight the intensity of each downsampled voxel according to the size of each point (via the size_px column).    
+               - 'by_size': Weight the intensity of each downsampled voxel according to the size of each point (via the size_px column).
     """
     # Load csv data
     pointcloud_data = array_from_csv(pointcloud_csv_filepath, DEFAULT_CSV_FORMAT, numpy.uint32)
@@ -195,16 +195,16 @@ def array_from_csv(
     pointcloud_csv_filepath, csv_format=DEFAULT_CSV_FORMAT, column_dtypes=None, weight_by_size=False, use_cache=True
 ):
     """
-    Read the given csv file and return a corresponding 
-    numpy structured array of all its values.  
+    Read the given csv file and return a corresponding
+    numpy structured array of all its values.
     The CSV file must include a header row.
-    
+
     pointcloud_csv_filepath: The input file
     csv_format: A dict of formatting parameters for the csv module
-    column_dtypes: Either: 
-                   - a dtype object to use for all columns, or 
+    column_dtypes: Either:
+                   - a dtype object to use for all columns, or
                    - a dict of {column_name : dtype} to use for each column
-    weight_by_size: If True, weight the intensity of each downsampled pixel 
+    weight_by_size: If True, weight the intensity of each downsampled pixel
                     according to the size_px of the objects that it represents.
     use_cache: If True, attempt to use a cached copy of the imported csv data, already in .npy format.
                Provide a string instead of a bool to specify the location of the cache file.
@@ -294,7 +294,7 @@ def export_hdf5(density_volume_zyx, output_filepath, dset_name):
 def export_tiff(density_volume_zyx, output_filepath):
     """
     Export the given 3D zyx volume as a multipage TIFF.
-    
+
     density_volume_zyx: The volume to export.  Must be in ZYX order.
     output_filepath: The name of the .tiff file to write.
     """

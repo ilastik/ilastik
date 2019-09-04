@@ -25,9 +25,9 @@ class ExampleObjFeats(ObjectFeaturesPlugin):
 
     def lbp(self, image, label_bboxes, axes):
         """ This function computes local binary pattern histograms
-            for the object, the neighborhood of the object (without 
+            for the object, the neighborhood of the object (without
             the object itself), and both the object and the neighborhood)
-            
+
             The LBPs are computed via the scikit.image package
         """
         rawbbox = image

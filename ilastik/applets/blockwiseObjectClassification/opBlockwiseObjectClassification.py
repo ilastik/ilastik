@@ -203,8 +203,8 @@ class OpSingleBlockObjectPrediction(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         """
-        Nothing to do here because dirty notifications are propagated 
-        through our internal pipeline and forwarded to our output via 
+        Nothing to do here because dirty notifications are propagated
+        through our internal pipeline and forwarded to our output via
         our notifyDirty handler.
         """
         pass
@@ -367,9 +367,9 @@ class OpBlockwiseObjectClassification(Operator):
         """
         Provide data for the BlockwiseRegionFeatures slot.
         Note: Each block produces a single element of this slot's output.  Construct requested roi coordinates accordingly.
-              e.g. if block_shape is (1,10,10,10,1), the features for the block starting at 
+              e.g. if block_shape is (1,10,10,10,1), the features for the block starting at
                    (1,20,30,40,5) should be requested via roi [(1,2,3,4,5),(2,3,4,5,6)]
-        
+
         Note: It is assumed that you will request these features for debug purposes, AFTER requesting the prediction image.
               Therefore, it is considered an error to request features that are not already computed.
         """

@@ -638,8 +638,8 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
 class OpEnsembleMargin(Operator):
     """
     Produces a pixelwise measure of the uncertainty of the pixelwise predictions.
-    
-    Uncertainty is negatively proportional to the difference between the 
+
+    Uncertainty is negatively proportional to the difference between the
     highest two probabilities at every pixel.
     """
 

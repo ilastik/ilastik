@@ -7,7 +7,7 @@ import vigra
 
 def measure_surface_contact_A(label_volume, object_label_1, object_label_2, contact_distance=1):
     """
-    Measure the area of contact between two objects by counting the number of 
+    Measure the area of contact between two objects by counting the number of
     pixels within object 2 that lie exactly N distant from object 1.
     """
     # Reduce to 3D if necessary: remove singleton axes.
@@ -32,9 +32,9 @@ def measure_surface_contact_A(label_volume, object_label_1, object_label_2, cont
 
 def measure_surface_contact_B(label_volume, object_label_1, object_label_2, contact_distance=1):
     """
-    Measure the area of contact between two objects by generating a shell around object 1 via 
+    Measure the area of contact between two objects by generating a shell around object 1 via
     dilation and then counting the number of pixels in the shell that fall within object 2.
-    
+
     Does not yield the same results as method 1, above.
     """
     assert object_label_1 <= 255

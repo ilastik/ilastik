@@ -219,8 +219,8 @@ class MulticutWorkflow(Workflow):
     def onProjectLoaded(self, projectManager):
         """
         Overridden from Workflow base class.  Called by the Project Manager.
-        
-        If the user provided command-line arguments, use them to configure 
+
+        If the user provided command-line arguments, use them to configure
         the workflow inputs and output settings.
         """
         # Configure the data export operator.

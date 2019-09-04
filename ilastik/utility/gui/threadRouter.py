@@ -39,7 +39,7 @@ class ThreadRouter(QObject):
     def __init__(self, parent):
         """
         Construct a threadRouter object.  You must call it ``self.threadRouter``.
-        
+
         :param parent: The parent object, which whose thread will be used for all :py:func:`@threadRouted<threadRouted>` functions.
         """
         assert parent is not None, "Can't use ThreadRouter without a parent QObject."
@@ -57,8 +57,8 @@ def threadRoutedWithRouter(threadRouter):
         Decorator that routes calls to the given member function into the object's parent thread.
         If a member function ``f`` is decorated with ``@threadRouted``, all calls to ``f`` will execute in the GUI thread.
         The calling thread will block while ``f`` is executing, so the call will appear synchronous.
-        This mechanism is slow, and should only be used for functions that MUST execute in the GUI thread. 
-        
+        This mechanism is slow, and should only be used for functions that MUST execute in the GUI thread.
+
         .. note:: Objects that use the @threadRouted decorator MUST have a :py:class:`ThreadRouter` member called ``self.threadRouter``
         """
 

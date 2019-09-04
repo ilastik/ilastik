@@ -24,20 +24,20 @@ from future.utils import with_metaclass
 
 class SubclassRegistryMeta(ABCMeta):
     """
-    When you use this metaclass, your class will get a list of all its subclasses.    
+    When you use this metaclass, your class will get a list of all its subclasses.
     Note: You can't use this metaclass directly.  You must subclass it.
     Note: As a convenience, this metaclass inherits from ABCMeta, so your base class can use @abstractmethod
     Example:
         class MySubclassRegistry(SubclassRegistryMeta):
             pass
-        
+
         class MyBase(object):
             __metaclass__ = MySubclassRegistry
-        
+
         ...
-        
+
         print MyBase.all_subclasses
-    
+
     """
 
     def __new__(cls, name, bases, classDict):

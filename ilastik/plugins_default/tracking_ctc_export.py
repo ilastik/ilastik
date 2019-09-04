@@ -113,7 +113,7 @@ class TrackingCTCExportFormatPlugin(TrackingExportFormatPlugin):
     def _save_tracks(self, tracks, output_dir):
         """
         Take a dictionary indexed by TrackId which contains
-        a list [parent, begin, end] per track, and save it 
+        a list [parent, begin, end] per track, and save it
         in the text format of the cell tracking challenge.
         """
         filename = os.path.join(output_dir, "res_track.txt")
@@ -127,9 +127,9 @@ class TrackingCTCExportFormatPlugin(TrackingExportFormatPlugin):
                 f.write(f"{int(key) - 1} {value[1]} {value[2]} {max(0, int(value[0]) - 1)}\n")
 
     def _remap_label_image(self, label_image, mapping):
-        """ 
-        given a label image and a mapping, creates and 
-        returns a new label image with remapped object pixel values 
+        """
+        given a label image and a mapping, creates and
+        returns a new label image with remapped object pixel values
         """
         remapped_label_image = np.zeros(label_image.shape, dtype=label_image.dtype)
         for src, dest in mapping.items():

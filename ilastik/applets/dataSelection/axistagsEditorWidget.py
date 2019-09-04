@@ -35,7 +35,7 @@ class AxistagsEditorWidget(QTableWidget):
 
     def change_axis_order(self, new_axiskeys):
         """
-        Update our stored axistags with the given order, but preserve  
+        Update our stored axistags with the given order, but preserve
         axis infos that are carried over from the previous tags.
         """
         old_axiskeys = [tag.key for tag in self.axistags]

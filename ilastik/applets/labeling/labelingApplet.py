@@ -27,7 +27,7 @@ from .labelingSerializer import LabelingSerializer
 
 class LabelingApplet(StandardApplet):
     """
-    This applet demonstrates how to use the LabelingGui base class, which serves as a reusable base class for other applet GUIs that need a labeling UI.  
+    This applet demonstrates how to use the LabelingGui base class, which serves as a reusable base class for other applet GUIs that need a labeling UI.
     """
 
     def __init__(self, workflow, projectFileGroupName, blockDims=None):

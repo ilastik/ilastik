@@ -42,9 +42,9 @@ class PluginExportOptionsDlg(QDialog):
     def __init__(self, parent, topLevelOp=None):
         """
         Constructor.
-        
+
         :param parent: The parent widget
-        :param opDataExport: The operator to configure.  The operator is manipulated LIVE, so supply a 
+        :param opDataExport: The operator to configure.  The operator is manipulated LIVE, so supply a
                              temporary operator that can be discarded in case the user clicked 'cancel'.
                              If the user clicks 'OK', then copy the slot settings from the temporary op to your real one.
         """

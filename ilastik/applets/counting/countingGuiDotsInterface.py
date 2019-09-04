@@ -168,10 +168,10 @@ class DotInterpreter(BrushingInterpreter):
     def __init__(self, navigationController, brushingController):
         """
         This class inherit for the brushing interpreter because
-        when putting a dot we place a graphic item on top of an actual 
+        when putting a dot we place a graphic item on top of an actual
         brushing label of one pixel size which is needed to create an object density
-        
-        
+
+
         :param navigationController: A standard navigation controller handling mouse move
         :param brushingController: A standard brushing controller to handle serialization of the brush
         :param dotsController: A dots controller to rout user produced signal to Graphics Items
@@ -242,10 +242,10 @@ class DotController(QObject):
     def __init__(self, scene, brushingController=None, radius=30, color=QColor(255, 0, 0)):
         """
         Class which controls all dots of the scene
-        
+
         :param scene: the scene under control, this is restricted to 2D only !
-        :param brushingController: not needed, old interface 
-        
+        :param brushingController: not needed, old interface
+
         """
         QObject.__init__(self, parent=scene.parent())
         self.scene = scene

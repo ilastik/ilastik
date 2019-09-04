@@ -695,8 +695,8 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
 
     def importLabelInfo(self, file_path):
         """
-        Read labels and bounding boxes from a JSON file.  
-        For all image lanes in the JSON file, replace all labels in that image.  
+        Read labels and bounding boxes from a JSON file.
+        For all image lanes in the JSON file, replace all labels in that image.
         For image lanes NOT listed in the JSON file, keep the existing labels.
         """
         import json

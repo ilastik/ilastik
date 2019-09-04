@@ -151,7 +151,7 @@ class DataSelectionGui(QWidget):
     ):
         """
         Constructor.
-        
+
         :param dataSelectionOperator: The top-level operator.  Must be of type :py:class:`OpMultiLaneDataSelectionGroup`.
         :param serializer: The applet's serializer.  Must be of type :py:class:`DataSelectionSerializer`
         :param instructionText: A string to display in the applet drawer.

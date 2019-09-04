@@ -285,7 +285,7 @@ class OpRawSubRegionHelper(Operator):
     To do that, we need to show the SAME subregion of the raw data that the user selected to export.
     However, it's possible that the exported data has a different number of channels than the raw data has.
     Therefore, the subregion for the raw layer should be the same in all dimensions EXCEPT for the number of channels.
-    
+
     This simple helper operator produces the correct subregion settings to be used with the raw data formatting operator.
     """
 
@@ -321,8 +321,8 @@ class OpRawSubRegionHelper(Operator):
 
 class OpImageOnDiskProvider(Operator):
     """
-    This simply wraps a lazyflow OpInputDataReader, but ensures that the metadata 
-    (axistags, drange) on the output matches the metadata from the original data 
+    This simply wraps a lazyflow OpInputDataReader, but ensures that the metadata
+    (axistags, drange) on the output matches the metadata from the original data
     (even if the output file format doesn't support metadata fields).
     """
 
@@ -415,11 +415,11 @@ class OpImageOnDiskProvider(Operator):
 
 def get_model_op(wrappedOp):
     """
-    Create a "model operator" that the gui can use.  
-    The model op is a single (non-wrapped) export operator that the 
-    gui will manipulate while the user plays around with the export 
-    settings.  When the user is finished, the model op slot settings can 
-    be copied over to the 'real' (wrapped) operator slots. 
+    Create a "model operator" that the gui can use.
+    The model op is a single (non-wrapped) export operator that the
+    gui will manipulate while the user plays around with the export
+    settings.  When the user is finished, the model op slot settings can
+    be copied over to the 'real' (wrapped) operator slots.
     """
     if len(wrappedOp) == 0:
         return None, None

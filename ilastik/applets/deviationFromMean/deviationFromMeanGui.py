@@ -94,7 +94,7 @@ class DeviationFromMeanGui(LayerViewerGui):
 
     def setupLayers(self):
         """
-        The LayerViewer base class calls this function to obtain the list of layers that 
+        The LayerViewer base class calls this function to obtain the list of layers that
         should be displayed in the central viewer.
         """
         layers = []

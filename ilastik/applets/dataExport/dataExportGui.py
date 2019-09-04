@@ -553,7 +553,7 @@ class DataExportGui(QWidget):
     def createLayerViewer(self, opLane):
         """
         This method provides an instance of LayerViewerGui for the given data lane.
-        If this GUI class is subclassed, this method can be reimplemented to provide 
+        If this GUI class is subclassed, this method can be reimplemented to provide
         custom layer types for the exported layers.
         """
         return DataExportLayerViewerGui(self.parentApplet, opLane)

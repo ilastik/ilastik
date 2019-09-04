@@ -3,7 +3,7 @@ hdf5-to-mesh.py
 
 Usage: python hdf5-to-mesh.py [--label=<N>] <input-file.h5>
 
-Exports a mesh for the given hdf5 file, in .obj format, 
+Exports a mesh for the given hdf5 file, in .obj format,
 which is suitable for input into Blender.
 If --label=N is provided, then only the pixels with value N will be converted into the mesh.
 Otherwise, all nonzero pixels are used.

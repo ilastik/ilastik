@@ -366,7 +366,7 @@ def select_labels(small_labels, big_labels):
     from big_labels which don't overlap with any non-zero pixels in small_labels.
 
     ** Works IN-PLACE (to save RAM) **
-    
+
     Both inputs are modified: small_labels for temporary storage, big_labels for the result
     """
     assert hasattr(small_labels, "axistags")

@@ -113,7 +113,7 @@ class AppletGuiInterface(with_metaclass(ABCMeta, object)):
         """
         Abstract method.
         Called when a new image lane has been added to the workflow, and the GUI should respond appropriately.
-        Note: The default GUI provided by StandardApplet overrides this for you. 
+        Note: The default GUI provided by StandardApplet overrides this for you.
         """
         raise NotImplementedError
 
@@ -123,7 +123,7 @@ class AppletGuiInterface(with_metaclass(ABCMeta, object)):
         Abstract method.
         Called when a new image lane is about to be removed from the workflow, and the GUI should respond appropriately.
         The GUI should clean up any resourecs it owns.
-        Note: The default GUI provided by StandardApplet overrides this for you. 
+        Note: The default GUI provided by StandardApplet overrides this for you.
         """
         raise NotImplementedError
 
@@ -210,7 +210,7 @@ if __name__ == "__main__":
             """
             Abstract method.
             Called when a new image lane has been added to the workflow, and the GUI should respond appropriately.
-            Note: The default GUI provided by StandardApplet overrides this for you. 
+            Note: The default GUI provided by StandardApplet overrides this for you.
             """
             raise NotImplementedError
 
@@ -219,7 +219,7 @@ if __name__ == "__main__":
             Abstract method.
             Called when a new image lane is about to be removed from the workflow, and the GUI should respond appropriately.
             The GUI should clean up any resourecs it owns.
-            Note: The default GUI provided by StandardApplet overrides this for you. 
+            Note: The default GUI provided by StandardApplet overrides this for you.
             """
             raise NotImplementedError
 

@@ -102,7 +102,7 @@ else:
             """Export the tracking solution stored in the hypotheses graph as a sequence of H5 files,
             one per frame, containing the label image of that frame and which objects were part
             of a move or a division.
-    
+
             :param filename: string of the FOLDER where to save the result
             :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
             :param pluginExportContext: instance of ilastik.plugins.PluginExportContext containing:

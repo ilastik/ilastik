@@ -383,7 +383,7 @@ class OpPredictEdgeProbabilities(Operator):
 class OpEdgeProbabilitiesDict(Operator):
     """
     A little utility operator to combine a RAG's edge_ids
-    with an array of edge probabilities into a dict of id_pair -> probability 
+    with an array of edge probabilities into a dict of id_pair -> probability
     """
 
     Rag = InputSlot()

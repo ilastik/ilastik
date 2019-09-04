@@ -9,12 +9,12 @@ from lazyflow.utility import vigra_bincount
 
 def identity_preserving_hysteresis_thresholding(img, high_threshold, low_threshold, min_size, max_size=None, out=None):
     """
-    Threshold the given image at two levels (hysteresis thresholding), 
-    but don't allow two 'high' thresholded regions bleed into each other 
-    when the low threshold is applied. A labeled image is returned, and 
-    no connected component will be too small or too large according to 
+    Threshold the given image at two levels (hysteresis thresholding),
+    but don't allow two 'high' thresholded regions bleed into each other
+    when the low threshold is applied. A labeled image is returned, and
+    no connected component will be too small or too large according to
     the given min/max sizes.
-    
+
     Ideas for improvement: Allow separate images for the high and low thresholding steps.
     """
     logger.debug("Computing high threshold")
@@ -39,16 +39,16 @@ def threshold_from_cores(img, core_labels, final_threshold, out=None):
     Given a grayscale image and a label image of object 'cores', use core_labels
     as the seeds for a (upside-down) watershed operation.  The watershed will be restricted to
     those pixels within the bounds defined by the given final_threshold value.
-    
+
     img:
         The single-channel input data.  (It will be inverted before the watershed is performed.)
-    
+
     core_labels:
         A label image indicating high-valued pixel regions from which to seed the watershed.
-    
+
     low_threshold:
         The watershed will proceed until reaching this threshold value.
-    
+
     out:
         (Optional.) Where to write the results, a label image filling the around
         core_labels that are greater than final_threshold.

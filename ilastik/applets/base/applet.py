@@ -26,7 +26,7 @@ from future.utils import with_metaclass
 class Applet(with_metaclass(ABCMeta, object)):
     """
     Base class for all applets.  The shell and workflow depend on this interface only.
-    Applets can subclass from this class directly, but in most cases it is easier to 
+    Applets can subclass from this class directly, but in most cases it is easier to
     subclass :py:class:`StandardApplet<ilastik.applets.base.standardApplet.StandardApplet>`.
     """
 
@@ -39,7 +39,7 @@ class Applet(with_metaclass(ABCMeta, object)):
         If they fail to do so, the shell raises an exception.
 
         :param name: The applet's name, which will appear as the applet drawer title.
-        :param syncWithImageIndex: If True, the shell/workflow will add an image lane to this applet for each image in the interactive workflow. 
+        :param syncWithImageIndex: If True, the shell/workflow will add an image lane to this applet for each image in the interactive workflow.
         :param interactive: If False, the applet controls won't be shown in the applet bar GUI.
         """
         self.name = name
@@ -118,7 +118,7 @@ class DatasetConstraintError(Exception):
     def __init__(self, appletName, message, unfixable=False, fixing_dialogs=[]):
         """
         Args:
-            fixing_dialogs: list of functions to show dialogs which can alleviate the dataset constraint. 
+            fixing_dialogs: list of functions to show dialogs which can alleviate the dataset constraint.
         """
         super().__init__()
         self.appletName = appletName

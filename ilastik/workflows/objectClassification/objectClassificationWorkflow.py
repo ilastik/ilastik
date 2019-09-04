@@ -411,7 +411,7 @@ class ObjectClassificationWorkflow(Workflow):
         """
         Overridden from Workflow base class
         Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
-        
+
         This method will be called by the child classes with the result of their
         own applet readyness findings as keyword argument.
         """
@@ -481,7 +481,7 @@ class ObjectClassificationWorkflow(Workflow):
     def postprocessClusterSubResult(self, roi, result, blockwise_fileset):
         """
         This function is only used by special cluster scripts.
-        
+
         When the batch-processing mechanism was rewritten, this function broke.
         It could probably be fixed with minor changes.
         """

@@ -414,7 +414,7 @@ class SerialBlockSlot(SerialSlot):
     ):
         """
         :param blockslot: provides non-zero blocks.
-        :param shrink_to_bb: If true, reduce each block of data from the slot to  
+        :param shrink_to_bb: If true, reduce each block of data from the slot to
                              its nonzero bounding box before feeding saving it.
 
         """
@@ -1108,10 +1108,10 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
 
         :param projectFilePath: The path to the given file handle.
             (Most serializers do not use this parameter.)
-        
+
         :param headless: Are we called in headless mode?
             (in headless mode corrupted files cannot be fixed via the GUI)
-        
+
         """
         self.progressSignal(0)
 

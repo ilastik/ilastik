@@ -30,7 +30,7 @@ class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
         :param pluginExportContext: instance of ilastik.plugins.PluginExportContext containing:
             objectFeaturesSlot (required here),  labelImageSlot (required here)
             as well as  rawImageSlot, additionalPluginArgumentsSlot
-            
+
         :returns: True on success, False otherwise
         """
         # Get object features

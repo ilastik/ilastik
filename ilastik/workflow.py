@@ -51,7 +51,7 @@ class Workflow(Operator):
     @abstractproperty
     def imageNameListSlot(self):
         """
-        Abstract property.  Return the "image name list" slot, which lists the names of 
+        Abstract property.  Return the "image name list" slot, which lists the names of
         all image lanes (i.e. files) currently loaded by the workflow.
         This slot is typically provided by the DataSelection applet via its ImageName slot.
         """
@@ -82,7 +82,7 @@ class Workflow(Operator):
     def connectLane(self, laneIndex):
         """
         When a new image lane has been added to the workflow, this workflow base class does the following:
-        
+
         1) Create room for the new image lane by adding a lane to each applet's topLevelOperator
         2) Ask the subclass to hook up the new image lane by calling this function.
         """
@@ -90,11 +90,11 @@ class Workflow(Operator):
 
     def prepareForNewLane(self, laneIndex):
         """
-        Workflows may override this method to prepare for a new 
+        Workflows may override this method to prepare for a new
         lane, before the new lane is actually inserted.
 
-        For example they may copy cache states that will be invalidated by 
-        the insertion of the new lane, and restore those caches at the end 
+        For example they may copy cache states that will be invalidated by
+        the insertion of the new lane, and restore those caches at the end
         of connectLane().
         """
         pass
@@ -104,7 +104,7 @@ class Workflow(Operator):
         Called immediately after a new lane is fully initialized with data.
         If a workflow wants to restore state previously saved in prepareForNewLane(),
         this is the place to do it.
-        
+
         This function must be called by any code that can add new lanes to the workflow and initialize them.
         That happens in only two places: The DataSelectionGui, and the BatchProcessingApplet.
         """
@@ -120,7 +120,7 @@ class Workflow(Operator):
     def handleAppletStateUpdateRequested(self):
         """
         Called when an applet has fired the :py:attr:`Applet.statusUpdateSignal`
-        Workflow subclasses should reimplement this method to enable/disable applet gui's 
+        Workflow subclasses should reimplement this method to enable/disable applet gui's
         """
         pass
 
@@ -144,9 +144,9 @@ class Workflow(Operator):
         """
         Constructor.  Subclasses MUST call this in their own ``__init__`` functions.
         The parent and graph parameters will be passed directly to the Operator base class. If both are None,
-        a new Graph is instantiated internally. 
-        
-        :param headless: Set to True if this workflow is being instantiated by a "headless" script, 
+        a new Graph is instantiated internally.
+
+        :param headless: Set to True if this workflow is being instantiated by a "headless" script,
                          in which case the workflow should not attempt to access applet GUIs.
         :param workflow_cmdline_args: a (possibly empty) sequence of arguments to control
                                       the workflow from the command line
@@ -171,7 +171,7 @@ class Workflow(Operator):
 
     def cleanUp(self):
         """
-        The user closed the project, so this workflow is being destroyed.  
+        The user closed the project, so this workflow is being destroyed.
         Tell the applet GUIs to stop processing data, and free any resources that are owned by this workflow or its applets.
         """
         if not self._headless:

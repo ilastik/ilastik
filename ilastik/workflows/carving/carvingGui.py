@@ -522,11 +522,11 @@ class CarvingGui(LabelingGui):
 
     def _exportMeshes(self, object_names: List[str], obj_filepaths: List[str]) -> Request:
         """Save objects in the mst to .obj files
-        
+
         Args:
             object_names: Names of the objects in the mst
             obj_filepaths: One path for each object in object_names
-        
+
         Returns:
             Returns the request object, used in testing
         """

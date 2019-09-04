@@ -46,12 +46,12 @@ except:
 class ProjectManager(object):
     """
     This class manages creating, opening, importing, saving, and closing project files.
-    It instantiates a workflow object and loads its applets with the settings from the 
+    It instantiates a workflow object and loads its applets with the settings from the
     project file by using the applets' serializer objects.
-    
+
     To open a project file, instantiate a ProjectManager object.
     To close the project file, delete the ProjectManager object.
-    
+
     Once the project manager has been instantiated, clients can access its ``workflow``
     member for direct access to its applets and their top-level operators.
     """
@@ -104,7 +104,7 @@ class ProjectManager(object):
         :param projectFilePath: Full path of the new project (for instance '/tmp/MyProject.ilp').
         :param workflow_class: If not None, add dataset containing the name of the workflow_class.
         :param workflow_cmdline_args: If not None, add dataset containing the commandline arguments.
-        :param h5_file_kwargs: Passed directly to h5py.File.__init__(); all standard params except 'mode' are allowed. 
+        :param h5_file_kwargs: Passed directly to h5py.File.__init__(); all standard params except 'mode' are allowed.
         :rtype: h5py.File
 
         """
@@ -214,9 +214,9 @@ class ProjectManager(object):
     def __init__(self, shell, workflowClass, headless=False, workflow_cmdline_args=None, project_creation_args=None):
         """
         Constructor.
-        
+
         :param workflowClass: A subclass of ilastik.workflow.Workflow (the class, not an instance).
-        :param headless: A bool that is passed to the workflow constructor, 
+        :param headless: A bool that is passed to the workflow constructor,
                          indicating whether or not the workflow should be opened in 'headless' mode.
         :param workflow_cmdline_args: A list of strings from the command-line to configure the workflow.
         """
@@ -421,7 +421,7 @@ class ProjectManager(object):
     def _loadProject(self, hdf5File, projectFilePath, readOnly):
         """
         Load the data from the given hdf5File (which should already be open).
-        
+
         :param hdf5File: An already-open h5py.File, usually created via ``ProjectManager.createBlankProjectFile``
         :param projectFilePath: The path to the file represented in the ``hdf5File`` parameter.
         :param readOnly: Set to True if the project file should NOT be modified.
@@ -491,7 +491,7 @@ class ProjectManager(object):
     def _importProject(self, importedFilePath, newProjectFile, newProjectFilePath):
         """
         Load the data from a project and save it to a different project file.
-        
+
         importedFilePath - The path to a (not open) .ilp file to import data from
         newProjectFile - An hdf5 handle to a new .ilp to load data into (must be open already)
         newProjectFilePath - The path to the new .ilp we're loading.

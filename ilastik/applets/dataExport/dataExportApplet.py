@@ -35,7 +35,7 @@ from .opDataExport import OpDataExport
 
 class DataExportApplet(Applet):
     """
-    
+
     """
 
     def __init__(self, workflow, title, isBatch=False):
@@ -177,10 +177,10 @@ class DataExportApplet(Applet):
     def parse_known_cmdline_args(cls, cmdline_args, parsed_args=None):
         """
         Helper function for headless workflows.
-        Parses commandline args that can be used to configure the ``DataExportApplet`` top-level operator 
+        Parses commandline args that can be used to configure the ``DataExportApplet`` top-level operator
         and returns ``(parsed_args, unused_args)``, similar to ``argparse.ArgumentParser.parse_known_args()``
         See also: :py:meth:`configure_operator_with_parsed_args()`.
-        
+
         parsed_args: Already-parsed args as returned from an ArgumentParser from make_cmdline_parser(), above.
                      If not provided, make_cmdline_parser().parse_known_args() will be used.
         """
@@ -254,7 +254,7 @@ class DataExportApplet(Applet):
         """
         Helper function for headless workflows.
         Configures this applet's top-level operator according to the settings provided in ``parsed_args``.
-        
+
         :param parsed_args: Must be an ``argparse.Namespace`` as returned by :py:meth:`parse_known_cmdline_args()`.
         """
         opDataExport = self.topLevelOperator
@@ -265,10 +265,10 @@ class DataExportApplet(Applet):
         """
         Helper function for headless workflows.
         Configures the given export operator according to the settings provided in ``parsed_args``.
-        
+
         Unlike the function above, this function can be called from external scripts.
         The operator can be OpDataExport, OR OpFormattedDataExport
-        
+
         :param parsed_args: Must be an ``argparse.Namespace`` as returned by :py:meth:`parse_known_cmdline_args()`.
         """
 

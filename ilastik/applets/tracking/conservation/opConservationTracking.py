@@ -967,7 +967,7 @@ class OpConservationTracking(Operator):
     def isTrackingSolutionAvailable(self):
         """
         check whether the hypotheses graph is filled and contains a tracking solution
-        
+
         :return: True if there is a tracking solution available, False otherwise
         """
         hypothesesGraph = self.HypothesesGraph.value

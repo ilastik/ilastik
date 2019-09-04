@@ -17,9 +17,9 @@ def edge_decisions(overseg_vol, groundtruth_vol, asdict=True):
     Given an oversegmentation and a reference segmentation,
     return a dict of {(sp1, sp2) : bool} indicating whether or
     not edge (sp1,sp2) is ON in the reference segmentation.
-    
-    If asdict=False, return separate ndarrays for edge_ids 
-    and boolean decisions instead of combined dict. 
+
+    If asdict=False, return separate ndarrays for edge_ids
+    and boolean decisions instead of combined dict.
     """
     sp_edges_per_axis = []
     for axis in range(overseg_vol.ndim):
@@ -42,7 +42,7 @@ def relabel_volume_from_edge_decisions(supervoxels, edge_ids, edge_decisions, ou
     Given a supervoxel volume, and a set of edge_ids and corresponding ON/OFF labels
     for the edges, compute a new label volume in which all supervoxels with at least
     one inactive edge between them are merged together.
-    
+
     Parameters
     ----------
     supervoxels: label array, labels do not need to be consecutive,

@@ -54,24 +54,24 @@ class ThunkEvent(QEvent):
 
 class ThunkEventHandler(QObject):
     """
-    GUI objects can instantiate an instance of this class and then start using it to 
+    GUI objects can instantiate an instance of this class and then start using it to
     post ``ThunkEvents``, which execute a given callable in the GUI event loop.
-    The callable will NOT be called synchronously.  It will be called when the QT 
+    The callable will NOT be called synchronously.  It will be called when the QT
     event system eventually passes the event to the GUI object's event filters.
 
     In the following example, ``C.setCaption()`` can be called from ANY thread safely.
     The widget's text will ONLY be updated in the main thread, at some point in the future.
-    
+
     .. code-block:: python
-    
+
        class C(QObject):
            def __init__(self, parent):
                QObject.__init__(self, parent=parent)
                self.thunkEventHandler = ThunkEventHandler(self)
-        
-        
+
+
            def setCaption(self, text):
-               self.thunkEventHandler.post( self.mywidget.setText, text )    
+               self.thunkEventHandler.post( self.mywidget.setText, text )
     """
 
     def __init__(self, parent):

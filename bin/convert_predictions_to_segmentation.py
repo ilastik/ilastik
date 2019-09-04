@@ -13,7 +13,7 @@ from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 def convert_predictions_to_segmentation(input_paths, parsed_export_args):
     """
     Read exported pixel predictions and calculate/export the segmentation.
-    
+
     input_path: The path to the prediction output file. If hdf5, must include the internal dataset name.
     parsed_export_args: The already-parsed cmd-line arguments generated from a DataExportApplet-compatible ArgumentParser.
     """

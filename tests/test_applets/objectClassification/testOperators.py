@@ -65,7 +65,7 @@ def segImage():
 
 def emptyImage():
     """
-    an empty 5D image 
+    an empty 5D image
     """
     img = np.zeros((2, 50, 50, 50, 0), dtype=np.int)
     img = img.view(vigra.VigraArray)

@@ -26,8 +26,8 @@ from .opLayerViewer import OpLayerViewer
 
 class LayerViewerApplet(StandardApplet):
     """
-    This applet can be used as a simple viewer of raw image data.  
-    Its main purpose is to provide a simple example of how to use the LayerViewerGui, 
+    This applet can be used as a simple viewer of raw image data.
+    Its main purpose is to provide a simple example of how to use the LayerViewerGui,
     which is intended to be used as a base class for most other applet GUIs.
     """
 

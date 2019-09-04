@@ -34,7 +34,7 @@ PIXEL_CLASSIFICATION_INDEX = 2
 class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
     """
     Run a set of GUI-based tests on the pixel classification workflow.
-    
+
     Note: These tests are named in order so that simple cases are tried before complex ones.
           Additionally, later tests may depend on earlier ones to run properly.
     """

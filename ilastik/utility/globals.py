@@ -19,7 +19,7 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 """
-This module defines a set of global settings that can be used to "hack in" special features, 
+This module defines a set of global settings that can be used to "hack in" special features,
 particularly one-off features that it's not worth redesigning the architecture for.
 """
 

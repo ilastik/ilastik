@@ -35,13 +35,13 @@ RAW_DATA_ROLE_INDEX = 0
 class DataConversionWorkflow(Workflow):
     """
     Simple workflow for converting data between formats.
-    Has only two 'interactive' applets (Data Selection and Data Export), plus the BatchProcessing applet.    
+    Has only two 'interactive' applets (Data Selection and Data Export), plus the BatchProcessing applet.
 
     Supports headless mode. For example:
-    
+
     .. code-block::
 
-        python ilastik.py --headless 
+        python ilastik.py --headless
                           --new_project=NewTemporaryProject.ilp
                           --workflow=DataConversionWorkflow
                           --output_format="png sequence"
@@ -51,10 +51,10 @@ class DataConversionWorkflow(Workflow):
     .. note:: Beware of issues related to absolute vs. relative paths.
               Relative links are stored relative to the project file.
 
-              To avoid this issue entirely, either 
+              To avoid this issue entirely, either
                  (1) use only absolute filepaths
               or (2) cd into your project file's directory before launching ilastik.
-    
+
     """
 
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
@@ -168,8 +168,8 @@ class DataConversionWorkflow(Workflow):
     def onProjectLoaded(self, projectManager):
         """
         Overridden from Workflow base class.  Called by the Project Manager.
-        
-        If the user provided command-line arguments, use them to configure 
+
+        If the user provided command-line arguments, use them to configure
         the workflow inputs and output settings.
         """
         # Configure the data export operator.

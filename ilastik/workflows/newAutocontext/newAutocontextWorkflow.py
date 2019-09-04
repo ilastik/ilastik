@@ -70,7 +70,7 @@ class NewAutocontextWorkflowBase(Workflow):
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, n_stages, *args, **kwargs):
         """
         n_stages: How many iterations of feature selection and pixel classification should be inserted into the workflow.
-        
+
         All other params are just as in PixelClassificationWorkflow
         """
         # Create a graph to be shared by all operators
@@ -165,7 +165,7 @@ class NewAutocontextWorkflowBase(Workflow):
 
     def createDataSelectionApplet(self):
         """
-        Can be overridden by subclasses, if they want to use 
+        Can be overridden by subclasses, if they want to use
         special parameters to initialize the DataSelectionApplet.
         """
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
@@ -449,8 +449,8 @@ class NewAutocontextWorkflowBase(Workflow):
     def onProjectLoaded(self, projectManager):
         """
         Overridden from Workflow base class.  Called by the Project Manager.
-        
-        If the user provided command-line arguments, use them to configure 
+
+        If the user provided command-line arguments, use them to configure
         the workflow for batch mode and export all results.
         (This workflow's headless mode supports only batch mode for now.)
         """

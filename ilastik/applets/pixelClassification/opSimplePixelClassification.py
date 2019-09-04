@@ -22,12 +22,12 @@ class OpSimplePixelClassification(Operator):
     def __init__(self, *args, **kwargs):
         """
         Instantiate the pipeline of internal operators and connect them together.
-        
-        Most of the the operators we use here are designed to handle a single 
+
+        Most of the the operators we use here are designed to handle a single
         input image and produce a single output image (slot level=0).
-        In those cases, we use the OperatorWrapper mechanism to dynamically manage 
+        In those cases, we use the OperatorWrapper mechanism to dynamically manage
         a list of these operators.  (When wrapped, the operators have slots with level=1.)
-        
+
         (In ilastik, we use OpMultiLaneWrapper, which extends OperatorWrapper with extra functionality.)
         """
         super(OpSimplePixelClassification, self).__init__(*args, **kwargs)
@@ -113,7 +113,7 @@ class OpSimplePixelClassification(Operator):
         """
         Once this operator is configured and ready-to-go, call this function to
         load our internal label cache with the label data from upstream.
-        
+
         Unlike ilastik's OpPixelClassification, this simple operator
         is not written to handle on-the-fly updates to the label data.
         Hence, this function is here to load the data.

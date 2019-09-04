@@ -156,7 +156,7 @@ class ListView(QStackedWidget):
 
     def shrinkToMinimum(self):
         """
-        shrink the view around the 
+        shrink the view around the
         labels which are currently there
         """
         t = self._table

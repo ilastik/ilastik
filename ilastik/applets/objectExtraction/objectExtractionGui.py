@@ -688,8 +688,8 @@ from PyQt5.QtWidgets import QWidget
 class ObjectExtractionGuiNonInteractive(QWidget):
     """
     In non-interactive mode, we don't use any object extraction gui at all.
-    The ObjectExtraction applet is just used for its top-level operator and serializer. 
-    This class is a stand-in for the normal gui, since the shell needs some placeholder. 
+    The ObjectExtraction applet is just used for its top-level operator and serializer.
+    This class is a stand-in for the normal gui, since the shell needs some placeholder.
     """
 
     def __init__(self, *args, **kwargs):

@@ -27,17 +27,17 @@ class StandardApplet(Applet):
     """
     In most cases, it is easiest to use StandardApplet as a base class for your custom applet.
     StandardApplets are designed to simplify two tasks for most use-cases: Creating a *top-level operator* and creating a GUI.
-    
+
     StandardApplet subclasses may expose their *top-level operator* in one of two ways:
-    
+
     1) (Advanced) Override the :py:attr:`Applet.topLevelOperator<ilastik.applets.base.applet.Applet.topLevelOperator>` property directly.
     2) (Simple) Override BOTH :py:attr:`singleLaneOperatorClass` and :py:attr:`broadcastingSlots`, in which case a default implementation of :py:attr:`topLevelOperator` is provided for you.
-    
+
     StandardApplet subclasses may expose their GUI in one of three ways:
-    
+
     1) (Advanced) Override :py:meth:`createMultiLaneGui`.
     2) (Simpler) Override :py:meth:`createSingleLaneGui`, in which case a default implementation of :py:meth:`createMultiLaneGui` is provided for you.
-    3) (Simplest) Override :py:attr:`singleLaneGuiClass`, in which case default implementations of :py:meth:`createSingleLaneGui` and :py:meth:`createMultiLaneGui` are provided for you.  
+    3) (Simplest) Override :py:attr:`singleLaneGuiClass`, in which case default implementations of :py:meth:`createSingleLaneGui` and :py:meth:`createMultiLaneGui` are provided for you.
     """
 
     def __init__(self, name, workflow=None, interactive=True, *args, **kwargs):
@@ -85,7 +85,7 @@ class StandardApplet(Applet):
     def topLevelOperator(self):
         """
         Get the top-level (multi-image-lane) operator for the applet.
-        This default implementation uses ``singleLaneOperatorClass`` 
+        This default implementation uses ``singleLaneOperatorClass``
         and ``broadcastingSlots`` to generate the top-level operator.
         Applets that must be multi-image-lane-aware must override this property.
         Note that the top-level operator must adhere to the ``MultiLaneOperatorABC`` interface.
@@ -145,7 +145,7 @@ class StandardApplet(Applet):
     def __createMultiLaneGui(self):
         """
         This function serves as the default implementation of createMultiLaneGui().
-        It bundles multiple GUIs instantiated with ``createSingleLaneGui`` into one multi-image gui, 
+        It bundles multiple GUIs instantiated with ``createSingleLaneGui`` into one multi-image gui,
         which is what the Applet interface expects.
         """
         for cls in self.__class__.__mro__:

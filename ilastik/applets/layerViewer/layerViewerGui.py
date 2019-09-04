@@ -274,7 +274,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
     def createStandardLayerFromSlot(cls, slot, lastChannelIsAlpha=False, name=None, opacity=1.0, visible=True):
         """
         Convenience function.
-        Generates a volumina layer using the given slot.  
+        Generates a volumina layer using the given slot.
         Will be either a GrayscaleLayer or RGBALayer, depending on the channel metadata.
 
         :param slot: The slot to generate a layer from

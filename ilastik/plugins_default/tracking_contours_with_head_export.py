@@ -24,10 +24,10 @@ class TrackingContoursBodyPartsPlugin(TrackingExportFormatPlugin):
     def export(self, filename, hypothesesGraph, pluginExportContext):
         """
         Export the contours, head index, and corresponding IDs for all objects on the video.
-        
+
         Each .contours file consists of a line for each object in the video.
         All the values are space separated: the first number is the time (frame number), followed
-        by the ID, the head index, the number of xy pairs in the contour, and an array of xy pairs. 
+        by the ID, the head index, the number of xy pairs in the contour, and an array of xy pairs.
 
         :param filename: string of the FILE where to save the result (different .xml files were)
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution

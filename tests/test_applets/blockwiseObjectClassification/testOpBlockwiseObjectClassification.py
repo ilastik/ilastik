@@ -185,7 +185,7 @@ class TestOpBlockwiseObjectClassification(unittest.TestCase):
         self.objExtraction = opObjectExtraction
 
     def setUpClassifier(self):
-        """ 
+        """
         Prepare the classifier that will be used in blockwise prediction.
         Errors that occur here are real errors (as opposed to test failures).
         """
@@ -339,7 +339,7 @@ def cubes(dimblock, dimcube, cubedist=20, cubeoffset=0):
 
 def writeToTempFile(data, pathInFile="volume", prefix="test_image_"):
     """
-    Writes the given 
+    Writes the given
     """
     global WRITE_DEBUG_IMAGES
     if not WRITE_DEBUG_IMAGES:

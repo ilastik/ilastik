@@ -134,7 +134,7 @@ def bb_to_slicing(start, stop):
     return the corresponding slicing tuple.
 
     Example:
-    
+
         >>> assert bb_to_slicing([1,2,3], [4,5,6]) == np.s_[1:4, 2:5, 3:6]
     """
     return tuple(starmap(slice, list(zip(start, stop))))
@@ -279,7 +279,7 @@ FilterSpec = collections.namedtuple("FilterSpec", "name scale")
 def compute_features(input_grayscale, filter_spec_list, out=None, roi=None):
     """
     Given a grayscale volume and a list of FilterSpecs, compute the filters and store them to a single multi-channel array.
-    
+
     input_grayscale:
         A VigraArray, with axistags
 

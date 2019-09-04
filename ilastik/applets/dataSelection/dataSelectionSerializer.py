@@ -52,7 +52,7 @@ logger = logging.getLogger(__name__)
 class DataSelectionSerializer(AppletSerializer):
     """
     Serializes the user's input data selections to an ilastik v0.6 project file.
-    
+
     The model operator for this serializer is the ``OpMultiLaneDataSelectionGroup``
     """
 
@@ -334,7 +334,7 @@ class DataSelectionSerializer(AppletSerializer):
         self._projectFilePath = newdir
 
     def isDirty(self):
-        """ Return true if the current state of this item 
+        """ Return true if the current state of this item
             (in memory) does not match the state of the HDF5 group on disk.
             SerializableItems are responsible for tracking their own dirty/notdirty state."""
         return self._dirty
@@ -430,7 +430,7 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
         assert False
 
     def isDirty(self):
-        """ Return true if the current state of this item 
+        """ Return true if the current state of this item
             (in memory) does not match the state of the HDF5 group on disk.
             SerializableItems are responsible for tracking their own dirty/notdirty state."""
         return False
