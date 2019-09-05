@@ -59,6 +59,7 @@ logger = logging.getLogger(__name__)
 class FeatureSelectionGui(LayerViewerGui):
     """
     """
+
     # ##########################################
     # ## AppletGuiInterface Concrete Methods ###
     # ##########################################
@@ -88,10 +89,14 @@ class FeatureSelectionGui(LayerViewerGui):
         self.topLevelOperatorView.InputImage.notifyDirty(bind(self.onFeaturesSelectionsChanged))
         self.topLevelOperatorView.SelectionMatrix.notifyDirty(bind(self.onFeaturesSelectionsChanged))
         self.topLevelOperatorView.FeatureListFilename.notifyDirty(bind(self.onFeaturesSelectionsChanged))
-        self.__cleanup_fns.append(partial(self.topLevelOperatorView.SelectionMatrix.unregisterDirty,
-                                          bind(self.onFeaturesSelectionsChanged)))
-        self.__cleanup_fns.append(partial(self.topLevelOperatorView.FeatureListFilename.unregisterDirty,
-                                          bind(self.onFeaturesSelectionsChanged)))
+        self.__cleanup_fns.append(
+            partial(self.topLevelOperatorView.SelectionMatrix.unregisterDirty, bind(self.onFeaturesSelectionsChanged))
+        )
+        self.__cleanup_fns.append(
+            partial(
+                self.topLevelOperatorView.FeatureListFilename.unregisterDirty, bind(self.onFeaturesSelectionsChanged)
+            )
+        )
 
         # Init feature dialog
         self.initFeatureDlg()
@@ -135,7 +140,7 @@ class FeatureSelectionGui(LayerViewerGui):
         def handleSelectionChanged(row):
             # Only one layer is visible at a time
             for i, layer in enumerate(self.layerstack):
-                layer.visible = (i == row)
+                layer.visible = i == row
 
         def handleInsertedLayers(parent, start, end):
             for i in range(start, end + 1):
@@ -157,13 +162,14 @@ class FeatureSelectionGui(LayerViewerGui):
             idx = layerListWidget.indexAt(pos)
             layer = self.layerstack[idx.row()]
             layercontextmenu(layer, layerListWidget.mapToGlobal(pos), layerListWidget)
+
         layerListWidget.customContextMenuRequested.connect(showLayerContextMenu)
         layerListWidget.setContextMenuPolicy(Qt.CustomContextMenu)
 
     def setupLayers(self):
-        if hasattr(self.drawer, 'feature2dBox'):  # drawer has to be initialized (initAppletDrawerUi)
+        if hasattr(self.drawer, "feature2dBox"):  # drawer has to be initialized (initAppletDrawerUi)
             # set hidden status of feature2dBox again (presence of z axis may have changed)
-            if 'z' in self.topLevelOperatorView.InputImage.meta.original_axistags:
+            if "z" in self.topLevelOperatorView.InputImage.meta.original_axistags:
                 self.drawer.feature2dBox.setHidden(False)
             else:
                 self.drawer.feature2dBox.setHidden(True)
@@ -203,15 +209,17 @@ class FeatureSelectionGui(LayerViewerGui):
         # Determine how many channels this feature has (up to 3)
         featureChannelsPerInputChannel = numFeatureChannels // numInputChannels
         if not 0 < featureChannelsPerInputChannel <= 3:
-            logger.warning('The feature selection Gui does not yet support features with more than three channels per '
-                           'input channel. Some features will not be displayed entirely.')
+            logger.warning(
+                "The feature selection Gui does not yet support features with more than three channels per "
+                "input channel. Some features will not be displayed entirely."
+            )
 
         for inputChannel in range(numInputChannels):
             # Determine the name for this feature
             featureName = featureSlot.meta.description
             assert featureName is not None
             if 2 <= numInputChannels <= 3:
-                channelNames = ['R', 'G', 'B']
+                channelNames = ["R", "G", "B"]
                 featureName += " (" + channelNames[inputChannel] + ")"
             if numInputChannels > 3:
                 featureName += " (Ch. {})".format(inputChannel)
@@ -250,6 +258,7 @@ class FeatureSelectionGui(LayerViewerGui):
             size = self.featureDlg.size()
             s = (size.width(), size.height())
             PreferencesManager().set("featureSelection", "dialog size", s)
+
         self.featureDlg.accepted.connect(saveSize)
         self.featureDlg.setImageToPreView(None)
         self.featureDlg.accepted.connect(self.onNewFeaturesFromFeatureDlg)
@@ -259,7 +268,7 @@ class FeatureSelectionGui(LayerViewerGui):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QFileDialog.DontUseNativeDialog
 
-        filenames, _filter = QFileDialog.getOpenFileNames(self, 'Open Feature Files', '.', options=options)
+        filenames, _filter = QFileDialog.getOpenFileNames(self, "Open Feature Files", ".", options=options)
 
         # Check if file exists
         if not filenames:
@@ -272,10 +281,12 @@ class FeatureSelectionGui(LayerViewerGui):
 
         num_lanes = len(self.parentApplet.topLevelOperator.FeatureListFilename)
         if num_lanes != len(filenames):
-            QMessageBox.critical(self, "Wrong number of feature files",
-                                 "You must select all pre-computed feature files at once (shift-click).\n"
-                                 "You selected {} file(s), but there are {} image(s) loaded"
-                                 .format(len(filenames), num_lanes))
+            QMessageBox.critical(
+                self,
+                "Wrong number of feature files",
+                "You must select all pre-computed feature files at once (shift-click).\n"
+                "You selected {} file(s), but there are {} image(s) loaded".format(len(filenames), num_lanes),
+            )
             return
 
         for filename, slot in zip(filenames, self.parentApplet.topLevelOperator.FeatureListFilename):
@@ -320,17 +331,22 @@ class FeatureSelectionGui(LayerViewerGui):
             featureEntries = []
             for featureId in featureIds:
                 featureName = opFeatureSelection.FeatureNames[featureId]
-                availableFilterOps = {key[2:]: value for key, value in filterOps.__dict__.items()
-                                      if key.startswith('Op')}
+                availableFilterOps = {
+                    key[2:]: value for key, value in filterOps.__dict__.items() if key.startswith("Op")
+                }
                 minimum_scale = availableFilterOps[featureId].minimum_scale
                 featureEntries.append(FeatureEntry(featureName, minimum_scale))
             groupedNames.append((group, featureEntries))
-        self.featureDlg.createFeatureTable(groupedNames, opFeatureSelection.Scales.value,
-                                           opFeatureSelection.ComputeIn2d.value, opFeatureSelection.WINDOW_SIZE)
+        self.featureDlg.createFeatureTable(
+            groupedNames,
+            opFeatureSelection.Scales.value,
+            opFeatureSelection.ComputeIn2d.value,
+            opFeatureSelection.WINDOW_SIZE,
+        )
         # update feature dialog to show/hide z dimension specific 'compute in 2d' flags
         if self.topLevelOperatorView.InputImage.ready() and self.topLevelOperatorView.ComputeIn2d.value:
             ts = self.topLevelOperatorView.InputImage.meta.getTaggedShape()
-            hide = ('z' not in ts or ts['z'] == 1) and all(self.topLevelOperatorView.ComputeIn2d.value)
+            hide = ("z" not in ts or ts["z"] == 1) and all(self.topLevelOperatorView.ComputeIn2d.value)
             self.featureDlg.setComputeIn2dHidden(hide)
 
         matrix = opFeatureSelection.SelectionMatrix.value
@@ -375,9 +391,9 @@ class FeatureSelectionGui(LayerViewerGui):
             except (DatasetConstraintError, RuntimeError) as ex:
                 # The user selected some scales that were too big.
                 if isinstance(ex, DatasetConstraintError):
-                    QMessageBox.critical(self, 'Invalid selection', ex.message)
+                    QMessageBox.critical(self, "Invalid selection", ex.message)
                 else:
-                    QMessageBox.critical(self, 'Invalid selection', 'You selected the exact same feature twice.')
+                    QMessageBox.critical(self, "Invalid selection", "You selected the exact same feature twice.")
 
                 # Restore previous settings
                 opFeatureSelection.SelectionMatrix.disconnect()
@@ -399,8 +415,10 @@ class FeatureSelectionGui(LayerViewerGui):
         Handles changes to our top-level operator's ImageInput and matrix of feature selections.
         """
         # Update the drawer caption
-        fff = (self.topLevelOperatorView.FeatureListFilename.ready() and
-               len(self.topLevelOperatorView.FeatureListFilename.value) != 0)
+        fff = (
+            self.topLevelOperatorView.FeatureListFilename.ready()
+            and len(self.topLevelOperatorView.FeatureListFilename.value) != 0
+        )
 
         if not self.topLevelOperatorView.SelectionMatrix.ready() and not fff:
             self.drawer.caption.setText("(No features selected)")
@@ -409,4 +427,4 @@ class FeatureSelectionGui(LayerViewerGui):
             self.drawer.caption.setText("(features from files)")
         else:
             nr_feat = self.topLevelOperatorView.SelectionMatrix.value.sum()
-            self.drawer.caption.setText(f'(Selected {nr_feat} features)')
+            self.drawer.caption.setText(f"(Selected {nr_feat} features)")

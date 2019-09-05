@@ -53,12 +53,7 @@ def annotations():
         divisions: {parent_track_id: ([child_track_id1, child_track_id2], timeframe)}
     """
     annotations = {
-        "labels": {
-            0: {0: {1, 2}},
-            1: {1: {1, 2}},
-            2: {2: {1}, 3: {2}},
-            3: {4: {3}, 5: {4}},
-        },
+        "labels": {0: {0: {1, 2}}, 1: {1: {1, 2}}, 2: {2: {1}, 3: {2}}, 3: {4: {3}, 5: {4}}},
         "divisions": {2: ([3, 4], 2)},
     }
     return annotations
@@ -86,60 +81,15 @@ class InstantTraxel(Traxel):
 def expected():
     expected = {
         "nodes": {
-            (0, 0): {
-                "id": 0,
-                "traxel": InstantTraxel(timestep=0, uid=0),
-                "value": 2,
-                "divisionValue": False,
-            },
-            (1, 1): {
-                "id": 1,
-                "traxel": InstantTraxel(timestep=1, uid=1),
-                "value": 2,
-                "divisionValue": False,
-            },
-            (2, 2): {
-                "id": 2,
-                "traxel": InstantTraxel(timestep=2, uid=2),
-                "value": 1,
-                "divisionValue": False,
-            },
-            (2, 3): {
-                "id": 3,
-                "traxel": InstantTraxel(timestep=2, uid=3),
-                "value": 1,
-                "divisionValue": True,
-            },
-            (3, 4): {
-                "id": 4,
-                "traxel": InstantTraxel(timestep=3, uid=4),
-                "value": 1,
-                "divisionValue": False,
-            },
-            (3, 5): {
-                "id": 5,
-                "traxel": InstantTraxel(timestep=3, uid=5),
-                "value": 1,
-                "divisionValue": False,
-            },
-            (1, 6): {
-                "id": 6,
-                "traxel": InstantTraxel(timestep=1, uid=6),
-                "value": 0,
-                "divisionValue": False,
-            },
-            (2, 7): {
-                "id": 7,
-                "traxel": InstantTraxel(timestep=2, uid=7),
-                "value": 0,
-                "divisionValue": False,
-            },
-            (3, 8): {
-                "id": 8,
-                "traxel": InstantTraxel(timestep=3, uid=8),
-                "value": 0,
-                "divisionValue": False,
-            },
+            (0, 0): {"id": 0, "traxel": InstantTraxel(timestep=0, uid=0), "value": 2, "divisionValue": False},
+            (1, 1): {"id": 1, "traxel": InstantTraxel(timestep=1, uid=1), "value": 2, "divisionValue": False},
+            (2, 2): {"id": 2, "traxel": InstantTraxel(timestep=2, uid=2), "value": 1, "divisionValue": False},
+            (2, 3): {"id": 3, "traxel": InstantTraxel(timestep=2, uid=3), "value": 1, "divisionValue": True},
+            (3, 4): {"id": 4, "traxel": InstantTraxel(timestep=3, uid=4), "value": 1, "divisionValue": False},
+            (3, 5): {"id": 5, "traxel": InstantTraxel(timestep=3, uid=5), "value": 1, "divisionValue": False},
+            (1, 6): {"id": 6, "traxel": InstantTraxel(timestep=1, uid=6), "value": 0, "divisionValue": False},
+            (2, 7): {"id": 7, "traxel": InstantTraxel(timestep=2, uid=7), "value": 0, "divisionValue": False},
+            (3, 8): {"id": 8, "traxel": InstantTraxel(timestep=3, uid=8), "value": 0, "divisionValue": False},
         },
         "edges": {
             ((0, 0), (1, 1)): {"value": 2, "gap": 1},
@@ -169,19 +119,15 @@ def check_graph(graph, expected):
 
 def test_annotations_insertion(tracklet_graph, annotations, expected):
     """reproduces ilastik/#2052"""
-    annotated_graph = OpStructuredTracking.insertAnnotationsToHypothesesGraph(
-        tracklet_graph, annotations
-    )
+    annotated_graph = OpStructuredTracking.insertAnnotationsToHypothesesGraph(tracklet_graph, annotations)
     check_graph(annotated_graph._graph, expected)
 
 
 def test_annotation_mismatch_raises(tracklet_graph, annotations):
     """add annotations that is not represented in the graph"""
-    annotations['labels'][3][4] = {1, 3}
+    annotations["labels"][3][4] = {1, 3}
     with pytest.raises(AnnotationHypothesisgraphMismatchException):
-        OpStructuredTracking.insertAnnotationsToHypothesesGraph(
-            tracklet_graph, annotations
-        )
+        OpStructuredTracking.insertAnnotationsToHypothesesGraph(tracklet_graph, annotations)
 
 
 def test_annotation_with_misdetection(tracklet_graph, annotations, expected):
@@ -197,8 +143,6 @@ def test_annotation_with_misdetection(tracklet_graph, annotations, expected):
     # modify expected values accordingly:
     expected["nodes"][(2, 7)]["value"] = 1
 
-    annotated_graph = OpStructuredTracking.insertAnnotationsToHypothesesGraph(
-        tracklet_graph, annotations
-    )
+    annotated_graph = OpStructuredTracking.insertAnnotationsToHypothesesGraph(tracklet_graph, annotations)
 
     check_graph(annotated_graph._graph, expected)

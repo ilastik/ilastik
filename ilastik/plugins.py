@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
 from ilastik.config import cfg
@@ -30,14 +30,14 @@ from functools import partial
 import numpy
 
 # these directories are searched for plugins
-plugin_paths = cfg.get('ilastik', 'plugin_directories')
-plugin_paths = list(os.path.expanduser(d) for d in plugin_paths.split(',')
-                    if len(d) > 0)
+plugin_paths = cfg.get("ilastik", "plugin_directories")
+plugin_paths = list(os.path.expanduser(d) for d in plugin_paths.split(",") if len(d) > 0)
 plugin_paths.append(os.path.join(os.path.split(__file__)[0], "plugins_default"))
 
 ##########################
 # different plugin types #
 ##########################
+
 
 class ObjectFeaturesPlugin(IPlugin):
     """Plugins of this class calculate object features."""
@@ -114,7 +114,7 @@ class ObjectFeaturesPlugin(IPlugin):
 
     @staticmethod
     def combine_dicts_with_numpy(ds):
-        #stack arrays which correspond to the same keys
+        # stack arrays which correspond to the same keys
         keys = list(ds[0].keys())
         result = {}
         for key in keys:
@@ -122,14 +122,13 @@ class ObjectFeaturesPlugin(IPlugin):
             array_combined = numpy.hstack(arrays)
             result[key] = array_combined
         return result
-            
 
     @staticmethod
     def update_keys(d, prefix=None, suffix=None):
         if prefix is None:
-            prefix = ''
+            prefix = ""
         if suffix is None:
-            suffix = ''
+            suffix = ""
         return dict((prefix + k + suffix, v) for k, v in list(d.items()))
 
     def do_channels(self, fn, image, axes, **kwargs):
@@ -142,23 +141,24 @@ class ObjectFeaturesPlugin(IPlugin):
         slc = [slice(None)] * 4
         for channel in range(image.shape[axes.c]):
             slc[axes.c] = channel
-            #a dictionary for the channel
+            # a dictionary for the channel
             result = fn(image[slc], axes=axes, **kwargs)
             results.append(result)
-        
+
         return self.combine_dicts_with_numpy(results)
+
 
 class TrackingExportFormatPlugin(IPlugin):
     """Plugins of this class can export a tracking solution."""
 
     name = "Base Tracking export format plugin"
-    exportsToFile = True # depending on this setting, the user can choose a file or a folder where to export 
+    exportsToFile = True  # depending on this setting, the user can choose a file or a folder where to export
 
     def __init__(self, *args, **kwargs):
         super(TrackingExportFormatPlugin, self).__init__(*args, **kwargs)
 
     def checkFilesExist(self, filename: str) -> bool:
-        ''' Check whether the files we want to export (when appending the base filename) are already present '''
+        """ Check whether the files we want to export (when appending the base filename) are already present """
         return False
 
     def export(self, filename, hypothesesGraph, pluginExportContext):
@@ -183,16 +183,16 @@ class TrackingExportFormatPlugin(IPlugin):
 
     @classmethod
     def _getFeatureNameTranslation(cls, category, name):
-        '''
+        """
         extract the long name of the given feature, or fall back to the plain name if no long name could be found
 
         :param category: The feature "group" or "plugin" (e.g. "Standard Object Features")
         :param name: The feature name string
         :returns: the long name of the feature
-        '''
+        """
         all_props = None
 
-        if category == 'Default features':
+        if category == "Default features":
             plugin = pluginManager.getPluginByName("Standard Object Features", "ObjectFeatures")
         else:
             plugin = pluginManager.getPluginByName(category, "ObjectFeatures")
@@ -209,13 +209,9 @@ class TrackingExportFormatPlugin(IPlugin):
 
 
 # Helper class used to pass the necessary context information to the export plugin
-PluginExportContext = namedtuple('PluginExportContext',
-                                 [
-                                     'objectFeaturesSlot',
-                                     'labelImageSlot',
-                                     'rawImageSlot',
-                                     'additionalPluginArgumentsSlot'
-                                 ])
+PluginExportContext = namedtuple(
+    "PluginExportContext", ["objectFeaturesSlot", "labelImageSlot", "rawImageSlot", "additionalPluginArgumentsSlot"]
+)
 
 ###############
 # the manager #
@@ -224,10 +220,9 @@ PluginExportContext = namedtuple('PluginExportContext',
 pluginManager = PluginManager()
 pluginManager.setPluginPlaces(plugin_paths)
 
-pluginManager.setCategoriesFilter({
-   "ObjectFeatures" : ObjectFeaturesPlugin,
-   "TrackingExportFormats": TrackingExportFormatPlugin
-   })
+pluginManager.setCategoriesFilter(
+    {"ObjectFeatures": ObjectFeaturesPlugin, "TrackingExportFormats": TrackingExportFormatPlugin}
+)
 
 pluginManager.collectPlugins()
 for pluginInfo in pluginManager.getAllPlugins():

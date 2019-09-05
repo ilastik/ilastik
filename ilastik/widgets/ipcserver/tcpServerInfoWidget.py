@@ -12,8 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def convert_to_type(string):
-    if string[0] == "'" and string[-1] == "'" or \
-            string[0] == '"' and string[-1] == '"':
+    if string[0] == "'" and string[-1] == "'" or string[0] == '"' and string[-1] == '"':
         return string[1:-1]
     try:
         return int(string)
@@ -31,6 +30,7 @@ class TCPServerInfoWidget(QWidget):
     Displays various information about the IPCServerManager
     and allows manipulation of some of its properties
     """
+
     statusToggled = pyqtSignal()
     connectionChanged = pyqtSignal(int, bool)
     changePort = pyqtSignal()
@@ -47,10 +47,7 @@ class TCPServerInfoWidget(QWidget):
         self.ui = ui_class()
         self.ui.setupUi(self)
 
-        self.server_status = {
-            "port": None,
-            "running": False
-        }
+        self.server_status = {"port": None, "running": False}
 
         self.ui.toggleStatus.clicked.connect(partial(self.ui.toggleStatus.setEnabled, False))
         self.ui.toggleStatus.clicked.connect(self.statusToggled.emit)
@@ -142,7 +139,7 @@ class TCPServerInfoWidget(QWidget):
         index = self.ui.connectionList.row(item)
         self.connectionChanged.emit(index, True if item.checkState() == Qt.Checked else False)
 
-    #slot called from QCheckBox toggle
+    # slot called from QCheckBox toggle
     def stay_on_top(self, state):
         pass
 

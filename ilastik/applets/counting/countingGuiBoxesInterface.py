@@ -207,7 +207,6 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         QGraphicsRectItem.__init__(self, 0, 0, w, h, parent=parent)
         self.Signaller = QGraphicsResizableRectSignaller(parent=parent)
 
-
         scene.addItem(self)
 
         # Default Appearence Properties

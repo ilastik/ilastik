@@ -259,7 +259,7 @@ class SVR(object):
         ntrees=10,
         maxdepth=50,
         minmax=None,  # RF parameters, maxdepth=None means grows until purity
-        **kwargs
+        **kwargs,
     ):
         """
         """

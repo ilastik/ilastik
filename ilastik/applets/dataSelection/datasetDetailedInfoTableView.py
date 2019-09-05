@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 from __future__ import division
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,13 +19,12 @@ from __future__ import division
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from past.utils import old_div
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QUrl, QObject, QEvent, QTimer
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QTableView, QHeaderView, QMenu, QAction, QWidget, \
-                            QHBoxLayout, QPushButton, QItemDelegate
+from PyQt5.QtWidgets import QTableView, QHeaderView, QMenu, QAction, QWidget, QHBoxLayout, QPushButton, QItemDelegate
 
 from .datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
 from .addFileButton import AddFileButton, FILEPATH
@@ -36,11 +36,15 @@ class ButtonOverlay(QPushButton):
     """
     Overlay used to show "Remove" button in the row under the cursor.
     """
-    def __init__(self, parent = None):
-        super(ButtonOverlay, self).__init__(QIcon(FILEPATH +
-            "/../../shell/gui/icons/16x16/actions/list-remove.png"),
-            "", parent, clicked=self.removeButtonClicked)
-        self.setFixedSize(20, 20) # size is fixed based on the icon above
+
+    def __init__(self, parent=None):
+        super(ButtonOverlay, self).__init__(
+            QIcon(FILEPATH + "/../../shell/gui/icons/16x16/actions/list-remove.png"),
+            "",
+            parent,
+            clicked=self.removeButtonClicked,
+        )
+        self.setFixedSize(20, 20)  # size is fixed based on the icon above
         # these are used to compute placement at the right end of the
         # first column
         self.width = 20
@@ -61,7 +65,7 @@ class ButtonOverlay(QPushButton):
         Handles the button click by passing the current row to the parent
         handler.
         """
-        assert(self.current_row > -1)
+        assert self.current_row > -1
         view = self.parent()
         view.removeButtonClicked(self.current_row)
 
@@ -90,8 +94,7 @@ class ButtonOverlay(QPushButton):
 
         # initialize x and y offset if not done already
         if self.yoffset is None:
-            self.yoffset = view.horizontalHeader().sizeHint().height() + \
-                    2 # nudge a little lower
+            self.yoffset = view.horizontalHeader().sizeHint().height() + 2  # nudge a little lower
         if self.xoffset is None:
             self.xoffset = view.verticalHeader().sizeHint().width()
 
@@ -105,9 +108,12 @@ class ButtonOverlay(QPushButton):
         column_width = view.columnWidth(0)
         row_height = view.rowHeight(ind)
 
-        self.setGeometry(self.xoffset + column_width - self.width,
-                row_y_offset + self.yoffset + old_div((row_height - self.height),2),
-                self.width, self.height)
+        self.setGeometry(
+            self.xoffset + column_width - self.width,
+            row_y_offset + self.yoffset + old_div((row_height - self.height), 2),
+            self.width,
+            self.height,
+        )
         self.setVisible(True)
         self.current_row = ind
 
@@ -119,6 +125,7 @@ class DisableButtonOverlayOnMouseEnter(QObject):
     This is used on the horizontal and vertical headers of the table
     view to prevent the remove button from being displayed.
     """
+
     def __init__(self, parent, overlay):
         super(DisableButtonOverlayOnMouseEnter, self).__init__(parent)
         self._overlay = overlay
@@ -128,12 +135,14 @@ class DisableButtonOverlayOnMouseEnter(QObject):
             self._overlay.setVisible(False)
         return False
 
+
 class AddButtonDelegate(QItemDelegate):
     """
     Displays an "Add..." button on the first column of the table if the
     corresponding row has not been assigned data yet. This is needed when a
     prediction map for a raw data lane needs to be specified for example.
     """
+
     def __init__(self, parent):
         super(AddButtonDelegate, self).__init__(parent)
 
@@ -146,53 +155,52 @@ class AddButtonDelegate(QItemDelegate):
         # already associated with the cell.
         parent_view = self.parent()
         button = parent_view.indexWidget(index)
-        if index.row() < parent_view.model().rowCount()-1 and parent_view.model().isEmptyRow(index.row()):
+        if index.row() < parent_view.model().rowCount() - 1 and parent_view.model().isEmptyRow(index.row()):
             if isinstance(button, AddFileButton) and button.index.row() != index.row():
                 button.index = index  # Just in case index got out of sync
             if button is None:
                 # this is only executed on init, but not on remove, such that row and lane get out of sync
                 button = AddFileButton(parent_view, index=index)
-                button.addFilesRequested.connect(
-                        partial(parent_view.handleCellAddFilesEvent, button))
-                button.addStackRequested.connect(
-                        partial(parent_view.handleCellAddStackEvent, button))
+                button.addFilesRequested.connect(partial(parent_view.handleCellAddFilesEvent, button))
+                button.addStackRequested.connect(partial(parent_view.handleCellAddStackEvent, button))
                 button.addPrecomputedVolumeRequested.connect(
-                        partial(parent_view.handleCellAddPrecomputedVolumeEvent, button))
-                button.addRemoteVolumeRequested.connect(
-                        partial(parent_view.handleCellAddRemoteVolumeEvent, button))
+                    partial(parent_view.handleCellAddPrecomputedVolumeEvent, button)
+                )
+                button.addRemoteVolumeRequested.connect(partial(parent_view.handleCellAddRemoteVolumeEvent, button))
                 parent_view.setIndexWidget(index, button)
-        elif index.data() != '':
+        elif index.data() != "":
             if button is not None:
                 # If this row has data, we must delete the button.
                 # Otherwise, it can steal input events (e.g. mouse clicks) from the cell, even if it is hidden!
                 # However, we can't remove it yet, because we are currently running in the context of a signal handler for the button itself!
                 # Instead, use a QTimer to delete the button as soon as the eventloop is finished with the current event.
-                QTimer.singleShot(750, lambda: parent_view.setIndexWidget(index, None) )
+                QTimer.singleShot(750, lambda: parent_view.setIndexWidget(index, None))
         super(AddButtonDelegate, self).paint(painter, option, index)
 
+
 class DatasetDetailedInfoTableView(QTableView):
-    dataLaneSelected = pyqtSignal(object) # Signature: (laneIndex)
+    dataLaneSelected = pyqtSignal(object)  # Signature: (laneIndex)
 
-    replaceWithFileRequested = pyqtSignal(int) # Signature: (laneIndex), or (-1) to indicate "append requested"
-    replaceWithStackRequested = pyqtSignal(int) # Signature: (laneIndex)
-    editRequested = pyqtSignal(object) # Signature: (lane_index_list)
-    resetRequested = pyqtSignal(object) # Signature: (lane_index_list)
+    replaceWithFileRequested = pyqtSignal(int)  # Signature: (laneIndex), or (-1) to indicate "append requested"
+    replaceWithStackRequested = pyqtSignal(int)  # Signature: (laneIndex)
+    editRequested = pyqtSignal(object)  # Signature: (lane_index_list)
+    resetRequested = pyqtSignal(object)  # Signature: (lane_index_list)
 
-    addFilesRequested = pyqtSignal(int) # Signature: (lane_index)
-    addStackRequested = pyqtSignal(int) # Signature: (lane_index)
+    addFilesRequested = pyqtSignal(int)  # Signature: (lane_index)
+    addStackRequested = pyqtSignal(int)  # Signature: (lane_index)
     addPrecomputedVolumeRequested = pyqtSignal(int)  # Signature: (lane_index)
-    addRemoteVolumeRequested = pyqtSignal(int) # Signature: (lane_index)
-    addFilesRequestedDrop = pyqtSignal(object) # Signature: ( filepath_list )
+    addRemoteVolumeRequested = pyqtSignal(int)  # Signature: (lane_index)
+    addFilesRequestedDrop = pyqtSignal(object)  # Signature: ( filepath_list )
 
     def __init__(self, parent):
-        super( DatasetDetailedInfoTableView, self ).__init__(parent)
+        super(DatasetDetailedInfoTableView, self).__init__(parent)
         # this is needed to capture mouse events that are used for
         # the remove button placement
         self.setMouseTracking(True)
 
         self.selectedLanes = []
-        self.setContextMenuPolicy( Qt.CustomContextMenu )
-        self.customContextMenuRequested.connect( self.handleCustomContextMenuRequested )
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.handleCustomContextMenuRequested)
 
         self.resizeRowsToContents()
         self.resizeColumnsToContents()
@@ -200,9 +208,9 @@ class DatasetDetailedInfoTableView(QTableView):
         self.setShowGrid(False)
 
         self.setItemDelegateForColumn(0, AddButtonDelegate(self))
-        
-        self.setSelectionBehavior( QTableView.SelectRows )
-        
+
+        self.setSelectionBehavior(QTableView.SelectRows)
+
         self.setAcceptDrops(True)
 
         self.overlay = ButtonOverlay(self)
@@ -268,7 +276,7 @@ class DatasetDetailedInfoTableView(QTableView):
         """
         Handle remove file events generated by the remove button overlay.
         """
-        assert(ind <= self.model().rowCount() - 1)
+        assert ind <= self.model().rowCount() - 1
         self.resetRequested.emit([ind])
         # redraw the table and disable the overlay
         self.overlay.setVisible(False)
@@ -279,23 +287,23 @@ class DatasetDetailedInfoTableView(QTableView):
         Set model used to store the data. This method adds an extra row
         at the end, which is used to keep the "Add..." button.
         """
-        super( DatasetDetailedInfoTableView, self ).setModel(model)
+        super(DatasetDetailedInfoTableView, self).setModel(model)
 
         widget = QWidget()
         layout = QHBoxLayout(widget)
         self._addButton = button = AddFileButton(widget, new=True)
-        button.addFilesRequested.connect( partial(self.addFilesRequested.emit, -1) )
-        button.addStackRequested.connect( partial(self.addStackRequested.emit, -1) )
-        button.addRemoteVolumeRequested.connect( partial(self.addRemoteVolumeRequested.emit, -1) )
+        button.addFilesRequested.connect(partial(self.addFilesRequested.emit, -1))
+        button.addStackRequested.connect(partial(self.addStackRequested.emit, -1))
+        button.addRemoteVolumeRequested.connect(partial(self.addRemoteVolumeRequested.emit, -1))
         button.addPrecomputedVolumeRequested.connect(partial(self.addPrecomputedVolumeRequested.emit, -1))
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(button)
         layout.addStretch()
         widget.setLayout(layout)
 
-        lastRow = self.model().rowCount()-1
-        button.index = self.model().index( lastRow, 0 )
-        self.setIndexWidget( button.index, widget )
+        lastRow = self.model().rowCount() - 1
+        button.index = self.model().index(lastRow, 0)
+        self.setIndexWidget(button.index, widget)
         # the "Add..." button spans last row
         self.setSpan(lastRow, 0, 1, model.columnCount())
 
@@ -303,7 +311,6 @@ class DatasetDetailedInfoTableView(QTableView):
         self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.Location, QHeaderView.Interactive)
         self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.InternalID, QHeaderView.Interactive)
         self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.AxisOrder, QHeaderView.Interactive)
-
 
     def setEnabled(self, status):
         """
@@ -316,40 +323,39 @@ class DatasetDetailedInfoTableView(QTableView):
         self._addButton.setEnabled(status)
 
     def dataChanged(self, topLeft, bottomRight, roles):
-        self.dataLaneSelected.emit( self.selectedLanes )
+        self.dataLaneSelected.emit(self.selectedLanes)
 
     def selectionChanged(self, selected, deselected):
-        super( DatasetDetailedInfoTableView, self ).selectionChanged(selected, deselected)
+        super(DatasetDetailedInfoTableView, self).selectionChanged(selected, deselected)
         # Get the selected row and corresponding slot value
         selectedIndexes = self.selectedIndexes()
-        
+
         if len(selectedIndexes) == 0:
             self.selectedLanes = []
         else:
             rows = set()
             for index in selectedIndexes:
                 rows.add(index.row())
-            rows.discard(self.model().rowCount() - 1) # last row is a button
+            rows.discard(self.model().rowCount() - 1)  # last row is a button
             self.selectedLanes = sorted(rows)
 
         self.dataLaneSelected.emit(self.selectedLanes)
-        
+
     def handleCustomContextMenuRequested(self, pos):
-        col = self.columnAt( pos.x() )
-        row = self.rowAt( pos.y() )
-        
-        if 0 <= col < self.model().columnCount() and \
-                0 <= row < self.model().rowCount() - 1: # last row is a button
+        col = self.columnAt(pos.x())
+        row = self.rowAt(pos.y())
+
+        if 0 <= col < self.model().columnCount() and 0 <= row < self.model().rowCount() - 1:  # last row is a button
             menu = QMenu(parent=self)
-            editSharedPropertiesAction = QAction( "Edit shared properties...", menu )
-            editPropertiesAction = QAction( "Edit properties...", menu )
-            replaceWithFileAction = QAction( "Replace with file...", menu )
-            replaceWithStackAction = QAction( "Replace with stack...", menu )
-            
+            editSharedPropertiesAction = QAction("Edit shared properties...", menu)
+            editPropertiesAction = QAction("Edit properties...", menu)
+            replaceWithFileAction = QAction("Replace with file...", menu)
+            replaceWithStackAction = QAction("Replace with stack...", menu)
+
             if self.model().getNumRoles() > 1:
-                resetSelectedAction = QAction( "Reset", menu )
+                resetSelectedAction = QAction("Reset", menu)
             else:
-                resetSelectedAction = QAction( "Remove", menu )
+                resetSelectedAction = QAction("Remove", menu)
 
             if row in self.selectedLanes and len(self.selectedLanes) > 1:
                 editable = True
@@ -357,38 +363,38 @@ class DatasetDetailedInfoTableView(QTableView):
                     editable &= self.model().isEditable(lane)
 
                 # Show the multi-lane menu, which allows for editing but not replacing
-                menu.addAction( editSharedPropertiesAction )
+                menu.addAction(editSharedPropertiesAction)
                 editSharedPropertiesAction.setEnabled(editable)
-                menu.addAction( resetSelectedAction )
+                menu.addAction(resetSelectedAction)
             else:
-                menu.addAction( editPropertiesAction )
+                menu.addAction(editPropertiesAction)
                 editPropertiesAction.setEnabled(self.model().isEditable(row))
-                menu.addAction( replaceWithFileAction )
-                menu.addAction( replaceWithStackAction )
-                menu.addAction( resetSelectedAction )
-    
-            globalPos = self.viewport().mapToGlobal( pos )
-            selection = menu.exec_( globalPos )
+                menu.addAction(replaceWithFileAction)
+                menu.addAction(replaceWithStackAction)
+                menu.addAction(resetSelectedAction)
+
+            globalPos = self.viewport().mapToGlobal(pos)
+            selection = menu.exec_(globalPos)
             if selection is None:
                 return
             if selection is editSharedPropertiesAction:
-                self.editRequested.emit( self.selectedLanes )
+                self.editRequested.emit(self.selectedLanes)
             if selection is editPropertiesAction:
-                self.editRequested.emit( [row] )
+                self.editRequested.emit([row])
             if selection is replaceWithFileAction:
-                self.replaceWithFileRequested.emit( row )
+                self.replaceWithFileRequested.emit(row)
             if selection is replaceWithStackAction:
-                self.replaceWithStackRequested.emit( row )
+                self.replaceWithStackRequested.emit(row)
             if selection is resetSelectedAction:
-                self.resetRequested.emit( self.selectedLanes )
+                self.resetRequested.emit(self.selectedLanes)
 
     def mouseDoubleClickEvent(self, event):
-        col = self.columnAt( event.pos().x() )
-        row = self.rowAt( event.pos().y() )
+        col = self.columnAt(event.pos().x())
+        row = self.rowAt(event.pos().y())
 
         # If the user double-clicked an empty table,
         #  we behave as if she clicked the "add file" button.
-        if row == self.model().rowCount()-1 or row == -1:
+        if row == self.model().rowCount() - 1 or row == -1:
             # In this case -1 means "append a row"
             self.replaceWithFileRequested.emit(-1)
             return
@@ -403,30 +409,30 @@ class DatasetDetailedInfoTableView(QTableView):
         if not event.mimeData().hasUrls():
             return
         urls = event.mimeData().urls()
-        if all( map( QUrl.isLocalFile, urls ) ):        
+        if all(map(QUrl.isLocalFile, urls)):
             event.acceptProposedAction()
-        
+
     def dragMoveEvent(self, event):
         # Must override this or else the QTableView base class steals dropEvents from us.
         pass
 
     def dropEvent(self, dropEvent):
         urls = dropEvent.mimeData().urls()
-        filepaths = list(map( QUrl.toLocalFile, urls ))
-        filepaths = list(map( str, filepaths ))
-        self.addFilesRequestedDrop.emit( filepaths )
-    
+        filepaths = list(map(QUrl.toLocalFile, urls))
+        filepaths = list(map(str, filepaths))
+        self.addFilesRequestedDrop.emit(filepaths)
+
     def scrollContentsBy(self, dx, dy):
         """
         Overridden from QTableView.
         This forces the table to be redrawn after the user scrolls.
         This is apparently needed on OS X.
         """
-        super( DatasetDetailedInfoTableView, self ).scrollContentsBy(dx, dy)
+        super(DatasetDetailedInfoTableView, self).scrollContentsBy(dx, dy)
 
         # Hack: On Mac OS X, there is an issue that causes the row buttons not to be drawn correctly in some cases.
         # We can force a repaint by resizing the column.
         # (Manually calling self.update() here doesn't solve the issue, but this trick does.)
         first_col_width = self.columnWidth(0)
-        self.setColumnWidth( 0, first_col_width+1 )
-        self.setColumnWidth( 0, first_col_width )
+        self.setColumnWidth(0, first_col_width + 1)
+        self.setColumnWidth(0, first_col_width)

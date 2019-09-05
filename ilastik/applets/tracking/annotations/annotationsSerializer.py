@@ -16,9 +16,16 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, deleteIfPresent, getOrCreateGroup
+from ilastik.applets.base.appletSerializer import (
+    AppletSerializer,
+    SerialSlot,
+    SerialDictSlot,
+    deleteIfPresent,
+    getOrCreateGroup,
+)
+
 
 class SerialAnnotationsSlot(SerialSlot):
     def serialize(self, group):
@@ -77,10 +84,11 @@ class SerialAnnotationsSlot(SerialSlot):
                     dset = divisions_gr[divKey]
                     annotations["divisions"] = {}
                     for row in dset:
-                        annotations["divisions"][row[0]] = ([row[1],row[2]], row[3])
+                        annotations["divisions"][row[0]] = ([row[1], row[2]], row[3])
 
         op.Annotations.setValue(annotations)
         self.dirty = False
+
 
 class SerialDivisionsSlot(SerialSlot):
     def serialize(self, group):
@@ -110,9 +118,10 @@ class SerialDivisionsSlot(SerialSlot):
             op = innerops[int(inner)]
             divisions = {}
             for row in dset:
-                divisions[row[0]] = ([row[1],row[2]], row[3])
+                divisions[row[0]] = ([row[1], row[2]], row[3])
             op.divisions = divisions
         self.dirty = False
+
 
 class SerialLabelsSlot(SerialSlot):
     def serialize(self, group):
@@ -150,7 +159,8 @@ class SerialLabelsSlot(SerialSlot):
                     labels[int(t)][int(oid)] = set(t_gr[oid])
             op.labels = labels
         self.dirty = False
-        
+
+
 class SerialAppearancesSlot(SerialSlot):
     def serialize(self, group):
         if not self.shouldSerialize(group):
@@ -192,6 +202,7 @@ class SerialAppearancesSlot(SerialSlot):
             op.appearances = appearances
             op.Appearances.setValue(appearances)
         self.dirty = False
+
 
 class SerialDisappearancesSlot(SerialSlot):
     def serialize(self, group):
@@ -235,13 +246,15 @@ class SerialDisappearancesSlot(SerialSlot):
             op.Disappearances.setValue(disappearances)
         self.dirty = False
 
+
 class AnnotationsSerializer(AppletSerializer):
-    
     def __init__(self, operator, projectFileGroupName):
-        slots = [ SerialAnnotationsSlot(operator.Annotations),
-                  SerialDivisionsSlot(operator.Divisions),
-                  SerialLabelsSlot(operator.Labels),
-                  SerialAppearancesSlot(operator.Appearances),
-                  SerialDisappearancesSlot(operator.Disappearances)]
-    
-        super(AnnotationsSerializer, self ).__init__(projectFileGroupName, slots=slots)
+        slots = [
+            SerialAnnotationsSlot(operator.Annotations),
+            SerialDivisionsSlot(operator.Divisions),
+            SerialLabelsSlot(operator.Labels),
+            SerialAppearancesSlot(operator.Appearances),
+            SerialDisappearancesSlot(operator.Disappearances),
+        ]
+
+        super(AnnotationsSerializer, self).__init__(projectFileGroupName, slots=slots)

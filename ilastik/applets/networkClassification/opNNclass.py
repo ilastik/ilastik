@@ -31,27 +31,28 @@ class OpNNClassification(Operator):
     """
     Top-level operator for pixel classification
     """
+
     name = "OpNNClassification"
     category = "Top-level"
 
-    #Graph inputs
+    # Graph inputs
     Classifier = InputSlot()
     InputImage = InputSlot()
     NumClasses = InputSlot()
     BlockShape = InputSlot()
 
-    FreezePredictions = InputSlot(stype='bool', value=False, nonlane=True)
+    FreezePredictions = InputSlot(stype="bool", value=False, nonlane=True)
 
     PredictionProbabilities = OutputSlot()
     CachedPredictionProbabilities = OutputSlot()
     PredictionProbabilityChannels = OutputSlot(level=1)
 
-    #Gui only (not part of the pipeline)
-    ModelPath = InputSlot() # Path 
-    FullModel = InputSlot(value=[]) # When full model serialization is enabled
+    # Gui only (not part of the pipeline)
+    ModelPath = InputSlot()  # Path
+    FullModel = InputSlot(value=[])  # When full model serialization is enabled
     Halo_Size = InputSlot(value=32)
     Batch_Size = InputSlot(value=3)
-    SaveFullModel = InputSlot(stype='bool', value=False, nonlane=True)
+    SaveFullModel = InputSlot(stype="bool", value=False, nonlane=True)
 
     def __init__(self, *args, **kwargs):
 
@@ -74,7 +75,7 @@ class OpNNClassification(Operator):
         self.opPredictionSlicer = OpMultiArraySlicer2(parent=self)
         self.opPredictionSlicer.name = "opPredictionSlicer"
         self.opPredictionSlicer.Input.connect(self.prediction_cache.Output)
-        self.opPredictionSlicer.AxisFlag.setValue('c')
+        self.opPredictionSlicer.AxisFlag.setValue("c")
         self.PredictionProbabilityChannels.connect(self.opPredictionSlicer.Slices)
 
     def propagateDirty(self, slot, subindex, roi):
@@ -91,34 +92,3 @@ class OpNNClassification(Operator):
 
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -12,7 +12,7 @@ class ExportingOperator(object):
     """
     A Mixin for the Operators that can export h5/csv data
     """
-    
+
     def configure_table_export_settings(settings, selected_features):
         raise NotImplementedError
 
@@ -44,6 +44,7 @@ class ExportingOperator(object):
             gui = None
         else:
             from ilastik.widgets.progressDialog import ProgressDialog
+
             progress = ProgressDialog(["Feature Data", "Labeling Rois", "Raw Image", "Exporting"])
             progress.set_busy(True)
             progress.show()
@@ -53,7 +54,7 @@ class ExportingOperator(object):
                 "cancel": partial(progress.safe_popup, "information", "Information", "Export cancelled!"),
                 "fail": partial(progress.safe_popup, "critical", "Critical", "Export failed!"),
                 "unlock": self.unlock_gui,
-                "lock": self.lock_gui
+                "lock": self.lock_gui,
             }
             progress_display = gui["dialog"]
             self.save_export_progress_dialog(progress_display)
@@ -151,10 +152,10 @@ class ExportingGui(object):
         # Late imports here, so we don't accidentally import PyQt during headless mode.
         from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
         from ilastik.widgets.progressDialog import ProgressDialog
-        
+
         dimensions = self.get_raw_shape()
         feature_names = self.get_feature_names()
-        
+
         op = self.get_exporting_operator()
         settings, selected_features = op.get_table_export_settings()
 
@@ -163,18 +164,21 @@ class ExportingGui(object):
             feature_names,
             selected_features=selected_features,
             title=self.get_export_dialog_title(),
-            initial_settings=settings)
+            initial_settings=settings,
+        )
         if not dialog.exec_():
             return (None, None)
 
         settings = dialog.settings()
-        selected_features = list(dialog.checked_features()) # returns a generator, but that's inconvenient because it can't be serialized.
+        selected_features = list(
+            dialog.checked_features()
+        )  # returns a generator, but that's inconvenient because it can't be serialized.
         return settings, selected_features
 
     def configure_table_export(self):
         settings, selected_features = self.show_export_dialog()
         if settings:
-            self.get_exporting_operator().configure_table_export_settings( settings, selected_features )
+            self.get_exporting_operator().configure_table_export_settings(settings, selected_features)
 
     def get_raw_shape(self):
         """

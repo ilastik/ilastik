@@ -15,6 +15,7 @@ class ZMQPublisherInfoWidget(QWidget):
     Displays various information about the ZMQPublisher
     and allows manipulation of some of its properties
     """
+
     subStatusToggled = pyqtSignal()
     pubStatusToggled = pyqtSignal()
     changeSubAddress = pyqtSignal()
@@ -27,16 +28,7 @@ class ZMQPublisherInfoWidget(QWidget):
         self.ui = ui_class()
         self.ui.setupUi(self)
 
-        self.status = {
-            "pub": {
-                "address": None,
-                "running": False
-            },
-            "sub": {
-                "address": None,
-                "running": False
-            }
-        }
+        self.status = {"pub": {"address": None, "running": False}, "sub": {"address": None, "running": False}}
 
         self.ui.toggleSubStatus.clicked.connect(partial(self.ui.toggleSubStatus.setEnabled, False))
         self.ui.togglePubStatus.clicked.connect(partial(self.ui.togglePubStatus.setEnabled, False))

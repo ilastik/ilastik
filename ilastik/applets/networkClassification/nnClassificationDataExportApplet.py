@@ -16,10 +16,11 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import absolute_import
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
+
 
 class NNClassificationDataExportApplet(DataExportApplet):
     """
@@ -28,17 +29,13 @@ class NNClassificationDataExportApplet(DataExportApplet):
     """
 
     def __init__(self, workflow, title, isBatch=False):
-    # Base class init
+        # Base class init
         super(NNClassificationDataExportApplet, self).__init__(workflow, title, isBatch)
 
     def getMultiLaneGui(self):
         if self._gui is None:
             # Gui is a special subclass of the generic gui
             from .nnClassificationDataExportGui import NNClassificationDataExportGui
+
             self._gui = NNClassificationDataExportGui(self, self.topLevelOperator)
         return self._gui
-
-
-
-
-

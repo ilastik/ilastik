@@ -6,7 +6,6 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 
 
 class AppletDrawerToolBox(QToolBox):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.ICON_CLOSED = QIcon(ilastikIcons.ChevronRight)
@@ -41,10 +40,7 @@ class AppletDrawerToolBox(QToolBox):
         return idx
 
     def items(self):
-        return [
-            (i, self.widget(i))
-            for i in range(self.count())
-        ]
+        return [(i, self.widget(i)) for i in range(self.count())]
 
 
 class AppletBarManager(QObject):
@@ -53,6 +49,7 @@ class AppletBarManager(QObject):
     Some items are not meant to be displayed for user (interactive attribute),
     but they still need to be tracked, to provide convinient interface
     """
+
     appletActivated = pyqtSignal(int)
 
     def __init__(self, appletBar) -> None:

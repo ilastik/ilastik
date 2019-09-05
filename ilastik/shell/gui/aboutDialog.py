@@ -29,7 +29,7 @@ from PyQt5.QtWidgets import (
     QLabel,
     QPushButton,
     QTextEdit,
-    QVBoxLayout
+    QVBoxLayout,
 )
 from PyQt5.QtCore import Qt
 from functools import partial
@@ -73,9 +73,7 @@ class AboutDialog(QDialog):
     def _setup_layout(self):
         main_layout = QVBoxLayout()
         content_layout = QHBoxLayout()
-        splash_path = os.path.join(
-            os.path.split(ilastik.__file__)[0], 'ilastik-splash.png'
-        )
+        splash_path = os.path.join(os.path.split(ilastik.__file__)[0], "ilastik-splash.png")
         splash_pixmap = QPixmap(splash_path)
         logo_label = QLabel()
         logo_label.setPixmap(splash_pixmap)
@@ -96,7 +94,7 @@ class AboutDialog(QDialog):
 
         self.setLayout(main_layout)
         self.setStyleSheet("background-color: white;")
-        self.setWindowTitle('About ilastik')
+        self.setWindowTitle("About ilastik")
         self.setFixedSize(splash_pixmap.width() * 2.5, splash_pixmap.height() * 1.05)
 
     @classmethod

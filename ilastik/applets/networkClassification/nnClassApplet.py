@@ -33,17 +33,18 @@ class NNClassApplet(StandardApplet):
 
         super(NNClassApplet, self).__init__("NN Classification", workflow=workflow)
 
-        self._serializableItems = [NNClassificationSerializer(self.topLevelOperator, projectFileGroupName)]   # Legacy (v0.5) importer
+        self._serializableItems = [
+            NNClassificationSerializer(self.topLevelOperator, projectFileGroupName)
+        ]  # Legacy (v0.5) importer
         self._gui = None
         self.predictionSerializer = self._serializableItems[0]
-
 
     @property
     def broadcastingSlots(self):
         """
         defines which variables will be shared with different lanes
         """
-        return ['ModelPath', 'FullModel', "FreezePredictions"]
+        return ["ModelPath", "FullModel", "FreezePredictions"]
 
     @property
     def dataSerializers(self):
@@ -52,15 +53,14 @@ class NNClassApplet(StandardApplet):
         """
         return self._serializableItems
 
-
     @property
     def singleLaneGuiClass(self):
         """
         This applet uses a single lane gui and shares variables through the broadcasting slots
         """
         from .nnClassGui import NNClassGui
-        return NNClassGui
 
+        return NNClassGui
 
     @property
     def singleLaneOperatorClass(self):
@@ -68,4 +68,3 @@ class NNClassApplet(StandardApplet):
         Return the operator class which handles a single image.
         """
         return OpNNClassification
-        

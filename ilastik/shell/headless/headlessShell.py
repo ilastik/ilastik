@@ -16,11 +16,12 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import os
 import re
 import logging
+
 logger = logging.getLogger(__name__)
 
 from lazyflow.utility import isUrl
@@ -50,10 +51,9 @@ class HeadlessShell(object):
     def createAndLoadNewProject(self, newProjectFilePath, workflow_class):
         hdf5File = ProjectManager.createBlankProjectFile(newProjectFilePath)
         readOnly = False
-        self.projectManager = ProjectManager( self,
-                                              workflow_class,
-                                              headless=True,
-                                              workflow_cmdline_args=self._workflow_cmdline_args  )
+        self.projectManager = ProjectManager(
+            self, workflow_class, headless=True, workflow_cmdline_args=self._workflow_cmdline_args
+        )
         self.projectManager._loadProject(hdf5File, newProjectFilePath, readOnly)
         self.projectManager.saveProject()
 
@@ -64,20 +64,19 @@ class HeadlessShell(object):
         # By convention, command-line users specify the location of the project
         # keyvalue data using the same format that the DVID API itself uses.
         url_format = "^protocol://hostname/api/node/uuid/kv_instance_name(/key/keyname)?"
-        for field in ['protocol', 'hostname', 'uuid', 'kv_instance_name', 'keyname']:
-            url_format = url_format.replace( field, '(?P<' + field + '>[^?/]+)' )
+        for field in ["protocol", "hostname", "uuid", "kv_instance_name", "keyname"]:
+            url_format = url_format.replace(field, "(?P<" + field + ">[^?/]+)")
 
-        match = re.match( url_format, dvid_key_url )
+        match = re.match(url_format, dvid_key_url)
         if not match:
             # DVID is the only url-based format we support right now.
             # So if it looks like the user gave a URL that isn't a valid DVID node, then error.
             raise RuntimeError("Invalid URL format for DVID key-value data: {}".format(projectFilePath))
 
         fields = match.groupdict()
-        projectFilePath = ProjectManager.downloadProjectFromDvid( fields['hostname'],
-                                                                  fields['uuid'],
-                                                                  fields['kv_instance_name'],
-                                                                  fields['keyname'] )
+        projectFilePath = ProjectManager.downloadProjectFromDvid(
+            fields["hostname"], fields["uuid"], fields["kv_instance_name"], fields["keyname"]
+        )
         return projectFilePath
 
     def openProjectFile(self, projectFilePath, force_readonly=False):
@@ -89,6 +88,7 @@ class HeadlessShell(object):
         # Make sure all workflow sub-classes have been loaded,
         #  so we can detect the workflow type in the project.
         import ilastik.workflows
+
         try:
             # Open the project file
             hdf5File, workflow_class, readOnly = ProjectManager.openProjectFile(projectFilePath, force_readonly)
@@ -104,22 +104,28 @@ class HeadlessShell(object):
             if workflow_class is None:
                 # If the project file has no known workflow, we assume pixel classification
                 import ilastik.workflows
+
                 workflow_class = ilastik.workflows.pixelClassification.PixelClassificationWorkflow
                 import warnings
-                warnings.warn( "Your project file ({}) does not specify a workflow type.  "
-                               "Assuming Pixel Classification".format( projectFilePath ) )
+
+                warnings.warn(
+                    "Your project file ({}) does not specify a workflow type.  "
+                    "Assuming Pixel Classification".format(projectFilePath)
+                )
 
             # Create our project manager
             # This instantiates the workflow and applies all settings from the project.
-            self.projectManager = ProjectManager( self,
-                                                  workflow_class,
-                                                  headless=True,
-                                                  workflow_cmdline_args=self._workflow_cmdline_args,
-                                                  project_creation_args=project_creation_args )
+            self.projectManager = ProjectManager(
+                self,
+                workflow_class,
+                headless=True,
+                workflow_cmdline_args=self._workflow_cmdline_args,
+                project_creation_args=project_creation_args,
+            )
             self.projectManager._loadProject(hdf5File, projectFilePath, readOnly)
 
         except ProjectManager.FileMissingError:
-            logger.error("Couldn't find project file: {}".format( projectFilePath ))
+            logger.error("Couldn't find project file: {}".format(projectFilePath))
             raise
         except ProjectManager.ProjectVersionError:
             # Couldn't open project.  Try importing it.
@@ -133,14 +139,17 @@ class HeadlessShell(object):
 
             # For now, we assume that any imported projects are pixel classification workflow projects.
             import ilastik.workflows
+
             default_workflow = ilastik.workflows.pixelClassification.PixelClassificationWorkflow
 
             # Create the project manager.
-            self.projectManager = ProjectManager( self,
-                                                  default_workflow,
-                                                  headless=True,
-                                                  workflow_cmdline_args=self._workflow_cmdline_args,
-                                                  project_creation_args=self._workflow_cmdline_args )
+            self.projectManager = ProjectManager(
+                self,
+                default_workflow,
+                headless=True,
+                workflow_cmdline_args=self._workflow_cmdline_args,
+                project_creation_args=self._workflow_cmdline_args,
+            )
 
             self.projectManager._importProject(oldProjectFilePath, hdf5File, projectFilePath)
 

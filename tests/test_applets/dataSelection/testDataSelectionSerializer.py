@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import os
 import h5py
@@ -27,36 +27,41 @@ from pathlib import Path
 import unittest
 import pytest
 
-from ilastik.applets.dataSelection.opDataSelection import OpMultiLaneDataSelectionGroup, DatasetInfo, ProjectInternalDatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import (
+    OpMultiLaneDataSelectionGroup,
+    DatasetInfo,
+    ProjectInternalDatasetInfo,
+)
 from ilastik.applets.dataSelection.opDataSelection import ProjectInternalDatasetInfo
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 
 
 import logging
+
 logger = logging.getLogger(__name__)
 
-TOP_GROUP_NAME = 'some_group'
+TOP_GROUP_NAME = "some_group"
+
 
 @pytest.fixture
 def serializer(empty_project_file, graph):
     opDataSelectionGroup = OpMultiLaneDataSelectionGroup(graph=graph)
     opDataSelectionGroup.ProjectFile.setValue(empty_project_file)
     opDataSelectionGroup.WorkingDirectory.setValue(Path(empty_project_file.filename).parent)
-    opDataSelectionGroup.DatasetRoles.setValue(['Raw Data'])
+    opDataSelectionGroup.DatasetRoles.setValue(["Raw Data"])
     opDataSelectionGroup.DatasetGroup.resize(1)
 
     serializer = DataSelectionSerializer(opDataSelectionGroup, TOP_GROUP_NAME)
     return serializer
 
+
 @pytest.fixture
 def internal_datasetinfo(serializer, png_image) -> ProjectInternalDatasetInfo:
     inner_path = serializer.importStackAsLocalDataset([str(png_image)])
     project_file = serializer.topLevelOperator.ProjectFile.value
-    info = ProjectInternalDatasetInfo(
-        inner_path=inner_path,
-        project_file=project_file
-    )
+    info = ProjectInternalDatasetInfo(inner_path=inner_path, project_file=project_file)
     return info
+
 
 def test06(serializer, internal_datasetinfo, empty_project_file, graph):
     """
@@ -70,8 +75,8 @@ def test06(serializer, internal_datasetinfo, empty_project_file, graph):
     dataset = empty_project_file[internal_datasetinfo.inner_path]
 
     # Check axistags attribute
-    assert 'axistags' in dataset.attrs
-    axistags_json = empty_project_file[internal_datasetinfo.inner_path].attrs['axistags']
+    assert "axistags" in dataset.attrs
+    axistags_json = empty_project_file[internal_datasetinfo.inner_path].attrs["axistags"]
     axistags = vigra.AxisTags.fromJSON(axistags_json)
 
     originalShape = serializer.topLevelOperator.Image[0].meta.shape
@@ -83,9 +88,11 @@ def test06(serializer, internal_datasetinfo, empty_project_file, graph):
 
     # Create an empty operator
     operatorToLoad = OpMultiLaneDataSelectionGroup(graph=graph)
-    operatorToLoad.DatasetRoles.setValue( ['Raw Data'] )
+    operatorToLoad.DatasetRoles.setValue(["Raw Data"])
 
-    deserializer = DataSelectionSerializer(operatorToLoad, serializer.topGroupName) # Copy the group name from the serializer we used.
+    deserializer = DataSelectionSerializer(
+        operatorToLoad, serializer.topGroupName
+    )  # Copy the group name from the serializer we used.
     assert deserializer.base_initialized
     deserializer.deserializeFromHdf5(empty_project_file, empty_project_file.filename)
 

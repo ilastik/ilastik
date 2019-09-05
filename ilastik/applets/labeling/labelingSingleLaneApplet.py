@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,45 +18,48 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 from .opLabeling import OpLabelingSingleLane
-#from labelingSerializer import LabelingSerializer
 
-class LabelingSingleLaneApplet( StandardApplet ):
+# from labelingSerializer import LabelingSerializer
+
+
+class LabelingSingleLaneApplet(StandardApplet):
     """
-    This applet demonstrates how to use the LabelingGui base class, which serves as a reusable base class for other applet GUIs that need a labeling UI.  
+    This applet demonstrates how to use the LabelingGui base class, which serves as a reusable base class for other applet GUIs that need a labeling UI.
     """
-    def __init__( self, workflow, projectFileGroupName, blockDims=None, appletName="Simple Labeling" ):
-        super(LabelingSingleLaneApplet, self).__init__( appletName, workflow )
-            
+
+    def __init__(self, workflow, projectFileGroupName, blockDims=None, appletName="Simple Labeling"):
+        super(LabelingSingleLaneApplet, self).__init__(appletName, workflow)
+
     @property
     def singleLaneOperatorClass(self):
         return OpLabelingSingleLane
 
     @property
     def broadcastingSlots(self):
-        return ['LabelEraserValue', 'LabelDelete']
+        return ["LabelEraserValue", "LabelDelete"]
 
     @property
     def dataSerializers(self):
-        return [] # TODO
+        return []  # TODO
 
     def createSingleLaneGui(self, imageLaneIndex):
         from .labelingGui import LabelingGui
 
         opLabeling = self.topLevelOperator.getLane(imageLaneIndex)
-        
+
         labelingSlots = LabelingGui.LabelingSlots()
         labelingSlots.labelInput = opLabeling.LabelInput
         labelingSlots.labelOutput = opLabeling.LabelImage
         labelingSlots.labelEraserValue = opLabeling.LabelEraserValue
         labelingSlots.labelDelete = opLabeling.LabelDelete
         labelingSlots.labelNames = opLabeling.LabelNames
-        
+
         # Special hack for labeling, required by the internal label array operator
         # Normally, it is strange to connect two same-operator input slots together like this.
-        opLabeling.LabelInput.connect( opLabeling.InputImage )
+        opLabeling.LabelInput.connect(opLabeling.InputImage)
 
-        return LabelingGui( self, labelingSlots, opLabeling, rawInputSlot=opLabeling.InputImage )
+        return LabelingGui(self, labelingSlots, opLabeling, rawInputSlot=opLabeling.InputImage)

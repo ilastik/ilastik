@@ -44,7 +44,7 @@ class DtypeConvertFunction:
         assert not isinstance(dtype, numpy.dtype)
         self._dtype = dtype
 
-        if numpy.dtype(dtype).char in numpy.typecodes['AllInteger']:
+        if numpy.dtype(dtype).char in numpy.typecodes["AllInteger"]:
             # For integer dtype scale according to dtype min and max to maximize precision
             dtype_info = numpy.iinfo(dtype)
             min_val = dtype_info.min

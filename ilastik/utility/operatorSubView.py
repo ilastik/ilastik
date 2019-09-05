@@ -16,45 +16,53 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from lazyflow.graph import OperatorWrapper, InputDict, OutputDict
 from ilastik.utility import MultiLaneOperatorABC
 
 import logging
 from future.utils import with_metaclass
+
 logger = logging.getLogger(__name__)
+
 
 class OperatorSubViewMetaclass(type):
     """
     Simple metaclass to catch errors the user might make by attempting to access certain class attributes.
     """
+
     def __getattr__(self, name):
         if name == "inputSlots":
-            assert False, "OperatorSubView.inputSlots cannot be accessed as a class member.  It can only be accessed as an instance member"
+            assert (
+                False
+            ), "OperatorSubView.inputSlots cannot be accessed as a class member.  It can only be accessed as an instance member"
         if name == "outputSlots":
-            assert False, "OperatorSubView.outputSlots cannot be accessed as a class member.  It can only be accessed as an instance member"
+            assert (
+                False
+            ), "OperatorSubView.outputSlots cannot be accessed as a class member.  It can only be accessed as an instance member"
         return type.__getattr__(self, name)
+
 
 class OperatorSubView(with_metaclass(OperatorSubViewMetaclass, object)):
     """
     An adapter class that makes a specific lane of a multi-image operator look like a single image operator.
-    
-    If the adapted operator is an OperatorWrapper, then the view provides all of the members of the inner 
-    operator at the specified index, except that the slot members will refer to the OperatorWrapper's 
+
+    If the adapted operator is an OperatorWrapper, then the view provides all of the members of the inner
+    operator at the specified index, except that the slot members will refer to the OperatorWrapper's
     slots (i.e. the OUTER slots).
-    
+
     If the adapted operator is NOT an OperatorWrapper, then the view provides all the members of the adapted operator,
     except that ALL MULTISLOT members will be replaced with a reference to the subslot for the specified index.
     Non-multislot members will not be replaced.
     """
-    
+
     def viewed_operator(self):
         """
         Returns the original operator that this view is viewing.
         """
         return self.__op
-    
+
     def current_view_index(self):
         """
         Returns the index of this view, even if the originally viewed operator (and its slots) have been resized in the meantime.
@@ -62,23 +70,23 @@ class OperatorSubView(with_metaclass(OperatorSubViewMetaclass, object)):
         multislot = getattr(self.__op, self.__referenceSlotName)
         innerslot = getattr(self, self.__referenceSlotName)
         try:
-            return multislot.index( innerslot )
+            return multislot.index(innerslot)
         except ValueError:
-            # If this subview has expired (the corresponding subslots have 
+            # If this subview has expired (the corresponding subslots have
             #  been removed from the operator), then return -1
             return -1
 
     def __init__(self, op, index):
         """
         Constructor.  Creates a view of the given operator for the specified index.
-        
+
         :param op: The operator to view.
-        :param index: The index of this subview.  All multislots of the original 
+        :param index: The index of this subview.  All multislots of the original
                       operator will be replaced with the corresponding subslot at this index.
         """
         self.__op = op
         self.__slots = {}
-        self.__innerOp = None # Used if op is an OperatorWrapper
+        self.__innerOp = None  # Used if op is an OperatorWrapper
 
         self.__referenceSlotName = None
 
@@ -93,16 +101,16 @@ class OperatorSubView(with_metaclass(OperatorSubViewMetaclass, object)):
 
             setattr(self, slot.name, self.inputs[slot.name])
 
-        self.inputSlots = list( self.inputs.values() )
-                
+        self.inputSlots = list(self.inputs.values())
+
         self.outputs = OutputDict(self)
         for slot in list(op.outputs.values()):
             if slot.level >= 1 and not slot.nonlane:
                 try:
                     self.outputs[slot.name] = slot[index]
                 except IndexError:
-                    logger.error( "Could not create OperatorSubView for {}".format( self.__op.name ) )
-                    logger.error( "IndexError when accessing {}[{}]".format( slot.name, index ) )
+                    logger.error("Could not create OperatorSubView for {}".format(self.__op.name))
+                    logger.error("IndexError when accessing {}[{}]".format(slot.name, index))
                     raise
                 if self.__referenceSlotName is None:
                     self.__referenceSlotName = slot.name
@@ -111,7 +119,7 @@ class OperatorSubView(with_metaclass(OperatorSubViewMetaclass, object)):
 
             setattr(self, slot.name, self.outputs[slot.name])
 
-        self.outputSlots = list( self.inputs.values() )
+        self.outputSlots = list(self.inputs.values())
 
         # If we're an OperatorWrapper, save the inner operator at this index.
         if isinstance(self.__op, OperatorWrapper):
@@ -120,8 +128,8 @@ class OperatorSubView(with_metaclass(OperatorSubViewMetaclass, object)):
         for name, member in list(self.__op.__dict__.items()):
             # If any of our members happens to itself be a multi-lane operator,
             #  then keep a view on it instead of the original.
-            if name != '_parent' and isinstance(member, MultiLaneOperatorABC):
-                setattr(self, name, OperatorSubView(member, index) )
+            if name != "_parent" and isinstance(member, MultiLaneOperatorABC):
+                setattr(self, name, OperatorSubView(member, index))
 
     def __getattribute__(self, name):
         try:
@@ -135,8 +143,3 @@ class OperatorSubView(with_metaclass(OperatorSubViewMetaclass, object)):
 
             # Get the member from the operator directly.
             return getattr(self.__op, name)
-
-
-
-
-

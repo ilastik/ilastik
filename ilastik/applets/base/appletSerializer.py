@@ -16,13 +16,15 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from future import standard_library
+
 standard_library.install_aliases()
 from builtins import range
 import logging
 from future.utils import with_metaclass
+
 logger = logging.getLogger(__name__)
 
 from abc import ABCMeta
@@ -48,6 +50,7 @@ from lazyflow.slot import OutputSlot
 # Convenience methods #
 #######################
 
+
 def getOrCreateGroup(parentGroup, groupName):
     """Returns parentGroup[groupName], creating first it if
     necessary.
@@ -56,12 +59,14 @@ def getOrCreateGroup(parentGroup, groupName):
 
     return parentGroup.require_group(groupName)
 
+
 def deleteIfPresent(parentGroup, name):
     """Deletes parentGroup[name], if it exists."""
-    # Check first. If we try to delete a non-existent key, 
+    # Check first. If we try to delete a non-existent key,
     # hdf5 will complain on the console.
     if name in parentGroup:
         del parentGroup[name]
+
 
 def slicingToString(slicing):
     """Convert the given slicing into a string of the form
@@ -69,16 +74,17 @@ def slicingToString(slicing):
 
     The result is a utf-8 encoded bytes, for easy storage via h5py
     """
-    strSlicing = '['
+    strSlicing = "["
     for s in slicing:
         strSlicing += str(s.start)
-        strSlicing += ':'
+        strSlicing += ":"
         strSlicing += str(s.stop)
-        strSlicing += ','
+        strSlicing += ","
 
-    strSlicing = strSlicing[:-1] # Drop the last comma
-    strSlicing += ']'
-    return strSlicing.encode('utf-8')
+    strSlicing = strSlicing[:-1]  # Drop the last comma
+    strSlicing += "]"
+    return strSlicing.encode("utf-8")
+
 
 def stringToSlicing(strSlicing):
     """Parse a string of the form '[0:1,2:3,4:5]' into a slicing (i.e.
@@ -86,13 +92,13 @@ def stringToSlicing(strSlicing):
 
     """
     if isinstance(strSlicing, bytes):
-        strSlicing = strSlicing.decode('utf-8')
-    
+        strSlicing = strSlicing.decode("utf-8")
+
     slicing = []
-    strSlicing = strSlicing[1:-1] # Drop brackets
-    sliceStrings = strSlicing.split(',')
+    strSlicing = strSlicing[1:-1]  # Drop brackets
+    sliceStrings = strSlicing.split(",")
     for s in sliceStrings:
-        ends = s.split(':')
+        ends = s.split(":")
         start = int(ends[0])
         stop = int(ends[1])
         slicing.append(slice(start, stop))
@@ -102,8 +108,8 @@ def stringToSlicing(strSlicing):
 
 class SerialSlot(object):
     """Implements the logic for serializing a slot."""
-    def __init__(self, slot, inslot=None, name=None, subname=None,
-                 default=None, depends=None, selfdepends=True):
+
+    def __init__(self, slot, inslot=None, name=None, subname=None, default=None, depends=None, selfdepends=True):
         """
         :param slot: where to get data to save
 
@@ -126,7 +132,7 @@ class SerialSlot(object):
         """
         if slot.level > 1:
             # FIXME: recursive serialization, to support arbitrary levels
-            raise Exception('slots of levels > 1 not supported')
+            raise Exception("slots of levels > 1 not supported")
         self.slot = slot
         if inslot is None:
             inslot = slot
@@ -140,7 +146,7 @@ class SerialSlot(object):
             name = slot.name
         self.name = name
         if subname is None:
-            subname = '{:04d}'
+            subname = "{:04d}"
         self.subname = subname
 
         self._dirty = False
@@ -215,7 +221,7 @@ class SerialSlot(object):
         """
         if isinstance(value, str):
             # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
-            value = value.encode('utf-8')
+            value = value.encode("utf-8")
         group.create_dataset(name, data=value)
 
     def _serialize(self, group, name, slot):
@@ -261,7 +267,7 @@ class SerialSlot(object):
         val = subgroup[()]
         if isinstance(val, bytes):
             # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
-            val = val.decode('utf-8')
+            val = val.decode("utf-8")
         slot.setValue(val)
 
     def _deserialize(self, subgroup, slot):
@@ -276,32 +282,34 @@ class SerialSlot(object):
             # Pair stored indexes with their keys,
             # e.g. [(0,'0'), (2, '2'), (3, '3')]
             # Note that in some cases an index might be intentionally skipped.
-            indexes_to_keys = { int(k) : k for k in list(subgroup.keys()) }
-            
+            indexes_to_keys = {int(k): k for k in list(subgroup.keys())}
+
             # Ensure the slot is at least big enough to deserialize into.
             if list(indexes_to_keys.keys()) == []:
                 max_index = 0
             else:
-                max_index = max( indexes_to_keys.keys() )
-            if len(slot) < max_index+1:
-                slot.resize(max_index+1)
+                max_index = max(indexes_to_keys.keys())
+            if len(slot) < max_index + 1:
+                slot.resize(max_index + 1)
 
             # Now retrieve the data
             for i, subslot in enumerate(slot):
                 if i in indexes_to_keys:
                     key = indexes_to_keys[i]
-                    # Sadly, we can't use the following assertion because it would break  
+                    # Sadly, we can't use the following assertion because it would break
                     #  backwards compatibility with a bug we used to have in the key names.
-                    #assert key == self.subname.format(i)
+                    # assert key == self.subname.format(i)
                     self._deserialize(subgroup[key], subslot)
                 else:
                     # Since there was no data for this subslot in the project file,
                     # we disconnect the subslot.
                     subslot.disconnect()
 
+
 #######################################################
 # some serial slots that are used in multiple applets #
 #######################################################
+
 
 class SerialListSlot(SerialSlot):
     """As the name implies: used for serializing a list.
@@ -314,8 +322,20 @@ class SerialListSlot(SerialSlot):
       (for instance, to convert it to the proper type).
 
     """
-    def __init__(self, slot, inslot=None, name=None, subname=None,
-                 default=None, depends=None, selfdepends=True, transform=None, store_transform=None, iterable=list):
+
+    def __init__(
+        self,
+        slot,
+        inslot=None,
+        name=None,
+        subname=None,
+        default=None,
+        depends=None,
+        selfdepends=True,
+        transform=None,
+        store_transform=None,
+        iterable=list,
+    ):
         """
         :param transform: function applied to members on deserialization.
 
@@ -324,32 +344,30 @@ class SerialListSlot(SerialSlot):
         if slot.level > 0:
             raise NotImplementedError()
 
-        super(SerialListSlot, self).__init__(
-            slot, inslot, name, subname, default, depends, selfdepends
-        )
+        super(SerialListSlot, self).__init__(slot, inslot, name, subname, default, depends, selfdepends)
         if transform is None:
             transform = lambda x: x
         self.transform = transform
-        
+
         self._iterable = iterable
         self._store_transform = store_transform
         if store_transform is None:
-            self._store_transform = lambda x:x
+            self._store_transform = lambda x: x
 
     def _saveValue(self, group, name, value):
-        isempty = (len(value) == 0)
+        isempty = len(value) == 0
         if isempty:
             value = numpy.empty((1,))
-        
+
         data = list(map(self._store_transform, value))
-        
+
         # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
         for i in range(len(data)):
             if isinstance(data[i], str):
-                data[i] = data[i].encode('utf-8')
+                data[i] = data[i].encode("utf-8")
 
         sg = group.create_dataset(name, data=data)
-        sg.attrs['isEmpty'] = isempty
+        sg.attrs["isEmpty"] = isempty
 
     @timeLogged(logger, logging.DEBUG)
     def deserialize(self, group):
@@ -359,38 +377,49 @@ class SerialListSlot(SerialSlot):
         except:
             if logger.isEnabledFor(logging.DEBUG):
                 # Only show this warning when debugging serialization
-                warnings.warn("Deserialization: Could not locate value for slot '{}'.  Skipping.".format( self.name ))
+                warnings.warn("Deserialization: Could not locate value for slot '{}'.  Skipping.".format(self.name))
             return
-        if 'isEmpty' in subgroup.attrs and subgroup.attrs['isEmpty']:
-            self.inslot.setValue( self._iterable([]) )
+        if "isEmpty" in subgroup.attrs and subgroup.attrs["isEmpty"]:
+            self.inslot.setValue(self._iterable([]))
         else:
             if len(subgroup.shape) == 0 or subgroup.shape[0] == 0:
                 # How can this happen, anyway...?
                 return
             else:
                 data = list(map(self.transform, subgroup[()]))
-                
+
                 # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
                 for i in range(len(data)):
                     if isinstance(data[i], bytes):
-                        data[i] = data[i].decode('utf-8')
+                        data[i] = data[i].decode("utf-8")
                 self.inslot.setValue(self._iterable(data))
         self.dirty = False
 
+
 class SerialBlockSlot(SerialSlot):
     """A slot which only saves nonzero blocks."""
-    def __init__(self, slot, inslot, blockslot, name=None, subname=None,
-                 default=None, depends=None, selfdepends=True, shrink_to_bb=False, compression_level=0):
+
+    def __init__(
+        self,
+        slot,
+        inslot,
+        blockslot,
+        name=None,
+        subname=None,
+        default=None,
+        depends=None,
+        selfdepends=True,
+        shrink_to_bb=False,
+        compression_level=0,
+    ):
         """
         :param blockslot: provides non-zero blocks.
-        :param shrink_to_bb: If true, reduce each block of data from the slot to  
+        :param shrink_to_bb: If true, reduce each block of data from the slot to
                              its nonzero bounding box before feeding saving it.
 
         """
-        assert isinstance(slot, OutputSlot), "slot is of wrong type: '{}' is not an OutputSlot".format( slot.name )
-        super(SerialBlockSlot, self).__init__(
-            slot, inslot, name, subname, default, depends, selfdepends
-        )
+        assert isinstance(slot, OutputSlot), "slot is of wrong type: '{}' is not an OutputSlot".format(slot.name)
+        super(SerialBlockSlot, self).__init__(slot, inslot, name, subname, default, depends, selfdepends)
         self.blockslot = blockslot
         self._bind(slot)
         self._shrink_to_bb = shrink_to_bb
@@ -404,20 +433,30 @@ class SerialBlockSlot(SerialSlot):
         # if each relevant subgroup has been created and if any are missing or their data is missing it should be
         # serialized. Otherwise, if everything is intact, it doesn't suggest serialization unless the state has changed.
 
-        logger.debug("Checking whether to serialize BlockSlot: {}".format( self.name ))
+        logger.debug("Checking whether to serialize BlockSlot: {}".format(self.name))
 
         if self.dirty:
-            logger.debug("BlockSlot \"" + self.name + "\" appears to be dirty. Should serialize.")
+            logger.debug('BlockSlot "' + self.name + '" appears to be dirty. Should serialize.')
             return True
 
         # SerialSlot interchanges self.name and name when they frequently are the same thing. It is not clear if using
         # self.name would be acceptable here or whether name should be an input to shouldSerialize or if there should be
         # a _shouldSerialize method, which takes the name.
         if self.name not in group:
-            logger.debug("Missing \"" + self.name + "\" in group \"" + repr(group) + "\" belonging to BlockSlot \"" + self.name + "\". Should serialize.")
+            logger.debug(
+                'Missing "'
+                + self.name
+                + '" in group "'
+                + repr(group)
+                + '" belonging to BlockSlot "'
+                + self.name
+                + '". Should serialize.'
+            )
             return True
         else:
-            logger.debug("Found \"" + self.name + "\" in group \"" + repr(group) + "\" belonging to BlockSlot \"" + self.name + "\".")
+            logger.debug(
+                'Found "' + self.name + '" in group "' + repr(group) + '" belonging to BlockSlot "' + self.name + '".'
+            )
 
         # Just because the group was serialized doesn't mean that the relevant data was.
         mygroup = group[self.name]
@@ -427,30 +466,50 @@ class SerialBlockSlot(SerialSlot):
 
             # Check to se if each subname has been created as a group
             if subname not in mygroup:
-                logger.debug("Missing \"" + subname + "\" from \"" + repr(mygroup) + "\" belonging to BlockSlot \"" + self.name + "\". Should serialize.")
+                logger.debug(
+                    'Missing "'
+                    + subname
+                    + '" from "'
+                    + repr(mygroup)
+                    + '" belonging to BlockSlot "'
+                    + self.name
+                    + '". Should serialize.'
+                )
                 return True
             else:
-                logger.debug("Found \"" + subname + "\" from \"" + repr(mygroup) + "\" belonging to BlockSlot \"" + self.name + "\".")
+                logger.debug(
+                    'Found "' + subname + '" from "' + repr(mygroup) + '" belonging to BlockSlot "' + self.name + '".'
+                )
 
             subgroup = mygroup[subname]
 
             nonZeroBlocks = self.blockslot[index].value
             for blockIndex in range(len(nonZeroBlocks)):
-                blockName = 'block{:04d}'.format(blockIndex)
+                blockName = "block{:04d}".format(blockIndex)
 
                 if blockName not in subgroup:
-                    logger.debug("Missing \"" + blockName + "\" from \"" + repr(subgroup) + "\". Should serialize.")
+                    logger.debug('Missing "' + blockName + '" from "' + repr(subgroup) + '". Should serialize.')
                     return True
                 else:
-                    logger.debug("Found \"" + blockName + "\" from \"" + repr(subgroup) + "\" belonging to BlockSlot \"" + self.name + "\".")
+                    logger.debug(
+                        'Found "'
+                        + blockName
+                        + '" from "'
+                        + repr(subgroup)
+                        + '" belonging to BlockSlot "'
+                        + self.name
+                        + '".'
+                    )
 
-        logger.debug("Everything belonging to BlockSlot \"" + self.name + "\" appears to be in order. Should not serialize.")
+        logger.debug(
+            'Everything belonging to BlockSlot "' + self.name + '" appears to be in order. Should not serialize.'
+        )
 
         return False
 
     @timeLogged(logger, logging.DEBUG)
     def _serialize(self, group, name, slot):
-        logger.debug("Serializing BlockSlot: {}".format( self.name ))
+        logger.debug("Serializing BlockSlot: {}".format(self.name))
         mygroup = group.create_group(name)
         num = len(self.blockslot)
         for index in range(num):
@@ -462,18 +521,18 @@ class SerialBlockSlot(SerialSlot):
                     slicing = roiToSlice(*slicing)
 
                 block = self.slot[index][slicing].wait()
-                blockName = 'block{:04d}'.format(blockIndex)
+                blockName = "block{:04d}".format(blockIndex)
 
                 if self._shrink_to_bb:
                     nonzero_coords = numpy.nonzero(block)
                     if len(nonzero_coords[0]) > 0:
-                        block_start = sliceToRoi( slicing, [sl.stop for sl in slicing] )[0]
-                        block_bounding_box_start = numpy.array( list(map( numpy.min, nonzero_coords )) )
-                        block_bounding_box_stop = 1 + numpy.array( list(map( numpy.max, nonzero_coords )) )
-                        block_slicing = roiToSlice( block_bounding_box_start, block_bounding_box_stop )
+                        block_start = sliceToRoi(slicing, [sl.stop for sl in slicing])[0]
+                        block_bounding_box_start = numpy.array(list(map(numpy.min, nonzero_coords)))
+                        block_bounding_box_stop = 1 + numpy.array(list(map(numpy.max, nonzero_coords)))
+                        block_slicing = roiToSlice(block_bounding_box_start, block_bounding_box_stop)
                         bounding_box_roi = numpy.array([block_bounding_box_start, block_bounding_box_stop])
                         bounding_box_roi += block_start
-                        
+
                         # Overwrite the vars that are written to the file
                         slicing = roiToSlice(*bounding_box_roi)
                         block = block[block_slicing]
@@ -485,66 +544,64 @@ class SerialBlockSlot(SerialSlot):
                     block_group = subgroup.create_group(blockName)
 
                     if self.compression_level:
-                        block_group.create_dataset("data",
-                                                   data=block.data,
-                                                   compression='gzip',
-                                                   compression_opts=compression_level)
+                        block_group.create_dataset(
+                            "data", data=block.data, compression="gzip", compression_opts=compression_level
+                        )
                     else:
                         block_group.create_dataset("data", data=block.data)
-                        
-                    block_group.create_dataset(
-                        "mask",
-                        data=block.mask,
-                        compression="gzip",
-                        compression_opts=2
-                    )
+
+                    block_group.create_dataset("mask", data=block.mask, compression="gzip", compression_opts=2)
                     block_group.create_dataset("fill_value", data=block.fill_value)
 
-                    block_group.attrs['blockSlice'] = slicingToString(slicing)
+                    block_group.attrs["blockSlice"] = slicingToString(slicing)
                 else:
                     subgroup.create_dataset(blockName, data=block)
-                    subgroup[blockName].attrs['blockSlice'] = slicingToString(slicing)
+                    subgroup[blockName].attrs["blockSlice"] = slicingToString(slicing)
 
     @timeLogged(logger, logging.DEBUG)
     def _deserialize(self, mygroup, slot):
-        logger.debug("Deserializing BlockSlot: {}".format( self.name ))
+        logger.debug("Deserializing BlockSlot: {}".format(self.name))
         num = len(mygroup)
         if len(self.inslot) < num:
             self.inslot.resize(num)
         # Annoyingly, some applets store their groups with names like, img0,img1,img2,..,img9,img10,img11
         # which means that sorted() needs a special key to avoid sorting img10 before img2
         # We have to find the index and sort according to its numerical value.
-        index_capture = re.compile(r'[^0-9]*(\d*).*')
+        index_capture = re.compile(r"[^0-9]*(\d*).*")
+
         def extract_index(s):
             return int(index_capture.match(s).groups()[0])
+
         for index, t in enumerate(sorted(list(mygroup.items()), key=lambda k_v: extract_index(k_v[0]))):
             groupName, labelGroup = t
             for blockData in list(labelGroup.values()):
-                slicing = stringToSlicing(blockData.attrs['blockSlice'])
+                slicing = stringToSlicing(blockData.attrs["blockSlice"])
 
                 # If it is suppose to be a masked array,
                 # deserialize the pieces and rebuild the masked array.
-                assert slot[index].meta.has_mask == mygroup.attrs.get("meta.has_mask"), \
-                       "The slot and stored data have different values for" + \
-                       " `has_mask`. They are" + \
-                       " `bool(slot[index].meta.has_mask)`=" + \
-                       repr(bool(slot[index].meta.has_mask)) + " and" + \
-                       " `mygroup.attrs.get(\"meta.has_mask\", False)`=" + \
-                       repr(mygroup.attrs.get("meta.has_mask", False)) + \
-                       ". Please fix this to proceed with deserialization."
+                assert slot[index].meta.has_mask == mygroup.attrs.get("meta.has_mask"), (
+                    "The slot and stored data have different values for"
+                    + " `has_mask`. They are"
+                    + " `bool(slot[index].meta.has_mask)`="
+                    + repr(bool(slot[index].meta.has_mask))
+                    + " and"
+                    + ' `mygroup.attrs.get("meta.has_mask", False)`='
+                    + repr(mygroup.attrs.get("meta.has_mask", False))
+                    + ". Please fix this to proceed with deserialization."
+                )
                 if slot[index].meta.has_mask:
                     blockArray = numpy.ma.masked_array(
                         blockData["data"][()],
                         mask=blockData["mask"][()],
                         fill_value=blockData["fill_value"][()],
-                        shrink=False
+                        shrink=False,
                     )
                 else:
                     blockArray = blockData[...]
                 self.inslot[index][slicing] = blockArray
 
-class SerialHdf5BlockSlot(SerialBlockSlot):
 
+class SerialHdf5BlockSlot(SerialBlockSlot):
     def _serialize(self, group, name, slot):
         mygroup = group.create_group(name)
         num = len(self.blockslot)
@@ -553,23 +610,25 @@ class SerialHdf5BlockSlot(SerialBlockSlot):
             subgroup = mygroup.create_group(subname)
             cleanBlockRois = self.blockslot[index].value
             for roi in cleanBlockRois:
-                # The protocol for hdf5 slots is that they create appropriately 
+                # The protocol for hdf5 slots is that they create appropriately
                 #  named datasets within the subgroup that we provide via writeInto()
-                req = self.slot[index]( *roi )
-                req.writeInto( subgroup )
+                req = self.slot[index](*roi)
+                req.writeInto(subgroup)
                 req.wait()
 
     def _deserialize(self, mygroup, slot):
         num = len(mygroup)
         if len(self.inslot) < num:
             self.inslot.resize(num)
-        
+
         # Annoyingly, some applets store their groups with names like, img0,img1,img2,..,img9,img10,img11
         # which means that sorted() needs a special key to avoid sorting img10 before img2
         # We have to find the index and sort according to its numerical value.
-        index_capture = re.compile(r'[^0-9]*(\d*).*')
+        index_capture = re.compile(r"[^0-9]*(\d*).*")
+
         def extract_index(s):
             return int(index_capture.match(s).groups()[0])
+
         for index, t in enumerate(sorted(list(mygroup.items()), key=lambda k_v1: extract_index(k_v1[0]))):
             groupName, labelGroup = t
             assert extract_index(groupName) == index, "subgroup extraction order should be numerical order!"
@@ -578,19 +637,18 @@ class SerialHdf5BlockSlot(SerialBlockSlot):
                 roiShape = TinyVector(blockRoi[1]) - TinyVector(blockRoi[0])
                 assert roiShape == blockDataset.shape
 
-                self.inslot[index][roiToSlice( *blockRoi )] = blockDataset
+                self.inslot[index][roiToSlice(*blockRoi)] = blockDataset
+
 
 class SerialClassifierSlot(SerialSlot):
     """For saving a classifier.  Here we assume the classifier is stored in the ."""
-    def __init__(self, slot, cache, inslot=None, name=None,
-                 default=None, depends=None, selfdepends=True):
-        super(SerialClassifierSlot, self).__init__(
-            slot, inslot, name, None, default, depends, selfdepends
-        )
+
+    def __init__(self, slot, cache, inslot=None, name=None, default=None, depends=None, selfdepends=True):
+        super(SerialClassifierSlot, self).__init__(slot, inslot, name, None, default, depends, selfdepends)
         self.cache = cache
         if self.name is None:
             self.name = slot.name
-        
+
         # We want to bind to the INPUT, not Output:
         # - if the input becomes dirty, we want to make sure the cache is deleted
         # - if the input becomes dirty and then the cache is reloaded, we'll save the classifier.
@@ -608,8 +666,8 @@ class SerialClassifierSlot(SerialSlot):
         if classifier is None:
             return
 
-        classifier_group = group.create_group( name )
-        classifier.serialize_hdf5( classifier_group )
+        classifier_group = group.create_group(name)
+        classifier.serialize_hdf5(classifier_group)
 
     def deserialize(self, group):
         """
@@ -620,17 +678,17 @@ class SerialClassifierSlot(SerialSlot):
 
     def _deserialize(self, classifierGroup, slot):
         try:
-            classifier_type = pickle.loads( classifierGroup['pickled_type'][()] )
+            classifier_type = pickle.loads(classifierGroup["pickled_type"][()])
         except KeyError:
             # For compatibility with old project files, choose the default classifier.
             from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier
+
             classifier_type = ParallelVigraRfLazyflowClassifier
-        
+
         try:
-            classifier = classifier_type.deserialize_hdf5( classifierGroup )
+            classifier = classifier_type.deserialize_hdf5(classifierGroup)
         except:
-            warnings.warn( "Wasn't able to deserialize the saved classifier.  "
-                           "It will need to be retrainied" )
+            warnings.warn("Wasn't able to deserialize the saved classifier.  " "It will need to be retrainied")
             return
 
         # Now force the classifier into our classifier cache. The
@@ -640,16 +698,14 @@ class SerialClassifierSlot(SerialSlot):
         # consistent with the images and labels that we just
         # loaded. As soon as training input changes, it will be
         # retrained.)
-        self.cache.forceValue( classifier )
+        self.cache.forceValue(classifier)
 
 
 class SerialCountingSlot(SerialSlot):
     """For saving a random forest classifier."""
-    def __init__(self, slot, cache, inslot=None, name=None,
-                 default=None, depends=None, selfdepends=True):
-        super(SerialCountingSlot, self).__init__(
-            slot, inslot, name, "wrapper{:04d}", default, depends, selfdepends
-        )
+
+    def __init__(self, slot, cache, inslot=None, name=None, default=None, depends=None, selfdepends=True):
+        super(SerialCountingSlot, self).__init__(slot, inslot, name, "wrapper{:04d}", default, depends, selfdepends)
         self.cache = cache
         if self.name is None:
             self.name = slot.name
@@ -678,13 +734,13 @@ class SerialCountingSlot(SerialSlot):
         # our open hdf5 group. Instead, we'll use vigra to write the
         # classifier to a temporary file.
         tmpDir = tempfile.mkdtemp()
-        cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5').replace('\\', '/')
+        cachePath = os.path.join(tmpDir, "tmp_classifier_cache.h5").replace("\\", "/")
         for i, forest in enumerate(classifier_forests):
-            targetname = '{0}/{1}'.format(name, self.subname.format(i))
+            targetname = "{0}/{1}".format(name, self.subname.format(i))
             forest.writeHDF5(cachePath, targetname)
 
         # Open the temp file and copy to our project group
-        with h5py.File(cachePath, 'r') as cacheFile:
+        with h5py.File(cachePath, "r") as cacheFile:
             group.copy(cacheFile[name], name)
 
         os.remove(cachePath)
@@ -702,20 +758,20 @@ class SerialCountingSlot(SerialSlot):
         # from our open hdf5 group. Instead, we'll copy the
         # classfier data to a temporary file and give it to vigra.
         tmpDir = tempfile.mkdtemp()
-        cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5').replace('\\', '/')
-        with h5py.File(cachePath, 'w') as cacheFile:
+        cachePath = os.path.join(tmpDir, "tmp_classifier_cache.h5").replace("\\", "/")
+        with h5py.File(cachePath, "w") as cacheFile:
             cacheFile.copy(classifierGroup, self.name)
 
         try:
             forests = []
             for name, forestGroup in sorted(classifierGroup.items()):
-                targetname = '{0}/{1}'.format(self.name, name)
-                #forests.append(vigra.learning.RandomForest(cachePath, targetname))
+                targetname = "{0}/{1}".format(self.name, name)
+                # forests.append(vigra.learning.RandomForest(cachePath, targetname))
                 from ilastik.applets.counting.countingsvr import SVR
+
                 forests.append(SVR.load(cachePath, targetname))
         except:
-            warnings.warn( "Wasn't able to deserialize the saved classifier.  "
-                           "It will need to be retrainied" )
+            warnings.warn("Wasn't able to deserialize the saved classifier.  " "It will need to be retrainied")
             return
         finally:
             os.remove(cachePath)
@@ -730,18 +786,19 @@ class SerialCountingSlot(SerialSlot):
         # retrained.)
         self.cache.forceValue(numpy.array(forests))
 
+
 class SerialDictSlot(SerialSlot):
     """For saving a dictionary."""
-    def __init__(self, slot, inslot=None, name=None, subname=None,
-                 default=None, depends=None, selfdepends=True, transform=None):
+
+    def __init__(
+        self, slot, inslot=None, name=None, subname=None, default=None, depends=None, selfdepends=True, transform=None
+    ):
         """
         :param transform: a function called on each key before
         inserting it into the dictionary.
 
         """
-        super(SerialDictSlot, self).__init__(
-            slot, inslot, name, subname, default, depends, selfdepends
-        )
+        super(SerialDictSlot, self).__init__(slot, inslot, name, subname, default, depends, selfdepends)
         if transform is None:
             transform = lambda x: x
         self.transform = transform
@@ -754,12 +811,12 @@ class SerialDictSlot(SerialSlot):
             else:
                 if isinstance(v, str):
                     # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
-                    v = v.encode('utf-8')
+                    v = v.encode("utf-8")
                 if isinstance(v, list):
                     vv = []
                     for a in v:
                         if isinstance(a, str):
-                            vv.append(a.encode('utf-8'))
+                            vv.append(a.encode("utf-8"))
                         else:
                             vv.append(a)
                     v = vv
@@ -774,7 +831,7 @@ class SerialDictSlot(SerialSlot):
                 value = subgroup[key][()]
                 if isinstance(value, bytes):
                     # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
-                    value = value.decode('utf-8')
+                    value = value.decode("utf-8")
 
             result[self.transform(key)] = value
         return result
@@ -784,7 +841,8 @@ class SerialDictSlot(SerialSlot):
         try:
             slot.setValue(result)
         except AssertionError as e:
-            warnings.warn('setValue() failed. message: {}'.format(e.message))
+            warnings.warn("setValue() failed. message: {}".format(e.message))
+
 
 class SerialObjectFeatureNamesSlot(SerialDictSlot):
     """Backwards compatible serializer for DictSlot containing feature names"""
@@ -795,20 +853,22 @@ class SerialObjectFeatureNamesSlot(SerialDictSlot):
         Global feature names used to be saved into .ilp files under a '0' key.
         That is no longer the case, so this method peels that extra level off when
         it is present."""
-        if list(subgroup.keys()) == ['0']:
-            subgroup = subgroup['0']
+        if list(subgroup.keys()) == ["0"]:
+            subgroup = subgroup["0"]
         return super()._getValue(subgroup, slot)
+
 
 class SerialClassifierFactorySlot(SerialSlot):
     def __init__(self, slot, name=None):
-        super( SerialClassifierFactorySlot, self ).__init__( slot, name=name )
+        super(SerialClassifierFactorySlot, self).__init__(slot, name=name)
         self._failed_to_deserialize = False
-        assert slot.ready(), \
-            "ClassifierFactory slots must be given a default value "\
+        assert slot.ready(), (
+            "ClassifierFactory slots must be given a default value "
             "(in case the classifier can't be deserialized in a future version of ilastik)."
-    
+        )
+
     def _saveValue(self, group, name, value):
-        pickled = pickle.dumps( value, 0 )
+        pickled = pickle.dumps(value, 0)
         group.create_dataset(name, data=pickled)
         self._failed_to_deserialize = False
 
@@ -823,21 +883,23 @@ class SerialClassifierFactorySlot(SerialSlot):
         try:
             # Attempt to unpickle
             value = pickle.loads(pickled)
-            
+
             # Verify that the VERSION of the classifier factory in the currently executing code
             #  has not changed since this classifier was stored.
-            assert 'VERSION' in value.__dict__ and value.VERSION == type(value).VERSION
+            assert "VERSION" in value.__dict__ and value.VERSION == type(value).VERSION
         except:
             self._failed_to_deserialize = True
-            warnings.warn("This project file uses an old or unsupported classifier storage format. "
-                          "The classifier will be stored in the new format when you save your project.")
+            warnings.warn(
+                "This project file uses an old or unsupported classifier storage format. "
+                "The classifier will be stored in the new format when you save your project."
+            )
         else:
-            slot.setValue( value )
+            slot.setValue(value)
 
 
 class SerialPickleableSlot(SerialSlot):
     def __init__(self, slot, version, default=None, name=None):
-        super( SerialPickleableSlot, self ).__init__( slot, name=name )
+        super(SerialPickleableSlot, self).__init__(slot, name=name)
         self._failed_to_deserialize = False
         self._version = version
         self._default = default
@@ -848,7 +910,7 @@ class SerialPickleableSlot(SerialSlot):
         # (see http://docs.h5py.org/en/latest/strings.html)
         pickled = numpy.void(pickle.dumps(value, 0))
         dset = group.create_dataset(name, data=pickled)
-        dset.attrs['version'] = self._version
+        dset.attrs["version"] = self._version
         self._failed_to_deserialize = False
 
     def shouldSerialize(self, group):
@@ -860,14 +922,15 @@ class SerialPickleableSlot(SerialSlot):
     def _getValue(self, dset, slot):
         # first check that the version of the deserialized and the expected value are the same
         try:
-            loaded_version = dset.attrs['version']
+            loaded_version = dset.attrs["version"]
         except KeyError as e:
             loaded_version = None
-            logger.debug('No `version` attribute found.')
+            logger.debug("No `version` attribute found.")
         if not loaded_version == self._version:
             logger.warning(
-                f'PickleableSlot version mismatch detected. (loaded: {loaded_version}, running:{self._version})'
-                'Trying to load slot value.')
+                f"PickleableSlot version mismatch detected. (loaded: {loaded_version}, running:{self._version})"
+                "Trying to load slot value."
+            )
         try:
             # Attempt to unpickle
             pickled = dset[()]
@@ -877,22 +940,27 @@ class SerialPickleableSlot(SerialSlot):
             value = pickle.loads(pickled)
         except Exception as e:
             self._failed_to_deserialize = True
-            warnings.warn("This project file uses an old or unsupported storage format. "
-                          "When save the project the next time, it will be stored in the new format.\n"
-                          "Encountered exception:\n"
-                          "{}".format(e))
+            warnings.warn(
+                "This project file uses an old or unsupported storage format. "
+                "When save the project the next time, it will be stored in the new format.\n"
+                "Encountered exception:\n"
+                "{}".format(e)
+            )
             slot.setValue(self._default)
         else:
             slot.setValue(value)
+
 
 ####################################
 # the base applet serializer class #
 ####################################
 
+
 class AppletSerializer(with_metaclass(ABCMeta, object)):
     """
     Base class for all AppletSerializers.
     """
+
     base_initialized = False
 
     # override if necessary
@@ -913,8 +981,7 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
         """
         pass
 
-    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File,
-                             projectFilePath, headless = False):
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath, headless=False):
         """Child classes should override this function, if
         necessary.
 
@@ -1012,7 +1079,7 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
         self.progressSignal(progress)
 
         # Set the version
-        key = 'StorageVersion'
+        key = "StorageVersion"
         deleteIfPresent(topGroup, key)
         topGroup.create_dataset(key, data=self.version)
 
@@ -1028,7 +1095,7 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
         finally:
             self.progressSignal(100)
 
-    def deserializeFromHdf5(self, hdf5File, projectFilePath, headless = False):
+    def deserializeFromHdf5(self, hdf5File, projectFilePath, headless=False):
         """Read the the current applet state from the given hdf5File
         handle, which should already be open.
 
@@ -1041,17 +1108,17 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
 
         :param projectFilePath: The path to the given file handle.
             (Most serializers do not use this parameter.)
-        
+
         :param headless: Are we called in headless mode?
             (in headless mode corrupted files cannot be fixed via the GUI)
-        
+
         """
         self.progressSignal(0)
 
         # If the top group isn't there, call initWithoutTopGroup
         try:
             topGroup = hdf5File[self.topGroupName]
-            groupVersion = topGroup['StorageVersion'][()]
+            groupVersion = topGroup["StorageVersion"][()]
         except KeyError:
             topGroup = None
             groupVersion = None
@@ -1070,22 +1137,24 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
         finally:
             self.progressSignal(100)
 
-    def repairFile(self,path,filt = None):
+    def repairFile(self, path, filt=None):
         """get new path to lost file"""
-        
-        from PyQt5.QtWidgets import QFileDialog,QMessageBox
-        
-        text = "The file at {} could not be found any more. Do you want to search for it at another directory?".format(path)
+
+        from PyQt5.QtWidgets import QFileDialog, QMessageBox
+
+        text = "The file at {} could not be found any more. Do you want to search for it at another directory?".format(
+            path
+        )
         logger.info(text)
-        c = QMessageBox.critical(None, "update external data",text, QMessageBox.Ok | QMessageBox.Cancel)
+        c = QMessageBox.critical(None, "update external data", text, QMessageBox.Ok | QMessageBox.Cancel)
 
         if c == QMessageBox.Cancel:
             raise RuntimeError("Could not find external data: " + path)
 
         options = QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
-            options |=  QFileDialog.DontUseNativeDialog
-        fileName, _filter = QFileDialog.getOpenFileName( None, "repair files", path, filt, options=options)
+            options |= QFileDialog.DontUseNativeDialog
+        fileName, _filter = QFileDialog.getOpenFileName(None, "repair files", path, filt, options=options)
         if not fileName:
             raise RuntimeError("Could not find external data: " + path)
         else:
@@ -1102,7 +1171,7 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
         """
         pass
 
-    def updateWorkingDirectory(self,newdir,olddir):
+    def updateWorkingDirectory(self, newdir, olddir):
         """Optional override for subclasses. Called when the
         working directory is changed and relative paths have
         to be updated. Child Classes should overwrite this method
