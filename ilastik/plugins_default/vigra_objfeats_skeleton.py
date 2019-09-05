@@ -16,48 +16,52 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.plugins import ObjectFeaturesPlugin
 import vigra
 import numpy
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 def cleanup_value(val, nObjects):
     """ensure that the value is a numpy array with the correct shape."""
     val = numpy.asarray(val)
-    
+
     if val.ndim == 1:
         val = val.reshape(-1, 1)
     assert val.shape[0] == nObjects
-    
+
     # remove background
     val = val[1:]
     return val
 
+
 def cleanup(d, nObjects, features):
-    
+
     result = dict((k, cleanup_value(v, nObjects)) for k, v in d.items())
     newkeys = set(result.keys()) & set(features)
     return dict((k, result[k]) for k in newkeys)
 
+
 class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
-    
-    local_preffix = "Skeleton " #note the space at the end, it's important
-    
+
+    local_preffix = "Skeleton "  # note the space at the end, it's important
+
     ndim = None
-    
+
     def availableFeatures(self, image, labels):
         names = vigra.analysis.supportedSkeletonFeatures(labels)
-        logger.debug('2D Skeleton Features: Supported Skeleton Features: done.')
+        logger.debug("2D Skeleton Features: Supported Skeleton Features: done.")
 
         tooltips = {}
         result = dict((n, {}) for n in names)
         result = self.fill_properties(result)
         for f, v in result.items():
-            v['tooltip'] = self.local_preffix + f
-        
+            v["tooltip"] = self.local_preffix + f
+
         return result
 
     @staticmethod
@@ -75,17 +79,22 @@ class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
                 features[feature]["detailtext"] = "Total number of branches in the skeleton of this object."
             if feature == "Hole Count":
                 features[feature]["displaytext"] = "Number of Holes"
-                features[feature]["detailtext"] = "The number of cycles in the skeleton (i.e. the number of cavities in the region)"
+                features[feature][
+                    "detailtext"
+                ] = "The number of cycles in the skeleton (i.e. the number of cavities in the region)"
             if feature == "Diameter":
                 features[feature]["displaytext"] = "Diameter"
                 features[feature]["detailtext"] = "The longest path between two endpoints on the skeleton."
             if feature == "Euclidean Diameter":
                 features[feature]["displaytext"] = "Euclidean Diameter"
-                features[feature]["detailtext"] = "The Euclidean distance between the endpoints (terminals) of the longest path " \
-                                                  "on the skeleton"
+                features[feature]["detailtext"] = (
+                    "The Euclidean distance between the endpoints (terminals) of the longest path " "on the skeleton"
+                )
             if feature == "Skeleton Center":
                 features[feature]["displaytext"] = "Center of the Skeleton"
-                features[feature]["detailtext"] = "The coordinates of the midpoint on the longest path between the endpoints of the skeleton."
+                features[feature][
+                    "detailtext"
+                ] = "The coordinates of the midpoint on the longest path between the endpoints of the skeleton."
                 features[feature]["group"] = "Location"
             if feature == "Total Length":
                 features[feature]["displaytext"] = "Length of the Skeleton"
@@ -111,12 +120,11 @@ class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
 
         # find the number of objects
         nobj = result[features[0]].shape[0]
-        
-        #NOTE: this removes the background object!!!
-        #The background object is always present (even if there is no 0 label) and is always removed here
+
+        # NOTE: this removes the background object!!!
+        # The background object is always present (even if there is no 0 label) and is always removed here
         return cleanup(result, nobj, features)
 
     def compute_global(self, image, labels, features, axes):
-        
-        return self._do_4d(image, labels, list(features.keys()), axes)
 
+        return self._do_4d(image, labels, list(features.keys()), axes)

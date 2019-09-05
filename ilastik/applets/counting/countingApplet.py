@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,31 +18,32 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
 from .opCounting import OpCounting
 from .countingSerializer import CountingSerializer
 
+
 class CountingApplet(StandardApplet):
-    def __init__(self,
-                 name="Counting",
-                 workflow=None,
-                 projectFileGroupName="Counting"):
+    def __init__(self, name="Counting", workflow=None, projectFileGroupName="Counting"):
         self._topLevelOperator = OpCounting(parent=workflow)
         super(CountingApplet, self).__init__(name=name, workflow=workflow)
 
-        #self._serializableItems = [
+        # self._serializableItems = [
         #    ObjectClassificationSerializer(projectFileGroupName,
         #                                   self.topLevelOperator)]
-        self._serializableItems = [CountingSerializer(self._topLevelOperator, projectFileGroupName)]   # Legacy (v0.5) importer
+        self._serializableItems = [
+            CountingSerializer(self._topLevelOperator, projectFileGroupName)
+        ]  # Legacy (v0.5) importer
         self.predictionSerializer = self._serializableItems[0]
 
         self._topLevelOperator.opTrain.progressSignal.subscribe(self.progressSignal)
 
     def getMultiLaneGui(self):
         from .countingGui import CountingGui
+
         """
         Override from base class. The label that is initially selected needs to be selected after volumina knows
         the current layer stack. Which is only the case when the gui objects LayerViewerGui.updateAllLayers run at least once after object init.
@@ -65,4 +67,5 @@ class CountingApplet(StandardApplet):
     @property
     def singleLaneGuiClass(self):
         from .countingGui import CountingGui
+
         return CountingGui

@@ -54,13 +54,16 @@ def getTypeRange(numpy_type):
     type_info = numpy.iinfo(numpy_type)
     return (type_info.min, type_info.max)
 
+
 class CantSaveAsRelativePathsException(Exception):
-    def __init__(self, file_path:str, base_dir:str):
+    def __init__(self, file_path: str, base_dir: str):
         super().__init__(f"Can't represent {file_path} relative to {base_dir}")
+
 
 class UnsuitedAxistagsException(Exception):
     def __init__(self, axistags, shape):
         super().__init__(f"Axistags {axistags} don't fit data shape {shape}")
+
 
 class DatasetInfo(ABC):
     def __init__(
@@ -69,11 +72,11 @@ class DatasetInfo(ABC):
         laneShape: Tuple,
         laneDtype: type,
         default_tags: AxisTags,
-        allowLabels: bool=True,
-        subvolume_roi: Tuple=None,
+        allowLabels: bool = True,
+        subvolume_roi: Tuple = None,
         axistags: AxisTags = None,
-        display_mode: str="default",
-        nickname: str="",
+        display_mode: str = "default",
+        nickname: str = "",
         normalizeDisplay: bool = None,
         drange: Tuple[Number, Number] = None,
         guess_tags_for_singleton_axes: bool = False,
@@ -113,34 +116,36 @@ class DatasetInfo(ABC):
 
     def to_json_data(self) -> Dict:
         return {
-            "axistags": self.axistags.toJSON().encode('utf-8'),
+            "axistags": self.axistags.toJSON().encode("utf-8"),
             "shape": self.laneShape,
             "allowLabels": self.allowLabels,
             "subvolume_roi": self.subvolume_roi,
-            "display_mode": self.display_mode.encode('utf-8'),
-            "nickname": self.nickname.encode('utf-8'),
+            "display_mode": self.display_mode.encode("utf-8"),
+            "nickname": self.nickname.encode("utf-8"),
             "normalizeDisplay": self.normalizeDisplay,
             "drange": self.drange,
-            "__class__": self.__class__.__name__.encode('utf-8'),
+            "__class__": self.__class__.__name__.encode("utf-8"),
         }
 
     @classmethod
-    def from_h5_group(cls, data:h5py.Group, params:Dict=None):
+    def from_h5_group(cls, data: h5py.Group, params: Dict = None):
         params = params or {}
-        params.update({
-            "axistags": AxisTags.fromJSON(data['axistags'][()].decode('utf-8')),
-            "allowLabels": data['allowLabels'][()],
-            "nickname": data['nickname'][()].decode('utf-8'),
-            'project_file': data.file
-        })
+        params.update(
+            {
+                "axistags": AxisTags.fromJSON(data["axistags"][()].decode("utf-8")),
+                "allowLabels": data["allowLabels"][()],
+                "nickname": data["nickname"][()].decode("utf-8"),
+                "project_file": data.file,
+            }
+        )
         if "subvolume_roi" in data:
-            params['subvolume_roi'] = tuple(data['subvolume_roi'][()])
-        if 'normalizeDisplay' in data:
-            params["normalizeDisplay"] = data['normalizeDisplay'][()],
-        if 'drange' in data:
-            params["drange"] = tuple(data['drange']),
+            params["subvolume_roi"] = tuple(data["subvolume_roi"][()])
+        if "normalizeDisplay" in data:
+            params["normalizeDisplay"] = (data["normalizeDisplay"][()],)
+        if "drange" in data:
+            params["drange"] = (tuple(data["drange"]),)
         if "display_mode" in data:
-            params["display_mode"] = data['display_mode'][()].decode('utf-8')
+            params["display_mode"] = data["display_mode"][()].decode("utf-8")
         return cls(**params)
 
     def is_in_filesystem(self) -> bool:
@@ -201,7 +206,7 @@ class DatasetInfo(ABC):
 
         if missing_files:
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), os.path.pathsep.join(missing_files))
-        return sorted(p.replace('\\', '/') for p in expanded_paths)
+        return sorted(p.replace("\\", "/") for p in expanded_paths)
 
     @classmethod
     def globInternalPaths(cls, file_path: str, glob_str: str, cwd: str = None) -> List[str]:
@@ -274,7 +279,7 @@ class DatasetInfo(ABC):
 
 
 class ProjectInternalDatasetInfo(DatasetInfo):
-    def __init__(self, *, inner_path: str, project_file: h5py.File, nickname:str='', **info_kwargs):
+    def __init__(self, *, inner_path: str, project_file: h5py.File, nickname: str = "", **info_kwargs):
         self.inner_path = inner_path
         self.project_file = project_file
         self.dataset = project_file[inner_path]
@@ -287,28 +292,30 @@ class ProjectInternalDatasetInfo(DatasetInfo):
             laneShape=self.dataset.shape,
             laneDtype=self.dataset.dtype,
             nickname=nickname or os.path.split(self.inner_path)[-1],
-            **info_kwargs
+            **info_kwargs,
         )
 
     def to_json_data(self) -> Dict:
         out = super().to_json_data()
-        out["inner_path"] = self.inner_path.encode('utf-8')
+        out["inner_path"] = self.inner_path.encode("utf-8")
         return out
 
     @classmethod
-    def from_h5_group(cls, data:h5py.Group, params:Dict=None):
+    def from_h5_group(cls, data: h5py.Group, params: Dict = None):
         params = params or {}
-        if "datasetId" in data and 'inner_path' not in data: #legacy format
-            dataset_id = data["datasetId"][()].decode('utf-8')
+        if "datasetId" in data and "inner_path" not in data:  # legacy format
+            dataset_id = data["datasetId"][()].decode("utf-8")
             inner_path = None
+
             def grab_inner_path(h5_path, dataset):
                 nonlocal inner_path
                 if h5_path.endswith(dataset_id):
                     inner_path = h5_path
+
             data.file.visititems(grab_inner_path)
-            params['inner_path'] = inner_path
+            params["inner_path"] = inner_path
         else:
-            params['inner_path'] = data['inner_path'][()].decode('utf-8')
+            params["inner_path"] = data["inner_path"][()].decode("utf-8")
         return super().from_h5_group(data, params)
 
     @property
@@ -319,7 +326,7 @@ class ProjectInternalDatasetInfo(DatasetInfo):
     def display_string(self) -> str:
         return "Project Internal: " + self.inner_path
 
-    def get_provider_slot(self, parent:Operator):
+    def get_provider_slot(self, parent: Operator):
         opReader = OpStreamingH5N5Reader(parent=parent)
         opReader.H5N5File.setValue(self.project_file)
         opReader.InternalPath.setValue(self.inner_path)
@@ -352,7 +359,7 @@ class PreloadedArrayDatasetInfo(DatasetInfo):
     def display_string(self) -> str:
         return "Preloaded Array"
 
-    def get_provider_slot(self, parent:Operator) -> OutputSlot:
+    def get_provider_slot(self, parent: Operator) -> OutputSlot:
         opReader = OpArrayPiper(parent=parent)
         opReader.Input.setValue(self.preloaded_array)
         return opReader.Output
@@ -424,7 +431,7 @@ class FilesystemDatasetInfo(DatasetInfo):
         first_external_path = PathComponents(self.filePath.split(os.path.pathsep)[0]).externalPath
         return Path(first_external_path).parent
 
-    def get_provider_slot(self, parent:Operator):
+    def get_provider_slot(self, parent: Operator):
         op_reader = OpInputDataReader(
             parent=parent, WorkingDirectory=self.base_dir, FilePath=self.filePath, SequenceAxis=self.sequence_axis
         )
@@ -432,12 +439,12 @@ class FilesystemDatasetInfo(DatasetInfo):
 
     def to_json_data(self) -> Dict:
         out = super().to_json_data()
-        out["filePath"] = self.effective_path.encode('utf-8')
+        out["filePath"] = self.effective_path.encode("utf-8")
         return out
 
     @classmethod
-    def from_h5_group(cls, group:h5py.Group):
-        return super().from_h5_group(group, {'filePath': group['filePath'][()].decode('utf-8')})
+    def from_h5_group(cls, group: h5py.Group):
+        return super().from_h5_group(group, {"filePath": group["filePath"][()].decode("utf-8")})
 
     def isHdf5(self) -> bool:
         return any(self.pathIsHdf5(ep) for ep in self.external_paths)
@@ -495,6 +502,7 @@ class FilesystemDatasetInfo(DatasetInfo):
             possible_internal_paths |= set(self.getPossibleInternalPathsFor(external_path))
         return possible_internal_paths
 
+
 class RelativeFilesystemDatasetInfo(FilesystemDatasetInfo):
     def __init__(self, **fs_info_kwargs):
         super().__init__(**fs_info_kwargs)
@@ -508,6 +516,7 @@ class RelativeFilesystemDatasetInfo(FilesystemDatasetInfo):
     @property
     def effective_path(self) -> str:
         return os.path.pathsep.join(self.get_relative_paths())
+
 
 class OpDataSelection(Operator):
     """

@@ -99,6 +99,7 @@ class BatchProcessingApplet(Applet):
         try:
             results = []
             for batch_index, role_input_paths in enumerate(batches):
+
                 def lerpProgressSignal(a, b, p):
                     self.progressSignal((100 - p) * a + p * b)
 
@@ -110,7 +111,7 @@ class BatchProcessingApplet(Applet):
                     input_axes=input_axes,
                     export_to_array=export_to_array,
                     sequence_axis=sequence_axis,
-                    progress_callback=partial(lerpProgressSignal, global_progress_start, global_progress_end)
+                    progress_callback=partial(lerpProgressSignal, global_progress_start, global_progress_end),
                 )
                 results.append(result)
             self.dataExportApplet.post_process_entire_export()

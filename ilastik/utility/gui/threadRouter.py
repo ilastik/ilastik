@@ -1,4 +1,5 @@
 from __future__ import print_function
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,75 +18,82 @@ from __future__ import print_function
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import threading
 from functools import partial, wraps
 from PyQt5.QtCore import QObject, pyqtSignal, Qt
 
+
 class ThreadRouter(QObject):
     """
     Create an instance of this class called 'threadRouter' to enable the :py:func:`@threadRouted<threadRouted>` decorator for methods of your object.
     """
+
     routeToParent = pyqtSignal(object)
-    
-    # The main window of the app should set this to True when the 
+
+    # The main window of the app should set this to True when the
     #  app is shutting down and thus no gui events should be processed any more.
     app_is_shutting_down = False
 
     def __init__(self, parent):
         """
         Construct a threadRouter object.  You must call it ``self.threadRouter``.
-        
+
         :param parent: The parent object, which whose thread will be used for all :py:func:`@threadRouted<threadRouted>` functions.
         """
         assert parent is not None, "Can't use ThreadRouter without a parent QObject."
         QObject.__init__(self, parent=parent)
         self.ident = threading.current_thread().ident
-        self.routeToParent.connect( self.handleRoutedFunc, Qt.BlockingQueuedConnection )
-    
+        self.routeToParent.connect(self.handleRoutedFunc, Qt.BlockingQueuedConnection)
+
     def handleRoutedFunc(self, f):
         return f()
-    
+
+
 def threadRoutedWithRouter(threadRouter):
     def _threadRouted(func):
         """
         Decorator that routes calls to the given member function into the object's parent thread.
         If a member function ``f`` is decorated with ``@threadRouted``, all calls to ``f`` will execute in the GUI thread.
         The calling thread will block while ``f`` is executing, so the call will appear synchronous.
-        This mechanism is slow, and should only be used for functions that MUST execute in the GUI thread. 
-        
+        This mechanism is slow, and should only be used for functions that MUST execute in the GUI thread.
+
         .. note:: Objects that use the @threadRouted decorator MUST have a :py:class:`ThreadRouter` member called ``self.threadRouter``
         """
+
         @wraps(func)
         def routed(*args, **kwargs):
             if ThreadRouter.app_is_shutting_down:
                 return
-            
+
             router = threadRouter
             if router is None:
                 assert len(args) > 0
                 obj = args[0]
                 assert isinstance(obj, QObject)
-                assert hasattr(obj, 'threadRouter'), \
-                    "Can't use the @threadRouted decorator unless your object has a member called self.threadRouter"
+                assert hasattr(
+                    obj, "threadRouter"
+                ), "Can't use the @threadRouted decorator unless your object has a member called self.threadRouter"
                 router = obj.threadRouter
-    
+
             # If we're already in the parent thread, then we can call the function directly
             if router.ident == threading.current_thread().ident:
                 val = func(*args, **kwargs)
-                # We rely on Qt signals (below) so it is an error to 
+                # We rely on Qt signals (below) so it is an error to
                 #  use @threadRouted with a function that gives a return value
                 assert val is None, "Can't return a value from an @threadRouted function."
-            
-            # Otherwise, we rely on the Qt BlockingQueuedConnection 
-            #  signal behavior to transfer the call to the parent thread. 
+
+            # Otherwise, we rely on the Qt BlockingQueuedConnection
+            #  signal behavior to transfer the call to the parent thread.
             else:
-                router.routeToParent.emit( partial(func, *args, **kwargs) )
-                     
-        routed.__wrapped__ = func # Emulate python 3 behavior of @wraps
+                router.routeToParent.emit(partial(func, *args, **kwargs))
+
+        routed.__wrapped__ = func  # Emulate python 3 behavior of @wraps
         return routed
+
     return _threadRouted
+
 
 threadRouted = threadRoutedWithRouter(None)
 
@@ -94,7 +102,6 @@ if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
 
     class TestObject(QObject):
-        
         def __init__(self):
             QObject.__init__(self)
             self.threadRouter = ThreadRouter(self)
@@ -105,16 +112,15 @@ if __name__ == "__main__":
             print("thread id = ", threading.current_thread().ident)
 
     app = QApplication([])
-    
+
     o = TestObject()
-    
+
     def test():
         print("thread id = ", threading.current_thread().ident)
         o.printThreadId()
         print("Finished.")
-    
+
     th = threading.Thread(target=test)
     th.start()
-    
+
     app.exec_()
-    

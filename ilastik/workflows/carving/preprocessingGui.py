@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,28 +18,30 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
-#Python
+# Python
 import os
 import logging
+
 logger = logging.getLogger(__name__)
 
-#PyQt
+# PyQt
 from PyQt5 import uic
 from PyQt5.QtWidgets import QMainWindow, QMessageBox
 from PyQt5.QtGui import QIcon
 
-#ilastik
+# ilastik
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from .preprocessingViewerGui import PreprocessingViewerGui
 
+
 class PreprocessingGui(QMainWindow):
     def __init__(self, parentApplet, topLevelOperatorView):
-        super(PreprocessingGui,self).__init__()
-        
+        super(PreprocessingGui, self).__init__()
+
         self.parentApplet = parentApplet
         self.drawer = None
         self.threadRouter = ThreadRouter(self)
@@ -46,24 +49,26 @@ class PreprocessingGui(QMainWindow):
         self.topLevelOperatorView = topLevelOperatorView
         self.initAppletDrawerUic()
         self.centralGui = PreprocessingViewerGui(parentApplet, self.topLevelOperatorView)
-        
+
     def initAppletDrawerUic(self):
         """
         Load the ui file for the applet drawer, which we own.
         """
         # Load the ui file (find it in our own directory)
-        localDir = os.path.split(__file__)[0]+'/'
+        localDir = os.path.split(__file__)[0] + "/"
         # (We don't pass self here because we keep the drawer ui in a separate object.)
-        self.drawer = uic.loadUi(localDir+"/preprocessingDrawer.ui")
+        self.drawer = uic.loadUi(localDir + "/preprocessingDrawer.ui")
 
         # Set up radiobox layout
-        self.filterbuttons = [self.drawer.filter1,
-                                self.drawer.filter2,
-                                self.drawer.filter3,
-                                self.drawer.filter4,
-                                self.drawer.filter5]
+        self.filterbuttons = [
+            self.drawer.filter1,
+            self.drawer.filter2,
+            self.drawer.filter3,
+            self.drawer.filter4,
+            self.drawer.filter5,
+        ]
 
-        self.correspondingSigmaMins = [0.9,0.9,0.6,0.1,0.1]
+        self.correspondingSigmaMins = [0.9, 0.9, 0.6, 0.1, 0.1]
 
         # Set up our handlers
         for f in self.filterbuttons:
@@ -78,8 +83,8 @@ class PreprocessingGui(QMainWindow):
 
         self.parentApplet.appletStateUpdateRequested.subscribe(self.processingFinished)
 
-        #FIXME: for release 0.6, disable this (the reset button made the gui even more complicated)            
-        #self.drawer.resetButton.clicked.connect(self.topLevelOperatorView.reset)
+        # FIXME: for release 0.6, disable this (the reset button made the gui even more complicated)
+        # self.drawer.resetButton.clicked.connect(self.topLevelOperatorView.reset)
 
         # Slot change handlers (in case the operator is somehow changed *outside* the gui, such as by the workflow.
         self.topLevelOperatorView.Filter.notifyDirty(self.updateFilterFromOperator)
@@ -97,9 +102,9 @@ class PreprocessingGui(QMainWindow):
         self.updateSigmaFromOperator()
 
     def handleFilterChanged(self):
-        choice =  [f.isChecked() for f in self.filterbuttons].index(True)
+        choice = [f.isChecked() for f in self.filterbuttons].index(True)
         self.filterChoice = choice
-        #update lower bound for sigma
+        # update lower bound for sigma
         self.drawer.sigmaSpin.setMinimum(self.correspondingSigmaMins[choice])
 
     def processingFinished(self):
@@ -110,23 +115,19 @@ class PreprocessingGui(QMainWindow):
         showing the watershed layer.
         """
         layerStack = self.centralGui.editor.layerStack
-        watershedIndex = layerStack.findMatchingIndex(
-            lambda x: x.name == 'Watershed'
-            )
-        filteredIndex = layerStack.findMatchingIndex(
-            lambda x: x.name == 'Filtered Data'
-            )
+        watershedIndex = layerStack.findMatchingIndex(lambda x: x.name == "Watershed")
+        filteredIndex = layerStack.findMatchingIndex(lambda x: x.name == "Filtered Data")
 
         # Only do something if none of the result layers is visible
         if not layerStack[watershedIndex].visible:
             if not layerStack[filteredIndex].visible:
                 layerStack[watershedIndex].visible = True
 
-    @threadRouted 
+    @threadRouted
     def onFailed(self, exception, exc_info):
-        log_exception( logger, exc_info=exc_info )
+        log_exception(logger, exc_info=exc_info)
         QMessageBox.critical(self, "error", str(exception))
-    
+
     def handleRunButtonClicked(self):
         self.setWriteprotect()
         self.topLevelOperatorView.Filter.setValue(self.filterChoice)
@@ -137,9 +138,9 @@ class PreprocessingGui(QMainWindow):
 
         r = self.topLevelOperatorView.PreprocessedData[:]
         r.notify_failed(self.onFailed)
-        r.notify_finished( bind(self.parentApplet.appletStateUpdateRequested) )
+        r.notify_finished(bind(self.parentApplet.appletStateUpdateRequested))
         r.submit()
-        
+
     def handleWriterprotectStateChanged(self):
         iswriteprotect = self.drawer.writeprotectBox.checkState()
         for f in self.filterbuttons:
@@ -150,44 +151,44 @@ class PreprocessingGui(QMainWindow):
         self.drawer.sizeRegularizerSpin.setEnabled(not iswriteprotect)
         self.drawer.reduceToSpin.setEnabled(not iswriteprotect)
         self.drawer.doAggloCheckBox.setEnabled(not iswriteprotect)
-    
-    def enableWriteprotect(self,ew):
+
+    def enableWriteprotect(self, ew):
         self.drawer.writeprotectBox.setEnabled(ew)
-    
+
     def setWriteprotect(self):
         self.drawer.writeprotectBox.setChecked(True)
-    
-    def setFilter(self,s,propagate = False):
+
+    def setFilter(self, s, propagate=False):
         self.filterbuttons[s].setChecked(True)
         self.handleFilterChanged()
-    
-    def setSigma(self,sigma):
+
+    def setSigma(self, sigma):
         self.drawer.sigmaSpin.setValue(sigma)
-    
-    def enableReset(self,er):
+
+    def enableReset(self, er):
         pass
-        #TODO: re-enable this after the 0.6 release
-        #self.drawer.resetButton.setEnabled(er)
-    
-    def centralWidget( self ):
+        # TODO: re-enable this after the 0.6 release
+        # self.drawer.resetButton.setEnabled(er)
+
+    def centralWidget(self):
         return self.centralGui
-    
-    def appletDrawer( self ):
+
+    def appletDrawer(self):
         return self.drawer
-        
-    def menus( self ):
+
+    def menus(self):
         return []
-        
+
     def viewerControlWidget(self):
         return self.centralGui.viewerControlWidget()
-    
-    def setImageIndex(self,imageIndex):
+
+    def setImageIndex(self, imageIndex):
         pass
 
-    def imageLaneAdded(self,imageIndex):
+    def imageLaneAdded(self, imageIndex):
         pass
 
-    def imageLaneRemoved(self,laneIndex,finalLength):
+    def imageLaneRemoved(self, laneIndex, finalLength):
         pass
 
     def stopAndCleanUp(self):

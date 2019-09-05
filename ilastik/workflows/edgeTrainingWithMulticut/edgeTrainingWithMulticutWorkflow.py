@@ -36,21 +36,25 @@ from lazyflow.operators.generic import OpConvertDtype, OpPixelOperator
 from lazyflow.operators.valueProviders import OpPrecomputedInput
 
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 class EdgeTrainingWithMulticutWorkflow(Workflow):
     workflowName = "Edge Training With Multicut"
     workflowDisplayName = "Boundary-based Segmentation with Multicut"
 
-    workflowDescription = "Segment images based on boundary information: train an edge classifier and apply multicut to the results."
-    defaultAppletIndex = 0 # show DataSelection by default
+    workflowDescription = (
+        "Segment images based on boundary information: train an edge classifier and apply multicut to the results."
+    )
+    defaultAppletIndex = 0  # show DataSelection by default
 
     DATA_ROLE_RAW = 0
     DATA_ROLE_PROBABILITIES = 1
     DATA_ROLE_SUPERPIXELS = 2
     DATA_ROLE_GROUNDTRUTH = 3
-    ROLE_NAMES = ['Raw Data', 'Probabilities', 'Superpixels', 'Groundtruth']
-    EXPORT_NAMES = ['Multicut Segmentation']
+    ROLE_NAMES = ["Raw Data", "Probabilities", "Superpixels", "Groundtruth"]
+    EXPORT_NAMES = ["Multicut Segmentation"]
 
     @property
     def applets(self):
@@ -66,27 +70,31 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         # Create a graph to be shared by all operators
         graph = Graph()
 
-        super(EdgeTrainingWithMulticutWorkflow, self).__init__( shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
+        super(EdgeTrainingWithMulticutWorkflow, self).__init__(
+            shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs
+        )
         self._applets = []
 
         # -- DataSelection applet
         #
-        self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", forceAxisOrder=['zyxc', 'yxc'])
+        self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", forceAxisOrder=["zyxc", "yxc"])
 
         # Dataset inputs
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        opDataSelection.DatasetRoles.setValue( self.ROLE_NAMES )
+        opDataSelection.DatasetRoles.setValue(self.ROLE_NAMES)
 
         # -- Watershed applet
         #
         self.wsdtApplet = WsdtApplet(self, "DT Watershed", "DT Watershed")
 
         # -- Edge training AND Multicut applet
-        # 
-        self.edgeTrainingWithMulticutApplet = EdgeTrainingWithMulticutApplet(self, "Training and Multicut", "Training and Multicut")
+        #
+        self.edgeTrainingWithMulticutApplet = EdgeTrainingWithMulticutApplet(
+            self, "Training and Multicut", "Training and Multicut"
+        )
         opEdgeTrainingWithMulticut = self.edgeTrainingWithMulticutApplet.topLevelOperator
-        DEFAULT_FEATURES = { self.ROLE_NAMES[self.DATA_ROLE_RAW]: ["standard_edge_mean"] }
-        opEdgeTrainingWithMulticut.FeatureNames.setValue( DEFAULT_FEATURES )
+        DEFAULT_FEATURES = {self.ROLE_NAMES[self.DATA_ROLE_RAW]: ["standard_edge_mean"]}
+        opEdgeTrainingWithMulticut.FeatureNames.setValue(DEFAULT_FEATURES)
 
         # -- DataExport applet
         #
@@ -96,15 +104,14 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
 
         # Configure global DataExport settings
         opDataExport = self.dataExportApplet.topLevelOperator
-        opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
-        opDataExport.SelectionNames.setValue( self.EXPORT_NAMES )
+        opDataExport.WorkingDirectory.connect(opDataSelection.WorkingDirectory)
+        opDataExport.SelectionNames.setValue(self.EXPORT_NAMES)
 
         # -- BatchProcessing applet
         #
-        self.batchProcessingApplet = BatchProcessingApplet(self,
-                                                           "Batch Processing",
-                                                           self.dataSelectionApplet,
-                                                           self.dataExportApplet)
+        self.batchProcessingApplet = BatchProcessingApplet(
+            self, "Batch Processing", self.dataSelectionApplet, self.dataExportApplet
+        )
 
         # -- Expose applets to shell
         self._applets.append(self.dataSelectionApplet)
@@ -117,22 +124,26 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         #    (Command-line args are applied in onProjectLoaded(), below.)
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
-        parser.add_argument('--retrain', help="Re-train the classifier based on labels stored in the project file, and re-save.", action="store_true")
+        parser.add_argument(
+            "--retrain",
+            help="Re-train the classifier based on labels stored in the project file, and re-save.",
+            action="store_true",
+        )
         self.parsed_workflow_args, unused_args = parser.parse_known_args(workflow_cmdline_args)
         if unused_args:
             # Parse batch export/input args.
-            self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( unused_args )
-            self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args( unused_args )
+            self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args(unused_args)
+            self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args(unused_args)
         else:
             unused_args = None
             self._batch_input_args = None
             self._data_export_args = None
 
         if unused_args:
-            logger.warning("Unused command-line args: {}".format( unused_args ))
-        
+            logger.warning("Unused command-line args: {}".format(unused_args))
+
         if not self._headless:
-            shell.currentAppletChanged.connect( self.handle_applet_changed )
+            shell.currentAppletChanged.connect(self.handle_applet_changed)
 
     def prepareForNewLane(self, laneIndex):
         """
@@ -145,12 +156,11 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         # When the new lane is added, dirty notifications will propagate throughout the entire graph.
         # This means the classifier will be marked 'dirty' even though it is still usable.
         # Before that happens, let's store the classifier, so we can restore it in handleNewLanesAdded(), below.
-        if opClassifierCache.Output.ready() and \
-           not opClassifierCache._dirty:
+        if opClassifierCache.Output.ready() and not opClassifierCache._dirty:
             self.stored_classifier = opClassifierCache.Output.value
         else:
             self.stored_classifier = None
-        
+
     def handleNewLanesAdded(self):
         """
         Overridden from Workflow base class.
@@ -175,14 +185,14 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
         # RAW DATA: Convert to float32
-        opConvertRaw = OpConvertDtype( parent=self )
-        opConvertRaw.ConversionDtype.setValue( np.float32 )
-        opConvertRaw.Input.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
+        opConvertRaw = OpConvertDtype(parent=self)
+        opConvertRaw.ConversionDtype.setValue(np.float32)
+        opConvertRaw.Input.connect(opDataSelection.ImageGroup[self.DATA_ROLE_RAW])
 
         # PROBABILITIES: Convert to float32
-        opConvertProbabilities = OpConvertDtype( parent=self )
-        opConvertProbabilities.ConversionDtype.setValue( np.float32 )
-        opConvertProbabilities.Input.connect( opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES] )
+        opConvertProbabilities = OpConvertDtype(parent=self)
+        opConvertProbabilities.ConversionDtype.setValue(np.float32)
+        opConvertProbabilities.Input.connect(opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES])
 
         # PROBABILITIES: Normalize drange to [0.0, 1.0]
         opNormalizeProbabilities = OpPixelOperator(parent=self)
@@ -195,68 +205,72 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
             a[:] = a[:] / float((drange[1] - drange[0]))
             return a
 
-        opNormalizeProbabilities.Input.connect( opConvertProbabilities.Output )
-        opNormalizeProbabilities.Function.setValue( normalize_inplace )
+        opNormalizeProbabilities.Input.connect(opConvertProbabilities.Output)
+        opNormalizeProbabilities.Function.setValue(normalize_inplace)
 
         # GROUNDTRUTH: Convert to uint32, relabel, and cache
-        opConvertGroundtruth = OpConvertDtype( parent=self )
-        opConvertGroundtruth.ConversionDtype.setValue( np.uint32 )
-        opConvertGroundtruth.Input.connect( opDataSelection.ImageGroup[self.DATA_ROLE_GROUNDTRUTH] )
+        opConvertGroundtruth = OpConvertDtype(parent=self)
+        opConvertGroundtruth.ConversionDtype.setValue(np.uint32)
+        opConvertGroundtruth.Input.connect(opDataSelection.ImageGroup[self.DATA_ROLE_GROUNDTRUTH])
 
-        opRelabelGroundtruth = OpRelabelConsecutive( parent=self )
-        opRelabelGroundtruth.Input.connect( opConvertGroundtruth.Output )
-        
-        opGroundtruthCache = OpBlockedArrayCache( parent=self )
+        opRelabelGroundtruth = OpRelabelConsecutive(parent=self)
+        opRelabelGroundtruth.Input.connect(opConvertGroundtruth.Output)
+
+        opGroundtruthCache = OpBlockedArrayCache(parent=self)
         opGroundtruthCache.CompressionEnabled.setValue(True)
-        opGroundtruthCache.Input.connect( opRelabelGroundtruth.Output )
+        opGroundtruthCache.Input.connect(opRelabelGroundtruth.Output)
 
         # watershed inputs
-        opWsdt.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
-        opWsdt.Input.connect( opNormalizeProbabilities.Output )
+        opWsdt.RawData.connect(opDataSelection.ImageGroup[self.DATA_ROLE_RAW])
+        opWsdt.Input.connect(opNormalizeProbabilities.Output)
 
         # Actual computation is done with both RawData and Probabilities
-        opStackRawAndVoxels = OpSimpleStacker( parent=self )
+        opStackRawAndVoxels = OpSimpleStacker(parent=self)
         opStackRawAndVoxels.Images.resize(2)
-        opStackRawAndVoxels.Images[0].connect( opConvertRaw.Output )
-        opStackRawAndVoxels.Images[1].connect( opNormalizeProbabilities.Output )
-        opStackRawAndVoxels.AxisFlag.setValue('c')
+        opStackRawAndVoxels.Images[0].connect(opConvertRaw.Output)
+        opStackRawAndVoxels.Images[1].connect(opNormalizeProbabilities.Output)
+        opStackRawAndVoxels.AxisFlag.setValue("c")
 
         # If superpixels are available from a file, use it.
-        opSuperpixelsSelect = OpPrecomputedInput( ignore_dirty_input=True, parent=self )
-        opSuperpixelsSelect.PrecomputedInput.connect( opDataSelection.ImageGroup[self.DATA_ROLE_SUPERPIXELS] )
-        opSuperpixelsSelect.SlowInput.connect( opWsdt.Superpixels )
+        opSuperpixelsSelect = OpPrecomputedInput(ignore_dirty_input=True, parent=self)
+        opSuperpixelsSelect.PrecomputedInput.connect(opDataSelection.ImageGroup[self.DATA_ROLE_SUPERPIXELS])
+        opSuperpixelsSelect.SlowInput.connect(opWsdt.Superpixels)
 
         # If the superpixel file changes, then we have to remove the training labels from the image
         opEdgeTraining = opEdgeTrainingWithMulticut.opEdgeTraining
-        def handle_new_superpixels( *args ):
-            opEdgeTraining.handle_dirty_superpixels( opEdgeTraining.Superpixels )
-        opDataSelection.ImageGroup[self.DATA_ROLE_SUPERPIXELS].notifyReady( handle_new_superpixels )
-        opDataSelection.ImageGroup[self.DATA_ROLE_SUPERPIXELS].notifyUnready( handle_new_superpixels )
+
+        def handle_new_superpixels(*args):
+            opEdgeTraining.handle_dirty_superpixels(opEdgeTraining.Superpixels)
+
+        opDataSelection.ImageGroup[self.DATA_ROLE_SUPERPIXELS].notifyReady(handle_new_superpixels)
+        opDataSelection.ImageGroup[self.DATA_ROLE_SUPERPIXELS].notifyUnready(handle_new_superpixels)
 
         # edge training inputs
-        opEdgeTrainingWithMulticut.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] ) # Used for visualization only
-        opEdgeTrainingWithMulticut.VoxelData.connect( opStackRawAndVoxels.Output )
-        opEdgeTrainingWithMulticut.Superpixels.connect( opSuperpixelsSelect.Output )
-        opEdgeTrainingWithMulticut.GroundtruthSegmentation.connect( opGroundtruthCache.Output )
+        opEdgeTrainingWithMulticut.RawData.connect(
+            opDataSelection.ImageGroup[self.DATA_ROLE_RAW]
+        )  # Used for visualization only
+        opEdgeTrainingWithMulticut.VoxelData.connect(opStackRawAndVoxels.Output)
+        opEdgeTrainingWithMulticut.Superpixels.connect(opSuperpixelsSelect.Output)
+        opEdgeTrainingWithMulticut.GroundtruthSegmentation.connect(opGroundtruthCache.Output)
 
         # DataExport inputs
-        opDataExport.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
-        opDataExport.RawDatasetInfo.connect( opDataSelection.DatasetGroup[self.DATA_ROLE_RAW] )        
-        opDataExport.Inputs.resize( len(self.EXPORT_NAMES) )
-        opDataExport.Inputs[0].connect( opEdgeTrainingWithMulticut.Output )
+        opDataExport.RawData.connect(opDataSelection.ImageGroup[self.DATA_ROLE_RAW])
+        opDataExport.RawDatasetInfo.connect(opDataSelection.DatasetGroup[self.DATA_ROLE_RAW])
+        opDataExport.Inputs.resize(len(self.EXPORT_NAMES))
+        opDataExport.Inputs[0].connect(opEdgeTrainingWithMulticut.Output)
         for slot in opDataExport.Inputs:
             assert slot.upstream_slot is not None
-        
+
     def onProjectLoaded(self, projectManager):
         """
         Overridden from Workflow base class.  Called by the Project Manager.
-        
-        If the user provided command-line arguments, use them to configure 
+
+        If the user provided command-line arguments, use them to configure
         the workflow inputs and output settings.
         """
         # Configure the data export operator.
         if self._data_export_args:
-            self.dataExportApplet.configure_operator_with_parsed_args( self._data_export_args )
+            self.dataExportApplet.configure_operator_with_parsed_args(self._data_export_args)
 
         # Retrain the classifier?
         if self.parsed_workflow_args.retrain:
@@ -265,17 +279,22 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         if self._headless and self._batch_input_args and self._data_export_args:
             # Make sure the watershed can be computed if necessary.
             opWsdt = self.wsdtApplet.topLevelOperator
-            opWsdt.FreezeCache.setValue( False )
+            opWsdt.FreezeCache.setValue(False)
 
             # Error checks
-            if (self._batch_input_args.raw_data
-            and len(self._batch_input_args.probabilities) != len(self._batch_input_args.raw_data) ):
+            if self._batch_input_args.raw_data and len(self._batch_input_args.probabilities) != len(
+                self._batch_input_args.raw_data
+            ):
                 msg = "Error: Your input file lists are malformed.\n"
-                msg += "Usage: run_ilastik.sh --headless --raw_data <file1> <file2>... --probabilities <file1> <file2>..."
+                msg += (
+                    "Usage: run_ilastik.sh --headless --raw_data <file1> <file2>... --probabilities <file1> <file2>..."
+                )
                 sys.exit(msg)
 
-            if  (self._batch_input_args.superpixels
-            and (not self._batch_input_args.raw_data or len(self._batch_input_args.superpixels) != len(self._batch_input_args.raw_data) ) ):
+            if self._batch_input_args.superpixels and (
+                not self._batch_input_args.raw_data
+                or len(self._batch_input_args.superpixels) != len(self._batch_input_args.raw_data)
+            ):
                 msg = "Error: Wrong number of superpixel file inputs."
                 sys.exit(msg)
 
@@ -290,7 +309,7 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         # Cause the classifier to be dirty so it is forced to retrain.
         # (useful if the stored labels or features were changed outside ilastik)
         op.FeatureNames.setDirty()
-        
+
         # Request the classifier, which forces training
         new_classifier = op.opEdgeTraining.opClassifierCache.Output.value
         if new_classifier is None:
@@ -323,7 +342,7 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         # After export is finished, re-freeze the segmentation caches.
         opWsdt = self.wsdtApplet.topLevelOperator
         opWsdt.FreezeCache.setValue(self.wsdt_frozen)
-        
+
         opTraining = self.edgeTrainingWithMulticutApplet.topLevelOperator
         opTraining.FreezeClassifier.setValue(self.freeze_classifier_status)
         opTraining.FreezeCache.setValue(self.freeze_cache_status)
@@ -333,12 +352,12 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         if len(slot) > 0:
             input_ready = True
             for sub in slot:
-                input_ready = input_ready and \
-                            all([sub[i].ready() for i in range(nRoles)])
+                input_ready = input_ready and all([sub[i].ready() for i in range(nRoles)])
         else:
             input_ready = False
 
         return input_ready
+
     def handleAppletStateUpdateRequested(self):
         """
         Overridden from Workflow base class
@@ -361,11 +380,18 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         # The user isn't allowed to touch anything while batch processing is running.
         batch_processing_busy = self.batchProcessingApplet.busy
 
-        self._shell.setAppletEnabled( self.dataSelectionApplet,             not batch_processing_busy )
-        self._shell.setAppletEnabled( self.wsdtApplet,                      not batch_processing_busy and input_ready and not superpixels_available_from_file )
-        self._shell.setAppletEnabled( self.edgeTrainingWithMulticutApplet,  not batch_processing_busy and input_ready and superpixels_ready )
-        self._shell.setAppletEnabled( self.dataExportApplet,                not batch_processing_busy and input_ready and opEdgeTrainingWithMulticut.Output.ready())
-        self._shell.setAppletEnabled( self.batchProcessingApplet,           not batch_processing_busy and input_ready )
+        self._shell.setAppletEnabled(self.dataSelectionApplet, not batch_processing_busy)
+        self._shell.setAppletEnabled(
+            self.wsdtApplet, not batch_processing_busy and input_ready and not superpixels_available_from_file
+        )
+        self._shell.setAppletEnabled(
+            self.edgeTrainingWithMulticutApplet, not batch_processing_busy and input_ready and superpixels_ready
+        )
+        self._shell.setAppletEnabled(
+            self.dataExportApplet,
+            not batch_processing_busy and input_ready and opEdgeTrainingWithMulticut.Output.ready(),
+        )
+        self._shell.setAppletEnabled(self.batchProcessingApplet, not batch_processing_busy and input_ready)
 
         # Lastly, check for certain "busy" conditions, during which we
         #  should prevent the shell from closing the project.
@@ -375,17 +401,20 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         busy |= self.edgeTrainingWithMulticutApplet.busy
         busy |= self.dataExportApplet.busy
         busy |= self.batchProcessingApplet.busy
-        self._shell.enableProjectChanges( not busy )
+        self._shell.enableProjectChanges(not busy)
 
     def handle_applet_changed(self, prev_index, current_index):
         if prev_index != current_index:
             # If the user is viewing an applet downstream of the WSDT applet,
             # make sure the superpixels are always up-to-date.
             opWsdt = self.wsdtApplet.topLevelOperator
-            opWsdt.FreezeCache.setValue( self._shell.currentAppletIndex <= self.applets.index( self.wsdtApplet ) )
+            opWsdt.FreezeCache.setValue(self._shell.currentAppletIndex <= self.applets.index(self.wsdtApplet))
 
             # Same for training and multicut
             opMulticut = self.edgeTrainingWithMulticutApplet.topLevelOperator
-            opMulticut.FreezeClassifier.setValue( self._shell.currentAppletIndex <= self.applets.index( self.edgeTrainingWithMulticutApplet ) )
-            opMulticut.FreezeCache.setValue( self._shell.currentAppletIndex <= self.applets.index( self.edgeTrainingWithMulticutApplet ) )
-            
+            opMulticut.FreezeClassifier.setValue(
+                self._shell.currentAppletIndex <= self.applets.index(self.edgeTrainingWithMulticutApplet)
+            )
+            opMulticut.FreezeCache.setValue(
+                self._shell.currentAppletIndex <= self.applets.index(self.edgeTrainingWithMulticutApplet)
+            )

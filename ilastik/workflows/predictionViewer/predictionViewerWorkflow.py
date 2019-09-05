@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.workflow import Workflow
 
@@ -25,8 +25,8 @@ from ilastik.applets.predictionViewer import PredictionViewerApplet
 
 from lazyflow.graph import Graph
 
-class PredictionViewerWorkflow(Workflow):
 
+class PredictionViewerWorkflow(Workflow):
     @property
     def applets(self):
         return self._applets
@@ -38,11 +38,15 @@ class PredictionViewerWorkflow(Workflow):
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
         # Create a graph to be shared by all operators
         graph = Graph()
-        super(PredictionViewerWorkflow, self ).__init__( shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs )
+        super(PredictionViewerWorkflow, self).__init__(
+            shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs
+        )
         self._applets = []
 
-        # Applets for training (interactive) workflow 
-        self.dataSelectionApplet = DataSelectionApplet(self, "Viewed Predictions", "Viewed Predictions", supportIlastik05Import=False, batchDataGui=False)
+        # Applets for training (interactive) workflow
+        self.dataSelectionApplet = DataSelectionApplet(
+            self, "Viewed Predictions", "Viewed Predictions", supportIlastik05Import=False, batchDataGui=False
+        )
         self.viewerApplet = PredictionViewerApplet(self)
 
         # Expose for shell
@@ -54,4 +58,4 @@ class PredictionViewerWorkflow(Workflow):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opViewer = self.viewerApplet.topLevelOperator.getLane(laneIndex)
 
-        opViewer.PredictionProbabilities.connect( opData.Image )
+        opViewer.PredictionProbabilities.connect(opData.Image)

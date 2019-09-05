@@ -39,13 +39,14 @@ class PrecomputedVolumeBrowser(QDialog):
 
     def setup_ui(self):
         self.setMinimumSize(800, 200)
-        self.setWindowTitle('Precomputed Volume Selection Dialog')
+        self.setWindowTitle("Precomputed Volume Selection Dialog")
         main_layout = QVBoxLayout()
 
         description = QLabel(self)
         description.setText(
             'enter base URL of volume starting with "precomputed://http..."'
-            'hit the "check URL" button to validate the entered address.')
+            'hit the "check URL" button to validate the entered address.'
+        )
         main_layout.addWidget(description)
 
         self.combo = QComboBox(self)
@@ -59,7 +60,7 @@ class PrecomputedVolumeBrowser(QDialog):
         combo_label.setText("Enter volume address: ")
         combo_layout = QHBoxLayout()
         chk_button = QPushButton(self)
-        chk_button.setText('Check URL')
+        chk_button.setText("Check URL")
         chk_button.clicked.connect(self.handle_chk_button_clicked)
         combo_layout.addWidget(combo_label)
         combo_layout.addWidget(self.combo)
@@ -69,7 +70,7 @@ class PrecomputedVolumeBrowser(QDialog):
 
         # add some debug stuff
         debug_label = QLabel(self)
-        debug_label.setText('debug: ')
+        debug_label.setText("debug: ")
         self.debug_text = QTextBrowser(self)
         debug_layout = QVBoxLayout()
         debug_layout.addWidget(debug_label)
@@ -87,7 +88,7 @@ class PrecomputedVolumeBrowser(QDialog):
     def handle_chk_button_clicked(self, event):
         self.selected_url = self.combo.currentText()
         logger.debug(f"selected url: {self.selected_url}")
-        url = self.selected_url.lstrip('precomputed://')
+        url = self.selected_url.lstrip("precomputed://")
         try:
             rv = RESTfulPrecomputedChunkedVolume(volume_url=url)
         except Exception as e:
@@ -95,7 +96,7 @@ class PrecomputedVolumeBrowser(QDialog):
             self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)
             self.debug_text.setText("")
             qm = QMessageBox(self)
-            qm.setWindowTitle('An Error Occured!')
+            qm.setWindowTitle("An Error Occured!")
             qm.setText(f"woops: {e}")
             qm.show()
             return
@@ -109,8 +110,9 @@ class PrecomputedVolumeBrowser(QDialog):
         self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
+
     app = QApplication([])
 
     logging.basicConfig(level=logging.INFO)

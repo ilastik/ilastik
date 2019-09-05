@@ -62,7 +62,7 @@ def wait_until(f, timeout=10):
 class TestPixelClassificationGui(ShellGuiTestCaseBase):
     """
     Run a set of GUI-based tests on the pixel classification workflow.
-    
+
     Note: These tests are named in order so that simple cases are tried before complex ones.
           Additionally, later tests may depend on earlier ones to run properly.
     """
@@ -162,7 +162,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         workflow = self.shell.projectManager.workflow
         opDataSelection = workflow.dataSelectionApplet.topLevelOperator
 
-        if os.name != 'nt': #FIXME: enable these on windows without hangs or segfaults
+        if os.name != "nt":  # FIXME: enable these on windows without hangs or segfaults
             # opens multi dataset file and expects second dialog to choose inner path
             self.add_file(self.tmp_h5_multiple_dataset, "test_group_3d/test_data_3d")
             self.remove_first_dataset()
@@ -179,7 +179,9 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Add a file
             from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, FilesystemDatasetInfo
 
-            info = FilesystemDatasetInfo(filePath=self.SAMPLE_DATA, project_file=self.shell.projectManager.currentProjectFile)
+            info = FilesystemDatasetInfo(
+                filePath=self.SAMPLE_DATA, project_file=self.shell.projectManager.currentProjectFile
+            )
             opDataSelection.DatasetGroup.resize(1)
             opDataSelection.DatasetGroup[0][0].setValue(info)
 

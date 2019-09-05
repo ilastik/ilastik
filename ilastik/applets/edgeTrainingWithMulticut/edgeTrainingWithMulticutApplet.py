@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -26,18 +27,22 @@ from ilastik.applets.multicut.multicutSerializer import MulticutSerializer
 
 from .opEdgeTrainingWithMulticut import OpEdgeTrainingWithMulticut
 
-class EdgeTrainingWithMulticutApplet( StandardApplet ):
+
+class EdgeTrainingWithMulticutApplet(StandardApplet):
     """
     A composite applet that merely combines the functionality of the
     EdgeTraining and the Multicut applet, so they can share the same GUI.
     """
-    def __init__( self, workflow, guiName, projectFileGroupName ):
-        self._topLevelOperator = OpEdgeTrainingWithMulticut( parent=workflow )
-        super(EdgeTrainingWithMulticutApplet, self).__init__( guiName, workflow )
-        
+
+    def __init__(self, workflow, guiName, projectFileGroupName):
+        self._topLevelOperator = OpEdgeTrainingWithMulticut(parent=workflow)
+        super(EdgeTrainingWithMulticutApplet, self).__init__(guiName, workflow)
+
         # No need for a special serializer class -- just create instances of the EdgeTraining and Multicut serializers
-        self._serializableItems = [ EdgeTrainingSerializer(self.topLevelOperator, projectFileGroupName),
-                                    MulticutSerializer(self.topLevelOperator, projectFileGroupName) ]
+        self._serializableItems = [
+            EdgeTrainingSerializer(self.topLevelOperator, projectFileGroupName),
+            MulticutSerializer(self.topLevelOperator, projectFileGroupName),
+        ]
 
     @property
     def topLevelOperator(self):
@@ -46,6 +51,7 @@ class EdgeTrainingWithMulticutApplet( StandardApplet ):
     @property
     def singleLaneGuiClass(self):
         from .edgeTrainingWithMulticutGui import EdgeTrainingWithMulticutGui
+
         return EdgeTrainingWithMulticutGui
 
     @property

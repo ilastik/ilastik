@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -35,6 +35,7 @@ import vigra
 
 import os
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -45,7 +46,7 @@ class OpManualTracking(Operator, ExportingOperator):
     BinaryImage = InputSlot()
     LabelImage = InputSlot()
     RawImage = InputSlot()
-    ActiveTrack = InputSlot(stype='int', value=0)
+    ActiveTrack = InputSlot(stype="int", value=0)
     ObjectFeatures = InputSlot(stype=Opaque, rtype=List)
     ComputedFeatureNames = InputSlot(rtype=List, stype=Opaque)
 
@@ -58,7 +59,7 @@ class OpManualTracking(Operator, ExportingOperator):
     ExportSettings = OutputSlot()
     # Override functions ExportingOperator mixin
     def configure_table_export_settings(self, settings, selected_features):
-        self.ExportSettings.setValue( (settings, selected_features) )
+        self.ExportSettings.setValue((settings, selected_features))
 
     def get_table_export_settings(self):
         if self.ExportSettings.ready():
@@ -77,7 +78,7 @@ class OpManualTracking(Operator, ExportingOperator):
         self.BinaryImage.notifyReady(self._checkConstraints)
 
         self.export_progress_dialog = None
-        self.ExportSettings.setValue( (None, None) )
+        self.ExportSettings.setValue((None, None))
 
     def setupOutputs(self):
         self.TrackImage.meta.assignFrom(self.LabelImage.meta)
@@ -86,35 +87,37 @@ class OpManualTracking(Operator, ExportingOperator):
         for t in range(self.LabelImage.meta.shape[0]):
             if t not in list(self.labels.keys()):
                 self.labels[t] = {}
-        
+
     def _checkConstraints(self, *args):
         if self.RawImage.ready():
             rawTaggedShape = self.RawImage.meta.getTaggedShape()
-            if rawTaggedShape['t'] < 2:
+            if rawTaggedShape["t"] < 2:
                 raise DatasetConstraintError(
                     "Tracking",
-                    "For tracking, the dataset must have a time axis with at least 2 images.   " \
-                    "Please load time-series data instead. See user documentation for details.")
+                    "For tracking, the dataset must have a time axis with at least 2 images.   "
+                    "Please load time-series data instead. See user documentation for details.",
+                )
 
         if self.LabelImage.ready():
             segmentationTaggedShape = self.LabelImage.meta.getTaggedShape()
-            if segmentationTaggedShape['t'] < 2:
+            if segmentationTaggedShape["t"] < 2:
                 raise DatasetConstraintError(
                     "Tracking",
-                    "For tracking, the dataset must have a time axis with at least 2 images.   " \
-                    "Please load time-series data instead. See user documentation for details.")
+                    "For tracking, the dataset must have a time axis with at least 2 images.   "
+                    "Please load time-series data instead. See user documentation for details.",
+                )
 
         if self.RawImage.ready() and self.LabelImage.ready():
-            rawTaggedShape['c'] = None
-            segmentationTaggedShape['c'] = None
+            rawTaggedShape["c"] = None
+            segmentationTaggedShape["c"] = None
             if dict(rawTaggedShape) != dict(segmentationTaggedShape):
-                raise DatasetConstraintError("Tracking",
-                                             "For tracking, the raw data and the prediction maps must contain the same " \
-                                             "number of timesteps and the same shape.   " \
-                                             "Your raw image has a shape of (t, x, y, z, c) = {}, whereas your prediction image has a " \
-                                             "shape of (t, x, y, z, c) = {}" \
-                                             .format(self.RawImage.meta.shape, self.BinaryImage.meta.shape))
-
+                raise DatasetConstraintError(
+                    "Tracking",
+                    "For tracking, the raw data and the prediction maps must contain the same "
+                    "number of timesteps and the same shape.   "
+                    "Your raw image has a shape of (t, x, y, z, c) = {}, whereas your prediction image has a "
+                    "shape of (t, x, y, z, c) = {}".format(self.RawImage.meta.shape, self.BinaryImage.meta.shape),
+                )
 
     def execute(self, slot, subindex, roi, result):
         if slot is self.Divisions:
@@ -187,8 +190,11 @@ class OpManualTracking(Operator, ExportingOperator):
             count = 0
             filtered_labels[t] = []
             oid2tids[t] = {}
-            troi = SubRegion(self.LabelImage, start=[t, ] + [0, ] * len(self.LabelImage.meta.shape[1:]),
-                             stop=[t + 1, ] + list(self.LabelImage.meta.shape[1:]))
+            troi = SubRegion(
+                self.LabelImage,
+                start=[t] + [0] * len(self.LabelImage.meta.shape[1:]),
+                stop=[t + 1] + list(self.LabelImage.meta.shape[1:]),
+            )
             max_oid = np.max(self.LabelImage.get(troi).wait())
             for idx in range(max_oid + 1):
                 oid = int(idx) + 1
@@ -234,7 +240,10 @@ class OpManualTracking(Operator, ExportingOperator):
         divisions = self.divisions
         t_range = (0, self.LabelImage.meta.shape[self.LabelImage.meta.axistags.index("t")])
         oid2tid, _ = self._getObjects(t_range, None)  # slow
-        max_tracks = max(max(list(map(len, list(i.values())))) if list(map(len, list(i.values()))) else 0 for i in list(oid2tid.values()))
+        max_tracks = max(
+            max(list(map(len, list(i.values())))) if list(map(len, list(i.values()))) else 0
+            for i in list(oid2tid.values())
+        )
         ids = ilastik_ids(obj_count)
 
         file_path = settings["file path"]
@@ -248,17 +257,30 @@ class OpManualTracking(Operator, ExportingOperator):
 
         export_file.add_columns("table", list(range(sum(obj_count))), Mode.List, Default.KnimeId)
         export_file.add_columns("table", list(ids), Mode.List, Default.IlastikId)
-        export_file.add_columns("table", oid2tid, Mode.IlastikTrackingTable,
-                                {"max": max_tracks, "counts": obj_count, "extra ids": {},
-                                 "range": t_range})
-        export_file.add_columns("table", self.ObjectFeatures, Mode.IlastikFeatureTable,
-                                {"selection": selected_features})
+        export_file.add_columns(
+            "table",
+            oid2tid,
+            Mode.IlastikTrackingTable,
+            {"max": max_tracks, "counts": obj_count, "extra ids": {}, "range": t_range},
+        )
+        export_file.add_columns(
+            "table", self.ObjectFeatures, Mode.IlastikFeatureTable, {"selection": selected_features}
+        )
 
         if divisions:
             ott = partial(self.lookup_oid_for_tid, oid2tid)
-            divs = [(value[1], ott(key, value[1]), key, ott(value[0][0], value[1] + 1), value[0][0],
-                     ott(value[0][1], value[1] + 1), value[0][1])
-                    for key, value in sorted(iter(divisions.items()), key=itemgetter(0))]
+            divs = [
+                (
+                    value[1],
+                    ott(key, value[1]),
+                    key,
+                    ott(value[0][0], value[1] + 1),
+                    value[0][0],
+                    ott(value[0][1], value[1] + 1),
+                    value[0][1],
+                )
+                for key, value in sorted(iter(divisions.items()), key=itemgetter(0))
+            ]
             assert sum(Default.ManualDivMap) == len(divs[0])
             names = list(compress(Default.DivisionNames["names"], Default.ManualDivMap))
             export_file.add_columns("divisions", divs, Mode.List, extra={"names": names})
@@ -274,11 +296,12 @@ class OpManualTracking(Operator, ExportingOperator):
         export_file.ExportProgress.unsubscribe(progress_slot)
         export_file.InsertionProgress.unsubscribe(progress_slot)
 
+
 #    def _getObjects(self, time_range, x_range, y_range, z_range, size_range, misdet_idx):
 #        trange = range(time_range[0], time_range[1])
 #        print 'trange=', trange
-#        feats = self.ObjectFeatures(trange).wait()        
-#          
+#        feats = self.ObjectFeatures(trange).wait()
+#
 #        filtered_labels = {}
 #        oid2tids = {}
 #        alltids = set()
@@ -286,7 +309,7 @@ class OpManualTracking(Operator, ExportingOperator):
 #            rc = feats[t][0]['RegionCenter']
 #            if rc.size:
 #                rc = rc[1:, ...]
-#                
+#
 #            ct = feats[t][0]['Count']
 #            if ct.size:
 #                ct = ct[1:, ...]
@@ -301,19 +324,18 @@ class OpManualTracking(Operator, ExportingOperator):
 #                size = ct[idx]
 #                if (x < x_range[0] or x >= x_range[1] or
 #                    y < y_range[0] or y >= y_range[1] or
-#                    z < z_range[0] or z >= z_range[1] or                    
+#                    z < z_range[0] or z >= z_range[1] or
 #                    size < size_range[0] or size >= size_range[1]):
 #                    filtered_labels[t].append(oid)
 #                    continue
-#                
+#
 #                count += 1
 #                if t in self.labels.keys() and oid in self.labels[t].keys():
 #                    if misdet_idx not in self.labels[t][oid]:
 #                        oid2tids[t][oid] = self.labels[t][oid]
 #                        for l in self.labels[t][oid]:
-#                            alltids.add(l)   
-#                         
+#                            alltids.add(l)
+#
 #            print "at timestep ", t, count, "traxels passed filter"
-#            
+#
 #        return oid2tids, alltids
-    

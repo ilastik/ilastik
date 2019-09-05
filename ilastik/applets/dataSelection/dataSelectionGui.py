@@ -151,7 +151,7 @@ class DataSelectionGui(QWidget):
     ):
         """
         Constructor.
-        
+
         :param dataSelectionOperator: The top-level operator.  Must be of type :py:class:`OpMultiLaneDataSelectionGroup`.
         :param serializer: The applet's serializer.  Must be of type :py:class:`DataSelectionSerializer`
         :param instructionText: A string to display in the applet drawer.
@@ -608,11 +608,7 @@ class DataSelectionGui(QWidget):
             inner_path = self.serializer.importStackAsLocalDataset(
                 abs_paths=stackDlg.selectedFiles, sequence_axis=stackDlg.sequence_axis
             )
-            info = ProjectInternalDatasetInfo(
-                inner_path=inner_path,
-                nickname=nickname,
-                project_file=self.project_file,
-            )
+            info = ProjectInternalDatasetInfo(inner_path=inner_path, nickname=nickname, project_file=self.project_file)
         finally:
             self.parentApplet.busy = False
 

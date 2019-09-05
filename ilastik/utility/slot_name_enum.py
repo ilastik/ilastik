@@ -2,6 +2,7 @@ import enum
 from typing import List, Tuple
 from itertools import chain
 
+
 class SlotNameEnum(enum.IntEnum):
     """A map from slot names to their indices within a multislot
 
@@ -17,7 +18,7 @@ class SlotNameEnum(enum.IntEnum):
     @property
     def displayName(self) -> str:
         """A 'Human Readable Slot Name' str based on its ENUM_SLOT_NAME"""
-        return self.name.replace('_', ' ').title()
+        return self.name.replace("_", " ").title()
 
     @classmethod
     def asDisplayNameList(cls) -> List[str]:
@@ -33,20 +34,18 @@ class SlotNameEnum(enum.IntEnum):
 
     @classmethod
     def getNext(cls) -> int:
-        return cls._generate_next_value_('', cls.getFirst(), len(cls), list(cls))
+        return cls._generate_next_value_("", cls.getFirst(), len(cls), list(cls))
 
     @classmethod
     def getPairs(cls) -> List[Tuple[str, int]]:
         return [(item.name, item.value) for item in cls]
 
     @classmethod
-    def extendedWithEnum(cls, extra_enum: 'SlotNameEnum', unique: bool=False) -> 'SlotNameEnum':
+    def extendedWithEnum(cls, extra_enum: "SlotNameEnum", unique: bool = False) -> "SlotNameEnum":
         """Crates a new SlotNameEnum combining the keys from cls and extra_enum"""
 
         wrapper = enum.unique if unique else lambda x: x
-        return wrapper(SlotNameEnum(extra_enum.__name__,
-                                    chain(cls.getPairs(),
-                                          extra_enum.getPairs())))
+        return wrapper(SlotNameEnum(extra_enum.__name__, chain(cls.getPairs(), extra_enum.getPairs())))
 
     @staticmethod
     def _generate_next_value_(name, start, count, last_values):

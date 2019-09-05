@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,7 +18,7 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
@@ -27,20 +28,21 @@ from .objectClassificationSerializer import ObjectClassificationSerializer
 
 class ObjectClassificationApplet(StandardApplet):
     """An applet for labeling and classifying objects."""
-    def __init__(self,
-                 name="Object Classification",
-                 workflow=None,
-                 projectFileGroupName="ObjectClassification",
-                 selectedFeatures=dict()):
+
+    def __init__(
+        self,
+        name="Object Classification",
+        workflow=None,
+        projectFileGroupName="ObjectClassification",
+        selectedFeatures=dict(),
+    ):
         self._topLevelOperator = OpObjectClassification(parent=workflow)
         self.connected_to_knime = False
         self._selectedFeatures = selectedFeatures
 
         super(ObjectClassificationApplet, self).__init__(name=name, workflow=workflow)
 
-        self._serializableItems = [
-            ObjectClassificationSerializer(projectFileGroupName,
-                                           self.topLevelOperator)]
+        self._serializableItems = [ObjectClassificationSerializer(projectFileGroupName, self.topLevelOperator)]
 
     def getMultiLaneGui(self):
         """
@@ -49,6 +51,7 @@ class ObjectClassificationApplet(StandardApplet):
         least once after object init.
         """
         from .objectClassificationGui import ObjectClassificationGui  # Prevent imports of QT classes in headless mode
+
         multi_lane_gui = super(ObjectClassificationApplet, self).getMultiLaneGui()
         guis = multi_lane_gui.getGuis()
         if len(guis) > 0 and isinstance(guis[0], ObjectClassificationGui) and not guis[0].isInitialized:
@@ -67,4 +70,5 @@ class ObjectClassificationApplet(StandardApplet):
     @property
     def singleLaneGuiClass(self):
         from .objectClassificationGui import ObjectClassificationGui  # Prevent imports of QT classes in headless mode
+
         return ObjectClassificationGui

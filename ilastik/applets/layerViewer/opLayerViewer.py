@@ -16,11 +16,12 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 from ilastik.applets.base.applet import DatasetConstraintError
+
 
 class OpLayerViewer(Operator):
     """
@@ -28,6 +29,7 @@ class OpLayerViewer(Operator):
     Note that applets based on the LayerViewer applet (and the LayerViewerGui) do NOT need to use this operator.
     Any operator will work with the LayerViewerGui base class.
     """
+
     name = "OpLayerViewer"
     category = "top-level"
 
@@ -35,11 +37,11 @@ class OpLayerViewer(Operator):
     OtherInput = InputSlot(level=1, optional=True)
 
     def __init__(self, *args, **kwargs):
-        super( OpLayerViewer, self ).__init__(*args, **kwargs)
-        
-        self.RawInput.notifyReady( self.checkConstraints )
-        self.OtherInput.notifyReady( self.checkConstraints )
-        
+        super(OpLayerViewer, self).__init__(*args, **kwargs)
+
+        self.RawInput.notifyReady(self.checkConstraints)
+        self.OtherInput.notifyReady(self.checkConstraints)
+
     def checkConstraints(self, *args):
         """
         Example of how to check input data constraints.
@@ -48,18 +50,22 @@ class OpLayerViewer(Operator):
             rawTaggedShape = self.RawInput.meta.getTaggedShape()
             for other_slot in self.OtherInput:
                 otherTaggedShape = other_slot.meta.getTaggedShape()
-                raw_time_size = rawTaggedShape.get('t', 1)
-                other_time_size = otherTaggedShape.get('t', 1)
+                raw_time_size = rawTaggedShape.get("t", 1)
+                other_time_size = otherTaggedShape.get("t", 1)
                 if raw_time_size != other_time_size and raw_time_size != 1 and other_time_size != 1:
-                    msg = "Your 'raw' and 'other' datasets appear to have differing sizes in the time dimension.\n"\
-                          "Your datasets have shapes: {} and {}".format( self.RawInput.meta.shape, other_slot.meta.shape )
-                    raise DatasetConstraintError( "Layer Viewer", msg )
-                
-                rawTaggedShape['c'] = None
-                otherTaggedShape['c'] = None
-                rawTaggedShape['t'] = None
-                otherTaggedShape['t'] = None
+                    msg = (
+                        "Your 'raw' and 'other' datasets appear to have differing sizes in the time dimension.\n"
+                        "Your datasets have shapes: {} and {}".format(self.RawInput.meta.shape, other_slot.meta.shape)
+                    )
+                    raise DatasetConstraintError("Layer Viewer", msg)
+
+                rawTaggedShape["c"] = None
+                otherTaggedShape["c"] = None
+                rawTaggedShape["t"] = None
+                otherTaggedShape["t"] = None
                 if dict(rawTaggedShape) != dict(otherTaggedShape):
-                    msg = "Raw data and other data must have equal spatial dimensions (different channels are okay).\n"\
-                          "Your datasets have shapes: {} and {}".format( self.RawInput.meta.shape, other_slot.meta.shape )
-                    raise DatasetConstraintError( "Layer Viewer", msg )
+                    msg = (
+                        "Raw data and other data must have equal spatial dimensions (different channels are okay).\n"
+                        "Your datasets have shapes: {} and {}".format(self.RawInput.meta.shape, other_slot.meta.shape)
+                    )
+                    raise DatasetConstraintError("Layer Viewer", msg)

@@ -16,12 +16,13 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 """
-This module defines a set of global settings that can be used to "hack in" special features, 
+This module defines a set of global settings that can be used to "hack in" special features,
 particularly one-off features that it's not worth redesigning the architecture for.
 """
+
 
 class ImportOptions(object):
     # Used in the DataSelection applet serializer for importing.

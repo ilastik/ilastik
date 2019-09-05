@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,14 +18,15 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 # to ensure that plugin system is available
 import logging
+
 logger = logging.getLogger(__name__)
 from ilastik.plugins import pluginManager
+
 try:
     from .countingWorkflow import *
 except ImportError as e:
-    logger.warning( "Failed to import counting workflow; check dependencies: " + str(e) )
-    
+    logger.warning("Failed to import counting workflow; check dependencies: " + str(e))

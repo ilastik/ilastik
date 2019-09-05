@@ -26,9 +26,19 @@ from functools import partial
 
 from lazyflow.request import Request
 from PyQt5.QtCore import Qt, QTimer, QUrl
-from PyQt5.QtWidgets import (QApplication, QHBoxLayout, QLabel, QListWidget,
-                             QMessageBox, QPushButton, QSizePolicy,
-                             QSpacerItem, QTabWidget, QVBoxLayout, QWidget)
+from PyQt5.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QMessageBox,
+    QPushButton,
+    QSizePolicy,
+    QSpacerItem,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
 from volumina.utility import PreferencesManager
 
 from ilastik.utility import log_exception
@@ -67,6 +77,7 @@ class FileListWidget(QListWidget):
 class BatchRoleWidget(QWidget):
     """Container Widget for Batch File list and buttons
     """
+
     def __init__(self, role_name: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -109,7 +120,9 @@ class BatchRoleWidget(QWidget):
 
     def select_files(self):
         preference_name = f"recent-dir-role-{self._role_name}"
-        file_paths = ImageFileDialog(self, preferences_group='BatchProcessing', preferences_setting=preference_name).getSelectedPaths()
+        file_paths = ImageFileDialog(
+            self, preferences_group="BatchProcessing", preferences_setting=preference_name
+        ).getSelectedPaths()
         if file_paths:
             self.clear()
             self.list_widget.addItems(map(str, file_paths))
@@ -119,29 +132,35 @@ class BatchRoleWidget(QWidget):
         self.list_widget.clear()
 
 
-class BatchProcessingGui( QTabWidget ):
+class BatchProcessingGui(QTabWidget):
     """
     """
+
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
-    
-    def centralWidget( self ):
+
+    def centralWidget(self):
         return self
 
     def appletDrawer(self):
         return self._drawer
 
-    def menus( self ):
+    def menus(self):
         return []
 
     def viewerControlWidget(self):
-        return QWidget(parent=self) # No viewer, so no viewer controls.
+        return QWidget(parent=self)  # No viewer, so no viewer controls.
 
     # This applet doesn't care what image is selected in the interactive flow
-    def setImageIndex(self, index): pass
-    def imageLaneAdded(self, laneIndex): pass
-    def imageLaneRemoved(self, laneIndex, finalLength): pass
+    def setImageIndex(self, index):
+        pass
+
+    def imageLaneAdded(self, laneIndex):
+        pass
+
+    def imageLaneRemoved(self, laneIndex, finalLength):
+        pass
 
     def allowLaneSelectionChange(self):
         return False
@@ -152,7 +171,7 @@ class BatchProcessingGui( QTabWidget ):
 
     ###########################################
     ###########################################
-    
+
     def __init__(self, parentApplet):
         super().__init__()
         self.parentApplet = parentApplet
@@ -201,9 +220,7 @@ class BatchProcessingGui( QTabWidget ):
 
         # Prepare file lists in an OrderedDict
         role_path_dict = OrderedDict(
-            (role_name, self._data_role_widgets[role_name].filepaths)
-            for role_name
-            in role_names
+            (role_name, self._data_role_widgets[role_name].filepaths) for role_name in role_names
         )
         dominant_role_name = role_names[0]
         num_paths = len(role_path_dict[dominant_role_name])
@@ -218,8 +235,7 @@ class BatchProcessingGui( QTabWidget ):
 
             if len(role_path_dict[role_name]) != num_paths:
                 raise BatchProcessingDataConstraintException(
-                    f"Number of files for '{role_name!r}' does not match! "
-                    f"Exptected {num_paths} files."
+                    f"Number of files for '{role_name!r}' does not match! " f"Exptected {num_paths} files."
                 )
 
         # Run the export in a separate thread
@@ -234,7 +250,7 @@ class BatchProcessingGui( QTabWidget ):
         self.cancel_button.setVisible(True)
         self.run_button.setEnabled(False)
 
-        # Start the export        
+        # Start the export
         export_req.submit()
 
     def handle_batch_processing_complete(self):
@@ -259,8 +275,8 @@ class BatchProcessingGui( QTabWidget ):
 
     @threadRouted
     def handle_batch_processing_failure(self, exc, exc_info):
-        msg = "Error encountered during batch processing:\n{}".format( exc )
-        log_exception( logger, msg, exc_info )
+        msg = "Error encountered during batch processing:\n{}".format(exc)
+        log_exception(logger, msg, exc_info)
         self.handle_batch_processing_finished()
         self.handle_batch_processing_complete()
         QMessageBox.critical(self, "Batch Processing Error", msg)

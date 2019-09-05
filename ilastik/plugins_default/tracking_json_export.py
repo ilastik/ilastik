@@ -3,6 +3,7 @@ import numpy as np
 from ilastik.plugins import TrackingExportFormatPlugin
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -17,8 +18,8 @@ else:
         exportsToFile = True
 
         def checkFilesExist(self, filename):
-            ''' Check whether the files we want to export are already present '''
-            return os.path.exists(filename + '_graph.json') or os.path.exists(filename + '_result.json')
+            """ Check whether the files we want to export are already present """
+            return os.path.exists(filename + "_graph.json") or os.path.exists(filename + "_result.json")
 
         def export(self, filename, hypothesesGraph, pluginExportContext):
             """
@@ -37,25 +38,25 @@ else:
 
             numStates = -1
             for n in hypothesesGraph.nodeIterator():
-                t = hypothesesGraph._graph.node[n]['traxel']
-                if 'detProb' in t.Features:
-                    numStates = len(t.Features['detProb'])
+                t = hypothesesGraph._graph.node[n]["traxel"]
+                if "detProb" in t.Features:
+                    numStates = len(t.Features["detProb"])
                     break
 
             assert numStates > 0, "Cannot export hypotheses graph without features (e.g. only resolved mergers) to JSON"
 
             dummyVector = np.zeros(numStates)
             for n in hypothesesGraph.nodeIterator():
-                t = hypothesesGraph._graph.node[n]['traxel']
-                if 'detProb' not in t.Features:
+                t = hypothesesGraph._graph.node[n]["traxel"]
+                if "detProb" not in t.Features:
                     logger.debug(f"replacing detProb of node with ID={hypothesesGraph._graph.node[n]['id']}")
-                    t.Features['detProb'] = dummyVector
+                    t.Features["detProb"] = dummyVector
 
             # now we can insert the energies into the graph
             hypothesesGraph.insertEnergies()
             trackingGraph = hypothesesGraph.toTrackingGraph()
 
-            writeToFormattedJSON(filename + '_graph.json',  trackingGraph.model)
-            writeToFormattedJSON(filename + '_result.json', hypothesesGraph.getSolutionDictionary())
+            writeToFormattedJSON(filename + "_graph.json", trackingGraph.model)
+            writeToFormattedJSON(filename + "_result.json", hypothesesGraph.getSolutionDictionary())
 
             return True

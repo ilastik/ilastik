@@ -118,7 +118,9 @@ class TestCarvingnGui(ShellGuiTestCaseBase):
             # Add our input files:
             opDataSelection = workflow.dataSelectionApplet.topLevelOperator
             opDataSelection.DatasetGroup.resize(1)
-            info_raw = FilesystemDatasetInfo(filePath=self.sample_data_raw, project_file=self.shell.projectManager.currentProjectFile)
+            info_raw = FilesystemDatasetInfo(
+                filePath=self.sample_data_raw, project_file=self.shell.projectManager.currentProjectFile
+            )
             opDataSelection.DatasetGroup[0][0].setValue(info_raw)
 
             # Save

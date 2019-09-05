@@ -16,20 +16,20 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.appletSerializer import AppletSerializer
 
-class PredictionViewerSerializer(AppletSerializer):
 
+class PredictionViewerSerializer(AppletSerializer):
     def __init__(self, topLevelOperator, predictionGroupName):
         super(PredictionViewerSerializer, self).__init__("PredictionViewer")
         self._predictionGroupName = predictionGroupName
         self._topLevelOperator = topLevelOperator
-    
+
     def serializeToHdf5(self, hdf5File, projectFilePath):
         pass
-    
+
     def deserializeFromHdf5(self, hdf5File, projectFilePath, headless=False):
         try:
             predictionGroup = hdf5File[self._predictionGroupName]
@@ -38,19 +38,15 @@ class PredictionViewerSerializer(AppletSerializer):
 
         pmapColors = None
         labelNames = None
-        try:        
-            pmapColors = predictionGroup['PmapColors'].value
-            self._topLevelOperator.PmapColors.setValue( list(pmapColors) )
-            
+        try:
+            pmapColors = predictionGroup["PmapColors"].value
+            self._topLevelOperator.PmapColors.setValue(list(pmapColors))
+
         except KeyError:
             pass
 
-        try:        
-            labelNames = predictionGroup['LabelNames'].value
-            self._topLevelOperator.LabelNames.setValue( list(labelNames) )
+        try:
+            labelNames = predictionGroup["LabelNames"].value
+            self._topLevelOperator.LabelNames.setValue(list(labelNames))
         except KeyError:
             pass
-    
-    
-
-    

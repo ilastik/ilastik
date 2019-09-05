@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,30 +18,32 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
 from .opAnnotations import OpAnnotations
 from .annotationsSerializer import AnnotationsSerializer
 
+
 class AnnotationsApplet(StandardApplet):
-    def __init__( self, name="Annotations", workflow=None, projectFileGroupName="TrackingAnnotations" ):
-        super(AnnotationsApplet, self).__init__( name=name, workflow=workflow )
-        self._serializableItems = [ AnnotationsSerializer(self.topLevelOperator, projectFileGroupName) ]
+    def __init__(self, name="Annotations", workflow=None, projectFileGroupName="TrackingAnnotations"):
+        super(AnnotationsApplet, self).__init__(name=name, workflow=workflow)
+        self._serializableItems = [AnnotationsSerializer(self.topLevelOperator, projectFileGroupName)]
         self.busy = False
 
     @property
-    def singleLaneOperatorClass( self ):
+    def singleLaneOperatorClass(self):
         return OpAnnotations
 
     @property
-    def broadcastingSlots( self ):
+    def broadcastingSlots(self):
         return []
 
     @property
-    def singleLaneGuiClass( self ):
+    def singleLaneGuiClass(self):
         from .annotationsGui import AnnotationsGui
+
         return AnnotationsGui
 
     @property

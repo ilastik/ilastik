@@ -16,15 +16,17 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
 from PyQt5.QtWidgets import QTreeWidgetItem, QTreeWidget, QTreeWidgetItemIterator
 from PyQt5.QtCore import pyqtSignal, Qt, QEvent
 
+
 class OverlayTreeWidgetIter(QTreeWidgetItemIterator):
     def __init__(self, *args):
         QTreeWidgetItemIterator.__init__(self, *args)
+
     def __next__(self):
         self.__iadd__(1)
         value = self.value()
@@ -48,18 +50,17 @@ class OverlayTreeWidgetItem(QTreeWidgetItem):
 
 class OverlayTreeWidget(QTreeWidget):
     spacePressed = pyqtSignal()
-    
+
     def __init__(self, parent=None):
         QTreeWidget.__init__(self, parent)
-        
+
         self.singleOverlaySelection = True
-        
+
         self.header().close()
         self.setSortingEnabled(True)
         self.installEventFilter(self)
         self.spacePressed.connect(self.spacePressedTreewidget)
         self.itemChanged.connect(self.treeItemChanged)
-
 
     def addOverlaysToTreeWidget(self, overlayDict, forbiddenOverlays, preSelectedOverlays, singleOverlaySelection):
         self.singleOverlaySelection = singleOverlaySelection
@@ -73,40 +74,40 @@ class OverlayTreeWidget(QTreeWidget):
             for i in range(len(split)):
                 if len(split) == 1:
                     newItemsChild = OverlayTreeWidgetItem(overlayDict[keys], keys)
-                    self.addTopLevelItem(newItemsChild)                   
+                    self.addTopLevelItem(newItemsChild)
                     boolStat = False
                     if overlayDict[keys] in preSelectedOverlays:
                         newItemsChild.setCheckState(0, Qt.Checked)
                     else:
                         newItemsChild.setCheckState(0, Qt.Unchecked)
-                    
-                elif i+1 == len(split) and len(split) > 1:
+
+                elif i + 1 == len(split) and len(split) > 1:
                     newItemsChild = OverlayTreeWidgetItem(overlayDict[keys], keys)
                     testItem.addChild(newItemsChild)
                     if overlayDict[keys] in preSelectedOverlays:
                         newItemsChild.setCheckState(0, Qt.Checked)
                     else:
                         newItemsChild.setCheckState(0, Qt.Unchecked)
-                    
-                elif self.topLevelItemCount() == 0 and i+1 < len(split):
+
+                elif self.topLevelItemCount() == 0 and i + 1 < len(split):
                     newItem = QTreeWidgetItem([split[i]])
                     self.addTopLevelItem(newItem)
                     testItem = newItem
                     boolStat = True
-                    
-                elif self.topLevelItemCount() != 0 and i+1 < len(split):
+
+                elif self.topLevelItemCount() != 0 and i + 1 < len(split):
                     if boolStat == False:
                         for n in range(self.topLevelItemCount()):
                             if self.topLevelItem(n).text(0) == split[i]:
                                 testItem = self.topLevelItem(n)
                                 boolStat = True
                                 break
-                            elif n+1 == self.topLevelItemCount():
+                            elif n + 1 == self.topLevelItemCount():
                                 newItem = QTreeWidgetItem([split[i]])
                                 self.addTopLevelItem(newItem)
                                 testItem = newItem
                                 boolStat = True
-                        
+
                     elif testItem.childCount() == 0:
                         newItem = QTreeWidgetItem([split[i]])
                         testItem.addChild(newItem)
@@ -118,64 +119,65 @@ class OverlayTreeWidget(QTreeWidget):
                                 testItem = testItem.child(x)
                                 boolStat = True
                                 break
-                            elif x+1 == testItem.childCount():
+                            elif x + 1 == testItem.childCount():
                                 newItem = QTreeWidgetItem([split[i]])
                                 testItem.addChild(newItem)
                                 testItem = newItem
                                 boolStat = True
-                                
+
     def treeItemChanged(self, item, column):
         currentItem = item
         it = OverlayTreeWidgetIter(self, QTreeWidgetItemIterator.Checked)
-        while (it.value()):
+        while it.value():
             if self.singleOverlaySelection == True and currentItem.checkState(column) == Qt.Checked:
                 if it.value() != currentItem:
                     it.value().setCheckState(0, Qt.Unchecked)
             next(it)
 
-                                
     def createSelectedItemList(self):
         selectedItemList = []
         it = OverlayTreeWidgetIter(self, QTreeWidgetItemIterator.Checked)
-        while (it.value()):
+        while it.value():
             selectedItemList.append(it.value().item)
             next(it)
         return selectedItemList
-
 
     def spacePressedTreewidget(self):
         for item in self.selectedItems():
             if item.childCount() == 0:
                 if item.checkState(0) == Qt.Unchecked:
                     item.setCheckState(0, Qt.Checked)
-                else: 
+                else:
                     item.setCheckState(0, Qt.Unchecked)
-                    
+
     def event(self, event):
-        if (event.type()==QEvent.KeyPress) and (event.key()==Qt.Key_Space):
+        if (event.type() == QEvent.KeyPress) and (event.key() == Qt.Key_Space):
             self.spacePressed.emit()
             return True
         return QTreeWidget.event(self, event)
-    
+
 
 class OverlayEntry(object):
     def __init__(self, name):
         self.name = name
 
+
 if __name__ == "__main__":
     import sys
-    #make the program quit on Ctrl+C
+
+    # make the program quit on Ctrl+C
     import signal
+
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     from PyQt5.QtWidgets import *
-        
+
     app = QApplication(sys.argv)
-    
+
     ex1 = OverlayTreeWidget()
     a = OverlayEntry("Labels")
     b = OverlayEntry("Raw Data")
     ex1.addOverlaysToTreeWidget({"Classification/Labels": a, "Raw Data": b}, [], [], True)
     ex1.show()
-    ex1.raise_()        
-    
-    app.exec_() 
+    ex1.raise_()
+
+    app.exec_()

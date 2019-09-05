@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
@@ -39,11 +39,10 @@ logger = logging.getLogger(loggerName)
 logger.setLevel(logging.DEBUG)
 
 
-
 class FillMissingSlicesGui(LayerViewerGui):
 
-    _standardPatchSizes = [1, 2, 4, 8] + [16*i for i in range(1, 6)]
-    _standardHaloSizes = [8*i for i in range(7)]
+    _standardPatchSizes = [1, 2, 4, 8] + [16 * i for i in range(1, 6)]
+    _standardHaloSizes = [8 * i for i in range(7)]
 
     _recentDetectorDir = QDir.homePath()
     _recentExportDir = QDir.homePath()
@@ -54,80 +53,78 @@ class FillMissingSlicesGui(LayerViewerGui):
         """
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
-        self._drawer = PyQt5.uic.loadUi(localDir+"/drawer.ui")
+        self._drawer = PyQt5.uic.loadUi(localDir + "/drawer.ui")
 
-        self._drawer.loadDetectorButton.clicked.connect(
-            self._loadDetectorButtonPressed)
+        self._drawer.loadDetectorButton.clicked.connect(self._loadDetectorButtonPressed)
         if hasattr(self._drawer, "loadHistogramsButton"):
-            self._drawer.loadHistogramsButton.clicked.connect(
-                self._loadHistogramsButtonPressed)
-        self._drawer.exportDetectorButton.clicked.connect(
-            self._exportDetectorButtonPressed)
+            self._drawer.loadHistogramsButton.clicked.connect(self._loadHistogramsButtonPressed)
+        self._drawer.exportDetectorButton.clicked.connect(self._exportDetectorButtonPressed)
         if hasattr(self._drawer, "trainButton"):
             self._drawer.trainButton.clicked.connect(self._trainButtonPressed)
 
-        self._drawer.patchSizeComboBox.activated.connect(
-            self._patchSizeComboBoxActivated)
+        self._drawer.patchSizeComboBox.activated.connect(self._patchSizeComboBoxActivated)
 
         for s in self._standardPatchSizes:
             self._drawer.patchSizeComboBox.addItem(str(s), userData=s)
 
-        self._drawer.haloSizeComboBox.activated.connect(
-            self._haloSizeComboBoxActivated)
+        self._drawer.haloSizeComboBox.activated.connect(self._haloSizeComboBoxActivated)
         for s in self._standardHaloSizes:
             self._drawer.haloSizeComboBox.addItem(str(s), userData=s)
 
         self.patchSizeChanged(update=True)
         self.haloSizeChanged(update=True)
 
-        self.topLevelOperatorView.PatchSize.notifyValueChanged(
-            self.patchSizeChanged, update=True)
-        self.topLevelOperatorView.HaloSize.notifyValueChanged(
-            self.haloSizeChanged, update=True)
+        self.topLevelOperatorView.PatchSize.notifyValueChanged(self.patchSizeChanged, update=True)
+        self.topLevelOperatorView.HaloSize.notifyValueChanged(self.haloSizeChanged, update=True)
 
     def _loadDetectorButtonPressed(self):
         fname, _filter = QFileDialog.getOpenFileName(
-            self, caption='Open Detector File',
+            self,
+            caption="Open Detector File",
             filter="Pickled Objects (*.pkl);;All Files (*)",
-            directory=self._recentDetectorDir)
+            directory=self._recentDetectorDir,
+        )
         if len(fname) > 0:  # not cancelled
-            with open(fname, 'r') as f:
+            with open(fname, "r") as f:
                 pkl = f.read()
 
             # reset it first
-            self.topLevelOperatorView.OverloadDetector.setValue('')
+            self.topLevelOperatorView.OverloadDetector.setValue("")
 
             self.topLevelOperatorView.OverloadDetector.setValue(pkl)
             logger.debug("Loaded detectors from file '{}'".format(fname))
-            self._recentDetectorDir = os.path.dirname( fname )
+            self._recentDetectorDir = os.path.dirname(fname)
 
     def _loadHistogramsButtonPressed(self):
         fname, _filter = QFileDialog.getOpenFileName(
-            self, caption='Open Histogram File',
+            self,
+            caption="Open Histogram File",
             filter="HDF5 Files (*.h5 *.hdf5);;All Files (*)",
-            directory=QDir.homePath())
+            directory=QDir.homePath(),
+        )
         if len(fname) > 0:  # not cancelled
-            #FIXME where do we get the real h5 path from???
-            h5path = 'volume/data'
+            # FIXME where do we get the real h5 path from???
+            h5path = "volume/data"
 
             # no try-catch because we want to propagate errors to the GUI
             histos = vigra.impex.readHDF5(str(fname), h5path)
 
             self.topLevelOperatorView.setPrecomputedHistograms(histos)
-            logger.debug("Loaded histograms from file '{}' (shape: {})".format(
-                fname, histos.shape))
+            logger.debug("Loaded histograms from file '{}' (shape: {})".format(fname, histos.shape))
 
     def _exportDetectorButtonPressed(self):
         fname, _filter = QFileDialog.getSaveFileName(
-            self, caption='Export Trained Detector',
+            self,
+            caption="Export Trained Detector",
             filter="Pickled Objects (*.pkl);;All Files (*)",
-            directory=self._recentExportDir)
+            directory=self._recentExportDir,
+        )
         if len(fname) > 0:  # not cancelled
-            with open(fname, 'w') as f:
+            with open(fname, "w") as f:
                 f.write(self.topLevelOperatorView.Detector[:].wait())
 
             logger.debug("Exported detectors to file '{}'".format(fname))
-            self._recentExportDir = os.path.dirname( fname )
+            self._recentExportDir = os.path.dirname(fname)
 
     def _trainButtonPressed(self):
         self.topLevelOperatorView.train()
@@ -163,8 +160,7 @@ class FillMissingSlicesGui(LayerViewerGui):
 
     def patchSizeChanged(self, update=False):
         patchSize = self.topLevelOperatorView.PatchSize.value
-        pos = self._insertIntoComboBox(
-            self._drawer.patchSizeComboBox, patchSize)
+        pos = self._insertIntoComboBox(self._drawer.patchSizeComboBox, patchSize)
         self._patchSizeComboBoxActivated(pos)
 
         if update:

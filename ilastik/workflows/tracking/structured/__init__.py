@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,11 +18,12 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
-__author__ = 'jales'
+__author__ = "jales"
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 from .structuredTrackingWorkflow import StructuredTrackingWorkflowFromPrediction, StructuredTrackingWorkflowFromBinary
