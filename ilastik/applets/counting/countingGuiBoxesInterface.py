@@ -28,14 +28,11 @@ from typing import Iterable, TextIO, Tuple
 
 import numpy as np
 
-import vigra
 from ilastik.utility.gui import roi2rect
-from ilastik.widgets.boxListModel import BoxLabel, BoxListModel
-from lazyflow.graph import Graph, Operator, OutputSlot
-from lazyflow.operator import InputSlot
+from ilastik.widgets.boxListModel import BoxLabel
 from lazyflow.operators.generic import OpSubRegion
 from past.utils import old_div
-from PyQt5.QtCore import QEvent, QObject, QPoint, QPointF, QRect, QRectF, QSize, Qt, QTimer, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QEvent, QObject, QPoint, QPointF, QRect, QRectF, Qt, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QBrush, QColor, QFont, QPen
 from PyQt5.QtWidgets import (
     QApplication,
@@ -44,11 +41,11 @@ from PyQt5.QtWidgets import (
     QGraphicsTextItem,
     QRubberBand,
     QStylePainter,
+    QWidget,
 )
 from volumina import colortables
-from volumina.api import Viewer, createDataSource
-from volumina.colortables import jet
-from volumina.layer import ColortableLayer
+from volumina.eventswitch import InterpreterABC
+from volumina.positionModel import PositionModel
 
 logger = logging.getLogger(__name__)
 
@@ -65,18 +62,12 @@ class Tool(object):
     Box = 4
 
 
-# ===============================================================================
-# Graphics Classes
-# ===============================================================================
-
-
 class ResizeHandle(QGraphicsRectItem):
     def __init__(self, rect, constrainAxis, parent):
         size = 5
         self._rect = rect
         super(ResizeHandle, self).__init__(old_div(-size, 2), old_div(-size, 2), 2 * size, 2 * size, parent)
 
-        # self._offset = offset
         self._constrainAxis = constrainAxis
         self._hoverOver = False
 
@@ -88,7 +79,6 @@ class ResizeHandle(QGraphicsRectItem):
         self._updateColor()
 
     def resetOffset(self, constrainAxis, rect=None):
-        # self._parent=self.parentItem()
         if rect == None:
             rect = self._rect
 
@@ -104,8 +94,6 @@ class ResizeHandle(QGraphicsRectItem):
             else:
                 self._offset = (rect.left(), old_div((rect.top() + rect.bottom()), 2.0))
 
-            # self._offset = ( sel, self.shape[0] )
-        # print "Resetting ",self._offset
         self.setPos(QPointF(*self._offset))
         self._rect = rect
 
@@ -115,7 +103,7 @@ class ResizeHandle(QGraphicsRectItem):
         self._hoverOver = True
         self._updateColor()
         if hasattr(self.parentItem(), "_editor") and self.parentItem()._editor:
-            if hasattr(self.parentItem()._editor.eventSwitch.interpreter, "acceptBoxManipulation"):
+            if isinstance(self.parentItem()._editor.eventSwitch.interpreter, BoxInterpreter):
                 if self._constrainAxis == 0:
                     QApplication.setOverrideCursor(Qt.SplitVCursor)
                 else:
@@ -128,7 +116,6 @@ class ResizeHandle(QGraphicsRectItem):
         QApplication.restoreOverrideCursor()
 
     def mouseMoveEvent(self, event):
-        # print "[view=%d] mouse move event constrained to %r" % (self.scene().skeletonAxis, self._constrainAxis)
         super(ResizeHandle, self).mouseMoveEvent(event)
 
         axes = [0, 1]
@@ -338,7 +325,6 @@ class QGraphicsResizableRect(QGraphicsRectItem):
             self.textItemBottom.setPos(QPointF(self.width, self.height))
 
         for el in self._resizeHandles:
-            # print "shape = %s , left = %s , right = %s , top = %s , bottm , %s "%(self.shape,self.rect().left(),self.rect().right(),self.rect().top(),self.rect().bottom())
             el.resetOffset(el._constrainAxis, rect=newrect)
 
         self.Signaller.signalHasResized.emit()
@@ -346,8 +332,6 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     def hoverEnterEvent(self, event):
         event.setAccepted(True)
         self._hovering = True
-        # elf.setCursor(Qt.BlankCursor)
-        # self.radius = self.radius # modified radius b/c _hovering
         self.updateColor()
         self.setSelected(True)
         self.showHandles()
@@ -359,8 +343,6 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         event.setAccepted(True)
         self._hovering = False
         self.setSelected(False)
-        # self.setCursor(CURSOR)
-        # self.radius = self.radius # no longer _hovering
         self.hideHandles()
         super(QGraphicsResizableRect, self).hoverLeaveEvent(event)
 
@@ -389,7 +371,6 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         if not self.isSelected():
             self._hovering = False
         self.updateColor()
-        # self.resetHandles()
 
     @pyqtSlot()
     def updateColor(self):
@@ -429,13 +410,6 @@ class QGraphicsResizableRect(QGraphicsRectItem):
             super(QGraphicsResizableRect, self).mouseMoveEvent(event)
             string = str(self.pos()).split("(")[1][:-1]
 
-            # self.QResizableRect.signalIsMoving.emit()
-
-    #         dataPos = self.scene().scene2data.map(self.scenePos())
-    #         pos = [dataPos.x(), dataPos.y()]
-
-    # self.updateText("("+string+")"+" "+str(pos))
-
     def mouseDoubleClickEvent(self, event):
         logger.debug("DOUBLE CLICK ON ITEM")
         # FIXME: Implement me
@@ -450,7 +424,6 @@ class QGraphicsResizableRect(QGraphicsRectItem):
 
         if self._has_moved:
             self.Signaller.signalHasMoved.emit(self.pos())
-            # self._has_moved=False
 
             self._has_moved = False
         QApplication.restoreOverrideCursor()
@@ -483,28 +456,17 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     def fixSelf(self, isFixed):
         self._isFixed = isFixed
         self.setFlag(QGraphicsItem.ItemIsMovable, not isFixed)
-        # self.setFlag(QGraphicsItem.ItemIsSelectable,True)
-        # self.setFlag(QGraphicsItem.ItemSendsGeometryChanges ,True)
 
 
 class RedRubberBand(QRubberBand):
     def __init__(self, *args, **kwargs):
         QRubberBand.__init__(self, *args, **kwargs)
 
-    #         palette=QPalette()
-    #         palette.setBrush(palette.ColorGroup(), palette.foreground(), QBrush( QColor("red") ) );
-    #         self.setPalette(palette)
-
     def paintEvent(self, pe):
         painter = QStylePainter(self)
         pen = QPen(QColor("red"), 4)
         painter.setPen(pen)
         painter.drawRect(pe.rect())
-
-
-# ===============================================================================
-# Functional Classes
-# ===============================================================================
 
 
 class CoupledRectangleElement(object):
@@ -660,164 +622,81 @@ class CoupledRectangleElement(object):
         del self
 
 
-# class OpSumAll(Operator):
-#     name = "SumRegion"
-#     description = ""
-#
-#     #Inputs
-#     Input = InputSlot()
-#
-#     #Outputs
-#     Output = OutputSlot()
-#
-#
-#     def setupOutputs(self):
-#         inputSlot = self.inputs["Input"]
-#         self.Output.meta.shape = (1,)
-#         self.Output.meta.dtype = np.float
-#         self.Output.meta.axistags = None
-#
-#
-#     def execute(self, slot, subindex, roi, result):
-#         #key = roi.toSlice()
-#         arr = self.inputs["Input"][:].wait()
-#         result[:]=np.sum(arr)
-#         return result
-#
-#     def propagateDirty(self, slot, subindex, roi):
-#         key = roi.toSlice()
-#         # Check for proper name because subclasses may define extra inputs.
-#         # (but decline to override notifyDirty)
-#         if slot.name == 'Input':
-#             self.outputs["Output"].setDirty(slice(None))
-#         else:
-#             # If some input we don't know about is dirty (i.e. we are subclassed by an operator with extra inputs),
-#             # then mark the entire output dirty.  This is the correct behavior for e.g. 'sigma' inputs.
-#             self.outputs["Output"].setDirty(slice(None))
-
-
-# ===============================================================================
-# Controlling of the boxes
-# ===============================================================================
-
-
 class BoxInterpreter(QObject):
-    rightClickReceived = pyqtSignal(object, QPoint)  # list of indexes, global window coordinate of click
-    leftClickReceived = pyqtSignal(object, QPoint)
-    leftClickReleased = pyqtSignal(QRect)
-    # boxAdded= pyqtSignal(object, object)
-    # focusObjectChages= pyqtSignal(object, QPoint)
-    cursorPositionChanged = pyqtSignal(object)
-    deleteSelectedItemsSignal = pyqtSignal()  # send the signal that we want to delete the currently selected item
+    boxDrawn = pyqtSignal(QRect)
 
-    acceptBoxManipulation = True
+    def __init__(self, base: InterpreterABC, posModel: PositionModel, newBoxParent: QWidget):
+        """Create new BoxInterpreter.
 
-    def __init__(self, navigationInterpreter, positionModel, BoxContr, widget):
+        Args:
+            newBoxParent: Parent for the widget that is temporarily shown when a user draws a new box.
         """
-        Class which interacts directly with the image scene
+        super().__init__()
 
-        :param navigationInterpreter:
-        :param positionModel:
-        :param BoxContr:
-        :param widget: The main widget
+        self._base = base
+        self._posModel = posModel
+        self._rubberBand = RedRubberBand(QRubberBand.Rectangle, newBoxParent)
 
-        """
+        self._origin = None
+        self._originPos = None
 
-        QObject.__init__(self)
+    def start(self) -> None:
+        self._base.start()
 
-        self.baseInterpret = navigationInterpreter
-        self._posModel = positionModel
-        self.rubberBand = RedRubberBand(QRubberBand.Rectangle, widget)
+    def stop(self) -> None:
+        self._base.stop()
 
-        self.boxController = BoxContr
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        pos = tuple(map(int, self._posModel.cursorPos[:2]))
 
-        self.leftClickReleased.connect(BoxContr.addNewBox)
-        self.rightClickReceived.connect(BoxContr.onChangedPos)
-        # self.deleteSelectedItemsSignal.connect(BoxContr.deleteSelectedItems)
+        if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Space:
+            # Bring to front and select the box at the bottom of the stack.
+            items = watched.scene().items(QPointF(*pos))
+            rects = [item for item in items if isinstance(item, QGraphicsResizableRect)]
 
-        self.origin = QPoint()
-        self.originpos = object()
+            if len(rects) > 1:
+                rects[-1].setZValue(rects[0].zValue() + 1)
+                rects[0].setSelected(False)
+                rects[-1].setSelected(True)
 
-    def start(self):
-        self.baseInterpret.start()
+        elif event.type() == QEvent.KeyPress and event.key() == Qt.Key_Control:
+            QApplication.setOverrideCursor(Qt.OpenHandCursor)
 
-    def stop(self):
-        self.baseInterpret.stop()
+        elif event.type() == QEvent.KeyRelease and event.key() == Qt.Key_Control:
+            QApplication.restoreOverrideCursor()
 
-    def eventFilter(self, watched, event):
-        pos = [int(i) for i in self._posModel.cursorPos]
-        pos = [self._posModel.time] + pos + [self._posModel.channel]
+        elif event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
+            # Start new box rectangle.
+            self._origin = QPoint(event.pos())
+            self._originPos = pos
+            self._rubberBand.setGeometry(self._origin.x(), self._origin.y(), 0, 0)
 
-        # Rectangles under the current point
-        items = watched.scene().items(QPointF(*pos[1:3]))
-        items = [el for el in items if isinstance(el, QGraphicsResizableRect)]
+            items = watched.scene().items(QPointF(*pos))
+            handles = [item for item in items if isinstance(item, ResizeHandle)]
 
-        # Keyboard interaction
-        if event.type() == QEvent.KeyPress:
-            # Switch selection
-            if event.key() == Qt.Key_Space:
-                # assert items[0]._hovering
-                # items[0].setZValue(1)
-                # for el in items:
-                #    print el.zValue()
+            modifiers = QApplication.keyboardModifiers()
+            if modifiers != Qt.ControlModifier and modifiers != Qt.ShiftModifier and not handles:
+                self._rubberBand.show()
 
-                if len(items) > 1:
-                    items[-1].setZValue(items[0].zValue() + 1)
-                    items[0].setSelected(False)
-                    items[-1].setSelected(True)
-                    # items[0].setZero()
+        elif event.type() == QEvent.MouseMove:
+            if self._rubberBand.isVisible():
+                # Resize new box rectangle.
+                self._rubberBand.setGeometry(
+                    min(self._origin.x(), event.pos().x()),
+                    min(self._origin.y(), event.pos().y()),
+                    abs(self._origin.x() - event.pos().x()),
+                    abs(self._origin.y() - event.pos().y()),
+                )
 
-            if event.key() == Qt.Key_Control:
-                QApplication.setOverrideCursor(Qt.OpenHandCursor)
+        elif event.type() == QEvent.MouseButtonRelease and event.button() == Qt.LeftButton:
+            if self._rubberBand.isVisible():
+                # Finish new box rectangle.
+                self._rubberBand.hide()
+                self.boxDrawn.emit(roi2rect(self._originPos, pos))
+                self._origin = None
+                self._originPos = None
 
-            # #Delete element
-            # if event.key()==Qt.Key_Delete:
-            #     self.deleteSelectedItemsSignal.emit()
-        if event.type() == QEvent.KeyRelease:
-            if event.key() == Qt.Key_Control:
-                QApplication.restoreOverrideCursor()
-
-        # Pressing mouse and menaging rubber band
-        if event.type() == QEvent.MouseButtonPress:
-            if event.button() == Qt.LeftButton:
-                self.origin = QPoint(event.pos())
-                self.originpos = pos
-                self.rubberBand.setGeometry(QRect(self.origin, QSize()))
-
-                itemsall = watched.scene().items(QPointF(*pos[1:3]))
-                itemsall = [el for el in itemsall if isinstance(el, ResizeHandle)]
-
-                #                 if len(itemsall)==0: #show rubber band only if there is no rubbber band
-                #                     self.rubberBand.show()
-
-                modifiers = QApplication.keyboardModifiers()
-                if (
-                    modifiers != Qt.ControlModifier and modifiers != Qt.ShiftModifier and len(itemsall) == 0
-                ):  # show rubber band if Ctrl is not pressed
-                    self.rubberBand.show()
-
-                gPos = watched.mapToGlobal(event.pos())
-                self.leftClickReceived.emit(pos, gPos)
-
-            if event.button() == Qt.RightButton:
-                gPos = watched.mapToGlobal(event.pos())
-                self.rightClickReceived.emit(pos, gPos)
-
-        if event.type() == QEvent.MouseMove:
-            self.cursorPositionChanged.emit(event.pos())
-            if not self.origin.isNull():
-                self.rubberBand.setGeometry(QRect(self.origin, event.pos()).normalized())
-
-        if (
-            event.type() == QEvent.MouseButtonRelease
-            and event.button() == Qt.LeftButton
-            and self.rubberBand.isVisible()
-        ):
-            self.rubberBand.hide()
-            self.leftClickReleased.emit(roi2rect(self.originpos[1:3], self._posModel.cursorPos[:2]))
-
-        # Event is always forwarded to the navigation interpreter.
-        return self.baseInterpret.eventFilter(watched, event)
+        return self._base.eventFilter(watched, event)
 
 
 class BoxController(QObject):
@@ -842,16 +721,11 @@ class BoxController(QObject):
         self.scene = scene
         self.connectionInput = connectionInput
         self._currentBoxesList = []
-        # self._currentActiveItem=[]
-        # self.counter=1000
         self.currentColor = self._getNextBoxColor()
         self.boxListModel = boxListModel
         self.scene.selectionChanged.connect(self.handleSelectionChange)
 
         boxListModel.boxRemoved.connect(self.deleteItem)
-
-    def getCurrentActiveBox(self):
-        pass
 
     def addNewBox(self, pos: QRect) -> None:
         if QApplication.keyboardModifiers() == Qt.ControlModifier:
@@ -906,20 +780,6 @@ class BoxController(QObject):
                 boxes["rois"].append([rect.getStart(), rect.getStop()])
 
         self.viewBoxesChanged.emit(boxes)
-
-    def itemsAtPos(self, pos5D):
-        pos5D = pos5D[1:3]
-        items = self.scene.items(QPointF(*pos5D))
-        items = [el for el in items if isinstance(el, ResizeHandle)]
-        return items
-
-    def onChangedPos(self, pos, gpos):
-        pos = pos[1:3]
-        items = self.scene.items(QPointF(*pos))
-        # print items
-        items = [el for el in items if isinstance(el, QGraphicsResizableRect)]
-
-        self.itemsAtpos = items
 
     def deleteSelectedItems(self):
         tmp = []
@@ -1054,11 +914,6 @@ class BoxController(QObject):
             writer.writerow(row)
 
 
-# ===============================================================================
-# Random colors
-# ===============================================================================
-
-
 def RandomColorGenerator(seed=42):
     np.random.seed(seed)
     default = colortables.default16_new
@@ -1074,150 +929,3 @@ def RandomColorGenerator(seed=42):
             color = colorsys.hsv_to_rgb(hue, 0.99, 0.99)
             color = [c * 255.0 for c in color]
             yield QColor(*color)
-
-
-# ===============================================================================
-# FOR DEBUG PURPOSES ---------
-# ===============================================================================
-
-# class MyGraphicsView(QtWidgets.QGraphicsView):
-#     #useful class for debug
-#     def __init__ (self,parent=None):
-#         super (MyGraphicsView, self).__init__ (parent)
-#
-#
-#     def mousePressEvent(self,  event):
-#         super(MyGraphicsView, self).mousePressEvent(event)
-#         itemUnderMouse = self.itemAt(event.pos())
-#         print "here",itemUnderMouse
-#
-#
-# def create_qt_default_env():
-#     #useful for debug
-#     from PyQt5.QtWidgets import QGraphicsScene,QGraphicsView,QApplication
-#     # 1 make the application
-#     app=QApplication([])
-#     # 2 then we need a main window to display stuff
-#     window=QMainWindow()
-#     # 3 then we a scene that we want to display
-#     scene=QGraphicsScene(0,0,400,400)
-#
-#     # 4 view on the scene: open a widget on the main window which dispaly the scene
-#     view=MyGraphicsView(scene)
-#     window.setCentralWidget(view)
-#     #window.show()
-#
-#     return app,window,view,scene
-
-
-class OpArrayPiper2(Operator):
-    name = "ArrayPiper"
-    description = "simple piping operator"
-
-    # Inputs
-    Input = InputSlot()
-
-    # Outputs
-    Output = OutputSlot()
-
-    def setupOutputs(self):
-        inputSlot = self.inputs["Input"]
-        self.outputs["Output"].meta.assignFrom(inputSlot.meta)
-
-        self.Output.meta.axistags = vigra.AxisTags(
-            [vigra.AxisInfo("t"), vigra.AxisInfo("x"), vigra.AxisInfo("y"), vigra.AxisInfo("z"), vigra.AxisInfo("c")]
-        )
-
-    def execute(self, slot, subindex, roi, result):
-        key = roi.toSlice()
-        req = self.inputs["Input"][key].writeInto(result)
-        req.wait()
-        return result
-
-    def propagateDirty(self, slot, subindex, roi):
-        key = roi.toSlice()
-        # Check for proper name because subclasses may define extra inputs.
-        # (but decline to override notifyDirty)
-        if slot.name == "Input":
-            self.outputs["Output"].setDirty(key)
-        else:
-            # If some input we don't know about is dirty (i.e. we are subclassed by an operator with extra inputs),
-            # then mark the entire output dirty.  This is the correct behavior for e.g. 'sigma' inputs.
-            self.outputs["Output"].setDirty(slice(None))
-
-    def setInSlot(self, slot, subindex, roi, value):
-        # Forward to output
-        assert subindex == ()
-        assert slot == self.Input
-        key = roi.toSlice()
-        self.outputs["Output"][key] = value
-
-
-if __name__ == "__main__":
-
-    # ===========================================================================
-    # Example of how to do the thing
-    # we generate a dot at random position every 200 milliseconds
-    # when the dot happen to be in the centre of the movable squere in the
-    # image then we show a one on the top left corner
-    # ===========================================================================
-    from ilastik.widgets.boxListView import BoxListView
-    from PyQt5.QtWidgets import QWidget
-
-    app = QApplication([])
-
-    boxListModel = BoxListModel()
-
-    h, w = (500, 500)
-
-    LV = BoxListView()
-    LV.setModel(boxListModel)
-    LV._table.setShowGrid(True)
-    g = Graph()
-
-    cron = QTimer()
-    cron.start(500 * 100)
-
-    op = OpArrayPiper2(graph=g)  # Generate random noise
-    shape = (1, w, h, 1, 1)
-
-    # array = np.random.randint(0,255,500*500).reshape(shape).astype(np.uint8)
-    import scipy
-
-    array = scipy.misc.lena().astype(np.uint8)
-    array = vigra.sampling.resize(array.astype(np.float32), (h, w)).reshape(shape).astype(np.uint8)
-    op.Input.setValue(array)
-
-    def do():
-        # Generate
-        # array[:] = np.random.randint(0,255,500*500).reshape(shape).astype(np.uint8)
-        a = np.zeros(500 * 500).reshape(500, 500).astype(np.uint8)
-        ii = np.random.randint(0, 500, 1)
-        jj = np.random.randint(0, 500, 1)
-        a[ii, jj] = 1
-
-        a = vigra.filters.discDilation(a, radius=20)
-        array[:] = a.reshape(shape).view(np.ndarray) * 255
-        op.Input.setDirty()
-
-    do()
-
-    cron.timeout.connect(do)
-    ds = createDataSource(op.Output)
-    layer = ColortableLayer(ds, jet())
-
-    mainwin = Viewer()
-
-    mainwin.layerstack.append(layer)
-    mainwin.dataShape = (1, h, w, 1, 1)
-    print(mainwin.centralWidget())
-
-    BoxContr = BoxController(mainwin.editor, op.Output, boxListModel)
-    BoxInt = BoxInterpreter(mainwin.editor.navInterpret, mainwin.editor.posModel, BoxContr, mainwin.centralWidget())
-
-    mainwin.editor.setNavigationInterpreter(BoxInt)
-    #     boxListModel.boxRemoved.connect(BoxContr.deleteItem)
-    LV.show()
-    mainwin.show()
-
-    app.exec_()
