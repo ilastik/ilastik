@@ -206,7 +206,7 @@ class TrackingBaseDataExportGui(DataExportGui, ExportingGui):
         # TODO: remove once tracking is hytra-only
         self._default_export_filename = filename
 
-    def exportResultsForSlot(self, opLane):
+    def exportAsync(self, laneViewList) -> None:
         if (
             self.topLevelOperator.SelectedExportSource.value == OpTrackingBaseDataExport.PluginOnlyName
             and not self.pluginWasSelected
@@ -217,22 +217,8 @@ class TrackingBaseDataExportGui(DataExportGui, ExportingGui):
                 "You did not select any export plugin. \nPlease do so by clicking 'Choose Export Image Settings'",
             )
             return
-        else:
-            super(TrackingBaseDataExportGui, self).exportResultsForSlot(opLane)
 
-    def exportAllResults(self):
-        if (
-            self.topLevelOperator.SelectedExportSource.value == OpTrackingBaseDataExport.PluginOnlyName
-            and not self.pluginWasSelected
-        ):
-            QMessageBox.critical(
-                self,
-                "Choose Export Plugin",
-                "You did not select any export plugin. \nPlease do so by clicking 'Choose Export Image Settings'",
-            )
-            return
-        else:
-            super(TrackingBaseDataExportGui, self).exportAllResults()
+        super().exportAsync(laneViewList)
 
 
 class TrackingBaseResultsViewer(DataExportLayerViewerGui):

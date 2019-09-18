@@ -175,7 +175,7 @@ class DataExportGui(QWidget):
         self.drawer = uic.loadUi(drawerPath)
 
         self.drawer.settingsButton.clicked.connect(self._chooseSettings)
-        self.drawer.exportAllButton.clicked.connect(self.exportAllResults)
+        self.drawer.exportAllButton.clicked.connect(partial(self.exportAsync, self.topLevelOperator))
         self.drawer.exportAllButton.setIcon(QIcon(ilastikIcons.Save))
         self.drawer.deleteAllButton.clicked.connect(self.deleteAllResults)
         self.drawer.deleteAllButton.setIcon(QIcon(ilastikIcons.Clear))
@@ -326,7 +326,7 @@ class DataExportGui(QWidget):
 
         exportNowButton = QPushButton("Export")
         exportNowButton.setToolTip("Generate individual batch output dataset.")
-        exportNowButton.clicked.connect(bind(self.exportResultsForSlot, self.topLevelOperator[row]))
+        exportNowButton.clicked.connect(partial(self.exportAsync, (self.topLevelOperator[row],)))
         self.batchOutputTableWidget.setCellWidget(row, Column.Action, exportNowButton)
 
         # Select a row if there isn't one already selected.
@@ -378,7 +378,12 @@ class DataExportGui(QWidget):
         # Reconnect now that we're finished
         self.batchOutputTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
 
-    def exportSlots(self, laneViewList):
+    def exportSync(self, laneViewList):
+        """Export data from lanes.
+
+        See Also:
+            :meth:`exportAsync`.
+        """
         try:
             # Set the busy flag so the workflow knows not to allow
             #  upstream changes or shell changes while we're exporting
@@ -459,6 +464,14 @@ class DataExportGui(QWidget):
             QApplication.instance().postEvent(self, ThunkEvent(partial(self.setEnabledIfAlive, self.drawer, True)))
             QApplication.instance().postEvent(self, ThunkEvent(partial(self.setEnabledIfAlive, self, True)))
 
+    def exportAsync(self, laneViewList) -> None:
+        """Export data from lanes in a separate thread.
+
+        See Also:
+              :meth:`exportSync`.
+        """
+        threading.Thread(target=self.exportSync, name="DataExportThread", args=(laneViewList,)).start()
+
     def postProcessLane(self, lane_index):
         """
         Called immediately after the result for each lane is exported.
@@ -484,24 +497,6 @@ class DataExportGui(QWidget):
             userSelection[0] = True
         else:
             userSelection[0] = False
-
-    def exportResultsForSlot(self, opLane):
-        # Make sure all 'on disk' layers are discarded so we aren't using those files any more.
-        for opLaneView in self.topLevelOperator:
-            opLaneView.cleanupOnDiskView()
-
-        # Do this in a separate thread so the UI remains responsive
-        exportThread = threading.Thread(target=bind(self.exportSlots, [opLane]), name="DataExportThread")
-        exportThread.start()
-
-    def exportAllResults(self):
-        # Make sure all 'on disk' layers are discarded so we aren't using those files any more.
-        for opLaneView in self.topLevelOperator:
-            opLaneView.cleanupOnDiskView()
-
-        # Do this in a separate thread so the UI remains responsive
-        exportThread = threading.Thread(target=bind(self.exportSlots, self.topLevelOperator), name="DataExportThread")
-        exportThread.start()
 
     def deleteAllResults(self):
         for innerOp in self.topLevelOperator:

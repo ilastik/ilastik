@@ -454,7 +454,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             with Timer() as timer:
                 # this will not properly wait for the export to finish.
                 # gui.drawer.exportAllButton.click()
-                gui.exportSlots(op_object_export_tlo)
+                gui.exportSync(op_object_export_tlo)
 
             assert object_export_applet.busy is False
             assert os.path.exists(csv_out), f"Could not find {csv_out}"
@@ -476,7 +476,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             with Timer() as timer:
                 # this will not properly wait for the export to finish.
                 # gui.drawer.exportAllButton.click()
-                gui.exportSlots(op_object_export_tlo)
+                gui.exportSync(op_object_export_tlo)
 
             assert object_export_applet.busy is False
             assert os.path.exists(h5_out), f"Could not find {h5_out}"
