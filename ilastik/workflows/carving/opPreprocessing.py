@@ -181,41 +181,37 @@ class OpSimpleBlockwiseWatershed(Operator):
         self.Output.meta.dtype = numpy.uint32
 
     def execute(self, slot, subindex, roi, result):
-        assert roi.stop - roi.start == self.Output.meta.shape, "Blockwise Watershed must be run on the entire volume."
-        input_image = self.Input(roi.start, roi.stop).wait()
-        volume_feat = input_image[0, ..., 0]
-        result_view = result[0, ..., 0]
-        # handle the special case of the Request threadpool not having any workers
-        max_workers = max(1, Request.global_thread_pool.num_workers)
-        with Timer() as watershedTimer:
-            # 3d watersheds
-            if self.Input.meta.getTaggedShape()["z"] > 1:
-                logger.info("Run block-wise watershed in 3d")
-                if self.DoAgglo.value:
-                    result_view[...], max_id = watershed_and_agglomerate(
-                        volume_feat,
-                        max_workers=max_workers,
+        if tuple(roi.stop - roi.start) != self.Output.meta.shape:
+            raise ValueError("Blockwise Watershed must be run on the entire volume")
+
+        if self.Input.meta.getAxisKeys() != list("txyzc"):
+            raise ValueError(f"Unsupported input axis keys {self.Input.meta.getAxisKeys()}")
+
+        if self.Input.meta.getTaggedShape()["z"] > 1:
+            result_idx = numpy.s_[0, ..., 0]
+        else:
+            result_idx = numpy.s_[0, ..., 0, 0]
+
+        input_ = self.Input(roi.start, roi.stop).wait().squeeze()
+        if input_.ndim not in (2, 3):
+            raise ValueError(f"Input shape {input_.shape} has an invalid number of non-singleton dimensions")
+
+        with Timer() as timer:
+            logger.info("Run block-wise watershed in %dd", input_.ndim)
+
+            if self.DoAgglo.value:
+                result[result_idx], max_id = watershed_and_agglomerate(
+                        input_,
+                        max_workers=max(1, Request.global_thread_pool.num_workers),
                         size_regularizer=self.SizeRegularizer.value,
                         reduce_to=self.ReduceTo.value,
                     )
-                else:
-                    result_view[...], max_id = vigra.analysis.watershedsNew(volume_feat)
-            # 2d watersheds
             else:
-                logger.info("Run block-wise watershed in 2d")
-                if self.DoAgglo.value:
-                    result_view[...], max_id = watershed_and_agglomerate(
-                        volume_feat[:, :, 0],
-                        max_workers=max_workers,
-                        size_regularizer=self.SizeRegularizer.value,
-                        reduce_to=self.ReduceTo.value,
-                    )
-                else:
-                    result_view[...], max_id = vigra.analysis.watersheds(volume_feat[:, :, 0])
+                result[result_idx], max_id = vigra.analysis.watershedsNew(input_)
 
-            logger.info("done {}".format(max_id))
+            logger.info("done %d", max_id)
+            logger.info("Blockwise Watershed took %f seconds", timer.seconds())
 
-        logger.info("Blockwise Watershed took {} seconds".format(watershedTimer.seconds()))
         return result
 
     def propagateDirty(self, slot, subindex, roi):
