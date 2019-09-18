@@ -1142,7 +1142,7 @@ class LabelAssistDialog(QDialog):
     def _captureDoubleClick(self):
         # Navigate to selected frame
         index = self.table.selectedIndexes()[0]
-        frameStr = self.table.model().data(index).toString()
+        frameStr = self.table.item(index.row(), 0).text()
 
         if frameStr:
             frameNum = int(frameStr)
