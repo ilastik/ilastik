@@ -29,12 +29,9 @@ class ObjectClassificationDataExportApplet(DataExportApplet):
     provides a special viewer for object classification predictions.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, table_exporter, **kwargs):
         super(ObjectClassificationDataExportApplet, self).__init__(*args, **kwargs)
-        self.exporting_op = None
-
-    def set_exporting_operator(self, op):
-        self.exporting_op = op
+        self._tableExporter = table_exporter
 
     def getMultiLaneGui(self):
         if self._gui is None:
@@ -42,5 +39,24 @@ class ObjectClassificationDataExportApplet(DataExportApplet):
             from .objectClassificationDataExportGui import ObjectClassificationDataExportGui
 
             self._gui = ObjectClassificationDataExportGui(self, self.topLevelOperator)
-            self._gui.set_exporting_operator(self.exporting_op)
+            self._gui.set_exporting_operator(self._tableExporter)
         return self._gui
+
+    def post_process_lane_export(self, lane_index):
+        # FIXME: This probably only works for the non-blockwise export slot.
+        #        We should assert that the user isn't using the blockwise slot.
+        settings, selected_features = self._tableExporter.get_table_export_settings()
+        if settings:
+            raw_dataset_info = self.topLevelOperator.RawDatasetInfo[lane_index].value
+            if raw_dataset_info.is_in_filesystem():
+                filename_suffix = raw_dataset_info.nickname
+            else:
+                filename_suffix = str(lane_index)
+            req = self._tableExporter.export_object_data(
+                lane_index,
+                # FIXME: Even in non-headless mode, we can't show the gui because we're running in a non-main thread.
+                #        That's not a huge deal, because there's still a progress bar for the overall export.
+                show_gui=False,
+                filename_suffix=filename_suffix,
+            )
+            req.wait()

@@ -143,13 +143,12 @@ class ObjectClassificationWorkflow(Workflow):
         self.objectExtractionApplet = ObjectExtractionApplet(workflow=self, name="Object Feature Selection")
         self.objectClassificationApplet = ObjectClassificationApplet(workflow=self)
         self._tableExportingOp = TableExportingOperator(self.objectClassificationApplet.topLevelOperator)
-        self.dataExportApplet = ObjectClassificationDataExportApplet(self, "Object Information Export")
-        self.dataExportApplet.set_exporting_operator(self._tableExportingOp)
+        self.dataExportApplet = ObjectClassificationDataExportApplet(
+            self, "Object Information Export", table_exporter=self._tableExportingOp
+        )
 
         # Customization hooks
         self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
-        # self.dataExportApplet.prepare_lane_for_export = self.prepare_lane_for_export
-        self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
         self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
 
         opDataExport = self.dataExportApplet.topLevelOperator
@@ -382,27 +381,6 @@ class ObjectClassificationWorkflow(Workflow):
     def post_process_entire_export(self):
         # Unfreeze.
         self.objectClassificationApplet.topLevelOperator.FreezePredictions.setValue(self.oc_freeze_status)
-
-    def post_process_lane_export(self, lane_index):
-        # FIXME: This probably only works for the non-blockwise export slot.
-        #        We should assert that the user isn't using the blockwise slot.
-        settings, selected_features = self._tableExportingOp.get_table_export_settings()
-        if settings:
-            raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][
-                self.InputImageRoles.RAW_DATA
-            ].value
-            if raw_dataset_info.is_in_filesystem():
-                filename_suffix = raw_dataset_info.nickname
-            else:
-                filename_suffix = str(lane_index)
-            req = self._tableExportingOp.export_object_data(
-                lane_index,
-                # FIXME: Even in non-headless mode, we can't show the gui because we're running in a non-main thread.
-                #        That's not a huge deal, because there's still a progress bar for the overall export.
-                show_gui=False,
-                filename_suffix=filename_suffix,
-            )
-            req.wait()
 
     def getHeadlessOutputSlot(self, slotId):
         if slotId == "BatchPredictionImage":
