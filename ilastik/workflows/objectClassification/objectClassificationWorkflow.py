@@ -38,7 +38,7 @@ from ilastik.applets.pixelClassification.opPixelClassification import OpPredicti
 from ilastik.applets.thresholdTwoLevels import ThresholdTwoLevelsApplet, OpThresholdTwoLevels
 from ilastik.applets.objectExtraction import ObjectExtractionApplet
 from ilastik.applets.objectClassification import ObjectClassificationApplet, ObjectClassificationDataExportApplet
-from ilastik.applets.objectClassification.opObjectClassification import TableExportingOperator
+from ilastik.applets.objectClassification.opObjectClassification import TableExporter
 from ilastik.applets.fillMissingSlices import FillMissingSlicesApplet
 from ilastik.applets.fillMissingSlices.opFillMissingSlices import OpFillMissingSlicesNoCache
 from ilastik.applets.blockwiseObjectClassification import (
@@ -142,9 +142,9 @@ class ObjectClassificationWorkflow(Workflow):
         # our main applets
         self.objectExtractionApplet = ObjectExtractionApplet(workflow=self, name="Object Feature Selection")
         self.objectClassificationApplet = ObjectClassificationApplet(workflow=self)
-        self._tableExportingOp = TableExportingOperator(self.objectClassificationApplet.topLevelOperator)
+        self._tableExporter = TableExporter(self.objectClassificationApplet.topLevelOperator)
         self.dataExportApplet = ObjectClassificationDataExportApplet(
-            self, "Object Information Export", table_exporter=self._tableExportingOp
+            self, "Object Information Export", table_exporter=self._tableExporter
         )
 
         # Customization hooks

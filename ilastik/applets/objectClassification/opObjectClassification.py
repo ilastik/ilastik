@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 MISSING_VALUE = 0
 
 
-class TableExportingOperator(ExportingOperator):
+class TableExporter(ExportingOperator):
     def __init__(self, op):
         self._op = op
         self._export_progress_dialog = None
