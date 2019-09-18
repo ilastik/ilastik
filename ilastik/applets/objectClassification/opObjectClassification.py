@@ -38,7 +38,8 @@ from lazyflow.request import Request, RequestPool, RequestLock
 from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory, ParallelVigraRfLazyflowClassifier
 
 from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWrapper
-from ilastik.utility.exportingOperator import ExportingOperator
+from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default
+from ilastik.utility.exportingOperator import ExportingOperator, TableExportSettingsProviderABC
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 
@@ -52,7 +53,115 @@ logger = logging.getLogger(__name__)
 MISSING_VALUE = 0
 
 
-class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
+class TableExportingOperator(ExportingOperator):
+    def __init__(self, op):
+        self._op = op
+        self._export_progress_dialog = None
+
+    def get_raw_shape(self):
+        return self._op.RawImages[0].meta.shape
+
+    def get_feature_names(self):
+        return self._op.ComputedFeatureNames([]).wait()
+
+    def configure_table_export_settings(self, settings, selected_features):
+        self._op.ExportSettings.setValue((settings, selected_features))
+
+    def get_table_export_settings(self):
+        if self._op.ExportSettings.ready() and self._op.ExportSettings.value:
+            settings, selected_features = self._op.ExportSettings.value
+            return settings, selected_features
+        else:
+            return None, None
+
+    def save_export_progress_dialog(self, dialog):
+        """
+        Implements ExportOperator.save_export_progress_dialog
+        Without this the progress dialog would be hidden after the export
+        :param dialog: the ProgressDialog to save
+        """
+        self._export_progress_dialog = dialog
+
+    def do_export(self, settings, selected_features, progress_slot, lane_index, filename_suffix=""):
+        """
+        Implements ExportOperator.do_export(settings, selected_features, progress_slot
+        Most likely called from ExportOperator.export_object_data
+        :param settings: the settings for the exporter, see
+        :param selected_features:
+        :param progress_slot:
+        :return:
+        """
+
+        label_image = self._op.SegmentationImages[lane_index]
+        obj_count = list(objects_per_frame(label_image))
+        ids = list(ilastik_ids(obj_count))
+
+        file_path = settings["file path"]
+        if filename_suffix:
+            path, ext = os.path.splitext(file_path)
+            file_path = path + "-" + filename_suffix + ext
+
+        export_file = ExportFile(file_path)
+        export_file.ExportProgress.subscribe(progress_slot)
+        export_file.InsertionProgress.subscribe(progress_slot)
+
+        # Object IDs
+        export_file.add_columns("table", list(range(sum(obj_count))), Mode.List, Default.KnimeId)
+        export_file.add_columns("table", ids, Mode.List, Default.IlastikId)
+
+        # Object User and Prediction Labels
+        class_names = OrderedDict(enumerate(self._op.LabelNames.value, start=1))
+        predictions = self._op.Predictions[lane_index]([]).wait()
+        labels = self._op.LabelInputs[lane_index]([]).wait()
+
+        # Predicted classes
+        named_predictions = []
+        named_labels = []
+        for t, object_id in ids:
+            prediction_label = predictions[t][object_id]
+            prediction_name = class_names[prediction_label]
+            named_predictions.append(prediction_name)
+            if object_id >= len(labels[t]) or labels[t][object_id] == 0:
+                named_labels.append("0")
+            else:
+                named_labels.append(class_names[labels[t][object_id]])
+
+        export_file.add_columns("table", named_labels, Mode.List, {"names": ("User Label",)})
+        export_file.add_columns("table", named_predictions, Mode.List, {"names": ("Predicted Class",)})
+
+        # Class probabilities
+        probabilities = self._op.Probabilities[lane_index]([]).wait()
+        probability_columns = OrderedDict((name, []) for name in list(class_names.values()))
+        for t, object_id in ids:
+            for label_id, class_name in list(class_names.items()):
+                prob = probabilities[t][object_id][label_id - 1]
+                probability_columns[class_name].append(prob)
+
+        probability_column_names = ["Probability of {}".format(class_name) for class_name in list(class_names.values())]
+        export_file.add_columns(
+            "table", list(zip(*list(probability_columns.values()))), Mode.List, {"names": probability_column_names}
+        )
+
+        # Object features
+        computed_names = self._op.ComputedFeatureNames.value
+
+        export_file.add_columns(
+            "table", self._op.ObjectFeatures[lane_index], Mode.IlastikFeatureTable, {"selection": selected_features}
+        )
+
+        if settings["file type"] == "h5":
+            export_file.add_rois(Default.LabelRoiPath, label_image, "table", settings["margin"], "labeling")
+            if settings["include raw"]:
+                export_file.add_image(Default.RawPath, self._op.RawImages[lane_index])
+            else:
+                export_file.add_rois(Default.RawRoiPath, self._op.RawImages[lane_index], "table", settings["margin"])
+        export_file.write_all(settings["file type"], settings["compression"])
+
+        export_file.ExportProgress.unsubscribe(progress_slot)
+        export_file.InsertionProgress.unsubscribe(progress_slot)
+
+
+class OpObjectClassification(Operator, MultiLaneOperatorABC):
     """The top-level operator for object classification.
 
     Most functionality is handled by specialized operators such as
@@ -136,24 +245,12 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
     # Use a slot for storing the export settings in the project file.
     ExportSettings = OutputSlot()
     # Override functions ExportingOperator mixin
-    def configure_table_export_settings(self, settings, selected_features):
-        self.ExportSettings.setValue((settings, selected_features))
-
-    def get_table_export_settings(self):
-        if self.ExportSettings.ready() and self.ExportSettings.value:
-            (settings, selected_features) = self.ExportSettings.value
-            return (settings, selected_features)
-        else:
-            return None, None
-
     def execute(self, slot, subindex, roi, result):
         assert slot is self.ExportSettings, "Should be no need to execute this slot: {}".format(slot.name)
         result[0] = numpy.array(None, None)
 
     def __init__(self, *args, **kwargs):
         super(OpObjectClassification, self).__init__(*args, **kwargs)
-
-        self.export_progress_dialog = None
 
         # internal operators
         opkwargs = dict(parent=self)
@@ -787,93 +884,6 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
 
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
-
-    def save_export_progress_dialog(self, dialog):
-        """
-        Implements ExportOperator.save_export_progress_dialog
-        Without this the progress dialog would be hidden after the export
-        :param dialog: the ProgressDialog to save
-        """
-        self.export_progress_dialog = dialog
-
-    def do_export(self, settings, selected_features, progress_slot, lane_index, filename_suffix=""):
-        """
-        Implements ExportOperator.do_export(settings, selected_features, progress_slot
-        Most likely called from ExportOperator.export_object_data
-        :param settings: the settings for the exporter, see
-        :param selected_features:
-        :param progress_slot:
-        :return:
-        """
-        from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default
-
-        label_image = self.SegmentationImages[lane_index]
-        obj_count = list(objects_per_frame(label_image))
-        ids = list(ilastik_ids(obj_count))
-
-        file_path = settings["file path"]
-        if filename_suffix:
-            path, ext = os.path.splitext(file_path)
-            file_path = path + "-" + filename_suffix + ext
-
-        export_file = ExportFile(file_path)
-        export_file.ExportProgress.subscribe(progress_slot)
-        export_file.InsertionProgress.subscribe(progress_slot)
-
-        # Object IDs
-        export_file.add_columns("table", list(range(sum(obj_count))), Mode.List, Default.KnimeId)
-        export_file.add_columns("table", ids, Mode.List, Default.IlastikId)
-
-        # Object User and Prediction Labels
-        class_names = OrderedDict(enumerate(self.LabelNames.value, start=1))
-        predictions = self.Predictions[lane_index]([]).wait()
-        labels = self.LabelInputs[lane_index]([]).wait()
-
-        # Predicted classes
-        named_predictions = []
-        named_labels = []
-        for t, object_id in ids:
-            prediction_label = predictions[t][object_id]
-            prediction_name = class_names[prediction_label]
-            named_predictions.append(prediction_name)
-            if object_id >= len(labels[t]) or labels[t][object_id] == 0:
-                named_labels.append("0")
-            else:
-                named_labels.append(class_names[labels[t][object_id]])
-
-        export_file.add_columns("table", named_labels, Mode.List, {"names": ("User Label",)})
-        export_file.add_columns("table", named_predictions, Mode.List, {"names": ("Predicted Class",)})
-
-        # Class probabilities
-        probabilities = self.Probabilities[lane_index]([]).wait()
-        probability_columns = OrderedDict((name, []) for name in list(class_names.values()))
-        for t, object_id in ids:
-            for label_id, class_name in list(class_names.items()):
-                prob = probabilities[t][object_id][label_id - 1]
-                probability_columns[class_name].append(prob)
-
-        probability_column_names = ["Probability of {}".format(class_name) for class_name in list(class_names.values())]
-        export_file.add_columns(
-            "table", list(zip(*list(probability_columns.values()))), Mode.List, {"names": probability_column_names}
-        )
-
-        # Object features
-        computed_names = self.ComputedFeatureNames.value
-
-        export_file.add_columns(
-            "table", self.ObjectFeatures[lane_index], Mode.IlastikFeatureTable, {"selection": selected_features}
-        )
-
-        if settings["file type"] == "h5":
-            export_file.add_rois(Default.LabelRoiPath, label_image, "table", settings["margin"], "labeling")
-            if settings["include raw"]:
-                export_file.add_image(Default.RawPath, self.RawImages[lane_index])
-            else:
-                export_file.add_rois(Default.RawRoiPath, self.RawImages[lane_index], "table", settings["margin"])
-        export_file.write_all(settings["file type"], settings["compression"])
-
-        export_file.ExportProgress.unsubscribe(progress_slot)
-        export_file.InsertionProgress.unsubscribe(progress_slot)
 
 
 def _atleast_nd(a, ndim):

@@ -8,6 +8,14 @@ from functools import partial
 logger = logging.getLogger(__name__)
 
 
+class TableExportSettingsProviderABC:
+    def configure_table_export_settings(self, settings, selected_features):
+        raise NotImplementedError
+
+    def get_table_export_settings(self):
+        raise NotImplementedError
+
+
 class ExportingOperator(object):
     """
     A Mixin for the Operators that can export h5/csv data
