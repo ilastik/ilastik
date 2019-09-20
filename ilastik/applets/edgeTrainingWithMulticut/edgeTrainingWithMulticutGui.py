@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QSpacerItem, QSizePolicy
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QSpacerItem, QSizePolicy, QPushButton
 
 from ilastik.applets.edgeTraining.edgeTrainingGui import EdgeTrainingGui
 from ilastik.applets.multicut.multicutGui import MulticutGuiMixin
@@ -10,12 +10,14 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
         self.__cleanup_fns = []
         MulticutGuiMixin.__init__(self, parentApplet, topLevelOperatorView)
         EdgeTrainingGui.__init__(self, parentApplet, topLevelOperatorView)
+        self.training = True
 
     def _after_init(self):
         EdgeTrainingGui._after_init(self)
         MulticutGuiMixin._after_init(self)
 
     def initAppletDrawerUi(self):
+
         training_controls = EdgeTrainingGui.createDrawerControls(self)
         training_controls.layout().setContentsMargins(5, 0, 5, 0)
         training_layout = QVBoxLayout()
@@ -39,7 +41,21 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
         multicut_required_slots = (op.Superpixels, op.Rag, op.EdgeProbabilities, op.EdgeProbabilitiesDict)
         self.__cleanup_fns.append(guiutil.enable_when_ready(multicut_box, multicut_required_slots))
 
+        def _handle_easy_predict_button_clicked():
+            self.training = not self.training
+            training_controls.setEnabled(self.training)
+            multicut_controls.setEnabled(self.training)
+
+        easy_predict_button = QPushButton(
+            text="Easy Predict",
+            toolTip="Skip training and use mean edge probability for multicut prediction. Produces good results for clear boundaries. Not recommended otherwise.",
+            checkable=True,
+            enabled=True,
+            clicked=_handle_easy_predict_button_clicked
+        )
+
         drawer_layout = QVBoxLayout()
+        drawer_layout.addWidget(easy_predict_button)
         drawer_layout.addWidget(training_box)
         drawer_layout.addWidget(multicut_box)
         drawer_layout.setSpacing(2)
