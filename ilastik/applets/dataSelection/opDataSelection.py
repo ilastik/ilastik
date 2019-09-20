@@ -143,7 +143,7 @@ class DatasetInfo(ABC):
         if "normalizeDisplay" in data:
             params["normalizeDisplay"] = (data["normalizeDisplay"][()],)
         if "drange" in data:
-            params["drange"] = (tuple(data["drange"]),)
+            params["drange"] = tuple(data["drange"])
         if "display_mode" in data:
             params["display_mode"] = data["display_mode"][()].decode("utf-8")
         return cls(**params)
