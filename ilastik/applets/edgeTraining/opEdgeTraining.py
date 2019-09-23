@@ -352,6 +352,7 @@ class OpTrainEdgeClassifier(Operator):
 
 
 class OpPredictEdgeProbabilities(Operator):
+    TrainRandomForest = InputSlot(value=False)
     EdgeClassifier = InputSlot()
     EdgeFeaturesDataFrame = InputSlot()
     EdgeProbabilities = OutputSlot()  # A 1D array of probabilities, in same order as EdgeFeaturesDataFrame
@@ -361,19 +362,30 @@ class OpPredictEdgeProbabilities(Operator):
         self.EdgeProbabilities.meta.dtype = object
 
     def execute(self, slot, subindex, roi, result):
-        edge_features_df = self.EdgeFeaturesDataFrame.value
-        classifier = self.EdgeClassifier.value
+        pd.set_option('display.expand_frame_repr', False)
+        if self.TrainRandomForest.value:
+            edge_features_df = self.EdgeFeaturesDataFrame.value
+            classifier = self.EdgeClassifier.value
+    
+            # Classifier can be None if no labels have been selected
+            if classifier is None or len(classifier.known_classes) < 2:
+                result[0] = np.zeros((len(edge_features_df),), dtype=np.float32)
+                return
+    
+            logger.info("Predicting edge probabilities...")
+            feature_matrix = edge_features_df.iloc[:, 2:].values  # Discard [sp1, sp2]
+            assert feature_matrix.dtype == np.float32, "Unexpected feature dtype: {}".format(feature_matrix.dtype)
+            probabilities = classifier.predict_probabilities(feature_matrix)[:, 1]
 
-        # Classifier can be None if no labels have been selected
-        if classifier is None or len(classifier.known_classes) < 2:
-            result[0] = np.zeros((len(edge_features_df),), dtype=np.float32)
-            return
+            assert len(probabilities) == len(edge_features_df)
 
-        logger.info("Predicting edge probabilities...")
-        feature_matrix = edge_features_df.iloc[:, 2:].values  # Discard [sp1, sp2]
-        assert feature_matrix.dtype == np.float32, "Unexpected feature dtype: {}".format(feature_matrix.dtype)
-        probabilities = classifier.predict_probabilities(feature_matrix)[:, 1]
-        assert len(probabilities) == len(edge_features_df)
+        else:
+            logger.info("Edge probabilities from mean edge probability...")
+            edge_features_df = self.EdgeFeaturesDataFrame.value
+
+            assert 'Probabilities-1 standard_edge_mean' in edge_features_df.columns
+            probabilities = edge_features_df['Probabilities-1 standard_edge_mean']
+
         result[0] = probabilities
 
     def propagateDirty(self, slot, subindex, roi):
