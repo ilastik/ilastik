@@ -146,7 +146,7 @@ class MulticutGuiMixin(object):
 
         # Update Button
         update_button = QPushButton(
-            text="Update Now", icon=QIcon(ilastikIcons.Play), clicked=self._handle_mulicut_update_clicked
+            text="Update Now", icon=QIcon(ilastikIcons.Play), clicked=self._handle_multicut_update_clicked
         )
         button_layout.addWidget(update_button)
         self.update_button = update_button
@@ -305,7 +305,7 @@ class MulticutGuiMixin(object):
         # (e.g. the FreezeCache setting).
         self.configure_gui_from_operator()
 
-    def _handle_mulicut_update_clicked(self):
+    def _handle_multicut_update_clicked(self):
         def updateThread():
             """
             Temporarily unfreeze the cache and freeze it again after the views are finished rendering.
