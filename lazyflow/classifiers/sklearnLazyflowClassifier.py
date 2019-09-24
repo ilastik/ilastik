@@ -99,15 +99,14 @@ class SklearnLazyflowClassifier(LazyflowVectorwiseClassifierABC):
         return self._feature_names
 
     def serialize_hdf5(self, h5py_group):
-        h5py_group["pickled_classifier"] = pickle.dumps(self, 0)
+        h5py_group["pickled_classifier"] = numpy.void(pickle.dumps(self, 0))
 
         # This is a required field for all classifiers
-        h5py_group["pickled_type"] = pickle.dumps(type(self), 0)
+        h5py_group["pickled_type"] = numpy.void(pickle.dumps(type(self), 0))
 
     @classmethod
     def deserialize_hdf5(cls, h5py_group):
-        pickled = h5py_group["pickled_classifier"][()]
-        classifier = pickle.loads(pickled)
+        classifier = pickle.loads(h5py_group["pickled_classifier"][()].tostring())
         if not hasattr(classifier, "VERSION") or classifier.VERSION != cls.VERSION:
             raise cls.VersionIncompatibilityError(
                 "Version mismatch. Deserialized classifier version does not match this code base."
