@@ -134,4 +134,3 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
         EdgeTrainingGui.configure_operator_from_gui(self)
         MulticutGuiMixin.configure_operator_from_gui(self)
         self.configure_gui_from_operator()
-
