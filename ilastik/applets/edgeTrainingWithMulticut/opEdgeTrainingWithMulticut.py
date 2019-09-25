@@ -31,47 +31,48 @@ class OpEdgeTrainingWithMulticut(Operator):
     NaiveSegmentation = OutputSlot(level=1)
     Edges = OutputSlot(level=1)  # just superpixels handed through to keep dirtyness of edge-changes at at the output
     Pens = OutputSlot(level=1)
+
     # Multicut Output
     Output = OutputSlot(level=1)  # Pixelwise output (not RAG, etc.)
     EdgeLabelDisagreementDict = OutputSlot(level=1)
 
     def __init__(self, *args, **kwargs):
         super(OpEdgeTrainingWithMulticut, self).__init__(*args, **kwargs)
-        
-        opEdgeTraining = OpEdgeTraining( parent=self )
 
-        opEdgeTraining.EdgeLabelsDict.connect( self.EdgeLabelsDict )
+        opEdgeTraining = OpEdgeTraining(parent=self)
+
+        opEdgeTraining.EdgeLabelsDict.connect(self.EdgeLabelsDict)
 
         # This is necessary because OpEdgeTraining occasionally calls self.EdgeLabelsDict.setValue()
         opEdgeTraining.EdgeLabelsDict.backpropagate_values = True
 
-        opEdgeTraining.FeatureNames.connect( self.FeatureNames )
-        opEdgeTraining.FreezeClassifier.connect( self.FreezeClassifier )
-        opEdgeTraining.RawData.connect( self.RawData )
-        opEdgeTraining.VoxelData.connect( self.VoxelData )
-        opEdgeTraining.Superpixels.connect( self.Superpixels )
-        opEdgeTraining.GroundtruthSegmentation.connect( self.GroundtruthSegmentation )
+        opEdgeTraining.FeatureNames.connect(self.FeatureNames)
+        opEdgeTraining.FreezeClassifier.connect(self.FreezeClassifier)
+        opEdgeTraining.RawData.connect(self.RawData)
+        opEdgeTraining.VoxelData.connect(self.VoxelData)
+        opEdgeTraining.Superpixels.connect(self.Superpixels)
+        opEdgeTraining.GroundtruthSegmentation.connect(self.GroundtruthSegmentation)
         opEdgeTraining.ProbabilityPenTable.connect(self.ProbabilityPenTable)
 
-        self.Rag.connect( opEdgeTraining.Rag )
-        self.EdgeProbabilities.connect( opEdgeTraining.EdgeProbabilities )
-        self.EdgeProbabilitiesDict.connect( opEdgeTraining.EdgeProbabilitiesDict )
-        self.NaiveSegmentation.connect( opEdgeTraining.NaiveSegmentation )
+        self.Rag.connect(opEdgeTraining.Rag)
+        self.EdgeProbabilities.connect(opEdgeTraining.EdgeProbabilities)
+        self.EdgeProbabilitiesDict.connect(opEdgeTraining.EdgeProbabilitiesDict)
+        self.NaiveSegmentation.connect(opEdgeTraining.NaiveSegmentation)
         self.Edges.connect(opEdgeTraining.Edges)
         self.Pens.connect(opEdgeTraining.Pens)
 
-        opMulticut = OpMultiLaneWrapper( OpMulticut, parent=self )
-        opMulticut.Beta.connect( self.Beta )
-        opMulticut.SolverName.connect( self.SolverName )
-        opMulticut.FreezeCache.connect( self.FreezeCache )        
-        opMulticut.RawData.connect( self.RawData )
-        opMulticut.Superpixels.connect( opEdgeTraining.Superpixels )
-        opMulticut.Rag.connect( opEdgeTraining.Rag )
-        opMulticut.EdgeProbabilities.connect( opEdgeTraining.EdgeProbabilities )
-        opMulticut.EdgeProbabilitiesDict.connect( opEdgeTraining.EdgeProbabilitiesDict )
+        opMulticut = OpMultiLaneWrapper(OpMulticut, parent=self)
+        opMulticut.Beta.connect(self.Beta)
+        opMulticut.SolverName.connect(self.SolverName)
+        opMulticut.FreezeCache.connect(self.FreezeCache)
+        opMulticut.RawData.connect(self.RawData)
+        opMulticut.Superpixels.connect(opEdgeTraining.Superpixels)
+        opMulticut.Rag.connect(opEdgeTraining.Rag)
+        opMulticut.EdgeProbabilities.connect(opEdgeTraining.EdgeProbabilities)
+        opMulticut.EdgeProbabilitiesDict.connect(opEdgeTraining.EdgeProbabilitiesDict)
 
-        self.Output.connect( opMulticut.Output )
-        self.EdgeLabelDisagreementDict.connect( opMulticut.EdgeLabelDisagreementDict )
+        self.Output.connect(opMulticut.Output)
+        self.EdgeLabelDisagreementDict.connect(opMulticut.EdgeLabelDisagreementDict)
 
         self.opEdgeTraining = opEdgeTraining
         self.opMulticut = opMulticut

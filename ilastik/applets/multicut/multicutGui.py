@@ -83,10 +83,11 @@ class MulticutGuiMixin(object):
     def _after_init(self):
         self.configure_gui_from_operator()
         op = self.__topLevelOperatorView
-        def configure_update_handlers( qt_signal, op_slot ):
-            qt_signal.connect( self.configure_operator_from_gui )
+
+        def configure_update_handlers(qt_signal, op_slot):
+            qt_signal.connect(self.configure_operator_from_gui)
             op_slot.notifyDirty(self.configure_gui_from_operator, defer=True)
-            self.__cleanup_fns.append( partial( op_slot.unregisterDirty, self.configure_gui_from_operator ) )
+            self.__cleanup_fns.append(partial(op_slot.unregisterDirty, self.configure_gui_from_operator))
 
         # set the hooks after we initialized everything that might be needed by them
         configure_update_handlers(self.beta_box.valueChanged, op.Beta)
@@ -110,8 +111,13 @@ class MulticutGuiMixin(object):
         drawer_layout.setSpacing(1)
 
         # Beta
-        beta_box = QDoubleSpinBox(decimals=2, minimum=0.01, maximum=0.99, singleStep=0.1,
-                                  toolTip="Bias parameter for the multicut optimization.")
+        beta_box = QDoubleSpinBox(
+            decimals=2,
+            minimum=0.01,
+            maximum=0.99,
+            singleStep=0.1,
+            toolTip="Bias parameter for the multicut optimization.",
+        )
         beta_layout = control_layout("Beta", beta_box)
         drawer_layout.addLayout(beta_layout)
         self.beta_box = beta_box
@@ -122,17 +128,19 @@ class MulticutGuiMixin(object):
         )
         for solver_name in AVAILABLE_SOLVER_NAMES:
             solver_name_combo.addItem(solver_name)
-        drawer_layout.addLayout( control_layout( "Solver", solver_name_combo ) )
+        drawer_layout.addLayout(control_layout("Solver", solver_name_combo))
         self.solver_name_combo = solver_name_combo
 
         button_layout = QHBoxLayout()
 
         # Live Multicut Button
-        live_multicut_button = QPushButton(text="Live Multicut",
-                                           checkable=True,
-                                           clicked = self._auto_show_multicut_layer,
-                                           icon=QIcon(ilastikIcons.Play))
-        
+        live_multicut_button = QPushButton(
+            text="Live Multicut",
+            checkable=True,
+            clicked = self._auto_show_multicut_layer,
+            icon=QIcon(ilastikIcons.Play)
+        )
+
         button_layout.addWidget(live_multicut_button)
         self.live_multicut_button = live_multicut_button
 
@@ -156,12 +164,18 @@ class MulticutGuiMixin(object):
         mgr = ShortcutManager()
         ActionInfo = ShortcutManager.ActionInfo
         shortcut_group = "Multicut"
-        mgr.register( "u", ActionInfo( shortcut_group,
-                                       "UpdateMulticut",
-                                       "Run the multicut optimization using the current edge probabilities",
-                                       update_button.click,
-                                       update_button,
-                                       update_button ) )
+        mgr.register(
+            "u",
+            ActionInfo(
+                shortcut_group,
+                "UpdateMulticut",
+                "Run the multicut optimization using the current edge probabilities",
+                update_button.click,
+                update_button,
+                update_button,
+            ),
+        )
+
         return drawer
 
     def __init_probability_colortable(self):
@@ -265,8 +279,8 @@ class MulticutGuiMixin(object):
             return False
         with self.set_updating():
             op = self.__topLevelOperatorView
-            self.update_button.setEnabled( op.FreezeCache.value )
-            self.live_multicut_button.setChecked( not op.FreezeCache.value )
+            self.update_button.setEnabled(op.FreezeCache.value)
+            self.live_multicut_button.setChecked(not op.FreezeCache.value)
             self._auto_show_multicut_layer(not op.FreezeCache.value)
             if op.FreezeCache.value:
                 self.live_multicut_button.setIcon(QIcon(ilastikIcons.Play))
@@ -399,6 +413,7 @@ class MulticutGuiMixin(object):
     def setupLayers(self):
         layers = []
         op = self.__topLevelOperatorView
+        ActionInfo = ShortcutManager.ActionInfo
 
         mc_disagreement_layer = self.create_multicut_disagreement_layer()
         if mc_disagreement_layer:

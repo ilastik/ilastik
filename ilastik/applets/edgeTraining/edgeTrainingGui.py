@@ -95,9 +95,11 @@ class EdgeTrainingGui(LayerViewerGui):
         return have_edges
 
     def _after_init(self):
-        super( EdgeTrainingGui, self )._after_init()
+        super(EdgeTrainingGui, self)._after_init()
+        self.update_probability_edges()
         op = self.topLevelOperatorView
 
+        # Initialize everything with the operator's initial values
         self.configure_gui_from_operator()
 
         have_edges = self.enable_live_update_on_edges_available()  # init live update button
@@ -120,24 +122,32 @@ class EdgeTrainingGui(LayerViewerGui):
 
     def createDrawerControls(self):
         # Controls
-        self.feature_selection_button = QPushButton(text="Select Features",
-                                               icon=QIcon(ilastikIcons.AddSel),
-                                               toolTip="Select edge/superpixel features to use for classification.",
-                                               clicked=self._open_feature_selection_dlg)
-        self.train_from_gt_button = QPushButton(text="Auto-label",
-                                                icon=QIcon(ilastikIcons.Segment),
-                                                toolTip="Automatically label all edges according to your pre-loaded groundtruth volume.",
-                                                clicked=self._handle_label_from_gt_clicked)
-        self.clear_labels_button = QPushButton(text="Clear Labels",
-                                               icon=QIcon(ilastikIcons.Clear),
-                                               toolTip="Remove all edge labels. (Start over on this image.)",
-                                               clicked=self._handle_clear_labels_clicked)
-        self.live_update_button = QPushButton(text="Live Predict",
-                                              checkable=True,
-                                              icon=QIcon(ilastikIcons.Play),
-                                              toolTip="Update the edge classifier predictions",
-                                              clicked=self._handle_live_update_clicked,
-                                              enabled=False)
+        self.feature_selection_button = QPushButton(
+            text="Select Features",
+            icon=QIcon(ilastikIcons.AddSel),
+            toolTip="Select edge/superpixel features to use for classification.",
+            clicked=self._open_feature_selection_dlg,
+        )
+        self.train_from_gt_button = QPushButton(
+            text="Auto-label",
+            icon=QIcon(ilastikIcons.Segment),
+            toolTip="Automatically label all edges according to your pre-loaded groundtruth volume.",
+            clicked=self._handle_label_from_gt_clicked,
+        )
+        self.clear_labels_button = QPushButton(
+            text="Clear Labels",
+            icon=QIcon(ilastikIcons.Clear),
+            toolTip="Remove all edge labels. (Start over on this image.)",
+            clicked=self._handle_clear_labels_clicked,
+        )
+        self.live_update_button = QPushButton(
+            text="Live Predict",
+            checkable=True,
+            icon=QIcon(ilastikIcons.Play),
+            toolTip="Update the edge classifier predictions",
+            clicked=self._handle_live_update_clicked,
+            enabled=False,
+        )
 
         # Layout
         label_layout = QHBoxLayout()
@@ -256,7 +266,7 @@ class EdgeTrainingGui(LayerViewerGui):
             if new_label == 0:
                 del new_labels[sp_id_pair]
 
-        op.EdgeLabelsDict.setValue( new_labels )
+        op.EdgeLabelsDict.setValue(new_labels)
         [slot.setDirty() for slot in op.viewed_operator().EdgeLabelsDict]  # set all the labels dirty, since they are used across lanes
 
     def _handle_label_from_gt_clicked(self):
@@ -284,7 +294,7 @@ class EdgeTrainingGui(LayerViewerGui):
         )
         if response == QMessageBox.Ok:
             op = self.topLevelOperatorView
-            op.EdgeLabelsDict.setValue( {} )
+            op.EdgeLabelsDict.setValue({})
             [slot.setDirty() for slot in op.viewed_operator().EdgeLabelsDict]  # set all the labels dirty, since they are used across lanes
 
     def _handle_live_update_clicked(self, checked):
@@ -307,8 +317,7 @@ class EdgeTrainingGui(LayerViewerGui):
             pen.setColor(color)
             self.probability_pen_table.append(pen)
 
-        op = self.topLevelOperatorView
-        op.ProbabilityPenTable.setValue(self.probability_pen_table)
+        self.topLevelOperatorView.ProbabilityPenTable.setValue(self.probability_pen_table)
 
     @threadRouted
     def overwrite_edge_pens(self, new_pens):
@@ -319,7 +328,6 @@ class EdgeTrainingGui(LayerViewerGui):
             edge_layer.pen_table.overwrite(new_pens)
 
     def update_probability_edges(self, *args):
-        # def _impl():
         if not self.getLayerByName("Edge Probabilities") or len(args) == 0:
             return
         self.overwrite_edge_pens(args[0].value)
@@ -338,8 +346,8 @@ class EdgeTrainingGui(LayerViewerGui):
             return False
         with self.set_updating():
             op = self.topLevelOperatorView
-            self.train_from_gt_button.setEnabled( op.GroundtruthSegmentation.ready() )
-            self.live_update_button.setChecked( not op.FreezeClassifier.value )
+            self.train_from_gt_button.setEnabled(op.GroundtruthSegmentation.ready())
+            self.live_update_button.setChecked(not op.FreezeClassifier.value)
             self.feature_selection_button.setEnabled(op.FreezeClassifier.value)
             self._handle_live_update_clicked(not op.FreezeClassifier.value)
             if op.FreezeClassifier.value:
@@ -403,25 +411,27 @@ class EdgeTrainingGui(LayerViewerGui):
 
         # Superpixels -- Edge Probabilities
         if op.Edges.ready() and op.EdgeProbabilitiesDict.ready():
-            layer = SegmentationEdgesLayer( createDataSource(op.Edges) )
-            layer.name = "Edge Probabilities" # Name is hard-coded in multiple places: grep before changing.
+            layer = SegmentationEdgesLayer(createDataSource(op.Edges))
+            layer.name = "Edge Probabilities"  # Name is hard-coded in multiple places: grep before changing.
             layer.visible = False
             layer.opacity = 1.0
             cleanup_fn = op.Pens.notifyDirty(self.update_probability_edges, defer=True)
             self.__cleanup_fns.append(cleanup_fn)
 
-            layer.contexts.append( self.create_prefetch_menu("Edge Probabilities") )
+            layer.contexts.append(self.create_prefetch_menu("Edge Probabilities"))
 
+            layer.shortcutRegistration = (
+                "p",
+                ActionInfo(
+                    "Edge Training Layers",
+                    "EdgePredictionsVisibility",
+                    "Show/Hide Edge Predictions",
+                    layer.toggleVisible,
+                    self.viewerControlWidget(),
+                    layer,
+                ),
+            )
 
-            layer.shortcutRegistration = ( "p",
-                                           ActionInfo(
-                                               "Edge Training Layers",
-                                                "EdgePredictionsVisibility",
-                                                "Show/Hide Edge Predictions",
-                                                layer.toggleVisible,
-                                                self.viewerControlWidget(),
-                                                layer ) )
-            
             layers.append(layer)
             del layer
 
