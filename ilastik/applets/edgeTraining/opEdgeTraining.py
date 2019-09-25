@@ -27,6 +27,7 @@ class OpEdgeTraining(Operator):
     DEFAULT_FEATURES = {"Grayscale": ["standard_edge_mean"]}
     FeatureNames = InputSlot(value=DEFAULT_FEATURES)
     FreezeClassifier = InputSlot(value=True)
+    SelectedInput = InputSlot() # Used for 'easy predict' button
 
     # Lane-wise
     EdgeLabelsDict = InputSlot(level=1, value={})
@@ -74,6 +75,10 @@ class OpEdgeTraining(Operator):
         self.opPredictEdgeProbabilities = OpMultiLaneWrapper(
             OpPredictEdgeProbabilities, parent=self, broadcastingSlotNames=["EdgeClassifier"]
         )
+        # Used for easy predict button
+        self.opPredictEdgeProbabilities.VoxelData.connect(self.SelectedInput)
+        self.opPredictEdgeProbabilities.Rag.connect(self.opRagCache.Output)
+
         self.opPredictEdgeProbabilities.EdgeClassifier.connect(self.opClassifierCache.Output)
         self.opPredictEdgeProbabilities.EdgeFeaturesDataFrame.connect(self.opEdgeFeaturesCache.Output)
 
@@ -250,8 +255,9 @@ class OpComputeEdgeFeatures(Operator):
     def execute(self, slot, subindex, roi, result):
         rag = self.Rag.value
         channel_feature_names = self.FeatureNames.value
-
+  
         edge_feature_dfs = []
+
         for c in range(self.VoxelData.meta.shape[-1]):
             channel_name = self.VoxelData.meta.channel_names[c]
             if channel_name not in channel_feature_names:
@@ -352,6 +358,10 @@ class OpTrainEdgeClassifier(Operator):
 
 
 class OpPredictEdgeProbabilities(Operator):
+    # Used for Easy Predict
+    VoxelData = InputSlot()
+    Rag = InputSlot()
+
     TrainRandomForest = InputSlot(value=False)
     EdgeClassifier = InputSlot()
     EdgeFeaturesDataFrame = InputSlot()
@@ -380,11 +390,17 @@ class OpPredictEdgeProbabilities(Operator):
             assert len(probabilities) == len(edge_features_df)
 
         else:
-            logger.info("Edge probabilities from mean edge probability...")
-            edge_features_df = self.EdgeFeaturesDataFrame.value
+            BEST_FEATURE = 'standard_edge_mean'
 
-            assert 'Probabilities-1 standard_edge_mean' in edge_features_df.columns
-            probabilities = edge_features_df['Probabilities-1 standard_edge_mean']
+            logger.info("Edge probabilities from feature {}...".format(BEST_FEATURE))
+            voxel_data = self.VoxelData[..., 0].wait()
+            voxel_data = vigra.taggedView(voxel_data, self.VoxelData.meta.axistags)
+            voxel_data = voxel_data[..., 0]  # drop channel
+            rag = self.Rag.value
+            edge_features_df = rag.compute_features(voxel_data, [BEST_FEATURE])
+
+            edge_features_df = edge_features_df.iloc[:, 2:]  # Discard columns [sp1, sp2]
+            probabilities = edge_features_df[BEST_FEATURE]
 
         result[0] = probabilities
 
