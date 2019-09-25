@@ -4,6 +4,8 @@ from ilastik.applets.edgeTraining.edgeTrainingGui import EdgeTrainingGui
 from ilastik.applets.multicut.multicutGui import MulticutGuiMixin
 import ilastik.utility.gui as guiutil
 
+import threading
+
 
 class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
     def __init__(self, parentApplet, topLevelOperatorView):
@@ -45,6 +47,42 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
             self.training = not self.training
             training_controls.setEnabled(self.training)
             multicut_controls.setEnabled(self.training)
+            op.opEdgeTraining.opPredictEdgeProbabilities.TrainRandomForest.setValue(self.training)
+            op.FreezeClassifier.setValue(False) 
+
+            def updateThread():
+                """
+                Copied over from code for Live Multicut button in:
+   
+                ilastik.applets.multicut.multicutGui._handle_multicut_update_clicked
+
+                The need for threading as explained there:
+                '''
+                This is hacky, but for now it's the only way to do it. We need to 
+                make sure the rendering thread has actually seen that the cache
+                has been updated before we ask it to wait for all views to be 100% 
+                rendered. If we don't wait, it might complete too soon (with the 
+                old data).
+                '''
+                """
+                with self.set_updating():
+                    self.topLevelOperatorView.FreezeCache.setValue(False)
+                    ndim = len(self.topLevelOperatorView.Output.meta.shape)
+                    self.topLevelOperatorView.Output((0,) * ndim, (1,) * ndim).wait()
+     
+                    # Wait for the image to be rendered into all three image views
+                    for imgView in self.editor.imageViews:
+                        if imgView.isVisible():
+                            imgView.scene().joinRenderingAllTiles()
+                    self.topLevelOperatorView.FreezeCache.setValue(True)
+     
+            self.getLayerByName("Multicut Edges").visible = True
+            # self.getLayerByName("Multicut Segmentation").visible = True
+            th = threading.Thread(target=updateThread)
+            th.start()
+
+            op.FreezeClassifier.setValue(False) 
+
 
         easy_predict_button = QPushButton(
             text="Easy Predict",

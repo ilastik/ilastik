@@ -185,6 +185,9 @@ class OpSumChannels(Operator):
 
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.shape = self.Input.meta.shape[:-1] + (1,)
+        # Assume naming pattern NAME-{1,2,3,...}
+        # Do not keep old channel names.
+        self.Output.meta.channel_names = self.Input.meta.channel_names[0].split('-')[0]
 
     def execute(self, slot, subindex, roi, result):
         channel_indexes = np.array(self.ChannelSelections.value)
