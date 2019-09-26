@@ -113,6 +113,11 @@ class DatasetInfo(ABC):
                 self.axistags = vigra.defaultAxistags(out_axes)
             else:
                 raise UnsuitedAxistagsException(requested_keys, self.laneShape)
+        self.legacy_datasetId = self.generate_id()
+
+    @abstractproperty
+    def legacy_location(self) -> str:
+        pass
 
     def to_json_data(self) -> Dict:
         return {
@@ -124,6 +129,9 @@ class DatasetInfo(ABC):
             "nickname": self.nickname.encode("utf-8"),
             "normalizeDisplay": self.normalizeDisplay,
             "drange": self.drange,
+            "location": self.legacy_location.encode("utf-8"), #legacy support
+            "filePath": self.effective_path.encode("utf-8"), #legacy support
+            "datasetId": self.legacy_datasetId.encode("utf-8"), #legacy support
             "__class__": self.__class__.__name__.encode("utf-8"),
         }
 
@@ -294,10 +302,16 @@ class ProjectInternalDatasetInfo(DatasetInfo):
             nickname=nickname or os.path.split(self.inner_path)[-1],
             **info_kwargs,
         )
+        self.legacy_datasetId = Path(inner_path).name
+
+    @property
+    def legacy_location(self) -> str:
+        return "ProjectInternal"
 
     def to_json_data(self) -> Dict:
         out = super().to_json_data()
         out["inner_path"] = self.inner_path.encode("utf-8")
+        out["fromstack"] = True # legacy support
         return out
 
     @classmethod
@@ -350,6 +364,14 @@ class PreloadedArrayDatasetInfo(DatasetInfo):
             **info_kwargs,
         )
 
+    @property
+    def effective_path(self) -> str:
+        return "Preloaded Array"
+
+    @property
+    def legacy_location(self) -> str:
+        return "PreloadedArray"
+
     def to_json_data(self) -> Dict:
         out = super().to_json_data()
         out["preloaded_array"] = self.preloaded_array
@@ -369,6 +391,10 @@ class UrlDatasetInfo(DatasetInfo):
     def __init__(self, *, url: str, **info_kwargs):
         self.url = url
         super().__init__(**info_kwargs)
+
+    @property
+    def legacy_location(self) -> str:
+        return "FileSystem"
 
     @property
     def effective_path(self) -> str:
@@ -427,6 +453,10 @@ class FilesystemDatasetInfo(DatasetInfo):
         )
 
     @property
+    def legacy_location(self) -> str:
+        return "FileSystem"
+
+    @property
     def default_output_dir(self) -> Path:
         first_external_path = PathComponents(self.filePath.split(os.path.pathsep)[0]).externalPath
         return Path(first_external_path).parent
@@ -436,11 +466,6 @@ class FilesystemDatasetInfo(DatasetInfo):
             parent=parent, WorkingDirectory=self.base_dir, FilePath=self.filePath, SequenceAxis=self.sequence_axis
         )
         return op_reader.Output
-
-    def to_json_data(self) -> Dict:
-        out = super().to_json_data()
-        out["filePath"] = self.effective_path.encode("utf-8")
-        return out
 
     @classmethod
     def from_h5_group(cls, group: h5py.Group):

@@ -98,6 +98,7 @@ class DataSelectionSerializer(AppletSerializer):
 
     @timeLogged(logger, logging.DEBUG)
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
+        getOrCreateGroup(topGroup, 'local_data')
         deleteIfPresent(topGroup, "Role Names")
         role_names = [name.encode("utf-8") for name in self.topLevelOperator.DatasetRoles.value]
         topGroup.create_dataset("Role Names", data=role_names)
