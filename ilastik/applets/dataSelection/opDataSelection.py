@@ -141,7 +141,7 @@ class DatasetInfo(ABC):
         if "subvolume_roi" in data:
             params["subvolume_roi"] = tuple(data["subvolume_roi"][()])
         if "normalizeDisplay" in data:
-            params["normalizeDisplay"] = (data["normalizeDisplay"][()],)
+            params["normalizeDisplay"] = bool(data["normalizeDisplay"][()])
         if "drange" in data:
             params["drange"] = tuple(data["drange"])
         if "display_mode" in data:
