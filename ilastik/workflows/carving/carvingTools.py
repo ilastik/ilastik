@@ -125,10 +125,7 @@ def parallel_watershed(data, block_shape=None, halo=None, max_workers=None):
     blocking = nifty.tools.blocking(roiBegin=roi_begin, roiEnd=shape, blockShape=block_shape)
     n_blocks = blocking.numberOfBlocks
 
-    # TODO once nifty is re-built and supports uint32 for all rag options,
-    # we should initialize the labels with uint32 here
-    # initialise the output labels
-    labels = numpy.zeros(shape, dtype="int64")
+    labels = numpy.zeros(shape, dtype="uint32")
 
     # watershed for a single block
     def ws_block(block_index):
@@ -230,25 +227,11 @@ def agglomerate_labels(data, labels, block_shape=None, max_workers=None, reduce_
     logger.info("run agglomeration")
     agglomerative_clustering = nifty.graph.agglo.agglomerativeClustering(policy)
     agglomerative_clustering.run(True, 10000)
-    node_labels = agglomerative_clustering.result()
+    node_labels = agglomerative_clustering.result().astype("uint32")
 
     logger.info("project node labels to segmentation")
 
-    # numpy.take throws a memory error for too large inputs
-    # nifty.rag has a function to project node labels back to pixels,
-    # however in the nifty version used by ilastik it is not exported
-    # for the correct combination of datatypes to just use it here.
-    # so for now, we compute a new rag with uint32 labels and then use it,
-    # only if numpy.take throws a mem error
-    try:
-        seg = numpy.take(node_labels, labels)
-    except MemoryError:
-        # TODO expose this for the right combination of dtypes in nifty and then use
-        # it by default
-        rag2 = nifty.graph.rag.gridRag(labels.astype("uint32"), numberOfThreads=max_workers)
-        seg = nifty.graph.rag.projectScalarNodeDataToPixels(
-            rag2, node_labels.astype("uint32"), numberOfThreads=max_workers
-        )
+    seg = nifty.graph.rag.projectScalarNodeDataToPixels(rag, node_labels, numberOfThreads=max_workers)
 
     # the ids in the output segmentation need to start at 1, otherwise
     # the graph watershed will fail
