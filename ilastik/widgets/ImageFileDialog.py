@@ -6,7 +6,6 @@ from PyQt5.QtWidgets import QFileDialog
 
 from volumina.utility import PreferencesManager
 from ilastik.applets.dataSelection.opDataSelection import OpDataSelection
-from ilastik.config import cfg as ilastik_config
 
 
 class ImageFileDialog(QFileDialog):
@@ -29,8 +28,14 @@ class ImageFileDialog(QFileDialog):
 
         ext_str = " ".join(f"*.{ext}" for ext in OpDataSelection.SupportedExtensions)
         filters = f"Image files ({ext_str})"
-
-        super().__init__(parent_window, caption="Select Images", directory=defaultDirectory, filter=filters)
+        # empty QFileDialog.Options() need to be provided, otherwise native dialog is not shown
+        super().__init__(
+            parent_window,
+            caption="Select Images",
+            directory=defaultDirectory,
+            filter=filters,
+            options=QFileDialog.Options(),
+        )
         self.setFileMode(QFileDialog.ExistingFiles)
 
     def getSelectedPaths(self) -> List[Path]:
