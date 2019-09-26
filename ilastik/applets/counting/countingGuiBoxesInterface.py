@@ -622,7 +622,7 @@ class CoupledRectangleElement(object):
         del self
 
 
-class BoxInterpreter(QObject):
+class BoxInterpreter(QObject, InterpreterABC):
     boxDrawn = pyqtSignal(QRect)
 
     def __init__(self, base: InterpreterABC, posModel: PositionModel, newBoxParent: QWidget):
