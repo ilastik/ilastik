@@ -25,6 +25,7 @@ from __future__ import division
 # Built-in
 from past.utils import old_div
 import os
+from typing import Optional
 import logging
 from collections import OrderedDict
 from functools import partial
@@ -493,7 +494,10 @@ class PixelClassificationGui(LabelingGui):
             except:
                 self.render = False
 
-        self.setLiveUpdateEnabled(False)
+        # listen to freezePrediction changes
+        unsub_callback = self.topLevelOperatorView.FreezePredictions.notifyDirty(lambda *args: self.setLiveUpdateEnabled())
+        self.__cleanup_fns.append(unsub_callback)
+        self.setLiveUpdateEnabled()
 
     def initFeatSelDlg(self):
         if self.topLevelOperatorView.name == "OpPixelClassification":
@@ -782,16 +786,14 @@ class PixelClassificationGui(LabelingGui):
         return feature_images_slot.ready() and feature_images_slot.meta.shape is not None
 
     def isLiveUpdateEnabled(self):
-        return self.labelingDrawerUi.liveUpdateButton.isChecked()
+        return not self.topLevelOperatorView.FreezePredictions.value
 
-    def setLiveUpdateEnabled(self, checked: bool):
+    def setLiveUpdateEnabled(self, checked: Optional[bool] = None):
+        checked = checked if checked is not None else self.isLiveUpdateEnabled()
+        self.labelingDrawerUi.liveUpdateButton.blockSignals(True)
+        self.labelingDrawerUi.liveUpdateButton.setChecked(checked)
+        self.labelingDrawerUi.liveUpdateButton.blockSignals(False)
         if checked:
-            if not self.hasFeatures():
-                self.labelingDrawerUi.liveUpdateButton.blockSignals(True)
-                self.labelingDrawerUi.liveUpdateButton.setChecked(False)
-                self.labelingDrawerUi.liveUpdateButton.blockSignals(False)
-                QMessageBox.warning(self, "Error", "No features selected on previous step.")
-                return
             self._viewerControlUi.checkShowPredictions.setChecked(True)
             self.handleShowPredictionsClicked()
 
