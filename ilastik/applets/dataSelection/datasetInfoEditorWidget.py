@@ -152,8 +152,8 @@ class DatasetInfoEditorWidget(QDialog):
                 self.internalDatasetNameComboBox.addItem(path)
                 self.internalDatasetNameComboBox.setEnabled(True)
 
-            if len(common_internal_paths) == 1:
-                self.internalDatasetNameComboBox.setCurrentText(common_internal_paths.pop())
+            if len(current_internal_paths) == 1:
+                self.internalDatasetNameComboBox.setCurrentText(current_internal_paths.pop())
             else:
                 self.internalDatasetNameComboBox.setCurrentIndex(-1)
 
