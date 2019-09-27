@@ -141,6 +141,7 @@ class DatasetInfoEditorWidget(QDialog):
         if not hierarchical_infos:
             self.internalDatasetNameLabel.setVisible(False)
             self.internalDatasetNameComboBox.setVisible(False)
+            self.internalDatasetNameComboBoxMessage.setVisible(False)
         else:
             common_internal_paths = set(hierarchical_infos[0].getPossibleInternalPaths())
             current_internal_paths = set(hierarchical_infos[0].internal_paths)
@@ -156,6 +157,7 @@ class DatasetInfoEditorWidget(QDialog):
                 self.internalDatasetNameComboBox.setCurrentText(current_internal_paths.pop())
             else:
                 self.internalDatasetNameComboBox.setCurrentIndex(-1)
+        self.internalDatasetNameComboBox.currentTextChanged.connect(self._handle_inner_path_change)
 
         self.displayModeComboBox.addItem("Default", userData="default")
         self.displayModeComboBox.addItem("Grayscale", userData="grayscale")
@@ -182,6 +184,14 @@ class DatasetInfoEditorWidget(QDialog):
         else:
             comboIndex = -1
         self.storageComboBox.setCurrentIndex(comboIndex)
+
+    def _handle_inner_path_change(self, new_internal_path: str):
+        msg = ""
+        for info in self.current_infos:
+            if new_internal_path and {new_internal_path} != set(info.internal_paths):
+                msg = "Note: Changing internal dataset path will reset the other fields to defaults"
+                break
+        self.internalDatasetNameComboBoxMessage.setText(msg)
 
     def get_new_axes_tags(self):
         if self.axesEdit.isEnabled() and self.axesEdit.text():
