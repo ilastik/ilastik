@@ -341,7 +341,7 @@ class ProjectInternalDatasetInfo(DatasetInfo):
 
     @property
     def internal_paths(self) -> List[str]:
-        return [self.inner_path]
+        return []
 
 
 class PreloadedArrayDatasetInfo(DatasetInfo):

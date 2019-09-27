@@ -164,7 +164,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
         if os.name != "nt":  # FIXME: enable these on windows without hangs or segfaults
             # opens multi dataset file and expects second dialog to choose inner path
-            self.add_file(self.tmp_h5_multiple_dataset, "test_group_3d/test_data_3d")
+            self.add_file(self.tmp_h5_multiple_dataset, "/test_group_3d/test_data_3d")
             self.remove_first_dataset()
 
             # opens multi dataset file and expects inner path to be picked automatically
