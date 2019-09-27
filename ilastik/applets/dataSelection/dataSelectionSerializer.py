@@ -98,6 +98,7 @@ class DataSelectionSerializer(AppletSerializer):
 
     @timeLogged(logger, logging.DEBUG)
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
+        getOrCreateGroup(topGroup, 'local_data')
         deleteIfPresent(topGroup, "Role Names")
         role_names = [name.encode("utf-8") for name in self.topLevelOperator.DatasetRoles.value]
         topGroup.create_dataset("Role Names", data=role_names)
@@ -258,10 +259,14 @@ class DataSelectionSerializer(AppletSerializer):
         if len(infoGroup) == 0:
             return None, False
 
-        if "location" in infoGroup:
-            info_class = self.LocationStrings[infoGroup["location"][()].decode("utf-8")]
-        else:
+        if "__class__" in infoGroup:
             info_class = self.InfoClassNames[infoGroup["__class__"][()].decode("utf-8")]
+        else: #legacy support
+            location = infoGroup["location"][()].decode("utf-8")
+            if location == "FileSystem" and isRelative(infoGroup['filePath'][()].decode("utf-8")):
+                info_class = RelativeFilesystemDatasetInfo
+            else:
+                info_class = self.LocationStrings[location]
 
         dirty = False
         try:
