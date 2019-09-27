@@ -241,13 +241,16 @@ class DatasetInfoEditorWidget(QDialog):
                 )
                 info_constructor = partial(ProjectInternalDatasetInfo, inner_path=project_inner_path)
             else:
-                new_full_paths = [Path(ep) / internal_path for ep in info.external_paths]
+                if internal_path:
+                    new_full_paths = [Path(ep) / internal_path for ep in info.external_paths]
+                else:
+                    new_full_paths = info.expanded_paths
+
                 info_constructor = partial(
                     new_info_class,
                     filePath=os.path.pathsep.join(str(path) for path in new_full_paths),
                     sequence_axis=getattr(info, "sequence_axis"),
                 )
-
             edited_info = info_constructor(
                 project_file=self.serializer.topLevelOperator.ProjectFile.value,
                 nickname=self.nicknameEdit.text() if self.nicknameEdit.isEnabled() else info.nickname,

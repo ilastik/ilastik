@@ -547,7 +547,7 @@ class RelativeFilesystemDatasetInfo(FilesystemDatasetInfo):
 
     @property
     def effective_path(self) -> str:
-        return os.path.pathsep.join(self.get_relative_paths())
+        return os.path.pathsep.join(str(Path(p).relative_to(self.base_dir)) for p in self.expanded_paths)
 
 
 class OpDataSelection(Operator):
