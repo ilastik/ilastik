@@ -129,9 +129,9 @@ class DatasetInfo(ABC):
             "nickname": self.nickname.encode("utf-8"),
             "normalizeDisplay": self.normalizeDisplay,
             "drange": self.drange,
-            "location": self.legacy_location.encode("utf-8"), #legacy support
-            "filePath": self.effective_path.encode("utf-8"), #legacy support
-            "datasetId": self.legacy_datasetId.encode("utf-8"), #legacy support
+            "location": self.legacy_location.encode("utf-8"),  # legacy support
+            "filePath": self.effective_path.encode("utf-8"),  # legacy support
+            "datasetId": self.legacy_datasetId.encode("utf-8"),  # legacy support
             "__class__": self.__class__.__name__.encode("utf-8"),
         }
 
@@ -311,7 +311,7 @@ class ProjectInternalDatasetInfo(DatasetInfo):
     def to_json_data(self) -> Dict:
         out = super().to_json_data()
         out["inner_path"] = self.inner_path.encode("utf-8")
-        out["fromstack"] = True # legacy support
+        out["fromstack"] = True  # legacy support
         return out
 
     @classmethod
@@ -533,6 +533,13 @@ class RelativeFilesystemDatasetInfo(FilesystemDatasetInfo):
         super().__init__(**fs_info_kwargs)
         if not self.is_under_project_file():
             raise CantSaveAsRelativePathsException(self.filePath, self.base_dir)
+
+    @classmethod
+    def create_or_fallback_to_absolute(cls, *args, **kwargs):
+        try:
+            return cls(*args, **kwargs)
+        except CantSaveAsRelativePathsException:
+            return FilesystemDatasetInfo(*args, **kwargs)
 
     @property
     def display_string(self):
