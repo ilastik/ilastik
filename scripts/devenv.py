@@ -2,7 +2,7 @@
 
 """Manage ilastik development environment."""
 
-import sys
+import sys  # isort:skip
 
 # Don't use new language features when checking the minimum Python version.
 if sys.version_info < (3, 6):
@@ -20,7 +20,6 @@ import shutil
 import subprocess
 import time
 from typing import Any, Callable, Iterable, Optional
-
 
 logging.basicConfig(
     format="%(asctime)s.%(msecs)03d %(filename)s %(levelname)-10s %(message)s",
@@ -43,6 +42,16 @@ def run_stdout(*args: Optional[str]) -> str:
     args = [arg for arg in args if arg is not None]
     proc = subprocess.run(args, check=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, encoding="utf-8")
     return proc.stdout
+
+
+def run_returncode(*args: Optional[str]) -> int:
+    """Execute the command, suppressing standard output and standard error, and return the exit code.
+
+    Arguments that are None are omitted from the command's argument list.
+    """
+    args = [arg for arg in args if arg is not None]
+    proc = subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, encoding="utf-8")
+    return proc.returncode
 
 
 class CondaEnv:
@@ -209,6 +218,10 @@ def main():
 
     if shutil.which("conda") is None:
         logging.error("conda is not installed")
+        return
+
+    if run_returncode("conda", "build", "--version") != 0:
+        logging.error("conda-build is not installed; run 'conda install -n base -c conda-forge conda-build' to install")
         return
 
     env = CondaEnv(args.name)
