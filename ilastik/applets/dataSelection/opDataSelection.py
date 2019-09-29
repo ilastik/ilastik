@@ -258,23 +258,16 @@ class DatasetInfo(ABC):
     def getPossibleInternalPathsFor(cls, file_path: Path, min_ndim=2, max_ndim=5) -> List[str]:
         datasetNames = []
 
+        def accumulateInternalPaths(name, val):
+            if isinstance(val, (h5py.Dataset, z5py.dataset.Dataset)) and min_ndim <= len(val.shape) <= max_ndim:
+                datasetNames.append(name)
+
         if cls.pathIsHdf5(file_path):
-
-            def accumulateDatasetPaths(name, val):
-                if isinstance(val, h5py.Dataset) and min_ndim <= len(val.shape) <= max_ndim:
-                    datasetNames.append(name)
-
             with h5py.File(file_path, "r") as f:
-                f.visititems(accumulateDatasetPaths)
+                f.visititems(accumulateInternalPaths)
         elif cls.pathIsN5(file_path):
-
-            def accumulate_names(path, val):
-                if isinstance(val, z5py.dataset.Dataset) and min_ndim <= len(val.shape) <= max_ndim:
-                    name = path.replace(file_path, "")  # FIXME: re.sub(r'^' + file_path, ...) ?
-                    datasetNames.append(name)
-
             with z5py.N5File(file_path, mode="r+") as f:
-                f.visititems(accumulate_names)
+                f.visititems(accumulateInternalPaths)
 
         return datasetNames
 
