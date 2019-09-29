@@ -50,46 +50,6 @@ def _format_version(t):
 __version_info__ = (1, 3, "3b2")  # Don't forget to update the splash screen!
 __version__ = _format_version(__version_info__)
 
-core_developers = [
-    "Janez Ales",
-    "Thorsten Beier",
-    "Stuart Berg",
-    "Fynn Beuttenmueller",
-    "Jaime Cervantes",
-    "Markus Doering",
-    "Fred Hamprecht",
-    "Carsten Haubold",
-    "Bernhard Kausler",
-    "Ullrich Koethe",
-    "Anna Kreshuk",
-    "Thorben Kroeger",
-    "Dominik Kutra",
-    "Martin Schiegg",
-    "Christoph Sommer",
-    "Christoph Straehle",
-    "Adrian Wolny",
-]
-
-developers = [
-    "Niels Buwen",
-    "Christoph Decker",
-    "Kemal Eren",
-    "Burcin Erocal",
-    "Luca Fiaschi",
-    "Philipp Hanslovsky",
-    "Ben Heuer",
-    "Glendon Holst",
-    "Fabian Isensee",
-    "Kai Karius",
-    "Jens Kleesiek",
-    "Markus Nullmeier",
-    "Letitia Parcalabescu",
-    "Oliver Petra",
-    "Steffen Wolf",
-    "Buote Xu",
-    "Chong Zhang",
-]
-
 
 def convertVersion(vstring):
     if not isinstance(vstring, str):
