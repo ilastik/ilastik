@@ -137,7 +137,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
             self.launcher = LocalServerLauncher(conn_conf, path=server_config.path)
         else:
             self.launcher = RemoteSSHServerLauncher(
-                conn_conf, cred=SSHCred(server_config.username), path=server_config.path
+                conn_conf, cred=SSHCred(server_config.username, key_path=server_config.ssh_key), path=server_config.path
             )
 
         self.launcher.start()
