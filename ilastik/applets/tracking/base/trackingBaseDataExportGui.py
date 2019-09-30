@@ -229,13 +229,6 @@ class TrackingBaseResultsViewer(DataExportLayerViewerGui):
     def setupLayers(self):
         layers = []
 
-        fromDiskSlot = self.topLevelOperatorView.ImageOnDisk
-        if fromDiskSlot.ready():
-            exportLayer = ColortableLayer(createDataSource(fromDiskSlot), colorTable=self.ct)
-            exportLayer.name = "Selected Output - Exported"
-            exportLayer.visible = True
-            layers.append(exportLayer)
-
         previewSlot = self.topLevelOperatorView.ImageToExport
         if previewSlot.ready():
             previewLayer = ColortableLayer(createDataSource(previewSlot), colorTable=self.ct)

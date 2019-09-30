@@ -92,12 +92,6 @@ class CountingResultsViewer(DataExportLayerViewerGui):
         layers = []
         opLane = self.topLevelOperatorView
 
-        exportedLayers = self._initPredictionLayers(opLane.ImageOnDisk)
-        for layer in exportedLayers:
-            layer.visible = True
-            layer.name = layer.name + "- Exported"
-        layers += exportedLayers
-
         previewLayers = self._initPredictionLayers(opLane.ImageToExport)
         for layer in previewLayers:
             layer.visible = False

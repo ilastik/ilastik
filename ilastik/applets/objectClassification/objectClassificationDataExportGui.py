@@ -90,13 +90,6 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
         ]
 
         if selection in ("Object Predictions", "Blockwise Object Predictions"):
-            fromDiskSlot = self.topLevelOperatorView.ImageOnDisk
-            if fromDiskSlot.ready():
-                exportLayer = ColortableLayer(createDataSource(fromDiskSlot), colorTable=self._colorTable16)
-                exportLayer.name = "Prediction - Exported"
-                exportLayer.visible = True
-                layers.append(exportLayer)
-
             previewSlot = self.topLevelOperatorView.ImageToExport
             if previewSlot.ready():
                 previewLayer = ColortableLayer(createDataSource(previewSlot), colorTable=self._colorTable16)
@@ -105,12 +98,6 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
                 layers.append(previewLayer)
 
         elif selection in ("Object Probabilities", "Blockwise Object Probabilities"):
-            exportedLayers = self._initPredictionLayers(opLane.ImageOnDisk)
-            for layer in exportedLayers:
-                layer.visible = True
-                layer.name = layer.name + "- Exported"
-            layers += exportedLayers
-
             previewLayers = self._initPredictionLayers(opLane.ImageToExport)
             for layer in previewLayers:
                 layer.visible = False
@@ -118,12 +105,6 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
             layers += previewLayers
 
         elif selection == "Pixel Probabilities":
-            exportedLayers = self._initPredictionLayers(opLane.ImageOnDisk)
-            for layer in exportedLayers:
-                layer.visible = True
-                layer.name = layer.name + "- Exported"
-            layers += exportedLayers
-
             previewLayers = self._initPredictionLayers(opLane.ImageToExport)
             for layer in previewLayers:
                 layer.visible = False

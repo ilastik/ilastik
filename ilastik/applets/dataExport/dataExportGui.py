@@ -236,13 +236,6 @@ class DataExportGui(QWidget):
         super(DataExportGui, self).showEvent(event)
         self.showSelectedDataset()
 
-    def hideEvent(self, event):
-        super(DataExportGui, self).hideEvent(event)
-
-        # Make sure all 'on disk' layers are discarded so we aren't using those files any more.
-        for opLaneView in self.topLevelOperator:
-            opLaneView.cleanupOnDiskView()
-
     def _chooseSettings(self):
         opExportModelOp, opSubRegion = get_model_op(self.topLevelOperator)
         if opExportModelOp is None:
@@ -501,11 +494,9 @@ class DataExportGui(QWidget):
     def deleteAllResults(self):
         for innerOp in self.topLevelOperator:
             operatorView = innerOp
-            operatorView.cleanupOnDiskView()
             pathComp = PathComponents(operatorView.ExportPath.value, operatorView.WorkingDirectory.value)
             if os.path.exists(pathComp.externalPath):
                 os.remove(pathComp.externalPath)
-            operatorView.setupOnDiskView()
             # we need to toggle the dirts state in order to enforce a frech dirty signal
             operatorView.Dirty.setValue(False)
             operatorView.Dirty.setValue(True)
@@ -520,13 +511,7 @@ class DataExportGui(QWidget):
             return
         row = selectedRanges[0].topRow()
 
-        # Hide all layers that come from the disk.
-        for opLaneView in self.topLevelOperator:
-            opLaneView.cleanupOnDiskView()
-
-        # Activate the 'on disk' layers for this lane (if possible)
         opLane = self.topLevelOperator.getLane(row)
-        opLane.setupOnDiskView()
 
         # Create if necessary
         imageMultiSlot = self.topLevelOperator.Inputs[row]
@@ -562,15 +547,7 @@ class DataExportLayerViewerGui(LayerViewerGui):
     def setupLayers(self):
         layers = []
 
-        # Show the exported data on disk
         opLane = self.topLevelOperatorView
-        exportedDataSlot = opLane.ImageOnDisk
-        if exportedDataSlot.ready():
-            exportLayer = self.createStandardLayerFromSlot(exportedDataSlot)
-            exportLayer.name = "Exported Image (from disk)"
-            exportLayer.visible = True
-            exportLayer.opacity = 1.0
-            layers.append(exportLayer)
 
         # Show the (live-updated) data we're exporting
         previewSlot = opLane.ImageToExport

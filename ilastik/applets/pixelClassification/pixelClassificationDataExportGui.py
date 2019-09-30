@@ -66,24 +66,12 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
         selection = selection_names[opLane.InputSelection.value]
 
         if selection.startswith("Probabilities"):
-            exportedLayers = self._initPredictionLayers(opLane.ImageOnDisk)
-            for layer in exportedLayers:
-                layer.visible = True
-                layer.name = layer.name + "- Exported"
-            layers += exportedLayers
-
             previewLayers = self._initPredictionLayers(opLane.ImageToExport)
             for layer in previewLayers:
                 layer.visible = False
                 layer.name = layer.name + "- Preview"
             layers += previewLayers
         elif selection.startswith("Simple Segmentation") or selection.startswith("Labels"):
-            exportedLayer = self._initColortablelayer(opLane.ImageOnDisk)
-            if exportedLayer:
-                exportedLayer.visible = True
-                exportedLayer.name = selection + " - Exported"
-                layers.append(exportedLayer)
-
             previewLayer = self._initColortablelayer(opLane.ImageToExport)
             if previewLayer:
                 previewLayer.visible = False
@@ -102,18 +90,6 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 previewLayer.visible = False
                 previewLayer.name = "Uncertainty - Preview"
                 layers.append(previewLayer)
-            if opLane.ImageOnDisk.ready():
-                exportedUncertaintySource = createDataSource(opLane.ImageOnDisk)
-                exportedLayer = AlphaModulatedLayer(
-                    exportedUncertaintySource,
-                    tintColor=QColor(0, 255, 255),  # cyan
-                    range=(0.0, 1.0),
-                    normalize=(0.0, 1.0),
-                )
-                exportedLayer.opacity = 0.5
-                exportedLayer.visible = True
-                exportedLayer.name = "Uncertainty - Exported"
-                layers.append(exportedLayer)
 
         else:  # Features and all other layers.
             if selection.startswith("Features"):
@@ -127,12 +103,6 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 previewLayer.name = "{} - Preview".format(selection)
                 previewLayer.set_normalize(0, None)
                 layers.append(previewLayer)
-            if opLane.ImageOnDisk.ready():
-                exportedLayer = self.createStandardLayerFromSlot(opLane.ImageOnDisk)
-                exportedLayer.visible = True
-                exportedLayer.name = "{} - Exported".format(selection)
-                exportedLayer.set_normalize(0, None)
-                layers.append(exportedLayer)
 
         # If available, also show the raw data layer
         rawSlot = opLane.FormattedRawData

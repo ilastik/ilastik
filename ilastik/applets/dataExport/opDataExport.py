@@ -80,7 +80,6 @@ class OpDataExport(Operator):
     ConvertedImage = OutputSlot()  # Cropped image, not yet re-ordered (useful for guis)
     ImageToExport = OutputSlot()  # The image that will be exported
 
-    ImageOnDisk = OutputSlot()  # This slot reads the exported image from disk (after the export is complete)
     Dirty = OutputSlot()  # Whether or not the result currently matches what's on disk
     FormatSelectionErrorMsg = OutputSlot()
 
@@ -108,12 +107,6 @@ class OpDataExport(Operator):
     # RawData ---->---------------------------------> opFormatRaw --> FormattedRawData
 
     ####
-    # Simplified block diagram for "on-disk view" of the exported results file:
-    #
-    # opFormattedExport.ImageToExport (for metadata only) -->
-    #                                                        \
-    # opFormattedExport.ExportPath -------------------------> opImageOnDiskProvider --> ImageOnDisk
-
     def __init__(self, *args, **kwargs):
         super(OpDataExport, self).__init__(*args, **kwargs)
 
@@ -140,8 +133,6 @@ class OpDataExport(Operator):
 
         self.Dirty.setValue(True)  # Default to Dirty
 
-        self._opImageOnDiskProvider = None
-
         # We don't export the raw data, but we connect it to it's own op
         #  so it can be displayed alongside the data to export in the same viewer.
         # This keeps axis order, shape, etc. in sync with the displayed export data.
@@ -167,30 +158,7 @@ class OpDataExport(Operator):
         self._opFormatRaw = opFormatRaw
         self.FormattedRawData.connect(opFormatRaw.ImageToExport)
 
-    def cleanupOnDiskView(self):
-        if self._opImageOnDiskProvider is not None:
-            self.ImageOnDisk.disconnect()
-            self._opImageOnDiskProvider.cleanUp()
-            self._opImageOnDiskProvider = None
-
-    def setupOnDiskView(self):
-        # Set up the output that let's us view the exported file
-        self._opImageOnDiskProvider = OpImageOnDiskProvider(parent=self)
-        self._opImageOnDiskProvider.TransactionSlot.connect(self.TransactionSlot)
-        self._opImageOnDiskProvider.Input.connect(self._opFormattedExport.ImageToExport)
-        self._opImageOnDiskProvider.WorkingDirectory.connect(self.WorkingDirectory)
-        self._opImageOnDiskProvider.DatasetPath.connect(self._opFormattedExport.ExportPath)
-
-        # Not permitted to make this connection because we can't connect our own output to a child operator.
-        # Instead, dirty state is copied manually into the child op whenever we change it.
-        # self._opImageOnDiskProvider.Dirty.connect( self.Dirty )
-        self._opImageOnDiskProvider.Dirty.setValue(False)
-
-        self.ImageOnDisk.connect(self._opImageOnDiskProvider.Output)
-
     def setupOutputs(self):
-        self.cleanupOnDiskView()
-
         # FIXME: If RawData becomes unready() at the same time as RawDatasetInfo(), then
         #          we have no guarantees about which one will trigger setupOutputs() first.
         #        It is therefore possible for 'RawDatasetInfo' to appear ready() to us,
@@ -226,9 +194,6 @@ class OpDataExport(Operator):
         result_types = self.SelectionNames.value
         known_keys["result_type"] = result_types[selection_index]
 
-        # Disconnect to open the 'transaction'
-        if self._opImageOnDiskProvider is not None:
-            self._opImageOnDiskProvider.TransactionSlot.disconnect()
         self._opFormattedExport.TransactionSlot.disconnect()
 
         # Blank the internal path while we manipulate the external path
@@ -250,10 +215,6 @@ class OpDataExport(Operator):
 
         # Re-connect to finish the 'transaction'
         self._opFormattedExport.TransactionSlot.connect(self.TransactionSlot)
-        if self._opImageOnDiskProvider is not None:
-            self._opImageOnDiskProvider.TransactionSlot.connect(self.TransactionSlot)
-
-        self.setupOnDiskView()
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here"
@@ -261,17 +222,12 @@ class OpDataExport(Operator):
     def propagateDirty(self, slot, subindex, roi):
         # Out input data changed, so we have work to do when we get executed.
         self.Dirty.setValue(True)
-        if self._opImageOnDiskProvider:
-            self._opImageOnDiskProvider.Dirty.setValue(False)
 
     def run_export(self):
         # If Table-Only is disabled or we're not dirty, we don't have to do anything.
         if not self.TableOnly.value and self.Dirty.value:
-            self.cleanupOnDiskView()
             self._opFormattedExport.run_export()
             self.Dirty.setValue(False)
-            self.setupOnDiskView()
-            self._opImageOnDiskProvider.Dirty.setValue(False)
 
     def run_export_to_array(self):
         # This function can be used to export the results to an in-memory array, instead of to disk
@@ -317,100 +273,6 @@ class OpRawSubRegionHelper(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         pass  # No need to do anything here.
-
-
-class OpImageOnDiskProvider(Operator):
-    """
-    This simply wraps a lazyflow OpInputDataReader, but ensures that the metadata
-    (axistags, drange) on the output matches the metadata from the original data
-    (even if the output file format doesn't support metadata fields).
-    """
-
-    TransactionSlot = InputSlot()
-    Input = InputSlot()  # Used for dtype and shape only. Data is always provided directly from the file.
-
-    WorkingDirectory = InputSlot()
-    DatasetPath = InputSlot()  # A TOTAL path (possibly including a dataset name, e.g. myfile.h5/volume/data
-    Dirty = InputSlot()
-
-    Output = OutputSlot()
-
-    def __init__(self, *args, **kwargs):
-        super(OpImageOnDiskProvider, self).__init__(*args, **kwargs)
-        self._opReader = None
-        self._opMetadataInjector = None
-
-    # Block diagram:
-    #
-    # (Input.axistags, Input.drange)
-    #                               \
-    # DatasetPath ---> opReader ---> opMetadataInjector --> Output
-    #                 /
-    # WorkingDirectory
-
-    def setupOutputs(self):
-        if self._opReader is not None:
-            self.Output.disconnect()
-            if self._opMetadataInjector:
-                self._opMetadataInjector.cleanUp()
-                self._opMetadataInjector = None
-            self._opReader.cleanUp()
-            self._opReader = None
-
-        try:
-            # Configure the reader
-            dataReady = True
-            self._opReader = OpInputDataReader(parent=self)
-            self._opReader.WorkingDirectory.setValue(self.WorkingDirectory.value)
-            self._opReader.FilePath.setValue(self.DatasetPath.value)
-
-            # Since most file formats don't save meta-info,
-            # The reader output's axis order may be incorrect.
-            # (For example, if we export in npy format with zxy order,
-            #  the Npy reader op will simply assume xyz order when it reads the data.)
-
-            # Force the metadata back to the correct state by copying select items from Input.meta
-            metadata = {}
-            metadata["axistags"] = self.Input.meta.axistags
-            metadata["drange"] = self.Input.meta.drange
-            metadata["display_mode"] = self.Input.meta.display_mode
-            self._opMetadataInjector = OpMetadataInjector(parent=self)
-            self._opMetadataInjector.Input.connect(self._opReader.Output)
-            self._opMetadataInjector.Metadata.setValue(metadata)
-
-            dataReady &= self._opMetadataInjector.Output.meta.shape == self.Input.meta.shape
-            dataReady &= self._opMetadataInjector.Output.meta.dtype == self.Input.meta.dtype
-            if dataReady:
-                self.Output.connect(self._opMetadataInjector.Output)
-            else:
-                self._opMetadataInjector.cleanUp()
-                self._opMetadataInjector = None
-                self._opReader.cleanUp()
-                self._opReader = None
-                self.Output.meta.NOTREADY = True
-
-        # except OpInputDataReader.DatasetReadError:
-        except Exception as ex:
-            # logger.debug( "On-disk image can't be read: {}".format(ex) )
-            # Note: If the data is exported as a 'sequence', then this will always be NOTREADY
-            #       because the 'path' (e.g. 'myfile_{slice_index}.png' will be nonexistent.
-            #       That's okay because a stack is probably too slow to be of use for a preview anyway.
-            if self._opMetadataInjector:
-                self._opMetadataInjector.cleanUp()
-                self._opMetadataInjector = None
-            self._opReader.cleanUp()
-            self._opReader = None
-            # The dataset doesn't exist yet.
-            self.Output.meta.NOTREADY = True
-
-    def execute(self, slot, subindex, roi, result):
-        assert False, "Output is supposed to be directly connected to an internal operator."
-
-    def propagateDirty(self, slot, subindex, roi):
-        if slot == self.Input:
-            self.Output.setDirty(roi)
-        else:
-            self.Output.setDirty(slice(None))
 
 
 def get_model_op(wrappedOp):
