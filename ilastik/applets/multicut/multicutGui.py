@@ -41,7 +41,7 @@ from PyQt5.QtWidgets import (
 from ilastik.utility.gui import threadRouted
 from volumina.api import createDataSource
 from volumina.layer import SegmentationEdgesLayer
-from volumina.utility import ShortcutManager, PreferencesManager
+from volumina.utility import ShortcutManager
 
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui

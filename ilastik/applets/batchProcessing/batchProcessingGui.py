@@ -39,7 +39,6 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from volumina.utility import PreferencesManager
 
 from ilastik.utility import log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
