@@ -181,6 +181,7 @@ class DataSelectionGui(QWidget):
         self._initAppletDrawerUic(instructionText)
 
         self._viewerControlWidgetStack = QStackedWidget(self)
+        self._default_h5n5_volumes: Dict[int, Set[str]] = {}
 
         def handleImageRemove(multislot, index, finalLength):
             # Remove the viewer for this dataset
@@ -531,12 +532,12 @@ class DataSelectionGui(QWidget):
         return infos
 
     def _add_default_inner_path(self, roleIndex: int, inner_path: str):
-        paths = self._get_previously_used_inner_paths(roleIndex)
+        paths = self._default_h5n5_volumes.get(roleIndex, set())
         paths.add(inner_path)
-        self.preferences.set("Data Selection", "inner_paths__role{roleIndex}", paths)
+        self._default_h5n5_volumes[roleIndex] = paths
 
     def _get_previously_used_inner_paths(self, roleIndex: int) -> Set[str]:
-        previous_paths = self.preferences.get("Data Selection", "inner_paths__role{roleIndex}", set())
+        previous_paths = self._default_h5n5_volumes.get(roleIndex, set())
         return previous_paths.copy()
 
     def _createDatasetInfo(self, roleIndex: int, filePath: Path, roi=None) -> FilesystemDatasetInfo:

@@ -260,7 +260,7 @@ class DatasetInfo(ABC):
 
         def accumulateInternalPaths(name, val):
             if isinstance(val, (h5py.Dataset, z5py.dataset.Dataset)) and min_ndim <= len(val.shape) <= max_ndim:
-                datasetNames.append(name)
+                datasetNames.append("/" + name)
 
         if cls.pathIsHdf5(file_path):
             with h5py.File(file_path, "r") as f:
@@ -341,7 +341,7 @@ class ProjectInternalDatasetInfo(DatasetInfo):
 
     @property
     def internal_paths(self) -> List[str]:
-        return [self.inner_path]
+        return []
 
 
 class PreloadedArrayDatasetInfo(DatasetInfo):

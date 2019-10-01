@@ -141,6 +141,7 @@ class DatasetInfoEditorWidget(QDialog):
         if not hierarchical_infos:
             self.internalDatasetNameLabel.setVisible(False)
             self.internalDatasetNameComboBox.setVisible(False)
+            self.internalDatasetNameComboBoxMessage.setVisible(False)
         else:
             common_internal_paths = set(hierarchical_infos[0].getPossibleInternalPaths())
             current_internal_paths = set(hierarchical_infos[0].internal_paths)
@@ -152,10 +153,11 @@ class DatasetInfoEditorWidget(QDialog):
                 self.internalDatasetNameComboBox.addItem(path)
                 self.internalDatasetNameComboBox.setEnabled(True)
 
-            if len(common_internal_paths) == 1:
-                self.internalDatasetNameComboBox.setCurrentText(common_internal_paths.pop())
+            if len(current_internal_paths) == 1:
+                self.internalDatasetNameComboBox.setCurrentText(current_internal_paths.pop())
             else:
                 self.internalDatasetNameComboBox.setCurrentIndex(-1)
+        self.internalDatasetNameComboBox.currentTextChanged.connect(self._handle_inner_path_change)
 
         self.displayModeComboBox.addItem("Default", userData="default")
         self.displayModeComboBox.addItem("Grayscale", userData="grayscale")
@@ -182,6 +184,14 @@ class DatasetInfoEditorWidget(QDialog):
         else:
             comboIndex = -1
         self.storageComboBox.setCurrentIndex(comboIndex)
+
+    def _handle_inner_path_change(self, new_internal_path: str):
+        msg = ""
+        for info in self.current_infos:
+            if new_internal_path and {new_internal_path} != set(info.internal_paths):
+                msg = "Note: Changing internal dataset path will reset the other fields to defaults"
+                break
+        self.internalDatasetNameComboBoxMessage.setText(msg)
 
     def get_new_axes_tags(self):
         if self.axesEdit.isEnabled() and self.axesEdit.text():
@@ -226,10 +236,7 @@ class DatasetInfoEditorWidget(QDialog):
     def accept(self):
         normalize = self.get_new_normalization()
         new_drange = self.get_new_drange()
-        if self.internalDatasetNameComboBox.isEnabled() and self.internalDatasetNameComboBox.currentIndex() != -1:
-            internal_path = self.internalDatasetNameComboBox.currentText()
-        else:
-            internal_path = ""
+        new_internal_path = self.internalDatasetNameComboBox.currentText()
 
         self.edited_infos = []
         for info in self.current_infos:
@@ -241,15 +248,21 @@ class DatasetInfoEditorWidget(QDialog):
                 )
                 info_constructor = partial(ProjectInternalDatasetInfo, inner_path=project_inner_path)
             else:
-                if internal_path:
-                    new_full_paths = [Path(ep) / internal_path for ep in info.external_paths]
+                if new_internal_path:
+                    new_full_paths = [Path(ep) / new_internal_path[1:] for ep in info.external_paths]
                 else:
                     new_full_paths = info.expanded_paths
+                filePath = os.path.pathsep.join(str(path) for path in new_full_paths)
+
+                if new_internal_path and {new_internal_path} != set(info.internal_paths):
+                    edited_info = RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
+                        filePath=filePath, project_file=self.serializer.topLevelOperator.ProjectFile.value
+                    )
+                    self.edited_infos.append(edited_info)
+                    continue
 
                 info_constructor = partial(
-                    new_info_class,
-                    filePath=os.path.pathsep.join(str(path) for path in new_full_paths),
-                    sequence_axis=getattr(info, "sequence_axis"),
+                    new_info_class, filePath=filePath, sequence_axis=getattr(info, "sequence_axis")
                 )
             edited_info = info_constructor(
                 project_file=self.serializer.topLevelOperator.ProjectFile.value,
