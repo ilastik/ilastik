@@ -116,8 +116,6 @@ class TestPixelClassificationHeadless(object):
         from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
 
         info = FilesystemDatasetInfo(filePath=dataset_path)
-        print(f"\n\n\n~~~~~~~~~~~~~~~~~~~~~>>>>info:{info.axiskeys}\n\n\n")
-        # import pydevd; pydevd.settrace()
         opDataSelection = workflow.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetGroup.resize(1)
         opDataSelection.DatasetGroup[0][0].setValue(info)
