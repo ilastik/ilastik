@@ -23,6 +23,7 @@ import os
 import sys
 import imp
 import numpy
+import vigra
 import h5py
 import tempfile
 
@@ -31,6 +32,9 @@ from lazyflow.operators.ioOperators import OpStackLoader
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 import ilastik
+import ilastik_main
+from ilastik.applets.dataSelection.opDataSelection import PreloadedArrayDatasetInfo
+from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 from lazyflow.utility.timer import timeLogged
 from ilastik.utility.slicingtools import sl, slicing2shape
 from ilastik.shell.projectManager import ProjectManager
@@ -112,6 +116,8 @@ class TestPixelClassificationHeadless(object):
         from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
 
         info = FilesystemDatasetInfo(filePath=dataset_path)
+        print(f"\n\n\n~~~~~~~~~~~~~~~~~~~~~>>>>info:{info.axiskeys}\n\n\n")
+        # import pydevd; pydevd.settrace()
         opDataSelection = workflow.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetGroup.resize(1)
         opDataSelection.DatasetGroup[0][0].setValue(info)
@@ -203,6 +209,34 @@ class TestPixelClassificationHeadless(object):
             # Assume channel is last axis
             assert pred_shape[:-1] == (2, 20, 20, 5), "Prediction volume has wrong shape: {}".format(pred_shape)
             assert pred_shape[-1] == 2, "Prediction volume has wrong shape: {}".format(pred_shape)
+
+    def testUsingPreloadedArryasWhenScriptingBatchProcessing(self):
+        args = ilastik_main.parse_args([])
+        args.headless = True
+        args.project = self.PROJECT_FILE
+        shell = ilastik_main.main(args)
+        assert isinstance(shell.workflow, PixelClassificationWorkflow)
+
+        # Obtain the training operator
+        opPixelClassification = shell.workflow.pcApplet.topLevelOperator
+
+        # Sanity checks
+        assert len(opPixelClassification.InputImages) > 0
+        assert opPixelClassification.Classifier.ready()
+
+        input_data1 = numpy.random.randint(0, 255, (2, 20, 20, 5, 1)).astype(numpy.uint8)
+        input_data2 = numpy.random.randint(0, 255, (2, 20, 20, 5, 1)).astype(numpy.uint8)
+
+        role_data_dict = {
+            "Raw Data": [
+                PreloadedArrayDatasetInfo(preloaded_array=input_data1, axistags=vigra.AxisTags("tzyxc")),
+                PreloadedArrayDatasetInfo(preloaded_array=input_data2, axistags=vigra.AxisTags("tzyxc")),
+            ]
+        }
+
+        predictions = shell.workflow.batchProcessingApplet.run_export(role_data_dict, export_to_array=True)
+        for result in predictions:
+            assert result.shape == (2, 20, 20, 5, 2)
 
     @timeLogged(logger)
     def testLotsOfOptions(self):

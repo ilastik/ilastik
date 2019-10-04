@@ -10,7 +10,11 @@ from functools import partial
 
 from ilastik.applets.base.applet import Applet
 from ilastik.applets.dataSelection import DataSelectionApplet
-from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo, OpMultiLaneDataSelectionGroup
+from ilastik.applets.dataSelection.opDataSelection import (
+    DatasetInfo,
+    FilesystemDatasetInfo,
+    OpMultiLaneDataSelectionGroup,
+)
 
 logger = logging.getLogger(__name__)  # noqa
 
@@ -61,7 +65,7 @@ class BatchProcessingApplet(Applet):
 
     def run_export(
         self,
-        role_data_dict: Mapping[Hashable, Iterable[str]],
+        role_data_dict: Mapping[Hashable, Iterable[Union[str, DatasetInfo]]],
         input_axes: Optional[str] = None,
         export_to_array: bool = False,
         sequence_axis: Optional[str] = None,
@@ -98,7 +102,7 @@ class BatchProcessingApplet(Applet):
         batches = list(zip(*role_data_dict.values()))
         try:
             results = []
-            for batch_index, role_input_paths in enumerate(batches):
+            for batch_index, role_inputs in enumerate(batches):
 
                 def lerpProgressSignal(a, b, p):
                     self.progressSignal((100 - p) * a + p * b)
@@ -107,7 +111,7 @@ class BatchProcessingApplet(Applet):
                 global_progress_end = (batch_index + 1) / len(batches)
 
                 result = self.export_dataset(
-                    role_input_paths,
+                    role_inputs,
                     input_axes=input_axes,
                     export_to_array=export_to_array,
                     sequence_axis=sequence_axis,
@@ -131,14 +135,14 @@ class BatchProcessingApplet(Applet):
 
     def export_dataset(
         self,
-        role_input_paths: List[str],
+        role_inputs: List[Union[str, DatasetInfo]],
         input_axes: Optional[str] = None,
         export_to_array: bool = False,
         sequence_axis: Optional[str] = None,
         progress_callback: Optional[Callable[[int], None]] = None,
     ) -> Union[str, numpy.array]:
         """
-        Configures a lane using the paths specified in the paths from role_input_paths and runs the workflow.
+        Configures a lane using the paths specified in the paths from role_inputs and runs the workflow.
         """
         progress_callback = progress_callback or self.progressSignal
         original_num_lanes = self.num_lanes
@@ -150,16 +154,20 @@ class BatchProcessingApplet(Applet):
         self.dataSelectionApplet.topLevelOperator.addLane(self.num_lanes)
         batch_lane = self.dataSelectionApplet.topLevelOperator.getLane(self.num_lanes - 1)
         try:
-            for role_index, (role_input_path, role_axis_tags) in enumerate(zip(role_input_paths, previous_axes_tags)):
-                if role_input_path:
+            for role_index, (role_input, role_axis_tags) in enumerate(zip(role_inputs, previous_axes_tags)):
+                if not role_input:
+                    continue
+                if isinstance(role_input, DatasetInfo):
+                    role_info = role_input
+                else:
                     role_info = FilesystemDatasetInfo(
-                        filePath=role_input_path,
+                        filePath=role_input,
                         project_file=None,
                         axistags=vigra.defaultAxistags(input_axes) if input_axes else role_axis_tags,
                         sequence_axis=sequence_axis,
                         guess_tags_for_singleton_axes=True,  # FIXME: add cmd line param to negate this
                     )
-                    batch_lane.DatasetGroup[role_index].setValue(role_info)
+                batch_lane.DatasetGroup[role_index].setValue(role_info)
             self.workflow().handleNewLanesAdded()
             # Call customization hook
             self.dataExportApplet.prepare_lane_for_export(self.num_lanes - 1)
