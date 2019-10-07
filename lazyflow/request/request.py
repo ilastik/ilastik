@@ -195,6 +195,13 @@ class Request(object):
 
     _root_request_counter = itertools.count()
 
+    @classmethod
+    def with_value(cls, value):
+        """
+        Create request returning specified value
+        """
+        return cls(lambda: value)
+
     def __init__(self, fn, root_priority=[0]):
         """
         Constructor.

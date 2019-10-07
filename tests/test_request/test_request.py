@@ -263,3 +263,11 @@ def test_cancels_child_requests(cancelled_work):
     work_rq = cancelled_work.request
 
     assert work_rq.child_requests == set()
+
+
+def test_request_with_value_factory():
+    req = Request.with_value(None)
+    assert req.wait() == None
+
+    req = Request.with_value(42)
+    assert req.wait() == 42
