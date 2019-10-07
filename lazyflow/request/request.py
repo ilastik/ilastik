@@ -197,13 +197,6 @@ class Request(object):
 
     _root_request_counter = itertools.count()
 
-    @classmethod
-    def with_value(cls, value):
-        """
-        Create request returning specified value
-        """
-        return _ValueRequest(value)
-
     def __init__(self, fn, root_priority=[0]):
         """
         Constructor.
@@ -286,6 +279,17 @@ class Request(object):
                 self.uncancellable,
             )
         )
+
+    @classmethod
+    def with_value(cls, value):
+        """
+        Wraps specified value with Request like object
+
+        Example:
+        >>> Request.with_value(42).wait()
+        42
+        """
+        return _ValueRequest(value)
 
     def clean(self, _fullClean=True):
         """
