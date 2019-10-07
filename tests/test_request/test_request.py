@@ -265,9 +265,16 @@ def test_cancels_child_requests(cancelled_work):
     assert work_rq.child_requests == set()
 
 
-def test_request_with_value_factory():
-    req = Request.with_value(None)
-    assert req.wait() == None
+class TestRequestWithValue:
+    def test_return_value(self):
+        req = Request.with_value(None)
+        assert req.wait() == None
 
-    req = Request.with_value(42)
-    assert req.wait() == 42
+        req = Request.with_value(42)
+        assert req.wait() == 42
+
+    def test_notify_finished(self):
+        cb = mock.Mock()
+        req = Request.with_value(42)
+        req.notify_finished(cb)
+        cb.assert_called_once_with(42)

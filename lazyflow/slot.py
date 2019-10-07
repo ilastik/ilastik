@@ -52,58 +52,6 @@ from lazyflow.metaDict import MetaDict
 from lazyflow.utility import slicingtools, OrderedSignal
 
 
-class ValueRequest(object):
-    """Pseudo request that behaves like a request.Request object.
-
-    This object is used to prevent the heavy construction of complete
-    Request objects in simple cases where they are not needed.
-
-    """
-
-    def __init__(self, value):
-        self.result = value
-        self.started = False
-
-    def wait(self):
-        return self.result
-
-    def block(self):
-        pass
-
-    def submit(self):
-        pass
-
-    def notify_finished(self, callback):
-        callback(self.result)
-
-    def notify_failed(self, callback):
-        pass
-
-    def notify_cancelled(self, callback):
-        pass
-
-    def clean(self):
-        self.result = None
-
-    def writeInto(self, destination):
-        # Unfortunately, there appears to be a bug when copying masked arrays
-        # ( https://github.com/numpy/numpy/issues/5558 ).
-        # So, this must be used in the interim.
-        if isinstance(destination, numpy.ma.masked_array):
-            destination.data[...] = numpy.ma.getdata(self.result)
-            destination.mask[...] = numpy.ma.getmaskarray(self.result)
-            if isinstance(self.result, numpy.ma.masked_array):
-                destination.fill_value = self.result.fill_value
-        elif isinstance(destination, collections.MutableSequence) or isinstance(
-            self.result, collections.MutableSequence
-        ):
-            destination[:] = self.result[:]
-        else:
-            destination[...] = self.result[...]
-
-        return self
-
-
 def is_setup_fn(func):
     """
     Decorator.  Marks the function as a 'setup' function,
@@ -850,7 +798,7 @@ class Slot(object):
             # having a ._value
             # --> construct cheaper request object for this case
             result = self.stype.writeIntoDestination(None, self._value, roi)
-            return ValueRequest(result)
+            return Request.with_value(result)
         elif self.upstream_slot is not None:
             # this handles the case of an inputslot
             # --> just relay the request
