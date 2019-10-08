@@ -19,14 +19,11 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
-from functools import partial
 import os
 
 # Third-party
 from PyQt5 import uic
 from PyQt5.QtWidgets import QWidget
-
-from volumina.widgets.exportHelper import get_settings_and_export_layer
 
 
 # Modified from widgets.ViewerControls

@@ -12,8 +12,6 @@ from PyQt5.QtGui import QColor, QIcon
 # HCI
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer, ColortableLayer
 from volumina.utility import ShortcutManager, PreferencesManager
-from volumina.interpreter import ClickReportingInterpreter
-from volumina.brushingcontroller import BrushingInterpreter
 
 from lazyflow.utility import PathComponents
 from lazyflow.roi import slicing_to_string
@@ -21,7 +19,6 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.ioOperators import OpInputDataReader
 
 from ilastik.applets.labeling.labelingGui import LabelingGui
-from ilastik.applets.labeling.labelingImport import import_labeling_layer
 from ilastik.applets.pixelClassification import pixelClassificationGui
 from ilastik.applets.pixelClassification.FeatureSelectionDialog import FeatureSelectionDialog
 from ilastik.shell.gui.iconMgr import ilastikIcons
@@ -30,11 +27,9 @@ from ilastik.utility import bind
 # ilastik
 from ilastik.config import cfg as ilastik_config
 from ilastik.utility.gui import threadRouted
-from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, H5VolumeSelectionDlg
+from ilastik.widgets.stackFileSelectionWidget import SubvolumeSelectionDlg
+from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, SubvolumeSelectionDlg
 from ilastik.shell.gui.variableImportanceDialog import VariableImportanceDialog
-
-from .superVoxelBrushingController import SuperVoxelBrushingController
-from .superVoxelSinkSource import SuperVoxelSinkSource
 
 # Loggers
 logger = logging.getLogger(__name__)
@@ -234,7 +229,7 @@ class VoxelSegmentationGui(LabelingGui):
             if len(internal_paths) == 1:
                 internal_path = internal_paths[0]
             else:
-                dlg = H5VolumeSelectionDlg(internal_paths, self)
+                dlg = SubvolumeSelectionDlg(internal_paths, self)
                 if dlg.exec_() == QDialog.Rejected:
                     return
                 selected_index = dlg.combo.currentIndex()

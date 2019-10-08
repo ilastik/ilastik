@@ -143,7 +143,9 @@ if can_nn:
 
         WORKFLOW_CLASSES += [NNClassificationWorkflow]
 
+
 from .voxelSegmentation import VoxelSegmentationWorkflow
+
 WORKFLOW_CLASSES += [VoxelSegmentationWorkflow]
 
 # Examples
