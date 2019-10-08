@@ -150,6 +150,7 @@ class DatasetInfo(ABC):
         elif "axisorder" in data:  # legacy support
             axisorder = data["axisorder"][()].decode("utf-8")
             params["axistags"] = vigra.defaultAxistags(axisorder)
+
         if "subvolume_roi" in data:
             params["subvolume_roi"] = tuple(data["subvolume_roi"][()])
         if "normalizeDisplay" in data:
