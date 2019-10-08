@@ -352,20 +352,7 @@ class ObjectClassificationWorkflow(Workflow):
             if csv_filename:
                 # The user wants to override the csv export location via
                 #  the command-line arguments. Apply the new setting to the operator.
-                settings, selected_features = (
-                    self.objectClassificationApplet.topLevelOperator.get_table_export_settings()
-                )
-                if settings is None:
-                    raise RuntimeError(
-                        "You can't export the CSV object table unless you configure it in the GUI first."
-                    )
-                assert (
-                    "file path" in settings
-                ), "Expected settings dict to contain a 'file path' key.  Did you rename that key?"
-                settings["file path"] = csv_filename
-                self.objectClassificationApplet.topLevelOperator.configure_table_export_settings(
-                    settings, selected_features
-                )
+                self._tableExporter.override_file_path(csv_filename)
 
         # Configure the batch data selection operator.
         if self._batch_input_args and self._batch_input_args.raw_data:

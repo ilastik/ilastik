@@ -45,6 +45,7 @@ from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtracti
 
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
+from lazyflow.utility import format_known_keys, PathComponents, getPathVariants, make_absolute
 
 import logging
 
@@ -56,7 +57,11 @@ MISSING_VALUE = 0
 class TableExporter(ExportingOperator):
     def __init__(self, op):
         self._op = op
+        self._dataset_info_provider = None
         self._export_progress_dialog = None
+
+    def set_dataset_info_provider(self, provider):
+        self._dataset_info_provider = provider
 
     def get_raw_shape(self):
         return self._op.RawImages[0].meta.shape
@@ -74,6 +79,27 @@ class TableExporter(ExportingOperator):
         else:
             return None, None
 
+    def getPartiallyFormattedName(self, lane_index: int, path_format_string: str) -> str:
+        """ Takes the format string for the output file, fills in the most important placeholders, and returns it """
+        assert self._dataset_info_provider is not None, "no export op specified"
+
+        raw_dataset_info = self._dataset_info_provider.get_dataset_info(lane_index)
+        project_path = self._dataset_info_provider.get_project_path()
+
+        dataset_dir = PathComponents(raw_dataset_info.filePath).externalDirectory
+        abs_dataset_dir = make_absolute(dataset_dir, cwd=project_path)
+
+        nickname = raw_dataset_info.nickname.replace("*", "")
+        if os.path.pathsep in nickname:
+            nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
+
+        known_keys = {
+            "dataset_dir": abs_dataset_dir,
+            "nickname": nickname,
+        }
+
+        return format_known_keys(path_format_string, known_keys)
+
     def save_export_progress_dialog(self, dialog):
         """
         Implements ExportOperator.save_export_progress_dialog
@@ -81,6 +107,20 @@ class TableExporter(ExportingOperator):
         :param dialog: the ProgressDialog to save
         """
         self._export_progress_dialog = dialog
+
+    def override_file_path(self, path):
+        settings, selected_features = self.get_table_export_settings()
+
+        if settings is None:
+            raise RuntimeError(
+                "You can't export the CSV object table unless you configure it in the GUI first."
+            )
+
+        assert (
+            "file path" in settings
+        ), "Expected settings dict to contain a 'file path' key.  Did you rename that key?"
+        settings["file path"] = path
+        self.configure_table_export_settings(settings, selected_features)
 
     def do_export(self, settings, selected_features, progress_slot, lane_index, filename_suffix=""):
         """
@@ -91,15 +131,12 @@ class TableExporter(ExportingOperator):
         :param progress_slot:
         :return:
         """
-
         label_image = self._op.SegmentationImages[lane_index]
         obj_count = list(objects_per_frame(label_image))
         ids = list(ilastik_ids(obj_count))
 
         file_path = settings["file path"]
-        if filename_suffix:
-            path, ext = os.path.splitext(file_path)
-            file_path = path + "-" + filename_suffix + ext
+        file_path = self.getPartiallyFormattedName(lane_index, file_path)
 
         export_file = ExportFile(file_path)
         export_file.ExportProgress.subscribe(progress_slot)
@@ -155,6 +192,7 @@ class TableExporter(ExportingOperator):
                 export_file.add_image(Default.RawPath, self._op.RawImages[lane_index])
             else:
                 export_file.add_rois(Default.RawRoiPath, self._op.RawImages[lane_index], "table", settings["margin"])
+
         export_file.write_all(settings["file type"], settings["compression"])
 
         export_file.ExportProgress.unsubscribe(progress_slot)
