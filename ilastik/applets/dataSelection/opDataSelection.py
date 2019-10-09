@@ -140,12 +140,17 @@ class DatasetInfo(ABC):
         params = params or {}
         params.update(
             {
-                "axistags": AxisTags.fromJSON(data["axistags"][()].decode("utf-8")),
                 "allowLabels": data["allowLabels"][()],
                 "nickname": data["nickname"][()].decode("utf-8"),
                 "project_file": data.file,
             }
         )
+        if "axistags" in data:
+            params["axistags"] = AxisTags.fromJSON(data["axistags"][()].decode("utf-8"))
+        elif "axisorder" in data:  # legacy support
+            axisorder = data["axisorder"][()].decode("utf-8")
+            params["axistags"] = vigra.defaultAxistags(axisorder)
+
         if "subvolume_roi" in data:
             params["subvolume_roi"] = tuple(data["subvolume_roi"][()])
         if "normalizeDisplay" in data:
