@@ -8,7 +8,8 @@ from PyQt5.QtGui import QColor
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 from volumina.pixelpipeline.datasources import LazyflowSource
-from volumina.api import AlphaModulatedLayer
+from volumina.layer import generateRandomColors
+from volumina.api import AlphaModulatedLayer, ColortableLayer, createDataSource
 
 from .slicViewerControls import SlicViewerControls
 
@@ -45,12 +46,25 @@ class SlicGui(LayerViewerGui):
     def setupLayers(self):
         layers = [self.createStandardLayerFromSlot(self.topLevelOperatorView.Input)]
         layers[0].opacity = 1.0
-        superVoxelSlot = self.topLevelOperatorView.BoundariesOutput
-        if superVoxelSlot.ready():
+        superVoxelBoundarySlot = self.topLevelOperatorView.BoundariesOutput
+        if superVoxelBoundarySlot.ready():
             layer = AlphaModulatedLayer(
-                LazyflowSource(superVoxelSlot), tintColor=QColor(Qt.blue), range=(0.0, 1.0), normalize=(0.0, 1.0)
+                LazyflowSource(superVoxelBoundarySlot),
+                tintColor=QColor(Qt.blue),
+                range=(0.0, 1.0),
+                normalize=(0.0, 1.0),
             )
-            layer.name = "Input Data"
+            layer.name = "Supervoxel Boudaries"
+            layer.visible = True
+            layer.opacity = 1.0
+            layers.insert(0, layer)
+
+        superVoxelSlot = self.topLevelOperatorView.Output
+        if superVoxelSlot.ready():
+            colortable = generateRandomColors(M=256, clamp={"v": 1.0, "s": 0.5}, zeroIsTransparent=True)
+            layer = ColortableLayer(createDataSource(superVoxelSlot), colortable)
+            layer.colortableIsRandom = True
+            layer.name = "SLIC superpixels"
             layer.visible = True
             layer.opacity = 1.0
             layers.insert(0, layer)

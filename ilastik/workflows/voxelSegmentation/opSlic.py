@@ -13,9 +13,11 @@ import numpy
 import skimage.segmentation
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpBlockedArrayCache
+from lazyflow.operators import OpBlockedArrayCache, OpReorderAxes
 from lazyflow.roi import roiToSlice
 
+
+import vigra
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +53,7 @@ class OpSlic(Operator):
         self.Output.meta.shape = tuple(tagged_shape.values())
 
     def execute(self, slot, subindex, roi, result):
+        print(roi)
         input_data = self.Input(roi.start, roi.stop).wait()
         assert slot == self.Output
 
@@ -99,6 +102,29 @@ class OpSlic(Operator):
         self.Output.setDirty()
 
 
+class OpSlicBoundariesCached(Operator):
+    SegmentationInput = InputSlot()
+    BoundariesOutput = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.opReorderInput = OpReorderAxes(parent=self, AxisOrder="tzycx", Input=self.SegmentationInput)
+        self.opSlic = OpSlicBoundaries(parent=self)
+        self.opSlic.SegmentationInput.connect(self.opReorderInput.Output)
+        self.opReorderOutput = OpReorderAxes(parent=self, Input=self.opSlic.BoundariesOutput)
+        self.BoundariesOutput.connect(self.opReorderOutput.Output)
+
+    def setupOutputs(self):
+        axes = self.SegmentationInput.meta.getAxisKeys()
+        self.opReorderOutput.AxisOrder.setValue(axes)
+
+    def execute(self, slot, subindex, roi, result):
+        assert False, "Should not be here, everything connected internally!"
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.BoundariesOutput.setDirty()
+
+
 class OpSlicBoundaries(Operator):
     SegmentationInput = InputSlot()
     BoundariesOutput = OutputSlot()
@@ -107,21 +133,34 @@ class OpSlicBoundaries(Operator):
         self.BoundariesOutput.meta.assignFrom(self.SegmentationInput.meta)
 
     def execute(self, slot, subindex, roi, result):
+        print(f"computing boundaries for roi {roi}")
+        assert False
         assert slot == self.BoundariesOutput
-        print("computing boundaries")
-        slic_sp = self.SegmentationInput(roi.start, roi.stop).wait()
-        boundaries = numpy.empty(slic_sp.shape[:3])
 
-        for i in range(len(slic_sp)):
-            # import IPython; IPython.embed()
-            # print(slic_sp[i].shape)
-            # print(boundaries[i].shape)
-            reshaped_slic = slic_sp[i].reshape(boundaries[i].shape)
-            boundaries[i] = skimage.segmentation.find_boundaries(reshaped_slic)
+        # breakpoint()
+        result = vigra.taggedView(result, self.BoundariesOutput.meta.axistags)
+        print("here!")
+        # Iterate over time slices to avoid connected component problems.
+        for t_index, t in enumerate(range(roi.start[0], roi.stop[0])):
+            print(f"t_index: {t_index}")
+            t_slice_roi = roi.copy()
+            t_slice_roi.start[0] = t
+            t_slice_roi.stop[0] = t + 1
+            result_slice = result[t_index : t_index + 1]
+            for z_index, z in enumerate(range(t_slice_roi.start[1], t_slice_roi.stop[1])):
+                print(f"z_index: {z_index}")
+                z_slice_roi = roi.copy()
+                z_slice_roi.start[0] = t
+                z_slice_roi.stop[0] = t + 1
+                result_slice = result[z_index : z_index + 1]
+                data_slice = self.SegmentationInput(z_slice_roi.start, z_slice_roi.stop()).wait().squeeze()
+                print("here123")
+                assert len(data_slice.shape) == 2
+                print("here345")
+                boundaries = skimage.segmentation.find_boundaries(data_slice)
+                result[t_index, z_index, ..., 0] = boundaries
 
-        # print(result.shape)
-        # print(boundaries.shape)
-        result[:] = boundaries[..., None]
+        print(">>> endhere!")
         return result
 
     def propagateDirty(self, slot, subindex, roi):
@@ -167,7 +206,7 @@ class OpSlicCached(Operator):
         self.Output.connect(self.opCache.Output)
         self.CleanBlocks.connect(self.opCache.CleanBlocks)
 
-        self.opSlicBoundaries = OpSlicBoundaries(parent=self)
+        self.opSlicBoundaries = OpSlicBoundariesCached(parent=self)
         self.opSlicBoundaries.SegmentationInput.connect(self.opCache.Output)
 
         self.opBoundariesCache = OpBlockedArrayCache(parent=self)
