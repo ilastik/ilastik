@@ -1575,7 +1575,7 @@ class _ValueRequest:
             destination.data[...] = ma.getdata(self.result)
             destination.mask[...] = ma.getmaskarray(self.result)
             if isinstance(self.result, ma.masked_array):
-                destination.fill_value = self.result.fill_value
+                destination.set_fill_value(self.result.fill_value)
 
         elif isinstance(destination, collections.MutableSequence) or isinstance(
             self.result, collections.MutableSequence

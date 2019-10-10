@@ -1,10 +1,11 @@
 import time
 import threading
-
 from unittest import mock
 from functools import partial
 
 import pytest
+import numpy as np
+from numpy.testing import assert_array_equal
 
 from lazyflow.request.request import Request, SimpleSignal
 
@@ -278,3 +279,18 @@ class TestRequestWithValue:
         req = Request.with_value(42)
         req.notify_finished(cb)
         cb.assert_called_once_with(42)
+
+    def test_masked_array(self):
+        arr = np.ma.array([12, 10, 17], mask=[0, 0, 1], fill_value=42)
+
+        dst = np.ma.array([0, 0, 0], mask=False)
+
+        req = Request.with_value(arr)
+        req.writeInto(dst)
+
+        assert_array_equal(arr.data, dst.data)
+        assert_array_equal(arr.mask, dst.mask)
+
+        assert arr.get_fill_value() == dst.get_fill_value()
+        assert_array_equal(np.array([12, 10, 42]), arr.filled())
+        assert_array_equal(arr.filled(), dst.filled())
