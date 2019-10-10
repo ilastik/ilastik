@@ -1,6 +1,5 @@
 import os
 from lazyflow.graph import Graph
-from lazyflow.utility import PathComponents, make_absolute, format_known_keys
 from ilastik.workflow import Workflow
 from ilastik.workflows.tracking.conservation.conservationTrackingWorkflow import ConservationTrackingWorkflowBase
 from ilastik.applets.dataSelection import DataSelectionApplet, DatasetInfo

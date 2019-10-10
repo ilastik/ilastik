@@ -21,18 +21,18 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
+from ilastik.applets.dataExport.opDataExport import DataExportPathFormatter
 
 
-class DatasetInfoProvider:
+class PathFormatterFactory:
     def __init__(self, op):
         self._op = op
 
-    def get_dataset_info(self, lane_index):
-        return self._op.RawDatasetInfo[lane_index].value
-
-    def get_project_path(self):
-        return self._op.WorkingDirectory.value
-
+    def for_lane(self, lane_index: int) -> DataExportPathFormatter:
+        return DataExportPathFormatter(
+            dataset_info=self._op.RawDatasetInfo[lane_index].value,
+            working_dir=self._op.WorkingDirectory.value,
+        )
 
 
 class ObjectClassificationDataExportApplet(DataExportApplet):
@@ -44,7 +44,7 @@ class ObjectClassificationDataExportApplet(DataExportApplet):
     def __init__(self, *args, table_exporter, **kwargs):
         super(ObjectClassificationDataExportApplet, self).__init__(*args, **kwargs)
         self._tableExporter = table_exporter
-        self._tableExporter.set_dataset_info_provider(DatasetInfoProvider(self.topLevelOperator))
+        self._tableExporter.set_path_formatter_factory(PathFormatterFactory(self.topLevelOperator))
 
     def getMultiLaneGui(self):
         if self._gui is None:

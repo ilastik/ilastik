@@ -35,6 +35,7 @@ RAW_LAYER_SIZE_LIMIT = 1000000
 ALLOWED_EXTENSIONS = ["hdf5", "hd5", "h5", "csv"]
 DEFAULT_REQUIRED_FEATURES = ["Count", "Coord<Minimum>", "Coord<Maximum>", "RegionCenter"]
 DIALOG_FILTERS = {"h5": "HDF 5 (*.h5 *.hd5 *.hdf5)", "csv": "CSV (*.csv)", "any": "Any (*.*)"}
+DEFAULT_EXPORT_PATH = "{dataset_dir}/{nickname}.h5"
 
 
 class ExportObjectInfoDialog(QDialog):
@@ -165,7 +166,7 @@ class ExportObjectInfoDialog(QDialog):
             self.ui.exportPath.setText(file_path)
             self.ui.fileFormat.setCurrentIndex(self._get_file_type_index_from_filename(file_path))
         else:
-            self.ui.exportPath.setText(os.path.expanduser("~") + "/exported_data.h5")
+            self.ui.exportPath.setText(DEFAULT_EXPORT_PATH)
 
         if file_type == "h5":
             # TODO: what about normalize?

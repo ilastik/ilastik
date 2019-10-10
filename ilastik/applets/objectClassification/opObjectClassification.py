@@ -39,13 +39,14 @@ from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory, Paral
 
 from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWrapper
 from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default
-from ilastik.utility.exportingOperator import ExportingOperator, TableExportSettingsProviderABC
+from ilastik.utility.exportingOperator import ExportingOperator
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
+from ilastik.applets.dataExport.opDataExport import DataExportPathFormatter
+
 
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
-from lazyflow.utility import format_known_keys, PathComponents, getPathVariants, make_absolute
 
 import logging
 
@@ -57,11 +58,11 @@ MISSING_VALUE = 0
 class TableExporter(ExportingOperator):
     def __init__(self, op):
         self._op = op
-        self._dataset_info_provider = None
+        self._path_formatter_factory = None
         self._export_progress_dialog = None
 
-    def set_dataset_info_provider(self, provider):
-        self._dataset_info_provider = provider
+    def set_path_formatter_factory(self, formatter):
+        self._path_formatter_factory = formatter
 
     def get_raw_shape(self):
         return self._op.RawImages[0].meta.shape
@@ -79,26 +80,12 @@ class TableExporter(ExportingOperator):
         else:
             return None, None
 
-    def getPartiallyFormattedName(self, lane_index: int, path_format_string: str) -> str:
+    def format_path(self, lane_index: int, path_format_string: str) -> str:
         """ Takes the format string for the output file, fills in the most important placeholders, and returns it """
-        assert self._dataset_info_provider is not None, "no export op specified"
+        assert self._path_formatter_factory is not None, "Path formatter factory is not set"
 
-        raw_dataset_info = self._dataset_info_provider.get_dataset_info(lane_index)
-        project_path = self._dataset_info_provider.get_project_path()
-
-        dataset_dir = PathComponents(raw_dataset_info.filePath).externalDirectory
-        abs_dataset_dir = make_absolute(dataset_dir, cwd=project_path)
-
-        nickname = raw_dataset_info.nickname.replace("*", "")
-        if os.path.pathsep in nickname:
-            nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
-
-        known_keys = {
-            "dataset_dir": abs_dataset_dir,
-            "nickname": nickname,
-        }
-
-        return format_known_keys(path_format_string, known_keys)
+        path_formatter = self._path_formatter_factory.for_lane(lane_index)
+        return path_formatter.format_path(path_format_string)
 
     def save_export_progress_dialog(self, dialog):
         """
@@ -136,7 +123,7 @@ class TableExporter(ExportingOperator):
         ids = list(ilastik_ids(obj_count))
 
         file_path = settings["file path"]
-        file_path = self.getPartiallyFormattedName(lane_index, file_path)
+        file_path = self.format_path(lane_index, file_path)
 
         export_file = ExportFile(file_path)
         export_file.ExportProgress.subscribe(progress_slot)
