@@ -5,7 +5,7 @@ from threading import Thread
 import io
 import json
 import os
-from flask import Flask, flash, request, redirect, url_for
+from flask import Flask, flash, request, redirect, url_for, Response
 import uuid
 import numpy as np
 from PIL import Image as PilImage
@@ -38,9 +38,9 @@ class Context:
 
     @classmethod
     def create(cls, klass):
-        obj = klass.from_json_data(cls.get_request_params())
-        uid = uuid.uuid4()
-        cls.objects[uid] = obj
+        obj = klass.from_json_data(cls.get_request_payload())
+        uid = obj.get('id', uuid.uuid4())
+        cls.set(uid, obj)
         return obj, str(uid)
 
     @classmethod
@@ -49,7 +49,15 @@ class Context:
         return cls.objects[uid]
 
     @classmethod
-    def get_request_params(cls):
+    def set(cls, obj_id, obj):
+        cls.objects[obj_id] = obj
+
+    @classmethod
+    def remove(cls, key):
+        return cls.objects.pop(key)
+
+    @classmethod
+    def get_request_payload(cls):
         payload = {}
         for k, v in request.form.items():
             try:
@@ -59,6 +67,35 @@ class Context:
         for k, v in request.files.items():
             payload[k] = v.read()
         return listify(unflatten(payload))
+
+
+@app.route('/lines', methods=['OPTIONS'])
+def lines_endpoint_options(*args, **kwargs):
+    resp = Response("allow, dang it")
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['Access-Control-Allow-Methods'] = '*'
+    return resp
+
+app.route('/lines/<line_id>', methods=['OPTIONS'])(lines_endpoint_options)
+
+@app.route('/lines', methods=['POST'])
+def create_line_annotation():
+    request_payload = Context.get_request_payload()
+    print(f"Got this payload: ", json.dumps(request_payload, indent=4))
+    resp = Response("got it!!!!")
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    return resp
+
+@app.route('/lines/<line_id>', methods=['DELETE'])
+def remove_line_annotation(line_id:str):
+    print(f"Deleting {line_id}..........")
+    #Context.remove(line_id)
+    resp = Response("deleted it!!!!")
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    return resp
+
+
+
 
 @app.route('/data_sources', methods=['POST'])
 def create_data_source():
