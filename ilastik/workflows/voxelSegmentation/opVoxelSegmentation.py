@@ -498,9 +498,7 @@ class OpSupervoxelFeaturesAndLabels(Operator):
             # Parallelize by mapping over supervoxels
 
             for v in range(N_voxels):
-                supervoxel_features[v, :N_features] = np.mean(
-                    features_matrix[supervoxel_mask[:, :, :, 0] == v, :], axis=0
-                )
+                supervoxel_features[v, :N_features] = np.mean(features_matrix[supervoxel_mask[..., 0] == v, :], axis=0)
 
             return supervoxel_features
         elif slot == self.SupervoxelLabels:
@@ -537,12 +535,8 @@ class OpSupervoxelFeaturesAndLabels(Operator):
         if slice_ is None:
             slice_ = (slice(None), slice(None), slice(None))
 
-        print("OpSupervoxelFeaturesAndLabels.execute labels")
-        supervoxel_mask = self.SupervoxelSegmentation.value[slice_ + (0,)]
-        labels = self.Labels.value[slice_]
-
-        print("labels {}".format(labels.shape))
-        print("supervoxel_mask {}".format(supervoxel_mask.shape))
+        supervoxel_mask = self.SupervoxelSegmentation.value[..., 0]
+        labels = self.Labels.value[:]
 
         def computeLabel(supervoxels):
             # supervoxel_labels = np.ndarray((len(supervoxels),))

@@ -25,7 +25,6 @@ from builtins import range
 #          http://ilastik.org/license/
 ###############################################################################
 # Python
-import copy
 import logging
 
 traceLogger = logging.getLogger("TRACE." + __name__)
@@ -44,10 +43,9 @@ from lazyflow.classifiers import (
     LazyflowPixelwiseClassifierFactoryABC,
 )
 
-from lazyflow.operators.opConcatenateFeatureMatrices import OpConcatenateFeatureMatrices
 
 from lazyflow.operators.opFeatureMatrixCache import OpFeatureMatrixCache
-from .utils import get_supervoxel_features, get_supervoxel_labels, slic_to_mask
+from .utils import slic_to_mask
 
 
 logger = logging.getLogger(__name__)

@@ -181,7 +181,7 @@ class VoxelSegmentationGui(LabelingGui):
         else:
             raise NotImplementedError
 
-        self.featSelDlg = FeatureSelectionDialog(thisOpFeatureSelection, self.topLevelOperatorView, self.labelListData)
+        self.featSelDlg = FeatureSelectionDialog(thisOpFeatureSelection, self, self.labelListData)
 
     def menus(self):
         menus = super().menus()

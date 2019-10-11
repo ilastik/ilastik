@@ -108,7 +108,7 @@ class OpSlicBoundariesCached(Operator):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.opReorderInput = OpReorderAxes(parent=self, AxisOrder="tzycx", Input=self.SegmentationInput)
+        self.opReorderInput = OpReorderAxes(parent=self, AxisOrder="tzyxc", Input=self.SegmentationInput)
         self.opSlic = OpSlicBoundaries(parent=self)
         self.opSlic.SegmentationInput.connect(self.opReorderInput.Output)
         self.opReorderOutput = OpReorderAxes(parent=self, Input=self.opSlic.BoundariesOutput)

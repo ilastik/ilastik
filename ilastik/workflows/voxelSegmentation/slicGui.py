@@ -54,17 +54,17 @@ class SlicGui(LayerViewerGui):
                 range=(0.0, 1.0),
                 normalize=(0.0, 1.0),
             )
-            layer.name = "Supervoxel Boudaries"
+            layer.name = "Supervoxel Boundaries"
             layer.visible = True
             layer.opacity = 1.0
             layers.insert(0, layer)
 
         superVoxelSlot = self.topLevelOperatorView.Output
         if superVoxelSlot.ready():
-            colortable = generateRandomColors(M=256, clamp={"v": 1.0, "s": 0.5}, zeroIsTransparent=True)
+            colortable = generateRandomColors(M=256, clamp={"v": 1.0, "s": 0.5}, zeroIsTransparent=False)
             layer = ColortableLayer(createDataSource(superVoxelSlot), colortable)
             layer.colortableIsRandom = True
-            layer.name = "SLIC superpixels"
+            layer.name = "SLIC Superpixels"
             layer.visible = True
             layer.opacity = 1.0
             layers.insert(0, layer)
