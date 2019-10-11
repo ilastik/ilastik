@@ -68,7 +68,6 @@ class OpTrainSupervoxelClassifierBlocked(Operator):
     Classifier = OutputSlot()
 
     def __init__(self, *args, **kwargs):
-        print("init {}".format(self.__class__))
         super(OpTrainSupervoxelClassifierBlocked, self).__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
         self._mode = None
@@ -134,7 +133,6 @@ class OpTrainSupervoxelwiseClassifierBlocked(Operator):
     # Labels[N] --> opFeatureMatrixCaches ---(FeatureImage[N])---> opConcatenateFeatureImages ---(label+feature matrix)---> OpTrainFromFeatures ---(Classifier)--->
 
     def __init__(self, *args, **kwargs):
-        print("init {}".format(self.__class__))
         super(OpTrainSupervoxelwiseClassifierBlocked, self).__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
 
@@ -198,7 +196,6 @@ class OpTrainClassifierFromFeatureVectorsAndSupervoxelMask(Operator):
     Classifier = OutputSlot()
 
     def __init__(self, *args, **kwargs):
-        print("init {}".format(self.__class__))
         super(OpTrainClassifierFromFeatureVectorsAndSupervoxelMask, self).__init__(*args, **kwargs)
         self.trainingCompleteSignal = OrderedSignal()
 
@@ -231,9 +228,6 @@ class OpTrainClassifierFromFeatureVectorsAndSupervoxelMask(Operator):
             "".format(type(classifier_factory))
         )
 
-        print("labels shape {}".format(self.Labels[0].value.shape))
-        print("Image shape {}".format(self.Images[0].value.shape))
-        print("ROI {}".format(roi.pprint()))
         # featMatrix = featMatrix.reshape(list(self.Images[0].value.shape[:3])+[featMatrix.shape[1]])
         # supervoxelFeatures = get_supervoxel_features(self.Images[0].value, supervoxelSegmentationMatrix)
         # supervoxelLabels = get_supervoxel_labels(self.Labels[0].value, supervoxelSegmentationMatrix)
@@ -245,8 +239,6 @@ class OpTrainClassifierFromFeatureVectorsAndSupervoxelMask(Operator):
         supervoxelFeatures = supervoxelFeatures[mask]
         supervoxelLabels = supervoxelLabels[mask]
         # import ipdb; ipdb.set_trace()
-        print("pixel labels {}".format(numpy.unique(self.Labels[0].value)))
-        print("Training new classifier: {}".format(classifier_factory.description))
         # print("features before training {}".format(supervoxelFeatures))
         classifier = classifier_factory.create_and_train(supervoxelFeatures, supervoxelLabels, channel_names)
         result[0] = classifier
@@ -383,7 +375,6 @@ class OpSupervoxelwiseClassifierPredict(Operator):
         self.PMaps.meta.ram_usage_per_requested_pixel = classifier_ram_per_pixel + feature_ram_per_pixel
 
     def execute(self, slot, subindex, roi, result):
-        print("predicting")
         classifier = self.Classifier.value
 
         # Training operator may return 'None' if there was no data to train with
@@ -425,13 +416,10 @@ class OpSupervoxelwiseClassifierPredict(Operator):
         # import ipdb; ipdb.set_trace()
         with Timer() as prediction_timer:
             probabilities = classifier.predict_probabilities(features)
-        print("probs shape: {}".format(probabilities.shape))
         # import ipdb; ipdb.set_trace()
         probabilities = slic_to_mask(self.SupervoxelSegmentation.value, probabilities).reshape(
             -1, probabilities.shape[-1]
         )
-        print("probs shape unslicd: {}".format(probabilities.shape))
-        print("ROI {}".format(roi.pprint()))
         logger.debug(
             "Features took {} seconds, Prediction took {} seconds for roi: {} : {}".format(
                 features_timer.seconds(), prediction_timer.seconds(), roi.start, roi.stop
@@ -463,8 +451,6 @@ class OpSupervoxelwiseClassifierPredict(Operator):
 
         # Copy only the prediction channels the client requested.
         result[...] = probabilities[..., roi.start[-1] : roi.stop[-1]]
-        print("result.shape")
-        print(result.shape)
         return result
 
     def propagateDirty(self, slot, subindex, roi):

@@ -278,11 +278,6 @@ class OpVoxelSegmentation(Operator):
 
                     s1.notifyRemoved(partial(removeSlot, s2))
 
-        def onSegmentationResize(slot, oldsize, newsize):
-            print("resized from {} to {}".format(oldsize, newsize))
-
-        self.SupervoxelSegmentation.notifyResized(onSegmentationResize)
-
     def connectSegmentation(self):
         self.opSupervoxelFeaturesAndLabels.SupervoxelSegmentation.connect(self.SupervoxelSegmentation)
 
@@ -484,7 +479,6 @@ class OpSupervoxelFeaturesAndLabels(Operator):
     @timeit
     def execute(self, slot, subindex, roi, result):
         if slot == self.SupervoxelFeatures:
-            print("OpSupervoxelFeaturesAndLabels.execute features")
             supervoxel_mask = self.SupervoxelSegmentation.value
             features_matrix = self.FeatureImages.value
 
@@ -492,8 +486,6 @@ class OpSupervoxelFeaturesAndLabels(Operator):
             N_features = features_matrix.shape[-1]
 
             supervoxel_features = np.ndarray((N_voxels, N_features))
-            print("svf shape {}".format(supervoxel_features.shape))
-            print("featm shape {}".format(features_matrix.shape))
 
             # Parallelize by mapping over supervoxels
 
@@ -516,9 +508,6 @@ class OpSupervoxelFeaturesAndLabels(Operator):
                 # updated_labels now contains only supervoxel that changed
                 updated_labels = self.getUpdatedSupervoxelLabels(self.dirtySlices)
                 self.dirtySlices = []
-
-            print("updated_labels")
-            print(updated_labels)
 
             for (supervoxel, label) in updated_labels.items():
                 self.supervoxelLabelsCache[supervoxel] = label
@@ -559,8 +548,6 @@ class OpSupervoxelFeaturesAndLabels(Operator):
         num_cores = multiprocessing.cpu_count()
         pool = multiprocessing.Pool(num_cores * 2)
         supervoxels_list = np.unique(supervoxel_mask)
-        print("supervoxels_list")
-        print(supervoxels_list)
         # supervoxel_labels = np.concatenate(pool.map(computeLabel, np.array_split(supervoxels_list, num_cores)))
         supervoxel_labels = {}
         supervoxel_labels_dicts = pool.map(computeLabel, np.array_split(supervoxels_list, num_cores * 2))
@@ -580,8 +567,6 @@ class OpSupervoxelFeaturesAndLabels(Operator):
         # self.SupervoxelLabels.meta.shape = (144,)
         self.SupervoxelFeatures.meta.axistags = vigra.defaultAxistags("xc")
         self.SupervoxelLabels.meta.axistags = vigra.defaultAxistags("x")
-        print("SVF shape: {}".format(self.SupervoxelFeatures.meta.shape))
-        print("SVL shape: {}".format(self.SupervoxelLabels.meta.shape))
         self.SupervoxelFeatures.setDirty()
         self.SupervoxelLabels.setDirty()
         # self.Output.meta.assignFrom(self.Input.meta)
@@ -638,7 +623,6 @@ class OpSupervoxelFeaturesAndLabelsCached(Operator):
         self.SupervoxelLabelsCleanBlocks.connect(self.opSupervoxelLabelsCache.CleanBlocks)
 
     def setInSlot(self, slot, subindex, roi, value):
-        print("in SVFL setinslot")
         # Write the data into the cache
         if slot is self.CacheSupervoxelFeaturesInput:
             # import IPython; IPython.embed();
@@ -964,7 +948,6 @@ class OpPlaneSelection(Operator):
     Output = OutputSlot()
 
     def setupOutputs(self):
-        print(self.Input.meta)
         self.Output.meta.shape = (1,)
         self.Output.meta.dtype = list
 

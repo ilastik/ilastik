@@ -122,14 +122,6 @@ class VoxelSegmentationGui(LabelingGui):
             partial(self.topLevelOperatorView.FreezePredictions.unregisterDirty, bind(FreezePredDirty))
         )
 
-        # self.superVoxelSinkSource = SuperVoxelSinkSource(self._labelingSlots.labelOutput,
-        #                                                  self._labelingSlots.labelInput)
-        # self.superVoxelBrushingController = SuperVoxelBrushingController(self.editor.brushingModel, self.editor.posModel, self.topLevelOperatorView.SuperVoxelLabels)
-        # self.superVoxelBrushingInterpreter = BrushingInterpreter(self.editor.navCtrl, self.superVoxelBrushingController)
-        # self.superVoxelClickReporter = ClickReportingInterpreter(self.superVoxelBrushingInterpreter, self.editor.posModel)
-
-        # update displayed plane after prediction
-
         def SelectBestPlane():
             if self.mostUncertainPlanes is None and self.mostUncertainAxis is None:
                 axis, indices = self.topLevelOperatorView.BestAnnotationPlane.value
@@ -138,9 +130,6 @@ class VoxelSegmentationGui(LabelingGui):
 
                 self.mostUncertainAxis = axis
                 self.mostUncertainPlanes = indices
-
-            if len(self.mostUncertainPlanes) == 0:
-                print("no more planes to show")
 
             # Pop most uncertain plane from list
             index, self.mostUncertainPlanes = self.mostUncertainPlanes[-1], self.mostUncertainPlanes[:-1]
@@ -268,7 +257,6 @@ class VoxelSegmentationGui(LabelingGui):
                 order = "".join(self.topLevelOperatorView.InputImages.meta.getAxisKeys())
                 line = order[:-1].upper() + ": "
                 line += slicing_to_string(slicing[:-1], input_shape)
-                print(line)
 
         labels_submenu = QMenu("Labels")
         self.labels_submenu = labels_submenu  # Must retain this reference or else it gets auto-deleted.

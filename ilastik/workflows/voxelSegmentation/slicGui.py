@@ -29,7 +29,6 @@ class SlicGui(LayerViewerGui):
 
         def runSlic():
             for param in SLIC_PARAMS:
-                print("{} {}".format(param, getattr(self._drawer, param).value()))
                 getattr(self.topLevelOperatorView, param).setValue(getattr(self._drawer, param).value())
 
             self.topLevelOperatorView.Input.setDirty()

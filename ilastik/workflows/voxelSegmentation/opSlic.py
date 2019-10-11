@@ -53,7 +53,6 @@ class OpSlic(Operator):
         self.Output.meta.shape = tuple(tagged_shape.values())
 
     def execute(self, slot, subindex, roi, result):
-        print(roi)
         input_data = self.Input(roi.start, roi.stop).wait()
         assert slot == self.Output
 
@@ -90,7 +89,6 @@ class OpSlic(Operator):
 
         # slic_sp has no channel axis, so insert that axis before copying to 'result'
         result[:] = slic_sp[..., None]
-        print("got {} different supervoxels".format(numpy.max(result)))
         # import IPython; IPython.embed()
 
         return result
@@ -133,34 +131,24 @@ class OpSlicBoundaries(Operator):
         self.BoundariesOutput.meta.assignFrom(self.SegmentationInput.meta)
 
     def execute(self, slot, subindex, roi, result):
-        print(f"computing boundaries for roi {roi}")
-        assert False
         assert slot == self.BoundariesOutput
 
         # breakpoint()
         result = vigra.taggedView(result, self.BoundariesOutput.meta.axistags)
-        print("here!")
         # Iterate over time slices to avoid connected component problems.
         for t_index, t in enumerate(range(roi.start[0], roi.stop[0])):
-            print(f"t_index: {t_index}")
             t_slice_roi = roi.copy()
             t_slice_roi.start[0] = t
             t_slice_roi.stop[0] = t + 1
-            result_slice = result[t_index : t_index + 1]
             for z_index, z in enumerate(range(t_slice_roi.start[1], t_slice_roi.stop[1])):
-                print(f"z_index: {z_index}")
-                z_slice_roi = roi.copy()
-                z_slice_roi.start[0] = t
-                z_slice_roi.stop[0] = t + 1
-                result_slice = result[z_index : z_index + 1]
-                data_slice = self.SegmentationInput(z_slice_roi.start, z_slice_roi.stop()).wait().squeeze()
-                print("here123")
+                z_slice_roi = t_slice_roi.copy()
+                z_slice_roi.start[1] = z
+                z_slice_roi.stop[1] = z + 1
+                data_slice = self.SegmentationInput(z_slice_roi.start, z_slice_roi.stop).wait().squeeze()
                 assert len(data_slice.shape) == 2
-                print("here345")
                 boundaries = skimage.segmentation.find_boundaries(data_slice)
                 result[t_index, z_index, ..., 0] = boundaries
 
-        print(">>> endhere!")
         return result
 
     def propagateDirty(self, slot, subindex, roi):
@@ -215,7 +203,6 @@ class OpSlicCached(Operator):
         self.BoundariesCleanBlocks.connect(self.opBoundariesCache.CleanBlocks)
 
     def setInSlot(self, slot, subindex, roi, value):
-        print("in setinslot")
         # Write the data into the cache
         if slot is self.CacheInput:
             slicing = roiToSlice(roi.start, roi.stop)
