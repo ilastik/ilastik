@@ -38,8 +38,9 @@ class Context:
 
     @classmethod
     def create(cls, klass):
-        obj = klass.from_json_data(cls.get_request_payload())
-        uid = obj.get('id', uuid.uuid4())
+        request_payload = cls.get_request_payload()
+        obj = klass.from_json_data(request_payload)
+        uid = request_payload.get('id', uuid.uuid4())
         cls.set(uid, obj)
         return obj, str(uid)
 
