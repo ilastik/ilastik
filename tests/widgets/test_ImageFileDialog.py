@@ -33,19 +33,18 @@ def image(tmp_path) -> Path:
 
 def test_default_image_directory_is_home_with_blank_preferences_file():
     dialog = ImageFileDialog(None)
-    assert dialog.directory().absolutePath() == Path("~").expanduser().absolute().as_posix()
+    assert dialog.directory().absolutePath() == Path.home().as_posix()
 
 
 def test_picking_file_updates_default_image_directory_to_previously_used(image: Path, tmp_preferences):
     dialog = ImageFileDialog(None)
-    assert dialog.directory().absolutePath() == Path("~").expanduser().absolute().as_posix()
     dialog.selectFile(image.as_posix())
 
     QTimer.singleShot(SINGLE_SHOT_DELAY, dialog.accept)
     assert dialog.getSelectedPaths() == [image]
 
     with open(tmp_preferences, "rb") as f:
-        assert pickle.load(f) == {dialog.preferences_group: {dialog.preferences_setting: str(image)}}
+        assert pickle.load(f) == {dialog.preferences_group: {dialog.preferences_setting: image.as_posix()}}
 
 
 def test_picking_n5_json_file_returns_directory_path(tmp_n5_file: Path):
