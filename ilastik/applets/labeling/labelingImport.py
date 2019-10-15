@@ -45,9 +45,6 @@ from PyQt5.QtWidgets import (
     QApplication,
 )
 
-# volumina
-from volumina.utility import PreferencesManager
-
 # lazyflow
 import lazyflow
 from lazyflow.utility import chunked_bincount

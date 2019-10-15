@@ -29,7 +29,7 @@ from PyQt5.QtWidgets import QDialogButtonBox, QComboBox, QDialog, QFileDialog, Q
 
 import vigra
 
-from volumina.utility import PreferencesManager
+from volumina.utility import preferences
 
 import ilastik.config
 from ilastik.widgets.hdf5SubvolumeSelectionDialog import H5N5StackingDlg, SubvolumeSelectionDlg
@@ -117,7 +117,7 @@ class StackFileSelectionWidget(QDialog):
 
     def _chooseDirectory(self):
         # Find the directory of the most recently opened image file
-        mostRecentStackDirectory = PreferencesManager().get("DataSelection", "recent stack directory")
+        mostRecentStackDirectory = preferences.get("DataSelection", "recent stack directory")
         if mostRecentStackDirectory is not None:
             defaultDirectory = os.path.split(mostRecentStackDirectory)[0]
         else:
@@ -134,7 +134,7 @@ class StackFileSelectionWidget(QDialog):
             # User cancelled
             return
 
-        PreferencesManager().set("DataSelection", "recent stack directory", directory)
+        preferences.set("DataSelection", "recent stack directory", directory)
 
         self.directoryEdit.setText(directory)
         try:
@@ -253,7 +253,7 @@ class StackFileSelectionWidget(QDialog):
 
     def _selectFiles(self):
         # Find the directory of the most recently opened image file
-        mostRecentStackDirectory = PreferencesManager().get("DataSelection", "recent stack directory")
+        mostRecentStackDirectory = preferences.get("DataSelection", "recent stack directory")
         if mostRecentStackDirectory is not None:
             defaultDirectory = os.path.split(mostRecentStackDirectory)[0]
         else:
@@ -300,7 +300,7 @@ class StackFileSelectionWidget(QDialog):
             return None
 
         directory = pathComponents.externalPath
-        PreferencesManager().set("DataSelection", "recent stack directory", directory)
+        preferences.set("DataSelection", "recent stack directory", directory)
 
         if (
             pathComponents.extension in OpStreamingH5N5SequenceReaderM.H5EXTS

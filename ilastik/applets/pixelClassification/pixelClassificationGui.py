@@ -57,7 +57,7 @@ from PyQt5.QtGui import QColor, QIcon, QCursor
 
 # HCI
 from volumina.api import createDataSource, AlphaModulatedLayer, GrayscaleLayer, ColortableLayer
-from volumina.utility import ShortcutManager, PreferencesManager
+from volumina.utility import ShortcutManager
 
 from lazyflow.utility import PathComponents
 from lazyflow.roi import slicing_to_string

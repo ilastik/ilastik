@@ -66,7 +66,7 @@ from lazyflow.utility import timeLogged, isUrl
 from lazyflow.request import Request
 
 # volumina
-from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager
+from volumina.utility import preferences, ShortcutManagerDlg, ShortcutManager
 
 # ilastik
 from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
@@ -429,7 +429,7 @@ class IlastikShell(QMainWindow):
 
         self.errorMessageFilter = ErrorMessageFilter(self)
 
-        frame_geometry = PreferencesManager().get("shell", "startscreenGeometry")
+        frame_geometry = preferences.get("shell", "startscreenGeometry")
         if frame_geometry is not None:
             x, y, w, h = frame_geometry
             self.move(x, y)
@@ -570,7 +570,7 @@ class IlastikShell(QMainWindow):
             b.deleteLater()
         self.openFileButtons = []
 
-        projects = PreferencesManager().get("shell", "recently opened list")
+        projects = preferences.get("shell", "recently opened list")
 
         if projects is not None:
             # (projects is already sorted from most-recent to least-recent.)
@@ -726,7 +726,7 @@ class IlastikShell(QMainWindow):
             assert not yappi.is_running()
 
             filename = "ilastik_profile_sortedby_{}.txt".format(sortby)
-            recentPath = PreferencesManager().get("shell", "recent sorted profile stats")
+            recentPath = preferences.get("shell", "recent sorted profile stats")
             if recentPath is None:
                 defaultPath = os.path.join(os.path.expanduser("~"), filename)
             else:
@@ -741,7 +741,7 @@ class IlastikShell(QMainWindow):
 
             if stats_path:
                 pstats_path = os.path.splitext(stats_path)[0] + ".pstats"
-                PreferencesManager().set("shell", "recent sorted profile stats", stats_path)
+                preferences.set("shell", "recent sorted profile stats", stats_path)
 
                 # Export the yappi stats to builtin pstats format,
                 #  since pstats provides nicer printing IMHO
@@ -762,7 +762,7 @@ class IlastikShell(QMainWindow):
 
             filename = "ilastik_threadstats_sortedby_{}.txt".format(sortby)
 
-            recentPath = PreferencesManager().get("shell", "recent sorted profile stats")
+            recentPath = preferences.get("shell", "recent sorted profile stats")
             if recentPath is None:
                 defaultPath = os.path.join(os.path.expanduser("~"), filename)
             else:
@@ -776,7 +776,7 @@ class IlastikShell(QMainWindow):
             )
 
             if stats_path:
-                PreferencesManager().set("shell", "recent sorted profile stats", stats_path)
+                preferences.set("shell", "recent sorted profile stats", stats_path)
 
                 # Export the yappi stats to builtin pstats format,
                 #  since pstats provides nicer printing IMHO
@@ -820,11 +820,11 @@ class IlastikShell(QMainWindow):
         return profilingSubmenu
 
     def _createAllocationTrackingSubmenu(self):
-        self._allocation_threshold = PreferencesManager().get("shell", "allocation tracking threshold")
+        self._allocation_threshold = preferences.get("shell", "allocation tracking threshold")
         if self._allocation_threshold is None:
             self._allocation_threshold = 1000000  # 1 MB by default
 
-        self._traceback_depth = PreferencesManager().get("shell", "allocation tracking traceback depth")
+        self._traceback_depth = preferences.get("shell", "allocation tracking traceback depth")
         if self._traceback_depth is None:
             self._traceback_depth = 3  # default
 
@@ -870,10 +870,10 @@ class IlastikShell(QMainWindow):
             dlg.setLayout(layout)
             if dlg.exec_() == QDialog.Accepted:
                 self._allocation_threshold = threshold_box.value()
-                PreferencesManager().set("shell", "allocation tracking threshold", self._allocation_threshold)
+                preferences.set("shell", "allocation tracking threshold", self._allocation_threshold)
 
                 self._traceback_depth = traceback_depth_box.value()
-                PreferencesManager().set("shell", "allocation tracking traceback depth", self._traceback_depth)
+                preferences.set("shell", "allocation tracking traceback depth", self._traceback_depth)
 
         def _startAllocationTracking():
             self._allocation_tracker = PrettyAllocationTracker(self._allocation_threshold, self._traceback_depth)
@@ -887,7 +887,7 @@ class IlastikShell(QMainWindow):
             stopAction.setEnabled(False)
 
             filename = "ilastik-tracked-numpy-allocations.html"
-            recentPath = PreferencesManager().get("shell", "allocation tracking output html")
+            recentPath = preferences.get("shell", "allocation tracking output html")
             if recentPath is None:
                 defaultPath = os.path.join(os.path.expanduser("~"), filename)
             else:
@@ -902,7 +902,7 @@ class IlastikShell(QMainWindow):
             )
 
             if html_path:
-                PreferencesManager().set("shell", "allocation tracking output html", html_path)
+                preferences.set("shell", "allocation tracking output html", html_path)
                 self._allocation_tracker.write_html(html_path)
 
                 # As a convenience, go ahead and open it.
@@ -968,7 +968,7 @@ class IlastikShell(QMainWindow):
         self.exportOperatorDiagram(self.projectManager.workflow, detail)
 
     def exportOperatorDiagram(self, op, detail):
-        recentPath = PreferencesManager().get("shell", "recent debug diagram")
+        recentPath = preferences.get("shell", "recent debug diagram")
         if recentPath is None:
             defaultPath = os.path.join(os.path.expanduser("~"), op.name + ".svg")
         else:
@@ -983,7 +983,7 @@ class IlastikShell(QMainWindow):
         )
 
         if svgPath:
-            PreferencesManager().set("shell", "recent debug diagram", svgPath)
+            preferences.set("shell", "recent debug diagram", svgPath)
             lazyflow.tools.schematic.generateSvgFileForOperator(svgPath, op, detail)
             QDesktopServices.openUrl(QUrl.fromLocalFile(svgPath))
 
@@ -1348,7 +1348,7 @@ class IlastikShell(QMainWindow):
         logger.debug("Import Project Action")
 
         # Find the directory of the most recently *imported* project
-        mostRecentImportPath = PreferencesManager().get("shell", "recently imported")
+        mostRecentImportPath = preferences.get("shell", "recently imported")
         if mostRecentImportPath is not None:
             defaultDirectory = os.path.split(mostRecentImportPath)[0]
         else:
@@ -1357,7 +1357,7 @@ class IlastikShell(QMainWindow):
         # Select the paths to the ilp to import and the name of the new one we'll create
         importedFilePath = self.getProjectPathToOpen(defaultDirectory)
         if importedFilePath is not None:
-            PreferencesManager().set("shell", "recently imported", importedFilePath)
+            preferences.set("shell", "recently imported", importedFilePath)
             defaultFile, ext = os.path.splitext(importedFilePath)
             defaultFile += "_imported"
             defaultFile += ext
@@ -1375,16 +1375,17 @@ class IlastikShell(QMainWindow):
     def onDownloadProjectFromDvidActionTriggered(self):
         logger.debug("Download Project From DVID")
 
-        recent_hosts_pref = PreferencesManager.Setting("DataSelection", "Recent DVID Hosts")
-        recent_hosts = recent_hosts_pref.get()
+        group = "DataSelection"
+        recent_hosts_key = "Recent DVID Hosts"
+        recent_hosts = preferences.get(group, recent_hosts_key)
         if not recent_hosts:
             recent_hosts = ["localhost:8000"]
         recent_hosts = [
             h for h in recent_hosts if h
         ]  # There used to be a bug where empty strings could be saved. Filter those out.
 
-        recent_nodes_pref = PreferencesManager.Setting("DataSelection", "Recent DVID Nodes")
-        recent_nodes = recent_nodes_pref.get() or {}
+        recent_nodes_key = "Recent DVID Nodes"
+        recent_nodes = preferences.get(group, recent_nodes_key) or {}
 
         # Ask for a selection.
         from libdvid.gui import ContentsBrowser
@@ -1414,8 +1415,8 @@ class IlastikShell(QMainWindow):
 
         # Save pref
         recent_nodes[str(hostname)] = str(node_uuid)
-        recent_nodes_pref.set(recent_nodes)
-        recent_hosts_pref.set(recent_hosts)
+        preferences.set(group, recent_nodes_key, recent_nodes)
+        preferences.set(group, recent_hosts_key, recent_hosts)
 
         # Open
         self.openProjectFile(dvid_url)
@@ -1442,7 +1443,7 @@ class IlastikShell(QMainWindow):
         logger.debug("Open Project action triggered")
 
         # Find the directory of the most recently opened project
-        mostRecentProjectPath = PreferencesManager().get("shell", "recently opened")
+        mostRecentProjectPath = preferences.get("shell", "recently opened")
         if mostRecentProjectPath:
             defaultDirectory = os.path.split(mostRecentProjectPath)[0]
         else:
@@ -1560,7 +1561,7 @@ class IlastikShell(QMainWindow):
                 logger.debug("Loading the project took {:.2f} sec.".format(stop - start))
 
                 # add file and workflow to users preferences
-                mostRecentProjectPaths = PreferencesManager().get("shell", "recently opened list")
+                mostRecentProjectPaths = preferences.get("shell", "recently opened list")
                 if mostRecentProjectPaths is None:
                     mostRecentProjectPaths = []
 
@@ -1577,8 +1578,8 @@ class IlastikShell(QMainWindow):
                 if len(mostRecentProjectPaths) > 5:
                     mostRecentProjectPaths = mostRecentProjectPaths[:5]
 
-                PreferencesManager().set("shell", "recently opened list", mostRecentProjectPaths)
-                PreferencesManager().set("shell", "recently opened", projectFilePath)
+                preferences.set("shell", "recently opened list", mostRecentProjectPaths)
+                preferences.set("shell", "recently opened", projectFilePath)
 
                 # be friendly to user: if this file has not specified a default workflow, do it now
                 if not "workflowName" in list(hdf5File.keys()) and not readOnly:
@@ -1795,7 +1796,7 @@ class IlastikShell(QMainWindow):
     def closeAndQuit(self, quitApp=True):
         geom = self.frameGeometry()
         x, y, width, height = geom.x(), geom.y(), geom.width(), geom.height()
-        PreferencesManager().set("shell", "startscreenGeometry", (x, y, width, height))
+        preferences.set("shell", "startscreenGeometry", (x, y, width, height))
 
         if self.projectManager is not None:
             self.closeCurrentProject()
