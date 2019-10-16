@@ -8,11 +8,11 @@ import numpy as np
 import vigra
 from vigra.learning import RandomForest
 
-from ilastik.array5d.array5D import Array5D, Slice5D, Point5D, Shape5D
+from ndstructs import Array5D, Slice5D, Point5D, Shape5D
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureData
 from ilastik.annotations import Annotation, FeatureSamples, LabelSamples
-from ilastik.data_source import DataSource
-from ilastik.utility import JsonSerializable
+from ndstructs.datasource import DataSource
+from ndstructs.utils import JsonSerializable
 
 class Predictions(Array5D):
     """An array of floats from 0.0 to 1.0. The value in each channel represents

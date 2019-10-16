@@ -5,9 +5,9 @@ import vigra
 import numpy
 
 from .feature_extractor import FlatChannelwiseFilter, FeatureData
-from ilastik.array5d import Array5D, Image, ScalarImage
-from ilastik.array5d.point5D import Point5D, Slice5D, Shape5D
-from ilastik.data_source import DataSource
+from ndstructs import Array5D, Image, ScalarImage
+from ndstructs import Point5D, Slice5D, Shape5D
+from ndstructs.datasource import DataSource
 
 class VigraChannelwiseFilter(FlatChannelwiseFilter):
     def __init__(self, sigma:float, window_size:float=0, stack_axis:str='z'):

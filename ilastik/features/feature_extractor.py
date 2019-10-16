@@ -8,10 +8,10 @@ from typing import List, Iterator, Tuple
 import vigra.filters
 import numpy as np
 
-from ilastik.array5d import Slice5D, Point5D, Shape5D
-from ilastik.array5d import Array5D, Image, ScalarImage, LinearData
-from ilastik.data_source import DataSource
-from ilastik.utility import JsonSerializable
+from ndstructs import Slice5D, Point5D, Shape5D
+from ndstructs import Array5D, Image, ScalarImage, LinearData
+from ndstructs.datasource import DataSource
+from ndstructs.utils import JsonSerializable
 
 class FeatureData(Array5D):
     def __init__(self, *args, **kwargs):

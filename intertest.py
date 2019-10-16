@@ -7,13 +7,13 @@ from PIL import Image as PilImage
 import time
 
 
-from ilastik.array5d.array5D import Array5D, Image, ScalarImage
-from ilastik.array5d.point5D import Point5D, Slice5D, Shape5D
+from ndstructs import Array5D, Image, ScalarImage
+from ndstructs import Point5D, Slice5D, Shape5D
 from ilastik.features.feature_extractor import FeatureExtractorCollection
 from ilastik.features.vigra_features import GaussianSmoothing, HessianOfGaussian
 from ilastik.annotations import Annotation
 from ilastik.classifiers.pixel_classifier import PixelClassifier, StrictPixelClassifier
-from ilastik.data_source import FlatDataSource
+from ndstructs.datasource import PilDataSource
 
 
 p = Point5D(x=1, y=2, z=3, t=4, c=5)
@@ -24,14 +24,14 @@ slc = Slice5D(x=slice(100, 200), y=slice(200, 300))
 
 
 #cutout_test_file = "/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped1_numbered_tiles.png"
-#cutout_source = FlatDataSource(cutout_test_file, x=slice(20, 50), y=slice(20, 50))
+#cutout_source = PilDataSource(cutout_test_file, x=slice(20, 50), y=slice(20, 50))
 #cutout = cutout_source.retrieve()
 #raw_cutout = np.asarray(PilImage.open(cutout_test_file))[20:50, 20:50]
 #assert np.all(raw_cutout == cutout.raw('yx'))
 #
 #
-#raw_data1 = FlatDataSource("/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped1.png")
-##assert FlatDataSource.from_json(json.loads(raw_data1.to_json())) == raw_data1
+#raw_data1 = PilDataSource("/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped1.png")
+##assert PilDataSource.from_json(json.loads(raw_data1.to_json())) == raw_data1
 ##assert pickle.loads(pickle.dumps(raw_data1)) == raw_data1
 #
 fc = FeatureExtractorCollection((GaussianSmoothing(sigma=0.3),  HessianOfGaussian(sigma=1.5), GaussianSmoothing(sigma=1.5)))
@@ -45,18 +45,18 @@ fc = FeatureExtractorCollection((GaussianSmoothing(sigma=0.3),  HessianOfGaussia
 #
 #classifier = StrictPixelClassifier.get(feature_extractor=fc, annotations=annotations, random_seed=123)
 #predictions, features = classifier.predict(raw_data1)
-#save_test_images(predictions, 'full')
+#predictions.show()
 #
 #
 #
-#raw_data2 = FlatDataSource("/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped2.png", x=slice(100,200), y=slice(100,200))
+#raw_data2 = PilDataSource("/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped2.png", x=slice(100,200), y=slice(100,200))
 #classifier2 = StrictPixelClassifier.get(feature_extractor=fc, annotations=annotations, random_seed=123)
 #predictions2, features2 = classifier.predict(raw_data2)
 #save_test_images(predictions2, 'sliced')
 
 
 
-apop_raw = FlatDataSource("/home/tomaz/ilastikTests/SampleData/2d_cells_apoptotic_1c/2d_cells_apoptotic_1c.png")
+apop_raw = PilDataSource("/home/tomaz/ilastikTests/SampleData/2d_cells_apoptotic_1c/2d_cells_apoptotic_1c.png")
 apop_annotations = (
     Annotation.from_png("/home/tomaz/ilastikTests/SampleData/2d_cells_apoptotic_1c/full_image_annotations.png",
                         raw_data=apop_raw),

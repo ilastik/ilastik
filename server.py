@@ -10,11 +10,10 @@ import uuid
 import numpy as np
 from PIL import Image as PilImage
 
-from ilastik.array5d.point5D import Point5D, Slice5D, Shape5D
-from ilastik.array5d import Array5D
+from ndstructs import Point5D, Slice5D, Shape5D, Array5D
 from ilastik.annotations import Annotation
-from ilastik.classifiers.pixel_classifier import PixelClassifier, StrictPixelClassifier
-from ilastik.data_source import FlatDataSource
+from ilastik.classifiers.pixel_classifier import PixelClassifier, StrictPixelClassifier, Predictions
+from ndstructs.datasource import PilDataSource
 from ilastik.features.vigra_features import GaussianSmoothing, HessianOfGaussian
 from ilastik.utility import flatten, unflatten, listify
 
@@ -100,7 +99,7 @@ def remove_line_annotation(line_id:str):
 
 @app.route('/data_sources', methods=['POST'])
 def create_data_source():
-    _, uid = Context.create(FlatDataSource)
+    _, uid = Context.create(PilDataSource)
     return json.dumps(uid)
 
 @app.route('/annotations', methods=['POST'])
