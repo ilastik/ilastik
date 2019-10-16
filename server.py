@@ -1,11 +1,12 @@
 from concurrent.futures import ThreadPoolExecutor
-from flask import Flask, request, send_file
 from functools import partial
 from threading import Thread
+from typing import Dict
 import io
 import json
 import os
-from flask import Flask, flash, request, redirect, url_for, Response
+import flask
+from flask import Flask, request, Response, send_file
 from flask_cors import CORS
 import uuid
 import numpy as np
@@ -106,31 +107,79 @@ def create_classifier():
     _, uid = Context.create(PixelClassifier)
     return json.dumps(uid)
 
+def do_predictions(roi:Slice5D, classifier_id:str, datasource_id:str) -> Predictions:
+    classifier = Context.get(classifier_id)
+    full_data_source = Context.get(datasource_id)
+    clamped_roi = roi.clamped(full_data_source)
+    data_source = full_data_source.resize(clamped_roi)
+
+    predictions = classifier.allocate_predictions(data_source)
+    with ThreadPoolExecutor() as executor:
+        for raw_tile in data_source.get_tiles():
+            def predict_tile(tile):
+                tile_prediction, tile_features = classifier.predict(tile)
+                predictions.set(tile_prediction, autocrop=True)
+            executor.submit(predict_tile, raw_tile)
+    return predictions
+
 @app.route('/pixel_predictions/', methods=['GET'])
 def predict():
     roi_params = {}
     for axis, v in request.args.items():
         if axis in 'tcxyz':
-            start, stop = tuple(int(part) for part in v.split('_'))
+            start, stop = [int(part) for part in v.split('_')]
             roi_params[axis] = slice(start, stop)
-    roi = Slice5D(**roi_params)
-    classifier = Context.get(request.args['pixel_classifier_id'])
-    data_source = Context.get(request.args['data_source_id']).resize(roi)
-    channel = int(request.args.get('channel', 0))
 
-    predictions = classifier.allocate_predictions(data_source)
-    with ThreadPoolExecutor() as executor:
-        for raw_tile in data_source.get_tiles():
-            def predict_tile(raw_tile):
-                tile_prediction, tile_features = classifier.predict(raw_tile)
-                predictions.set(tile_prediction, autocrop=True)
-            executor.submit(predict_tile, raw_tile)
+    predictions = do_predictions(roi=Slice5D(**roi_params),
+                                 classifier_id=request.args['pixel_classifier_id'],
+                                 datasource_id=request.args['data_source_id'])
 
+    channel=int(request.args.get('channel', 0))
     out_image = predictions.as_pil_images()[channel]
     out_file = io.BytesIO()
     out_image.save(out_file, 'png')
     out_file.seek(0)
     return send_file(out_file, mimetype='image/png')
+
+#https://github.com/google/neuroglancer/tree/master/src/neuroglancer/datasource/precomputed#unsharded-chunk-storage
+@app.route('/predictions/<classifier_id>/<datasource_id>/data/<int:xBegin>-<int:xEnd>_<int:yBegin>-<int:yEnd>_<int:zBegin>-<int:zEnd>')
+def ngpredict(classifier_id:str, datasource_id:str, xBegin:int, xEnd:int, yBegin:int, yEnd:int, zBegin:int, zEnd:int):
+    requested_roi = Slice5D(x=slice(xBegin, xEnd), y=slice(yBegin, yEnd), z=slice(zBegin, zEnd))
+    predictions = do_predictions(roi=requested_roi,
+                                 classifier_id=classifier_id,
+                                 datasource_id=datasource_id)
+
+    # https://github.com/google/neuroglancer/tree/master/src/neuroglancer/datasource/precomputed#raw-chunk-encoding
+    # "(...) data for the chunk is stored directly in little-endian binary format in [x, y, z, channel] Fortran order"
+    resp = flask.make_response(predictions.as_uint8().raw('xyzc').tobytes('F'))
+    resp.headers['Content-Type'] = 'application/octet-stream'
+    return resp
+
+@app.route('/predictions/<classifier_id>/<datasource_id>/info')
+def info_dict(classifier_id:str, datasource_id:str) -> Dict:
+    classifier = Context.get(classifier_id)
+    datasource = Context.get(datasource_id)
+
+    expected_predictions_shape = classifier.get_expected_roi(datasource).shape
+
+    resp = flask.jsonify({
+        "@type": "neuroglancer_multiscale_volume",
+        "type": "image",
+        "data_type": "uint8", #DONT FORGET TO CONVERT PREDICTIONS TO UINT8!
+        "num_channels": int(expected_predictions_shape.c),
+        "scales": [
+            {
+                "key": "data",
+                "size": [int(v) for v in expected_predictions_shape.to_tuple('xyz')],
+                "resolution": [1,1,1],
+                "chunk_sizes": [[64, 64, 64]],
+                "encoding": "raw",
+            },
+        ],
+    })
+    return resp
+
+
 
 
 #Thread(target=partial(app.run, host='0.0.0.0')).start()

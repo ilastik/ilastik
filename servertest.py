@@ -1,4 +1,5 @@
 import requests
+import json
 from ilastik.utility import flatten, unflatten, listify
 
 def post(*args, **kwargs):
@@ -51,3 +52,11 @@ resp = requests.get('http://localhost:5000/pixel_predictions', params={'pixel_cl
                                                                      'x': '100_200',
                                                                      'y': '100_200'})
 print(resp.status_code)
+
+info = requests.get(f"http://localhost:5000/predictions/{classifier_id}/{data_source_id}/info").json()
+print(json.dumps(info, indent=4))
+
+binary_path = f"/predictions/{classifier_id}/{data_source_id}/data/100-200_100-200_0-1"
+binary = requests.get(f"http://localhost:5000{binary_path}").content
+
+
