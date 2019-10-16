@@ -6,6 +6,7 @@ import io
 import json
 import os
 from flask import Flask, flash, request, redirect, url_for, Response
+from flask_cors import CORS
 import uuid
 import numpy as np
 from PIL import Image as PilImage
@@ -18,6 +19,7 @@ from ilastik.features.vigra_features import GaussianSmoothing, HessianOfGaussian
 from ilastik.utility import flatten, unflatten, listify
 
 app = Flask("WebserverHack")
+CORS(app)
 app.config['DATA_DIR'] = '/tmp/flask_stuff/'
 app.config['AVAILABLE_FEATURE_EXTRACTORS'] = [GaussianSmoothing, HessianOfGaussian]
 app.config['FEATURE_EXTRACTOR_MAP'] = {f.__name__:f for f in app.config['AVAILABLE_FEATURE_EXTRACTORS']}
@@ -69,21 +71,11 @@ class Context:
         return listify(unflatten(payload))
 
 
-@app.route('/lines', methods=['OPTIONS'])
-def lines_endpoint_options(*args, **kwargs):
-    resp = Response("allow, dang it")
-    resp.headers['Access-Control-Allow-Origin'] = '*'
-    resp.headers['Access-Control-Allow-Methods'] = '*'
-    return resp
-
-app.route('/lines/<line_id>', methods=['OPTIONS'])(lines_endpoint_options)
-
 @app.route('/lines', methods=['POST'])
 def create_line_annotation():
     request_payload = Context.get_request_payload()
     print(f"Got this payload: ", json.dumps(request_payload, indent=4))
     resp = Response("got it!!!!")
-    resp.headers['Access-Control-Allow-Origin'] = '*'
     return resp
 
 @app.route('/lines/<line_id>', methods=['DELETE'])
@@ -91,11 +83,7 @@ def remove_line_annotation(line_id:str):
     print(f"Deleting {line_id}..........")
     #Context.remove(line_id)
     resp = Response("deleted it!!!!")
-    resp.headers['Access-Control-Allow-Origin'] = '*'
     return resp
-
-
-
 
 @app.route('/data_sources', methods=['POST'])
 def create_data_source():
