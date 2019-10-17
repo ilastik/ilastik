@@ -1,1 +1,1 @@
-from .annotation import Annotation, FeatureSamples, LabelSamples
+from .annotation import Annotation, FeatureSamples, LabelSamples, Scribblings

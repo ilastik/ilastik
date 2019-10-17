@@ -1,7 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from threading import Thread
-from typing import Dict
+from typing import Dict, List
 import io
 import json
 import os
@@ -13,7 +13,8 @@ import numpy as np
 from PIL import Image as PilImage
 
 from ndstructs import Point5D, Slice5D, Shape5D, Array5D
-from ilastik.annotations import Annotation
+from ndstructs.datasource import DataSource
+from ilastik.annotations import Annotation, Scribblings
 from ilastik.classifiers.pixel_classifier import PixelClassifier, StrictPixelClassifier, Predictions
 from ndstructs.datasource import PilDataSource
 from ilastik.features.vigra_features import GaussianSmoothing, HessianOfGaussian
@@ -71,17 +72,56 @@ class Context:
         return listify(unflatten(payload))
 
 
+def hacky_get_only_datasource():
+    ds  = None
+    for obj in Context.objects.values():
+        if not isinstance(obj, DataSource):
+            continue
+        if ds is not None:
+            raise Exception("There is more than ONE DataSource in the server.")
+        ds = obj
+    return ds
+
 @app.route('/lines', methods=['POST'])
 def create_line_annotation():
     request_payload = Context.get_request_payload()
     print(f"Got this payload: ", json.dumps(request_payload, indent=4))
+
+    def string_array_to_point5d(string_array:List[str]):
+        params = {}
+        for key, string_value in zip('xyz', string_array):
+            params[key] = int(float(string_value))
+        return Point5D(**params)
+
+    float_vec_color =  np.asarray([float(v) for v in request_payload['color']])
+    int_vec_color = (float_vec_color * 255).astype(np.uint8)
+    hashed_color = hash(tuple(float_vec_color)) % 255
+
+    pointA = string_array_to_point5d(request_payload['pointA'])
+    pointB = string_array_to_point5d(request_payload['pointB'])
+
+    min_point = Point5D(**{key: min(pointA[key], pointB[key]) for key in 'xyz'})
+    max_point = Point5D(**{key: max(pointA[key], pointB[key]) for key in 'xyz'})
+
+    # +1 because slice.stop is exclusive, but pointA and pointB are inclusive
+    scribbling_roi = Slice5D.zero(**{key: slice(min_point[key],  max_point[key] + 1) for key in 'xyz'})
+    scribblings = Scribblings.allocate(scribbling_roi, dtype=np.uint8, value=0)
+
+    for point in (pointA, pointB):
+        colored_point = Scribblings.allocate(Slice5D.zero().translated(point), dtype=np.uint8, value=hashed_color)
+        scribblings.set(colored_point)
+
+    annotation = Annotation(scribblings=scribblings, #datasource=Context.get(request_payload['datasource_id'])
+                            raw_data=hacky_get_only_datasource())
+    Context.set(request_payload['id'], annotation)
+
     resp = Response("got it!!!!")
     return resp
 
 @app.route('/lines/<line_id>', methods=['DELETE'])
 def remove_line_annotation(line_id:str):
     print(f"Deleting {line_id}..........")
-    #Context.remove(line_id)
+    Context.remove(line_id)
     resp = Response("deleted it!!!!")
     return resp
 
