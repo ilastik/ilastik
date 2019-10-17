@@ -42,14 +42,13 @@ class Context:
     def create(cls, klass):
         request_payload = cls.get_request_payload()
         obj = klass.from_json_data(request_payload)
-        uid = request_payload.get('id', uuid.uuid4())
+        uid = request_payload.get('id', str(uuid.uuid4()))
         cls.set(uid, obj)
         return obj, str(uid)
 
     @classmethod
     def get(cls, key):
-        uid = uuid.UUID(str(key))
-        return cls.objects[uid]
+        return cls.objects[key]
 
     @classmethod
     def set(cls, obj_id, obj):
