@@ -6,13 +6,13 @@ import vigra.filters
 import numpy as np
 
 from ndstructs import Slice5D, Point5D, Shape5D
-from ndstructs import Array5D, Image, ScalarImage, StaticLine, LinearData
+from ndstructs import Array5D, Image, ScalarData, StaticLine, LinearData
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureData
 from ndstructs.datasource import DataSource
 from ndstructs.utils import JsonSerializable
 from PIL import Image as PilImage
 
-class Scribblings(ScalarImage):
+class Scribblings(ScalarData):
     """Single-channel image containing user scribblings"""
 
     def __hash__(self):
