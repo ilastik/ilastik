@@ -1,12 +1,22 @@
 import requests
 import json
+import numpy
 from ilastik.utility import flatten, unflatten, listify
+from ndstructs import Array5D
 
 def post(*args, **kwargs):
-    resp = requests.post(*args, **kwargs)
+    return send('post', *args, **kwargs)
+
+def get(*args, **kwargs):
+    return send('get', *args, **kwargs)
+
+def send(method:str, *args, **kwargs):
+    resp = getattr(requests, method)(*args, **kwargs)
     if resp.status_code != 200:
         raise Exception(resp.text)
     return resp
+
+
 
 
 resp = post('http://localhost:5000/data_sources',
@@ -37,6 +47,10 @@ resp = post('http://localhost:5000/feature_extractors/hessian_of_gaussian',
 hess_id = resp.json()
 print(f"hess_id: {hess_id}")
 
+resp = get('http://localhost:5000/feature_extractors')
+print("Feature extractors:")
+print(json.dumps(resp.json(), indent=4))
+
 
 resp = post('http://localhost:5000/pixel_classifier',
             data={
@@ -47,16 +61,23 @@ classifier_id = resp.json()
 print(f"classifier_id: {classifier_id}")
 
 
-resp = requests.get('http://localhost:5000/pixel_predictions', params={'pixel_classifier_id': classifier_id,
-                                                                     'data_source_id': data_source_id,
-                                                                     'x': '100_200',
-                                                                     'y': '100_200'})
-print(resp.status_code)
+resp = get('http://localhost:5000/pixel_predictions', params={'pixel_classifier_id': classifier_id,
+                                                              'data_source_id': data_source_id,
+                                                              'x': '100_200',
+                                                              'y': '100_200'})
 
-info = requests.get(f"http://localhost:5000/predictions/{classifier_id}/{data_source_id}/info").json()
+
+info = get(f"http://localhost:5000/predictions/{classifier_id}/{data_source_id}/info").json()
 print(json.dumps(info, indent=4))
 
-binary_path = f"/predictions/{classifier_id}/{data_source_id}/data/100-200_100-200_0-1"
-binary = requests.get(f"http://localhost:5000{binary_path}").content
+predictions_path = f"predictions/{classifier_id}/{data_source_id}"
+binary = get(f"http://localhost:5000/{predictions_path}/data/100-200_100-200_0-1").content
+data = numpy.frombuffer(binary, dtype=numpy.uint8).reshape(2, 100, 100)
+a = Array5D(data, axiskeys='cyx')
+a.show_channels()
+
+print("Use this URL in neuroglancer::::")
+print(f"precomputed://http://localhost:5000/{predictions_path}")
+
 
 

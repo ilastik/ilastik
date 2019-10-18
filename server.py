@@ -17,6 +17,7 @@ from ndstructs.datasource import DataSource
 from ilastik.annotations import Annotation, Scribblings
 from ilastik.classifiers.pixel_classifier import PixelClassifier, StrictPixelClassifier, Predictions
 from ndstructs.datasource import PilDataSource
+from ilastik.features.feature_extractor import FeatureExtractor
 from ilastik.features.vigra_features import GaussianSmoothing, HessianOfGaussian
 from ilastik.utility import flatten, unflatten, listify
 
@@ -43,16 +44,16 @@ class Context:
     def create(cls, klass):
         request_payload = cls.get_request_payload()
         obj = klass.from_json_data(request_payload)
-        uid = request_payload.get('id', str(uuid.uuid4()))
-        cls.set(uid, obj)
-        return obj, str(uid)
+        key = request_payload.get('id', str(hash(obj))) #FIXME hashes have to be stable between versions for this to work
+        cls.store(key, obj)
+        return obj, key
 
     @classmethod
-    def get(cls, key):
+    def load(cls, key):
         return cls.objects[key]
 
     @classmethod
-    def set(cls, obj_id, obj):
+    def store(cls, obj_id, obj):
         cls.objects[obj_id] = obj
 
     @classmethod
@@ -64,13 +65,16 @@ class Context:
         payload = {}
         for k, v in request.form.items():
             try:
-                payload[k] = cls.get(v)
+                payload[k] = cls.load(v)
             except (ValueError, KeyError):
                 payload[k] = v
         for k, v in request.files.items():
             payload[k] = v.read()
         return listify(unflatten(payload))
 
+    @classmethod
+    def get_all(cls, klass) -> Dict[str, object]:
+        return {key: obj for key, obj in cls.objects.items() if isinstance(obj, klass)}
 
 def hacky_get_only_datasource():
     ds  = None
@@ -111,19 +115,17 @@ def create_line_annotation():
         colored_point = Scribblings.allocate(Slice5D.zero().translated(point), dtype=np.uint8, value=hashed_color)
         scribblings.set(colored_point)
 
-    annotation = Annotation(scribblings=scribblings, #datasource=Context.get(request_payload['datasource_id'])
+    annotation = Annotation(scribblings=scribblings, #datasource=Context.load(request_payload['datasource_id'])
                             raw_data=hacky_get_only_datasource())
-    Context.set(request_payload['id'], annotation)
+    annotation_id = request_payload['id']
+    Context.store(annotation_id, annotation)
 
-    resp = Response("got it!!!!")
-    return resp
+    return jsonify({'id': annotation_id})
 
 @app.route('/lines/<line_id>', methods=['DELETE'])
 def remove_line_annotation(line_id:str):
-    print(f"Deleting {line_id}..........")
     Context.remove(line_id)
-    resp = Response("deleted it!!!!")
-    return resp
+    return jsonify({'id': line_id})
 
 @app.route('/data_sources', methods=['POST'])
 def create_data_source():
@@ -141,14 +143,18 @@ def create_feature_extractor(class_name:str):
     _, uid = Context.create(extractor_class)
     return json.dumps(uid)
 
+@app.route('/feature_extractors', methods=['GET'])
+def list_feature_extractors():
+    return flask.jsonify({ext_id: ext.json_data for ext_id, ext in Context.get_all(FeatureExtractor).items()})
+
 @app.route('/pixel_classifier', methods=['POST'])
 def create_classifier():
     _, uid = Context.create(PixelClassifier)
     return json.dumps(uid)
 
 def do_predictions(roi:Slice5D, classifier_id:str, datasource_id:str) -> Predictions:
-    classifier = Context.get(classifier_id)
-    full_data_source = Context.get(datasource_id)
+    classifier = Context.load(classifier_id)
+    full_data_source = Context.load(datasource_id)
     clamped_roi = roi.clamped(full_data_source)
     data_source = full_data_source.resize(clamped_roi)
 
@@ -196,8 +202,8 @@ def ngpredict(classifier_id:str, datasource_id:str, xBegin:int, xEnd:int, yBegin
 
 @app.route('/predictions/<classifier_id>/<datasource_id>/info')
 def info_dict(classifier_id:str, datasource_id:str) -> Dict:
-    classifier = Context.get(classifier_id)
-    datasource = Context.get(datasource_id)
+    classifier = Context.load(classifier_id)
+    datasource = Context.load(datasource_id)
 
     expected_predictions_shape = classifier.get_expected_roi(datasource).shape
 
