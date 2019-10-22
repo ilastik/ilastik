@@ -23,29 +23,26 @@ from ilastik.utility import flatten, unflatten, listify
 
 app = Flask("WebserverHack")
 CORS(app)
-app.config['DATA_DIR'] = '/tmp/flask_stuff/'
-app.config['AVAILABLE_FEATURE_EXTRACTORS'] = [GaussianSmoothing, HessianOfGaussian]
-app.config['FEATURE_EXTRACTOR_MAP'] = {f.__name__:f for f in app.config['AVAILABLE_FEATURE_EXTRACTORS']}
-
-
-os.system(f"rm -rfv {app.config['DATA_DIR']}")
-os.system(f"mkdir -v {app.config['DATA_DIR']}")
-
-files = {}
-data_sources = {}
-annotations = {}
-classifiers = {}
-feature_extractors = {}
+feature_extractor_classes = [FeatureExtractor, HessianOfGaussian, GaussianSmoothing]
+workflow_classes = {klass.__name__: klass for klass in [PixelClassifier, DataSource, Annotation] + feature_extractor_classes}
 
 class Context:
     objects = {}
 
     @classmethod
+    def do_rpc(cls):
+        request_payload = cls.get_request_payload()
+        obj = cls.load(request_payload.pop('self'))
+
+    @classmethod
+    def get_class_named(cls, name:str):
+        return workflow_classes[name.title().replace('_', '')]
+
+    @classmethod
     def create(cls, klass):
         request_payload = cls.get_request_payload()
         obj = klass.from_json_data(request_payload)
-        key = request_payload.get('id', str(hash(obj))) #FIXME hashes have to be stable between versions for this to work
-        cls.store(key, obj)
+        key = cls.store(request_payload.get('id'), obj)
         return obj, key
 
     @classmethod
@@ -54,19 +51,25 @@ class Context:
 
     @classmethod
     def store(cls, obj_id, obj):
-        cls.objects[obj_id] = obj
+        obj_id = obj_id if obj_id is not None else str(hash(obj)) #FIXME hashes have to be stable between versions for this to work
+        key = f"pointer@{obj_id}"
+        cls.objects[key] = obj
+        return key
 
     @classmethod
-    def remove(cls, key):
+    def remove(cls, klass: type, key):
+        target_class = cls.objects[key].__class__
+        if not issubclass(target_class, klass):
+            raise Exception(f"Unexpected class {target_class} when deleting object with key {key}")
         return cls.objects.pop(key)
 
     @classmethod
     def get_request_payload(cls):
         payload = {}
         for k, v in request.form.items():
-            try:
+            if isinstance(v, str) and v.startswith('pointer@'):
                 payload[k] = cls.load(v)
-            except (ValueError, KeyError):
+            else:
                 payload[k] = v
         for k, v in request.files.items():
             payload[k] = v.read()
@@ -86,10 +89,10 @@ def hacky_get_only_datasource():
         ds = obj
     return ds
 
-@app.route('/lines', methods=['POST'])
+@app.route('/lines/', methods=['POST'])
 def create_line_annotation():
     request_payload = Context.get_request_payload()
-    print(f"Got this payload: ", json.dumps(request_payload, indent=4))
+    print(f"Got this payload: ", json.dumps(request_payload, indent=4, default=str))
 
     def string_array_to_point5d(string_array:List[str]):
         params = {}
@@ -97,9 +100,8 @@ def create_line_annotation():
             params[key] = int(float(string_value))
         return Point5D(**params)
 
-    float_vec_color =  np.asarray([float(v) for v in request_payload['color']])
-    int_vec_color = (float_vec_color * 255).astype(np.uint8)
-    hashed_color = hash(tuple(float_vec_color)) % 255
+    int_vec_color =  tuple(int(v) for v in request_payload['color'])
+    hashed_color = hash(int_vec_color) % 255
 
     pointA = string_array_to_point5d(request_payload['pointA'])
     pointB = string_array_to_point5d(request_payload['pointB'])
@@ -116,41 +118,9 @@ def create_line_annotation():
         scribblings.set(colored_point)
 
     annotation = Annotation(scribblings=scribblings, #datasource=Context.load(request_payload['datasource_id'])
-                            raw_data=hacky_get_only_datasource())
-    annotation_id = request_payload['id']
-    Context.store(annotation_id, annotation)
-
-    return jsonify({'id': annotation_id})
-
-@app.route('/lines/<line_id>', methods=['DELETE'])
-def remove_line_annotation(line_id:str):
-    Context.remove(line_id)
-    return jsonify({'id': line_id})
-
-@app.route('/data_sources', methods=['POST'])
-def create_data_source():
-    _, uid = Context.create(PilDataSource)
-    return json.dumps(uid)
-
-@app.route('/annotations', methods=['POST'])
-def create_annotation():
-    _, uid = Context.create(Annotation)
-    return json.dumps(uid)
-
-@app.route('/feature_extractors/<class_name>', methods=['POST'])
-def create_feature_extractor(class_name:str):
-    extractor_class = app.config['FEATURE_EXTRACTOR_MAP'][class_name.title().replace('_', '')]
-    _, uid = Context.create(extractor_class)
-    return json.dumps(uid)
-
-@app.route('/feature_extractors', methods=['GET'])
-def list_feature_extractors():
-    return flask.jsonify({ext_id: ext.json_data for ext_id, ext in Context.get_all(FeatureExtractor).items()})
-
-@app.route('/pixel_classifier', methods=['POST'])
-def create_classifier():
-    _, uid = Context.create(PixelClassifier)
-    return json.dumps(uid)
+                            raw_data=request_payload['raw_data'])
+    annotation_id = Context.store(request_payload.get('id'), annotation)
+    return flask.jsonify(annotation_id)
 
 def do_predictions(roi:Slice5D, classifier_id:str, datasource_id:str) -> Predictions:
     classifier = Context.load(classifier_id)
@@ -167,7 +137,7 @@ def do_predictions(roi:Slice5D, classifier_id:str, datasource_id:str) -> Predict
             executor.submit(predict_tile, raw_tile)
     return predictions
 
-@app.route('/pixel_predictions/', methods=['GET'])
+@app.route('/predict/', methods=['GET'])
 def predict():
     roi_params = {}
     for axis, v in request.args.items():
@@ -217,6 +187,7 @@ def info_dict(classifier_id:str, datasource_id:str) -> Dict:
                 "key": "data",
                 "size": [int(v) for v in expected_predictions_shape.to_tuple('xyz')],
                 "resolution": [1,1,1],
+                "voxel_offset": [0,0,0],
                 "chunk_sizes": [[64, 64, 64]],
                 "encoding": "raw",
             },
@@ -224,7 +195,25 @@ def info_dict(classifier_id:str, datasource_id:str) -> Dict:
     })
     return resp
 
+@app.route('/<class_name>/<object_id>', methods=['DELETE'])
+def remove_line_annotation(object_id:str):
+    Context.remove(Context.get_class_named(class_name), line_id)
+    return jsonify({'id': line_id})
 
+@app.route("/<class_name>/", methods=['POST'])
+def create_object(class_name:str):
+    obj, uid = Context.create(Context.get_class_named(class_name))
+    return json.dumps(uid)
+
+@app.route('/<class_name>/', methods=['GET'])
+def list_objects(class_name):
+    klass = Context.get_class_named(class_name)
+    return flask.jsonify({ext_id: ext.json_data for ext_id, ext in Context.get_all(klass).items()})
+
+@app.route('/<class_name>/<object_id>', methods=['GET'])
+def show_object(class_name:str, object_id:str):
+    klass = Context.get_class_named(class_name)
+    return flask.jsonify(Context.load(object_id).json_data)
 
 
 #Thread(target=partial(app.run, host='0.0.0.0')).start()
