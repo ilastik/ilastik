@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QSpacerItem, QSizePolicy, QPushButton, QCheckBox
+=======
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QSpacerItem, QSizePolicy, QPushButton
+>>>>>>> 5d07916c06a03fb12d75550f6c6daac280f0c9b9
 
 from ilastik.applets.edgeTraining.edgeTrainingGui import EdgeTrainingGui
 from ilastik.applets.multicut.multicutGui import MulticutGuiMixin
@@ -12,6 +16,7 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
         self.__cleanup_fns = []
         MulticutGuiMixin.__init__(self, parentApplet, topLevelOperatorView)
         EdgeTrainingGui.__init__(self, parentApplet, topLevelOperatorView)
+        self.training = True
 
     def _after_init(self):
         EdgeTrainingGui._after_init(self)
