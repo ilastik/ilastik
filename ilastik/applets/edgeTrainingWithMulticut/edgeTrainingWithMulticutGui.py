@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QSpacerItem, QSizePolicy, QPushButton, QCheckBox
-=======
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QSpacerItem, QSizePolicy, QPushButton
->>>>>>> 5d07916c06a03fb12d75550f6c6daac280f0c9b9
 
 from ilastik.applets.edgeTraining.edgeTrainingGui import EdgeTrainingGui
 from ilastik.applets.multicut.multicutGui import MulticutGuiMixin
