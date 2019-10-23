@@ -348,6 +348,10 @@ class ProjectInternalDatasetInfo(DatasetInfo):
     def internal_paths(self) -> List[str]:
         return []
 
+    @property
+    def default_output_dir(self) -> Path:
+        return Path(self.project_file.filename).parent
+
 
 class PreloadedArrayDatasetInfo(DatasetInfo):
     def __init__(self, *, preloaded_array: numpy.ndarray, axistags: AxisTags = None, nickname: str = "", **info_kwargs):
