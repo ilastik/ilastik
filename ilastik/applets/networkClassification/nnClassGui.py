@@ -28,7 +28,7 @@ import numpy
 import torch
 
 from volumina.api import createDataSource, AlphaModulatedLayer
-from volumina.utility import PreferencesManager
+from volumina.utility import preferences
 
 from PyQt5 import uic
 from PyQt5.QtCore import Qt, pyqtSlot
@@ -441,7 +441,7 @@ class NNClassGui(LayerViewerGui):
         """
         When AddModels button is clicked.
         """
-        mostRecentImageFile = PreferencesManager().get("DataSelection", "recent models")
+        mostRecentImageFile = preferences.get("DataSelection", "recent models")
         mostRecentImageFile = str(mostRecentImageFile)
         if mostRecentImageFile is not None:
             defaultDirectory = os.path.split(mostRecentImageFile)[0]

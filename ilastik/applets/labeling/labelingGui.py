@@ -36,7 +36,7 @@ from PyQt5.QtWidgets import QApplication, QMessageBox, QAction
 
 # HCI
 from volumina.api import LazyflowSinkSource, ColortableLayer, GrayscaleLayer
-from volumina.utility import ShortcutManager, PreferencesManager
+from volumina.utility import ShortcutManager, preferences
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.widgets.labelListView import Label
 from ilastik.widgets.labelListModel import LabelListModel
@@ -322,8 +322,8 @@ class LabelingGui(LayerViewerGui):
 
         _labelControlUi.brushSizeComboBox.currentIndexChanged.connect(self._onBrushSizeChange)
 
-        self.paintBrushSizeIndex = PreferencesManager().get("labeling", "paint brush size", default=0)
-        self.eraserSizeIndex = PreferencesManager().get("labeling", "eraser brush size", default=4)
+        self.paintBrushSizeIndex = preferences.get("labeling", "paint brush size", default=0)
+        self.eraserSizeIndex = preferences.get("labeling", "eraser brush size", default=4)
 
     def onLabelListDataChanged(self, topLeft, bottomRight):
         """Handle changes to the label list selections."""
@@ -504,9 +504,10 @@ class LabelingGui(LayerViewerGui):
         The user has selected another applet or is closing the whole app.
         Save all preferences.
         """
-        with PreferencesManager() as prefsMgr:
-            prefsMgr.set("labeling", "paint brush size", self.paintBrushSizeIndex)
-            prefsMgr.set("labeling", "eraser brush size", self.eraserSizeIndex)
+        preferences.setmany(
+            ("labeling", "paint brush size", self.paintBrushSizeIndex),
+            ("labeling", "eraser brush size", self.eraserSizeIndex),
+        )
         super(LabelingGui, self).hideEvent(event)
 
     def _handleToolButtonClicked(self, checked, toolId):

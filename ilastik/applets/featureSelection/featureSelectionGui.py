@@ -35,7 +35,7 @@ import lazyflow.operators.filterOperators as filterOps
 from lazyflow.operators.generic import OpSubRegion
 
 # volumina
-from volumina.utility import PreferencesManager
+from volumina.utility import preferences
 from volumina.widgets.layercontextmenu import layercontextmenu
 
 # ilastik
@@ -249,7 +249,7 @@ class FeatureSelectionGui(LayerViewerGui):
         self.featureDlg = FeatureDlg(parent=self)
         self.featureDlg.setWindowTitle("Features")
         try:
-            size = PreferencesManager().get("featureSelection", "dialog size")
+            size = preferences.get("featureSelection", "dialog size")
             self.featureDlg.resize(*size)
         except TypeError:
             pass
@@ -257,7 +257,7 @@ class FeatureSelectionGui(LayerViewerGui):
         def saveSize():
             size = self.featureDlg.size()
             s = (size.width(), size.height())
-            PreferencesManager().set("featureSelection", "dialog size", s)
+            preferences.set("featureSelection", "dialog size", s)
 
         self.featureDlg.accepted.connect(saveSize)
         self.featureDlg.setImageToPreView(None)

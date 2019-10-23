@@ -35,7 +35,7 @@ from PyQt5.QtGui import QIcon, QColor, QKeySequence
 
 # HCI
 from volumina.api import LazyflowSinkSource, ColortableLayer
-from volumina.utility import ShortcutManager, PreferencesManager
+from volumina.utility import ShortcutManager
 from volumina import colortables
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.widgets.cropListView import Crop

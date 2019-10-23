@@ -24,7 +24,7 @@ from __future__ import absolute_import
 import os
 import re
 from pathlib import Path
-from typing import List, Set
+from typing import Dict, List, Set
 import threading
 import h5py
 from functools import partial
@@ -40,7 +40,7 @@ from PyQt5.QtWidgets import QDialog, QMessageBox, QStackedWidget, QWidget
 from lazyflow.request import Request
 
 # volumina
-from volumina.utility import PreferencesManager
+from volumina.utility import preferences
 
 # ilastik
 from ilastik.utility import bind, log_exception
@@ -168,7 +168,6 @@ class DataSelectionGui(QWidget):
         self._cleaning_up = False
         self.parentApplet = parentApplet
         self._max_lanes = max_lanes
-        self.preferences = PreferencesManager()
         self.show_axis_details = show_axis_details
 
         self._viewerControls = QWidget()
@@ -657,16 +656,17 @@ class DataSelectionGui(QWidget):
         self.addFileNames([precomputed_url], roleIndex, laneIndex)
 
     def addDvidVolume(self, roleIndex, laneIndex):
-        recent_hosts_pref = PreferencesManager.Setting("DataSelection", "Recent DVID Hosts")
-        recent_hosts = recent_hosts_pref.get()
+        group = "DataSelection"
+        recent_hosts_key = "Recent DVID Hosts"
+        recent_hosts = preferences.get(group, recent_hosts_key)
         if not recent_hosts:
             recent_hosts = ["localhost:8000"]
         recent_hosts = [
             h for h in recent_hosts if h
         ]  # There used to be a bug where empty strings could be saved. Filter those out.
 
-        recent_nodes_pref = PreferencesManager.Setting("DataSelection", "Recent DVID Nodes")
-        recent_nodes = recent_nodes_pref.get() or {}
+        recent_nodes_key = "Recent DVID Nodes"
+        recent_nodes = preferences.get(group, recent_nodes_key) or {}
 
         from .dvidDataSelectionBrowser import DvidDataSelectionBrowser
 
@@ -694,9 +694,9 @@ class DataSelectionGui(QWidget):
             recent_hosts = recent_hosts[:10]
 
         # Save pref
-        recent_hosts_pref.set(recent_hosts)
+        preferences.set(group, recent_hosts_key, recent_hosts)
 
         recent_nodes[hostname] = node_uuid
-        recent_nodes_pref.set(recent_nodes)
+        preferences.set(group, recent_nodes_key, recent_nodes)
 
         self.addLanes([UrlDatasetInfo(url=dvid_url, subvolume_roi=subvolume_roi)], roleIndex)

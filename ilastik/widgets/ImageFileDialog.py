@@ -4,7 +4,7 @@ from pathlib import Path
 
 from PyQt5.QtWidgets import QFileDialog
 
-from volumina.utility import PreferencesManager
+from volumina.utility import preferences
 from ilastik.applets.dataSelection.opDataSelection import OpDataSelection
 
 
@@ -14,17 +14,9 @@ class ImageFileDialog(QFileDialog):
         parent_window,
         preferences_group: str = "DataSelection",
         preferences_setting: str = "recent image",
-        preferences_manager: PreferencesManager = PreferencesManager(),
     ):
         self.preferences_group = preferences_group
         self.preferences_setting = preferences_setting
-        self.preferences_manager = preferences_manager
-        # Find the directory of the most recently opened image file
-        mostRecentImageFile = preferences_manager.get(preferences_group, preferences_setting)
-        if mostRecentImageFile is None:
-            defaultDirectory = os.path.expanduser("~")
-        else:
-            defaultDirectory = os.path.dirname(str(mostRecentImageFile))
 
         ext_str = " ".join(f"*.{ext}" for ext in OpDataSelection.SupportedExtensions)
         filters = f"Image files ({ext_str})"
@@ -32,7 +24,7 @@ class ImageFileDialog(QFileDialog):
         super().__init__(
             parent_window,
             caption="Select Images",
-            directory=defaultDirectory,
+            directory=str(Path(preferences.get(preferences_group, preferences_setting, Path.home()))),
             filter=filters,
             options=QFileDialog.Options(),
         )
@@ -41,7 +33,7 @@ class ImageFileDialog(QFileDialog):
     def getSelectedPaths(self) -> List[Path]:
         if not super().exec_():
             return []
-        self.preferences_manager.set(self.preferences_group, self.preferences_setting, self.selectedFiles()[0])
+        preferences.set(self.preferences_group, self.preferences_setting, Path(self.selectedFiles()[0]).as_posix())
         filePaths = []
         for selected_file in self.selectedFiles():
             path = Path(selected_file)

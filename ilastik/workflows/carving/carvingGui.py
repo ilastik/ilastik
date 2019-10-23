@@ -38,7 +38,7 @@ from lazyflow.request import Request
 # volumina
 from volumina.api import createDataSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer
-from volumina.utility import ShortcutManager, PreferencesManager
+from volumina.utility import ShortcutManager, preferences
 
 from ilastik.widgets.labelListModel import LabelListModel
 
@@ -475,7 +475,7 @@ class CarvingGui(LabelingGui):
         """
         Export a single object mesh to a user-specified filename.
         """
-        recent_dir = PreferencesManager().get("carving", "recent export mesh directory")
+        recent_dir = preferences.get("carving", "recent export mesh directory")
         if recent_dir is None:
             defaultPath = os.path.join(os.path.expanduser("~"), "{}obj".format(_name))
         else:
@@ -486,7 +486,7 @@ class CarvingGui(LabelingGui):
         if not filepath:
             return
         obj_filepath = str(filepath)
-        PreferencesManager().set("carving", "recent export mesh directory", os.path.split(obj_filepath)[0])
+        preferences.set("carving", "recent export mesh directory", os.path.split(obj_filepath)[0])
 
         self._exportMeshes([_name], [obj_filepath])
 
@@ -499,7 +499,7 @@ class CarvingGui(LabelingGui):
             QMessageBox.critical(self, "Can't Export", "You have no saved objets, so there are no meshes to export.")
             return
 
-        recent_dir = PreferencesManager().get("carving", "recent export mesh directory")
+        recent_dir = preferences.get("carving", "recent export mesh directory")
         if recent_dir is None:
             defaultPath = os.path.join(os.path.expanduser("~"))
         else:
@@ -508,7 +508,7 @@ class CarvingGui(LabelingGui):
         if not export_dir:
             return
         export_dir = str(export_dir)
-        PreferencesManager().set("carving", "recent export mesh directory", export_dir)
+        preferences.set("carving", "recent export mesh directory", export_dir)
 
         # Get the list of all object names
         object_names = []
