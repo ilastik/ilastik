@@ -234,6 +234,15 @@ def ilastik_ids(obj_counts):
             yield (t, o)
 
 
+def _slice_range(low, high, max_):
+    start = max(0, low)
+    end = min(high, max_)
+    if start == end:
+        end += 1
+
+    return slice(start, end, None)
+
+
 def create_slicing(axistags, dimensions, margin, feature_table):
     """
     Returns an iterator on the slices for each object roi
@@ -261,9 +270,9 @@ def create_slicing(axistags, dimensions, margin, feature_table):
         # noinspection PyTypeChecker
         slicing = [
             slice(time[i], time[i] + 1),
-            slice(max(0, minx[i] - margin), min(maxx[i] + margin, dimensions[1])),
-            slice(max(0, miny[i] - margin), min(maxy[i] + margin, dimensions[2])),
-            slice(max(0, minz[i] - margin), min(maxz[i] + margin, dimensions[3])),
+            _slice_range(minx[i] - margin, maxx[i] + margin, dimensions[1]),
+            _slice_range(miny[i] - margin, maxy[i] + margin, dimensions[2]),
+            _slice_range(minz[i] - margin, maxz[i] + margin, dimensions[3]),
             slice(None),
         ]
         yield [slicing[x] for x in indices][: 5 - excludes], oid
@@ -366,7 +375,7 @@ class ExportFile(object):
         def f(pixel_value):
             return 1 if pixel_value == oid else 0
 
-        return np.vectorize(f)
+        return np.vectorize(f, otypes=[np.uint8])
 
     def add_image(self, table, image_slot):
         """
