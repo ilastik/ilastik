@@ -34,6 +34,7 @@ import numpy
 
 from ilastik.workflows import ObjectClassificationWorkflowPrediction
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, FilesystemDatasetInfo
+from ilastik.applets.objectClassification.opObjectClassification import TableExporter
 from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog, FILE_TYPES
 
 
@@ -444,10 +445,12 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             # here is some awkwardness of the csv output, which will alter the
             # table name: some_name.csv -> some_name_test_data_table.csv
             base, ext = os.path.splitext(self.table_csv_file)
-            csv_out = f"{base}-test_data_table{ext}"
+            csv_out = f"{base}_table{ext}"
             TestObjectClassificationGui.table_csv_file_exported = csv_out
 
-            op_object_classification.configure_table_export_settings(table_export_settings, export_features)
+            exporter = TableExporter(op_object_classification)
+
+            exporter.configure_table_export_settings(table_export_settings, export_features)
 
             # self.configure_export_dialog(op_object_export_tlo)
 
@@ -468,10 +471,10 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             # here is some awkwardness of the h5 output, which will alter the
             # table name: some_name.h5 -> some_name_test_data.h5
             base, ext = os.path.splitext(self.table_h5_file)
-            h5_out = f"{base}-test_data{ext}"
+            h5_out = f"{base}{ext}"
             TestObjectClassificationGui.table_h5_file_exported = h5_out
 
-            op_object_classification.configure_table_export_settings(table_export_settings, export_features)
+            exporter.configure_table_export_settings(table_export_settings, export_features)
 
             with Timer() as timer:
                 # this will not properly wait for the export to finish.
