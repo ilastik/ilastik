@@ -21,6 +21,18 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
+from ilastik.applets.dataExport.opDataExport import DataExportPathFormatter
+
+
+class PathFormatterFactory:
+    def __init__(self, op):
+        self._op = op
+
+    def for_lane(self, lane_index: int) -> DataExportPathFormatter:
+        return DataExportPathFormatter(
+            dataset_info=self._op.RawDatasetInfo[lane_index].value,
+            working_dir=self._op.WorkingDirectory.value,
+        )
 
 
 class ObjectClassificationDataExportApplet(DataExportApplet):
@@ -29,12 +41,10 @@ class ObjectClassificationDataExportApplet(DataExportApplet):
     provides a special viewer for object classification predictions.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, table_exporter, **kwargs):
         super(ObjectClassificationDataExportApplet, self).__init__(*args, **kwargs)
-        self.exporting_op = None
-
-    def set_exporting_operator(self, op):
-        self.exporting_op = op
+        self._tableExporter = table_exporter
+        self._tableExporter.set_path_formatter_factory(PathFormatterFactory(self.topLevelOperator))
 
     def getMultiLaneGui(self):
         if self._gui is None:
@@ -42,5 +52,12 @@ class ObjectClassificationDataExportApplet(DataExportApplet):
             from .objectClassificationDataExportGui import ObjectClassificationDataExportGui
 
             self._gui = ObjectClassificationDataExportGui(self, self.topLevelOperator)
-            self._gui.set_exporting_operator(self.exporting_op)
+            self._gui.set_exporting_operator(self._tableExporter)
         return self._gui
+
+    def post_process_lane_export(self, lane_index):
+        # FIXME: This probably only works for the non-blockwise export slot.
+        #        We should assert that the user isn't using the blockwise slot.
+        # FIXME: Even in non-headless mode, we can't show the gui because we're running in a non-main thread.
+        #        That's not a huge deal, because there's still a progress bar for the overall export.
+        req = self._tableExporter.export_object_data(lane_index, show_gui=False).wait()

@@ -23,7 +23,6 @@ from __future__ import print_function
 from builtins import range
 import os
 from lazyflow.graph import Graph
-from lazyflow.utility import PathComponents, make_absolute, format_known_keys
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.tracking.annotations.annotationsApplet import AnnotationsApplet

@@ -27,12 +27,12 @@ from typing import Callable, Optional
 
 from ilastik.applets.base.appletSerializer import SerialSlot, SerialDictSlot
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
+from ilastik.applets.dataExport.opDataExport import DataExportPathFormatter
 from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
 from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
 from ilastik.plugins import pluginManager, TrackingExportFormatPlugin
 from ilastik.utility import OpMultiLaneWrapper
 from lazyflow.slot import InputSlot
-from lazyflow.utility import format_known_keys, PathComponents, getPathVariants, make_absolute
 
 logger = logging.getLogger(__name__)
 
@@ -272,20 +272,9 @@ class TrackingBaseDataExportApplet(DataExportApplet):
 
     def getPartiallyFormattedName(self, lane_index: int, path_format_string: str) -> str:
         """ Takes the format string for the output file, fills in the most important placeholders, and returns it """
-
-        raw_dataset_info = self.topLevelOperator.RawDatasetInfo[lane_index].value
-        project_path = self.topLevelOperator.WorkingDirectory.value
-        dataset_dir = PathComponents(raw_dataset_info.filePath).externalDirectory
-        abs_dataset_dir = make_absolute(dataset_dir, cwd=project_path)
-
-        nickname = raw_dataset_info.nickname.replace("*", "")
-        if os.path.pathsep in nickname:
-            nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
-
-        known_keys = {
-            "dataset_dir": abs_dataset_dir,
-            "nickname": nickname,
-            "result_type": self.topLevelOperator.SelectedPlugin._value,
-        }
-
-        return format_known_keys(path_format_string, known_keys)
+        path_formatter = DataExportPathFormatter(
+            dataset_info=self.topLevelOperator.RawDatasetInfo[lane_index].value,
+            working_dir=self.topLevelOperator.WorkingDirectory.value,
+            result_type=self.topLevelOperator.SelectedPlugin._value,
+        )
+        return path_formatter.format_path(path_format_string)
