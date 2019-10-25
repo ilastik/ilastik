@@ -34,7 +34,6 @@ import numpy
 
 from ilastik.workflows import ObjectClassificationWorkflowPrediction
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, FilesystemDatasetInfo
-from ilastik.applets.objectClassification.opObjectClassification import TableExporter
 from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog, FILE_TYPES
 
 
@@ -448,7 +447,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             csv_out = f"{base}_table{ext}"
             TestObjectClassificationGui.table_csv_file_exported = csv_out
 
-            exporter = TableExporter(op_object_classification)
+            exporter = gui.get_exporting_operator()
 
             exporter.configure_table_export_settings(table_export_settings, export_features)
 
