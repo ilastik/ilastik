@@ -249,7 +249,13 @@ class VigraObjFeats(ObjectFeaturesPlugin):
 
         # NOTE: this removes the background object!!!
         # The background object is always present (even if there is no 0 label) and is always removed here
-        return cleanup(result, nobj, features)
+        cleaned = cleanup(result, nobj, features)
+
+        if "Coord<Maximum>" in cleaned:
+            # Coord<min>, Coord<max> yield end inclusive bounds
+            # This leads to bounding boxes that are always one pixel too small
+            cleaned["Coord<Maximum>"] += 1
+        return cleaned
 
     def compute_global(self, image, labels, features, axes):
         features = list(features.keys())
