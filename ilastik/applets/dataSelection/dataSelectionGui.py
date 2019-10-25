@@ -399,9 +399,9 @@ class DataSelectionGui(QWidget):
         """
         # Launch the "Open File" dialog
         paths = ImageFileDialog(self).getSelectedPaths()
-        self.addFileNames(paths, roleIndex, startingLaneNum)
+        self.addFileNames(paths, startingLaneNum, roleIndex)
 
-    def addFileNames(self, paths: List[Path], roleIndex: int, startingLaneNum: int):
+    def addFileNames(self, paths: List[Path], startingLaneNum: int, roleIndex: int):
         # If the user didn't cancel
         if paths:
             try:
@@ -653,7 +653,7 @@ class DataSelectionGui(QWidget):
             return
 
         precomputed_url = browser.selected_url
-        self.addFileNames([precomputed_url], roleIndex, laneIndex)
+        self.addFileNames([precomputed_url], laneIndex, roleIndex)
 
     def addDvidVolume(self, roleIndex, laneIndex):
         group = "DataSelection"

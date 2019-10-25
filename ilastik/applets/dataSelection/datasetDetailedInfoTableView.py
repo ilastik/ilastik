@@ -29,6 +29,7 @@ from PyQt5.QtWidgets import QTableView, QHeaderView, QMenu, QAction, QWidget, QH
 from .datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
 from .addFileButton import AddFileButton, FILEPATH
 
+from pathlib import Path
 from functools import partial
 
 
@@ -190,7 +191,7 @@ class DatasetDetailedInfoTableView(QTableView):
     addStackRequested = pyqtSignal(int)  # Signature: (lane_index)
     addPrecomputedVolumeRequested = pyqtSignal(int)  # Signature: (lane_index)
     addRemoteVolumeRequested = pyqtSignal(int)  # Signature: (lane_index)
-    addFilesRequestedDrop = pyqtSignal(object)  # Signature: ( filepath_list )
+    addFilesRequestedDrop = pyqtSignal(object, int)  # Signature: (filepath_list, lane_index)
 
     def __init__(self, parent):
         super(DatasetDetailedInfoTableView, self).__init__(parent)
@@ -417,10 +418,13 @@ class DatasetDetailedInfoTableView(QTableView):
         pass
 
     def dropEvent(self, dropEvent):
-        urls = dropEvent.mimeData().urls()
-        filepaths = list(map(QUrl.toLocalFile, urls))
-        filepaths = list(map(str, filepaths))
-        self.addFilesRequestedDrop.emit(filepaths)
+        filepaths = [Path(QUrl.toLocalFile(url)) for url in dropEvent.mimeData().urls()]
+        starting_lane_index = self.rowAt(dropEvent.pos().y())
+        # Last row is the button.
+        if starting_lane_index == self.model().rowCount() - 1:
+            starting_lane_index = -1
+
+        self.addFilesRequestedDrop.emit(filepaths, starting_lane_index)
 
     def scrollContentsBy(self, dx, dy):
         """
