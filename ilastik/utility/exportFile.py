@@ -238,7 +238,7 @@ def _slice_range(low, high, max_):
     start = max(0, low)
     end = min(high, max_)
     if start == end:
-        end += 1
+        raise ValueError(f"Created invalid slicing ({start}, {end})")
 
     return slice(start, end, None)
 
@@ -259,7 +259,8 @@ def create_slicing(axistags, dimensions, margin, feature_table):
         minz = feature_table["Bounding Box Minimum_2"].astype(np.int32)
         maxz = feature_table["Bounding Box Maximum_2"].astype(np.int32)
     except ValueError:
-        minz = maxz = [0] * table_shape
+        minz = [0] * table_shape
+        maxz = [1] * table_shape
 
     indices = list(map(axistags.index, "txyzc"))
     excludes = indices.count(-1)
