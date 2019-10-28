@@ -94,27 +94,20 @@ def create_line_annotation():
     request_payload = Context.get_request_payload()
     print(f"Got this payload: ", json.dumps(request_payload, indent=4, default=str))
 
-    def string_array_to_point5d(string_array:List[str]):
-        params = {}
-        for key, string_value in zip('xyz', string_array):
-            params[key] = int(float(string_value))
-        return Point5D(**params)
-
     int_vec_color =  tuple(int(v) for v in request_payload['color'])
     hashed_color = hash(int_vec_color) % 255
 
-    pointA = string_array_to_point5d(request_payload['pointA'])
-    pointB = string_array_to_point5d(request_payload['pointB'])
+    voxels  = [Point5D.from_json_data(coords) for coords in request_payload['voxels']]
 
-    min_point = Point5D(**{key: min(pointA[key], pointB[key]) for key in 'xyz'})
-    max_point = Point5D(**{key: max(pointA[key], pointB[key]) for key in 'xyz'})
+    min_point = Point5D(**{key: min(vox[key] for vox in voxels) for key in 'xyz'})
+    max_point = Point5D(**{key: max(vox[key] for vox in voxels) for key in 'xyz'})
 
     # +1 because slice.stop is exclusive, but pointA and pointB are inclusive
     scribbling_roi = Slice5D.zero(**{key: slice(min_point[key],  max_point[key] + 1) for key in 'xyz'})
     scribblings = Scribblings.allocate(scribbling_roi, dtype=np.uint8, value=0)
 
-    for point in (pointA, pointB):
-        colored_point = Scribblings.allocate(Slice5D.zero().translated(point), dtype=np.uint8, value=hashed_color)
+    for voxel in voxels:
+        colored_point = Scribblings.allocate(Slice5D.zero().translated(voxel), dtype=np.uint8, value=hashed_color)
         scribblings.set(colored_point)
 
     annotation = Annotation(scribblings=scribblings, #datasource=Context.load(request_payload['datasource_id'])
@@ -196,7 +189,7 @@ def info_dict(classifier_id:str, datasource_id:str) -> Dict:
     return resp
 
 @app.route('/<class_name>/<object_id>', methods=['DELETE'])
-def remove_line_annotation(object_id:str):
+def remove_object(class_name, object_id:str):
     Context.remove(Context.get_class_named(class_name), line_id)
     return jsonify({'id': line_id})
 

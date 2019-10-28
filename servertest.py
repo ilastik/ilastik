@@ -80,13 +80,13 @@ print(json.dumps(info, indent=4))
 
 resp = post('http://localhost:5000/lines',
             data={
-                'pointA.0': 137,
-                'pointA.1': 112,
-                'pointA.2':  0,
+                'voxels.0.x': 137,
+                'voxels.0.y': 112,
+                'voxels.0.z':  0,
 
-                'pointB.0': 157,
-                'pointB.1': 102,
-                'pointB.2': 0,
+                'voxels.1.x': 157,
+                'voxels.1.y': 102,
+                'voxels.1.z': 0,
 
                 'color.0': 212,
                 'color.1': 212,
