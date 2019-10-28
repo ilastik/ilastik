@@ -151,7 +151,7 @@ def predict():
 
 #https://github.com/google/neuroglancer/tree/master/src/neuroglancer/datasource/precomputed#unsharded-chunk-storage
 @app.route('/predictions/<classifier_id>/<datasource_id>/data/<int:xBegin>-<int:xEnd>_<int:yBegin>-<int:yEnd>_<int:zBegin>-<int:zEnd>')
-def ngpredict(classifier_id:str, datasource_id:str, xBegin:int, xEnd:int, yBegin:int, yEnd:int, zBegin:int, zEnd:int):
+def ng_predict(classifier_id:str, datasource_id:str, xBegin:int, xEnd:int, yBegin:int, yEnd:int, zBegin:int, zEnd:int):
     requested_roi = Slice5D(x=slice(xBegin, xEnd), y=slice(yBegin, yEnd), z=slice(zBegin, zEnd))
     predictions = do_predictions(roi=requested_roi,
                                  classifier_id=classifier_id,
@@ -181,7 +181,39 @@ def info_dict(classifier_id:str, datasource_id:str) -> Dict:
                 "size": [int(v) for v in expected_predictions_shape.to_tuple('xyz')],
                 "resolution": [1,1,1],
                 "voxel_offset": [0,0,0],
-                "chunk_sizes": [[64, 64, 64]],
+                "chunk_sizes": [[256, 256, 256]],
+                "encoding": "raw",
+            },
+        ],
+    })
+    return resp
+
+@app.route('/datasource/<datasource_id>/data/<int:xBegin>-<int:xEnd>_<int:yBegin>-<int:yEnd>_<int:zBegin>-<int:zEnd>')
+def ng_raw(datasource_id:str, xBegin:int, xEnd:int, yBegin:int, yEnd:int, zBegin:int, zEnd:int):
+    requested_roi = Slice5D(x=slice(xBegin, xEnd), y=slice(yBegin, yEnd), z=slice(zBegin, zEnd))
+    datasource = Context.load(datasource_id)
+    data = datasource.resize(requested_roi).retrieve()
+
+    resp = flask.make_response(data.raw('xyzc').tobytes('F'))
+    resp.headers['Content-Type'] = 'application/octet-stream'
+    return resp
+
+@app.route('/datasource/<datasource_id>/info')
+def datasource_info_dict(datasource_id:str) -> Dict:
+    datasource = Context.load(datasource_id)
+
+    resp = flask.jsonify({
+        "@type": "neuroglancer_multiscale_volume",
+        "type": "image",
+        "data_type": "uint8", #DONT FORGET TO CONVERT PREDICTIONS TO UINT8!
+        "num_channels": int(datasource.full_shape.c),
+        "scales": [
+            {
+                "key": "data",
+                "size": [int(v) for v in datasource.full_shape.to_tuple('xyz')],
+                "resolution": [1,1,1],
+                "voxel_offset": [0,0,0],
+                "chunk_sizes": [[256, 256, 256]],
                 "encoding": "raw",
             },
         ],
@@ -190,8 +222,8 @@ def info_dict(classifier_id:str, datasource_id:str) -> Dict:
 
 @app.route('/<class_name>/<object_id>', methods=['DELETE'])
 def remove_object(class_name, object_id:str):
-    Context.remove(Context.get_class_named(class_name), line_id)
-    return jsonify({'id': line_id})
+    Context.remove(Context.get_class_named(class_name), object_id)
+    return flask.jsonify({'id': object_id})
 
 @app.route("/<class_name>/", methods=['POST'])
 def create_object(class_name:str):

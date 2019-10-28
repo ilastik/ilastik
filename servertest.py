@@ -97,13 +97,26 @@ resp = post('http://localhost:5000/lines',
 
 
 predictions_path = f"predictions/{classifier_id}/{data_source_id}"
-binary = get(f"http://localhost:5000/{predictions_path}/data/100-200_100-200_0-1").content
-data = numpy.frombuffer(binary, dtype=numpy.uint8).reshape(2, 100, 100)
+binary = get(f"http://localhost:5000/{predictions_path}/data/0-256_0-256_0-1").content
+data = numpy.frombuffer(binary, dtype=numpy.uint8).reshape(2, 256, 256)
 a = Array5D(data, axiskeys='cyx')
 a.show_channels()
 
 print("Use this URL in neuroglancer::::")
+print("\nPredictions:")
 print(f"precomputed://http://localhost:5000/{predictions_path}")
 
+print("\nRaw:")
+print(f"precomputed://http://localhost:5000/datasource/{data_source_id}")
 
+
+print("\n\nRgb squares url:")
+resp = post('http://localhost:5000/data_source',
+            data={'url': "/home/tomaz/ilastikTests/SampleData/rgbtest/rgb_squares_rgb_no-alpha.png"})
+rgb_squares_data_source_id = resp.json()
+print(f"precomputed://http://localhost:5000/datasource/{rgb_squares_data_source_id}")
+binary = get(f"http://localhost:5000/datasource/{rgb_squares_data_source_id}/data/0-10_0-10_0-1").content
+data = numpy.frombuffer(binary, dtype=numpy.uint8).reshape(3, 10, 10)
+a = Array5D(data, axiskeys='cyx')
+a.show_channels()
 
