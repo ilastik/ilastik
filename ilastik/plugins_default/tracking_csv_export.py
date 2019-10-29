@@ -85,8 +85,8 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
 
         for rowIdx, node in enumerate(graph.nodes()):
             frame, label = node
-            trackId = graph.nodes[node]["trackId"]
-            lineageId = graph.nodes[node]["lineageId"]
+            trackId = graph.node[node]["trackId"]
+            lineageId = graph.node[node]["lineageId"]
 
             if trackId is None:
                 trackId = -1
@@ -100,14 +100,14 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
 
             # insert parent of a division
             try:
-                table[rowIdx, 4] = graph.nodes[graph.nodes[node]["parent"]]["trackId"]
+                table[rowIdx, 4] = graph.node[graph.node[node]["parent"]]["trackId"]
             except KeyError:
                 table[rowIdx, 4] = 0
 
             # insert merger
             try:
-                if isinstance(graph.nodes[node]["mergerValue"], int):
-                    table[rowIdx, 5] = graph.nodes[node]["mergerValue"]
+                if isinstance(graph.node[node]["mergerValue"], int):
+                    table[rowIdx, 5] = graph.node[node]["mergerValue"]
                 else:
                     table[rowIdx, 5] = 0
             except KeyError:

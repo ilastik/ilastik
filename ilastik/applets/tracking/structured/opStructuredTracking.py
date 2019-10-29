@@ -391,8 +391,8 @@ class OpStructuredTracking(OpConservationTracking):
                                         and self.appearances[time][label][track]
                                     ):
                                         # print("---> appearance",time,label,track)
-                                        if (time, int(label)) in list(hypothesesGraph._graph.nodes.keys()):
-                                            hypothesesGraph._graph.nodes[(time, int(label))]["appearance"] = True
+                                        if (time, int(label)) in list(hypothesesGraph._graph.node.keys()):
+                                            hypothesesGraph._graph.node[(time, int(label))]["appearance"] = True
                                             logger.debug(
                                                 "[structuredTrackingGui] APPEARANCE: {} {}".format(time, int(label))
                                             )
@@ -405,8 +405,8 @@ class OpStructuredTracking(OpConservationTracking):
                                         and self.disappearances[time][label][track]
                                     ):
                                         # print("---> disappearance",time,label,track)
-                                        if (time, int(label)) in list(hypothesesGraph._graph.nodes.keys()):
-                                            hypothesesGraph._graph.nodes[(time, int(label))]["disappearance"] = True
+                                        if (time, int(label)) in list(hypothesesGraph._graph.node.keys()):
+                                            hypothesesGraph._graph.node[(time, int(label))]["disappearance"] = True
                                             logger.debug(
                                                 "[structuredTrackingGui] DISAPPEARANCE: {} {}".format(time, int(label))
                                             )
@@ -417,8 +417,8 @@ class OpStructuredTracking(OpConservationTracking):
                                     )
 
                                 elif type[0] in ["FIRST", "LAST", "INTERMEDIATE", "SINGLETON(FIRST_LAST)"]:
-                                    if (time, int(label)) in list(hypothesesGraph._graph.nodes.keys()):
-                                        hypothesesGraph._graph.nodes[(time, int(label))]["value"] = trackCount
+                                    if (time, int(label)) in list(hypothesesGraph._graph.node.keys()):
+                                        hypothesesGraph._graph.node[(time, int(label))]["value"] = trackCount
                                         logger.debug("[structuredTrackingGui] NODE: {} {}".format(time, int(label)))
                                         # print "[structuredTrackingGui] NODE: {} {} {}".format(time, int(label), int(trackCount))
                                     else:
@@ -446,7 +446,7 @@ class OpStructuredTracking(OpConservationTracking):
                         if parent >= 0:
                             children = [int(self.getLabelTT(time + 1, division[0][i])) for i in [0, 1]]
                             parentNode = (time, parent)
-                            hypothesesGraph._graph.nodes[parentNode]["divisionValue"] = 1
+                            hypothesesGraph._graph.node[parentNode]["divisionValue"] = 1
                             foundAllArcs = False
                             for child in children:
                                 for edge in hypothesesGraph._graph.out_edges(
@@ -763,6 +763,6 @@ class OpStructuredTracking(OpConservationTracking):
                 child = cls.getLabelT(childTrack, labels[t + 1])
                 traxelgraph._graph.edges[((t, parent), (t + 1, child))]["value"] = 1
                 traxelgraph._graph.edges[((t, parent), (t + 1, child))]["gap"] = 1
-            traxelgraph._graph.nodes[(t, parent)]["divisionValue"] = True
+            traxelgraph._graph.node[(t, parent)]["divisionValue"] = True
 
         return traxelgraph

@@ -1,5 +1,4 @@
 import pytest
-import networkx as nx
 from hytra.core.hypothesesgraph import HypothesesGraph
 from hytra.core.probabilitygenerator import Traxel
 from ilastik.applets.tracking.structured.opStructuredTracking import (
@@ -21,10 +20,10 @@ def tracklet_graph():
     # t:   0      1    2    3
 
     h = HypothesesGraph()
-    nx.add_path(h._graph, [(0, 0), (1, 1), (2, 2)])
-    nx.add_path(h._graph, [(1, 1), (2, 3), (3, 4)])
-    nx.add_path(h._graph, [(2, 3), (3, 5)])
-    nx.add_path(h._graph, [(1, 6), (2, 7), (3, 8)])
+    h._graph.add_path([(0, 0), (1, 1), (2, 2)])
+    h._graph.add_path([(1, 1), (2, 3), (3, 4)])
+    h._graph.add_path([(2, 3), (3, 5)])
+    h._graph.add_path([(1, 6), (2, 7), (3, 8)])
     for n in h._graph.nodes:
         h._graph.nodes[n]["id"] = n[1]
         h._graph.nodes[n]["traxel"] = Traxel()

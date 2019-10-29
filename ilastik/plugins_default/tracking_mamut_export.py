@@ -68,8 +68,8 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
         presentTrackIds = set([])
         for node in graph.nodes():
             frame, label = node
-            # print(f"Node {node} has value={graph.nodes[node]['value']} and trackId={graph.nodes[node]['trackId']}")
-            if graph.nodes[node]["value"] > 0:
+            # print(f"Node {node} has value={graph.node[node]['value']} and trackId={graph.node[node]['trackId']}")
+            if graph.node[node]["value"] > 0:
                 for category in list(features[frame].keys()):
                     for key in list(features[frame][category].keys()):
                         feature_string = convertKeyName(key)
@@ -100,8 +100,8 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
         # insert edges
         for edge in graph.edges():
             if graph.edges[edge]["value"] > 0:
-                builder.addLink(graph.nodes[edge[0]]["trackId"], graph.nodes[edge[0]]["id"], graph.nodes[edge[1]]["id"])
-                presentTrackIds.add(int(graph.nodes[edge[0]]["trackId"]))
+                builder.addLink(graph.node[edge[0]]["trackId"], graph.node[edge[0]]["id"], graph.node[edge[1]]["id"])
+                presentTrackIds.add(int(graph.node[edge[0]]["trackId"]))
 
         # assign random colors to tracks that have at least one edge (empty tracks cause MaMuT errors)
         randomColorPerTrack = {}
@@ -112,9 +112,9 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
         # second pass over the nodes passes features and tracks to the builder
         for node in graph.nodes():
             frame, label = node
-            if graph.nodes[node]["value"] > 0:
-                t = graph.nodes[node]["traxel"]
-                trackId = int(graph.nodes[node]["trackId"])
+            if graph.node[node]["value"] > 0:
+                t = graph.node[node]["traxel"]
+                trackId = int(graph.node[node]["trackId"])
 
                 radius = 2 * features[frame]["Standard Object Features"]["RegionRadii"][label, 0]
 
@@ -161,7 +161,7 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
 
                 featureDict["LabelimageId"] = label
                 builder.addSpot(
-                    frame, "track-{}".format(trackId), graph.nodes[node]["id"], xpos, ypos, zpos, radius, featureDict
+                    frame, "track-{}".format(trackId), graph.node[node]["id"], xpos, ypos, zpos, radius, featureDict
                 )
 
         additional_plugin_args = pluginExportContext.additionalPluginArgumentsSlot.value

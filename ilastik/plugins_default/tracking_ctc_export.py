@@ -39,21 +39,21 @@ class TrackingCTCExportFormatPlugin(TrackingExportFormatPlugin):
 
         for n in hypothesesGraph.nodeIterator():
             frameMapping = mappings.setdefault(n[0], {})
-            if "trackId" not in hypothesesGraph._graph.nodes[n]:
+            if "trackId" not in hypothesesGraph._graph.node[n]:
                 raise ValueError("You need to compute the Lineage of every node before accessing the trackId!")
-            trackId = hypothesesGraph._graph.nodes[n]["trackId"]
+            trackId = hypothesesGraph._graph.node[n]["trackId"]
             if trackId is not None:
                 frameMapping[n[1]] = trackId
             if trackId in tracks.keys():
                 tracks[trackId].append(n[0])
             else:
                 tracks[trackId] = [n[0]]
-            if "parent" in hypothesesGraph._graph.nodes[n]:
+            if "parent" in hypothesesGraph._graph.node[n]:
                 assert trackId not in trackParents
-                trackParents[trackId] = hypothesesGraph._graph.nodes[hypothesesGraph._graph.nodes[n]["parent"]]["trackId"]
-            if "gap_parent" in hypothesesGraph._graph.nodes[n]:
+                trackParents[trackId] = hypothesesGraph._graph.node[hypothesesGraph._graph.node[n]["parent"]]["trackId"]
+            if "gap_parent" in hypothesesGraph._graph.node[n]:
                 assert trackId not in trackParents
-                gapTrackParents[trackId] = hypothesesGraph._graph.nodes[hypothesesGraph._graph.nodes[n]["gap_parent"]][
+                gapTrackParents[trackId] = hypothesesGraph._graph.node[hypothesesGraph._graph.node[n]["gap_parent"]][
                     "trackId"
                 ]
 

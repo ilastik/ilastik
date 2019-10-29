@@ -38,7 +38,7 @@ else:
 
             numStates = -1
             for n in hypothesesGraph.nodeIterator():
-                t = hypothesesGraph._graph.nodes[n]["traxel"]
+                t = hypothesesGraph._graph.node[n]["traxel"]
                 if "detProb" in t.Features:
                     numStates = len(t.Features["detProb"])
                     break
@@ -47,9 +47,9 @@ else:
 
             dummyVector = np.zeros(numStates)
             for n in hypothesesGraph.nodeIterator():
-                t = hypothesesGraph._graph.nodes[n]["traxel"]
+                t = hypothesesGraph._graph.node[n]["traxel"]
                 if "detProb" not in t.Features:
-                    logger.debug(f"replacing detProb of node with ID={hypothesesGraph._graph.nodes[n]['id']}")
+                    logger.debug(f"replacing detProb of node with ID={hypothesesGraph._graph.node[n]['id']}")
                     t.Features["detProb"] = dummyVector
 
             # now we can insert the energies into the graph
