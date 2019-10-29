@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor as Executor
 from dataclasses import dataclass
 import functools
 from operator import mul
-from typing import List, Iterator, Tuple
+from typing import List, Iterable, Tuple
 
 import vigra.filters
 import numpy as np
@@ -109,9 +109,9 @@ class FlatChannelwiseFilter(ChannelwiseFeatureExtractor):
 
 
 class FeatureExtractorCollection(ChannelwiseFeatureExtractor):
-    def __init__(self, extractors:List[FeatureExtractor]):
+    def __init__(self, extractors:Iterable[FeatureExtractor]):
         assert len(extractors) > 0
-        self.extractors = extractors
+        self.extractors = tuple(extractors)
 
         shape_params = {}
         for label in Point5D.LABELS:

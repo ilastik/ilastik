@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Iterable
 import multiprocessing
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
@@ -10,6 +10,7 @@ from vigra.learning import RandomForest
 
 from ndstructs import Array5D, Slice5D, Point5D, Shape5D
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureData
+from ilastik.features.feature_extractor import FeatureExtractorCollection
 from ilastik.annotations import Annotation, FeatureSamples, LabelSamples
 from ndstructs.datasource import DataSource
 from ndstructs.utils import JsonSerializable
@@ -33,17 +34,18 @@ class Predictions(Array5D):
         return pil_channel_images
 
 class PixelClassifier(JsonSerializable):
-    def __init__(self, feature_extractor:FeatureExtractor, annotations:List[Annotation],*,
+    def __init__(self, feature_extractors:Iterable[FeatureExtractor], annotations:List[Annotation],*,
                  num_trees:int=100, num_forests:int=multiprocessing.cpu_count(), random_seed:int=0):
         assert len(annotations) > 0
-        self.feature_extractor = feature_extractor
+        assert len(feature_extractors) > 0
+        self.feature_extractors = FeatureExtractorCollection(feature_extractors)
         self.num_trees = num_trees
 
         tree_counts = np.array( [num_trees // num_forests] * num_forests )
         tree_counts[:num_trees % num_forests] += 1
         tree_counts = list(map(int, tree_counts))
 
-        samples = [a.get_samples(feature_extractor) for a in annotations]
+        samples = [a.get_samples(self.feature_extractors) for a in annotations]
         gathered_samples = samples[0].concatenate(*samples[1:])
 
         self.classes = gathered_samples.label.classes
@@ -74,7 +76,7 @@ class PixelClassifier(JsonSerializable):
         return Predictions.allocate(self.get_expected_roi(data_slice))
 
     def predict(self, data_slice:DataSource, out:Predictions=None) -> Predictions:
-        feature_data = self.feature_extractor.compute(data_slice)
+        feature_data = self.feature_extractors.compute(data_slice)
         predictions = out or self.allocate_predictions(data_slice)
         assert predictions.roi == self.get_expected_roi(data_slice)
         raw_linear_predictions = predictions.linear_raw()
@@ -98,11 +100,13 @@ class PixelClassifier(JsonSerializable):
 class StrictPixelClassifier(PixelClassifier):
     """A PixelClassifier that does not admit data which does not match its FeatureExtractors"""
 
-    def __init__(self, feature_extractor:FeatureExtractor, annotations:List[Annotation], *args, **kwargs):
+    def __init__(self, feature_extractors:Iterable[FeatureExtractor], annotations:List[Annotation], *args, **kwargs):
+        extractors = list(feature_extractors)
         for annot in annotations:
-            feature_extractor.ensure_applicable(annot.raw_data)
-        super().__init__(feature_extractor, annotations, *args, **kwargs)
+            for extractor in extractors:
+                extractor.ensure_applicable(annot.raw_data)
+        super().__init__(extractors, annotations, *args, **kwargs)
 
     def predict(self, data_slice:DataSource, out:Predictions=None) -> Predictions:
-        self.feature_extractor.ensure_applicable(data_slice)
+        self.feature_extractors.ensure_applicable(data_slice)
         return super().predict(data_slice, out)

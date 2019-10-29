@@ -61,7 +61,8 @@ print("Retrieveing hessian filter:\n", json.dumps(resp, indent=4))
 
 resp = post('http://localhost:5000/pixel_classifier',
             data={
-                'feature_extractor': gauss_id,
+                'feature_extractors.0': gauss_id,
+                'feature_extractors.1': hess_id,
                 'annotations.0': annot_id
             })
 classifier_id = resp.json()

@@ -34,7 +34,7 @@ slc = Slice5D(x=slice(100, 200), y=slice(200, 300))
 ##assert PilDataSource.from_json(json.loads(raw_data1.to_json())) == raw_data1
 ##assert pickle.loads(pickle.dumps(raw_data1)) == raw_data1
 #
-fc = FeatureExtractorCollection((GaussianSmoothing(sigma=0.3),  HessianOfGaussian(sigma=1.5), GaussianSmoothing(sigma=1.5)))
+feature_extractors = (GaussianSmoothing(sigma=0.3),  HessianOfGaussian(sigma=1.5), GaussianSmoothing(sigma=1.5))
 #
 #annotations = (
 #    Annotation.from_png("/home/tomaz/SampleData/c_cells/cropped/cropped1_10_annotations_offset_by_188_124.png",
@@ -43,14 +43,14 @@ fc = FeatureExtractorCollection((GaussianSmoothing(sigma=0.3),  HessianOfGaussia
 #                        raw_data=raw_data1, location=Point5D.zero(x=624, y=363))
 #)
 #
-#classifier = StrictPixelClassifier.get(feature_extractor=fc, annotations=annotations, random_seed=123)
+#classifier = StrictPixelClassifier.get(feature_extractors=feature_extractors, annotations=annotations, random_seed=123)
 #predictions, features = classifier.predict(raw_data1)
 #predictions.show()
 #
 #
 #
 #raw_data2 = PilDataSource("/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped2.png", x=slice(100,200), y=slice(100,200))
-#classifier2 = StrictPixelClassifier.get(feature_extractor=fc, annotations=annotations, random_seed=123)
+#classifier2 = StrictPixelClassifier.get(feature_extractors=feature_extractors, annotations=annotations, random_seed=123)
 #predictions2, features2 = classifier.predict(raw_data2)
 #save_test_images(predictions2, 'sliced')
 
@@ -63,7 +63,7 @@ apop_annotations = (
 )
 
 t = time.time()
-apop_classifier = StrictPixelClassifier(feature_extractor=fc, annotations=apop_annotations, random_seed=456)
+apop_classifier = StrictPixelClassifier(feature_extractors=feature_extractors, annotations=apop_annotations, random_seed=456)
 print(f"Ended training at {time.time() - t}")
 
 t = time.time()
@@ -82,6 +82,7 @@ print(f"Ended predictions in {time.time() - t}")
 apop_predictions.show()
 
 
-print(f"Features cache info: {fc.compute.cache_info()}")
+for feature_extractor in feature_extractors:
+    print(f"Features cache info: {feature_extractor.compute.cache_info()}")
 #print(f"Classifier cache info: {StrictPixelClassifier.get.cache_info()}")
 
