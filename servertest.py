@@ -79,7 +79,7 @@ resp = get('http://localhost:5000/predict', params={'pixel_classifier_id': class
 info = get(f"http://localhost:5000/predictions/{classifier_id}/{data_source_id}/info").json()
 print(json.dumps(info, indent=4))
 
-resp = post('http://localhost:5000/lines',
+resp = post('http://localhost:5000/ng_annotation',
             data={
                 'voxels.0.x': 137,
                 'voxels.0.y': 112,

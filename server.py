@@ -89,7 +89,7 @@ def hacky_get_only_datasource():
         ds = obj
     return ds
 
-@app.route('/lines/', methods=['POST'])
+@app.route('/ng_annotation/', methods=['POST'])
 def create_line_annotation():
     request_payload = Context.get_request_payload()
     print(f"Got this payload: ", json.dumps(request_payload, indent=4, default=str))
