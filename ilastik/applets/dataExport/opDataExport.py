@@ -29,6 +29,31 @@ from lazyflow.operators.generic import OpSubRegion
 from lazyflow.operators.valueProviders import OpMetadataInjector
 
 
+class DataExportPathFormatter:
+    def __init__(self, *, dataset_info, working_dir, result_type=None):
+        self._result_type = result_type
+        self._working_dir = working_dir
+        self._dataset_info = dataset_info
+
+    def format_path(self, path_template: str) -> str:
+        dataset_dir = str(self._dataset_info.default_output_dir)
+        abs_dataset_dir, _ = getPathVariants(dataset_dir, self._working_dir)
+
+        nickname = self._dataset_info.nickname.replace("*", "")
+        if os.path.pathsep in nickname:
+            nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
+
+        known_keys = {
+            "dataset_dir": abs_dataset_dir,
+            "nickname": nickname,
+        }
+
+        if self._result_type:
+            known_keys["result_type"] = self._result_type
+
+        return format_known_keys(path_template, known_keys)
+
+
 class OpDataExport(Operator):
     """
     Top-level operator for the export applet.
@@ -181,18 +206,15 @@ class OpDataExport(Operator):
                 if oslot.upstream_slot is None:
                     oslot.meta.NOTREADY = True
             return
-        self._opFormattedExport.Input.connect(self.Inputs[selection_index])
 
-        dataset_dir = str(rawInfo.default_output_dir)
-        abs_dataset_dir, _ = getPathVariants(dataset_dir, self.WorkingDirectory.value)
-        known_keys = {}
-        known_keys["dataset_dir"] = abs_dataset_dir
-        nickname = rawInfo.nickname.replace("*", "")
-        if os.path.pathsep in nickname:
-            nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
-        known_keys["nickname"] = nickname
+        self._opFormattedExport.Input.connect(self.Inputs[selection_index])
         result_types = self.SelectionNames.value
-        known_keys["result_type"] = result_types[selection_index]
+
+        path_formatter = DataExportPathFormatter(
+            dataset_info=rawInfo,
+            working_dir=self.WorkingDirectory.value,
+            result_type=result_types[selection_index]
+        )
 
         self._opFormattedExport.TransactionSlot.disconnect()
 
@@ -202,7 +224,7 @@ class OpDataExport(Operator):
 
         # use partial formatting to fill in non-coordinate name fields
         name_format = self.OutputFilenameFormat.value
-        partially_formatted_name = format_known_keys(name_format, known_keys)
+        partially_formatted_name = path_formatter.format_path(name_format)
 
         # Convert to absolute path before configuring the internal op
         abs_path, _ = getPathVariants(partially_formatted_name, self.WorkingDirectory.value)
@@ -210,7 +232,7 @@ class OpDataExport(Operator):
 
         # use partial formatting on the internal dataset name, too
         internal_dataset_format = self.OutputInternalPath.value
-        partially_formatted_dataset_name = format_known_keys(internal_dataset_format, known_keys)
+        partially_formatted_dataset_name = path_formatter.format_path(internal_dataset_format)
         self._opFormattedExport.OutputInternalPath.setValue(partially_formatted_dataset_name)
 
         # Re-connect to finish the 'transaction'

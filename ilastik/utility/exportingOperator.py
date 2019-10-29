@@ -37,6 +37,8 @@ class ExportingOperator(object):
               be obtained.
         """
         settings, selected_features = self.get_table_export_settings()
+        if not settings:
+            return Request.with_value(None)
 
         self.save_export_progress_dialog(None)
         if not show_gui:

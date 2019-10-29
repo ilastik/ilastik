@@ -38,6 +38,7 @@ from ilastik.applets.pixelClassification.opPixelClassification import OpPredicti
 from ilastik.applets.thresholdTwoLevels import ThresholdTwoLevelsApplet, OpThresholdTwoLevels
 from ilastik.applets.objectExtraction import ObjectExtractionApplet
 from ilastik.applets.objectClassification import ObjectClassificationApplet, ObjectClassificationDataExportApplet
+from ilastik.applets.objectClassification.opObjectClassification import TableExporter
 from ilastik.applets.fillMissingSlices import FillMissingSlicesApplet
 from ilastik.applets.fillMissingSlices.opFillMissingSlices import OpFillMissingSlicesNoCache
 from ilastik.applets.blockwiseObjectClassification import (
@@ -141,13 +142,13 @@ class ObjectClassificationWorkflow(Workflow):
         # our main applets
         self.objectExtractionApplet = ObjectExtractionApplet(workflow=self, name="Object Feature Selection")
         self.objectClassificationApplet = ObjectClassificationApplet(workflow=self)
-        self.dataExportApplet = ObjectClassificationDataExportApplet(self, "Object Information Export")
-        self.dataExportApplet.set_exporting_operator(self.objectClassificationApplet.topLevelOperator)
+        self._tableExporter = TableExporter(self.objectClassificationApplet.topLevelOperator)
+        self.dataExportApplet = ObjectClassificationDataExportApplet(
+            self, "Object Information Export", table_exporter=self._tableExporter
+        )
 
         # Customization hooks
         self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
-        # self.dataExportApplet.prepare_lane_for_export = self.prepare_lane_for_export
-        self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
         self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
 
         opDataExport = self.dataExportApplet.topLevelOperator
@@ -351,20 +352,7 @@ class ObjectClassificationWorkflow(Workflow):
             if csv_filename:
                 # The user wants to override the csv export location via
                 #  the command-line arguments. Apply the new setting to the operator.
-                settings, selected_features = (
-                    self.objectClassificationApplet.topLevelOperator.get_table_export_settings()
-                )
-                if settings is None:
-                    raise RuntimeError(
-                        "You can't export the CSV object table unless you configure it in the GUI first."
-                    )
-                assert (
-                    "file path" in settings
-                ), "Expected settings dict to contain a 'file path' key.  Did you rename that key?"
-                settings["file path"] = csv_filename
-                self.objectClassificationApplet.topLevelOperator.configure_table_export_settings(
-                    settings, selected_features
-                )
+                self._tableExporter.override_file_path(csv_filename)
 
         # Configure the batch data selection operator.
         if self._batch_input_args and self._batch_input_args.raw_data:
@@ -380,27 +368,6 @@ class ObjectClassificationWorkflow(Workflow):
     def post_process_entire_export(self):
         # Unfreeze.
         self.objectClassificationApplet.topLevelOperator.FreezePredictions.setValue(self.oc_freeze_status)
-
-    def post_process_lane_export(self, lane_index):
-        # FIXME: This probably only works for the non-blockwise export slot.
-        #        We should assert that the user isn't using the blockwise slot.
-        settings, selected_features = self.objectClassificationApplet.topLevelOperator.get_table_export_settings()
-        if settings:
-            raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][
-                self.InputImageRoles.RAW_DATA
-            ].value
-            if raw_dataset_info.is_in_filesystem():
-                filename_suffix = raw_dataset_info.nickname
-            else:
-                filename_suffix = str(lane_index)
-            req = self.objectClassificationApplet.topLevelOperator.export_object_data(
-                lane_index,
-                # FIXME: Even in non-headless mode, we can't show the gui because we're running in a non-main thread.
-                #        That's not a huge deal, because there's still a progress bar for the overall export.
-                show_gui=False,
-                filename_suffix=filename_suffix,
-            )
-            req.wait()
 
     def getHeadlessOutputSlot(self, slotId):
         if slotId == "BatchPredictionImage":

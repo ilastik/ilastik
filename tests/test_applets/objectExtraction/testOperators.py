@@ -206,7 +206,8 @@ class TestOpRegionFeaturesAgainstNumpy(unittest.TestCase):
                 assert npsum_excl == sum_excl[iobj]
 
                 assert sum_incl[iobj] == sum[iobj] + sum_excl[iobj]
-                # check that regionCenter wasn't shifted
-                for icoord, coord in enumerate(centers[iobj]):
-                    center_good = mins[iobj][icoord] + old_div((maxs[iobj][icoord] - mins[iobj][icoord]), 2.0)
-                    assert abs(coord - center_good) < 0.01
+                # compare bounding box center to computed object center
+                # note that for object centers vigra does statistics on coordinates
+                # that means bounding box centers can differ with a maximum of 0.5
+                bbox_center = mins[iobj] + ((maxs[iobj] - mins[iobj]) / 2.0)
+                np.testing.assert_allclose(centers[iobj], bbox_center, atol=0.5)
