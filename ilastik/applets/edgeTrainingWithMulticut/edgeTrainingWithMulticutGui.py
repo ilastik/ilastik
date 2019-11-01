@@ -54,7 +54,6 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
             training_box.setEnabled(self.train_edge_clf_box.isChecked())
             op.opEdgeTraining.opPredictEdgeProbabilities.TrainRandomForest.setValue(self.train_edge_clf_box.isChecked())
             # TODO cleanup_fns, dirtiness
-            op.FreezeClassifier.setValue(False) 
 
             def updateThread():
                 """
@@ -72,6 +71,7 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
                 '''
                 """
                 with self.set_updating():
+                    op.FreezeCache.setValue(False) 
                     self.topLevelOperatorView.FreezeCache.setValue(False)
                     ndim = len(self.topLevelOperatorView.Output.meta.shape)
                     self.topLevelOperatorView.Output((0,) * ndim, (1,) * ndim).wait()
@@ -81,15 +81,12 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
                         if imgView.isVisible():
                             imgView.scene().joinRenderingAllTiles()
                     self.topLevelOperatorView.FreezeCache.setValue(True)
+                    op.FreezeCache.setValue(True) 
      
             self.getLayerByName("Multicut Edges").visible = True
             # self.getLayerByName("Multicut Segmentation").visible = True
             th = threading.Thread(target=updateThread)
             th.start()
-
-            # TODO This should be True..?
-            op.FreezeClassifier.setValue(False) 
-
 
         self.train_edge_clf_box.toggled.connect(_handle_train_edge_clf_box_clicked)
 

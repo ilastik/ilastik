@@ -312,6 +312,7 @@ class MulticutGuiMixin(object):
             """
             with self.set_updating():
                 self.topLevelOperatorView.FreezeCache.setValue(False)
+                self.topLevelOperatorView.FreezeClassifier.setValue(False)
                 self.update_button.setEnabled(False)
                 self.live_multicut_button.setEnabled(False)
 
@@ -327,6 +328,7 @@ class MulticutGuiMixin(object):
                     if imgView.isVisible():
                         imgView.scene().joinRenderingAllTiles()
                 self.topLevelOperatorView.FreezeCache.setValue(True)
+                self.topLevelOperatorView.FreezeClassifier.setValue(True)
                 self.update_button.setEnabled(True)
                 self.live_multicut_button.setEnabled(True)
 
