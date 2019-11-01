@@ -252,7 +252,7 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         opEdgeTrainingWithMulticut.VoxelData.connect(opStackRawAndVoxels.Output)
         opEdgeTrainingWithMulticut.Superpixels.connect(opSuperpixelsSelect.Output)
         opEdgeTrainingWithMulticut.GroundtruthSegmentation.connect(opGroundtruthCache.Output)
-        opEdgeTrainingWithMulticut.SelectedInput.connect(opWsdt.SelectedInput) # Used for 'easy predict' button
+        opEdgeTrainingWithMulticut.WatershedSelectedInput.connect(opWsdt.SelectedInput)
 
         # DataExport inputs
         opDataExport.RawData.connect(opDataSelection.ImageGroup[self.DATA_ROLE_RAW])

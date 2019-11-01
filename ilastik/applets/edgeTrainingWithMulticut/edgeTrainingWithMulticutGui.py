@@ -52,7 +52,7 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
 
         def _handle_train_edge_clf_box_clicked():
             training_box.setEnabled(self.train_edge_clf_box.isChecked())
-            op.opEdgeTraining.opPredictEdgeProbabilities.TrainRandomForest.setValue(self.train_edge_clf_box.isChecked())
+            op.opEdgeTraining.TrainRandomForest.setValue(self.train_edge_clf_box.isChecked())
             # TODO cleanup_fns, dirtiness
 
             def updateThread():

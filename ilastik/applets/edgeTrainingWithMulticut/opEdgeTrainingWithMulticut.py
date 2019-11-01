@@ -15,7 +15,7 @@ class OpEdgeTrainingWithMulticut(Operator):
     Beta = InputSlot(value=0.5)
     SolverName = InputSlot(value=DEFAULT_SOLVER_NAME)  # See opMulticut.py for list of solvers
     FreezeCache = InputSlot(value=True)
-    SelectedInput = InputSlot() # Used for the 'Easy Predict' button
+    WatershedSelectedInput = InputSlot()
 
     # Lane-wise input slots
     RawData = InputSlot(level=1, optional=True)  # Used by the GUI for display only
@@ -50,7 +50,7 @@ class OpEdgeTrainingWithMulticut(Operator):
         opEdgeTraining.VoxelData.connect(self.VoxelData)
         opEdgeTraining.Superpixels.connect(self.Superpixels)
         opEdgeTraining.GroundtruthSegmentation.connect(self.GroundtruthSegmentation)
-        opEdgeTraining.SelectedInput.connect(self.SelectedInput)
+        opEdgeTraining.WatershedSelectedInput.connect(self.WatershedSelectedInput)
 
         self.Rag.connect(opEdgeTraining.Rag)
         self.EdgeProbabilities.connect(opEdgeTraining.EdgeProbabilities)
