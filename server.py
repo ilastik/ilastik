@@ -10,6 +10,7 @@ from flask import Flask, request, Response, send_file
 from flask_cors import CORS
 import uuid
 import numpy as np
+import urllib
 from PIL import Image as PilImage
 
 from ndstructs import Point5D, Slice5D, Shape5D, Array5D
@@ -197,6 +198,56 @@ def ng_raw(datasource_id:str, xBegin:int, xEnd:int, yBegin:int, yEnd:int, zBegin
     resp = flask.make_response(data.raw('xyzc').tobytes('F'))
     resp.headers['Content-Type'] = 'application/octet-stream'
     return resp
+
+@app.route('/neuroglancer-samples')
+def ng_samples():
+    rgb_shader = """void main() {
+      emitRGB(vec3(
+        toNormalized(getDataValue(0)),
+        toNormalized(getDataValue(1)),
+        toNormalized(getDataValue(2))
+      ));
+    }
+    """
+
+    links = []
+    for datasource_id, datasource in Context.get_all(DataSource).items():
+        layer_name = datasource.url.split('/')[-1]
+        url_data = {
+            "layers": [{
+                "source": f"precomputed://http://localhost:5000/datasource/{datasource_id}",
+                "type": "image",
+                "blend": "default",
+                "shader": rgb_shader,
+                "shaderControls": {},
+                "name": layer_name
+            }],
+            "navigation": {
+                "zoomFactor": 1
+            },
+            "selectedLayer": {
+                "layer": layer_name,
+                "visible": True
+            },
+            "layout": "4panel"
+        }
+        url = "http://localhost:8080#!" + urllib.parse.quote(str(json.dumps(url_data)))
+        links.append(f'<a href="{url}">{layer_name}</a><br/>')
+
+    link_tags = "\n".join(links)
+
+    return f"""
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <link rel=icon href="https://www.ilastik.org/assets/ilastik-logo.png">
+    </head>
+
+    <body>
+        {link_tags}
+    </body>
+</html>
+"""
 
 @app.route('/datasource/<datasource_id>/info')
 def datasource_info_dict(datasource_id:str) -> Dict:
