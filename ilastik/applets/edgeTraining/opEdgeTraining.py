@@ -27,6 +27,8 @@ class OpEdgeTraining(Operator):
     DEFAULT_FEATURES = {"Grayscale": ["standard_edge_mean"]}
     FeatureNames = InputSlot(value=DEFAULT_FEATURES)
     FreezeClassifier = InputSlot(value=True)
+    TrainRandomForest = InputSlot(value=False)
+    WatershedSelectedInput = InputSlot()
 
     # Lane-wise
     EdgeLabelsDict = InputSlot(level=1, value={})
@@ -56,6 +58,8 @@ class OpEdgeTraining(Operator):
         self.opComputeEdgeFeatures.FeatureNames.connect(self.FeatureNames)
         self.opComputeEdgeFeatures.VoxelData.connect(self.VoxelData)
         self.opComputeEdgeFeatures.Rag.connect(self.opRagCache.Output)
+        self.opComputeEdgeFeatures.TrainRandomForest.connect(self.TrainRandomForest)
+        self.opComputeEdgeFeatures.WatershedSelectedInput.connect(self.WatershedSelectedInput)
 
         self.opEdgeFeaturesCache = OpMultiLaneWrapper(OpValueCache, parent=self, broadcastingSlotNames=["fixAtCurrent"])
         self.opEdgeFeaturesCache.Input.connect(self.opComputeEdgeFeatures.EdgeFeaturesDataFrame)
@@ -76,6 +80,7 @@ class OpEdgeTraining(Operator):
         )
         self.opPredictEdgeProbabilities.EdgeClassifier.connect(self.opClassifierCache.Output)
         self.opPredictEdgeProbabilities.EdgeFeaturesDataFrame.connect(self.opEdgeFeaturesCache.Output)
+        self.opPredictEdgeProbabilities.TrainRandomForest.connect(self.TrainRandomForest)
 
         self.opEdgeProbabilitiesCache = OpMultiLaneWrapper(
             OpValueCache, parent=self, broadcastingSlotNames=["fixAtCurrent"]
@@ -237,6 +242,8 @@ def decodeToStringIfBytes(s):
 
 
 class OpComputeEdgeFeatures(Operator):
+    WatershedSelectedInput = InputSlot()
+    TrainRandomForest = InputSlot(value=False)
     FeatureNames = InputSlot()
     VoxelData = InputSlot()
     Rag = InputSlot()
@@ -248,41 +255,66 @@ class OpComputeEdgeFeatures(Operator):
         self.EdgeFeaturesDataFrame.meta.dtype = object
 
     def execute(self, slot, subindex, roi, result):
-        rag = self.Rag.value
-        channel_feature_names = self.FeatureNames.value
+        if self.TrainRandomForest.value:
+            rag = self.Rag.value
+            channel_feature_names = self.FeatureNames.value
 
-        edge_feature_dfs = []
-        for c in range(self.VoxelData.meta.shape[-1]):
-            channel_name = self.VoxelData.meta.channel_names[c]
-            if channel_name not in channel_feature_names:
-                continue
+            edge_feature_dfs = []
 
-            feature_names = [decodeToStringIfBytes(f) for f in channel_feature_names[channel_name]]
-            if not feature_names:
-                # No features selected for this channel
-                continue
+            for c in range(self.VoxelData.meta.shape[-1]):
+                channel_name = self.VoxelData.meta.channel_names[c]
+                if channel_name not in channel_feature_names:
+                    continue
 
-            voxel_data = self.VoxelData[..., c : c + 1].wait()
+                feature_names = [decodeToStringIfBytes(f) for f in channel_feature_names[channel_name]]
+                if not feature_names:
+                    # No features selected for this channel
+                    continue
+
+                voxel_data = self.VoxelData[..., c : c + 1].wait()
+                voxel_data = vigra.taggedView(voxel_data, self.VoxelData.meta.axistags)
+                voxel_data = voxel_data[..., 0]  # drop channel
+                edge_features_df = rag.compute_features(voxel_data, feature_names)
+
+                # if np.isnan(edge_features_df.values).any():
+                #    raise RuntimeError("Whoa, why are there NaN values in the feature matrix?")
+
+                edge_features_df = edge_features_df.iloc[:, 2:]  # Discard columns [sp1, sp2]
+
+                # Prefix all column names with the channel name, to guarantee uniqueness
+                # (Generally a nice feature, but also required for serialization.)
+                edge_features_df.columns = [
+                    channel_name + " " + feature_name for feature_name in edge_features_df.columns.values
+                ]
+                edge_feature_dfs.append(edge_features_df)
+
+            # Could use join() or merge() here, but we know the rows are already in the right order, and concat() should be faster.
+            all_edge_features_df = pd.DataFrame(rag.edge_ids, columns=["sp1", "sp2"])
+            all_edge_features_df = pd.concat([all_edge_features_df] + edge_feature_dfs, axis=1, copy=False)
+            result[0] = all_edge_features_df
+
+        else:
+            def normalize1(series):
+                series -= np.min(series)
+                series /= np.max(series)
+                return series
+
+            BEST_FEATURE = 'standard_edge_mean'
+
+            logger.info("Edge probabilities from feature {}...".format(BEST_FEATURE))
+            # The probabilities data is the data which the
+            # user has selected to run watershed on. The data source
+            # cannot be hard coded, because there might be
+            # many channels.
+            voxel_data = self.WatershedSelectedInput[..., 0].wait()
             voxel_data = vigra.taggedView(voxel_data, self.VoxelData.meta.axistags)
             voxel_data = voxel_data[..., 0]  # drop channel
-            edge_features_df = rag.compute_features(voxel_data, feature_names)
+            rag = self.Rag.value
+            edge_features_df = rag.compute_features(voxel_data, [BEST_FEATURE])
+            edge_features_df[BEST_FEATURE] = normalize1(edge_features_df[BEST_FEATURE])
 
-            # if np.isnan(edge_features_df.values).any():
-            #    raise RuntimeError("Whoa, why are there NaN values in the feature matrix?")
+            result[0] = edge_features_df
 
-            edge_features_df = edge_features_df.iloc[:, 2:]  # Discard columns [sp1, sp2]
-
-            # Prefix all column names with the channel name, to guarantee uniqueness
-            # (Generally a nice feature, but also required for serialization.)
-            edge_features_df.columns = [
-                channel_name + " " + feature_name for feature_name in edge_features_df.columns.values
-            ]
-            edge_feature_dfs.append(edge_features_df)
-
-        # Could use join() or merge() here, but we know the rows are already in the right order, and concat() should be faster.
-        all_edge_features_df = pd.DataFrame(rag.edge_ids, columns=["sp1", "sp2"])
-        all_edge_features_df = pd.concat([all_edge_features_df] + edge_feature_dfs, axis=1, copy=False)
-        result[0] = all_edge_features_df
 
     def propagateDirty(self, slot, subindex, roi):
         self.EdgeFeaturesDataFrame.setDirty()
@@ -352,6 +384,7 @@ class OpTrainEdgeClassifier(Operator):
 
 
 class OpPredictEdgeProbabilities(Operator):
+    TrainRandomForest = InputSlot(value=False)
     EdgeClassifier = InputSlot()
     EdgeFeaturesDataFrame = InputSlot()
     EdgeProbabilities = OutputSlot()  # A 1D array of probabilities, in same order as EdgeFeaturesDataFrame
@@ -361,19 +394,29 @@ class OpPredictEdgeProbabilities(Operator):
         self.EdgeProbabilities.meta.dtype = object
 
     def execute(self, slot, subindex, roi, result):
-        edge_features_df = self.EdgeFeaturesDataFrame.value
-        classifier = self.EdgeClassifier.value
+        pd.set_option('display.expand_frame_repr', False)
+        if self.TrainRandomForest.value:
+            edge_features_df = self.EdgeFeaturesDataFrame.value
+            classifier = self.EdgeClassifier.value
 
-        # Classifier can be None if no labels have been selected
-        if classifier is None or len(classifier.known_classes) < 2:
-            result[0] = np.zeros((len(edge_features_df),), dtype=np.float32)
-            return
+            # Classifier can be None if no labels have been selected
+            if classifier is None or len(classifier.known_classes) < 2:
+                result[0] = np.zeros((len(edge_features_df),), dtype=np.float32)
+                return
 
-        logger.info("Predicting edge probabilities...")
-        feature_matrix = edge_features_df.iloc[:, 2:].values  # Discard [sp1, sp2]
-        assert feature_matrix.dtype == np.float32, "Unexpected feature dtype: {}".format(feature_matrix.dtype)
-        probabilities = classifier.predict_probabilities(feature_matrix)[:, 1]
-        assert len(probabilities) == len(edge_features_df)
+            logger.info("Predicting edge probabilities...")
+            feature_matrix = edge_features_df.iloc[:, 2:].values  # Discard [sp1, sp2]
+            assert feature_matrix.dtype == np.float32, "Unexpected feature dtype: {}".format(feature_matrix.dtype)
+            probabilities = classifier.predict_probabilities(feature_matrix)[:, 1]
+
+            assert len(probabilities) == len(edge_features_df)
+
+        else:
+            BEST_FEATURE = 'standard_edge_mean'
+            edge_features_df = self.EdgeFeaturesDataFrame.value
+            edge_features_df = edge_features_df.iloc[:, 2:]  # Discard columns [sp1, sp2]
+            probabilities = edge_features_df[BEST_FEATURE]
+
         result[0] = probabilities
 
     def propagateDirty(self, slot, subindex, roi):

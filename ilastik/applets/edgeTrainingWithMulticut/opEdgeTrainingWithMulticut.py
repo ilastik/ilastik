@@ -10,11 +10,13 @@ class OpEdgeTrainingWithMulticut(Operator):
     # Edge Training parameters
     FeatureNames = InputSlot(value=OpEdgeTraining.DEFAULT_FEATURES)
     FreezeClassifier = InputSlot(value=True)
+    TrainRandomForest = InputSlot(value=False)
 
     # Multicut parameters
     Beta = InputSlot(value=0.5)
     SolverName = InputSlot(value=DEFAULT_SOLVER_NAME)  # See opMulticut.py for list of solvers
     FreezeCache = InputSlot(value=True)
+    WatershedSelectedInput = InputSlot()
 
     # Lane-wise input slots
     RawData = InputSlot(level=1, optional=True)  # Used by the GUI for display only
@@ -49,6 +51,8 @@ class OpEdgeTrainingWithMulticut(Operator):
         opEdgeTraining.VoxelData.connect(self.VoxelData)
         opEdgeTraining.Superpixels.connect(self.Superpixels)
         opEdgeTraining.GroundtruthSegmentation.connect(self.GroundtruthSegmentation)
+        opEdgeTraining.WatershedSelectedInput.connect(self.WatershedSelectedInput)
+        opEdgeTraining.TrainRandomForest.connect(self.TrainRandomForest)
 
         self.Rag.connect(opEdgeTraining.Rag)
         self.EdgeProbabilities.connect(opEdgeTraining.EdgeProbabilities)
