@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,23 +18,17 @@ from __future__ import print_function
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5 import uic
-from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QObject, pyqtBoundSignal, QSize
+from PyQt5.QtCore import pyqtSlot, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QFileDialog, QTableWidget, QTableWidgetItem, QGridLayout, QProgressBar
 from ilastik.shell.gui.ipcManager import IPCFacade, Protocol
 
-from ilastik.widgets.featureTableWidget import FeatureEntry
-from ilastik.widgets.featureDlg import FeatureDlg
-from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
-from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification
 
 import os
-import sys
 import copy
 import vigra
 
@@ -55,19 +47,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.shell.gui.iconMgr import ilastikIcons
 
 import volumina.colortables as colortables
-from volumina.api import (
-    createDataSource,
-    GrayscaleLayer,
-    ColortableLayer,
-    AlphaModulatedLayer,
-    ClickableColortableLayer,
-    LazyflowSinkSource,
-)
+from volumina.api import createDataSource, ColortableLayer, AlphaModulatedLayer, LazyflowSinkSource
 
 from volumina.interpreter import ClickInterpreter
 from volumina.utility import ShortcutManager
