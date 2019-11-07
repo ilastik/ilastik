@@ -78,6 +78,7 @@ class ObjectClassificationWorkflow(Workflow):
             OBJECT_PROBABILITIES = enum.auto()
             BLOCKWISE_OBJECT_PREDICTIONS = enum.auto()
             BLOCKWISE_OBJECT_PROBABILITIES = enum.auto()
+            OBJECT_IDENTITIES = enum.auto()
 
         return ExportNames
 
@@ -304,6 +305,7 @@ class ObjectClassificationWorkflow(Workflow):
         opDataExport.Inputs[self.ExportNames.BLOCKWISE_OBJECT_PROBABILITIES].connect(
             opBlockwiseObjectClassification.ProbabilityChannelImage
         )
+        opDataExport.Inputs[self.ExportNames.OBJECT_IDENTITIES].connect(opObjClassification.SegmentationImagesOut)
 
         opObjClassification = self.objectClassificationApplet.topLevelOperator.getLane(laneIndex)
         opBlockwiseObjectClassification = self.blockwiseObjectClassificationApplet.topLevelOperator.getLane(laneIndex)

@@ -89,6 +89,7 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
             "Object Probabilities",
             "Blockwise Object Predictions",
             "Blockwise Object Probabilities",
+            "Object Identities",
             "Pixel Probabilities",
         ]
 
@@ -113,6 +114,10 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
                 layer.visible = False
                 layer.name = layer.name + "- Preview"
             layers += previewLayers
+        elif selection == "Object Identities":
+            previewSlot = self.topLevelOperatorView.ImageToExport
+            layer = self._initColortableLayer(previewSlot)
+            layers += layer
         else:
             assert False, "Unknown selection."
 
@@ -151,3 +156,16 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
                 layers.append(predictLayer)
 
         return layers
+
+    def _initColortableLayer(self, labelSlot):
+        objectssrc = createDataSource(labelSlot)
+        objectssrc.setObjectName("LabelImage LazyflowSrc")
+        ct = colortables.create_default_16bit()
+        ct[0] = QColor(0, 0, 0, 0).rgba()  # make 0 transparent
+        layer = ColortableLayer(objectssrc, ct)
+        layer.name = "Object Identities - Preview"
+        layer.setToolTip("Segmented objects, shown in different colors")
+        layer.visible = False
+        layer.opacity = 0.5
+        layer.colortableIsRandom = True
+        return [layer]
