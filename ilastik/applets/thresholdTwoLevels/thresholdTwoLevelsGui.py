@@ -343,7 +343,8 @@ class ThresholdTwoLevelsGui(LayerViewerGui):
             outputLayer.name = "Final output"
             outputLayer.visible = False
             outputLayer.opacity = 1.0
-            outputLayer.setToolTip("Results of thresholding and size filter")
+            outputLayer.colortableIsRandom = True
+            outputLayer.setToolTip("Object Identities: Results of thresholding, connected components and size filter")
             layers.append(outputLayer)
 
         if op.InputChannelColors.ready():

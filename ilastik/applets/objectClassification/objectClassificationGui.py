@@ -653,10 +653,11 @@ class ObjectClassificationGui(LabelingGui):
             objectssrc = createDataSource(segmentedSlot)
             ct[0] = QColor(0, 0, 0, 0).rgba()  # make 0 transparent
             objLayer = ColortableLayer(objectssrc, ct)
-            objLayer.name = "Objects"
+            objLayer.name = "Object Identities"
             objLayer.opacity = 0.5
             objLayer.visible = False
-            objLayer.setToolTip("Segmented objects (labeled image/connected components)")
+            objLayer.setToolTip("Segmented objects, shown in different colors")
+            objLayer.colortableIsRandom = True
             layers.append(objLayer)
 
         uncertaintySlot = self.op.UncertaintyEstimateImage
@@ -683,8 +684,6 @@ class ObjectClassificationGui(LabelingGui):
             layers.append(uncertaintyLayer)
 
         if binarySlot.ready():
-            ct_binary = [0, QColor(255, 255, 255, 255).rgba()]
-
             # white foreground on transparent background, even for labeled images
             binct = [QColor(255, 255, 255, 255).rgba()] * 65536
             binct[0] = 0
@@ -693,7 +692,7 @@ class ObjectClassificationGui(LabelingGui):
             binLayer.name = "Binary image"
             binLayer.visible = True
             binLayer.opacity = 1.0
-            binLayer.setToolTip("Segmentation results as a binary mask")
+            binLayer.setToolTip("Segmented objects, binary mask")
             layers.append(binLayer)
 
         if atlas_slot.ready():
