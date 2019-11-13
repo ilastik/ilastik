@@ -22,7 +22,6 @@ from abc import abstractmethod
 import sys
 import os
 import enum
-import warnings
 import argparse
 import csv
 
@@ -30,29 +29,20 @@ import numpy
 import h5py
 
 from ilastik.workflow import Workflow
-from ilastik.applets.dataSelection import DataSelectionApplet, DatasetInfo
+from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.pixelClassification import PixelClassificationApplet
-from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
-from ilastik.applets.pixelClassification.opPixelClassification import OpPredictionPipeline
-from ilastik.applets.thresholdTwoLevels import ThresholdTwoLevelsApplet, OpThresholdTwoLevels
+from ilastik.applets.thresholdTwoLevels import ThresholdTwoLevelsApplet
 from ilastik.applets.objectExtraction import ObjectExtractionApplet
 from ilastik.applets.objectClassification import ObjectClassificationApplet, ObjectClassificationDataExportApplet
 from ilastik.applets.objectClassification.opObjectClassification import TableExporter
 from ilastik.applets.fillMissingSlices import FillMissingSlicesApplet
-from ilastik.applets.fillMissingSlices.opFillMissingSlices import OpFillMissingSlicesNoCache
-from ilastik.applets.blockwiseObjectClassification import (
-    BlockwiseObjectClassificationApplet,
-    OpBlockwiseObjectClassification,
-)
+from ilastik.applets.blockwiseObjectClassification import BlockwiseObjectClassificationApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
-from lazyflow.graph import Graph, OperatorWrapper, OutputSlot
+from lazyflow.graph import Graph, OutputSlot
 from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
-from lazyflow.operators.valueProviders import OpAttributeSelector
 from lazyflow.roi import TinyVector
-from lazyflow.utility import PathComponents
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.utility import SlotNameEnum
 
@@ -88,6 +78,7 @@ class ObjectClassificationWorkflow(Workflow):
             OBJECT_PROBABILITIES = enum.auto()
             BLOCKWISE_OBJECT_PREDICTIONS = enum.auto()
             BLOCKWISE_OBJECT_PROBABILITIES = enum.auto()
+            OBJECT_IDENTITIES = enum.auto()
 
         return ExportNames
 
@@ -314,6 +305,7 @@ class ObjectClassificationWorkflow(Workflow):
         opDataExport.Inputs[self.ExportNames.BLOCKWISE_OBJECT_PROBABILITIES].connect(
             opBlockwiseObjectClassification.ProbabilityChannelImage
         )
+        opDataExport.Inputs[self.ExportNames.OBJECT_IDENTITIES].connect(opObjClassification.SegmentationImagesOut)
 
         opObjClassification = self.objectClassificationApplet.topLevelOperator.getLane(laneIndex)
         opBlockwiseObjectClassification = self.blockwiseObjectClassificationApplet.topLevelOperator.getLane(laneIndex)

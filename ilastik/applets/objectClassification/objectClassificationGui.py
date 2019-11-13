@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,23 +18,17 @@ from __future__ import print_function
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5 import uic
-from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QObject, pyqtBoundSignal, QSize
+from PyQt5.QtCore import pyqtSlot, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QFileDialog, QTableWidget, QTableWidgetItem, QGridLayout, QProgressBar
 from ilastik.shell.gui.ipcManager import IPCFacade, Protocol
 
-from ilastik.widgets.featureTableWidget import FeatureEntry
-from ilastik.widgets.featureDlg import FeatureDlg
-from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
-from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification
 
 import os
-import sys
 import copy
 import vigra
 
@@ -55,19 +47,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.shell.gui.iconMgr import ilastikIcons
 
 import volumina.colortables as colortables
-from volumina.api import (
-    createDataSource,
-    GrayscaleLayer,
-    ColortableLayer,
-    AlphaModulatedLayer,
-    ClickableColortableLayer,
-    LazyflowSinkSource,
-)
+from volumina.api import createDataSource, ColortableLayer, AlphaModulatedLayer, LazyflowSinkSource
 
 from volumina.interpreter import ClickInterpreter
 from volumina.utility import ShortcutManager
@@ -669,10 +653,11 @@ class ObjectClassificationGui(LabelingGui):
             objectssrc = createDataSource(segmentedSlot)
             ct[0] = QColor(0, 0, 0, 0).rgba()  # make 0 transparent
             objLayer = ColortableLayer(objectssrc, ct)
-            objLayer.name = "Objects"
+            objLayer.name = "Object Identities"
             objLayer.opacity = 0.5
             objLayer.visible = False
-            objLayer.setToolTip("Segmented objects (labeled image/connected components)")
+            objLayer.setToolTip("Segmented objects, shown in different colors")
+            objLayer.colortableIsRandom = True
             layers.append(objLayer)
 
         uncertaintySlot = self.op.UncertaintyEstimateImage
@@ -699,8 +684,6 @@ class ObjectClassificationGui(LabelingGui):
             layers.append(uncertaintyLayer)
 
         if binarySlot.ready():
-            ct_binary = [0, QColor(255, 255, 255, 255).rgba()]
-
             # white foreground on transparent background, even for labeled images
             binct = [QColor(255, 255, 255, 255).rgba()] * 65536
             binct[0] = 0
@@ -709,7 +692,7 @@ class ObjectClassificationGui(LabelingGui):
             binLayer.name = "Binary image"
             binLayer.visible = True
             binLayer.opacity = 1.0
-            binLayer.setToolTip("Segmentation results as a binary mask")
+            binLayer.setToolTip("Segmented objects, binary mask")
             layers.append(binLayer)
 
         if atlas_slot.ready():

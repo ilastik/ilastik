@@ -446,8 +446,9 @@ class ObjectExtractionGui(LayerViewerGui):
             self.objectssrc.setObjectName("LabelImage LazyflowSrc")
             ct[0] = QColor(0, 0, 0, 0).rgba()  # make 0 transparent
             layer = ColortableLayer(self.objectssrc, ct)
-            layer.name = "Objects (connected components)"
+            layer.name = "Object Identities"
             layer.setToolTip("Segmented objects, shown in different colors")
+            layer.colortableIsRandom = True
             layer.visible = False
             layer.opacity = 0.5
             layers.append(layer)
