@@ -45,6 +45,7 @@ import pickle as pickle
 from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
 from lazyflow.utility import timeLogged
 from lazyflow.slot import OutputSlot
+from ndstructs import Array5D, Slice5D
 
 #######################
 # Convenience methods #
@@ -537,6 +538,10 @@ class SerialBlockSlot(SerialSlot):
                         slicing = roiToSlice(*bounding_box_roi)
                         block = block[block_slicing]
 
+                current_axiskeys = "".join(slot[index].meta.getAxisKeys())
+                original_axiskeys = "".join(slot[index].meta.getOriginalAxisKeys())
+                block = Array5D(block, current_axiskeys).raw(original_axiskeys)
+                slicing = Slice5D.zero(**dict(zip(current_axiskeys, slicing))).to_slices(original_axiskeys)
                 # If we have a masked array, convert it to a structured array so that h5py can handle it.
                 if slot[index].meta.has_mask:
                     mygroup.attrs["meta.has_mask"] = True
@@ -598,7 +603,13 @@ class SerialBlockSlot(SerialSlot):
                     )
                 else:
                     blockArray = blockData[...]
-                self.inslot[index][slicing] = blockArray
+
+                target_subslot = self.inslot[index]
+                original_axiskeys = "".join(target_subslot.meta.getOriginalAxisKeys())
+                current_axiskeys = "".join(target_subslot.meta.getAxisKeys())
+                slc = Slice5D.zero(**dict(zip(original_axiskeys, slicing)))
+                blockArray5D = Array5D(blockArray, original_axiskeys)
+                target_subslot[slc.to_slices(current_axiskeys)] = blockArray5D.raw(current_axiskeys)
 
 
 class SerialHdf5BlockSlot(SerialBlockSlot):
