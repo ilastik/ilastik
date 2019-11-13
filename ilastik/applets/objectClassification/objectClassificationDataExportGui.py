@@ -117,7 +117,7 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
         elif selection == "Object Identities":
             previewSlot = self.topLevelOperatorView.ImageToExport
             layer = self._initColortableLayer(previewSlot)
-            layers += layer
+            layers.append(layer)
         else:
             assert False, "Unknown selection."
 
@@ -168,4 +168,4 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
         layer.visible = False
         layer.opacity = 0.5
         layer.colortableIsRandom = True
-        return [layer]
+        return layer
