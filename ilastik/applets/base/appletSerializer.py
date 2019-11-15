@@ -421,7 +421,7 @@ class SerialBlockSlot(SerialSlot):
 
         """
         assert isinstance(slot, OutputSlot), "slot is of wrong type: '{}' is not an OutputSlot".format(slot.name)
-        super(SerialBlockSlot, self).__init__(slot, inslot, name, subname, default, depends, selfdepends)
+        super().__init__(slot, inslot, name, subname, default, depends, selfdepends)
         self.blockslot = blockslot
         self._bind(slot)
         self._shrink_to_bb = shrink_to_bb
@@ -564,10 +564,11 @@ class SerialBlockSlot(SerialSlot):
     def fix_block_and_slicing_out(
         self, block: numpy.ndarray, slicing: List[slice], slot: Slot
     ) -> Tuple[numpy.ndarray, List[slice]]:
-        current_axiskeys = "".join(slot.meta.getAxisKeys())
-        original_axiskeys = "".join(slot.meta.getOriginalAxisKeys())
-        block = Array5D(block, current_axiskeys).raw(original_axiskeys)
-        slicing = Slice5D.zero(**dict(zip(current_axiskeys, slicing))).to_slices(original_axiskeys)
+        return block, slicing
+
+    def fix_block_and_slicing_in(
+        self, block: numpy.ndarray, slicing: List[slice], slot: Slot
+    ) -> Tuple[numpy.ndarray, List[slice]]:
         return block, slicing
 
     @timeLogged(logger, logging.DEBUG)
@@ -614,6 +615,8 @@ class SerialBlockSlot(SerialSlot):
                 blockArray, slicing = self.fix_block_and_slicing_in(blockArray, slicing, self.inslot[index])
                 self.inslot[index][slicing] = blockArray
 
+
+class BackwardsCompatibleSerialBlockSlot(SerialBlockSlot):
     def fix_block_and_slicing_in(
         self, block: numpy.ndarray, slicing: List[slice], slot: Slot
     ) -> Tuple[numpy.ndarray, List[slice]]:
@@ -621,6 +624,15 @@ class SerialBlockSlot(SerialSlot):
         current_axiskeys = "".join(slot.meta.getAxisKeys())
         fixed_slicing = Slice5D.zero(**dict(zip(original_axiskeys, slicing))).to_slices(current_axiskeys)
         fixed_block = Array5D(block, original_axiskeys).raw(current_axiskeys)
+        return fixed_block, fixed_slicing
+
+    def fix_block_and_slicing_out(
+        self, block: numpy.ndarray, slicing: List[slice], slot: Slot
+    ) -> Tuple[numpy.ndarray, List[slice]]:
+        current_axiskeys = "".join(slot.meta.getAxisKeys())
+        original_axiskeys = "".join(slot.meta.getOriginalAxisKeys())
+        fixed_block = Array5D(block, current_axiskeys).raw(original_axiskeys)
+        fixed_slicing = Slice5D.zero(**dict(zip(current_axiskeys, slicing))).to_slices(original_axiskeys)
         return fixed_block, fixed_slicing
 
 

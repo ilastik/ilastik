@@ -25,6 +25,7 @@ from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
     SerialClassifierSlot,
     SerialBlockSlot,
+    BackwardsCompatibleSerialBlockSlot,
     SerialListSlot,
     SerialClassifierFactorySlot,
     SerialPickleableSlot,
@@ -51,7 +52,7 @@ class PixelClassificationSerializer(AppletSerializer):
             SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
             SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
             SerialPickleableSlot(operator.Bookmarks, self.VERSION),
-            SerialBlockSlot(
+            BackwardsCompatibleSerialBlockSlot(
                 operator.LabelImages,
                 operator.LabelInputs,
                 operator.NonzeroLabelBlocks,
