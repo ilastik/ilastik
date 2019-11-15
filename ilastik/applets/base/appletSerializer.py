@@ -604,12 +604,15 @@ class SerialBlockSlot(SerialSlot):
                 else:
                     blockArray = blockData[...]
 
-                target_subslot = self.inslot[index]
-                original_axiskeys = "".join(target_subslot.meta.getOriginalAxisKeys())
-                current_axiskeys = "".join(target_subslot.meta.getAxisKeys())
-                slc = Slice5D.zero(**dict(zip(original_axiskeys, slicing)))
-                blockArray5D = Array5D(blockArray, original_axiskeys)
-                target_subslot[slc.to_slices(current_axiskeys)] = blockArray5D.raw(current_axiskeys)
+                blockArray, slicing = self.fix_block_and_slicing_in(blockArray, slicing, self.inslot[index])
+                self.inslot[index][slicing] = blockArray
+
+    def fix_block_and_slicing_in(self, block, slicing, slot):
+        original_axiskeys = "".join(slot.meta.getOriginalAxisKeys())
+        current_axiskeys = "".join(slot.meta.getAxisKeys())
+        fixed_slicing = Slice5D.zero(**dict(zip(original_axiskeys, slicing))).to_slices(current_axiskeys)
+        fixed_block = Array5D(block, original_axiskeys).raw(current_axiskeys)
+        return fixed_block, fixed_slicing
 
 
 class SerialHdf5BlockSlot(SerialBlockSlot):
