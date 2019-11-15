@@ -620,6 +620,8 @@ class BackwardsCompatibleSerialBlockSlot(SerialBlockSlot):
     def fix_block_and_slicing_in(
         self, block: numpy.ndarray, slicing: List[slice], slot: Slot
     ) -> Tuple[numpy.ndarray, List[slice]]:
+        if slot.meta.axistags is None:
+            return block, slicing
         original_axiskeys = "".join(slot.meta.getOriginalAxisKeys())
         current_axiskeys = "".join(slot.meta.getAxisKeys())
         fixed_slicing = Slice5D.zero(**dict(zip(original_axiskeys, slicing))).to_slices(current_axiskeys)
@@ -629,6 +631,8 @@ class BackwardsCompatibleSerialBlockSlot(SerialBlockSlot):
     def fix_block_and_slicing_out(
         self, block: numpy.ndarray, slicing: List[slice], slot: Slot
     ) -> Tuple[numpy.ndarray, List[slice]]:
+        if slot.meta.axistags is None:
+            return block, slicing
         current_axiskeys = "".join(slot.meta.getAxisKeys())
         original_axiskeys = "".join(slot.meta.getOriginalAxisKeys())
         fixed_block = Array5D(block, current_axiskeys).raw(original_axiskeys)
