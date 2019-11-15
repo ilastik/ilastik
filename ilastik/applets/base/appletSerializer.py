@@ -24,6 +24,7 @@ standard_library.install_aliases()
 from builtins import range
 import logging
 from future.utils import with_metaclass
+from typing import Tuple, List
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ import pickle as pickle
 
 from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
 from lazyflow.utility import timeLogged
-from lazyflow.slot import OutputSlot
+from lazyflow.slot import OutputSlot, Slot
 from ndstructs import Array5D, Slice5D
 
 #######################
@@ -538,10 +539,7 @@ class SerialBlockSlot(SerialSlot):
                         slicing = roiToSlice(*bounding_box_roi)
                         block = block[block_slicing]
 
-                current_axiskeys = "".join(slot[index].meta.getAxisKeys())
-                original_axiskeys = "".join(slot[index].meta.getOriginalAxisKeys())
-                block = Array5D(block, current_axiskeys).raw(original_axiskeys)
-                slicing = Slice5D.zero(**dict(zip(current_axiskeys, slicing))).to_slices(original_axiskeys)
+                block, slicing = self.fix_block_and_slicing_out(block, slicing, slot[index])
                 # If we have a masked array, convert it to a structured array so that h5py can handle it.
                 if slot[index].meta.has_mask:
                     mygroup.attrs["meta.has_mask"] = True
@@ -562,6 +560,15 @@ class SerialBlockSlot(SerialSlot):
                 else:
                     subgroup.create_dataset(blockName, data=block)
                     subgroup[blockName].attrs["blockSlice"] = slicingToString(slicing)
+
+    def fix_block_and_slicing_out(
+        self, block: numpy.ndarray, slicing: List[slice], slot: Slot
+    ) -> Tuple[numpy.ndarray, List[slice]]:
+        current_axiskeys = "".join(slot.meta.getAxisKeys())
+        original_axiskeys = "".join(slot.meta.getOriginalAxisKeys())
+        block = Array5D(block, current_axiskeys).raw(original_axiskeys)
+        slicing = Slice5D.zero(**dict(zip(current_axiskeys, slicing))).to_slices(original_axiskeys)
+        return block, slicing
 
     @timeLogged(logger, logging.DEBUG)
     def _deserialize(self, mygroup, slot):
@@ -607,7 +614,9 @@ class SerialBlockSlot(SerialSlot):
                 blockArray, slicing = self.fix_block_and_slicing_in(blockArray, slicing, self.inslot[index])
                 self.inslot[index][slicing] = blockArray
 
-    def fix_block_and_slicing_in(self, block, slicing, slot):
+    def fix_block_and_slicing_in(
+        self, block: numpy.ndarray, slicing: List[slice], slot: Slot
+    ) -> Tuple[numpy.ndarray, List[slice]]:
         original_axiskeys = "".join(slot.meta.getOriginalAxisKeys())
         current_axiskeys = "".join(slot.meta.getAxisKeys())
         fixed_slicing = Slice5D.zero(**dict(zip(original_axiskeys, slicing))).to_slices(current_axiskeys)
