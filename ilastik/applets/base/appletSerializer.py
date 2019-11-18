@@ -626,6 +626,8 @@ class BackwardsCompatibleSerialBlockSlot(SerialBlockSlot):
     def reshape_datablock_and_slicing_for_input(
         self, block: numpy.ndarray, slicing: List[slice], slot: Slot
     ) -> Tuple[numpy.ndarray, List[slice]]:
+        """Reshapes a block of data and its corresponding slicing into the slot's current shape, so as to be
+        compatible with versions of ilastik that saved and loaded block slots in their original shape"""
         if slot.meta.axistags is None:
             return block, slicing
         original_axiskeys = "".join(slot.meta.getOriginalAxisKeys())
@@ -637,6 +639,8 @@ class BackwardsCompatibleSerialBlockSlot(SerialBlockSlot):
     def reshape_datablock_and_slicing_for_output(
         self, block: numpy.ndarray, slicing: List[slice], slot: Slot
     ) -> Tuple[numpy.ndarray, List[slice]]:
+        """Reshapes a block of data and its corresponding slicing into the slot's original shape, so as to be
+        compatible with versions of ilastik that saved and loaded block slots in their original shape"""
         if slot.meta.axistags is None:
             return block, slicing
         current_axiskeys = "".join(slot.meta.getAxisKeys())
