@@ -505,30 +505,12 @@ class ProjectManager(object):
             logger.error("Error opening file: " + importedFilePath)
             raise
 
-        # Load the imported project into the workflow state
-        self._loadProject(importedFile, importedFilePath, True)
-
-        # Export the current workflow state to the new file.
-        # (Somewhat hacky: We temporarily swap the new file object as our current one during the save.)
-        origProjectFile = self.currentProjectFile
-        self.currentProjectFile = newProjectFile
-        self.currentProjectPath = newProjectFilePath
-        self.currentProjectIsReadOnly = False
-        self.saveProject(force_all_save=True)
-        self.currentProjectFile = origProjectFile
-
-        # Close the original project
-        self._closeCurrentProject()
-
-        self.currentProjectFile = None
-
-        # Create brand new workflow to load from the new project file.
-        self.workflow = self._workflowClass(
-            self._shell, self._headless, self._workflow_cmdline_args, self._project_creation_args
-        )
-
-        # Load the new file.
-        self._loadProject(newProjectFile, newProjectFilePath, False)
+        top_group_names = (serializer.topGroupName for app in self._applets for serializer in app.dataSerializers)
+        for top_group_name in top_group_names:
+            if top_group_name in importedFile.keys():
+                importedFile.copy(top_group_name, newProjectFile["/"])
+        importedFile.close()
+        self._loadProject(newProjectFile, newProjectFilePath, readOnly=False)
 
     def _closeCurrentProject(self):
         if self.closed:
