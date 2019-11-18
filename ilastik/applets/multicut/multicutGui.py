@@ -311,31 +311,32 @@ class MulticutGuiMixin(object):
             Temporarily unfreeze the cache and freeze it again after the views are finished rendering.
             """
             with self.set_updating():
-                self.topLevelOperatorView.FreezeCache.setValue(False)
-                self.topLevelOperatorView.FreezeClassifier.setValue(False)
-                self.update_button.setEnabled(False)
-                self.live_multicut_button.setEnabled(False)
-
-                # This is hacky, but for now it's the only way to do it.
-                # We need to make sure the rendering thread has actually seen that the cache
-                # has been updated before we ask it to wait for all views to be 100% rendered.
-                # If we don't wait, it might complete too soon (with the old data).
-                ndim = len(self.topLevelOperatorView.Output.meta.shape)
-                self.topLevelOperatorView.Output((0,) * ndim, (1,) * ndim).wait()
-
-                # Wait for the image to be rendered into all three image views
-                for imgView in self.editor.imageViews:
-                    if imgView.isVisible():
-                        imgView.scene().joinRenderingAllTiles()
-                self.topLevelOperatorView.FreezeCache.setValue(True)
-                self.topLevelOperatorView.FreezeClassifier.setValue(True)
-                self.update_button.setEnabled(True)
-                self.live_multicut_button.setEnabled(True)
+                self._update_multicut_views()
 
         self.getLayerByName("Multicut Edges").visible = True
         # self.getLayerByName("Multicut Segmentation").visible = True
         th = threading.Thread(target=updateThread)
         th.start()
+
+    def _update_multicut_views(self):
+        self.topLevelOperatorView.FreezeCache.setValue(False)
+        self.update_button.setEnabled(False)
+        self.live_multicut_button.setEnabled(False)
+
+        # This is hacky, but for now it's the only way to do it.
+        # We need to make sure the rendering thread has actually seen that the cache
+        # has been updated before we ask it to wait for all views to be 100% rendered.
+        # If we don't wait, it might complete too soon (with the old data).
+        ndim = len(self.topLevelOperatorView.Output.meta.shape)
+        self.topLevelOperatorView.Output((0,) * ndim, (1,) * ndim).wait()
+
+        # Wait for the image to be rendered into all three image views
+        for imgView in self.editor.imageViews:
+            if imgView.isVisible():
+                imgView.scene().joinRenderingAllTiles()
+        self.topLevelOperatorView.FreezeCache.setValue(True)
+        self.update_button.setEnabled(True)
+        self.live_multicut_button.setEnabled(True)
 
     def create_multicut_disagreement_layer(self):
         ActionInfo = ShortcutManager.ActionInfo

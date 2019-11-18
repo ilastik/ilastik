@@ -105,3 +105,15 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
     def configure_operator_from_gui(self):
         EdgeTrainingGui.configure_operator_from_gui(self)
         MulticutGuiMixin.configure_operator_from_gui(self)
+
+    # TODO More elegant way to make multicut compute upon pressing Update button.
+    def _update_multicut_views(self):
+        """
+        Overrides from MulticutGuiMixin. FreezeClassifier is unfrozen
+        here, because the mixin should not be modified to require more
+        slots than the ones available from OpMulticut. which
+        FreezeClassifier is not).
+        """
+        self.topLevelOperatorView.FreezeClassifier.setValue(False)
+        super()._update_multicut_views()
+        self.topLevelOperatorView.FreezeClassifier.setValue(True)
