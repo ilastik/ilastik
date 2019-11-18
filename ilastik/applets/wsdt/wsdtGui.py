@@ -190,6 +190,15 @@ class WsdtGui(LayerViewerGui):
         drawer_layout.addLayout(control_layout("Show Debug Layers", enable_debug_box))
         self.enable_debug_box = enable_debug_box
 
+        invert_probabilities_box = QCheckBox()
+        invert_probabilities_box.setChecked(False)
+        configure_update_handlers(invert_probabilities_box.toggled, op.InvertPixelProbabilities)
+        drawer_layout.addLayout(control_layout("Invert Probabilities", invert_probabilities_box))
+        invert_probabilities_box.setToolTip(
+            "Optional utility that applies the transformation p -> 1-p on each pixel probability value."
+        )
+        self.invert_probabilities_box = invert_probabilities_box
+
         op.Superpixels.notifyReady(self.configure_gui_from_operator)
         op.Superpixels.notifyUnready(self.configure_gui_from_operator)
         self.__cleanup_fns.append(partial(op.Superpixels.unregisterReady, self.configure_gui_from_operator))
@@ -254,6 +263,7 @@ class WsdtGui(LayerViewerGui):
                 if self.channel_actions[ch].isChecked():
                     channel_selections.append(ch)
 
+            op.InvertPixelProbabilities.setValue(self.invert_probabilities_box.isChecked())
             op.ChannelSelections.setValue(channel_selections)
             op.Pmin.setValue(self.threshold_box.value())
             op.MinMembraneSize.setValue(self.membrane_size_box.value())

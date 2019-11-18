@@ -26,6 +26,7 @@ class OpWsdt(Operator):
     SigmaWeights = InputSlot(value=0.0)
     GroupSeeds = InputSlot(value=False)
     PreserveMembranePmaps = InputSlot(value=False)
+    InvertPixelProbabilities = InputSlot(value=False)
 
     EnableDebugOutputs = InputSlot(value=False)
 
@@ -38,6 +39,7 @@ class OpWsdt(Operator):
 
         self._opSelectedInput = OpSumChannels(parent=self)
         self._opSelectedInput.ChannelSelections.connect(self.ChannelSelections)
+        self._opSelectedInput.InvertPixelProbabilities.connect(self.InvertPixelProbabilities)
         self._opSelectedInput.Input.connect(self.Input)
 
     def setupOutputs(self):
@@ -97,6 +99,7 @@ class OpCachedWsdt(Operator):
     SigmaWeights = InputSlot(value=0.0)
     GroupSeeds = InputSlot(value=False)
     PreserveMembranePmaps = InputSlot(value=False)
+    InvertPixelProbabilities = InputSlot(value=False)
 
     EnableDebugOutputs = InputSlot(value=False)
 
@@ -130,6 +133,7 @@ class OpCachedWsdt(Operator):
         self._opWsdt.SigmaWeights.connect(self.SigmaWeights)
         self._opWsdt.GroupSeeds.connect(self.GroupSeeds)
         self._opWsdt.PreserveMembranePmaps.connect(self.PreserveMembranePmaps)
+        self._opWsdt.InvertPixelProbabilities.connect(self.InvertPixelProbabilities)
         self._opWsdt.EnableDebugOutputs.connect(self.EnableDebugOutputs)
 
         self._opCache = OpBlockedArrayCache(parent=self)
@@ -141,6 +145,7 @@ class OpCachedWsdt(Operator):
         self._opSelectedInput = OpSumChannels(parent=self)
         self._opSelectedInput.ChannelSelections.connect(self.ChannelSelections)
         self._opSelectedInput.Input.connect(self.Input)
+        self._opSelectedInput.InvertPixelProbabilities.connect(self.InvertPixelProbabilities)
         self.SelectedInput.connect(self._opSelectedInput.Output)
 
         self._opThreshold = OpPixelOperator(parent=self)
@@ -176,6 +181,7 @@ class OpCachedWsdt(Operator):
 class OpSumChannels(Operator):
     Input = InputSlot()
     ChannelSelections = InputSlot(value=[0])
+    InvertPixelProbabilities = InputSlot(value=False)
     Output = OutputSlot()
 
     def setupOutputs(self):
@@ -197,14 +203,18 @@ class OpSumChannels(Operator):
         if len(channel_indexes) == 1:
             # Fetch in-place
             self.Input(input_roi.start, input_roi.stop).writeInto(result).wait()
+
         else:
             fetched_data = self.Input(input_roi.start, input_roi.stop).wait()
             channel_indexes = channel_indexes - channel_indexes[0]
             selected_data = fetched_data[..., tuple(channel_indexes)]
-            selected_data.sum(axis=-1, out=result[..., 0])
+            result[..., 0] = selected_data.sum(axis=-1)
+
+        if self.InvertPixelProbabilities.value:
+            result[...,0] = 1 - result[...,0]
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot == self.ChannelSelections:
+        if slot == self.ChannelSelections or slot == self.InvertPixelProbabilities:
             # Everything is dirty
             self.Output.setDirty()
         elif slot == self.Input:
