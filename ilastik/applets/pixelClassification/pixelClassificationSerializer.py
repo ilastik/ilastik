@@ -24,15 +24,54 @@ import vigra
 from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
     SerialClassifierSlot,
-    BackwardsCompatibleSerialBlockSlot,
+    SerialBlockSlot,
     SerialListSlot,
     SerialClassifierFactorySlot,
     SerialPickleableSlot,
 )
+from lazyflow.slot import OutputSlot
+from typing import List, Tuple
+from ndstructs import Array5D, Slice5D
 
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+class BackwardsCompatibleLabelSerialBlockSlot(SerialBlockSlot):
+    def get_corresponding_input_image_slot(self, labelSlot: OutputSlot) -> OutputSlot:
+        labelMultislot = labelSlot.operator.inputs[labelSlot.name]
+        for subslotIndex in range(len(labelMultislot)):
+            if labelMultislot[subslotIndex] == labelSlot:
+                return labelSlot.operator.InputImages[subslotIndex]
+
+    def get_original_axiskeys(self, labelSlot: OutputSlot) -> str:
+        return "".join(self.get_corresponding_input_image_slot(labelSlot).meta.getOriginalAxisKeys())
+
+    def get_current_axiskeys(self, labelSlot: OutputSlot) -> str:
+        return "".join(self.get_corresponding_input_image_slot(labelSlot).meta.getAxisKeys())
+
+    def reshape_datablock_and_slicing_for_input(
+        self, block: numpy.ndarray, slicing: List[slice], slot: OutputSlot
+    ) -> Tuple[numpy.ndarray, List[slice]]:
+        """Reshapes a block of data and its corresponding slicing into the slot's current shape, so as to be
+        compatible with versions of ilastik that saved and loaded block slots in their original shape"""
+        original_axiskeys = self.get_original_axiskeys(slot)
+        current_axiskeys = self.get_current_axiskeys(slot)
+        fixed_slicing = Slice5D.zero(**dict(zip(original_axiskeys, slicing))).to_slices(current_axiskeys)
+        fixed_block = Array5D(block, original_axiskeys).raw(current_axiskeys)
+        return fixed_block, fixed_slicing
+
+    def reshape_datablock_and_slicing_for_output(
+        self, block: numpy.ndarray, slicing: List[slice], slot: OutputSlot
+    ) -> Tuple[numpy.ndarray, List[slice]]:
+        """Reshapes a block of data and its corresponding slicing into the slot's original shape, so as to be
+        compatible with versions of ilastik that saved and loaded block slots in their original shape"""
+        original_axiskeys = self.get_original_axiskeys(slot)
+        current_axiskeys = self.get_current_axiskeys(slot)
+        fixed_block = Array5D(block, current_axiskeys).raw(original_axiskeys)
+        fixed_slicing = Slice5D.zero(**dict(zip(current_axiskeys, slicing))).to_slices(original_axiskeys)
+        return fixed_block, fixed_slicing
 
 
 class PixelClassificationSerializer(AppletSerializer):
@@ -51,7 +90,7 @@ class PixelClassificationSerializer(AppletSerializer):
             SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
             SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
             SerialPickleableSlot(operator.Bookmarks, self.VERSION),
-            BackwardsCompatibleSerialBlockSlot(
+            BackwardsCompatibleLabelSerialBlockSlot(
                 operator.LabelImages,
                 operator.LabelInputs,
                 operator.NonzeroLabelBlocks,

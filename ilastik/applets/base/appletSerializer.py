@@ -46,7 +46,6 @@ import pickle as pickle
 from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
 from lazyflow.utility import timeLogged
 from lazyflow.slot import OutputSlot, Slot
-from ndstructs import Array5D, Slice5D
 
 #######################
 # Convenience methods #
@@ -620,34 +619,6 @@ class SerialBlockSlot(SerialSlot):
                     blockArray, slicing, self.inslot[index]
                 )
                 self.inslot[index][slicing] = blockArray
-
-
-class BackwardsCompatibleSerialBlockSlot(SerialBlockSlot):
-    def reshape_datablock_and_slicing_for_input(
-        self, block: numpy.ndarray, slicing: List[slice], slot: Slot
-    ) -> Tuple[numpy.ndarray, List[slice]]:
-        """Reshapes a block of data and its corresponding slicing into the slot's current shape, so as to be
-        compatible with versions of ilastik that saved and loaded block slots in their original shape"""
-        if slot.meta.axistags is None or len(slot.meta.getAxisKeys()) == len(block.shape):
-            return block, slicing
-        original_axiskeys = "".join(slot.meta.getOriginalAxisKeys())
-        current_axiskeys = "".join(slot.meta.getAxisKeys())
-        fixed_slicing = Slice5D.zero(**dict(zip(original_axiskeys, slicing))).to_slices(current_axiskeys)
-        fixed_block = Array5D(block, original_axiskeys).raw(current_axiskeys)
-        return fixed_block, fixed_slicing
-
-    def reshape_datablock_and_slicing_for_output(
-        self, block: numpy.ndarray, slicing: List[slice], slot: Slot
-    ) -> Tuple[numpy.ndarray, List[slice]]:
-        """Reshapes a block of data and its corresponding slicing into the slot's original shape, so as to be
-        compatible with versions of ilastik that saved and loaded block slots in their original shape"""
-        if slot.meta.axistags is None:
-            return block, slicing
-        current_axiskeys = "".join(slot.meta.getAxisKeys())
-        original_axiskeys = "".join(slot.meta.getOriginalAxisKeys())
-        fixed_block = Array5D(block, current_axiskeys).raw(original_axiskeys)
-        fixed_slicing = Slice5D.zero(**dict(zip(current_axiskeys, slicing))).to_slices(original_axiskeys)
-        return fixed_block, fixed_slicing
 
 
 class SerialHdf5BlockSlot(SerialBlockSlot):
