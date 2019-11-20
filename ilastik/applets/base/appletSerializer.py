@@ -568,7 +568,7 @@ class SerialBlockSlot(SerialSlot):
         return block, slicing
 
     def reshape_datablock_and_slicing_for_input(
-        self, block: numpy.ndarray, slicing: List[slice], slot: Slot
+        self, block: numpy.ndarray, slicing: List[slice], slot: Slot, project_file: h5py.File
     ) -> Tuple[numpy.ndarray, List[slice]]:
         """Reshapes a block of data and its corresponding slicing relative to the whole data into a shape that is 
            adequate for deserialization (in), i.e., the shape expected by the slot being deserialized"""
@@ -616,7 +616,7 @@ class SerialBlockSlot(SerialSlot):
                     blockArray = blockData[...]
 
                 blockArray, slicing = self.reshape_datablock_and_slicing_for_input(
-                    blockArray, slicing, self.inslot[index]
+                    blockArray, slicing, self.inslot[index], mygroup.file
                 )
                 self.inslot[index][slicing] = blockArray
 

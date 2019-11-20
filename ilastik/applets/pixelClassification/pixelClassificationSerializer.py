@@ -19,6 +19,8 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
+import re
+import h5py
 import numpy
 import vigra
 from ilastik.applets.base.appletSerializer import (
@@ -45,30 +47,47 @@ class BackwardsCompatibleLabelSerialBlockSlot(SerialBlockSlot):
             if labelMultislot[subslotIndex] == labelSlot:
                 return labelSlot.operator.InputImages[subslotIndex]
 
-    def get_original_axiskeys(self, labelSlot: OutputSlot) -> str:
+    def get_input_image_original_axiskeys(self, labelSlot: OutputSlot) -> str:
         return "".join(self.get_corresponding_input_image_slot(labelSlot).meta.getOriginalAxisKeys())
 
-    def get_current_axiskeys(self, labelSlot: OutputSlot) -> str:
+    def get_input_image_current_axiskeys(self, labelSlot: OutputSlot) -> str:
         return "".join(self.get_corresponding_input_image_slot(labelSlot).meta.getAxisKeys())
 
     def reshape_datablock_and_slicing_for_input(
-        self, block: numpy.ndarray, slicing: List[slice], slot: OutputSlot
+        self, block: numpy.ndarray, slicing: List[slice], slot: OutputSlot, project_file: h5py.File
     ) -> Tuple[numpy.ndarray, List[slice]]:
         """Reshapes a block of data and its corresponding slicing into the slot's current shape, so as to be
-        compatible with versions of ilastik that saved and loaded block slots in their original shape"""
-        original_axiskeys = self.get_original_axiskeys(slot)
-        current_axiskeys = self.get_current_axiskeys(slot)
-        fixed_slicing = Slice5D.zero(**dict(zip(original_axiskeys, slicing))).to_slices(current_axiskeys)
-        fixed_block = Array5D(block, original_axiskeys).raw(current_axiskeys)
+        compatible with versions of ilastik that saved and loaded block slots in their original shape
+
+        Checks for version 1.3.3 and 1.3.3post1 because those were the versions that saved labels in 5D
+        """
+        project_file_version = project_file["/ilastikVersion"][()].decode("utf-8")
+        project_version_parts = re.compile(r"\.|post").split(project_file_version)
+        numeric_version = tuple(int(part) for part in project_version_parts)
+        workflow_name = project_file["/workflowName"][()].decode("utf-8")
+        pixel_plus_object_workflow_name = "Object Classification (from pixel classification)"
+
+        current_axiskeys = self.get_input_image_current_axiskeys(slot)
+        if (1, 3, 3) <= numeric_version < (1, 3, 3, 2) and workflow_name == pixel_plus_object_workflow_name:
+            saved_data_axiskeys = current_axiskeys
+            self.dirty = True
+        else:
+            saved_data_axiskeys = self.get_input_image_original_axiskeys(slot)
+
+        fixed_slicing = Slice5D.zero(**dict(zip(saved_data_axiskeys, slicing))).to_slices(current_axiskeys)
+        fixed_block = Array5D(block, saved_data_axiskeys).raw(current_axiskeys)
         return fixed_block, fixed_slicing
 
     def reshape_datablock_and_slicing_for_output(
         self, block: numpy.ndarray, slicing: List[slice], slot: OutputSlot
     ) -> Tuple[numpy.ndarray, List[slice]]:
         """Reshapes a block of data and its corresponding slicing into the slot's original shape, so as to be
-        compatible with versions of ilastik that saved and loaded block slots in their original shape"""
-        original_axiskeys = self.get_original_axiskeys(slot)
-        current_axiskeys = self.get_current_axiskeys(slot)
+        compatible with versions of ilastik that saved and loaded block slots in their original shape
+
+        Always save using original shape to be backwards compatible with 1.3.2
+        """
+        original_axiskeys = self.get_input_image_original_axiskeys(slot)
+        current_axiskeys = self.get_input_image_current_axiskeys(slot)
         fixed_block = Array5D(block, current_axiskeys).raw(original_axiskeys)
         fixed_slicing = Slice5D.zero(**dict(zip(current_axiskeys, slicing))).to_slices(original_axiskeys)
         return fixed_block, fixed_slicing
