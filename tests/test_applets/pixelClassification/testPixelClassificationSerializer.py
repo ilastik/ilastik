@@ -47,6 +47,7 @@ class OpMockPixelClassifier(Operator):
     name = "OpMockPixelClassifier"
 
     LabelInputs = InputSlot(optional=True, level=1)  # Input for providing label data from an external source
+    InputImages = InputSlot(optional=True, level=1)  # Original input data.  Used for display only.
 
     PredictionsFromDisk = InputSlot(optional=True, level=1)  # TODO: Actually use this input for something
 
@@ -101,6 +102,7 @@ class OpMockPixelClassifier(Operator):
         self.LabelImages.resize(numImages)
         self.PredictionProbabilities.resize(numImages)
         self.opClassifier.Images.resize(numImages)
+        self.InputImages.resize(numImages)
 
         for i in range(numImages):
             self._data.append(numpy.zeros(self.dataShape))
@@ -116,8 +118,10 @@ class OpMockPixelClassifier(Operator):
             self.opClassifier.Images[i].setValue(vigra.taggedView(numpy.random.random(self.dataShape), "txyzc"))
 
             self.LabelImages[i].meta.shape = self.dataShape
+            self.InputImages[i].meta.shape = self.dataShape
             self.LabelImages[i].meta.dtype = numpy.float64
             self.LabelImages[i].meta.axistags = self.opClassifier.Images[i].meta.axistags
+            self.InputImages[i].meta.axistags = self.opClassifier.Images[i].meta.axistags
 
         self.Classifier.connect(self.opClassifier.Classifier)
 
