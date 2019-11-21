@@ -19,10 +19,11 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-import re
 import h5py
+from pkg_resources import parse_version
 import numpy
 import vigra
+from ilastik import Project
 from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
     SerialClassifierSlot,
@@ -53,27 +54,34 @@ class BackwardsCompatibleLabelSerialBlockSlot(SerialBlockSlot):
     def get_input_image_current_axiskeys(self, labelSlot: OutputSlot) -> str:
         return "".join(self.get_corresponding_input_image_slot(labelSlot).meta.getAxisKeys())
 
+    def deserialization_requires_data_conversion(self, project) -> bool:
+        return self.labels_were_saved_in_forced_canonical_order(project)
+
+    def labels_were_saved_in_forced_canonical_order(self, project: Project) -> bool:
+        pixel_plus_object_workflow_name = "Object Classification (from pixel classification)"
+        v1_3_3 = parse_version("1.3.3")
+        v1_3_3post2 = parse_version("1.3.3post2")
+
+        return (
+            v1_3_3 <= project.ilastikVersion < v1_3_3post2 and project.workflowName == pixel_plus_object_workflow_name
+        )
+
+    def get_saved_data_axiskeys(self, slot: OutputSlot, project: Project) -> str:
+        if self.labels_were_saved_in_forced_canonical_order(project):
+            return "txyzc"
+        else:
+            return self.get_input_image_original_axiskeys(slot)
+
     def reshape_datablock_and_slicing_for_input(
-        self, block: numpy.ndarray, slicing: List[slice], slot: OutputSlot, project_file: h5py.File
+        self, block: numpy.ndarray, slicing: List[slice], slot: OutputSlot, project: Project
     ) -> Tuple[numpy.ndarray, List[slice]]:
         """Reshapes a block of data and its corresponding slicing into the slot's current shape, so as to be
         compatible with versions of ilastik that saved and loaded block slots in their original shape
 
         Checks for version 1.3.3 and 1.3.3post1 because those were the versions that saved labels in 5D
         """
-        project_file_version = project_file["/ilastikVersion"][()].decode("utf-8")
-        project_version_parts = re.compile(r"\.|post").split(project_file_version)
-        numeric_version = tuple(int(part) for part in project_version_parts)
-        workflow_name = project_file["/workflowName"][()].decode("utf-8")
-        pixel_plus_object_workflow_name = "Object Classification (from pixel classification)"
-
         current_axiskeys = self.get_input_image_current_axiskeys(slot)
-        if (1, 3, 3) <= numeric_version < (1, 3, 3, 2) and workflow_name == pixel_plus_object_workflow_name:
-            saved_data_axiskeys = current_axiskeys
-            self.dirty = True
-        else:
-            saved_data_axiskeys = self.get_input_image_original_axiskeys(slot)
-
+        saved_data_axiskeys = self.get_saved_data_axiskeys(slot, project)
         fixed_slicing = Slice5D.zero(**dict(zip(saved_data_axiskeys, slicing))).to_slices(current_axiskeys)
         fixed_block = Array5D(block, saved_data_axiskeys).raw(current_axiskeys)
         return fixed_block, fixed_slicing
@@ -91,6 +99,12 @@ class BackwardsCompatibleLabelSerialBlockSlot(SerialBlockSlot):
         fixed_block = Array5D(block, current_axiskeys).raw(original_axiskeys)
         fixed_slicing = Slice5D.zero(**dict(zip(current_axiskeys, slicing))).to_slices(original_axiskeys)
         return fixed_block, fixed_slicing
+
+    def deserialize(self, group):
+        super().deserialize(group)
+        if self.deserialization_requires_data_conversion(Project(group.file)):
+            self.ignoreDirty = False
+            self.dirty = True
 
 
 class PixelClassificationSerializer(AppletSerializer):

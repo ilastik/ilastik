@@ -30,6 +30,7 @@ import tempfile
 logger = logging.getLogger(__name__)
 
 import ilastik
+from ilastik import Project
 from ilastik import isVersionCompatible
 from ilastik.utility import log_exception
 from ilastik.workflow import getWorkflowFromName
@@ -282,6 +283,7 @@ class ProjectManager(object):
                     aplt.progressSignal(0)
         try:
             # Applet serializable items are given the whole file (root group) for now
+            file_changed = False
             for aplt in self._applets:
                 for serializer in aplt.dataSerializers:
                     assert (
@@ -289,6 +291,10 @@ class ProjectManager(object):
                     ), "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
                     if force_all_save or serializer.isDirty() or serializer.shouldSerialize(self.currentProjectFile):
                         serializer.serializeToHdf5(self.currentProjectFile, self.currentProjectPath)
+                        file_changed = True
+
+            if file_changed:
+                Project(self.currentProjectFile).update_version()
 
             # save the current workflow as standard workflow
             if "workflowName" in self.currentProjectFile:

@@ -34,6 +34,7 @@ from ilastik.config import cfg as ilastik_config
 from lazyflow.utility.orderedSignal import OrderedSignal
 from ilastik.utility.maybe import maybe
 from ilastik.utility.commandLineProcessing import convertStringToList
+from ilastik import Project
 import os
 import sys
 import re
@@ -568,7 +569,7 @@ class SerialBlockSlot(SerialSlot):
         return block, slicing
 
     def reshape_datablock_and_slicing_for_input(
-        self, block: numpy.ndarray, slicing: List[slice], slot: Slot, project_file: h5py.File
+        self, block: numpy.ndarray, slicing: List[slice], slot: Slot, project: Project
     ) -> Tuple[numpy.ndarray, List[slice]]:
         """Reshapes a block of data and its corresponding slicing relative to the whole data into a shape that is 
            adequate for deserialization (in), i.e., the shape expected by the slot being deserialized"""
@@ -616,7 +617,7 @@ class SerialBlockSlot(SerialSlot):
                     blockArray = blockData[...]
 
                 blockArray, slicing = self.reshape_datablock_and_slicing_for_input(
-                    blockArray, slicing, self.inslot[index], mygroup.file
+                    blockArray, slicing, self.inslot[index], Project(mygroup.file)
                 )
                 self.inslot[index][slicing] = blockArray
 

@@ -27,6 +27,8 @@ import re
 ################################
 import os
 from . import expose_submodules
+import h5py
+from pkg_resources import parse_version
 
 this_file = os.path.abspath(__file__)
 this_file = os.path.realpath(this_file)
@@ -49,6 +51,28 @@ def _format_version(t):
 
 __version_info__ = (1, 3, "3post2")
 __version__ = _format_version(__version_info__)
+
+
+class Project:
+    ILASTIK_VERSION = "/ilastikVersion"
+    WORKFLOW_NAME = "/workflowName"
+    UPDATED_TIME = "/time"
+
+    def __init__(self, project_file: h5py.File):
+        self.file = project_file
+
+    @property
+    def ilastikVersion(self):
+        version_string = self.file[self.ILASTIK_VERSION][()].decode("utf-8")
+        return parse_version(version_string)
+
+    @property
+    def workflowName(self):
+        return self.file[self.WORKFLOW_NAME][()].decode("utf-8")
+
+    def update_version(self):
+        del self.file[self.ILASTIK_VERSION]
+        self.file.create_dataset(self.ILASTIK_VERSION, data=__version__.encode("utf-8"))
 
 
 def convertVersion(vstring):
