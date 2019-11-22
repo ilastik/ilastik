@@ -46,6 +46,7 @@ from volumina.utility import ShortcutManager
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.multicut.opMulticut import OpMulticutAgglomerator, AVAILABLE_SOLVER_NAMES, DEFAULT_SOLVER_NAME
+from ilastik.config import cfg as ilastik_config
 
 from lazyflow.request import Request
 
@@ -115,8 +116,26 @@ class MulticutGuiMixin(object):
         )
         configure_update_handlers(beta_box.valueChanged, op.Beta)
         beta_layout = control_layout("Beta", beta_box)
-        drawer_layout.addLayout(beta_layout)
         self.beta_box = beta_box
+
+        # Beta parameter only modifiable in debug mode
+        dbg = ilastik_config.getboolean("ilastik", "debug")
+        if dbg:
+            drawer_layout.addLayout(beta_layout)
+
+        # Probability Threshold - above which an edge is 'on'
+        probability_threshold_box = QDoubleSpinBox(
+            decimals=2,
+            minimum=0.01,
+            maximum=0.99,
+            singleStep=0.1,
+            toolTip="Probability threshold for an edge to be 'ON'",
+        )
+        configure_update_handlers(probability_threshold_box.valueChanged, op.ProbabilityThreshold)
+        probability_threshold_layout = control_layout("Threshold", probability_threshold_box)
+        drawer_layout.addLayout(probability_threshold_layout)
+        drawer_layout.addSpacerItem(QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding))
+        self.probability_threshold_box = probability_threshold_box
 
         # Solver
         solver_name_combo = QComboBox(
@@ -274,6 +293,7 @@ class MulticutGuiMixin(object):
             op = self.__topLevelOperatorView
             self.update_button.setEnabled(op.FreezeCache.value)
             self.live_multicut_button.setChecked(not op.FreezeCache.value)
+            self.probability_threshold_box.setValue(op.ProbabilityThreshold.value)
             if op.FreezeCache.value:
                 self.live_multicut_button.setIcon(QIcon(ilastikIcons.Play))
             else:
@@ -298,6 +318,7 @@ class MulticutGuiMixin(object):
         with self.set_updating():
             op = self.__topLevelOperatorView
             op.Beta.setValue(self.beta_box.value())
+            op.ProbabilityThreshold.setValue(self.probability_threshold_box.value())
             op.SolverName.setValue(str(self.solver_name_combo.currentText()))
             op.FreezeCache.setValue(not self.live_multicut_button.isChecked())
 

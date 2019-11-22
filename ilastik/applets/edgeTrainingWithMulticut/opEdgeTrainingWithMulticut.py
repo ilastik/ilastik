@@ -11,6 +11,7 @@ class OpEdgeTrainingWithMulticut(Operator):
     FeatureNames = InputSlot(value=OpEdgeTraining.DEFAULT_FEATURES)
     FreezeClassifier = InputSlot(value=True)
     TrainRandomForest = InputSlot(value=False)
+    ProbabilityThreshold = InputSlot(value=0.5)
 
     # Multicut parameters
     Beta = InputSlot(value=0.5)
@@ -68,6 +69,7 @@ class OpEdgeTrainingWithMulticut(Operator):
         opMulticut.Rag.connect(opEdgeTraining.Rag)
         opMulticut.EdgeProbabilities.connect(opEdgeTraining.EdgeProbabilities)
         opMulticut.EdgeProbabilitiesDict.connect(opEdgeTraining.EdgeProbabilitiesDict)
+        opMulticut.ProbabilityThreshold.connect(self.ProbabilityThreshold)
 
         self.Output.connect(opMulticut.Output)
         self.EdgeLabelDisagreementDict.connect(opMulticut.EdgeLabelDisagreementDict)
