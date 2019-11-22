@@ -101,6 +101,7 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
     def configure_gui_from_operator(self, *args):
         EdgeTrainingGui.configure_gui_from_operator(self)
         MulticutGuiMixin.configure_gui_from_operator(self)
+        self.train_edge_clf_box.setChecked(self.topLevelOperatorView.TrainRandomForest.value)
 
     def configure_operator_from_gui(self):
         EdgeTrainingGui.configure_operator_from_gui(self)
