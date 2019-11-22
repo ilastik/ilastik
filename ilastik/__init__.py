@@ -29,6 +29,7 @@ import os
 from . import expose_submodules
 import h5py
 import time
+from typing import Optional
 from pkg_resources import parse_version
 
 this_file = os.path.abspath(__file__)
@@ -65,12 +66,8 @@ class Project:
     def close(self):
         self.file.close()
 
-    def populate_from(self, source: "Project", applets):
-        source.file.copy(self.WORKFLOW_NAME, self.file["/"])
-        top_group_names = (serializer.topGroupName for app in applets for serializer in app.dataSerializers)
-        for top_group_name in top_group_names:
-            if top_group_name in source.file.keys():
-                source.file.copy(top_group_name, self.file["/"])
+    def flush(self):
+        self.file.flush()
 
     @property
     def ilastikVersion(self):
@@ -78,8 +75,15 @@ class Project:
         return parse_version(version_string)
 
     @property
-    def workflowName(self):
+    def workflowName(self) -> Optional[str]:
+        if self.WORKFLOW_NAME not in self.file:
+            return None
         return self.file[self.WORKFLOW_NAME][()].decode("utf-8")
+
+    def updateWorkflowName(self, workflowName: str):
+        if self.WORKFLOW_NAME in self.file:
+            del self.file[self.WORKFLOW_NAME]
+        self.file.create_dataset(self.WORKFLOW_NAME, data=workflowName.encode("utf-8"))
 
     def update_version(self):
         del self.file[self.ILASTIK_VERSION]
