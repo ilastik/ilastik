@@ -502,39 +502,14 @@ class ProjectManager(object):
         newProjectFile - An hdf5 handle to a new .ilp to load data into (must be open already)
         newProjectFilePath - The path to the new .ilp we're loading.
         """
-        importedFilePath = os.path.abspath(importedFilePath)
-
-        # Open and load the original project file
-        try:
-            importedFile = h5py.File(importedFilePath, "r")
-        except:
-            logger.error("Error opening file: " + importedFilePath)
-            raise
-
-        # Load the imported project into the workflow state
-        self._loadProject(importedFile, importedFilePath, True)
-
-        # Export the current workflow state to the new file.
-        # (Somewhat hacky: We temporarily swap the new file object as our current one during the save.)
-        origProjectFile = self.currentProjectFile
-        self.currentProjectFile = newProjectFile
-        self.currentProjectPath = newProjectFilePath
-        self.currentProjectIsReadOnly = False
-        self.saveProject(force_all_save=True)
-        self.currentProjectFile = origProjectFile
-
-        # Close the original project
-        self._closeCurrentProject()
-
-        self.currentProjectFile = None
-
-        # Create brand new workflow to load from the new project file.
+        sourceProject = Project(h5py.File(importedFilePath, "r"))
         self.workflow = self._workflowClass(
             self._shell, self._headless, self._workflow_cmdline_args, self._project_creation_args
         )
-
-        # Load the new file.
-        self._loadProject(newProjectFile, newProjectFilePath, False)
+        newProject = Project(newProjectFile)
+        newProject.populate_from(sourceProject, self._applets)
+        sourceProject.close()
+        self._loadProject(newProject.file, newProjectFilePath, readOnly=False)
 
     def _closeCurrentProject(self):
         if self.closed:

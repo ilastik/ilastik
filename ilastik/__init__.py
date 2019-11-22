@@ -28,6 +28,7 @@ import re
 import os
 from . import expose_submodules
 import h5py
+import time
 from pkg_resources import parse_version
 
 this_file = os.path.abspath(__file__)
@@ -60,6 +61,16 @@ class Project:
 
     def __init__(self, project_file: h5py.File):
         self.file = project_file
+
+    def close(self):
+        self.file.close()
+
+    def populate_from(self, source: "Project", applets):
+        source.file.copy(self.WORKFLOW_NAME, self.file["/"])
+        top_group_names = (serializer.topGroupName for app in applets for serializer in app.dataSerializers)
+        for top_group_name in top_group_names:
+            if top_group_name in source.file.keys():
+                source.file.copy(top_group_name, self.file["/"])
 
     @property
     def ilastikVersion(self):
