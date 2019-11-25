@@ -24,6 +24,7 @@ import copy
 import platform
 import h5py
 import logging
+import shutil
 import time
 import tempfile
 
@@ -294,7 +295,7 @@ class ProjectManager(object):
                         file_changed = True
 
             if file_changed:
-                Project(self.currentProjectFile).update_version()
+                Project(self.currentProjectFile).updateVersion()
 
             # save the current workflow as standard workflow
             if "workflowName" in self.currentProjectFile:
@@ -463,13 +464,6 @@ class ProjectManager(object):
                 logger.debug('Deserializing applet "{}" took {} seconds'.format(aplt.name, timer.seconds()))
 
             self.closed = False
-
-            # if we've imported from a different workflow, the workflowName property might not match the current
-            # workflow. This ensures that we don't end up with an inconsistent file on disk.
-            currentProject = Project(self.currentProjectFile)
-            currentProject.updateWorkflowName(self.workflow.workflowName)
-            currentProject.flush()
-
             # Call the workflow's custom post-load initialization (if any)
             self.workflow.onProjectLoaded(self)
 
@@ -513,16 +507,29 @@ class ProjectManager(object):
         self.workflow = self._workflowClass(
             self._shell, self._headless, self._workflow_cmdline_args, self._project_creation_args
         )
-        for app in self._applets:
-            for serializer in app.dataSerializers:
-                if serializer.topGroupName in importedFile.keys():
-                    importedFile.copy(serializer.topGroupName, newProjectFile["/"])
-        # We keep the original workflow name because the deserializing steps can take different actions depending
-        # on the original workflow name. After a project is loaded, its workflow name should be updated with the
-        # correct workflow name
-        importedFile.copy(Project.WORKFLOW_NAME, newProjectFile["/"])
-        importedFile.close()
-        self._loadProject(newProjectFile, newProjectFilePath, readOnly=False)
+        self.currentProjectFile = newProjectFile
+        self.currentProjectPath = newProjectFilePath
+        self.currentProjectIsReadOnly = False
+        try:
+            serializers = [serializer for aplt in self._applets for serializer in aplt.dataSerializers]
+            newProject = Project(newProjectFile)
+            newProject.populateFrom(importedFile, [s.topGroupName for s in serializers])
+
+            for serializer in serializers:
+                serializer.ignoreDirty = True
+                serializer.deserializeFromHdf5(self.currentProjectFile, newProjectFilePath, self._headless)
+                serializer.ignoreDirty = False
+            self.closed = False
+
+            newProject.updateWorkflowName(self.workflow.workflowName)
+            newProject.updateVersion()
+            newProject.flush()
+
+            self.workflow.onProjectLoaded(self)
+            self.workflow.handleAppletStateUpdateRequested()
+        except:
+            self._closeCurrentProject()
+            raise
 
     def _closeCurrentProject(self):
         if self.closed:

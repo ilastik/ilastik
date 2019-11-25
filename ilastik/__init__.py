@@ -29,7 +29,7 @@ import os
 from . import expose_submodules
 import h5py
 import time
-from typing import Optional
+from typing import Optional, Iterable, List
 from pkg_resources import parse_version
 
 this_file = os.path.abspath(__file__)
@@ -60,6 +60,8 @@ class Project:
     WORKFLOW_NAME = "/workflowName"
     UPDATED_TIME = "/time"
 
+    BASE_KEYS = [ILASTIK_VERSION, WORKFLOW_NAME, UPDATED_TIME]
+
     def __init__(self, project_file: h5py.File):
         self.file = project_file
 
@@ -69,25 +71,42 @@ class Project:
     def flush(self):
         self.file.flush()
 
+    def populateFrom(self, importedFile: h5py.File, topGroupKeys: List[str]):
+        # We copy ilastikVersion as well as workflowName because that can influence the way in which the deserializers
+        # interpret the imported data
+        for key in topGroupKeys + self.BASE_KEYS:
+            if key in importedFile.keys():
+                self.clearValue(key)
+                importedFile.copy(key, self.file["/"])
+
+    def clearValue(self, key: str):
+        if key in self.file.keys():
+            del self.file[key]
+
+    def _updateValue(self, key: str, value):
+        if key in self.file:
+            del self.file[key]
+        self.file.create_dataset(key, data=value)
+
+    def _getString(self, key: str) -> Optional[str]:
+        if key not in self.file:
+            return None
+        return self.file[key][()].decode("utf-8")
+
     @property
-    def ilastikVersion(self):
-        version_string = self.file[self.ILASTIK_VERSION][()].decode("utf-8")
-        return parse_version(version_string)
+    def ilastikVersion(self) -> Optional["Version"]:
+        version_string = self._getString(self.ILASTIK_VERSION)
+        return version_string if version_string is None else parse_version(version_string)
 
     @property
     def workflowName(self) -> Optional[str]:
-        if self.WORKFLOW_NAME not in self.file:
-            return None
-        return self.file[self.WORKFLOW_NAME][()].decode("utf-8")
+        return self._getString(self.WORKFLOW_NAME)
 
     def updateWorkflowName(self, workflowName: str):
-        if self.WORKFLOW_NAME in self.file:
-            del self.file[self.WORKFLOW_NAME]
-        self.file.create_dataset(self.WORKFLOW_NAME, data=workflowName.encode("utf-8"))
+        self._updateValue(self.WORKFLOW_NAME, workflowName.encode("utf-8"))
 
-    def update_version(self):
-        del self.file[self.ILASTIK_VERSION]
-        self.file.create_dataset(self.ILASTIK_VERSION, data=__version__.encode("utf-8"))
+    def updateVersion(self, value=__version__):
+        self._updateValue(self.ILASTIK_VERSION, str(value).encode("utf-8"))
 
 
 def convertVersion(vstring):
