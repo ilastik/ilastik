@@ -42,10 +42,7 @@ logger = logging.getLogger(__name__)
 
 class BackwardsCompatibleLabelSerialBlockSlot(SerialBlockSlot):
     def get_corresponding_input_image_slot(self, labelSlot: OutputSlot) -> OutputSlot:
-        labelMultislot = labelSlot.operator.inputs[labelSlot.name]
-        for subslotIndex in range(len(labelMultislot)):
-            if labelMultislot[subslotIndex] == labelSlot:
-                return labelSlot.operator.InputImages[subslotIndex]
+        return labelSlot.operator.InputImages[labelSlot.subindex]
 
     def get_input_image_original_axiskeys(self, labelSlot: OutputSlot) -> str:
         return "".join(self.get_corresponding_input_image_slot(labelSlot).meta.getOriginalAxisKeys())
