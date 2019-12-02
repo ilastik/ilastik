@@ -19,7 +19,6 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-import h5py
 from pkg_resources import parse_version
 import numpy
 import vigra

@@ -24,7 +24,6 @@ import copy
 import platform
 import h5py
 import logging
-import shutil
 import time
 import tempfile
 
