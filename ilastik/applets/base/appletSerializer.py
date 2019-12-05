@@ -24,6 +24,7 @@ standard_library.install_aliases()
 from builtins import range
 import logging
 from future.utils import with_metaclass
+from typing import Tuple, List
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ from ilastik.config import cfg as ilastik_config
 from lazyflow.utility.orderedSignal import OrderedSignal
 from ilastik.utility.maybe import maybe
 from ilastik.utility.commandLineProcessing import convertStringToList
+from ilastik import Project
 import os
 import sys
 import re
@@ -44,7 +46,7 @@ import pickle as pickle
 
 from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
 from lazyflow.utility import timeLogged
-from lazyflow.slot import OutputSlot
+from lazyflow.slot import OutputSlot, Slot
 
 #######################
 # Convenience methods #
@@ -419,7 +421,7 @@ class SerialBlockSlot(SerialSlot):
 
         """
         assert isinstance(slot, OutputSlot), "slot is of wrong type: '{}' is not an OutputSlot".format(slot.name)
-        super(SerialBlockSlot, self).__init__(slot, inslot, name, subname, default, depends, selfdepends)
+        super().__init__(slot, inslot, name, subname, default, depends, selfdepends)
         self.blockslot = blockslot
         self._bind(slot)
         self._shrink_to_bb = shrink_to_bb
@@ -537,6 +539,7 @@ class SerialBlockSlot(SerialSlot):
                         slicing = roiToSlice(*bounding_box_roi)
                         block = block[block_slicing]
 
+                block, slicing = self.reshape_datablock_and_slicing_for_output(block, slicing, slot[index])
                 # If we have a masked array, convert it to a structured array so that h5py can handle it.
                 if slot[index].meta.has_mask:
                     mygroup.attrs["meta.has_mask"] = True
@@ -557,6 +560,20 @@ class SerialBlockSlot(SerialSlot):
                 else:
                     subgroup.create_dataset(blockName, data=block)
                     subgroup[blockName].attrs["blockSlice"] = slicingToString(slicing)
+
+    def reshape_datablock_and_slicing_for_output(
+        self, block: numpy.ndarray, slicing: List[slice], slot: Slot
+    ) -> Tuple[numpy.ndarray, List[slice]]:
+        """Reshapes a block of data and its corresponding slicing relative to the whole data into a shape that is
+           adequate for serialization (out)"""
+        return block, slicing
+
+    def reshape_datablock_and_slicing_for_input(
+        self, block: numpy.ndarray, slicing: List[slice], slot: Slot, project: Project
+    ) -> Tuple[numpy.ndarray, List[slice]]:
+        """Reshapes a block of data and its corresponding slicing relative to the whole data into a shape that is 
+           adequate for deserialization (in), i.e., the shape expected by the slot being deserialized"""
+        return block, slicing
 
     @timeLogged(logger, logging.DEBUG)
     def _deserialize(self, mygroup, slot):
@@ -598,6 +615,10 @@ class SerialBlockSlot(SerialSlot):
                     )
                 else:
                     blockArray = blockData[...]
+
+                blockArray, slicing = self.reshape_datablock_and_slicing_for_input(
+                    blockArray, slicing, self.inslot[index], Project(mygroup.file)
+                )
                 self.inslot[index][slicing] = blockArray
 
 

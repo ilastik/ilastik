@@ -19,8 +19,10 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
+from pkg_resources import parse_version
 import numpy
 import vigra
+from ilastik import Project
 from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
     SerialClassifierSlot,
@@ -29,10 +31,76 @@ from ilastik.applets.base.appletSerializer import (
     SerialClassifierFactorySlot,
     SerialPickleableSlot,
 )
+from lazyflow.slot import OutputSlot
+from typing import List, Tuple
+from ndstructs import Array5D, Slice5D
 
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+class BackwardsCompatibleLabelSerialBlockSlot(SerialBlockSlot):
+    def get_corresponding_input_image_slot(self, labelSlot: OutputSlot) -> OutputSlot:
+        return labelSlot.operator.InputImages[labelSlot.subindex]
+
+    def get_input_image_original_axiskeys(self, labelSlot: OutputSlot) -> str:
+        return "".join(self.get_corresponding_input_image_slot(labelSlot).meta.getOriginalAxisKeys())
+
+    def get_input_image_current_axiskeys(self, labelSlot: OutputSlot) -> str:
+        return "".join(self.get_corresponding_input_image_slot(labelSlot).meta.getAxisKeys())
+
+    def deserialization_requires_data_conversion(self, project) -> bool:
+        return self.labels_were_saved_in_forced_canonical_order(project)
+
+    def labels_were_saved_in_forced_canonical_order(self, project: Project) -> bool:
+        pixel_plus_object_workflow_name = "Object Classification (from pixel classification)"
+        v1_3_3 = parse_version("1.3.3")
+        v1_3_3post2 = parse_version("1.3.3post2")
+
+        return (
+            v1_3_3 <= project.ilastikVersion < v1_3_3post2 and project.workflowName == pixel_plus_object_workflow_name
+        )
+
+    def get_saved_data_axiskeys(self, slot: OutputSlot, project: Project) -> str:
+        if self.labels_were_saved_in_forced_canonical_order(project):
+            return "txyzc"
+        else:
+            return self.get_input_image_original_axiskeys(slot)
+
+    def reshape_datablock_and_slicing_for_input(
+        self, block: numpy.ndarray, slicing: List[slice], slot: OutputSlot, project: Project
+    ) -> Tuple[numpy.ndarray, List[slice]]:
+        """Reshapes a block of data and its corresponding slicing into the slot's current shape, so as to be
+        compatible with versions of ilastik that saved and loaded block slots in their original shape
+
+        Checks for version 1.3.3 and 1.3.3post1 because those were the versions that saved labels in 5D
+        """
+        current_axiskeys = self.get_input_image_current_axiskeys(slot)
+        saved_data_axiskeys = self.get_saved_data_axiskeys(slot, project)
+        fixed_slicing = Slice5D.zero(**dict(zip(saved_data_axiskeys, slicing))).to_slices(current_axiskeys)
+        fixed_block = Array5D(block, saved_data_axiskeys).raw(current_axiskeys)
+        return fixed_block, fixed_slicing
+
+    def reshape_datablock_and_slicing_for_output(
+        self, block: numpy.ndarray, slicing: List[slice], slot: OutputSlot
+    ) -> Tuple[numpy.ndarray, List[slice]]:
+        """Reshapes a block of data and its corresponding slicing into the slot's original shape, so as to be
+        compatible with versions of ilastik that saved and loaded block slots in their original shape
+
+        Always save using original shape to be backwards compatible with 1.3.2
+        """
+        original_axiskeys = self.get_input_image_original_axiskeys(slot)
+        current_axiskeys = self.get_input_image_current_axiskeys(slot)
+        fixed_block = Array5D(block, current_axiskeys).raw(original_axiskeys)
+        fixed_slicing = Slice5D.zero(**dict(zip(current_axiskeys, slicing))).to_slices(original_axiskeys)
+        return fixed_block, fixed_slicing
+
+    def deserialize(self, group):
+        super().deserialize(group)
+        if self.deserialization_requires_data_conversion(Project(group.file)):
+            self.ignoreDirty = False
+            self.dirty = True
 
 
 class PixelClassificationSerializer(AppletSerializer):
@@ -51,7 +119,7 @@ class PixelClassificationSerializer(AppletSerializer):
             SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
             SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
             SerialPickleableSlot(operator.Bookmarks, self.VERSION),
-            SerialBlockSlot(
+            BackwardsCompatibleLabelSerialBlockSlot(
                 operator.LabelImages,
                 operator.LabelInputs,
                 operator.NonzeroLabelBlocks,
