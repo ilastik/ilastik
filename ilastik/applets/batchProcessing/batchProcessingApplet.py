@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 import weakref
 from collections import OrderedDict
 from typing import Callable, Dict, Hashable, List, Optional, Union, Mapping, Iterable
@@ -6,6 +7,7 @@ import numpy
 import vigra
 from vigra.vigranumpycore import AxisTags
 from lazyflow.request import Request
+from ndstructs import Shape5D
 from functools import partial
 
 from ilastik.applets.base.applet import Applet
@@ -53,7 +55,14 @@ class BatchProcessingApplet(Applet):
 
     def parse_known_cmdline_args(self, cmdline_args):
         # We use the same parser as the DataSelectionApplet
-        parsed_args, unused_args = DataSelectionApplet.parse_known_cmdline_args(cmdline_args, self.role_names)
+        parser = DataSelectionApplet.get_arg_parser(self.role_names)
+        parser.add_argument(
+            "--distributed",
+            help="Generate only command lines to run ilastik distributed",
+            action="store_true",
+            default=False,
+        )
+        parsed_args, unused_args = parser.parse_known_args(cmdline_args)
         return parsed_args, unused_args
 
     def run_export_from_parsed_args(self, parsed_args):
@@ -61,13 +70,19 @@ class BatchProcessingApplet(Applet):
         Run the export for each dataset listed in parsed_args (we use the same parser as DataSelectionApplet).
         """
         role_path_dict = self.dataSelectionApplet.role_paths_from_parsed_args(parsed_args)
-        return self.run_export(role_path_dict, parsed_args.input_axes, sequence_axis=parsed_args.stack_along)
+        return self.run_export(
+            role_path_dict,
+            input_axes=parsed_args.input_axes,
+            sequence_axis=parsed_args.stack_along,
+            distributed=parsed_args.distributed,
+        )
 
     def run_export(
         self,
         role_data_dict: Mapping[Hashable, Iterable[Union[str, DatasetInfo]]],
         input_axes: Optional[str] = None,
         export_to_array: bool = False,
+        distributed: bool = False,
         sequence_axis: Optional[str] = None,
     ) -> Union[List[str], List[numpy.array]]:
         """Run the export for each dataset listed in role_data_dict
@@ -114,6 +129,7 @@ class BatchProcessingApplet(Applet):
                     role_inputs,
                     input_axes=input_axes,
                     export_to_array=export_to_array,
+                    distributed=distributed,
                     sequence_axis=sequence_axis,
                     progress_callback=partial(lerpProgressSignal, global_progress_start, global_progress_end),
                 )
@@ -138,6 +154,7 @@ class BatchProcessingApplet(Applet):
         role_inputs: List[Union[str, DatasetInfo]],
         input_axes: Optional[str] = None,
         export_to_array: bool = False,
+        distributed: bool = False,
         sequence_axis: Optional[str] = None,
         progress_callback: Optional[Callable[[int], None]] = None,
     ) -> Union[str, numpy.array]:
@@ -176,6 +193,16 @@ class BatchProcessingApplet(Applet):
             if export_to_array:
                 logger.info("Exporting to in-memory array.")
                 result = opDataExport.run_export_to_array()
+            elif distributed:
+                logger.info("Exporting to distributed command line...")
+                commands = opDataExport.run_export_to_distributed_command_line(
+                    executable=Path("il"),
+                    project_file=Path("~/MyProject.ilp"),
+                    block_shape=Shape5D.hypercube(100),
+                    role_args={"raw_data": ["bas"]},
+                )
+                print("_____>>>>>>>>>          +++++++++++++++++ here's the commands to be run:")
+                print(commands)
             else:
                 logger.info(f"Exporting to {opDataExport.ExportPath.value}")
                 opDataExport.run_export()

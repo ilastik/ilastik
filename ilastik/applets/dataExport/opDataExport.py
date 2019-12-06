@@ -19,8 +19,12 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import os
+from pathlib import Path
+from typing import Dict, List
 import collections
 import numpy
+import z5py
+from ndstructs import Shape5D
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import PathComponents, getPathVariants, format_known_keys
@@ -43,10 +47,7 @@ class DataExportPathFormatter:
         if os.path.pathsep in nickname:
             nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
 
-        known_keys = {
-            "dataset_dir": abs_dataset_dir,
-            "nickname": nickname,
-        }
+        known_keys = {"dataset_dir": abs_dataset_dir, "nickname": nickname}
 
         if self._result_type:
             known_keys["result_type"] = self._result_type
@@ -211,9 +212,7 @@ class OpDataExport(Operator):
         result_types = self.SelectionNames.value
 
         path_formatter = DataExportPathFormatter(
-            dataset_info=rawInfo,
-            working_dir=self.WorkingDirectory.value,
-            result_type=result_types[selection_index]
+            dataset_info=rawInfo, working_dir=self.WorkingDirectory.value, result_type=result_types[selection_index]
         )
 
         self._opFormattedExport.TransactionSlot.disconnect()
@@ -255,6 +254,45 @@ class OpDataExport(Operator):
         # This function can be used to export the results to an in-memory array, instead of to disk
         # (Typically used from pure-python clients in batch mode.)
         return self._opFormattedExport.run_export_to_array()
+
+    def run_export_to_distributed_command_line(
+        self, *, executable: Path, project_file: Path, block_shape: Shape5D, role_args: Dict[str, List[str]]
+    ):
+        output_meta = self.ImageToExport.meta
+        output_shape = output_meta.getShape5D()
+        block_shape = block_shape.clamped(output_shape)
+        f = z5py.File(self.OutputFilenameFormat.value, "w")
+        f.create_dataset(
+            self.OutputInternalPath.value,
+            shape=output_meta.shape,
+            chunks=block_shape.to_tuple(output_meta.getAxisKeys()),
+            dtype=output_meta.dtype.__name__,
+        )
+        f.close()
+
+        commands = []
+        import pydevd
+
+        pydevd.settrace()
+        for tile in output_shape.to_slice_5d().split(block_shape=block_shape):
+            cutout_subregion = '"' + str(tile.to_ilastik_cutout_subregion(output_meta.getAxisKeys())) + '"'
+            command_components = [
+                executable.as_posix(),
+                "--headless",
+                "--project",
+                project_file.as_posix(),
+                "--cutout_subregion",
+                cutout_subregion,
+                "--output_filename_format",
+                self.OutputFilenameFormat.value,
+                "--output_format",
+                "n5+",
+            ]
+            for role_arg_name, role_paths in role_args.items():
+                command_components.append(role_arg_name)
+                command_components += role_paths
+            commands.append(" ".join(command_components))
+        return commands
 
 
 class OpRawSubRegionHelper(Operator):
