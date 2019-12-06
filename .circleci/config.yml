@@ -24,11 +24,11 @@ jobs:
     - restore_cache:
         keys:
         # This branch if available
-        - v1.33b7-dep-{{ .Branch }}-
+        - v1.35-dep-{{ .Branch }}-
         # Default branch if not
-        - v1.33b7-dep-master-
+        - v1.35-dep-master-
         # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
-        - v1.33b7-dep-
+        - v1.35-dep-
     - run: >
         if [[ ! -d ${CONDA_ROOT} ]]; then
             echo "Installing Miniconda...";
@@ -59,7 +59,7 @@ jobs:
         -c ilastik-forge conda-forge defaults
     # Save dependency cache
     - save_cache:
-        key: v1.33b7-dep-{{ .Branch }}-{{ epoch }}
+        key: v1.35-dep-{{ .Branch }}-{{ epoch }}
         paths:
         - /home/ubuntu/miniconda
     # Test
