@@ -295,8 +295,8 @@ class OpComputeEdgeFeatures(Operator):
 
         else:
             def normalize1(series):
-                series -= np.min(series)
-                series /= np.max(series)
+                series = series - np.min(series)
+                series = series / np.max(series)
                 return series
 
             BEST_FEATURE = 'standard_edge_mean'
