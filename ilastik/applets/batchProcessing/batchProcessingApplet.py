@@ -1,4 +1,5 @@
 import logging
+import sys
 from pathlib import Path
 import weakref
 from collections import OrderedDict
@@ -58,10 +59,25 @@ class BatchProcessingApplet(Applet):
         parser = DataSelectionApplet.get_arg_parser(self.role_names)
         parser.add_argument(
             "--distributed",
-            help="Generate only command lines to run ilastik distributed",
-            action="store_true",
-            default=False,
+            help=(
+                "Distributed mode. 'script' produces a script to be run via SLURM."
+                " 'worker' runs ilastik as a distributed worker is rarely useful when running ilastik manually."
+            ),
+            choices=["script", "worker"],
         )
+        parser.add_argument(
+            "--distributed_block_size",
+            help="The length of the side of the tiles used in distributed mode",
+            type=int,
+            default=256,
+        )
+        parser.add_argument(
+            "--distributed_script_output",
+            help="Path to file to which the distributed script should be written",
+            default="./ilastik_distributed.sh",
+            type=Path,
+        )
+
         parsed_args, unused_args = parser.parse_known_args(cmdline_args)
         return parsed_args, unused_args
 
@@ -69,12 +85,23 @@ class BatchProcessingApplet(Applet):
         """
         Run the export for each dataset listed in parsed_args (we use the same parser as DataSelectionApplet).
         """
+        if parsed_args.distributed == "script":
+            export_function = partial(
+                self.do_distributed_export,
+                block_size=parsed_args.distributed_block_size,
+                distributed_script_output=parsed_args.distributed_script_output,
+            )
+        elif parsed_args.distributed == "worker":
+            export_function = self.do_distributed_worker_export
+        else:
+            export_function = self.do_normal_export
+
         role_path_dict = self.dataSelectionApplet.role_paths_from_parsed_args(parsed_args)
         return self.run_export(
             role_path_dict,
             input_axes=parsed_args.input_axes,
             sequence_axis=parsed_args.stack_along,
-            distributed=parsed_args.distributed,
+            export_function=export_function,
         )
 
     def run_export(
@@ -82,8 +109,8 @@ class BatchProcessingApplet(Applet):
         role_data_dict: Mapping[Hashable, Iterable[Union[str, DatasetInfo]]],
         input_axes: Optional[str] = None,
         export_to_array: bool = False,
-        distributed: bool = False,
         sequence_axis: Optional[str] = None,
+        export_function: Optional[Callable] = None,
     ) -> Union[List[str], List[numpy.array]]:
         """Run the export for each dataset listed in role_data_dict
 
@@ -113,6 +140,8 @@ class BatchProcessingApplet(Applet):
             list containing either strings of paths to exported files,
               or numpy.arrays (depending on export_to_array)
         """
+        assert not (export_to_array and export_function)
+        export_function = export_function or (self.do_export_to_array if export_to_array else self.do_normal_export)
         self.progressSignal(0)
         batches = list(zip(*role_data_dict.values()))
         try:
@@ -128,8 +157,7 @@ class BatchProcessingApplet(Applet):
                 result = self.export_dataset(
                     role_inputs,
                     input_axes=input_axes,
-                    export_to_array=export_to_array,
-                    distributed=distributed,
+                    export_function=export_function,
                     sequence_axis=sequence_axis,
                     progress_callback=partial(lerpProgressSignal, global_progress_start, global_progress_end),
                 )
@@ -149,18 +177,55 @@ class BatchProcessingApplet(Applet):
             infos.append(info_slot.value.axistags if info_slot.ready() else None)
         return infos
 
+    def do_normal_export(self, opDataExport, role_inputs):
+        logger.info(f"Exporting to {opDataExport.ExportPath.value}")
+        opDataExport.run_export()
+        return opDataExport.ExportPath.value
+
+    def do_export_to_array(self, opDataExport, role_inputs):
+        logger.info("Exporting to in-memory array.")
+        return opDataExport.run_export_to_array()
+
+    def do_distributed_export(
+        self,
+        opDataExport,
+        role_inputs: List[str],
+        *,
+        distributed_script_output: Path,
+        block_size: int = 256,
+        executable: Path = Path(sys.argv[0]).absolute(),  # FIXME: is this safe?
+    ) -> List[str]:
+        batch_lane = self.dataSelectionApplet.topLevelOperator.getLane(self.num_lanes - 1)
+        role_args = {}
+        for role_index, role_input in enumerate(role_inputs):
+            role_arg_name = DataSelectionApplet._role_name_to_arg_name(self.role_names[role_index])
+            role_args[role_arg_name] = role_input
+        logger.info("Exporting to distributed command line...")
+        result = opDataExport.run_export_to_distributed_command_line(
+            executable=executable,
+            project_file=Path(self.dataSelectionApplet.topLevelOperator.ProjectFile.value.filename),
+            block_shape=Shape5D.hypercube(block_size),
+            role_args=role_args,
+        )
+        with open(distributed_script_output, "w") as f:
+            f.write("\n".join(result) + "\n")
+        return result
+
+    def do_distributed_worker_export(self, opDataExport, role_inputs):
+        return opDataExport.run_distributed_worker_export()
+
     def export_dataset(
         self,
         role_inputs: List[Union[str, DatasetInfo]],
+        export_function: Callable = None,
         input_axes: Optional[str] = None,
-        export_to_array: bool = False,
-        distributed: bool = False,
         sequence_axis: Optional[str] = None,
         progress_callback: Optional[Callable[[int], None]] = None,
     ) -> Union[str, numpy.array]:
         """
         Configures a lane using the paths specified in the paths from role_inputs and runs the workflow.
         """
+        export_function = export_function or self.do_normal_export
         progress_callback = progress_callback or self.progressSignal
         original_num_lanes = self.num_lanes
         previous_axes_tags = self.get_previous_axes_tags()
@@ -190,24 +255,7 @@ class BatchProcessingApplet(Applet):
             self.dataExportApplet.prepare_lane_for_export(self.num_lanes - 1)
             opDataExport = self.dataExportApplet.topLevelOperator.getLane(self.num_lanes - 1)
             opDataExport.progressSignal.subscribe(progress_callback)
-            if export_to_array:
-                logger.info("Exporting to in-memory array.")
-                result = opDataExport.run_export_to_array()
-            elif distributed:
-                logger.info("Exporting to distributed command line...")
-                commands = opDataExport.run_export_to_distributed_command_line(
-                    executable=Path("il"),
-                    project_file=Path("~/MyProject.ilp"),
-                    block_shape=Shape5D.hypercube(100),
-                    role_args={"raw_data": ["bas"]},
-                )
-                print("_____>>>>>>>>>          +++++++++++++++++ here's the commands to be run:")
-                print(commands)
-            else:
-                logger.info(f"Exporting to {opDataExport.ExportPath.value}")
-                opDataExport.run_export()
-                result = opDataExport.ExportPath.value
-
+            result = export_function(opDataExport, role_inputs)
             # Call customization hook
             self.dataExportApplet.post_process_lane_export(self.num_lanes - 1)
             return result

@@ -126,12 +126,13 @@ class DataSelectionApplet(Applet):
                     role_arg_names = [DataSelectionApplet._role_name_to_arg_name(role_name) for role_name in role_names]
                     role_arg_values = [getattr(namespace, arg_name) for arg_name in role_arg_names]
                     named_configured_roles = {k: v for k, v in zip(role_arg_names, role_arg_values) if v}
-                    if named_configured_roles:
-                        raise ValueError(
-                            "You can only have trailing file paths if no other role was set by name. "
-                            f"You have set the following roles by name: {named_configured_roles}"
-                        )
-                    setattr(namespace, role_arg_names[0], values)
+                    if values:
+                        if named_configured_roles:
+                            raise ValueError(
+                                "You can only have trailing file paths if no other role was set by name. "
+                                f"You have set the following roles by name: {named_configured_roles}"
+                            )
+                        setattr(namespace, role_arg_names[0], values)
 
             return ExtraTrailingArgumentsAction
 
