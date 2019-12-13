@@ -77,17 +77,15 @@ class FeatureExtractor(JsonSerializable):
 
 
 class ChannelwiseFeatureExtractor(FeatureExtractor):
-    @property
-    @abstractmethod
-    def dimension(self) -> int:
+    def get_channel_multiplier(self, roi:Slice5D) -> int:
         "Number of channels emited by this feature extractor for each input channel"
-        pass
+        return 1
 
-    def get_expected_roi(self, roi:Slice5D, channel_offset:int=0) -> Shape5D:
-        num_output_channels = roi.shape.c * self.dimension
+    def get_expected_roi(self, datasource:DataSource, channel_offset:int=0) -> Shape5D:
+        num_output_channels = datasource.shape.c * self.get_channel_multiplier(datasource)
         c_start = channel_offset
         c_stop = c_start + num_output_channels
-        return roi.with_coord(c=slice(c_start, c_stop))
+        return Slice5D(**{**datasource.to_dict(), "c":slice(c_start, c_stop)})
 
 class FlatChannelwiseFilter(ChannelwiseFeatureExtractor):
     """A Feature extractor with a 2D kernel that computes independently for every
@@ -99,7 +97,8 @@ class FlatChannelwiseFilter(ChannelwiseFeatureExtractor):
 
     def compute_into(self, input_roi:DataSource, out:FeatureData) -> FeatureData:
         for source_image_roi, out_image in zip(input_roi.images(self.stack_axis), out.images(self.stack_axis)):
-            for source_channel_roi, out_features in zip(source_image_roi.channels(), out_image.channel_stacks(step=self.dimension)):
+            out_channel_stacks = out_image.channel_stacks(step=self.get_channel_multiplier(source_image_roi))
+            for source_channel_roi, out_features in zip(source_image_roi.channels(), out_channel_stacks):
                 self._compute_slice(source_channel_roi, out=out_features)
         return out
 
@@ -130,9 +129,8 @@ class FeatureExtractorCollection(ChannelwiseFeatureExtractor):
     def kernel_shape(self):
         return self._kernel_shape
 
-    @property
-    def dimension(self) -> int:
-        return sum(f.dimension for f in self.extractors)
+    def get_channel_multiplier(self, roi:Slice5D) -> int:
+        return sum(f.get_channel_multiplier(roi) for f in self.extractors)
 
     def compute_into(self, input_roi:DataSource, out:FeatureData) -> FeatureData:
         assert out.roi == self.get_expected_roi(input_roi)
