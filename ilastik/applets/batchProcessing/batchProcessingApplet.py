@@ -59,23 +59,14 @@ class BatchProcessingApplet(Applet):
         parser = DataSelectionApplet.get_arg_parser(self.role_names)
         parser.add_argument(
             "--distributed",
-            help=(
-                "Distributed mode. 'script' produces a script to be run via SLURM."
-                " 'worker' runs ilastik as a distributed worker is rarely useful when running ilastik manually."
-            ),
-            choices=["script", "worker"],
+            help="Distributed mode. Used for running ilastik on HPCs via SLURM/srun/mpirun",
+            action="store_true",
         )
         parser.add_argument(
             "--distributed_block_size",
             help="The length of the side of the tiles used in distributed mode",
             type=int,
             default=256,
-        )
-        parser.add_argument(
-            "--distributed_script_output",
-            help="Path to file to which the distributed script should be written",
-            default="./ilastik_distributed.sh",
-            type=Path,
         )
 
         parsed_args, unused_args = parser.parse_known_args(cmdline_args)
@@ -85,14 +76,8 @@ class BatchProcessingApplet(Applet):
         """
         Run the export for each dataset listed in parsed_args (we use the same parser as DataSelectionApplet).
         """
-        if parsed_args.distributed == "script":
-            export_function = partial(
-                self.do_distributed_export,
-                block_size=parsed_args.distributed_block_size,
-                distributed_script_output=parsed_args.distributed_script_output,
-            )
-        elif parsed_args.distributed == "worker":
-            export_function = self.do_distributed_worker_export
+        if parsed_args.distributed:
+            export_function = partial(self.do_distributed_export, block_size=parsed_args.distributed_block_size)
         else:
             export_function = self.do_normal_export
 
@@ -177,42 +162,18 @@ class BatchProcessingApplet(Applet):
             infos.append(info_slot.value.axistags if info_slot.ready() else None)
         return infos
 
-    def do_normal_export(self, opDataExport, role_inputs):
+    def do_normal_export(self, opDataExport):
         logger.info(f"Exporting to {opDataExport.ExportPath.value}")
         opDataExport.run_export()
         return opDataExport.ExportPath.value
 
-    def do_export_to_array(self, opDataExport, role_inputs):
+    def do_export_to_array(self, opDataExport):
         logger.info("Exporting to in-memory array.")
         return opDataExport.run_export_to_array()
 
-    def do_distributed_export(
-        self,
-        opDataExport,
-        role_inputs: List[str],
-        *,
-        distributed_script_output: Path,
-        block_size: int = 256,
-        executable: Path = Path(sys.argv[0]).absolute(),  # FIXME: is this safe?
-    ) -> List[str]:
-        batch_lane = self.dataSelectionApplet.topLevelOperator.getLane(self.num_lanes - 1)
-        role_args = {}
-        for role_index, role_input in enumerate(role_inputs):
-            role_arg_name = DataSelectionApplet._role_name_to_arg_name(self.role_names[role_index])
-            role_args[role_arg_name] = role_input
+    def do_distributed_export(self, opDataExport, *, block_size: int = 256):
         logger.info("Exporting to distributed command line...")
-        result = opDataExport.run_export_to_distributed_command_line(
-            executable=executable,
-            project_file=Path(self.dataSelectionApplet.topLevelOperator.ProjectFile.value.filename),
-            block_shape=Shape5D.hypercube(block_size),
-            role_args=role_args,
-        )
-        with open(distributed_script_output, "w") as f:
-            f.write("\n".join(result) + "\n")
-        return result
-
-    def do_distributed_worker_export(self, opDataExport, role_inputs):
-        return opDataExport.run_distributed_worker_export()
+        return opDataExport.run_distributed_export(block_shape=Shape5D.hypercube(block_size))
 
     def export_dataset(
         self,
@@ -255,7 +216,7 @@ class BatchProcessingApplet(Applet):
             self.dataExportApplet.prepare_lane_for_export(self.num_lanes - 1)
             opDataExport = self.dataExportApplet.topLevelOperator.getLane(self.num_lanes - 1)
             opDataExport.progressSignal.subscribe(progress_callback)
-            result = export_function(opDataExport, role_inputs)
+            result = export_function(opDataExport)
             # Call customization hook
             self.dataExportApplet.post_process_lane_export(self.num_lanes - 1)
             return result

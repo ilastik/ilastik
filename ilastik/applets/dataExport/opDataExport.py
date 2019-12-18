@@ -255,48 +255,8 @@ class OpDataExport(Operator):
         # (Typically used from pure-python clients in batch mode.)
         return self._opFormattedExport.run_export_to_array()
 
-    def run_export_to_distributed_command_line(
-        self, *, executable: Path, project_file: Path, block_shape: Shape5D, role_args: Dict[str, List[str]]
-    ):
-        output_meta = self.ImageToExport.meta
-        output_shape = output_meta.getShape5D()
-        block_shape = block_shape.clamped(maximum=output_shape)
-        f = z5py.File(self.OutputFilenameFormat.value, "w")
-        ds = f.create_dataset(
-            self.OutputInternalPath.value,
-            shape=output_meta.shape,
-            chunks=block_shape.to_tuple(output_meta.getAxisKeys()),
-            dtype=output_meta.dtype.__name__,
-        )
-        ds[...] = 1  # FIXME: for some reason setting to 0 does nothing
-        f.close()
-
-        commands = []
-
-        for tile in output_shape.to_slice_5d().split(block_shape=block_shape):
-            cutout_subregion = '"' + str(tile.to_ilastik_cutout_subregion(output_meta.getAxisKeys())) + '"'
-            command_components = [
-                executable.as_posix(),
-                "--headless",
-                "--project",
-                project_file.as_posix(),
-                "--cutout_subregion",
-                cutout_subregion,
-                "--output_filename_format",
-                self.OutputFilenameFormat.value,
-                "--output_internal_path",
-                self.OutputInternalPath.value,
-                "--output_format=n5",
-                "--distributed=worker",
-            ]
-            for role_arg_name, role_path in role_args.items():
-                if role_path:
-                    command_components += ["--" + role_arg_name, role_path]
-            commands.append(" ".join(command_components))
-        return commands
-
-    def run_distributed_worker_export(self):
-        self._opFormattedExport.run_distributed_worker_export()
+    def run_distributed_export(self, block_shape: Shape5D):
+        return self._opFormattedExport.run_distributed_export(block_shape)
 
 
 class OpRawSubRegionHelper(Operator):
