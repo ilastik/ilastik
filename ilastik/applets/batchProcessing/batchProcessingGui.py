@@ -24,6 +24,7 @@ import typing
 from collections import OrderedDict
 from functools import partial
 
+import ilastik.config
 from lazyflow.request import Request
 from PyQt5.QtCore import Qt, QTimer, QUrl
 from PyQt5.QtWidgets import (
@@ -211,8 +212,16 @@ class BatchProcessingGui(QTabWidget):
         layout.addWidget(self.run_button)
         layout.addWidget(self.cancel_button)
 
+        if ilastik.config.cfg["ilastik"].getboolean("hbp"):
+            layout.addWidget(QPushButton("HBP Login", self, clicked=self._hbp_login))
+
         self._drawer = QWidget(parent=self)
         self._drawer.setLayout(layout)
+
+    def _hbp_login(self):
+        import webbrowser
+
+        webbrowser.open_new_tab(ilastik.config.cfg["hbp"]["url"])
 
     def run_export(self):
         role_names = self.parentApplet.dataSelectionApplet.topLevelOperator.DatasetRoles.value

@@ -44,6 +44,9 @@ plugin_directories: ~/.ilastik/plugins,
 threads: -1
 total_ram_mb: 0
 
+[hbp]
+url: https://ilastik.org
+
 [ipc raw tcp]
 autostart: false
 autoaccept: true
