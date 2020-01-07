@@ -42,53 +42,12 @@ class ChannelwiseFastFilter(FlatChannelwiseFilter):
         raw_features = self.filter_fn(source_raw)
         target_raw[...] = raw_features[feature_slices]
 
-class SigmaWindowFilter(ChannelwiseFastFilter):
-    def __init__(self, sigma: float, window_size:float = 0, stack_axis:str="z"):
-        super().__init__(stack_axis=stack_axis)
-        self.sigma = sigma
-        self.window_size = window_size
-
-
-class ScaleWindowFilter(ChannelwiseFastFilter):
-    def __init__(self, scale: float, window_size:float=0, stack_axis:str="z"):
-        super().__init__(stack_axis=stack_axis)
-        self.scale = scale
-        self.window_size = window_size
-
-
-class GaussianSmoothing(SigmaWindowFilter):
-    def filter_fn(self, source_raw: numpy.ndarray) -> numpy.ndarray:
-        return fastfilters.gaussianSmoothing(source_raw, sigma=self.sigma, window_size=self.window_size)
-
-
-class DifferenceOfGaussians(ChannelwiseFastFilter):
-    def __init__(self, sigma0:float, sigma1: float, window_size:float=0, stack_axis:str='z'):
-        super().__init__(stack_axis=stack_axis)
-        self.sigma0 = sigma0
-        self.sigma1 = sigma1
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__} sigma0:{self.sigma0} sigma1:{self.sigma1} window_size:{self.window_size} stack_axis:{self.stack_axis}>"
-
-    def filter_fn(self, source_raw: numpy.ndarray) -> numpy.ndarray:
-        a = fastfilters.gaussianSmoothing(source_raw, sigma=self.sigma0, window_size=self.window_size)
-        b = fastfilters.gaussianSmoothing(source_raw, sigma=self.sigma1, window_size=self.window_size)
-        return a - b
-
-
-class HessianOfGaussianEigenvalues(ScaleWindowFilter):
-    def filter_fn(self, source_raw: numpy.ndarray) -> numpy.ndarray:
-        return fastfilters.hessianOfGaussianEigenvalues(source_raw, scale=self.scale, window_size=self.window_size)
-
-    def get_channel_multiplier(self, roi:Slice5D) -> int:
-        return len(roi.present_spatial_axes())
-
-
 class StructureTensorEigenvalues(ChannelwiseFastFilter):
     def __init__(self, innerScale:float, outerScale: float, window_size:float=0, stack_axis:str='z'):
         super().__init__(stack_axis=stack_axis)
         self.innerScale = innerScale
-        self.innerScale = innerScale
+        self.outerScale = outerScale
+        self.window_size = window_size
 
     def filter_fn(self, source_raw: numpy.ndarray) -> numpy.ndarray:
         return fastfilters.structureTensorEigenvalues(
@@ -99,13 +58,51 @@ class StructureTensorEigenvalues(ChannelwiseFastFilter):
         )
 
     def get_channel_multiplier(self, roi:Slice5D) -> int:
-        return len(roi.present_spatial_axes())
+        return len(roi.shape.present_spatial_axes)
 
+
+class SigmaWindowFilter(ChannelwiseFastFilter):
+    def __init__(self, sigma: float, window_size:float = 0, stack_axis:str="z"):
+        super().__init__(stack_axis=stack_axis)
+        self.sigma = sigma
+        self.window_size = window_size
 
 class GaussianGradientMagnitude(SigmaWindowFilter):
     def filter_fn(self, source_raw:numpy.ndarray) -> numpy.ndarray:
         return fastfilters.gaussianGradientMagnitude(source_raw, sigma=self.sigma, window_size=self.window_size)
 
+class GaussianSmoothing(SigmaWindowFilter):
+    def filter_fn(self, source_raw: numpy.ndarray) -> numpy.ndarray:
+        return fastfilters.gaussianSmoothing(source_raw, sigma=self.sigma, window_size=self.window_size)
+
+class DifferenceOfGaussians(ChannelwiseFastFilter):
+    def __init__(self, sigma0:float, sigma1: float, window_size:float=0, stack_axis:str='z'):
+        super().__init__(stack_axis=stack_axis)
+        self.sigma0 = sigma0
+        self.sigma1 = sigma1
+        self.window_size = window_size
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} sigma0:{self.sigma0} sigma1:{self.sigma1} window_size:{self.window_size} stack_axis:{self.stack_axis}>"
+
+    def filter_fn(self, source_raw: numpy.ndarray) -> numpy.ndarray:
+        a = fastfilters.gaussianSmoothing(source_raw, sigma=self.sigma0, window_size=self.window_size)
+        b = fastfilters.gaussianSmoothing(source_raw, sigma=self.sigma1, window_size=self.window_size)
+        return a - b
+
+
+class ScaleWindowFilter(ChannelwiseFastFilter):
+    def __init__(self, scale: float, window_size:float=0, stack_axis:str="z"):
+        super().__init__(stack_axis=stack_axis)
+        self.scale = scale
+        self.window_size = window_size
+
+class HessianOfGaussianEigenvalues(ScaleWindowFilter):
+    def filter_fn(self, source_raw: numpy.ndarray) -> numpy.ndarray:
+        return fastfilters.hessianOfGaussianEigenvalues(source_raw, scale=self.scale, window_size=self.window_size)
+
+    def get_channel_multiplier(self, roi:Slice5D) -> int:
+        return len(roi.shape.present_spatial_axes)
 
 class LaplacianOfGaussian(ScaleWindowFilter):
     def filter_fn(self, source_raw: numpy.ndarray) -> numpy.ndarray:

@@ -45,8 +45,8 @@ print(f"gauss_id: {gauss_id}")
 assert gauss_id.startswith("pointer@")
 
 
-resp = post('http://localhost:5000/hessian_of_gaussian',
-            data={'sigma': 0.3})
+resp = post('http://localhost:5000/hessian_of_gaussian_eigenvalues',
+            data={'scale': 0.3})
 hess_id = resp.json()
 print(f"hess_id: {hess_id}")
 assert hess_id.startswith("pointer@")

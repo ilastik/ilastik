@@ -1,7 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from threading import Thread
-from typing import Dict, List
+from typing import Dict, List, Tuple
 import io
 import json
 import os
@@ -19,13 +19,54 @@ from ilastik.annotations import Annotation, Scribblings
 from ilastik.classifiers.pixel_classifier import PixelClassifier, StrictPixelClassifier, Predictions
 from ndstructs.datasource import PilDataSource
 from ilastik.features.feature_extractor import FeatureExtractor
+from ilastik.features.fastfilters import (
+    GaussianSmoothing,
+    HessianOfGaussianEigenvalues,
+    GaussianGradientMagnitude,
+    LaplacianOfGaussian,
+    DifferenceOfGaussians,
+    StructureTensorEigenvalues
+)
 from ilastik.features.vigra_features import GaussianSmoothing, HessianOfGaussian
 from ilastik.utility import flatten, unflatten, listify
 
+#FIXME:Rasterizing should probabl be done on the client
+class NgAnnotation(Annotation):
+    def __init__(self, color: Tuple[int, int, int], voxels: List[Point5D], raw_data:DataSource):
+        self.color = tuple(color) #FIXME: JSonSerializable only produces list on iterables
+        self.voxels = [Point5D.from_json_data(coords) for coords in voxels]
+
+        hashed_color = hash(self.color) % 255
+
+        min_point = Point5D(**{key: min(vox[key] for vox in self.voxels) for key in 'xyz'})
+        max_point = Point5D(**{key: max(vox[key] for vox in self.voxels) for key in 'xyz'})
+
+        # +1 because slice.stop is exclusive, but pointA and pointB are inclusive
+        scribbling_roi = Slice5D.zero(**{key: slice(min_point[key],  max_point[key] + 1) for key in 'xyz'})
+        scribblings = Scribblings.allocate(scribbling_roi, dtype=np.uint8, value=0)
+
+        for voxel in self.voxels:
+            colored_point = Scribblings.allocate(Slice5D.zero().translated(voxel), dtype=np.uint8, value=hashed_color)
+            scribblings.set(colored_point)
+
+        super().__init__(scribblings=scribblings, raw_data=raw_data)
+
+
+feature_extractor_classes = [
+    FeatureExtractor, #this allows one to GET /feature_extractor and get a list of all created feature extractors
+    GaussianSmoothing,
+    HessianOfGaussianEigenvalues,
+    GaussianGradientMagnitude,
+    LaplacianOfGaussian,
+    DifferenceOfGaussians,
+    StructureTensorEigenvalues,
+]
+
+workflow_classes = {klass.__name__: klass for klass in [PixelClassifier, DataSource, Annotation, NgAnnotation] + feature_extractor_classes}
+
 app = Flask("WebserverHack")
 CORS(app)
-feature_extractor_classes = [FeatureExtractor, HessianOfGaussian, GaussianSmoothing]
-workflow_classes = {klass.__name__: klass for klass in [PixelClassifier, DataSource, Annotation] + feature_extractor_classes}
+
 
 class Context:
     objects = {}
@@ -37,7 +78,8 @@ class Context:
 
     @classmethod
     def get_class_named(cls, name:str):
-        return workflow_classes[name.title().replace('_', '')]
+        name = name if name in workflow_classes else name.title().replace('_', '')
+        return workflow_classes[name]
 
     @classmethod
     def create(cls, klass):
@@ -79,42 +121,6 @@ class Context:
     @classmethod
     def get_all(cls, klass) -> Dict[str, object]:
         return {key: obj for key, obj in cls.objects.items() if isinstance(obj, klass)}
-
-def hacky_get_only_datasource():
-    ds  = None
-    for obj in Context.objects.values():
-        if not isinstance(obj, DataSource):
-            continue
-        if ds is not None:
-            raise Exception("There is more than ONE DataSource in the server.")
-        ds = obj
-    return ds
-
-@app.route('/ng_annotation/', methods=['POST'])
-def create_line_annotation():
-    request_payload = Context.get_request_payload()
-    print(f"Got this payload: ", json.dumps(request_payload, indent=4, default=str))
-
-    int_vec_color =  tuple(int(v) for v in request_payload['color'])
-    hashed_color = hash(int_vec_color) % 255
-
-    voxels  = [Point5D.from_json_data(coords) for coords in request_payload['voxels']]
-
-    min_point = Point5D(**{key: min(vox[key] for vox in voxels) for key in 'xyz'})
-    max_point = Point5D(**{key: max(vox[key] for vox in voxels) for key in 'xyz'})
-
-    # +1 because slice.stop is exclusive, but pointA and pointB are inclusive
-    scribbling_roi = Slice5D.zero(**{key: slice(min_point[key],  max_point[key] + 1) for key in 'xyz'})
-    scribblings = Scribblings.allocate(scribbling_roi, dtype=np.uint8, value=0)
-
-    for voxel in voxels:
-        colored_point = Scribblings.allocate(Slice5D.zero().translated(voxel), dtype=np.uint8, value=hashed_color)
-        scribblings.set(colored_point)
-
-    annotation = Annotation(scribblings=scribblings, #datasource=Context.load(request_payload['datasource_id'])
-                            raw_data=request_payload['raw_data'])
-    annotation_id = Context.store(request_payload.get('id'), annotation)
-    return flask.jsonify(annotation_id)
 
 def do_predictions(roi:Slice5D, classifier_id:str, datasource_id:str) -> Predictions:
     classifier = Context.load(classifier_id)
@@ -292,5 +298,4 @@ def show_object(class_name:str, object_id:str):
     return flask.jsonify(Context.load(object_id).json_data)
 
 
-#Thread(target=partial(app.run, host='0.0.0.0')).start()
 Thread(target=app.run).start()
