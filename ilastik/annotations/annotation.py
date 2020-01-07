@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Iterator, Tuple
+from typing import List, Iterator, Tuple, Dict
 
 import vigra.filters
 import numpy as np
@@ -35,6 +35,21 @@ class LabelSamples(StaticLine):
     @property
     def classes(self) -> List[int]:
         return list(np.unique(self.linear_raw()))
+
+    @property
+    def classmap(self) -> Dict[int, int]:
+        raw_xc = self.linear_raw()
+        raw_x = raw_xc.reshape(raw_xc.size) #remove 'c' dimension
+        classmap = {}
+        for label_klass in raw_x:
+            if label_klass not in classmap:
+                classmap[label_klass] = len(classmap)
+        return classmap
+
+    def as_incremental(self):
+        """Maps labels to incrementing ints starting at 0, based on the order in which the labels appear"""
+        mapped_labels = np.vectorize(self.classmap.get)(self.linear_raw())
+        return LabelSamples(mapped_labels, axiskeys=self.__class__.DEFAULT_AXES)
 
 class FeatureSamples(FeatureData, StaticLine):
     """A multi-channel array with a single spacial dimension, with eac channel
