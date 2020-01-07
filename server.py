@@ -220,19 +220,31 @@ def ng_samples():
     for datasource_id, datasource in Context.get_all(DataSource).items():
         layer_name = datasource.url.split('/')[-1]
         url_data = {
-            "layers": [{
+            "layers": [
+                {
                 "source": f"precomputed://http://localhost:5000/datasource/{datasource_id}",
                 "type": "image",
                 "blend": "default",
                 "shader": rgb_shader,
                 "shaderControls": {},
                 "name": layer_name
-            }],
+                },
+                {
+                    "type": "annotation",
+                    "annotations": [],
+                    "voxelSize": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "name": "annotation"
+                }
+            ],
             "navigation": {
                 "zoomFactor": 1
             },
             "selectedLayer": {
-                "layer": layer_name,
+                "layer": "annotation",
                 "visible": True
             },
             "layout": "4panel"
