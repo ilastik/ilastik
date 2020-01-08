@@ -28,8 +28,9 @@ import ilastik.config
 from lazyflow.request import Request
 from PyQt5.QtCore import Qt, QTimer, QUrl
 from PyQt5.QtWidgets import (
-    QApplication,
+    QGroupBox,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QListWidget,
     QMessageBox,
@@ -213,15 +214,55 @@ class BatchProcessingGui(QTabWidget):
         layout.addWidget(self.cancel_button)
 
         if ilastik.config.cfg["ilastik"].getboolean("hbp"):
-            layout.addWidget(QPushButton("HBP Login", self, clicked=self._hbp_login))
+            hbp_layout = QHBoxLayout()
+            hbp_layout.addWidget(QPushButton("Login", self, clicked=self._hbp_login))
+            hbp_layout.addWidget(QPushButton("Upload Project File", self, clicked=self._hbp_upload_project_file))
+            hbp_group = QGroupBox("Human Brain Project", self)
+            hbp_group.setLayout(hbp_layout)
+            layout.addWidget(hbp_group)
+            layout.addStretch(1)
 
         self._drawer = QWidget(parent=self)
         self._drawer.setLayout(layout)
 
-    def _hbp_login(self):
+    @staticmethod
+    def _hbp_login():
         import webbrowser
 
-        webbrowser.open_new_tab(ilastik.config.cfg["hbp"]["url"])
+        webbrowser.open_new_tab(ilastik.config.cfg["hbp"]["login_url"])
+
+    def _hbp_upload_project_file(self):
+        import io
+        import h5py
+        import requests
+
+        client_id, ok = QInputDialog.getText(self, "Client ID", "Enter Your Client ID")
+        if not ok:
+            return
+
+        with io.BytesIO() as buf, h5py.File(buf) as dest:
+            def partial_copy(name, obj):
+                if isinstance(obj, h5py.Group):
+                    dest.create_group(name).attrs.update(obj.attrs)
+                elif isinstance(obj, h5py.Dataset) and name.startswith("Input Data/local_data"):
+                    dest.create_dataset_like(name, obj).attrs.update(obj.attrs)
+                else:
+                    dest.copy(obj, name)
+
+            project_file = self.parentApplet.dataSelectionApplet.topLevelOperator.ProjectFile.value
+            project_file.visititems(partial_copy)
+            data = buf.getvalue()
+
+        try:
+            requests.post(
+                ilastik.config.cfg["hbp"]["project_upload_url"],
+                data=data,
+                params={"client_id": client_id},
+                headers={"Content-Type": "application/octet-stream"},
+                timeout=float(ilastik.config.cfg["hbp"]["connection_timeout_sec"]),
+            ).raise_for_status()
+        except requests.exceptions.RequestException as e:
+            QMessageBox.critical(self, "Network Error", str(e))
 
     def run_export(self):
         role_names = self.parentApplet.dataSelectionApplet.topLevelOperator.DatasetRoles.value

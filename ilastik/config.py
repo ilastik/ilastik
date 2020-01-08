@@ -45,7 +45,9 @@ threads: -1
 total_ram_mb: 0
 
 [hbp]
-url: https://ilastik.org
+login_url: https://ilastik.org
+project_upload_url: https://ilastik.org/project_upload
+connection_timeout_sec: 10
 
 [ipc raw tcp]
 autostart: false
