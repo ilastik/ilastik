@@ -223,13 +223,18 @@ def ng_samples():
     }
     """
 
+    protocol = request.headers.get('X-Forwarded-Protocol', 'http')
+    host = request.headers.get('X-Forwarded-Host', args.host)
+    port = 80 if 'X-Forwarded-Host' in request.headers else args.port
+    prefix = request.headers.get('X-Forwarded-Prefix', '/')
+
     links = []
     for datasource_id, datasource in Context.get_all(DataSource).items():
         layer_name = datasource.url.split('/')[-1]
         url_data = {
             "layers": [
                 {
-                "source": f"precomputed://http://{args.host}:{args.port}/datasource/{datasource_id}",
+                "source": f"precomputed://{protocol}://{host}:{port}{prefix}datasource/{datasource_id}",
                 "type": "image",
                 "blend": "default",
                 "shader": rgb_shader,
