@@ -17,6 +17,8 @@ def send(method:str, *args, **kwargs):
     return resp
 
 
+resp = post('http://localhost:5000/data_source',
+            data={'url': "/home/tomaz/SampleData/n5tests/317_8_CamKII_tTA_lacZ_Xgal_s123_1.4.n5/data"})
 
 
 resp = post('http://localhost:5000/data_source',
