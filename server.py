@@ -12,6 +12,7 @@ import uuid
 import numpy as np
 import urllib
 from PIL import Image as PilImage
+import argparse
 
 from ndstructs import Point5D, Slice5D, Shape5D, Array5D
 from ndstructs.datasource import DataSource
@@ -29,6 +30,11 @@ from ilastik.features.fastfilters import (
 )
 from ilastik.features.vigra_features import GaussianSmoothing, HessianOfGaussian
 from ilastik.utility import flatten, unflatten, listify
+
+parser = argparse.ArgumentParser(description='Runs ilastik prediction web server')
+parser.add_argument('--host', default='localhost', help='ip or hostname where the server will listen')
+parser.add_argument('--port', default=5000, type=int, help='port to listen on')
+args = parser.parse_args()
 
 #FIXME:Rasterizing should probabl be done on the client
 class NgAnnotation(Annotation):
@@ -310,4 +316,4 @@ def show_object(class_name:str, object_id:str):
     return flask.jsonify(Context.load(object_id).json_data)
 
 
-Thread(target=app.run).start()
+app.run(host=args.host, port=args.port)
