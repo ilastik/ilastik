@@ -34,8 +34,7 @@ from ilastik.utility import flatten, unflatten, listify
 parser = argparse.ArgumentParser(description='Runs ilastik prediction web server')
 parser.add_argument('--host', default='localhost', help='ip or hostname where the server will listen')
 parser.add_argument('--port', default=5000, type=int, help='port to listen on')
-parser.add_argument('--nghost', default='localhost', help='ip or hostname where neuroglancer is being served')
-parser.add_argument('--ngport', default=8080, type=int, help='port where neuroglancer is being served')
+parser.add_argument('--ngurl', default='http://localhost:8080', help='url where neuroglancer is being served')
 args = parser.parse_args()
 
 #FIXME:Rasterizing should probabl be done on the client
@@ -257,7 +256,7 @@ def ng_samples():
             },
             "layout": "4panel"
         }
-        url = f"http://{args.nghost}:{args.ngport}#!" + urllib.parse.quote(str(json.dumps(url_data)))
+        url = f"{args.ngurl}#!" + urllib.parse.quote(str(json.dumps(url_data)))
         links.append(f'<a href="{url}">{layer_name}</a><br/>')
 
     link_tags = "\n".join(links)
