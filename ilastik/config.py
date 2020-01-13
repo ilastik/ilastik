@@ -45,9 +45,9 @@ threads: -1
 total_ram_mb: 0
 
 [hbp]
-login_url: https://ilastik.org
-project_upload_url: https://ilastik.org/project_upload
-connection_timeout_sec: 10
+token_url: http://127.0.0.1:8000/token/
+upload_file_url: http://127.0.0.1:8000/v1/files/
+create_project_url: http://127.0.0.1:8000/v1/batch/projects/
 
 [ipc raw tcp]
 autostart: false

@@ -19,16 +19,12 @@
 #           http://ilastik.org/license.html
 ###############################################################################
 import logging
-import os
 import typing
 from collections import OrderedDict
 from functools import partial
 
-import ilastik.config
-from lazyflow.request import Request
-from PyQt5.QtCore import Qt, QTimer, QUrl
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
-    QGroupBox,
     QHBoxLayout,
     QInputDialog,
     QLabel,
@@ -42,9 +38,11 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+import ilastik.config
 from ilastik.utility import log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.widgets.ImageFileDialog import ImageFileDialog
+from lazyflow.request import Request
 
 logger = logging.getLogger(__name__)
 
@@ -214,31 +212,54 @@ class BatchProcessingGui(QTabWidget):
         layout.addWidget(self.cancel_button)
 
         if ilastik.config.cfg["ilastik"].getboolean("hbp"):
-            hbp_layout = QHBoxLayout()
-            hbp_layout.addWidget(QPushButton("Login", self, clicked=self._hbp_login))
-            hbp_layout.addWidget(QPushButton("Upload Project File", self, clicked=self._hbp_upload_project_file))
-            hbp_group = QGroupBox("Human Brain Project", self)
-            hbp_group.setLayout(hbp_layout)
-            layout.addWidget(hbp_group)
-            layout.addStretch(1)
+            layout.addWidget(QPushButton("Upload Project File to HBP", self, clicked=self._hbp_upload_project_file))
 
         self._drawer = QWidget(parent=self)
         self._drawer.setLayout(layout)
 
-    @staticmethod
-    def _hbp_login():
-        import webbrowser
-
-        webbrowser.open_new_tab(ilastik.config.cfg["hbp"]["login_url"])
-
     def _hbp_upload_project_file(self):
         import io
+        import pathlib
+        import webbrowser
         import h5py
         import requests
+        import numpy
 
-        client_id, ok = QInputDialog.getText(self, "Client ID", "Enter Your Client ID")
+        webbrowser.open_new_tab(ilastik.config.cfg["hbp"]["token_url"])
+        token, ok = QInputDialog.getText(self, "Client Token", "Paste your token from a browser window")
         if not ok:
             return
+
+        project_file = self.parentApplet.dataSelectionApplet.topLevelOperator.ProjectFile.value
+        filename = pathlib.Path(project_file.filename).name
+
+        role_index = self.parentApplet.dataSelectionApplet.topLevelOperator.DatasetRoles.value.index("Raw Data")
+        dataset_info = self.parentApplet.dataSelectionApplet.topLevelOperator.DatasetGroup[0][role_index].value
+
+        try:
+            num_channels = dataset_info.laneShape[dataset_info.axistags.channelIndex]
+        except IndexError:
+            num_channels = 1
+
+        orders = {
+            "GaussianSmoothing": 0,
+            "LaplacianOfGaussian": 2,
+            "GaussianGradientMagnitude": 1,
+            "DifferenceOfGaussians": 0,
+            "StructureTensorEigenvalues": 1,
+            "HessianOfGaussianEigenvalues": 2,
+        }
+
+        opFeatureSelection = self.parentApplet.workflow().featureSelectionApplet.topLevelOperator
+
+        min_block_size = 0
+        compute_in_2d = False
+
+        for row, col in numpy.argwhere(opFeatureSelection.SelectionMatrix.value):
+            name = opFeatureSelection.FeatureIds.value[row]
+            sigma = opFeatureSelection.Scales.value[col]
+            min_block_size = max(min_block_size, int(3 * sigma + 0.5 * orders[name] + 0.5))
+            compute_in_2d |= opFeatureSelection.ComputeIn2d.value[col]
 
         with io.BytesIO() as buf, h5py.File(buf) as dest:
             def partial_copy(name, obj):
@@ -249,18 +270,39 @@ class BatchProcessingGui(QTabWidget):
                 else:
                     dest.copy(obj, name)
 
-            project_file = self.parentApplet.dataSelectionApplet.topLevelOperator.ProjectFile.value
             project_file.visititems(partial_copy)
             data = buf.getvalue()
 
         try:
-            requests.post(
-                ilastik.config.cfg["hbp"]["project_upload_url"],
+            file_response = requests.post(
+                ilastik.config.cfg["hbp"]["upload_file_url"],
                 data=data,
-                params={"client_id": client_id},
-                headers={"Content-Type": "application/octet-stream"},
-                timeout=float(ilastik.config.cfg["hbp"]["connection_timeout_sec"]),
-            ).raise_for_status()
+                headers={
+                    "Authorization": f"Token {token}",
+                    "Content-Disposition": f'attachment; filename="{filename}"',
+                },
+                timeout=10,
+            )
+            file_response.raise_for_status()
+            file_json = file_response.json()
+
+            project_response = requests.post(
+                ilastik.config.cfg["hbp"]["create_project_url"],
+                json={
+                    "file": file_json["url"],
+                    "num_channels": num_channels,
+                    "min_block_size_z": 0 if compute_in_2d else min_block_size,
+                    "min_block_size_y": min_block_size,
+                    "min_block_size_x": min_block_size,
+                },
+                headers={"Authorization": f"Token {token}"},
+                timeout=10,
+            )
+            project_response.raise_for_status()
+            project_json = project_response.json()
+
+            webbrowser.open_new_tab(project_json["html_url"])
+
         except requests.exceptions.RequestException as e:
             QMessageBox.critical(self, "Network Error", str(e))
 
