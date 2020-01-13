@@ -36,7 +36,7 @@ parser = argparse.ArgumentParser(description='Runs ilastik prediction web server
 parser.add_argument('--host', default='localhost', help='ip or hostname where the server will listen')
 parser.add_argument('--port', default=5000, type=int, help='port to listen on')
 parser.add_argument('--ngurl', default='http://localhost:8080', help='url where neuroglancer is being served')
-parser.add_argument('--sample-dirs', type=Path, help='List of directories containing n5 samples', action='append')
+parser.add_argument('--sample-dirs', type=Path, help='List of directories containing n5 samples', nargs='+')
 args = parser.parse_args()
 
 #FIXME:Rasterizing should probabl be done on the client
