@@ -226,7 +226,7 @@ def get_sample_datasets() -> List[Dict]:
 
     protocol = request.headers.get('X-Forwarded-Protocol', 'http')
     host = request.headers.get('X-Forwarded-Host', args.host)
-    port = 80 if 'X-Forwarded-Host' in request.headers else args.port
+    port = '' if 'X-Forwarded-Host' in request.headers else f':{args.port}'
     prefix = request.headers.get('X-Forwarded-Prefix', '/')
 
     links = []
@@ -234,7 +234,7 @@ def get_sample_datasets() -> List[Dict]:
         url_data = {
             "layers": [
                 {
-                "source": f"precomputed://{protocol}://{host}:{port}{prefix}datasource/{datasource_id}",
+                "source": f"precomputed://{protocol}://{host}{port}{prefix}datasource/{datasource_id}",
                 "type": "image",
                 "blend": "default",
                 "shader": rgb_shader,
