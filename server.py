@@ -1,7 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from threading import Thread
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional, Hashable
 import io
 import json
 import os
@@ -13,6 +13,7 @@ import numpy as np
 import urllib
 from PIL import Image as PilImage
 import argparse
+from pathlib import Path
 
 from ndstructs import Point5D, Slice5D, Shape5D, Array5D
 from ndstructs.datasource import DataSource
@@ -35,6 +36,7 @@ parser = argparse.ArgumentParser(description='Runs ilastik prediction web server
 parser.add_argument('--host', default='localhost', help='ip or hostname where the server will listen')
 parser.add_argument('--port', default=5000, type=int, help='port to listen on')
 parser.add_argument('--ngurl', default='http://localhost:8080', help='url where neuroglancer is being served')
+parser.add_argument('--sample-dirs', type=Path, help='List of directories containing n5 samples', action='append')
 args = parser.parse_args()
 
 #FIXME:Rasterizing should probabl be done on the client
@@ -100,8 +102,8 @@ class Context:
         return cls.objects[key]
 
     @classmethod
-    def store(cls, obj_id, obj):
-        obj_id = obj_id if obj_id is not None else str(hash(obj)) #FIXME hashes have to be stable between versions for this to work
+    def store(cls, obj_id:Optional[Hashable], obj):
+        obj_id = obj_id if obj_id is not None else uuid.uuid4()
         key = f"pointer@{obj_id}"
         cls.objects[key] = obj
         return key
@@ -212,8 +214,7 @@ def ng_raw(datasource_id:str, xBegin:int, xEnd:int, yBegin:int, yEnd:int, zBegin
     resp.headers['Content-Type'] = 'application/octet-stream'
     return resp
 
-@app.route('/neuroglancer-samples')
-def ng_samples():
+def get_sample_datasets() -> List[Dict]:
     rgb_shader = """void main() {
       emitRGB(vec3(
         toNormalized(getDataValue(0)),
@@ -230,7 +231,6 @@ def ng_samples():
 
     links = []
     for datasource_id, datasource in Context.get_all(DataSource).items():
-        layer_name = datasource.url.split('/')[-1]
         url_data = {
             "layers": [
                 {
@@ -239,7 +239,7 @@ def ng_samples():
                 "blend": "default",
                 "shader": rgb_shader,
                 "shaderControls": {},
-                "name": layer_name
+                "name": datasource.name
                 },
                 {
                     "type": "annotation",
@@ -261,23 +261,33 @@ def ng_samples():
             },
             "layout": "4panel"
         }
-        url = f"{args.ngurl}#!" + urllib.parse.quote(str(json.dumps(url_data)))
-        links.append(f'<a href="{url}">{layer_name}</a><br/>')
+        yield {
+            'url': f"{args.ngurl}#!" + urllib.parse.quote(str(json.dumps(url_data))),
+            'name': datasource.name
+        }
 
-    link_tags = "\n".join(links)
+@app.route('/datasets')
+def get_datasets():
+    return flask.jsonify(list(get_sample_datasets()))
 
+@app.route('/neuroglancer-samples')
+def ng_samples():
+    link_tags = [f'<a href="{sample["url"]}">{sample["name"]}</a><br/>' for sample in get_sample_datasets()]
+    links = '\n'.join(link_tags)
     return f"""
-<html>
-    <head>
-        <meta charset="UTF-8">
-        <link rel=icon href="https://www.ilastik.org/assets/ilastik-logo.png">
-    </head>
+        <html>
+            <head>
+                <meta charset="UTF-8">
+                <link rel=icon href="https://www.ilastik.org/assets/ilastik-logo.png">
+            </head>
 
-    <body>
-        {link_tags}
-    </body>
-</html>
-"""
+            <body>
+                {links}
+            </body>
+        </html>
+    """
+
+
 
 @app.route('/datasource/<datasource_id>/info')
 def datasource_info_dict(datasource_id:str) -> Dict:
@@ -321,5 +331,13 @@ def show_object(class_name:str, object_id:str):
     klass = Context.get_class_named(class_name)
     return flask.jsonify(Context.load(object_id).json_data)
 
+for sample_dir in args.sample_dirs:
+    for sample_file in sample_dir.iterdir():
+        if sample_file.is_dir() and sample_file.suffix in ('.n5', '.N5'):
+            for dataset in sample_file.iterdir():
+                if dataset.is_dir():
+                    datasource = DataSource.create(dataset.absolute().as_posix())
+                    print(f"---->> Adding sample {datasource.name}")
+                    Context.store(None, datasource)
 
 app.run(host=args.host, port=args.port)
