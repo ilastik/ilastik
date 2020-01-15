@@ -250,6 +250,7 @@ class BatchProcessingGui(QTabWidget):
             "HessianOfGaussianEigenvalues": 2,
         }
 
+        workflow = self.parentApplet.workflow()
         opFeatureSelection = self.parentApplet.workflow().featureSelectionApplet.topLevelOperator
 
         min_block_size = 0
@@ -261,16 +262,20 @@ class BatchProcessingGui(QTabWidget):
             min_block_size = max(min_block_size, int(3 * sigma + 0.5 * orders[name] + 0.5))
             compute_in_2d |= opFeatureSelection.ComputeIn2d.value[col]
 
-        with io.BytesIO() as buf, h5py.File(buf) as dest:
-            def partial_copy(name, obj):
-                if isinstance(obj, h5py.Group):
-                    dest.create_group(name).attrs.update(obj.attrs)
-                elif isinstance(obj, h5py.Dataset) and name.startswith("Input Data/local_data"):
-                    dest.create_dataset_like(name, obj).attrs.update(obj.attrs)
-                else:
-                    dest.copy(obj, name)
+        workflow.shell.projectManager.saveProject()
 
-            project_file.visititems(partial_copy)
+        with io.BytesIO() as buf:
+            with h5py.File(buf) as dest:
+                def partial_copy(name, obj):
+                    if isinstance(obj, h5py.Group):
+                        dest.create_group(name).attrs.update(obj.attrs)
+                    elif isinstance(obj, h5py.Dataset) and name.startswith("Input Data/local_data"):
+                        dest.create_dataset_like(name, obj).attrs.update(obj.attrs)
+                    else:
+                        dest.copy(obj, name)
+
+                project_file.visititems(partial_copy)
+
             data = buf.getvalue()
 
         try:
