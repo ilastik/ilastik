@@ -37,6 +37,7 @@ parser.add_argument('--host', default='localhost', help='ip or hostname where th
 parser.add_argument('--port', default=5000, type=int, help='port to listen on')
 parser.add_argument('--ngurl', default='http://localhost:8080', help='url where neuroglancer is being served')
 parser.add_argument('--sample-dirs', type=Path, help='List of directories containing n5 samples', nargs='+')
+parser.add_argument('--sample-tile-size', type=int, help='Force samples to use this tiles with this size (clamped to full image)')
 args = parser.parse_args()
 
 #FIXME:Rasterizing should probabl be done on the client
@@ -59,6 +60,12 @@ class NgAnnotation(Annotation):
             scribblings.set(colored_point)
 
         super().__init__(scribblings=scribblings, raw_data=raw_data)
+
+    def json_data(self):
+        data = super().json_data
+        data['color'] = color
+        data['voxels'] = [vx.json_data for vx in self.voxels]
+        return data
 
 
 feature_extractor_classes = [
@@ -331,12 +338,13 @@ def show_object(class_name:str, object_id:str):
     klass = Context.get_class_named(class_name)
     return flask.jsonify(Context.load(object_id).json_data)
 
-for sample_dir in args.sample_dirs:
+for sample_dir in (args.sample_dirs or ()):
     for sample_file in sample_dir.iterdir():
         if sample_file.is_dir() and sample_file.suffix in ('.n5', '.N5'):
             for dataset in sample_file.iterdir():
                 if dataset.is_dir():
-                    datasource = DataSource.create(dataset.absolute().as_posix())
+                    tile_shape_hint = Shape5D.hypercube(args.sample_tile_size) if args.sample_tile_size else None
+                    datasource = DataSource.create(dataset.absolute().as_posix(), tile_shape_hint=tile_shape_hint)
                     print(f"---->> Adding sample {datasource.name}")
                     Context.store(None, datasource)
 
