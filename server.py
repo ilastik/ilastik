@@ -231,7 +231,7 @@ def get_sample_datasets() -> List[Dict]:
     }
     """
 
-    protocol = request.headers.get('X-Forwarded-Protocol', 'http')
+    protocol = request.headers.get('X-Forwarded-Proto', 'http')
     host = request.headers.get('X-Forwarded-Host', args.host)
     port = '' if 'X-Forwarded-Host' in request.headers else f':{args.port}'
     prefix = request.headers.get('X-Forwarded-Prefix', '/')
