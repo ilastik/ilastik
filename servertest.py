@@ -123,3 +123,15 @@ data = numpy.frombuffer(binary, dtype=numpy.uint8).reshape(3, 10, 10)
 a = Array5D(data, axiskeys='cyx')
 a.show_channels()
 
+
+import pydevd; pydevd.settrace()
+resp = post('http://localhost:5000/data_source',
+            data={'url': "/home/tomaz/SampleData/n5tests/bunch_of_cells_Probabilities.n5/exported_data"})
+data_source_id = resp.json()
+predictions_path = f"predictions/{classifier_id}/{data_source_id}"
+binary = get(f"http://localhost:5000/{predictions_path}/data/0-256_0-256_0-1").content
+data = numpy.frombuffer(binary, dtype=numpy.uint8).reshape(2, 256, 256)
+a = Array5D(data, axiskeys='cyx')
+a.show_channels()
+
+

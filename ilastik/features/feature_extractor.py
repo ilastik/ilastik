@@ -106,6 +106,13 @@ class FlatChannelwiseFilter(ChannelwiseFeatureExtractor):
     def _compute_slice(self, raw_data:DataSource, out:Image):
         pass
 
+    def _debug_show(self, rawData: DataSource, featureData: FeatureData):
+        channel_multiplier = int(featureData.shape.c / rawData.shape.c)
+        assert channel_multiplier == self.get_channel_multiplier(rawData)
+        print(f"Showing features as a group of  {channel_multiplier}-channel images")
+        for channel_stack in featureData.channel_stacks(channel_multiplier):
+            channel_stack.as_uint8(normalized=False).show_images()
+
 
 class FeatureExtractorCollection(ChannelwiseFeatureExtractor):
     def __init__(self, extractors:Iterable[FeatureExtractor]):
