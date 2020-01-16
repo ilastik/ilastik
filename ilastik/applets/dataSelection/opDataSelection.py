@@ -93,26 +93,16 @@ class DatasetInfo(ABC):
         self.nickname = nickname
         self.normalizeDisplay = (self.drange is not None) if normalizeDisplay is None else normalizeDisplay
         self.axistags = axistags or default_tags
-        if len(self.axistags) != len(self.laneShape):
-            if not guess_tags_for_singleton_axes:
-                raise UnsuitedAxistagsException(self.axistags, self.laneShape)
-            default_keys = [tag.key for tag in default_tags]
-            tagged_shape = dict(zip(default_keys, self.laneShape))
-            squeezed_shape = {k: v for k, v in tagged_shape.items() if v != 1}
-            requested_keys = [tag.key for tag in axistags]
-            if set(requested_keys).issubset(set(default_keys)) and set(default_keys) - set(requested_keys) == set("c"):
-                self.axistags = default_tags  # allow missing 'c' in axistags; not sure if this is a good idea
-            elif len(requested_keys) == len(squeezed_shape):
-                dummy_axes = [key for key in "ctzxy" if key not in requested_keys]
-                out_axes = ""
-                for k, v in tagged_shape.items():
-                    if v > 1:
-                        out_axes += requested_keys.pop(0)
-                    else:
-                        out_axes += dummy_axes.pop(0)
-                self.axistags = vigra.defaultAxistags(out_axes)
+
+        if axistags:
+            if len(axistags) == len(self.laneShape):
+                self.axistags = axistags
+            elif guess_tags_for_singleton_axes:
+                self.axistags = default_tags
             else:
-                raise UnsuitedAxistagsException(requested_keys, self.laneShape)
+                raise UnsuitedAxistagsException(self.axistags, self.laneShape)
+        else:
+            self.axistags = default_tags
         self.legacy_datasetId = self.generate_id()
 
     @abstractproperty
