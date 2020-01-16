@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 import cProfile
 
 from ndstructs import Array5D, Slice5D, Shape5D
-from ndstructs.datasource import DataSource
+from ndstructs.datasource import DataSource, N5DataSource
 from ilastik.features.fastfilters import (
     GaussianSmoothing,
     HessianOfGaussianEigenvalues,
@@ -17,7 +17,7 @@ from ilastik.features.fastfilters import (
 from ilastik.annotations import Annotation
 from ilastik.classifiers.pixel_classifier import PixelClassifier, StrictPixelClassifier
 
-datasource = DataSource.create("/home/tomaz/SampleData/n5tests/317_8_CamKII_tTA_lacZ_Xgal_s123_1.4.n5/data")
+datasource = DataSource.create("/home/tomaz/SampleData/n5tests/317_8_CamKII_tTA_lacZ_Xgal_s123_1.4.n5/data", tile_shape_hint=Shape5D.hypercube(1024))
 #datasource = DataSource.create("/home/tomaz/SampleData/c_cells/cropped/huge/cropped1.png")
 #print(datasource.full_shape)
 print(datasource.tile_shape)
@@ -43,7 +43,7 @@ print("Classifier created!!")
 
 predictions = classifier.allocate_predictions(datasource)
 with ThreadPoolExecutor(max_workers=8) as executor:
-    tiles = list(datasource.get_tiles(Shape5D(x=1024, y=1024, c=3)))
+    tiles = list(datasource.get_tiles())
     for raw_tile in tiles:
         def predict_tile(raw_tile):
             tile_prediction, tile_features = classifier.predict(raw_tile)

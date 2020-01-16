@@ -18,7 +18,15 @@ def send(method:str, *args, **kwargs):
 
 
 resp = post('http://localhost:5000/data_source',
-            data={'url': "/home/tomaz/SampleData/n5tests/317_8_CamKII_tTA_lacZ_Xgal_s123_1.4.n5/data"})
+            data={
+                'url': "/home/tomaz/SampleData/n5tests/317_8_CamKII_tTA_lacZ_Xgal_s123_1.4.n5/data",
+                'tile_shape_hint.x': 512,
+                'tile_shape_hint.y': 512,
+                'tile_shape_hint.z': 512,
+                'tile_shape_hint.c': 512,
+                'tile_shape_hint.t': 512,
+            }
+)
 
 
 resp = post('http://localhost:5000/data_source',
@@ -122,16 +130,3 @@ binary = get(f"http://localhost:5000/datasource/{rgb_squares_data_source_id}/dat
 data = numpy.frombuffer(binary, dtype=numpy.uint8).reshape(3, 10, 10)
 a = Array5D(data, axiskeys='cyx')
 a.show_channels()
-
-
-import pydevd; pydevd.settrace()
-resp = post('http://localhost:5000/data_source',
-            data={'url': "/home/tomaz/SampleData/n5tests/bunch_of_cells_Probabilities.n5/exported_data"})
-data_source_id = resp.json()
-predictions_path = f"predictions/{classifier_id}/{data_source_id}"
-binary = get(f"http://localhost:5000/{predictions_path}/data/0-256_0-256_0-1").content
-data = numpy.frombuffer(binary, dtype=numpy.uint8).reshape(2, 256, 256)
-a = Array5D(data, axiskeys='cyx')
-a.show_channels()
-
-
