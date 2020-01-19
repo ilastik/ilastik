@@ -45,9 +45,9 @@ threads: -1
 total_ram_mb: 0
 
 [hbp]
-token_url: http://127.0.0.1:8000/token/
-upload_file_url: http://127.0.0.1:8000/v1/files/
-create_project_url: http://127.0.0.1:8000/v1/batch/projects/
+token_url: https://web.ilastik.org/token/
+upload_file_url: https://web.ilastik.org/v1/files/
+create_project_url: https://web.ilastik.org/v1/batch/projects/
 
 [ipc raw tcp]
 autostart: false
