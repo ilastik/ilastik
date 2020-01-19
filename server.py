@@ -266,7 +266,7 @@ def get_sample_datasets() -> List[Dict]:
                 "layer": "annotation",
                 "visible": True
             },
-            "layout": "4panel"
+            "layout": "xy"
         }
         yield {
             'url': f"{args.ngurl}#!" + urllib.parse.quote(str(json.dumps(url_data))),
