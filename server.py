@@ -231,6 +231,12 @@ def get_sample_datasets() -> List[Dict]:
     }
     """
 
+    grayscale_shader = """void main() {
+      emitGrayscale(toNormalized(getDataValue(0)));
+    }
+    """
+
+
     protocol = request.headers.get('X-Forwarded-Proto', 'http')
     host = request.headers.get('X-Forwarded-Host', args.host)
     port = '' if 'X-Forwarded-Host' in request.headers else f':{args.port}'
@@ -244,7 +250,7 @@ def get_sample_datasets() -> List[Dict]:
                 "source": f"precomputed://{protocol}://{host}{port}{prefix}datasource/{datasource_id}",
                 "type": "image",
                 "blend": "default",
-                "shader": rgb_shader,
+                "shader": grayscale_shader if datasource.shape.c == 1 else rgb_shader,
                 "shaderControls": {},
                 "name": datasource.name
                 },
