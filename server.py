@@ -19,7 +19,6 @@ from ndstructs import Point5D, Slice5D, Shape5D, Array5D
 from ndstructs.datasource import DataSource
 from ilastik.annotations import Annotation, Scribblings
 from ilastik.classifiers.pixel_classifier import PixelClassifier, StrictPixelClassifier, Predictions
-from ndstructs.datasource import PilDataSource
 from ilastik.features.feature_extractor import FeatureExtractor
 from ilastik.features.fastfilters import (
     GaussianSmoothing,
@@ -166,7 +165,8 @@ def predict():
                                  datasource_id=request.args['data_source_id'])
 
     channel=int(request.args.get('channel', 0))
-    out_image = predictions.as_pil_images()[channel]
+    data = predictions.cut(Slice5D(c=channel)).as_uint8(normalized=True).raw("yx")
+    out_image = PilImage.fromarray(data)
     out_file = io.BytesIO()
     out_image.save(out_file, 'png')
     out_file.seek(0)
