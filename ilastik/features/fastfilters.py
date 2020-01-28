@@ -8,7 +8,7 @@ import numpy
 from .feature_extractor import FlatChannelwiseFilter, FeatureData
 from ndstructs import Array5D, Image, ScalarImage
 from ndstructs import Point5D, Slice5D, Shape5D
-from ndstructs.datasource import DataSource
+from ndstructs.datasource import DataSource, BackedSlice5D
 
 class ChannelwiseFastFilter(FlatChannelwiseFilter):
     def __init__(self, stack_axis:str='z'):
@@ -29,7 +29,7 @@ class ChannelwiseFastFilter(FlatChannelwiseFilter):
         args[self.stack_axis] = 1
         return Shape5D(**args)
 
-    def _compute_slice(self, source_roi:DataSource, out:FeatureData):
+    def _compute_slice(self, source_roi:BackedSlice5D, out:FeatureData):
         source = ScalarImage.fromArray5D(source_roi.enlarged(self.halo).retrieve())
         source_axes = source.squeezed_shape.axiskeys
         source_raw = source.raw(source_axes).astype(numpy.float32)

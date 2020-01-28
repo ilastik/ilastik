@@ -16,7 +16,8 @@ import argparse
 from pathlib import Path
 
 from ndstructs import Point5D, Slice5D, Shape5D, Array5D
-from ndstructs.datasource import DataSource
+from ndstructs.datasource import DataSource, BackedSlice5D
+from ndstructs.utils import JsonSerializable
 from ilastik.annotations import Annotation, Scribblings
 from ilastik.classifiers.pixel_classifier import PixelClassifier, StrictPixelClassifier, Predictions
 from ilastik.features.feature_extractor import FeatureExtractor
@@ -139,13 +140,12 @@ class Context:
 
 def do_predictions(roi:Slice5D, classifier_id:str, datasource_id:str) -> Predictions:
     classifier = Context.load(classifier_id)
-    full_data_source = Context.load(datasource_id)
-    clamped_roi = roi.clamped(full_data_source)
-    data_source = full_data_source.resize(clamped_roi)
+    datasource = Context.load(datasource_id)
+    backed_roi = BackedSlice5D(datasource, **roi.to_dict())
 
-    predictions = classifier.allocate_predictions(data_source)
+    predictions = classifier.allocate_predictions(backed_roi)
     with ThreadPoolExecutor() as executor:
-        for raw_tile in data_source.get_tiles():
+        for raw_tile in backed_roi.get_tiles():
             def predict_tile(tile):
                 tile_prediction, tile_features = classifier.predict(tile)
                 predictions.set(tile_prediction, autocrop=True)
@@ -191,7 +191,7 @@ def info_dict(classifier_id:str, datasource_id:str) -> Dict:
     classifier = Context.load(classifier_id)
     datasource = Context.load(datasource_id)
 
-    expected_predictions_shape = classifier.get_expected_roi(datasource).shape
+    expected_predictions_shape = classifier.get_expected_roi(datasource.roi).shape
 
     resp = flask.jsonify({
         "@type": "neuroglancer_multiscale_volume",
@@ -215,7 +215,7 @@ def info_dict(classifier_id:str, datasource_id:str) -> Dict:
 def ng_raw(datasource_id:str, xBegin:int, xEnd:int, yBegin:int, yEnd:int, zBegin:int, zEnd:int):
     requested_roi = Slice5D(x=slice(xBegin, xEnd), y=slice(yBegin, yEnd), z=slice(zBegin, zEnd))
     datasource = Context.load(datasource_id)
-    data = datasource.resize(requested_roi).retrieve()
+    data = datasource.retrieve(requested_roi)
 
     resp = flask.make_response(data.raw('xyzc').tobytes('F'))
     resp.headers['Content-Type'] = 'application/octet-stream'
@@ -310,11 +310,11 @@ def datasource_info_dict(datasource_id:str) -> Dict:
         "@type": "neuroglancer_multiscale_volume",
         "type": "image",
         "data_type": "uint8", #DONT FORGET TO CONVERT PREDICTIONS TO UINT8!
-        "num_channels": int(datasource.full_shape.c),
+        "num_channels": int(datasource.shape.c),
         "scales": [
             {
                 "key": "data",
-                "size": [int(v) for v in datasource.full_shape.to_tuple('xyz')],
+                "size": [int(v) for v in datasource.shape.to_tuple('xyz')],
                 "resolution": [1,1,1],
                 "voxel_offset": [0,0,0],
                 "chunk_sizes": [datasource.tile_shape.to_tuple('xyz')],
@@ -337,20 +337,20 @@ def create_object(class_name:str):
 @app.route('/<class_name>/', methods=['GET'])
 def list_objects(class_name):
     klass = Context.get_class_named(class_name)
-    return flask.jsonify({ext_id: ext.json_data for ext_id, ext in Context.get_all(klass).items()})
+    return flask.Response(JsonSerializable.jsonify(Context.get_all(klass)), mimetype='application/json')
 
 @app.route('/<class_name>/<object_id>', methods=['GET'])
 def show_object(class_name:str, object_id:str):
     klass = Context.get_class_named(class_name)
-    return flask.jsonify(Context.load(object_id).json_data)
+    return flask.Response(Context.load(object_id).to_json(), mimetype='application/json')
 
 for sample_dir in (args.sample_dirs or ()):
     for sample_file in sample_dir.iterdir():
         if sample_file.is_dir() and sample_file.suffix in ('.n5', '.N5'):
             for dataset in sample_file.iterdir():
                 if dataset.is_dir():
-                    tile_shape_hint = Shape5D.hypercube(args.sample_tile_size) if args.sample_tile_size else None
-                    datasource = DataSource.create(dataset.absolute().as_posix(), tile_shape_hint=tile_shape_hint)
+                    tile_shape = Shape5D.hypercube(args.sample_tile_size) if args.sample_tile_size else None
+                    datasource = DataSource.create(dataset.absolute().as_posix(), tile_shape=tile_shape)
                     print(f"---->> Adding sample {datasource.name}")
                     Context.store(None, datasource)
 

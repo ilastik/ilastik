@@ -5,7 +5,6 @@ import functools
 from operator import mul
 from typing import List, Iterable, Tuple
 
-import vigra.filters
 import numpy as np
 
 from ndstructs import Slice5D, Point5D, Shape5D

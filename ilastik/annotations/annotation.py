@@ -2,13 +2,12 @@ from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Iterator, Tuple, Dict
 
-import vigra.filters
 import numpy as np
 
 from ndstructs import Slice5D, Point5D, Shape5D
 from ndstructs import Array5D, Image, ScalarData, StaticLine, LinearData
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureData
-from ndstructs.datasource import DataSource
+from ndstructs.datasource import DataSource, BackedSlice5D
 from ndstructs.utils import JsonSerializable
 from PIL import Image as PilImage
 
@@ -88,10 +87,10 @@ class Annotation(JsonSerializable):
     """User scribblings attached to the raw data onto which they were drawn"""
 
     def __init__(self, scribblings:Scribblings, raw_data:DataSource):
-        if not raw_data.contains(scribblings.roi):
+        if not raw_data.roi.contains(scribblings.roi):
             raise ScribblingsOutOfBounds(scribblings=scribblings, raw_data=raw_data)
         self.scribblings = scribblings
-        self.raw_data = raw_data.full()
+        self.raw_data = raw_data
 
     @classmethod
     def from_png(cls, path:str, raw_data:DataSource, location:Point5D=Point5D.zero()):
@@ -104,7 +103,7 @@ class Annotation(JsonSerializable):
         annotated_roi = self.scribblings.roi.with_full_c()
 
         with ThreadPoolExecutor() as executor:
-            for data_tile in self.raw_data.clamped(annotated_roi).get_tiles(): #tiling allows for caching of the features
+            for data_tile in BackedSlice5D(self.raw_data).clamped(annotated_roi).get_tiles():
                 def make_samples(data_tile):
                     scribblings_tile = self.scribblings.clamped(data_tile)
                     feature_tile = feature_extractor.compute(data_tile).clamped(scribblings_tile.roi.with_full_c())

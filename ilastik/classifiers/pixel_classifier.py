@@ -12,7 +12,7 @@ from ndstructs import Array5D, Slice5D, Point5D, Shape5D
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureData
 from ilastik.features.feature_extractor import FeatureExtractorCollection
 from ilastik.annotations import Annotation, FeatureSamples, LabelSamples
-from ndstructs.datasource import DataSource
+from ndstructs.datasource import BackedSlice5D
 from ndstructs.utils import JsonSerializable
 
 class Predictions(Array5D):
@@ -34,7 +34,7 @@ class Predictions(Array5D):
         return pil_channel_images
 
 class PixelClassifier(JsonSerializable):
-    def __init__(self, feature_extractors:Iterable[FeatureExtractor], annotations:List[Annotation],*,
+    def __init__(self, feature_extractors:Tuple[FeatureExtractor, ...], annotations:Tuple[Annotation, ...],*,
                  num_trees:int=100, num_forests:int=multiprocessing.cpu_count(), random_seed:int=0):
         assert len(annotations) > 0
         assert len(feature_extractors) > 0
@@ -67,15 +67,15 @@ class PixelClassifier(JsonSerializable):
     def get(cls, *classifier_args, **classifier_kwargs):
         return cls(*classifier_args, **classifier_kwargs)
 
-    def get_expected_roi(self, data_slice:DataSource):
+    def get_expected_roi(self, data_slice:BackedSlice5D):
         c_start = data_slice.c.start
         c_stop = c_start + self.num_classes
         return data_slice.with_coord(c=slice(c_start, c_stop))
 
-    def allocate_predictions(self, data_slice:DataSource):
+    def allocate_predictions(self, data_slice:Slice5D):
         return Predictions.allocate(self.get_expected_roi(data_slice))
 
-    def predict(self, data_slice:DataSource, out:Predictions=None) -> Predictions:
+    def predict(self, data_slice:BackedSlice5D, out:Predictions=None) -> Predictions:
         feature_data = self.feature_extractors.compute(data_slice)
         predictions = out or self.allocate_predictions(data_slice)
         assert predictions.roi == self.get_expected_roi(data_slice)
@@ -107,6 +107,6 @@ class StrictPixelClassifier(PixelClassifier):
                 extractor.ensure_applicable(annot.raw_data)
         super().__init__(extractors, annotations, *args, **kwargs)
 
-    def predict(self, data_slice:DataSource, out:Predictions=None) -> Predictions:
+    def predict(self, data_slice:BackedSlice5D, out:Predictions=None) -> Predictions:
         self.feature_extractors.ensure_applicable(data_slice)
         return super().predict(data_slice, out)
