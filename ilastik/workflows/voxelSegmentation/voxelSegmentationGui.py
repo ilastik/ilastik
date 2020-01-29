@@ -11,7 +11,7 @@ from PyQt5.QtGui import QColor, QIcon
 
 # HCI
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer, ColortableLayer
-from volumina.utility import ShortcutManager, PreferencesManager
+from volumina.utility import ShortcutManager, preferences
 
 from lazyflow.utility import PathComponents
 from lazyflow.roi import slicing_to_string
@@ -194,7 +194,7 @@ class VoxelSegmentationGui(LabelingGui):
 
         def handleImportLabelsAction():
             # Find the directory of the most recently opened image file
-            mostRecentImageFile = PreferencesManager().get("DataSelection", "recent image")
+            mostRecentImageFile = preferences.get("DataSelection", "recent image")
             if mostRecentImageFile is not None:
                 defaultDirectory = os.path.split(mostRecentImageFile)[0]
             else:
