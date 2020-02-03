@@ -20,7 +20,7 @@ from ndstructs.datasource import DataSource, BackedSlice5D
 from ndstructs.utils import JsonSerializable
 from ilastik.annotations import Annotation, Scribblings
 from ilastik.classifiers.pixel_classifier import PixelClassifier, StrictPixelClassifier, Predictions
-from ilastik.features.feature_extractor import FeatureExtractor
+from ilastik.features.feature_extractor import FeatureExtractor, FeatureDataMismatchException
 from ilastik.features.fastfilters import (
     GaussianSmoothing,
     HessianOfGaussianEigenvalues,
@@ -29,7 +29,6 @@ from ilastik.features.fastfilters import (
     DifferenceOfGaussians,
     StructureTensorEigenvalues
 )
-from ilastik.features.vigra_features import GaussianSmoothing, HessianOfGaussian
 from ilastik.utility import flatten, unflatten, listify
 
 parser = argparse.ArgumentParser(description='Runs ilastik prediction web server')
@@ -78,7 +77,7 @@ feature_extractor_classes = [
     StructureTensorEigenvalues,
 ]
 
-workflow_classes = {klass.__name__: klass for klass in [PixelClassifier, DataSource, Annotation, NgAnnotation] + feature_extractor_classes}
+workflow_classes = {klass.__name__: klass for klass in [PixelClassifier, StrictPixelClassifier, DataSource, Annotation, NgAnnotation] + feature_extractor_classes}
 
 app = Flask("WebserverHack")
 CORS(app)
@@ -328,6 +327,10 @@ def datasource_info_dict(datasource_id:str) -> Dict:
 def remove_object(class_name, object_id:str):
     Context.remove(Context.get_class_named(class_name), object_id)
     return flask.jsonify({'id': object_id})
+
+@app.errorhandler(FeatureDataMismatchException)
+def handle_feature_data_mismatch(error):
+    return flask.Response(str(error), status=400)
 
 @app.route("/<class_name>/", methods=['POST'])
 def create_object(class_name:str):

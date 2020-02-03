@@ -49,14 +49,14 @@ assert annot_id.startswith("pointer@")
 
 
 resp = post('http://localhost:5000/gaussian_smoothing',
-            data={'sigma': 0.3})
+            data={'sigma': 0.3, 'axis_2d': 'z'})
 gauss_id = resp.json()
 print(f"gauss_id: {gauss_id}")
 assert gauss_id.startswith("pointer@")
 
 
 resp = post('http://localhost:5000/hessian_of_gaussian_eigenvalues',
-            data={'scale': 0.3})
+            data={'scale': 0.3, 'axis_2d': 'z'})
 hess_id = resp.json()
 print(f"hess_id: {hess_id}")
 assert hess_id.startswith("pointer@")
@@ -69,7 +69,7 @@ resp = get(f'http://localhost:5000/feature_extractor/{hess_id}').json()
 print("Retrieveing hessian filter:\n", json.dumps(resp, indent=4))
 
 
-resp = post('http://localhost:5000/pixel_classifier',
+resp = post('http://localhost:5000/strict_pixel_classifier',
             data={
                 'feature_extractors.0': gauss_id,
                 'feature_extractors.1': hess_id,
