@@ -3,13 +3,13 @@ from concurrent.futures import ThreadPoolExecutor as Executor
 from dataclasses import dataclass
 import functools
 from operator import mul
-from typing import List, Iterable, Tuple
+from typing import List, Iterable, Tuple, Optional
 
 import numpy as np
 
 from ndstructs import Slice5D, Point5D, Shape5D
 from ndstructs import Array5D, Image, ScalarImage, LinearData
-from ndstructs.datasource import DataSource
+from ndstructs.datasource import DataSource, BackedSlice5D
 from ndstructs.utils import JsonSerializable
 
 class FeatureData(Array5D):
@@ -39,17 +39,17 @@ class FeatureExtractor(JsonSerializable):
         return self.__class__ == other.__class__ and self.__dict__ == other.__dict__
 
     @abstractmethod
-    def get_expected_roi(self, input_roi:DataSource, channel_offset:int=0) -> Shape5D:
+    def get_expected_shape(self, input_shape:Shape5D) -> Shape5D:
         pass
 
-    def allocate_for(self, input_roi:DataSource, channel_offset:int=0) -> FeatureData:
+    def allocate_for(self, input_shape:Shape5D) -> FeatureData:
         #FIXME: vigra needs C to be the last REAL axis rather than the last axis of the view -.-
-        out_roi = self.get_expected_roi(input_roi, channel_offset)
+        out_roi = self.get_expected_shape(input_shape).to_slice_5d()
         return FeatureData.allocate(out_roi, dtype=np.float32, axiskeys='tzyxc')
 
     @functools.lru_cache()
-    def compute(self, input_roi:DataSource, channel_offset:int=0) -> FeatureData:
-        out_features = self.allocate_for(input_roi, channel_offset)
+    def compute(self, input_roi:BackedSlice5D) -> FeatureData:
+        out_features = self.allocate_for(input_roi.shape).translated(input_roi.start)
         self.compute_into(input_roi, out_features)
         out_features.setflags(write=False)
         return out_features
@@ -58,12 +58,12 @@ class FeatureExtractor(JsonSerializable):
     def compute_into(self, input_roi:DataSource, out:FeatureData) -> FeatureData:
         pass
 
-    def is_applicable_to(self, data_slice:DataSource) -> bool:
-        return data_slice.shape >= self.kernel_shape
+    def is_applicable_to(self, datasource:DataSource) -> bool:
+        return datasource.shape >= self.kernel_shape
 
-    def ensure_applicable(self, data_slice:DataSource):
-        if not self.is_applicable_to(data_slice):
-            raise FeatureDataMismatchException(self, data_slice)
+    def ensure_applicable(self, datasource:DataSource):
+        if not self.is_applicable_to(datasource):
+            raise FeatureDataMismatchException(self, datasource)
 
     @property
     @abstractmethod
@@ -75,45 +75,45 @@ class FeatureExtractor(JsonSerializable):
         return self.kernel_shape // 2
 
 
-class ChannelwiseFeatureExtractor(FeatureExtractor):
-    def get_channel_multiplier(self, roi:Slice5D) -> int:
+class ChannelwiseFilter(FeatureExtractor):
+    """A Feature extractor that computes independently for every
+    spatial slice and for every channel in its input"""
+
+    def __init__(self, axis_2d:Optional[str] = None):
+        super().__init__()
+        self.axis_2d = axis_2d
+
+    @property
+    def channel_multiplier(self) -> int:
         "Number of channels emited by this feature extractor for each input channel"
         return 1
 
-    def get_expected_roi(self, datasource:DataSource, channel_offset:int=0) -> Shape5D:
-        num_output_channels = datasource.shape.c * self.get_channel_multiplier(datasource)
-        c_start = channel_offset
-        c_stop = c_start + num_output_channels
-        return Slice5D(**{**datasource.to_dict(), "c":slice(c_start, c_stop)})
+    def get_expected_shape(self, input_shape:Shape5D) -> Shape5D:
+        return input_shape.with_coord(c=input_shape.c * self.channel_multiplier)
 
-class FlatChannelwiseFilter(ChannelwiseFeatureExtractor):
-    """A Feature extractor with a 2D kernel that computes independently for every
-    spatial slice and for every channel in its input"""
+    def compute_into(self, input_roi:BackedSlice5D, out:FeatureData) -> FeatureData:
+        in_step : Shape5D = input_roi.shape.with_coord(c=1) # compute features channel-wise
+        if self.axis_2d:
+            in_step = in_step.with_coord(**{self.axis_2d: 1}) # also compute in 2D slices
+        out_step : Shape5D = in_step.with_coord(c=self.channel_multiplier)
 
-    def __init__(self, stack_axis:str='z'):
-        super().__init__()
-        self.stack_axis = stack_axis
-
-    def compute_into(self, input_roi:DataSource, out:FeatureData) -> FeatureData:
-        for source_image_roi, out_image in zip(input_roi.images(self.stack_axis), out.images(self.stack_axis)):
-            out_channel_stacks = out_image.channel_stacks(step=self.get_channel_multiplier(source_image_roi))
-            for source_channel_roi, out_features in zip(source_image_roi.channels(), out_channel_stacks):
-                self._compute_slice(source_channel_roi, out=out_features)
+        for slc_in, slc_out in zip(input_roi.split(in_step), out.split(out_step)):
+            self._compute_slice(slc_in, out=slc_out)
         return out
 
     @abstractmethod
-    def _compute_slice(self, raw_data:DataSource, out:Image):
+    def _compute_slice(self, raw_data:BackedSlice5D, out:FeatureData):
         pass
 
-    def _debug_show(self, rawData: DataSource, featureData: FeatureData):
+    def _debug_show(self, rawData: BackedSlice5D, featureData: FeatureData):
         channel_multiplier = int(featureData.shape.c / rawData.shape.c)
-        assert channel_multiplier == self.get_channel_multiplier(rawData)
+        assert channel_multiplier == self.channel_multiplier
         print(f"Showing features as a group of  {channel_multiplier}-channel images")
         for channel_stack in featureData.channel_stacks(channel_multiplier):
             channel_stack.as_uint8(normalized=False).show_images()
 
 
-class FeatureExtractorCollection(ChannelwiseFeatureExtractor):
+class FeatureExtractorCollection(FeatureExtractor):
     def __init__(self, extractors:Iterable[FeatureExtractor]):
         assert len(extractors) > 0
         self.extractors = tuple(extractors)
@@ -123,11 +123,6 @@ class FeatureExtractorCollection(ChannelwiseFeatureExtractor):
             shape_params[label] = max(f.kernel_shape[label] for f in extractors)
         self._kernel_shape = Shape5D(**shape_params)
 
-    @classmethod
-    @functools.lru_cache()
-    def get(cls, extractors:Tuple[FeatureExtractor]):
-        return cls(extractors)
-
     def __repr__(self):
         return f"<{self.__class__.__name__} {[repr(f) for f in self.extractors]}>"
 
@@ -135,15 +130,20 @@ class FeatureExtractorCollection(ChannelwiseFeatureExtractor):
     def kernel_shape(self):
         return self._kernel_shape
 
-    def get_channel_multiplier(self, roi:Slice5D) -> int:
-        return sum(f.get_channel_multiplier(roi) for f in self.extractors)
+    def get_expected_shape(self, input_shape:Shape5D) -> Shape5D:
+        expected_c = sum(fx.get_expected_shape(input_shape).c for fx in self.extractors)
+        return input_shape.with_coord(c=expected_c)
 
-    def compute_into(self, input_roi:DataSource, out:FeatureData) -> FeatureData:
-        assert out.roi == self.get_expected_roi(input_roi)
-        channel_offset = out.roi.start.c
+    @property
+    def channel_multiplier(self) -> int:
+        return sum(f.channel_multiplier for f in self.extractors)
+
+    def compute_into(self, input_roi:BackedSlice5D, out:FeatureData) -> FeatureData:
+        assert out.shape == self.get_expected_shape(input_roi.shape)
+        offset = Point5D.zero()
         for fx in self.extractors:
-            out_roi:Slice5D = fx.get_expected_roi(input_roi, channel_offset)
-            out_array:FeatureData = out.cut(out_roi)
+            out_roi:Slice5D = fx.get_expected_shape(input_roi.shape).to_slice_5d().translated(offset)
+            out_array:FeatureData = out.local_cut(out_roi)
             fx.compute_into(input_roi, out=out_array)
-            channel_offset += out_roi.shape.c
+            offset += Point5D.zero(c=out_roi.shape.c)
         return out

@@ -108,5 +108,5 @@ class StrictPixelClassifier(PixelClassifier):
         super().__init__(extractors, annotations, *args, **kwargs)
 
     def predict(self, data_slice:BackedSlice5D, out:Predictions=None) -> Predictions:
-        self.feature_extractors.ensure_applicable(data_slice)
+        self.feature_extractors.ensure_applicable(data_slice.datasource)
         return super().predict(data_slice, out)
