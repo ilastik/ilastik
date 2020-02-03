@@ -67,7 +67,7 @@ class PixelClassifier(JsonSerializable):
     def get(cls, *classifier_args, **classifier_kwargs):
         return cls(*classifier_args, **classifier_kwargs)
 
-    def get_expected_roi(self, data_slice:BackedSlice5D):
+    def get_expected_roi(self, data_slice:BackedSlice5D) -> Slice5D:
         c_start = data_slice.c.start
         c_stop = c_start + self.num_classes
         return data_slice.with_coord(c=slice(c_start, c_stop))
