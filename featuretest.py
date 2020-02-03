@@ -17,18 +17,18 @@ from ilastik.features.fastfilters import (
 from ilastik.annotations import Annotation
 from ilastik.classifiers.pixel_classifier import PixelClassifier, StrictPixelClassifier
 
-datasource = DataSource.create("/home/tomaz/SampleData/n5tests/317_8_CamKII_tTA_lacZ_Xgal_s123_1.4.n5/data", tile_shape=Shape5D.hypercube(1024))
+datasource = DataSource.create("/home/tomaz/SampleData/n5tests/317_8_CamKII_tTA_lacZ_Xgal_s123_1.4.n5/data")#, tile_shape=Shape5D.hypercube(1024))
 #datasource = DataSource.create("/home/tomaz/SampleData/c_cells/cropped/huge/cropped1.png")
 #print(datasource.full_shape)
 print(datasource.tile_shape)
 
 extractors = (
-    GaussianSmoothing(sigma=0.3),
-    HessianOfGaussianEigenvalues(scale=1.0),
-    GaussianGradientMagnitude(sigma=0.3),
-    LaplacianOfGaussian(scale=0.3),
-    DifferenceOfGaussians(sigma0=0.3, sigma1=1.0 * 0.66),
-    StructureTensorEigenvalues(innerScale=1.0, outerScale=1.0 * 0.5),
+    GaussianSmoothing(sigma=0.3, axis_2d='z'),
+    HessianOfGaussianEigenvalues(scale=1.0, axis_2d='z'),
+    GaussianGradientMagnitude(sigma=0.3, axis_2d='z'),
+    LaplacianOfGaussian(scale=0.3, axis_2d='z'),
+    DifferenceOfGaussians(sigma0=0.3, sigma1=1.0 * 0.66, axis_2d='z'),
+    StructureTensorEigenvalues(innerScale=1.0, outerScale=1.0 * 0.5, axis_2d='z'),
 )
 
 annotations = (
