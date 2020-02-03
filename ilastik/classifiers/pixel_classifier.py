@@ -100,12 +100,19 @@ class PixelClassifier(JsonSerializable):
 class StrictPixelClassifier(PixelClassifier):
     """A PixelClassifier that does not admit data which does not match its FeatureExtractors"""
 
-    def __init__(self, feature_extractors:Iterable[FeatureExtractor], annotations:List[Annotation], *args, **kwargs):
+    def __init__(self, feature_extractors:Tuple[FeatureExtractor, ...], annotations:Tuple[Annotation, ...],*,
+                 num_trees:int=100, num_forests:int=multiprocessing.cpu_count(), random_seed:int=0):
         extractors = list(feature_extractors)
         for annot in annotations:
             for extractor in extractors:
                 extractor.ensure_applicable(annot.raw_data)
-        super().__init__(extractors, annotations, *args, **kwargs)
+        super().__init__(
+            feature_extractors=extractors,
+            annotations=annotations,
+            num_trees=num_trees,
+            num_forests=num_forests,
+            random_seed=random_seed
+        )
 
     def predict(self, data_slice:BackedSlice5D, out:Predictions=None) -> Predictions:
         self.feature_extractors.ensure_applicable(data_slice.datasource)
