@@ -110,7 +110,7 @@ class Annotation(JsonSerializable):
 
                     label_samples = LabelSamples.create(scribblings_tile)
                     feature_samples = FeatureSamples.create(scribblings_tile, feature_tile)
-                    assert feature_samples.shape.c == feature_extractor.get_expected_roi(data_tile).shape.c
+                    assert feature_samples.shape.c == feature_extractor.get_expected_shape(data_tile.shape).c
                     all_label_samples.append(label_samples)
                     all_feature_samples.append(feature_samples)
                 executor.submit(make_samples, data_tile)
