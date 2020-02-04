@@ -3,7 +3,8 @@ from concurrent.futures import ThreadPoolExecutor as Executor
 from dataclasses import dataclass
 import functools
 from operator import mul
-from typing import List, Iterable, Tuple, Optional, TypeVar, ClassVar, Mapping, Type
+from typing import List, Iterable, Tuple, Optional, TypeVar, ClassVar, Mapping, Type, Union
+from pathlib import Path
 
 import numpy as np
 import h5py
@@ -41,17 +42,27 @@ class FeatureExtractor(JsonSerializable):
         pass
 
     @staticmethod
-    def from_ilp_group(group: h5py.Group) -> Iterable[FE]:
+    def from_ilp_group(group: h5py.Group) -> List[FE]:
         feature_names : List[str] = [feature_name.decode('utf-8') for feature_name in group['FeatureIds'][()]]
         compute_in_2d : List[bool] = list(group['ComputeIn2d'][()])
         scales: List[float] = list(group['Scales'][()])
         selection_matrix = group['SelectionMatrix'][()] # feature name x scales
 
+        feature_extractors = []
         for feature_idx, feature_name in enumerate(feature_names):
             feature_class = FeatureExtractor.REGISTRY[feature_name]
             for scale_idx, (scale, in_2d) in enumerate(zip(scales, compute_in_2d)):
                 if selection_matrix[feature_idx][scale_idx]:
-                    yield feature_class.from_ilastik_scale(scale, axis_2d='z' if in_2d else None)
+                    feature_extractors.append(feature_class.from_ilastik_scale(scale, axis_2d='z' if in_2d else None))
+        return feature_extractors
+
+    @staticmethod
+    def from_ilp(ilp_file: Union[str, Path, h5py.File]) -> List[FE]:
+        feature_group_name = "FeatureSelections"
+        if isinstance(ilp_file, h5py.File):
+            return FeatureExtractor.from_ilp_group(ilp_file[feature_group_name])
+        with h5py.File(Path(ilp_file).as_posix(), "r") as f:
+            return FeatureExtractor.from_ilp_group(f[feature_group_name])
 
     def __hash__(self):
         return hash((self.__class__, tuple(self.__dict__.values())))
