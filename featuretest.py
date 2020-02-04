@@ -1,11 +1,13 @@
 import pytest
 import numpy as np
 import time
+import h5py
 from concurrent.futures import ThreadPoolExecutor
 import cProfile
 
 from ndstructs import Array5D, Slice5D, Shape5D
 from ndstructs.datasource import DataSource, N5DataSource, BackedSlice5D
+from ilastik.features.feature_extractor import FeatureExtractor
 from ilastik.features.fastfilters import (
     GaussianSmoothing,
     HessianOfGaussianEigenvalues,
@@ -16,6 +18,10 @@ from ilastik.features.fastfilters import (
 )
 from ilastik.annotations import Annotation
 from ilastik.classifiers.pixel_classifier import PixelClassifier, StrictPixelClassifier
+
+import pydevd; pydevd.settrace()
+features = list(FeatureExtractor.from_ilp("/home/tomaz/unicore_stuff/UnicoreProject.ilp"))
+print(features)
 
 datasource = DataSource.create("/home/tomaz/SampleData/n5tests/317_8_CamKII_tTA_lacZ_Xgal_s123_1.4.n5/data")#, tile_shape=Shape5D.hypercube(1024))
 #datasource = DataSource.create("/home/tomaz/SampleData/c_cells/cropped/huge/cropped1.png")
