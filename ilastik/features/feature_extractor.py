@@ -3,9 +3,10 @@ from concurrent.futures import ThreadPoolExecutor as Executor
 from dataclasses import dataclass
 import functools
 from operator import mul
-from typing import List, Iterable, Tuple, Optional
+from typing import List, Iterable, Tuple, Optional, TypeVar, ClassVar, Mapping, Type
 
 import numpy as np
+import h5py
 
 from ndstructs import Slice5D, Point5D, Shape5D
 from ndstructs import Array5D, Image, ScalarImage, LinearData
@@ -29,8 +30,28 @@ class FeatureDataMismatchException(Exception):
         super().__init__(f"Feature {feature_extractor} can't be cleanly applied to {data_source}")
 
 
+FE = TypeVar('FE', bound="FeatureExtractor")
 class FeatureExtractor(JsonSerializable):
     """A specification of how feature data is to be (reproducibly) computed"""
+    REGISTRY : ClassVar[Mapping[str, Type[FE]]] = {}
+
+    @classmethod
+    @abstractmethod
+    def from_ilastik_scale(cls: Type[FE], scale: float, compute_in_2d: bool) -> FE:
+        pass
+
+    @staticmethod
+    def from_ilp_group(group: h5py.Group) -> Iterable[FE]:
+        feature_names : List[str] = [feature_name.decode('utf-8') for feature_name in group['FeatureIds'][()]]
+        compute_in_2d : List[bool] = list(group['ComputeIn2d'][()])
+        scales: List[float] = list(group['Scales'][()])
+        selection_matrix = group['SelectionMatrix'][()] # feature name x scales
+
+        for feature_idx, feature_name in enumerate(feature_names):
+            feature_class = FeatureExtractor.REGISTRY[feature_name]
+            for scale_idx, (scale, in_2d) in enumerate(zip(scales, compute_in_2d)):
+                if selection_matrix[feature_idx][scale_idx]:
+                    yield feature_class.from_ilastik_scale(scale, axis_2d='z' if in_2d else None)
 
     def __hash__(self):
         return hash((self.__class__, tuple(self.__dict__.values())))
@@ -73,6 +94,7 @@ class FeatureExtractor(JsonSerializable):
     @property
     def halo(self) -> Point5D:
         return self.kernel_shape // 2
+
 
 
 class ChannelwiseFilter(FeatureExtractor):
@@ -122,6 +144,10 @@ class FeatureExtractorCollection(FeatureExtractor):
         for label in Point5D.LABELS:
             shape_params[label] = max(f.kernel_shape[label] for f in extractors)
         self._kernel_shape = Shape5D(**shape_params)
+
+    @classmethod
+    def from_ilastik_scale(cls, scale: float, compute_in_2d: bool) -> "FeatureExtractorCollection":
+        raise NotImplementedError("It makes no sense to implement this")
 
     def __repr__(self):
         return f"<{self.__class__.__name__} {[repr(f) for f in self.extractors]}>"

@@ -1,12 +1,12 @@
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, TypeVar
 
 import vigra
 import fastfilters
 import numpy
 
-from .feature_extractor import ChannelwiseFilter, FeatureData
+from .feature_extractor import ChannelwiseFilter, FeatureData, FeatureExtractor
 from ndstructs import Array5D, Image, ScalarImage
 from ndstructs import Point5D, Slice5D, Shape5D
 from ndstructs.datasource import DataSource, BackedSlice5D
@@ -66,21 +66,33 @@ class StructureTensorEigenvalues(ChannelwiseFastFilter):
     def channel_multiplier(self) -> int:
         return 2 if self.axis_2d else 3
 
+    @classmethod
+    def from_ilastik_scale(cls, scale: float, axis_2d: Optional[str] = None) -> "StructureTensorEigenvalues":
+        return cls(innerScale=scale, outerScale=0.5 * scale, axis_2d=axis_2d)
+FeatureExtractor.REGISTRY[StructureTensorEigenvalues.__name__] = StructureTensorEigenvalues
 
 
+SigmaFilter = TypeVar("SigmaFilter", bound="SigmaWindowFilter")
 class SigmaWindowFilter(ChannelwiseFastFilter):
     def __init__(self, sigma: float, window_size:float = 0, axis_2d: Optional[str] = None):
         super().__init__(axis_2d=axis_2d)
         self.sigma = sigma
         self.window_size = window_size
 
+    @classmethod
+    def from_ilastik_scale(cls: SigmaFilter, scale: float, axis_2d: Optional[str] = None) -> SigmaFilter:
+        return cls(sigma=scale, axis_2d=axis_2d)
+
+
 class GaussianGradientMagnitude(SigmaWindowFilter):
     def filter_fn(self, source_raw:numpy.ndarray) -> numpy.ndarray:
         return fastfilters.gaussianGradientMagnitude(source_raw, sigma=self.sigma, window_size=self.window_size)
+FeatureExtractor.REGISTRY[GaussianGradientMagnitude.__name__] = GaussianGradientMagnitude
 
 class GaussianSmoothing(SigmaWindowFilter):
     def filter_fn(self, source_raw: numpy.ndarray) -> numpy.ndarray:
         return fastfilters.gaussianSmoothing(source_raw, sigma=self.sigma, window_size=self.window_size)
+FeatureExtractor.REGISTRY[GaussianSmoothing.__name__] = GaussianSmoothing
 
 class DifferenceOfGaussians(ChannelwiseFastFilter):
     def __init__(self, sigma0:float, sigma1: float, window_size:float=0, axis_2d: Optional[str] = None):
@@ -97,7 +109,13 @@ class DifferenceOfGaussians(ChannelwiseFastFilter):
         b = fastfilters.gaussianSmoothing(source_raw, sigma=self.sigma1, window_size=self.window_size)
         return a - b
 
+    @classmethod
+    def from_ilastik_scale(cls, scale: float, axis_2d: Optional[str] = None) -> "DifferenceOfGaussians":
+        return cls(sigma0=scale, sigma1=scale * 0.66, axis_2d=axis_2d)
+FeatureExtractor.REGISTRY[DifferenceOfGaussians.__name__] = DifferenceOfGaussians
 
+
+ScaleFilter = TypeVar("ScaleFilter", bound="ScaleWindowFilter")
 class ScaleWindowFilter(ChannelwiseFastFilter):
     def __init__(self, scale: float, window_size:float=0, axis_2d: Optional[str] = None):
         super().__init__(axis_2d=axis_2d)
@@ -105,8 +123,8 @@ class ScaleWindowFilter(ChannelwiseFastFilter):
         self.window_size = window_size
 
     @classmethod
-    def from_ilastik_scale(cls, scale: float):
-        return cls(scale)
+    def from_ilastik_scale(cls: ScaleFilter, scale: float, axis_2d: Optional[str] = None) -> ScaleFilter:
+        return cls(scale=scale, axis_2d=axis_2d)
 
 class HessianOfGaussianEigenvalues(ScaleWindowFilter):
     def filter_fn(self, source_raw: numpy.ndarray) -> numpy.ndarray:
@@ -115,7 +133,9 @@ class HessianOfGaussianEigenvalues(ScaleWindowFilter):
     @property
     def channel_multiplier(self) -> int:
         return 2 if self.axis_2d else 3
+FeatureExtractor.REGISTRY[HessianOfGaussianEigenvalues.__name__] = HessianOfGaussianEigenvalues
 
 class LaplacianOfGaussian(ScaleWindowFilter):
     def filter_fn(self, source_raw: numpy.ndarray) -> numpy.ndarray:
         return fastfilters.laplacianOfGaussian(source_raw, scale=self.scale, window_size=self.window_size)
+FeatureExtractor.REGISTRY[LaplacianOfGaussian.__name__] = LaplacianOfGaussian
