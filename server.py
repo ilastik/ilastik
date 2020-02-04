@@ -16,7 +16,7 @@ import argparse
 from pathlib import Path
 
 from ndstructs import Point5D, Slice5D, Shape5D, Array5D
-from ndstructs.datasource import DataSource, BackedSlice5D
+from ndstructs.datasource import DataSource, BackedSlice5D, SequenceDataSource
 from ndstructs.utils import JsonSerializable
 from ilastik.annotations import Annotation, Scribblings
 from ilastik.classifiers.pixel_classifier import PixelClassifier, StrictPixelClassifier, Predictions
@@ -66,6 +66,7 @@ class NgAnnotation(Annotation):
         data['voxels'] = [vx.json_data for vx in self.voxels]
         return data
 
+datasource_classes = [DataSource, SequenceDataSource]
 
 feature_extractor_classes = [
     FeatureExtractor, #this allows one to GET /feature_extractor and get a list of all created feature extractors
@@ -77,7 +78,9 @@ feature_extractor_classes = [
     StructureTensorEigenvalues,
 ]
 
-workflow_classes = {klass.__name__: klass for klass in [PixelClassifier, StrictPixelClassifier, DataSource, Annotation, NgAnnotation] + feature_extractor_classes}
+classifier_classes = [PixelClassifier, StrictPixelClassifier, Annotation, NgAnnotation]
+
+workflow_classes = {klass.__name__: klass for klass in  datasource_classes + feature_extractor_classes + classifier_classes}
 
 app = Flask("WebserverHack")
 CORS(app)

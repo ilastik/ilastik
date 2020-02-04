@@ -29,7 +29,7 @@ resp = post('http://localhost:5000/data_source',
 )
 
 
-resp = post('http://localhost:5000/data_source',
+resp = post('http://localhost:5000/sequence_data_source',
             data={'url': "/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped1.png"})
 data_source_id = resp.json()
 print(f"data_source_id: {data_source_id}")
