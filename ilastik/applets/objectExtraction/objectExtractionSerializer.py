@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
 import logging
@@ -29,21 +29,23 @@ from lazyflow.rtype import SubRegion
 from lazyflow.roi import getIntersectingBlocks, TinyVector, getBlockBounds, roiToSlice
 from lazyflow.request import Request, RequestLock, RequestPool
 
-from ilastik.applets.base.appletSerializer import AppletSerializer,\
-    deleteIfPresent, getOrCreateGroup, SerialSlot, SerialBlockSlot, \
-    SerialDictSlot, SerialObjectFeatureNamesSlot
+from ilastik.applets.base.appletSerializer import (
+    AppletSerializer,
+    deleteIfPresent,
+    getOrCreateGroup,
+    SerialSlot,
+    SerialBlockSlot,
+    SerialDictSlot,
+    SerialObjectFeatureNamesSlot,
+)
 from ilastik.utility.commandLineProcessing import convertStringToList
 
 logger = logging.getLogger(__name__)
 
-class SerialObjectFeaturesSlot(SerialSlot):
 
-    def __init__(self, slot, inslot, blockslot, name=None,
-                 subname=None, default=None, depends=None,
-                 selfdepends=True):
-        super(SerialObjectFeaturesSlot, self).__init__(
-            slot, inslot, name, subname, default, depends, selfdepends
-        )
+class SerialObjectFeaturesSlot(SerialSlot):
+    def __init__(self, slot, inslot, blockslot, name=None, subname=None, default=None, depends=None, selfdepends=True):
+        super(SerialObjectFeaturesSlot, self).__init__(slot, inslot, name, subname, default, depends, selfdepends)
 
         self.blockslot = blockslot
         self._bind(slot)
@@ -60,12 +62,12 @@ class SerialObjectFeaturesSlot(SerialSlot):
 
             cleanBlockRois = self.blockslot[i].value
             for roi in cleanBlockRois:
-                region_features_arr = self.slot[i]( *roi ).wait()
+                region_features_arr = self.slot[i](*roi).wait()
                 assert region_features_arr.shape == (1,)
                 region_features = region_features_arr[0]
                 roi_string = str([[r.start for r in roi], [r.stop for r in roi]])
                 roi_grp = subgroup.create_group(name=str(roi_string))
-                logger.debug('Saving region features into group: "{}"'.format( roi_grp.name ))
+                logger.debug('Saving region features into group: "{}"'.format(roi_grp.name))
                 for key, val in region_features.items():
                     plugin_group = getOrCreateGroup(roi_grp, key)
                     for featname, featval in val.items():
@@ -78,10 +80,10 @@ class SerialObjectFeaturesSlot(SerialSlot):
             return
         opgroup = group[self.name]
         # Note: We sort by NUMERICAL VALUE here.
-        for i, (group_name, subgroup) in enumerate( sorted(list(opgroup.items()), key=lambda k_v: int(k_v[0]) ) ):
+        for i, (group_name, subgroup) in enumerate(sorted(list(opgroup.items()), key=lambda k_v: int(k_v[0]))):
             assert int(group_name) == i, "subgroup extraction order should be numerical order!"
             for roiString, roi_grp in subgroup.items():
-                logger.debug('Loading region features from dataset: "{}"'.format( roi_grp.name ))
+                logger.debug('Loading region features from dataset: "{}"'.format(roi_grp.name))
                 roi = convertStringToList(roiString)
                 roi = tuple(map(tuple, roi))
                 assert len(roi) == 2
@@ -93,7 +95,7 @@ class SerialObjectFeaturesSlot(SerialSlot):
                     for featname, featval in val.items():
                         region_features[key][featname] = featval[...]
 
-                slicing = roiToSlice( *roi )
+                slicing = roiToSlice(*roi)
                 self.inslot[i][slicing] = numpy.array([region_features])
 
         self.dirty = False
@@ -102,20 +104,23 @@ class SerialObjectFeaturesSlot(SerialSlot):
 class ObjectExtractionSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):
         slots = [
-            SerialBlockSlot(operator.LabelImage,
-                            operator.LabelImageCacheInput,
-                            operator.CleanLabelBlocks,
-                            name='LabelImage_v2',
-                            subname='labelimage{:03d}',
-                            selfdepends=False,
-                            shrink_to_bb=False,
-                            compression_level=1),
+            SerialBlockSlot(
+                operator.LabelImage,
+                operator.LabelImageCacheInput,
+                operator.CleanLabelBlocks,
+                name="LabelImage_v2",
+                subname="labelimage{:03d}",
+                selfdepends=False,
+                shrink_to_bb=False,
+                compression_level=1,
+            ),
             SerialObjectFeatureNamesSlot(operator.Features),
-            SerialObjectFeaturesSlot(operator.BlockwiseRegionFeatures,
-                                     operator.RegionFeaturesCacheInput,
-                                     operator.RegionFeaturesCleanBlocks,
-                                     name="RegionFeatures"),
+            SerialObjectFeaturesSlot(
+                operator.BlockwiseRegionFeatures,
+                operator.RegionFeaturesCacheInput,
+                operator.RegionFeaturesCleanBlocks,
+                name="RegionFeatures",
+            ),
         ]
 
-        super(ObjectExtractionSerializer, self).__init__(projectFileGroupName,
-                                                         slots=slots)
+        super(ObjectExtractionSerializer, self).__init__(projectFileGroupName, slots=slots)

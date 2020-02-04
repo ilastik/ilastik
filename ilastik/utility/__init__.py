@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,7 +18,7 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from .bind import bind
 from .multiLaneOperator import MultiLaneOperatorABC
@@ -26,3 +27,4 @@ from .opMultiLaneWrapper import OpMultiLaneWrapper
 from .log_exception import log_exception
 from .autocleaned_tempdir import autocleaned_tempdir
 from .flatten import flatten, unflatten, listify
+from .slot_name_enum import SlotNameEnum

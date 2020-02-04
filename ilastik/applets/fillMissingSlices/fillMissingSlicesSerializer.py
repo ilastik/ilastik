@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot
 
@@ -24,24 +24,20 @@ from lazyflow.operators.opInterpMissingData import OpDetectMissing
 
 
 class FillMissingSlicesSerializer(AppletSerializer):
-
     def __init__(self, topGroupName, topLevelOperator):
-        slots = [SerialSlot(topLevelOperator.PatchSize),
-                 SerialSlot(topLevelOperator.HaloSize)]
-        super(FillMissingSlicesSerializer, self).__init__(topGroupName,
-                                                          slots=slots)
+        slots = [SerialSlot(topLevelOperator.PatchSize), SerialSlot(topLevelOperator.HaloSize)]
+        super(FillMissingSlicesSerializer, self).__init__(topGroupName, slots=slots)
         self._operator = topLevelOperator
 
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         dslot = self._operator.Detector[0]
         extractedSVM = dslot[:].wait()
-        self._setDataset(topGroup, 'SVM', extractedSVM)
+        self._setDataset(topGroup, "SVM", extractedSVM)
         for s in self._operator.innerOperators:
             s.resetDirty()
 
     def _deserializeFromHdf5(self, topGroup, version, h5file, projectFilePath, headless=False):
-        svm = self._operator.OverloadDetector.setValue(
-            self._getDataset(topGroup, 'SVM'))
+        svm = self._operator.OverloadDetector.setValue(self._getDataset(topGroup, "SVM"))
         for s in self._operator.innerOperators:
             s.resetDirty()
 
@@ -61,5 +57,5 @@ class FillMissingSlicesSerializer(AppletSerializer):
         try:
             result = group[dataName].value
         except KeyError:
-            result = ''
+            result = ""
         return result

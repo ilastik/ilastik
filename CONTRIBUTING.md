@@ -49,14 +49,14 @@ git clone https://github.com/ilastik/ilastik-meta
 Examining the created folder, e.g. `~/sources/ilastik-meta`, you can find the `.gitmodules` file.
 Check out a new branch in ilastik-meta, e.g. `git checkout -b my-forks` and edit the `.gitmodules`
 file such that it points to your own forks: replace all occurrences of `https://github.com/ilastik`
-with `https://github.com/<your_githug_username>`.
+with `https://github.com/<your_github_username>`.
 
 Now it is time to initialize the repository:
 
 ```bash
 # in ~/sources/ilastik-meta (or wherever you have cloned ilastik-meta to)
 git submodule update --init --recursive
-git submodule foreach "git checkout master"
+git submodule foreach 'git checkout master'
 ```
 
 Your forks are now set as the _origin_ remote for the respective repository.
@@ -147,43 +147,32 @@ bash Miniconda3-latest-MacOSX-x86_64.sh
 # Either re-open the terminal, or
 source ~/.bashrc  # Linux
 source ~/.bash_profile  # MAC
+
+# Install conda-build which is needed to correctly setup a development environment:
+conda install -n base -c conda-forge conda-build
 ```
 
 **Note:** the following steps guide you through the manual process of creating a development environment.
-For convenience, there is a script that achieves the same effect located in `ilastik-meta/ilastik/scripts`.
-You can create a development environment (given miniconda is installed) by invoking `./create-devenv.sh idev ../../` from within `ilastik-meta/ilastik/scripts`.
+For convenience, there is a `ilastik-meta/ilastik/scripts/devenv.py` script that automates this process.
+Ensure that your current working directory is `ilastik-meta` and run `python ilastik/scripts/devenv.py create -n idev`.
 
+#### Manual Creation of development environment
 Create the ilastik development environment (we assume that the dev-environment will have the name _idev_, but you can, of course choose a name to your liking):
 ```bash
 conda create --name idev -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers
 ```
 
-In order to run your own code, you need to link against your sources
+In order to run your own code, you need to install the local ilastik packages with `conda develop`.
 
 ```bash
-# Define some variables that make the following lines more portable
-CONDA_ROOT=`conda info --root`
-DEV_PREFIX=${CONDA_ROOT}/envs/idev
-
-# first remote ilastik-meta from the conda environment
-conda remove --name idev ilastik-meta
-
-# now link against your own ilastik-meta repository
-# navigate to the idev environment root in your conda-folder
-cd ${DEV_PREFIX}
-ln -s <your_ilastik-meta_source_folder>  # e.g. ~/sources/ilastik-meta
-
-cat > ${DEV_PREFIX}/lib/python3.6/site-packages/ilastik-meta.pth << EOF
-../../../ilastik-meta/lazyflow
-../../../ilastik-meta/volumina
-../../../ilastik-meta/ilastik
-EOF
+# from you local ilastik-meta folder
+git submodule foreach 'conda develop .'
 ```
 
 Now it might be the time to test whether the installation was successful:
 ```bash
 # activate your conda environment
-source activate idev
+conda activate idev
 
 # check whether importing ilastik repos works
 python -c "import ilastik; import lazyflow; import volumina"
@@ -228,21 +217,21 @@ After making changes, please confirm that nothing else got broken by running the
  * Changes made in the ilastik repository _ilastik_:
    ```bash
    # in ~/source/ilastik-meta/ilastik/tests
-   source activate idev
-   CONTINUE_ON_FAILURE=1 ./run_each_unit_test.sh
+   conda activate idev
+   pytest --run-legacy-gui
    ```
  * Changes made in lazyflow:
    ```bash
    # in ~/source/ilastik-meta/lazyflow
-   source activate idev
-   nosetests --where=./tests
+   conda activate idev
+   pytest
    ```
    * please also run the ilastik tests (see above)
  * Changes made in volumina:
    ```bash
    # in ~/source/ilastik-meta/volumina/tests
-   source activate idev
-   ./run-each-until-fail.sh
+   conda activate idev
+   pytest
    ```
    * please also run the ilastik tests (see above)
 

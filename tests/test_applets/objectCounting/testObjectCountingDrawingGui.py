@@ -16,19 +16,21 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import numpy
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QKeyEvent
-from PyQt5.QtCore import QEvent,Qt
+from PyQt5.QtCore import QEvent, Qt
 from ilastik.workflows.counting import CountingWorkflow
 from tests.helpers import ShellGuiTestCaseBase
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 import os
 
 from ilastik.applets.counting.countingApplet import CountingApplet
+
 COUNTING_APPLET_INDEX = 2
+
 
 class TestObjectCountingDrawing(ShellGuiTestCaseBase):
     """
@@ -42,25 +44,25 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
     def workflowClass(cls):
         return CountingWorkflow
 
-    PROJECT_FILE = os.path.split(__file__)[0] + '/test_project.ilp'
+    PROJECT_FILE = os.path.split(__file__)[0] + "/test_project.ilp"
     SAMPLE_DATA = []
-    SAMPLE_DATA.append( os.path.split(__file__)[0] + '/1.npy')
+    SAMPLE_DATA.append(os.path.split(__file__)[0] + "/1.npy")
 
     @classmethod
     def setup_class(cls):
         # Base class first
         super(TestObjectCountingDrawing, cls).setup_class()
 
-        if hasattr(cls, 'SAMPLE_DATA'):
+        if hasattr(cls, "SAMPLE_DATA"):
             cls.using_random_data = False
         else:
             cls.using_random_data = True
             cls.SAMPLE_DATA = []
-            cls.SAMPLE_DATA.append(os.path.split(__file__)[0] + '/random_data1.npy')
-            cls.SAMPLE_DATA.append(os.path.split(__file__)[0] + '/random_data2.npy')
-            data1 = numpy.random.random((1,200,200,1,1))
+            cls.SAMPLE_DATA.append(os.path.split(__file__)[0] + "/random_data1.npy")
+            cls.SAMPLE_DATA.append(os.path.split(__file__)[0] + "/random_data2.npy")
+            data1 = numpy.random.random((1, 200, 200, 1, 1))
             data1 *= 256
-            data2 = numpy.random.random((1,50,100,1,1))
+            data2 = numpy.random.random((1, 50, 100, 1, 1))
             data2 *= 256
             numpy.save(cls.SAMPLE_DATA[0], data1.astype(numpy.uint8))
             numpy.save(cls.SAMPLE_DATA[1], data2.astype(numpy.uint8))
@@ -71,7 +73,7 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
         super(TestObjectCountingDrawing, cls).teardown_class()
 
         # Clean up: Delete any test files we generated
-        removeFiles = [ TestObjectCountingDrawing.PROJECT_FILE ]
+        removeFiles = [TestObjectCountingDrawing.PROJECT_FILE]
         if cls.using_random_data:
             removeFiles += TestObjectCountingDrawing.SAMPLE_DATA
 
@@ -81,11 +83,11 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
             except:
                 pass
 
-
     def test_1_NewProject(self):
         """
         Create a blank project, manipulate few couple settings, and save it.
         """
+
         def impl():
             projFilePath = self.PROJECT_FILE
             shell = self.shell
@@ -94,27 +96,31 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
             shell.createAndLoadNewProject(projFilePath, self.workflowClass())
             workflow = shell.projectManager.workflow
 
-            from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
+            from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, FilesystemDatasetInfo
+
             opDataSelection = workflow.dataSelectionApplet.topLevelOperator
             for i, dataFile in enumerate(self.SAMPLE_DATA):
                 # Add a file
-                info = DatasetInfo()
+                info = FilesystemDatasetInfo(
+                    filePath=dataFile, project_file=self.shell.projectManager.currentProjectFile
+                )
 
-                info.filePath = dataFile
-
-
-                opDataSelection.DatasetGroup.resize(i+1)
+                opDataSelection.DatasetGroup.resize(i + 1)
                 opDataSelection.DatasetGroup[i][0].setValue(info)
 
             # Set some features
             opFeatures = workflow.featureSelectionApplet.topLevelOperator
             #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
-            selections = numpy.array( [[True, False, False, False, False, False, False],
-                                       [True, False, False, False, False, False, False],
-                                       [True, False, False, False, False, False, False],
-                                       [False, False, False, False, False, False, False],
-                                       [False, False, False, False, False, False, False],
-                                       [False, False, False, False, False, False, False]] )
+            selections = numpy.array(
+                [
+                    [True, False, False, False, False, False, False],
+                    [True, False, False, False, False, False, False],
+                    [True, False, False, False, False, False, False],
+                    [False, False, False, False, False, False, False],
+                    [False, False, False, False, False, False, False],
+                    [False, False, False, False, False, False, False],
+                ]
+            )
             opFeatures.SelectionMatrix.setValue(selections)
 
             # Save and close
@@ -128,13 +134,13 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
         """
         Check the state of various shell and gui members when no project is currently loaded.
         """
+
         def impl():
             assert self.shell.projectManager is None
             assert self.shell.appletBar.count() == 0
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
-
 
     def test_3_OpenProject(self):
         def impl():
@@ -147,11 +153,11 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
 
     # These points are relative to the CENTER of the view
 
-
     def test_4_AddDotsAndBackground(self):
         """
         Add labels and draw them in the volume editor.
         """
+
         def impl():
 
             imageId = 0
@@ -174,14 +180,15 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
             ## Turn off the slicing position lines
             ## FIXME: This disables the lines without unchecking the position
             ##        box in the VolumeEditorWidget, making the checkbox out-of-sync
-            #gui.currentGui().editor.navCtrl.indicateSliceIntersection = False
+            # gui.currentGui().editor.navCtrl.indicateSliceIntersection = False
 
             # Do our tests at position 0,0,0
-            gui.currentGui().editor.posModel.slicingPos = (0,0,0)
+            gui.currentGui().editor.posModel.slicingPos = (0, 0, 0)
 
             assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
-            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
-
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, "Got {} rows".format(
+                gui.currentGui()._labelControlUi.labelListModel.rowCount()
+            )
 
             # Select the brush
             gui.currentGui()._labelControlUi.paintToolButton.click()
@@ -197,23 +204,21 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
 
             imgView = gui.currentGui().editor.imageViews[2]
 
-
             QApplication.processEvents()
-            LABEL_START = (-128,-128)
-            LABEL_STOP = (0,0)
-            LABEL_ERASE_START = (-128,-128)
-            LABEL_ERASE_STOP = (128,128)
+            LABEL_START = (-128, -128)
+            LABEL_STOP = (0, 0)
+            LABEL_ERASE_START = (-128, -128)
+            LABEL_ERASE_STOP = (128, 128)
 
             gui.currentGui()._labelControlUi.labelListModel.select(1)
             gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
 
-
-            self.strokeMouseFromCenter( imgView, LABEL_START,LABEL_STOP)
+            self.strokeMouseFromCenter(imgView, LABEL_START, LABEL_STOP)
             self.waitForViews([imgView])
             labelData = opPix.LabelImages[imageId][:].wait()
-#
-#            assert numpy.sum(labelData[labelData==2]) > 22, "Number of background dots was {}".format(
-#                numpy.sum(labelData[labelData==2]) )
+            #
+            #            assert numpy.sum(labelData[labelData==2]) > 22, "Number of background dots was {}".format(
+            #                numpy.sum(labelData[labelData==2]) )
 
             gui.currentGui()._labelControlUi.AddBoxButton.click()
             self.strokeMouseFromCenter(imgView, LABEL_START, LABEL_STOP)
@@ -223,7 +228,7 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
 
             rectangles = gui.currentGui().boxController._currentBoxesList
             rect = rectangles[0]._rectItem.rect()
-#            go.db
+            #            go.db
 
             assert rect.bottomRight().x() == 128, "Rectangle is incorrect: {} is not 255".format(rect.bottomRight().x())
             assert rect.bottomRight().y() == 128, "Rectangle is incorrect: {} is not 255".format(rect.bottomRight().y())
@@ -236,9 +241,7 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
         self.exec_in_shell(impl)
 
 
-
-
 if __name__ == "__main__":
     from tests.helpers.shellGuiTestCaseBase import run_shell_test
-    run_shell_test(__file__)
 
+    run_shell_test(__file__)

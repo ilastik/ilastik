@@ -16,10 +16,16 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer,\
-    SerialSlot, deleteIfPresent, getOrCreateGroup, SerialPickleableSlot
+from ilastik.applets.base.appletSerializer import (
+    AppletSerializer,
+    SerialSlot,
+    deleteIfPresent,
+    getOrCreateGroup,
+    SerialPickleableSlot,
+)
+
 
 class SerialDivisionsSlot(SerialSlot):
     def serialize(self, group):
@@ -45,14 +51,15 @@ class SerialDivisionsSlot(SerialSlot):
         innerops = mainOperator.innerOperators
         opgroup = group[self.name]
         for inner in list(opgroup.keys()):
-            dset = opgroup[inner]            
+            dset = opgroup[inner]
             op = innerops[int(inner)]
             divisions = {}
             for row in dset:
-                divisions[row[0]] = ([row[1],row[2]], row[3])
+                divisions[row[0]] = ([row[1], row[2]], row[3])
             op.divisions = divisions
         self.dirty = False
-        
+
+
 class SerialLabelsSlot(SerialSlot):
     def serialize(self, group):
         if not self.shouldSerialize(group):
@@ -89,16 +96,17 @@ class SerialLabelsSlot(SerialSlot):
                     labels[int(t)][int(oid)] = set(t_gr[oid])
             op.labels = labels
         self.dirty = False
-        
-class ManualTrackingSerializer(AppletSerializer):
 
+
+class ManualTrackingSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):
         self.VERSION = 1  # Make sure to bump the version in case you make any changes in the serialization
-        slots = [ #SerialSlot(operator.TrackImage),
-                   SerialDivisionsSlot(operator.Divisions),
-                   SerialLabelsSlot(operator.Labels)]
-                    
-                   # FIXME: ExportSettings can't be serialized because it is technically a level-1 slot.
-                   #SerialPickleableSlot(operator.ExportSettings, version=self.VERSION)
-    
-        super(ManualTrackingSerializer, self ).__init__(projectFileGroupName, slots=slots)
+        slots = [  # SerialSlot(operator.TrackImage),
+            SerialDivisionsSlot(operator.Divisions),
+            SerialLabelsSlot(operator.Labels),
+        ]
+
+        # FIXME: ExportSettings can't be serialized because it is technically a level-1 slot.
+        # SerialPickleableSlot(operator.ExportSettings, version=self.VERSION)
+
+        super(ManualTrackingSerializer, self).__init__(projectFileGroupName, slots=slots)

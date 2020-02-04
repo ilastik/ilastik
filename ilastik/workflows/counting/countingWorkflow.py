@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import sys
 import argparse
@@ -37,22 +37,30 @@ from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
 
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 class CountingWorkflow(Workflow):
     workflowName = "Cell Density Counting"
     workflowDescription = "This is obviously self-explanatory."
-    defaultAppletIndex = 0 # show DataSelection by default
+    defaultAppletIndex = 0  # show DataSelection by default
 
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
-        graph = kwargs['graph'] if 'graph' in kwargs else Graph()
-        if 'graph' in kwargs: del kwargs['graph']
-        super( CountingWorkflow, self ).__init__( shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs )
+        graph = kwargs["graph"] if "graph" in kwargs else Graph()
+        if "graph" in kwargs:
+            del kwargs["graph"]
+        super(CountingWorkflow, self).__init__(
+            shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs
+        )
         self.stored_classifier = None
 
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
-        parser.add_argument("--csv-export-file", help="Instead of exporting prediction density images, export total counts to the given csv path.")
+        parser.add_argument(
+            "--csv-export-file",
+            help="Instead of exporting prediction density images, export total counts to the given csv path.",
+        )
         self.parsed_counting_workflow_args, unused_args = parser.parse_known_args(workflow_cmdline_args)
 
         ######################
@@ -60,23 +68,21 @@ class CountingWorkflow(Workflow):
         ######################
 
         allowed_axis_orders = []
-        for space in itertools.permutations('xyz', 2):
-            allowed_axis_orders.append(''.join(space) + 'c')
+        for space in itertools.permutations("xyz", 2):
+            allowed_axis_orders.append("".join(space) + "c")
 
-        self.dataSelectionApplet = DataSelectionApplet(self,
-                                                       "Input Data",
-                                                       "Input Data",
-                                                       forceAxisOrder=allowed_axis_orders)
+        self.dataSelectionApplet = DataSelectionApplet(
+            self, "Input Data", "Input Data", forceAxisOrder=allowed_axis_orders
+        )
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        role_names = ['Raw Data']
-        opDataSelection.DatasetRoles.setValue( role_names )
+        role_names = ["Raw Data"]
+        opDataSelection.DatasetRoles.setValue(role_names)
 
-        self.featureSelectionApplet = FeatureSelectionApplet(self,
-                                                             "Feature Selection",
-                                                             "FeatureSelections")
+        self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections")
 
         self.countingApplet = CountingApplet(workflow=self)
         opCounting = self.countingApplet.topLevelOperator
+        opCounting.WorkingDirectory.connect(opDataSelection.WorkingDirectory)
 
         self.dataExportApplet = CountingDataExportApplet(self, "Density Export", opCounting)
 
@@ -90,7 +96,7 @@ class CountingWorkflow(Workflow):
         opDataExport.LabelNames.connect(opCounting.LabelNames)
         opDataExport.UpperBound.connect(opCounting.UpperBound)
         opDataExport.WorkingDirectory.connect(opDataSelection.WorkingDirectory)
-        opDataExport.SelectionNames.setValue( ['Probabilities'] )
+        opDataExport.SelectionNames.setValue(["Probabilities"])
 
         self._applets = []
         self._applets.append(self.dataSelectionApplet)
@@ -98,22 +104,20 @@ class CountingWorkflow(Workflow):
         self._applets.append(self.countingApplet)
         self._applets.append(self.dataExportApplet)
 
-        self.batchProcessingApplet = BatchProcessingApplet( self,
-                                                            "Batch Processing",
-                                                            self.dataSelectionApplet,
-                                                            self.dataExportApplet )
+        self.batchProcessingApplet = BatchProcessingApplet(
+            self, "Batch Processing", self.dataSelectionApplet, self.dataExportApplet
+        )
         self._applets.append(self.batchProcessingApplet)
         if unused_args:
             # We parse the export setting args first.  All remaining args are considered input files by the input applet.
-            self._batch_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( unused_args )
-            self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args( unused_args )
+            self._batch_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args(unused_args)
+            self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args(unused_args)
         else:
             self._batch_input_args = None
             self._batch_export_args = None
 
         if unused_args:
-            logger.warning("Unused command-line args: {}".format( unused_args ))
-
+            logger.warning("Unused command-line args: {}".format(unused_args))
 
     @property
     def applets(self):
@@ -132,8 +136,7 @@ class CountingWorkflow(Workflow):
         # This means the classifier will be marked 'dirty' even though it is still usable.
         # Before that happens, let's store the classifier, so we can restore it at the end of connectLane(), below.
         opCounting = self.countingApplet.topLevelOperator
-        if opCounting.classifier_cache.Output.ready() and \
-           not opCounting.classifier_cache._dirty:
+        if opCounting.classifier_cache.Output.ready() and not opCounting.classifier_cache._dirty:
             self.stored_classifier = opCounting.classifier_cache.Output.value
         else:
             self.stored_classifier = None
@@ -156,19 +159,18 @@ class CountingWorkflow(Workflow):
         opCounting = self.countingApplet.topLevelOperator.getLane(laneIndex)
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
-
         #### connect input image
         opTrainingFeatures.InputImage.connect(opData.Image)
 
         opCounting.InputImages.connect(opData.Image)
         opCounting.FeatureImages.connect(opTrainingFeatures.OutputImage)
-        opCounting.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
-        #opCounting.UserLabels.connect(opClassify.LabelImages)
-        #opCounting.ForegroundLabels.connect(opObjExtraction.LabelImage)
+        opCounting.CachedFeatureImages.connect(opTrainingFeatures.CachedOutputImage)
+        # opCounting.UserLabels.connect(opClassify.LabelImages)
+        # opCounting.ForegroundLabels.connect(opObjExtraction.LabelImage)
         opDataExport.Inputs.resize(1)
-        opDataExport.Inputs[0].connect( opCounting.HeadlessPredictionProbabilities )
-        opDataExport.RawData.connect( opData.ImageGroup[0] )
-        opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
+        opDataExport.Inputs[0].connect(opCounting.HeadlessPredictionProbabilities)
+        opDataExport.RawData.connect(opData.ImageGroup[0])
+        opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[0])
 
     def onProjectLoaded(self, projectManager):
         """
@@ -180,7 +182,7 @@ class CountingWorkflow(Workflow):
         """
         # Headless batch mode.
         if self._headless and self._batch_input_args and self._batch_export_args:
-            self.dataExportApplet.configure_operator_with_parsed_args( self._batch_export_args )
+            self.dataExportApplet.configure_operator_with_parsed_args(self._batch_export_args)
 
             # If the user provided a csv_path via the command line,
             # overwrite the setting in the counting export operator.
@@ -189,8 +191,9 @@ class CountingWorkflow(Workflow):
                 self.dataExportApplet.topLevelOperator.CsvFilepath.setValue(csv_path)
 
             if self.countingApplet.topLevelOperator.classifier_cache._dirty:
-                logger.warning("Your project file has no classifier.  "
-                            "A new classifier will be trained for this run.")
+                logger.warning(
+                    "Your project file has no classifier.  " "A new classifier will be trained for this run."
+                )
 
             logger.info("Beginning Batch Processing")
             self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
@@ -207,7 +210,7 @@ class CountingWorkflow(Workflow):
         if self.dataExportApplet.topLevelOperator.CsvFilepath.ready():
             csv_path = self.dataExportApplet.topLevelOperator.CsvFilepath.value
             logger.info("Exporting object counts to CSV: " + csv_path)
-            self.csv_export_file = open(csv_path, 'w')
+            self.csv_export_file = open(csv_path, "w")
 
     def post_process_lane_export(self, lane_index):
         """
@@ -236,21 +239,27 @@ class CountingWorkflow(Workflow):
 
         opFeatureSelection = self.featureSelectionApplet.topLevelOperator
         featureOutput = opFeatureSelection.OutputImage
-        features_ready = input_ready and \
-                         len(featureOutput) > 0 and  \
-                         featureOutput[0].ready() and \
-                         (TinyVector(featureOutput[0].meta.shape) > 0).all()
+        features_ready = (
+            input_ready
+            and len(featureOutput) > 0
+            and featureOutput[0].ready()
+            and (TinyVector(featureOutput[0].meta.shape) > 0).all()
+        )
 
         opDataExport = self.dataExportApplet.topLevelOperator
-        predictions_ready = features_ready and \
-                            len(opDataExport.Inputs) > 0 and \
-                            opDataExport.Inputs[0][0].ready() and \
-                            (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
+        predictions_ready = (
+            features_ready
+            and len(opDataExport.Inputs) > 0
+            and opDataExport.Inputs[0][0].ready()
+            and (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
+        )
 
         self._shell.setAppletEnabled(self.featureSelectionApplet, input_ready)
         self._shell.setAppletEnabled(self.countingApplet, features_ready)
         self._shell.setAppletEnabled(self.dataExportApplet, predictions_ready and not self.dataExportApplet.busy)
-        self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not self.batchProcessingApplet.busy)
+        self._shell.setAppletEnabled(
+            self.batchProcessingApplet, predictions_ready and not self.batchProcessingApplet.busy
+        )
 
         # Lastly, check for certain "busy" conditions, during which we
         #  should prevent the shell from closing the project.
@@ -259,4 +268,4 @@ class CountingWorkflow(Workflow):
         busy |= self.featureSelectionApplet.busy
         busy |= self.dataExportApplet.busy
         busy |= self.batchProcessingApplet.busy
-        self._shell.enableProjectChanges( not busy )
+        self._shell.enableProjectChanges(not busy)

@@ -16,19 +16,22 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 
 from lazyflow.operators.generic import OpMultiArraySlicer2
-from volumina.api import LazyflowSource, AlphaModulatedLayer
+from volumina.api import createDataSource, AlphaModulatedLayer
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
+
 
 class NNClassificationDataExportGui(DataExportGui):
     """
     A subclass of the generic data export gui that creates custom layer viewers.
     """
+
     def createLayerViewer(self, opLane):
         return NNClassificationResultsViewer(self.parentApplet, opLane)
+
 
 class NNClassificationResultsViewer(DataExportLayerViewerGui):
     """
@@ -47,12 +50,12 @@ class NNClassificationResultsViewer(DataExportLayerViewerGui):
         selection_names = opLane.SelectionNames.value
 
         # see comment above
-        for name, expected in zip(selection_names[0:1], ['Probabilities']):
+        for name, expected in zip(selection_names[0:1], ["Probabilities"]):
             assert name.startswith(expected), "The Selection Names don't match the expected selection names."
 
         selection = selection_names[opLane.InputSelection.value]
 
-        if selection.startswith('Probabilities'):
+        if selection.startswith("Probabilities"):
             exportedLayers = self._initPredictionLayers(opLane.ImageToExport)
             for layer in exportedLayers:
                 layer.visible = True
@@ -77,11 +80,11 @@ class NNClassificationResultsViewer(DataExportLayerViewerGui):
         # Use a slicer to provide a separate slot for each channel layer
         opSlicer = OpMultiArraySlicer2(parent=opLane.viewed_operator().parent)
         opSlicer.Input.connect(predictionSlot)
-        opSlicer.AxisFlag.setValue('c')
+        opSlicer.AxisFlag.setValue("c")
 
         for channel, predictionSlot in enumerate(opSlicer.Slices):
             if predictionSlot.ready():
-                predictsrc = LazyflowSource(predictionSlot)
+                predictsrc = createDataSource(predictionSlot)
                 predictLayer = AlphaModulatedLayer(predictsrc, range=(0.0, 1.0), normalize=(0.0, 1.0))
                 predictLayer.opacity = 0.25
                 predictLayer.visible = True
@@ -102,4 +105,3 @@ class NNClassificationResultsViewer(DataExportLayerViewerGui):
                 layers.append(predictLayer)
 
         return layers
-

@@ -16,9 +16,10 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from future import standard_library
+
 standard_library.install_aliases()
 from builtins import range
 from PyQt5.QtWidgets import QTreeWidgetItem, QMessageBox, QHeaderView
@@ -42,7 +43,7 @@ from ilastik.utility.gui import threadRouted
 from ilastik.utility import log_exception
 from ilastik.config import cfg as ilastik_config
 
-from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
+from volumina.api import createDataSource, GrayscaleLayer, ColortableLayer
 import volumina.colortables as colortables
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
@@ -56,7 +57,9 @@ import pickle as pickle
 import threading
 
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 class FeatureSelectionDialog(QDialog):
     # for now all features get the same margin parameter. In the
@@ -97,7 +100,7 @@ class FeatureSelectionDialog(QDialog):
         self.populate()
         self.ui.treeWidget.itemClicked.connect(self.updateTree)
         self.ndim = ndim
-        
+
         self.set_margin()
         self.setObjectName("FeatureSelectionDialog")
 
@@ -114,9 +117,9 @@ class FeatureSelectionDialog(QDialog):
         return False
 
     def populate(self):
-        #self.ui.treeWidget.setColumnCount(2)
+        # self.ui.treeWidget.setColumnCount(2)
         for pluginName, features in self.featureDict.items():
-            if pluginName=="TestFeatures" and not ilastik_config.getboolean("ilastik", "debug"):
+            if pluginName == "TestFeatures" and not ilastik_config.getboolean("ilastik", "debug"):
                 continue
             parent = QTreeWidgetItem(self.ui.treeWidget)
             parent.setText(0, pluginName)
@@ -126,8 +129,8 @@ class FeatureSelectionDialog(QDialog):
             parent.setCheckState(0, Qt.Checked)
             parent.setCheckState(0, Qt.Unchecked)
             parent.setExpanded(False)
-            self.countChecked[pluginName]=0
-            self.countAll[pluginName]=len(self.featureDict[pluginName])
+            self.countChecked[pluginName] = 0
+            self.countAll[pluginName] = len(self.featureDict[pluginName])
 
             advanced_names = []
             simple_names = []
@@ -149,7 +152,7 @@ class FeatureSelectionDialog(QDialog):
                         parameters[prop] = prop_value
 
                 try:
-                    if parameters['advanced'] is True:
+                    if parameters["advanced"] is True:
                         advanced_names.append(name)
                     else:
                         simple_names.append(name)
@@ -167,10 +170,10 @@ class FeatureSelectionDialog(QDialog):
             for gr in groups:
                 gr_items[gr] = QTreeWidgetItem(parent)
                 gr_items[gr].setText(0, gr)
-                #gr_items[gr].setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable)
+                # gr_items[gr].setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable)
                 gr_items[gr].setExpanded(True)
-            
-            for name in simple_names+advanced_names:
+
+            for name in simple_names + advanced_names:
                 if name in advanced_names and (not name in selected_names):
                     # do not display advanced features, if they have not been selected previously
                     continue
@@ -180,23 +183,23 @@ class FeatureSelectionDialog(QDialog):
                     item.group_name = parameters["group"]
                 else:
                     item = QTreeWidgetItem(parent)
-                if 'displaytext' in parameters:
-                    itemtext = parameters['displaytext']
+                if "displaytext" in parameters:
+                    itemtext = parameters["displaytext"]
                 else:
                     itemtext = name
                 item.setText(0, itemtext)
                 item.feature_id = name
 
                 item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
-                if 'tooltip' in parameters:
-                    item.setToolTip(0, parameters['tooltip'])
+                if "tooltip" in parameters:
+                    item.setToolTip(0, parameters["tooltip"])
 
                 # hack to ensure checkboxes visible
                 item.setCheckState(0, Qt.Checked)
                 item.setCheckState(0, Qt.Unchecked)
                 if name in selected_names:
                     item.setCheckState(0, Qt.Checked)
-                    self.countChecked[pluginName]+=1
+                    self.countChecked[pluginName] += 1
             if self.countChecked[pluginName] == 0:
                 parent.setCheckState(0, Qt.Unchecked)
             elif self.countChecked[pluginName] == self.countAll[pluginName]:
@@ -206,8 +209,8 @@ class FeatureSelectionDialog(QDialog):
             self.updateToolTip(parent)
         # facilitates switching of the CheckBox when clicking on the Text of a QTreeWidgetItem
         self.ui.treeWidget.setCurrentItem(None)
-        #self.ui.treeWidget.resizeColumnToContents(0)
-        #self.ui.treeWidget.resizeColumnToContents(1)
+        # self.ui.treeWidget.resizeColumnToContents(0)
+        # self.ui.treeWidget.resizeColumnToContents(1)
 
     @staticmethod
     def recursiveCheckChildren(twitem, val, location=True):
@@ -220,8 +223,8 @@ class FeatureSelectionDialog(QDialog):
                 if location:
                     child.setCheckState(0, val)
                 else:
-                    if getattr(child, 'group_name', ''):
-                        if child.group_name != 'Location':
+                    if getattr(child, "group_name", ""):
+                        if child.group_name != "Location":
                             child.setCheckState(0, val)
 
     def updateTree(self, item, col):
@@ -234,11 +237,11 @@ class FeatureSelectionDialog(QDialog):
         # Relies on self.ui.treeWidget.setCurrentItem(None) in populate()
         itemParent = item.parent()
         currentItem = self.ui.treeWidget.currentItem()
-        if item.childCount()>0: # user clicked a Plugin Name or a group
+        if item.childCount() > 0:  # user clicked a Plugin Name or a group
             if itemParent is not None:
                 # it's a group, nothing happens when you click
                 return
-            if currentItem == item: # user clicked on the text
+            if currentItem == item:  # user clicked on the text
                 if item.checkState(0) == Qt.PartiallyChecked or item.checkState(0) == Qt.Unchecked:
                     item.setCheckState(0, Qt.Checked)
                 else:
@@ -246,23 +249,23 @@ class FeatureSelectionDialog(QDialog):
             self.ui.treeWidget.setCurrentItem(None)
 
             FeatureSelectionDialog.recursiveCheckChildren(item, item.checkState(0))
-            if itemParent is None: # user clicked a plugin name
-                pluginName=str(item.text(0))
+            if itemParent is None:  # user clicked a plugin name
+                pluginName = str(item.text(0))
                 if item.checkState(0) == Qt.Checked:
                     self.countChecked[pluginName] = self.countAll[pluginName]
                 elif item.checkState(0) == Qt.Unchecked:
                     self.countChecked[pluginName] = 0
                 self.updateToolTip(item)
-        else: # user clicked a Feature
+        else:  # user clicked a Feature
             if itemParent.parent() is None:
                 # this feature is not in a group, but in a plugin directly
                 pluginItem = itemParent
             else:
                 # this feature is in a group
                 pluginItem = itemParent.parent()
-            pluginName=str(pluginItem.text(0))
+            pluginName = str(pluginItem.text(0))
 
-            if currentItem == item: # user clicked on the text, check the box for the user
+            if currentItem == item:  # user clicked on the text, check the box for the user
                 if item.checkState(0) == Qt.Checked:
                     item.setCheckState(0, Qt.Unchecked)
                 else:
@@ -278,7 +281,7 @@ class FeatureSelectionDialog(QDialog):
                 else:
                     pluginItem.setCheckState(0, Qt.PartiallyChecked)
 
-             # did we now check all?
+            # did we now check all?
             if item.checkState(0) == Qt.Checked:
                 self.countChecked[pluginName] += 1
                 if self.countChecked[pluginName] == self.countAll[pluginName]:
@@ -296,7 +299,7 @@ class FeatureSelectionDialog(QDialog):
             # user clicked a Plugin Name or a group
             self.ui.textBrowser.setText("")
             return
-        
+
         if item.parent().parent() is None:
             # this feature is not in a group, but in a plugin directly
             pluginItem = item.parent()
@@ -304,7 +307,7 @@ class FeatureSelectionDialog(QDialog):
             # this feature is in a group
             pluginItem = item.parent().parent()
 
-        pluginName=str(pluginItem.text(0))
+        pluginName = str(pluginItem.text(0))
         feature_id = item.feature_id
 
         try:
@@ -314,20 +317,28 @@ class FeatureSelectionDialog(QDialog):
 
     def updateToolTip(self, item):
         name = str(item.text(0))
-        item.setToolTip(0, name+" ("+str(self.countChecked[name])+" Features Checked / "+str(self.countAll[name])+" Features)")
+        item.setToolTip(
+            0,
+            name
+            + " ("
+            + str(self.countChecked[name])
+            + " Features Checked / "
+            + str(self.countAll[name])
+            + " Features)",
+        )
 
     def set_margin(self):
         if self.ndim > 3 or self.ndim < 2:
             logger.warning("wrong dimensions setting for feature selection dialog")
             return
-        default = [-1]*self.ndim
+        default = [-1] * self.ndim
         margin = max_margin(self.selectedFeatures, default)
-        
+
         if -1 in margin:
             margin = self.default_margin
         self.ui.spinBox_X.setValue(margin[0])
         self.ui.spinBox_Y.setValue(margin[1])
-        if self.ndim==3:
+        if self.ndim == 3:
             self.ui.spinBox_Z.setValue(margin[2])
         else:
             self.ui.spinBox_Z.setVisible(False)
@@ -337,7 +348,7 @@ class FeatureSelectionDialog(QDialog):
         QDialog.accept(self)
         selectedFeatures = defaultdict(list)
         margin = [self.ui.spinBox_X.value(), self.ui.spinBox_Y.value()]
-        if self.ndim==3:
+        if self.ndim == 3:
             margin.append(self.ui.spinBox_Z.value())
         root = self.ui.treeWidget.invisibleRootItem()
         for plug in root.takeChildren():
@@ -345,8 +356,8 @@ class FeatureSelectionDialog(QDialog):
             featnames = []
             for child_id in range(plug.childCount()):
                 child = plug.child(child_id)
-                if child.childCount()>0:
-                    #it's a group, take its features
+                if child.childCount() > 0:
+                    # it's a group, take its features
                     for child_id in range(child.childCount()):
                         feature_item = child.child(child_id)
                         if feature_item.checkState(0) == Qt.Checked:
@@ -359,14 +370,14 @@ class FeatureSelectionDialog(QDialog):
                 # we are building the dictionary again, have to transfer all the properties
                 features = {}
                 for feature_id in featnames:
-                    #do the reverse lookup from displayed names to names in the plugin
+                    # do the reverse lookup from displayed names to names in the plugin
                     features[feature_id] = {}
                     # properties other than margin have not changed, copy them over
                     for prop_name, prop_value in self.featureDict[plugin_name][feature_id].items():
                         features[feature_id][prop_name] = prop_value
                     # update the margin
-                    if 'margin' in self.featureDict[plugin_name][feature_id]:
-                        features[feature_id]['margin'] = margin
+                    if "margin" in self.featureDict[plugin_name][feature_id]:
+                        features[feature_id]["margin"] = margin
 
                 selectedFeatures[plugin_name] = features
         self.selectedFeatures = selectedFeatures
@@ -404,7 +415,6 @@ class FeatureSelectionDialog(QDialog):
 
 
 class ObjectExtractionGui(LayerViewerGui):
-    
     def stopAndCleanUp(self):
         # Unsubscribe to all signals
         for fn in self.__cleanup_fns:
@@ -415,14 +425,14 @@ class ObjectExtractionGui(LayerViewerGui):
     def __init__(self, *args, **kwargs):
         self.__cleanup_fns = []
         self._lock = threading.Lock()
-        super( ObjectExtractionGui, self ).__init__(*args, **kwargs)
+        super(ObjectExtractionGui, self).__init__(*args, **kwargs)
 
     def setupLayers(self):
         mainOperator = self.topLevelOperatorView
         layers = []
 
         if mainOperator.ObjectCenterImage.ready():
-            self.centerimagesrc = LazyflowSource(mainOperator.ObjectCenterImage)
+            self.centerimagesrc = createDataSource(mainOperator.ObjectCenterImage)
             redct = [0, QColor(255, 0, 0).rgba()]
             layer = ColortableLayer(self.centerimagesrc, redct)
             layer.name = "Object centers"
@@ -432,21 +442,22 @@ class ObjectExtractionGui(LayerViewerGui):
 
         ct = colortables.create_default_16bit()
         if mainOperator.LabelImage.ready():
-            self.objectssrc = LazyflowSource(mainOperator.LabelImage)
+            self.objectssrc = createDataSource(mainOperator.LabelImage)
             self.objectssrc.setObjectName("LabelImage LazyflowSrc")
-            ct[0] = QColor(0, 0, 0, 0).rgba() # make 0 transparent
+            ct[0] = QColor(0, 0, 0, 0).rgba()  # make 0 transparent
             layer = ColortableLayer(self.objectssrc, ct)
-            layer.name = "Objects (connected components)"
+            layer.name = "Object Identities"
             layer.setToolTip("Segmented objects, shown in different colors")
+            layer.colortableIsRandom = True
             layer.visible = False
             layer.opacity = 0.5
             layers.append(layer)
 
         # white foreground on transparent background, even for labeled images
-        binct = [QColor(255, 255, 255, 255).rgba()]*65536
+        binct = [QColor(255, 255, 255, 255).rgba()] * 65536
         binct[0] = 0
         if mainOperator.BinaryImage.ready():
-            self.binaryimagesrc = LazyflowSource(mainOperator.BinaryImage)
+            self.binaryimagesrc = createDataSource(mainOperator.BinaryImage)
             self.binaryimagesrc.setObjectName("Binary LazyflowSrc")
             layer = ColortableLayer(self.binaryimagesrc, binct)
             layer.name = "Binary image"
@@ -455,32 +466,32 @@ class ObjectExtractionGui(LayerViewerGui):
 
         ## raw data layer
         self.rawsrc = None
-        self.rawsrc = LazyflowSource(mainOperator.RawImage)
+        self.rawsrc = createDataSource(mainOperator.RawImage)
         self.rawsrc.setObjectName("Raw Lazyflow Src")
         layerraw = GrayscaleLayer(self.rawsrc)
         layerraw.name = "Raw data"
         layers.insert(len(layers), layerraw)
 
         mainOperator.RawImage.notifyReady(self._onReady)
-        self.__cleanup_fns.append( partial( mainOperator.RawImage.unregisterReady, self._onReady ) )
+        self.__cleanup_fns.append(partial(mainOperator.RawImage.unregisterReady, self._onReady))
 
         mainOperator.RawImage.notifyMetaChanged(self._onMetaChanged)
-        self.__cleanup_fns.append( partial( mainOperator.RawImage.unregisterMetaChanged, self._onMetaChanged ) )
+        self.__cleanup_fns.append(partial(mainOperator.RawImage.unregisterMetaChanged, self._onMetaChanged))
 
         mainOperator.BinaryImage.notifyMetaChanged(self._onMetaChanged)
-        self.__cleanup_fns.append( partial( mainOperator.BinaryImage.unregisterMetaChanged, self._onMetaChanged ) )
+        self.__cleanup_fns.append(partial(mainOperator.BinaryImage.unregisterMetaChanged, self._onMetaChanged))
 
         return layers
 
     def _onMetaChanged(self, slot):
-        #FiXME: why do we need that?
+        # FiXME: why do we need that?
         if slot is self.topLevelOperatorView.BinaryImage:
             if slot.meta.shape:
                 self.editor.dataShape = slot.meta.shape
 
         if slot is self.topLevelOperatorView.RawImage:
             if slot.meta.shape and not self.rawsrc:
-                self.rawsrc = LazyflowSource(self.topLevelOperatorView.RawImage)
+                self.rawsrc = createDataSource(self.topLevelOperatorView.RawImage)
                 layerraw = GrayscaleLayer(self.rawsrc)
                 layerraw.name = "Raw data"
                 self.layerstack.append(layerraw)
@@ -488,7 +499,7 @@ class ObjectExtractionGui(LayerViewerGui):
     def _onReady(self, slot):
         if slot is self.topLevelOperatorView.RawImage:
             if slot.meta.shape and not self.rawsrc:
-                self.rawsrc = LazyflowSource(self.topLevelOperatorView.RawImage)
+                self.rawsrc = createDataSource(self.topLevelOperatorView.RawImage)
                 layerraw = GrayscaleLayer(self.rawsrc)
                 layerraw.name = "Raw data"
                 self.layerstack.append(layerraw)
@@ -496,26 +507,28 @@ class ObjectExtractionGui(LayerViewerGui):
     def initAppletDrawerUi(self):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
-        self._drawer = uic.loadUi(localDir+"/drawer.ui")
+        self._drawer = uic.loadUi(localDir + "/drawer.ui")
         self._drawer.selectFeaturesButton.pressed.connect(self._selectFeaturesButtonPressed)
         if not ilastik_config.getboolean("ilastik", "debug"):
             self._drawer.exportButton.setVisible(False)
-            
+
         self._drawer.exportButton.pressed.connect(self._exportFeaturesButtonPressed)
-        
+
         slot = self.topLevelOperatorView.Features
         if slot.ready():
             selectedFeatures = self.topLevelOperatorView.Features([]).wait()
         else:
             selectedFeatures = None
-        
+
         nfeatures = 0
         if selectedFeatures is not None:
             for plugin_features in selectedFeatures.values():
                 nfeatures += len(plugin_features)
 
-        self._drawer.featuresSelected.setText("{} features computed, \nsome may have multiple channels".format(nfeatures))
-        
+        self._drawer.featuresSelected.setText(
+            "{} features computed, \nsome may have multiple channels".format(nfeatures)
+        )
+
         # get the applet reference from the workflow (needed for the progressSignal)
         self.applet = self.topLevelOperatorView.parent.parent.objectExtractionApplet
 
@@ -540,9 +553,7 @@ class ObjectExtractionGui(LayerViewerGui):
             selectedFeatures = None
 
         featureDict, ndim = self._populate_feature_dict(mainOperator)
-        dlg = FeatureSelectionDialog(featureDict=featureDict,
-                                     selectedFeatures=selectedFeatures,
-                                     ndim=ndim)
+        dlg = FeatureSelectionDialog(featureDict=featureDict, selectedFeatures=selectedFeatures, ndim=ndim)
         dlg.exec_()
 
         if dlg.result() == QDialog.Accepted:
@@ -551,35 +562,35 @@ class ObjectExtractionGui(LayerViewerGui):
 
     def _populate_feature_dict(self, mainOperator):
         featureDict = {}
-        plugins = pluginManager.getPluginsOfCategory('ObjectFeatures')
+        plugins = pluginManager.getPluginsOfCategory("ObjectFeatures")
         taggedShape = mainOperator.RawImage.meta.getTaggedShape()
-        fakeimgshp = [taggedShape['x'], taggedShape['y']]
-        fakelabelsshp = [taggedShape['x'], taggedShape['y']]
+        fakeimgshp = [taggedShape["x"], taggedShape["y"]]
+        fakelabelsshp = [taggedShape["x"], taggedShape["y"]]
         ndim = 3
-        if 'z' in taggedShape and taggedShape['z'] > 1:
-            fakeimgshp.append(taggedShape['z'])
-            fakelabelsshp.append(taggedShape['z'])
+        if "z" in taggedShape and taggedShape["z"] > 1:
+            fakeimgshp.append(taggedShape["z"])
+            fakelabelsshp.append(taggedShape["z"])
             ndim = 3
         else:
             ndim = 2
-        if 'c' in taggedShape and taggedShape['c'] > 1:
-            fakeimgshp.append(taggedShape['c'])
+        if "c" in taggedShape and taggedShape["c"] > 1:
+            fakeimgshp.append(taggedShape["c"])
 
         fakeimg = numpy.empty(fakeimgshp, dtype=numpy.float32)
         fakelabels = numpy.empty(fakelabelsshp, dtype=numpy.uint32)
 
         if ndim == 3:
-            fakelabels = vigra.taggedView(fakelabels, 'xyz')
+            fakelabels = vigra.taggedView(fakelabels, "xyz")
             if len(fakeimgshp) == 4:
-                fakeimg = vigra.taggedView(fakeimg, 'xyzc')
+                fakeimg = vigra.taggedView(fakeimg, "xyzc")
             else:
-                fakeimg = vigra.taggedView(fakeimg, 'xyz')
+                fakeimg = vigra.taggedView(fakeimg, "xyz")
         if ndim == 2:
-            fakelabels = vigra.taggedView(fakelabels, 'xy')
+            fakelabels = vigra.taggedView(fakelabels, "xy")
             if len(fakeimgshp) == 3:
-                fakeimg = vigra.taggedView(fakeimg, 'xyc')
+                fakeimg = vigra.taggedView(fakeimg, "xyc")
             else:
-                fakeimg = vigra.taggedView(fakeimg, 'xy')
+                fakeimg = vigra.taggedView(fakeimg, "xy")
 
         for pluginInfo in plugins:
             availableFeatures = pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels)
@@ -588,16 +599,15 @@ class ObjectExtractionGui(LayerViewerGui):
 
         # Make sure no plugins use the same feature names.
         # (Currently, our feature export implementation doesn't support repeated column names.)
-        all_feature_names = chain(
-            *[list(plugin_dict.keys()) for plugin_dict in list(featureDict.values())])
+        all_feature_names = chain(*[list(plugin_dict.keys()) for plugin_dict in list(featureDict.values())])
         feature_set = Counter(all_feature_names)
         # remove all elements with a count of 1
         feature_set = feature_set - Counter(feature_set.keys())
         if feature_set:
             offending_feature_names = feature_set.keys()
             raise ValueError(
-                'Feature names used in multiple plugins. '
-                f'Offending feature names: {list(offending_feature_names)}')
+                "Feature names used in multiple plugins. " f"Offending feature names: {list(offending_feature_names)}"
+            )
         return featureDict, ndim
 
     def _calculateFeatures(self, interactive=True):
@@ -621,13 +631,17 @@ class ObjectExtractionGui(LayerViewerGui):
                             nchannels += feat.shape[1]
                             nfeatures += 1
                 if interactive:
-                    self._drawer.featuresSelected.setText("{} features computed, {} channels in total".format(nfeatures, nchannels))
-                logger.info('Object Extraction: done.')
+                    self._drawer.featuresSelected.setText(
+                        "{} features computed, {} channels in total".format(nfeatures, nchannels)
+                    )
+                logger.info("Object Extraction: done.")
                 success = True
             except AttributeError:
                 if interactive:
-                    self._drawer.featuresSelected.setText("Feature computation failed (most likely due to memory issues)")
-                logger.error('Object Extraction: failed.')
+                    self._drawer.featuresSelected.setText(
+                        "Feature computation failed (most likely due to memory issues)"
+                    )
+                logger.error("Object Extraction: failed.")
                 success = False
 
             self.applet.appletStateUpdateRequested()
@@ -644,51 +658,53 @@ class ObjectExtractionGui(LayerViewerGui):
         req.notify_finished(_handle_all_finished)
         reqs.append(req)
 
-
     @threadRouted
     def handleFeatureComputationFailure(self, exc, exc_info):
-        msg = "Feature computation failed due to the following error:\n{}".format( exc )
-        log_exception( logger, msg, exc_info )
+        msg = "Feature computation failed due to the following error:\n{}".format(exc)
+        log_exception(logger, msg, exc_info)
         QMessageBox.critical(self, "Feature computation failed", msg)
 
     def _exportFeaturesButtonPressed(self):
         mainOperator = self.topLevelOperatorView
         if not mainOperator.RegionFeatures.ready():
-            mexBox=QMessageBox()
+            mexBox = QMessageBox()
             mexBox.setText("No features have been computed yet. Nothing to save.")
             mexBox.exec_()
             return
-            
-        fname, _filter = QFileDialog.getSaveFileName(self, caption='Export Computed Features', 
-                                        filter="Pickled Objects (*.pkl);;All Files (*)")
-        
-        if len(fname)>0: #not cancelled
-            with open(fname, 'w') as f:
+
+        fname, _filter = QFileDialog.getSaveFileName(
+            self, caption="Export Computed Features", filter="Pickled Objects (*.pkl);;All Files (*)"
+        )
+
+        if len(fname) > 0:  # not cancelled
+            with open(fname, "w") as f:
                 pickle.dump(mainOperator.RegionFeatures(list()).wait(), f, 0)
-        
-        
+
         logger.debug("Exported object features to file '{}'".format(fname))
 
 
 from PyQt5.QtWidgets import QWidget
+
+
 class ObjectExtractionGuiNonInteractive(QWidget):
     """
     In non-interactive mode, we don't use any object extraction gui at all.
-    The ObjectExtraction applet is just used for its top-level operator and serializer. 
-    This class is a stand-in for the normal gui, since the shell needs some placeholder. 
+    The ObjectExtraction applet is just used for its top-level operator and serializer.
+    This class is a stand-in for the normal gui, since the shell needs some placeholder.
     """
+
     def __init__(self, *args, **kwargs):
-        super( ObjectExtractionGuiNonInteractive, self ).__init__()
+        super(ObjectExtractionGuiNonInteractive, self).__init__()
         self._drawer = QWidget(self)
         self._viewer_controls = QWidget(self)
-    
-    def centralWidget( self ):
+
+    def centralWidget(self):
         return self
 
     def appletDrawer(self):
         return self._drawer
 
-    def menus( self ):
+    def menus(self):
         return []
 
     def viewerControlWidget(self):
@@ -704,29 +720,37 @@ class ObjectExtractionGuiNonInteractive(QWidget):
 if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
     from PyQt5.QtCore import QTimer
-    
+
     app = QApplication([])
-    
+
     features = {}
     features["Standard"] = {}
     features["Standard"]["Count"] = {}
     features["Standard"]["Count"]["displaytext"] = "Size in pixels"
-    features["Standard"]["Count"]["detailtext"] = "Total size of the object in pixels. No correction for anisotropic resolution or anything else."
+    features["Standard"]["Count"][
+        "detailtext"
+    ] = "Total size of the object in pixels. No correction for anisotropic resolution or anything else."
     features["Standard"]["Count"]["group"] = "Shape"
 
     features["Standard"]["Count"] = {}
     features["Standard"]["Count"]["displaytext"] = "Size in pixels"
-    features["Standard"]["Count"]["detailtext"] = "Total size of the object in pixels. No correction for anisotropic resolution or anything else."
+    features["Standard"]["Count"][
+        "detailtext"
+    ] = "Total size of the object in pixels. No correction for anisotropic resolution or anything else."
     features["Standard"]["Count"]["group"] = "Shape"
 
     features["Standard"]["Coord<Minimum>"] = {}
-    features["Standard"]["Coord<Minimum>"]["displaytext"]= "Bounding Box Minimum"
-    features["Standard"]["Coord<Minimum>"]["detailtext"]= "The coordinates of the lower left corner of the object's bounding box. The first axis is x, then y, then z (if available)."
+    features["Standard"]["Coord<Minimum>"]["displaytext"] = "Bounding Box Minimum"
+    features["Standard"]["Coord<Minimum>"][
+        "detailtext"
+    ] = "The coordinates of the lower left corner of the object's bounding box. The first axis is x, then y, then z (if available)."
     features["Standard"]["Coord<Minimum>"]["group"] = "Location"
 
     features["Standard"]["Coord<Maximum>"] = {}
-    features["Standard"]["Coord<Maximum>"]["displaytext"]= "Bounding Box Maximum"
-    features["Standard"]["Coord<Maximum>"]["detailtext"]= "The coordinates of the upper right corner of the object's bounding box. The first axis is x, then y, then z (if available)."
+    features["Standard"]["Coord<Maximum>"]["displaytext"] = "Bounding Box Maximum"
+    features["Standard"]["Coord<Maximum>"][
+        "detailtext"
+    ] = "The coordinates of the upper right corner of the object's bounding box. The first axis is x, then y, then z (if available)."
     features["Standard"]["Coord<Maximum>"]["group"] = "Location"
 
     dlg = FeatureSelectionDialog(featureDict=features)

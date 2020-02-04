@@ -16,11 +16,13 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import os
-currentdir = os.path.dirname(__file__) 
+
+currentdir = os.path.dirname(__file__)
 import ctypes
+
 libraryname = "libgurobiwrapper.so"
 dllname = "gurobiwrapper.dll"
 HAS_GUROBI = False

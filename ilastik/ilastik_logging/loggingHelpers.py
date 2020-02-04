@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import os
 import sys
@@ -32,35 +32,40 @@ logger = logging.getLogger(__name__)
 
 import ilastik
 
+
 def updateFromConfigFile():
-    # Import changes from a file    
-   
+    # Import changes from a file
+
     configFilePath = None
     try:
         configFilePath = ilastik.config.cfg.get("ilastik", "logging_config")
     except:
-        configFilePath = os.path.split(__file__)[0]+"/logging_config.json"
-        
+        configFilePath = os.path.split(__file__)[0] + "/logging_config.json"
+
     configFilePath = os.path.expanduser(configFilePath)
     if not os.path.exists(configFilePath):
         raise RuntimeError("Could not find config file at '%s'" % configFilePath)
-        
+
     f = open(configFilePath)
     try:
         updates = json.load(f)
         logging.config.dictConfig(updates)
     except:
         import traceback
+
         traceback.print_exc()
         logging.error("Failed to load logging config file: " + configFilePath)
+
 
 class NoWarnFilter(logging.Filter):
     """
     Filter out any records that are warnings or errors.
     (This is useful if your warnings and errors are sent to their own handler, e.g. stderr.)
     """
+
     def filter(self, record):
         return not (record.levelno == logging.WARN or record.levelno == logging.ERROR)
+
 
 # Globals for the update timer thread
 interval = 0
@@ -68,15 +73,17 @@ current_tag = 0
 timer = None
 timer_cancelled = False
 
-def periodicUpdate( tag ):
+
+def periodicUpdate(tag):
     # Start a new timer if another one hasn't been started in the meantime
     global timer_cancelled
     if tag == current_tag and not timer_cancelled:
         global timer
         updateFromConfigFile()
-        timer = threading.Timer( interval, partial(periodicUpdate, tag) )
-        timer.daemon = True # Don't let this thread prevent application shutdown
+        timer = threading.Timer(interval, partial(periodicUpdate, tag))
+        timer.daemon = True  # Don't let this thread prevent application shutdown
         timer.start()
+
 
 def startUpdateInterval(nseconds):
     global interval
@@ -84,6 +91,7 @@ def startUpdateInterval(nseconds):
     current_tag += 1
     interval = nseconds
     periodicUpdate(current_tag)
+
 
 @atexit.register
 def stopUpdates():

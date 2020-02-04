@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 from builtins import range
-__author__ = 'fabian'
+
+__author__ = "fabian"
 
 import numpy
+
 # import scipy
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtGui import QCursor
@@ -13,21 +15,29 @@ from volumina.widgets import layerwidget
 from volumina import volumeEditorWidget
 from volumina.layer import ColortableLayer, GrayscaleLayer, RGBALayer
 from volumina import colortables
-from volumina.pixelpipeline.datasourcefactories import createDataSource
+from volumina.api import createDataSource
 
 from ilastik.applets.pixelClassification import opPixelClassification
 from lazyflow.operators import OpFeatureMatrixCache
 from ilastik.utility import OpMultiLaneWrapper
 from lazyflow import graph
 
-from os import times
+import time
 import re
-
 
 
 # just a container class, nothing fancy here
 class FeatureSelectionResult(object):
-    def __init__(self, feature_matrix, feature_ids, segmentation, parameters, selection_method, oob_err = None, feature_calc_time = None):
+    def __init__(
+        self,
+        feature_matrix,
+        feature_ids,
+        segmentation,
+        parameters,
+        selection_method,
+        oob_err=None,
+        feature_calc_time=None,
+    ):
         self.feature_matrix = feature_matrix
         self.segmentation = segmentation
         self.parameters = parameters
@@ -35,7 +45,6 @@ class FeatureSelectionResult(object):
         self.oob_err = oob_err
         self.feature_calc_time = feature_calc_time
         self.feature_ids = feature_ids
-
 
         self.name = self._create_name()
         self.long_name = self._create_long_name()
@@ -47,7 +56,7 @@ class FeatureSelectionResult(object):
 
         if self.selection_method == "filter" or self.selection_method == "gini":
             if self.parameters["num_of_feat"] == 0:
-                name = "%d features(auto), %s selection" % ( numpy.sum(self.feature_matrix), self.selection_method)
+                name = "%d features(auto), %s selection" % (numpy.sum(self.feature_matrix), self.selection_method)
             else:
                 name = "%d features, %s selection" % (self.parameters["num_of_feat"], self.selection_method)
         elif self.selection_method == "wrapper":
@@ -84,19 +93,13 @@ class FeatureSelectionResult(object):
         self.long_name = name
 
 
-
 class FeatureSelectionDialog(QtWidgets.QDialog):
-    def __init__(
-            self,
-            current_opFeatureSelection,
-            current_pixelClassificationApplet,
-            labels_list_data
-        ):
-        '''
+    def __init__(self, current_opFeatureSelection, current_pixelClassificationApplet, labels_list_data):
+        """
 
         :param current_opFeatureSelection: opFeatureSelection from ilastik
         :param current_opPixelClassification: opPixelClassification form Ilastik
-        '''
+        """
         super(FeatureSelectionDialog, self).__init__()
 
         self.pixelClassificationApplet = current_pixelClassificationApplet
@@ -119,7 +122,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         # and labels matrix required by the feature selection operators
         self.opFeatureMatrixCaches = self.opPixelClassification.opFeatureMatrixCaches
 
-        '''FIXME / FixMe: the FeatureSelectionDialog will only display one slice of the dataset. This is for RAM saving
+        """FIXME / FixMe: the FeatureSelectionDialog will only display one slice of the dataset. This is for RAM saving
         reasons. By using only one slice, we can simple predict the segmentation of that slice for each feature set and
         store it in RAM. If we allowed to show the whole dataset, then we would have to copy the opFeatureSelection and
         opPixelClassification once for each feature set. This would result in too much feature computation time as
@@ -127,7 +130,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         However, this shortcoming could be overcome by creating something like an opFeatureSubset. Then we would enable
         all features in the opFeatureSelection and the feature sets are created by 'filtering' the output of the
         opFeatureSelection. Thereby, provided that features in the opFeatureSelection are cached (are they?) the
-        features would not have to be recalculated for each feature set.'''
+        features would not have to be recalculated for each feature set."""
         self._xysliceID = -1
 
         self._initialized_all_features_segmentation_layer = False
@@ -136,23 +139,18 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
 
         self._selected_feature_set_id = None
         self.selected_features_matrix = self.opFeatureSelection.SelectionMatrix.value
-        self.feature_channel_names = None #this gets initialized when the matrix is set to all features in _run_selection
+        self.feature_channel_names = (
+            None
+        )  # this gets initialized when the matrix is set to all features in _run_selection
 
         self._stack_dim = self.opPixelClassification.InputImages.meta.shape
         self._stack_axistags = self.opPixelClassification.InputImages.meta.axistags
 
-        self.__selection_methods = {
-            0: "gini",
-            1: "filter",
-            2: "wrapper"
-        }
+        self.__selection_methods = {0: "gini", 1: "filter", 2: "wrapper"}
 
-        self._selection_params = {
-            "num_of_feat": 7,  #arbitrary number for the default, Ulli thinks it's good
-            "c": 0.1
-        }
+        self._selection_params = {"num_of_feat": 7, "c": 0.1}  # arbitrary number for the default, Ulli thinks it's good
         self._selection_method = "None"
-        self._gui_initialized = False #  is set to true once gui is initialized, prevents multiple initialization
+        self._gui_initialized = False  #  is set to true once gui is initialized, prevents multiple initialization
         self._feature_selection_results = []
 
         self.labels_list_data = labels_list_data
@@ -188,7 +186,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
 
         """
         self.colortable = [lab.pmapColor().rgba() for lab in self.labels_list_data]
-        #FIXME: the editor should return the current view coordinates without such workarounds
+        # FIXME: the editor should return the current view coordinates without such workarounds
         if self.opPixelClassification.name == "OpPixelClassification":
             ilastik_editor = self.opPixelClassification.parent.pcApplet.getMultiLaneGui().currentGui().editor
         elif self.opPixelClassification.name == "OpPixelClassification0":
@@ -199,29 +197,33 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
             raise NotImplementedError
 
         self._ilastik_currentslicing_5D = ilastik_editor.posModel.slicingPos5D
-        #FIXME: is this always the xy scene?
+        # FIXME: is this always the xy scene?
         current_view = ilastik_editor.imageViews[2]
         current_viewport_rect = current_view.viewportRect().getRect()
 
-        axistags = self.opFeatureSelection.InputImage.meta['axistags']
+        axistags = self.opFeatureSelection.InputImage.meta["axistags"]
 
-        x_idx = axistags.index('x')
-        y_idx = axistags.index('y')
+        x_idx = axistags.index("x")
+        y_idx = axistags.index("y")
         self._xysliceID = self._ilastik_currentslicing_5D[3]  # volume editor slicings are all (t, x, y, z, c)
         self._stackdim = self.opFeatureSelection.InputImage.meta.shape
 
         self._bbox = {}
-        if 'z' in axistags:
-            self._bbox['z'] = [self._xysliceID, self._xysliceID + 1]
-        if 'c' in axistags:
-            self._bbox['c'] = [0, self._stackdim[axistags.index('c')]]
-        if 't' in axistags:
-            self._bbox['t'] = [self._ilastik_currentslicing_5D[0], self._ilastik_currentslicing_5D[0] + 1]
+        if "z" in axistags:
+            self._bbox["z"] = [self._xysliceID, self._xysliceID + 1]
+        if "c" in axistags:
+            self._bbox["c"] = [0, self._stackdim[axistags.index("c")]]
+        if "t" in axistags:
+            self._bbox["t"] = [self._ilastik_currentslicing_5D[0], self._ilastik_currentslicing_5D[0] + 1]
 
-        self._bbox['x'] = [numpy.max([int(current_viewport_rect[0]), 0]),
-                           numpy.min([int(current_viewport_rect[0] + current_viewport_rect[2]), self._stackdim[x_idx]])]
-        self._bbox['y'] = [numpy.max([int(current_viewport_rect[1]), 0]),
-                           numpy.min([int(current_viewport_rect[1] + current_viewport_rect[3]), self._stackdim[y_idx]])]
+        self._bbox["x"] = [
+            numpy.max([int(current_viewport_rect[0]), 0]),
+            numpy.min([int(current_viewport_rect[0] + current_viewport_rect[2]), self._stackdim[x_idx]]),
+        ]
+        self._bbox["y"] = [
+            numpy.max([int(current_viewport_rect[1]), 0]),
+            numpy.min([int(current_viewport_rect[1] + current_viewport_rect[3]), self._stackdim[y_idx]]),
+        ]
 
         self.reset_me()
 
@@ -229,29 +231,28 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         total_slicing = [slice(self._bbox[ai.key][0], self._bbox[ai.key][1]) for ai in axistags]
         self.raw_xy_slice = numpy.squeeze(self.opPixelClassification.InputImages[total_slicing].wait())
 
-        color_index = axistags.index('c')
-        if self._stackdim[color_index] ==2 or self._stackdim[color_index]==3:
-            #FIXME: check if the main window is displaying raw as rgba or grayscale
+        color_index = axistags.index("c")
+        if self._stackdim[color_index] == 2 or self._stackdim[color_index] == 3:
+            # FIXME: check if the main window is displaying raw as rgba or grayscale
 
             # dirty workaround for swapping x/y axis (I dont know how to set axistags of new layer)
-            if axistags.index('x') > axistags.index('y'):
+            if axistags.index("x") > axistags.index("y"):
                 self.raw_xy_slice = self.raw_xy_slice.swapaxes(1, 0)
             self._add_color_layer(self.raw_xy_slice, "raw_data", True)
         else:
             # dirty workaround for swapping x/y axis (I dont know how to set axistags of new layer)
-            if axistags.index('x') > axistags.index('y'):
+            if axistags.index("x") > axistags.index("y"):
                 self.raw_xy_slice = self.raw_xy_slice.swapaxes(1, 0)
             self._add_grayscale_layer(self.raw_xy_slice, "raw_data", True)
-
 
         # now launch the dialog
         super(FeatureSelectionDialog, self).exec_()
 
     def reset_me(self):
-        '''
+        """
         this deletes everything from the layerstack
-        '''
-        while(self.layerstack.removeRow(0)):
+        """
+        while self.layerstack.removeRow(0):
             pass
         for i in range(len(self._feature_selection_results)):
             self.all_feature_sets_combo_box.removeItem(0)
@@ -260,7 +261,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         self._initialized_all_features_segmentation_layer = False
         self._initialized_current_features_segmentation_layer = False
         self._initialized_feature_matrix = False
-        #self.all_feature_sets_combo_box.resetInputContext()
+        # self.all_feature_sets_combo_box.resetInputContext()
         self._selected_feature_set_id = None
 
     def _init_gui(self):
@@ -292,7 +293,6 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
             self.select_method_cbox.addItem("Wrapper Method (slow but good)")
             self.select_method_cbox.setCurrentIndex(1)
 
-
             # number of selected features
             # create a widget containing 2 child widgets in a horizontal layout
             # child widgets: QLabel for text and QSpinBox for selecting an integer value for number of features
@@ -307,13 +307,12 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
 
             self.number_of_features_selection_widget.setLayout(number_of_features_selection_layout)
 
-
             # regularization parameter for wrapper
             # create a widget containing 2 child widgets in a horizontal layout
             # child widgets: QLabel for text and QDoubleSpinBox for selecting a float value for c (parameter)
             self.c_widget = QtWidgets.QWidget()
 
-            text_c_widget = QtWidgets.QLabel("Set Size Penalty") # not a good text
+            text_c_widget = QtWidgets.QLabel("Set Size Penalty")  # not a good text
             self.spinbox_c_widget = QtWidgets.QDoubleSpinBox()
             # may have to set increment to 0.01
             self.spinbox_c_widget.setSingleStep(0.03)
@@ -327,30 +326,31 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
             # run button
             self.run_button = QtWidgets.QPushButton("Run Feature Selection")
 
-
             # text box with explanations
             text_box = QtWidgets.QTextEdit()
             text_box.setReadOnly(True)
-            text_box.setText("<html><b>1) Choose the feature selection method</b><br>" +
-                             "- Gini Importance: inaccurate but fast<br>" +
-                             "- Filter Method: recommended<br>" +
-                             "- Wrapper Method: slow but provides the best results<br><br>" +
-                             "<b>2) Choose the parameters</b><br>" +
-                             "- choose <u>number of features</u>: more features need more time and RAM, but provide better results." +
-                             " To select the number of features <u>automatically</u>, set this number to 0 (selection will take a while).<br><br>" +
-                             "- choose <u>Set Size Penalty (c)</u>: <br>small c (&lt; 0.1): excellent accuracy but larger feature set (=slower predictions) <br>larger c (&gt; 0.1): slightly reduced accuracy but smaller feature set (=faster predictions)<br><br>" +
-                             "<b>3) Run Feature Selection</b> <br><br>"
-                             "<b>4) More feature sets with other configurations</b><br>" +
-                             "Change parameters above and press the Run Feature Selection button again, the new feature set will be added to the list for you to compare. <br><br>" +
-                             "<b>5) Compare feature Sets</b><br>" +
-                             "Use the viewer (middle) and the segmentation layers (right) to choose the best feature set<br><br>" +
-                             "<b>6) Finish</b><br>" +
-                             "Select the best set in the box at the bottom and hit 'Select Feature Set'<br><br>"
-                             "<br>" +
-                             "<b>Explanations:</b><br>" +
-                             "<u>oob</u>: out of bag error (in &#37;), lower is better<br>" +
-                             "feature <u>computation time</u> is shown in seconds<br><br>" +
-                             "If the segmentation (shown in the viewer) differs a lot between the feature sets and the reference (usualls all features), but the oob values are similar then this is an indication that you should place more labels, especially in the regions where there were differences. Return to the feature selection once you added more labels</html>")
+            text_box.setText(
+                "<html><b>1) Choose the feature selection method</b><br>"
+                + "- Gini Importance: inaccurate but fast<br>"
+                + "- Filter Method: recommended<br>"
+                + "- Wrapper Method: slow but provides the best results<br><br>"
+                + "<b>2) Choose the parameters</b><br>"
+                + "- choose <u>number of features</u>: more features need more time and RAM, but provide better results."
+                + " To select the number of features <u>automatically</u>, set this number to 0 (selection will take a while).<br><br>"
+                + "- choose <u>Set Size Penalty (c)</u>: <br>small c (&lt; 0.1): excellent accuracy but larger feature set (=slower predictions) <br>larger c (&gt; 0.1): slightly reduced accuracy but smaller feature set (=faster predictions)<br><br>"
+                + "<b>3) Run Feature Selection</b> <br><br>"
+                "<b>4) More feature sets with other configurations</b><br>"
+                + "Change parameters above and press the Run Feature Selection button again, the new feature set will be added to the list for you to compare. <br><br>"
+                + "<b>5) Compare feature Sets</b><br>"
+                + "Use the viewer (middle) and the segmentation layers (right) to choose the best feature set<br><br>"
+                + "<b>6) Finish</b><br>"
+                + "Select the best set in the box at the bottom and hit 'Select Feature Set'<br><br>"
+                "<br>"
+                + "<b>Explanations:</b><br>"
+                + "<u>oob</u>: out of bag error (in &#37;), lower is better<br>"
+                + "feature <u>computation time</u> is shown in seconds<br><br>"
+                + "If the segmentation (shown in the viewer) differs a lot between the feature sets and the reference (usualls all features), but the oob values are similar then this is an indication that you should place more labels, especially in the regions where there were differences. Return to the feature selection once you added more labels</html>"
+            )
 
             # now add these widgets together to form the left_side_layout
             left_side_layout.addWidget(method_label)
@@ -396,7 +396,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
             bottom_widget = QtWidgets.QWidget()
             bottom_layout = QtWidgets.QHBoxLayout()
             # bottom_layout.addWidget(self.current_status_label)
-            #bottom_layout.addStretch(1)
+            # bottom_layout.addStretch(1)
             bottom_layout.addWidget(self.all_feature_sets_combo_box)
             bottom_layout.addWidget(show_features_of_selected_set)
             bottom_layout.addWidget(self.select_set_button)
@@ -409,7 +409,6 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
             bottom_layout.setStretchFactor(self.cancel_button, 2)
 
             bottom_widget.setLayout(bottom_layout)
-
 
             central_widget_layout = QtWidgets.QVBoxLayout()
             central_widget_layout.addWidget(upper_widget)
@@ -444,7 +443,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         if self._selected_feature_set_id is None:
             text_edit.setText("No feature set selected!")
         else:
-            #FIXME: WTF??? Why sort? They are already sorted by importance!
+            # FIXME: WTF??? Why sort? They are already sorted by importance!
             selected_ids = numpy.sort(self._feature_selection_results[self._selected_feature_set_id].feature_ids)
             text = "<html>"
 
@@ -458,18 +457,18 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         dialog.exec_()
 
     def _add_color_layer(self, data, name=None, visible=False):
-        '''
+        """
         adds a color layer to the layerstack
 
         :param data: numpy array (2D, c) containing the data (c is color)
         :param name: name of layer
         :param visible: bool determining whether this layer should be set to visible
         :return:
-        '''
+        """
         assert len(data.shape) == 3
         data_sources = []
         for i in range(data.shape[2]):
-            a, data_shape = createDataSource(data[:,:,i], True)
+            a, data_shape = createDataSource(data[:, :, i], True)
             data_sources.append(a)
         self.editor.dataShape = list(data_shape)
         if data.shape[2] == 2:
@@ -487,23 +486,23 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         self.layerstack.append(new_layer)
 
     def _handle_selected_feature_set_changed(self):
-        '''
+        """
         If the user selects a specific feature set in the comboBox in the bottom row then the segmentation of this
         feature set will be displayed in the viewer
-        '''
+        """
 
         id = self.all_feature_sets_combo_box.currentIndex()
         for i, layer in enumerate(self.layerstack):
-            layer.visible = (i == id)
-            layer.opacity = 1.
+            layer.visible = i == id
+            layer.opacity = 1.0
         self._selected_feature_set_id = id
         self.selected_features_matrix = self._feature_selection_results[id].feature_matrix
 
     def _add_feature_set_to_results(self, feature_set_result):
-        '''
+        """
         After feature selection, the feature set (and the segmentation achieved with it) will be added to the results
         :param feature_set_result: FeatureSelectionResult instance
-        '''
+        """
         self._feature_selection_results.insert(0, feature_set_result)
         self._add_segmentation_layer(feature_set_result.segmentation, name=feature_set_result.name)
         self.all_feature_sets_combo_box.insertItem(0, feature_set_result.long_name)
@@ -514,10 +513,10 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         self._update_gui()
 
     def _update_gui(self):
-        '''
+        """
         Depending on feature selection method and the number of features in the set some GUI elements are
         enabled/disabled
-        '''
+        """
         if (self.select_method_cbox.currentIndex() == 0) | (self.select_method_cbox.currentIndex() == 1):
             self.c_widget.setEnabled(False)
             self.number_of_features_selection_widget.setEnabled(True)
@@ -528,14 +527,14 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
             self.c_widget.setEnabled(True)
 
     def _add_segmentation_layer(self, data, name=None, visible=False):
-        '''
+        """
         adds a segementation layer to the layerstack
 
         :param data: numpy array (2D) containing the data
         :param name: name of layer
         :param visible: bool determining whether this layer should be set to visible
         :return:
-        '''
+        """
         assert len(data.shape) == 2
         a, data_shape = createDataSource(data, True)
         self.editor.dataShape = list(data_shape)
@@ -547,15 +546,15 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         self.layerstack.append(new_layer)
 
     def _add_grayscale_layer(self, data, name=None, visible=False):
-        '''
+        """
         adds a grayscale layer to the layerstack
 
         :param data: numpy array (2D) containing the data
         :param name: name of layer
         :param visible: bool determining whether this layer should be set to visible
         :return:
-        '''
-        #assert len(data.shape) == 2
+        """
+        # assert len(data.shape) == 2
         a, data_shape = createDataSource(data, True)
         self.editor.dataShape = list(data_shape)
         new_layer = GrayscaleLayer(a)
@@ -565,30 +564,29 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         self.layerstack.append(new_layer)
 
     def _handle_selected_method_changed(self):
-        '''
+        """
         activated upon changing the feature selection method
-        '''
+        """
         self._selection_method = self.__selection_methods[self.select_method_cbox.currentIndex()]
         self._update_gui()
 
     def retrieve_segmentation(self, feat_matrix):
-        '''
+        """
         Uses the features of the feat_matrix to retrieve a segmentation of the currently visible slice
         :param feat_matrix: boolean feature matrix as in opFeatureSelection.SelectionMatrix
         :return: segmentation (2d numpy array), out of bag error
-        '''
+        """
         # remember the currently selected features so that they are not changed in case the user cancels the dialog
         user_defined_matrix = self.opFeatureSelection.SelectionMatrix.value
-
 
         # apply new feature matrix and make sure lazyflow applies the changes
         if numpy.sum(user_defined_matrix != feat_matrix) != 0:
             self.opFeatureSelection.SelectionMatrix.setValue(feat_matrix)
-            self.opFeatureSelection.SelectionMatrix.setDirty() # this does not do anything!?!?
+            self.opFeatureSelection.SelectionMatrix.setDirty()  # this does not do anything!?!?
             self.opFeatureSelection.setupOutputs()
             # self.opFeatureSelection.change_feature_cache_size()
 
-        start_time = times()[4]
+        start_time = time.perf_counter()
 
         old_live_update_value = self.pixelClassificationApplet.isLiveUpdateEnabled()
         self.pixelClassificationApplet.setLiveUpdateEnabled(True)
@@ -597,16 +595,16 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         slice_shape = self.raw_xy_slice.shape[:2]
         segmentation = numpy.zeros(slice_shape, dtype=numpy.uint8)
 
-        axisOrder = [ tag.key for tag in self.opFeatureSelection.InputImage.meta.axistags ]
+        axisOrder = [tag.key for tag in self.opFeatureSelection.InputImage.meta.axistags]
         bbox = self._bbox
 
-        do_transpose = axisOrder.index('x') > axisOrder.index('y')
+        do_transpose = axisOrder.index("x") > axisOrder.index("y")
 
         # we need to reset the 'c' axis because it only has length 1 for segmentation
-        if 'c' not in list(bbox.keys()):
-            axisOrder += ['c']
+        if "c" not in list(bbox.keys()):
+            axisOrder += ["c"]
 
-        bbox['c'] = [0, 1]
+        bbox["c"] = [0, 1]
 
         total_slicing = [slice(bbox[ai][0], bbox[ai][1]) for ai in axisOrder]
 
@@ -617,31 +615,33 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
                 single_layer_of_segmentation = single_layer_of_segmentation.transpose()
             segmentation[single_layer_of_segmentation != 0] = i
 
-        end_time = times()[4]
+        end_time = time.perf_counter()
 
-        oob_err = 100. * numpy.mean(self.opPixelClassification.opTrain.outputs['Classifier'].value.oobs)
+        oob_err = 100.0 * numpy.mean(self.opPixelClassification.opTrain.outputs["Classifier"].value.oobs)
 
         # revert changes to matrix and other operators
         if numpy.sum(user_defined_matrix != feat_matrix) != 0:
             self.opFeatureSelection.SelectionMatrix.setValue(user_defined_matrix)
-            self.opFeatureSelection.SelectionMatrix.setDirty() # this does not do anything!?!?
+            self.opFeatureSelection.SelectionMatrix.setDirty()  # this does not do anything!?!?
             self.opFeatureSelection.setupOutputs()
 
         self.pixelClassificationApplet.setLiveUpdateEnabled(old_live_update_value)
 
-        return segmentation, oob_err, end_time-start_time
+        return segmentation, oob_err, end_time - start_time
 
     def retrieve_segmentation_new(self, feat):
-        '''
+        """
         Attempt to use the opSimplePixelClassification by Stuart. Could not get this to work so far...
         :param feat:
         :return:
-        '''
+        """
         from . import opSimplePixelClassification
         from lazyflow import graph
         from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
 
-        self.opSimpleClassification = opSimplePixelClassification.OpSimplePixelClassification(parent = self.opPixelClassification.parent.pcApplet.topLevelOperator)
+        self.opSimpleClassification = opSimplePixelClassification.OpSimplePixelClassification(
+            parent=self.opPixelClassification.parent.pcApplet.topLevelOperator
+        )
         self.opSimpleClassification.Labels.connect(self.opPixelClassification.opLabelPipeline.Output)
         self.opSimpleClassification.Features.connect(self.opPixelClassification.FeatureImages)
         self.opSimpleClassification.Labels.resize(1)
@@ -653,28 +653,27 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         segmentation = self.opSimpleClassification.Predictions[0][0, :, :, 25, 0].wait()
 
         # now I get:
-        '''RuntimeError:
+        """RuntimeError:
         Precondition violation!
         Sampler(): Requested sample count must be at least as large as the number of strata.
-        (/miniconda/conda-bld/work/include/vigra/sampling.hxx:371)'''
+        (/miniconda/conda-bld/work/include/vigra/sampling.hxx:371)"""
 
-
-        '''
+        """
         In [72]: self.opSimpleClassification.Predictions[0].meta.shape
         Out[72]: (1, 300, 275, 50, 1)
-        '''
+        """
 
     def _convert_featureIDs_to_featureMatrix(self, selected_feature_IDs):
-        '''
+        """
         The feature Selection Operators return id's of selected features. Here, these IDs are converted to fit the
         feature matrix as in opFeatureSelection.SelectionMatrix
 
         :param selected_feature_IDs: list of selected feature ids
         :return: feature matrix for opFeatureSelection
-        '''
+        """
         scales = self.opFeatureSelection.Scales.value
         featureIDs = self.opFeatureSelection.FeatureIds.value
-        new_matrix = numpy.zeros((len(featureIDs), len(scales)), 'bool')  # initialize new matrix as all False
+        new_matrix = numpy.zeros((len(featureIDs), len(scales)), "bool")  # initialize new matrix as all False
 
         # now find out where i need to make changes in the matrix
         # matrix is len(features) by len(scales)
@@ -705,8 +704,14 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         return new_matrix
 
     def _convert_featureMatrix_to_featureIDs(self, feature_matrix):
-        feature_ids = ["Gaussian Smoothing", "Laplacian of Gaussian", "Gaussian Gradient Magnitude",
-                       "Difference of Gaussians", "Structure Tensor Eigenvalues", "Hessian of Gaussian Eigenvalues"]
+        feature_ids = [
+            "Gaussian Smoothing",
+            "Laplacian of Gaussian",
+            "Gaussian Gradient Magnitude",
+            "Difference of Gaussians",
+            "Structure Tensor Eigenvalues",
+            "Hessian of Gaussian Eigenvalues",
+        ]
         scales = self.opFeatureSelection.Scales.value
         featureIDs = self.opFeatureSelection.FeatureIds.value
 
@@ -723,7 +728,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         return ids
 
     def _auto_select_num_features(self, feature_order):
-        '''
+        """
         Determines the optimal number of features. This is achieved by sequentially adding features from the
         feature_order to the list and comparing the accuracies achieved with the growing feature sets. These accuracies
         are penalized by the feature set size ('accuracy - size trade-off' from GUI) to prevent the set size from
@@ -732,10 +737,9 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
 
         :param feature_order: ordered list of feature IDs
         :return: optimal number of selected features
-        '''
+        """
         from sklearn.ensemble import RandomForestClassifier
         from ilastik_feature_selection.wrapper_feature_selection import EvaluationFunction
-
 
         feature_order = numpy.array(feature_order)
 
@@ -743,7 +747,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         ev_func = EvaluationFunction(rf, complexity_penalty=self._selection_params["c"])
         n_select = 1
         overshoot = 0
-        score = 0.
+        score = 0.0
         X = self.featureLabelMatrix_all_features[:, 1:]
         Y = self.featureLabelMatrix_all_features[:, 0]
         n_select_opt = n_select
@@ -763,27 +767,26 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         return n_select_opt
 
     def _run_selection(self):
-        QtWidgets.QApplication.instance().setOverrideCursor( QCursor(QtCore.Qt.WaitCursor) )
-        '''
+        QtWidgets.QApplication.instance().setOverrideCursor(QCursor(QtCore.Qt.WaitCursor))
+        """
         runs the feature selection based on the selected parameters and selection method. Adds a segmentation layer
         showing the segmentation result achieved with the selected set
-        '''
+        """
         # self.retrieve_segmentation_new(None)
 
         user_defined_matrix = self.opFeatureSelection.SelectionMatrix.value
 
-
-        all_features_active_matrix = numpy.zeros(user_defined_matrix.shape, 'bool')
+        all_features_active_matrix = numpy.zeros(user_defined_matrix.shape, "bool")
         all_features_active_matrix[:, 1:] = True
         all_features_active_matrix[0, 0] = True
-        all_features_active_matrix[1:, 0] = False # do not use any other feature than gauss smooth on sigma=0.3
+        all_features_active_matrix[1:, 0] = False  # do not use any other feature than gauss smooth on sigma=0.3
         self.opFeatureSelection.SelectionMatrix.setValue(all_features_active_matrix)
-        self.opFeatureSelection.SelectionMatrix.setDirty() # this does not do anything!?!?
+        self.opFeatureSelection.SelectionMatrix.setDirty()  # this does not do anything!?!?
         self.opFeatureSelection.setupOutputs()
         # self.opFeatureSelection.change_feature_cache_size()
-        self.feature_channel_names = self.opPixelClassification.FeatureImages.meta['channel_names']
+        self.feature_channel_names = self.opPixelClassification.FeatureImages.meta["channel_names"]
 
-        '''
+        """
         Here we retrieve the labels and feature matrix of all features. This is done only once each time the
         FeatureSelectionDialog is opened.
 
@@ -797,9 +800,11 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         operators. This is possible because the FeatureLabelMatrix cannot change from within the FeatureSelectionDialog
         (it contians feature values and the corresponding labels of all labeled voxels and all features. The labels
         cannot be modified from within this dialog)
-        '''
+        """
         if not self._initialized_feature_matrix:
-            self.featureLabelMatrix_all_features = self.opFeatureMatrixCaches.LabelAndFeatureMatrix.value #FIXME: why is this initialized?
+            self.featureLabelMatrix_all_features = (
+                self.opFeatureMatrixCaches.LabelAndFeatureMatrix.value
+            )  # FIXME: why is this initialized?
             self.opFilterFeatureSelection.FeatureLabelMatrix.setValue(self.featureLabelMatrix_all_features)
             self.opFilterFeatureSelection.FeatureLabelMatrix.resize(1)
             self.opFilterFeatureSelection.setupOutputs()
@@ -816,11 +821,15 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
             if numpy.sum(all_features_active_matrix != user_defined_matrix) != 0:
                 segmentation_all_features, oob_all, time_all = self.retrieve_segmentation(all_features_active_matrix)
                 selected_ids = self._convert_featureMatrix_to_featureIDs(all_features_active_matrix)
-                all_features_result = FeatureSelectionResult(all_features_active_matrix,
-                                                             selected_ids,
-                                                 segmentation_all_features,
-                                                 {'num_of_feat': 'all', 'c': 'None'},
-                                                 'all features', oob_all, time_all)
+                all_features_result = FeatureSelectionResult(
+                    all_features_active_matrix,
+                    selected_ids,
+                    segmentation_all_features,
+                    {"num_of_feat": "all", "c": "None"},
+                    "all features",
+                    oob_all,
+                    time_all,
+                )
                 self._add_feature_set_to_results(all_features_result)
             self._initialized_all_features_segmentation_layer = True
 
@@ -836,7 +845,9 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
                 selected_feature_ids = selected_feature_ids[:n_selected]
             else:
                 # make sure no more than n_features are requested
-                self.opGiniFeatureSelection.NumberOfSelectedFeatures.setValue(numpy.min([self._selection_params["num_of_feat"], self.n_features]))
+                self.opGiniFeatureSelection.NumberOfSelectedFeatures.setValue(
+                    numpy.min([self._selection_params["num_of_feat"], self.n_features])
+                )
                 selected_feature_ids = self.opGiniFeatureSelection.SelectedFeatureIDs.value
         elif self._selection_method == "filter":
             if self._selection_params["num_of_feat"] == 0:
@@ -849,7 +860,9 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
                 selected_feature_ids = selected_feature_ids[:n_selected]
             else:
                 # make sure no more than n_features are requested
-                self.opFilterFeatureSelection.NumberOfSelectedFeatures.setValue(numpy.min([self._selection_params["num_of_feat"], self.n_features]))
+                self.opFilterFeatureSelection.NumberOfSelectedFeatures.setValue(
+                    numpy.min([self._selection_params["num_of_feat"], self.n_features])
+                )
                 selected_feature_ids = self.opFilterFeatureSelection.SelectedFeatureIDs.value
         else:
             self.opWrapperFeatureSelection.ComplexityPenalty.setValue(self._selection_params["c"])
@@ -860,42 +873,45 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         # maybe also write down feature computation time and oob error
         new_matrix = self._convert_featureIDs_to_featureMatrix(selected_feature_ids)
         new_segmentation, new_oob, new_time = self.retrieve_segmentation(new_matrix)
-        new_feature_selection_result = FeatureSelectionResult(new_matrix,
-                                                              selected_feature_ids,
-                                                              new_segmentation,
-                                                              self._selection_params,
-                                                              self._selection_method,
-                                                              oob_err=new_oob,
-                                                              feature_calc_time=new_time)
+        new_feature_selection_result = FeatureSelectionResult(
+            new_matrix,
+            selected_feature_ids,
+            new_segmentation,
+            self._selection_params,
+            self._selection_method,
+            oob_err=new_oob,
+            feature_calc_time=new_time,
+        )
         self._add_feature_set_to_results(new_feature_selection_result)
 
         if not self._initialized_current_features_segmentation_layer:
-            #FIXME: this should probably be moved somewhere else
+            # FIXME: this should probably be moved somewhere else
             self.opFeatureSelection.setupOutputs()  # deletes cache for realistic feature computation time
             segmentation_current_features, oob_user, time_user = self.retrieve_segmentation(user_defined_matrix)
             selected_ids = self._convert_featureMatrix_to_featureIDs(user_defined_matrix)
-            current_features_result = FeatureSelectionResult(user_defined_matrix,
-                                                             selected_ids,
-                                                             segmentation_current_features,
-                                                             {'num_of_feat': 'user', 'c': 'None'},
-                                                             'user features', oob_user, time_user)
+            current_features_result = FeatureSelectionResult(
+                user_defined_matrix,
+                selected_ids,
+                segmentation_current_features,
+                {"num_of_feat": "user", "c": "None"},
+                "user features",
+                oob_user,
+                time_user,
+            )
             self._add_feature_set_to_results(current_features_result)
             self._initialized_current_features_segmentation_layer = True
 
-
-
-
         # revert changes to matrix
         self.opFeatureSelection.SelectionMatrix.setValue(user_defined_matrix)
-        self.opFeatureSelection.SelectionMatrix.setDirty() # this does not do anything!?!?
+        self.opFeatureSelection.SelectionMatrix.setDirty()  # this does not do anything!?!?
         self.opFeatureSelection.setupOutputs()
         QtWidgets.QApplication.instance().restoreOverrideCursor()
 
 
 ## Start Qt event loop unless running in interactive mode.
-if __name__ == '__main__':
-    #import sys
-    #if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
+if __name__ == "__main__":
+    # import sys
+    # if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
     #    QtWidgets.QApplication.instance().exec_()
     app = QtWidgets.QApplication([])
     win = QtWidgets.QMainWindow()

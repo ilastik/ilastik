@@ -25,7 +25,7 @@ from PyQt5.QtCore import QPoint, QRect, QSize, Qt
 
 
 class FeatureEntry(object):
-    def __init__(self, name, minimum_scale=.7):
+    def __init__(self, name, minimum_scale=0.7):
         self.name = name
         self.minimum_scale = minimum_scale
 
@@ -37,7 +37,7 @@ class FeatureTableWidgetV2dHeader(QTableWidgetItem):
     isExpanded = False
     children = []
 
-    def __init__(self, text='Compute in 2D/3D'):
+    def __init__(self, text="Compute in 2D/3D"):
         QTableWidgetItem.__init__(self)
         self.setText(text)
 
@@ -49,7 +49,7 @@ class FeatureTableWidgetVSigmaHeader(QTableWidgetItem):
     isExpanded = False
     children = []
 
-    def __init__(self, text='Sigma'):
+    def __init__(self, text="Sigma"):
         QTableWidgetItem.__init__(self)
         self.setText(text)
 
@@ -123,7 +123,7 @@ class FeatureTableWidgetVHeader(QTableWidgetItem):
 # FeatureTableWidgetHHeader
 # ==============================================================================
 class FeatureTableWidgetHHeader(QTableWidgetItem):
-    sub_trans = str.maketrans('0123456789', '₀₁₂₃₄₅₆₇₈₉')
+    sub_trans = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
 
     def __init__(self, column, sigma=None, window_size=3.5):
         QTableWidgetItem.__init__(self)
@@ -144,10 +144,10 @@ class FeatureTableWidgetHHeader(QTableWidgetItem):
 
     def setNameAndBrush(self, sigma, color=Qt.black):
         self.sigma = sigma
-        self.setText(f'σ{self.column}'.translate(self.sub_trans))
+        self.setText(f"σ{self.column}".translate(self.sub_trans))
         if self.sigma is not None:
-            total_window = (1 + 2 * int(self.sigma * self.window_size + 0.5))
-            self.setToolTip(f'sigma = {sigma:.1f} pixels, window diameter = {total_window:.1f}')
+            total_window = 1 + 2 * int(self.sigma * self.window_size + 0.5)
+            self.setToolTip(f"sigma = {sigma:.1f} pixels, window diameter = {total_window:.1f}")
         font = QFont()
         font.setPointSize(10)
         # font.setBold(True)
@@ -162,9 +162,14 @@ class FeatureTableWidgetHHeader(QTableWidgetItem):
         painter.setPen(color)
         brush = QBrush(color)
         painter.setBrush(brush)
-        painter.drawEllipse(QRect(old_div(self.pixmapSize.width(), 2) - old_div(self.brushSize, 2),
-                                  old_div(self.pixmapSize.height(), 2) - old_div(self.brushSize, 2),
-                                  self.brushSize, self.brushSize))
+        painter.drawEllipse(
+            QRect(
+                old_div(self.pixmapSize.width(), 2) - old_div(self.brushSize, 2),
+                old_div(self.pixmapSize.height(), 2) - old_div(self.brushSize, 2),
+                self.brushSize,
+                self.brushSize,
+            )
+        )
         painter.end()
         self.setIcon(QIcon(pixmap))
         self.setTextAlignment(Qt.AlignVCenter)
@@ -221,7 +226,7 @@ class ItemDelegate(QItemDelegate):
         painter.drawRect(QRect(5, 5, self.itemWidth - 10, self.itemHeight - 10))
         painter.fillRect(QRect(5, 5, self.itemWidth - 10, self.itemHeight - 10), QColor(0, 250, 154))
 
-        painter.drawText(QRect(5, 5, self.itemWidth - 10, self.itemHeight - 10), Qt.AlignCenter, '2D')
+        painter.drawText(QRect(5, 5, self.itemWidth - 10, self.itemHeight - 10), Qt.AlignCenter, "2D")
         painter.end()
 
     def drawPixmapFor3d(self):
@@ -234,21 +239,25 @@ class ItemDelegate(QItemDelegate):
         pen.setWidth(2)
         painter.setPen(pen)
         painter.setBrush(QBrush(QColor(220, 220, 220)))
-        top = [QPoint(5, 10),
-               QPoint(self.itemWidth - 10, 10),
-               QPoint(self.itemWidth - 5, 5),
-               QPoint(10, 5),
-               QPoint(5, 10)]
+        top = [
+            QPoint(5, 10),
+            QPoint(self.itemWidth - 10, 10),
+            QPoint(self.itemWidth - 5, 5),
+            QPoint(10, 5),
+            QPoint(5, 10),
+        ]
         painter.drawConvexPolygon(*top)
-        left = [QPoint(self.itemWidth - 10, 10),
-                QPoint(self.itemWidth - 10, self.itemHeight - 5),
-                QPoint(self.itemWidth - 5, self.itemHeight - 10),
-                QPoint(self.itemWidth - 5, 5),
-                QPoint(self.itemWidth - 10, 10)]
+        left = [
+            QPoint(self.itemWidth - 10, 10),
+            QPoint(self.itemWidth - 10, self.itemHeight - 5),
+            QPoint(self.itemWidth - 5, self.itemHeight - 10),
+            QPoint(self.itemWidth - 5, 5),
+            QPoint(self.itemWidth - 10, 10),
+        ]
         painter.drawConvexPolygon(*left)
         painter.setBrush(QBrush())
         painter.drawRect(QRect(5, 10, self.itemWidth - 15, self.itemHeight - 15))
-        painter.drawText(QRect(5, 10, self.itemWidth - 15, self.itemHeight - 15), Qt.AlignCenter, '3D')
+        painter.drawText(QRect(5, 10, self.itemWidth - 15, self.itemHeight - 15), Qt.AlignCenter, "3D")
         painter.end()
 
     def drawPixmapForUnckecked(self):
@@ -275,8 +284,9 @@ class ItemDelegate(QItemDelegate):
         painter.drawRect(QRect(5, 5, self.itemWidth - 10, self.itemHeight - 10))
         pen.setWidth(4)
         painter.setPen(pen)
-        painter.drawLine(old_div(self.itemWidth, 2) - 5, old_div(self.itemHeight, 2),
-                         old_div(self.itemWidth, 2), self.itemHeight - 9)
+        painter.drawLine(
+            old_div(self.itemWidth, 2) - 5, old_div(self.itemHeight, 2), old_div(self.itemWidth, 2), self.itemHeight - 9
+        )
         painter.drawLine(old_div(self.itemWidth, 2), self.itemHeight - 9, old_div(self.itemWidth, 2) + 10, 2)
         painter.end()
 
@@ -293,8 +303,9 @@ class ItemDelegate(QItemDelegate):
         pen.setWidth(4)
         pen.setColor(QColor(139, 137, 137))
         painter.setPen(pen)
-        painter.drawLine(old_div(self.itemWidth, 2) - 5, old_div(self.itemHeight, 2),
-                         old_div(self.itemWidth, 2), self.itemHeight - 9)
+        painter.drawLine(
+            old_div(self.itemWidth, 2) - 5, old_div(self.itemHeight, 2), old_div(self.itemWidth, 2), self.itemHeight - 9
+        )
         painter.drawLine(old_div(self.itemWidth, 2), self.itemHeight - 9, old_div(self.itemWidth, 2) + 10, 2)
         painter.end()
 
@@ -306,7 +317,7 @@ class ItemDelegate(QItemDelegate):
             if isinstance(tableWidgetCell.sigma, str):
                 sigma_str = tableWidgetCell.sigma
             else:
-                sigma_str = f'{tableWidgetCell.sigma:.2f}'
+                sigma_str = f"{tableWidgetCell.sigma:.2f}"
             painter.drawText(option.rect, Qt.AlignCenter, sigma_str)
         elif index.column() + 1 == self.parent().columnCount():
             # last column is always empty (exists only for adding another sigma). Except for sigma row (entry 'add')
@@ -367,11 +378,19 @@ class ItemDelegate(QItemDelegate):
 
     def adjustRectForImage(self, option):
         if self.itemWidth > self.itemHeight:
-            return option.rect.adjusted(old_div((self.itemWidth - self.itemHeight), 2) + 5, 5,
-                                        -(old_div((self.itemWidth - self.itemHeight), 2)) - 5, -5)
+            return option.rect.adjusted(
+                old_div((self.itemWidth - self.itemHeight), 2) + 5,
+                5,
+                -(old_div((self.itemWidth - self.itemHeight), 2)) - 5,
+                -5,
+            )
         else:
-            return option.rect.adjusted(5, old_div((self.itemHeight - self.itemWidth), 2) + 5,
-                                        -(old_div((self.itemHeight - self.itemWidth), 2)) - 5, -5)
+            return option.rect.adjusted(
+                5,
+                old_div((self.itemHeight - self.itemWidth), 2) + 5,
+                -(old_div((self.itemHeight - self.itemWidth), 2)) - 5,
+                -5,
+            )
 
 
 # ==============================================================================
@@ -495,12 +514,12 @@ class FeatureTableWidget(QTableWidget):
 
     def setup(self, featureGroups: list, sigmas: list, computeIn2d: list, window_size=3.5):
         self.window_size = window_size
-        assert featureGroups, 'featureGroups may not be empty'
+        assert featureGroups, "featureGroups may not be empty"
         assert isinstance(featureGroups, (list, tuple)), featureGroups
         assert isinstance(featureGroups[0], (list, tuple))
         assert isinstance(featureGroups[0][0], str)
         assert isinstance(featureGroups[0][1], list)
-        assert all([fg[1] for fg in featureGroups]), 'all featureGroups must have entries'
+        assert all([fg[1] for fg in featureGroups]), "all featureGroups must have entries"
         if computeIn2d:
             assert len(sigmas) == len(computeIn2d), (sigmas, computeIn2d)
         elif sigmas:
@@ -510,8 +529,9 @@ class FeatureTableWidget(QTableWidget):
         self.setFeatureGroups(featureGroups)
         self._setFixedSizeToHeaders()
         self._setSizeHintToTableWidgetItems()
-        self.itemDelegate = ItemDelegate(self, self.horizontalHeader().sizeHint().width(),
-                                         self.verticalHeader().sizeHint().height())
+        self.itemDelegate = ItemDelegate(
+            self, self.horizontalHeader().sizeHint().width(), self.verticalHeader().sizeHint().height()
+        )
         self.setItemDelegate(self.itemDelegate)
         self._updateRootItems()
 
@@ -542,9 +562,8 @@ class FeatureTableWidget(QTableWidget):
         return self._sigmas
 
     def setSigmas(self, sigmas, computeIn2d=[]):
-        #import pydevd; pydevd.settrace()
         assert isinstance(sigmas, list), type(sigmas)
-        assert sigmas, 'sigmas cannot be empty'
+        assert sigmas, "sigmas cannot be empty"
         if computeIn2d:
             assert len(sigmas) == len(computeIn2d)
             self._computeIn2d = computeIn2d
@@ -594,9 +613,13 @@ class FeatureTableWidget(QTableWidget):
         matrix = []
         for row in range(2, self.rowCount()):
             if not self.verticalHeaderItem(row).isRootNode:
-                matrix.append([self.item(row, col).featureState == Qt.Checked and
-                               bool(self.item(row, col).flags() & Qt.ItemIsEnabled)
-                               for col in range(self.columnCount() - 1)])
+                matrix.append(
+                    [
+                        self.item(row, col).featureState == Qt.Checked
+                        and bool(self.item(row, col).flags() & Qt.ItemIsEnabled)
+                        for col in range(self.columnCount() - 1)
+                    ]
+                )
 
         return matrix
 
@@ -626,8 +649,11 @@ class FeatureTableWidget(QTableWidget):
 
     def sizeHint(self):
         height = super().sizeHint().height()
-        width = self.horizontalHeader().sizeHint().width() * self.columnCount() + \
-            self.verticalHeader().sizeHint().width() + 22
+        width = (
+            self.horizontalHeader().sizeHint().width() * self.columnCount()
+            + self.verticalHeader().sizeHint().width()
+            + 22
+        )
         return QSize(width, height)
 
     def _setSizeHintToTableWidgetItems(self):
@@ -663,7 +689,7 @@ class FeatureTableWidget(QTableWidget):
 
         column += 1
         self.setItem(0, column, FeatureTableWidget2d(enabled=False))
-        self.setItem(1, column, FeatureTableWidgetSigma('add'))
+        self.setItem(1, column, FeatureTableWidgetSigma("add"))
         for row in range(2, self.rowCount()):
             self.setItem(row, column, FeatureTableWidgetItem(enabled=False))
 
@@ -699,9 +725,9 @@ class FeatureTableWidget(QTableWidget):
             if sigma == 0:
                 # remove column
                 in2d = self.computeIn2d
-                in2d = in2d[:column] + in2d[column + 1:]
-                matrix = [r[:column] + r[column + 1:] for r in self.featureMatrix]
-                self.setSigmas(self.sigmas[:column] + self.sigmas[column + 1:], in2d)
+                in2d = in2d[:column] + in2d[column + 1 :]
+                matrix = [r[:column] + r[column + 1 :] for r in self.featureMatrix]
+                self.setSigmas(self.sigmas[:column] + self.sigmas[column + 1 :], in2d)
                 self.setFeatureMatrix(matrix)
                 self.focusCell(2, 0)
             elif sigma >= min([s for s in self.minimum_scale_for_row if s is not None]):
@@ -738,9 +764,9 @@ class FeatureTableWidget(QTableWidget):
 
     def _itemSelectionChanged(self):
         # ignore sigma row and last column (empty for new sigma)
-        selectedItems = [item
-                         for item in self.selectedItems()
-                         if item.row() != 1 and item.column() + 1 < self.columnCount()]
+        selectedItems = [
+            item for item in self.selectedItems() if item.row() != 1 and item.column() + 1 < self.columnCount()
+        ]
 
         if self.lastSelectedItems:
             # some items were already selected before
@@ -821,14 +847,18 @@ class FeatureTableWidget(QTableWidget):
             self.viewport().update()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
 
     app = QApplication([])
-    t = FeatureTableWidget(None,
-        (("Color", [FeatureEntry("Banana", minimum_scale=.3)]),
-         ("Edge", [FeatureEntry("Mango"), FeatureEntry("Cherry")])),
-        [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
+    t = FeatureTableWidget(
+        None,
+        (
+            ("Color", [FeatureEntry("Banana", minimum_scale=0.3)]),
+            ("Edge", [FeatureEntry("Mango"), FeatureEntry("Cherry")]),
+        ),
+        [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0],
+    )
     t.show()
     t.raise_()
     app.exec_()

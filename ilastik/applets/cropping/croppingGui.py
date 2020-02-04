@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
 from builtins import range
@@ -35,7 +35,7 @@ from PyQt5.QtGui import QIcon, QColor, QKeySequence
 
 # HCI
 from volumina.api import LazyflowSinkSource, ColortableLayer
-from volumina.utility import ShortcutManager, PreferencesManager
+from volumina.utility import ShortcutManager
 from volumina import colortables
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.widgets.cropListView import Crop
@@ -50,23 +50,27 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 # Loggers
 logger = logging.getLogger(__name__)
 
+
 class Tool(object):
     """Enumerate the types of toolbar buttons."""
-    Navigation = 0 # Arrow
-    Paint      = 1
-    Erase      = 2
-    Threshold  = 3
+
+    Navigation = 0  # Arrow
+    Paint = 1
+    Erase = 2
+    Threshold = 3
+
 
 class CroppingGui(LayerViewerGui):
     """
     Provides all the functionality of a simple layerviewer
     applet with the added functionality of cropping.
     """
+
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
 
-    def centralWidget( self ):
+    def centralWidget(self):
         return self
 
     def appletDrawer(self):
@@ -84,14 +88,17 @@ class CroppingGui(LayerViewerGui):
     @property
     def minCropNumber(self):
         return self._minCropNumber
+
     @minCropNumber.setter
     def minCropNumber(self, n):
         self._minCropNumer = n
         while self._cropControlUi.cropListModel.rowCount() < n:
             self._addNewCrop()
+
     @property
     def maxCropNumber(self):
         return self._maxCropNumber
+
     @maxCropNumber.setter
     def maxCropNumber(self, n):
         self._maxCropNumber = n
@@ -117,26 +124,29 @@ class CroppingGui(LayerViewerGui):
         It provides the slots that the cropping GUI uses to source crops to the display and sink crops from the
         user's mouse clicks.
         """
+
         def __init__(self):
             # Slot to insert elements onto
-            self.cropInput = None # cropInput.setInSlot(xxx)
+            self.cropInput = None  # cropInput.setInSlot(xxx)
 
             # Slot to read elements from
-            self.cropOutput = None # cropOutput.get(roi)
+            self.cropOutput = None  # cropOutput.get(roi)
 
             # Slot that determines which crop value corresponds to erased values
-            self.cropEraserValue = None # cropEraserValue.setValue(xxx)
+            self.cropEraserValue = None  # cropEraserValue.setValue(xxx)
 
             # Slot that is used to request wholesale crop deletion
-            self.cropDelete = None # cropDelete.setValue(xxx)
+            self.cropDelete = None  # cropDelete.setValue(xxx)
 
             # Slot that gives a list of crop names
-            self.cropNames = None # cropNames.value
+            self.cropNames = None  # cropNames.value
 
             # Slot to specify which images the user is allowed to crop.
-            self.cropsAllowed = None # cropsAllowed.value == True
+            self.cropsAllowed = None  # cropsAllowed.value == True
 
-    def __init__(self, parentApplet, croppingSlots, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None, crosshair=True):
+    def __init__(
+        self, parentApplet, croppingSlots, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None, crosshair=True
+    ):
         """
         Constructor.
 
@@ -160,14 +170,14 @@ class CroppingGui(LayerViewerGui):
         self.__cleanup_fns = []
         self._croppingSlots = croppingSlots
         self._minCropNumber = 0
-        self._maxCropNumber = 99 #100 or 255 is reserved for eraser
+        self._maxCropNumber = 99  # 100 or 255 is reserved for eraser
 
         self._rawInputSlot = rawInputSlot
 
-        self.topLevelOperatorView.Crops.notifyDirty( bind(self._updateCropList) )
-        self.topLevelOperatorView.Crops.notifyDirty( bind(self._updateCropList) )
-        self.__cleanup_fns.append( partial( self.topLevelOperatorView.Crops.unregisterDirty, bind(self._updateCropList) ) )
-        
+        self.topLevelOperatorView.Crops.notifyDirty(bind(self._updateCropList))
+        self.topLevelOperatorView.Crops.notifyDirty(bind(self._updateCropList))
+        self.__cleanup_fns.append(partial(self.topLevelOperatorView.Crops.unregisterDirty, bind(self._updateCropList)))
+
         self._colorTable16 = colortables.default16_new
         self._programmaticallyRemovingCrops = False
 
@@ -178,10 +188,9 @@ class CroppingGui(LayerViewerGui):
         self._allowDeleteLastCropOnly = False
         self.__initShortcuts()
         # Init base class
-        super(CroppingGui, self).__init__(parentApplet,
-                                          topLevelOperatorView,
-                                          [croppingSlots.cropInput, croppingSlots.cropOutput],
-                                          crosshair=crosshair)
+        super(CroppingGui, self).__init__(
+            parentApplet, topLevelOperatorView, [croppingSlots.cropInput, croppingSlots.cropOutput], crosshair=crosshair
+        )
         self._croppingSlots.cropEraserValue.setValue(self.editor.brushingModel.erasingNumber)
 
         # Register for thunk events (easy UI calls from non-GUI threads)
@@ -196,7 +205,7 @@ class CroppingGui(LayerViewerGui):
         # Initialize the crop list model
         model = CropListModel()
         self._cropControlUi.cropListView.setModel(model)
-        self._cropControlUi.cropListModel=model
+        self._cropControlUi.cropListModel = model
         self._cropControlUi.cropListModel.rowsRemoved.connect(self._onCropRemoved)
         self._cropControlUi.cropListModel.elementSelected.connect(self._onCropSelected)
         self._cropControlUi.cropListModel.dataChanged.connect(self.onCropListDataChanged)
@@ -204,17 +213,27 @@ class CroppingGui(LayerViewerGui):
 
     def _initCropListView(self):
         if self.topLevelOperatorView.Crops.value != {}:
-            self._cropControlUi.cropListModel=CropListModel()
+            self._cropControlUi.cropListModel = CropListModel()
             crops = self.topLevelOperatorView.Crops.value
             for key in sorted(crops):
                 newRow = self._cropControlUi.cropListModel.rowCount()
                 crop = Crop(
-                        key,
-                        [(crops[key]["time"][0],crops[key]["starts"][0],crops[key]["starts"][1],crops[key]["starts"][2]),(crops[key]["time"][1],crops[key]["stops"][0],crops[key]["stops"][1],crops[key]["stops"][2])],
-                        QColor(crops[key]["cropColor"][0],crops[key]["cropColor"][1],crops[key]["cropColor"][2]),
-                        pmapColor=QColor(crops[key]["pmapColor"][0],crops[key]["pmapColor"][1],crops[key]["pmapColor"][2])
+                    key,
+                    [
+                        (
+                            crops[key]["time"][0],
+                            crops[key]["starts"][0],
+                            crops[key]["starts"][1],
+                            crops[key]["starts"][2],
+                        ),
+                        (crops[key]["time"][1], crops[key]["stops"][0], crops[key]["stops"][1], crops[key]["stops"][2]),
+                    ],
+                    QColor(crops[key]["cropColor"][0], crops[key]["cropColor"][1], crops[key]["cropColor"][2]),
+                    pmapColor=QColor(
+                        crops[key]["pmapColor"][0], crops[key]["pmapColor"][1], crops[key]["pmapColor"][2]
+                    ),
                 )
-                self._cropControlUi.cropListModel.insertRow( newRow, crop )
+                self._cropControlUi.cropListModel.insertRow(newRow, crop)
 
             self._cropControlUi.cropListModel.elementSelected.connect(self._onCropSelected)
             self._cropControlUi.cropListView.setModel(self._cropControlUi.cropListModel)
@@ -230,18 +249,18 @@ class CroppingGui(LayerViewerGui):
     def onCropListDataChanged(self, topLeft, bottomRight):
         """Handle changes to the crop list selections."""
         firstRow = topLeft.row()
-        lastRow  = bottomRight.row()
+        lastRow = bottomRight.row()
 
         firstCol = topLeft.column()
-        lastCol  = bottomRight.column()
+        lastCol = bottomRight.column()
 
         # We only care about the color column
         if firstCol <= 0 <= lastCol:
-            assert(firstRow == lastRow) # Only one data item changes at a time
+            assert firstRow == lastRow  # Only one data item changes at a time
 
-            #in this case, the actual data (for example color) has changed
+            # in this case, the actual data (for example color) has changed
             color = self._cropControlUi.cropListModel[firstRow].brushColor()
-            self._colorTable16[firstRow+1] = color.rgba()
+            self._colorTable16[firstRow + 1] = color.rgba()
             self.editor.brushingModel.setBrushColor(color)
 
             # Update the crop layer colortable to match the list entry
@@ -255,20 +274,30 @@ class CroppingGui(LayerViewerGui):
         shortcutGroupName = "Cropping"
 
         if hasattr(self.croppingDrawerUi, "AddCropButton"):
-            mgr.register("n", ActionInfo( shortcutGroupName,
-                                          "New Crop",
-                                          "Add a new crop.",
-                                          self.croppingDrawerUi.AddCropButton.click,
-                                          self.croppingDrawerUi.AddCropButton,
-                                          self.croppingDrawerUi.AddCropButton ) )
+            mgr.register(
+                "n",
+                ActionInfo(
+                    shortcutGroupName,
+                    "New Crop",
+                    "Add a new crop.",
+                    self.croppingDrawerUi.AddCropButton.click,
+                    self.croppingDrawerUi.AddCropButton,
+                    self.croppingDrawerUi.AddCropButton,
+                ),
+            )
 
         if hasattr(self.croppingDrawerUi, "SetCropButton"):
-            mgr.register("s", ActionInfo( shortcutGroupName,
-                                          "Save Crop",
-                                          "Save the current crop.",
-                                          self.croppingDrawerUi.SetCropButton.click,
-                                          self.croppingDrawerUi.SetCropButton,
-                                          self.croppingDrawerUi.SetCropButton ) )
+            mgr.register(
+                "s",
+                ActionInfo(
+                    shortcutGroupName,
+                    "Save Crop",
+                    "Save the current crop.",
+                    self.croppingDrawerUi.SetCropButton.click,
+                    self.croppingDrawerUi.SetCropButton,
+                    self.croppingDrawerUi.SetCropButton,
+                ),
+            )
 
         self._cropShortcuts = []
 
@@ -279,16 +308,18 @@ class CroppingGui(LayerViewerGui):
         mgr = ShortcutManager()
         ActionInfo = ShortcutManager.ActionInfo
         # Add any shortcuts we don't have yet.
-        for i in range(numShortcuts,numRows):
+        for i in range(numShortcuts, numRows):
             toolTipObject = CropListModel.EntryToolTipAdapter(self._cropControlUi.cropListModel, i)
-            action_info = ActionInfo( "Cropping", 
-                                      "Select Crop {}".format(i+1),
-                                      "Select Crop {}".format(i+1),
-                                      partial(self._cropControlUi.cropListView.selectRow, i),
-                                      self._cropControlUi.cropListView,
-                                      toolTipObject )
-            mgr.register( str(i+1), action_info )
-            self._cropShortcuts.append( action_info )
+            action_info = ActionInfo(
+                "Cropping",
+                "Select Crop {}".format(i + 1),
+                "Select Crop {}".format(i + 1),
+                partial(self._cropControlUi.cropListView.selectRow, i),
+                self._cropControlUi.cropListView,
+                toolTipObject,
+            )
+            mgr.register(str(i + 1), action_info)
+            self._cropShortcuts.append(action_info)
 
         # Make sure that all shortcuts have an appropriate description
         for i in range(numRows):
@@ -306,37 +337,37 @@ class CroppingGui(LayerViewerGui):
         super(CroppingGui, self).hideEvent(event)
 
     @threadRouted
-    def _changeInteractionMode( self, toolId ):
-         """
+    def _changeInteractionMode(self, toolId):
+        """
          Implement the GUI's response to the user selecting a new tool.
          """
-         # Uncheck all the other buttons
-         if self.toolButtons != None:
-             for tool, button in list(self.toolButtons.items()):
-                 if tool != toolId:
-                     button.setChecked(False)
+        # Uncheck all the other buttons
+        if self.toolButtons != None:
+            for tool, button in list(self.toolButtons.items()):
+                if tool != toolId:
+                    button.setChecked(False)
 
-         # If we have no editor, we can't do anything yet
-         if self.editor is None:
-             return
+        # If we have no editor, we can't do anything yet
+        if self.editor is None:
+            return
 
-         # If the user can't crop this image, disable the button and say why its disabled
-         cropsAllowed = False
+        # If the user can't crop this image, disable the button and say why its disabled
+        cropsAllowed = False
 
-         cropsAllowedSlot = self._croppingSlots.cropsAllowed
-         if cropsAllowedSlot.ready():
-             cropsAllowed = cropsAllowedSlot.value
+        cropsAllowedSlot = self._croppingSlots.cropsAllowed
+        if cropsAllowedSlot.ready():
+            cropsAllowed = cropsAllowedSlot.value
 
-             if hasattr(self._cropControlUi, "AddCropButton"):
-                 if not cropsAllowed or self._cropControlUi.cropListModel.rowCount() == self.maxCropNumber:
-                     self._cropControlUi.AddCropButton.setEnabled(False)
-                 if cropsAllowed:
-                     self._cropControlUi.AddCropButton.setText("Add Crop")
-                 else:
-                     self._cropControlUi.AddCropButton.setText("(Cropping Not Allowed)")
+            if hasattr(self._cropControlUi, "AddCropButton"):
+                if not cropsAllowed or self._cropControlUi.cropListModel.rowCount() == self.maxCropNumber:
+                    self._cropControlUi.AddCropButton.setEnabled(False)
+                if cropsAllowed:
+                    self._cropControlUi.AddCropButton.setText("Add Crop")
+                else:
+                    self._cropControlUi.AddCropButton.setText("(Cropping Not Allowed)")
 
-         e = cropsAllowed & (self._cropControlUi.cropListModel.rowCount() > 0)
-         self._gui_enableCropping(e)
+        e = cropsAllowed & (self._cropControlUi.cropListModel.rowCount() > 0)
+        self._gui_enableCropping(e)
 
     def _resetCropSelection(self):
         logger.debug("Resetting crop selection")
@@ -361,9 +392,9 @@ class CroppingGui(LayerViewerGui):
             self._addNewCrop()
 
         # synchronize cropNames
-        for i,n in enumerate(names):
+        for i, n in enumerate(names):
             self._cropControlUi.cropListModel[i].name = n
-                
+
         if hasattr(self._cropControlUi, "AddCropButton"):
             self._cropControlUi.AddCropButton.setEnabled(numCrops < self.maxCropNumber)
 
@@ -374,16 +405,14 @@ class CroppingGui(LayerViewerGui):
         Return the new number of crops in the control.
         """
         color = self.getNextCropColor()
-        crop = Crop( self.getNextCropName(), self.get_roi_4d(), color,
-                       pmapColor=self.getNextPmapColor(),
-                   )
+        crop = Crop(self.getNextCropName(), self.get_roi_4d(), color, pmapColor=self.getNextPmapColor())
         crop.nameChanged.connect(self._updateCropShortcuts)
         crop.nameChanged.connect(self.onCropNameChanged)
         crop.colorChanged.connect(self.onCropColorChanged)
         crop.pmapColorChanged.connect(self.onPmapColorChanged)
 
         newRow = self._cropControlUi.cropListModel.rowCount()
-        self._cropControlUi.cropListModel.insertRow( newRow, crop )
+        self._cropControlUi.cropListModel.insertRow(newRow, crop)
 
         if self._allowDeleteLastCropOnly:
             # make previous crop unremovable
@@ -391,28 +420,28 @@ class CroppingGui(LayerViewerGui):
                 self._cropControlUi.cropListModel.makeRowPermanent(newRow - 1)
 
         newColorIndex = self._cropControlUi.cropListModel.index(newRow, 0)
-        self.onCropListDataChanged(newColorIndex, newColorIndex) # Make sure crop layer colortable is in sync with the new color
+        self.onCropListDataChanged(
+            newColorIndex, newColorIndex
+        )  # Make sure crop layer colortable is in sync with the new color
 
         # Update operator with new name
         operator_names = self._croppingSlots.cropNames.value
 
         if len(operator_names) < self._cropControlUi.cropListModel.rowCount():
-            operator_names.append( crop.name )
+            operator_names.append(crop.name)
 
             try:
-                self._croppingSlots.cropNames.setValue( operator_names, check_changed=False )
+                self._croppingSlots.cropNames.setValue(operator_names, check_changed=False)
             except:
                 # I have no idea why this is, but sometimes PyQt "loses" exceptions here.
                 # Print it out before it's too late!
-                log_exception( logger, "Logged the above exception just in case PyQt loses it." )
+                log_exception(logger, "Logged the above exception just in case PyQt loses it.")
                 raise
-
 
         # Call the 'changed' callbacks immediately to initialize any listeners
         self.onCropNameChanged()
         self.onCropColorChanged()
         self.onPmapColorChanged()
-
 
         self._maxCropNumUsed += 1
         self._updateCropShortcuts()
@@ -430,7 +459,7 @@ class CroppingGui(LayerViewerGui):
             nums = re.findall("\d+", crop.name)
             for n in nums:
                 maxNum = max(maxNum, int(n))
-        return "Crop {}".format(maxNum+1)
+        return "Crop {}".format(maxNum + 1)
 
     def getNextPmapColor(self):
         """
@@ -449,7 +478,7 @@ class CroppingGui(LayerViewerGui):
         Subclasses can override this to respond to changes in the crop colors.
         """
         pass
-    
+
     def onPmapColorChanged(self):
         """
         Subclasses can override this to respond to changes in a crop associated probability color.
@@ -464,7 +493,7 @@ class CroppingGui(LayerViewerGui):
         numRows = self._cropControlUi.cropListModel.rowCount()
 
         # This will trigger the signal that calls _onCropRemoved()
-        self._cropControlUi.cropListModel.removeRow(numRows-1)
+        self._cropControlUi.cropListModel.removeRow(numRows - 1)
         self._updateCropShortcuts()
 
         self._programmaticallyRemovingCrops = False
@@ -487,7 +516,7 @@ class CroppingGui(LayerViewerGui):
         if oldcount <= 1:
             return
 
-        logger.debug("removing crop {} out of {}".format( row, oldcount ))
+        logger.debug("removing crop {} out of {}".format(row, oldcount))
 
         if self._allowDeleteLastCropOnly:
             # make previous crop removable again
@@ -495,7 +524,7 @@ class CroppingGui(LayerViewerGui):
                 self._cropControlUi.cropListModel.makeRowRemovable(oldcount - 2)
 
         # Remove the deleted crop's color from the color table so that renumbered crops keep their colors.
-        oldColor = self._colorTable16.pop(row+1)
+        oldColor = self._colorTable16.pop(row + 1)
 
         # Recycle the deleted color back into the table (for the next crop to be added)
         self._colorTable16.insert(oldcount, oldColor)
@@ -508,17 +537,17 @@ class CroppingGui(LayerViewerGui):
         currentSelection = self._cropControlUi.cropListModel.selectedRow()
         if currentSelection == -1:
             # If we're deleting the currently selected row, then switch to a different row
-            self.thunkEventHandler.post( self._resetCropSelection )
+            self.thunkEventHandler.post(self._resetCropSelection)
 
         e = self._cropControlUi.cropListModel.rowCount() > 0
-        #self._gui_enableCropping(e)
+        # self._gui_enableCropping(e)
 
         # If the gui list model isn't in sync with the operator, update the operator.
-        #if len(self._croppingSlots.cropNames.value) > self._cropControlUi.cropListModel.rowCount():
+        # if len(self._croppingSlots.cropNames.value) > self._cropControlUi.cropListModel.rowCount():
         if len(self.topLevelOperatorView.Crops.value) > self._cropControlUi.cropListModel.rowCount():
             # Changing the deleteCrop input causes the operator (OpBlockedSparseArray)
             #  to search through the entire list of crops and delete the entries for the matching crop.
-            #self._croppingSlots.cropDelete.setValue(row+1)
+            # self._croppingSlots.cropDelete.setValue(row+1)
             del self.topLevelOperatorView.Crops[self._cropControlUi.cropListModel[row].name]
 
             # We need to "reset" the deleteCrop input to -1 when we're finished.
@@ -536,7 +565,7 @@ class CroppingGui(LayerViewerGui):
             return croplayer
 
     def _getCropLayer(self):
-        return self.getLayer('Crops')
+        return self.getLayer("Crops")
 
     def createCropLayer(self, direct=False):
         """
@@ -548,10 +577,9 @@ class CroppingGui(LayerViewerGui):
             return (None, None)
         else:
             # Add the layer to draw the crops, but don't add any crops
-            cropsrc = LazyflowSinkSource( self._croppingSlots.cropOutput,
-                                           self._croppingSlots.cropInput)
+            cropsrc = LazyflowSinkSource(self._croppingSlots.cropOutput, self._croppingSlots.cropInput)
 
-            croplayer = ColortableLayer(cropsrc, colorTable = self._colorTable16, direct=direct )
+            croplayer = ColortableLayer(cropsrc, colorTable=self._colorTable16, direct=direct)
             croplayer.name = "Crops"
             croplayer.ref_object = None
 
@@ -585,7 +613,7 @@ class CroppingGui(LayerViewerGui):
 
         # Raw Input Layer
         if self._rawInputSlot is not None and self._rawInputSlot.ready():
-            layer = self.createStandardLayerFromSlot( self._rawInputSlot )
+            layer = self.createStandardLayerFromSlot(self._rawInputSlot)
             layer.name = "Raw Input"
             layer.visible = True
             layer.opacity = 1.0
@@ -593,7 +621,6 @@ class CroppingGui(LayerViewerGui):
             layers.append(layer)
 
         return layers
-
 
     def allowDeleteLastCropOnly(self, enabled):
         """

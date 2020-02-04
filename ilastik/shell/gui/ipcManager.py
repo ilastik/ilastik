@@ -1,4 +1,5 @@
 from future import standard_library
+
 standard_library.install_aliases()
 from socketserver import BaseRequestHandler, TCPServer as BaseTCPServer
 import logging
@@ -145,8 +146,8 @@ class IPCFacade(with_metaclass(Singleton, object)):
             qtSignal.connect(action)
         :param command: the command ( dict )
         """
-        #from pprint import PrettyPrinter
-        #PrettyPrinter(indent=4).pprint(command)
+        # from pprint import PrettyPrinter
+        # PrettyPrinter(indent=4).pprint(command)
         message = json.dumps(command, cls=NumpyJsonEncoder)
         log = Protocol.verbose(command)
         for server in self.senders.values():
@@ -165,6 +166,7 @@ class InvalidAddress(Exception):
     """
     raise this inside IPCModule._start to automaticely prompt for a new address
     """
+
     def __init__(self, what):
         self._what = what
 
@@ -177,6 +179,7 @@ class IPCModul(object):
     """
     The base class for the IPC modules registered in the IPCFacade
     """
+
     def start(self):
         pass
 
@@ -215,6 +218,7 @@ class HasPeers(IPCModul):
     """
     Interface for all modules that maintain a list of peers in any way
     """
+
     def add_peer(self, name, address):
         """
         Call this to add a peer to the list
@@ -236,6 +240,7 @@ class Sending(IPCModul):
     """
     Interface for all modules that can broadcast messages
     """
+
     def broadcast(self, message, log):
         """
         Wrapper to only broadcast if running and logging of the message
@@ -256,6 +261,7 @@ class Receiving(IPCModul):
     """
     Interface for all modules that can receive messages
     """
+
     @property
     def signal(self):
         """
@@ -269,6 +275,7 @@ class Binding(IPCModul):
     """
     Interface for all modules that must be started as they bind to an address ( that might not be available ) in any way
     """
+
     def start(self):
         """
         Start the server if it is not running
@@ -344,6 +351,7 @@ class Handler(BaseRequestHandler):
     """
     Basic Handler for the SocketServer
     """
+
     def handle(self):
         """
         Receive one Message and emit the signal
@@ -369,6 +377,7 @@ class TCPServer(Binding, Receiving, QObject):
     """
     raw tcp server. accepts handshakes which will be forwarded to the TCPClient
     """
+
     commandReceived = pyqtSignal(str, dict)
 
     def __init__(self, interface, port):
@@ -448,6 +457,7 @@ class TCPClient(Sending, HasPeers):
     This module keeps a list of peers an connects to them if a message must be broadcast
     The tcp connection will be closed right after the messages were sent
     """
+
     def __init__(self):
         self.peers = OrderedDict()
 
@@ -463,7 +473,7 @@ class TCPClient(Sending, HasPeers):
         if key not in self.peers:
             self.peers[key] = {
                 "enabled": ilastik_config.getboolean("ipc raw tcp", "autoaccept"),
-                "address": [host, port]
+                "address": [host, port],
             }
 
         elif self.peers[key]["address"][1] != port:
@@ -508,6 +518,7 @@ class ZMQBase(Binding):
     """
     Base class for the zmq modules
     """
+
     def __init__(self, protocol, address):
         self.protocol = protocol
         self.address = address
@@ -541,6 +552,7 @@ class ZMQPublisher(ZMQBase, Sending):
     """
     This module publishes the hilite commands
     """
+
     def __init__(self, protocol, address):
         super(ZMQPublisher, self).__init__(protocol, address)
 
@@ -548,7 +560,7 @@ class ZMQPublisher(ZMQBase, Sending):
         self.socket = None
         self.info = None
 
-        #atexit.register(self.stop)
+        # atexit.register(self.stop)
 
     def connect_widget(self, widget):
         self.info = widget
@@ -598,6 +610,7 @@ class ZMQSubscriber(QObject, ZMQBase, Receiving):
     """
     This module subscribes to all publishers on a given address
     """
+
     commandReceived = pyqtSignal(str, dict)
 
     def __init__(self, protocol, address):

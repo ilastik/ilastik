@@ -23,6 +23,7 @@
 # basic python modules
 import functools
 import logging
+
 logger = logging.getLogger(__name__)
 from threading import Lock as ThreadLock
 
@@ -80,14 +81,14 @@ class OpObjectsSegment(OpGraphCut):
     ### slots from OpGraphCut ###
 
     # prediction maps
-    #Prediction = InputSlot()
+    # Prediction = InputSlot()
 
     # graph cut parameter
-    #Beta = InputSlot(value=.2)
+    # Beta = InputSlot(value=.2)
 
     # labeled segmentation image
-    #Output = OutputSlot()
-    #CachedOutput = OutputSlot()
+    # Output = OutputSlot()
+    # CachedOutput = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super(OpObjectsSegment, self).__init__(*args, **kwargs)
@@ -96,13 +97,10 @@ class OpObjectsSegment(OpGraphCut):
         super(OpObjectsSegment, self).setupOutputs()
         # sanity checks
         shape = self.LabelImage.meta.shape
-        assert len(shape) == 5,\
-            "Prediction maps must be a full 5d volume (tzyxc)"
+        assert len(shape) == 5, "Prediction maps must be a full 5d volume (tzyxc)"
         tags = self.LabelImage.meta.getAxisKeys()
         tags = "".join(tags)
-        assert tags == 'tzyxc',\
-            "Label image has wrong axes order"\
-            "(expected: tzyxc, got: {})".format(tags)
+        assert tags == "tzyxc", "Label image has wrong axes order" "(expected: tzyxc, got: {})".format(tags)
 
         # bounding boxes are just one element arrays of type object, but we
         # want to request boxes from a specific region, therefore BoundingBoxes
@@ -110,34 +108,30 @@ class OpObjectsSegment(OpGraphCut):
         shape = self.Prediction.meta.shape
         self.BoundingBoxes.meta.shape = shape
         self.BoundingBoxes.meta.dtype = np.object
-        self.BoundingBoxes.meta.axistags = vigra.defaultAxistags('tzyxc')
+        self.BoundingBoxes.meta.axistags = vigra.defaultAxistags("tzyxc")
 
     def execute(self, slot, subindex, roi, result):
         # check the axes - cannot do this in setupOutputs because we could be
         # in some invalid intermediate state where the dimensions do not agree
         shape = self.LabelImage.meta.shape
         agree = [i == j for i, j in zip(self.Prediction.meta.shape, shape)]
-        assert all(agree),\
-            "shape mismatch: {} vs. {}".format(self.Prediction.meta.shape,
-                                               shape)
+        assert all(agree), "shape mismatch: {} vs. {}".format(self.Prediction.meta.shape, shape)
         if slot == self.BoundingBoxes:
             return self._execute_bbox(roi, result)
         elif slot == self.Output:
             self._execute_graphcut(roi, result)
         else:
-            raise NotImplementedError(
-                "execute() is not implemented for slot {}".format(str(slot)))
+            raise NotImplementedError("execute() is not implemented for slot {}".format(str(slot)))
 
     def _execute_bbox(self, roi, result):
         cc = self.LabelImage.get(roi).wait()
         cc = vigra.taggedView(cc, axistags=self.LabelImage.meta.axistags)
-        cc = cc.withAxes(*'zyx')
+        cc = cc.withAxes(*"zyx")
 
         logger.debug("computing bboxes...")
         feats = vigra.analysis.extractRegionFeatures(
-            cc.astype(np.float32),
-            cc.astype(np.uint32),
-            features=["Count", "Coord<Minimum>", "Coord<Maximum>"])
+            cc.astype(np.float32), cc.astype(np.uint32), features=["Count", "Coord<Minimum>", "Coord<Maximum>"]
+        )
         feats_dict = {}
         feats_dict["Coord<Minimum>"] = feats["Coord<Minimum>"]
         feats_dict["Coord<Maximum>"] = feats["Coord<Maximum>"]
@@ -146,8 +140,7 @@ class OpObjectsSegment(OpGraphCut):
 
     def _execute_graphcut(self, roi, result):
         for i in (0, 4):
-            assert roi.stop[i] - roi.start[i] == 1,\
-                "Invalid roi for graph-cut: {}".format(str(roi))
+            assert roi.stop[i] - roi.start[i] == 1, "Invalid roi for graph-cut: {}".format(str(roi))
         t = roi.start[0]
         c = roi.start[4]
 
@@ -169,16 +162,15 @@ class OpObjectsSegment(OpGraphCut):
         ## request the prediction image ##
         pred = self.Prediction.get(roi).wait()
         pred = vigra.taggedView(pred, axistags=self.Prediction.meta.axistags)
-        pred = pred.withAxes(*'zyx')
+        pred = pred.withAxes(*"zyx")
 
         ## request the connected components image ##
         cc = self.LabelImage.get(roi).wait()
         cc = vigra.taggedView(cc, axistags=self.LabelImage.meta.axistags)
-        cc = cc.withAxes(*'zyx')
+        cc = cc.withAxes(*"zyx")
 
         # provide zyx view for the output (just need 8bit for segmentation
-        resultZYX = vigra.taggedView(np.zeros(cc.shape, dtype=np.uint8),
-                                     axistags='zyx')
+        resultZYX = vigra.taggedView(np.zeros(cc.shape, dtype=np.uint8), axistags="zyx")
 
         def processSingleObject(i):
             logger.debug("processing object {}".format(i))
@@ -201,9 +193,8 @@ class OpObjectsSegment(OpGraphCut):
 
             probbox = pred[zmin:zmax, ymin:ymax, xmin:xmax]
             gcsegm = segmentGC(probbox, beta)
-            gcsegm = vigra.taggedView(gcsegm, axistags='zyx')
-            ccsegm = vigra.analysis.labelVolumeWithBackground(
-                gcsegm.astype(np.uint8))
+            gcsegm = vigra.taggedView(gcsegm, axistags="zyx")
+            ccsegm = vigra.analysis.labelVolumeWithBackground(gcsegm.astype(np.uint8))
 
             # Extended bboxes of different objects might overlap.
             # To avoid conflicting segmentations, we find all connected
@@ -215,12 +206,10 @@ class OpObjectsSegment(OpGraphCut):
             passed = vigra.analysis.unique(filtered.astype(np.uint32))
             assert len(passed.shape) == 1
             if passed.size > 2:
-                logger.warning("ambiguous label assignment for region {}".format(
-                    (zmin, zmax, ymin, ymax, xmin, xmax)))
+                logger.warning("ambiguous label assignment for region {}".format((zmin, zmax, ymin, ymax, xmin, xmax)))
                 resbox[ccbox == i] = 1
             elif passed.size <= 1:
-                logger.warning(
-                    "box {} segmented out with beta {}".format(i, beta))
+                logger.warning("box {} segmented out with beta {}".format(i, beta))
             else:
                 # assign to the overlap region
                 label = passed[1]  # 0 is background
@@ -241,7 +230,7 @@ class OpObjectsSegment(OpGraphCut):
 
         # prepare result
         resView = vigra.taggedView(result, axistags=self.Output.meta.axistags)
-        resView = resView.withAxes(*'zyx')
+        resView = resView.withAxes(*"zyx")
 
         # some labels could have been removed => relabel
         vigra.analysis.labelVolumeWithBackground(resultZYX, out=resView)

@@ -16,12 +16,13 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import os
 import sys
 
-def expose_submodules( submodule_dir ):
+
+def expose_submodules(submodule_dir):
     walker = os.walk(submodule_dir, followlinks=True)
     try:
         path, dirnames, filenames = next(walker)
@@ -29,6 +30,5 @@ def expose_submodules( submodule_dir ):
         pass
     else:
         for dirname in dirnames:
-            if dirname[0] != '.':
-                sys.path.append( os.path.abspath( os.path.join(path, dirname) ) )
-            
+            if dirname[0] != ".":
+                sys.path.append(os.path.abspath(os.path.join(path, dirname)))

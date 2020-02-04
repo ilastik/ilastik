@@ -1,210 +1,256 @@
+from multiprocessing import cpu_count
+from concurrent.futures import ThreadPoolExecutor
+from math import ceil
+from functools import partial
 
 import numpy
-
-from multiprocessing import cpu_count
-import threading
-from concurrent.futures import ThreadPoolExecutor
-
 import vigra
+import fastfilters
 
 import nifty
 import nifty.tools
-import nifty.ufd
 import nifty.graph.agglo
 import nifty.graph.rag
 
 import logging
+
 logger = logging.getLogger(__name__)
 
-# parallel watershed with hard block boarders
-def simple_parallel_ws_impl(data, block_shape=None, max_workers=None):
-        
 
-    if max_workers is None:
-        max_workers = cpu_count()
+# helper function to cast nifty.tools.Block to a slice
+def block_to_slicing(block):
+    return tuple(slice(b, e) for b, e in zip(block.begin, block.end))
 
-    labels_lock = threading.Lock()
+
+# helper function to choose a channel from filter output
+def choose_channel(data, sigma, function, channel):
+    return function(data, sigma)[..., channel]
+
+
+def parallel_filter(filter_name, data, sigma, max_workers, block_shape=None, outer_scale=None, return_channel=None):
+    """ Compute fiter response parallel over blocks.
+    """
+    # order values for halo calculation, also used to check valid filters
+    order_values = {
+        "gaussianSmoothing": 0,
+        "gaussianGradientMagnitude": 1,
+        "hessianOfGaussianEigenvalues": 2,
+        "structureTensorEigenvalues": 1,
+        "laplacianOfGaussian": 2,
+    }
+    if filter_name not in order_values:
+        raise ValueError(f"{filter_name} is not a valid filter")
+
+    filter_function = getattr(fastfilters, filter_name)
+    order = order_values[filter_name]
+    if filter_name == "structureTensorEigenvalues":
+        assert outer_scale is not None, "Need outer_scale for structureTensorEigenvalues"
+        filter_function = partial(filter_function, outerScale=outer_scale)
+        # we need to use a different value for halo calculation for the
+        # structureTensor
+        sigma_ = sigma + outer_scale
+    else:
+        sigma_ = sigma
+
+    ndim = data.ndim
+    # calculate the default halo on the sigma - value, see
+    # https://github.com/ukoethe/vigra/blob/fb427440da8c42f96e14ebb60f7f22bdf0b7b1b2/include/vigra/multi_blockwise.hxx#L408
+    halo = ndim * [int(ceil(3.0 * sigma_ + 0.5 * order + 0.5))]
 
     shape = data.shape
-    ndim = len(shape)
+    multi_channel = filter_name in ("hessianOfGaussianEigenvalues", "structureTensorEigenvalues")
+
+    # get the correct output shape depending on whether we have multi-channel features
+    # and whether we keep all channels for thos
+    if multi_channel and return_channel is not None:
+        # multi-channel output, but we only keep a single channel
+        # -> output-shape = shape
+        assert return_channel < ndim, f"{return_channel} must be smaller than {ndim}"
+        out_shape = shape
+        filter_function = partial(choose_channel, function=filter_function, channel=return_channel)
+    elif multi_channel:
+        out_shape = shape + (ndim,)
+    else:
+        out_shape = shape
+
+    # get values for block shape and halo and make blocking
     if block_shape is None:
-        block_shape  = tuple([100]*ndim)
-    roi_begin = tuple([0]*ndim)
-    halo = [10]*ndim
+        # we choose different default block-shapes for 2d and 3d,
+        # but it might be worth to thinkg this through a bit further
+        block_shape = 3 * [128] if ndim == 3 else 2 * [256]
+
+    blocking = nifty.tools.blocking(ndim * [0], shape, block_shape)
+
+    # allocate the filter response
+    response = numpy.zeros(out_shape, dtype="float32")
+
+    def filter_block(block_index):
+        # get the block with halo and the slicings corresponding to
+        # the block with halo, the block without halo and the
+        # block without halo in loocal coordinates
+        block = blocking.getBlockWithHalo(blockIndex=block_index, halo=halo)
+        inner_slicing = block_to_slicing(block.innerBlock)
+        outer_slicing = block_to_slicing(block.outerBlock)
+        inner_local_slicing = block_to_slicing(block.innerBlockLocal)
+
+        block_data = data[outer_slicing]
+        block_response = filter_function(block_data, sigma)
+
+        response[inner_slicing] = block_response[inner_local_slicing]
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        tasks = [executor.submit(filter_block, block_index) for block_index in range(blocking.numberOfBlocks)]
+        [t.result() for t in tasks]
+
+    return response
+
+
+# TODO it would make sense to apply an additional size filter here
+def parallel_watershed(data, block_shape=None, halo=None, max_workers=None):
+    """ Parallel watershed with hard block boundaries.
+    """
+
+    logger.info(f"blockwise watershed with {max_workers} threads.")
+    shape = data.shape
+    ndim = len(shape)
+
+    # check for None arguments and set to default values
+    block_shape = (100,) * ndim if block_shape is None else block_shape
+    # NOTE nifty expects a list for the halo parameter although a tuple would be more logical
+    halo = [10] * ndim if halo is None else halo
+    max_workers = cpu_count() if max_workers is None else max_workers
+
+    # build the nifty blocking object
+    roi_begin = (0,) * ndim
     blocking = nifty.tools.blocking(roiBegin=roi_begin, roiEnd=shape, blockShape=block_shape)
     n_blocks = blocking.numberOfBlocks
 
+    labels = numpy.zeros(shape, dtype="uint32")
 
+    # watershed for a single block
+    def ws_block(block_index):
 
-    def to_slicing(begin, end):
-        return [slice(b,e) for b,e in zip(begin, end)]
+        # get the block with halo and the slicings corresponding to
+        # the block with halo, the block without halo and the
+        # block without halo in loocal coordinates
+        block = blocking.getBlockWithHalo(blockIndex=block_index, halo=halo)
+        inner_slicing = block_to_slicing(block.innerBlock)
+        outer_slicing = block_to_slicing(block.outerBlock)
+        inner_local_slicing = block_to_slicing(block.innerBlockLocal)
 
+        # perform watershed on the data for the block with halo
+        outer_block_data = numpy.require(data[outer_slicing], dtype="float32")
+        outer_block_labels, _ = vigra.analysis.watershedsNew(outer_block_data)
 
-    labels = numpy.zeros(shape, dtype='int64')
+        # extract the labels of the inner block and perform connected components
+        inner_block_labels = vigra.analysis.labelMultiArray(outer_block_labels[inner_local_slicing])
 
-    global_max_label = [0]
-    global_min_label = [None]
+        # write watershed result to the label array
+        labels[inner_slicing] = inner_block_labels
 
+        # return the max-id for this block, that will be used as offset
+        return inner_block_labels.max()
 
-
-
-    done_blocks = [0]
+    # run the watershed blocks in parallel
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        tasks = [executor.submit(ws_block, block_index) for block_index in range(n_blocks)]
+        offsets = numpy.array([t.result() for t in tasks], dtype="int64")  # TODO uint32
 
-        for i in range(n_blocks):
+    # compute the block offsets and the max id
+    last_max_id = offsets[-1]
+    offsets = numpy.roll(offsets, 1)
+    offsets[0] = 1
+    offsets = numpy.cumsum(offsets)
+    # the max_id is the offset of the last block + the max id in the last block
+    max_id = last_max_id + offsets[-1]
 
+    # add the offset to blocks to make ids unique
+    def add_offset_block(block_index):
+        block = block_to_slicing(blocking.getBlock(block_index))
+        labels[block] += offsets[block_index]
 
-            def per_block(block_index):
-                
-                # get block with halo
-                block_with_halo = blocking.getBlockWithHalo(blockIndex=block_index, halo=halo)
-                #print(block_with_halo)
+    # add offsets in parallel
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        tasks = [executor.submit(add_offset_block, block_index) for block_index in range(n_blocks)]
+        [t.result() for t in tasks]
 
-                outer_block = block_with_halo.outerBlock
-                inner_block = block_with_halo.innerBlock
-                inner_block_local = block_with_halo.innerBlockLocal
-
-                # get slicing
-                inner_slicing = to_slicing(inner_block.begin, inner_block.end)
-                outer_slicing = to_slicing(outer_block.begin, outer_block.end)
-                inner_local_slicing = to_slicing(inner_block_local.begin, inner_block_local.end)
-
-                # watershed input for block with margin/halo
-                outer_block_data = data[outer_slicing]
-
-                # do vigra watershed
-                outer_block_data_vigra = numpy.require(outer_block_data, dtype='float32')
-                outer_block_labels_vigra, nseg = vigra.analysis.watershedsNew(outer_block_data_vigra)
-                outer_block_labels = outer_block_labels_vigra
-
-                inner_block_labels = outer_block_labels[inner_local_slicing]
-                inner_block_labels = vigra.analysis.labelMultiArray(inner_block_labels.astype('uint32'))
-
-                inner_block_labels = inner_block_labels.astype('int64')
-                # get the max
-                inner_block_max_label = inner_block_labels.max()
-                inner_block_min_label = inner_block_labels.min()
-
-                with labels_lock:
-
-                    gmax = global_max_label[0]
-                    gmin = global_min_label[0]
-
-                    new_global_max_label = gmax + inner_block_max_label
-                    inner_block_labels += gmax
-
-                    done_blocks[0] = done_blocks[0] +1
-                    # print(done_blocks[0],n_blocks,  inner_block_labels.min(), inner_block_labels.max())
-                    # print(done_blocks[0],n_blocks,  outer_block_labels.min(), outer_block_labels.max())
-
-                    # print(inner_slicing, outer_slicing)
-                    min_here = inner_block_min_label + gmax
-
-                    if gmin is None:
-                        global_min_label[0] = min_here
-
-                    else:
-                        global_min_label[0] = min(gmin, min_here)
+    return labels, max_id
 
 
-                    global_max_label[0] = new_global_max_label
+def agglomerate_labels(data, labels, block_shape=None, max_workers=None, reduce_to=0.2, size_regularizer=0.5):
+    """ Agglomerate labels based on edge features.
+    """
 
-
-                    #print('g',labels[inner_slicing].shape, 'l', inner_block_labels.shape)
-
-                    labels[inner_slicing] = inner_block_labels[:]
-                        
-
-        
-
-            #per_block(i)
-            future = executor.submit(per_block, block_index=i)
-
-    labels -= int(global_min_label[0]-1)
-
-    #print("labels ",labels.min())
-
-    return labels
-        
-
-
-def simple_parallel_ws(data, block_shape=None, max_workers=None, reduce_to=0.2, size_regularizer=0.5):
-    if max_workers is None:
-        max_workers = cpu_count()
-
-    logger.info(f"blockwise watershed with {max_workers} threads.")
-    overseg = simple_parallel_ws_impl(data=data, block_shape=block_shape, max_workers=max_workers)
-
-    #print("the overseg",overseg.min(), overseg.max())
-    logger.info("bincount")
-    res = bincount = numpy.bincount(overseg.ravel().astype('int64'))
-    n_empty  = (res==0).sum() - 1
-
-    logger.info("grid rag")
-    rag = nifty.graph.rag.gridRag(overseg)
-    logger.info("rag: %s"%str(rag))
+    logger.info("computing region adjacency graph")
+    max_label = labels.max() + 1
+    rag = nifty.graph.rag.gridRag(labels, max_label, numberOfThreads=max_workers)
     n_nodes = rag.numberOfNodes
-    non_empty_nodes = n_nodes - n_empty
 
     shape = data.shape
     ndim = len(shape)
-    if block_shape is None:
-        block_shape  = [100]*ndim
+    block_shape = [100] * ndim if block_shape is None else block_shape
+    max_workers = cpu_count() if max_workers is None else max_workers
 
-    data = numpy.require(data,dtype='float32')
-    logger.info("accumulate along boundaries")
+    logger.info("accumulate edge strength along boundaries")
+
+    # extract edge features over the boundaries and sizes of edges and nodes
     edge_features, node_features = nifty.graph.rag.accumulateMeanAndLength(
-        rag=rag, data=numpy.require(data,dtype='float32'), 
-        blockShape=list(block_shape), 
-        numberOfThreads=int(max_workers), saveMemory=True)
+        rag=rag,
+        data=numpy.require(data, dtype="float32"),
+        blockShape=list(block_shape),
+        numberOfThreads=max_workers,
+        saveMemory=True,
+    )
+    edge_strength = edge_features[:, 0]
+    edge_sizes = edge_features[:, 1]
+    node_sizes = node_features[:, 1]
 
-    meanEdgeStrength = edge_features[:,0]
-    edgeSizes = edge_features[:,1]
-    nodeSizes = node_features[:,1]
-
-    
+    # we don't use node features in the agglomeration,
+    # so we set all of them to one
     node_features[:] = 1
 
-    n_stop = max(1,non_empty_nodes * reduce_to)
-    n_stop = int(n_empty + n_stop)
+    # calculate the number of nodes at which to stop agglomeration
+    # = number of nodes times reduction factor
+    n_stop = int(reduce_to * n_nodes)
 
-    clusterPolicy = nifty.graph.agglo.nodeAndEdgeWeightedClusterPolicy(
-        graph=rag, edgeIndicators=meanEdgeStrength,
+    policy = nifty.graph.agglo.nodeAndEdgeWeightedClusterPolicy(
+        graph=rag,
+        edgeIndicators=edge_strength,
+        edgeSizes=edge_sizes,
         nodeFeatures=node_features,
-        edgeSizes=edgeSizes, 
-        nodeSizes=nodeSizes,
-        beta=0.0, numberOfNodesStop=n_stop,
-        sizeRegularizer=size_regularizer)
+        nodeSizes=node_sizes,
+        beta=0.0,
+        numberOfNodesStop=n_stop,
+        sizeRegularizer=size_regularizer,
+    )
 
-    logger.info("run clustering")
-    # run agglomerative clustering
-    agglomerativeClustering = nifty.graph.agglo.agglomerativeClustering(clusterPolicy) 
-    agglomerativeClustering.run(True, 10000)
-    nodeSeg = agglomerativeClustering.result()
+    logger.info("run agglomeration")
+    agglomerative_clustering = nifty.graph.agglo.agglomerativeClustering(policy)
+    agglomerative_clustering.run(True, 10000)
+    node_labels = agglomerative_clustering.result().astype("uint32")
 
+    logger.info("project node labels to segmentation")
 
-    nodeSeg = numpy.require(nodeSeg, dtype='int64')
-    nodeSeg -=(nodeSeg.min()) 
-    nodeSeg += 1
+    seg = nifty.graph.rag.projectScalarNodeDataToPixels(rag, node_labels, numberOfThreads=max_workers)
 
-
-
-    comp = nifty.graph.components(rag)
-    comp.buildFromNodeLabels(nodeSeg)
-    nodeSeg = comp.componentLabels()+1
-
-    logger.info("project back")
-    # convert graph segmentation
-    # to pixel segmentation
-    
-    seg = numpy.take(nodeSeg, overseg.astype('int64'))
-
-
-
-    seg -= seg.min()
-    seg += 1
-
-    #seg = vigra.analysis.labelVolume(seg.astype('uint32'))
+    # the ids in the output segmentation need to start at 1, otherwise
+    # the graph watershed will fail
+    _, max_id, _ = vigra.analysis.relabelConsecutive(seg, start_label=1, keep_zeros=False, out=seg)
     logger.info("agglomerative supervoxel creation is done")
-    return seg
-    
+    return numpy.require(seg, dtype="uint32"), max_id
+
+
+def watershed_and_agglomerate(data, block_shape=None, max_workers=None, reduce_to=0.2, size_regularizer=0.5):
+    """ Run parallel watershed and agglomerate the resulting labels.
+    """
+
+    labels, _ = parallel_watershed(data=data, block_shape=block_shape, max_workers=max_workers)
+    labels, max_id = agglomerate_labels(
+        data,
+        labels,
+        block_shape=block_shape,
+        max_workers=max_workers,
+        reduce_to=reduce_to,
+        size_regularizer=size_regularizer,
+    )
+    return labels, max_id

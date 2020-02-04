@@ -16,15 +16,18 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialDictSlot
 
+
 class BlockwiseObjectClassificationSerializer(AppletSerializer):
     def __init__(self, topGroupName, operator):
-        serialSlots = [SerialDictSlot(operator.BlockShape3dDict, selfdepends=True),
-                       SerialDictSlot(operator.HaloPadding3dDict, selfdepends=True)]
+        serialSlots = [
+            SerialDictSlot(operator.BlockShape3dDict, selfdepends=True),
+            SerialDictSlot(operator.HaloPadding3dDict, selfdepends=True),
+        ]
 
-        super(BlockwiseObjectClassificationSerializer, self ).__init__(topGroupName,
-                                                              slots=serialSlots,
-                                                              operator=operator)
+        super(BlockwiseObjectClassificationSerializer, self).__init__(
+            topGroupName, slots=serialSlots, operator=operator
+        )

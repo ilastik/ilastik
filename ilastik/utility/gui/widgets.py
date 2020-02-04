@@ -16,22 +16,19 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 
-from typing import (
-    Callable,
-    Iterable,
-    Union,
-)
+from typing import Callable, Iterable, Union
 
 from PyQt5.QtWidgets import QWidget
 
 from lazyflow.slot import Slot
 
 
-def enable_when_ready(widgets: Union[QWidget, Iterable[QWidget]],
-                      slots: Union[Slot, Iterable[Slot]]) -> Callable[[], None]:
+def enable_when_ready(
+    widgets: Union[QWidget, Iterable[QWidget]], slots: Union[Slot, Iterable[Slot]]
+) -> Callable[[], None]:
     """Enable widgets only if all slots are ready.
 
     When one of the slots becomes dirty,

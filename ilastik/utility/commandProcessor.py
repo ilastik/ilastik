@@ -21,9 +21,13 @@
 
 
 from future import standard_library
+
 standard_library.install_aliases()
+
+
 def handshake(_, protocol, name, **address):
     from ilastik.shell.gui.ipcManager import IPCFacade
+
     if "host" in address and "port" in address:
         address = (address["host"], address["port"])
     IPCFacade().handshake(protocol, name, address)
@@ -36,10 +40,7 @@ def set_position(shell, t=0, x=0, y=0, z=0, c=0, **_):
         pass  # No project loaded
 
 
-commands = {
-    "handshake": handshake,
-    "setviewerposition": set_position
-}
+commands = {"handshake": handshake, "setviewerposition": set_position}
 
 
 class CommandProcessor(object):
@@ -61,7 +62,3 @@ class CommandProcessor(object):
         if not handler:
             raise RuntimeError("Command '{}' is not available".format(command))
         handler(self.shell, **data)
-
-
-
-

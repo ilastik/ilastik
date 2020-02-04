@@ -1,4 +1,5 @@
 from __future__ import print_function
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,44 +18,43 @@ from __future__ import print_function
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from lazyflow.utility.jsonConfig import JsonConfigParser, AutoEval, FormattedField
 
 #: Schema for all cluster config options
 #: (Doesn't specify which are required and which aren't.)
-ClusterConfigFields = \
-{
-    "_schema_name" : "cluster-execution-configuration",
-    "_schema_version" : 1.0,
-
-    "workflow_type" : str,
-    "output_slot_id" : str,
-
-    "sys_tmp_dir" : str,
-    "task_threadpool_size" : AutoEval(int),
-    "task_total_ram_mb" : AutoEval(int),
-    "task_timeout_secs" : AutoEval(int),
-    "use_node_local_scratch" : bool,
-    "use_master_local_scratch" : bool,
-    "node_output_compression_cmd" :   FormattedField( requiredFields=["compressed_file", "uncompressed_file"]),
-    "node_output_decompression_cmd" : FormattedField( requiredFields=["compressed_file", "uncompressed_file"]),
-    "task_progress_update_command" : FormattedField( requiredFields=["progress"] ),
-    "task_launch_server" : str,
-    "output_log_directory" : str,
-    "server_working_directory" : str,
-    "command_format" : FormattedField( requiredFields=["task_args"], optionalFields=["task_name"] ),
-    "debug_option_use_previous_node_files" : bool
+ClusterConfigFields = {
+    "_schema_name": "cluster-execution-configuration",
+    "_schema_version": 1.0,
+    "workflow_type": str,
+    "output_slot_id": str,
+    "sys_tmp_dir": str,
+    "task_threadpool_size": AutoEval(int),
+    "task_total_ram_mb": AutoEval(int),
+    "task_timeout_secs": AutoEval(int),
+    "use_node_local_scratch": bool,
+    "use_master_local_scratch": bool,
+    "node_output_compression_cmd": FormattedField(requiredFields=["compressed_file", "uncompressed_file"]),
+    "node_output_decompression_cmd": FormattedField(requiredFields=["compressed_file", "uncompressed_file"]),
+    "task_progress_update_command": FormattedField(requiredFields=["progress"]),
+    "task_launch_server": str,
+    "output_log_directory": str,
+    "server_working_directory": str,
+    "command_format": FormattedField(requiredFields=["task_args"], optionalFields=["task_name"]),
+    "debug_option_use_previous_node_files": bool,
 }
 
-def parseClusterConfigFile( configFilePath ):
+
+def parseClusterConfigFile(configFilePath):
     """
     Convenience function for parsing cluster configs.
     Returns a Namespace object.
     (Similar to the behavior of argparse.ArgumentParser.parse_args() )
     """
-    schema = JsonConfigParser( ClusterConfigFields )
-    return schema.parseConfigFile( configFilePath )
+    schema = JsonConfigParser(ClusterConfigFields)
+    return schema.parseConfigFile(configFilePath)
+
 
 if __name__ == "__main__":
     testConfig = """
@@ -75,16 +75,15 @@ if __name__ == "__main__":
 """
     # Create a temporary file
     import tempfile
+
     fname = tempfile.mktemp()
-    with open(fname, 'w') as f:
+    with open(fname, "w") as f:
         f.write(testConfig)
-    
+
     config = parseClusterConfigFile(fname)
     assert config.workflow_type == "PixelClassificationWorkflow"
     assert isinstance(config.workflow_type, str)
     assert config.use_node_local_scratch is True
-    assert config.task_timeout_secs == 20*60
+    assert config.task_timeout_secs == 20 * 60
 
     print(config.output_log_directory)
-    
-    

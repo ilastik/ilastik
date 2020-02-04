@@ -16,19 +16,19 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialBlockSlot
+
 
 class CroppingSerializer(AppletSerializer):
     """Encapsulate the serialization scheme for structured learning tracking
     workflow parameters and datasets.
 
     """
+
     def __init__(self, operator, projectFileGroupName):
-        slots = [SerialBlockSlot(operator.CropInputs,
-                                 operator.NonzeroCropBlocks,
-                                 name='CropSets',
-                                 subname='crops{:03d}',)
+        slots = [
+            SerialBlockSlot(operator.CropInputs, operator.NonzeroCropBlocks, name="CropSets", subname="crops{:03d}")
         ]
         super(CroppingSerializer, self).__init__(projectFileGroupName, slots=slots)

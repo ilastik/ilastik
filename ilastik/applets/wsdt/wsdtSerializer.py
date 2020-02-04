@@ -20,22 +20,27 @@
 ###############################################################################
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialBlockSlot, SerialListSlot
 
+
 class WsdtSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):
-        slots = [ SerialListSlot(operator.ChannelSelections),
-                  SerialSlot(operator.Pmin), 
-                  SerialSlot(operator.MinMembraneSize), 
-                  SerialSlot(operator.MinSegmentSize), 
-                  SerialSlot(operator.SigmaMinima), 
-                  SerialSlot(operator.SigmaWeights), 
-                  SerialSlot(operator.GroupSeeds),
-                  SerialSlot(operator.PreserveMembranePmaps),
-                  SerialBlockSlot(operator.Superpixels,
-                                  operator.SuperpixelCacheInput,
-                                  operator.CleanBlocks,
-                                  name='Superpixels',
-                                  subname='superpixels{:03d}',
-                                  selfdepends=False,
-                                  shrink_to_bb=False,
-                                  compression_level=1) ]
+        slots = [
+            SerialListSlot(operator.ChannelSelections),
+            SerialSlot(operator.Pmin),
+            SerialSlot(operator.MinMembraneSize),
+            SerialSlot(operator.MinSegmentSize),
+            SerialSlot(operator.SigmaMinima),
+            SerialSlot(operator.SigmaWeights),
+            SerialSlot(operator.GroupSeeds),
+            SerialSlot(operator.PreserveMembranePmaps),
+            SerialBlockSlot(
+                operator.Superpixels,
+                operator.SuperpixelCacheInput,
+                operator.CleanBlocks,
+                name="Superpixels",
+                subname="superpixels{:03d}",
+                selfdepends=False,
+                shrink_to_bb=False,
+                compression_level=1,
+            ),
+        ]
         super(WsdtSerializer, self).__init__(projectFileGroupName, slots=slots, operator=operator)

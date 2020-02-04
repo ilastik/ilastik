@@ -15,6 +15,7 @@ if True:
     import subprocess
 
     import logging
+
     logger = logging.getLogger(__name__)
 
     DEFAULT_SOLVER_NAME = None
@@ -24,9 +25,9 @@ if True:
     ##
     try:
         import opengm_with_cplex as opengm
-        OPENGM_SOLVER_NAMES = ['Opengm_IntersectionBased',
-                               'Opengm_Cgc', 'Opengm_Exact']
-        DEFAULT_SOLVER_NAME = 'Opengm_Exact'
+
+        OPENGM_SOLVER_NAMES = ["Opengm_IntersectionBased", "Opengm_Cgc", "Opengm_Exact"]
+        DEFAULT_SOLVER_NAME = "Opengm_Exact"
     except ImportError:
         # Are there any multicut solvers in OpenGM that work without CPLEX?
         # If not, there's no point in importing it at all.
@@ -43,19 +44,20 @@ if True:
         # cplex/gurobi is not available. This leads to errors like:
         #   generic_type: type "LogLevel" is already registered!
         # Therefore we start a subprocess to test the import.
-        if sys.platform.startswith('win'):
+        if sys.platform.startswith("win"):
             subprocess.run(
-                [sys.executable, '-c', 'import nifty_with_cplex'], check=True,
-                stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                [sys.executable, "-c", "import nifty_with_cplex"],
+                check=True,
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+            )
 
         import nifty_with_cplex as nifty
+
         assert nifty.Configuration.WITH_CPLEX
-        MulticutObjectiveUndirectedGraph = \
-            nifty.graph.multicut.MulticutObjectiveUndirectedGraph
-        NIFTY_SOLVER_NAMES = ['Nifty_FmGreedy',
-                              'Nifty_FmCplex',
-                              'Nifty_ExactCplex']
-        DEFAULT_SOLVER_NAME = 'Nifty_ExactCplex'
+        MulticutObjectiveUndirectedGraph = nifty.graph.multicut.MulticutObjectiveUndirectedGraph
+        NIFTY_SOLVER_NAMES = ["Nifty_FmGreedy", "Nifty_FmCplex", "Nifty_ExactCplex"]
+        DEFAULT_SOLVER_NAME = "Nifty_ExactCplex"
     except (ImportError, subprocess.CalledProcessError):
         NIFTY_SOLVER_NAMES = []
 
@@ -63,19 +65,20 @@ if True:
     if not NIFTY_SOLVER_NAMES:
         try:
             # see comment at nifty_with_cplex
-            if sys.platform.startswith('win'):
+            if sys.platform.startswith("win"):
                 subprocess.run(
-                    [sys.executable, '-c', 'import nifty_with_gurobi'], check=True,
-                    stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                    [sys.executable, "-c", "import nifty_with_gurobi"],
+                    check=True,
+                    stderr=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                )
 
             import nifty_with_gurobi as nifty
+
             assert nifty.Configuration.WITH_GUROBI
-            MulticutObjectiveUndirectedGraph = \
-                nifty.graph.multicut.MulticutObjectiveUndirectedGraph
-            NIFTY_SOLVER_NAMES = ['Nifty_FmGreedy',
-                                  'Nifty_FmGurobi',
-                                  'Nifty_ExactGurobi']
-            DEFAULT_SOLVER_NAME = 'Nifty_ExactGurobi'
+            MulticutObjectiveUndirectedGraph = nifty.graph.multicut.MulticutObjectiveUndirectedGraph
+            NIFTY_SOLVER_NAMES = ["Nifty_FmGreedy", "Nifty_FmGurobi", "Nifty_ExactGurobi"]
+            DEFAULT_SOLVER_NAME = "Nifty_ExactGurobi"
         except (ImportError, subprocess.CalledProcessError):
             NIFTY_SOLVER_NAMES = []
 
@@ -83,10 +86,10 @@ if True:
     if not NIFTY_SOLVER_NAMES:
         try:
             import nifty
-            MulticutObjectiveUndirectedGraph = \
-                nifty.graph.multicut.MulticutObjectiveUndirectedGraph
-            NIFTY_SOLVER_NAMES = ['Nifty_FmGreedy']
-            DEFAULT_SOLVER_NAME = 'Nifty_FmGreedy'
+
+            MulticutObjectiveUndirectedGraph = nifty.graph.multicut.MulticutObjectiveUndirectedGraph
+            NIFTY_SOLVER_NAMES = ["Nifty_FmGreedy"]
+            DEFAULT_SOLVER_NAME = "Nifty_FmGreedy"
         except ImportError as e:
             print(e)
             # Nifty isn't available at all
@@ -96,7 +99,6 @@ if True:
 
     if not AVAILABLE_SOLVER_NAMES:
         raise ImportError("Can't import OpMulticut: No solver libraries detected!")
-
 
     class OpMulticut(Operator):
         Beta = InputSlot(value=0.5)
@@ -120,14 +122,12 @@ if True:
             self.opMulticutAgglomerator.Beta.connect(self.Beta)
             self.opMulticutAgglomerator.SolverName.connect(self.SolverName)
             self.opMulticutAgglomerator.Rag.connect(self.Rag)
-            self.opMulticutAgglomerator.EdgeProbabilities.connect(
-                self.EdgeProbabilities)
+            self.opMulticutAgglomerator.EdgeProbabilities.connect(self.EdgeProbabilities)
 
             self.opNodeLabelsCache = OpValueCache(parent=self)
             self.opNodeLabelsCache.fixAtCurrent.connect(self.FreezeCache)
-            self.opNodeLabelsCache.Input.connect(
-                self.opMulticutAgglomerator.NodeLabels)
-            self.opNodeLabelsCache.name = 'opNodeLabelCache'
+            self.opNodeLabelsCache.Input.connect(self.opMulticutAgglomerator.NodeLabels)
+            self.opNodeLabelsCache.name = "opNodeLabelCache"
 
             self.opRelabel = OpProjectNodeLabeling(parent=self)
             self.opRelabel.Superpixels.connect(self.Superpixels)
@@ -137,8 +137,7 @@ if True:
             self.opDisagreement.Rag.connect(self.Rag)
             self.opDisagreement.NodeLabels.connect(self.opNodeLabelsCache.Output)
             self.opDisagreement.EdgeProbabilities.connect(self.EdgeProbabilities)
-            self.EdgeLabelDisagreementDict.connect(
-                self.opDisagreement.EdgeLabelDisagreementDict)
+            self.EdgeLabelDisagreementDict.connect(self.opDisagreement.EdgeLabelDisagreementDict)
 
             self.opSegmentationCache = OpBlockedArrayCache(parent=self)
             self.opSegmentationCache.fixAtCurrent.connect(self.FreezeCache)
@@ -154,7 +153,6 @@ if True:
         def propagateDirty(self, slot, subindex, roi):
             pass
 
-
     class OpProjectNodeLabeling(Operator):
         Superpixels = InputSlot()
         NodeLabels = InputSlot()  # 1D array, mapping superpixels to segment labels
@@ -163,7 +161,7 @@ if True:
 
         def setupOutputs(self):
             self.Output.meta.assignFrom(self.Superpixels.meta)
-            self.Output.meta.display_mode = 'random-colortable'
+            self.Output.meta.display_mode = "random-colortable"
 
         def execute(self, slot, subindex, roi, result):
             mapping_index_array = self.NodeLabels.value
@@ -200,7 +198,6 @@ if True:
     #     def propagateDirty(self, slot, subindex, roi):
     #         self.EdgeLabelsDict.setDirty()
 
-
     class OpEdgeLabelDisagreementDict(Operator):
         Rag = InputSlot()
         NodeLabels = InputSlot()
@@ -225,19 +222,16 @@ if True:
 
             # 0: edge is "inactive", nodes belong to the same segment
             # 1: edge is "active", nodes belong to separate segments
-            edge_labels_from_nodes = (
-                node_labels[rag.edge_ids[:, 0]] != node_labels[rag.edge_ids[:, 1]]).view(np.uint8)
+            edge_labels_from_nodes = (node_labels[rag.edge_ids[:, 0]] != node_labels[rag.edge_ids[:, 1]]).view(np.uint8)
             edge_labels_from_probabilities = edge_probabilities > 0.5
 
-            conflicts = np.where(edge_labels_from_nodes !=
-                                 edge_labels_from_probabilities)
+            conflicts = np.where(edge_labels_from_nodes != edge_labels_from_probabilities)
             conflict_edge_ids = edge_ids[conflicts]
             conflict_labels = edge_labels_from_nodes[conflicts]
             result[0] = dict(zip(map(tuple, conflict_edge_ids), conflict_labels))
 
         def propagateDirty(self, slot, subindex, roi):
             self.EdgeLabelDisagreementDict.setDirty()
-
 
     class OpMulticutAgglomerator(Operator):
         SolverName = InputSlot()
@@ -262,10 +256,8 @@ if True:
                 return
 
             with Timer() as timer:
-                node_labeling = self.agglomerate_with_multicut(
-                    rag, edge_probabilities, beta, solver_name)
-            logger.info("'{}' Multicut took {} seconds".format(
-                solver_name, timer.seconds()))
+                node_labeling = self.agglomerate_with_multicut(rag, edge_probabilities, beta, solver_name)
+            logger.info("'{}' Multicut took {} seconds".format(solver_name, timer.seconds()))
 
             # FIXME: Is it okay to produce 0-based supervoxels?
             # node_labeling[:] += 1 # RAG labels are 0-based, but we want 1-based
@@ -293,36 +285,32 @@ if True:
             # Check parameters
             #
             assert rag.edge_ids.shape == (rag.num_edges, 2)
-            assert solver_name in AVAILABLE_SOLVER_NAMES, \
-                "'{}' is not a valid solver name.".format(solver_name)
+            assert solver_name in AVAILABLE_SOLVER_NAMES, "'{}' is not a valid solver name.".format(solver_name)
 
             # The Rag is allowed to contain non-consecutive superpixel labels,
             # but for OpenGM, we require node_count > max_id
             # Therefore, use max_sp, not num_sp
             node_count = rag.max_sp + 1
             if rag.num_sp != rag.max_sp + 1:
-                warnings.warn("Superpixel IDs are not consecutive. GM will contain excess variables to fill the gaps."
-                              " (num_sp = {}, max_sp = {})".format(rag.num_sp, rag.max_sp))
+                warnings.warn(
+                    "Superpixel IDs are not consecutive. GM will contain excess variables to fill the gaps."
+                    " (num_sp = {}, max_sp = {})".format(rag.num_sp, rag.max_sp)
+                )
             #
             # Solve
             #
-            edge_weights = compute_edge_weights(
-                rag.edge_ids, edge_probabilities, beta)
+            edge_weights = compute_edge_weights(rag.edge_ids, edge_probabilities, beta)
             assert edge_weights.shape == (rag.num_edges,)
 
-            solver_library, solver_method = solver_name.split('_')
-            if solver_library == 'Nifty':
-                mapping_index_array = solve_with_nifty(
-                    rag.edge_ids, edge_weights, node_count, solver_method)
-            elif solver_library == 'Opengm':
-                mapping_index_array = solve_with_opengm(
-                    rag.edge_ids, edge_weights, node_count, solver_method)
+            solver_library, solver_method = solver_name.split("_")
+            if solver_library == "Nifty":
+                mapping_index_array = solve_with_nifty(rag.edge_ids, edge_weights, node_count, solver_method)
+            elif solver_library == "Opengm":
+                mapping_index_array = solve_with_opengm(rag.edge_ids, edge_weights, node_count, solver_method)
             else:
-                raise RuntimeError(
-                    "Unknown solver library: '{}'".format(solver_library))
+                raise RuntimeError("Unknown solver library: '{}'".format(solver_library))
 
             return mapping_index_array
-
 
     def compute_edge_weights(edge_ids, edge_probabilities, beta):
         """
@@ -344,19 +332,16 @@ if True:
         p1 = np.clip(p1, 0.001, 0.999)
         p0 = 1.0 - p1  # P(Edge=NOT CUT)
 
-        edge_weights = np.log(old_div(p0, p1)) + \
-            np.log(old_div((1 - beta), (beta)))
+        edge_weights = np.log(old_div(p0, p1)) + np.log(old_div((1 - beta), (beta)))
 
         # See note special behavior, above
         edges_touching_zero = edge_ids[:, 0] == 0
         if edges_touching_zero.any():
-            logger.warning(
-                "Volume contains label 0, which will be excluded from the segmentation.")
+            logger.warning("Volume contains label 0, which will be excluded from the segmentation.")
             MINIMUM_ENERGY = -1000.0
             edge_weights[edges_touching_zero] = MINIMUM_ENERGY
 
         return edge_weights
-
 
     def solve_with_nifty(edge_ids, edge_weights, node_count, solver_method):
         """
@@ -380,39 +365,37 @@ if True:
 
         def getIlpFac(ilpSolver):
             return obj.multicutIlpFactory(
-                ilpSolver=ilpSolver,
-                addThreeCyclesConstraints=True,
-                addOnlyViolatedThreeCyclesConstraints=True)
+                ilpSolver=ilpSolver, addThreeCyclesConstraints=True, addOnlyViolatedThreeCyclesConstraints=True
+            )
 
         def getFmFac(subFac):
             return obj.ccFusionMoveBasedFactory(
                 fusionMove=obj.fusionMoveSettings(mcFactory=subFac),
-                proposalGenerator=obj.watershedCcProposals(
-                    sigma=1, numberOfSeeds=0.01),
+                proposalGenerator=obj.watershedCcProposals(sigma=1, numberOfSeeds=0.01),
                 numberOfIterations=500,
                 numberOfThreads=8,
-                stopIfNoImprovement=20
+                stopIfNoImprovement=20,
             )
 
-         # TODO finetune parameters
+        # TODO finetune parameters
         ret = None
-        if solver_method == 'ExactCplex':
-            inf = getIlpFac('cplex').create(obj)
+        if solver_method == "ExactCplex":
+            inf = getIlpFac("cplex").create(obj)
 
-        elif solver_method == 'ExactGurobi':
-            inf = getIlpFac('gurobi').create(obj)
+        elif solver_method == "ExactGurobi":
+            inf = getIlpFac("gurobi").create(obj)
 
-        elif solver_method == 'FmCplex':
+        elif solver_method == "FmCplex":
             greedy = obj.greedyAdditiveFactory().create(obj)
             ret = greedy.optimize()
-            inf = getFmFac(getIlpFac('cplex')).create(obj)
+            inf = getFmFac(getIlpFac("cplex")).create(obj)
 
-        elif solver_method == 'FmGurobi':
+        elif solver_method == "FmGurobi":
             greedy = obj.greedyAdditiveFactory().create(obj)
             ret = greedy.optimize()
-            inf = getFmFac(getIlpFac('gurobi')).create(obj)
+            inf = getFmFac(getIlpFac("gurobi")).create(obj)
 
-        elif solver_method == 'FmGreedy':
+        elif solver_method == "FmGreedy":
             greedy = obj.greedyAdditiveFactory().create(obj)
             ret = greedy.optimize()
             inf = getFmFac(obj.greedyAdditiveFactory()).create(obj)
@@ -427,7 +410,6 @@ if True:
 
         mapping_index_array = ret.astype(np.uint32)
         return mapping_index_array
-
 
     def solve_with_opengm(edge_ids, edge_weights, node_count, solver_method):
         """
@@ -445,28 +427,25 @@ if True:
         solver_method: One of 'Exact', 'IntersectionBased', or 'Cgc'.
         """
         gm = opengm.gm(np.ones(node_count) * node_count)
-        pf = opengm.pottsFunctions(
-            [node_count, node_count], np.array([0]), edge_weights)
+        pf = opengm.pottsFunctions([node_count, node_count], np.array([0]), edge_weights)
         fids = gm.addFunctions(pf)
         gm.addFactors(fids, edge_ids)
 
-        if solver_method == 'Exact':
+        if solver_method == "Exact":
             inf = opengm.inference.Multicut(gm)
-        elif solver_method == 'IntersectionBased':
+        elif solver_method == "IntersectionBased":
             inf = opengm.inference.IntersectionBased(gm)
-        elif solver_method == 'Cgc':
+        elif solver_method == "Cgc":
             inf = opengm.inference.Cgc(gm, parameter=opengm.InfParam(planar=False))
         else:
             assert False, "Unknown solver method: {}".format(solver_method)
 
         ret = inf.infer(inf.verboseVisitor())
         if ret.name != "NORMAL":
-            raise RuntimeError(
-                "OpenGM inference failed with status: {}".format(ret.name))
+            raise RuntimeError("OpenGM inference failed with status: {}".format(ret.name))
 
         mapping_index_array = inf.arg().astype(np.uint32)
         return mapping_index_array
-
 
     if __name__ == "__main__":
         import vigra
@@ -477,21 +456,20 @@ if True:
         superpixels = np.zeros((100, 100, 100), dtype=np.uint32)
         superpixel_block_view = blockwise_view(superpixels, (20, 20, 20))
         assert superpixel_block_view.shape == (5, 5, 5, 20, 20, 20)
-        superpixel_block_view[:] = np.arange(
-            1, 126).reshape((5, 5, 5))[..., None, None, None]
+        superpixel_block_view[:] = np.arange(1, 126).reshape((5, 5, 5))[..., None, None, None]
 
         superpixels = superpixels[..., None]
         assert superpixels.min() == 1
         assert superpixels.max() == 125
 
         # Make 3 random probability classes
-        probabilities = np.random.random(
-            superpixels.shape[:-1] + (3,)).astype(np.float32)
-        probabilities = vigra.taggedView(probabilities, 'zyxc')
+        probabilities = np.random.random(superpixels.shape[:-1] + (3,)).astype(np.float32)
+        probabilities = vigra.taggedView(probabilities, "zyxc")
 
-        superpixels = vigra.taggedView(superpixels, 'zyxc')
+        superpixels = vigra.taggedView(superpixels, "zyxc")
 
         from lazyflow.graph import Graph
+
         op = OpMulticut(graph=Graph())
         op.VoxelData.setValue(probabilities)
         op.InputSuperpixels.setValue(superpixels)

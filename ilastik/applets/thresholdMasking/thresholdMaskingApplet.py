@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,32 +18,35 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
 from .opThresholdMasking import OpThresholdMasking
 from .thresholdMaskingSerializer import ThresholdMaskingSerializer
 
-class ThresholdMaskingApplet( StandardApplet ):
+
+class ThresholdMaskingApplet(StandardApplet):
     """
     This is a simple thresholding applet
     """
-    def __init__( self, workflow, guiName, projectFileGroupName ):
+
+    def __init__(self, workflow, guiName, projectFileGroupName):
         super(ThresholdMaskingApplet, self).__init__(guiName, workflow)
-        self._serializableItems = [ ThresholdMaskingSerializer(self.topLevelOperator, projectFileGroupName) ]
-        
+        self._serializableItems = [ThresholdMaskingSerializer(self.topLevelOperator, projectFileGroupName)]
+
     @property
     def singleLaneOperatorClass(self):
         return OpThresholdMasking
 
     @property
     def broadcastingSlots(self):
-        return ['MinValue', 'MaxValue']
-    
+        return ["MinValue", "MaxValue"]
+
     @property
     def singleLaneGuiClass(self):
         from .thresholdMaskingGui import ThresholdMaskingGui
+
         return ThresholdMaskingGui
 
     @property
