@@ -275,7 +275,7 @@ def tmp_h5_multiple_dataset(tmp_path: Path) -> Path:
 @pytest.fixture
 def tmp_n5_file(tmp_path: Path) -> Path:
     n5_dir_path = tmp_path / "my_tmp_file.n5"
-    f = z5py.File(n5_dir_path)
+    f = z5py.File(str(n5_dir_path))
     ds = f.create_dataset("data", shape=(1000, 1000), chunks=(100, 100), dtype="float32")
 
     # write array to a roi
