@@ -29,6 +29,7 @@ from PyQt5.QtCore import QStateMachine, QState, QSignalTransition, pyqtSignal
 from tiktorch.launcher import LocalServerLauncher, RemoteSSHServerLauncher, SSHCred
 from tiktorch.rpc_interface import INeuralNetworkAPI
 from tiktorch.rpc import Client, TCPConnConf
+from tiktorch.launcher import ConnConf
 
 
 logger = logging.getLogger(__name__)
@@ -102,6 +103,9 @@ class ServerFormItemDelegate(QItemDelegate):
         super().setEditorData(editor, index)
 
 
+import grpc
+from tiktorch.proto import inference_pb2_grpc, inference_pb2
+
 def _fetch_devices(config: types.ServerConfig):
     try:
         addr, port1, port2 = (
@@ -110,9 +114,10 @@ def _fetch_devices(config: types.ServerConfig):
             str(int(config.port1) - 20),
             str(int(config.port2) - 20),
         )
-        conn_conf = TCPConnConf(addr, port1, port2)
+        conn_conf = ConnConf("grpc", addr, port1, port2, timeout=10)
 
         if addr == "127.0.0.1":
+            print("config", config.path)
             launcher = LocalServerLauncher(conn_conf, path=config.path)
         else:
             launcher = RemoteSSHServerLauncher(
@@ -121,8 +126,10 @@ def _fetch_devices(config: types.ServerConfig):
 
         try:
             launcher.start()
-            client = Client(INeuralNetworkAPI(), conn_conf)
-            return client.get_available_devices()
+            with grpc.insecure_channel(f"{addr}:{port1}") as chan:
+                client = inference_pb2_grpc.InferenceStub(chan)
+                resp = client.ListDevices(inference_pb2.Empty())
+                return [(d.id, d.id) for d in resp.devices]
         except Exception as e:
             logger.exception('Failed to fetch devices')
         finally:

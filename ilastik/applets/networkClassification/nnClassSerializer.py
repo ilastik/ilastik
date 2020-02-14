@@ -54,9 +54,9 @@ class NNClassificationSerializer(AppletSerializer):
                 selfdepends=False,
                 shrink_to_bb=True,
             ),
-            SerialModelSlot(topLevelOperator.Model),
-            SerialModelStateSlot(topLevelOperator.ModelState),
-            SerialListModelStateSlot(topLevelOperator.Checkpoints),
+            #SerialModelSlot(topLevelOperator.Model),
+            #SerialModelStateSlot(topLevelOperator.ModelState),
+            #SerialListModelStateSlot(topLevelOperator.Checkpoints),
         ]
 
         super().__init__(projectFileGroupName, slots)

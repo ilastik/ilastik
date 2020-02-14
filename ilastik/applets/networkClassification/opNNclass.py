@@ -101,25 +101,23 @@ class OpTiktorchFactory(Operator):
 
 class OpModel(Operator):
     TiktorchFactory = InputSlot()  #  OpTiktorchFactory.TikTorch
-    Model = InputSlot(stype=stype.Opaque)
-    ModelState = InputSlot(stype=stype.Opaque)
+    ModelBinary = InputSlot(stype=stype.Opaque)
+    ServerConfig = InputSlot(stype=stype.Opaque, nonlane=True)
 
     TiktorchModel = OutputSlot()  #  OpTiktorchFactory.TikTorch
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._model_binary = None
 
     def setupOutputs(self):
         tiktorch = self.TiktorchFactory.value
+        model_binary = self.ModelBinary.value
+        devices = self.ServerConfig.value.devices
 
-        model = self.Model.value
-        state = self.ModelState.value
+        session = tiktorch.create_model_session(model_binary, [d.id for d in devices])
 
-        exept = tiktorch.load_model(model, state)
-
-        if exept is None:
-            self.TiktorchModel.setValue(tiktorch)
+        if session is not None:
+            self.TiktorchModel.setValue(session)
             try:
                 projectManager = self._parent._shell.projectManager
                 applet = self._parent._applets[2]
@@ -157,15 +155,14 @@ class OpNNClassification(Operator):
 
     # Graph inputs
     InputImages = InputSlot(level=1)
-    ServerConfig = InputSlot()
+    ServerConfig = InputSlot(stype=stype.Opaque, nonlane=True)
     Checkpoints = InputSlot()
 
     NumClasses = InputSlot(optional=True)
     LabelInputs = InputSlot(optional=True, level=1)
     FreezePredictions = InputSlot(stype="bool", value=False, nonlane=True)
     ClassifierFactory = InputSlot()
-    Model = InputSlot(stype=stype.Opaque)
-    ModelState = InputSlot(stype=stype.Opaque)
+    ModelBinary = InputSlot(stype=stype.Opaque, nonlane=True)
 
     Classifier = OutputSlot()
     PredictionProbabilities = OutputSlot(
@@ -236,9 +233,9 @@ class OpNNClassification(Operator):
         self.opTiktorchFactory.ServerConfig.connect(self.ServerConfig)
 
         self.opModel = OpModel(parent=self.parent)
+        self.opModel.ServerConfig.connect(self.ServerConfig)
         self.opModel.TiktorchFactory.connect(self.opTiktorchFactory.Tiktorch)
-        self.opModel.Model.connect(self.Model)
-        self.opModel.ModelState.connect(self.ModelState)
+        self.opModel.ModelBinary.connect(self.ModelBinary)
 
         self.ClassifierFactory.connect(self.opModel.TiktorchModel)
 
@@ -325,18 +322,9 @@ class OpNNClassification(Operator):
 
                     s1.notifyRemoved(partial(removeSlot, s2))
 
-    def set_model_state(self, model_state: ModelState):
-        model = self.Model.value
-        config = model.config
-        config[TRAINING][NUM_ITERATIONS_MAX] = model_state.num_iterations_max
-        self.set_classifier(model, model_state)
-
-    def set_classifier(self, model: Model, state: ModelState) -> bool:
-        self.Model.disconnect()  # do not create TiktorchClassifierFactory with invalid intermediate settings
-        self.ModelState.setValue(state)
-        self.Model.setValue(
-            model
-        )  # ...setupOutputs can initialize a tiktorchClassifierFactory
+    def set_model(self, model_content: bytes) -> bool:
+        self.ModelBinary.disconnect()
+        self.ModelBinary.setValue(model_content)
         return self.opModel.TiktorchModel.ready()
 
     def update_config(self, partial_config: dict):
@@ -512,7 +500,9 @@ class OpBlockShape(Operator):
             numpy.array(shape) - numpy.array(shrinkage) - total_halo
             for shape in valid_tczyx_shapes
         ]
+        print("shrunk", shrunk_valid_tczyx_shapes_wo_halo)
         largest_valid_shape = shrunk_valid_tczyx_shapes_wo_halo[-1]
+        print("largest", largest_valid_shape)
 
         blockDims = dict(zip("tczyx", largest_valid_shape))
         blockDims["c"] = 9999  # always request all channels

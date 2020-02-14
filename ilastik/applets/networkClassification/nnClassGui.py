@@ -726,9 +726,10 @@ class NNClassGui(LabelingGui):
             folder = os.path.expanduser("~")
 
         # get folder from user
-        folder = self.getFolderToOpen(self, folder)
+        filename = self.getModelToOpen(self, folder)
 
-        if folder:
+
+        if filename:
             projectManager = self.parentApplet._StandardApplet__workflow._shell.projectManager
             # save whole project (specifically important here: the labels)
             if not projectManager.currentProjectIsReadOnly:
@@ -741,30 +742,38 @@ class NNClassGui(LabelingGui):
             #         tiktorchFactory.shutdown()
 
             # user did not cancel selection
-            self.add_NN_classifiers(folder)
-            PreferencesManager().set("DataSelection", "recent model", folder)
+            self.add_NN_classifiers(filename)
+            PreferencesManager().set("DataSelection", "recent model", filename)
             self.parentApplet.appletStateUpdateRequested()
             self.labelingDrawerUi.addModel.setEnabled(True)
 
     def _load_checkpoint(self, model_state: ModelState):
         self.topLevelOperatorView.set_model_state(model_state)
 
-    def add_NN_classifiers(self, folder_path):
+    def add_NN_classifiers(self, model_path):
         """
         Adds the chosen FilePath to the classifierDictionary and to the ComboBox
         """
         # clear first the comboBox or addItems will duplicate names
         # self.labelingDrawerUi.comboBox.clear()
         # self.labelingDrawerUi.comboBox.addItems(self.classifiers)
+        print(self.topLevelOperatorView)
         self.labelingDrawerUi.liveTraining.setEnabled(True)
         self.labelingDrawerUi.livePrediction.setEnabled(True)
 
-        res = read_model(folder_path)
-        config = res.model.config
+        # factory = self.topLevelOperatorView.ClassifierFactory[:].wait()[0]
+        # print("factory", factory)
+        # return
 
-        success = self.topLevelOperatorView.set_classifier(res.model, res.state)
+        #res = read_model(folder_path)
+        #config = res.model.config
+
+        with open(model_path, "rb") as model_f:
+            success = self.topLevelOperatorView.set_model(model_f.read())
+
         if success:
-            num_classes = len(self.topLevelOperatorView.opModel.TiktorchModel.value.known_classes)
+            model = self.topLevelOperatorView.opModel.TiktorchModel.value
+            num_classes = len(model.known_classes)
             self.minLabelNumber = num_classes
             self.maxLabelNumber = num_classes
             # for i in range(num_classes):
@@ -772,19 +781,18 @@ class NNClassGui(LabelingGui):
             # self.setupLayers()
             self.updateAllLayers()
 
-            self.set_NN_classifier_name(config["name"])
+            self.set_NN_classifier_name(model.name)
         else:
             self.set_NN_classifier_name("no model")
 
     def set_NN_classifier_name(self, name: str):
         self.labelingDrawerUi.addModel.setText(f"{name} loaded")
 
-    def getFolderToOpen(cls, parent_window, defaultDirectory):
+    def getModelToOpen(cls, parent_window, defaultDirectory):
         """
         opens a QFileDialog for importing files
         """
-        options = QFileDialog.Options(QFileDialog.ShowDirsOnly)
-        return QFileDialog.getExistingDirectory(parent_window, "Select Model", defaultDirectory, options=options)
+        return QFileDialog.getOpenFileName(parent_window, "Select Model", defaultDirectory,  "Models (*.tmodel *.zip)")[0]
 
     @pyqtSlot()
     @threadRouted
