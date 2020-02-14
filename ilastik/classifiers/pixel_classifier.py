@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractproperty, abstractmethod
-from typing import List, Tuple, Iterable
+from typing import List, Tuple, Iterable, Optional
 import multiprocessing
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
@@ -42,7 +42,15 @@ class TrainingData:
 
 
 class PixelClassifier(JsonSerializable):
-    def __init__(self, classes: List[int]):
+    def __init__(
+        self, feature_extractor: FeatureExtractor, annotations: Iterable[Annotation], classes: List[int], strict: bool
+    ):
+        assert len(annotations) > 0
+        if strict:
+            for annot in annotations:
+                feature_extractor.ensure_applicable(annot.raw_data)
+        self.strict = strict
+        self.feature_extractor = feature_extractor
         self.classes = classes
         self.num_classes = len(classes)
 
@@ -59,8 +67,13 @@ class PixelClassifier(JsonSerializable):
     def allocate_predictions(self, data_slice: Slice5D):
         return Predictions.allocate(self.get_expected_roi(data_slice))
 
-    @abstractmethod
     def predict(self, data_slice: BackedSlice5D, out: Predictions = None) -> Tuple[Predictions, FeatureData]:
+        if self.strict:
+            self.feature_extractor.ensure_applicable(data_slice.datasource)
+        return self._do_predict(data_slice=data_slice, out=out)
+
+    @abstractmethod
+    def _do_predict(self, data_slice: BackedSlice5D, out: Predictions = None) -> Tuple[Predictions, FeatureData]:
         pass
 
 
@@ -72,25 +85,32 @@ class ScikitLearnPixelClassifier(PixelClassifier):
         *,
         num_trees: int = 100,
         random_seed: int = 0,
+        strict: bool = False,
     ):
-        assert len(annotations) > 0
-        assert len(feature_extractors) > 0
-        self.feature_extractors = FeatureExtractorCollection(feature_extractors)
-        training_data = TrainingData(self.feature_extractors, annotations)
+        fx_collection = FeatureExtractorCollection(feature_extractors)
+        training_data = TrainingData(fx_collection, annotations)
+        super().__init__(
+            classes=training_data.classes, annotations=annotations, feature_extractor=fx_collection, strict=strict
+        )
         self.forest = ScikitRandomForestClassifier(n_estimators=num_trees, random_state=random_seed)
         self.forest.fit(training_data.X, training_data.y.squeeze())
-        super().__init__(classes=training_data.classes)
 
-    def predict(self, data_slice: BackedSlice5D, out: Predictions = None) -> Tuple[Predictions, FeatureData]:
-        feature_data = self.feature_extractors.compute(data_slice)
+    def _do_predict(
+        self, data_slice: BackedSlice5D, out: Optional[Predictions] = None
+    ) -> Tuple[Predictions, FeatureData]:
+        feature_data = self.feature_extractor.compute(data_slice)
         predictions_shape = data_slice.shape.with_coord(c=self.num_classes)
         predictions_raw_line = self.forest.predict_proba(feature_data.linear_raw())
-        # FIXME: should location adjust channels in any way?
         predictions = Predictions.from_line(predictions_raw_line, shape=predictions_shape, location=data_slice.start)
-        return predictions, feature_data
+        if out is not None:
+            assert out.shape == predictions.shape
+            out.localSet(predictions)
+            return out, feature_data
+        else:
+            return predictions, feature_data
 
 
-class VigraPixelClassifier(JsonSerializable):
+class VigraPixelClassifier(PixelClassifier):
     def __init__(
         self,
         feature_extractors: Tuple[FeatureExtractor, ...],
@@ -99,19 +119,19 @@ class VigraPixelClassifier(JsonSerializable):
         num_trees: int = 100,
         num_forests: int = multiprocessing.cpu_count(),
         random_seed: int = 0,
+        strict: bool = False,
     ):
-        assert len(annotations) > 0
-        assert len(feature_extractors) > 0
-        self.feature_extractors = FeatureExtractorCollection(feature_extractors)
+        fx_collection = FeatureExtractorCollection(feature_extractors)
+        training_data = TrainingData(fx_collection, annotations)
+        super().__init__(
+            classes=training_data.classes, annotations=annotations, feature_extractor=fx_collection, strict=strict
+        )
         self.num_trees = num_trees
 
         tree_counts = np.array([num_trees // num_forests] * num_forests)
         tree_counts[: num_trees % num_forests] += 1
         tree_counts = list(map(int, tree_counts))
 
-        training_data = TrainingData(self.feature_extractors, annotations)
-        self.classes = training_data.classes
-        self.num_classes = len(self.classes)
         self.forests = [None] * num_forests
         self.oobs = [None] * num_forests
         with ThreadPoolExecutor(max_workers=num_forests) as executor:
@@ -124,10 +144,9 @@ class VigraPixelClassifier(JsonSerializable):
 
             for i in range(num_forests):
                 executor.submit(train_forest, i)
-        super().__init__(classes=training_data.classes)
 
-    def predict(self, data_slice: BackedSlice5D, out: Predictions = None) -> Tuple[Predictions, FeatureData]:
-        feature_data = self.feature_extractors.compute(data_slice)
+    def _do_predict(self, data_slice: BackedSlice5D, out: Predictions = None) -> Tuple[Predictions, FeatureData]:
+        feature_data = self.feature_extractor.compute(data_slice)
         predictions = out or self.allocate_predictions(data_slice)
         assert predictions.roi == self.get_expected_roi(data_slice)
         raw_linear_predictions = predictions.linear_raw()
@@ -147,32 +166,3 @@ class VigraPixelClassifier(JsonSerializable):
         raw_linear_predictions /= self.num_trees
 
         return predictions, feature_data
-
-
-class StrictPixelClassifier(PixelClassifier):
-    """A PixelClassifier that does not admit data which does not match its FeatureExtractors"""
-
-    def __init__(
-        self,
-        feature_extractors: Tuple[FeatureExtractor, ...],
-        annotations: Tuple[Annotation, ...],
-        *,
-        num_trees: int = 100,
-        num_forests: int = multiprocessing.cpu_count(),
-        random_seed: int = 0,
-    ):
-        extractors = list(feature_extractors)
-        for annot in annotations:
-            for extractor in extractors:
-                extractor.ensure_applicable(annot.raw_data)
-        super().__init__(
-            feature_extractors=extractors,
-            annotations=annotations,
-            num_trees=num_trees,
-            num_forests=num_forests,
-            random_seed=random_seed,
-        )
-
-    def predict(self, data_slice: BackedSlice5D, out: Predictions = None) -> Predictions:
-        self.feature_extractors.ensure_applicable(data_slice.datasource)
-        return super().predict(data_slice, out)
