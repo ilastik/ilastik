@@ -23,17 +23,21 @@ import logging
 import socket
 import numpy
 import warnings
+import numpy as np
 
-from typing import Iterable, Tuple, Optional
+from typing import Iterable, Tuple, Optional, List
 
 import vigra
+import grpc
+
 
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.graph import Graph
 from lazyflow.roi import roiToSlice
 
 from tiktorch import serializers  # noqa
-from tiktorch.launcher import LocalServerLauncher, RemoteSSHServerLauncher, SSHCred
+from tiktorch.launcher import LocalServerLauncher, RemoteSSHServerLauncher, SSHCred, ConnConf
+from tiktorch.proto import inference_pb2, inference_pb2_grpc, converters
 from tiktorch.types import (
     NDArray,
     LabeledNDArray,
@@ -44,7 +48,7 @@ from tiktorch.types import (
     ModelState,
 )
 from tiktorch.rpc_interface import INeuralNetworkAPI
-from tiktorch.rpc import Client, TCPConnConf
+from tiktorch.rpc import Client
 
 from .lazyflowClassifier import LazyflowOnlineClassifier
 from types import SimpleNamespace
@@ -54,6 +58,132 @@ from vigra import AxisTags
 logger = logging.getLogger(__name__)
 
 
+class TiktorchSession(LazyflowOnlineClassifier):
+    def __init__(self, session, factory):
+        self.__session = session
+        self.__factory = factory
+
+    @property
+    def tiktorchClient(self):
+        return self.__factory.tikTorchClient
+
+    def create_and_train_pixelwise(self, *args, **kwargs):
+        self.__factory.create_and_train_pixelwise(*args, **kwargs)
+        return self
+
+    @property
+    def name(self):
+        return self.__session.name
+
+    @property
+    def shrinkage(self):
+        return [0, 0, 0, 0, 0]
+
+    @property
+    def halo(self):
+        return [0, 0, 0, 0, 0]
+
+    def get_halo(self, data_axes: str = "zyx"):
+        return [0 for _ in data_axes]
+
+    def get_shrinkage(self, data_axes: str = "zyx"):
+        return [0 for _ in data_axes]
+
+    def get_valid_shapes(self, data_axes: str = "zyx"):
+        return [[128 for _ in data_axes]]
+
+    @property
+    def training_shape(self):
+        return [0, 0, 0, 128, 128]
+
+    @property
+    def valid_shapes(self):
+        return [[0, 0, 0, 128, 128]]
+
+    @property
+    def known_classes(self):
+        return [1, 2]
+
+    def predict_probabilities_pixelwise(self, feature_image, roi, axistags=None):
+        """
+        :param numpy.ndarray feature_image: classifier input
+        :param numpy.ndarray roi: ROI within feature_image
+        :param vigra.AxisTags axistags: axistags of feature_image
+        :return: probabilities
+        """
+        print("ROI", roi)
+        assert isinstance(roi, numpy.ndarray)
+        logger.error("predict tile shape: %s (axistags: %r)", feature_image.shape, axistags)
+
+        # translate roi axes todo: remove with tczyx standard
+        # output_axis_order = self._model_conf.output_axis_order
+        output_axis_order = "cxy"
+        if "c" not in output_axis_order:
+            output_axis_order = "c" + output_axis_order
+            c_was_not_in_output_axis_order = True
+        else:
+            c_was_not_in_output_axis_order = False
+
+        roi = roi[:, [axistags.index(a) for a in output_axis_order]]
+
+        # inreorder = ReorderAxes(self.model.input_axis_order)
+        inreorder = ReorderAxes("cxy")
+        reordered_feature_image = inreorder.reorder(feature_image, axistags)
+
+        # reordered_feature_image = self._opReorderAxesInImg.Output([]).wait()
+
+        try:
+            resp = self.tiktorchClient.Predict(
+                inference_pb2.PredictRequest(
+                    tensor=converters.numpy_to_pb_tensor(reordered_feature_image[np.newaxis]),
+                    modelSessionId=self.__session.id,
+                )
+            )
+            print("RECV")
+            result = converters.pb_tensor_to_numpy(resp.tensor)
+        except Exception as e:
+            logger.exception("TIMOEUT")
+            warnings.warn(f"Predicting {roi} timed out")
+            return 0
+
+        logger.debug(f"Obtained a predicted block of shape {result.shape}")
+        print("START SHAPE", result.shape)
+        if c_was_not_in_output_axis_order:
+            result = result[None, ...]
+
+        # halo = numpy.array(self.get_halo(output_axis_order))
+        # remove halo from result todo: do not send tensor with halo back, but remove halo in tiktorch instead
+        # assert len(result.shape) == len(halo), (result.shape, halo)
+        # result = result[[slice(h, -h) if h else slice(None) for h in halo]]
+
+        # shrink = numpy.array(self.get_shrinkage(output_axis_order))
+
+        # make two channels out of single channel predictions
+        channel_axis = output_axis_order.find("c")
+        if result.shape[channel_axis] == 1:
+            result = numpy.concatenate((result, 1 - result), axis=channel_axis)
+            logger.debug(f"Changed shape of predicted block to {result.shape} by adding '1-p' channel")
+
+        ## remove shrinkage and halo from roi
+        # logger.debug("roi %s\nhalo %s\nshrink %s", roi, halo, shrink)
+        # roi -= halo + shrink
+        # assert all(a >= 0 for a in roi[0]), roi[0]
+        # assert all(a <= s for a, s in zip(roi[1], result.shape)), (roi[1], result.shape)
+
+        # select roi from result
+        shape_wo_halo = result.shape
+        result = result[roiToSlice(*roi)]
+        logger.debug(
+            f"Selected roi (start: {roi[0]}, stop: {roi[1]}) from result without halo {shape_wo_halo}. Now"
+            f" result has shape: ({result.shape})."
+        )
+
+        outreorder = ReorderAxes("".join(axistags.keys()))
+        print("SHAPE", result.shape)
+        result.shape = (result.shape[0], result.shape[3], result.shape[2])
+        return outreorder.reorder(result, vigra.defaultAxistags(output_axis_order))
+
+
 class ReorderAxes:
     def __init__(self, axes_order: str) -> None:
         self.axes_order = axes_order
@@ -61,6 +191,7 @@ class ReorderAxes:
         self._op.AxisOrder.setValue(axes_order)
 
     def reorder(self, input_arr: numpy.ndarray, axes_tags: AxisTags):
+        print("aces tags", axes_tags)
         tagged_arr = vigra.VigraArray(input_arr, axistags=axes_tags)
         self._op.Input.setValue(tagged_arr)
         return self._op.Output([]).wait()
@@ -110,28 +241,24 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         ]
         self.shrinkage = tuple([dict(zip(conf.input_axis_order, ret.shrinkage)).get(a, 0) for a in "tczyx"])
 
+    def create_model_session(self, model_str: bytes, devices: List[str]):
+
+        session = self._tikTorchClient.CreateModelSession(
+            inference_pb2.CreateModelSessionRequest(model_blob=inference_pb2.Blob(content=model_str), deviceIds=devices)
+        )
+        return TiktorchSession(session, self)
+
     @property
     def model(self):
         return self._model_conf
 
     def __init__(self, server_config) -> None:
-        # default values for config:
-        # config: dict, binary_model: bytes, binary_state: bytes, binary_optimizer_state: bytes,
-
-        # assert all(key not in self._config for key in self.__dict__.keys())
-        # self.__dict__.update(self._config)
-        # print('shrinkage:', self.shrinkage)
-
-        # Privates
         self._tikTorchClassifier = None
         self._train_model = None
         self._shutdown_sent = False
-        # self._opReorderAxesInImg = OpReorderAxes(graph=Graph())
-        # self._opReorderAxesInLabel = OpReorderAxes(graph=Graph())
-        # self._opReorderAxesOut = OpReorderAxes(graph=Graph())
 
         addr, port1, port2 = (socket.gethostbyname(server_config.address), server_config.port1, server_config.port2)
-        conn_conf = TCPConnConf(addr, port1, port2)
+        conn_conf = ConnConf("grpc", addr, port1, port2, timeout=20)
 
         if addr == "127.0.0.1":
             self.launcher = LocalServerLauncher(conn_conf, path=server_config.path)
@@ -142,7 +269,8 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
 
         self.launcher.start()
 
-        self._tikTorchClient = Client(INeuralNetworkAPI(), conn_conf)
+        self._chan = grpc.insecure_channel(f"{addr}:{port1}")
+        self._tikTorchClient = inference_pb2_grpc.InferenceStub(self._chan)
         self._devices = [d.id for d in server_config.devices if d.enabled]
 
     def _reorder_out(self, arr, axes_tags):
@@ -253,76 +381,6 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
 
     def __ne__(self, other):
         return not self.__eq__(other)
-
-    def predict_probabilities_pixelwise(self, feature_image, roi, axistags=None):
-        """
-        :param numpy.ndarray feature_image: classifier input
-        :param numpy.ndarray roi: ROI within feature_image
-        :param vigra.AxisTags axistags: axistags of feature_image
-        :return: probabilities
-        """
-        assert isinstance(roi, numpy.ndarray)
-        logger.debug("predict tile shape: %s (axistags: %r)", feature_image.shape, axistags)
-
-        # translate roi axes todo: remove with tczyx standard
-        output_axis_order = self._model_conf.output_axis_order
-        if "c" not in output_axis_order:
-            output_axis_order = "c" + output_axis_order
-            c_was_not_in_output_axis_order = True
-        else:
-            c_was_not_in_output_axis_order = False
-
-        roi = roi[:, [axistags.index(a) for a in output_axis_order]]
-
-        inreorder = ReorderAxes(self.model.input_axis_order)
-        reordered_feature_image = inreorder.reorder(feature_image, axistags)
-
-        # reordered_feature_image = self._opReorderAxesInImg.Output([]).wait()
-
-        try:
-            fut = self.tikTorchClient.forward(NDArray(reordered_feature_image))
-            result = fut.result(timeout=55).as_numpy()
-        except Exception as e:
-            warnings.warn(f"Predicting {roi} timed out")
-            try:
-                fut.cancel()
-            except Exception:
-                pass
-            return 0
-
-        logger.debug(f"Obtained a predicted block of shape {result.shape}")
-        if c_was_not_in_output_axis_order:
-            result = result[None, ...]
-
-        halo = numpy.array(self.get_halo(output_axis_order))
-        # remove halo from result todo: do not send tensor with halo back, but remove halo in tiktorch instead
-        assert len(result.shape) == len(halo), (result.shape, halo)
-        result = result[[slice(h, -h) if h else slice(None) for h in halo]]
-
-        shrink = numpy.array(self.get_shrinkage(output_axis_order))
-
-        # make two channels out of single channel predictions
-        channel_axis = output_axis_order.find("c")
-        if result.shape[channel_axis] == 1:
-            result = numpy.concatenate((result, 1 - result), axis=channel_axis)
-            logger.debug(f"Changed shape of predicted block to {result.shape} by adding '1-p' channel")
-
-        # remove shrinkage and halo from roi
-        logger.debug("roi %s\nhalo %s\nshrink %s", roi, halo, shrink)
-        roi -= halo + shrink
-        assert all(a >= 0 for a in roi[0]), roi[0]
-        assert all(a <= s for a, s in zip(roi[1], result.shape)), (roi[1], result.shape)
-
-        # select roi from result
-        shape_wo_halo = result.shape
-        result = result[roiToSlice(*roi)]
-        logger.debug(
-            f"Selected roi (start: {roi[0]}, stop: {roi[1]}) from result without halo {shape_wo_halo}. Now"
-            f" result has shape: ({result.shape})."
-        )
-
-        outreorder = ReorderAxes("".join(axistags.keys()))
-        return outreorder.reorder(result, vigra.defaultAxistags(output_axis_order))
 
     @property
     def known_classes(self):

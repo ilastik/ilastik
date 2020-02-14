@@ -62,8 +62,13 @@ class OpSimpleBlockedArrayCache(OpUnblockedArrayCache):
             full_block_roi = numpy.asarray(full_block_roi)
             clipped_block_roi = numpy.asarray(clipped_block_roi)
             output_roi = numpy.asarray(clipped_block_roi) - roi.start
-
             block_roi = self._get_containing_block_roi(clipped_block_roi)
+            try:
+                # print("COPY BLOCK", full_block_roi, clipped_block_roi)
+                print("OUTPUT ROI", output_roi)
+                print("BLOCK ROI", block_roi)
+            except Exception as e:
+                print(e)
 
             # Skip cache and copy full block directly
             if self.BypassModeEnabled.value:

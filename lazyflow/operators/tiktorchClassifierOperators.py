@@ -197,7 +197,9 @@ class OpTikTorchClassifierPredict(OpClassifierPredict):
         elif isinstance(classifier_factory, LazyflowOnlineClassifier):
             new_mode = "online"
         else:
-            raise Exception("Unknown classifier factory type: {}".format(type(classifier_factory)))
+            new_mode = "online"
+            # XXX: _WrapSession
+            # raise Exception("Unknown classifier factory type: {}".format(type(classifier_factory)))
 
         if new_mode == self._mode:
             return
