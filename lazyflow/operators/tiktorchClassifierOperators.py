@@ -44,49 +44,39 @@ from lazyflow.roi import (
     enlargeRoiForHalo,
     getIntersectingBlocks,
 )
-from lazyflow.classifiers import (
-    LazyflowVectorwiseClassifierABC,
-    LazyflowVectorwiseClassifierFactoryABC,
-    LazyflowPixelwiseClassifierABC,
-    LazyflowPixelwiseClassifierFactoryABC,
-    LazyflowOnlineClassifier,
-)
-
-from .classifierOperators import (
-    OpTrainClassifierBlocked,
-    OpTrainPixelwiseClassifierBlocked,
-    OpClassifierPredict,
-    OpPixelwiseClassifierPredict,
-    OpVectorwiseClassifierPredict,
-)
 
 logger = logging.getLogger(__name__)
 
 
-class OpTikTorchTrainClassifierBlocked(OpTrainClassifierBlocked):
+class OpTikTorchTrainClassifierBlocked(Operator):
+    Images = InputSlot(level=1)
+    Labels = InputSlot(level=1)
+    nonzeroLabelBlocks = InputSlot(level=1)  # Used only in the pixelwise case.
+    MaxLabel = InputSlot()
+    ModelSession = InputSlot()
+    BlockShape = InputSlot(level=1)
+
+    UpdatedModelSession = OutputSlot()
+
     def __init__(self, *args, **kwargs):
-        super(OpTikTorchTrainClassifierBlocked, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
+        self.progressSignal = OrderedSignal()
 
-        # Disconnect pixelwise and vectorwise classifier paths
-        self._opPixelwiseTrain.Images.disconnect()
-        self._opVectorwiseTrain.Images.disconnect()
+    def setupOutputs(self):
+        for slot in [self.Images, self.Labels]:
+            assert all(
+                [s.meta.getAxisKeys()[-1] == "c" for s in slot]
+            ), f"This opearator assumes channel is the last axis. problem: {slot}"
 
-        # Fully connect the pixelwise training operator
-        self._opPixelwiseTrain = OpTikTorchTrainPixelwiseClassifierBlocked(parent=self)
-        self._opPixelwiseTrain.Images.connect(self.Images)
-        self._opPixelwiseTrain.Labels.connect(self.Labels)
-        self._opPixelwiseTrain.ClassifierFactory.connect(self.ClassifierFactory)
-        self._opPixelwiseTrain.nonzeroLabelBlocks.connect(self.nonzeroLabelBlocks)
-        self._opPixelwiseTrain.MaxLabel.connect(self.MaxLabel)
-        self._opPixelwiseTrain.progressSignal.subscribe(self.progressSignal)
+        self.ModelSession.meta.dtype = object
+        self.ModelSession.meta.shape = (1,)
 
-
-class OpTikTorchTrainPixelwiseClassifierBlocked(OpTrainPixelwiseClassifierBlocked):
-    def __init__(self, *args, **kwargs):
-        super(OpTikTorchTrainPixelwiseClassifierBlocked, self).__init__(*args, **kwargs)
+    def cleanUp(self):
+        self.progressSignal.clean()
+        super().cleanUp()
 
     def _collect_blocks(self, image_slot, label_slot, block_slicings):
-        classifier_factory = self.ClassifierFactory.value
+        model = self.ModelSession.value
         image_data_blocks = []
         label_data_blocks = []
         block_ids = []
@@ -95,12 +85,12 @@ class OpTikTorchTrainPixelwiseClassifierBlocked(OpTrainPixelwiseClassifierBlocke
             block_label_roi = sliceToRoi(block_slicing, label_slot.meta.shape)
             block_label_data = label_slot(*block_label_roi).wait()
 
-            bb_roi_within_block = numpy.array([[0, 0, 0, 0], list(block_label_data.shape)])
+            bb_roi_within_block = numpy.array([[0] * len(block_label_data.shape), list(block_label_data.shape)])
             block_label_bb_roi = bb_roi_within_block + block_label_roi[0]
 
             # Ask for the halo needed by the classifier
             axiskeys = image_slot.meta.getAxisKeys()
-            halo_shape = classifier_factory.get_halo_shape(axiskeys)
+            halo_shape = model.get_halo_shape(axiskeys)
             assert len(halo_shape) == len(block_label_roi[0])
             assert halo_shape[-1] == 0, "Didn't expect a non-zero halo for channel dimension."
 
@@ -129,30 +119,24 @@ class OpTikTorchTrainPixelwiseClassifierBlocked(OpTrainPixelwiseClassifierBlocke
         return image_data_blocks, label_data_blocks, block_ids
 
     def execute(self, slot, subindex, roi, result):
-        classifier_factory = self.ClassifierFactory.value
-        assert isinstance(classifier_factory, LazyflowOnlineClassifier), (
-            "Factory is of type {}, which does not satisfy the LazyflowPixelwiseClassifierFactoryABC interface."
-            "".format(type(classifier_factory))
-        )
+        model_session = self.ModelSession.value
 
-        channel_names = self.Images[0].meta.channel_names
-        axistags = self.Images[0].meta.axistags
-        classifier = classifier_factory.create_and_train_pixelwise([], [], axistags, channel_names, [])
-        result[0] = classifier
-        if classifier is not None:
-            assert issubclass(type(classifier), LazyflowPixelwiseClassifierABC), (
-                "Classifier is of type {}, which does not satisfy the LazyflowPixelwiseClassifierABC interface."
-                "".format(type(classifier))
-            )
+        # channel_names = self.Images[0].meta.channel_names
+        # axistags = self.Images[0].meta.axistags
+        # classifier = classifier_factory.create_and_train_pixelwise([], [], axistags, channel_names, [])
+        result[0] = model_session
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Labels:
+            if not self.ModelSession.ready():
+                return
+
             try:
-                classifier_factory = self.ClassifierFactory.value
+                model_session = self.ModelSession.value
                 image_slot = self.Images[subindex]
                 label_slot = self.Labels[subindex]
                 # todo: get block shape in a less hacky way
-                block_shape = label_slot._real_operator.parent.parent.opBlockShape.BlockShapeTrain[0].value
+                block_shape = self.BlockShape[subindex].value
                 block_starts = getIntersectingBlocks(block_shape, (roi.start, roi.stop))
                 label_shape = label_slot.meta.shape
                 axis_keys = label_slot.meta.getAxisKeys()
@@ -170,11 +154,13 @@ class OpTikTorchTrainPixelwiseClassifierBlocked(OpTrainPixelwiseClassifierBlocke
 
                 image_blocks, label_blocks, block_ids = self._collect_blocks(image_slot, label_slot, block_slicings)
                 axistags = self.Images[0].meta.axistags
-                classifier_factory.update(image_blocks, label_blocks, axistags, block_ids)
+
+                print("UPDATED BLOCKS", block_shape, block_ids)
+                model_session.update(image_blocks, label_blocks, axistags, block_ids)
             except Exception as e:
-                logger.debug(e, exc_info=True)
+                logger.error(e, exc_info=True)
         else:
-            super().propagateDirty(slot, subindex, roi)
+            self.UpdatedModelSession.setDirty()
 
 
 class OpTikTorchClassifierPredict(Operator):
@@ -183,56 +169,11 @@ class OpTikTorchClassifierPredict(Operator):
     ModelSession = InputSlot()
     BlockShape = InputSlot()
 
-    # An entire prediction request is skipped if the mask is all zeros for the requested roi.
-    # Otherwise, the request is serviced as usual and the mask is ignored.
     PredictionMask = InputSlot(optional=True)
 
     PMaps = OutputSlot()
 
     def setupOutputs(self):
-        # Construct an inner operator depending on the type of classifier we'll be using.
-        # We don't want to access the classifier directly here because that would trigger the full computation already.
-        # Instead, we require the factory to be passed along with the classifier metadata.
-
-        try:
-            classifier_factory = self.ModelSession.meta.classifier_factory
-        except KeyError:
-            raise Exception("Classifier slot must include classifier factory as metadata.")
-
-        if not isinstance(classifier_factory, LazyflowOnlineClassifier):
-            raise RuntimeError("Expected lazyflow classifier")
-            # XXX: _WrapSession
-            # raise Exception("Unknown classifier factory type: {}".format(type(classifier_factory)))
-
-        self._prediction_op = OpTikTorchPixelwiseClassifierPredict(parent=self)
-        self._prediction_op.BlockShape.connect(self.BlockShape)
-        self._prediction_op.PredictionMask.connect(self.PredictionMask)
-        self._prediction_op.Image.connect(self.Image)
-        self._prediction_op.LabelsCount.connect(self.LabelsCount)
-        self._prediction_op.ModelSession.connect(self.ModelSession)
-        self.PMaps.connect(self._prediction_op.PMaps)
-
-    def propagateDirty(self, slot, subindex, roi):
-        self.PMaps.setDirty()
-
-
-class OpTikTorchPixelwiseClassifierPredict(Operator):
-    Image = InputSlot()
-    LabelsCount = InputSlot()
-    ModelSession = InputSlot()
-    BlockShape = InputSlot()
-
-    # An entire prediction request is skipped if the mask is all zeros for the requested roi.
-    # Otherwise, the request is serviced as usual and the mask is ignored.
-    PredictionMask = InputSlot(optional=True)
-
-    PMaps = OutputSlot()
-
-    def __init__(self, *args, **kwargs):
-        super(OpTikTorchPixelwiseClassifierPredict, self).__init__(*args, **kwargs)
-
-    def setupOutputs(self):
-        # super().setupOutputs()
         assert self.Image.meta.getAxisKeys()[-1] == "c"
         nlabels = max(self.LabelsCount.value, 1)
         self.PMaps.meta.assignFrom(self.Image.meta)
@@ -264,11 +205,6 @@ class OpTikTorchPixelwiseClassifierPredict(Operator):
         if skip_prediction:
             result[:] = 0.0
             return result
-
-        assert issubclass(type(session), LazyflowPixelwiseClassifierABC), (
-            "Classifier is of type {}, which does not satisfy the LazyflowPixelwiseClassifierABC interface."
-            "".format(type(session))
-        )
 
         axiskeys = self.Image.meta.getAxisKeys()
         roistart = list(roi.start)
@@ -333,5 +269,5 @@ class OpTikTorchPixelwiseClassifierPredict(Operator):
         # Pad the data
         input_data = numpy.pad(input_data, padding, mode="reflect")
 
-        result[...] = session.predict_probabilities_pixelwise(input_data, predictions_roi, axistags)
+        result[...] = session.predict(input_data, predictions_roi, axistags)
         return result

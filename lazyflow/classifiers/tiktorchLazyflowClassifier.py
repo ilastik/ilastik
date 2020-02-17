@@ -118,7 +118,10 @@ class TiktorchSession(LazyflowOnlineClassifier):
     def known_classes(self):
         return [1, 2]
 
-    def predict_probabilities_pixelwise(self, feature_image, roi, axistags=None):
+    def update(self, *args, **kwargs):
+        print("UPDATE DATA")
+
+    def predict(self, feature_image, roi, axistags=None):
         """
         :param numpy.ndarray feature_image: classifier input
         :param numpy.ndarray roi: ROI within feature_image
@@ -215,7 +218,7 @@ class ReorderAxes:
         return self._op.Output([]).wait()
 
 
-class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
+class TikTorchLazyflowClassifierFactory:
     # The version is used to determine compatibility of pickled classifier factories.
     # You must bump this if any instance members are added/removed/renamed.
     VERSION = 1
