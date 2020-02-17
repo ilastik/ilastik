@@ -77,8 +77,6 @@ class VoxelSegmentationGui(LabelingGui):
         self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.liveUpdateButton.toggled.connect(self.toggleInteractive)
 
-        self.labelingDrawerUi.trainButton.clicked.connect(self.train)
-
         self.initFeatSelDlg()
         self.labelingDrawerUi.suggestFeaturesButton.clicked.connect(self.show_feature_selection_dialog)
         self.featSelDlg.accepted.connect(self.update_features_from_dialog)
@@ -125,7 +123,7 @@ class VoxelSegmentationGui(LabelingGui):
             partial(self.topLevelOperatorView.FreezePredictions.unregisterDirty, bind(FreezePredDirty))
         )
 
-        def SelectBestPlane():
+        def SelectBestAnnotationPlane():
             if self.mostUncertainPlanes is None and self.mostUncertainAxis is None:
                 axis, indices = self.topLevelOperatorView.BestAnnotationPlane.value
                 # Axes from the classifiation operator are in the order z y x while volumina has x y z
@@ -147,32 +145,12 @@ class VoxelSegmentationGui(LabelingGui):
         resetBestPlanes()
         self.topLevelOperatorView.FreezePredictions.notifyDirty(bind(resetBestPlanes))
         self.topLevelOperatorView.LabelImages.notifyDirty(bind(resetBestPlanes))
-        self.labelingDrawerUi.nextPlaneButton.clicked.connect(SelectBestPlane)
+        self.labelingDrawerUi.bestAnnotationPlaneButton.clicked.connect(SelectBestAnnotationPlane)
 
     def initFeatSelDlg(self):
-        if self.topLevelOperatorView.name == "OpVoxelSegmentation":
-            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[
-                0
-            ]
-        elif self.topLevelOperatorView.name == "OpVoxelSegmentation0":
-            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[
-                0
-            ].topLevelOperator.innerOperators[0]
-        elif self.topLevelOperatorView.name == "OpVoxelSegmentation1":
-            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[
-                1
-            ].topLevelOperator.innerOperators[0]
-        elif self.topLevelOperatorView.name == "OpVoxelSegmentation2":
-            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[
-                2
-            ].topLevelOperator.innerOperators[0]
-        elif self.topLevelOperatorView.name == "OpVoxelSegmentation3":
-            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[
-                3
-            ].topLevelOperator.innerOperators[0]
-        else:
-            raise NotImplementedError
-
+        thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[
+            0
+        ]
         self.featSelDlg = FeatureSelectionDialog(thisOpFeatureSelection, self, self.labelListData)
 
     def menus(self):
@@ -696,20 +674,6 @@ class VoxelSegmentationGui(LabelingGui):
         # (For example, the downstream pixel classification applet can
         #  be used now that there are features selected)
         self.parentApplet.appletStateUpdateRequested()
-
-    def train(self):
-        # return self.toggleInteractive(True)
-        self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
-        self.labelingDrawerUi.labelListView.allowDelete = False
-        self.labelingDrawerUi.AddLabelButton.setEnabled(False)
-        self.interactiveModeActive = True
-
-        self.topLevelOperatorView.FreezePredictions.setValue(False)
-        self.labelingDrawerUi.liveUpdateButton.setChecked(True)
-        self._viewerControlUi.checkShowPredictions.setChecked(True)
-        self.handleShowPredictionsClicked()
-        self.parentApplet.appletStateUpdateRequested()
-        # self.topLevelOperatorView.FreezePredictions.setValue(True)
 
     @pyqtSlot()
     def handleShowPredictionsClicked(self):
