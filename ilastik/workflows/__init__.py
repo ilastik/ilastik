@@ -127,6 +127,11 @@ from .examples.dataConversion.dataConversionWorkflow import DataConversionWorkfl
 
 WORKFLOW_CLASSES += [DataConversionWorkflow]
 
+if ilastik.config.cfg.getboolean("ilastik", "hbp", fallback=False):
+    from .voxelSegmentation import VoxelSegmentationWorkflow
+
+    WORKFLOW_CLASSES += [VoxelSegmentationWorkflow]
+
 # network classification, check whether required modules are available:
 can_nn = True
 try:
