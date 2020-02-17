@@ -62,7 +62,7 @@ class OpSlic(Operator):
             # If the number of supervoxels was not given, use a default proportional to the number of voxels
             n_segments = numpy.int(numpy.prod(input_data.shape) / 2500)
 
-        print(
+        logger.debug(
             "calling skimage.segmentation.slic with {}".format(
                 dict(
                     n_segments=n_segments,
