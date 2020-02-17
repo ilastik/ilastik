@@ -84,6 +84,9 @@ class VoxelSegmentationGui(LabelingGui):
         self.featSelDlg.accepted.connect(self.update_features_from_dialog)
         self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
 
+        # Always force at least two labels because it makes no sense to have less here
+        self.forceAtLeastTwoLabels(True)
+
         self.topLevelOperatorView.LabelNames.notifyDirty(bind(self.handleLabelSelectionChange))
         self.__cleanup_fns.append(
             partial(self.topLevelOperatorView.LabelNames.unregisterDirty, bind(self.handleLabelSelectionChange))
