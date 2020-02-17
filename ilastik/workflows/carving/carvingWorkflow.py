@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,80 +18,104 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import argparse
 import logging
+
 logger = logging.getLogger(__name__)
 
-#lazyflow
+# lazyflow
 from lazyflow.graph import Graph
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
-#ilastik
+# ilastik
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 
-#this workflow: carving
+# this workflow: carving
 from .carvingApplet import CarvingApplet
 from .preprocessingApplet import PreprocessingApplet
 from ilastik.workflows.carving.opPreprocessing import OpPreprocessing, OpFilter
 
-#===----------------------------------------------------------------------------------------------------------------===
+# ===----------------------------------------------------------------------------------------------------------------===
 
-DATA_ROLES = ['Raw Data', 'Overlay']
+DATA_ROLES = ["Raw Data", "Overlay"]
 DATA_ROLE_RAW_DATA = 0
 DATA_ROLE_OVERLAY = 1
 
+
 class CarvingWorkflow(Workflow):
-    
+
     workflowName = "Carving"
-    defaultAppletIndex = 0 # show DataSelection by default
-    
+    defaultAppletIndex = 0  # show DataSelection by default
+
     @property
     def applets(self):
         return self._applets
-    
+
     @property
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
-    def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, hintoverlayFile=None, pmapoverlayFile=None, *args, **kwargs):
+    def __init__(
+        self,
+        shell,
+        headless,
+        workflow_cmdline_args,
+        project_creation_args,
+        hintoverlayFile=None,
+        pmapoverlayFile=None,
+        *args,
+        **kwargs,
+    ):
         if hintoverlayFile is not None:
-            assert isinstance(hintoverlayFile, str), "hintoverlayFile should be a string, not '%s'" % type(hintoverlayFile)
+            assert isinstance(hintoverlayFile, str), "hintoverlayFile should be a string, not '%s'" % type(
+                hintoverlayFile
+            )
         if pmapoverlayFile is not None:
-            assert isinstance(pmapoverlayFile, str), "pmapoverlayFile should be a string, not '%s'" % type(pmapoverlayFile)
+            assert isinstance(pmapoverlayFile, str), "pmapoverlayFile should be a string, not '%s'" % type(
+                pmapoverlayFile
+            )
 
         graph = Graph()
-        
-        super(CarvingWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
+
+        super(CarvingWorkflow, self).__init__(
+            shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs
+        )
         self.workflow_cmdline_args = workflow_cmdline_args
-        
-        data_instructions = "Select your input data using the 'Raw Data' tab shown on the right.\n\n"\
-                            "Additionally, you may optionally add an 'Overlay' data volume if it helps you annotate. (It won't be used for any computation.)"
-        
-        ## Create applets 
-        self.dataSelectionApplet = DataSelectionApplet( self,
-                                                        "Input Data",
-                                                        "Input Data",
-                                                        supportIlastik05Import=True,
-                                                        batchDataGui=False,
-                                                        instructionText=data_instructions,
-                                                        max_lanes=1 )
+
+        data_instructions = (
+            "Select your input data using the 'Raw Data' tab shown on the right.\n\n"
+            "Additionally, you may optionally add an 'Overlay' data volume if it helps you annotate. (It won't be used for any computation.)"
+        )
+
+        ## Create applets
+        self.dataSelectionApplet = DataSelectionApplet(
+            self,
+            "Input Data",
+            "Input Data",
+            supportIlastik05Import=True,
+            batchDataGui=False,
+            instructionText=data_instructions,
+            max_lanes=1,
+        )
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        opDataSelection.DatasetRoles.setValue( DATA_ROLES )
-        
-        self.preprocessingApplet = PreprocessingApplet(workflow=self,
-                                           title = "Preprocessing",
-                                           projectFileGroupName="preprocessing")
-        
-        self.carvingApplet = CarvingApplet(workflow=self,
-                                           projectFileGroupName="carving",
-                                           hintOverlayFile=hintoverlayFile,
-                                           pmapOverlayFile=pmapoverlayFile)
-        
-        #self.carvingApplet.topLevelOperator.MST.connect(self.preprocessingApplet.topLevelOperator.PreprocessedData)
-        
+        opDataSelection.DatasetRoles.setValue(DATA_ROLES)
+
+        self.preprocessingApplet = PreprocessingApplet(
+            workflow=self, title="Preprocessing", projectFileGroupName="preprocessing"
+        )
+
+        self.carvingApplet = CarvingApplet(
+            workflow=self,
+            projectFileGroupName="carving",
+            hintOverlayFile=hintoverlayFile,
+            pmapOverlayFile=pmapoverlayFile,
+        )
+
+        # self.carvingApplet.topLevelOperator.MST.connect(self.preprocessingApplet.topLevelOperator.PreprocessedData)
+
         # Expose to shell
         self._applets = []
         self._applets.append(self.dataSelectionApplet)
@@ -102,16 +127,16 @@ class CarvingWorkflow(Workflow):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opPreprocessing = self.preprocessingApplet.topLevelOperator.getLane(laneIndex)
         opCarvingLane = self.carvingApplet.topLevelOperator.getLane(laneIndex)
-        
+
         opCarvingLane.connectToPreprocessingApplet(self.preprocessingApplet)
 
         op5Raw = OpReorderAxes(parent=self)
         op5Raw.AxisOrder.setValue("txyzc")
-        op5Raw.Input.connect( opData.ImageGroup[DATA_ROLE_RAW_DATA] )
+        op5Raw.Input.connect(opData.ImageGroup[DATA_ROLE_RAW_DATA])
 
         op5Overlay = OpReorderAxes(parent=self)
         op5Overlay.AxisOrder.setValue("txyzc")
-        op5Overlay.Input.connect( opData.ImageGroup[DATA_ROLE_OVERLAY] )
+        op5Overlay.Input.connect(opData.ImageGroup[DATA_ROLE_OVERLAY])
 
         ## Connect operators
         opPreprocessing.InputData.connect(op5Raw.Output)
@@ -122,10 +147,10 @@ class CarvingWorkflow(Workflow):
         opCarvingLane.FilteredInputData.connect(opPreprocessing.FilteredImage)
         opCarvingLane.MST.connect(opPreprocessing.PreprocessedData)
         opCarvingLane.UncertaintyType.setValue("none")
-        
+
         # Special input-input connection: WriteSeeds metadata must mirror the input data
-        opCarvingLane.WriteSeeds.connect( opCarvingLane.InputData )
-        
+        opCarvingLane.WriteSeeds.connect(opCarvingLane.InputData)
+
         self.preprocessingApplet.enableDownstream(False)
 
     def handleAppletStateUpdateRequested(self):
@@ -135,7 +160,7 @@ class CarvingWorkflow(Workflow):
 
         # If preprocessing isn't configured yet, don't allow carving
         preprocessed_data_ready = input_ready and self.preprocessingApplet._enabledDS
-        
+
         # Enable each applet as appropriate
         self._shell.setAppletEnabled(self.preprocessingApplet, input_ready)
         self._shell.setAppletEnabled(self.carvingApplet, preprocessed_data_ready)
@@ -151,24 +176,29 @@ class CarvingWorkflow(Workflow):
         """
         # If input data files were provided on the command line, configure the DataSelection applet now.
         # (Otherwise, we assume the project already had a dataset selected.)
-        input_data_args, unused_args = DataSelectionApplet.parse_known_cmdline_args(self.workflow_cmdline_args, DATA_ROLES)
+        input_data_args, unused_args = DataSelectionApplet.parse_known_cmdline_args(
+            self.workflow_cmdline_args, DATA_ROLES
+        )
         if input_data_args.raw_data:
             self.dataSelectionApplet.configure_operator_with_parsed_args(input_data_args)
 
         #
         # Parse the remaining cmd-line arguments
         #
-        filter_indexes = { 'bright-lines' : OpFilter.HESSIAN_BRIGHT,
-                           'dark-lines'   : OpFilter.HESSIAN_DARK,
-                           'step-edges'   : OpFilter.STEP_EDGES,
-                           'original'     : OpFilter.RAW,
-                           'inverted'     : OpFilter.RAW_INVERTED }
+        filter_indexes = {
+            "bright-lines": OpFilter.HESSIAN_BRIGHT,
+            "dark-lines": OpFilter.HESSIAN_DARK,
+            "step-edges": OpFilter.STEP_EDGES,
+            "original": OpFilter.RAW,
+            "inverted": OpFilter.RAW_INVERTED,
+        }
 
         parser = argparse.ArgumentParser()
-        parser.add_argument('--run-preprocessing', action='store_true')
-        parser.add_argument('--preprocessing-sigma', type=float, required=False)
-        parser.add_argument('--preprocessing-filter', required=False, type=str.lower,
-                            choices=list(filter_indexes.keys()))
+        parser.add_argument("--run-preprocessing", action="store_true")
+        parser.add_argument("--preprocessing-sigma", type=float, required=False)
+        parser.add_argument(
+            "--preprocessing-filter", required=False, type=str.lower, choices=list(filter_indexes.keys())
+        )
 
         parsed_args, unused_args = parser.parse_known_args(unused_args)
         if unused_args:
@@ -179,7 +209,7 @@ class CarvingWorkflow(Workflow):
             if len(self.preprocessingApplet.topLevelOperator) != 1:
                 raise RuntimeError("Can't run preprocessing on a project with no images.")
 
-            opPreprocessing = self.preprocessingApplet.topLevelOperator.getLane(0) # Carving has only one 'lane'
+            opPreprocessing = self.preprocessingApplet.topLevelOperator.getLane(0)  # Carving has only one 'lane'
 
             # If user provided parameters, override the defaults.
             if parsed_args.preprocessing_sigma is not None:

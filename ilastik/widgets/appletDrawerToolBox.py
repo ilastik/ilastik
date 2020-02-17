@@ -1,207 +1,142 @@
-from __future__ import print_function
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QToolBox
+from PyQt5.QtCore import pyqtSignal, QObject
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QToolBox, QWidget, QStackedWidget
+
+from ilastik.shell.gui.iconMgr import ilastikIcons
+
 
 class AppletDrawerToolBox(QToolBox):
-    """
-    A replacement for QToolBox that allows clients to truly hide a widget (including its header).
-
-    To clients, it looks like the list of widgets in the toolbox remains constant even while a widget is hidden.
-    Under the hood, the widgets are added and removed from the QToolBox.
-    
-    This class adds two special methods that QToolBox doesn't have:
-    - hideIndexItem()
-    - showIndexItem()
-    These methods remove/re-add the item from the visible headings without changing any of the widget indexes.
-    
-    Note: Most of these methods shadow -- not override -- the base class functions,
-          but for Python-only usage, there's no big difference.
-    """
-    _currentChanged = pyqtSignal(int)
-    
     def __init__(self, *args, **kwargs):
-        super( AppletDrawerToolBox, self ).__init__(*args, currentChanged=self._handleSuperCurrentChanged, **kwargs)
-        self._all_widgets = []
-        self._visible_widgets = []
-        self._invisible_widgets = []
+        super().__init__(*args, **kwargs)
+        self.ICON_CLOSED = QIcon(ilastikIcons.ChevronRight)
+        self.ICON_OPEN = QIcon(ilastikIcons.ChevronDown)
 
-        # Replace the superclass signal with our own.
-        self.currentChanged = self._currentChanged
+        self._prevActive = None
+        self.currentChanged.connect(self._toggleCollapsedMarker)
 
-    def _get_visible_index(self, index):
-        widget, text = self._all_widgets[index]
-        visible_index = self._index_of_widget(widget, self._visible_widgets)
-        if visible_index != -1:
-            assert visible_index == super( AppletDrawerToolBox, self ).indexOf(widget),\
-                "visible index doesn't match: {} / {}".format( visible_index, super( AppletDrawerToolBox, self ).indexOf(widget) )
-        return visible_index
-    
-    def _get_index(self, visible_index):
-        try:
-            widget, text = self._visible_widgets[visible_index]
-            index = self._index_of_widget(widget, self._all_widgets)
-            return index
-        except IndexError:
-            return -1
+    def _toggleCollapsedMarker(self, newActiveIdx):
+        if self._prevActive is not None:
+            self._refreshCollapsedMarker(self._prevActive)
 
-    ## Special methods ##
-    def hideIndexItem(self, index):
-        visible_index = self._get_visible_index(index)
-        if visible_index != -1:
-            widget, text = self._all_widgets[index]
-            super( AppletDrawerToolBox, self ).removeItem( visible_index )
-            widget.hide()
-            widget.setParent(None)
-            self._visible_widgets.pop( visible_index )
-            self._invisible_widgets.append( (widget, text) )
-    
-    def showIndexItem(self, index):
-        visible_index = self._get_visible_index(index)
-        if visible_index == -1:
-            widget, text = self._all_widgets[index]
-            # Find visible index
-            visible_index = 0
-            for item in self._all_widgets:
-                if item[0] is widget:
-                    break
-                if item in self._visible_widgets:
-                    visible_index +=1
-            self._visible_widgets.insert( visible_index, (widget, text) )
-            print("Showing {} at {}".format( text, visible_index ))
-            super( AppletDrawerToolBox, self ).insertItem( visible_index, widget, text )
+        self._refreshCollapsedMarker(newActiveIdx)
+        self._prevActive = newActiveIdx
 
-    ####
+    def _refreshCollapsedMarker(self, idx):
+        if self.currentIndex() == idx:
+            self.setItemIcon(idx, self.ICON_OPEN)
+        else:
+            self.setItemIcon(idx, self.ICON_CLOSED)
 
-    def _handleSuperCurrentChanged(self, visible_index):
-        index = self._get_index(visible_index)
-        self.currentChanged.emit( index )
-    
+    def setItemText(self, idx, text):
+        """
+        Override to set human readable number in tab title
+        """
+        super().setItemText(idx, f"{idx + 1}. {text}")
+
     def addItem(self, widget, text):
-        self._all_widgets.append( (widget, text) )
-        self._visible_widgets.append( (widget, text) )
-        super( AppletDrawerToolBox, self ).addItem( widget, text )
-    
-    def count(self):
-        return len( self._visible_widgets ) + len( self._invisible_widgets )
-        
-    def currentIndex(self):
-        visible_index = super( AppletDrawerToolBox, self).currentIndex()
-        return self._get_index(visible_index)
-    
-    def currentWidget(self):
-        super( AppletDrawerToolBox, self ).currentWidget()
-    
-    def indexOf(self, widget):
-        for i, (w, text) in enumerate(self._all_widgets):
-            if w is widget:
-                return i
-        return -1
-    
-    def insertItem(self, index, widget, text):
-        self._all_widgets.insert( index, (widget, text) )
-        visible_index = self._get_visible_index(index)
-        self._visible_widgets.insert( visible_index, (widget, text) )
-        super( AppletDrawerToolBox, self ).insertItem( visible_index, widget, text )
-    
-    def isItemEnabled(self, index):
-        visible_index = self._get_visible_index(index)
-        if visible_index == -1:
-            return False
-        return super( AppletDrawerToolBox, self ).itemEnabled( visible_index )
-    
-    def itemIcon(self, index):
-        raise NotImplementedError("Sorry, this class doesn't support icons (yet).")
-    
-    def itemText(self, index):
-        return self._all_widgets[index][1]
-    
-    def itemToolTip(self, index):
-        raise NotImplementedError("Sorry, this class doesn't support tool-tips (yet).")
-    
-    def removeItem(self, index):
-        visible_index = self._get_visible_index(index)
+        idx = super().addItem(widget, text)
+        self.setItemText(idx, text)
+        self._refreshCollapsedMarker(idx)
+        return idx
 
-        # Remove from 'all' list
-        (widget, text) = self._all_widgets.pop( index )
+    def items(self):
+        return [(i, self.widget(i)) for i in range(self.count())]
 
-        if visible_index != -1:
-            # Remove from visible
-            self._visible_widgets.pop( visible_index )
-            widget.hide()
-            super( AppletDrawerToolBox, self ).removeItem( visible_index )
+
+class AppletBarManager(QObject):
+    """
+    This class controls interaction between IlastikShell and AppletDrawerToolBox
+    Some items are not meant to be displayed for user (interactive attribute),
+    but they still need to be tracked, to provide convinient interface
+    """
+
+    appletActivated = pyqtSignal(int)
+
+    def __init__(self, appletBar) -> None:
+        super().__init__()
+
+        self._toolbarIdByAppletId = {}
+        self._appletIdByToolbarId = {}
+        self._toolbox = appletBar
+        self._toolbox.currentChanged.connect(self._handleCurrentChanged)
+
+    def _handleCurrentChanged(self, toolboxId):
+        """
+        Emit applet activated signal on toolbox switch
+        """
+        if toolboxId == -1:
+            return
+
+        appletId = self._appletIdByToolbarId[toolboxId]
+        self.appletActivated.emit(appletId)
+
+    def addApplet(self, appletId: int, applet) -> None:
+        """
+        Adds applet to toolbox if it is available in interactive mode
+        """
+        if applet.interactive:
+            # We need new id before we added item, to handle currentChangedSignal
+            newToolbarId = self._toolbox.count()
+            self._toolbarIdByAppletId[appletId] = newToolbarId
+            self._appletIdByToolbarId[newToolbarId] = appletId
+
+            widget = applet.getMultiLaneGui().appletDrawer()
+            assert isinstance(widget, QWidget), f"Not a widget: {widget}"
+
+            stackedWidget = QStackedWidget()
+            stackedWidget.addWidget(widget)
+
+            self._toolbox.addItem(stackedWidget, applet.name)
         else:
-            # Find this widget in the invisible list and remove it
-            invisible_index = self._index_of_widget(widget, self._invisible_widgets)
-            self._invisible_widgets.pop( invisible_index )
-    
-    def setItemEnabled(self, index, enabled):
-        visible_index = self._get_visible_index(index)
-        if visible_index != -1:
-            super( AppletDrawerToolBox, self ).setItemEnabled( visible_index, enabled )
-    
-    def setItemIcon(self, index, icon):
-        raise NotImplementedError("Sorry, this class doesn't support icons (yet).")
-    
-    def setItemText(self, index, newtext):
-        widget, oldtext = self._all_widgets[index]
-        self._all_widgets[index] = ( widget, newtext )
+            self._toolbarIdByAppletId[appletId] = None
 
-        visible_index = self._get_visible_index(index)
-        if visible_index != -1:
-            self._visible_widgets[visible_index] = ( widget, newtext )
-        else:
-            # Find this widget in the invisible list
-            invisible_index = self._index_of_widget(widget, self._invisible_widgets)
-            self._invisible_widgets[invisible_index] = ( widget, newtext )
+    def focusApplet(self, appletId: int) -> None:
+        toolboxId = self._toolbarIdByAppletId.get(appletId)
 
-    def setItemToolTip(self, index, toopTip):
-        raise NotImplementedError("Sorry, this class doesn't support tool-tips (yet).")
-    
-    def widget(self, index):
-        return self._all_widgets[index][0]
-    
-    def setCurrentIndex(self, index):
-        visible_index = self._get_visible_index(index)
-        # If the given index isn't actually visible, this is a no-op.
-        if visible_index != -1:
-            super( AppletDrawerToolBox, self ).setCurrentIndex( visible_index )
-    
-    def setCurrentWidget(self, widget):
-        # Find this widget's total index
-        index = self._index_of_widget(widget, self._all_widgets)
-        self.setCurrentIndex(index)
-    
-    def _index_of_widget(self, widget, widget_list):
-        for i, (w,t) in enumerate( widget_list ):
-            if w is widget:
-                return i
-        return -1
+        if toolboxId is None:
+            return
 
-if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication, QWidget, QLabel
+        self._toolbox.setCurrentIndex(toolboxId)
 
-    app = QApplication([])
-    w = QWidget()
-    t = AppletDrawerToolBox(w)
-    
-    t.addItem( QLabel("Zero"),  "0" )
-    t.addItem( QLabel("One"),   "1" )
-    t.addItem( QLabel("Two"),   "2" )
-    t.addItem( QLabel("Three"), "3" )
-    t.addItem( QLabel("Four"),  "4" )
-    
-    def printNewIndex(index):
-        print("Index changed to {}".format( index ))
-    t.currentChanged.connect( printNewIndex )
+    def updateAppletTitle(self, appletId: int, newTitle: str):
+        toolboxId = self._toolbarIdByAppletId.get(appletId)
 
-    t.hideIndexItem(1)
-    t.hideIndexItem(2)
-    #t.showIndexItem(1)
-    #t.showIndexItem(2)
-    
-    t.setCurrentIndex(3)
-    
-    #w.layout().addWidget(t) 
-    w.show()
-    
-    app.exec_()
+        if toolboxId is None:
+            return
+
+        self._toolbox.setItemText(toolboxId, newTitle)
+
+    def updateAppletWidget(self, appletId: int, newWidget: QWidget) -> None:
+        toolboxId = self._toolbarIdByAppletId.get(appletId)
+
+        if toolboxId is None:
+            return
+
+        stackedWidget = self._toolbox.widget(toolboxId)
+        if stackedWidget.indexOf(newWidget) == -1:
+            stackedWidget.addWidget(newWidget)
+
+        stackedWidget.setCurrentWidget(newWidget)
+
+    def setEnabled(self, appletId: int, value: bool):
+        toolboxId = self._toolbarIdByAppletId.get(appletId)
+
+        if toolboxId is None:
+            return
+
+        # Unfortunately, Qt will auto-select a different drawer if
+        # we try to disable the currently selected drawer.
+        # That can cause lots of problems for us (e.g. it trigger's the
+        # creation of applet guis that haven't been created yet.)
+        # Therefore, only disable the title button of a drawer if it isn't already selected.
+        if self._toolbox.currentIndex() != toolboxId:
+            self._toolbox.setItemEnabled(toolboxId, value)
+
+    def removeAll(self) -> None:
+        # Removing starting from the end to avoid index changes
+        for idx, w in reversed(self._toolbox.items()):
+            w.hide()
+            w.setParent(None)
+            self._toolbox.removeItem(idx)
+            appletId = self._appletIdByToolbarId.pop(idx, None)
+            self._toolbarIdByAppletId.pop(appletId, None)

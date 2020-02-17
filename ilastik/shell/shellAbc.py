@@ -16,54 +16,48 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
-from abc import ABCMeta, abstractmethod, abstractproperty
-from future.utils import with_metaclass
 
-def _has_attribute( cls, attr ):
-    return True if any(attr in B.__dict__ for B in cls.__mro__) else False
+from __future__ import annotations
 
-def _has_attributes( cls, attrs ):
-    return True if all(_has_attribute(cls, a) for a in attrs) else False
+from abc import abstractmethod
+from typing import TYPE_CHECKING, Type
 
-class ShellABC(with_metaclass(ABCMeta, object)):
-    """
-    This ABC defines the minimum interface that both the IlastikShell and HeadlessShell must implement.
-    """
+from ilastik.utility.abc import StrictABC
 
-    @abstractproperty
+if TYPE_CHECKING:
+    from ilastik.applets.base.applet import Applet
+    from ilastik.workflow import Workflow
+
+
+class ShellABC(StrictABC):
+    @property
+    @abstractmethod
     def workflow(self):
-        raise NotImplementedError
-
-    @abstractproperty
-    def currentImageIndex(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def createAndLoadNewProject(self, newProjectFilePath, workflow_class):
-        """
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def openProjectFile(self, projectFilePath):
-        """
-        """
-        raise NotImplementedError
-
-    def setAppletEnabled(self, applet, enabled):
         pass
 
-    def isAppletEnabled(self, applet):
-        return False
-
-    def enableProjectChanges(self, enabled):
+    @property
+    @abstractmethod
+    def currentImageIndex(self) -> int:
         pass
 
+    @abstractmethod
+    def createAndLoadNewProject(self, newProjectFilePath: str, workflow_class: Type[Workflow]) -> None:
+        pass
 
-    @classmethod
-    def __subclasshook__(cls, C):
-        if cls is ShellABC:
-            return _has_attributes(C, ['workflow', 'createAndLoadNewProject', 'openProjectFile', 'setAppletEnabled', 'currentImageIndex'])
-        return NotImplemented
+    @abstractmethod
+    def openProjectFile(self, projectFilePath: str) -> None:
+        pass
+
+    @abstractmethod
+    def setAppletEnabled(self, applet: Applet, enabled: bool) -> None:
+        pass
+
+    @abstractmethod
+    def isAppletEnabled(self, applet: Applet) -> bool:
+        pass
+
+    @abstractmethod
+    def enableProjectChanges(self, enabled: bool) -> None:
+        pass

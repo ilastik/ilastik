@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,7 +18,7 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.labeling.labelingApplet import LabelingApplet
 
@@ -25,25 +26,23 @@ from ilastik.utility import OpMultiLaneWrapper
 from .opCarving import OpCarving
 from .carvingSerializer import CarvingSerializer
 
+
 class CarvingApplet(LabelingApplet):
-    
+
     workflowName = "Carving"
     workflowDescription = "this is obviously self-explanatory"
-    
-    def __init__(self, workflow, projectFileGroupName,  hintOverlayFile=None, pmapOverlayFile=None):
+
+    def __init__(self, workflow, projectFileGroupName, hintOverlayFile=None, pmapOverlayFile=None):
         if hintOverlayFile is not None:
             assert isinstance(hintOverlayFile, str)
 
-        if not hasattr(self, '_topLevelOperator'):
-            op_kwargs = { 'hintOverlayFile' : hintOverlayFile,
-                          'pmapOverlayFile' : pmapOverlayFile }
-            self._topLevelOperator = OpMultiLaneWrapper( OpCarving,
-                                                         parent=workflow,
-                                                         operator_kwargs=op_kwargs )
+        if not hasattr(self, "_topLevelOperator"):
+            op_kwargs = {"hintOverlayFile": hintOverlayFile, "pmapOverlayFile": pmapOverlayFile}
+            self._topLevelOperator = OpMultiLaneWrapper(OpCarving, parent=workflow, operator_kwargs=op_kwargs)
 
         super(CarvingApplet, self).__init__(workflow, projectFileGroupName)
         self._projectFileGroupName = projectFileGroupName
-        self._serializers = None
+        self._serializers = [CarvingSerializer(self.topLevelOperator, self._projectFileGroupName)]
 
     def getMultiLaneGui(self):
         """
@@ -52,6 +51,7 @@ class CarvingApplet(LabelingApplet):
         least once after object init.
         """
         from .carvingGui import CarvingGui  # Prevent imports of QT classes in headless mode
+
         multi_lane_gui = super(LabelingApplet, self).getMultiLaneGui()
         guis = multi_lane_gui.getGuis()
         if len(guis) > 0 and isinstance(guis[0], CarvingGui) and not guis[0].isInitialized:
@@ -61,18 +61,17 @@ class CarvingApplet(LabelingApplet):
 
     @property
     def dataSerializers(self):
-        if self._serializers is None:
-            self._serializers = [ CarvingSerializer(self.topLevelOperator, self._projectFileGroupName) ]
         return self._serializers
-    
+
     @property
     def topLevelOperator(self):
         """
         Override from base class.
         """
         return self._topLevelOperator
-    
+
     @property
     def singleLaneGuiClass(self):
         from .carvingGui import CarvingGui  # Prevent imports of QT classes in headless mode
+
         return CarvingGui

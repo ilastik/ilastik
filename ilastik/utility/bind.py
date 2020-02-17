@@ -16,15 +16,17 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import inspect
 
+
 def getRootArgSpec(f):
-    if hasattr( f, '__wrapped__' ):
+    if hasattr(f, "__wrapped__"):
         return getRootArgSpec(f.__wrapped__)
     else:
-        return inspect.getargspec(f)
+        return inspect.getfullargspec(f)
+
 
 class bind(tuple):
     """Behaves like functools.partial, but discards any extra
@@ -36,11 +38,12 @@ class bind(tuple):
     Inspired by boost::bind (C++).
 
     """
+
     def __new__(cls, f, *args):
         bound_args = args
         expected_args = getRootArgSpec(f).args
         numUnboundArgs = len(expected_args) - len(bound_args)
-        if len(expected_args) > 0 and expected_args[0] == 'self':
+        if len(expected_args) > 0 and expected_args[0] == "self":
             numUnboundArgs -= 1
         return tuple.__new__(cls, (f, bound_args, numUnboundArgs))
 
@@ -61,4 +64,4 @@ class bind(tuple):
         the callback accepts, silently discard the extra args.
 
         """
-        self.f(*(self.bound_args + args[0:self.numUnboundArgs]))
+        self.f(*(self.bound_args + args[0 : self.numUnboundArgs]))

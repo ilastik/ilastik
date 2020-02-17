@@ -183,8 +183,17 @@
        <property name="checkable">
         <bool>true</bool>
        </property>
+       <property name="checked">
+        <bool>false</bool>
+       </property>
        <property name="toolButtonStyle">
         <enum>Qt::ToolButtonTextBesideIcon</enum>
+       </property>
+       <property name="icon">
+        <iconset>
+          <normalon>../../shell/gui/icons/16x16/actions/media-playback-pause.png</normalon>
+          <normaloff>../../shell/gui/icons/16x16/actions/media-playback-start.png</normaloff>
+        </iconset>
        </property>
       </widget>
      </item>

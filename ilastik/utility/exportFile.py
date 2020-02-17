@@ -1,4 +1,3 @@
-from __future__ import print_function
 from builtins import range
 import collections
 import numpy as np
@@ -15,10 +14,22 @@ logger = logging.getLogger(__name__)
 try:
     from ilastik.plugins import pluginManager
 except:
-    logger.warning('could not import pluginManager')
+    logger.warning("could not import pluginManager")
+
 
 class Default(object):
-    DivisionNames = {"names": ("timestep", "object_id", "lineage_id", "track_id", "child1_object_id", "child1_track_id", "child2_object_id", "child2_track_id")}
+    DivisionNames = {
+        "names": (
+            "timestep",
+            "object_id",
+            "lineage_id",
+            "track_id",
+            "child1_object_id",
+            "child1_track_id",
+            "child2_object_id",
+            "child2_track_id",
+        )
+    }
     ManualDivMap = [1, 0, 1, 1, 1, 1, 1, 1]
     KnimeId = {"names": ("object_id",)}
     IlastikId = {"names": ("timestep", "labelimage_oid")}
@@ -32,8 +43,8 @@ class Default(object):
 
 
 def flatten_tracking_table(table, extra_table, obj_counts, max_tracks, t_range):
-    #array = np.zeros(sum(obj_counts), ",".join(["i"] * max_tracks))
-    #array.dtype.names = ["track%i" % i for i in xrange(1, max_tracks + 1)]
+    # array = np.zeros(sum(obj_counts), ",".join(["i"] * max_tracks))
+    # array.dtype.names = ["track%i" % i for i in xrange(1, max_tracks + 1)]
     array = np.zeros(sum(obj_counts), [(Default.TrackColumnName.format(i), "i") for i in range(1, max_tracks + 1)])
     row = 0
     for i, count in enumerate(obj_counts):
@@ -59,37 +70,36 @@ def flatten_ilastik_feature_table(table, selection, signal):
     selection = list(selection)
     frames = table.meta.shape[0]
 
-    logger.info('Fetching object features for feature table...')
+    logger.info("Fetching object features for feature table...")
     computed_feature = table([]).wait()
 
     signal(0)
 
-    feature_long_names = [] # For example, "Size in Pixels"
-    feature_short_names = [] # For example, "Count"
+    feature_long_names = []  # For example, "Size in Pixels"
+    feature_short_names = []  # For example, "Count"
     feature_plugins = []
     feature_channels = []
     feature_types = []
 
     for plugin_name, feature_dict in computed_feature[0].items():
         all_props = None
-        
-        if plugin_name==default_features_key:
+
+        if plugin_name == default_features_key:
             plugin = pluginManager.getPluginByName("Standard Object Features", "ObjectFeatures")
         else:
             plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
         if plugin:
-            plugin_feature_names = {el:{} for el in list(feature_dict.keys())}
-            all_props = plugin.plugin_object.fill_properties(plugin_feature_names) #fill in display name and such
+            plugin_feature_names = {el: {} for el in list(feature_dict.keys())}
+            all_props = plugin.plugin_object.fill_properties(plugin_feature_names)  # fill in display name and such
 
         for feat_name, feat_array in feature_dict.items():
             if all_props:
                 long_name = all_props[feat_name]["displaytext"]
             else:
                 long_name = feat_name
-            if (plugin_name == default_features_key or \
-                     long_name in selection or \
-                     feat_name in selection) and \
-                     long_name not in feature_long_names:
+            if (
+                plugin_name == default_features_key or long_name in selection or feat_name in selection
+            ) and long_name not in feature_long_names:
                 feature_long_names.append(long_name)
                 feature_short_names.append(feat_name)
                 feature_plugins.append(plugin_name)
@@ -130,7 +140,7 @@ def flatten_ilastik_feature_table(table, selection, signal):
         for name in dtype_names:
             plugin, feat_name, index = dtype_to_key[name]
             data_len = len(cf[plugin][feat_name][1:, index])
-            feature_table[name][start:start + data_len] = cf[plugin][feat_name][1:, index]
+            feature_table[name][start : start + data_len] = cf[plugin][feat_name][1:, index]
         start = end
         try:
             end += obj_count[int(t) + 1]
@@ -144,11 +154,11 @@ def flatten_ilastik_feature_table(table, selection, signal):
 
 def objects_per_frame(label_image_slot):
     t_index = label_image_slot.meta.axistags.index("t")
-    assert t_index == 0, "This function assumes that the first axis is time."    
+    assert t_index == 0, "This function assumes that the first axis is time."
 
     num_frames = label_image_slot.meta.shape[0]
     for t in range(num_frames):
-        frame_data = label_image_slot[t:t+1].wait()
+        frame_data = label_image_slot[t : t + 1].wait()
         yield frame_data.max()
 
 
@@ -192,7 +202,8 @@ def prepare_list(list_, names, dtypes=None):
 
     """
     n_items = len(list_)
-
+    if n_items == 0:
+        return np.array(())
     # make sure inner items are iterables
     first_row = list_[0]
     if isinstance(first_row, str) or not isinstance(first_row, collections.Iterable):
@@ -223,6 +234,15 @@ def ilastik_ids(obj_counts):
             yield (t, o)
 
 
+def _slice_range(low, high, max_):
+    start = max(0, low)
+    end = min(high, max_)
+    if start == end:
+        raise ValueError(f"Created invalid slicing ({start}, {end})")
+
+    return slice(start, end, None)
+
+
 def create_slicing(axistags, dimensions, margin, feature_table):
     """
     Returns an iterator on the slices for each object roi
@@ -239,7 +259,8 @@ def create_slicing(axistags, dimensions, margin, feature_table):
         minz = feature_table["Bounding Box Minimum_2"].astype(np.int32)
         maxz = feature_table["Bounding Box Maximum_2"].astype(np.int32)
     except ValueError:
-        minz = maxz = [0] * table_shape
+        minz = [0] * table_shape
+        maxz = [1] * table_shape
 
     indices = list(map(axistags.index, "txyzc"))
     excludes = indices.count(-1)
@@ -250,15 +271,12 @@ def create_slicing(axistags, dimensions, margin, feature_table):
         # noinspection PyTypeChecker
         slicing = [
             slice(time[i], time[i] + 1),
-            slice(max(0, minx[i] - margin),
-                  min(maxx[i] + margin, dimensions[1])),
-            slice(max(0, miny[i] - margin),
-                  min(maxy[i] + margin, dimensions[2])),
-            slice(max(0, minz[i] - margin),
-                  min(maxz[i] + margin, dimensions[3])),
-            slice(None)
+            _slice_range(minx[i] - margin, maxx[i] + margin, dimensions[1]),
+            _slice_range(miny[i] - margin, maxy[i] + margin, dimensions[2]),
+            _slice_range(minz[i] - margin, maxz[i] + margin, dimensions[3]),
+            slice(None),
         ]
-        yield [slicing[x] for x in indices][:5 - excludes], oid
+        yield [slicing[x] for x in indices][: 5 - excludes], oid
         oid += 1
 
 
@@ -299,8 +317,9 @@ class ExportFile(object):
         if mode == Mode.IlastikTrackingTable:
             if not "counts" in extra or not "max" in extra:
                 raise AttributeError("Tracking need 'counts', 'max' extra")
-            columns = flatten_tracking_table(col_data, extra["extra ids"], extra["counts"], extra["max"],
-                                             extra["range"])
+            columns = flatten_tracking_table(
+                col_data, extra["extra ids"], extra["counts"], extra["max"], extra["range"]
+            )
         elif mode == Mode.List:
             if not "names" in extra:
                 raise AttributeError("[Tuple]List needs a tuple for the column name (extra 'names')")
@@ -331,8 +350,9 @@ class ExportFile(object):
         :type type_: str
         """
         assert type_ in ("labeling", "image"), "Type must be 'labeling' or 'image'"
-        slicings = create_slicing(image_slot.meta.axistags, image_slot.meta.shape,
-                                  margin, self.table_dict[feature_table_name])
+        slicings = create_slicing(
+            image_slot.meta.axistags, image_slot.meta.shape, margin, self.table_dict[feature_table_name]
+        )
         self.InsertionProgress(0)
 
         if type_ == "labeling":
@@ -345,7 +365,7 @@ class ExportFile(object):
             roi_path = table_path.format(i)
             self.meta_dict[roi_path] = {
                 "type": type_,
-                "axistags": actual_axistags(image_slot.meta.axistags, roi.shape).toJSON()
+                "axistags": actual_axistags(image_slot.meta.axistags, roi.shape).toJSON(),
             }
             self.table_dict[roi_path] = roi.squeeze()
             self.InsertionProgress(100 * i / self.table_dict[feature_table_name].shape[0])
@@ -356,7 +376,7 @@ class ExportFile(object):
         def f(pixel_value):
             return 1 if pixel_value == oid else 0
 
-        return np.vectorize(f)
+        return np.vectorize(f, otypes=[np.uint8])
 
     def add_image(self, table, image_slot):
         """
@@ -369,7 +389,7 @@ class ExportFile(object):
         self.table_dict[table] = image_slot([]).wait().squeeze()
         self.meta_dict[table] = {
             "type": "image",
-            "axistags": actual_axistags(image_slot.meta.axistags, image_slot.meta.shape).toJSON()
+            "axistags": actual_axistags(image_slot.meta.axistags, image_slot.meta.shape).toJSON(),
         }
 
     def update_meta(self, table, meta):
@@ -396,8 +416,13 @@ class ExportFile(object):
         if mode in ("h5", "hd5", "hdf5"):
             with h5py.File(self.file_name, "w") as fout:
                 for table_name, table in self.table_dict.items():
-                    self._make_h5_dataset(fout, table_name, table, self.meta_dict.get(table_name, {}),
-                                          compression if compression is not None else {})
+                    self._make_h5_dataset(
+                        fout,
+                        table_name,
+                        table,
+                        self.meta_dict.get(table_name, {}),
+                        compression if compression is not None else {},
+                    )
                     count += 1
                     self.ExportProgress(count * 100 / len(self.table_dict))
         elif mode == "csv":
@@ -451,12 +476,13 @@ class ExportFile(object):
         table_copy = {name: table[name] for name in names}
         dtypes = {name: table_copy[name].dtype for name in names}
         for string_column in hasstrings:
-            column = np.core.defchararray.encode(table[string_column], 'utf-8')
+            column = np.core.defchararray.encode(table[string_column], "utf-8")
             dtypes[string_column] = column.dtype
             table_copy[string_column] = column
 
-        return np.array(list(zip(*[table_copy[name] for name in names])), dtype=[(name, dtypes[name]) for name in names])
-
+        return np.array(
+            list(zip(*[table_copy[name] for name in names])), dtype=[(name, dtypes[name]) for name in names]
+        )
 
     @staticmethod
     def _make_csv_table(fout, table):
@@ -495,15 +521,8 @@ class ProgressPrinter(object):
 
 
 if __name__ == "__main__":
-    l = [
-        1, 2, 3, 4
-    ]
-    l2 = [
-        (1, 2),
-        (3, 4),
-        (5, 6),
-        (7, 8),
-    ]
+    l = [1, 2, 3, 4]
+    l2 = [(1, 2), (3, 4), (5, 6), (7, 8)]
 
     l = prepare_list(l, ("a",))
     l2 = prepare_list(l2, ("a", "b"))

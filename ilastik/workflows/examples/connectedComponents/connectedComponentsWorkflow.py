@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,7 +18,7 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
 import sys
@@ -33,21 +34,21 @@ from lazyflow.graph import Graph, OperatorWrapper
 from .connectedComponentsApplet import ConnectedComponentsApplet
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
 class ConnectedComponentsWorkflow(Workflow):
     workflowName = "Connected Components Testing"
-    defaultAppletIndex = 0 # show DataSelection by default
+    defaultAppletIndex = 0  # show DataSelection by default
 
-    def __init__(self, shell, headless,
-                 workflow_cmdline_args,
-                 project_creation_args,
-                 *args, **kwargs):
-        graph = kwargs['graph'] if 'graph' in kwargs else Graph()
-        if 'graph' in kwargs:
-            del kwargs['graph']
-        super(ConnectedComponentsWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
+    def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
+        graph = kwargs["graph"] if "graph" in kwargs else Graph()
+        if "graph" in kwargs:
+            del kwargs["graph"]
+        super(ConnectedComponentsWorkflow, self).__init__(
+            shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs
+        )
 
         self._applets = []
         self.setupInputs()
@@ -71,8 +72,7 @@ class ConnectedComponentsWorkflow(Workflow):
         if len(slot) > 0:
             input_ready = True
             for sub in slot:
-                input_ready = input_ready and \
-                    all([sub[i].ready() for i in range(nRoles)])
+                input_ready = input_ready and all([sub[i].ready() for i in range(nRoles)])
         else:
             input_ready = False
 
@@ -81,15 +81,17 @@ class ConnectedComponentsWorkflow(Workflow):
     def setupInputs(self):
         data_instructions = 'Use the "Segmentation" tab to load your volume.'
 
-        self.dataSelectionApplet = DataSelectionApplet( self,
-                                                        "Input Data",
-                                                        "Input Data",
-                                                        batchDataGui=False,
-                                                        forceAxisOrder=['txyzc'],
-                                                        instructionText=data_instructions )
+        self.dataSelectionApplet = DataSelectionApplet(
+            self,
+            "Input Data",
+            "Input Data",
+            batchDataGui=False,
+            forceAxisOrder=["txyzc"],
+            instructionText=data_instructions,
+        )
 
         opData = self.dataSelectionApplet.topLevelOperator
-        opData.DatasetRoles.setValue(['Segmentation'])
+        opData.DatasetRoles.setValue(["Segmentation"])
         self._applets.append(self.dataSelectionApplet)
 
         self.CCApplet = ConnectedComponentsApplet(self, "Connected Components")
@@ -103,4 +105,5 @@ class ConnectedComponentsWorkflow(Workflow):
 
 if __name__ == "__main__":
     from sys import argv
+
     w = ConnectedComponentsWorkflow(True, argv)

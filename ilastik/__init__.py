@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -26,12 +27,16 @@ import re
 ################################
 import os
 from . import expose_submodules
+import h5py
+import time
+from typing import Optional, Iterable, List
+from pkg_resources import parse_version
 
 this_file = os.path.abspath(__file__)
 this_file = os.path.realpath(this_file)
 ilastik_package_dir = os.path.dirname(this_file)
 ilastik_repo_dir = os.path.dirname(ilastik_package_dir)
-submodule_dir = os.path.join(ilastik_repo_dir, 'submodules')
+submodule_dir = os.path.join(ilastik_repo_dir, "submodules")
 
 # Add all submodules to the PYTHONPATH
 expose_submodules.expose_submodules(submodule_dir)
@@ -43,58 +48,76 @@ expose_submodules.expose_submodules(submodule_dir)
 
 def _format_version(t):
     """converts a tuple to a string"""
-    return '.'.join(str(i) for i in t)
+    return ".".join(str(i) for i in t)
 
 
-__version_info__ = (1, 3, '2rc2')  # Don't forget to update the splash screen!
+__version_info__ = (1, 3, "3post2")
 __version__ = _format_version(__version_info__)
 
-core_developers = ["Janez Ales",
-                   "Thorsten Beier",
-                   "Stuart Berg",
-                   "Fynn Beuttenmueller",
-                   "Jaime Cervantes",
-                   "Markus Doering",
-                   "Fred Hamprecht",
-                   "Carsten Haubold",
-                   "Bernhard Kausler",
-                   "Ullrich Koethe",
-                   "Anna Kreshuk",
-                   "Thorben Kroeger",
-                   "Dominik Kutra",
-                   "Martin Schiegg",
-                   "Christoph Sommer",
-                   "Christoph Straehle",
-                   "Adrian Wolny"]
 
-developers = ["Niels Buwen",
-              "Christoph Decker",
-              "Kemal Eren",
-              "Burcin Erocal",
-              "Luca Fiaschi",
-              "Philipp Hanslovsky",
-              "Ben Heuer",
-              "Glendon Holst",
-              "Fabian Isensee",
-              "Kai Karius",
-              "Jens Kleesiek",
-              "Markus Nullmeier",
-              "Letitia Parcalabescu",
-              "Oliver Petra",
-              "Steffen Wolf",
-              "Buote Xu",
-              "Chong Zhang"]
+class Project:
+    ILASTIK_VERSION = "/ilastikVersion"
+    WORKFLOW_NAME = "/workflowName"
+    UPDATED_TIME = "/time"
+
+    BASE_KEYS = [ILASTIK_VERSION, WORKFLOW_NAME, UPDATED_TIME]
+
+    def __init__(self, project_file: h5py.File):
+        self.file = project_file
+
+    def close(self):
+        self.file.close()
+
+    def flush(self):
+        self.file.flush()
+
+    def populateFrom(self, importedFile: h5py.File, topGroupKeys: List[str]):
+        # We copy ilastikVersion as well as workflowName because that can influence the way in which the deserializers
+        # interpret the imported data
+        for key in topGroupKeys + self.BASE_KEYS:
+            if key in importedFile.keys():
+                self.clearValue(key)
+                importedFile.copy(key, self.file["/"])
+
+    def clearValue(self, key: str):
+        if key in self.file.keys():
+            del self.file[key]
+
+    def _updateValue(self, key: str, value):
+        if key in self.file:
+            del self.file[key]
+        self.file.create_dataset(key, data=value)
+
+    def _getString(self, key: str) -> Optional[str]:
+        if key not in self.file:
+            return None
+        return self.file[key][()].decode("utf-8")
+
+    @property
+    def ilastikVersion(self) -> Optional["Version"]:
+        version_string = self._getString(self.ILASTIK_VERSION)
+        return version_string if version_string is None else parse_version(version_string)
+
+    @property
+    def workflowName(self) -> Optional[str]:
+        return self._getString(self.WORKFLOW_NAME)
+
+    def updateWorkflowName(self, workflowName: str):
+        self._updateValue(self.WORKFLOW_NAME, workflowName.encode("utf-8"))
+
+    def updateVersion(self, value=__version__):
+        self._updateValue(self.ILASTIK_VERSION, str(value).encode("utf-8"))
 
 
 def convertVersion(vstring):
     if not isinstance(vstring, str):
-        raise Exception(f'tried to convert non-string version: {vstring}')
+        raise Exception(f"tried to convert non-string version: {vstring}")
 
     # We permit versions like '1.0.5b', in which case '5b'
     #  is simply converted to the integer 5 for compatibility purposes.
     int_tuple = ()
-    for i in vstring.split('.'):
-        m = re.search('(\d+)', i)
+    for i in vstring.split("."):
+        m = re.search("(\d+)", i)
         assert bool(m), "Don't understand version component: {}".format(i)
         next_int = int(m.groups()[0])
         int_tuple = int_tuple + (next_int,)
@@ -122,6 +145,7 @@ def isVersionCompatible(version):
     # Otherwise, we need an exact match (for now)
     return v1 == v2
 
+
 #######################
 # # Dependency checks ##
 #######################
@@ -137,9 +161,11 @@ def _do_check(fnd, rqd, msg):
 def _check_depends():
     import h5py
 
-    _do_check(h5py.version.version_tuple, (2, 1, 0),
-              "h5py version {0} too old; versions of h5py before {1} are not "
-              "threadsafe.")
+    _do_check(
+        h5py.version.version_tuple,
+        (2, 1, 0),
+        "h5py version {0} too old; versions of h5py before {1} are not " "threadsafe.",
+    )
 
 
 _check_depends()

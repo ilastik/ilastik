@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.workflow import Workflow
 
@@ -26,34 +26,39 @@ from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.labeling import LabelingApplet
 from ilastik.applets.labeling import LabelingSingleLaneApplet
 
+
 class LabelingWorkflow(Workflow):
-    def __init__( self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
+    def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
         # Create a graph to be shared by all operators
         graph = Graph()
-        super(LabelingWorkflow, self).__init__( shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs )
+        super(LabelingWorkflow, self).__init__(
+            shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs
+        )
         self._applets = []
 
         # Create applets
-        self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
+        self.dataSelectionApplet = DataSelectionApplet(
+            self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False
+        )
         self.labelingSingleLaneApplet = LabelingSingleLaneApplet(self, "Generic Labeling (single-lane)")
         self.labelingMultiLaneApplet = LabelingApplet(self, "Generic Labeling (multi-lane)")
 
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        opDataSelection.DatasetRoles.setValue( ["Raw Data"] )
+        opDataSelection.DatasetRoles.setValue(["Raw Data"])
 
-        self._applets.append( self.dataSelectionApplet )
-        self._applets.append( self.labelingSingleLaneApplet )
-        self._applets.append( self.labelingMultiLaneApplet )
+        self._applets.append(self.dataSelectionApplet)
+        self._applets.append(self.labelingSingleLaneApplet)
+        self._applets.append(self.labelingMultiLaneApplet)
 
     def connectLane(self, laneIndex):
         opDataSelection = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opSingleLaneLabeling = self.labelingSingleLaneApplet.topLevelOperator.getLane(laneIndex)
         opMultiLabeling = self.labelingMultiLaneApplet.topLevelOperator.getLane(laneIndex)
-        
-        # Connect top-level operators
-        opSingleLaneLabeling.InputImage.connect( opDataSelection.Image )
 
-        opMultiLabeling.InputImages.connect( opDataSelection.Image )
+        # Connect top-level operators
+        opSingleLaneLabeling.InputImage.connect(opDataSelection.Image)
+
+        opMultiLabeling.InputImages.connect(opDataSelection.Image)
 
     @property
     def applets(self):

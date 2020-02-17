@@ -16,39 +16,41 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, SerialPickleableSlot
 
-class StructuredTrackingSerializer(AppletSerializer):
 
+class StructuredTrackingSerializer(AppletSerializer):
     def __init__(self, topLevelOperator, projectFileGroupName):
         self.VERSION = 1  # Make sure to bump the version in case you make any changes in the serialization
         try:
-            slots = [ SerialDictSlot(topLevelOperator.Parameters, selfdepends=True),
-                      SerialDictSlot(topLevelOperator.FilteredLabels, transform=str, selfdepends=True),
-                      SerialPickleableSlot(topLevelOperator.ExportSettings, version=self.VERSION),
-                      SerialPickleableSlot(topLevelOperator.HypothesesGraph, version=self.VERSION),
-                      SerialPickleableSlot(topLevelOperator.LearningHypothesesGraph, version=self.VERSION),
-                      SerialPickleableSlot(topLevelOperator.ResolvedMergers, version=self.VERSION),
-                      SerialSlot(topLevelOperator.DivisionWeight),
-                      SerialSlot(topLevelOperator.DetectionWeight),
-                      SerialSlot(topLevelOperator.TransitionWeight),
-                      SerialSlot(topLevelOperator.AppearanceWeight),
-                      SerialSlot(topLevelOperator.DisappearanceWeight),
-                      SerialSlot(topLevelOperator.MaxNumObjOut)
+            slots = [
+                SerialDictSlot(topLevelOperator.Parameters, selfdepends=True),
+                SerialDictSlot(topLevelOperator.FilteredLabels, transform=str, selfdepends=True),
+                SerialPickleableSlot(topLevelOperator.ExportSettings, version=self.VERSION),
+                SerialPickleableSlot(topLevelOperator.HypothesesGraph, version=self.VERSION),
+                SerialPickleableSlot(topLevelOperator.LearningHypothesesGraph, version=self.VERSION),
+                SerialPickleableSlot(topLevelOperator.ResolvedMergers, version=self.VERSION),
+                SerialSlot(topLevelOperator.DivisionWeight),
+                SerialSlot(topLevelOperator.DetectionWeight),
+                SerialSlot(topLevelOperator.TransitionWeight),
+                SerialSlot(topLevelOperator.AppearanceWeight),
+                SerialSlot(topLevelOperator.DisappearanceWeight),
+                SerialSlot(topLevelOperator.MaxNumObjOut),
             ]
         except:
-            slots = [ SerialDictSlot(topLevelOperator.Parameters, selfdepends=True),
-                      SerialDictSlot(topLevelOperator.FilteredLabels, transform=str, selfdepends=True),
-                      SerialPickleableSlot(topLevelOperator.ExportSettings, version=self.VERSION),
-                      SerialPickleableSlot(topLevelOperator.ResolvedMergers, version=self.VERSION),
-                      SerialSlot(topLevelOperator.DivisionWeight),
-                      SerialSlot(topLevelOperator.DetectionWeight),
-                      SerialSlot(topLevelOperator.TransitionWeight),
-                      SerialSlot(topLevelOperator.AppearanceWeight),
-                      SerialSlot(topLevelOperator.DisappearanceWeight),
-                      SerialSlot(topLevelOperator.MaxNumObjOut)
+            slots = [
+                SerialDictSlot(topLevelOperator.Parameters, selfdepends=True),
+                SerialDictSlot(topLevelOperator.FilteredLabels, transform=str, selfdepends=True),
+                SerialPickleableSlot(topLevelOperator.ExportSettings, version=self.VERSION),
+                SerialPickleableSlot(topLevelOperator.ResolvedMergers, version=self.VERSION),
+                SerialSlot(topLevelOperator.DivisionWeight),
+                SerialSlot(topLevelOperator.DetectionWeight),
+                SerialSlot(topLevelOperator.TransitionWeight),
+                SerialSlot(topLevelOperator.AppearanceWeight),
+                SerialSlot(topLevelOperator.DisappearanceWeight),
+                SerialSlot(topLevelOperator.MaxNumObjOut),
             ]
 
-        super(StructuredTrackingSerializer, self ).__init__(projectFileGroupName, slots=slots, operator=topLevelOperator)
+        super(StructuredTrackingSerializer, self).__init__(projectFileGroupName, slots=slots, operator=topLevelOperator)

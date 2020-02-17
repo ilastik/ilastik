@@ -1,5 +1,6 @@
 from __future__ import print_function
 from __future__ import division
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,7 +19,7 @@ from __future__ import division
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
 from past.utils import old_div
@@ -31,23 +32,25 @@ from ilastik.applets.objectExtraction.opObjectExtraction import OpAdaptTimeListR
 from ilastik.plugins import pluginManager
 
 import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning) 
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 NAME = "Standard Object Features"
 
 FEATURES = {
-    NAME : {
-        "Count" : {},
-        "RegionCenter" : {},
-        "Coord<Principal<Kurtosis>>" : {},
-        "Coord<Minimum>" : {},
-        "Coord<Maximum>" : {},
+    NAME: {
+        "Count": {},
+        "RegionCenter": {},
+        "Coord<Principal<Kurtosis>>": {},
+        "Coord<Minimum>": {},
+        "Coord<Maximum>": {},
     }
 }
 
+
 def binaryImage():
     img = np.zeros((2, 50, 50, 50, 1), dtype=np.float32)
-    img[0,  0:10,  0:10,  0:10, 0] = 1
+    img[0, 0:10, 0:10, 0:10, 0] = 1
     img[0, 20:30, 20:30, 20:30, 0] = 1
     img[0, 40:45, 40:45, 40:45, 0] = 1
 
@@ -55,13 +58,14 @@ def binaryImage():
     img[1, 5:10, 5:10, 0, 0] = 1
     img[1, 12:15, 12:15, 0, 0] = 1
     img = img.view(vigra.VigraArray)
-    img.axistags = vigra.defaultAxistags('txyzc')
+    img.axistags = vigra.defaultAxistags("txyzc")
 
     return img
 
+
 def rawImage():
     img = np.zeros((2, 50, 50, 50, 1), dtype=np.float32)
-    img[0,  0:10,  0:10,  0:10, 0] = 200
+    img[0, 0:10, 0:10, 0:10, 0] = 200
     img[0, 20:30, 20:30, 20:30, 0] = 100
 
     # this object is further out than the margin and tests
@@ -74,12 +78,12 @@ def rawImage():
     img[1, 5:10, 5:10, 0, 0] = 25
     img[1, 12:15, 12:15, 0, 0] = 13
     img = img.view(vigra.VigraArray)
-    img.axistags = vigra.defaultAxistags('txyzc')
+    img.axistags = vigra.defaultAxistags("txyzc")
 
     return img
 
 
-class TestOpRegionFeatures(object):
+class TestOpRegionFeatures(unittest.TestCase):
     def setUp(self):
         g = Graph()
         self.labelop = OpLabelVolume(graph=g)
@@ -100,15 +104,16 @@ class TestOpRegionFeatures(object):
         opAdapt.Input.connect(self.op.Output)
 
         feats = opAdapt.Output([0, 1]).wait()
-        assert len(feats)== self.img.shape[0]
+        assert len(feats) == self.img.shape[0]
         for t in feats:
-            assert feats[t][NAME]['Count'].shape[0] > 0
-            assert feats[t][NAME]['RegionCenter'].shape[0] > 0
+            assert feats[t][NAME]["Count"].shape[0] > 0
+            assert feats[t][NAME]["RegionCenter"].shape[0] > 0
 
-        assert np.any(feats[0][NAME]['Count'] != feats[1][NAME]['Count'])
-        assert np.any(feats[0][NAME]['RegionCenter'] != feats[1][NAME]['RegionCenter'])
+        assert np.any(feats[0][NAME]["Count"] != feats[1][NAME]["Count"])
+        assert np.any(feats[0][NAME]["RegionCenter"] != feats[1][NAME]["RegionCenter"])
 
-class TestPlugins(object):
+
+class TestPlugins(unittest.TestCase):
     def setUp(self):
         g = Graph()
         self.op = OpObjectExtraction(graph=g)
@@ -119,11 +124,11 @@ class TestPlugins(object):
         rm = rm[:, :, :, 0:1, :]
         self.op.RawImage.setValue(rm)
         self.Features_standard = FEATURES
-        self.Features_convex_hull = {'2D Convex Hull Features': {'HullVolume': {}, 'DefectVolumeKurtosis': {}}}
-        self.Features_skeleton = {'2D Skeleton Features': {'Diameter': {}, 'Total Length': {}}}
-        #self.op.Features.setValue(FEATURES)
+        self.Features_convex_hull = {"2D Convex Hull Features": {"HullVolume": {}, "DefectVolumeKurtosis": {}}}
+        self.Features_skeleton = {"2D Skeleton Features": {"Diameter": {}, "Total Length": {}}}
+        # self.op.Features.setValue(FEATURES)
         bm = binaryImage()
-        bm = bm[:, :, :, 0:1, :] 
+        bm = bm[:, :, :, 0:1, :]
         self.op.BinaryImage.setValue(bm)
 
     def test_plugins(self):
@@ -134,19 +139,20 @@ class TestPlugins(object):
         self.op.Features.setValue(self.Features_skeleton)
         feats = self.op.RegionFeatures([0]).wait()
 
-class testOpRegionFeaturesAgainstNumpy(object):
+
+class TestOpRegionFeaturesAgainstNumpy(unittest.TestCase):
     def setUp(self):
         g = Graph()
         self.features = {
-            NAME : {
-                "Count" : {},
-                "RegionCenter" : {},
-                "Mean" : {},
-                "Coord<Minimum>" : {},
-                "Coord<Maximum>" : {},
-                "Mean in neighborhood" : {"margin" : (30, 30, 1)},
-                "Sum" : {},
-                "Sum in neighborhood" : {"margin" : (30, 30, 1)}
+            NAME: {
+                "Count": {},
+                "RegionCenter": {},
+                "Mean": {},
+                "Coord<Minimum>": {},
+                "Coord<Maximum>": {},
+                "Mean in neighborhood": {"margin": (30, 30, 1)},
+                "Sum": {},
+                "Sum in neighborhood": {"margin": (30, 30, 1)},
             }
         }
 
@@ -167,53 +173,41 @@ class testOpRegionFeaturesAgainstNumpy(object):
         opAdapt.Input.connect(self.op.Output)
 
         feats = opAdapt.Output([0, 1]).wait()
-        assert len(feats)==self.img.shape[0]
+        assert len(feats) == self.img.shape[0]
         for key in self.features[NAME]:
             assert key in list(feats[0][NAME].keys())
 
         labelimage = self.labelop.Output[:].wait()
         nt = labelimage.shape[0]
         for t in range(nt):
-            npcounts = np.bincount(np.asarray(labelimage[t,...].flat, dtype=int))
+            npcounts = np.bincount(np.asarray(labelimage[t, ...].flat, dtype=int))
             counts = feats[t][NAME]["Count"].astype(np.uint32)
             means = feats[t][NAME]["Mean"]
-            sum_excl = feats[t][NAME]["Sum in neighborhood"] #sum, not mean, to avoid 0/0
+            sum_excl = feats[t][NAME]["Sum in neighborhood"]  # sum, not mean, to avoid 0/0
             sum_incl = feats[t][NAME]["Sum in object and neighborhood"]
             sum = feats[t][NAME]["Sum"]
             mins = feats[t][NAME]["Coord<Minimum>"]
             maxs = feats[t][NAME]["Coord<Maximum>"]
             centers = feats[t][NAME]["RegionCenter"]
-            #print mins, maxs
+            # print mins, maxs
             nobj = npcounts.shape[0]
             for iobj in range(1, nobj):
                 assert npcounts[iobj] == counts[iobj]
-                objmask = labelimage[t,...]==iobj
-                npmean = np.mean(np.asarray(self.rawimage)[t,...][objmask])
+                objmask = labelimage[t, ...] == iobj
+                npmean = np.mean(np.asarray(self.rawimage)[t, ...][objmask])
                 assert npmean == means[iobj]
-                #currently, we have a margin of 30, this assert is very dependent on it
-                #FIXME: make margin visible from outside and use it here
-                zmin = int(max(mins[iobj][2]-1, 0))
-                zmax = int(min(maxs[iobj][2]+1, self.rawimage.shape[3]))
+                # currently, we have a margin of 30, this assert is very dependent on it
+                # FIXME: make margin visible from outside and use it here
+                zmin = int(max(mins[iobj][2] - 1, 0))
+                zmax = int(min(maxs[iobj][2] + 1, self.rawimage.shape[3]))
 
-                exclmask = labelimage[t,:, :, zmin:zmax, :]!=iobj
-                npsum_excl = np.sum(np.asarray(self.rawimage)[t,:, :, zmin:zmax,:][exclmask])
+                exclmask = labelimage[t, :, :, zmin:zmax, :] != iobj
+                npsum_excl = np.sum(np.asarray(self.rawimage)[t, :, :, zmin:zmax, :][exclmask])
                 assert npsum_excl == sum_excl[iobj]
 
-                assert sum_incl[iobj] == sum[iobj]+sum_excl[iobj]
-                #check that regionCenter wasn't shifted
-                for icoord, coord in enumerate(centers[iobj]):
-                    center_good = mins[iobj][icoord] + old_div((maxs[iobj][icoord]-mins[iobj][icoord]),2.)
-                    assert abs(coord-center_good)<0.01
-
-
-if __name__ == '__main__':
-    import sys
-    import nose
-
-    # Don't steal stdout. Show it on the console as usual.
-    sys.argv.append("--nocapture")
-
-    # Don't set the logging level to DEBUG. Leave it alone.
-    sys.argv.append("--nologcapture")
-
-    nose.main(defaultTest=__file__)
+                assert sum_incl[iobj] == sum[iobj] + sum_excl[iobj]
+                # compare bounding box center to computed object center
+                # note that for object centers vigra does statistics on coordinates
+                # that means bounding box centers can differ with a maximum of 0.5
+                bbox_center = mins[iobj] + ((maxs[iobj] - mins[iobj]) / 2.0)
+                np.testing.assert_allclose(centers[iobj], bbox_center, atol=0.5)

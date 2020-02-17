@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,7 +18,7 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
@@ -31,12 +32,12 @@ class FillMissingSlicesApplet(StandardApplet):
     """
     TODO: write some documentation
     """
+
     def __init__(self, workflow, guiName, projFileGroupName, detectionMethod):
         super(FillMissingSlicesApplet, self).__init__(guiName, workflow)
         self._operator = self.topLevelOperator
         self._operator.DetectionMethod.setValue(detectionMethod)
-        self._serializableItems = \
-            [FillMissingSlicesSerializer("FillMissingSlices", self._operator)]
+        self._serializableItems = [FillMissingSlicesSerializer("FillMissingSlices", self._operator)]
         return
 
     @property
@@ -50,6 +51,7 @@ class FillMissingSlicesApplet(StandardApplet):
     @property
     def singleLaneGuiClass(self):
         from .fillMissingSlicesGui import FillMissingSlicesGui
+
         return FillMissingSlicesGui
 
     @property

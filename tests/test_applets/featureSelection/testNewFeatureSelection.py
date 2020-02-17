@@ -2,6 +2,7 @@ import logging
 import numpy
 import time
 import vigra
+import pytest
 
 from lazyflow.graph import Graph, OperatorWrapper
 
@@ -16,9 +17,8 @@ if DEBUG:
 logger = logging.getLogger(__name__)
 
 
-class TestCompareOpFeatureSelectionToOld():
-    @classmethod
-    def setupClass(cls):
+class TestCompareOpFeatureSelectionToOld:
+    def setup_method(self, method):
         # data = vigra.taggedView(numpy.random.random((2, 20, 25, 30, 3)), 'tzyxc')
 
         graph = Graph()
@@ -37,21 +37,23 @@ class TestCompareOpFeatureSelectionToOld():
         opFeaturesOld.Scales.setValue(scales)
 
         # Configure feature types
-        featureIds = ['GaussianSmoothing',
-                      'LaplacianOfGaussian',
-                      'StructureTensorEigenvalues',
-                      'HessianOfGaussianEigenvalues',
-                      'GaussianGradientMagnitude',
-                      'DifferenceOfGaussians']
+        featureIds = [
+            "GaussianSmoothing",
+            "LaplacianOfGaussian",
+            "StructureTensorEigenvalues",
+            "HessianOfGaussianEigenvalues",
+            "GaussianGradientMagnitude",
+            "DifferenceOfGaussians",
+        ]
         opFeatures.FeatureIds.setValue(featureIds)
         opFeaturesOld.FeatureIds.setValue(featureIds)
 
-        cls.opFeatures = opFeatures
-        cls.opFeaturesOld = opFeaturesOld
+        self.opFeatures = opFeatures
+        self.opFeaturesOld = opFeaturesOld
 
     def compare(self, result, resultOld):
         assert result.shape == resultOld.shape
-        assert numpy.allclose(result, resultOld, rtol=1.e-2, atol=1.e-4)
+        assert numpy.allclose(result, resultOld, rtol=1.0e-2, atol=1.0e-4)
 
     def test_tiny(self):
         # Configure matrix
@@ -66,7 +68,7 @@ class TestCompareOpFeatureSelectionToOld():
         self.opFeatures.SelectionMatrix.setValue(tiny_sel)
         self.opFeaturesOld.SelectionMatrix.setValue(tiny_sel)
 
-        data = vigra.taggedView(numpy.resize(numpy.arange(64 * 7 * 3, dtype=numpy.float32), (1, 1, 6, 7, 3)), 'tzyxc')
+        data = vigra.taggedView(numpy.resize(numpy.arange(64 * 7 * 3, dtype=numpy.float32), (1, 1, 6, 7, 3)), "tzyxc")
 
         # Set input data
         self.opFeatures.InputImage[0].setValue(data)
@@ -79,12 +81,12 @@ class TestCompareOpFeatureSelectionToOld():
         assert output.meta.shape == outputOld.meta.shape, (output.meta.shape, outputOld.meta.shape)
         assert output.meta.axistags == outputOld.meta.axistags
         for key in output.meta.keys():
-            if key in ['description', 'channel_names']:
+            if key in ["description", "channel_names"]:
                 continue
             if DEBUG and output.meta[key] != outputOld.meta[key]:
-                print(f'{key}: {output.meta[key]}, {outputOld.meta[key]}\n')
+                print(f"{key}: {output.meta[key]}, {outputOld.meta[key]}\n")
             if output.meta[key] != outputOld.meta[key]:
-                print(f'{key}: {output.meta[key]}, {outputOld.meta[key]}\n')
+                print(f"{key}: {output.meta[key]}, {outputOld.meta[key]}\n")
             assert output.meta[key] == outputOld.meta[key], key
 
         for roi in [
@@ -126,8 +128,8 @@ class TestCompareOpFeatureSelectionToOld():
         self.opFeaturesOld.SelectionMatrix.setValue(sel)
 
         data = vigra.taggedView(
-            numpy.resize(numpy.random.rand(2 * 18 * 19 * 20 * 3), (2, 18, 19, 20, 3)).astype(numpy.float32),
-            'tzyxc')
+            numpy.resize(numpy.random.rand(2 * 18 * 19 * 20 * 3), (2, 18, 19, 20, 3)).astype(numpy.float32), "tzyxc"
+        )
 
         # Set input data
         self.opFeatures.InputImage[0].setValue(data)
@@ -140,10 +142,10 @@ class TestCompareOpFeatureSelectionToOld():
         assert output.meta.shape == outputOld.meta.shape, (output.meta.shape, outputOld.meta.shape)
         assert output.meta.axistags == outputOld.meta.axistags
         for key in output.meta.keys():
-            if key in ['description', 'channel_names']:
+            if key in ["description", "channel_names"]:
                 continue
             if DEBUG and output.meta[key] != outputOld.meta[key]:
-                print(f'{key}: {output.meta[key]}, {outputOld.meta[key]}\n')
+                print(f"{key}: {output.meta[key]}, {outputOld.meta[key]}\n")
             assert output.meta[key] == outputOld.meta[key], key
 
         for roi in [
@@ -172,8 +174,8 @@ class TestCompareOpFeatureSelectionToOld():
                 result = result[0, 0, ..., :3]
                 resultOld = resultOld[0, 0, ..., :3]
 
-                print('result', result.shape, result.max(), result.min(), result.mean())
-                print('resultOld', resultOld.shape, resultOld.max(), resultOld.min(), resultOld.mean())
+                print("result", result.shape, result.max(), result.min(), result.mean())
+                print("resultOld", resultOld.shape, resultOld.max(), resultOld.min(), resultOld.mean())
 
                 result = result.squeeze()
                 resultOld = resultOld.squeeze()
@@ -181,13 +183,13 @@ class TestCompareOpFeatureSelectionToOld():
                     resultVigra = vigra_fn(data[roi][0, 0, ..., :3].squeeze(), *scales)
                 except Exception:
                     pass
-                compare = ['result', 'resultOld', 'resultVigra']
-                print('            result       resultOld   resultVigra')
+                compare = ["result", "resultOld", "resultVigra"]
+                print("            result       resultOld   resultVigra")
                 for i in compare:
-                    line = f'{i:12s}'
+                    line = f"{i:12s}"
                     for j in compare:
                         try:
-                            line += f'{numpy.absolute(eval(i) - eval(j)).mean():1.8f}   '
+                            line += f"{numpy.absolute(eval(i) - eval(j)).mean():1.8f}   "
                         except Exception:
                             pass
                     print(line)
@@ -201,21 +203,21 @@ class TestCompareOpFeatureSelectionToOld():
                     displayVigra /= displayVigra.max()
                 except Exception:
                     pass
-                print('here', display.shape)
+                print("here", display.shape)
                 plt.figure(figsize=(10, 10))
                 plt.subplot(2, 2, 1)
                 plt.imshow(display)
-                plt.title('new')
+                plt.title("new")
                 plt.subplot(2, 2, 2)
                 plt.imshow(displayOld)
-                plt.title('old')
+                plt.title("old")
                 plt.subplot(2, 2, 3)
                 diff = abs(display - displayOld)
                 diff /= diff.max()
                 plt.imshow(diff)
-                plt.title('diff')
+                plt.title("diff")
                 plt.subplot(2, 2, 4)
-                plt.title('vigra')
+                plt.title("vigra")
                 try:
                     plt.imshow(displayVigra)
                 except Exception:
@@ -244,8 +246,8 @@ class TestCompareOpFeatureSelectionToOld():
         self.opFeaturesOld.SelectionMatrix.setValue(sel)
 
         data = vigra.taggedView(
-            numpy.resize(numpy.random.rand(1 * 1 * 19 * 20 * 3), (1, 1, 19, 20, 3)).astype(numpy.float32),
-            'tzyxc')
+            numpy.resize(numpy.random.rand(1 * 1 * 19 * 20 * 3), (1, 1, 19, 20, 3)).astype(numpy.float32), "tzyxc"
+        )
 
         # Set input data
         self.opFeatures.InputImage[0].setValue(data)
@@ -255,10 +257,10 @@ class TestCompareOpFeatureSelectionToOld():
             assert output.meta.shape == outputOld.meta.shape, (output.meta.shape, outputOld.meta.shape)
             assert output.meta.axistags == outputOld.meta.axistags
             for key in output.meta.keys():
-                if key in ['description', 'channel_names']:
+                if key in ["description", "channel_names"]:
                     continue
                 if DEBUG and output.meta[key] != outputOld.meta[key]:
-                    print(f'{key}: {output.meta[key]}, {outputOld.meta[key]}\n')
+                    print(f"{key}: {output.meta[key]}, {outputOld.meta[key]}\n")
                 assert output.meta[key] == outputOld.meta[key], key
             result = output[:].wait()
             resultOld = outputOld[:].wait()
@@ -268,8 +270,8 @@ class TestCompareOpFeatureSelectionToOld():
                 result = result[0, 0, ..., :3]
                 resultOld = resultOld[0, 0, ..., :3]
 
-                print('result', result.shape, result.max(), result.min(), result.mean())
-                print('resultOld', resultOld.shape, resultOld.max(), resultOld.min(), resultOld.mean())
+                print("result", result.shape, result.max(), result.min(), result.mean())
+                print("resultOld", resultOld.shape, resultOld.max(), resultOld.min(), resultOld.mean())
 
                 result = result.squeeze()
                 resultOld = resultOld.squeeze()
@@ -277,13 +279,13 @@ class TestCompareOpFeatureSelectionToOld():
                     resultVigra = vigra_fn(data[0, 0, ..., :3].squeeze(), *scales)
                 except Exception:
                     pass
-                compare = ['result', 'resultOld', 'resultVigra']
-                print('            result       resultOld   resultVigra')
+                compare = ["result", "resultOld", "resultVigra"]
+                print("            result       resultOld   resultVigra")
                 for i in compare:
-                    line = f'{i:12s}'
+                    line = f"{i:12s}"
                     for j in compare:
                         try:
-                            line += f'{numpy.absolute(eval(i) - eval(j)).mean():1.8f}   '
+                            line += f"{numpy.absolute(eval(i) - eval(j)).mean():1.8f}   "
                         except Exception:
                             pass
                     print(line)
@@ -297,21 +299,21 @@ class TestCompareOpFeatureSelectionToOld():
                     displayVigra /= displayVigra.max()
                 except Exception:
                     pass
-                print('here', display.shape)
+                print("here", display.shape)
                 plt.figure(figsize=(10, 10))
                 plt.subplot(2, 2, 1)
                 plt.imshow(display)
-                plt.title('new')
+                plt.title("new")
                 plt.subplot(2, 2, 2)
                 plt.imshow(displayOld)
-                plt.title('old')
+                plt.title("old")
                 plt.subplot(2, 2, 3)
                 diff = abs(display - displayOld)
                 diff /= diff.max()
                 plt.imshow(diff)
-                plt.title('diff')
+                plt.title("diff")
                 plt.subplot(2, 2, 4)
-                plt.title('vigra')
+                plt.title("vigra")
                 try:
                     plt.imshow(displayVigra)
                 except Exception:
@@ -323,8 +325,8 @@ class TestCompareOpFeatureSelectionToOld():
     def test_ComputeIn2d(self):
         # tests ComputIn2d flag on smoothing of a 3d block (smoothing across all three, or only 2 dimensions)
         opFeatures = OpFeatureSelection(graph=Graph())
-        opFeatures.Scales.setValue([1.])
-        opFeatures.FeatureIds.setValue(['GaussianSmoothing'])
+        opFeatures.Scales.setValue([1.0])
+        opFeatures.FeatureIds.setValue(["GaussianSmoothing"])
         opFeatures.SelectionMatrix.setValue(numpy.ones((1, 1), dtype=bool))
         opFeatures.ComputeIn2d.setValue([False])
         shape = [5, 5, 5]
@@ -333,7 +335,7 @@ class TestCompareOpFeatureSelectionToOld():
             # make sure data is anisotropic in z
             data[z, z, 0] = 0
 
-        data = vigra.taggedView(data[None, ...], 'czyx')
+        data = vigra.taggedView(data[None, ...], "czyx")
         opFeatures.InputImage.setValue(data)
 
         res3d = opFeatures.OutputImage[:].wait()
@@ -341,7 +343,22 @@ class TestCompareOpFeatureSelectionToOld():
         res2d = opFeatures.OutputImage[:].wait()
         assert (res3d != res2d).all()
 
-    def test_timing(self):
+    @pytest.mark.parametrize(
+        "shape,order,in2d",
+        [
+            # ([1, 1, 20, 512, 512], 'tczyx', False),
+            # ([1, 1, 20, 512, 512], 'tcxyz', False),
+            ([1, 1, 1, 2048, 2048], "tczyx", True),
+            # ([1, 1, 1, 512, 512], 'tczxy', True), # old is faster
+            # ([10, 3, 1, 1024, 1024], 'tczyx', True),
+            # ([1, 1, 25, 67, 68], 'tczyx', False),
+            # ([5, 25, 67, 68, 3], 'tzyxc', False),
+            ([5, 5, 256, 256], "tcyx", True),
+            ([5, 256, 256, 1], "tyxc", True),
+            ([25, 26, 1], "xyc", True),
+        ],
+    )
+    def test_timing(self, shape, order, in2d):
         self.opFeatures.InputImage[0].disconnect()
         # Configure selection matrix
         sel = numpy.ones((6, 5), dtype=bool)
@@ -349,46 +366,28 @@ class TestCompareOpFeatureSelectionToOld():
         self.opFeatures.SelectionMatrix.setValue(sel)
         self.opFeaturesOld.SelectionMatrix.setValue(sel)
 
-        shapes_orders = [
-            # ([1, 1, 20, 512, 512], 'tczyx', False),
-            # ([1, 1, 20, 512, 512], 'tcxyz', False),
-            ([1, 1, 1, 2048, 2048], 'tczyx', True),
-            # ([1, 1, 1, 512, 512], 'tczxy', True), # old is faster
-            # ([10, 3, 1, 1024, 1024], 'tczyx', True),
-            # ([1, 1, 25, 67, 68], 'tczyx', False),
-            # ([5, 25, 67, 68, 3], 'tzyxc', False),
-            ([5, 5, 256, 256], 'tcyx', True),
-            ([5, 256, 256, 1], 'tyxc', True),
-            ([25, 26, 1], 'xyc', True),
-        ]
+        data = vigra.taggedView(numpy.resize(numpy.random.rand(numpy.prod(shape)), shape).astype(numpy.float32), order)
+        self._timing(data, in2d)
 
-        for shape, order, in2d in shapes_orders:
-            data = vigra.taggedView(
-                numpy.resize(numpy.random.rand(numpy.prod(shape)), shape).astype(numpy.float32), order)
-            yield self._test_timing, data, in2d
+    def _timing(self, data, in2d):
+        timingsNew = []
+        timingsOld = []
 
-    def _test_timing(self, data, in2d):
-        self.opFeatures.ComputeIn2d.setValue([in2d] * 6)
-        self.opFeatures.InputImage[0].setValue(data)
-        self.opFeaturesOld.InputImage[0].setValue(data)
-        timeNew = 0
-        timeOld = 0
-        t0 = time.time()
-        self.opFeatures.OutputImage[0][:].wait()
-        t1 = time.time()
-        self.opFeaturesOld.OutputImage[0][:].wait()
-        t2 = time.time()
-        timeNew += t1 - t0
-        timeOld += t2 - t1
+        for _ in range(5):
+            self.opFeatures.ComputeIn2d.setValue([in2d] * 6)
+            self.opFeatures.InputImage[0].setValue(data)
+            self.opFeaturesOld.InputImage[0].setValue(data)
+            t0 = time.perf_counter()
+            self.opFeatures.OutputImage[0][:].wait()
+            t1 = time.perf_counter()
+            self.opFeaturesOld.OutputImage[0][:].wait()
+            t2 = time.perf_counter()
+            timingsNew.append(t1 - t0)
+            timingsOld.append(t2 - t1)
+
+        timeNew = numpy.mean(timingsNew)
+        timeOld = numpy.mean(timingsOld)
 
         # The new code should (within a tolerance) run faster!
-        assert timeNew <= 1.1 * timeOld + .05, f'{timeNew:.2f} !<= {timeOld:.2f}'
-        logger.debug(f'{timeNew:.2f} <= {timeOld:.2f}')
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-    sys.argv.append('--nocapture')     # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append('--nologcapture')  # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.main(defaultTest=__file__)
+        assert timeNew <= 1.1 * timeOld + 0.05, f"{timeNew:.2f} !<= {timeOld:.2f}"
+        logger.debug(f"{timeNew:.2f} <= {timeOld:.2f}")

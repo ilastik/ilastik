@@ -59,6 +59,13 @@
       </widget>
      </item>
      <item>
+      <widget class="QToolButton" name="thresToolButton">
+       <property name="text">
+        <string>...</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QLabel" name="brushSizeCaption">
        <property name="text">
         <string>brush size:</string>

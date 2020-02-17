@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -25,20 +25,22 @@ from ilastik.utility import OpMultiLaneWrapper
 import numpy
 from lazyflow.operators import OpCompressedUserLabelArray
 
+
 class OpCropSelection(Operator):
     """
     Given an input image and visible crop lines,
     allows selection of a crop.
     """
+
     name = "OpCropSelection"
     category = "Pointwise"
-    
+
     InputImage = InputSlot()
     PredictionImage = InputSlot()
 
-    CropInputs = InputSlot(optional = True)
-    CropsAllowedFlags = InputSlot(optional = True)
-    NonzeroCropBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
+    CropInputs = InputSlot(optional=True)
+    CropsAllowedFlags = InputSlot(optional=True)
+    NonzeroCropBlocks = OutputSlot(level=1)  # A list if slices that contain non-zero label values
 
     MinValueT = InputSlot(value=0)
     MaxValueT = InputSlot(value=0)
@@ -52,7 +54,6 @@ class OpCropSelection(Operator):
     CropImage = OutputSlot()
     CropPrediction = OutputSlot()
 
-
     CropOutput = OutputSlot()
     # GUI-only (not part of the pipeline, but saved to the project)
     CropNames = OutputSlot()
@@ -63,20 +64,17 @@ class OpCropSelection(Operator):
     Crops = OutputSlot()
     TestCrops = OutputSlot()
 
-
-
-
-    def __init__( self, parent=None, graph=None ):
+    def __init__(self, parent=None, graph=None):
         super(OpCropSelection, self).__init__(parent=parent, graph=graph)
         # Hook up Cropping Pipeline
-        self.opCropPipeline = OpMultiLaneWrapper( OpCropPipeline, parent=self, broadcastingSlotNames=['DeleteCrop'] )
+        self.opCropPipeline = OpMultiLaneWrapper(OpCropPipeline, parent=self, broadcastingSlotNames=["DeleteCrop"])
         self.opCropPipeline = OpCropPipeline(parent=self)
-        self.CropNames.setValue( [] )
-        self.CropColors.setValue( [] )
-        self.PmapColors.setValue( [] )
-        self.NonzeroCropBlocks.connect( self.opCropPipeline.nonzeroBlocks )
+        self.CropNames.setValue([])
+        self.CropColors.setValue([])
+        self.PmapColors.setValue([])
+        self.NonzeroCropBlocks.connect(self.opCropPipeline.nonzeroBlocks)
 
-        self.Crops.setValue( dict())
+        self.Crops.setValue(dict())
 
         def _updateNumClasses(*args):
             """
@@ -85,28 +83,30 @@ class OpCropSelection(Operator):
             we use this function to call setValue().
             """
             numClasses = len(self.CropNames.value)
-            self.NumClasses.setValue( numClasses )
-        self.CropNames.notifyDirty( _updateNumClasses )
+            self.NumClasses.setValue(numClasses)
 
-        def inputResizeHandler( slot, oldsize, newsize ):
-            if ( newsize == 0 ):
+        self.CropNames.notifyDirty(_updateNumClasses)
+
+        def inputResizeHandler(slot, oldsize, newsize):
+            if newsize == 0:
                 self.LabelImages.resize(0)
                 self.NonzeroLabelBlocks.resize(0)
                 self.PredictionProbabilities.resize(0)
                 self.CachedPredictionProbabilities.resize(0)
-        self.InputImage.notifyResized( inputResizeHandler )
+
+        self.InputImage.notifyResized(inputResizeHandler)
 
     def setupOutputs(self):
-        self.CropImage.meta.assignFrom( self.InputImage.meta )
-        self.CropPrediction.meta.assignFrom( self.PredictionImage.meta )
-        self._MinValueT=self.MinValueT.value
-        self._MaxValueT=self.MaxValueT.value
-        self._MinValueX=self.MinValueX.value
-        self._MaxValueX=self.MaxValueX.value
-        self._MinValueY=self.MinValueY.value
-        self._MaxValueY=self.MaxValueY.value
-        self._MinValueZ=self.MinValueZ.value
-        self._MaxValueZ=self.MaxValueZ.value
+        self.CropImage.meta.assignFrom(self.InputImage.meta)
+        self.CropPrediction.meta.assignFrom(self.PredictionImage.meta)
+        self._MinValueT = self.MinValueT.value
+        self._MaxValueT = self.MaxValueT.value
+        self._MinValueX = self.MinValueX.value
+        self._MaxValueX = self.MaxValueX.value
+        self._MinValueY = self.MinValueY.value
+        self._MaxValueY = self.MaxValueY.value
+        self._MinValueZ = self.MinValueZ.value
+        self._MaxValueZ = self.MaxValueZ.value
 
         self.CropNames.meta.dtype = object
         self.CropNames.meta.shape = (1,)
@@ -123,21 +123,21 @@ class OpCropSelection(Operator):
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
 
-        if slot.name == 'CropImage':
+        if slot.name == "CropImage":
             raw = self.InputImage[key].wait()
             mask = numpy.ones_like(raw)
             result[...] = mask * raw
-        if slot.name == 'CropPrediction':
+        if slot.name == "CropPrediction":
             raw = self.PredictionImage[key].wait()
             mask = numpy.ones_like(raw)
             result[...] = numpy.logical_not(mask) * raw
 
-        if slot.name == 'CropInputs':
+        if slot.name == "CropInputs":
             raw = self.InputImage[key].wait()
             mask = numpy.ones_like(raw)
             result[...] = mask * raw
 
-        if slot.name == 'Crops':
+        if slot.name == "Crops":
             crops = self.Crops[key].wait()
             result[...] = crops
 
@@ -145,18 +145,19 @@ class OpCropSelection(Operator):
         if slot.name == "InputImage":
             self.CropImage.setDirty(roi)
         elif slot.name == "PredictionImage":
-            self.CropPrediction.setDirty( roi )
+            self.CropPrediction.setDirty(roi)
         elif slot.name == "CropNames":
-            self.CropNames.setDirty( roi )
+            self.CropNames.setDirty(roi)
         elif slot.name == "Crops":
-            self.Crops.setDirty( roi )
+            self.Crops.setDirty(roi)
         else:
-            self.CropImage.setDirty( slice(None) )
-            self.CropPrediction.setDirty( slice(None) )
-            self.CropNames.setDirty( slice(None) )
-            self.Crops.setDirty( slice(None) )
+            self.CropImage.setDirty(slice(None))
+            self.CropPrediction.setDirty(slice(None))
+            self.CropNames.setDirty(slice(None))
+            self.Crops.setDirty(slice(None))
 
-class OpCropPipeline( Operator ):
+
+class OpCropPipeline(Operator):
     RawImage = InputSlot()
     CropInput = InputSlot()
     DeleteCrop = InputSlot()
@@ -165,25 +166,25 @@ class OpCropPipeline( Operator ):
     nonzeroBlocks = OutputSlot()
 
     def __init__(self, *args, **kwargs):
-        super( OpCropPipeline, self ).__init__( *args, **kwargs )
+        super(OpCropPipeline, self).__init__(*args, **kwargs)
 
-        self.opCropArray = OpCompressedUserLabelArray( parent=self )
-        self.opCropArray.Input.connect( self.CropInput )
+        self.opCropArray = OpCompressedUserLabelArray(parent=self)
+        self.opCropArray.Input.connect(self.CropInput)
         self.opCropArray.eraser.setValue(100)
 
-        self.opCropArray.deleteLabel.connect( self.DeleteCrop )
+        self.opCropArray.deleteLabel.connect(self.DeleteCrop)
 
         # Connect external outputs to their internal sources
-        self.Output.connect( self.opCropArray.Output )
-        self.nonzeroBlocks.connect( self.opCropArray.nonzeroBlocks )
+        self.Output.connect(self.opCropArray.Output)
+        self.nonzeroBlocks.connect(self.opCropArray.nonzeroBlocks)
 
     def setupOutputs(self):
         tagged_shape = self.RawImage.meta.getTaggedShape()
-        tagged_shape['c'] = 1
+        tagged_shape["c"] = 1
 
         # Aim for blocks that are roughly 1MB
-        block_shape = determineBlockShape( list(tagged_shape.values()), 1e6 )
-        self.opCropArray.blockShape.setValue( block_shape )
+        block_shape = determineBlockShape(list(tagged_shape.values()), 1e6)
+        self.opCropArray.blockShape.setValue(block_shape)
 
     def setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__
@@ -196,4 +197,3 @@ class OpCropPipeline( Operator ):
     def propagateDirty(self, slot, subindex, roi):
         # Our output changes when the input changed shape, not when it becomes dirty.
         pass
-

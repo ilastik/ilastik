@@ -7,19 +7,25 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import SubRegion, List
 from lazyflow.roi import roiToSlice
-from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures,\
-    default_features_key, OpAdaptTimeListRoi
+from ilastik.applets.objectExtraction.opObjectExtraction import (
+    OpRegionFeatures,
+    default_features_key,
+    OpAdaptTimeListRoi,
+)
 from ilastik.applets.trackingFeatureExtraction import config
 
 import logging
 from ilastik.applets.base.applet import DatasetConstraintError
+
 logger = logging.getLogger(__name__)
+
 
 class OpDifference(Operator):
     """
     Returns the value of ImageB in those places where both images differ,
     zero everywhere else.
     """
+
     name = "Difference"
 
     ImageA = InputSlot()
@@ -42,8 +48,9 @@ class OpDifference(Operator):
             shapeB = self.ImageB.meta.getTaggedShape()
 
             if shapeA != shapeB:
-                raise DatasetConstraintError("Label Image Difference",
-                                             "Cannot compute difference of images with different shapes")
+                raise DatasetConstraintError(
+                    "Label Image Difference", "Cannot compute difference of images with different shapes"
+                )
 
     def execute(self, slot, subindex, roi, result):
         if slot == self.Output:
@@ -60,12 +67,14 @@ class OpDifference(Operator):
     def setInSlot(self, slot, subindex, roi, value):
         assert False, "OpDifference does not allow setInSlot()"
 
+
 class OpZeroBasedConsecutiveIndexRelabeling(Operator):
     """
     To be able to compute vigra region features on a label image,
     it must contain zero based consecutive indexes. This operator
     provides a relabeled ROI of the image and the respective mapping as output.
     """
+
     name = "Zero Based Consecutive Index Relabeling"
 
     LabelImage = InputSlot()
@@ -92,7 +101,7 @@ class OpZeroBasedConsecutiveIndexRelabeling(Operator):
     def execute(self, slot, subindex, roi, result):
         if slot == self.Output:
             taggedShape = self.LabelImage.meta.getTaggedShape()
-            timeIndex = list(taggedShape.keys()).index('t')
+            timeIndex = list(taggedShape.keys()).index("t")
             t = roi.start[timeIndex]
             labelImage = self._updateMapping(roi, t)
             result = np.zeros_like(result)
@@ -115,7 +124,7 @@ class OpZeroBasedConsecutiveIndexRelabeling(Operator):
 
     def cleanUp(self):
         self.LabelImage.disconnect()
-        super( OpZeroBasedConsecutiveIndexRelabeling, self ).cleanUp()
+        super(OpZeroBasedConsecutiveIndexRelabeling, self).cleanUp()
 
 
 class OpRelabeledMergerFeatureExtraction(Operator):
@@ -126,6 +135,7 @@ class OpRelabeledMergerFeatureExtraction(Operator):
     ATTENTION: the new features are not cached, as they are intended only for export
     ATTENTION: No division features are recomputed, but divisions are not allowed to interact with mergers anyway
     """
+
     name = "Relabeled Merger Feature Extraction"
 
     RawImage = InputSlot()
@@ -169,10 +179,10 @@ class OpRelabeledMergerFeatureExtraction(Operator):
     @staticmethod
     def _merge_features(featuresA, featuresB, mapping):
         assert featuresA.shape[1] == featuresB.shape[1], "Feature dimensions must match!"
-        max_label = max(max(mapping.keys())+1, len(featuresA))
+        max_label = max(max(mapping.keys()) + 1, len(featuresA))
 
         features = np.zeros((max_label, featuresA.shape[1]), dtype=featuresA.dtype)
-        features[:len(featuresA), ...] = featuresA
+        features[: len(featuresA), ...] = featuresA
 
         for k, v in mapping.items():
             if k == 0:
@@ -188,6 +198,7 @@ class OpRelabeledMergerFeatureExtraction(Operator):
             mapping = self._opZeroBasedMergerImage.Mapping(roi).wait()
 
             import copy
+
             result = copy.deepcopy(orig_feat_all)
 
             # merge the features in each frame
@@ -204,8 +215,13 @@ class OpRelabeledMergerFeatureExtraction(Operator):
             assert False, "Shouldn't get here."
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot == self.LabelImage or slot == self.RelabeledImage \
-            or slot == self.RawImage or slot == self.FeatureNames or slot == self.OriginalRegionFeatures:
+        if (
+            slot == self.LabelImage
+            or slot == self.RelabeledImage
+            or slot == self.RawImage
+            or slot == self.FeatureNames
+            or slot == self.OriginalRegionFeatures
+        ):
             self.RegionFeatures.setDirty(roi)
             self.RegionFeaturesVigra.setDirty(roi)
 
@@ -215,34 +231,44 @@ class OpRelabeledMergerFeatureExtraction(Operator):
     def _checkConstraints(self, *args):
         if self.RawImage.ready():
             rawTaggedShape = self.RawImage.meta.getTaggedShape()
-            if 't' not in rawTaggedShape or rawTaggedShape['t'] < 2:
-                msg = "Raw image must have a time dimension with at least 2 images.\n"\
+            if "t" not in rawTaggedShape or rawTaggedShape["t"] < 2:
+                msg = (
+                    "Raw image must have a time dimension with at least 2 images.\n"
                     "Your dataset has shape: {}".format(self.RawImage.meta.shape)
+                )
 
         if self.LabelImage.ready():
             rawTaggedShape = self.LabelImage.meta.getTaggedShape()
-            if 't' not in rawTaggedShape or rawTaggedShape['t'] < 2:
-                msg = "Binary image must have a time dimension with at least 2 images.\n"\
+            if "t" not in rawTaggedShape or rawTaggedShape["t"] < 2:
+                msg = (
+                    "Binary image must have a time dimension with at least 2 images.\n"
                     "Your dataset has shape: {}".format(self.LabelImage.meta.shape)
+                )
 
         if self.RelabeledImage.ready():
             rawTaggedShape = self.RelabeledImage.meta.getTaggedShape()
-            if 't' not in rawTaggedShape or rawTaggedShape['t'] < 2:
-                msg = "Relabeled image must have a time dimension with at least 2 images.\n"\
+            if "t" not in rawTaggedShape or rawTaggedShape["t"] < 2:
+                msg = (
+                    "Relabeled image must have a time dimension with at least 2 images.\n"
                     "Your dataset has shape: {}".format(self.RelabeledImage.meta.shape)
+                )
 
         if self.RawImage.ready() and self.LabelImage.ready():
             rawTaggedShape = self.RawImage.meta.getTaggedShape()
-            labelImageTaggedShape= self.LabelImage.meta.getTaggedShape()
-            rawTaggedShape['c'] = None
-            labelImageTaggedShape['c'] = None
+            labelImageTaggedShape = self.LabelImage.meta.getTaggedShape()
+            rawTaggedShape["c"] = None
+            labelImageTaggedShape["c"] = None
             if dict(rawTaggedShape) != dict(labelImageTaggedShape):
-                logger.info("Raw data and other data must have equal dimensions (different channels are okay).\n"\
-                      "Your datasets have shapes: {} and {}".format( self.RawImage.meta.shape, self.LabelImage.meta.shape ))
+                logger.info(
+                    "Raw data and other data must have equal dimensions (different channels are okay).\n"
+                    "Your datasets have shapes: {} and {}".format(self.RawImage.meta.shape, self.LabelImage.meta.shape)
+                )
 
-                msg = "Raw data and other data must have equal dimensions (different channels are okay).\n"\
-                      "Your datasets have shapes: {} and {}".format( self.RawImage.meta.shape, self.LabelImage.meta.shape )
-                raise DatasetConstraintError( "Object Extraction", msg )
+                msg = (
+                    "Raw data and other data must have equal dimensions (different channels are okay).\n"
+                    "Your datasets have shapes: {} and {}".format(self.RawImage.meta.shape, self.LabelImage.meta.shape)
+                )
+                raise DatasetConstraintError("Object Extraction", msg)
 
     def cleanUp(self):
         self.LabelImage.disconnect()
@@ -251,7 +277,4 @@ class OpRelabeledMergerFeatureExtraction(Operator):
         self.RawImage.disconnect()
         self.FeatureNames.disconnect()
 
-        super( OpRelabeledMergerFeatureExtraction, self ).cleanUp()
-
-
-
+        super(OpRelabeledMergerFeatureExtraction, self).cleanUp()

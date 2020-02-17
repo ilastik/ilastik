@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import os
 import logging
@@ -27,7 +27,7 @@ from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMessageBox
 
-from volumina.api import LazyflowSource, ColortableLayer
+from volumina.api import createDataSource, ColortableLayer
 from volumina.colortables import create_default_16bit
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility.gui import threadRouted
@@ -40,13 +40,12 @@ logger = logging.getLogger(__name__)
 
 class ConnectedComponentsGui(LayerViewerGui):
 
-    _methods = {'vigra': 0, 'lazy': 1}
+    _methods = {"vigra": 0, "lazy": 1}
 
     def __init__(self, *args, **kwargs):
         super(ConnectedComponentsGui, self).__init__(*args, **kwargs)
 
-        self._drawer.applyButton.clicked.connect(
-            self._onApplyButtonClicked)
+        self._drawer.applyButton.clicked.connect(self._onApplyButtonClicked)
 
     def initAppletDrawerUi(self):
         """
@@ -54,7 +53,7 @@ class ConnectedComponentsGui(LayerViewerGui):
         """
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
-        self._drawer = uic.loadUi(localDir+"/drawer.ui")
+        self._drawer = uic.loadUi(localDir + "/drawer.ui")
 
         box = self._drawer.methodSelectingBox
         for k, v in self._methods.items():
@@ -68,12 +67,12 @@ class ConnectedComponentsGui(LayerViewerGui):
 
         self._updateGuiFromOperator()
 
-        '''
+        """
         self.topLevelOperatorView.Input.notifyReady(
             self._updateGuiFromOperator)
         self.topLevelOperatorView.Input.notifyMetaChanged(
             self._updateGuiFromOperator)
-        '''
+        """
 
     @threadRouted
     def _updateGuiFromOperator(self):
@@ -101,8 +100,7 @@ class ConnectedComponentsGui(LayerViewerGui):
         If the user pressed 'enter' within a spinbox, auto-click the "apply" button.
         """
         if watched in self._allWatchedWidgets:
-            if  event.type() == QEvent.KeyPress and\
-              ( event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return):
+            if event.type() == QEvent.KeyPress and (event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return):
                 self._drawer.applyButton.click()
                 return True
         return False
@@ -111,14 +109,14 @@ class ConnectedComponentsGui(LayerViewerGui):
         layers = []
         op = self.topLevelOperatorView
         binct = [QColor(Qt.black), QColor(Qt.white)]
-        #binct[0] = 0
+        # binct[0] = 0
         ct = create_default_16bit()
         # associate label 0 with black/transparent?
         ct[0] = 0
 
         # Show the cached output, since it goes through a blocked cache
         if op.CachedOutput.ready():
-            outputSrc = LazyflowSource(op.CachedOutput)
+            outputSrc = createDataSource(op.CachedOutput)
             outputLayer = ColortableLayer(outputSrc, ct)
             outputLayer.name = "Connected Components"
             outputLayer.visible = False
@@ -127,13 +125,12 @@ class ConnectedComponentsGui(LayerViewerGui):
             layers.append(outputLayer)
 
         if op.Input.ready():
-            rawSrc = LazyflowSource(op.Input)
+            rawSrc = createDataSource(op.Input)
             rawLayer = ColortableLayer(outputSrc, binct)
-            #rawLayer = self.createStandardLayerFromSlot(op.Input)
+            # rawLayer = self.createStandardLayerFromSlot(op.Input)
             rawLayer.name = "Raw data"
             rawLayer.visible = True
             rawLayer.opacity = 1.0
             layers.append(rawLayer)
 
         return layers
-

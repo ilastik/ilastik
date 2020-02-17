@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,40 +18,45 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
 from .opThresholdTwoLevels import OpThresholdTwoLevels
 from .thresholdTwoLevelsSerializer import ThresholdTwoLevelsSerializer
 
-class ThresholdTwoLevelsApplet( StandardApplet ):
+
+class ThresholdTwoLevelsApplet(StandardApplet):
     """
     This is a simple thresholding applet
     """
-    def __init__( self, workflow, guiName, projectFileGroupName ):
-        super(self.__class__, self).__init__( guiName, workflow )
-        self._serializableItems = [ ThresholdTwoLevelsSerializer(self.topLevelOperator, projectFileGroupName) ]
-        
+
+    def __init__(self, workflow, guiName, projectFileGroupName):
+        super(self.__class__, self).__init__(guiName, workflow)
+        self._serializableItems = [ThresholdTwoLevelsSerializer(self.topLevelOperator, projectFileGroupName)]
+
     @property
     def singleLaneOperatorClass(self):
         return OpThresholdTwoLevels
 
     @property
     def broadcastingSlots(self):
-        return [ 'MinSize',
-                 'MaxSize',
-                 'HighThreshold',
-                 'LowThreshold',
-                 'SmootherSigma',
-                 'CurOperator',
-                 'Channel',
-                 'CoreChannel',
-                 'Beta' ]
-    
+        return [
+            "MinSize",
+            "MaxSize",
+            "HighThreshold",
+            "LowThreshold",
+            "SmootherSigma",
+            "CurOperator",
+            "Channel",
+            "CoreChannel",
+            "Beta",
+        ]
+
     @property
     def singleLaneGuiClass(self):
         from .thresholdTwoLevelsGui import ThresholdTwoLevelsGui
+
         return ThresholdTwoLevelsGui
 
     @property

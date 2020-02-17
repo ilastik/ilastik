@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
 from ilastik.workflow import Workflow
@@ -29,35 +29,37 @@ from ilastik.applets.layerViewer import LayerViewerApplet
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 ROLES = ["Raw Data", "Image 1", "Image 2", "Image 3", "Image 4", "Image 5"]
 
+
 class LayerViewerWorkflow(Workflow):
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
-        
+
         # Create a graph to be shared by all operators
         graph = Graph()
-        super(LayerViewerWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
+        super(LayerViewerWorkflow, self).__init__(
+            shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs
+        )
         self._applets = []
 
         # Roles
 
         # Create applets
-        self.dataSelectionApplet = DataSelectionApplet(self, 
-                                                       "Input Data", 
-                                                       "Input Data")
+        self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data")
         self.viewerApplet = LayerViewerApplet(self)
         self.dataExportApplet = DataExportApplet(self, "Data Export")
         opDataExport = self.dataExportApplet.topLevelOperator
-        opDataExport.SelectionNames.setValue( ROLES )
+        opDataExport.SelectionNames.setValue(ROLES)
 
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        opDataSelection.DatasetRoles.setValue( ROLES )
+        opDataSelection.DatasetRoles.setValue(ROLES)
 
-        self._applets.append( self.dataSelectionApplet )
-        self._applets.append( self.viewerApplet )
-        self._applets.append( self.dataExportApplet )
+        self._applets.append(self.dataSelectionApplet)
+        self._applets.append(self.viewerApplet)
+        self._applets.append(self.dataExportApplet)
 
         self._workflow_cmdline_args = workflow_cmdline_args
 
@@ -65,29 +67,29 @@ class LayerViewerWorkflow(Workflow):
         """
         Overridden from Workflow base class.  Called by the Project Manager.
         """
-        logger.info( "LayerViewerWorkflow Project was opened with the following args: " )
-        logger.info( self._workflow_cmdline_args )
+        logger.info("LayerViewerWorkflow Project was opened with the following args: ")
+        logger.info(self._workflow_cmdline_args)
 
     def connectLane(self, laneIndex):
         opDataSelectionView = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opLayerViewerView = self.viewerApplet.topLevelOperator.getLane(laneIndex)
         opDataExportView = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
-        # Connect top-level operators                                                                                                                 
-        opLayerViewerView.RawInput.connect( opDataSelectionView.ImageGroup[0] )
-        
-        opLayerViewerView.OtherInput.resize(len(opDataSelectionView.ImageGroup)-1)
-        for i, role_output in enumerate(opDataSelectionView.ImageGroup[1:]):
-            opLayerViewerView.OtherInput[i].connect( role_output )
+        # Connect top-level operators
+        opLayerViewerView.RawInput.connect(opDataSelectionView.ImageGroup[0])
 
-        opDataExportView.RawData.connect( opDataSelectionView.ImageGroup[0] )
-        opDataExportView.RawDatasetInfo.connect( opDataSelectionView.DatasetGroup[0] )        
-        opDataExportView.WorkingDirectory.connect( opDataSelectionView.WorkingDirectory )
+        opLayerViewerView.OtherInput.resize(len(opDataSelectionView.ImageGroup) - 1)
+        for i, role_output in enumerate(opDataSelectionView.ImageGroup[1:]):
+            opLayerViewerView.OtherInput[i].connect(role_output)
+
+        opDataExportView.RawData.connect(opDataSelectionView.ImageGroup[0])
+        opDataExportView.RawDatasetInfo.connect(opDataSelectionView.DatasetGroup[0])
+        opDataExportView.WorkingDirectory.connect(opDataSelectionView.WorkingDirectory)
 
         opDataExportView.Inputs.resize(len(ROLES))
 
-        for i in range(len(ROLES)):        
-            opDataExportView.Inputs[i].connect( opDataSelectionView.ImageGroup[i] )
+        for i in range(len(ROLES)):
+            opDataExportView.Inputs[i].connect(opDataSelectionView.ImageGroup[i])
 
     @property
     def applets(self):
@@ -107,18 +109,19 @@ class LayerViewerWorkflow(Workflow):
         input_ready = len(opDataSelection.ImageGroup) > 0
 
         opDataExport = self.dataExportApplet.topLevelOperator
-        export_data_ready = input_ready and \
-                            len(opDataExport.Inputs) > 0 and \
-                            opDataExport.Inputs[0][0].ready() and \
-                            (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
+        export_data_ready = (
+            input_ready
+            and len(opDataExport.Inputs) > 0
+            and opDataExport.Inputs[0][0].ready()
+            and (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
+        )
 
         self._shell.setAppletEnabled(self.viewerApplet, input_ready)
         self._shell.setAppletEnabled(self.dataExportApplet, export_data_ready)
-        
-        # Lastly, check for certain "busy" conditions, during which we 
+
+        # Lastly, check for certain "busy" conditions, during which we
         #  should prevent the shell from closing the project.
         busy = False
         busy |= self.dataSelectionApplet.busy
         busy |= self.dataExportApplet.busy
-        self._shell.enableProjectChanges( not busy )
-
+        self._shell.enableProjectChanges(not busy)

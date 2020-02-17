@@ -6,8 +6,31 @@ QWidget#startupPage { background-color:qradialgradient(spread:pad, cx:0.5, cy:0.
 ImageView2D { background-color:qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                                       stop: 0 #000000, stop: 1 #ffffff); }
 /* Applet bar */
-QToolBox { border: 1px inset gray }
-QToolBox::tab { border:2px outset lightgray }
+QToolBox {
+  border: 1px inset gray;
+  icon-size: 18px;
+}
+
+QToolBox::tab {
+  border: 1px inset gray;
+}
+
+/*
+One may assume that something like the following would work,
+but Qt apparently doesn't handle subelements for pseudoelements correctly.
+
+QToolBox::tab QToolBoxButton {
+  qproperty-icon: url(:/icons/chevron_right.png);
+}
+
+QToolBox::tab:selected QToolBoxButton {
+  qproperty-icon: url(:/icons/chevron_down.png);
+}
+*/
+
+QToolBox::tab:hover {
+  border: 1px outset gray;
+}
 
 /********************************************
 The entries below are now commented out because it is better 

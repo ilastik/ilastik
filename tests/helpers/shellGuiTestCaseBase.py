@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,32 +16,25 @@ from __future__ import division
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
-from past.utils import old_div
-import sys
-import os
-import nose
-import threading
-import traceback
+
 import atexit
-import platform
-from functools import partial
+import numbers
+import threading
+from typing import Iterable, Union
 
-from nose.plugins.errorclass import ErrorClass, ErrorClassPlugin
-
-from PyQt5.QtCore import Qt, QEvent, QPoint, QTimer
-from PyQt5.QtGui import QPixmap, QMouseEvent
-from PyQt5.QtWidgets import QApplication, qApp
-
-import ilastik.config
-from ilastik.shell.gui.startShellGui import launchShell
-from ilastik.utility.gui.threadRouter import ThreadRouter
-from .mainThreadHelpers import wait_for_main_func, run_in_main_thread
-
+import pytest
 from ilastik.ilastik_logging import default_config
+from past.utils import old_div
+from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
+from PyQt5.QtGui import QMouseEvent
+from PyQt5.QtWidgets import QAbstractScrollArea, QApplication, qApp
+
+from .mainThreadHelpers import wait_for_main_func
+
 default_config.init(output_mode=default_config.OutputMode.CONSOLE)
+
 
 @atexit.register
 def quitApp():
@@ -51,55 +42,31 @@ def quitApp():
         qApp.quit()
 
 
-class ShutdownTimeout(Exception):
-    """
-    Should only be raised in ShellGuiTestCaseBase.teardownClass to signal that
-    ilastik didn't close in time.
+class MainThreadException(Exception):
+    """Raised if GUI tests are run from main thread. Can't start QT app."""
 
-    See: https://github.com/ilastik/ilastik/pull/1801
-    """
     pass
 
 
-class ShutdownTimeoutPlugin(ErrorClassPlugin):
-    """Tiny nose plugin to inform about shutdown timeouts during teardown
-
-    we don't consider time-outs during ShellGuiTestCaseBase.teardownClass an
-    error. So this plugin just marks the test with the timeout.
-    """
-    enabled = True
-    name = 'ShutdownTimeoutPlugin'
-    timeout = ErrorClass(ShutdownTimeout,
-                         label='TIMEOUT',
-                         isfailure=False)
-
-    def options(self, parser, env=os.environ):
-        """Mandatory interface method"""
-        pass
-
-    def configure(self, options, conf):
-        """Mandatory interface method"""
-        pass
-
-
-def run_shell_nosetest(filename):
-    """
-    Launch nosetests from a separate thread, and pause this thread while the test runs the GUI in it.
-    """
+def run_shell_test(filename):
     # This only works from the main thread.
     assert threading.current_thread().getName() == "MainThread"
+    import pytest
 
-    def run_nose():
-        sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-        sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-        nose.run(defaultTest=filename, addplugins=[ShutdownTimeoutPlugin()])
+    def run_test():
+        pytest.main([filename, "--capture=no"])
 
-    noseThread = threading.Thread(target=run_nose)
-    noseThread.start()
-
+    testThread = threading.Thread(target=run_test)
+    testThread.start()
     wait_for_main_func()
-    noseThread.join()
+    testThread.join()
 
+
+def is_main_thread():
+    return threading.current_thread().getName() == "MainThread"
+
+
+@pytest.mark.guitest
 class ShellGuiTestCaseBase(object):
     """
     This is a base class for test cases that need to run their tests from within the ilastik shell.
@@ -109,112 +76,36 @@ class ShellGuiTestCaseBase(object):
     - Subclasses must specify the workflow they are testing by overriding the workflowClass() classmethod.
     - Subclasses may access the shell and workflow via the shell and workflow class members.
     """
+
     mainThreadEvent = threading.Event()
+    app = None
 
     @classmethod
-    def setupClass(cls):
-        """
-        Start the shell and wait until it is finished initializing.
-        """
-        init_complete = threading.Event()
-
-        def initTest(shell):
-            cls.shell = shell
-            init_complete.set()
-
-        appCreationEvent = threading.Event()
-        def createApp():
-            # Create the application in the current thread.
-            # The current thread is now the application main thread.
-            assert threading.current_thread().getName() == "MainThread", "Error: app must be created in the main thread."
-            ShellGuiTestCaseBase.app = QApplication([])
-            app = ShellGuiTestCaseBase.app
-
-            # Don't auto-quit the app when the window closes.  We want to re-use it for the next test.
-            app.setQuitOnLastWindowClosed(False)
-
-            # Create a threadRouter object that allows us to send work to the app from other threads.
-            ShellGuiTestCaseBase.threadRouter = ThreadRouter(app)
-
-            # Set the appCreationEvent so the tests can proceed after the app's event loop has started
-            QTimer.singleShot(0, appCreationEvent.set )
-
-            # Start the event loop
-            app.exec_()
-
-        # If nose was run from the main thread, exit now.
-        # If nose is running in a non-main thread, we assume the main thread is available to launch the gui.
-        if threading.current_thread().getName() == "MainThread":
-            # Don't run GUI tests in the main thread.
-            sys.stderr.write( "NOSE WAS RUN FROM THE MAIN THREAD.  SKIPPING GUI TEST\n" )
-            raise nose.SkipTest
-        else:
-            # We're currently running in a non-main thread.
-            # Start the gui IN THE MAIN THREAD.  Workflow is provided by our subclass.
-            run_in_main_thread( createApp )
-            appCreationEvent.wait()
-
-        platform_str = platform.platform().lower()
-        if 'ubuntu' in platform_str or 'fedora' in platform_str:
-            QApplication.setAttribute(Qt.AA_X11InitThreads, True)
-
-        if ilastik.config.cfg.getboolean("ilastik", "debug"):
-            QApplication.setAttribute(Qt.AA_DontUseNativeMenuBar, True)
-
-        # Use the thread router to launch the shell in the app thread
-        ShellGuiTestCaseBase.threadRouter.routeToParent.emit( partial(launchShell, None, [], [initTest] ) )
-        init_complete.wait()
+    def setup_class(cls):
+        pass
 
     @classmethod
-    def teardownClass(cls):
-        """
-        Force the shell to quit (without a save prompt), and wait for the app to exit.
-        """
-        # Make sure the app has finished quitting before continuing
-        def teardown_impl():
-            cls.shell.onQuitActionTriggered(force=True, quitApp=False)
-
-        # Wait for the shell to really be finish shutting down before we finish the test
-        finished = threading.Event()
-        cls.shell.thunkEventHandler.post(teardown_impl)
-        cls.shell.thunkEventHandler.post(finished.set)
-        # Sometimes the GUI tests halt, which is an open problem
-        # in order not to block the CI we give here a super generous timeout
-        # (usually this takes no time at all) of 10 seconds
-        finished.wait(timeout=10.0)
-        if not finished.is_set():
-            raise ShutdownTimeout()
+    def teardown_class(cls):
+        pass
 
     @classmethod
-    def exec_in_shell(cls, func):
+    def exec_in_shell(cls, func, *args, **kwargs):
         """
         Execute the given function within the shell event loop.
         Block until the function completes.
-        If there were exceptions, assert so that nose marks this test as failed.
+        If there were exceptions, assert so that this test marked as failed.
         """
         testFinished = threading.Event()
-        errors = []
 
         def impl():
             try:
-                func()
-            except AssertionError as e:
-                traceback.print_exc()
-                errors.append(e)
-            except Exception as e:
-                traceback.print_exc()
-                errors.append(e)
-            testFinished.set()
+                func(*args, **kwargs)
+            finally:
+                testFinished.set()
 
         cls.shell.thunkEventHandler.post(impl)
         QApplication.processEvents()
         testFinished.wait()
-
-        if len(errors) > 0:
-            if isinstance(errors[0], AssertionError):
-                raise AssertionError("Failed a GUI test.  See output above.")
-            else:
-                raise RuntimeError("Errors during a GUI test.  See output above.")
 
     @classmethod
     def workflowClass(cls):
@@ -259,53 +150,91 @@ class ShellGuiTestCaseBase(object):
 
         return img.pixel(point)
 
-    def moveMouseFromCenter(self, imgView, coords ,modifier =Qt.NoModifier ):
+    def moveMouseFromCenter(self, imgView, coords, modifier=Qt.NoModifier):
         centerPoint = old_div(imgView.rect().bottomRight(), 2)
         point = QPoint(*coords) + centerPoint
-        move = QMouseEvent( QEvent.MouseMove, point, Qt.NoButton, Qt.NoButton, modifier  )
-        QApplication.sendEvent(imgView, move )
+        move = QMouseEvent(QEvent.MouseMove, point, Qt.NoButton, Qt.NoButton, modifier)
+        QApplication.sendEvent(imgView, move)
         QApplication.processEvents()
 
-    def strokeMouseFromCenter(self, imgView, start, end, modifier = Qt.NoModifier,numSteps = 10):
+    def strokeMouse(
+        self,
+        imgView: QAbstractScrollArea,
+        startPoint: Union[QPointF, QPoint, Iterable[numbers.Real]],
+        endPoint: Union[QPointF, QPoint, Iterable[numbers.Real]],
+        modifier: int = Qt.NoModifier,
+        numSteps: int = 10,
+    ) -> None:
+        """Drag the mouse between 2 points.
+
+        Args:
+            imgView: View that will receive mouse events.
+            startPoint: Start coordinates, inclusive.
+            endPoint:  End coordinates, also inclusive.
+            modifier: This modifier will be active when pressing, moving and releasing.
+            numSteps: The number of mouse move events.
+
+        See Also:
+            :func:`strokeMouseFromCenter`.
         """
-        Drag the mouse between two coordinates.
-        A modifier can be specified that will be keep pressed
-        default no modifier
-        """
-
-
-
-        centerPoint = old_div(imgView.rect().bottomRight(), 2)
-
-        startPoint = QPoint(*start) + centerPoint
-        endPoint = QPoint(*end) + centerPoint
+        startPoint = _asQPointF(startPoint)
+        endPoint = _asQPointF(endPoint)
 
         # Note: Due to the implementation of volumina.EventSwitch.eventFilter(),
         #       mouse events intended for the ImageView MUST go through the viewport.
 
         # Move to start
-        move = QMouseEvent( QEvent.MouseMove, startPoint, Qt.NoButton, Qt.NoButton, modifier )
-        QApplication.sendEvent(imgView.viewport(), move )
+        move = QMouseEvent(QEvent.MouseMove, startPoint, Qt.NoButton, Qt.NoButton, modifier)
+        QApplication.sendEvent(imgView.viewport(), move)
 
         # Press left button
-        press = QMouseEvent( QEvent.MouseButtonPress, startPoint, Qt.LeftButton, Qt.NoButton, modifier)
-        QApplication.sendEvent(imgView.viewport(), press )
+        press = QMouseEvent(QEvent.MouseButtonPress, startPoint, Qt.LeftButton, Qt.NoButton, modifier)
+        QApplication.sendEvent(imgView.viewport(), press)
 
         # Move to end in several steps
-        #numSteps = numSteps
-        for i in range(numSteps):
-            nextPoint = startPoint + (endPoint - startPoint) * ( old_div(float(i), numSteps) )
-            move = QMouseEvent( QEvent.MouseMove, nextPoint, Qt.NoButton, Qt.NoButton, modifier )
-            QApplication.sendEvent(imgView.viewport(), move )
-
-        # Move to end
-        move = QMouseEvent( QEvent.MouseMove, endPoint, Qt.NoButton, Qt.NoButton, modifier )
-        QApplication.sendEvent(imgView.viewport(), move )
+        for i in range(1, numSteps + 1):
+            a = i / numSteps
+            nextPoint = (1 - a) * startPoint + a * endPoint
+            move = QMouseEvent(QEvent.MouseMove, nextPoint, Qt.NoButton, Qt.NoButton, modifier)
+            QApplication.sendEvent(imgView.viewport(), move)
 
         # Release left button
-        release = QMouseEvent( QEvent.MouseButtonRelease, endPoint, Qt.LeftButton, Qt.NoButton, modifier )
-        QApplication.sendEvent(imgView.viewport(), release )
+        release = QMouseEvent(QEvent.MouseButtonRelease, endPoint, Qt.LeftButton, Qt.NoButton, modifier)
+        QApplication.sendEvent(imgView.viewport(), release)
 
         # Wait for the gui to catch up
         QApplication.processEvents()
         self.waitForViews([imgView])
+
+    def strokeMouseFromCenter(
+        self,
+        imgView: QAbstractScrollArea,
+        startPoint: Union[QPointF, QPoint, Iterable[numbers.Real]],
+        endPoint: Union[QPointF, QPoint, Iterable[numbers.Real]],
+        modifier: int = Qt.NoModifier,
+        numSteps: int = 10,
+    ) -> None:
+        """Drag the mouse between 2 points, relative to the view's center.
+
+        Args:
+            imgView: View that will receive mouse events.
+            startPoint: Start offset from the `imgView` center, inclusive.
+            endPoint:  End offset from the `imgView` center, also inclusive.
+            modifier: This modifier will be active when pressing, moving and releasing.
+            numSteps: The number of mouse move events.
+
+        See Also:
+            :func:`strokeMouse`.
+        """
+        # FIXME: The simpler "center" calculation below breaks tests on CI.
+        # center = imgView.rect().center()
+        center = imgView.rect().bottomRight() / 2
+        self.strokeMouse(imgView, _asQPointF(startPoint) + center, _asQPointF(endPoint) + center, modifier, numSteps)
+
+
+def _asQPointF(x: Union[QPointF, QPoint, Iterable[numbers.Real]]) -> QPointF:
+    if isinstance(x, QPointF):
+        return x
+    if isinstance(x, QPoint):
+        return QPointF(x)
+    return QPointF(*x)

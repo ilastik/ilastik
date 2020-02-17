@@ -26,6 +26,7 @@ import argparse
 import sys
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -39,17 +40,9 @@ class CommandLineHelperTests(unittest.TestCase):
         self.parser = argparse.ArgumentParser()
 
     def test_expected_failures(self):
-        self.parser.add_argument('this', action=ParseListFromString)
+        self.parser.add_argument("this", action=ParseListFromString)
 
-        values_to_test = [
-            '123',
-            '{123}',
-            '[a, b]',
-            '[1',
-            '1]',
-            '',
-            '(1, 2, 3'
-        ]
+        values_to_test = ["123", "{123}", "[a, b]", "[1", "1]", "", "(1, 2, 3"]
 
         stderr_original = sys.stderr
 
@@ -60,25 +53,16 @@ class CommandLineHelperTests(unittest.TestCase):
         sys.stderr = stderr_original
 
     def test_allowed_string(self):
-        self.parser.add_argument('this', action=ParseListFromString)
+        self.parser.add_argument("this", action=ParseListFromString)
 
         values_to_test = {
-            '[123]': [123],
-            '(123)': [123],
-            '[(1, 2)]': [[1, 2]],
-            '[(1, 2), (3, 4)]': [[1, 2], [3, 4]],
-            '[(0, 0, 0), (0, None, None)]': [[0, 0, 0], [0, None, None]],
+            "[123]": [123],
+            "(123)": [123],
+            "[(1, 2)]": [[1, 2]],
+            "[(1, 2), (3, 4)]": [[1, 2], [3, 4]],
+            "[(0, 0, 0), (0, None, None)]": [[0, 0, 0], [0, None, None]],
         }
 
         for value, expected in values_to_test.items():
             parsed = self.parser.parse_args([value]).this
             self.assertEqual(parsed, expected)
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    sys.argv.append("-v")
-    nose.main(defaultTest=__file__)

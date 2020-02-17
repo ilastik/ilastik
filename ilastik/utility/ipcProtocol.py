@@ -17,16 +17,9 @@ class Protocol(object):
         """
         operands = list(wheres)
         for name, value in attributes.items():
-            operands.append({
-                "operator": "==",
-                "row": name,
-                "value": value
-            })
+            operands.append({"operator": "==", "row": name, "value": value})
 
-        return {
-            "operator": operator,
-            "operands": operands
-        }
+        return {"operator": operator, "operands": operands}
 
     @staticmethod
     def simple_in(row, possibilities):
@@ -43,16 +36,9 @@ class Protocol(object):
         """
         operands = []
         for p in possibilities:
-            operands.append({
-                "operator": "==",
-                "row": row,
-                "value": p,
-            })
+            operands.append({"operator": "==", "row": row, "value": p})
 
-        return {
-            "operator": "or",
-            "operands": operands
-        }
+        return {"operator": "or", "operands": operands}
 
     @staticmethod
     def clear():
@@ -60,19 +46,13 @@ class Protocol(object):
         Builds the clear hilite command to clear all hilites
         :returns: the command dict
         """
-        return {
-            "command": "hilite",
-            "mode": "clear",
-        }
+        return {"command": "hilite", "mode": "clear"}
 
     @staticmethod
     def cmd(mode, where=None):
         if mode.lower() not in Protocol.ValidHiliteModes:
             raise ValueError("Mode '{}' not supported".format(mode))
-        command = {
-            "command": "hilite",
-            "mode": mode
-        }
+        command = {"command": "hilite", "mode": mode}
         if where is not None:
             command["where"] = where
         return command

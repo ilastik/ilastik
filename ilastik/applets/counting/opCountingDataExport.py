@@ -16,21 +16,22 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from lazyflow.graph import InputSlot, OutputSlot
 from ilastik.applets.dataExport.opDataExport import OpDataExport
 from ilastik.applets.base.applet import DatasetConstraintError
 
-class OpCountingDataExport( OpDataExport ):
+
+class OpCountingDataExport(OpDataExport):
     # Add these additional input slots, to be used by the GUI.
     PmapColors = InputSlot()
     LabelNames = InputSlot()
     UpperBound = InputSlot()
 
-    CsvFilepath = InputSlot(optional=True) # The export location.
-    
+    CsvFilepath = InputSlot(optional=True)  # The export location.
+
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.CsvFilepath:
             return
-        super( OpCountingDataExport, self ).propagateDirty(slot, subindex, roi)
+        super(OpCountingDataExport, self).propagateDirty(slot, subindex, roi)
