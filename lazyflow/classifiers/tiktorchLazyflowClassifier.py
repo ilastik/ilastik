@@ -76,6 +76,20 @@ class TiktorchSession(LazyflowOnlineClassifier):
         return self.__session.name
 
     @property
+    def input_axes(self):
+        if self.__session.input_axes.startswith("b"):
+            return self.__session.input_axes[1:]
+        else:
+            return self.__session.input_axes
+
+    @property
+    def output_axes(self):
+        if self.__session.output_axes.startswith("b"):
+            return self.__session.output_axes[1:]
+        else:
+            return self.__session.output_axes
+
+    @property
     def shrinkage(self):
         return [0, 0, 0, 0, 0]
 
@@ -117,7 +131,7 @@ class TiktorchSession(LazyflowOnlineClassifier):
 
         # translate roi axes todo: remove with tczyx standard
         # output_axis_order = self._model_conf.output_axis_order
-        output_axis_order = "cxy"
+        output_axis_order = self.output_axes
         if "c" not in output_axis_order:
             output_axis_order = "c" + output_axis_order
             c_was_not_in_output_axis_order = True
@@ -126,13 +140,16 @@ class TiktorchSession(LazyflowOnlineClassifier):
 
         roi = roi[:, [axistags.index(a) for a in output_axis_order]]
 
-        # inreorder = ReorderAxes(self.model.input_axis_order)
-        inreorder = ReorderAxes("cxy")
+        inreorder = ReorderAxes(self.input_axes)
         reordered_feature_image = inreorder.reorder(feature_image, axistags)
-
-        # reordered_feature_image = self._opReorderAxesInImg.Output([]).wait()
-
+        reordered_feature_image = reordered_feature_image.astype(np.float32)
+        print("***", reordered_feature_image)
         try:
+            # from sklearn import preprocessing
+            # shape = reordered_feature_image.shape
+            # reordered_feature_image = preprocessing.scale(reordered_feature_image.reshape(shape[1:]))
+            # reordered_feature_image.shape = shape
+            print("***2", reordered_feature_image)
             resp = self.tiktorchClient.Predict(
                 inference_pb2.PredictRequest(
                     tensor=converters.numpy_to_pb_tensor(reordered_feature_image[np.newaxis]),
@@ -180,7 +197,8 @@ class TiktorchSession(LazyflowOnlineClassifier):
 
         outreorder = ReorderAxes("".join(axistags.keys()))
         print("SHAPE", result.shape)
-        result.shape = (result.shape[0], result.shape[3], result.shape[2])
+        print("OUTREORDER", axistags.keys())
+        # result.shape = (result.shape[0], result.shape[3], result.shape[2])
         return outreorder.reorder(result, vigra.defaultAxistags(output_axis_order))
 
 

@@ -177,8 +177,17 @@ class OpTikTorchTrainPixelwiseClassifierBlocked(OpTrainPixelwiseClassifierBlocke
             super().propagateDirty(slot, subindex, roi)
 
 
-class OpTikTorchClassifierPredict(OpClassifierPredict):
+class OpTikTorchClassifierPredict(Operator):
+    Image = InputSlot()
+    LabelsCount = InputSlot()
+    ModelSession = InputSlot()
     BlockShape = InputSlot()
+
+    # An entire prediction request is skipped if the mask is all zeros for the requested roi.
+    # Otherwise, the request is serviced as usual and the mask is ignored.
+    PredictionMask = InputSlot(optional=True)
+
+    PMaps = OutputSlot()
 
     def setupOutputs(self):
         # Construct an inner operator depending on the type of classifier we'll be using.
@@ -186,60 +195,63 @@ class OpTikTorchClassifierPredict(OpClassifierPredict):
         # Instead, we require the factory to be passed along with the classifier metadata.
 
         try:
-            classifier_factory = self.Classifier.meta.classifier_factory
+            classifier_factory = self.ModelSession.meta.classifier_factory
         except KeyError:
             raise Exception("Classifier slot must include classifier factory as metadata.")
 
-        if issubclass(classifier_factory.__class__, LazyflowVectorwiseClassifierFactoryABC):
-            new_mode = "vectorwise"
-        elif issubclass(classifier_factory.__class__, LazyflowPixelwiseClassifierFactoryABC):
-            new_mode = "pixelwise"
-        elif isinstance(classifier_factory, LazyflowOnlineClassifier):
-            new_mode = "online"
-        else:
-            new_mode = "online"
+        if not isinstance(classifier_factory, LazyflowOnlineClassifier):
+            raise RuntimeError("Expected lazyflow classifier")
             # XXX: _WrapSession
             # raise Exception("Unknown classifier factory type: {}".format(type(classifier_factory)))
 
-        if new_mode == self._mode:
-            return
-
-        if self._mode is not None:
-            self.PMaps.disconnect()
-            self._prediction_op.cleanUp()
-        self._mode = new_mode
-
-        if self._mode == "vectorwise":
-            self._prediction_op = OpVectorwiseClassifierPredict(parent=self)
-        elif self._mode == "pixelwise":
-            self._prediction_op = OpPixelwiseClassifierPredict(parent=self)
-        elif self._mode == "online":
-            self._prediction_op = OpTikTorchPixelwiseClassifierPredict(parent=self)
-            self._prediction_op.BlockShape.connect(self.BlockShape)
-
+        self._prediction_op = OpTikTorchPixelwiseClassifierPredict(parent=self)
+        self._prediction_op.BlockShape.connect(self.BlockShape)
         self._prediction_op.PredictionMask.connect(self.PredictionMask)
         self._prediction_op.Image.connect(self.Image)
         self._prediction_op.LabelsCount.connect(self.LabelsCount)
-        self._prediction_op.Classifier.connect(self.Classifier)
+        self._prediction_op.ModelSession.connect(self.ModelSession)
         self.PMaps.connect(self._prediction_op.PMaps)
 
+    def propagateDirty(self, slot, subindex, roi):
+        self.PMaps.setDirty()
 
-class OpTikTorchPixelwiseClassifierPredict(OpPixelwiseClassifierPredict):
+
+class OpTikTorchPixelwiseClassifierPredict(Operator):
+    Image = InputSlot()
+    LabelsCount = InputSlot()
+    ModelSession = InputSlot()
     BlockShape = InputSlot()
+
+    # An entire prediction request is skipped if the mask is all zeros for the requested roi.
+    # Otherwise, the request is serviced as usual and the mask is ignored.
+    PredictionMask = InputSlot(optional=True)
+
+    PMaps = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super(OpTikTorchPixelwiseClassifierPredict, self).__init__(*args, **kwargs)
 
     def setupOutputs(self):
-        super().setupOutputs()
+        # super().setupOutputs()
+        assert self.Image.meta.getAxisKeys()[-1] == "c"
+        nlabels = max(self.LabelsCount.value, 1)
+        self.PMaps.meta.assignFrom(self.Image.meta)
+        self.PMaps.meta.dtype = numpy.float32
+        self.PMaps.meta.shape = self.Image.meta.shape[:-1] + (
+            nlabels,
+        )  # FIXME: This assumes that channel is the last axis
+        self.PMaps.meta.drange = (0.0, 1.0)
         self.PMaps.meta.ideal_blockshape = self.BlockShape.value
         self.PMaps.meta.max_blockshape = self.BlockShape.value
 
+    def propagateDirty(self, slot, subindex, roi):
+        self.PMaps.setDirty()
+
     def execute(self, slot, subindex, roi, result):
-        classifier = self.Classifier.value
+        session = self.ModelSession.value
 
         # Training operator may return 'None' if there was no data to train with
-        skip_prediction = classifier is None
+        skip_prediction = session is None
 
         # Shortcut: If the mask is totally zero, skip this request entirely
         if not skip_prediction and self.PredictionMask.ready():
@@ -253,9 +265,9 @@ class OpTikTorchPixelwiseClassifierPredict(OpPixelwiseClassifierPredict):
             result[:] = 0.0
             return result
 
-        assert issubclass(type(classifier), LazyflowPixelwiseClassifierABC), (
+        assert issubclass(type(session), LazyflowPixelwiseClassifierABC), (
             "Classifier is of type {}, which does not satisfy the LazyflowPixelwiseClassifierABC interface."
-            "".format(type(classifier))
+            "".format(type(session))
         )
 
         axiskeys = self.Image.meta.getAxisKeys()
@@ -268,8 +280,8 @@ class OpTikTorchPixelwiseClassifierPredict(OpPixelwiseClassifierPredict):
         roistop[-1] = raw_channels
         upstream_roi = (roistart, roistop)
 
-        halo = numpy.array(classifier.get_halo_shape(axiskeys))
-        shrinkage = numpy.array(classifier.get_shrinkage(axiskeys))
+        halo = numpy.array(session.get_halo_shape(axiskeys))
+        shrinkage = numpy.array(session.get_shrinkage(axiskeys))
 
         assert len(halo) == len(upstream_roi[0])
         assert axiskeys[-1] == "c"
@@ -282,7 +294,7 @@ class OpTikTorchPixelwiseClassifierPredict(OpPixelwiseClassifierPredict):
 
         # Extend block further to reach a valid shape
         min_shape = upstream_roi[1] - upstream_roi[0]
-        for vs in classifier.get_valid_shapes(axiskeys):
+        for vs in session.get_valid_shapes(axiskeys):
             if all(m <= v for m, v in zip(min_shape, vs)):
                 valid_shape = numpy.array(vs)
                 if any(m < v for m, v in zip(min_shape, vs)):
@@ -294,7 +306,7 @@ class OpTikTorchPixelwiseClassifierPredict(OpPixelwiseClassifierPredict):
         else:
             raise ValueError(
                 f"The requested roi {roi} with halo {halo} and shrinkage {shrinkage} is too large for the "
-                f"classifier's valid shapes: {classifier.get_valid_shapes(axiskeys)}"
+                f"session's valid shapes: {session.get_valid_shapes(axiskeys)}"
             )
 
         # Determine how to extract the data from the result (without halo, shrinkage, and padding)
@@ -321,5 +333,5 @@ class OpTikTorchPixelwiseClassifierPredict(OpPixelwiseClassifierPredict):
         # Pad the data
         input_data = numpy.pad(input_data, padding, mode="reflect")
 
-        result[...] = classifier.predict_probabilities_pixelwise(input_data, predictions_roi, axistags)
+        result[...] = session.predict_probabilities_pixelwise(input_data, predictions_roi, axistags)
         return result
