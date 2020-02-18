@@ -798,12 +798,6 @@ class NNClassGui(LabelingGui):
             # self.setupLayers()
             self.updateAllLayers()
 
-            self.set_NN_classifier_name(model.name)
-            self.labelingDrawerUi.closeModel.setVisible(True)
-            self.labelingDrawerUi.closeModel.setEnabled(True)
-        else:
-            self.set_NN_classifier_name("no model")
-
     def set_NN_classifier_name(self, name: str):
         pass
         #self.labelingDrawerUi.addModel.setText(f"{name}")
