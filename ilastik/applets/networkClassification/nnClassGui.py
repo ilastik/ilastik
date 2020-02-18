@@ -457,6 +457,9 @@ class NNClassGui(LabelingGui):
         self.labelingDrawerUi.livePrediction.toggled.connect(self.toggleLivePrediction)
 
         self.labelingDrawerUi.addModel.clicked.connect(self.addModel)
+        self.labelingDrawerUi.closeModel.setVisible(False)
+        self.labelingDrawerUi.closeModel.setIcon(QIcon(ilastikIcons.ProcessStop))
+        self.labelingDrawerUi.closeModel.clicked.connect(self.closeModelClick)
 
         self.initViewerControls()
         self.initViewerControlUi()
@@ -467,25 +470,37 @@ class NNClassGui(LabelingGui):
         self.labelingDrawerUi.AddLabelButton.setEnabled(False)
         self.labelingDrawerUi.AddLabelButton.hide()
 
-        # def FreezePredDirty():
-        #     self.toggleLivePrediction(not self.topLevelOperatorView.FreezePredictions.value)
-        #
-        # self.topLevelOperatorView.FreezePredictions.notifyDirty(bind(FreezePredDirty))
-        # self.__cleanup_fns.append(
-        #     partial(self.topLevelOperatorView.FreezePredictions.unregisterDirty, bind(FreezePredDirty))
-        # )
-
         self.topLevelOperatorView.LabelNames.notifyDirty(bind(self.handleLabelSelectionChange))
         self.__cleanup_fns.append(
             partial(self.topLevelOperatorView.LabelNames.unregisterDirty, bind(self.handleLabelSelectionChange))
         )
+        self.__cleanup_fns.append(self.topLevelOperatorView.cleanUp)
 
         self.forceAtLeastTwoLabels(True)
 
         self.invalidatePredictionsTimer = QTimer()
         self.invalidatePredictionsTimer.timeout.connect(self.updatePredictions)
 
-        self.loadModel(self.topLevelOperatorView.ClassifierFactory)
+        self._notifyModelSession(self.topLevelOperatorView.ModelSession)
+        self.topLevelOperatorView.ModelSession.notifyDirty(self._notifyModelSession)
+
+    def _notifyModelSession(self, slot, roi=None):
+        if slot.ready():
+            model = slot.value
+            if model is not self.topLevelOperatorView.NO_MODEL:
+                self.labelingDrawerUi.addModel.setText(f"{model.name}")
+                self.labelingDrawerUi.closeModel.setVisible(True)
+                self.labelingDrawerUi.closeModel.setVisible(True)
+                self.labelingDrawerUi.livePrediction.setEnabled(True)
+                self.labelingDrawerUi.liveTraining.setVisible(model.has_training)
+                self.labelingDrawerUi.checkpoints.setVisible(model.has_training)
+                return
+
+        self.labelingDrawerUi.addModel.setText("no model")
+        self.labelingDrawerUi.closeModel.setVisible(False)
+        self.labelingDrawerUi.livePrediction.setEnabled(False)
+        self.labelingDrawerUi.liveTraining.setVisible(False)
+        self.labelingDrawerUi.checkpoints.setVisible(False)
 
     def set_live_training_icon(self, active: bool):
         if active:
@@ -502,10 +517,6 @@ class NNClassGui(LabelingGui):
             self.labelingDrawerUi.livePrediction.setIcon(QIcon(ilastikIcons.Pause))
         else:
             self.labelingDrawerUi.livePrediction.setIcon(QIcon(ilastikIcons.Play))
-
-    def loadModel(self, factory_slot):
-        if factory_slot.ready():
-            self.set_NN_classifier_name(factory_slot.value.model.name)
 
     def updatePredictions(self):
         logger.info("Invalidating predictions")
@@ -716,6 +727,13 @@ class NNClassGui(LabelingGui):
         else:
             self._viewerControlUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
 
+
+    def closeModelClick(self):
+        self.topLevelOperatorView
+        model = self.topLevelOperatorView.set_model(b"")
+        self.labelingDrawerUi.addModel.setEnabled(True)
+        self.labelingDrawerUi.addModel.setText("no model")
+
     def addModel(self):
         """
         When AddModel button is clicked.
@@ -757,7 +775,6 @@ class NNClassGui(LabelingGui):
         # clear first the comboBox or addItems will duplicate names
         # self.labelingDrawerUi.comboBox.clear()
         # self.labelingDrawerUi.comboBox.addItems(self.classifiers)
-        print(self.topLevelOperatorView)
         self.labelingDrawerUi.liveTraining.setEnabled(True)
         self.labelingDrawerUi.livePrediction.setEnabled(True)
 
@@ -782,11 +799,15 @@ class NNClassGui(LabelingGui):
             self.updateAllLayers()
 
             self.set_NN_classifier_name(model.name)
+            self.labelingDrawerUi.closeModel.setVisible(True)
+            self.labelingDrawerUi.closeModel.setEnabled(True)
         else:
             self.set_NN_classifier_name("no model")
 
     def set_NN_classifier_name(self, name: str):
-        self.labelingDrawerUi.addModel.setText(f"{name} loaded")
+        pass
+        #self.labelingDrawerUi.addModel.setText(f"{name}")
+
 
     def getModelToOpen(cls, parent_window, defaultDirectory):
         """

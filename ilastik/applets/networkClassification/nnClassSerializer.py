@@ -31,10 +31,31 @@ from ilastik.applets.base.appletSerializer import (
     SerialSlot,
     SerialListSlot,
     SerialBlockSlot,
-    BinarySlot,
     json_dumps_binary,
     json_loads_binary,
 )
+
+
+class BinaryStringSlot(SerialSlot):
+    """
+    Implements the logic for serializing a binary slot.
+
+    Allows to store binary string containing nulls,
+    while BinarySlot will fail with following error:
+        ValueError: VLEN strings do not support embedded NULLs
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def _saveValue(group, name, value):
+        if value:
+            group.create_dataset(name, data=np.void(value))
+
+    @staticmethod
+    def _getValue(subgroup, slot):
+        val = subgroup[()]
+        slot.setValue(val.tobytes())
 
 
 class NNClassificationSerializer(AppletSerializer):
@@ -54,7 +75,7 @@ class NNClassificationSerializer(AppletSerializer):
                 selfdepends=False,
                 shrink_to_bb=True,
             ),
-            #SerialModelSlot(topLevelOperator.Model),
+            BinaryStringSlot(topLevelOperator.ModelBinary),
             #SerialModelStateSlot(topLevelOperator.ModelState),
             #SerialListModelStateSlot(topLevelOperator.Checkpoints),
         ]
@@ -67,28 +88,6 @@ def maybe_get_value(dset, key, default=None):
         return dset[key][()].tostring()
     else:
         return default
-
-
-class SerialModelSlot(SerialSlot):
-    def _saveValue(self, group, name: str, value: Model) -> None:
-        model_group = group.require_group(self.name)
-
-        if value:
-            model_group.create_dataset("code", data=np.void(value.code))
-            model_group.create_dataset("config", data=np.void(json_dumps_binary(value.config)))
-
-    def _getValue(self, dset, slot):
-        code = maybe_get_value(dset, "code")
-
-        if not code:
-            slot.setValue(Model.Empty)
-            return
-
-        try:
-            model = Model(code=code, config=json_loads_binary(maybe_get_value(dset, "config", b"")))
-            slot.setValue(model)
-        except Exception:
-            slot.setValue(Model.Empty)
 
 
 class ModelStateSerializer:

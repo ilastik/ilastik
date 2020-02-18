@@ -318,6 +318,4 @@ class NNClassificationWorkflow(Workflow):
     #     return input_shape
 
     def cleanUp(self):
-        tiktorchFactory = self.nnClassificationApplet.topLevelOperator.ClassifierFactory
-        if tiktorchFactory.ready():
-            tiktorchFactory.value.launcher.stop()
+        self.nnClassificationApplet.cleanUp()

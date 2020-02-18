@@ -76,3 +76,6 @@ class NNClassApplet(StandardApplet):
     @property
     def topLevelOperator(self):
         return self._topLevelOperator
+
+    def cleanUp(self):
+        return self._topLevelOperator.cleanUp()

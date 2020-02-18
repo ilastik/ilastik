@@ -22,18 +22,17 @@ from functools import partial
 import numpy
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow import stype
-from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
+from lazyflow import stype, rtype
 from lazyflow.operators import (
     OpMultiArraySlicer2,
     OpValueCache,
     OpBlockedArrayCache,
-    OpClassifierPredict,
-    OpTrainClassifierBlocked,
+    OpSplitRequestsBlockwise,
 )
-from lazyflow.operators.tiktorchClassifierOperators import (
+from lazyflow.operators.tiktorch import (
     OpTikTorchTrainClassifierBlocked,
     OpTikTorchClassifierPredict,
+    TikTorchLazyflowClassifierFactory,
 )
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
@@ -49,7 +48,6 @@ from tiktorch.configkeys import TRAINING, NUM_ITERATIONS_MAX
 import logging
 
 logger = logging.getLogger(__name__)
-
 
 class OpTiktorchFactory(Operator):
     ServerConfig = InputSlot(stype=stype.Opaque)
@@ -81,37 +79,40 @@ class OpTiktorchFactory(Operator):
             self.Tiktorch.disconnect()
             self.Tiktorch.setValue(tiktorch)
 
-    def __del__(self):
-        if self.Tiktorch.ready():
-            self.Tiktorch.value.shutdown()
-
-        super().__del__()
-
-    def cleanUp(self):
-        if self.Tiktorch.ready():
-            try:
-                self.Tiktorch.value.shutdown()
-            except Exception as e:
-                logger.warning(e)
-
     def propagateDirty(self, slot, subindex, roi):
         # self.Tiktorch.setDirty(slice(None))
         pass
 
 
+_NO_MODEL = object()
+
+
 class OpModel(Operator):
-    TiktorchFactory = InputSlot()  #  OpTiktorchFactory.TikTorch
+    TiktorchFactory = InputSlot(stype=stype.Opaque)
     ModelBinary = InputSlot(stype=stype.Opaque)
-    ServerConfig = InputSlot(stype=stype.Opaque, nonlane=True)
+    ServerConfig = InputSlot(stype=stype.Opaque)
 
-    TiktorchModel = OutputSlot()  #  OpTiktorchFactory.TikTorch
+    TiktorchModel = OutputSlot(stype=stype.Opaque, rtype=rtype.Everything)
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+    def _close_model(self):
+        if not self.TiktorchModel.ready():
+            return
+
+        model = self.TiktorchModel.value
+
+        if model is _NO_MODEL:
+            return
+
+        model.close()
 
     def setupOutputs(self):
         tiktorch = self.TiktorchFactory.value
         model_binary = self.ModelBinary.value
+        if not model_binary:
+            self._close_model()
+            self.TiktorchModel.meta.NOTREADY = True
+            self.TiktorchModel.setValue(_NO_MODEL)
+            return
         devices = self.ServerConfig.value.devices
 
         session = tiktorch.create_model_session(model_binary, [d.id for d in devices])
@@ -141,14 +142,13 @@ class OpModel(Operator):
             self.TiktorchModel.meta.NOTREADY = True
 
     def propagateDirty(self, slot, subindex, roi):
-        # self.Tiktorch.setDirty(slice(None))
-        pass
-
+        self.TiktorchModel.setDirty()
 
 class OpNNClassification(Operator):
     """
     Top-level operator for pixel classification
     """
+    NO_MODEL = _NO_MODEL
 
     name = "OpNNClassification"
     category = "Top-level"
@@ -163,6 +163,7 @@ class OpNNClassification(Operator):
     FreezePredictions = InputSlot(stype="bool", value=False, nonlane=True)
     ClassifierFactory = InputSlot()
     ModelBinary = InputSlot(stype=stype.Opaque, nonlane=True)
+    ModelSession = InputSlot()
 
     Classifier = OutputSlot()
     PredictionProbabilities = OutputSlot(
@@ -184,6 +185,11 @@ class OpNNClassification(Operator):
     PmapColors = OutputSlot()
 
     def setupOutputs(self):
+        model = self.opModel.TiktorchModel.value
+        if model is _NO_MODEL:
+            self.NumClasses.meta.NOTREADY = True
+            return
+
         numClasses = len(self.opModel.TiktorchModel.value.known_classes)
         self.NumClasses.setValue(numClasses)
         self.opTrain.MaxLabel.setValue(numClasses)
@@ -202,7 +208,7 @@ class OpNNClassification(Operator):
 
     def cleanUp(self):
         try:
-            self.ClassifierFactory.value.shutdown()
+            self.ModelSession.value.close()
         except Exception as e:
             logger.warning(e)
 
@@ -227,7 +233,7 @@ class OpNNClassification(Operator):
 
         self.opBlockShape = OpMultiLaneWrapper(OpBlockShape, parent=self)
         self.opBlockShape.RawImage.connect(self.InputImages)
-        self.opBlockShape.ClassifierFactory.connect(self.ClassifierFactory)
+        self.opBlockShape.ModelSession.connect(self.ModelSession)
 
         self.opTiktorchFactory = OpTiktorchFactory(parent=self.parent)
         self.opTiktorchFactory.ServerConfig.connect(self.ServerConfig)
@@ -237,7 +243,8 @@ class OpNNClassification(Operator):
         self.opModel.TiktorchFactory.connect(self.opTiktorchFactory.Tiktorch)
         self.opModel.ModelBinary.connect(self.ModelBinary)
 
-        self.ClassifierFactory.connect(self.opModel.TiktorchModel)
+        self.ModelSession.connect(self.opModel.TiktorchModel)
+        self.ClassifierFactory.connect(self.opModel.TiktorchFactory)
 
         # Hook up Labeling Pipeline
         self.opLabelPipeline = OpMultiLaneWrapper(
@@ -252,16 +259,17 @@ class OpNNClassification(Operator):
 
         # TRAINING OPERATOR
         self.opTrain = OpTikTorchTrainClassifierBlocked(parent=self)
-        self.opTrain.ClassifierFactory.connect(self.ClassifierFactory)
+        self.opTrain.ModelSession.connect(self.ModelSession)
         self.opTrain.Labels.connect(self.opLabelPipeline.Output)
         self.opTrain.Images.connect(self.InputImages)
+        self.opTrain.BlockShape.connect(self.opBlockShape.BlockShapeTrain)
         self.opTrain.nonzeroLabelBlocks.connect(self.opLabelPipeline.nonzeroBlocks)
 
         # CLASSIFIER CACHE
         # This cache stores exactly one object: the classifier itself.
         self.classifier_cache = OpValueCache(parent=self)
         self.classifier_cache.name = "OpNetworkClassification.classifier_cache"
-        self.classifier_cache.inputs["Input"].connect(self.opTrain.Classifier)
+        self.classifier_cache.inputs["Input"].connect(self.opTrain.UpdatedModelSession)
         self.classifier_cache.inputs["fixAtCurrent"].connect(self.FreezePredictions)
         self.Classifier.connect(self.classifier_cache.Output)
 
@@ -270,7 +278,8 @@ class OpNNClassification(Operator):
             OpPredictionPipeline, parent=self
         )
         self.opPredictionPipeline.RawImage.connect(self.InputImages)
-        self.opPredictionPipeline.Classifier.connect(self.classifier_cache.Output)
+        #self.opPredictionPipeline.Classifier.connect(self.classifier_cache.Output)
+        self.opPredictionPipeline.Classifier.connect(self.ModelSession)
         self.opPredictionPipeline.NumClasses.connect(self.NumClasses)
         self.opPredictionPipeline.FreezePredictions.connect(self.FreezePredictions)
 
@@ -456,7 +465,7 @@ class OpNNClassification(Operator):
 
 class OpBlockShape(Operator):
     RawImage = InputSlot()
-    ClassifierFactory = InputSlot()
+    ModelSession = InputSlot()
 
     BlockShapeTrain = OutputSlot()
     BlockShapeInference = OutputSlot()
@@ -465,20 +474,23 @@ class OpBlockShape(Operator):
         super(OpBlockShape, self).__init__(*args, **kwargs)
 
     def setupOutputs(self):
+        if self.ModelSession.value is _NO_MODEL:
+            self.BlockShapeTrain.meta.NOTREADY = True
+            self.BlockShapeInference.meta.NOTREADY = True
+            return
         self.BlockShapeTrain.setValue(self.setup_train())
         self.BlockShapeInference.setValue(self.setup_inference())
 
     def setup_train(self):
-        tikmodel = self.ClassifierFactory.value
+        tikmodel = self.ModelSession.value
         training_shape = tikmodel.training_shape
-        halo = tikmodel.halo
+        halo = tikmodel.get_halo(axes="tczyx")
         # total halo = 2 * halo per axis
         total_halo = 2 * numpy.array(halo)
-        shrinkage = tikmodel.shrinkage
-        shrunk_training_shape_wo_halo = (
-            numpy.array(training_shape) - numpy.array(shrinkage) - total_halo
+        training_shape_wo_halo = (
+            numpy.array(training_shape) - total_halo
         )
-        blockDims = dict(zip("tczyx", shrunk_training_shape_wo_halo))
+        blockDims = dict(zip("tczyx", training_shape_wo_halo))
         blockDims["c"] = 9999  # always request all channels
         axisOrder = self.RawImage.meta.getAxisKeys()
         ret = tuple(blockDims[a] for a in axisOrder)
@@ -491,18 +503,15 @@ class OpBlockShape(Operator):
         return ret
 
     def setup_inference(self):
-        tikmodel = self.ClassifierFactory.value
-        valid_tczyx_shapes = tikmodel.valid_shapes
-        halo = tikmodel.halo  # total halo = 2 * halo per axis
+        tikmodel = self.ModelSession.value
+        valid_tczyx_shapes = tikmodel.get_valid_shapes(axes="tczyx")
+        halo = tikmodel.get_halo(axes="tczyx")  # total halo = 2 * halo per axis
         total_halo = 2 * numpy.array(halo)
-        shrinkage = tikmodel.shrinkage
-        shrunk_valid_tczyx_shapes_wo_halo = [
-            numpy.array(shape) - numpy.array(shrinkage) - total_halo
+        valid_tczyx_shapes_wo_halo = [
+            numpy.array(shape) - total_halo
             for shape in valid_tczyx_shapes
         ]
-        print("shrunk", shrunk_valid_tczyx_shapes_wo_halo)
-        largest_valid_shape = shrunk_valid_tczyx_shapes_wo_halo[-1]
-        print("largest", largest_valid_shape)
+        largest_valid_shape = valid_tczyx_shapes_wo_halo[-1]
 
         blockDims = dict(zip("tczyx", largest_valid_shape))
         blockDims["c"] = 9999  # always request all channels
@@ -539,24 +548,27 @@ class OpPredictionPipeline(Operator):
         super(OpPredictionPipeline, self).__init__(*args, **kwargs)
 
         self.cacheless_predict = OpTikTorchClassifierPredict(parent=self)
-        self.cacheless_predict.name = "OpClassifierPredict (Cacheless Path)"
-        self.cacheless_predict.Classifier.connect(self.Classifier)
+        self.cacheless_predict.name = "OpTiktorchClassifierPredict (Cacheless Path)"
+        self.cacheless_predict.ModelSession.connect(self.Classifier)
         self.cacheless_predict.Image.connect(self.RawImage)  # <--- Not from cache
         self.cacheless_predict.LabelsCount.connect(self.NumClasses)
 
         self.predict = OpTikTorchClassifierPredict(parent=self)
-        self.predict.name = "OpClassifierPredict"
-        self.predict.Classifier.connect(self.Classifier)
+        self.predict.name = "OpTiktorchClassifierPredict"
+        self.predict.ModelSession.connect(self.Classifier)
         self.predict.Image.connect(self.RawImage)
         self.predict.LabelsCount.connect(self.NumClasses)
         self.predict.BlockShape.connect(self.BlockShape)
-        self.PredictionProbabilities.connect(self.predict.PMaps)
+        self.splitReqests = OpBlockedArrayCache(parent=self)
+        self.splitReqests.Input.connect(self.predict.PMaps)
+        self.splitReqests.BlockShape.connect(self.predict.BlockShape)
+        self.PredictionProbabilities.connect(self.splitReqests.Output)
 
         self.prediction_cache = OpBlockedArrayCache(parent=self)
         self.prediction_cache.name = "BlockedArrayCache"
-        self.prediction_cache.inputs["fixAtCurrent"].connect(self.FreezePredictions)
+        self.prediction_cache.fixAtCurrent.connect(self.FreezePredictions)
         self.prediction_cache.BlockShape.connect(self.BlockShape)
-        self.prediction_cache.inputs["Input"].connect(self.predict.PMaps)
+        self.prediction_cache.Input.connect(self.predict.PMaps)
         self.CachedPredictionProbabilities.connect(self.prediction_cache.Output)
 
         self.opPredictionSlicer = OpMultiArraySlicer2(parent=self)
