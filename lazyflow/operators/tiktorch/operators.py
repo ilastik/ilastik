@@ -90,7 +90,7 @@ class OpTikTorchTrainClassifierBlocked(Operator):
 
             # Ask for the halo needed by the classifier
             axiskeys = image_slot.meta.getAxisKeys()
-            halo_shape = model.get_halo_shape(axiskeys)
+            halo_shape = model.get_halo(axiskeys)
             assert len(halo_shape) == len(block_label_roi[0])
             assert halo_shape[-1] == 0, "Didn't expect a non-zero halo for channel dimension."
 
@@ -120,11 +120,8 @@ class OpTikTorchTrainClassifierBlocked(Operator):
 
     def execute(self, slot, subindex, roi, result):
         model_session = self.ModelSession.value
-
-        # channel_names = self.Images[0].meta.channel_names
-        # axistags = self.Images[0].meta.axistags
-        # classifier = classifier_factory.create_and_train_pixelwise([], [], axistags, channel_names, [])
         result[0] = model_session
+        return result
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Labels:
@@ -155,7 +152,6 @@ class OpTikTorchTrainClassifierBlocked(Operator):
                 image_blocks, label_blocks, block_ids = self._collect_blocks(image_slot, label_slot, block_slicings)
                 axistags = self.Images[0].meta.axistags
 
-                print("UPDATED BLOCKS", block_shape, block_ids)
                 model_session.update(image_blocks, label_blocks, axistags, block_ids)
             except Exception as e:
                 logger.error(e, exc_info=True)
@@ -216,17 +212,15 @@ class OpTikTorchClassifierPredict(Operator):
         roistop[-1] = raw_channels
         upstream_roi = (roistart, roistop)
 
-        halo = numpy.array(session.get_halo_shape(axiskeys))
-        shrinkage = numpy.array(session.get_shrinkage(axiskeys))
+        halo = numpy.array(session.get_halo(axiskeys))
 
         assert len(halo) == len(upstream_roi[0])
         assert axiskeys[-1] == "c"
         assert halo[-1] == 0, "Didn't expect a non-zero halo for channel dimension."
 
-        # Expand block by halo and shrinkage
         upstream_roi = numpy.array(upstream_roi)
-        upstream_roi[0] -= halo + shrinkage
-        upstream_roi[1] += halo + shrinkage
+        upstream_roi[0] -= halo
+        upstream_roi[1] += halo
 
         # Extend block further to reach a valid shape
         min_shape = upstream_roi[1] - upstream_roi[0]
@@ -241,11 +235,11 @@ class OpTikTorchClassifierPredict(Operator):
                 break
         else:
             raise ValueError(
-                f"The requested roi {roi} with halo {halo} and shrinkage {shrinkage} is too large for the "
+                f"The requested roi {roi} with halo {halo} is too large for the "
                 f"session's valid shapes: {session.get_valid_shapes(axiskeys)}"
             )
 
-        # Determine how to extract the data from the result (without halo, shrinkage, and padding)
+        # Determine how to extract the data from the result (without halo, padding)
         downstream_roi = numpy.array((roi.start, roi.stop))
         predictions_roi = downstream_roi - upstream_roi[0]
         predictions_roi[0, -1] = prediction_channel_start
