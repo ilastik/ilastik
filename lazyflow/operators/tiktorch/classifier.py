@@ -84,7 +84,7 @@ class ModelSession:
 
     @property
     def has_training(self):
-        return self.__session.has_training
+        return self.__session.hasTraining
 
     def get_halo(self, axes: str = "zyx"):
         dim_size_by_name = {d.name: d.size for d in self.__session.halo}
@@ -135,6 +135,9 @@ class ModelSession:
 
         self.tikTorchClient.update_training_data(NDArrayBatch(images), NDArrayBatch(labels))
         self.tikTorchClient.remove_data("training", to_remove)
+
+    def close(self):
+        self.tiktorchClient.CloseModelSession(self.__session)
 
     def predict(self, feature_image, roi, axistags=None):
         """
