@@ -494,7 +494,8 @@ class NNClassGui(LabelingGui):
                 self.labelingDrawerUi.checkpoints.setVisible(model.has_training)
                 return
 
-        self.labelingDrawerUi.addModel.setText("no model")
+        self.labelingDrawerUi.addModel.setText("Load model")
+        self.labelingDrawerUi.addModel.setChecked(False)
         self.labelingDrawerUi.closeModel.setVisible(False)
         self.labelingDrawerUi.livePrediction.setEnabled(False)
         self.labelingDrawerUi.liveTraining.setVisible(False)
@@ -727,10 +728,7 @@ class NNClassGui(LabelingGui):
 
 
     def closeModelClick(self):
-        self.topLevelOperatorView
         model = self.topLevelOperatorView.set_model(b"")
-        self.labelingDrawerUi.addModel.setEnabled(True)
-        self.labelingDrawerUi.addModel.setText("no model")
 
     def addModel(self):
         """
