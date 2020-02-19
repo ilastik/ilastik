@@ -90,12 +90,15 @@ from .examples.dataConversion.dataConversionWorkflow import DataConversionWorkfl
 WORKFLOW_CLASSES += [DataConversionWorkflow]
 
 # network classification, check whether required modules are available:
-from lazyflow.classifiers import has_tiktorch
 
-if has_tiktorch or ilastik.config.cfg.getboolean('ilastik', 'debug'):
-    if ilastik.config.cfg.getboolean('ilastik', 'hbp', fallback=False):
-        from .nnClassification import NNClassificationWorkflow
-        WORKFLOW_CLASSES += [NNClassificationWorkflow]
+if ilastik.config.cfg.getboolean('ilastik', 'debug'):
+    try:
+        if ilastik.config.cfg.getboolean('ilastik', 'hbp', fallback=False):
+            from .nnClassification import NNClassificationWorkflow
+            WORKFLOW_CLASSES += [NNClassificationWorkflow]
+    except ImportError as e:
+        logger.warning("Failed to import NeuralNet workflow; check dependencies: " + str(e))
+        pass
 
 # Examples
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):

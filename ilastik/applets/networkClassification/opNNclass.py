@@ -27,7 +27,6 @@ from lazyflow.operators import (
     OpMultiArraySlicer2,
     OpValueCache,
     OpBlockedArrayCache,
-    OpSplitRequestsBlockwise,
 )
 from lazyflow.operators.tiktorch import (
     OpTikTorchTrainClassifierBlocked,

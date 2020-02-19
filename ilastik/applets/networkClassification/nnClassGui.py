@@ -59,8 +59,6 @@ from tiktorch.types import ModelState, Model
 from tiktorch.utils_client import read_model
 from tiktorch.configkeys import TRAINING, NUM_ITERATIONS_DONE, NUM_ITERATIONS_MAX
 
-from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
-
 logger = logging.getLogger(__name__)
 
 
