@@ -33,6 +33,7 @@ import grpc
 
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.graph import Graph
+from lazyflow.request import Request
 from lazyflow.roi import roiToSlice
 
 from tiktorch.launcher import LocalServerLauncher, RemoteSSHServerLauncher, SSHCred, ConnConf
@@ -155,11 +156,15 @@ class ModelSession:
             reordered_feature_image /= dev
 
         try:
-            resp = self.tiktorchClient.Predict(
+            current_rq = Request._current_request()
+            resp = self.tiktorchClient.Predict.future(
                 inference_pb2.PredictRequest(
                     tensor=converters.numpy_to_pb_tensor(reordered_feature_image), modelSessionId=self.__session.id
                 )
             )
+            resp.add_done_callback(lambda o: current_rq._wake_up())
+            current_rq._suspend()
+            resp = resp.result()
             result = converters.pb_tensor_to_numpy(resp.tensor)
         except Exception:
             logger.exception("Predict call failed")
