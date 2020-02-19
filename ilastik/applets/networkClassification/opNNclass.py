@@ -252,7 +252,6 @@ class OpNNClassification(Operator):
         self.opLabelPipeline.RawImage.connect(self.InputImages)
         self.opLabelPipeline.LabelInput.connect(self.LabelInputs)
         self.opLabelPipeline.DeleteLabel.setValue(-1)
-        self.opLabelPipeline.BlockShape.connect(self.opBlockShape.BlockShapeTrain)
         self.LabelImages.connect(self.opLabelPipeline.Output)
         self.NonzeroLabelBlocks.connect(self.opLabelPipeline.nonzeroBlocks)
 

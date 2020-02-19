@@ -53,7 +53,7 @@ from ilastik.utility import bind
 from ilastik.shell.gui.iconMgr import ilastikIcons
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
-from volumina.utility import PreferencesManager
+from volumina.utility import preferences
 
 from tiktorch.types import ModelState, Model
 from tiktorch.utils_client import read_model
@@ -737,7 +737,7 @@ class NNClassGui(LabelingGui):
         When AddModel button is clicked.
         """
         # open dialog in recent model folder if possible
-        folder = PreferencesManager().get("DataSelection", "recent model")
+        folder = preferences.get("DataSelection", "recent model")
         if folder is None:
             folder = os.path.expanduser("~")
 
@@ -759,7 +759,7 @@ class NNClassGui(LabelingGui):
 
             # user did not cancel selection
             self.add_NN_classifiers(filename)
-            PreferencesManager().set("DataSelection", "recent model", filename)
+            preferences.set("DataSelection", "recent model", filename)
             self.parentApplet.appletStateUpdateRequested()
             self.labelingDrawerUi.addModel.setEnabled(True)
 

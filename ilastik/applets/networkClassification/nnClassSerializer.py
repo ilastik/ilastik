@@ -31,8 +31,6 @@ from ilastik.applets.base.appletSerializer import (
     SerialSlot,
     SerialListSlot,
     SerialBlockSlot,
-    json_dumps_binary,
-    json_loads_binary,
 )
 
 
