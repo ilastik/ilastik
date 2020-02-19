@@ -35,22 +35,10 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.graph import Graph
 from lazyflow.roi import roiToSlice
 
-from tiktorch import serializers  # noqa
 from tiktorch.launcher import LocalServerLauncher, RemoteSSHServerLauncher, SSHCred, ConnConf
-from tiktorch.proto import inference_pb2, inference_pb2_grpc, converters
-from tiktorch.types import (
-    NDArray,
-    LabeledNDArray,
-    NDArrayBatch,
-    LabeledNDArrayBatch,
-    SetDeviceReturnType,
-    Model,
-    ModelState,
-)
-from tiktorch.rpc_interface import INeuralNetworkAPI
-from tiktorch.rpc import Client
-
-from types import SimpleNamespace
+from tiktorch import converters
+import inference_pb2
+import inference_pb2_grpc
 
 from vigra import AxisTags
 
@@ -225,6 +213,7 @@ class TikTorchLazyflowClassifierFactory:
         return ModelSession(session, self)
 
     def __init__(self, server_config) -> None:
+        _100_MB = 100 * 1024 * 1024
         self._tikTorchClassifier = None
         self._train_model = None
         self._shutdown_sent = False
@@ -241,7 +230,10 @@ class TikTorchLazyflowClassifierFactory:
 
         self.launcher.start()
 
-        self._chan = grpc.insecure_channel(f"{addr}:{port1}")
+        self._chan = grpc.insecure_channel(
+            f"{addr}:{port1}",
+            options=[("grpc.max_send_message_length", _100_MB), ("grpc.max_receive_message_length", _100_MB)],
+        )
         self._tikTorchClient = inference_pb2_grpc.InferenceStub(self._chan)
         self._devices = [d.id for d in server_config.devices if d.enabled]
 
