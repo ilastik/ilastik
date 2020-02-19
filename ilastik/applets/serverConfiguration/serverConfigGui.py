@@ -27,8 +27,6 @@ from PyQt5.QtWidgets import QWidget, QStackedWidget, QListWidgetItem, QListWidge
 from PyQt5.QtCore import QStateMachine, QState, QSignalTransition, pyqtSignal
 
 from tiktorch.launcher import LocalServerLauncher, RemoteSSHServerLauncher, SSHCred
-from tiktorch.rpc_interface import INeuralNetworkAPI
-from tiktorch.rpc import Client, TCPConnConf
 from tiktorch.launcher import ConnConf
 
 
@@ -41,6 +39,10 @@ from .serverListWidget import ServerListWidget, ServerListModel
 from .configStorage import ServerConfigStorage
 from . import types
 from ilastik import config
+import grpc
+import tiktorch
+import inference_pb2_grpc, inference_pb2
+
 
 
 class ServerConfigGui(QWidget):
@@ -102,9 +104,6 @@ class ServerFormItemDelegate(QItemDelegate):
 
         super().setEditorData(editor, index)
 
-
-import grpc
-from tiktorch.proto import inference_pb2_grpc, inference_pb2
 
 def _fetch_devices(config: types.ServerConfig):
     try:
