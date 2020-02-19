@@ -1,9 +1,6 @@
 from builtins import object
 import abc
 from future.utils import with_metaclass
-from typing import Iterable
-
-from typing import Iterable
 
 
 def _has_attribute(cls, attr):
@@ -142,9 +139,7 @@ class LazyflowPixelwiseClassifierFactoryABC(with_metaclass(abc.ABCMeta, object))
         return obj
 
     @abc.abstractmethod
-    def create_and_train_pixelwise(
-        self, feature_images, label_images, axistags=None, feature_names=None, image_ids=None
-    ):
+    def create_and_train_pixelwise(self, feature_images, label_images, axistags=None, feature_names=None):
         """
         Create a new classifier and train it with the given list of feature images and the given list of label images.
         Generally, it is assumed that the channel dimension is the LAST axis for each image.
@@ -273,96 +268,6 @@ class LazyflowPixelwiseClassifierABC(with_metaclass(abc.ABCMeta, object)):
         return NotImplemented
 
     @abc.abstractmethod
-    def serialize_hdf5(self, h5py_group):
-        """
-        Serialize the classifier as an hdf5 group
-        """
-        raise NotImplementedError
-
-    @classmethod
-    def deserialize_hdf5(cls, h5py_group):
-        """
-        Class method.  Deserialize the classifier stored in the given ``h5py.Group`` object, and return it.
-        """
-        raise NotImplementedError
-
-
-class LazyflowOnlineClassifier:
-    """
-    Defines an interface for online classifier objects that can be used by the lazyflow classifier operators.
-    In contrast to a "pixel-wise" classifier, this classifier gets updated and not recreated.
-    """
-
-    def create_and_train_pixelwise(self, *args, **kwargs):
-        raise NotImplementedError("This is a 'LazyflowOnlineClassifier'. Use update instead!")
-
-    def update(self, feature_images: Iterable, label_images: Iterable, axistags, image_ids: Iterable):
-        """
-        Update this classifier with the given lists of feature images and label images. The corresponding list of keys
-        """
-
-    # def get_halo_shape(self):
-    #     """
-    #     Return the halo dimensions required for optimal classifier performance.
-    #     """
-    #     raise NotImplementedError
-
-    def resume_training(self):
-        raise NotImplementedError
-
-    def pause_training(self):
-        raise NotImplementedError
-
-    def description(self):
-        """
-        Return a human-readable description of this classifier.
-        """
-        raise NotImplementedError
-
-    def estimated_ram_usage_per_requested_predictionchannel(self):
-        """
-        Return the RAM (in bytes) needed by the classifier to run classification.
-        The amount of RAM should be relative to the number of output channels (label classes).
-        """
-        return 0
-
-    def predict_probabilities_pixelwise(self, feature_image, roi, axistags=None):
-        """
-        For each pixel in the given feature_image, predict the probabilities that the
-        pixel belongs to each label class the classifier was trained with.
-
-        feature_image: An ND image.  Last axis must be channel.
-        roi: The region of interest (start, stop) within feature_image to predict (e.g. without the halo region)
-             Note: roi parameter should not include channel.
-                   For example, a valid roi for a zyxc image could be ((0,0,0), (10,20,30))
-        axistags: Optional.  A vigra.AxisTags object describing the feature_image.
-
-        Returns: A multi-channel image (each channel corresponds to a different label class).
-                 The result image size is determined by the roi parameter.
-        """
-        raise NotImplementedError
-
-    def known_classes(self):
-        """
-        Returns the list of label classes known to this classifier (i.e. the classes it was trained with).
-        """
-        raise NotImplementedError
-
-    def feature_count(self):
-        """
-        Return the number of features used to train this classifier.
-        """
-        raise NotImplementedError
-
-    def get_halo_shape(self, data_axes="zyx"):
-        """
-        deprecated, use get_halo instead
-        """
-        return self.get_halo(data_axes)
-
-    def get_halo(self, data_axes="zyx"):
-        raise NotImplementedError
-
     def serialize_hdf5(self, h5py_group):
         """
         Serialize the classifier as an hdf5 group

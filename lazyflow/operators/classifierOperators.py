@@ -35,9 +35,12 @@ import numpy
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal, OperatorWrapper
 from lazyflow.roi import sliceToRoi, roiToSlice, getIntersection, roiFromShape, nonzero_bounding_box, enlargeRoiForHalo
 from lazyflow.utility import Timer
-from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC, \
-                                 LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC, \
-                                 LazyflowOnlineClassifier
+from lazyflow.classifiers import (
+    LazyflowVectorwiseClassifierABC,
+    LazyflowVectorwiseClassifierFactoryABC,
+    LazyflowPixelwiseClassifierABC,
+    LazyflowPixelwiseClassifierFactoryABC,
+)
 
 from .opFeatureMatrixCache import OpFeatureMatrixCache
 from .opConcatenateFeatureMatrices import OpConcatenateFeatureMatrices
@@ -87,9 +90,7 @@ class OpTrainClassifierBlocked(Operator):
         if issubclass(type(classifier_factory), LazyflowVectorwiseClassifierFactoryABC):
             new_mode = "vectorwise"
         elif issubclass(type(classifier_factory), LazyflowPixelwiseClassifierFactoryABC):
-            new_mode = 'pixelwise'
-        elif isinstance(classifier_factory, LazyflowOnlineClassifier):
-            new_mode = 'pixelwise'
+            new_mode = "pixelwise"
         else:
             raise Exception("Unknown classifier factory type: {}".format(type(classifier_factory)))
 
@@ -150,7 +151,9 @@ class OpTrainPixelwiseClassifierBlocked(Operator):
 
     def setupOutputs(self):
         for slot in [self.Images, self.Labels]:
-            assert all([s.meta.getAxisKeys()[-1] == "c" for s in slot]), f"This opearator assumes channel is the last axis. problem: {slot}"
+            assert all(
+                [s.meta.getAxisKeys()[-1] == "c" for s in slot]
+            ), f"This opearator assumes channel is the last axis. problem: {slot}"
 
         self.Classifier.meta.dtype = object
         self.Classifier.meta.shape = (1,)
