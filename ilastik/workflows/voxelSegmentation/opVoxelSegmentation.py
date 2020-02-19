@@ -4,7 +4,6 @@ from functools import partial
 
 # SciPy
 import numpy
-from pathos import multiprocessing
 import skimage
 
 # import IPython
@@ -13,6 +12,7 @@ import vigra
 # lazyflow
 from lazyflow.roi import determineBlockShape
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.request import Request, RequestPool
 from lazyflow.operators import (
     OpValueCache,
     OpSlicedBlockedArrayCache,
@@ -527,11 +527,13 @@ class OpSupervoxelFeaturesAndLabels(Operator):
         supervoxel_mask = self.SupervoxelSegmentation.value[..., 0]
         labels = self.Labels.value[:]
 
+        supervoxel_labels_dicts = []
+
         def computeLabel(supervoxels):
             # supervoxel_labels = np.ndarray((len(supervoxels),))
+            nonlocal supervoxel_labels_dicts
             supervoxel_labels = {}
             for supervoxel in supervoxels:
-                # import IPython; IPython.embed()
                 counts = np.bincount(labels[supervoxel_mask == supervoxel].ravel())
 
                 # Little trick to avoid labelling a supervoxel as unlabelled if only a small part of it has been labelled
@@ -543,15 +545,17 @@ class OpSupervoxelFeaturesAndLabels(Operator):
                     label = counts[1:].argmax() + 1
 
                 supervoxel_labels[supervoxel] = label
-            return supervoxel_labels
+            supervoxel_labels_dicts.append(supervoxel_labels)
 
-        num_cores = multiprocessing.cpu_count()
-        pool = multiprocessing.Pool(num_cores * 2)
+        pool = RequestPool()
         supervoxels_list = np.unique(supervoxel_mask)
         # supervoxel_labels = np.concatenate(pool.map(computeLabel, np.array_split(supervoxels_list, num_cores)))
         supervoxel_labels = {}
-        supervoxel_labels_dicts = pool.map(computeLabel, np.array_split(supervoxels_list, num_cores * 2))
-        pool.close()
+        num_workers = Request.global_thread_pool.num_workers
+        for subarray in np.array_split(supervoxels_list, num_workers):
+            pool.add(Request(partial(computeLabel, subarray)))
+        pool.wait()
+
         # supervoxel_labels_dicts = [computeLabel(l) for l in np.array_split(supervoxels_list, num_cores)]
         for d in supervoxel_labels_dicts:
             supervoxel_labels.update(d)
