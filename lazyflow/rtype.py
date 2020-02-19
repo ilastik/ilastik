@@ -102,7 +102,8 @@ class Roi(with_metaclass(RoiMeta, object)):
 class Everything(Roi):
     """Fallback Roi for Slots that can't operate on subsets of their input data."""
 
-    pass
+    def __init__(self, slot, *args, **kwargs):
+        self.slot = slot
 
 
 class List(Roi):
