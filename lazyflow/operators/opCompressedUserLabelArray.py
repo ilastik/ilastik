@@ -61,7 +61,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
     shape = InputSlot(optional=True)  # Should not be used.
     eraser = InputSlot()
     deleteLabel = InputSlot(optional=True)
-    # blockShape = InputSlot()  # If the blockshape is changed after labels have been stored, all cache data is lost.
+    blockShape = InputSlot()  # If the blockshape is changed after labels have been stored, all cache data is lost.
 
     # Output = OutputSlot()
     # nonzeroValues = OutputSlot()
@@ -101,8 +101,10 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         self._purge_label(from_label, True, into_label)
 
     def setupOutputs(self):
-        logger.debug('blockShape %s', self.blockShape)
-        logger.debug('input %s', self.Input)
+        # Due to a temporary naming clash, pass our subclass blockshape to the superclass
+        # TODO: Fix this by renaming the BlockShape slots to be consistent.
+        self.BlockShape.setValue(self.blockShape.value)
+
         super(OpCompressedUserLabelArray, self).setupOutputs()
         if self.Output.meta.NOTREADY:
             self.nonzeroBlocks.meta.NOTREADY = True
@@ -126,7 +128,9 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         self.Projection2D.meta.drange = (0.0, 1.0)
 
         # Overwrite the blockshape
-        if self.blockShape.ready() and self._blockshape is not None and not all(numpy.equal(self.blockShape.value, self._blockshape)):
+        if self._blockshape is None:
+            self._blockshape = numpy.minimum(self.BlockShape.value, self.Output.meta.shape)
+        elif self.blockShape.value != self._blockshape:
             nonzero_blocks_destination = [None]
             self._execute_nonzeroBlocks(nonzero_blocks_destination)
             nonzero_blocks = nonzero_blocks_destination[0]
@@ -134,8 +138,6 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
                 raise RuntimeError(
                     "You are not permitted to reconfigure the labeling operator after you've already stored labels in it."
                 )
-
-            self._blockshape = numpy.minimum(self.blockShape.value, self.Output.meta.shape)
 
         # Overwrite chunkshape now that blockshape has been overwritten
         self._chunkshape = self._chooseChunkshape(self._blockshape)
@@ -149,7 +151,6 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
                 self._label_to_purge = new_purge_label
                 if self._label_to_purge > 0:
                     self._purge_label(self._label_to_purge, True)
-
 
     def _purge_label(self, label_to_purge, decrement_remaining, replacement_value=0):
         """

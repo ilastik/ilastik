@@ -62,6 +62,7 @@ class OpSimpleBlockedArrayCache(OpUnblockedArrayCache):
             full_block_roi = numpy.asarray(full_block_roi)
             clipped_block_roi = numpy.asarray(clipped_block_roi)
             output_roi = numpy.asarray(clipped_block_roi) - roi.start
+
             block_roi = self._get_containing_block_roi(clipped_block_roi)
 
             # Skip cache and copy full block directly
