@@ -3,12 +3,7 @@ import faulthandler
 import logging
 import os
 import sys
-from typing import (
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-)
+from typing import List, Optional, Sequence, Tuple
 
 import ilastik.config
 from ilastik.config import cfg as ilastik_config
@@ -18,72 +13,31 @@ logger = logging.getLogger(__name__)
 
 def _argparser() -> argparse.ArgumentParser:
     """Create ArgumentParser for the main entry point."""
-    ap = argparse.ArgumentParser(description='start an ilastik workflow')
+    ap = argparse.ArgumentParser(description="start an ilastik workflow")
+    ap.add_argument("--headless", help="Don't start the ilastik gui.", action="store_true")
+    ap.add_argument("--project", help="A project file to open on startup.")
     ap.add_argument(
-        '--headless',
-        help="Don't start the ilastik gui.",
-        action='store_true',
+        "--readonly",
+        help="Open all projects in read-only mode, to ensure you don't " "accidentally make changes.",
+        action="store_true",
     )
     ap.add_argument(
-        '--project',
-        help='A project file to open on startup.',
+        "--new_project", help="Create a new project with the specified name. Must also specify " "--workflow."
     )
+    ap.add_argument("--workflow", help="When used with --new_project, specifies the workflow to use.")
     ap.add_argument(
-        '--readonly',
-        help="Open all projects in read-only mode, to ensure you don't "
-             "accidentally make changes.",
-        action='store_true',
+        "--clean_paths", help="Remove ilastik-unrelated directories from PATH and PYTHONPATH.", action="store_true"
     )
+    ap.add_argument("--redirect_output", help="A filepath to redirect stdout to")
+    ap.add_argument("--debug", help="Start ilastik in debug mode.", action="store_true")
+    ap.add_argument("--logfile", help="A filepath to dump all log messages to.")
+    ap.add_argument("--process_name", help="A process name (used for logging purposes).")
+    ap.add_argument("--configfile", help="A custom path to a user config file for expert ilastik settings.")
+    ap.add_argument("--fullscreen", help="Show Window in fullscreen mode.", action="store_true")
     ap.add_argument(
-        '--new_project',
-        help='Create a new project with the specified name. Must also specify '
-             '--workflow.',
+        "--exit_on_failure", help="Immediately call exit(1) if an unhandled exception occurs.", action="store_true"
     )
-    ap.add_argument(
-        '--workflow',
-        help='When used with --new_project, specifies the workflow to use.',
-    )
-    ap.add_argument(
-        '--clean_paths',
-        help='Remove ilastik-unrelated directories from PATH and PYTHONPATH.',
-        action='store_true',
-    )
-    ap.add_argument(
-        '--redirect_output',
-        help='A filepath to redirect stdout to',
-    )
-    ap.add_argument(
-        '--debug',
-        help='Start ilastik in debug mode.',
-        action='store_true',
-    )
-    ap.add_argument(
-        '--logfile',
-        help='A filepath to dump all log messages to.',
-    )
-    ap.add_argument(
-        '--process_name',
-        help='A process name (used for logging purposes).',
-    )
-    ap.add_argument(
-        '--configfile',
-        help='A custom path to a user config file for expert ilastik settings.',
-    )
-    ap.add_argument(
-        '--fullscreen',
-        help='Show Window in fullscreen mode.',
-        action='store_true',
-    )
-    ap.add_argument(
-        '--exit_on_failure',
-        help='Immediately call exit(1) if an unhandled exception occurs.',
-        action='store_true',
-    )
-    ap.add_argument(
-        '--hbp',
-        help='Enable HBP-specific functionality.',
-        action='store_true',
-    )
+    ap.add_argument("--hbp", help="Enable HBP-specific functionality.", action="store_true")
     return ap
 
 
@@ -91,29 +45,30 @@ def _ensure_compatible_args(parser: argparse.ArgumentParser, args: argparse.Name
     """If args are invalid, print an error message to stderr and exit."""
 
     if args.workflow is not None and args.new_project is None:
-        parser.error('The --workflow argument may only be used with the '
-                     '--new_project argument.')
+        parser.error("The --workflow argument may only be used with the " "--new_project argument.")
 
     if args.workflow is None and args.new_project is not None:
-        parser.error('No workflow specified. The --new_project argument must '
-                     'be used in conjunction with the --workflow argument.')
+        parser.error(
+            "No workflow specified. The --new_project argument must "
+            "be used in conjunction with the --workflow argument."
+        )
 
     if args.project is not None and args.new_project is not None:
-        parser.error('The --project and --new_project settings cannot be used '
-                     'together. Choose one (or neither).')
+        parser.error("The --project and --new_project settings cannot be used " "together. Choose one (or neither).")
 
     if args.headless and (args.fullscreen or args.exit_on_failure):
-        parser.error('Some of the command-line options you provided are not '
-                     'supported in headless mode.')
+        parser.error("Some of the command-line options you provided are not " "supported in headless mode.")
 
-    if (args.headless and not args.project and
-            not (args.new_project and args.workflow)):
-        parser.error('You have to supply at least --project, or --new_project '
-                     'and workflow when invoking ilastik in headless mode.')
+    if args.headless and not args.project and not (args.new_project and args.workflow):
+        parser.error(
+            "You have to supply at least --project, or --new_project "
+            "and workflow when invoking ilastik in headless mode."
+        )
 
 
-def parse_args(args: Optional[Sequence[str]] = None,
-               namespace: Optional[argparse.Namespace] = None) -> argparse.Namespace:
+def parse_args(
+    args: Optional[Sequence[str]] = None, namespace: Optional[argparse.Namespace] = None
+) -> argparse.Namespace:
     """Parse and validate command-line arguments for :func:`main`.
 
     See Also:
@@ -125,8 +80,9 @@ def parse_args(args: Optional[Sequence[str]] = None,
     return known
 
 
-def parse_known_args(args: Optional[Sequence[str]] = None,
-                     namespace: Optional[argparse.Namespace] = None) -> Tuple[argparse.Namespace, List[str]]:
+def parse_known_args(
+    args: Optional[Sequence[str]] = None, namespace: Optional[argparse.Namespace] = None
+) -> Tuple[argparse.Namespace, List[str]]:
     """Parse and validate command-line arguments for :func:`main`.
 
     See Also:
@@ -143,21 +99,11 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
     init_logging: Skip logging config initialization by setting this to False.
                   (Useful when opening multiple projects in a Python script.)
     """
-    if parsed_args.headless:
-        # If any applet imports the GUI in headless mode, that's a mistake.
-        # To help developers catch such mistakes, we replace PyQt with a dummy
-        #  module, so we'll see import errors.
-        import ilastik
-        dummy_module_dir = os.path.join(
-            os.path.split(ilastik.__file__)[0], "headless_dummy_modules")
-        sys.path.insert(0, dummy_module_dir)
-
     this_path = os.path.dirname(__file__)
-    ilastik_dir = os.path.abspath(
-        os.path.join(this_path, "..%s.." % os.path.sep))
+    ilastik_dir = os.path.abspath(os.path.join(this_path, "..%s.." % os.path.sep))
     _import_h5py_with_utf8_encoding()
     _update_debug_mode(parsed_args)
-    ilastik_config.set('ilastik', 'hbp', 'true')
+    _update_hbp_mode(parsed_args)
 
     # If necessary, redirect stdout BEFORE logging is initialized
     _redirect_output(parsed_args)
@@ -198,11 +144,11 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
         message = 'Starting ilastik in debug mode from "%s".' % ilastik_dir
         logging.basicConfig(level=logging.DEBUG)
         logger.info(message)
-        print(message)     # always print the startup message
+        print(message)  # always print the startup message
     else:
         message = 'Starting ilastik from "%s".' % ilastik_dir
         logger.info(message)
-        print(message)     # always print the startup message
+        print(message)  # always print the startup message
 
     # Headless launch
     if parsed_args.headless:
@@ -211,6 +157,7 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
             f()
 
         from ilastik.shell.headless.headlessShell import HeadlessShell
+
         shell = HeadlessShell(workflow_cmdline_args)
 
         # Run post-init
@@ -220,6 +167,7 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
     # Normal launch
     else:
         from ilastik.shell.gui.startShellGui import startShellGui
+
         sys.exit(startShellGui(workflow_cmdline_args, preinit_funcs, postinit_funcs))
 
 
@@ -228,6 +176,7 @@ def _import_h5py_with_utf8_encoding():
     # Note: This works only with the patched version of hdf5-1.10.1 (forked at
     # ilastik)
     import h5py
+
     h5py._hl.compat.WINDOWS_ENCODING = "utf-8"
 
 
@@ -250,46 +199,47 @@ def _redirect_output(parsed_args):
         old_stderr = sys.stderr
 
         global stdout_redirect_file
-        stdout_redirect_file = open(parsed_args.redirect_output, 'a')
+        stdout_redirect_file = open(parsed_args.redirect_output, "a")
         sys.stdout = stdout_redirect_file
         sys.stderr = stdout_redirect_file
 
         # Close the file when we exit...
         import atexit
+
         atexit.register(stdout_redirect_file.close)
 
 
 def _update_debug_mode(parsed_args):
     # Force debug mode if any of these flags are active.
-    if parsed_args.debug or ilastik_config.getboolean('ilastik', 'debug'):
+    if parsed_args.debug or ilastik_config.getboolean("ilastik", "debug"):
         # There are two places that debug mode can be checked.
         # Make sure both are set.
-        ilastik_config.set('ilastik', 'debug', 'true')
+        ilastik_config.set("ilastik", "debug", "true")
         parsed_args.debug = True
 
 
+def _update_hbp_mode(parsed_args):
+    """enable HBP-specific functionality"""
+    if parsed_args.hbp:
+        ilastik_config.set("ilastik", "hbp", "true")
+
+
 def _init_logging(parsed_args):
-    from ilastik.ilastik_logging import default_config, startUpdateInterval, \
-        DEFAULT_LOGFILE_PATH
+    from ilastik.ilastik_logging import default_config, startUpdateInterval, DEFAULT_LOGFILE_PATH
 
     logfile_path = parsed_args.logfile or DEFAULT_LOGFILE_PATH
     process_name = ""
     if parsed_args.process_name:
         process_name = parsed_args.process_name + " "
 
-    if ilastik_config.getboolean('ilastik', 'debug') or parsed_args.headless:
-        default_config.init(
-            process_name, default_config.OutputMode.BOTH, logfile_path)
+    if ilastik_config.getboolean("ilastik", "debug") or parsed_args.headless:
+        default_config.init(process_name, default_config.OutputMode.BOTH, logfile_path)
     else:
-        default_config.init(
-            process_name,
-            default_config.OutputMode.LOGFILE_WITH_CONSOLE_ERRORS,
-            logfile_path)
+        default_config.init(process_name, default_config.OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, logfile_path)
         startUpdateInterval(10)  # 10 second periodic refresh
 
     if parsed_args.redirect_output:
-        logger.info("All console output is being redirected to: {}"
-                    .format(parsed_args.redirect_output))
+        logger.info("All console output is being redirected to: {}".format(parsed_args.redirect_output))
 
 
 def _init_threading_logging_monkeypatch():
@@ -297,12 +247,13 @@ def _init_threading_logging_monkeypatch():
     thread_start_logger = logging.getLogger("thread_start")
     if thread_start_logger.isEnabledFor(logging.DEBUG):
         import threading
+
         ordinary_start = threading.Thread.start
 
         def logged_start(self):
             ordinary_start(self)
-            thread_start_logger.debug(
-                f'Started thread: id={self.ident:x}, name={self.name}')
+            thread_start_logger.debug(f"Started thread: id={self.ident:x}, name={self.name}")
+
         threading.Thread.start = logged_start
 
 
@@ -312,7 +263,7 @@ def _import_opengm():
     # Otherwise the import fails and we will not get access to GraphCut
     # thresholding
     try:
-        import opengm # noqa
+        import opengm  # noqa
     except ImportError:
         pass
 
@@ -321,8 +272,7 @@ def _prepare_lazyflow_config(parsed_args):
     # Check environment variable settings.
     n_threads = os.getenv("LAZYFLOW_THREADS", None)
     total_ram_mb = os.getenv("LAZYFLOW_TOTAL_RAM_MB", None)
-    status_interval_secs = int(
-        os.getenv("LAZYFLOW_STATUS_MONITOR_SECONDS", "0"))
+    status_interval_secs = int(os.getenv("LAZYFLOW_STATUS_MONITOR_SECONDS", "0"))
 
     # Convert str -> int
     if n_threads is not None:
@@ -331,40 +281,40 @@ def _prepare_lazyflow_config(parsed_args):
 
     # If not in env, check config file.
     if n_threads is None:
-        n_threads = ilastik_config.getint('lazyflow', 'threads')
+        n_threads = ilastik_config.getint("lazyflow", "threads")
         if n_threads == -1:
             n_threads = None
-    total_ram_mb = total_ram_mb or ilastik_config.getint(
-        'lazyflow', 'total_ram_mb')
+    total_ram_mb = total_ram_mb or ilastik_config.getint("lazyflow", "total_ram_mb")
 
     # Note that n_threads == 0 is valid and useful for debugging.
     if (n_threads is not None) or total_ram_mb or status_interval_secs:
+
         def _configure_lazyflow_settings():
             import lazyflow
             import lazyflow.request
             from lazyflow.utility import Memory
-            from lazyflow.operators.cacheMemoryManager import \
-                CacheMemoryManager
+            from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 
             if status_interval_secs:
-                memory_logger = logging.getLogger(
-                    'lazyflow.operators.cacheMemoryManager')
+                memory_logger = logging.getLogger("lazyflow.operators.cacheMemoryManager")
                 memory_logger.setLevel(logging.DEBUG)
                 CacheMemoryManager().setRefreshInterval(status_interval_secs)
 
             if n_threads is not None:
-                logger.info(f'Resetting lazyflow thread pool with {n_threads} '
-                            'threads.')
+                logger.info(f"Resetting lazyflow thread pool with {n_threads} " "threads.")
                 lazyflow.request.Request.reset_thread_pool(n_threads)
             if total_ram_mb > 0:
                 if total_ram_mb < 500:
-                    raise Exception('In your current configuration, RAM is '
-                                    f'limited to {total_ram_mb} MB. Remember '
-                                    'to specify RAM in MB, not GB.')
-                ram = total_ram_mb * 1024**2
+                    raise Exception(
+                        "In your current configuration, RAM is "
+                        f"limited to {total_ram_mb} MB. Remember "
+                        "to specify RAM in MB, not GB."
+                    )
+                ram = total_ram_mb * 1024 ** 2
                 fmt = Memory.format(ram)
                 logger.info("Configuring lazyflow RAM limit to {}".format(fmt))
                 Memory.setAvailableRam(ram)
+
         return _configure_lazyflow_settings
     return None
 
@@ -376,10 +326,8 @@ def _prepare_auto_open_project(parsed_args):
     from lazyflow.utility.pathHelpers import PathComponents, isUrl
 
     # Make sure project file exists.
-    if not isUrl(parsed_args.project) and \
-       not os.path.exists(parsed_args.project):
-        raise RuntimeError("Project file '" +
-                           parsed_args.project + "' does not exist.")
+    if not isUrl(parsed_args.project) and not os.path.exists(parsed_args.project):
+        raise RuntimeError("Project file '" + parsed_args.project + "' does not exist.")
 
     parsed_args.project = os.path.expanduser(parsed_args.project)
     # convert path to convenient format
@@ -388,6 +336,7 @@ def _prepare_auto_open_project(parsed_args):
     def loadProject(shell):
         # This should work for both the IlastikShell and the HeadlessShell
         shell.openProjectFile(path, parsed_args.readonly)
+
     return loadProject
 
 
@@ -397,28 +346,30 @@ def _prepare_auto_create_new_project(parsed_args):
     parsed_args.new_project = os.path.expanduser(parsed_args.new_project)
     # convert path to convenient format
     from lazyflow.utility.pathHelpers import PathComponents
+
     path = PathComponents(parsed_args.new_project).totalPath()
 
     def createNewProject(shell):
-        import ilastik.workflows # noqa
+        import ilastik.workflows  # noqa
         from ilastik.workflow import getWorkflowFromName
+
         workflow_class = getWorkflowFromName(parsed_args.workflow)
         if workflow_class is None:
-            raise Exception(
-                "'{parsed_args.workflow}' is not a valid workflow type.")
+            raise Exception("'{parsed_args.workflow}' is not a valid workflow type.")
         # This should work for both the IlastikShell and the HeadlessShell
         shell.createAndLoadNewProject(path, workflow_class)
+
     return createNewProject
 
 
 def _init_excepthooks(parsed_args):
     # Initialize global exception handling behavior
     import ilastik.excepthooks
+
     if parsed_args.exit_on_failure:
         # Auto-exit on uncaught exceptions (useful for testing)
         ilastik.excepthooks.init_early_exit_excepthook()
-    elif not ilastik_config.getboolean('ilastik', 'debug') and \
-            not parsed_args.headless:
+    elif not ilastik_config.getboolean("ilastik", "debug") and not parsed_args.headless:
         # Show most uncaught exceptions to the user (default behavior)
         ilastik.excepthooks.init_user_mode_excepthook()
     else:

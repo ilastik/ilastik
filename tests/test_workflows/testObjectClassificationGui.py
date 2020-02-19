@@ -33,7 +33,7 @@ import h5py
 import numpy
 
 from ilastik.workflows import ObjectClassificationWorkflowPrediction
-from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, FilesystemDatasetInfo
 from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog, FILE_TYPES
 
 
@@ -55,6 +55,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         an order. Tests simulate interaction with a ilastik and depend on
         the earlier ones.
     """
+
     @classmethod
     def workflowClass(cls):
         return ObjectClassificationWorkflowPrediction
@@ -66,9 +67,8 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
 
         # input files:
         current_dir = os.path.split(__file__)[0]
-        cls.sample_data_raw = os.path.abspath(os.path.join(current_dir, '../data/inputdata/3d.h5'))
-        cls.sample_data_prob = os.path.abspath(
-            os.path.join(current_dir, '../data/inputdata/3d_Probabilities.h5'))
+        cls.sample_data_raw = os.path.abspath(os.path.join(current_dir, "../data/inputdata/3d.h5"))
+        cls.sample_data_prob = os.path.abspath(os.path.join(current_dir, "../data/inputdata/3d_Probabilities.h5"))
 
         # output files:
         cls.temp_dir = tempfile.mkdtemp()
@@ -77,31 +77,32 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         # if os.path.exists(cls.temp_dir):
         #     shutil.rmtree(cls.temp_dir)
         # os.makedirs(cls.temp_dir)
-        cls.project_file = os.path.join(cls.temp_dir, 'test_project_oc.ilp')
-        cls.output_file = os.path.join(cls.temp_dir, 'out_object_prediction.h5')
-        cls.table_h5_file = os.path.join(cls.temp_dir, 'table.h5')
+        cls.project_file = os.path.join(cls.temp_dir, "test_project_oc.ilp")
+        cls.output_file = os.path.join(cls.temp_dir, "out_object_prediction.h5")
+        cls.table_h5_file = os.path.join(cls.temp_dir, "table.h5")
         cls.table_h5_file_exported = None  # Will be filled in test_06
-        cls.table_csv_file = os.path.join(cls.temp_dir, 'table.csv')
+        cls.table_csv_file = os.path.join(cls.temp_dir, "table.csv")
         cls.table_csv_file_exported = None  # Will be filled in test_06
 
         # reference files
         # unzip the zip-file ;)
         cls.reference_zip_file = os.path.join(
-            current_dir, '../data/outputdata/testObjectClassificationGuiReference.zip')
-        cls.reference_path = os.path.join(cls.temp_dir, 'reference')
+            current_dir, "../data/outputdata/testObjectClassificationGuiReference.zip"
+        )
+        cls.reference_path = os.path.join(cls.temp_dir, "reference")
         cls.reference_files = {
-            'csv_table': os.path.join(
-                cls.reference_path, 'testObjectClassificationGuiReference/table-test_data_table.csv'),
-            'h5_table': os.path.join(
-                cls.reference_path, 'testObjectClassificationGuiReference/table-test_data.h5'),
-            'predictions_h5': os.path.join(
-                cls.reference_path, 'testObjectClassificationGuiReference/reference_out_object_prediction.h5')
+            "csv_table": os.path.join(
+                cls.reference_path, "testObjectClassificationGuiReference/table-test_data_table.csv"
+            ),
+            "h5_table": os.path.join(cls.reference_path, "testObjectClassificationGuiReference/table-test_data.h5"),
+            "predictions_h5": os.path.join(
+                cls.reference_path, "testObjectClassificationGuiReference/reference_out_object_prediction.h5"
+            ),
         }
         os.makedirs(cls.reference_path)
-        with zipfile.ZipFile(cls.reference_zip_file, mode='r') as zip_file:
+        with zipfile.ZipFile(cls.reference_zip_file, mode="r") as zip_file:
             zip_file.extractall(path=cls.reference_path)
-        cls.unzipped_reference_files = [os.path.join(cls.reference_path, fp)
-                                        for fp in zip_file.namelist()]
+        cls.unzipped_reference_files = [os.path.join(cls.reference_path, fp) for fp in zip_file.namelist()]
 
         for file_name in cls.reference_files.values():
             assert os.path.exists(file_name)
@@ -123,10 +124,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
 
     def test_00_check_preconditions(self):
         """Make sure the needed files exist"""
-        needed_files = [
-            self.sample_data_raw,
-            self.sample_data_prob
-        ]
+        needed_files = [self.sample_data_raw, self.sample_data_prob]
         for f in needed_files:
             assert os.path.exists(f), f"File {f} does not exist!"
 
@@ -134,6 +132,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         """
         Create a blank project, manipulate few couple settings, and save it.
         """
+
         def impl():
             projFilePath = self.project_file
             shell = self.shell
@@ -145,12 +144,12 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             # Add our input files:
             opDataSelection = workflow.dataSelectionApplet.topLevelOperator
             opDataSelection.DatasetGroup.resize(1)
-            info_raw = DatasetInfo()
-            info_raw.filePath = self.sample_data_raw
+            info_raw = FilesystemDatasetInfo(
+                filePath=self.sample_data_raw, project_file=self.shell.projectManager.currentProjectFile
+            )
             opDataSelection.DatasetGroup[0][0].setValue(info_raw)
-            info_prob = DatasetInfo()
-            info_prob.filePath = self.sample_data_prob
-            info_raw.nickname = 'test_data'
+            info_prob = FilesystemDatasetInfo(filePath=self.sample_data_prob)
+            info_raw.nickname = "test_data"
             opDataSelection.DatasetGroup[0][1].setValue(info_prob)
 
             # Save
@@ -164,6 +163,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         Go to the second applet and adjust some thresholding settings.
         Apply and check the outcome.
         """
+
         def impl():
             shell = self.shell
             workflow = shell.projectManager.workflow
@@ -178,19 +178,18 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
 
             # set the required values
             # self.sendkeys(gui.currentGui()._drawer.inputChannelComboBox, '1')
-            sigmas = {'x': 2.0, 'y': 2.1, 'z': 1.9}
-            gui.currentGui()._drawer.sigmaSpinBox_X.setValue(sigmas['x'])
-            gui.currentGui()._drawer.sigmaSpinBox_Y.setValue(sigmas['y'])
-            gui.currentGui()._drawer.sigmaSpinBox_Z.setValue(sigmas['z'])
+            sigmas = {"x": 2.0, "y": 2.1, "z": 1.9}
+            gui.currentGui()._drawer.sigmaSpinBox_X.setValue(sigmas["x"])
+            gui.currentGui()._drawer.sigmaSpinBox_Y.setValue(sigmas["y"])
+            gui.currentGui()._drawer.sigmaSpinBox_Z.setValue(sigmas["z"])
             threshold = 0.7
             gui.currentGui()._drawer.lowThresholdSpinBox.setValue(threshold)
 
             # get the final layer and check that it is not visible yet
-            layermatch = [x.name.startswith('Final') for x in gui.currentGui().layerstack]
+            layermatch = [x.name.startswith("Final") for x in gui.currentGui().layerstack]
             assert sum(layermatch) == 1, "Only a single layer with 'Final' in the name expected."
             final_layer = gui.currentGui().layerstack[layermatch.index(True)]
-            assert not final_layer.visible, (
-                "Expected the final layer not to be visible before apply is triggered.")
+            assert not final_layer.visible, "Expected the final layer not to be visible before apply is triggered."
 
             gui.currentGui()._drawer.applyButton.click()
             # Save the project
@@ -209,8 +208,9 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             n_objects_expected = 23  # including the background object
             output = op_threshold.Output[:].wait()
             n_objects = len(numpy.unique(output))
-            assert n_objects == n_objects_expected, (
-                f"Number of objects mismatch, expected {n_objects_expected}, got {n_objects}")
+            assert (
+                n_objects == n_objects_expected
+            ), f"Number of objects mismatch, expected {n_objects_expected}, got {n_objects}"
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
@@ -219,6 +219,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         """
         Select a some object features.
         """
+
         def impl():
             shell = self.shell
             workflow = shell.projectManager.workflow
@@ -241,15 +242,15 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             features, _ = gui.currentGui()._populate_feature_dict(op_object_features)
 
             # don't use test features
-            features = {
-                plugin: features[plugin]
-                for plugin in features if 'test' not in plugin.lower()}
+            features = {plugin: features[plugin] for plugin in features if "test" not in plugin.lower()}
 
             # don't use advanced features
             features = {
-                plugin: {feature: features[plugin][feature]
-                         for feature in features[plugin]
-                         if not features[plugin][feature].get('advanced', False)}
+                plugin: {
+                    feature: features[plugin][feature]
+                    for feature in features[plugin]
+                    if not features[plugin][feature].get("advanced", False)
+                }
                 for plugin in features
             }
 
@@ -257,9 +258,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             # save a flattened list of feature names for the export applet
             # we should really use the same format in all the applets
             TestObjectClassificationGui.selected_feature_ids = [
-                feature_id
-                for plugin in features
-                for feature_id in features[plugin].keys()
+                feature_id for plugin in features for feature_id in features[plugin].keys()
             ]
 
             # now trigger computation of features
@@ -279,10 +278,10 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
                 assert plugin in computed_features, f"Could not find plugin {plugin}"
                 for feature_name in features[plugin]:
                     # feature names are altered in the operator:
-                    feature_name_in_result = feature_name.split(' ')[0]
+                    feature_name_in_result = feature_name.split(" ")[0]
                     assert feature_name_in_result in computed_features[plugin], (
-                        f"Could not find feature {feature_name_in_result}"
-                        f"\n{computed_features[plugin].keys()}")
+                        f"Could not find feature {feature_name_in_result}" f"\n{computed_features[plugin].keys()}"
+                    )
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
@@ -291,6 +290,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         """
         Label some objects
         """
+
         def impl():
             shell = self.shell
             workflow = shell.projectManager.workflow
@@ -307,14 +307,16 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             gui.currentGui().editor.posModel.slicingPos = (0, 0, 0)
 
             assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() is False
-            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, (
-                "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount()))
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, "Got {} rows".format(
+                gui.currentGui()._labelControlUi.labelListModel.rowCount()
+            )
 
             # Add label classes
             for i in range(3, 5):
                 gui.currentGui()._labelControlUi.AddLabelButton.click()
-                assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == i, (
-                    f"Got {gui.currentGui()._labelControlUi.labelListModel.rowCount()} rows")
+                assert (
+                    gui.currentGui()._labelControlUi.labelListModel.rowCount() == i
+                ), f"Got {gui.currentGui()._labelControlUi.labelListModel.rowCount()} rows"
 
             # Now delete the last two labels again
             gui.currentGui()._labelControlUi.labelListModel.removeRow(3)
@@ -328,16 +330,16 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             # Add some labels, we use onClick directly in order to bypass problems with painting
             # on different screen resolutions
             # position: t, x, y, z, c
-            label_position = namedtuple('label_position', ['label', 'position'])
+            label_position = namedtuple("label_position", ["label", "position"])
             label_positions = [
                 label_position(0, (0, 10, 10, 10, 0)),  # obj 1
-                label_position(1, (0, 50, 5, 5, 0)),    # obj 2
+                label_position(1, (0, 50, 5, 5, 0)),  # obj 2
                 label_position(1, (0, 48, 10, 48, 0)),  # obj 14
                 label_position(1, (0, 15, 59, 48, 0)),  # obj 21
             ]
             for lp in label_positions:
                 gui.currentGui()._labelControlUi.labelListModel.select(lp.label)
-                gui.currentGui().onClick(layer='unused', pos5d=lp.position, pos='unused')
+                gui.currentGui().onClick(layer="unused", pos5d=lp.position, pos="unused")
             # Let the GUI catch up: Process all events
             QApplication.processEvents()
 
@@ -349,7 +351,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
 
             label_list = op_object_classification.LabelInputs[0].wait()[0]
             expected_labels = numpy.zeros_like(label_list)
-            layer = gui.currentGui().getLayer('Labels')
+            layer = gui.currentGui().getLayer("Labels")
             for lp in label_positions:
                 obj = gui.currentGui()._getObject(layer.segmentationImageSlot, lp.position)
                 expected_labels[obj] = lp.label + 1
@@ -389,14 +391,14 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             labelColors = gui.currentGui()._colorTable16[1:4]
             for i, labelName in enumerate(labelNames):
                 try:
-                    index = gui.currentGui().layerstack.findMatchingIndex(
-                        lambda layer: labelName in layer.name)
+                    index = gui.currentGui().layerstack.findMatchingIndex(lambda layer: labelName in layer.name)
                     layer = gui.currentGui().layerstack[index]
 
                     # Check the color
                     assert isinstance(layer, AlphaModulatedLayer), f"layer is {layer}"
-                    assert layer.tintColor.rgba() == labelColors[i], (
-                        f"Expected {hex(labelColors[i])}, got {hex(layer.tintColor.rgba())}")
+                    assert (
+                        layer.tintColor.rgba() == labelColors[i]
+                    ), f"Expected {hex(labelColors[i])}, got {hex(layer.tintColor.rgba())}"
                 except ValueError:
                     assert False, "Could not find layer for label with name: {}".format(labelName)
 
@@ -425,69 +427,58 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             QApplication.processEvents()
 
             op_object_export.OutputFilenameFormat.setValue(self.output_file)
-            op_object_export.OutputFormat.setValue('hdf5')
-            op_object_export.OutputInternalPath.setValue('exported_data')
+            op_object_export.OutputFormat.setValue("hdf5")
+            op_object_export.OutputInternalPath.setValue("exported_data")
 
             initial_table_export_settings = {
-                "file type": 'csv',
+                "file type": "csv",
                 "file path": self.table_csv_file,
                 "normalize": True,  # self.ui.normalizeLabeling.checkState() == Qt.Checked,
                 "margin": 3,
                 "include raw": False,
                 # compression settings cannot be edited in the gui atm.
                 # values here are assumed defaults (taken from exportObjectInfoDialog.ui)
-                'compression': {
-                    'compression': 'gzip',
-                    'shuffle': False,
-                    'compression_opts': 9
-                }
+                "compression": {"compression": "gzip", "shuffle": False, "compression_opts": 9},
             }
-            table_export_settings, export_features = self.configure_export_dialog(
-                gui, initial_table_export_settings)
+            table_export_settings, export_features = self.configure_export_dialog(gui, initial_table_export_settings)
             # here is some awkwardness of the csv output, which will alter the
             # table name: some_name.csv -> some_name_test_data_table.csv
             base, ext = os.path.splitext(self.table_csv_file)
-            csv_out = f"{base}-test_data_table{ext}"
+            csv_out = f"{base}_table{ext}"
             TestObjectClassificationGui.table_csv_file_exported = csv_out
 
-            op_object_classification.configure_table_export_settings(
-                table_export_settings,
-                export_features)
+            exporter = gui.get_exporting_operator()
+
+            exporter.configure_table_export_settings(table_export_settings, export_features)
 
             # self.configure_export_dialog(op_object_export_tlo)
 
             with Timer() as timer:
                 # this will not properly wait for the export to finish.
                 # gui.drawer.exportAllButton.click()
-                gui.exportSlots(op_object_export_tlo)
+                gui.exportSync(op_object_export_tlo)
 
             assert object_export_applet.busy is False
             assert os.path.exists(csv_out), f"Could not find {csv_out}"
             assert os.path.exists(self.output_file)
             logger.debug(f"Export time (data + csv): {timer.seconds()}")
 
-            initial_table_export_settings.update({
-                "file type": 'h5',
-                "file path": self.table_h5_file
-            })
+            initial_table_export_settings.update({"file type": "h5", "file path": self.table_h5_file})
 
-            table_export_settings, export_features = self.configure_export_dialog(
-                gui, initial_table_export_settings)
+            table_export_settings, export_features = self.configure_export_dialog(gui, initial_table_export_settings)
 
             # here is some awkwardness of the h5 output, which will alter the
             # table name: some_name.h5 -> some_name_test_data.h5
             base, ext = os.path.splitext(self.table_h5_file)
-            h5_out = f"{base}-test_data{ext}"
+            h5_out = f"{base}{ext}"
             TestObjectClassificationGui.table_h5_file_exported = h5_out
 
-            op_object_classification.configure_table_export_settings(
-                table_export_settings,
-                export_features)
+            exporter.configure_table_export_settings(table_export_settings, export_features)
 
             with Timer() as timer:
                 # this will not properly wait for the export to finish.
                 # gui.drawer.exportAllButton.click()
-                gui.exportSlots(op_object_export_tlo)
+                gui.exportSync(op_object_export_tlo)
 
             assert object_export_applet.busy is False
             assert os.path.exists(h5_out), f"Could not find {h5_out}"
@@ -501,11 +492,11 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         self.exec_in_shell(impl)
 
     def test_07_verify_exported_data(self):
-        reference_data_file = h5py.File(self.reference_files['predictions_h5'], 'r')
-        reference_data = reference_data_file['exported_data']
-        generated_data_file = h5py.File(self.output_file, 'r')
-        assert 'exported_data' in generated_data_file
-        generated_data = generated_data_file['exported_data']
+        reference_data_file = h5py.File(self.reference_files["predictions_h5"], "r")
+        reference_data = reference_data_file["exported_data"]
+        generated_data_file = h5py.File(self.output_file, "r")
+        assert "exported_data" in generated_data_file
+        generated_data = generated_data_file["exported_data"]
 
         try:
             numpy.testing.assert_array_almost_equal(generated_data, reference_data, decimal=5)
@@ -515,9 +506,9 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
 
     def test_08_verify_exported_csv_table(self):
         try:
-            reference_csv_file = open(self.reference_files['csv_table'], 'r')
+            reference_csv_file = open(self.reference_files["csv_table"], "r")
             reference_csv = csv.DictReader(reference_csv_file)
-            generated_csv_file = open(self.table_csv_file_exported, 'r')
+            generated_csv_file = open(self.table_csv_file_exported, "r")
             generated_csv = csv.DictReader(generated_csv_file)
 
             # fieldnames are not necessarily in the same order
@@ -535,34 +526,33 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
 
     def test_09_verify_exported_h5_table(self):
         try:
-            reference_h5_file = h5py.File(self.reference_files['h5_table'], 'r')
-            generated_h5_file = h5py.File(self.table_h5_file_exported, 'r')
+            reference_h5_file = h5py.File(self.reference_files["h5_table"], "r")
+            generated_h5_file = h5py.File(self.table_h5_file_exported, "r")
 
             # use this to compare image masks of the exported regions
             def compare(name, obj):
                 assert name in reference_h5_file
                 if not isinstance(obj, h5py.Dataset):
                     return
-                if 'images' in name:
+                if "images" in name:
                     robj = reference_h5_file[name]
                     numpy.testing.assert_array_almost_equal(obj, robj)
 
             generated_h5_file.visititems(compare)
 
             # Now compare the table dataset
-            reference_h5_table = reference_h5_file['table']
-            generated_h5_table = generated_h5_file['table']
+            reference_h5_table = reference_h5_file["table"]
+            generated_h5_table = generated_h5_file["table"]
             types = reference_h5_table.dtype.fields
             for col_name, col_type in types.items():
                 if col_type[0].type == numpy.string_:
-                    numpy.testing.assert_array_equal(
-                        generated_h5_table[col_name], reference_h5_table[col_name])
+                    numpy.testing.assert_array_equal(generated_h5_table[col_name], reference_h5_table[col_name])
                 else:
                     # will not work with higher precision, this is most likely
                     # due to small training set
                     assert numpy.allclose(
-                        generated_h5_table[col_name], reference_h5_table[col_name], atol=0.2), (
-                        f"column_name; {col_name}")
+                        generated_h5_table[col_name], reference_h5_table[col_name], atol=0.2
+                    ), f"column_name; {col_name}"
 
         finally:
             reference_h5_file.close()
@@ -570,8 +560,8 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
 
     def test_10_compare_h5_and_csv_export(self):
         try:
-            generated_h5_file = h5py.File(self.table_h5_file_exported, 'r')
-            generated_csv_file = open(self.table_csv_file_exported, 'r')
+            generated_h5_file = h5py.File(self.table_h5_file_exported, "r")
+            generated_csv_file = open(self.table_csv_file_exported, "r")
             generated_csv = csv.DictReader(generated_csv_file)
 
             generated_csv_table = {col_name: [] for col_name in generated_csv.fieldnames}
@@ -580,20 +570,20 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
                     generated_csv_table[k].append(v)
 
             # Now compare the table dataset
-            generated_h5_table = generated_h5_file['table']
+            generated_h5_table = generated_h5_file["table"]
             types = generated_h5_table.dtype.fields
             for col_name, col_type in types.items():
                 assert col_name in generated_csv_table
                 if col_type[0].type == numpy.string_:
                     numpy.testing.assert_array_equal(
-                        generated_h5_table[col_name],
-                        numpy.array(generated_csv_table[col_name], dtype=col_type[0]))
+                        generated_h5_table[col_name], numpy.array(generated_csv_table[col_name], dtype=col_type[0])
+                    )
                 else:
                     assert numpy.allclose(
                         generated_h5_table[col_name],
                         numpy.array(generated_csv_table[col_name], dtype=col_type[0]),
-                        atol=0.001), (
-                        f"found erros in column {col_name}",)
+                        atol=0.001,
+                    ), (f"found erros in column {col_name}",)
 
         finally:
             generated_csv_file.close()
@@ -610,31 +600,32 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             feature_names,
             selected_features=selected_features,
             title=gui.get_export_dialog_title(),
-            initial_settings=settings)
+            initial_settings=settings,
+        )
 
         dialog.show()
         QApplication.processEvents()
         # do the interaction with the dialog
-        file_type = initial_settings['file type']
+        file_type = initial_settings["file type"]
         index = FILE_TYPES.index(file_type)
         dialog.ui.fileFormat.setCurrentIndex(index)
 
-        file_path = initial_settings['file path']
+        file_path = initial_settings["file path"]
         dialog.ui.exportPath.setText(file_path)
 
-        if file_type == 'h5':
+        if file_type == "h5":
             # TODO: what about normalize?
-            margin = initial_settings['margin']
+            margin = initial_settings["margin"]
             dialog.ui.addMargin.setValue(margin)
-            include_raw = initial_settings['include raw']
+            include_raw = initial_settings["include raw"]
             dialog.ui.includeRaw.setChecked(include_raw)
-            compression_settings = initial_settings['compression']
-            compression_type = compression_settings['compression']
+            compression_settings = initial_settings["compression"]
+            compression_type = compression_settings["compression"]
             index = dialog.ui.compressionType.findText(compression_type)
             dialog.ui.compressionType.setCurrentIndex(index)
-            shuffle = compression_settings['shuffle']
+            shuffle = compression_settings["shuffle"]
             dialog.ui.enableShuffling.setChecked(shuffle)
-            compression_rate = compression_settings['compression_opts']
+            compression_rate = compression_settings["compression_opts"]
             dialog.ui.gzipRate.setValue(compression_rate)
 
         dialog.ui.selectAllFeatures.click()
@@ -655,12 +646,16 @@ def compare_values(test_value, reference_value):
           type of comparison
     """
     rval, rtype = try_convert_to_numeric(reference_value)
-    tval = rtype(test_value)
+    tval, ttype = try_convert_to_numeric(test_value)
 
-    if rtype in (str, int):
+    assert rtype == ttype
+
+    if issubclass(rtype, (str, int)):
         assert tval == rval, f"{tval} != {rval}"
-    elif isinstance(reference_value, float):
-        assert numpy.allclose(test_value, reference_value, atol=0.2)
+    elif issubclass(rtype, float):
+        assert numpy.allclose(tval, rval, atol=0.2)
+    else:
+        assert False, "Invalid type encountered"
 
 
 def try_convert_to_numeric(val):
@@ -683,4 +678,5 @@ def try_convert_to_numeric(val):
 
 if __name__ == "__main__":
     from tests.helpers.shellGuiTestCaseBase import run_shell_test
+
     run_shell_test(__file__)

@@ -25,13 +25,7 @@ import os
 import pathlib
 import shlex
 import sys
-from typing import (
-    Iterable,
-    Mapping,
-    Sequence,
-    Tuple,
-    Union,
-)
+from typing import Iterable, Mapping, Sequence, Tuple, Union
 
 
 def _env_list(name: str, sep: str = os.pathsep) -> Iterable[str]:
@@ -39,7 +33,7 @@ def _env_list(name: str, sep: str = os.pathsep) -> Iterable[str]:
 
     Empty sequence if the variable is not set.
     """
-    value = os.environ.get(name, '')
+    value = os.environ.get(name, "")
     if not value:
         return []
     return value.split(sep)
@@ -58,25 +52,25 @@ def _clean_paths(root: pathlib.Path) -> None:
 
     def isvalidpath_win(path):
         """Whether an element of PATH is "clean" on Windows."""
-        patterns = '*/cplex/*', '*/guirobi/*', '/windows/system32/*'
+        patterns = "*/cplex/*", "*/guirobi/*", "/windows/system32/*"
         return any(map(pathlib.PurePath(path).match, patterns))
 
     # Remove undesired paths from PYTHONPATH and add ilastik's submodules.
     sys_path = list(filter(issubdir, sys.path))
-    sys_path += subdirs('ilastik/lazyflow', 'ilastik/volumina', 'ilastik/ilastik')
+    sys_path += subdirs("ilastik/lazyflow", "ilastik/volumina", "ilastik/ilastik")
     sys.path = sys_path
 
-    if sys.platform.startswith('win'):
+    if sys.platform.startswith("win"):
         # Empty PATH except for gurobi and CPLEX and add ilastik's installation paths.
-        path = list(filter(isvalidpath_win, _env_list('PATH')))
-        path += subdirs('Qt4/bin', 'Library/bin', 'python', 'bin')
-        os.environ['PATH'] = os.pathsep.join(reversed(path))
+        path = list(filter(isvalidpath_win, _env_list("PATH")))
+        path += subdirs("Qt4/bin", "Library/bin", "python", "bin")
+        os.environ["PATH"] = os.pathsep.join(reversed(path))
     else:
         # Clean LD_LIBRARY_PATH and add ilastik's installation paths
         # (gurobi and CPLEX are supposed to be located there as well).
-        ld_lib_path = list(filter(issubdir, _env_list('LD_LIBRARY_PATH')))
-        ld_lib_path += subdirs('lib')
-        os.environ['LD_LIBRARY_PATH'] = os.pathsep.join(reversed(ld_lib_path))
+        ld_lib_path = list(filter(issubdir, _env_list("LD_LIBRARY_PATH")))
+        ld_lib_path += subdirs("lib")
+        os.environ["LD_LIBRARY_PATH"] = os.pathsep.join(reversed(ld_lib_path))
 
 
 def _parse_internal_config(path: Union[str, os.PathLike]) -> Tuple[Sequence[str], Mapping[str, str]]:
@@ -110,24 +104,25 @@ def _parse_internal_config(path: Union[str, os.PathLike]) -> Tuple[Sequence[str]
             raise ValueError(f"invalid environment variable assignment {opt!r}")
         env_vars[name] = value
 
-    return opts[sep_idx+1:], env_vars
+    return opts[sep_idx + 1 :], env_vars
 
 
 def main():
-    if '--clean_paths' in sys.argv:
+    if "--clean_paths" in sys.argv:
         script_dir = pathlib.Path(__file__).parent
         ilastik_root = script_dir.parent.parent
         _clean_paths(ilastik_root)
 
     # Allow to start-up by double-clicking a project file.
-    if len(sys.argv) == 2 and sys.argv[1].endswith('.ilp'):
-        sys.argv.insert(1, '--project')
+    if len(sys.argv) == 2 and sys.argv[1].endswith(".ilp"):
+        sys.argv.insert(1, "--project")
 
     arg_opts, env_vars = _parse_internal_config("internal-startup-options.cfg")
     sys.argv[1:1] = arg_opts
     os.environ.update(env_vars)
 
     import ilastik_main
+
     parsed_args, workflow_cmdline_args = ilastik_main.parse_known_args()
 
     hShell = ilastik_main.main(parsed_args, workflow_cmdline_args)
@@ -135,5 +130,5 @@ def main():
     hShell.closeCurrentProject()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

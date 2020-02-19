@@ -16,9 +16,10 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from future import standard_library
+
 standard_library.install_aliases()
 import configparser
 import os
@@ -79,12 +80,12 @@ def init_ilastik_config(userConfig=None):
     cfg.read_string(default_config)
 
     if userConfig is not None and not os.path.exists(userConfig):
-        raise Exception(
-            "ilastik config file does not exist: {}".format(userConfig))
+        raise Exception("ilastik config file does not exist: {}".format(userConfig))
 
     if userConfig is None:
         userConfig = os.path.expanduser(CONFIG_PATH)
     if os.path.exists(userConfig):
         cfg.read(userConfig)
+
 
 init_ilastik_config()

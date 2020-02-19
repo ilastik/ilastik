@@ -2,7 +2,7 @@
 
 """Manage ilastik development environment."""
 
-import sys
+import sys  # isort:skip
 
 # Don't use new language features when checking the minimum Python version.
 if sys.version_info < (3, 6):
@@ -20,7 +20,6 @@ import shutil
 import subprocess
 import time
 from typing import Any, Callable, Iterable, Optional
-
 
 logging.basicConfig(
     format="%(asctime)s.%(msecs)03d %(filename)s %(levelname)-10s %(message)s",
@@ -43,6 +42,16 @@ def run_stdout(*args: Optional[str]) -> str:
     args = [arg for arg in args if arg is not None]
     proc = subprocess.run(args, check=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, encoding="utf-8")
     return proc.stdout
+
+
+def run_returncode(*args: Optional[str]) -> int:
+    """Execute the command, suppressing standard output and standard error, and return the exit code.
+
+    Arguments that are None are omitted from the command's argument list.
+    """
+    args = [arg for arg in args if arg is not None]
+    proc = subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, encoding="utf-8")
+    return proc.returncode
 
 
 class CondaEnv:
@@ -88,6 +97,10 @@ class CondaEnv:
     def remove_package(self, package: str, *, force=False) -> None:
         """Remove a package in this environment."""
         run("conda", "remove", "--yes", "--force" if force else None, "--name", self.name, package)
+
+    def install_pacakge_dev(self, path: pathlib.Path) -> None:
+        """Install a local package with conda develop"""
+        run("conda", "develop", "--name", self.name, str(path))
 
     @property
     def _info(self):
@@ -186,7 +199,7 @@ def main():
     create_ap.add_argument(
         "-l",
         "--location",
-        help="local ilastik-meta directory; skip DIR to keep the original ilastik-meta package",
+        help="local ilastik-meta directory",
         metavar="DIR",
         nargs="?",
         const=None,
@@ -205,6 +218,10 @@ def main():
 
     if shutil.which("conda") is None:
         logging.error("conda is not installed")
+        return
+
+    if run_returncode("conda", "build", "--version") != 0:
+        logging.error("conda-build is not installed; run 'conda install -n base -c conda-forge conda-build' to install")
         return
 
     env = CondaEnv(args.name)
@@ -234,18 +251,11 @@ def command_create(args: argparse.Namespace, env: CondaEnv) -> None:
     if location is None:
         return
 
-    logging.info(f"remove package 'ilastik-meta'")
-    env.remove_package("ilastik-meta", force=True)
-
-    env_repo_path = env.prefix_path / "ilastik-meta"
-    logging.info(f"symlink {env_repo_path} to {location}")
-    env_repo_path.symlink_to(location)
-
-    pth_path = env.site_packages_path / "ilastik-meta.pth"
     packages = "lazyflow", "volumina", "ilastik"
-    pth_content = "\n".join(f"{env_repo_path / pkg}" for pkg in packages)
-    logging.info(f"create {pth_path}")
-    pth_path.write_text(pth_content)
+
+    logging.info(f"Installing local ilastik packages in development mode.")
+    for pkg in packages:
+        env.install_pacakge_dev(location / pkg)
 
 
 def command_remove(_args: argparse.Namespace, env: CondaEnv) -> None:

@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
 from builtins import range
@@ -36,7 +36,7 @@ from PyQt5.QtWidgets import QApplication, QMessageBox, QAction
 
 # HCI
 from volumina.api import LazyflowSinkSource, ColortableLayer, GrayscaleLayer
-from volumina.utility import ShortcutManager, PreferencesManager
+from volumina.utility import ShortcutManager, preferences
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.widgets.labelListView import Label
 from ilastik.widgets.labelListModel import LabelListModel
@@ -52,25 +52,29 @@ from ilastik.applets.labeling.labelingImport import import_labeling_layer
 # Loggers
 logger = logging.getLogger(__name__)
 
-#===----------------------------------------------------------------------------------------------------------------===
+# ===----------------------------------------------------------------------------------------------------------------===
+
 
 class Tool(object):
     """Enumerate the types of toolbar buttons."""
-    Navigation = 0 # Arrow
-    Paint      = 1
-    Erase      = 2
-    Threshold  = 3
+
+    Navigation = 0  # Arrow
+    Paint = 1
+    Erase = 2
+    Threshold = 3
+
 
 class LabelingGui(LayerViewerGui):
     """
     Provides all the functionality of a simple layerviewer
     applet with the added functionality of labeling.
     """
+
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
 
-    def centralWidget( self ):
+    def centralWidget(self):
         return self
 
     def appletDrawer(self):
@@ -88,14 +92,17 @@ class LabelingGui(LayerViewerGui):
     @property
     def minLabelNumber(self):
         return self._minLabelNumber
+
     @minLabelNumber.setter
     def minLabelNumber(self, n):
         self._minLabelNumber = n
         while self._labelControlUi.labelListModel.rowCount() < n:
             self._addNewLabel()
+
     @property
     def maxLabelNumber(self):
         return self._maxLabelNumber
+
     @maxLabelNumber.setter
     def maxLabelNumber(self, n):
         self._maxLabelNumber = n
@@ -121,20 +128,29 @@ class LabelingGui(LayerViewerGui):
         It provides the slots that the labeling GUI uses to source labels to the display and sink labels from the
         user's mouse clicks.
         """
+
         def __init__(self):
             # Slot to insert elements onto
-            self.labelInput = None # labelInput.setInSlot(xxx)
+            self.labelInput = None  # labelInput.setInSlot(xxx)
             # Slot to read elements from
-            self.labelOutput = None # labelOutput.get(roi)
+            self.labelOutput = None  # labelOutput.get(roi)
             # Slot that determines which label value corresponds to erased values
-            self.labelEraserValue = None # labelEraserValue.setValue(xxx)
+            self.labelEraserValue = None  # labelEraserValue.setValue(xxx)
             # Slot that is used to request wholesale label deletion
-            self.labelDelete = None # labelDelete.setValue(xxx)
+            self.labelDelete = None  # labelDelete.setValue(xxx)
             # Slot that gives a list of label names
-            self.labelNames = None # labelNames.value
+            self.labelNames = None  # labelNames.value
 
-    def __init__(self, parentApplet, labelingSlots, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None,
-                 crosshair=True, is_3d_widget_visible=False):
+    def __init__(
+        self,
+        parentApplet,
+        labelingSlots,
+        topLevelOperatorView,
+        drawerUiPath=None,
+        rawInputSlot=None,
+        crosshair=True,
+        is_3d_widget_visible=False,
+    ):
         """
         Constructor.
 
@@ -160,7 +176,7 @@ class LabelingGui(LayerViewerGui):
 
         self._labelingSlots = labelingSlots
         self._minLabelNumber = 0
-        self._maxLabelNumber = 99 #100 or 255 is reserved for eraser
+        self._maxLabelNumber = 99  # 100 or 255 is reserved for eraser
 
         self._rawInputSlot = rawInputSlot
 
@@ -171,15 +187,17 @@ class LabelingGui(LayerViewerGui):
 
         if drawerUiPath is None:
             # Default ui file
-            drawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
+            drawerUiPath = os.path.split(__file__)[0] + "/labelingDrawer.ui"
         self._initLabelUic(drawerUiPath)
 
         # Init base class
-        super(LabelingGui, self).__init__(parentApplet,
-                                          topLevelOperatorView,
-                                          [labelingSlots.labelInput, labelingSlots.labelOutput],
-                                          crosshair=crosshair,
-                                          is_3d_widget_visible=is_3d_widget_visible)
+        super(LabelingGui, self).__init__(
+            parentApplet,
+            topLevelOperatorView,
+            [labelingSlots.labelInput, labelingSlots.labelOutput],
+            crosshair=crosshair,
+            is_3d_widget_visible=is_3d_widget_visible,
+        )
 
         self.__initShortcuts()
         self._labelingSlots.labelEraserValue.setValue(self.editor.brushingModel.erasingNumber)
@@ -199,36 +217,43 @@ class LabelingGui(LayerViewerGui):
         # Initialize the label list model
         model = LabelListModel()
         _labelControlUi.labelListView.setModel(model)
-        _labelControlUi.labelListModel=model
+        _labelControlUi.labelListModel = model
         _labelControlUi.labelListModel.rowsRemoved.connect(self._onLabelRemoved)
         _labelControlUi.labelListModel.elementSelected.connect(self._onLabelSelected)
 
         def handleClearRequested(row, name):
-            selection = QMessageBox.warning(self, "Clear labels?",
-                          "All '{}' brush strokes will be erased.  Are you sure?"
-                          .format(name),
-                          QMessageBox.Ok | QMessageBox.Cancel)
+            selection = QMessageBox.warning(
+                self,
+                "Clear labels?",
+                "All '{}' brush strokes will be erased.  Are you sure?".format(name),
+                QMessageBox.Ok | QMessageBox.Cancel,
+            )
             if selection != QMessageBox.Ok:
                 return
 
             # This only works if the top-level operator has a 'clearLabel' function.
-            self.topLevelOperatorView.clearLabel(row+1)
+            self.topLevelOperatorView.clearLabel(row + 1)
 
         _labelControlUi.labelListView.clearRequested.connect(handleClearRequested)
 
         def handleLabelMergeRequested(from_row, from_name, into_row, into_name):
-            from_label = from_row+1
-            into_label = into_row+1
-            selection = QMessageBox.warning(self, "Merge labels?",
-                          "All '{}' brush strokes will be converted to '{}'.  Are you sure?"
-                          .format(from_name, into_name),
-                          QMessageBox.Ok | QMessageBox.Cancel)
+            from_label = from_row + 1
+            into_label = into_row + 1
+            selection = QMessageBox.warning(
+                self,
+                "Merge labels?",
+                "All '{}' brush strokes will be converted to '{}'.  Are you sure?".format(from_name, into_name),
+                QMessageBox.Ok | QMessageBox.Cancel,
+            )
             if selection != QMessageBox.Ok:
                 return
 
             # This only works if the top-level operator has a 'mergeLabels' function.
             self.topLevelOperatorView.mergeLabels(from_label, into_label)
 
+            names = list(self._labelingSlots.labelNames.value)
+            names.pop(from_label - 1)
+            self._labelingSlots.labelNames.setValue(names)
 
         _labelControlUi.labelListView.mergeRequested.connect(handleLabelMergeRequested)
 
@@ -243,42 +268,52 @@ class LabelingGui(LayerViewerGui):
         arrowIcon = QIcon(iconPath)
         _labelControlUi.arrowToolButton.setIcon(arrowIcon)
         _labelControlUi.arrowToolButton.setCheckable(True)
-        _labelControlUi.arrowToolButton.clicked.connect(lambda checked: self._handleToolButtonClicked(checked, Tool.Navigation))
+        _labelControlUi.arrowToolButton.clicked.connect(
+            lambda checked: self._handleToolButtonClicked(checked, Tool.Navigation)
+        )
 
         # Initialize the paint tool button with an icon and handler
         paintBrushIconPath = os.path.split(__file__)[0] + "/icons/paintbrush.png"
         paintBrushIcon = QIcon(paintBrushIconPath)
         _labelControlUi.paintToolButton.setIcon(paintBrushIcon)
         _labelControlUi.paintToolButton.setCheckable(True)
-        _labelControlUi.paintToolButton.clicked.connect(lambda checked: self._handleToolButtonClicked(checked, Tool.Paint))
+        _labelControlUi.paintToolButton.clicked.connect(
+            lambda checked: self._handleToolButtonClicked(checked, Tool.Paint)
+        )
 
         # Initialize the erase tool button with an icon and handler
         eraserIconPath = os.path.split(__file__)[0] + "/icons/eraser.png"
         eraserIcon = QIcon(eraserIconPath)
         _labelControlUi.eraserToolButton.setIcon(eraserIcon)
         _labelControlUi.eraserToolButton.setCheckable(True)
-        _labelControlUi.eraserToolButton.clicked.connect(lambda checked: self._handleToolButtonClicked(checked, Tool.Erase))
+        _labelControlUi.eraserToolButton.clicked.connect(
+            lambda checked: self._handleToolButtonClicked(checked, Tool.Erase)
+        )
 
         # Initialize the thresholding tool
         if hasattr(_labelControlUi, "thresToolButton"):
-            thresholdIconPath = os.path.split(__file__)[0] \
-              + "/icons/threshold.png"
+            thresholdIconPath = os.path.split(__file__)[0] + "/icons/threshold.png"
             thresholdIcon = QIcon(thresholdIconPath)
             _labelControlUi.thresToolButton.setIcon(thresholdIcon)
             _labelControlUi.thresToolButton.setCheckable(True)
-            _labelControlUi.thresToolButton.clicked.connect(lambda checked: self._handleToolButtonClicked(checked, Tool.Threshold))
-
+            _labelControlUi.thresToolButton.clicked.connect(
+                lambda checked: self._handleToolButtonClicked(checked, Tool.Threshold)
+            )
 
         # This maps tool types to the buttons that enable them
         if hasattr(_labelControlUi, "thresToolButton"):
-            self.toolButtons = { Tool.Navigation : _labelControlUi.arrowToolButton,
-                                 Tool.Paint      : _labelControlUi.paintToolButton,
-                                 Tool.Erase      : _labelControlUi.eraserToolButton,
-                                 Tool.Threshold  : _labelControlUi.thresToolButton}
+            self.toolButtons = {
+                Tool.Navigation: _labelControlUi.arrowToolButton,
+                Tool.Paint: _labelControlUi.paintToolButton,
+                Tool.Erase: _labelControlUi.eraserToolButton,
+                Tool.Threshold: _labelControlUi.thresToolButton,
+            }
         else:
-            self.toolButtons = { Tool.Navigation : _labelControlUi.arrowToolButton,
-                                 Tool.Paint      : _labelControlUi.paintToolButton,
-                                 Tool.Erase      : _labelControlUi.eraserToolButton}
+            self.toolButtons = {
+                Tool.Navigation: _labelControlUi.arrowToolButton,
+                Tool.Paint: _labelControlUi.paintToolButton,
+                Tool.Erase: _labelControlUi.eraserToolButton,
+            }
 
         self.brushSizes = [1, 3, 5, 7, 11, 23, 31, 61]
 
@@ -287,26 +322,26 @@ class LabelingGui(LayerViewerGui):
 
         _labelControlUi.brushSizeComboBox.currentIndexChanged.connect(self._onBrushSizeChange)
 
-        self.paintBrushSizeIndex = PreferencesManager().get( 'labeling', 'paint brush size', default=0 )
-        self.eraserSizeIndex = PreferencesManager().get( 'labeling', 'eraser brush size', default=4 )
+        self.paintBrushSizeIndex = preferences.get("labeling", "paint brush size", default=0)
+        self.eraserSizeIndex = preferences.get("labeling", "eraser brush size", default=4)
 
     def onLabelListDataChanged(self, topLeft, bottomRight):
         """Handle changes to the label list selections."""
         firstRow = topLeft.row()
-        lastRow  = bottomRight.row()
+        lastRow = bottomRight.row()
 
         firstCol = topLeft.column()
-        lastCol  = bottomRight.column()
+        lastCol = bottomRight.column()
 
         # We only care about the color column
         if firstCol <= 0 <= lastCol:
-            assert(firstRow == lastRow) # Only one data item changes at a time
+            assert firstRow == lastRow  # Only one data item changes at a time
 
-            #in this case, the actual data (for example color) has changed
+            # in this case, the actual data (for example color) has changed
             color = self._labelControlUi.labelListModel[firstRow].brushColor()
             color_value = color.rgba()
             color_index = firstRow + 1
-            if color_index< len(self._colorTable16):
+            if color_index < len(self._colorTable16):
 
                 self._colorTable16[color_index] = color_value
 
@@ -326,56 +361,90 @@ class LabelingGui(LayerViewerGui):
 
         if hasattr(self.labelingDrawerUi, "AddLabelButton"):
 
-            mgr.register("a", ActionInfo(shortcutGroupName,
-                                         "New Label",
-                                         "Add New Label Class",
-                                         self.labelingDrawerUi.AddLabelButton.click,
-                                         self.labelingDrawerUi.AddLabelButton,
-                                         self.labelingDrawerUi.AddLabelButton))
+            mgr.register(
+                "a",
+                ActionInfo(
+                    shortcutGroupName,
+                    "New Label",
+                    "Add New Label Class",
+                    self.labelingDrawerUi.AddLabelButton.click,
+                    self.labelingDrawerUi.AddLabelButton,
+                    self.labelingDrawerUi.AddLabelButton,
+                ),
+            )
 
-        mgr.register("n", ActionInfo(shortcutGroupName,
-                                     "Navigation Cursor",
-                                     "Navigation Cursor",
-                                     self.labelingDrawerUi.arrowToolButton.click,
-                                     self.labelingDrawerUi.arrowToolButton,
-                                     self.labelingDrawerUi.arrowToolButton))
+        mgr.register(
+            "n",
+            ActionInfo(
+                shortcutGroupName,
+                "Navigation Cursor",
+                "Navigation Cursor",
+                self.labelingDrawerUi.arrowToolButton.click,
+                self.labelingDrawerUi.arrowToolButton,
+                self.labelingDrawerUi.arrowToolButton,
+            ),
+        )
 
-        mgr.register("b", ActionInfo( shortcutGroupName,
-                                      "Brush Cursor",
-                                      "Brush Cursor",
-                                      self.labelingDrawerUi.paintToolButton.click,
-                                      self.labelingDrawerUi.paintToolButton,
-                                      self.labelingDrawerUi.paintToolButton))
+        mgr.register(
+            "b",
+            ActionInfo(
+                shortcutGroupName,
+                "Brush Cursor",
+                "Brush Cursor",
+                self.labelingDrawerUi.paintToolButton.click,
+                self.labelingDrawerUi.paintToolButton,
+                self.labelingDrawerUi.paintToolButton,
+            ),
+        )
 
-        mgr.register("e", ActionInfo(shortcutGroupName,
-                                     "Eraser Cursor",
-                                     "Eraser Cursor",
-                                     self.labelingDrawerUi.eraserToolButton.click,
-                                     self.labelingDrawerUi.eraserToolButton,
-                                     self.labelingDrawerUi.eraserToolButton))
+        mgr.register(
+            "e",
+            ActionInfo(
+                shortcutGroupName,
+                "Eraser Cursor",
+                "Eraser Cursor",
+                self.labelingDrawerUi.eraserToolButton.click,
+                self.labelingDrawerUi.eraserToolButton,
+                self.labelingDrawerUi.eraserToolButton,
+            ),
+        )
 
-        mgr.register(",", ActionInfo( shortcutGroupName,
-                                      "Decrease Brush Size",
-                                      "Decrease Brush Size",
-                                      partial(self._tweakBrushSize, False),
-                                      self.labelingDrawerUi.brushSizeComboBox,
-                                      self.labelingDrawerUi.brushSizeComboBox))
+        mgr.register(
+            ",",
+            ActionInfo(
+                shortcutGroupName,
+                "Decrease Brush Size",
+                "Decrease Brush Size",
+                partial(self._tweakBrushSize, False),
+                self.labelingDrawerUi.brushSizeComboBox,
+                self.labelingDrawerUi.brushSizeComboBox,
+            ),
+        )
 
-        mgr.register(".", ActionInfo(shortcutGroupName,
-                                     "Increase Brush Size",
-                                     "Increase Brush Size",
-                                     partial(self._tweakBrushSize, True),
-                                     self.labelingDrawerUi.brushSizeComboBox,
-                                     self.labelingDrawerUi.brushSizeComboBox))
+        mgr.register(
+            ".",
+            ActionInfo(
+                shortcutGroupName,
+                "Increase Brush Size",
+                "Increase Brush Size",
+                partial(self._tweakBrushSize, True),
+                self.labelingDrawerUi.brushSizeComboBox,
+                self.labelingDrawerUi.brushSizeComboBox,
+            ),
+        )
 
         if hasattr(self.labelingDrawerUi, "thresToolButton"):
-            mgr.register("t", ActionInfo(shortcutGroupName,
-                                           "Window Leveling",
-                                           "<p>Window Leveling can be used to adjust the data range used for visualization. Pressing the left mouse button while moving the mouse back and forth changes the window width (data range). Moving the mouse in the left-right plane changes the window mean. Pressing the right mouse button resets the view back to the original data.",
-                                           self.labelingDrawerUi.thresToolButton.click,
-                                           self.labelingDrawerUi.thresToolButton,
-                                           self.labelingDrawerUi.thresToolButton))
-
+            mgr.register(
+                "t",
+                ActionInfo(
+                    shortcutGroupName,
+                    "Window Leveling",
+                    "<p>Window Leveling can be used to adjust the data range used for visualization. Pressing the left mouse button while moving the mouse back and forth changes the window width (data range). Moving the mouse in the left-right plane changes the window mean. Pressing the right mouse button resets the view back to the original data.",
+                    self.labelingDrawerUi.thresToolButton.click,
+                    self.labelingDrawerUi.thresToolButton,
+                    self.labelingDrawerUi.thresToolButton,
+                ),
+            )
 
         self._labelShortcuts = []
 
@@ -388,17 +457,17 @@ class LabelingGui(LayerViewerGui):
         if self._toolId == Tool.Erase:
             if increase:
                 self.eraserSizeIndex += 1
-                self.eraserSizeIndex = min(len(self.brushSizes)-1, self.eraserSizeIndex)
+                self.eraserSizeIndex = min(len(self.brushSizes) - 1, self.eraserSizeIndex)
             else:
-                self.eraserSizeIndex -=1
+                self.eraserSizeIndex -= 1
                 self.eraserSizeIndex = max(0, self.eraserSizeIndex)
             self._changeInteractionMode(Tool.Erase)
         else:
             if increase:
                 self.paintBrushSizeIndex += 1
-                self.paintBrushSizeIndex = min(len(self.brushSizes)-1, self.paintBrushSizeIndex)
+                self.paintBrushSizeIndex = min(len(self.brushSizes) - 1, self.paintBrushSizeIndex)
             else:
-                self.paintBrushSizeIndex -=1
+                self.paintBrushSizeIndex -= 1
                 self.paintBrushSizeIndex = max(0, self.paintBrushSizeIndex)
             self._changeInteractionMode(Tool.Paint)
 
@@ -409,15 +478,17 @@ class LabelingGui(LayerViewerGui):
         mgr = ShortcutManager()
         ActionInfo = ShortcutManager.ActionInfo
         # Add any shortcuts we don't have yet.
-        for i in range(numShortcuts,numRows):
+        for i in range(numShortcuts, numRows):
             toolTipObject = LabelListModel.EntryToolTipAdapter(self._labelControlUi.labelListModel, i)
-            action_info = ActionInfo("Labeling",
-                                     "Select Label {}".format(i+1),
-                                     "Select Label {}".format(i+1),
-                                     partial(self._labelControlUi.labelListView.selectRow, i),
-                                     self._labelControlUi.labelListView,
-                                     toolTipObject)
-            mgr.register(str(i+1), action_info)
+            action_info = ActionInfo(
+                "Labeling",
+                "Select Label {}".format(i + 1),
+                "Select Label {}".format(i + 1),
+                partial(self._labelControlUi.labelListView.selectRow, i),
+                self._labelControlUi.labelListView,
+                toolTipObject,
+            )
+            mgr.register(str(i + 1), action_info)
             self._labelShortcuts.append(action_info)
 
         # Make sure that all shortcuts have an appropriate description
@@ -433,9 +504,10 @@ class LabelingGui(LayerViewerGui):
         The user has selected another applet or is closing the whole app.
         Save all preferences.
         """
-        with PreferencesManager() as prefsMgr:
-            prefsMgr.set('labeling', 'paint brush size', self.paintBrushSizeIndex)
-            prefsMgr.set('labeling', 'eraser brush size', self.eraserSizeIndex)
+        preferences.setmany(
+            ("labeling", "paint brush size", self.paintBrushSizeIndex),
+            ("labeling", "eraser brush size", self.eraserSizeIndex),
+        )
         super(LabelingGui, self).hideEvent(event)
 
     def _handleToolButtonClicked(self, checked, toolId):
@@ -466,14 +538,14 @@ class LabelingGui(LayerViewerGui):
 
         # The volume editor expects one of two specific names
         if hasattr(self.labelingDrawerUi, "thresToolButton"):
-            modeNames = { Tool.Navigation   : "navigation",
-                          Tool.Paint        : "brushing",
-                          Tool.Erase        : "brushing" ,
-                          Tool.Threshold    : "thresholding"}
+            modeNames = {
+                Tool.Navigation: "navigation",
+                Tool.Paint: "brushing",
+                Tool.Erase: "brushing",
+                Tool.Threshold: "thresholding",
+            }
         else:
-            modeNames = { Tool.Navigation   : "navigation",
-                          Tool.Paint        : "brushing",
-                          Tool.Erase        : "brushing" }
+            modeNames = {Tool.Navigation: "navigation", Tool.Paint: "brushing", Tool.Erase: "brushing"}
 
         if hasattr(self._labelControlUi, "AddLabelButton"):
             if self._labelControlUi.labelListModel.rowCount() == self.maxLabelNumber:
@@ -530,11 +602,13 @@ class LabelingGui(LayerViewerGui):
         self._labelControlUi.eraserToolButton.setChecked(True)
         self._labelControlUi.brushSizeCaption.setText("Size:")
         self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.eraserSizeIndex)
+
     def _gui_setNavigation(self):
         self._labelControlUi.brushSizeComboBox.setEnabled(False)
         self._labelControlUi.brushSizeCaption.setEnabled(False)
         self._labelControlUi.arrowToolButton.setChecked(True)
         # self._labelControlUi.arrowToolButton.setChecked(True) # why twice?
+
     def _gui_setBrushing(self):
         self._labelControlUi.brushSizeComboBox.setEnabled(True)
         self._labelControlUi.brushSizeCaption.setEnabled(True)
@@ -544,12 +618,12 @@ class LabelingGui(LayerViewerGui):
         self._labelControlUi.brushSizeCaption.setText("Size:")
         # Make sure the GUI reflects the correct size
         self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.paintBrushSizeIndex)
+
     def _gui_enableLabeling(self, enable):
         self._labelControlUi.paintToolButton.setEnabled(enable)
         self._labelControlUi.eraserToolButton.setEnabled(enable)
         self._labelControlUi.brushSizeCaption.setEnabled(enable)
         self._labelControlUi.brushSizeComboBox.setEnabled(enable)
-
 
     def _onBrushSizeChange(self, index):
         """
@@ -573,9 +647,9 @@ class LabelingGui(LayerViewerGui):
         # If the user is selecting a label, he probably wants to be in paint mode
         self._changeInteractionMode(Tool.Paint)
 
-        #+1 because first is transparent
-        #FIXME: shouldn't be just row+1 here
-        self.editor.brushingModel.setDrawnNumber(row+1)
+        # +1 because first is transparent
+        # FIXME: shouldn't be just row+1 here
+        self.editor.brushingModel.setDrawnNumber(row + 1)
         brushColor = self._labelControlUi.labelListModel[row].brushColor()
         self.editor.brushingModel.setBrushColor(brushColor)
 
@@ -612,7 +686,7 @@ class LabelingGui(LayerViewerGui):
                 self._labelControlUi.labelListModel.removeRow(i)
 
         # synchronize labelNames
-        for i,n in enumerate(names):
+        for i, n in enumerate(names):
             self._labelControlUi.labelListModel[i].name = n
 
         if hasattr(self._labelControlUi, "AddLabelButton"):
@@ -625,8 +699,7 @@ class LabelingGui(LayerViewerGui):
         Add a new label to the label list GUI control.
         Return the new number of labels in the control.
         """
-        label = Label(self.getNextLabelName(), self.getNextLabelColor(),
-                      pmapColor=self.getNextPmapColor())
+        label = Label(self.getNextLabelName(), self.getNextLabelColor(), pmapColor=self.getNextPmapColor())
         label.nameChanged.connect(self._updateLabelShortcuts)
         label.nameChanged.connect(self.onLabelNameChanged)
         label.colorChanged.connect(self.onLabelColorChanged)
@@ -636,7 +709,9 @@ class LabelingGui(LayerViewerGui):
         self._labelControlUi.labelListModel.insertRow(newRow, label)
 
         newColorIndex = self._labelControlUi.labelListModel.index(newRow, 0)
-        self.onLabelListDataChanged(newColorIndex, newColorIndex)  # Make sure label layer colortable is in sync with the new color
+        self.onLabelListDataChanged(
+            newColorIndex, newColorIndex
+        )  # Make sure label layer colortable is in sync with the new color
 
         # Update operator with new name
         operator_names = self._labelingSlots.labelNames.value
@@ -671,7 +746,7 @@ class LabelingGui(LayerViewerGui):
 
         # Make the new label selected
         nlabels = self._labelControlUi.labelListModel.rowCount()
-        selectedRow = nlabels-1
+        selectedRow = nlabels - 1
         self._labelControlUi.labelListModel.select(selectedRow)
 
         self._updateLabelShortcuts()
@@ -691,21 +766,23 @@ class LabelingGui(LayerViewerGui):
             nums = re.findall("\d+", label.name)
             for n in nums:
                 maxNum = max(maxNum, int(n))
-        return "Label {}".format(maxNum+1)
+        return "Label {}".format(maxNum + 1)
 
     def getNextLabelColor(self):
         """
         Return a QColor to use for the next label.
         """
         numLabels = len(self._labelControlUi.labelListModel)
-        if numLabels >= len(self._colorTable16)-1:
+        if numLabels >= len(self._colorTable16) - 1:
             # If the color table isn't large enough to handle all our labels,
             #  append a random color
-            randomColor = QColor(numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255))
+            randomColor = QColor(
+                numpy.random.randint(0, 255), numpy.random.randint(0, 255), numpy.random.randint(0, 255)
+            )
             self._colorTable16.append(randomColor.rgba())
 
         color = QColor()
-        color.setRgba(self._colorTable16[numLabels+1])  # First entry is transparent (for zero label)
+        color.setRgba(self._colorTable16[numLabels + 1])  # First entry is transparent (for zero label)
         return color
 
     def getNextPmapColor(self):
@@ -740,7 +817,7 @@ class LabelingGui(LayerViewerGui):
         self._programmaticallyRemovingLabels = True
         numRows = self._labelControlUi.labelListModel.rowCount()
         # This will trigger the signal that calls _onLabelRemoved()
-        self._labelControlUi.labelListModel.removeRow(numRows-1)
+        self._labelControlUi.labelListModel.removeRow(numRows - 1)
         self._updateLabelShortcuts()
 
         self._programmaticallyRemovingLabels = False
@@ -762,7 +839,7 @@ class LabelingGui(LayerViewerGui):
         logger.debug("removing label {} out of {}".format(row, oldcount))
 
         # Remove the deleted label's color from the color table so that renumbered labels keep their colors.
-        oldColor = self._colorTable16.pop(row+1)
+        oldColor = self._colorTable16.pop(row + 1)
 
         # Recycle the deleted color back into the table (for the next label to be added)
         self._colorTable16.insert(oldcount, oldColor)
@@ -775,7 +852,7 @@ class LabelingGui(LayerViewerGui):
         currentSelection = self._labelControlUi.labelListModel.selectedRow()
         if currentSelection == -1:
             # If we're deleting the currently selected row, then switch to a different row
-            self.thunkEventHandler.post( self._resetLabelSelection )
+            self.thunkEventHandler.post(self._resetLabelSelection)
 
         e = self._labelControlUi.labelListModel.rowCount() > 0
         self._gui_enableLabeling(e)
@@ -784,7 +861,7 @@ class LabelingGui(LayerViewerGui):
         if len(self._labelingSlots.labelNames.value) > self._labelControlUi.labelListModel.rowCount():
             # Changing the deleteLabel input causes the operator (OpBlockedSparseArray)
             #  to search through the entire list of labels and delete the entries for the matching label.
-            self._labelingSlots.labelDelete.setValue(row+1)
+            self._labelingSlots.labelDelete.setValue(row + 1)
 
             # We need to "reset" the deleteLabel input to -1 when we're finished.
             #  Otherwise, you can never delete the same label twice in a row.
@@ -819,7 +896,7 @@ class LabelingGui(LayerViewerGui):
             return labellayer
 
     def _getLabelLayer(self):
-        return self.getLayer('Labels')
+        return self.getLayer("Labels")
 
     def createLabelLayer(self, direct=False):
         """
@@ -831,23 +908,29 @@ class LabelingGui(LayerViewerGui):
             return (None, None)
         else:
             # Add the layer to draw the labels, but don't add any labels
-            labelsrc = LazyflowSinkSource( self._labelingSlots.labelOutput,
-                                           self._labelingSlots.labelInput)
+            labelsrc = LazyflowSinkSource(self._labelingSlots.labelOutput, self._labelingSlots.labelInput)
 
-            labellayer = ColortableLayer(labelsrc, colorTable = self._colorTable16, direct=direct)
+            labellayer = ColortableLayer(labelsrc, colorTable=self._colorTable16, direct=direct)
             labellayer.name = "Labels"
             labellayer.ref_object = None
 
-            labellayer.contexts.append(QAction("Import...", None,
-                                        triggered=partial(import_labeling_layer, labellayer, self._labelingSlots, self)))
+            labellayer.contexts.append(
+                QAction(
+                    "Import...", None, triggered=partial(import_labeling_layer, labellayer, self._labelingSlots, self)
+                )
+            )
 
-            labellayer.shortcutRegistration = ("0", ShortcutManager.ActionInfo(
-                                                        "Labeling",
-                                                        "LabelVisibility",
-                                                        "Show/Hide Labels",
-                                                        labellayer.toggleVisible,
-                                                        self.viewerControlWidget(),
-                                                        labellayer))
+            labellayer.shortcutRegistration = (
+                "0",
+                ShortcutManager.ActionInfo(
+                    "Labeling",
+                    "LabelVisibility",
+                    "Show/Hide Labels",
+                    labellayer.toggleVisible,
+                    self.viewerControlWidget(),
+                    labellayer,
+                ),
+            )
 
             return labellayer, labelsrc
 
@@ -889,13 +972,17 @@ class LabelingGui(LayerViewerGui):
                 else:
                     self.layerstack.moveSelectedToTop()
 
-            layer.shortcutRegistration = ("i", ShortcutManager.ActionInfo(
-                                                "Prediction Layers",
-                                                "Bring Input To Top/Bottom",
-                                                "Bring Input To Top/Bottom",
-                                                toggleTopToBottom,
-                                                self.viewerControlWidget(),
-                                                layer))
+            layer.shortcutRegistration = (
+                "i",
+                ShortcutManager.ActionInfo(
+                    "Prediction Layers",
+                    "Bring Input To Top/Bottom",
+                    "Bring Input To Top/Bottom",
+                    toggleTopToBottom,
+                    self.viewerControlWidget(),
+                    layer,
+                ),
+            )
 
         return layers
 

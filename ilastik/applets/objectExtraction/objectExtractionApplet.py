@@ -16,11 +16,12 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 from ilastik.applets.objectExtraction.objectExtractionSerializer import ObjectExtractionSerializer
+
 
 class ObjectExtractionApplet(StandardApplet):
     """Calculates object features for each object in an image.
@@ -30,11 +31,11 @@ class ObjectExtractionApplet(StandardApplet):
 
     """
 
-    def __init__(self, name="Object Extraction", workflow=None,
-                 projectFileGroupName="ObjectExtraction",
-                 interactive=True):
+    def __init__(
+        self, name="Object Extraction", workflow=None, projectFileGroupName="ObjectExtraction", interactive=True
+    ):
         super(ObjectExtractionApplet, self).__init__(name=name, workflow=workflow, interactive=interactive)
-        self._serializableItems = [ ObjectExtractionSerializer(self.topLevelOperator, projectFileGroupName) ]
+        self._serializableItems = [ObjectExtractionSerializer(self.topLevelOperator, projectFileGroupName)]
 
     @property
     def singleLaneOperatorClass(self):
@@ -42,12 +43,13 @@ class ObjectExtractionApplet(StandardApplet):
 
     @property
     def broadcastingSlots(self):
-        return ['Features']
+        return ["Features"]
 
     @property
     def singleLaneGuiClass(self):
         from ilastik.applets.objectExtraction.objectExtractionGui import ObjectExtractionGui
         from ilastik.applets.objectExtraction.objectExtractionGui import ObjectExtractionGuiNonInteractive
+
         if self.interactive:
             return ObjectExtractionGui
         else:

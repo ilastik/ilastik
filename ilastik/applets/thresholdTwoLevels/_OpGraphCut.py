@@ -22,6 +22,7 @@
 # basic python modules
 import functools
 import logging
+
 logger = logging.getLogger(__name__)  # noqa
 logger.setLevel(logging.DEBUG)  # noqa
 logger.addHandler(logging.NullHandler())  # noqa
@@ -36,6 +37,7 @@ import opengm
 from lazyflow.operator import Operator
 from lazyflow.slot import InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
+
 # from lazyflow.stype import Opaque
 # from lazyflow.request import Request, RequestPool
 
@@ -58,7 +60,7 @@ from lazyflow.utility.reorderAxesDecorator import reorder, reorder_options
 #  - only ROIs with 1 channel, 1 time slice are valid for slot Output
 #  - requests to slot CachedOutput are guaranteed to be consistent
 @reorder
-@reorder_options('tzyxc', ['Beta', 'Output', 'CachedOutput'])
+@reorder_options("tzyxc", ["Beta", "Output", "CachedOutput"])
 class OpGraphCut(Operator):
     name = "OpGraphCut"
 
@@ -66,7 +68,7 @@ class OpGraphCut(Operator):
     Prediction = InputSlot()
 
     # graph cut parameter, usually called lambda
-    Beta = InputSlot(value=.2)
+    Beta = InputSlot(value=0.2)
 
     # labeled segmentation image
     #     i=0: background
@@ -83,13 +85,10 @@ class OpGraphCut(Operator):
     def setupOutputs(self):
         # sanity checks
         shape = self.Prediction.meta.shape
-        assert len(shape) == 5,\
-            "Prediction maps must be a full 5d volume (tzyxc)"
+        assert len(shape) == 5, "Prediction maps must be a full 5d volume (tzyxc)"
         tags = self.Prediction.meta.getAxisKeys()
         tags = "".join(tags)
-        assert tags == 'tzyxc',\
-            "Prediction maps have wrong axes order" \
-            "(expected: tzyxc, got: {})".format(tags)
+        assert tags == "tzyxc", "Prediction maps have wrong axes order" "(expected: tzyxc, got: {})".format(tags)
 
         if self._cache is not None:
             self.CachedOutput.disconnect()
@@ -115,27 +114,25 @@ class OpGraphCut(Operator):
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output, "Unknown slot requested: {}".format(slot)
         for i in (0, 4):
-            assert roi.stop[i] - roi.start[i] == 1,\
-                "Invalid roi for graph-cut: {}".format(str(roi))
+            assert roi.stop[i] - roi.start[i] == 1, "Invalid roi for graph-cut: {}".format(str(roi))
 
         # request the prediction image
         pred = self.Prediction.get(roi).wait()
         pred = vigra.taggedView(pred, axistags=self.Prediction.meta.axistags)
-        pred = pred.withAxes(*'zyx')
+        pred = pred.withAxes(*"zyx")
 
         # prepare result
         resView = vigra.taggedView(result, axistags=self.Output.meta.axistags)
-        resView = resView.withAxes(*'zyx')
+        resView = resView.withAxes(*"zyx")
 
         logger.info("Executing graph cut ... (this might take a while)")
         threshold_binary = segmentGC(pred, self.Beta.value)
-        threshold_binary = vigra.taggedView(threshold_binary, 'zyx')
+        threshold_binary = vigra.taggedView(threshold_binary, "zyx")
         logger.info("Graph-cut done")
 
         # label the segmentation so that this operator is consistent with
         # the other thresholding operators
-        vigra.analysis.labelVolumeWithBackground(
-            threshold_binary.astype(np.uint8), out=resView)
+        vigra.analysis.labelVolumeWithBackground(threshold_binary.astype(np.uint8), out=resView)
 
     def propagateDirty(self, slot, subindex, roi):
         # all input slots affect the (global) graph cut computation
@@ -160,7 +157,7 @@ class OpGraphCut(Operator):
 
 
 def segmentGC(pred, beta):
-    '''
+    """
        This function implements a call to the standard Graph Cut segmentation
        in the OpenGM library (http://hci.iwr.uni-heidelberg.de/opengm2/).
        Potts model is assumed, with a 4-neighborhood for 2D data and a 6-neighborhood
@@ -172,21 +169,21 @@ def segmentGC(pred, beta):
        Return:
        -- binary volume, as produced by OpenGM
 
-    '''
+    """
     nz, ny, nx = pred.shape
 
     numVar = pred.size
     numLabels = 2
 
     numberOfStates = np.ones(numVar, dtype=opengm.index_type) * numLabels
-    gm = opengm.graphicalModel(numberOfStates, operator='adder')
+    gm = opengm.graphicalModel(numberOfStates, operator="adder")
 
     # Adding unary function and factors
     functions = np.zeros((numVar, 2))
     predflat = pred.reshape((numVar, 1))
-    if (predflat.dtype == np.uint8):
+    if predflat.dtype == np.uint8:
         predflat = predflat.astype(np.float32)
-        predflat = predflat / 256.
+        predflat = predflat / 256.0
 
     functions[:, 0] = predflat[:, 0]
     functions[:, 1] = 1 - predflat[:, 0]
@@ -200,12 +197,9 @@ def segmentGC(pred, beta):
 
     # add binary factors
     indices = np.arange(numVar, dtype=np.uint32).reshape((nz, ny, nx))
-    z_edges = np.concatenate([indices[:nz - 1, :, :], indices[1:, :, :]]
-                             ).reshape((2, (nz - 1) * ny * nx)).transpose()
-    y_edges = np.concatenate([indices[:, :ny - 1, :], indices[:, 1:, :]]
-                             ).reshape((2, nz * (ny - 1) * nx)).transpose()
-    x_edges = np.concatenate([indices[:, :, :nx - 1], indices[:, :, 1:]]
-                             ).reshape((2, nz * ny * (nx - 1))).transpose()
+    z_edges = np.concatenate([indices[: nz - 1, :, :], indices[1:, :, :]]).reshape((2, (nz - 1) * ny * nx)).transpose()
+    y_edges = np.concatenate([indices[:, : ny - 1, :], indices[:, 1:, :]]).reshape((2, nz * (ny - 1) * nx)).transpose()
+    x_edges = np.concatenate([indices[:, :, : nx - 1], indices[:, :, 1:]]).reshape((2, nz * ny * (nx - 1))).transpose()
 
     gm.addFactors(binary_fid, z_edges)
     gm.addFactors(binary_fid, y_edges)
@@ -216,17 +210,17 @@ def segmentGC(pred, beta):
     argmin = grcut.arg()
 
     res = argmin.reshape((nz, ny, nx))
-    if hasattr(pred, 'axistags'):
+    if hasattr(pred, "axistags"):
         res = vigra.taggedView(res, pred.axistags)
     return res
 
 
-if __name__ == '__main__':
-    print('main')
+if __name__ == "__main__":
+    print("main")
     g = Graph()
     test = OpGraphCut(graph=g)
     print(test.Prediction)
-    print('dict', test.__dict__)
+    print("dict", test.__dict__)
 
     # test2 = ReorderedOperator(OpGraphCut, graph=g)
     # print(test2.Prediction)

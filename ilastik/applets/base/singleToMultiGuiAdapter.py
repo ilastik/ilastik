@@ -16,13 +16,14 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
-class SingleToMultiGuiAdapter( object ):
+class SingleToMultiGuiAdapter(object):
     """
-    Utility class used by the StandardApplet to wrap several single-image 
+    Utility class used by the StandardApplet to wrap several single-image
     GUIs into one multi-image GUI, which is what the shell/Applet API requires.
     """
+
     def __init__(self, parentApplet, singleImageGuiFactory, topLevelOperator):
         self.singleImageGuiFactory = singleImageGuiFactory
         self._imageLaneIndex = None
@@ -44,7 +45,7 @@ class SingleToMultiGuiAdapter( object ):
 
         # Create first if necessary
         if self._guis[self._imageLaneIndex] is None:
-            self._guis[self._imageLaneIndex] = self.singleImageGuiFactory( self._imageLaneIndex )
+            self._guis[self._imageLaneIndex] = self.singleImageGuiFactory(self._imageLaneIndex)
         return self._guis[self._imageLaneIndex]
 
     def appletDrawer(self):
@@ -52,15 +53,16 @@ class SingleToMultiGuiAdapter( object ):
         Return the applet drawer of the current single-image gui.
         """
         if self.currentGui() is not None:
-            self._tempDrawers[ self._imageLaneIndex ] = self.currentGui().appletDrawer()
+            self._tempDrawers[self._imageLaneIndex] = self.currentGui().appletDrawer()
             return self.currentGui().appletDrawer()
-        
+
         if self._imageLaneIndex not in self._tempDrawers:
             from PyQt5.QtWidgets import QWidget
-            self._tempDrawers[ self._imageLaneIndex ] = QWidget()
-        return self._tempDrawers[ self._imageLaneIndex ]
 
-    def centralWidget( self ):
+            self._tempDrawers[self._imageLaneIndex] = QWidget()
+        return self._tempDrawers[self._imageLaneIndex]
+
+    def centralWidget(self):
         """
         Return the central widget of the currently selected single-image gui.
         """
@@ -75,7 +77,7 @@ class SingleToMultiGuiAdapter( object ):
         if self.currentGui() is None:
             return None
         return self.currentGui().menus()
-    
+
     def viewerControlWidget(self):
         """
         Return the viewer control widget for the currently selectd single-image gui.
@@ -83,7 +85,7 @@ class SingleToMultiGuiAdapter( object ):
         if self.currentGui() is None:
             return None
         return self.currentGui().viewerControlWidget()
-    
+
     def setImageIndex(self, imageIndex):
         """
         Called by the shell when the user has changed the currently selected image lane.
@@ -120,7 +122,7 @@ class SingleToMultiGuiAdapter( object ):
 
     def allowLaneSelectionChange(self):
         return True
-    
+
     def setEnabled(self, enabled):
         self._enabled = enabled
         for gui in [x for x in self._guis if x]:
@@ -128,6 +130,7 @@ class SingleToMultiGuiAdapter( object ):
         for blank_drawer in list(self._tempDrawers.values()):
             # Late import here to avoid importing sip in headless mode.
             import sip
+
             if not sip.isdeleted(blank_drawer):
                 blank_drawer.setEnabled(enabled)
 

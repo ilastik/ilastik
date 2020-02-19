@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,35 +18,37 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 from .opCropping import OpCroppingSingleLane
 
-class CroppingSingleLaneApplet( StandardApplet ):
+
+class CroppingSingleLaneApplet(StandardApplet):
     """
     This applet demonstrates how to use the CroppingGui base class, which serves as a reusable base class for other applet GUIs that need a cropping UI.
     """
-    def __init__( self, workflow, projectFileGroupName, blockDims=None, appletName="Simple Cropping" ):
-        super(CroppingSingleLaneApplet, self).__init__( appletName, workflow )
-            
+
+    def __init__(self, workflow, projectFileGroupName, blockDims=None, appletName="Simple Cropping"):
+        super(CroppingSingleLaneApplet, self).__init__(appletName, workflow)
+
     @property
     def singleLaneOperatorClass(self):
         return OpCroppingSingleLane
 
     @property
     def broadcastingSlots(self):
-        return ['CropEraserValue', 'CropDelete']
+        return ["CropEraserValue", "CropDelete"]
 
     @property
     def dataSerializers(self):
-        return [] # TODO
+        return []  # TODO
 
     def createSingleLaneGui(self, imageLaneIndex):
         from .croppingGui import CroppingGui
 
         opCropping = self.topLevelOperator.getLane(imageLaneIndex)
-        
+
         croppingSlots = CroppingGui.CroppingSlots()
         croppingSlots.cropInput = opCropping.CropInput
         croppingSlots.cropOutput = opCropping.CropImage
@@ -53,9 +56,9 @@ class CroppingSingleLaneApplet( StandardApplet ):
         croppingSlots.cropDelete = opCropping.CropDelete
         croppingSlots.cropsAllowed = opCropping.CropsAllowedFlag
         croppingSlots.cropNames = opCropping.CropNames
-        
+
         # Special hack for cropping, required by the internal crop array operator
         # Normally, it is strange to connect two same-operator input slots together like this.
-        opCropping.CropInput.connect( opCropping.InputImage )
+        opCropping.CropInput.connect(opCropping.InputImage)
 
-        return CroppingGui( self, croppingSlots, opCropping, rawInputSlot=opCroping.InputImage )
+        return CroppingGui(self, croppingSlots, opCropping, rawInputSlot=opCroping.InputImage)

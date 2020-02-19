@@ -16,24 +16,29 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import warnings
 
-from ilastik.applets.base.appletSerializer import \
-  AppletSerializer, SerialSlot, SerialDictSlot, \
-  SerialClassifierSlot, SerialListSlot, SerialPickleableSlot
+from ilastik.applets.base.appletSerializer import (
+    AppletSerializer,
+    SerialSlot,
+    SerialDictSlot,
+    SerialClassifierSlot,
+    SerialListSlot,
+    SerialPickleableSlot,
+)
+
 
 class SerialDictSlotWithoutDeserialization(SerialDictSlot):
-    
     def __init__(self, slot, mainOperator, **kwargs):
         super(SerialDictSlotWithoutDeserialization, self).__init__(slot, **kwargs)
         self.mainOperator = mainOperator
-    
+
     def serialize(self, group):
-        #if self.slot.ready() and self.mainOperator._predict_enabled:
+        # if self.slot.ready() and self.mainOperator._predict_enabled:
         return SerialDictSlot.serialize(self, group)
-    
+
     def deserialize(self, group):
         # Do not deserialize this slot
         pass
@@ -51,16 +56,10 @@ class ObjectClassificationSerializer(AppletSerializer):
             SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
             SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
             SerialDictSlot(operator.LabelInputs, transform=int),
-            SerialClassifierSlot(operator.Classifier,
-                                 operator.classifier_cache,
-                                 name="ClassifierForests"),
-            SerialDictSlot(operator.CachedProbabilities,
-                           operator.InputProbabilities,
-                           transform=int),
+            SerialClassifierSlot(operator.Classifier, operator.classifier_cache, name="ClassifierForests"),
+            SerialDictSlot(operator.CachedProbabilities, operator.InputProbabilities, transform=int),
             SerialSlot(operator.MaxNumObj),
-            SerialPickleableSlot(operator.ExportSettings, self.VERSION, None)
+            SerialPickleableSlot(operator.ExportSettings, self.VERSION, None),
         ]
 
-        super(ObjectClassificationSerializer, self ).__init__(topGroupName,
-                                                              slots=serialSlots,
-                                                              operator=operator)
+        super(ObjectClassificationSerializer, self).__init__(topGroupName, slots=serialSlots, operator=operator)

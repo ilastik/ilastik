@@ -16,78 +16,83 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import os
 import tempfile
 import shutil
+from pathlib import Path
 
 import numpy
+import pytest
 import vigra
 
 from lazyflow.graph import Graph
 from lazyflow.roi import roiToSlice
 from lazyflow.operators.ioOperators import OpInputDataReader
+from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
 
-from ilastik.applets.dataExport.opDataExport import OpDataExport
+from ilastik.applets.dataExport.opDataExport import OpDataExport, DataExportPathFormatter
+
 
 class TestOpDataExport(object):
-    
     @classmethod
     def setup_class(cls):
         cls._tmpdir = tempfile.mkdtemp()
 
     @classmethod
     def teardown_class(cls):
-        shutil.rmtree(cls._tmpdir) 
+        shutil.rmtree(cls._tmpdir)
 
-    def testBasic(self):
+    def testBasic(self, tmp_h5_single_dataset: Path):
         graph = Graph()
         opExport = OpDataExport(graph=graph)
         try:
-            opExport.TransactionSlot.setValue(True)        
-            opExport.WorkingDirectory.setValue( self._tmpdir )
-            
-            # Simulate the important fields of a DatasetInfo object
-            class MockDatasetInfo(object): pass
-            rawInfo = MockDatasetInfo()
-            rawInfo.nickname = 'test_nickname'
-            rawInfo.filePath = './somefile.h5'
-            opExport.RawDatasetInfo.setValue( rawInfo )
-    
-            opExport.SelectionNames.setValue(['Mock Export Data'])
-    
-            data = numpy.random.random( (100,100) ).astype( numpy.float32 ) * 100
-            data = vigra.taggedView( data, vigra.defaultAxistags('xy') )
-            
+            opExport.TransactionSlot.setValue(True)
+            opExport.WorkingDirectory.setValue(self._tmpdir)
+
+            rawInfo = FilesystemDatasetInfo(
+                filePath=str(tmp_h5_single_dataset / "test_group/test_data"), nickname="test_nickname"
+            )
+
+            opExport.RawDatasetInfo.setValue(rawInfo)
+
+            opExport.SelectionNames.setValue(["Mock Export Data"])
+
+            data = numpy.random.random((100, 100)).astype(numpy.float32) * 100
+            data = vigra.taggedView(data, vigra.defaultAxistags("xy"))
+
             opExport.Inputs.resize(1)
             opExport.Inputs[0].setValue(data)
-    
+
             sub_roi = [(10, 20), (90, 80)]
-            opExport.RegionStart.setValue( sub_roi[0] )
-            opExport.RegionStop.setValue( sub_roi[1] )
-            
-            opExport.ExportDtype.setValue( numpy.uint8 )
-            
-            opExport.OutputFormat.setValue( 'hdf5' )
-            opExport.OutputFilenameFormat.setValue( '{dataset_dir}/{nickname}_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}' )
-            opExport.OutputInternalPath.setValue('volume/data')
-    
+            opExport.RegionStart.setValue(sub_roi[0])
+            opExport.RegionStop.setValue(sub_roi[1])
+
+            opExport.ExportDtype.setValue(numpy.uint8)
+
+            opExport.OutputFormat.setValue("hdf5")
+            opExport.OutputFilenameFormat.setValue(
+                "{dataset_dir}/{nickname}_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}"
+            )
+            opExport.OutputInternalPath.setValue("volume/data")
+
             assert opExport.ImageToExport.ready()
             assert opExport.ExportPath.ready()
-            
-            expected_path = self._tmpdir + '/' + rawInfo.nickname + '_export_x10-90_y20-80.h5/volume/data'
+
+            expected_path = tmp_h5_single_dataset.parent.joinpath(
+                rawInfo.nickname + "_export_x10-90_y20-80.h5/volume/data"
+            ).as_posix()
             computed_path = opExport.ExportPath.value
-            assert os.path.normpath(computed_path) == os.path.normpath(expected_path), \
-                "Expected {}\nGot: {}".format( expected_path, computed_path )
+            assert os.path.normpath(computed_path) == os.path.normpath(expected_path)
             opExport.run_export()
         finally:
             opExport.cleanUp()
-        
-        opRead = OpInputDataReader( graph=graph )
+
+        opRead = OpInputDataReader(graph=graph)
         try:
-            opRead.FilePath.setValue( computed_path )
-    
+            opRead.FilePath.setValue(computed_path)
+
             # Compare with the correct subregion and convert dtype.
             expected_data = data.view(numpy.ndarray)[roiToSlice(*sub_roi)]
             expected_data = expected_data.astype(numpy.uint8)
@@ -95,3 +100,38 @@ class TestOpDataExport(object):
             assert (read_data == expected_data).all(), "Read data didn't match exported data!"
         finally:
             opRead.cleanUp()
+
+
+class TestDataExportPathFormatter:
+    class DummyDSInfo:
+        def __init__(self, filePath, nickname, default_output_dir):
+            self.filePath = filePath
+            self.nickname = nickname
+            self.default_output_dir = default_output_dir
+
+    @pytest.fixture
+    def path_formatter(self):
+        ds_info = self.DummyDSInfo(
+            filePath="/tmp/a/b/test_ds.h5", nickname="test_nickname", default_output_dir="/tmp/a"
+        )
+        return DataExportPathFormatter(dataset_info=ds_info, working_dir="/tmp/a", result_type="mytype")
+
+    @pytest.mark.parametrize("template_str,expected_path", [
+        ("{nickname}", "test_nickname"),
+        ("{dataset_dir}/{nickname}", "/tmp/a/test_nickname"),
+        ("{dataset_dir}/{nickname}+{result_type}", "/tmp/a/test_nickname+mytype"),
+        ("{var}", "{var}"),
+        ("", ""),
+        ("mypath", "mypath"),
+    ])
+    def test_format_path(self, path_formatter, template_str, expected_path):
+        formatted_path = path_formatter.format_path(template_str)
+        assert expected_path == formatted_path
+
+    @pytest.mark.parametrize("template_str", [
+        "{nickname",
+        "nickname}",
+    ])
+    def test_invalid_format_path(self, path_formatter, template_str):
+        with pytest.raises(ValueError):
+            path_formatter.format_path(template_str)

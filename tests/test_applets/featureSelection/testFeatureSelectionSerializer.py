@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import os
 import numpy
@@ -25,22 +25,22 @@ from lazyflow.graph import Graph
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection, getFeatureIdOrder
 from ilastik.applets.featureSelection.featureSelectionSerializer import FeatureSelectionSerializer
 
-class TestFeatureSelectionSerializer(object):
 
-    def test(self):    
-        # Define the files we'll be making    
-        testProjectName = 'test_project.ilp'
+class TestFeatureSelectionSerializer(object):
+    def test(self):
+        # Define the files we'll be making
+        testProjectName = "test_project.ilp"
         # Clean up: Remove the test data files we created last time (just in case)
         for f in [testProjectName]:
             try:
                 os.remove(f)
             except:
                 pass
-    
+
         # Create an empty project
-        with h5py.File(testProjectName, 'w') as testProject:
+        with h5py.File(testProjectName, "w") as testProject:
             testProject.create_dataset("ilastikVersion", data=b"1.0.0")
-            
+
             # Create an operator to work with and give it some input
             graph = Graph()
             operatorToSave = OpFeatureSelection(graph=graph)
@@ -50,40 +50,43 @@ class TestFeatureSelectionSerializer(object):
 
             # All False (no features selected)
             selectionMatrix = operatorToSave.MinimalFeatures
-        
+
             # Change a few to True
-            selectionMatrix[0,0] = True
-            selectionMatrix[1,1] = True
-            selectionMatrix[2,2] = True
-            selectionMatrix[3,3] = True
-            selectionMatrix[4,4] = True
-            selectionMatrix[5,5] = True
+            selectionMatrix[0, 0] = True
+            selectionMatrix[1, 1] = True
+            selectionMatrix[2, 2] = True
+            selectionMatrix[3, 3] = True
+            selectionMatrix[4, 4] = True
+            selectionMatrix[5, 5] = True
             operatorToSave.SelectionMatrix.setValue(selectionMatrix)
-            
+
             # Serialize!
-            serializer = FeatureSelectionSerializer(operatorToSave, 'FeatureSelections')
+            serializer = FeatureSelectionSerializer(operatorToSave, "FeatureSelections")
             serializer.serializeToHdf5(testProject, testProjectName)
 
-        with h5py.File(testProjectName, 'r') as testProject:
-            file_feature_ids = numpy.asarray(list(map(lambda s: s.decode('utf-8'), testProject['FeatureSelections/FeatureIds'].value)))
-            
-            assert (testProject['FeatureSelections/Scales'].value == scales).all()
+        with h5py.File(testProjectName, "r") as testProject:
+            file_feature_ids = numpy.asarray(
+                list(map(lambda s: s.decode("utf-8"), testProject["FeatureSelections/FeatureIds"].value))
+            )
+
+            assert (testProject["FeatureSelections/Scales"].value == scales).all()
             assert (file_feature_ids == featureIds).all()
-            assert (testProject['FeatureSelections/SelectionMatrix'].value == selectionMatrix).all()
-        
+            assert (testProject["FeatureSelections/SelectionMatrix"].value == selectionMatrix).all()
+
             # Deserialize into a fresh operator
             operatorToLoad = OpFeatureSelection(graph=graph)
 
-            deserializer = FeatureSelectionSerializer(operatorToLoad, 'FeatureSelections')
+            deserializer = FeatureSelectionSerializer(operatorToLoad, "FeatureSelections")
             deserializer.deserializeFromHdf5(testProject, testProjectName)
-            assert operatorToLoad.FeatureIds.value == getFeatureIdOrder(), \
-                "Feature IDs were deserialized to a strange order!"
-            
+            assert (
+                operatorToLoad.FeatureIds.value == getFeatureIdOrder()
+            ), "Feature IDs were deserialized to a strange order!"
+
             assert isinstance(operatorToLoad.Scales.value, list)
             assert isinstance(operatorToLoad.FeatureIds.value, list)
 
-            assert (operatorToLoad.Scales.value == scales)
-            assert (operatorToLoad.FeatureIds.value == featureIds)
+            assert operatorToLoad.Scales.value == scales
+            assert operatorToLoad.FeatureIds.value == featureIds
             assert (operatorToLoad.SelectionMatrix.value == selectionMatrix).all()
 
         os.remove(testProjectName)

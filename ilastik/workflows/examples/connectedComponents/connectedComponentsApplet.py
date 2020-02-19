@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,7 +18,7 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
@@ -25,7 +26,6 @@ from lazyflow.operators import OpLabelVolume
 
 
 class ConnectedComponentsApplet(StandardApplet):
-
     def __init__(self, workflow, guiName):
         super(self.__class__, self).__init__(guiName, workflow)
 
@@ -35,9 +35,10 @@ class ConnectedComponentsApplet(StandardApplet):
 
     @property
     def broadcastingSlots(self):
-        return ['Method', 'Background']
+        return ["Method", "Background"]
 
     @property
     def singleLaneGuiClass(self):
         from .connectedComponentsGui import ConnectedComponentsGui
+
         return ConnectedComponentsGui

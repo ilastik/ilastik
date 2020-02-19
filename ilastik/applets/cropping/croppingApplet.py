@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,30 +18,31 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 from .opCropping import OpCroppingTopLevel
 from .croppingSerializer import CroppingSerializer
 
 
-class CroppingApplet( StandardApplet ):
+class CroppingApplet(StandardApplet):
     """
     This applet demonstrates how to use the CroppingGui base class, which serves as a reusable base class for other applet GUIs that need a cropping UI.
     """
-    def __init__( self, workflow, projectFileGroupName, blockDims=None ):
+
+    def __init__(self, workflow, projectFileGroupName, blockDims=None):
         # Provide a custom top-level operator before we init the base class.
         if blockDims is None:
-            blockDims = {'c': 1, 'x':512, 'y': 512, 'z': 512, 't': 1}
-        
+            blockDims = {"c": 1, "x": 512, "y": 512, "z": 512, "t": 1}
+
         self.__topLevelOperator = None
         if self.topLevelOperator is None:
             self.__topLevelOperator = OpCroppingTopLevel(parent=workflow, blockDims=blockDims)
-            self._serializableItems = [ CroppingSerializer( self.__topLevelOperator, projectFileGroupName ) ]
+            self._serializableItems = [CroppingSerializer(self.__topLevelOperator, projectFileGroupName)]
 
-        super(CroppingApplet, self).__init__( "Cropping" )
+        super(CroppingApplet, self).__init__("Cropping")
         self._gui = None
-            
+
     @property
     def topLevelOperator(self):
         return self.__topLevelOperator
@@ -53,7 +55,7 @@ class CroppingApplet( StandardApplet ):
         from .croppingGui import CroppingGui
 
         opCropping = self.topLevelOperator.getLane(imageLaneIndex)
-        
+
         croppingSlots = CroppingGui.CroppingSlots()
         croppingSlots.cropInput = opCropping.CropInputs
         croppingSlots.cropEraserValue = opCropping.CropEraserValue
@@ -61,4 +63,4 @@ class CroppingApplet( StandardApplet ):
         croppingSlots.cropsAllowed = opCropping.CropsAllowedFlags
         croppingSlots.cropNames = opCropping.CropNames
 
-        return CroppingGui( self, croppingSlots, opCropping, rawInputSlot=opCropping.InputImages )
+        return CroppingGui(self, croppingSlots, opCropping, rawInputSlot=opCropping.InputImages)

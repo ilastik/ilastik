@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -24,13 +25,15 @@ from ilastik.applets.base.standardApplet import StandardApplet
 from .opWsdt import OpCachedWsdt
 from .wsdtSerializer import WsdtSerializer
 
-class WsdtApplet( StandardApplet ):
+
+class WsdtApplet(StandardApplet):
     """
     Distance-transform-based watershed applet
     """
-    def __init__( self, workflow, guiName, projectFileGroupName ):
+
+    def __init__(self, workflow, guiName, projectFileGroupName):
         super(WsdtApplet, self).__init__(guiName, workflow)
-        self._serializableItems = [ WsdtSerializer(self.topLevelOperator, projectFileGroupName) ]
+        self._serializableItems = [WsdtSerializer(self.topLevelOperator, projectFileGroupName)]
 
     @property
     def singleLaneOperatorClass(self):
@@ -38,19 +41,22 @@ class WsdtApplet( StandardApplet ):
 
     @property
     def broadcastingSlots(self):
-        return [ 'FreezeCache',
-                 'ChannelSelections',
-                 'Pmin',
-                 'MinMembraneSize',
-                 'MinSegmentSize',
-                 'SigmaMinima',
-                 'SigmaWeights',
-                 'GroupSeeds',
-                 'PreserveMembranePmaps' ]
+        return [
+            "FreezeCache",
+            "ChannelSelections",
+            "Pmin",
+            "MinMembraneSize",
+            "MinSegmentSize",
+            "SigmaMinima",
+            "SigmaWeights",
+            "GroupSeeds",
+            "PreserveMembranePmaps",
+        ]
 
     @property
     def singleLaneGuiClass(self):
         from .wsdtGui import WsdtGui
+
         return WsdtGui
 
     @property

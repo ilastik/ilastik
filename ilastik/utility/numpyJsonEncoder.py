@@ -7,6 +7,7 @@ class NumpyJsonEncoder(json.JSONEncoder):
     json.dumps cannot encode numpy's dtypes
     with json.dumps(string, cls=NumpyJsonEncode) it can
     """
+
     def default(self, obj):
         if type(obj).__module__ == numpy.__name__:
             try:

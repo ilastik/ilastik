@@ -16,26 +16,34 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import numpy
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialDictSlot, SerialSlot, SerialBlockSlot, SerialListSlot
+from ilastik.applets.base.appletSerializer import (
+    AppletSerializer,
+    SerialDictSlot,
+    SerialSlot,
+    SerialBlockSlot,
+    SerialListSlot,
+)
+
 
 class CropSelectionSerializer(AppletSerializer):
     """
     Serializes to an ilastik v0.6 project file.
     """
-    def __init__(self, operator, projectFileGroupName):
-        slots = [SerialDictSlot(operator.Crops),
-                 SerialSlot(operator.MinValueT, selfdepends=True),
-                 SerialSlot(operator.MaxValueT, selfdepends=True),
-                 SerialSlot(operator.MinValueX, selfdepends=True),
-                 SerialSlot(operator.MaxValueX, selfdepends=True),
-                 SerialSlot(operator.MinValueY, selfdepends=True),
-                 SerialSlot(operator.MaxValueY, selfdepends=True),
-                 SerialSlot(operator.MinValueZ, selfdepends=True),
-                 SerialSlot(operator.MaxValueZ, selfdepends=True),
-                 ]
 
-        super(CropSelectionSerializer, self).__init__(projectFileGroupName,
-                                                         slots=slots)
+    def __init__(self, operator, projectFileGroupName):
+        slots = [
+            SerialDictSlot(operator.Crops),
+            SerialSlot(operator.MinValueT, selfdepends=True),
+            SerialSlot(operator.MaxValueT, selfdepends=True),
+            SerialSlot(operator.MinValueX, selfdepends=True),
+            SerialSlot(operator.MaxValueX, selfdepends=True),
+            SerialSlot(operator.MinValueY, selfdepends=True),
+            SerialSlot(operator.MaxValueY, selfdepends=True),
+            SerialSlot(operator.MinValueZ, selfdepends=True),
+            SerialSlot(operator.MaxValueZ, selfdepends=True),
+        ]
+
+        super(CropSelectionSerializer, self).__init__(projectFileGroupName, slots=slots)

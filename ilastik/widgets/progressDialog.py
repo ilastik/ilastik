@@ -82,9 +82,11 @@ class ProgressDialog(QDialog):
     def safe_popup_noclose(self, level, title, description, *args):
         self.trigger_popup.emit(level, title, description, args, False)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
     from time import sleep
+
     app = QApplication([])
 
     p = ProgressDialog(["abc", "def", "ghi"])
@@ -93,7 +95,7 @@ if __name__ == '__main__':
 
     for j in range(3):
         for i in range(11):
-            p.safe_update_step(i*10)
-            sleep(.01)
+            p.safe_update_step(i * 10)
+            sleep(0.01)
     p.safe_popup("information", "lol", "rofl")
     app.exec_()

@@ -16,12 +16,13 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from lazyflow.graph import InputSlot
 from ilastik.applets.dataExport.opDataExport import OpDataExport
 
-class OpCountingBatchResults( OpDataExport ):
+
+class OpCountingBatchResults(OpDataExport):
     # Add these additional input slots, to be used by the GUI.
     PmapColors = InputSlot()
     LabelNames = InputSlot()
