@@ -161,6 +161,10 @@ class ModelSession:
 
         reordered_feature_image = reorder_axes(feature_image, from_axes_tags=axistags, to_axes_tags=self.input_axes)
         reordered_feature_image = reordered_feature_image.astype(np.float32)
+        reordered_feature_image -= reordered_feature_image.mean()
+        dev = numpy.std(reordered_feature_image)
+        if dev > 0.01:
+            reordered_feature_image /= dev
 
         try:
             resp = self.tiktorchClient.Predict(
