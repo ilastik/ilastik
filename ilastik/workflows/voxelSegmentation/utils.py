@@ -1,7 +1,8 @@
+from functools import partial
 import logging
 import time
 
-from pathos import multiprocessing
+from lazyflow.request import Request, RequestPool
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -57,20 +58,25 @@ def get_supervoxel_labels(labels, supervoxel_mask):
 
 @timeit
 def slic_to_mask(slic_segmentation, supervoxel_values):
-    num_cores = multiprocessing.cpu_count()
+    num_workers = Request.global_thread_pool.num_workers
 
-    slices = np.array_split(slic_segmentation, num_cores * 16)
+    slices = np.array_split(slic_segmentation, num_workers)
+    slices_out = []
 
     @timeit
     def compute(slice_):
+        nonlocal slices_out
         shape = slice_.shape + (supervoxel_values.shape[-1],)
         slice_out = np.zeros(shape, dtype=supervoxel_values.dtype)
         for (i, v) in enumerate(supervoxel_values):
             slice_out[slice_ == i, :] = v[:]
-        return slice_out
+        slices_out.append(slice_out)
 
-    pool = multiprocessing.Pool(num_cores * 4)
+    #    pool = RequestPool
+    for _slice in slices:
+        # pool.add(Request(partial(compute, _slice)))
+        compute(_slice)
 
-    slices_out = pool.map(compute, slices)
-    pool.close()
+    # pool.wait()
+
     return np.concatenate(slices_out)
