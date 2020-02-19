@@ -225,18 +225,21 @@ class JsonConfigParser(object):
     ...   "ignored_field" : "Fields that are unrecognized by the schema are ignored."
     ... }
     ... \"""
-    >>> with open('/tmp/example_config.json', 'w') as f:
-    ...   f.write(example_file_str)
+    >>> import os, tempfile
+    >>> configFile = tempfile.NamedTemporaryFile(mode='w', delete=False)
+    >>> _ = configFile.write(example_file_str)
+    >>> configFile.close()
     >>>
     >>> # Create a parser that understands your schema
     >>> parser = JsonConfigParser( SchemaFields )
     >>>
     >>> # Parse the config file
-    >>> parsedFields = parser.parseConfigFile('/tmp/example_config.json')
-    >>> print parsedFields.color
+    >>> parsedFields = parser.parseConfigFile(configFile.name)
+    >>> os.remove(configFile.name)
+    >>> print(parsedFields.color)
     red
     >>> # Whitespace in field names is replaced with underscores in the Namespace member.
-    >>> print parsedFields.shoe_size
+    >>> print(parsedFields.shoe_size)
     12
     """
 

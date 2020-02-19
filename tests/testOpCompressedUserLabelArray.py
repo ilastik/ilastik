@@ -28,7 +28,7 @@ from lazyflow.graph import Graph
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators import OpCompressedUserLabelArray
 
-from lazyflow.utility.slicingtools import sl, slicing2shape
+from lazyflow.utility.slicingtools import slicing2shape
 
 
 class TestOpCompressedUserLabelArray(object):
@@ -44,7 +44,7 @@ class TestOpCompressedUserLabelArray(object):
         dummyData = vigra.VigraArray(arrayshape, axistags=vigra.defaultAxistags("txyzc"), dtype=numpy.uint8)
         op.Input.setValue(dummyData)
 
-        slicing = sl[0:1, 1:15, 2:36, 3:7, 0:1]
+        slicing = numpy.s_[0:1, 1:15, 2:36, 3:7, 0:1]
         inDataShape = slicing2shape(slicing)
         inputData = (3 * numpy.random.random(inDataShape)).astype(numpy.uint8)
         op.Input[slicing] = inputData
@@ -125,8 +125,8 @@ class TestOpCompressedUserLabelArray(object):
 
         # Choose slicings that do NOT intersect with any of the previous data or with each other
         # The goal is to make sure that the data for each slice ends up in a separate block
-        slicing1 = sl[0:1, 60:65, 0:10, 3:7, 0:1]
-        slicing2 = sl[0:1, 90:95, 0:90, 3:7, 0:1]
+        slicing1 = numpy.s_[0:1, 60:65, 0:10, 3:7, 0:1]
+        slicing2 = numpy.s_[0:1, 90:95, 0:90, 3:7, 0:1]
 
         expectedData = self.data[...]
 
@@ -240,7 +240,7 @@ class TestOpCompressedUserLabelArray(object):
         # BEFORE (convert to tuple)
         clean_blocks_before = [(tuple(a), tuple(b)) for (a, b) in op.CleanBlocks.value]
 
-        block_slicing = sl[0:1, 10:20, 10:20, 0:10, 0:1]
+        block_slicing = numpy.s_[0:1, 10:20, 10:20, 0:10, 0:1]
         block_roi = ((0, 10, 10, 0, 0), (1, 20, 20, 10, 1))
 
         eraser_data = 100 * numpy.ones(slicing2shape(block_slicing), dtype=numpy.uint8)
@@ -332,7 +332,7 @@ class TestOpCompressedUserLabelArray_masked(object):
         )
         op.Input.setValue(dummyData)
 
-        slicing = sl[0:1, 1:15, 2:36, 3:7, 0:1]
+        slicing = numpy.s_[0:1, 1:15, 2:36, 3:7, 0:1]
         inDataShape = slicing2shape(slicing)
         inputData = (3 * numpy.random.random(inDataShape)).astype(numpy.uint8)
         inputData = numpy.ma.masked_array(
@@ -422,8 +422,8 @@ class TestOpCompressedUserLabelArray_masked(object):
 
         # Choose slicings that do NOT intersect with any of the previous data or with each other
         # The goal is to make sure that the data for each slice ends up in a separate block
-        slicing1 = sl[0:1, 60:65, 0:10, 3:7, 0:1]
-        slicing2 = sl[0:1, 90:95, 0:90, 3:7, 0:1]
+        slicing1 = numpy.s_[0:1, 60:65, 0:10, 3:7, 0:1]
+        slicing2 = numpy.s_[0:1, 90:95, 0:90, 3:7, 0:1]
 
         expectedData = self.data[...]
 

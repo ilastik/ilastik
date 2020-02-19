@@ -26,7 +26,7 @@ import vigra
 from lazyflow.graph import Graph
 from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
 
-from lazyflow.utility.slicingtools import sl, slicing2shape
+from lazyflow.utility.slicingtools import slicing2shape
 
 
 class TestOpDenseLabelArray(object):
@@ -46,7 +46,7 @@ class TestOpDenseLabelArray(object):
         dummyData = vigra.VigraArray(arrayshape, axistags=vigra.defaultAxistags("txyzc"))
         op.MetaInput.setValue(dummyData)
 
-        slicing = sl[0:1, 1:15, 2:36, 3:7, 0:1]
+        slicing = numpy.s_[0:1, 1:15, 2:36, 3:7, 0:1]
         inDataShape = slicing2shape(slicing)
         inputData = (3 * numpy.random.random(inDataShape)).astype(numpy.uint8)
         op.LabelSinkInput[slicing] = inputData
@@ -123,8 +123,8 @@ class TestOpDenseLabelArray(object):
 
         # Choose slicings that do NOT intersect with any of the previous data or with each other
         # The goal is to make sure that the data for each slice ends up in a separate block
-        slicing1 = sl[0:1, 60:65, 0:10, 3:7, 0:1]
-        slicing2 = sl[0:1, 90:95, 0:90, 3:7, 0:1]
+        slicing1 = numpy.s_[0:1, 60:65, 0:10, 3:7, 0:1]
+        slicing2 = numpy.s_[0:1, 90:95, 0:90, 3:7, 0:1]
 
         expectedData = self.data[...]
 

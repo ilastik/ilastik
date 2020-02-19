@@ -36,13 +36,16 @@ class Pipeline(abc.Sequence):
     to the slot named "Output" of the previous operator.
 
     Examples:
-        >>> graph = Graph()
-        >>> opSideways = OpSideways(graph=graph)
-        >>> with Pipeline(graph=graph) as pipeline:
-        ...     pipeline.add(StartOp, Input="spam")
-        ...     pipeline.add(MiddleOp, SomeFlag=True)
-        ...     pipeline.add(FinalOp, OtherConnection=opSideways.Output)
-        ...     pipeline[-1].Output[:].wait()
+
+        Pipeline of 3 operators with the last op having an extra input from another op::
+
+            graph = Graph()
+            opSideways = OpSideways(graph=graph)
+            with Pipeline(graph=graph) as pipeline:
+                pipeline.add(StartOp, Input="spam")
+                pipeline.add(MiddleOp, SomeFlag=True)
+                pipeline.add(FinalOp, OtherConnection=opSideways.Output)
+                pipeline[-1].Output[:].wait()
     """
 
     def __init__(self, **op_init_kwargs: Any):

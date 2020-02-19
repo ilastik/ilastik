@@ -1,7 +1,3 @@
-from builtins import next
-from builtins import range
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -23,146 +19,107 @@ from builtins import object
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-import time
+
 import threading
+
+import pytest
+
 from lazyflow.request.threadPool import ThreadPool
 
 
-class TestThreadPool(object):
-    """
-    The ThreadPool does not depend on any particular Request-specific interface; it can be used with any callable.
-    This is a simple test to verify that it can execute regular functions.
-    """
-
-    @classmethod
-    def setup_class(cls):
-        cls.thread_pool = ThreadPool(num_workers=4)
-
-    #     def testtest(self):
-    #         for i in range(100):
-    #             print i
-    #             self.testBasic()
-
-    def testBasic(self):
-        f1_started = threading.Event()
-        f2_started = threading.Event()
-        f2_finished = threading.Event()
-
-        def f1():
-            f1_started.set()
-
-        def f2():
-            f2_started.set()
-            f1_started.wait()
-            f2_finished.set()
-
-        TestThreadPool.thread_pool.wake_up(f2)
-        f2_started.wait()
-        TestThreadPool.thread_pool.wake_up(f1)
-
-        f2_finished.wait()
-
-        # This is just to make sure the test is doing what its supposed to.
-        assert f1.assigned_worker != f2.assigned_worker, "{} == {}".format(f1.assigned_worker, f2.assigned_worker)
-
-    def test(self):
-        for _ in range(10):
-            self._testAssignmentConsistency()
-
-    def _testAssignmentConsistency(self):
-        """
-        If a callable is woken up (executed) more than once from the ThreadPool, it will execute on the same thread every time.
-        (This is a useful guarantee for e.g. greenlet-based callables.)
-        """
-        e = threading.Event()
-        f_thread_ids = []
-
-        def f():
-            f_thread_ids.append(threading.current_thread())
-            e.set()
-
-        # First time
-        e.clear()
-        self.thread_pool.wake_up(f)
-        e.wait()
-
-        # Second time, same callable
-        e.clear()
-        self.thread_pool.wake_up(f)
-        e.wait()
-        assert f_thread_ids[0] == f_thread_ids[1], "Callable should always execute on the same worker thread!"
-
-        # Another example: Now do the same thing, but with a (wrapped) generator as the callable
-        gen_thread_ids = []
-
-        def gen():
-            while True:
-                gen_thread_ids.append(threading.current_thread())
-                yield e.set()
-
-        class WrappedGenerator(object):
-            def __init__(self, generator):
-                self.generator = generator
-
-            def __call__(self):
-                return next(self.generator)
-
-        # First time
-        g = WrappedGenerator(gen())
-        e.clear()
-        self.thread_pool.wake_up(g)
-        e.wait()
-
-        class TestTask:
-            def __init__(self, f):
-                self._f = f
-
-            def __lt__(self, other):
-                return id(self._f) < id(other)
-
-            def __call__(self, *args, **kwargs):
-                return self._f(*args, **kwargs)
-
-        # Overload the threadpool with work,
-        #  which should encourage random assignment of threads if something is broken
-        def delay1():
-            time.sleep(0.2)
-
-        def delay2():
-            time.sleep(0.2)
-
-        def delay3():
-            time.sleep(0.2)
-
-        def delay4():
-            time.sleep(0.2)
-
-        def delay5():
-            time.sleep(0.2)
-
-        self.thread_pool.wake_up(TestTask(delay1))
-        self.thread_pool.wake_up(TestTask(delay2))
-        self.thread_pool.wake_up(TestTask(delay3))
-        self.thread_pool.wake_up(TestTask(delay4))
-        self.thread_pool.wake_up(TestTask(delay5))
-
-        # Second time, same callable
-        e.clear()
-        self.thread_pool.wake_up(g)
-        e.wait()
-        assert gen_thread_ids[0] == gen_thread_ids[1], "Callable should always execute on the same worker thread!"
-
-        # Ensure that all tasks have been processed
-        # (avoid interfering with other tests in this suite).
-        self.thread_pool._wait_for_idle()
+@pytest.fixture
+def pool():
+    p = ThreadPool(num_workers=4)
+    yield p
+    p.stop()
 
 
-if __name__ == "__main__":
-    import sys
-    import nose
+def test_basic(pool):
+    f1_started = threading.Event()
+    f2_started = threading.Event()
+    f2_finished = threading.Event()
 
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    ret = nose.run(defaultTest=__file__)
-    if not ret:
-        sys.exit(1)
+    def f1():
+        f1_started.set()
+
+    def f2():
+        f2_started.set()
+        f1_started.wait()
+        f2_finished.set()
+
+    pool.wake_up(f2)
+    f2_started.wait()
+    pool.wake_up(f1)
+
+    f2_finished.wait()
+
+    assert f1.assigned_worker != f2.assigned_worker
+
+
+def test_function_executes_in_same_thread(pool):
+    func_finished = threading.Event()
+    thread_ids = []
+
+    def func():
+        thread_ids.append(threading.current_thread().ident)
+        func_finished.set()
+
+    for _i in range(pool.num_workers):
+        func_finished.clear()
+        pool.wake_up(func)
+        func_finished.wait()
+
+    assert len(set(thread_ids)) == 1
+
+
+def test_generator_executes_in_same_thread(pool):
+    gen_stepped = threading.Event()
+    test_finished = threading.Event()
+    thread_ids = []
+
+    def make_gen():
+        while True:
+            thread_ids.append(threading.current_thread().ident)
+            gen_stepped.set()
+            yield
+
+    class GenTask:
+        def __init__(self, gen):
+            self.gen = gen
+
+        def __call__(self):
+            return next(self.gen)
+
+    gen_task = GenTask(make_gen())
+
+    # Submit an infinite generator task and wait for it to be scheduled.
+    # 1 worker is busy with gen_task, N-1 workers are free.
+    pool.wake_up(gen_task)
+    gen_stepped.wait()
+
+    class WaitTask:
+        def __init__(self, priority):
+            self.priority = priority
+
+        def __lt__(self, other):
+            return self.priority < other.priority
+
+        def __call__(self):
+            test_finished.wait()
+
+    # 1 worker is busy with gen_task, N-1 workers are busy with instances
+    # of WaitTask, 1 instance of WaitTask is in the queue.
+    for i in range(pool.num_workers):
+        pool.wake_up(WaitTask(i))
+
+    # Force the gen_task to take 1 more step.
+    gen_stepped.clear()
+    pool.wake_up(gen_task)
+    gen_stepped.wait()
+
+    # Ensure that both gen_task invocations have been executed in the same thread.
+    assert len(thread_ids) == 2
+    assert thread_ids[0] == thread_ids[1]
+
+    # Release tasks that occupy workers, so that the thread pool can stop.
+    test_finished.set()

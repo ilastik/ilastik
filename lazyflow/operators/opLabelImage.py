@@ -19,6 +19,9 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
+
+import warnings
+
 # Third-party
 import numpy
 import vigra
@@ -27,7 +30,6 @@ import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators import OpMultiArraySlicer2, OpMultiArrayStacker
 from lazyflow.operators.opVigraLabelVolume import _OpVigraLabelVolume as OpVigraLabelVolume
-from lazyflow.utility.helpers import warn_deprecated
 
 
 class _OpLabelImage(Operator):
@@ -166,5 +168,5 @@ class _OpLabelImage(Operator):
 
 class OpLabelImage(_OpLabelImage):
     def __init__(self, *args, **kwargs):
-        warn_deprecated("OpLabelImage is deprecated," " use OpLabelVolume instead", stacklevel=2)
+        warnings.warn("OpLabelImage is deprecated, use OpLabelVolume instead", DeprecationWarning)
         super(OpLabelImage, self).__init__(*args, **kwargs)

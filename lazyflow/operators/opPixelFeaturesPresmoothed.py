@@ -473,7 +473,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                             filter_target_roi = SubRegion(oslot, pslice=full_filter_target_slice)
 
                             closure = partial(
-                                oslot.operator.execute,
+                                oslot.operator.call_execute,
                                 oslot,
                                 (),
                                 filter_target_roi,

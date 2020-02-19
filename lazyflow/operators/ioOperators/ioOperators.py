@@ -546,11 +546,27 @@ class OpH5N5WriterBigDataset(Operator):
     logger = logging.getLogger(loggingName)
     traceLogger = logging.getLogger("TRACE." + loggingName)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+        self,
+        h5N5File=None,
+        h5N5Path=None,
+        Image=None,
+        BatchSize: int = None,
+        CompressionEnabled: bool = None,
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
+
         self.progressSignal = OrderedSignal()
         self.d = None
         self.f = None
+
+        self.h5N5File.setOrConnectIfAvailable(h5N5File)
+        self.h5N5Path.setOrConnectIfAvailable(h5N5Path)
+        self.Image.setOrConnectIfAvailable(Image)
+        self.BatchSize.setOrConnectIfAvailable(BatchSize)
+        self.CompressionEnabled.setOrConnectIfAvailable(CompressionEnabled)
 
     def cleanUp(self):
         super().cleanUp()

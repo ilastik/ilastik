@@ -1,9 +1,3 @@
-from __future__ import division
-
-from builtins import zip
-from builtins import map
-from builtins import range
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -25,6 +19,16 @@ from builtins import range
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
+
+import collections
+import numbers
+from functools import partial
+from itertools import combinations
+from math import ceil, floor, log10, pow
+from typing import Sequence, Tuple, Union
+
+import numpy
+
 if __name__ == "__main__":
     # When executing this file directly for doctest purposes,
     #  we must remove the lazyflow module from sys.path
@@ -35,12 +39,6 @@ if __name__ == "__main__":
 
     assert sys.path[0].endswith("lazyflow/lazyflow")
     sys.path.pop(0)
-
-import numpy
-from math import ceil, floor, pow, log10
-import collections
-from functools import partial
-from itertools import combinations
 
 
 class TinyVector(list):
@@ -240,74 +238,149 @@ class TinyVector(list):
         return answer
 
 
-def expandSlicing(s, shape):
-    """
-    Args:
-        s: Anything that can be used as a numpy array index:
-           - int
-           - slice
-           - Ellipsis (i.e. ...)
-           - Some combo of the above as a tuple or list
+def sliceToRoi(
+    slicing: Union[numbers.Integral, slice, "ellipsis", Sequence[Union[numbers.Integral, slice, "ellipsis"]]],
+    shape: Sequence[numbers.Integral],
+    *,
+    extendSingleton: bool = True,
+) -> Tuple[Sequence[int], Sequence[int]]:
+    """Convert slicing to ROI.
 
-        shape: The shape of the array that will be accessed
+    Negative indices and slices are allowed similarly to usual Python
+    and NumPy indexing. None (newaxis) objects are not allowed.
+
+    As a special case, passing a 0-dimensional shape ``()`` always
+    returns 0-dimensional ROI, regardless of the value of `slicing`.
+
+    Args:
+        slicing: Valid slicing.
+        shape: Shape of the target array.
+        extendSingleton: Whether to keep dimensions of int indices
+            (similar to negated ``keepdims`` from some NumPy functions,
+            see the examples).
 
     Returns:
-        A tuple of length N where N=len(shape)
-        slice(None) is inserted in missing positions so as not to change the meaning of the slicing.
-        e.g. if shape=(1,2,3,4,5):
-            0 --> (0,:,:,:,:)
-            (0:1) --> (0:1,:,:,:,:)
-            : --> (:,:,:,:,:)
-            ... --> (:,:,:,:,:)
-            (0,0,...,4) --> (0,0,:,:,4)
+        ``(start, stop)`` pair.
+
+    Raises:
+        ValueError: Slicing is not valid (either by itself or in
+            combination with the given shape).
+
+    Examples:
+
+        Point indexing:
+
+            >>> sliceToRoi(1, (7, 8, 9))
+            ([1, 0, 0], [2, 8, 9])
+            >>> sliceToRoi(-1, (7, 8, 9))
+            ([6, 0, 0], [7, 8, 9])
+            >>> sliceToRoi(1, (7, 8, 9), extendSingleton=False)
+            ([1, 0, 0], [1, 8, 9])
+            >>> sliceToRoi(42, (7, 8, 9))  # doctest: +IGNORE_EXCEPTION_DETAIL
+            Traceback (most recent call last):
+              ...
+            ValueError
+
+        Slice indexing:
+
+            >>> sliceToRoi(slice(None, None), (7, 8, 9))
+            ([0, 0, 0], [7, 8, 9])
+            >>> sliceToRoi(slice(2, 5), (7, 8, 9))
+            ([2, 0, 0], [5, 8, 9])
+            >>> sliceToRoi(slice(2, 42), (7, 8, 9))
+            ([2, 0, 0], [7, 8, 9])
+            >>> sliceToRoi(slice(-1, 5), (7, 8, 9))
+            ([6, 0, 0], [5, 8, 9])
+            >>> sliceToRoi(slice(-42, 42), (7, 8, 9))
+            ([0, 0, 0], [7, 8, 9])
+            >>> sliceToRoi(slice(None, None, 2), (7, 8, 9))  # doctest: +IGNORE_EXCEPTION_DETAIL
+            Traceback (most recent call last):
+              ...
+            ValueError
+
+        Multi indexing:
+
+            >>> sliceToRoi((), (7, 8, 9))
+            ([0, 0, 0], [7, 8, 9])
+            >>> sliceToRoi((1,), (7, 8, 9))
+            ([1, 0, 0], [2, 8, 9])
+            >>> sliceToRoi((1, 2), (7, 8, 9))
+            ([1, 2, 0], [2, 3, 9])
+            >>> sliceToRoi([1, 2], (7, 8, 9))
+            ([1, 2, 0], [2, 3, 9])
+            >>> sliceToRoi((slice(2, 5), slice(3, 6), 5), (7, 8, 9))
+            ([2, 3, 5], [5, 6, 6])
+            >>> sliceToRoi((1, 2, 3, 4), (7, 8, 9))  # doctest: +IGNORE_EXCEPTION_DETAIL
+            Traceback (most recent call last):
+              ...
+            ValueError
+
+        Ellipsis indexing:
+
+            >>> sliceToRoi((1, ..., 5), (7, 8, 9))
+            ([1, 0, 5], [2, 8, 6])
+            >>> sliceToRoi((..., slice(2, 5)), (7, 8, 9))
+            ([0, 0, 2], [7, 8, 5])
+            >>> sliceToRoi((..., ...), (7, 8, 9))  # doctest: +IGNORE_EXCEPTION_DETAIL
+            Traceback (most recent call last):
+              ...
+            ValueError
+
+        Zero-dimensional shape:
+
+            >>> sliceToRoi((), ())
+            ([], [])
+            >>> sliceToRoi((1, 2, 3), ())
+            ([], [])
     """
-    if type(s) == list:
-        s = tuple(s)
-    if type(s) != tuple:
-        # Convert : to (:,), or 5 to (5,)
-        s = (s,)
+    if not shape:
+        return TinyVector(), TinyVector()
 
-    # Compute number of axes missing from the slicing
-    if len(shape) - len(s) < 0:
-        assert s == (Ellipsis,) or s == (slice(None),), (
-            "Slicing must not have more elements than the shape, except for [:] and [...] slices.\n"
-            "Your slicing: {}, your shape: {}".format(s, shape)
-        )
+    try:
+        slicing = list(slicing)
+    except TypeError:
+        slicing = [slicing]
 
-    # Replace Ellipsis with (:,:,:)
-    if Ellipsis in s:
-        ei = s.index(Ellipsis)  # Ellipsis Index
-        s = s[0:ei] + (len(shape) - len(s) + 1) * (slice(None),) + s[ei + 1 :]
+    try:
+        i = slicing.index(Ellipsis)
+        slicing[i : i + 1] = [slice(None)] * (len(shape) - len(slicing) + 1)
+    except ValueError:
+        pass
 
-    # Append (:,) until we get the right length
-    s += (len(shape) - len(s)) * (slice(None),)
+    if Ellipsis in slicing:
+        raise ValueError("an index can only have a single ellipsis ('...')")
 
-    # Special case: we allow [:] and [...] for empty shapes ()
-    if shape == ():
-        s = ()
+    if len(slicing) > len(shape):
+        raise ValueError("too many indices for array")
 
-    return s
+    slicing += [slice(None)] * (len(shape) - len(slicing))
 
+    roi_start = TinyVector()
+    roi_stop = TinyVector()
 
-sTrl1 = lambda x: x if type(x) != slice else x.start if x.start != None else 0
-sTrl2 = lambda x, y: y if type(y) != slice else y.stop if y.stop != None else x
-sTrl3 = lambda x, y: y + 1 if x == y else y
+    for i, (idx, dim) in enumerate(zip(slicing, shape)):
+        if isinstance(idx, numbers.Integral):
+            idx = int(idx)
+            if idx not in range(-dim, dim):
+                raise ValueError(f"index {idx} is out of bounds for axis {i} with size {dim}")
+            if idx < 0:
+                idx += dim
+            start, stop = idx, idx
+            if extendSingleton:
+                stop += 1
 
+        elif isinstance(idx, slice):
+            start, stop, step = idx.indices(dim)
+            if step != 1:
+                raise ValueError(f"slice {idx} has non-contiguous stride for axis {i}")
 
-def sliceToRoi(s, shape, extendSingleton=True):
-    """Args:
-            slice: slice object (1D) or list of slice objects (N-D)
-            shape: the shape of the array to be sliced
-            extendSingleton: if True, convert int indexes to slices so the dimension of the slicing matches the dimension of the shape.
-       Returns:
-            ROI instance corresponding to slice
-    """
-    s = expandSlicing(s, shape)
-    start = list(map(sTrl1, s))
-    stop = list(map(sTrl2, shape, s))
-    if extendSingleton:
-        stop = list(map(sTrl3, start, stop))
-    return TinyVector(start), TinyVector(stop)
+        else:
+            raise ValueError("only integers, slices (`:`) and ellipsis (`...`) are valid indices")
+
+        roi_start.append(start)
+        roi_stop.append(stop)
+
+    return roi_start, roi_stop
 
 
 def roiFromShape(shape):
@@ -332,27 +405,30 @@ def getIntersection(roiA, roiB, assertIntersect=True):
     return (start, stop)
 
 
-rTsl1 = lambda x, y: slice(x.__int__(), y.__int__())
+def roiToSlice(start: Sequence[numbers.Integral], stop: Sequence[numbers.Integral]) -> Tuple[slice, ...]:
+    """Convert ROI to the corresponding index tuple.
 
+    Args:
+        start: Start ROI, inclusive.
+        stop: End ROI, exclusive.
 
-def roiToSlice(start, stop, hardBind=False):
-    """Args:
-            start (N-D coordinate): inclusive start
-            stop  (N-D coordinate): exclusive stop
-       Returns:
-            list of slice objects describing the [start,stop) range,
-            so that numpy.ndarray.__getitem__(roiToSlice(start,stop)) can be used.
+    Returns:
+        Tuple index that can be used to index NumPy arrays.
+
+    Raises:
+        ValueError: `start` and `stop` have different lengths.
+
+    Examples:
+        >>> roiToSlice([1, 2, 3], [7, 8, 9])
+        (slice(1, 7, None), slice(2, 8, None), slice(3, 9, None))
+        >>> roiToSlice([1, 2, 3], [7, 8])  # doctest: +IGNORE_EXCEPTION_DETAIL
+        Traceback (most recent call last):
+          ...
+        ValueError
     """
-    if hardBind:
-        res = []
-        for sta, stp in zip(start, stop):
-            if stp == sta + 1 or stp == sta:
-                res.append(int(sta))
-            else:
-                res.append(slice(int(sta), int(stp)))
-        return tuple(res)
-    else:
-        return tuple(map(rTsl1, start, stop))
+    if len(start) != len(stop):
+        raise ValueError("ROI has different start and stop sizes")
+    return tuple(slice(int(a), int(b)) for a, b in zip(start, stop))
 
 
 def nonzero_bounding_box(data):
@@ -364,7 +440,7 @@ def nonzero_bounding_box(data):
         >>> data = numpy.zeros( (10,100,100) )
         >>> data[4, 30:40, 50:60] = 1
         >>> data[7, 45:55, 30:35] = 255
-        >>> nonzero_bounding_box(data)
+        >>> nonzero_bounding_box(data).astype("int")
         array([[ 4, 30, 30],
                [ 8, 55, 60]])
 
@@ -484,14 +560,14 @@ def getIntersectingBlocks(blockshape, roi, asarray=False):
     >>> block_starts = getIntersectingBlocks( (10, 20), [(15, 25),(23, 40)] )
     >>> block_starts.shape
     (2, 2)
-    >>> print block_starts
+    >>> print(block_starts)
     [[10 20]
      [20 20]]
 
     >>> block_starts = getIntersectingBlocks( (10, 20), [(15, 25),(23, 41)] )
     >>> block_starts.shape
     (4, 2)
-    >>> print block_starts
+    >>> print(block_starts)
     [[10 20]
      [10 40]
      [20 20]
@@ -502,7 +578,7 @@ def getIntersectingBlocks(blockshape, roi, asarray=False):
     >>> block_start_matrix = getIntersectingBlocks( (10, 20), [(15, 25),(23, 40)], asarray=True )
     >>> block_start_matrix.shape
     (2, 1, 2)
-    >>> print block_start_matrix
+    >>> print(block_start_matrix)
     [[[10 20]]
     <BLANKLINE>
      [[20 20]]]
@@ -510,7 +586,7 @@ def getIntersectingBlocks(blockshape, roi, asarray=False):
     >>> block_start_matrix = getIntersectingBlocks( (10, 20), [(15, 25),(23, 41)], asarray=True )
     >>> block_start_matrix.shape
     (2, 2, 2)
-    >>> print block_start_matrix
+    >>> print(block_start_matrix)
     [[[10 20]
       [10 40]]
     <BLANKLINE>
@@ -521,7 +597,7 @@ def getIntersectingBlocks(blockshape, roi, asarray=False):
     This function works for negative rois, too.
 
     >>> block_starts = getIntersectingBlocks( (10, 20), [(-10, -5),(5, 5)] )
-    >>> print block_starts
+    >>> print(block_starts)
     [[-10 -20]
      [-10   0]
      [  0 -20]
@@ -683,7 +759,7 @@ def determine_optimal_request_blockshape(
 
     # Need to stack the ideal_blockshape to come up with something larger.
     # Start with an isotropic block, clipped to the nearest multiple of the atomic_blockshape
-    blockshape = numpy.array(determineBlockShape(max_blockshape, target_block_volume_pixels))
+    blockshape = numpy.array(determineBlockShape(clipped_ideal_blockshape, target_block_volume_pixels))
     blockshape -= blockshape % atomic_blockshape
 
     while True:

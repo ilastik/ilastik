@@ -19,11 +19,13 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
+
+import warnings
+
 import numpy
 import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.utility.helpers import warn_deprecated
 
 
 class _OpVigraLabelVolume(Operator):
@@ -111,5 +113,5 @@ class _OpVigraLabelVolume(Operator):
 
 class OpVigraLabelVolume(_OpVigraLabelVolume):
     def __init__(self, *args, **kwargs):
-        warn_deprecated("Usage of OpVigraLabelVolume is deprecated," " use OpLabelVolume instead!", stacklevel=2)
+        warnings.warn("Usage of OpVigraLabelVolume is deprecated, use OpLabelVolume instead!", DeprecationWarning)
         super(OpVigraLabelVolume, self).__init__(*args, **kwargs)

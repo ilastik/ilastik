@@ -22,12 +22,15 @@ from builtins import object
 #                 http://ilastik.org/license/
 ###############################################################################
 import os
+import re
 import fnmatch
 import errno
 import pathlib
+from typing import List
 
 import h5py
 import z5py
+import numpy
 
 
 class PathComponents(object):
@@ -290,6 +293,18 @@ def isUrl(path):
     return "://" in path
 
 
+def isRelative(path: str) -> bool:
+    return not isUrl(path) and not os.path.isabs(path)
+
+
+def splitPath(path: str) -> List[str]:
+    """Splits a string using path separator (e.g.: ':' in unix) without clobbering
+    protocol URLs like http://example.com"""
+
+    NOT_FOLLOWED_BY_DOUBLE_SLASH = r"(?!//)"
+    return re.split(os.path.pathsep + NOT_FOLLOWED_BY_DOUBLE_SLASH, path)
+
+
 def make_absolute(path, cwd=os.getcwd()):
     return PathComponents(path, cwd).totalPath()
 
@@ -354,8 +369,7 @@ def lsH5N5(h5N5FileObject, minShape=2, maxShape=5):
             return
         if isinstance(h5N5FileObject, z5py.N5File):
             # make sure we get a path with forward slashes on windows
-            objectName = pathlib.Path(objectName)
-            objectName = objectName.relative_to(h5N5FileObject.path).as_posix()  # Need only the internal path here
+            objectName = pathlib.Path(objectName).as_posix()
         listOfDatasets.append({"name": objectName, "object": obj})
 
     h5N5FileObject.visititems(addObjectNames)
@@ -389,6 +403,11 @@ def globH5N5(fileObject, globString):
         return None
     matches = globList(pathlist, globString)
     return sorted(matches)
+
+
+def globNpz(path: str, globString: str):
+    with numpy.load(path, mmap_mode="r") as f:
+        return sorted(globList(f.files, globString))
 
 
 def globList(listOfPaths, globString):

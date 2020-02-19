@@ -22,6 +22,7 @@ from future.utils import raise_with_traceback
 # 		   http://ilastik.org/license/
 ###############################################################################
 # Built-in
+import collections
 import sys
 import heapq
 import functools
@@ -33,6 +34,7 @@ import traceback
 import io
 from random import randrange
 from typing import Callable
+from numpy import ma
 
 
 import logging
@@ -277,6 +279,17 @@ class Request(object):
                 self.uncancellable,
             )
         )
+
+    @classmethod
+    def with_value(cls, value):
+        """
+        Wraps specified value with Request like object
+
+        Example:
+        >>> Request.with_value(42).wait()
+        42
+        """
+        return _ValueRequest(value)
 
     def clean(self, _fullClean=True):
         """
@@ -1522,3 +1535,54 @@ class RequestPool_SIMPLE(object):
         Release our handles to all requests in the pool, for cleanup purposes.
         """
         self._requests = set()
+
+
+class _ValueRequest:
+    """
+    Pseudo request that behaves like a request.Request object.
+
+    This object is used to prevent the heavy construction of complete
+    Request objects in simple cases where they are not needed.
+    """
+
+    def __init__(self, value):
+        self.result = value
+        self.started = False
+
+    def wait(self):
+        return self.result
+
+    def block(self):
+        pass
+
+    def submit(self):
+        pass
+
+    def notify_finished(self, callback):
+        callback(self.result)
+
+    def notify_failed(self, callback):
+        pass
+
+    def notify_cancelled(self, callback):
+        pass
+
+    def clean(self):
+        self.result = None
+
+    def writeInto(self, destination):
+        if isinstance(destination, ma.masked_array):
+            destination.data[...] = ma.getdata(self.result)
+            destination.mask[...] = ma.getmaskarray(self.result)
+            if isinstance(self.result, ma.masked_array):
+                destination.set_fill_value(self.result.fill_value)
+
+        elif isinstance(destination, collections.MutableSequence) or isinstance(
+            self.result, collections.MutableSequence
+        ):
+            destination[:] = self.result[:]
+
+        else:
+            destination[...] = self.result[...]
+
+        return self

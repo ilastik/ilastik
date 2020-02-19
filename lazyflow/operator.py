@@ -399,9 +399,7 @@ class Operator(metaclass=OperatorMetaClass):
         for s in list(self.inputs.values()) + list(self.outputs.values()):
             # See note about the externally_managed flag in Operator.__init__
             downstream_slots = list(
-                p
-                for p in s.downstream_slots
-                if p.getRealOperator() is not None and not p.getRealOperator().externally_managed
+                p for p in s.downstream_slots if p.operator is not None and not p.operator.externally_managed
             )
             if len(downstream_slots) > 0:
                 msg = (
@@ -410,7 +408,7 @@ class Operator(metaclass=OperatorMetaClass):
                     " operators!\n".format(self.name, s.name)
                 )
                 for i, p in enumerate(s.downstream_slots):
-                    msg += "Downstream Partner {}: {}.{}".format(i, p.getRealOperator().name, p.name)
+                    msg += "Downstream Partner {}: {}.{}".format(i, p.operator.name, p.name)
                 raise RuntimeError(msg)
 
         self._parent = None
@@ -420,6 +418,21 @@ class Operator(metaclass=OperatorMetaClass):
         children = set(self._children.keys())
         for child in children:
             child.cleanUp()
+
+    def _incrementOperatorExecutionCount(self):
+        assert self._executionCount >= 0, "BUG: How did the execution count get negative?"
+        # We can't execute while the operator is in the middle of
+        # setupOutputs
+        with self._condition:
+            while self._settingUp:
+                self._condition.wait()
+            self._executionCount += 1
+
+    def _decrementOperatorExecutionCount(self):
+        assert self._executionCount > 0, "BUG: Can't decrement the execution count below zero!"
+        with self._condition:
+            self._executionCount -= 1
+            self._condition.notifyAll()
 
     def propagateDirty(self, slot, subindex, roi):
         """This method is called when an output of another operator on
@@ -474,6 +487,7 @@ class Operator(metaclass=OperatorMetaClass):
         with self._condition:
             while self._executionCount > 0:
                 self._condition.wait()
+
             self._settingUp = True
 
             # Keep a copy of the old metadata for comparison.
@@ -567,6 +581,16 @@ class Operator(metaclass=OperatorMetaClass):
                 "Output slot '{}' of operator '{}' has no upstream_slot, "
                 "so you must override setupOutputs()".format(slot.name, self.name)
             )
+
+    def call_execute(self, slot, subindex, roi, result, **kwargs):
+        try:
+            # We are executing the operator. Incremement the execution
+            # count to protect against simultaneous setupOutputs()
+            # calls.
+            self._incrementOperatorExecutionCount()
+            return self.execute(slot, subindex, roi, result, **kwargs)
+        finally:
+            self._decrementOperatorExecutionCount()
 
     def execute(self, slot, subindex, roi, result):
         """ This method of the operator is called when a connected

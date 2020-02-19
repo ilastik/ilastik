@@ -1,4 +1,3 @@
-from __future__ import print_function
 from builtins import range
 
 ###############################################################################
@@ -210,7 +209,6 @@ class TestOpLazyCC(unittest.TestCase):
                         continue
                     op.Input.setDirty(slice(None))
                     out = op.Output[x : x + 3, y : y + 3].wait()
-                    print(out.squeeze())
                     assert out.max() == 1
 
     def testParallelConsistency(self):

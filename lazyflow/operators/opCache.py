@@ -31,10 +31,10 @@ from future.utils import with_metaclass
 
 class Cache(with_metaclass(ABCMeta, object)):
     """
-    Interface for objects that act as caches. This is a mixin, use as
+    Interface for objects that act as caches. This is a mixin, use as::
 
-    >>> class MyCachingOperator(Cache, Operator):
-    ...     pass
+        class MyCachingOperator(Cache, Operator):
+            pass
 
     This interface is designed for operators that hold values but can neither
     be queried for their memory usage nor be cleaned up. All operators that
@@ -136,12 +136,11 @@ class ManagedCache(ObservableCache):
         free all memory cached by this operator and its children
 
         The result of `freeMemory()` should be compatible with
-        `usedMemory()`, i.e.
+        `usedMemory()`, i.e.::
 
-        >>> a = cache.usedMemory()
-        >>> d = cache.freeMemory()
-        >>> a - d == cache.usedMemory()
-        True
+            a = cache.usedMemory()
+            d = cache.freeMemory()
+            a - d == cache.usedMemory()
 
         @return amount of bytes freed (if applicable)
         """
