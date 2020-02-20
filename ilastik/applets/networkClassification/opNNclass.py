@@ -23,11 +23,7 @@ import numpy
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow import stype, rtype
-from lazyflow.operators import (
-    OpMultiArraySlicer2,
-    OpValueCache,
-    OpBlockedArrayCache,
-)
+from lazyflow.operators import OpMultiArraySlicer2, OpValueCache, OpBlockedArrayCache
 from lazyflow.operators.tiktorch import (
     OpTikTorchTrainClassifierBlocked,
     OpTikTorchClassifierPredict,
@@ -36,10 +32,7 @@ from lazyflow.operators.tiktorch import (
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
-from ilastik.applets.pixelClassification.opPixelClassification import (
-    OpLabelPipeline,
-    DatasetConstraintError,
-)
+from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline, DatasetConstraintError
 
 from tiktorch.types import Model, ModelState
 from tiktorch.configkeys import TRAINING, NUM_ITERATIONS_MAX
@@ -47,6 +40,7 @@ from tiktorch.configkeys import TRAINING, NUM_ITERATIONS_MAX
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 class OpTiktorchFactory(Operator):
     ServerConfig = InputSlot(stype=stype.Opaque)
@@ -65,9 +59,7 @@ class OpTiktorchFactory(Operator):
         try:
             tiktorch = TikTorchLazyflowClassifierFactory(self.ServerConfig.value)
         except Exception as e:
-            logger.exception(
-                "Could not start Tiktorch server with %s", self.ServerConfig.value
-            )
+            logger.exception("Could not start Tiktorch server with %s", self.ServerConfig.value)
             self.Tiktorch.meta.NOTREADY = True
         else:
             self.__conf = self.ServerConfig.value
@@ -114,7 +106,7 @@ class OpModel(Operator):
             return
         devices = self.ServerConfig.value.devices
 
-        session = tiktorch.create_model_session(model_binary, [d.id for d in devices])
+        session = tiktorch.create_model_session(model_binary, [d.id for d in devices if d.enabled])
 
         if session is not None:
             self.TiktorchModel.setValue(session)
@@ -125,28 +117,22 @@ class OpModel(Operator):
                 # restore labels  # todo: clean up this workaround for resetting the user label block shape
                 top_group_name = applet.dataSerializers[0].topGroupName
                 group_name = "LabelSets"
-                label_serial_block_slot = [
-                    s
-                    for s in applet.dataSerializers[0].serialSlots
-                    if s.name == group_name
-                ][0]
-                label_serial_block_slot.deserialize(
-                    projectManager.currentProjectFile[top_group_name]
-                )
+                label_serial_block_slot = [s for s in applet.dataSerializers[0].serialSlots if s.name == group_name][0]
+                label_serial_block_slot.deserialize(projectManager.currentProjectFile[top_group_name])
             except:
-                logger.debug(
-                    "Could not restore labels after setting TikTorchLazyflowClassifierFactory."
-                )
+                logger.debug("Could not restore labels after setting TikTorchLazyflowClassifierFactory.")
         else:
             self.TiktorchModel.meta.NOTREADY = True
 
     def propagateDirty(self, slot, subindex, roi):
         self.TiktorchModel.setDirty()
 
+
 class OpNNClassification(Operator):
     """
     Top-level operator for pixel classification
     """
+
     NO_MODEL = _NO_MODEL
 
     name = "OpNNClassification"
@@ -168,9 +154,7 @@ class OpNNClassification(Operator):
     PredictionProbabilities = OutputSlot(
         level=1
     )  # Classification predictions (via feature cache for interactive speed)
-    PredictionProbabilityChannels = OutputSlot(
-        level=2
-    )  # Classification predictions, enumerated by channel
+    PredictionProbabilityChannels = OutputSlot(level=2)  # Classification predictions, enumerated by channel
     CachedPredictionProbabilities = OutputSlot(level=1)
     LabelImages = OutputSlot(level=1)
     NonzeroLabelBlocks = OutputSlot(level=1)
@@ -201,9 +185,7 @@ class OpNNClassification(Operator):
         self.PmapColors.meta.shape = (numClasses,)
 
         if self.opBlockShape.BlockShapeInference.ready():
-            self.opPredictionPipeline.BlockShape.connect(
-                self.opBlockShape.BlockShapeInference
-            )
+            self.opPredictionPipeline.BlockShape.connect(self.opBlockShape.BlockShapeInference)
 
     def cleanUp(self):
         try:
@@ -246,9 +228,7 @@ class OpNNClassification(Operator):
         self.ClassifierFactory.connect(self.opModel.TiktorchFactory)
 
         # Hook up Labeling Pipeline
-        self.opLabelPipeline = OpMultiLaneWrapper(
-            OpLabelPipeline, parent=self, broadcastingSlotNames=["DeleteLabel"]
-        )
+        self.opLabelPipeline = OpMultiLaneWrapper(OpLabelPipeline, parent=self, broadcastingSlotNames=["DeleteLabel"])
         self.opLabelPipeline.RawImage.connect(self.InputImages)
         self.opLabelPipeline.LabelInput.connect(self.LabelInputs)
         self.opLabelPipeline.DeleteLabel.setValue(-1)
@@ -272,24 +252,16 @@ class OpNNClassification(Operator):
         self.Classifier.connect(self.classifier_cache.Output)
 
         # Hook up the prediction pipeline inputs
-        self.opPredictionPipeline = OpMultiLaneWrapper(
-            OpPredictionPipeline, parent=self
-        )
+        self.opPredictionPipeline = OpMultiLaneWrapper(OpPredictionPipeline, parent=self)
         self.opPredictionPipeline.RawImage.connect(self.InputImages)
-        #self.opPredictionPipeline.Classifier.connect(self.classifier_cache.Output)
+        # self.opPredictionPipeline.Classifier.connect(self.classifier_cache.Output)
         self.opPredictionPipeline.Classifier.connect(self.ModelSession)
         self.opPredictionPipeline.NumClasses.connect(self.NumClasses)
         self.opPredictionPipeline.FreezePredictions.connect(self.FreezePredictions)
 
-        self.PredictionProbabilities.connect(
-            self.opPredictionPipeline.PredictionProbabilities
-        )
-        self.CachedPredictionProbabilities.connect(
-            self.opPredictionPipeline.CachedPredictionProbabilities
-        )
-        self.PredictionProbabilityChannels.connect(
-            self.opPredictionPipeline.PredictionProbabilityChannels
-        )
+        self.PredictionProbabilities.connect(self.opPredictionPipeline.PredictionProbabilities)
+        self.CachedPredictionProbabilities.connect(self.opPredictionPipeline.CachedPredictionProbabilities)
+        self.PredictionProbabilityChannels.connect(self.opPredictionPipeline.PredictionProbabilityChannels)
 
         def inputResizeHandler(slot, oldsize, newsize):
             if newsize == 0:
@@ -414,9 +386,7 @@ class OpNNClassification(Operator):
 
     def addLane(self, laneIndex):
         numLanes = len(self.InputImages)
-        assert (
-            numLanes == laneIndex
-        ), f"Image lanes must be appended. {numLanes}, {laneIndex})"
+        assert numLanes == laneIndex, f"Image lanes must be appended. {numLanes}, {laneIndex})"
         self.InputImages.resize(numLanes + 1)
 
     def removeLane(self, laneIndex, finalLength):
@@ -433,9 +403,7 @@ class OpNNClassification(Operator):
         old_names = self.LabelNames.value
         old_max = len(old_names)
         if new_max > old_max:
-            new_names = old_names + [
-                "Label {}".format(x) for x in range(old_max + 1, new_max + 1)
-            ]
+            new_names = old_names + ["Label {}".format(x) for x in range(old_max + 1, new_max + 1)]
             self.LabelNames.setValue(new_names)
 
             # Make some default colors, too
@@ -452,9 +420,7 @@ class OpNNClassification(Operator):
 
     def mergeLabels(self, from_label, into_label):
         for laneIndex in range(len(self.InputImages)):
-            self.getLane(laneIndex).opLabelPipeline.opLabelArray.mergeLabels(
-                from_label, into_label
-            )
+            self.getLane(laneIndex).opLabelPipeline.opLabelArray.mergeLabels(from_label, into_label)
 
     def clearLabel(self, label_value):
         for laneIndex in range(len(self.InputImages)):
@@ -485,18 +451,13 @@ class OpBlockShape(Operator):
         halo = tikmodel.get_halo(axes="tczyx")
         # total halo = 2 * halo per axis
         total_halo = 2 * numpy.array(halo)
-        training_shape_wo_halo = (
-            numpy.array(training_shape) - total_halo
-        )
+        training_shape_wo_halo = numpy.array(training_shape) - total_halo
         blockDims = dict(zip("tczyx", training_shape_wo_halo))
         blockDims["c"] = 9999  # always request all channels
         axisOrder = self.RawImage.meta.getAxisKeys()
         ret = tuple(blockDims[a] for a in axisOrder)
         logger.debug(
-            "got training shape %s and axisorder %s => Set BlockShapeTrain to %s",
-            training_shape,
-            axisOrder,
-            ret,
+            "got training shape %s and axisorder %s => Set BlockShapeTrain to %s", training_shape, axisOrder, ret
         )
         return ret
 
@@ -505,10 +466,7 @@ class OpBlockShape(Operator):
         valid_tczyx_shapes = tikmodel.get_valid_shapes(axes="tczyx")
         halo = tikmodel.get_halo(axes="tczyx")  # total halo = 2 * halo per axis
         total_halo = 2 * numpy.array(halo)
-        valid_tczyx_shapes_wo_halo = [
-            numpy.array(shape) - total_halo
-            for shape in valid_tczyx_shapes
-        ]
+        valid_tczyx_shapes_wo_halo = [numpy.array(shape) - total_halo for shape in valid_tczyx_shapes]
         largest_valid_shape = valid_tczyx_shapes_wo_halo[-1]
 
         blockDims = dict(zip("tczyx", largest_valid_shape))
@@ -576,9 +534,7 @@ class OpPredictionPipeline(Operator):
         self.PredictionProbabilityChannels.connect(self.opPredictionSlicer.Slices)
 
     def execute(self, slot, subindex, roi, result):
-        assert (
-            False
-        ), "Shouldn't get here.  Output is assigned a value in setupOutputs()"
+        assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
 
     def propagateDirty(self, slot, subindex, roi):
         # Our output changes when the input changed shape, not when it becomes dirty.
