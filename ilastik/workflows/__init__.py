@@ -139,8 +139,7 @@ if ilastik.config.cfg.getboolean('ilastik', 'debug'):
             from .nnClassification import NNClassificationWorkflow
             WORKFLOW_CLASSES += [NNClassificationWorkflow]
     except ImportError as e:
-        logger.warning("Failed to import NeuralNet workflow; check dependencies: " + str(e))
-        pass
+        logger.warning("Failed to import NeuralNet workflow; check dependencies: " + str(e), exc_info=1)
 
 # Examples
 if ilastik.config.cfg.getboolean("ilastik", "debug"):

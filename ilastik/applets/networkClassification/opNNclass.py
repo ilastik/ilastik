@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 class OpTiktorchFactory(Operator):
     ServerConfig = InputSlot(stype=stype.Opaque)
-    Tiktorch = OutputSlot()
+    Tiktorch = OutputSlot(stype=stype.Opaque)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -106,7 +106,11 @@ class OpModel(Operator):
             return
         devices = self.ServerConfig.value.devices
 
-        session = tiktorch.create_model_session(model_binary, [d.id for d in devices if d.enabled])
+        session = None
+        try:
+            session = tiktorch.create_model_session(model_binary, [d.id for d in devices if d.enabled])
+        except Exception:
+            logger.exception("Failed to create session")
 
         if session is not None:
             self.TiktorchModel.setValue(session)

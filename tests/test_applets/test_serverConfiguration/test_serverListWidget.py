@@ -3,15 +3,23 @@ import pytest
 from PyQt5.Qt import Qt
 
 from ilastik.applets.serverConfiguration.serverListWidget import ServerListModel, ServerListWidget
+from types import SimpleNamespace
 
+
+class DummyStore:
+    def __init__(self, data):
+        self._data = data
+
+    def get_servers(self):
+        return self._data
 
 class TestServerListWidget:
     @pytest.fixture
     def model(self):
-        return ServerListModel(data=[
-            {"name": "MySrv1"},
-            {"name": "MySrv2", "type": "local"},
-        ])
+        return ServerListModel(conf_store=DummyStore([
+            SimpleNamespace(**{"name": "MySrv1"}),
+            SimpleNamespace(**{"name": "MySrv2", "type": "local"}),
+        ]))
 
     @pytest.fixture
     def widget(self, qtbot, model):

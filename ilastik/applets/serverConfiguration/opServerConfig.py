@@ -33,7 +33,7 @@ class OpServerConfig(Operator):
 
     ServerId = InputSlot(stype=stype.Opaque)
 
-    ServerConfig = OutputSlot()
+    ServerConfig = OutputSlot(stype=stype.Opaque)
 
     def setupOutputs(self):
         serverId = self.ServerId.value
