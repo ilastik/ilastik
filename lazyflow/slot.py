@@ -1020,20 +1020,18 @@ class Slot(object):
             # _value case
             return self._value
 
-        if self.stype == Opaque:
+        if isinstance(self.stype, Opaque):
             return temp
-
-        if isinstance(temp, numpy.ndarray):
+        elif isinstance(temp, numpy.ndarray):
             if temp.shape == (1,):
                 return temp[0]
             return temp
         elif isinstance(temp, list):
             return temp[0]
         else:
-            # FIXME(m-novikov): Disabled warning
-            # warnings.warn(
-            #     "FIXME: Slot.value for slot {} is {}," " which should be wrapped in an ndarray.".format(self.name, temp)
-            # )
+            warnings.warn(
+                "FIXME: Slot.value for slot {} is {}," " which should be wrapped in an ndarray.".format(self.name, temp)
+            )
             return temp
 
     @is_setup_fn
