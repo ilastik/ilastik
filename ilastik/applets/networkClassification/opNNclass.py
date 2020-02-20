@@ -114,7 +114,7 @@ class OpModel(Operator):
             return
         devices = self.ServerConfig.value.devices
 
-        session = tiktorch.create_model_session(model_binary, [d.id for d in devices])
+        session = tiktorch.create_model_session(model_binary, [d.id for d in devices if d.enabled])
 
         if session is not None:
             self.TiktorchModel.setValue(session)
