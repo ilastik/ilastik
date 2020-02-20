@@ -35,13 +35,16 @@ parser.add_argument(
 )
 parser.add_argument("--data-url", required=True, help="Url to the test data")
 parser.add_argument("--label-urls", required=True, nargs="+", help="Url to the uint8, single-channel label images")
+parser.add_argument(
+    "--tile-size", required=False, type=int, default=None, help="Side of the raw data tile to use when predicting"
+)
 args = parser.parse_args()
 
 
 # features = list(FeatureExtractor.from_ilp("/home/tomaz/unicore_stuff/UnicoreProject.ilp"))
 # print(features)
-
-datasource = DataSource.create(args.data_url)
+tile_shape = args.tile_size if args.tile_size is None else Shape5D.hypercube(args.tile_size)
+datasource = DataSource.create(args.data_url, tile_shape=tile_shape)
 # print(datasource.full_shape)
 print(f"Processing {datasource}")
 
