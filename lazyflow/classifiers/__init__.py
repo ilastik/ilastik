@@ -12,12 +12,5 @@ from .parallelVigraRfLazyflowClassifier import (
 )
 from .sklearnLazyflowClassifier import SklearnLazyflowClassifier, SklearnLazyflowClassifierFactory
 
-try:
-    from .tiktorchLazyflowClassifier import TikTorchLazyflowClassifier, TikTorchLazyflowClassifierFactory
-except ImportError:
-    import warnings
-
-    warnings.warn("init: Could not import tiktorch classifier")
-
 # Testing
 from .vigraRfPixelwiseClassifier import VigraRfPixelwiseClassifier, VigraRfPixelwiseClassifierFactory

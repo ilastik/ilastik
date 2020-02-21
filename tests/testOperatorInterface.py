@@ -817,7 +817,9 @@ class TestCompatibilityChecks:
         assert op.OutputList[1:4].wait()
 
     def test_access_opaque_slot_value_should_not_raise_error(self, op):
-        assert op.OutputOpaque.value
+        with pytest.warns(None) as record:
+            assert op.OutputOpaque.value
+            assert len(record) == 0
 
     def test_arraylike_retun_non_arraylike_object_raises(self, op):
         with pytest.raises(stype.InvalidResult):
