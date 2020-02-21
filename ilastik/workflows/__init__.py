@@ -133,21 +133,11 @@ if ilastik.config.cfg.getboolean("ilastik", "hbp", fallback=False):
     WORKFLOW_CLASSES += [VoxelSegmentationWorkflow]
 
 # network classification, check whether required modules are available:
-can_nn = True
 try:
-    import torch
-    import inferno
-    import tiktorch
+    from .nnClassification import NNClassificationWorkflow
+    WORKFLOW_CLASSES += [NNClassificationWorkflow]
 except ImportError as e:
-    can_nn = False
-    logger.debug(f"NNClassificationWorkflow: could not import required modules: {e}")
-
-if can_nn:
-    if ilastik.config.cfg.getboolean("ilastik", "hbp", fallback=False):
-        from .nnClassification import NNClassificationWorkflow
-
-        WORKFLOW_CLASSES += [NNClassificationWorkflow]
-
+    logger.warning("Failed to import NeuralNet workflow; check dependencies: " + str(e), exc_info=1)
 
 # Examples
 if ilastik.config.cfg.getboolean("ilastik", "debug"):
