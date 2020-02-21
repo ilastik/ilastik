@@ -212,7 +212,10 @@ class BatchProcessingGui(QTabWidget):
         layout.addWidget(self.cancel_button)
 
         if ilastik.config.cfg["ilastik"].getboolean("hbp"):
-            layout.addWidget(QPushButton("Upload Project File to HBP", self, clicked=self._hbp_upload_project_file))
+            from ilastik.workflows import PixelClassificationWorkflow
+
+            if isinstance(self.parentApplet.workflow(), PixelClassificationWorkflow):
+                layout.addWidget(QPushButton("Upload Project File to HBP", self, clicked=self._hbp_upload_project_file))
 
         self._drawer = QWidget(parent=self)
         self._drawer.setLayout(layout)
@@ -266,6 +269,7 @@ class BatchProcessingGui(QTabWidget):
 
         with io.BytesIO() as buf:
             with h5py.File(buf) as dest:
+
                 def partial_copy(name, obj):
                     if isinstance(obj, h5py.Group):
                         dest.create_group(name).attrs.update(obj.attrs)
