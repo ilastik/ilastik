@@ -775,7 +775,6 @@ class NNClassGui(LabelingGui):
         self.labelingDrawerUi.livePrediction.setEnabled(True)
 
         # factory = self.topLevelOperatorView.ClassifierFactory[:].wait()[0]
-        # print("factory", factory)
         # return
 
         #res = read_model(folder_path)
