@@ -103,7 +103,6 @@ class ModelSession:
 
     def update(self, feature_images: Iterable, label_images: Iterable, axistags, image_ids: Iterable):
         # TODO: check whether loaded network has the same number of classes as specified in ilastik!
-        print("UPDATE DATA")
         return
         images = []
         labels = []
