@@ -13,8 +13,7 @@ class TestServerParse:
     name = MyServer1
     type = local
     address = 127.0.0.1
-    port1 = 5543
-    port2 = 5542
+    port = 5543
     devices =
         cpu0::CPU0
         gpu1::MyCoolGPU::enabled
@@ -27,8 +26,7 @@ class TestServerParse:
     name = MyServer3
     type = remote
     address = 8.8.8.8
-    port1 = 5543
-    port2 = 5542
+    port = 5543
     ssh_key = /home/user/.ssh/id_rsa
     username = testuser
     devices =
@@ -43,8 +41,7 @@ class TestServerParse:
     name = MyServer1
     type = local
     address = 127.0.0.1
-    port1 = 5543
-    port2 = 5542
+    port = 5543
     devices =
         cpu0::CPU0
         gpu1::MyCoolGPU::enabled
@@ -70,8 +67,7 @@ class TestServerParse:
         assert "MyServer1" == srv.name
         assert "local" == srv.type
         assert "127.0.0.1" == srv.address
-        assert "5543" == srv.port1
-        assert "5542" == srv.port2
+        assert "5543" == srv.port
 
     def test_parsing_multiserver(self, parse):
         servers = parse(self.MALFORMED_MULTI_SERVER)
@@ -83,15 +79,13 @@ class TestServerParse:
         assert "MyServer1" == fst.name
         assert "local" == fst.type
         assert "127.0.0.1" == fst.address
-        assert "5543" == fst.port1
-        assert "5542" == fst.port2
+        assert "5543" == fst.port
 
         assert isinstance(snd, types.ServerConfig)
         assert "MyServer3" == snd.name
         assert "remote" == snd.type
         assert "8.8.8.8" == snd.address
-        assert "5543" == snd.port1
-        assert "5542" == snd.port2
+        assert "5543" == snd.port
         assert "testuser" == snd.username
         assert "/home/user/.ssh/id_rsa" == snd.ssh_key
 
@@ -106,8 +100,7 @@ class TestServerParseDevices:
     name = MyServer1
     type = local
     address = 127.0.0.1
-    port1 = 5543
-    port2 = 5542
+    port = 5543
     devices =
         cpu0::CPU0
         gpu1::MyCoolGPU::enabled
@@ -118,8 +111,7 @@ class TestServerParseDevices:
     name = MalformedGPU
     type = local
     address = 127.0.0.1
-    port1 = 5543
-    port2 = 5542
+    port = 5543
     devices =
         ::cpu0::CPU0:::::::
         gpu1::MyCoolGPU::1
@@ -133,8 +125,7 @@ class TestServerParseDevices:
     name = MalformedGPU2
     type = local
     address = 127.0.0.1
-    port1 = 5543
-    port2 = 5542
+    port = 5543
     devices =
 """
 
@@ -143,8 +134,7 @@ class TestServerParseDevices:
     name = MalformedGPU2
     type = local
     address = 127.0.0.1
-    port1 = 5543
-    port2 = 5542
+    port = 5543
 """
 
     @pytest.fixture
@@ -208,7 +198,7 @@ class TestStoringServers:
     @pytest.fixture
     def servers(self):
         return [
-            types.ServerConfig(id='myid1', name='Server1', type='local', address='127.0.0.1', port1='3123', port2='3213', devices=[types.Device(id='cpu0', name='MyCpu1', enabled=True), types.Device(id='gpu1', name='GPU1', enabled=False)])
+            types.ServerConfig(id='myid1', name='Server1', type='local', address='127.0.0.1', port='3123', devices=[types.Device(id='cpu0', name='MyCpu1', enabled=True), types.Device(id='gpu1', name='GPU1', enabled=False)])
         ]
 
     def test_me(self, store, servers):
@@ -231,8 +221,7 @@ total_ram_mb: 0
 name = MyServer1
 type = remote
 address = 127.0.0.1
-port1 = 5543
-port2 = 5542
+port = 5543
 devices =
    cpu0::CPU0
    gpu1::GPU6::enabled

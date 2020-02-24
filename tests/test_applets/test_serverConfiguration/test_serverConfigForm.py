@@ -28,15 +28,13 @@ class TestServerConfigForm:
         data = types.ServerConfig.default(**{
             "name": "MyTestName",
             "address": "test.com",
-            "port1": "8291",
-            "port2": "8292",
+            "port": "8291",
         })
 
         fields = [
             (form.nameEdit, "name"),
             (form.addressEdit, "address"),
-            (form.port1Edit, "port1"),
-            (form.port2Edit, "port2"),
+            (form.portEdit, "port"),
         ]
 
         form.config = data

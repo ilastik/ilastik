@@ -14,8 +14,7 @@ class ServerConfigForm(QWidget):
     nameEdit: QLineEdit
     addressEdit: QLineEdit
     typeList: QComboBox
-    port1Edit: QLineEdit
-    port2Edit: QLineEdit
+    portEdit: QLineEdit
     deviceList: QListWidget
 
     # Remote server fields
@@ -63,8 +62,7 @@ class ServerConfigForm(QWidget):
         self.pathEdit.textChanged.connect(self._updateConfigFromFields)
         self.addressEdit.textChanged.connect(self._updateConfigFromFields)
         self.typeList.currentTextChanged.connect(self._updateConfigFromFields)
-        self.port1Edit.textChanged.connect(self._updateConfigFromFields)
-        self.port2Edit.textChanged.connect(self._updateConfigFromFields)
+        self.portEdit.textChanged.connect(self._updateConfigFromFields)
         self.usernameEdit.textChanged.connect(self._updateConfigFromFields)
         self.sshKeyEdit.textChanged.connect(self._updateConfigFromFields)
         self.deviceList.itemChanged.connect(self._updateConfigFromFields)
@@ -152,8 +150,7 @@ class ServerConfigForm(QWidget):
         self._config.path = self.pathEdit.text()
         self._config.address = self.addressEdit.text()
         self._config.type = self.typeList.currentText()
-        self._config.port1 = self.port1Edit.text()
-        self._config.port2 = self.port2Edit.text()
+        self._config.port = self.portEdit.text()
         self._config.username = self.usernameEdit.text()
         self._config.ssh_key = self.sshKeyEdit.text()
         self._config.devices = self._getDevices()
@@ -164,8 +161,7 @@ class ServerConfigForm(QWidget):
             self.pathEdit.setText(self._config.path)
             self.addressEdit.setText(self._config.address)
             self.typeList.setCurrentText(self._config.type)
-            self.port1Edit.setText(self._config.port1)
-            self.port2Edit.setText(self._config.port2)
+            self.portEdit.setText(self._config.port)
             self.usernameEdit.setText(self._config.username)
             self.sshKeyEdit.setText(self._config.ssh_key)
             self._setDevicesFromConfig()
@@ -244,8 +240,7 @@ class ServerFormWorkflow:
         # Inputs
         s.assignProperty(form.usernameEdit, "enabled", True)
         s.assignProperty(form.sshKeyEdit, "enabled", True)
-        s.assignProperty(form.port1Edit, "enabled", True)
-        s.assignProperty(form.port2Edit, "enabled", True)
+        s.assignProperty(form.portEdit, "enabled", True)
         return s
 
     def _make_dev_fetched_state(self, form) -> QState:
@@ -253,8 +248,7 @@ class ServerFormWorkflow:
         s.assignProperty(form.editBtn, "enabled", True)
         s.assignProperty(form.deviceList, "enabled", True)
         s.assignProperty(form.saveBtn, "enabled", False)
-        s.assignProperty(form.port1Edit, "enabled", False)
-        s.assignProperty(form.port2Edit, "enabled", False)
+        s.assignProperty(form.portEdit, "enabled", False)
         s.assignProperty(form.addressEdit, "enabled", False)
         s.assignProperty(form.usernameEdit, "enabled", False)
         s.assignProperty(form.sshKeyEdit, "enabled", False)
