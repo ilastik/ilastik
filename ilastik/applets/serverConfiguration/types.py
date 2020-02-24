@@ -35,8 +35,7 @@ class ServerConfig:
     id: str = attr.ib(validator=_validate_id)
     type: str = attr.ib()
     address: str = attr.ib(validator=_non_empty)
-    port1: str = attr.ib(validator=_non_empty)
-    port2: str = attr.ib(validator=_non_empty)
+    port: str = attr.ib(validator=_non_empty)
     devices: typing.List[Device] = attr.ib()
 
     path: str = attr.ib(default="tiktorch")
@@ -55,8 +54,7 @@ class ServerConfig:
             "type": "local",
             "path": "tiktorch",
             "address": "127.0.0.1",
-            "port1": "5567",
-            "port2": "5568",
+            "port": "5567",
             "devices": [],
             **kwargs,
         }

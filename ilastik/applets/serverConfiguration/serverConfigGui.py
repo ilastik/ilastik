@@ -107,16 +107,14 @@ class ServerFormItemDelegate(QItemDelegate):
 
 def _fetch_devices(config: types.ServerConfig):
     try:
-        addr, port1, port2 = (
+        addr, port = (
             socket.gethostbyname(config.address),
             # in order not to block address for real server todo: remove port hack
-            str(int(config.port1) - 20),
-            str(int(config.port2) - 20),
+            str(int(config.port) - 20),
         )
-        conn_conf = ConnConf("grpc", addr, port1, port2, timeout=10)
+        conn_conf = ConnConf(addr, port, timeout=10)
 
         if addr == "127.0.0.1":
-            print("config", config.path)
             launcher = LocalServerLauncher(conn_conf, path=config.path)
         else:
             launcher = RemoteSSHServerLauncher(
@@ -125,7 +123,7 @@ def _fetch_devices(config: types.ServerConfig):
 
         try:
             launcher.start()
-            with grpc.insecure_channel(f"{addr}:{port1}") as chan:
+            with grpc.insecure_channel(f"{addr}:{port}") as chan:
                 client = inference_pb2_grpc.InferenceStub(chan)
                 resp = client.ListDevices(inference_pb2.Empty())
                 return [(d.id, d.id) for d in resp.devices]
