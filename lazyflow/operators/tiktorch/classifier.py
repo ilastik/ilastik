@@ -222,8 +222,8 @@ class TikTorchLazyflowClassifierFactory:
         self._train_model = None
         self._shutdown_sent = False
 
-        addr, port1, port2 = (socket.gethostbyname(server_config.address), server_config.port1, server_config.port2)
-        conn_conf = ConnConf("grpc", addr, port1, port2, timeout=20)
+        addr, port = socket.gethostbyname(server_config.address), server_config.port
+        conn_conf = ConnConf(addr, port, timeout=20)
 
         if addr == "127.0.0.1":
             self.launcher = LocalServerLauncher(conn_conf, path=server_config.path)
@@ -235,7 +235,7 @@ class TikTorchLazyflowClassifierFactory:
         self.launcher.start()
 
         self._chan = grpc.insecure_channel(
-            f"{addr}:{port1}",
+            f"{addr}:{port}",
             options=[("grpc.max_send_message_length", _100_MB), ("grpc.max_receive_message_length", _100_MB)],
         )
         self._tikTorchClient = inference_pb2_grpc.InferenceStub(self._chan)
