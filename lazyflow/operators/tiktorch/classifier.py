@@ -205,6 +205,14 @@ def reorder_axes(input_arr: numpy.ndarray, *, from_axes_tags: str, to_axes_tags:
     return op.Output([]).wait()
 
 
+class _NullLauncher:
+    def start(self):
+        pass
+
+    def stop(self):
+        pass
+
+
 class TikTorchLazyflowClassifierFactory:
     # The version is used to determine compatibility of pickled classifier factories.
     # You must bump this if any instance members are added/removed/renamed.
@@ -225,12 +233,17 @@ class TikTorchLazyflowClassifierFactory:
         addr, port = socket.gethostbyname(server_config.address), server_config.port
         conn_conf = ConnConf(addr, port, timeout=20)
 
-        if addr == "127.0.0.1":
-            self.launcher = LocalServerLauncher(conn_conf, path=server_config.path)
+        if server_config.autostart:
+            if addr == "127.0.0.1":
+                self.launcher = LocalServerLauncher(conn_conf, path=server_config.path)
+            else:
+                self.launcher = RemoteSSHServerLauncher(
+                    conn_conf,
+                    cred=SSHCred(server_config.username, key_path=server_config.ssh_key),
+                    path=server_config.path,
+                )
         else:
-            self.launcher = RemoteSSHServerLauncher(
-                conn_conf, cred=SSHCred(server_config.username, key_path=server_config.ssh_key), path=server_config.path
-            )
+            self.launcher = _NullLauncher()
 
         self.launcher.start()
 
