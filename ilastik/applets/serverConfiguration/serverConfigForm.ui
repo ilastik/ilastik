@@ -27,15 +27,8 @@
        <layout class="QGridLayout" name="gridLayout_2">
         <item row="0" column="0" colspan="2">
          <layout class="QGridLayout" name="gridLayout_3">
-          <item row="2" column="0">
-           <widget class="QLabel" name="addressLabel">
-            <property name="text">
-             <string>Address:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="QLineEdit" name="pathEdit"/>
+          <item row="5" column="1">
+           <widget class="QLineEdit" name="usernameEdit"/>
           </item>
           <item row="0" column="0">
            <widget class="QLabel" name="nameLabel">
@@ -44,17 +37,24 @@
             </property>
            </widget>
           </item>
-          <item row="9" column="0">
-           <widget class="QLabel" name="portLabel">
+          <item row="1" column="0">
+           <widget class="QLabel" name="pathLabel">
             <property name="text">
-             <string>Port:</string>
+             <string>Path:</string>
             </property>
            </widget>
           </item>
-          <item row="5" column="0">
-           <widget class="QLabel" name="sshKeyLabel">
+          <item row="2" column="0">
+           <widget class="QLabel" name="addressLabel">
             <property name="text">
-             <string>SSH Key:</string>
+             <string>Address:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="11" column="0">
+           <widget class="QPushButton" name="getDevicesBtn">
+            <property name="text">
+             <string>Get Devices</string>
             </property>
            </widget>
           </item>
@@ -65,39 +65,14 @@
             </property>
            </widget>
           </item>
-          <item row="10" column="0">
-           <widget class="QPushButton" name="getDevicesBtn">
+          <item row="5" column="0">
+           <widget class="QLabel" name="usernameLabel">
             <property name="text">
-             <string>Get Devices</string>
+             <string>Username:</string>
             </property>
            </widget>
           </item>
-          <item row="3" column="1">
-           <widget class="QComboBox" name="typeList"/>
-          </item>
-          <item row="2" column="1">
-           <widget class="QLineEdit" name="addressEdit"/>
-          </item>
-          <item row="4" column="1">
-           <widget class="QLineEdit" name="usernameEdit"/>
-          </item>
-          <item row="0" column="1">
-           <widget class="QLineEdit" name="nameEdit"/>
-          </item>
-          <item row="5" column="1">
-           <widget class="QLineEdit" name="sshKeyEdit"/>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="pathLabel">
-            <property name="text">
-             <string>Path:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="9" column="1">
-           <widget class="QLineEdit" name="portEdit"/>
-          </item>
-          <item row="10" column="1">
+          <item row="11" column="1">
            <widget class="QListWidget" name="deviceList">
             <property name="minimumSize">
              <size>
@@ -107,24 +82,50 @@
             </property>
            </widget>
           </item>
-          <item row="4" column="0">
-           <widget class="QLabel" name="usernameLabel">
+          <item row="10" column="0">
+           <widget class="QLabel" name="portLabel">
             <property name="text">
-             <string>Username:</string>
+             <string>Port:</string>
             </property>
            </widget>
           </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="nameEdit"/>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="pathEdit"/>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLineEdit" name="addressEdit"/>
+          </item>
+          <item row="10" column="1">
+           <widget class="QLineEdit" name="portEdit"/>
+          </item>
+          <item row="6" column="1">
+           <widget class="QLineEdit" name="sshKeyEdit"/>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="sshKeyLabel">
+            <property name="text">
+             <string>SSH Key:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <layout class="QHBoxLayout" name="horizontalLayout_3">
+            <item>
+             <widget class="QComboBox" name="typeList"/>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="autostartCheckBox">
+              <property name="text">
+               <string>Start automatically</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
          </layout>
-        </item>
-        <item row="1" column="0">
-         <widget class="QPushButton" name="editBtn">
-          <property name="text">
-           <string>Edit</string>
-          </property>
-          <property name="autoDefault">
-           <bool>true</bool>
-          </property>
-         </widget>
         </item>
         <item row="1" column="1">
          <widget class="QPushButton" name="saveBtn">
@@ -139,6 +140,16 @@
           </property>
          </widget>
         </item>
+        <item row="1" column="0">
+         <widget class="QPushButton" name="editBtn">
+          <property name="text">
+           <string>Edit</string>
+          </property>
+          <property name="autoDefault">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
        </layout>
       </widget>
      </item>
@@ -148,8 +159,10 @@
  </widget>
  <tabstops>
   <tabstop>nameEdit</tabstop>
+  <tabstop>pathEdit</tabstop>
   <tabstop>addressEdit</tabstop>
   <tabstop>typeList</tabstop>
+  <tabstop>autostartCheckBox</tabstop>
   <tabstop>usernameEdit</tabstop>
   <tabstop>sshKeyEdit</tabstop>
   <tabstop>portEdit</tabstop>

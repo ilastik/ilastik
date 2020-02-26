@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from PyQt5 import uic
 from PyQt5.Qt import Qt, QStringListModel, pyqtProperty, QListWidgetItem, pyqtSignal, QEvent
 from PyQt5.QtCore import QStateMachine, QState, QSignalTransition, pyqtSignal
-from PyQt5.QtWidgets import QWidget, QComboBox, QLabel, QLineEdit, QListWidget
+from PyQt5.QtWidgets import QWidget, QComboBox, QLabel, QLineEdit, QListWidget, QCheckBox
 
 from . import types
 
@@ -14,6 +14,7 @@ class ServerConfigForm(QWidget):
     nameEdit: QLineEdit
     addressEdit: QLineEdit
     typeList: QComboBox
+    autostartCheckBox: QCheckBox
     portEdit: QLineEdit
     deviceList: QListWidget
 
@@ -66,6 +67,7 @@ class ServerConfigForm(QWidget):
         self.usernameEdit.textChanged.connect(self._updateConfigFromFields)
         self.sshKeyEdit.textChanged.connect(self._updateConfigFromFields)
         self.deviceList.itemChanged.connect(self._updateConfigFromFields)
+        self.autostartCheckBox.stateChanged.connect(self._updateConfigFromFields)
 
         # UI updates
         self.addressEdit.textChanged.connect(self._setServerTypeFromAddress)
@@ -153,6 +155,7 @@ class ServerConfigForm(QWidget):
         self._config.port = self.portEdit.text()
         self._config.username = self.usernameEdit.text()
         self._config.ssh_key = self.sshKeyEdit.text()
+        self._config.autostart = self.autostartCheckBox.isChecked()
         self._config.devices = self._getDevices()
 
     def _updateFieldsFromConfig(self):
@@ -164,6 +167,7 @@ class ServerConfigForm(QWidget):
             self.portEdit.setText(self._config.port)
             self.usernameEdit.setText(self._config.username)
             self.sshKeyEdit.setText(self._config.ssh_key)
+            self.autostartCheckBox.setChecked(self._config.autostart)
             self._setDevicesFromConfig()
 
     def keyPressEvent(self, event):
@@ -241,6 +245,7 @@ class ServerFormWorkflow:
         s.assignProperty(form.usernameEdit, "enabled", True)
         s.assignProperty(form.sshKeyEdit, "enabled", True)
         s.assignProperty(form.portEdit, "enabled", True)
+        s.assignProperty(form.autostartCheckBox, "enabled", True)
         return s
 
     def _make_dev_fetched_state(self, form) -> QState:
@@ -252,6 +257,7 @@ class ServerFormWorkflow:
         s.assignProperty(form.addressEdit, "enabled", False)
         s.assignProperty(form.usernameEdit, "enabled", False)
         s.assignProperty(form.sshKeyEdit, "enabled", False)
+        s.assignProperty(form.autostartCheckBox, "enabled", False)
 
         s.assignProperty(form.typeList, "enabled", False)
         return s
