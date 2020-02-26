@@ -141,6 +141,7 @@ def _fetch_devices(config: types.ServerConfig):
                 return [(d.id, d.id) for d in resp.devices]
         except Exception as e:
             logger.exception('Failed to fetch devices')
+            raise
         finally:
             try:
                 launcher.stop()
@@ -149,6 +150,7 @@ def _fetch_devices(config: types.ServerConfig):
 
     except Exception as e:
         logger.error(e)
+        raise
 
     return []
 

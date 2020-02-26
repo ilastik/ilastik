@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from PyQt5 import uic
 from PyQt5.Qt import Qt, QStringListModel, pyqtProperty, QListWidgetItem, pyqtSignal, QEvent
 from PyQt5.QtCore import QStateMachine, QState, QSignalTransition, pyqtSignal
-from PyQt5.QtWidgets import QWidget, QComboBox, QLabel, QLineEdit, QListWidget, QCheckBox
+from PyQt5.QtWidgets import QWidget, QComboBox, QLabel, QLineEdit, QListWidget, QCheckBox, QMessageBox
 
 from . import types
 
@@ -113,7 +113,13 @@ class ServerConfigForm(QWidget):
                     return dev.enabled
             return False
 
-        devices = self._device_getter(self._config)
+        try:
+            devices = self._device_getter(self._config)
+        except Exception:
+            QMessageBox.critical(
+                self, "Connection failed", "Failed to connect to tiktoch server please check settings and try again"
+            )
+            return
 
         new_devices = []
 
