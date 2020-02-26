@@ -105,21 +105,33 @@ class ServerFormItemDelegate(QItemDelegate):
         super().setEditorData(editor, index)
 
 
+class _NullLauncher:
+    def start(self):
+        pass
+
+    def stop(self):
+        pass
+
+
 def _fetch_devices(config: types.ServerConfig):
     try:
-        addr, port = (
-            socket.gethostbyname(config.address),
+        port = config.port
+        if config.autostart:
             # in order not to block address for real server todo: remove port hack
-            str(int(config.port) - 20),
-        )
+            port = str(int(config.port) - 20)
+
+        addr = socket.gethostbyname(config.address)
         conn_conf = ConnConf(addr, port, timeout=10)
 
-        if addr == "127.0.0.1":
-            launcher = LocalServerLauncher(conn_conf, path=config.path)
+        if config.autostart:
+            if addr == "127.0.0.1":
+                launcher = LocalServerLauncher(conn_conf, path=config.path)
+            else:
+                launcher = RemoteSSHServerLauncher(
+                    conn_conf, cred=SSHCred(user=config.username, key_path=config.ssh_key), path=config.path
+                )
         else:
-            launcher = RemoteSSHServerLauncher(
-                conn_conf, cred=SSHCred(user=config.username, key_path=config.ssh_key), path=config.path
-            )
+            launcher = _NullLauncher()
 
         try:
             launcher.start()
