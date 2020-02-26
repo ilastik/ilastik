@@ -1,5 +1,3 @@
-from builtins import range
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -21,6 +19,7 @@ from builtins import range
 # This information is also available on the ilastik web site at:
 #          http://ilastik.org/license/
 ###############################################################################
+import sys
 
 import numpy as np
 import vigra
@@ -97,7 +96,7 @@ class TestOpLazyCC(unittest.TestCase):
 
         out = op.Output[...].wait()
         out = vigra.taggedView(out, axistags=op.Output.meta.axistags)
-        np.set_printoptions(threshold=np.nan, linewidth=200)
+        np.set_printoptions(threshold=sys.maxsize, linewidth=200)
         assertEquivalentLabeling(blocks, out)
 
     def testLazyness(self):
