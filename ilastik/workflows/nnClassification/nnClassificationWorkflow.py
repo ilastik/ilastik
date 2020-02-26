@@ -43,7 +43,7 @@ class NNClassificationWorkflow(Workflow):
     Workflow for the Neural Network Classification Applet
     """
 
-    workflowName = "Neural Network Classification"
+    workflowName = "Neural Network Classification (Beta)"
     workflowDescription = "This is obviously self-explanatory."
     defaultAppletIndex = 0  # show DataSelection by default
 
