@@ -40,6 +40,7 @@ class ServerConfig:
 
     path: str = attr.ib(default="tiktorch")
     name: str = attr.ib(default="Unknown", validator=_non_empty)
+    autostart: bool = False
     username: str = ""
     ssh_key: str = ""
 
@@ -55,6 +56,7 @@ class ServerConfig:
             "path": "tiktorch",
             "address": "127.0.0.1",
             "port": "5567",
+            "autostart": False,
             "devices": [],
             **kwargs,
         }

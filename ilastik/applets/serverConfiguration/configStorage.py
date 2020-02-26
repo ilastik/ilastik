@@ -17,10 +17,17 @@ class ServerConfigStorage:
         self._config = config
         self._dst = dst
 
+    def _parse_autostart(self, entry):
+        if entry == "1":
+            return True
+        else:
+            return False
+
     def _parse_server_section(self, section):
         id_ = section.replace(self.PREFIX, '')
         items = self._config.items(section)
         data = dict(items)
+        data["autostart"] = self._parse_autostart(data.get("autostart", "0"))
 
         try:
             data["devices"] = self._parse_devices(data["devices"])
@@ -74,7 +81,9 @@ class ServerConfigStorage:
         return None
 
     def _server_as_dict(self, srv):
-        return attr.asdict(srv)
+        res = attr.asdict(srv)
+        res["autostart"] = str(int(res.get("autostart", False)))
+        return res
 
     def _serialize_device(self, device):
         device_str = f"{device['id']}::{device['name']}"

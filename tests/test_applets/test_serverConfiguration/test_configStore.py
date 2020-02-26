@@ -13,6 +13,7 @@ class TestServerParse:
     name = MyServer1
     type = local
     address = 127.0.0.1
+    autostart = 1
     port = 5543
     devices =
         cpu0::CPU0
@@ -27,6 +28,7 @@ class TestServerParse:
     type = remote
     address = 8.8.8.8
     port = 5543
+    autostart = 0
     ssh_key = /home/user/.ssh/id_rsa
     username = testuser
     devices =
@@ -79,6 +81,7 @@ class TestServerParse:
         assert "MyServer1" == fst.name
         assert "local" == fst.type
         assert "127.0.0.1" == fst.address
+        assert fst.autostart
         assert "5543" == fst.port
 
         assert isinstance(snd, types.ServerConfig)
@@ -87,6 +90,7 @@ class TestServerParse:
         assert "8.8.8.8" == snd.address
         assert "5543" == snd.port
         assert "testuser" == snd.username
+        assert not snd.autostart
         assert "/home/user/.ssh/id_rsa" == snd.ssh_key
 
     def test_parsing_noserver(self, parse):
