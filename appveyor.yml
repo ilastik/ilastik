@@ -11,7 +11,7 @@ environment:
 install:
   - cmd: set "PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
   - cmd: where conda
-  - cmd: conda config --set always_yes yes --set changeps1 no --set channel_priority strict
+  - cmd: conda config --set always_yes yes --set changeps1 no
   - cmd: conda update -q conda
   - cmd: conda install -c conda-forge conda-build
   # Get the current master of all submodules
