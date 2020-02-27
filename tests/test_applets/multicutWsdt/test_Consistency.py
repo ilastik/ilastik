@@ -19,8 +19,10 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import numpy as np
-import vigra 
+import vigra
 import h5py
+
+import os
 
 import pytest
 
@@ -32,7 +34,9 @@ from ilastik.applets.wsdt.opWsdt import OpCachedWsdt
 
 from elf.segmentation.watershed import distance_transform_watershed
 
-DATA_PATH = './data/inputdata/3d2c_Probabilities.h5'
+
+DATA_PATH = os.path.join(
+    os.path.split(__file__)[0], '../../data/inputdata/3d2c_Probabilities.h5')
 DATASET_NAME = 'exported_data'
 AXIS_TAGS = "zyxc"
 
