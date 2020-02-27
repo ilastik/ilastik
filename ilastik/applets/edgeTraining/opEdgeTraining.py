@@ -294,12 +294,13 @@ class OpComputeEdgeFeatures(Operator):
             result[0] = all_edge_features_df
 
         else:
+
             def normalize1(series):
                 series = series - np.min(series)
                 series = series / np.max(series)
                 return series
 
-            BEST_FEATURE = 'standard_edge_mean'
+            BEST_FEATURE = "standard_edge_mean"
 
             logger.info("Edge probabilities from feature {}...".format(BEST_FEATURE))
             # The probabilities data is the data which the
@@ -314,7 +315,6 @@ class OpComputeEdgeFeatures(Operator):
             edge_features_df[BEST_FEATURE] = normalize1(edge_features_df[BEST_FEATURE])
 
             result[0] = edge_features_df
-
 
     def propagateDirty(self, slot, subindex, roi):
         self.EdgeFeaturesDataFrame.setDirty()
@@ -394,7 +394,7 @@ class OpPredictEdgeProbabilities(Operator):
         self.EdgeProbabilities.meta.dtype = object
 
     def execute(self, slot, subindex, roi, result):
-        pd.set_option('display.expand_frame_repr', False)
+        pd.set_option("display.expand_frame_repr", False)
         if self.TrainRandomForest.value:
             edge_features_df = self.EdgeFeaturesDataFrame.value
             classifier = self.EdgeClassifier.value
@@ -412,7 +412,7 @@ class OpPredictEdgeProbabilities(Operator):
             assert len(probabilities) == len(edge_features_df)
 
         else:
-            BEST_FEATURE = 'standard_edge_mean'
+            BEST_FEATURE = "standard_edge_mean"
             edge_features_df = self.EdgeFeaturesDataFrame.value
             edge_features_df = edge_features_df.iloc[:, 2:]  # Discard columns [sp1, sp2]
             probabilities = edge_features_df[BEST_FEATURE]

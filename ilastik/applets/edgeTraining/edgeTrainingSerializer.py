@@ -167,6 +167,6 @@ class EdgeTrainingSerializer(AppletSerializer):
                 operator.opEdgeFeaturesCache.Output, operator.opEdgeFeaturesCache, name="EdgeFeatures"
             ),
             SerialClassifierSlot(operator.opClassifierCache.Output, operator.opClassifierCache),
-            SerialSlot(operator.TrainRandomForest)
+            SerialSlot(operator.TrainRandomForest),
         ]
         super(EdgeTrainingSerializer, self).__init__(projectFileGroupName, slots=slots)

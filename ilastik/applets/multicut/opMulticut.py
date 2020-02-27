@@ -259,11 +259,9 @@ if True:
                 return
 
             with Timer() as timer:
-                node_labeling = self.agglomerate_with_multicut(rag,
-                                                               edge_probabilities,
-                                                               beta,
-                                                               solver_name,
-                                                               self.ProbabilityThreshold.value)
+                node_labeling = self.agglomerate_with_multicut(
+                    rag, edge_probabilities, beta, solver_name, self.ProbabilityThreshold.value
+                )
 
             logger.info("'{}' Multicut took {} seconds".format(solver_name, timer.seconds()))
 
@@ -338,6 +336,7 @@ if True:
             artificially low energy, to prevent it from merging with its
             neighbors, regardless of what the edge_probabilities say.
         """
+
         def rescale(probabilities, threshold):
             """
             Given a threshold in the range (0,1), rescales the probabilities below and above
@@ -353,7 +352,7 @@ if True:
             data_upper = probabilities[probabilities > threshold]
 
             data_lower = (data_lower / threshold) * 0.5
-            data_upper = (((data_upper - threshold) / ( 1-threshold )) * 0.5) + 0.5
+            data_upper = (((data_upper - threshold) / (1 - threshold)) * 0.5) + 0.5
 
             return np.concatenate((data_lower, data_upper))
 

@@ -23,7 +23,7 @@ install:
   # replace with whatever version of ilastik triggered the appveyor
   - ps: cp -recurse C:\projects\ilastik $env:IlASTIK_ROOT\ilastik-meta\ilastik
   # Point to the current ilastik-meta
-  - python ilastik/scripts/devenv.py create -n %ENV_NAME% -c ilastik-forge conda-forge -p ilastik-dependencies-no-solvers
+  - python ilastik/scripts/devenv.py create -n %ENV_NAME% -c ilastik-forge conda-forge defaults -p ilastik-dependencies-no-solvers
 
 build: off
 
