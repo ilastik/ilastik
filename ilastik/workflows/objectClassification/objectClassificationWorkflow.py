@@ -66,6 +66,20 @@ OUTPUT_COLUMNS = [
 ]
 
 
+class _DeprecatedStoreConstAction(argparse._StoreConstAction):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        warnings.warn(
+            f"Using the {self.option_strings} argument is deprecated. Please consult "
+            "https://www.ilastik.org/documentation/basics/headless#headless-mode-for-object-classification "
+            "for information on setting the source for the output."
+        )
+
+        super().__call__(parser, namespace, values, option_string)
+
+
 class ObjectClassificationWorkflow(Workflow):
     workflowName = "Object Classification Workflow Base"
     defaultAppletIndex = 0  # show DataSelection by default
@@ -203,13 +217,13 @@ class ObjectClassificationWorkflow(Workflow):
         exportImageArgGroup.add_argument(
             "--export_object_prediction_img",
             dest="export_source",
-            action="store_const",
+            action=_DeprecatedStoreConstAction,
             const=self.ExportNames.OBJECT_PREDICTIONS.displayName,
         )
         exportImageArgGroup.add_argument(
             "--export_object_probability_img",
             dest="export_source",
-            action="store_const",
+            action=_DeprecatedStoreConstAction,
             const=self.ExportNames.OBJECT_PROBABILITIES.displayName,
         )
         return parser, exportImageArgGroup
@@ -578,7 +592,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         exportImageArgGroup.add_argument(
             "--export_pixel_probability_img",
             dest="export_source",
-            action="store_const",
+            action=_DeprecatedStoreConstAction,
             const=self.ExportNames.PIXEL_PROBABILITIES.displayName,
         )
         return parser, exportImageArgGroup

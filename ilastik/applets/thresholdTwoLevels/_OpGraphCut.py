@@ -109,7 +109,7 @@ class OpGraphCut(Operator):
         shape = list(self.Prediction.meta.shape)
         shape[0] = 1
         shape[4] = 1
-        self._cache.BlockShape.setValue(tuple(shape))
+        self._cache.blockShape.setValue(tuple(shape))
 
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output, "Unknown slot requested: {}".format(slot)

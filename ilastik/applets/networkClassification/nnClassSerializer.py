@@ -18,11 +18,38 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialListSlot, SerialDictSlot, SerialPickleableSlot
+import pickle
+import json
 
-import logging
+import numpy as np
+import typing
 
-logger = logging.getLogger(__name__)
+from tiktorch.types import Model, ModelState
+
+from ilastik.applets.base.appletSerializer import (
+    AppletSerializer,
+    SerialSlot,
+    SerialListSlot,
+    SerialBlockSlot,
+)
+
+
+class BinarySlot(SerialSlot):
+    """
+    Implements the logic for serializing a binary slot.
+
+    wraps value with numpy.void to avoid the following error:
+    ValueError: VLEN strings do not support embedded NULLs
+    """
+    @staticmethod
+    def _saveValue(group, name, value):
+        if value:
+            group.create_dataset(name, data=np.void(value))
+
+    @staticmethod
+    def _getValue(subgroup, slot):
+        val = subgroup[()]
+        slot.setValue(val.tobytes())
 
 
 class NNClassificationSerializer(AppletSerializer):
@@ -30,8 +57,19 @@ class NNClassificationSerializer(AppletSerializer):
         self.VERSION = 1
 
         slots = [
-            SerialPickleableSlot(topLevelOperator.FullModel, version=1),
-            SerialDictSlot(topLevelOperator.ModelPath),
+            SerialListSlot(topLevelOperator.LabelNames),
+            SerialListSlot(topLevelOperator.LabelColors, transform=lambda x: tuple(x.flat)),
+            SerialListSlot(topLevelOperator.PmapColors, transform=lambda x: tuple(x.flat)),
+            SerialBlockSlot(
+                topLevelOperator.LabelImages,
+                topLevelOperator.LabelInputs,
+                topLevelOperator.NonzeroLabelBlocks,
+                name="LabelSets",
+                subname="labels{:03d}",
+                selfdepends=False,
+                shrink_to_bb=True,
+            ),
+            BinarySlot(topLevelOperator.ModelBinary),
         ]
 
-        super(NNClassificationSerializer, self).__init__(projectFileGroupName, slots)
+        super().__init__(projectFileGroupName, slots)
