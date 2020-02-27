@@ -30,21 +30,32 @@ class NNClassApplet(StandardApplet):
     """
 
     def __init__(self, workflow, projectFileGroupName):
+        self._topLevelOperator = OpNNClassification(parent=workflow)
 
-        super(NNClassApplet, self).__init__("NN Classification", workflow=workflow)
+        def on_classifier_changed(slot, roi):
+            if (
+                self._topLevelOperator.classifier_cache.Output.ready()
+                and self._topLevelOperator.classifier_cache.fixAtCurrent.value is True
+                and self._topLevelOperator.classifier_cache.Output.value is None
+            ):
+                # When the classifier is deleted (e.g. because the number of features has changed,
+                #  then notify the workflow. (Export applet should be disabled.)
+                self.appletStateUpdateRequested()
+
+        self._topLevelOperator.classifier_cache.Output.notifyDirty(on_classifier_changed)
+
+        super(NNClassApplet, self).__init__("NN Training", workflow=workflow)
 
         self._serializableItems = [
             NNClassificationSerializer(self.topLevelOperator, projectFileGroupName)
         ]  # Legacy (v0.5) importer
         self._gui = None
         self.predictionSerializer = self._serializableItems[0]
-
-    @property
-    def broadcastingSlots(self):
-        """
-        defines which variables will be shared with different lanes
-        """
-        return ["ModelPath", "FullModel", "FreezePredictions"]
+        # FIXME: For now, we can directly connect the progress signal from the classifier training operator
+        # directly to the applet's overall progress signal, because it's the only thing we report progress for at the moment.
+        # If we start reporting progress for multiple tasks that might occur simulatneously,
+        # we'll need to aggregate the progress updates.
+        self._topLevelOperator.opTrain.progressSignal.subscribe(self.progressSignal)
 
     @property
     def dataSerializers(self):
@@ -63,8 +74,8 @@ class NNClassApplet(StandardApplet):
         return NNClassGui
 
     @property
-    def singleLaneOperatorClass(self):
-        """
-        Return the operator class which handles a single image.
-        """
-        return OpNNClassification
+    def topLevelOperator(self):
+        return self._topLevelOperator
+
+    def cleanUp(self):
+        return self._topLevelOperator.cleanUp()

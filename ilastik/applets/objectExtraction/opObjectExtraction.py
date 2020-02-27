@@ -430,7 +430,7 @@ class OpObjectExtraction(Operator):
                 taggedShape[k] = 1
             # else:
             #     taggedShape[k] = 256
-        self._opCenterCache.BlockShape.setValue(tuple(taggedShape.values()))
+        self._opCenterCache.blockShape.setValue(tuple(taggedShape.values()))
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here."

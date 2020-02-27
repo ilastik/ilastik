@@ -20,8 +20,11 @@
 ###############################################################################
 
 from lazyflow.operators.generic import OpMultiArraySlicer2
-from volumina.api import createDataSource, AlphaModulatedLayer
+from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
+from ilastik.utility import bind
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
+
+from PyQt5.QtGui import QColor
 
 
 class NNClassificationDataExportGui(DataExportGui):
@@ -40,6 +43,8 @@ class NNClassificationResultsViewer(DataExportLayerViewerGui):
 
     def __init__(self, *args, **kwargs):
         super(NNClassificationResultsViewer, self).__init__(*args, **kwargs)
+        self.topLevelOperatorView.PmapColors.notifyDirty(bind(self.updateAllLayers))
+        self.topLevelOperatorView.LabelNames.notifyDirty(bind(self.updateAllLayers))
 
     def setupLayers(self):
         layers = []
@@ -50,7 +55,7 @@ class NNClassificationResultsViewer(DataExportLayerViewerGui):
         selection_names = opLane.SelectionNames.value
 
         # see comment above
-        for name, expected in zip(selection_names[0:1], ["Probabilities"]):
+        for name, expected in zip(selection_names[0:1], ["Probabilities", "Labels"]):
             assert name.startswith(expected), "The Selection Names don't match the expected selection names."
 
         selection = selection_names[opLane.InputSelection.value]
@@ -61,6 +66,18 @@ class NNClassificationResultsViewer(DataExportLayerViewerGui):
                 layer.visible = True
                 layer.name = layer.name + "- Exported"
             layers += exportedLayers
+        elif selection.startswith("Labels"):
+            exportedLayer = self._initColortablelayer(opLane.ImageOnDisk)
+            if exportedLayer:
+                exportedLayer.visible = True
+                exportedLayer.name = selection + " - Exported"
+                layers.append(exportedLayer)
+
+            previewLayer = self._initColortablelayer(opLane.ImageToExport)
+            if previewLayer:
+                previewLayer.visible = False
+                previewLayer.name = selection + " - Preview"
+                layers.append(previewLayer)
 
         # If available, also show the raw data layer
         rawSlot = opLane.FormattedRawData
@@ -73,35 +90,60 @@ class NNClassificationResultsViewer(DataExportLayerViewerGui):
 
         return layers
 
+    def _initColortablelayer(self, labelSlot):
+        """
+        Used to export labels
+        """
+        if not labelSlot.ready():
+            return None
+
+        opLane = self.topLevelOperatorView
+        colors = opLane.PmapColors.value
+        colortable = []
+        colortable.append(QColor(0, 0, 0, 0).rgba())  # transparent
+        for color in colors:
+            colortable.append(QColor(*color).rgba())
+        labelsrc = LazyflowSource(labelSlot)
+        labellayer = ColortableLayer(labelsrc, colortable)
+        return labellayer
+
     def _initPredictionLayers(self, predictionSlot):
         opLane = self.topLevelOperatorView
+        if not opLane.LabelNames.ready() or not opLane.PmapColors.ready():
+            return []
+
         layers = []
+        colors = opLane.PmapColors.value
+        names = opLane.LabelNames.value
+
+        if predictionSlot.ready():
+            if 'c' in predictionSlot.meta.getAxisKeys():
+                num_channels = predictionSlot.meta.getTaggedShape()['c']
+            else:
+                num_channels = 1
+            if num_channels != len(names) or num_channels != len(colors):
+                names = ["Label {}".format(n) for n in range(1, num_channels+1)]
+                colors = num_channels * [(0, 0, 0)] # it doesn't matter, if the pmaps color is not known,
+                                                    # we are either initializing and it will be rewritten or
+                                                    # something is very wrong elsewhere
 
         # Use a slicer to provide a separate slot for each channel layer
-        opSlicer = OpMultiArraySlicer2(parent=opLane.viewed_operator().parent)
-        opSlicer.Input.connect(predictionSlot)
-        opSlicer.AxisFlag.setValue("c")
+        opSlicer = OpMultiArraySlicer2( parent=opLane.viewed_operator().parent )
+        opSlicer.Input.connect( predictionSlot )
+        opSlicer.AxisFlag.setValue('c')
 
-        for channel, predictionSlot in enumerate(opSlicer.Slices):
-            if predictionSlot.ready():
-                predictsrc = createDataSource(predictionSlot)
-                predictLayer = AlphaModulatedLayer(predictsrc, range=(0.0, 1.0), normalize=(0.0, 1.0))
+        for channel, channelSlot in enumerate(opSlicer.Slices):
+            if channelSlot.ready() and channel < len(colors) and channel < len(names):
+                drange = channelSlot.meta.drange or (0.0, 1.0)
+                predictsrc = LazyflowSource(channelSlot)
+                predictLayer = AlphaModulatedLayer( predictsrc,
+                                                    tintColor=QColor(*colors[channel]),
+                                                    # FIXME: This is weird.  Why are range and normalize both set to the same thing?
+                                                    range=drange,
+                                                    normalize=drange )
                 predictLayer.opacity = 0.25
                 predictLayer.visible = True
-
-                def setPredLayerName(n, predictLayer_=predictLayer, initializing=False):
-                    """
-                    function for setting the names for every Channel
-                    """
-                    if not initializing and predictLayer_ not in self.layerstack:
-                        # This layer has been removed from the layerstack already.
-                        # Don't touch it.
-                        return
-                    newName = "Prediction for %s" % n
-                    predictLayer_.name = newName
-
-                setPredLayerName(channel, initializing=True)
-
+                predictLayer.name = names[channel]
                 layers.append(predictLayer)
 
         return layers
