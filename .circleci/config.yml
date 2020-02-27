@@ -39,7 +39,7 @@ jobs:
         fi
     - run: conda init bash
     - run: >
-        conda config --set always_yes yes --set changeps1 no &&
+        conda config --set always_yes yes --set changeps1 no --set channel_priority strict &&
         conda update -q conda &&
         conda install -n base -c conda-forge conda-build
     - run: git clone http://github.com/ilastik/ilastik-meta ${ILASTIK_ROOT}/ilastik-meta

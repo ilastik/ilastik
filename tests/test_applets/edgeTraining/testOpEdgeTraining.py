@@ -25,6 +25,8 @@ class TestOpEdgeTraining(object):
 
         op_view.VoxelData.setValue(voxel_data, extra_meta={"channel_names": ["Grayscale"]})
         op_view.Superpixels.setValue(superpixels)
+        op_view.WatershedSelectedInput.setValue(voxel_data)
+        op_view.TrainRandomForest.setValue(True)
 
         multilane_op.FeatureNames.setValue({"Grayscale": ["standard_edge_mean", "standard_edge_count"]})
 
