@@ -136,7 +136,7 @@ class WsdtGui(LayerViewerGui):
         threshold_box.setMinimum(0.00)
         threshold_box.setMaximum(1.0)
         threshold_box.setSingleStep(0.1)
-        configure_update_handlers( threshold_box.valueChanged, op.Threshold )
+        configure_update_handlers(threshold_box.valueChanged, op.Threshold)
         threshold_box.setToolTip("Boundary probability threshold")
         drawer_layout.addLayout(control_layout("Threshold", threshold_box))
         self.threshold_box = threshold_box
@@ -144,9 +144,9 @@ class WsdtGui(LayerViewerGui):
         min_size_box = QSpinBox()
         min_size_box.setMinimum(0)
         min_size_box.setMaximum(1000000)
-        configure_update_handlers( min_size_box.valueChanged, op.MinSize )
+        configure_update_handlers(min_size_box.valueChanged, op.MinSize)
         min_size_box.setToolTip("Mininum size of the watershed segments")
-        drawer_layout.addLayout( control_layout( "Min Boundary Size", min_size_box ) )
+        drawer_layout.addLayout(control_layout("Min Boundary Size", min_size_box))
         self.min_size_box = min_size_box
 
         sigma_box = QDoubleSpinBox()
@@ -154,9 +154,11 @@ class WsdtGui(LayerViewerGui):
         sigma_box.setMinimum(0.0)
         sigma_box.setMaximum(10.0)
         sigma_box.setSingleStep(0.1)
-        configure_update_handlers( sigma_box.valueChanged, op.Sigma )
-        sigma_box.setToolTip("Smooth the watershed seed and weight map with this sigma. Lower values will produce oversegmented superpixels.")
-        drawer_layout.addLayout( control_layout( "Smooth", sigma_box ) )
+        configure_update_handlers(sigma_box.valueChanged, op.Sigma)
+        sigma_box.setToolTip(
+            "Smooth the watershed seed and weight map with this sigma. Lower values will produce oversegmented superpixels."
+        )
+        drawer_layout.addLayout(control_layout("Smooth", sigma_box))
         self.sigma_box = sigma_box
 
         alpha_box = QDoubleSpinBox()
@@ -164,9 +166,11 @@ class WsdtGui(LayerViewerGui):
         alpha_box.setMinimum(0.0)
         alpha_box.setMaximum(10.0)
         alpha_box.setSingleStep(0.1)
-        configure_update_handlers( alpha_box.valueChanged, op.Alpha )
-        alpha_box.setToolTip("Used to blend boundaries and the distance transform in order to obtain the watershed weight map")
-        drawer_layout.addLayout( control_layout( "Alpha", alpha_box ) )
+        configure_update_handlers(alpha_box.valueChanged, op.Alpha)
+        alpha_box.setToolTip(
+            "Used to blend boundaries and the distance transform in order to obtain the watershed weight map"
+        )
+        drawer_layout.addLayout(control_layout("Alpha", alpha_box))
         self.alpha_box = alpha_box
 
         enable_debug_box = QCheckBox()
@@ -217,12 +221,12 @@ class WsdtGui(LayerViewerGui):
             else:
                 self.channel_button.setText(",".join(map(str, channel_selections)))
 
-            self.threshold_box.setValue( op.Threshold.value )
-            self.min_size_box.setValue( op.MinSize.value )
-            self.sigma_box.setValue( op.Sigma.value )
-            self.alpha_box.setValue( op.Alpha.value )
-            self.enable_debug_box.setChecked( op.EnableDebugOutputs.value )
-            self.update_ws_button.setEnabled( op.Superpixels.ready() )
+            self.threshold_box.setValue(op.Threshold.value)
+            self.min_size_box.setValue(op.MinSize.value)
+            self.sigma_box.setValue(op.Sigma.value)
+            self.alpha_box.setValue(op.Alpha.value)
+            self.enable_debug_box.setChecked(op.EnableDebugOutputs.value)
+            self.update_ws_button.setEnabled(op.Superpixels.ready())
 
     def configure_operator_from_gui(self):
         if self._currently_updating:
@@ -235,12 +239,12 @@ class WsdtGui(LayerViewerGui):
                 if self.channel_actions[ch].isChecked():
                     channel_selections.append(ch)
 
-            op.ChannelSelections.setValue( channel_selections )
-            op.Threshold.setValue( self.threshold_box.value() )
-            op.Sigma.setValue( self.sigma_box.value() )
-            op.MinSize.setValue( self.min_size_box.value() )
-            op.Alpha.setValue ( self.alpha_box.value() )
-            op.EnableDebugOutputs.setValue( self.enable_debug_box.isChecked() )
+            op.ChannelSelections.setValue(channel_selections)
+            op.Threshold.setValue(self.threshold_box.value())
+            op.Sigma.setValue(self.sigma_box.value())
+            op.MinSize.setValue(self.min_size_box.value())
+            op.Alpha.setValue(self.alpha_box.value())
+            op.EnableDebugOutputs.setValue(self.enable_debug_box.isChecked())
 
         # The GUI may need to respond to some changes in the operator outputs.
         self.configure_gui_from_operator()

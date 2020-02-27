@@ -61,22 +61,24 @@ class OpWsdt(Operator):
         if self.debug_results:
             self.debug_results.clear()
 
-	# distance_transform_watershed expects a default value of None for pixel_pitch.
+        # distance_transform_watershed expects a default value of None for pixel_pitch.
         if self.PixelPitch.value == []:
             pixel_pitch_to_pass = None
         else:
             pixel_pitch_to_pass = self.PixelPitch.value
 
-        ws, max_id = distance_transform_watershed( pmap[...,0],
-                                                   self.Threshold.value,
-                                                   self.Sigma.value,
-						   self.Sigma.value,
-                                                   self.MinSize.value,
-                                                   self.Alpha.value,
-                                                   pixel_pitch_to_pass,
-                                                   self.ApplyNonmaxSuppression.value)
+        ws, max_id = distance_transform_watershed(
+            pmap[..., 0],
+            self.Threshold.value,
+            self.Sigma.value,
+            self.Sigma.value,
+            self.MinSize.value,
+            self.Alpha.value,
+            pixel_pitch_to_pass,
+            self.ApplyNonmaxSuppression.value,
+        )
 
-        result[...,0] = ws
+        result[..., 0] = ws
 
         self.watershed_completed()
 
@@ -116,39 +118,39 @@ class OpCachedWsdt(Operator):
         super(OpCachedWsdt, self).__init__(*args, **kwargs)
         my_slot_names = set([slot.name for slot in self.inputSlots + self.outputSlots])
         wsdt_slot_names = set([slot.name for slot in OpWsdt.inputSlots + OpWsdt.outputSlots])
-        assert wsdt_slot_names.issubset(my_slot_names),(
+        assert wsdt_slot_names.issubset(my_slot_names), (
             "OpCachedWsdt should have all of the slots that OpWsdt has (and maybe more)."
             "Did you add a slot to OpWsdt and forget to add it to OpCachedWsdt?"
         )
 
-        self._opWsdt = OpWsdt( parent=self )
-        self._opWsdt.Input.connect( self.Input )
-        self._opWsdt.ChannelSelections.connect( self.ChannelSelections )
-        self._opWsdt.Threshold.connect( self.Threshold )
-        self._opWsdt.MinSize.connect( self.MinSize )
-        self._opWsdt.Sigma.connect( self.Sigma )
-        self._opWsdt.Alpha.connect( self.Alpha )
-        self._opWsdt.PixelPitch.connect( self.PixelPitch )
-        self._opWsdt.ApplyNonmaxSuppression.connect( self.ApplyNonmaxSuppression )
-        self._opWsdt.EnableDebugOutputs.connect( self.EnableDebugOutputs )
+        self._opWsdt = OpWsdt(parent=self)
+        self._opWsdt.Input.connect(self.Input)
+        self._opWsdt.ChannelSelections.connect(self.ChannelSelections)
+        self._opWsdt.Threshold.connect(self.Threshold)
+        self._opWsdt.MinSize.connect(self.MinSize)
+        self._opWsdt.Sigma.connect(self.Sigma)
+        self._opWsdt.Alpha.connect(self.Alpha)
+        self._opWsdt.PixelPitch.connect(self.PixelPitch)
+        self._opWsdt.ApplyNonmaxSuppression.connect(self.ApplyNonmaxSuppression)
+        self._opWsdt.EnableDebugOutputs.connect(self.EnableDebugOutputs)
 
-        self._opCache = OpBlockedArrayCache( parent=self )
-        self._opCache.fixAtCurrent.connect( self.FreezeCache )
-        self._opCache.Input.connect( self._opWsdt.Superpixels )
-        self.Superpixels.connect( self._opCache.Output )
-        self.CleanBlocks.connect( self._opCache.CleanBlocks )
+        self._opCache = OpBlockedArrayCache(parent=self)
+        self._opCache.fixAtCurrent.connect(self.FreezeCache)
+        self._opCache.Input.connect(self._opWsdt.Superpixels)
+        self.Superpixels.connect(self._opCache.Output)
+        self.CleanBlocks.connect(self._opCache.CleanBlocks)
 
-        self._opSelectedInput = OpSumChannels( parent=self )
-        self._opSelectedInput.ChannelSelections.connect( self.ChannelSelections )
-        self._opSelectedInput.Input.connect( self.Input )
-        self.SelectedInput.connect( self._opSelectedInput.Output )
+        self._opSelectedInput = OpSumChannels(parent=self)
+        self._opSelectedInput.ChannelSelections.connect(self.ChannelSelections)
+        self._opSelectedInput.Input.connect(self.Input)
+        self.SelectedInput.connect(self._opSelectedInput.Output)
 
-        self._opThreshold = OpPixelOperator( parent=self )
-        self._opThreshold.Input.connect( self._opSelectedInput.Output )
-        self.ThresholdedInput.connect( self._opThreshold.Output )
+        self._opThreshold = OpPixelOperator(parent=self)
+        self._opThreshold.Input.connect(self._opSelectedInput.Output)
+        self.ThresholdedInput.connect(self._opThreshold.Output)
 
     def setupOutputs(self):
-        self._opThreshold.Function.setValue( lambda a: (a >= self.Threshold.value).astype(np.uint8) )
+        self._opThreshold.Function.setValue(lambda a: (a >= self.Threshold.value).astype(np.uint8))
 
     @property
     def debug_results(self):
