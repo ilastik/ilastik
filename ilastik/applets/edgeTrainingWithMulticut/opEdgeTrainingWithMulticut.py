@@ -10,11 +10,14 @@ class OpEdgeTrainingWithMulticut(Operator):
     # Edge Training parameters
     FeatureNames = InputSlot(value=OpEdgeTraining.DEFAULT_FEATURES)
     FreezeClassifier = InputSlot(value=True)
+    TrainRandomForest = InputSlot(value=False)
+    ProbabilityThreshold = InputSlot(value=0.5)
 
     # Multicut parameters
     Beta = InputSlot(value=0.5)
     SolverName = InputSlot(value=DEFAULT_SOLVER_NAME)  # See opMulticut.py for list of solvers
     FreezeCache = InputSlot(value=True)
+    WatershedSelectedInput = InputSlot()
 
     # Lane-wise input slots
     RawData = InputSlot(level=1, optional=True)  # Used by the GUI for display only
@@ -49,6 +52,8 @@ class OpEdgeTrainingWithMulticut(Operator):
         opEdgeTraining.VoxelData.connect(self.VoxelData)
         opEdgeTraining.Superpixels.connect(self.Superpixels)
         opEdgeTraining.GroundtruthSegmentation.connect(self.GroundtruthSegmentation)
+        opEdgeTraining.WatershedSelectedInput.connect(self.WatershedSelectedInput)
+        opEdgeTraining.TrainRandomForest.connect(self.TrainRandomForest)
 
         self.Rag.connect(opEdgeTraining.Rag)
         self.EdgeProbabilities.connect(opEdgeTraining.EdgeProbabilities)
@@ -64,6 +69,7 @@ class OpEdgeTrainingWithMulticut(Operator):
         opMulticut.Rag.connect(opEdgeTraining.Rag)
         opMulticut.EdgeProbabilities.connect(opEdgeTraining.EdgeProbabilities)
         opMulticut.EdgeProbabilitiesDict.connect(opEdgeTraining.EdgeProbabilitiesDict)
+        opMulticut.ProbabilityThreshold.connect(self.ProbabilityThreshold)
 
         self.Output.connect(opMulticut.Output)
         self.EdgeLabelDisagreementDict.connect(opMulticut.EdgeLabelDisagreementDict)

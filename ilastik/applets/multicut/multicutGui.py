@@ -46,6 +46,7 @@ from volumina.utility import ShortcutManager
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.multicut.opMulticut import OpMulticutAgglomerator, AVAILABLE_SOLVER_NAMES, DEFAULT_SOLVER_NAME
+from ilastik.config import cfg as ilastik_config
 
 from lazyflow.request import Request
 
@@ -115,8 +116,26 @@ class MulticutGuiMixin(object):
         )
         configure_update_handlers(beta_box.valueChanged, op.Beta)
         beta_layout = control_layout("Beta", beta_box)
-        drawer_layout.addLayout(beta_layout)
         self.beta_box = beta_box
+
+        # Beta parameter only modifiable in debug mode
+        dbg = ilastik_config.getboolean("ilastik", "debug")
+        if dbg:
+            drawer_layout.addLayout(beta_layout)
+
+        # Probability Threshold - above which an edge is 'on'
+        probability_threshold_box = QDoubleSpinBox(
+            decimals=2,
+            minimum=0.01,
+            maximum=0.99,
+            singleStep=0.1,
+            toolTip="Probability threshold for an edge to be 'ON'",
+        )
+        configure_update_handlers(probability_threshold_box.valueChanged, op.ProbabilityThreshold)
+        probability_threshold_layout = control_layout("Threshold", probability_threshold_box)
+        drawer_layout.addLayout(probability_threshold_layout)
+        drawer_layout.addSpacerItem(QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding))
+        self.probability_threshold_box = probability_threshold_box
 
         # Solver
         solver_name_combo = QComboBox(
@@ -146,7 +165,7 @@ class MulticutGuiMixin(object):
 
         # Update Button
         update_button = QPushButton(
-            text="Update Now", icon=QIcon(ilastikIcons.Play), clicked=self._handle_mulicut_update_clicked
+            text="Update Now", icon=QIcon(ilastikIcons.Play), clicked=self._handle_multicut_update_clicked
         )
         button_layout.addWidget(update_button)
         self.update_button = update_button
@@ -274,6 +293,7 @@ class MulticutGuiMixin(object):
             op = self.__topLevelOperatorView
             self.update_button.setEnabled(op.FreezeCache.value)
             self.live_multicut_button.setChecked(not op.FreezeCache.value)
+            self.probability_threshold_box.setValue(op.ProbabilityThreshold.value)
             if op.FreezeCache.value:
                 self.live_multicut_button.setIcon(QIcon(ilastikIcons.Play))
             else:
@@ -298,6 +318,7 @@ class MulticutGuiMixin(object):
         with self.set_updating():
             op = self.__topLevelOperatorView
             op.Beta.setValue(self.beta_box.value())
+            op.ProbabilityThreshold.setValue(self.probability_threshold_box.value())
             op.SolverName.setValue(str(self.solver_name_combo.currentText()))
             op.FreezeCache.setValue(not self.live_multicut_button.isChecked())
 
@@ -305,35 +326,38 @@ class MulticutGuiMixin(object):
         # (e.g. the FreezeCache setting).
         self.configure_gui_from_operator()
 
-    def _handle_mulicut_update_clicked(self):
+    def _handle_multicut_update_clicked(self):
         def updateThread():
             """
             Temporarily unfreeze the cache and freeze it again after the views are finished rendering.
             """
             with self.set_updating():
-                self.topLevelOperatorView.FreezeCache.setValue(False)
-                self.update_button.setEnabled(False)
-                self.live_multicut_button.setEnabled(False)
-
-                # This is hacky, but for now it's the only way to do it.
-                # We need to make sure the rendering thread has actually seen that the cache
-                # has been updated before we ask it to wait for all views to be 100% rendered.
-                # If we don't wait, it might complete too soon (with the old data).
-                ndim = len(self.topLevelOperatorView.Output.meta.shape)
-                self.topLevelOperatorView.Output((0,) * ndim, (1,) * ndim).wait()
-
-                # Wait for the image to be rendered into all three image views
-                for imgView in self.editor.imageViews:
-                    if imgView.isVisible():
-                        imgView.scene().joinRenderingAllTiles()
-                self.topLevelOperatorView.FreezeCache.setValue(True)
-                self.update_button.setEnabled(True)
-                self.live_multicut_button.setEnabled(True)
+                self._update_multicut_views()
 
         self.getLayerByName("Multicut Edges").visible = True
         # self.getLayerByName("Multicut Segmentation").visible = True
         th = threading.Thread(target=updateThread)
         th.start()
+
+    def _update_multicut_views(self):
+        self.topLevelOperatorView.FreezeCache.setValue(False)
+        self.update_button.setEnabled(False)
+        self.live_multicut_button.setEnabled(False)
+
+        # This is hacky, but for now it's the only way to do it.
+        # We need to make sure the rendering thread has actually seen that the cache
+        # has been updated before we ask it to wait for all views to be 100% rendered.
+        # If we don't wait, it might complete too soon (with the old data).
+        ndim = len(self.topLevelOperatorView.Output.meta.shape)
+        self.topLevelOperatorView.Output((0,) * ndim, (1,) * ndim).wait()
+
+        # Wait for the image to be rendered into all three image views
+        for imgView in self.editor.imageViews:
+            if imgView.isVisible():
+                imgView.scene().joinRenderingAllTiles()
+        self.topLevelOperatorView.FreezeCache.setValue(True)
+        self.update_button.setEnabled(True)
+        self.live_multicut_button.setEnabled(True)
 
     def create_multicut_disagreement_layer(self):
         ActionInfo = ShortcutManager.ActionInfo

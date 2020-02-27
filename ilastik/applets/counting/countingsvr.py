@@ -548,7 +548,7 @@ class SVR(object):
 if __name__ == "__main__":
 
     np.set_printoptions(precision=4)
-    np.set_printoptions(threshold="nan")
+    np.set_printoptions(threshold=sys.maxsize)
     img = np.load("img.npy")
     dot = np.load("dot.npy")
     # img = img[...,[2]]
