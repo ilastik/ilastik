@@ -348,13 +348,16 @@ if True:
             :param threshold: scalar (float). The new threshold for the algorithm.
             :return: Rescaled data to be used in algorithm.
             """
+            out = np.zeros_like(probabilities)
             data_lower = probabilities[probabilities <= threshold]
             data_upper = probabilities[probabilities > threshold]
 
             data_lower = (data_lower / threshold) * 0.5
             data_upper = (((data_upper - threshold) / (1 - threshold)) * 0.5) + 0.5
 
-            return np.concatenate((data_lower, data_upper))
+            out[probabilities <= threshold] = data_lower
+            out[probabilities > threshold] = data_upper
+            return out
 
         p1 = edge_probabilities  # P(Edge=CUT)
         p1 = np.clip(p1, 0.001, 0.999)
