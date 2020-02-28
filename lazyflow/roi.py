@@ -29,6 +29,11 @@ from typing import Sequence, Tuple, Union
 
 import numpy
 
+import logging
+
+
+logger = logging.getLogger(__file__)
+
 if __name__ == "__main__":
     # When executing this file directly for doctest purposes,
     #  we must remove the lazyflow module from sys.path
@@ -221,7 +226,9 @@ class TinyVector(list):
         l.insert(index, value)
         return TinyVector(l)
 
-    def all(self):
+    def all(self, **kwargs):
+        if kwargs != {}:
+            logger.warning("`all` called via numpy, this is slow. Better call `all` directly on the object.")
         answer = True
         for e in self:
             if not e:
@@ -229,7 +236,9 @@ class TinyVector(list):
                 break
         return answer
 
-    def any(self):
+    def any(self, **kwargs):
+        if kwargs != {}:
+            logger.warning("`any` called via numpy, this is slow. Better call `any` directly on the object.")
         answer = False
         for e in self:
             if e:
