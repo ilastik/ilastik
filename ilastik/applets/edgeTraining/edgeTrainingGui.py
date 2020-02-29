@@ -137,6 +137,10 @@ class EdgeTrainingGui(LayerViewerGui):
         cleanup_fn = op.EdgeLabelsDict.notifyDirty(enable_live_update_on_edges_available)
         self.__cleanup_fns.append(cleanup_fn)
 
+        # call once when instantiating with a saved project to make the live update button available
+        # if there are annotations loaded from file.
+        enable_live_update_on_edges_available()
+
         # Layout
         label_layout = QHBoxLayout()
         label_layout.addWidget(self.clear_labels_button)
