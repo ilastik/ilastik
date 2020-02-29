@@ -131,8 +131,15 @@ class EdgeTrainingGui(LayerViewerGui):
         self.train_from_gt_button.clicked.connect(lambda: op.FreezeClassifier.setValue(False))
 
         def enable_live_update_on_edges_available(*args, **kwargs):
-            have_edges = op.EdgeLabelsDict.ready() and bool(op.EdgeLabelsDict.value)
-            self.live_update_button.setEnabled(have_edges)
+            any_have_edges = False
+            top_level_edge_labels_dict = op.EdgeLabelsDict.top_level_slot
+            assert top_level_edge_labels_dict.level == 1
+            for subslot in op.EdgeLabelsDict.top_level_slot:
+                any_have_edges = subslot.ready() and bool(subslot.value)
+                if any_have_edges:
+                    break
+
+            self.live_update_button.setEnabled(any_have_edges)
 
         cleanup_fn = op.EdgeLabelsDict.notifyDirty(enable_live_update_on_edges_available)
         self.__cleanup_fns.append(cleanup_fn)
