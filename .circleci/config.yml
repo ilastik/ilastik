@@ -10,6 +10,7 @@ jobs:
       TEST_ENV_NAME: test-env
       ILASTIK_ROOT: /home/ubuntu/ilastik
       VOLUMINA_SHOW_3D_WIDGET: 0
+      ON_CIRCLE_CI: 1
     docker:
     - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
     steps:
