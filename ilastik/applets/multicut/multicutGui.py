@@ -144,7 +144,11 @@ class MulticutGuiMixin(object):
         for solver_name in AVAILABLE_SOLVER_NAMES:
             solver_name_combo.addItem(solver_name)
         configure_update_handlers(solver_name_combo.currentIndexChanged, op.SolverName)
-        drawer_layout.addLayout(control_layout("Solver", solver_name_combo))
+
+        # Only add the solver checkbox in debug mode
+        if dbg:
+            drawer_layout.addLayout(control_layout("Solver", solver_name_combo))
+
         self.solver_name_combo = solver_name_combo
 
         button_layout = QHBoxLayout()
