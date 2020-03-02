@@ -7,9 +7,10 @@ import numpy as np
 from ndstructs import Slice5D, Point5D, Shape5D
 from ndstructs import Array5D, Image, ScalarData, StaticLine, LinearData
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureData
-from ndstructs.datasource import DataSource, BackedSlice5D
+from ndstructs.datasource import DataSource, DataSourceSlice
 from ndstructs.utils import JsonSerializable
 from PIL import Image as PilImage
+
 
 class Scribblings(ScalarData):
     """Single-channel image containing user scribblings"""
@@ -22,12 +23,13 @@ class Scribblings(ScalarData):
             return False
         return np.all(self._data == other._data)
 
+
 class LabelSamples(StaticLine):
     """A single-channel array with a single spacial dimension containing integers
     representing the class to which a pixel belongs"""
 
     @classmethod
-    def create(cls, annotation: 'Annotation'):
+    def create(cls, annotation: "Annotation"):
         samples = annotation.sample_channels(annotation.as_mask())
         return cls.fromArray5D(samples)
 
@@ -38,7 +40,7 @@ class LabelSamples(StaticLine):
     @property
     def classmap(self) -> Dict[int, int]:
         raw_xc = self.linear_raw()
-        raw_x = raw_xc.reshape(raw_xc.size) #remove 'c' dimension
+        raw_x = raw_xc.reshape(raw_xc.size)  # remove 'c' dimension
         classmap = {}
         for label_klass in raw_x:
             if label_klass not in classmap:
@@ -50,6 +52,7 @@ class LabelSamples(StaticLine):
         mapped_labels = np.vectorize(self.classmap.get)(self.linear_raw())
         return LabelSamples(mapped_labels, axiskeys=self.__class__.DEFAULT_AXES)
 
+
 class FeatureSamples(FeatureData, StaticLine):
     """A multi-channel array with a single spacial dimension, with eac channel
     representing a feature calculated on top of a annotated pixel"""
@@ -59,10 +62,11 @@ class FeatureSamples(FeatureData, StaticLine):
         samples = data.sample_channels(scribblings.as_mask())
         return cls.fromArray5D(samples)
 
+
 class Samples:
     """A mapping from pixel labels to pixel features"""
 
-    def __init__(self, feature_samples:FeatureSamples, label_samples:LabelSamples):
+    def __init__(self, feature_samples: FeatureSamples, label_samples: LabelSamples):
         assert feature_samples.length == label_samples.length
         self.feature = feature_samples
         self.label = label_samples
@@ -70,40 +74,44 @@ class Samples:
     def count(self) -> int:
         return self.label.shape.x
 
-    def concatenate(self, *others:List['Samples']):
+    def concatenate(self, *others: List["Samples"]):
         all_features = self.feature.concatenate(*[sample.feature for sample in others])
         all_labels = self.label.concatenate(*[sample.label for sample in others])
         return Samples(feature_samples=all_features, label_samples=all_labels)
 
+
 class ScribblingsOutOfBounds(Exception):
-    def __init__(self, scribblings:Scribblings, raw_data:DataSource):
+    def __init__(self, scribblings: Scribblings, raw_data: DataSource):
         super().__init__(f"Scribblings {scribblings} exceeds bounds of raw_data {raw_data}")
 
+
 class WrongShapeException(Exception):
-    def __init__(self, path:str, data:np.ndarray):
+    def __init__(self, path: str, data: np.ndarray):
         super().__init__(f"Annotations from {path} have bad shape: {data.shape}")
+
 
 class Annotation(JsonSerializable):
     """User scribblings attached to the raw data onto which they were drawn"""
 
-    def __init__(self, scribblings:Scribblings, raw_data:DataSource):
+    def __init__(self, scribblings: Scribblings, raw_data: DataSource):
         if not raw_data.roi.contains(scribblings.roi):
             raise ScribblingsOutOfBounds(scribblings=scribblings, raw_data=raw_data)
         self.scribblings = scribblings
         self.raw_data = raw_data
 
     @classmethod
-    def from_png(cls, path:str, raw_data:DataSource, location:Point5D=Point5D.zero()):
+    def from_png(cls, path: str, raw_data: DataSource, location: Point5D = Point5D.zero()):
         data = np.asarray(PilImage.open(path)).astype(np.uint32)
-        return cls(Scribblings(data, 'yx', location=location), raw_data)
+        return cls(Scribblings(data, "yx", location=location), raw_data)
 
-    def get_samples(self, feature_extractor:FeatureExtractor) -> Samples:
+    def get_samples(self, feature_extractor: FeatureExtractor) -> Samples:
         all_label_samples = []
         all_feature_samples = []
         annotated_roi = self.scribblings.roi.with_full_c()
 
         with ThreadPoolExecutor() as executor:
-            for data_tile in BackedSlice5D(self.raw_data).clamped(annotated_roi).get_tiles():
+            for data_tile in DataSourceSlice(self.raw_data).clamped(annotated_roi).get_tiles():
+
                 def make_samples(data_tile):
                     scribblings_tile = self.scribblings.clamped(data_tile)
                     feature_tile = feature_extractor.compute(data_tile).clamped(scribblings_tile.roi.with_full_c())
@@ -113,9 +121,12 @@ class Annotation(JsonSerializable):
                     assert feature_samples.shape.c == feature_extractor.get_expected_shape(data_tile.shape).c
                     all_label_samples.append(label_samples)
                     all_feature_samples.append(feature_samples)
+
                 executor.submit(make_samples, data_tile)
-        return Samples(label_samples=all_label_samples[0].concatenate(*all_label_samples[1:]),
-                       feature_samples=all_feature_samples[0].concatenate(*all_feature_samples[1:]))
+        return Samples(
+            label_samples=all_label_samples[0].concatenate(*all_label_samples[1:]),
+            feature_samples=all_feature_samples[0].concatenate(*all_feature_samples[1:]),
+        )
 
     def __repr__(self):
         return f"<Annotation {self.scribblings.shape} for raw_data: {self.raw_data}>"

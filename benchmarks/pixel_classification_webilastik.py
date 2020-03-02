@@ -8,7 +8,7 @@ from lazyflow.distributed.TaskOrchestrator import TaskOrchestrator
 import cProfile
 
 from ndstructs import Array5D, Slice5D, Shape5D
-from ndstructs.datasource import DataSource, N5DataSource, BackedSlice5D
+from ndstructs.datasource import DataSource, N5DataSource, DataSourceSlice
 from ilastik.features.feature_extractor import FeatureExtractor
 from ilastik.features.fastfilters import (
     GaussianSmoothing,
@@ -74,7 +74,7 @@ with t:
         predictions.set(tile_prediction)
         print(f"Tile {raw_tile} done! {time.time()}")
 
-    for raw_tile in BackedSlice5D(datasource).split():
+    for raw_tile in DataSourceSlice(datasource).split():
         predict_tile(raw_tile)
 print(f"Prediction with {classifier.__class__.__name__} took {t.seconds()}")
 predictions.as_uint8().show_channels()

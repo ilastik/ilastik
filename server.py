@@ -16,7 +16,7 @@ import argparse
 from pathlib import Path
 
 from ndstructs import Point5D, Slice5D, Shape5D, Array5D
-from ndstructs.datasource import DataSource, BackedSlice5D, SequenceDataSource
+from ndstructs.datasource import DataSource, DataSourceSlice, SequenceDataSource
 from ndstructs.utils import JsonSerializable
 from ilastik.annotations import Annotation, Scribblings
 from ilastik.classifiers.pixel_classifier import (
@@ -154,7 +154,7 @@ class Context:
 def do_predictions(roi: Slice5D, classifier_id: str, datasource_id: str) -> Predictions:
     classifier = Context.load(classifier_id)
     datasource = Context.load(datasource_id)
-    backed_roi = BackedSlice5D(datasource, **roi.to_dict())
+    backed_roi = DataSourceSlice(datasource, **roi.to_dict())
 
     predictions = classifier.allocate_predictions(backed_roi)
     with ThreadPoolExecutor() as executor:

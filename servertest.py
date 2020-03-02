@@ -22,14 +22,7 @@ def send(method: str, *args, **kwargs):
 
 resp = post(
     "http://localhost:5000/data_source",
-    data={
-        "url": "/home/tomaz/SampleData/n5tests/317_8_CamKII_tTA_lacZ_Xgal_s123_1.4.n5/data",
-        "tile_shape_hint.x": 512,
-        "tile_shape_hint.y": 512,
-        "tile_shape_hint.z": 512,
-        "tile_shape_hint.c": 512,
-        "tile_shape_hint.t": 512,
-    },
+    data={"url": "/home/tomaz/SampleData/n5tests/317_8_CamKII_tTA_lacZ_Xgal_s123_1.4.n5/data"},
 )
 
 

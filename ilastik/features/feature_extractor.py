@@ -8,7 +8,7 @@ import h5py
 
 from ndstructs import Slice5D, Point5D, Shape5D
 from ndstructs import Array5D
-from ndstructs.datasource import DataSource, BackedSlice5D
+from ndstructs.datasource import DataSource, DataSourceSlice
 from ndstructs.utils import JsonSerializable
 
 
@@ -79,7 +79,7 @@ class FeatureExtractor(JsonSerializable):
         return FeatureData.allocate(out_roi, dtype=np.float32, axiskeys="tzyxc")
 
     @functools.lru_cache()
-    def compute(self, input_roi: BackedSlice5D) -> FeatureData:
+    def compute(self, input_roi: DataSourceSlice) -> FeatureData:
         out_features = self.allocate_for(input_roi.shape).translated(input_roi.start)
         self.compute_into(input_roi, out_features)
         out_features.setflags(write=False)
@@ -122,7 +122,7 @@ class ChannelwiseFilter(FeatureExtractor):
     def get_expected_shape(self, input_shape: Shape5D) -> Shape5D:
         return input_shape.with_coord(c=input_shape.c * self.channel_multiplier)
 
-    def compute_into(self, input_roi: BackedSlice5D, out: FeatureData) -> FeatureData:
+    def compute_into(self, input_roi: DataSourceSlice, out: FeatureData) -> FeatureData:
         in_step: Shape5D = input_roi.shape.with_coord(c=1, t=1)  # compute features independently for each c and each t
         if self.axis_2d:
             in_step = in_step.with_coord(**{self.axis_2d: 1})  # also compute in 2D slices
@@ -133,10 +133,10 @@ class ChannelwiseFilter(FeatureExtractor):
         return out
 
     @abstractmethod
-    def _compute_slice(self, raw_data: BackedSlice5D, out: FeatureData):
+    def _compute_slice(self, raw_data: DataSourceSlice, out: FeatureData):
         pass
 
-    def _debug_show(self, rawData: BackedSlice5D, featureData: FeatureData):
+    def _debug_show(self, rawData: DataSourceSlice, featureData: FeatureData):
         channel_multiplier = int(featureData.shape.c / rawData.shape.c)
         assert channel_multiplier == self.channel_multiplier
         print(f"Showing features as a group of  {channel_multiplier}-channel images")
@@ -173,7 +173,7 @@ class FeatureExtractorCollection(FeatureExtractor):
     def channel_multiplier(self) -> int:
         return sum(f.channel_multiplier for f in self.extractors)
 
-    def compute_into(self, input_roi: BackedSlice5D, out: FeatureData) -> FeatureData:
+    def compute_into(self, input_roi: DataSourceSlice, out: FeatureData) -> FeatureData:
         assert out.shape == self.get_expected_shape(input_roi.shape)
         offset = Point5D.zero()
         for fx in self.extractors:

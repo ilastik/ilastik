@@ -14,7 +14,7 @@ from ndstructs import Array5D, Slice5D, Point5D, Shape5D
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureData
 from ilastik.features.feature_extractor import FeatureExtractorCollection
 from ilastik.annotations import Annotation, FeatureSamples, LabelSamples
-from ndstructs.datasource import BackedSlice5D
+from ndstructs.datasource import DataSourceSlice
 from ndstructs.utils import JsonSerializable
 
 
@@ -59,7 +59,7 @@ class PixelClassifier(JsonSerializable):
     def get(cls, *classifier_args, **classifier_kwargs):
         return cls(*classifier_args, **classifier_kwargs)
 
-    def get_expected_roi(self, data_slice: BackedSlice5D) -> Slice5D:
+    def get_expected_roi(self, data_slice: DataSourceSlice) -> Slice5D:
         c_start = data_slice.c.start
         c_stop = c_start + self.num_classes
         return data_slice.with_coord(c=slice(c_start, c_stop))
@@ -67,13 +67,13 @@ class PixelClassifier(JsonSerializable):
     def allocate_predictions(self, data_slice: Slice5D):
         return Predictions.allocate(self.get_expected_roi(data_slice))
 
-    def predict(self, data_slice: BackedSlice5D, out: Predictions = None) -> Tuple[Predictions, FeatureData]:
+    def predict(self, data_slice: DataSourceSlice, out: Predictions = None) -> Tuple[Predictions, FeatureData]:
         if self.strict:
             self.feature_extractor.ensure_applicable(data_slice.datasource)
         return self._do_predict(data_slice=data_slice, out=out)
 
     @abstractmethod
-    def _do_predict(self, data_slice: BackedSlice5D, out: Predictions = None) -> Tuple[Predictions, FeatureData]:
+    def _do_predict(self, data_slice: DataSourceSlice, out: Predictions = None) -> Tuple[Predictions, FeatureData]:
         pass
 
 
@@ -96,7 +96,7 @@ class ScikitLearnPixelClassifier(PixelClassifier):
         self.forest.fit(training_data.X, training_data.y.squeeze())
 
     def _do_predict(
-        self, data_slice: BackedSlice5D, out: Optional[Predictions] = None
+        self, data_slice: DataSourceSlice, out: Optional[Predictions] = None
     ) -> Tuple[Predictions, FeatureData]:
         feature_data = self.feature_extractor.compute(data_slice)
         predictions_shape = data_slice.shape.with_coord(c=self.num_classes)
@@ -145,7 +145,7 @@ class VigraPixelClassifier(PixelClassifier):
             for i in range(num_forests):
                 executor.submit(train_forest, i)
 
-    def _do_predict(self, data_slice: BackedSlice5D, out: Predictions = None) -> Tuple[Predictions, FeatureData]:
+    def _do_predict(self, data_slice: DataSourceSlice, out: Predictions = None) -> Tuple[Predictions, FeatureData]:
         feature_data = self.feature_extractor.compute(data_slice)
         predictions = out or self.allocate_predictions(data_slice)
         assert predictions.roi == self.get_expected_roi(data_slice)
