@@ -302,7 +302,7 @@ class DataSelectionSerializer(AppletSerializer):
             if "filePath" in infoGroup:
                 del infoGroup["filePath"]
             infoGroup["filePath"] = os.path.pathsep.join(repaired_paths).encode("utf-8")
-            datasetInfo = info_class.from_h5_group(infoGroup)
+            datasetInfo = FilesystemDatasetInfo.from_h5_group(infoGroup)
 
         return datasetInfo, dirty
 
