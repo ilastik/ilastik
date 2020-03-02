@@ -46,7 +46,6 @@ from PyQt5.QtWidgets import (
     QComboBox,
 )
 
-#from ilastik.applets.networkClassification.tiktorchWizard import MagicWizard
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.utility.gui import threadRouted
 from ilastik.utility import bind
@@ -55,8 +54,7 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.utility import preferences
 
-from tiktorch.types import ModelState, Model
-from tiktorch.utils_client import read_model
+from tiktorch.types import ModelState
 from tiktorch.configkeys import TRAINING, NUM_ITERATIONS_DONE, NUM_ITERATIONS_MAX
 
 logger = logging.getLogger(__name__)
