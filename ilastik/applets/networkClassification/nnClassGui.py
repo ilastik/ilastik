@@ -724,7 +724,6 @@ class NNClassGui(LabelingGui):
         else:
             self._viewerControlUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
 
-
     def closeModelClick(self):
         model = self.topLevelOperatorView.set_model(b"")
 
@@ -739,7 +738,6 @@ class NNClassGui(LabelingGui):
 
         # get folder from user
         filename = self.getModelToOpen(self, folder)
-
 
         if filename:
             projectManager = self.parentApplet._StandardApplet__workflow._shell.projectManager
@@ -775,8 +773,6 @@ class NNClassGui(LabelingGui):
         # factory = self.topLevelOperatorView.ClassifierFactory[:].wait()[0]
         # return
 
-        #res = read_model(folder_path)
-        #config = res.model.config
 
         with open(model_path, "rb") as model_f:
             success = self.topLevelOperatorView.set_model(model_f.read())
@@ -793,14 +789,14 @@ class NNClassGui(LabelingGui):
 
     def set_NN_classifier_name(self, name: str):
         pass
-        #self.labelingDrawerUi.addModel.setText(f"{name}")
-
 
     def getModelToOpen(cls, parent_window, defaultDirectory):
         """
         opens a QFileDialog for importing files
         """
-        return QFileDialog.getOpenFileName(parent_window, "Select Model", defaultDirectory,  "Models (*.tmodel *.zip)")[0]
+        return QFileDialog.getOpenFileName(parent_window, "Select Model", defaultDirectory, "Models (*.tmodel *.zip)")[
+            0
+        ]
 
     @pyqtSlot()
     @threadRouted
