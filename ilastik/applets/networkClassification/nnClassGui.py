@@ -46,7 +46,6 @@ from PyQt5.QtWidgets import (
     QComboBox,
 )
 
-#from ilastik.applets.networkClassification.tiktorchWizard import MagicWizard
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.utility.gui import threadRouted
 from ilastik.utility import bind
@@ -55,8 +54,7 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.utility import preferences
 
-from tiktorch.types import ModelState, Model
-from tiktorch.utils_client import read_model
+from tiktorch.types import ModelState
 from tiktorch.configkeys import TRAINING, NUM_ITERATIONS_DONE, NUM_ITERATIONS_MAX
 
 logger = logging.getLogger(__name__)
@@ -726,7 +724,6 @@ class NNClassGui(LabelingGui):
         else:
             self._viewerControlUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
 
-
     def closeModelClick(self):
         model = self.topLevelOperatorView.set_model(b"")
 
@@ -741,7 +738,6 @@ class NNClassGui(LabelingGui):
 
         # get folder from user
         filename = self.getModelToOpen(self, folder)
-
 
         if filename:
             projectManager = self.parentApplet._StandardApplet__workflow._shell.projectManager
@@ -777,8 +773,6 @@ class NNClassGui(LabelingGui):
         # factory = self.topLevelOperatorView.ClassifierFactory[:].wait()[0]
         # return
 
-        #res = read_model(folder_path)
-        #config = res.model.config
 
         with open(model_path, "rb") as model_f:
             success = self.topLevelOperatorView.set_model(model_f.read())
@@ -795,14 +789,14 @@ class NNClassGui(LabelingGui):
 
     def set_NN_classifier_name(self, name: str):
         pass
-        #self.labelingDrawerUi.addModel.setText(f"{name}")
-
 
     def getModelToOpen(cls, parent_window, defaultDirectory):
         """
         opens a QFileDialog for importing files
         """
-        return QFileDialog.getOpenFileName(parent_window, "Select Model", defaultDirectory,  "Models (*.tmodel *.zip)")[0]
+        return QFileDialog.getOpenFileName(parent_window, "Select Model", defaultDirectory, "Models (*.tmodel *.zip)")[
+            0
+        ]
 
     @pyqtSlot()
     @threadRouted
