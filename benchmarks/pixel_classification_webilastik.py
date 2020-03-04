@@ -43,8 +43,8 @@ args = parser.parse_args()
 
 # features = list(FeatureExtractor.from_ilp("/home/tomaz/unicore_stuff/UnicoreProject.ilp"))
 # print(features)
-tile_shape = args.tile_size if args.tile_size is None else Shape5D.hypercube(args.tile_size)
-datasource = DataSource.create(args.data_url, tile_shape=tile_shape)
+# tile_shape = args.tile_size if args.tile_size is None else Shape5D.hypercube(args.tile_size)
+datasource = DataSource.create(args.data_url)
 # print(datasource.full_shape)
 print(f"Processing {datasource}")
 
@@ -60,7 +60,7 @@ extractors = (
 annotations = tuple(Annotation.from_png(label_url, raw_data=datasource) for label_url in args.label_urls)
 t = Timer()
 with t:
-    classifier = classifier_registry[args.classifier_class](
+    classifier = classifier_registry[args.classifier_class].train(
         feature_extractors=extractors, annotations=annotations, random_seed=0
     )
 print(f"Training {classifier.__class__.__name__} took {t.seconds()}")
@@ -70,7 +70,7 @@ t = Timer()
 with t:
 
     def predict_tile(raw_tile):
-        tile_prediction, tile_features = classifier.predict(raw_tile)
+        tile_prediction = classifier.predict(raw_tile)
         predictions.set(tile_prediction)
         print(f"Tile {raw_tile} done! {time.time()}")
 

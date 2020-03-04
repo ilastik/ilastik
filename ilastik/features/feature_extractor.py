@@ -2,6 +2,7 @@ from abc import abstractmethod
 import functools
 from typing import List, Iterable, Optional, TypeVar, ClassVar, Mapping, Type, Union
 from pathlib import Path
+import re
 
 import numpy as np
 import h5py
@@ -56,12 +57,17 @@ class FeatureExtractor(JsonSerializable):
         return feature_extractors
 
     @staticmethod
-    def from_ilp(ilp_file: Union[str, Path, h5py.File]) -> List[FE]:
-        feature_group_name = "FeatureSelections"
-        if isinstance(ilp_file, h5py.File):
-            return FeatureExtractor.from_ilp_group(ilp_file[feature_group_name])
-        with h5py.File(Path(ilp_file).as_posix(), "r") as f:
-            return FeatureExtractor.from_ilp_group(f[feature_group_name])
+    def from_classifier_feature_names(feature_names: h5py.Dataset) -> List["FeatureExtractor"]:
+        feature_extractors = []
+        for feature_description in feature_names:
+            description = feature_description.decode("utf8")
+            name = re.search(r"^(?P<name>[a-zA-Z \-]+)", description).group("name").strip()
+            klass = FeatureExtractor.REGISTRY[name.title().replace(" ", "")]
+            scale = float(re.search(r"σ=(?P<sigma>[0-9.]+)", description).group("sigma"))
+            extractor = klass.from_ilastik_scale(scale, axis_2d="z" if "in 2D" in description else None)
+            if len(feature_extractors) == 0 or feature_extractors[-1] != extractor:
+                feature_extractors.append(extractor)
+        return feature_extractors
 
     def __hash__(self):
         return hash((self.__class__, tuple(self.__dict__.values())))
