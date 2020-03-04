@@ -154,14 +154,14 @@ class Context:
 def do_predictions(roi: Slice5D, classifier_id: str, datasource_id: str) -> Predictions:
     classifier = Context.load(classifier_id)
     datasource = Context.load(datasource_id)
-    backed_roi = DataSourceSlice(datasource, **roi.to_dict())
+    backed_roi = DataSourceSlice(datasource, **roi.to_dict()).defined()
 
     predictions = classifier.allocate_predictions(backed_roi)
     with ThreadPoolExecutor() as executor:
         for raw_tile in backed_roi.get_tiles():
 
             def predict_tile(tile):
-                tile_prediction, tile_features = classifier.predict(tile)
+                tile_prediction = classifier.predict(tile)
                 predictions.set(tile_prediction, autocrop=True)
 
             executor.submit(predict_tile, raw_tile)
