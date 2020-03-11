@@ -3,7 +3,6 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import List, Iterator, Tuple, Dict
 
 import numpy as np
-
 from ndstructs import Slice5D, Point5D, Shape5D
 from ndstructs import Array5D, Image, ScalarData, StaticLine, LinearData
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureData
@@ -127,6 +126,18 @@ class Annotation(JsonSerializable):
             label_samples=all_label_samples[0].concatenate(*all_label_samples[1:]),
             feature_samples=all_feature_samples[0].concatenate(*all_feature_samples[1:]),
         )
+
+    @property
+    def ilp_data(self) -> dict:
+        axiskeys = self.raw_data.axiskeys
+        return {
+            "__data__": self.scribblings.raw(axiskeys),
+            "__attrs__": {
+                "blockSlice": "["
+                + ",".join(f"{slc.start}:{slc.stop}" for slc in self.scribblings.roi.to_slices(axiskeys))
+                + "]"
+            },
+        }
 
     def __repr__(self):
         return f"<Annotation {self.scribblings.shape} for raw_data: {self.raw_data}>"

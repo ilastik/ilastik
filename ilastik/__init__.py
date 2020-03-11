@@ -29,8 +29,13 @@ import os
 from . import expose_submodules
 import h5py
 import time
-from typing import Optional, Iterable, List
+from typing import Optional, Iterable, List, Dict, Any, Mapping
+from pathlib import Path
 from pkg_resources import parse_version
+from collections.abc import Mapping as BaseMapping
+
+import numpy as np
+import pickle
 
 this_file = os.path.abspath(__file__)
 this_file = os.path.realpath(this_file)
@@ -107,6 +112,58 @@ class Project:
 
     def updateVersion(self, value=__version__):
         self._updateValue(self.ILASTIK_VERSION, str(value).encode("utf-8"))
+
+    @classmethod
+    def h5_group_to_dict(cls, group: h5py.Group) -> Dict[str, Any]:
+        out = {}
+        for key, value in group.items():
+            if isinstance(value, h5py.Group):
+                out[key] = cls.h5_group_to_dict(value)
+            else:
+                out[key] = cls.h5_datasaet_to_dict(value)
+        return out
+
+    @classmethod
+    def populate_h5_group(cls, group: h5py.Group, data: Dict[str, Any]) -> None:
+        for key, value in data.items():
+            if value is None:
+                continue
+            if not isinstance(value, BaseMapping):
+                value = {"__data__": value}
+            if "__data__" in value:
+                h5_value, extra_attributes = cls.to_h5_dataset_value(value["__data__"])
+                group.create_dataset(key, data=h5_value)
+                extra_attributes.update(value.get("__attrs__", {}))
+                for attr_key, attr_value in extra_attributes.items():
+                    group[key].attrs[attr_key] = attr_value
+            else:
+                subgroup = group.create_group(key)
+                cls.populate_h5_group(subgroup, value)
+
+    @classmethod
+    def to_h5_dataset_value(cls, value):
+        if value is None:
+            raise ValueError("ilp does not save None values")
+        if isinstance(value, (int, str, float, bytes, tuple, np.ndarray)):
+            return value, {}
+        return np.void(pickle.dumps(value, 0)), {"version": 1}
+
+    @classmethod
+    def h5_datasaet_to_dict(cls, dataset: h5py.Dataset):
+        return {"__data__": dataset[()], "__attrs__": {}}  # FIXME
+
+    @classmethod
+    def from_ilp_data(cls, data: Mapping[str, Any], path: Optional[Path] = None) -> str:
+        import tempfile
+
+        if not path:
+            tmp_file_handle, tmp_file_path = tempfile.mkstemp(suffix=".ilp")
+            os.close(tmp_file_handle)
+            path = Path(tmp_file_path)
+        ilp = h5py.File(tmp_file_path, "w")
+        # import pydevd; pydevd.settrace()
+        cls.populate_h5_group(group=ilp["/"], data=data)
+        return cls(project_file=ilp)
 
 
 def convertVersion(vstring):

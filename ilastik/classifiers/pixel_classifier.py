@@ -1,19 +1,17 @@
-from abc import ABCMeta, abstractproperty, abstractmethod
-from typing import List, Tuple, Iterable, Optional
+from abc import abstractmethod
+from typing import List, Tuple, Iterable, Optional, Sequence
 import multiprocessing
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
-import re
 from threading import Lock
 
 import numpy as np
 import vigra
-import h5py
 from vigra.learning import RandomForest as VigraRandomForest
 from sklearn.ensemble import RandomForestClassifier as ScikitRandomForestClassifier
 
 from ndstructs import Array5D, Slice5D, Point5D, Shape5D
-from ilastik.features.feature_extractor import FeatureExtractor, FeatureData
+from ilastik.features.feature_extractor import FeatureExtractor, FeatureData, ChannelwiseFilter
 from ilastik.features.feature_extractor import FeatureExtractorCollection
 from ilastik.annotations import Annotation, FeatureSamples, LabelSamples
 from ndstructs.datasource import DataSourceSlice, DataSource
@@ -33,21 +31,28 @@ class Predictions(Array5D):
 class TrainingData:
     X: np.ndarray
     y: np.ndarray
-    num_classes: int
+    classes: List[int]
 
-    def __init__(self, feature_extractor: FeatureExtractor, annotations: Tuple[Annotation]):
+    def __init__(self, feature_extractors: Sequence[FeatureExtractor], annotations: Sequence[Annotation], strict: bool):
+        assert len(annotations) > 0
+        assert len(feature_extractors) > 0
+        if strict:
+            (fx.ensure_applicable(annot.raw_data) for annot in annotations for fx in feature_extractors)
+        feature_extractor = FeatureExtractorCollection(feature_extractors)
         samples = [a.get_samples(feature_extractor) for a in annotations]
         gathered_samples = samples[0].concatenate(*samples[1:])
-        self.num_classes = len(gathered_samples.label.classes)
+        self.classes = gathered_samples.label.classes
         self.X = gathered_samples.feature.linear_raw()
         self.y = gathered_samples.label.as_incremental().linear_raw().astype(np.uint32)
 
 
 class PixelClassifier(JsonSerializable):
-    def __init__(self, feature_extractor: FeatureExtractor, num_classes: int, strict: bool):
+    def __init__(self, feature_extractors: List[FeatureExtractor], classes: List[int], strict: bool):
         self.strict = strict
-        self.feature_extractor = feature_extractor
-        self.num_classes = num_classes
+        self.feature_extractors = feature_extractors
+        self.feature_extractor = FeatureExtractorCollection(feature_extractors)
+        self.classes = classes
+        self.num_classes = len(classes)
 
     @classmethod
     @lru_cache()
@@ -98,33 +103,26 @@ class ScikitLearnPixelClassifier(PixelClassifier):
         *,
         feature_extractor: FeatureExtractor,
         forest: ScikitRandomForestClassifier,
-        num_classes: int,
+        classes: List[int],
         strict: bool = False,
     ):
-        super().__init__(num_classes=forest.n_classes_, feature_extractor=feature_extractor, strict=strict)
+        super().__init__(classes=classes, feature_extractor=feature_extractor, strict=strict)
         self.forest = forest
 
     @classmethod
     def train(
         cls,
-        feature_extractors: Tuple[FeatureExtractor, ...],
-        annotations: Tuple[Annotation, ...],
+        feature_extractors: Sequence[FeatureExtractor],
+        annotations: Sequence[Annotation],
         *,
         num_trees: int = 100,
         random_seed: int = 0,
         strict: bool = False,
     ) -> "ScikitLearnPixelClassifier":
-        fx_collection = FeatureExtractorCollection(feature_extractors)
-        assert len(annotations) > 0
-        if strict:
-            for annot in annotations:
-                fx_collection.ensure_applicable(annot.raw_data)
-
-        training_data = TrainingData(fx_collection, annotations)
+        training_data = TrainingData(feature_extractors, annotations, strict=strict)
         forest = ScikitRandomForestClassifier(n_estimators=num_trees, random_state=random_seed)
         forest.fit(training_data.X, training_data.y.squeeze())
-        print(cls)
-        return cls(forest=forest, feature_extractor=fx_collection, num_classes=training_data.num_classes, strict=strict)
+        return cls(forest=forest, feature_extractors=feature_extractors, classes=training_data.classes, strict=strict)
 
     @classmethod
     def from_json_data(cls, data: dict) -> "ScikitLearnPixelClassifier":
@@ -144,29 +142,30 @@ class ScikitLearnPixelClassifier(PixelClassifier):
 
 
 class VigraPixelClassifier(PixelClassifier):
-    def __init__(self, *, feature_extractor: FeatureExtractor, forests: List[VigraRandomForest], strict: bool = False):
-        super().__init__(num_classes=forests[0].labelCount(), feature_extractor=feature_extractor, strict=strict)
+    def __init__(
+        self,
+        *,
+        feature_extractors: Sequence[FeatureExtractor],
+        forests: List[VigraRandomForest],
+        classes: List[int],
+        strict: bool = False,
+    ):
+        super().__init__(classes=classes, feature_extractors=feature_extractors, strict=strict)
         self.forests = forests
         self.num_trees = sum(f.treeCount() for f in forests)
 
     @classmethod
     def train(
         cls,
-        feature_extractors: Tuple[FeatureExtractor, ...],
-        annotations: Tuple[Annotation, ...],
+        feature_extractors: Sequence[FeatureExtractor],
+        annotations: Sequence[Annotation],
         *,
         num_trees: int = 100,
         num_forests: int = multiprocessing.cpu_count(),
         random_seed: int = 0,
         strict: bool = False,
     ):
-        fx_collection = FeatureExtractorCollection(feature_extractors)
-        assert len(annotations) > 0
-        if strict:
-            for annot in annotations:
-                fx_collection.ensure_applicable(annot.raw_data)
-
-        training_data = TrainingData(fx_collection, annotations)
+        training_data = TrainingData(feature_extractors, annotations, strict=strict)
 
         tree_counts = np.array([num_trees // num_forests] * num_forests)
         tree_counts[: num_trees % num_forests] += 1
@@ -180,19 +179,11 @@ class VigraPixelClassifier(PixelClassifier):
         with ThreadPoolExecutor(max_workers=num_forests) as executor:
             for i in range(num_forests):
                 executor.submit(train_forest, i)
-        return cls(feature_extractor=fx_collection, forests=forests, strict=strict)
+        return cls(feature_extractors=feature_extractors, forests=forests, strict=strict, classes=training_data.classes)
 
     @classmethod
     def from_json_data(cls, data: dict) -> "VigraPixelClassifier":
         return from_json_data(cls.train, data)
-
-    @classmethod
-    def from_ilp_group(cls, group: h5py.Group) -> "VigraPixelClassifier":
-        forest_groups = [group[key] for key in group.keys() if re.match("^Forest\d+$", key)]
-        forests = [VigraRandomForest(fg.file.filename, fg.name) for fg in forest_groups]
-        feature_extractors = FeatureExtractor.from_classifier_feature_names(group["feature_names"])
-        fx_collection = FeatureExtractorCollection(feature_extractors)
-        return cls(feature_extractor=fx_collection, forests=forests, strict=True)
 
     def _do_predict(self, data_slice: DataSourceSlice, out: Predictions = None) -> Predictions:
         feature_data = self.feature_extractor.compute(data_slice)

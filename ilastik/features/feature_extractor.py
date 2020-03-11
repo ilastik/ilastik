@@ -1,11 +1,8 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 import functools
-from typing import List, Iterable, Optional, TypeVar, ClassVar, Mapping, Type, Union
-from pathlib import Path
-import re
+from typing import List, Iterable, Optional, Type, Union, Iterator
 
 import numpy as np
-import h5py
 
 from ndstructs import Slice5D, Point5D, Shape5D
 from ndstructs import Array5D
@@ -28,46 +25,8 @@ class FeatureDataMismatchException(Exception):
         super().__init__(f"Feature {feature_extractor} can't be cleanly applied to {data_source}")
 
 
-FE = TypeVar("FE", bound="FeatureExtractor")
-
-
 class FeatureExtractor(JsonSerializable):
     """A specification of how feature data is to be (reproducibly) computed"""
-
-    REGISTRY: ClassVar[Mapping[str, Type[FE]]] = {}
-
-    @classmethod
-    @abstractmethod
-    def from_ilastik_scale(cls: Type[FE], scale: float, compute_in_2d: bool) -> FE:
-        pass
-
-    @staticmethod
-    def from_ilp_group(group: h5py.Group) -> List[FE]:
-        feature_names: List[str] = [feature_name.decode("utf-8") for feature_name in group["FeatureIds"][()]]
-        compute_in_2d: List[bool] = list(group["ComputeIn2d"][()])
-        scales: List[float] = list(group["Scales"][()])
-        selection_matrix = group["SelectionMatrix"][()]  # feature name x scales
-
-        feature_extractors = []
-        for feature_idx, feature_name in enumerate(feature_names):
-            feature_class = FeatureExtractor.REGISTRY[feature_name]
-            for scale_idx, (scale, in_2d) in enumerate(zip(scales, compute_in_2d)):
-                if selection_matrix[feature_idx][scale_idx]:
-                    feature_extractors.append(feature_class.from_ilastik_scale(scale, axis_2d="z" if in_2d else None))
-        return feature_extractors
-
-    @staticmethod
-    def from_classifier_feature_names(feature_names: h5py.Dataset) -> List["FeatureExtractor"]:
-        feature_extractors = []
-        for feature_description in feature_names:
-            description = feature_description.decode("utf8")
-            name = re.search(r"^(?P<name>[a-zA-Z \-]+)", description).group("name").strip()
-            klass = FeatureExtractor.REGISTRY[name.title().replace(" ", "")]
-            scale = float(re.search(r"σ=(?P<sigma>[0-9.]+)", description).group("sigma"))
-            extractor = klass.from_ilastik_scale(scale, axis_2d="z" if "in 2D" in description else None)
-            if len(feature_extractors) == 0 or feature_extractors[-1] != extractor:
-                feature_extractors.append(extractor)
-        return feature_extractors
 
     def __hash__(self):
         return hash((self.__class__, tuple(self.__dict__.values())))
@@ -116,9 +75,13 @@ class ChannelwiseFilter(FeatureExtractor):
     """A Feature extractor that computes independently for every
     spatial slice and for every channel in its input"""
 
-    def __init__(self, axis_2d: Optional[str] = None):
+    def __init__(self, *, axis_2d: Optional[str] = None, num_input_channels: int):
         super().__init__()
         self.axis_2d = axis_2d
+        self.num_input_channels = num_input_channels
+
+    def is_applicable_to(self, datasource: DataSource) -> bool:
+        return datasource.shape >= self.kernel_shape and datasource.shape.c == self.num_input_channels
 
     @property
     def channel_multiplier(self) -> int:
@@ -159,10 +122,6 @@ class FeatureExtractorCollection(FeatureExtractor):
         for label in Point5D.LABELS:
             shape_params[label] = max(f.kernel_shape[label] for f in extractors)
         self._kernel_shape = Shape5D(**shape_params)
-
-    @classmethod
-    def from_ilastik_scale(cls, scale: float, compute_in_2d: bool) -> "FeatureExtractorCollection":
-        raise NotImplementedError("It makes no sense to implement this")
 
     def __repr__(self):
         return f"<{self.__class__.__name__} {[repr(f) for f in self.extractors]}>"

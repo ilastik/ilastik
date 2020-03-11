@@ -6,15 +6,16 @@ import vigra
 import fastfilters
 import numpy
 
-from .feature_extractor import ChannelwiseFilter, FeatureData, FeatureExtractor
+from .feature_extractor import FeatureData
+from .ilp_filter import IlpFilter
 from ndstructs import Array5D, Image, ScalarImage
 from ndstructs import Point5D, Slice5D, Shape5D
 from ndstructs.datasource import DataSource, DataSourceSlice
 
 
-class ChannelwiseFastFilter(ChannelwiseFilter):
-    def __init__(self, axis_2d: Optional[str] = None):
-        super().__init__(axis_2d=axis_2d)
+class ChannelwiseFastFilter(IlpFilter):
+    def __init__(self, *, num_input_channels: int, axis_2d: Optional[str] = None):
+        super().__init__(axis_2d=axis_2d, num_input_channels=num_input_channels)
 
     def __repr__(self):
         props = " ".join(f"{k}={v}" for k, v in self.__dict__.items())
@@ -49,8 +50,16 @@ class ChannelwiseFastFilter(ChannelwiseFilter):
 
 
 class StructureTensorEigenvalues(ChannelwiseFastFilter):
-    def __init__(self, innerScale: float, outerScale: float, window_size: float = 0, axis_2d: Optional[str] = None):
-        super().__init__(axis_2d=axis_2d)
+    def __init__(
+        self,
+        *,
+        innerScale: float,
+        outerScale: float,
+        num_input_channels: int,
+        window_size: float = 0,
+        axis_2d: Optional[str] = None,
+    ):
+        super().__init__(axis_2d=axis_2d, num_input_channels=num_input_channels)
         self.innerScale = innerScale
         self.outerScale = outerScale
         self.window_size = window_size
@@ -65,25 +74,37 @@ class StructureTensorEigenvalues(ChannelwiseFastFilter):
         return 2 if self.axis_2d else 3
 
     @classmethod
-    def from_ilastik_scale(cls, scale: float, axis_2d: Optional[str] = None) -> "StructureTensorEigenvalues":
-        return cls(innerScale=scale, outerScale=0.5 * scale, axis_2d=axis_2d)
+    def from_ilp_scale(
+        cls, *, scale: float, num_input_channels: int, axis_2d: Optional[str] = None
+    ) -> "StructureTensorEigenvalues":
+        return cls(innerScale=scale, outerScale=0.5 * scale, axis_2d=axis_2d, num_input_channels=num_input_channels)
+
+    @property
+    def ilp_scale(self) -> float:
+        return self.innerScale
 
 
-FeatureExtractor.REGISTRY[StructureTensorEigenvalues.__name__] = StructureTensorEigenvalues
+IlpFilter.REGISTRY[StructureTensorEigenvalues.__name__] = StructureTensorEigenvalues
 
 
 SigmaFilter = TypeVar("SigmaFilter", bound="SigmaWindowFilter")
 
 
 class SigmaWindowFilter(ChannelwiseFastFilter):
-    def __init__(self, sigma: float, window_size: float = 0, axis_2d: Optional[str] = None):
-        super().__init__(axis_2d=axis_2d)
+    def __init__(self, *, sigma: float, num_input_channels: int, window_size: float = 0, axis_2d: Optional[str] = None):
+        super().__init__(axis_2d=axis_2d, num_input_channels=num_input_channels)
         self.sigma = sigma
         self.window_size = window_size
 
     @classmethod
-    def from_ilastik_scale(cls: SigmaFilter, scale: float, axis_2d: Optional[str] = None) -> SigmaFilter:
-        return cls(sigma=scale, axis_2d=axis_2d)
+    def from_ilp_scale(
+        cls: SigmaFilter, scale: float, num_input_channels: int, axis_2d: Optional[str] = None
+    ) -> SigmaFilter:
+        return cls(sigma=scale, axis_2d=axis_2d, num_input_channels=num_input_channels)
+
+    @property
+    def ilp_scale(self) -> float:
+        return self.sigma
 
 
 class GaussianGradientMagnitude(SigmaWindowFilter):
@@ -91,7 +112,7 @@ class GaussianGradientMagnitude(SigmaWindowFilter):
         return fastfilters.gaussianGradientMagnitude(source_raw, sigma=self.sigma, window_size=self.window_size)
 
 
-FeatureExtractor.REGISTRY[GaussianGradientMagnitude.__name__] = GaussianGradientMagnitude
+IlpFilter.REGISTRY[GaussianGradientMagnitude.__name__] = GaussianGradientMagnitude
 
 
 class GaussianSmoothing(SigmaWindowFilter):
@@ -99,12 +120,20 @@ class GaussianSmoothing(SigmaWindowFilter):
         return fastfilters.gaussianSmoothing(source_raw, sigma=self.sigma, window_size=self.window_size)
 
 
-FeatureExtractor.REGISTRY[GaussianSmoothing.__name__] = GaussianSmoothing
+IlpFilter.REGISTRY[GaussianSmoothing.__name__] = GaussianSmoothing
 
 
 class DifferenceOfGaussians(ChannelwiseFastFilter):
-    def __init__(self, sigma0: float, sigma1: float, window_size: float = 0, axis_2d: Optional[str] = None):
-        super().__init__(axis_2d=axis_2d)
+    def __init__(
+        self,
+        *,
+        sigma0: float,
+        sigma1: float,
+        num_input_channels: int,
+        window_size: float = 0,
+        axis_2d: Optional[str] = None,
+    ):
+        super().__init__(axis_2d=axis_2d, num_input_channels=num_input_channels)
         self.sigma0 = sigma0
         self.sigma1 = sigma1
         self.window_size = window_size
@@ -118,25 +147,37 @@ class DifferenceOfGaussians(ChannelwiseFastFilter):
         return a - b
 
     @classmethod
-    def from_ilastik_scale(cls, scale: float, axis_2d: Optional[str] = None) -> "DifferenceOfGaussians":
-        return cls(sigma0=scale, sigma1=scale * 0.66, axis_2d=axis_2d)
+    def from_ilp_scale(
+        cls, scale: float, num_input_channels: int, axis_2d: Optional[str] = None
+    ) -> "DifferenceOfGaussians":
+        return cls(sigma0=scale, sigma1=scale * 0.66, axis_2d=axis_2d, num_input_channels=num_input_channels)
+
+    @property
+    def ilp_scale(self) -> float:
+        return self.sigma0
 
 
-FeatureExtractor.REGISTRY[DifferenceOfGaussians.__name__] = DifferenceOfGaussians
+IlpFilter.REGISTRY[DifferenceOfGaussians.__name__] = DifferenceOfGaussians
 
 
 ScaleFilter = TypeVar("ScaleFilter", bound="ScaleWindowFilter")
 
 
 class ScaleWindowFilter(ChannelwiseFastFilter):
-    def __init__(self, scale: float, window_size: float = 0, axis_2d: Optional[str] = None):
-        super().__init__(axis_2d=axis_2d)
+    def __init__(self, *, scale: float, num_input_channels: int, window_size: float = 0, axis_2d: Optional[str] = None):
+        super().__init__(axis_2d=axis_2d, num_input_channels=num_input_channels)
         self.scale = scale
         self.window_size = window_size
 
     @classmethod
-    def from_ilastik_scale(cls: ScaleFilter, scale: float, axis_2d: Optional[str] = None) -> ScaleFilter:
-        return cls(scale=scale, axis_2d=axis_2d)
+    def from_ilp_scale(
+        cls: ScaleFilter, scale: float, num_input_channels: int, axis_2d: Optional[str] = None
+    ) -> ScaleFilter:
+        return cls(scale=scale, axis_2d=axis_2d, num_input_channels=num_input_channels)
+
+    @property
+    def ilp_scale(self) -> float:
+        return self.scale
 
 
 class HessianOfGaussianEigenvalues(ScaleWindowFilter):
@@ -148,7 +189,7 @@ class HessianOfGaussianEigenvalues(ScaleWindowFilter):
         return 2 if self.axis_2d else 3
 
 
-FeatureExtractor.REGISTRY[HessianOfGaussianEigenvalues.__name__] = HessianOfGaussianEigenvalues
+IlpFilter.REGISTRY[HessianOfGaussianEigenvalues.__name__] = HessianOfGaussianEigenvalues
 
 
 class LaplacianOfGaussian(ScaleWindowFilter):
@@ -156,4 +197,4 @@ class LaplacianOfGaussian(ScaleWindowFilter):
         return fastfilters.laplacianOfGaussian(source_raw, scale=self.scale, window_size=self.window_size)
 
 
-FeatureExtractor.REGISTRY[LaplacianOfGaussian.__name__] = LaplacianOfGaussian
+IlpFilter.REGISTRY[LaplacianOfGaussian.__name__] = LaplacianOfGaussian

@@ -22,13 +22,13 @@ def send(method: str, *args, **kwargs):
 
 resp = post(
     "http://localhost:5000/data_source",
-    data={"url": "/home/tomaz/SampleData/n5tests/317_8_CamKII_tTA_lacZ_Xgal_s123_1.4.n5/data"},
+    data={"path": "/home/tomaz/SampleData/n5tests/317_8_CamKII_tTA_lacZ_Xgal_s123_1.4.n5/data"},
 )
 
 
 resp = post(
     "http://localhost:5000/sequence_data_source",
-    data={"url": "/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped1.png"},
+    data={"path": "/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped1.png"},
 )
 data_source_id = resp.json()
 print(f"data_source_id: {data_source_id}")
@@ -52,13 +52,16 @@ print(f"annot_id: {annot_id}")
 assert annot_id.startswith("pointer@")
 
 
-resp = post("http://localhost:5000/gaussian_smoothing", data={"sigma": 0.3, "axis_2d": "z"})
+resp = post("http://localhost:5000/gaussian_smoothing", data={"sigma": 0.3, "axis_2d": "z", "num_input_channels": 3})
 gauss_id = resp.json()
 print(f"gauss_id: {gauss_id}")
 assert gauss_id.startswith("pointer@")
 
 
-resp = post("http://localhost:5000/hessian_of_gaussian_eigenvalues", data={"scale": 0.3, "axis_2d": "z"})
+resp = post(
+    "http://localhost:5000/hessian_of_gaussian_eigenvalues",
+    data={"scale": 0.3, "axis_2d": "z", "num_input_channels": 3},
+)
 hess_id = resp.json()
 print(f"hess_id: {hess_id}")
 assert hess_id.startswith("pointer@")
@@ -128,7 +131,7 @@ print(f"precomputed://http://localhost:5000/datasource/{data_source_id}")
 print("\n\nRgb squares url:")
 resp = post(
     "http://localhost:5000/data_source",
-    data={"url": "/home/tomaz/ilastikTests/SampleData/rgbtest/rgb_squares_rgb_no-alpha.png"},
+    data={"path": "/home/tomaz/ilastikTests/SampleData/rgbtest/rgb_squares_rgb_no-alpha.png"},
 )
 rgb_squares_data_source_id = resp.json()
 print(f"precomputed://http://localhost:5000/datasource/{rgb_squares_data_source_id}")
