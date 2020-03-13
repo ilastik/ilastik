@@ -63,7 +63,7 @@ def _clean_paths(root: pathlib.Path) -> None:
     if sys.platform.startswith("win"):
         # Empty PATH except for gurobi and CPLEX and add ilastik's installation paths.
         path = list(filter(isvalidpath_win, _env_list("PATH")))
-        path += subdirs("Qt4/bin", "Library/bin", "python", "bin")
+        path += subdirs("Qt4/bin", "Library/bin", "Library/mingw-w64/bin", "python", "bin")
         os.environ["PATH"] = os.pathsep.join(reversed(path))
     else:
         # Clean LD_LIBRARY_PATH and add ilastik's installation paths
