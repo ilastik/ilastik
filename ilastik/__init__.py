@@ -26,20 +26,10 @@ import re
 # # Add Submodules to sys.path ##
 ################################
 import os
-from . import expose_submodules
 import h5py
 import time
 from typing import Optional, Iterable, List
 from pkg_resources import parse_version
-
-this_file = os.path.abspath(__file__)
-this_file = os.path.realpath(this_file)
-ilastik_package_dir = os.path.dirname(this_file)
-ilastik_repo_dir = os.path.dirname(ilastik_package_dir)
-submodule_dir = os.path.join(ilastik_repo_dir, "submodules")
-
-# Add all submodules to the PYTHONPATH
-expose_submodules.expose_submodules(submodule_dir)
 
 ##################
 # # Version info ##
