@@ -17,14 +17,16 @@ from pathlib import Path
 
 from ndstructs import Point5D, Slice5D, Shape5D, Array5D
 from ndstructs.datasource import DataSource, DataSourceSlice, SequenceDataSource
-from ndstructs.utils import JsonSerializable
-from ilastik.annotations import Annotation, Scribblings
+from ndstructs.utils import JsonSerializable, from_json_data
+from ilastik.annotations import Annotation
 from ilastik.classifiers.pixel_classifier import (
     PixelClassifier,
     Predictions,
     VigraPixelClassifier,
     ScikitLearnPixelClassifier,
 )
+from ilastik.classifiers.ilp_pixel_classifier import IlpVigraPixelClassifier
+
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureDataMismatchException
 from ilastik.features.fastfilters import (
     GaussianSmoothing,
@@ -46,34 +48,6 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-# FIXME:Rasterizing should probabl be done on the client
-class NgAnnotation(Annotation):
-    def __init__(self, color: Tuple[int, int, int], voxels: List[Point5D], raw_data: DataSource):
-        self.color = tuple(color)  # FIXME: JSonSerializable only produces list on iterables
-        self.voxels = [Point5D.from_json_data(coords) for coords in voxels]
-
-        hashed_color = hash(self.color) % 255
-
-        min_point = Point5D(**{key: min(vox[key] for vox in self.voxels) for key in "xyz"})
-        max_point = Point5D(**{key: max(vox[key] for vox in self.voxels) for key in "xyz"})
-
-        # +1 because slice.stop is exclusive, but pointA and pointB are inclusive
-        scribbling_roi = Slice5D.zero(**{key: slice(min_point[key], max_point[key] + 1) for key in "xyz"})
-        scribblings = Scribblings.allocate(scribbling_roi, dtype=np.uint8, value=0)
-
-        for voxel in self.voxels:
-            colored_point = Scribblings.allocate(Slice5D.zero().translated(voxel), dtype=np.uint8, value=hashed_color)
-            scribblings.set(colored_point)
-
-        super().__init__(scribblings=scribblings, raw_data=raw_data)
-
-    def json_data(self):
-        data = super().json_data
-        data["color"] = color
-        data["voxels"] = [vx.json_data for vx in self.voxels]
-        return data
-
-
 datasource_classes = [DataSource, SequenceDataSource]
 
 feature_extractor_classes = [
@@ -86,7 +60,13 @@ feature_extractor_classes = [
     StructureTensorEigenvalues,
 ]
 
-classifier_classes = [PixelClassifier, VigraPixelClassifier, ScikitLearnPixelClassifier, Annotation, NgAnnotation]
+classifier_classes = [
+    PixelClassifier,
+    VigraPixelClassifier,
+    ScikitLearnPixelClassifier,
+    IlpVigraPixelClassifier,
+    Annotation,
+]
 
 workflow_classes = {
     klass.__name__: klass for klass in datasource_classes + feature_extractor_classes + classifier_classes
@@ -107,7 +87,13 @@ class Context:
     @classmethod
     def get_class_named(cls, name: str):
         name = name if name in workflow_classes else name.title().replace("_", "")
-        return workflow_classes[name]
+        try:
+            return workflow_classes[name]
+        except KeyError as e:
+            import pydevd
+
+            pydevd.settrace()
+            print("asdads")
 
     @classmethod
     def create(cls, klass):
@@ -208,7 +194,7 @@ def ng_predict(
     return resp
 
 
-@app.route("/predictions/<classifier_id>/<datasource_id>/info")
+@app.route("/predictions/<classifier_id>/<datasource_id>/info/")
 def info_dict(classifier_id: str, datasource_id: str) -> Dict:
     classifier = Context.load(classifier_id)
     datasource = Context.load(datasource_id)
@@ -349,7 +335,12 @@ def handle_feature_data_mismatch(error):
 
 @app.route("/<class_name>/", methods=["POST"])
 def create_object(class_name: str):
+    #    if Context.get_class_named(class_name) == Annotation:
+    #        import pydevd; pydevd.settrace()
+
     obj, uid = Context.create(Context.get_class_named(class_name))
+    if isinstance(obj, Annotation):  # DEBUG!!!!!!!!!!!!!!
+        obj.as_uint8().show_channels()  # DEBUG!!!!!!!!!!!!!!!!!
     return json.dumps(uid)
 
 

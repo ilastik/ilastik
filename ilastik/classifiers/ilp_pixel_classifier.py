@@ -12,7 +12,7 @@ import h5py
 
 from .pixel_classifier import VigraPixelClassifier
 from ilastik.features.ilp_filter import IlpFilter
-from ilastik.annotations import Annotation, FeatureSamples, LabelSamples
+from ilastik.annotations import Annotation
 
 from ilastik import Project
 from lazyflow.classifiers.parallelVigraRfLazyflowClassifier import ParallelVigraRfLazyflowClassifierFactory

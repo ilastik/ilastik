@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import List, Tuple, Iterable, Optional, Sequence
+from typing import List, Tuple, Iterable, Optional, Sequence, Dict
 import multiprocessing
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
@@ -13,7 +13,7 @@ from sklearn.ensemble import RandomForestClassifier as ScikitRandomForestClassif
 from ndstructs import Array5D, Slice5D, Point5D, Shape5D
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureData, ChannelwiseFilter
 from ilastik.features.feature_extractor import FeatureExtractorCollection
-from ilastik.annotations import Annotation, FeatureSamples, LabelSamples
+from ilastik.annotations import Annotation, FeatureSamples, Color
 from ndstructs.datasource import DataSourceSlice, DataSource
 from ndstructs.utils import JsonSerializable, from_json_data
 
@@ -32,18 +32,31 @@ class TrainingData:
     X: np.ndarray
     y: np.ndarray
     classes: List[int]
+    class_map: Dict[Color, int]
 
     def __init__(self, feature_extractors: Sequence[FeatureExtractor], annotations: Sequence[Annotation], strict: bool):
         assert len(annotations) > 0
         assert len(feature_extractors) > 0
         if strict:
             (fx.ensure_applicable(annot.raw_data) for annot in annotations for fx in feature_extractors)
+        self.color_map = {}
+        for annot in annotations:
+            if annot.color not in self.color_map:
+                self.color_map[annot.color] = len(self.color_map) + 1
+
         feature_extractor = FeatureExtractorCollection(feature_extractors)
-        samples = [a.get_samples(feature_extractor) for a in annotations]
-        gathered_samples = samples[0].concatenate(*samples[1:])
-        self.classes = gathered_samples.label.classes
-        self.X = gathered_samples.feature.linear_raw()
-        self.y = gathered_samples.label.as_incremental().linear_raw().astype(np.uint32)
+        feature_samples = [a.get_feature_samples(feature_extractor) for a in annotations]
+
+        raw_labels = [
+            np.full((feat_samp.shape.volume, 1), self.color_map[annot.color], dtype=np.uint32)
+            for feat_samp, annot in zip(feature_samples, annotations)
+        ]
+
+        gathered_samples = feature_samples[0].concatenate(*feature_samples[1:])
+        self.classes = list(self.color_map.values())
+        self.X = gathered_samples.linear_raw()
+        self.y = np.concatenate(raw_labels)
+        assert self.X.shape[0] == self.y.shape[0]
 
 
 class PixelClassifier(JsonSerializable):
