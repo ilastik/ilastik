@@ -4,6 +4,7 @@ from typing import List, Iterator, Tuple, Dict, Iterable, Sequence
 from dataclasses import dataclass
 from collections.abc import Mapping as BaseMapping
 from numbers import Number
+from pathlib import Path
 
 import numpy as np
 from ndstructs import Slice5D, Point5D, Shape5D
@@ -85,14 +86,18 @@ class Annotation(ScalarData):
         return self.__class__(arr, axiskeys=axiskeys, location=location, color=self.color, raw_data=self.raw_data)
 
     @classmethod
-    def from_file(cls, path: str, raw_data: DataSource, location: Point5D = Point5D.zero()) -> Iterable["Annotation"]:
+    def from_file(cls, path: Path, raw_data: DataSource, location: Point5D = Point5D.zero()) -> Iterable["Annotation"]:
         labels = DataSource.create(path)
         label_data = labels.retrieve(Slice5D.all())
         for color_array in label_data.unique_colors().colors:
+            if np.count_nonzero(color_array.linear_raw()) == 0:
+                continue
             single_color_labels = label_data.color_filtered(color_array)
             axiskeys = "tzyxc"
             color = Color.from_channels(color_array.raw("c"))
-            yield cls(single_color_labels.raw(axiskeys), axiskeys=axiskeys, location=location, raw_data=raw_data)
+            yield cls(
+                single_color_labels.raw(axiskeys), axiskeys=axiskeys, location=location, raw_data=raw_data, color=color
+            )
 
     @classmethod
     def interpolate_from_points(cls, color: Color, voxels: List[Point5D], raw_data: DataSource):
