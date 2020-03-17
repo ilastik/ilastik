@@ -719,6 +719,7 @@ def determineBlockShape(max_shape, target_block_volume):
     block_shape = list(zip(*sorted(indexed_block_shape)))[1]
     return tuple(block_shape)
 
+
 def determine_optimal_request_blockshape(
     max_blockshape, ideal_blockshape, ram_usage_per_requested_pixel, num_threads, available_ram
 ):
