@@ -24,7 +24,7 @@ import numpy
 
 from lazyflow.request.request import Request, RequestPool
 
-from test_utilities import fail_after_timeout
+from lazyflow.testing import fail_after_timeout
 
 import logging
 

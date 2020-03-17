@@ -1,6 +1,7 @@
 import os
 
 import pytest
+import pathlib
 
 from lazyflow.operator import format_operator_stack
 from lazyflow.graph import Graph
@@ -24,3 +25,9 @@ def inputdata_dir():
 @pytest.fixture
 def graph():
     return Graph()
+
+
+@pytest.fixture
+def inputdata_dir():
+    basepath = pathlib.Path(__file__).parent
+    return str(basepath / "data" / "inputdata")

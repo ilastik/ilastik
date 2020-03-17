@@ -98,17 +98,14 @@ class TestOpTiffReader(object):
                 assert_array_equal(data, op.Output[:].wait())
                 assert op.Output.meta.axistags == vigra.defaultAxistags(test_axes)
 
-    def test_lzw_compressed_file(self):
+    def test_lzw_compressed_file(self, inputdata_dir):
         """
         This test is loosely related to
           https://github.com/ilastik/ilastik/issues/1415
 
         Tests whether lzw compressed tiff files can be read.
         """
-        import os
-
-        basepath = os.path.split(__file__)[0]
-        compressed_tiff_file = "{}/data/inputdata/compressed_lzw.tiff".format(basepath)
+        compressed_tiff_file = f"{inputdata_dir}/compressed_lzw.tiff"
         # generate checker-board, as in the file
         data = numpy.zeros((10, 20, 3)).astype(numpy.uint8)
         for i in range(data.shape[0]):

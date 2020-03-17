@@ -6,7 +6,7 @@ import random
 import logging
 import threading
 from lazyflow.request import Request, RequestLock
-from test_utilities import fail_after_timeout
+from lazyflow.testing import fail_after_timeout
 
 logger = logging.getLogger("tests.testRequestLock")
 
