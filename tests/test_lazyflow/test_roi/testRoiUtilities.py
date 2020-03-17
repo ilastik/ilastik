@@ -16,7 +16,7 @@ from lazyflow.roi import (
 
 
 def test_determine_optimal_request_blockshape_exceeds_memory():
-    assert (1, 1, 1) == determine_optimal_request_blockshape( (1000,1000,100), (0,0,1), 100000, 10, 1000)
+    assert (64, 64, 1) == determine_optimal_request_blockshape( (1000,1000,100), (0,0,1), 100000, 10, 1000)
 
 
 class Test_determineBlockShape(object):

@@ -719,7 +719,6 @@ def determineBlockShape(max_shape, target_block_volume):
     block_shape = list(zip(*sorted(indexed_block_shape)))[1]
     return tuple(block_shape)
 
-
 def determine_optimal_request_blockshape(
     max_blockshape, ideal_blockshape, ram_usage_per_requested_pixel, num_threads, available_ram
 ):
@@ -751,7 +750,7 @@ def determine_optimal_request_blockshape(
     ideal_blockshape = numpy.asarray(ideal_blockshape)
 
     target_block_volume_bytes = available_ram // num_threads
-    target_block_volume_pixels = max(1, target_block_volume_bytes // ram_usage_per_requested_pixel)
+    target_block_volume_pixels = max(4096, target_block_volume_bytes // ram_usage_per_requested_pixel)
 
     # Replace 0's in the ideal_blockshape with the corresponding piece of max_blockshape
     complete_ideal_blockshape = numpy.where(ideal_blockshape == 0, max_blockshape, ideal_blockshape)
