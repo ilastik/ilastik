@@ -153,7 +153,7 @@ def get_default_config(
             "lazyflow.classifiers": {"level": "INFO"},
             "lazyflow.operators.ioOperators": {"level": "INFO"},
             "lazyflow.operators.ioOperators.opRESTfulVolumeReader": {"level": "INFO"},
-            "lazyflow.operators.cacheMemoryManager.CacheMemoryManager": {"level": "INFO"},
+            "lazyflow.operators.cacheMemoryManager": {"level": "INFO"},
             "lazyflow.operators.filterOperators": {"level": "INFO"},
             "lazyflow.operators.ioOperators.ioOperators.OpH5N5WriterBigDataset": {"level": "INFO"},
             "lazyflow.operators.classifierOperators": {"level": "INFO"},

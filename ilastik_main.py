@@ -293,12 +293,12 @@ def _prepare_lazyflow_config(parsed_args):
             import lazyflow
             import lazyflow.request
             from lazyflow.utility import Memory
-            from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
+            from lazyflow.operators import cacheMemoryManager
 
             if status_interval_secs:
                 memory_logger = logging.getLogger("lazyflow.operators.cacheMemoryManager")
                 memory_logger.setLevel(logging.DEBUG)
-                CacheMemoryManager().setRefreshInterval(status_interval_secs)
+                cacheMemoryManager.setRefreshInterval(status_interval_secs)
 
             if n_threads is not None:
                 logger.info(f"Resetting lazyflow thread pool with {n_threads} " "threads.")
