@@ -25,7 +25,7 @@ from builtins import object
 from abc import abstractmethod, ABCMeta
 
 # lazyflow
-from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
+from lazyflow.operators import cacheMemoryManager
 from future.utils import with_metaclass
 
 
@@ -55,7 +55,8 @@ class Cache(with_metaclass(ABCMeta, object)):
     """
 
     def registerWithMemoryManager(self):
-        manager = CacheMemoryManager()
+        manager = cacheMemoryManager
+
         if self.parent is None or not isinstance(self.parent, Cache):
             manager.addFirstClassCache(self)
         else:
