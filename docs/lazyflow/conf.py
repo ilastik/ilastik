@@ -30,7 +30,7 @@ extensions = [
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.todo",
-    "sphinx.ext.pngmath",
+    "sphinx.ext.imgmath",
     "sphinx.ext.viewcode",
 ]
 
