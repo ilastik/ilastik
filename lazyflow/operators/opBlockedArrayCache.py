@@ -53,7 +53,7 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
     Output = OutputSlot(allow_mask=True)
     CleanBlocks = OutputSlot()  # A list of slicings indicating which blocks are stored in the cache and clean.
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, memory_manager=None, **kwargs):
         super(OpBlockedArrayCache, self).__init__(*args, **kwargs)
 
         # SCHEMATIC WHEN BypassModeEnabled == False:
@@ -91,7 +91,7 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
 
         # This member is used by tests that check RAM usage.
         self.setup_ram_context = RamMeasurementContext()
-        self.registerWithMemoryManager()
+        self.registerWithMemoryManager(memory_manager)
 
     def setupOutputs(self):
         if not self.BlockShape.connected() and not self.BlockShape.ready():

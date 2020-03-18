@@ -25,7 +25,7 @@ from builtins import object
 from abc import abstractmethod, ABCMeta
 
 # lazyflow
-from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
+from lazyflow.operators import cacheMemoryManager
 from future.utils import with_metaclass
 
 
@@ -54,8 +54,11 @@ class Cache(with_metaclass(ABCMeta, object)):
     cleanup could occur while the cache is still under construction!
     """
 
-    def registerWithMemoryManager(self):
-        manager = CacheMemoryManager()
+    def registerWithMemoryManager(self, memory_manager=None):
+        manager = memory_manager
+        if manager is None:
+            manager = cacheMemoryManager
+
         if self.parent is None or not isinstance(self.parent, Cache):
             manager.addFirstClassCache(self)
         else:

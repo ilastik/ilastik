@@ -36,7 +36,7 @@ from lazyflow.roi import enlargeRoiForHalo, roiToSlice
 from lazyflow.rtype import SubRegion
 from lazyflow.request import Request
 from lazyflow.utility import BigRequestStreamer
-from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
+from lazyflow.operators.cacheMemoryManager import _CacheMemoryManager
 from lazyflow.utility import Memory
 from lazyflow.operators.cacheMemoryManager import default_refresh_interval
 from lazyflow.operators.opCache import Cache
@@ -70,14 +70,14 @@ class TestCacheMemoryManager(unittest.TestCase):
         # reset cleanup frequency to sane value
         # reset max memory
         Memory.setAvailableRamCaches(-1)
-        mgr = CacheMemoryManager()
+        mgr = _CacheMemoryManager()
         mgr.setRefreshInterval(default_refresh_interval)
         mgr.enable()
         Request.reset_thread_pool()
 
     def testAPIConformity(self):
         c = NonRegisteredCache("c")
-        mgr = CacheMemoryManager()
+        mgr = _CacheMemoryManager()
 
         # dont clean up while we are testing
         mgr.disable()
@@ -134,9 +134,8 @@ class TestCacheMemoryManager(unittest.TestCase):
 
         g = Graph()
         pipe = OpArrayPiperWithAccessCount(graph=g)
-        cache = OpBlockedArrayCache(graph=g)
-
-        mgr = CacheMemoryManager()
+        mgr = _CacheMemoryManager()
+        cache = OpBlockedArrayCache(graph=g, memory_manager=mgr)
 
         # disallow cache memory
         Memory.setAvailableRamCaches(0)
@@ -169,10 +168,10 @@ class TestCacheMemoryManager(unittest.TestCase):
         vol = vigra.taggedView(vol, axistags="txyzc")
 
         g = Graph()
-        pipe = OpArrayPiperWithAccessCount(graph=g)
-        cache = OpBlockedArrayCache(graph=g)
+        mgr = _CacheMemoryManager()
 
-        mgr = CacheMemoryManager()
+        pipe = OpArrayPiperWithAccessCount(graph=g)
+        cache = OpBlockedArrayCache(graph=g, memory_manager=mgr)
 
         # restrict cache memory to 0 Byte
         Memory.setAvailableRamCaches(0)
@@ -210,7 +209,7 @@ class TestCacheMemoryManager(unittest.TestCase):
         should pass the test.
         """
 
-        mgr = CacheMemoryManager()
+        mgr = _CacheMemoryManager()
         mgr.setRefreshInterval(0.01)
         mgr.enable()
 

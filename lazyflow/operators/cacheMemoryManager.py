@@ -28,24 +28,23 @@ import threading
 import weakref
 import functools
 import atexit
+import warnings
 
 
 # lazyflow
 from lazyflow.utility import OrderedSignal
-from lazyflow.utility import Singleton
 from lazyflow.utility import log_exception
 from lazyflow.utility import Memory
 
 
 import logging
-from future.utils import with_metaclass
 
 logger = logging.getLogger(__name__)
 
 default_refresh_interval = 10
 
 
-class CacheMemoryManager(with_metaclass(Singleton, threading.Thread)):
+class _CacheMemoryManager(threading.Thread):
     """
     class for the management of cache memory
 
@@ -55,16 +54,11 @@ class CacheMemoryManager(with_metaclass(Singleton, threading.Thread)):
     class. See the definition of the cache interfaces (opCache.py) to
     get an overview over the possible caches.
 
-    Usage:
-    This manager is a singleton - just call its constructor somewhere
-    and you will get a reference to the *only* running memory management
-    thread.
-
     Interface:
     The manager provides a signal you can subscribe to::
 
         def writeFunction(x): print("total mem: {}".format(x))
-            mgr = CacheMemoryManager()
+            mgr = _CacheMemoryManager()
             mgr.totalCacheMemory.subscribe(writeFunction)
 
     which emits the size of all observable caches, combined, in regular
@@ -73,7 +67,8 @@ class CacheMemoryManager(with_metaclass(Singleton, threading.Thread)):
     The update interval (for the signal and for automated cache release)
     can be set with a call to a class method::
 
-        CacheMemoryManager().setRefreshInterval(5)
+        cache_mem_manager = _CacheMemoryManager()
+        cache_mem_manager.setRefreshInterval(5)
 
     the interval is measured in seconds. Each change of refresh interval
     triggers cleanup.
@@ -280,3 +275,28 @@ class CacheMemoryManager(with_metaclass(Singleton, threading.Thread)):
             self._disabled = False
         with self._condition:
             self._condition.notifyAll()
+
+
+_cache_memory_manager = _CacheMemoryManager()
+totalCacheMemory = _cache_memory_manager.totalCacheMemory
+
+
+def CacheMemoryManager():
+    warnings.warn("Use module as singleton instead of class constructor", DeprecationWarning)
+    return _cache_memory_manager
+
+
+def getFirstClassCaches():
+    return _cache_memory_manager.getFirstClassCaches()
+
+
+def addCache(cache):
+    return _cache_memory_manager.addCache(cache)
+
+
+def addFirstClassCache(cache):
+    return _cache_memory_manager.addFirstClassCache(cache)
+
+
+def setRefreshInterval(seconds):
+    _cache_memory_manager.setRefreshInterval(seconds)
