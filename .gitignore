@@ -12,5 +12,6 @@ lazyflow.egg-info
 *.*~
 *.jpg
 *.swp
+docs/**/_build/
 
 lazyflow/drtile/drtile.pyd
