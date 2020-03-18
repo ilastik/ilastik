@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -23,7 +25,7 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtCore import QEvent, Qt
 from ilastik.workflows.counting import CountingWorkflow
-from tests.helpers import ShellGuiTestCaseBase
+from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 import os
 
@@ -123,35 +125,7 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
             )
             opFeatures.SelectionMatrix.setValue(selections)
 
-            # Save and close
-            shell.projectManager.saveProject()
-            shell.ensureNoCurrentProject(assertClean=True)
-
-        # Run this test from within the shell event loop
         self.exec_in_shell(impl)
-
-    def test_2_ClosedState(self):
-        """
-        Check the state of various shell and gui members when no project is currently loaded.
-        """
-
-        def impl():
-            assert self.shell.projectManager is None
-            assert self.shell.appletBar.count() == 0
-
-        # Run this test from within the shell event loop
-        self.exec_in_shell(impl)
-
-    def test_3_OpenProject(self):
-        def impl():
-            self.shell.openProjectFile(self.PROJECT_FILE)
-            assert self.shell.projectManager.currentProjectFile is not None
-            assert isinstance(self.shell.workflow.applets[COUNTING_APPLET_INDEX], CountingApplet)
-
-        # Run this test from within the shell event loop
-        self.exec_in_shell(impl)
-
-    # These points are relative to the CENTER of the view
 
     def test_4_AddDotsAndBackground(self):
         """
@@ -164,7 +138,7 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
 
             workflow = self.shell.projectManager.workflow
             countingClassApplet = workflow.countingApplet
-            self.shell.imageSelectionCombo.setCurrentIndex(imageId)
+            # self.shell.imageSelectionCombo.setCurrentIndex(imageId)
 
             gui = countingClassApplet.getMultiLaneGui()
             self.waitForViews(gui.currentGui().editor.imageViews)
@@ -172,10 +146,11 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
             opPix = countingClassApplet.topLevelOperator
             # Select the labeling drawer
             self.shell.setSelectedAppletDrawer(COUNTING_APPLET_INDEX)
+            assert isinstance(self.shell.workflow.applets[COUNTING_APPLET_INDEX], CountingApplet)
 
             # Turn off the huds and so we can capture the raw image
-            viewMenu = gui.currentGui().menus()[0]
-            viewMenu.actionToggleAllHuds.trigger()
+            # viewMenu = gui.currentGui().menus()[0]
+            # viewMenu.actionToggleAllHuds.trigger()
 
             ## Turn off the slicing position lines
             ## FIXME: This disables the lines without unchecking the position
@@ -190,48 +165,76 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
                 gui.currentGui()._labelControlUi.labelListModel.rowCount()
             )
 
-            # Select the brush
-            gui.currentGui()._labelControlUi.paintToolButton.click()
+            import time
 
             # Let the GUI catch up: Process all events
             QApplication.processEvents()
 
             # Draw some arbitrary labels in the view using mouse events.
 
-            # Set the brush size
-            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(1)
-            gui.currentGui()._labelControlUi.labelListModel.select(0)
-
             imgView = gui.currentGui().editor.imageViews[2]
 
             QApplication.processEvents()
+
+            dot_start_list = [(6, -8)]
+            dot_stop_list = [(9, -12)]
+
+            # draw foreground dots
+            for start, stop in zip(dot_start_list, dot_stop_list):
+                self.strokeMouseFromCenter(imgView, start, stop)
+
+            QApplication.processEvents()
+
+            time.sleep(1)
+
             LABEL_START = (-128, -128)
             LABEL_STOP = (0, 0)
             LABEL_ERASE_START = (-128, -128)
             LABEL_ERASE_STOP = (128, 128)
+            print("select 1")
 
             gui.currentGui()._labelControlUi.labelListModel.select(1)
-            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
+            # gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
 
             self.strokeMouseFromCenter(imgView, LABEL_START, LABEL_STOP)
             self.waitForViews([imgView])
-            labelData = opPix.LabelImages[imageId][:].wait()
-            #
-            #            assert numpy.sum(labelData[labelData==2]) > 22, "Number of background dots was {}".format(
-            #                numpy.sum(labelData[labelData==2]) )
 
+            time.sleep(1)
+
+            print("select box")
             gui.currentGui()._labelControlUi.AddBoxButton.click()
+            QApplication.processEvents()
+            print("draw box")
             self.strokeMouseFromCenter(imgView, LABEL_START, LABEL_STOP)
 
-            labelData = opPix.LabelImages[imageId][:].wait()
-            self.waitForViews([imgView])
+            print("select 0")
+
+            gui.currentGui()._labelControlUi.labelListModel.select(0)
+
+            dot_start_list = [(-14, -20)]
+            dot_stop_list = [(-20, -11)]
+
+            time.sleep(1)
+            print("draw dots")
+            # draw foreground dots
+            for start, stop in zip(dot_start_list, dot_stop_list):
+                self.strokeMouseFromCenter(imgView, start, stop)
+
+            time.sleep(1)
 
             rectangles = gui.currentGui().boxController._currentBoxesList
-            rect = rectangles[0]._rectItem.rect()
-            #            go.db
+            rect = rectangles[0]._rectItem
+            rect.setSelected(1)
+            boxController = gui.currentGui().boxController
+            boxController.deleteSelectedItems()
+            assert len(gui.currentGui().boxController._currentBoxesList) == 0, "Box was not deleted correctly"
 
-            assert rect.bottomRight().x() == 128, "Rectangle is incorrect: {} is not 255".format(rect.bottomRight().x())
-            assert rect.bottomRight().y() == 128, "Rectangle is incorrect: {} is not 255".format(rect.bottomRight().y())
+            time.sleep(1)
+
+            labelData = opPix.LabelImages[imageId][:].wait()
+            self.waitForViews([imgView])
+
+            #            go.db
 
             # Save the project
             saveThread = self.shell.onSaveProjectActionTriggered()
@@ -242,6 +245,6 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
 
 
 if __name__ == "__main__":
-    from tests.helpers.shellGuiTestCaseBase import run_shell_test
+    from tests.test_ilastik.helpers.shellGuiTestCaseBase import run_shell_test
 
     run_shell_test(__file__)
