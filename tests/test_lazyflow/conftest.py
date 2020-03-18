@@ -16,6 +16,11 @@ def pytest_exception_interact(node, call, report):
             report.sections.append(("Operator Stack", formatted_stack))
 
 
+@pytest.hookimpl()
+def pytest_runtest_setup(item):
+    item.add_marker("qt_no_exception_capture")
+
+
 @pytest.fixture(scope="session")
 def inputdata_dir():
     conftest_dir = os.path.dirname(__file__)
