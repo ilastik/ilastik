@@ -27,6 +27,7 @@ import time
 
 import numpy as np
 import vigra
+import pytest
 
 import unittest
 
@@ -52,6 +53,13 @@ logger = logging.getLogger("tests.testCacheMemoryManager")
 mgrLogger = logging.getLogger("lazyflow.operators.cacheMemoryManager")
 
 
+@pytest.fixture
+def cacheMemoryManager(monkeypatch):
+    mem_manager = _CacheMemoryManager()
+    monkeypatch.setattr(lazyflow.operators.cacheMemoryManager, "_cache_memory_manager", mem_manager)
+    return mem_manager
+
+
 class NonRegisteredCache(object):
     def __init__(self, name):
         self.name = name
@@ -62,10 +70,7 @@ Cache.register(NonRegisteredCache)
 assert issubclass(NonRegisteredCache, Cache)
 
 
-class TestCacheMemoryManager(unittest.TestCase):
-    def setup_method(self, method):
-        pass
-
+class TestCacheMemoryManager:
     def teardown_method(self, method):
         # reset cleanup frequency to sane value
         # reset max memory
@@ -127,22 +132,21 @@ class TestCacheMemoryManager(unittest.TestCase):
         cs = mgr.getCaches()
         assert len(cs) == 2, str([x.name for x in cs])
 
-    def testCacheHandling(self):
+    def testCacheHandling(self, cacheMemoryManager):
         n, k = 10, 5
         vol = np.zeros((n,) * 5, dtype=np.uint8)
         vol = vigra.taggedView(vol, axistags="txyzc")
 
         g = Graph()
         pipe = OpArrayPiperWithAccessCount(graph=g)
-        mgr = _CacheMemoryManager()
-        cache = OpBlockedArrayCache(graph=g, memory_manager=mgr)
+        cache = OpBlockedArrayCache(graph=g)
 
         # disallow cache memory
         Memory.setAvailableRamCaches(0)
 
         # set to frequent cleanup
-        mgr.setRefreshInterval(0.01)
-        mgr.enable()
+        cacheMemoryManager.setRefreshInterval(0.01)
+        cacheMemoryManager.enable()
 
         cache.BlockShape.setValue((k,) * 5)
         cache.Input.connect(pipe.Output)
@@ -154,7 +158,7 @@ class TestCacheMemoryManager(unittest.TestCase):
         assert b > a, "did not cache"
 
         # let the manager clean up
-        mgr.enable()
+        cacheMemoryManager.enable()
         time.sleep(0.5)
         gc.collect()
 
@@ -162,23 +166,21 @@ class TestCacheMemoryManager(unittest.TestCase):
         c = pipe.accessCount
         assert c > b, "did not clean up"
 
-    def testBlockedCacheHandling(self):
+    def testBlockedCacheHandling(self, cacheMemoryManager):
         n, k = 10, 5
         vol = np.zeros((n,) * 5, dtype=np.uint8)
         vol = vigra.taggedView(vol, axistags="txyzc")
 
         g = Graph()
-        mgr = _CacheMemoryManager()
-
         pipe = OpArrayPiperWithAccessCount(graph=g)
-        cache = OpBlockedArrayCache(graph=g, memory_manager=mgr)
+        cache = OpBlockedArrayCache(graph=g)
 
         # restrict cache memory to 0 Byte
         Memory.setAvailableRamCaches(0)
 
         # set to frequent cleanup
-        mgr.setRefreshInterval(0.01)
-        mgr.enable()
+        cacheMemoryManager.setRefreshInterval(0.01)
+        cacheMemoryManager.enable()
 
         cache.BlockShape.setValue((k,) * 5)
         cache.Input.connect(pipe.Output)
@@ -190,7 +192,7 @@ class TestCacheMemoryManager(unittest.TestCase):
         assert b > a, "did not cache"
 
         # let the manager clean up
-        mgr.enable()
+        cacheMemoryManager.enable()
         time.sleep(0.5)
         gc.collect()
 

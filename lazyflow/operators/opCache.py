@@ -54,10 +54,8 @@ class Cache(with_metaclass(ABCMeta, object)):
     cleanup could occur while the cache is still under construction!
     """
 
-    def registerWithMemoryManager(self, memory_manager=None):
-        manager = memory_manager
-        if manager is None:
-            manager = cacheMemoryManager
+    def registerWithMemoryManager(self):
+        manager = cacheMemoryManager
 
         if self.parent is None or not isinstance(self.parent, Cache):
             manager.addFirstClassCache(self)
