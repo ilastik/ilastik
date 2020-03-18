@@ -21,8 +21,6 @@ from builtins import object
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-import pytest
-
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.ioOperators import OpH5N5WriterBigDataset
 from shutil import rmtree
@@ -41,47 +39,39 @@ requesterLogger = logging.getLogger("lazyflow.utility.bigRequestStreamer")
 
 
 class TestOpH5N5WriterBigDataset(object):
-    @pytest.fixture
-    def n5_path(self, tmp_path):
-        dst = tmp_path / "bigH5TestData.n5"
-        yield str(dst)
-        rmtree(dst)
+    def setup_method(self, method):
+        self.graph = lazyflow.graph.Graph()
+        self.testDataH5FileName = "bigH5TestData.h5"
+        self.testDataN5FileName = "bigN5TestData.n5"
+        self.datasetInternalPath = "volume/data"
 
-    @pytest.fixture
-    def h5_path(self, tmp_path):
-        dst = tmp_path / "bigH5TestData.h5"
-        yield str(dst)
-        dst.unlink()
+        # Generate some test data
+        self.dataShape = (1, 10, 128, 128, 1)
+        self.testData = vigra.VigraArray(self.dataShape, axistags=vigra.defaultAxistags("txyzc"), order="C")
+        self.testData[...] = numpy.indices(self.dataShape).sum(0)
 
-    @pytest.fixture
-    def dataShape(self):
-        return (1, 10, 128, 128, 1)
+    def teardown_method(self, method):
+        # Clean up: Delete the test file.
+        try:
+            os.remove(self.testDataH5FileName)
+            rmtree(self.testDataN5FileName)
+        except:
+            pass
 
-    @pytest.fixture
-    def testData(self, dataShape):
-        testData = vigra.VigraArray(dataShape, axistags=vigra.defaultAxistags("txyzc"), order="C")
-        testData[...] = numpy.indices(dataShape).sum(0)
-        return testData
-
-    @pytest.fixture
-    def datasetInternalPath(self):
-        return "volume/data"
-
-    def test_Writer(self, graph, testData, dataShape, h5_path, n5_path, datasetInternalPath):
+    def test_Writer(self):
         # Create the h5 file
+        hdf5File = h5py.File(self.testDataH5FileName)
+        n5File = z5py.N5File(self.testDataN5FileName)
 
-        hdf5File = h5py.File(h5_path)
-        n5File = z5py.N5File(n5_path)
+        opPiper = OpArrayPiper(graph=self.graph)
+        opPiper.Input.setValue(self.testData)
 
-        opPiper = OpArrayPiper(graph=graph)
-        opPiper.Input.setValue(testData)
-
-        h5_opWriter = OpH5N5WriterBigDataset(graph=graph)
-        n5_opWriter = OpH5N5WriterBigDataset(graph=graph)
+        h5_opWriter = OpH5N5WriterBigDataset(graph=self.graph)
+        n5_opWriter = OpH5N5WriterBigDataset(graph=self.graph)
         h5_opWriter.h5N5File.setValue(hdf5File)
         n5_opWriter.h5N5File.setValue(n5File)
-        h5_opWriter.h5N5Path.setValue(datasetInternalPath)
-        n5_opWriter.h5N5Path.setValue(datasetInternalPath)
+        h5_opWriter.h5N5Path.setValue(self.datasetInternalPath)
+        n5_opWriter.h5N5Path.setValue(self.datasetInternalPath)
         h5_opWriter.Image.connect(opPiper.Output)
         n5_opWriter.Image.connect(opPiper.Output)
 
@@ -96,27 +86,51 @@ class TestOpH5N5WriterBigDataset(object):
         n5File.close()
 
         # Check the file.
-        hdf5File = h5py.File(h5_path, "r")
-        n5File = z5py.N5File(n5_path, "r")
-        h5_dataset = hdf5File[datasetInternalPath]
-        n5_dataset = n5File[datasetInternalPath]
-        assert h5_dataset.shape == dataShape
-        assert n5_dataset.shape == dataShape
-        assert (numpy.all(h5_dataset[...] == testData.view(numpy.ndarray)[...])).all()
-        assert (numpy.all(n5_dataset[...] == testData.view(numpy.ndarray)[...])).all()
+        hdf5File = h5py.File(self.testDataH5FileName, "r")
+        n5File = z5py.N5File(self.testDataN5FileName, "r")
+        h5_dataset = hdf5File[self.datasetInternalPath]
+        n5_dataset = n5File[self.datasetInternalPath]
+        assert h5_dataset.shape == self.dataShape
+        assert n5_dataset.shape == self.dataShape
+        assert (numpy.all(h5_dataset[...] == self.testData.view(numpy.ndarray)[...])).all()
+        assert (numpy.all(n5_dataset[...] == self.testData.view(numpy.ndarray)[...])).all()
         hdf5File.close()
         n5File.close()
 
-    def test_Writer_2(self, graph, testData, dataShape, h5_path, n5_path, datasetInternalPath):
+
+class TestOpH5N5WriterBigDataset_2(object):
+    def setup_method(self, method):
+        self.graph = lazyflow.graph.Graph()
+        self.testDataH5FileName = "bigH5TestData.h5"
+        self.testDataN5FileName = "bigH5TestData.n5"
+        self.datasetInternalPath = "volume/data"
+
+        # Generate some test data
+        self.dataShape = (1, 10, 128, 128, 1)
+        self.testData = vigra.VigraArray(
+            self.dataShape, axistags=vigra.defaultAxistags("txyzc")
+        )  # default vigra order this time...
+        self.testData[...] = numpy.indices(self.dataShape).sum(0)
+
+    def teardown_method(self, method):
+        # Clean up: Delete the test file.
+        try:
+            os.remove(self.testDataH5FileName)
+            rmtree(self.testDataN5FileName)
+        except:
+            pass
+
+    def test_Writer(self):
+
         # Create the h5 file
-        hdf5File = h5py.File(h5_path)
-        n5File = z5py.N5File(n5_path)
+        hdf5File = h5py.File(self.testDataH5FileName)
+        n5File = z5py.N5File(self.testDataN5FileName)
 
-        opPiper = OpArrayPiper(graph=graph)
-        opPiper.Input.setValue(testData)
+        opPiper = OpArrayPiper(graph=self.graph)
+        opPiper.Input.setValue(self.testData)
 
-        h5_opWriter = OpH5N5WriterBigDataset(graph=graph)
-        n5_opWriter = OpH5N5WriterBigDataset(graph=graph)
+        h5_opWriter = OpH5N5WriterBigDataset(graph=self.graph)
+        n5_opWriter = OpH5N5WriterBigDataset(graph=self.graph)
 
         # This checks that you can give a preexisting group as the file
         h5_g = hdf5File.create_group("volume")
@@ -138,32 +152,56 @@ class TestOpH5N5WriterBigDataset(object):
         n5File.close()
 
         # Check the file.
-        hdf5File = h5py.File(h5_path, "r")
-        n5File = z5py.N5File(n5_path, "r")
-        h5_dataset = hdf5File[datasetInternalPath]
-        n5_dataset = n5File[datasetInternalPath]
-        assert h5_dataset.shape == dataShape
-        assert n5_dataset.shape == dataShape
-        assert (numpy.all(h5_dataset[...] == testData.view(numpy.ndarray)[...])).all()
-        assert (numpy.all(n5_dataset[...] == testData.view(numpy.ndarray)[...])).all()
+        hdf5File = h5py.File(self.testDataH5FileName, "r")
+        n5File = h5py.File(self.testDataH5FileName, "r")
+        h5_dataset = hdf5File[self.datasetInternalPath]
+        n5_dataset = n5File[self.datasetInternalPath]
+        assert h5_dataset.shape == self.dataShape
+        assert n5_dataset.shape == self.dataShape
+        assert (numpy.all(h5_dataset[...] == self.testData.view(numpy.ndarray)[...])).all()
+        assert (numpy.all(n5_dataset[...] == self.testData.view(numpy.ndarray)[...])).all()
         hdf5File.close()
         n5File.close()
 
-    def test_Writer_3(self, graph, testData, dataShape, h5_path, n5_path, datasetInternalPath):
-        # Create the h5 file
-        hdf5File = h5py.File(h5_path)
-        n5File = z5py.N5File(n5_path)
 
-        opPiper = OpArrayPiper(graph=graph)
-        opPiper.Input.setValue(testData)
+class TestOpH5N5WriterBigDataset_3(object):
+    def setup_method(self, method):
+        self.graph = lazyflow.graph.Graph()
+        self.testDataH5FileName = "bigH5TestData.h5"
+        self.testDataN5FileName = "bigH5TestData.n5"
+
+        self.datasetInternalPath = "volume/data"
+
+        # Generate some test data
+        self.dataShape = (1, 10, 128, 128, 1)
+        self.testData = vigra.VigraArray(
+            self.dataShape, axistags=vigra.defaultAxistags("txyzc")
+        )  # default vigra order this time...
+        self.testData[...] = numpy.indices(self.dataShape).sum(0)
+
+    def teardown_method(self, method):
+        # Clean up: Delete the test file.
+        try:
+            os.remove(self.testDataH5FileName)
+            rmtree(self.testDataN5FileName)
+        except:
+            pass
+
+    def test_Writer(self):
+        # Create the h5 file
+        hdf5File = h5py.File(self.testDataH5FileName)
+        n5File = z5py.N5File(self.testDataN5FileName)
+
+        opPiper = OpArrayPiper(graph=self.graph)
+        opPiper.Input.setValue(self.testData)
 
         # Force extra metadata onto the output
         opPiper.Output.meta.ideal_blockshape = (1, 1, 0, 0, 1)
         # Pretend the RAM usage will be really high to force lots of tiny blocks
         opPiper.Output.meta.ram_usage_per_requested_pixel = 1000000.0
 
-        h5_opWriter = OpH5N5WriterBigDataset(graph=graph)
-        n5_opWriter = OpH5N5WriterBigDataset(graph=graph)
+        h5_opWriter = OpH5N5WriterBigDataset(graph=self.graph)
+        n5_opWriter = OpH5N5WriterBigDataset(graph=self.graph)
 
         # This checks that you can give a preexisting group as the file
         h5_g = hdf5File.create_group("volume")
@@ -185,13 +223,13 @@ class TestOpH5N5WriterBigDataset(object):
         n5File.close()
 
         # Check the file.
-        hdf5File = h5py.File(h5_path, "r")
-        n5File = z5py.File(n5_path, "r")
-        h5_dataset = hdf5File[datasetInternalPath]
-        n5_dataset = n5File[datasetInternalPath]
-        assert h5_dataset.shape == dataShape
-        assert n5_dataset.shape == dataShape
-        assert (numpy.all(h5_dataset[...] == testData.view(numpy.ndarray)[...])).all()
-        assert (numpy.all(n5_dataset[...] == testData.view(numpy.ndarray)[...])).all()
+        hdf5File = h5py.File(self.testDataH5FileName, "r")
+        n5File = h5py.File(self.testDataH5FileName, "r")
+        h5_dataset = hdf5File[self.datasetInternalPath]
+        n5_dataset = n5File[self.datasetInternalPath]
+        assert h5_dataset.shape == self.dataShape
+        assert n5_dataset.shape == self.dataShape
+        assert (numpy.all(h5_dataset[...] == self.testData.view(numpy.ndarray)[...])).all()
+        assert (numpy.all(n5_dataset[...] == self.testData.view(numpy.ndarray)[...])).all()
         hdf5File.close()
         n5File.close()
