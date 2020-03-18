@@ -8,7 +8,7 @@ from lazyflow.utility import PathComponents
 from lazyflow.roi import roiToSlice
 
 # We use the SAME data setup as in the test for TiledVolume
-import testTiledVolume
+from tests.test_lazyflow.test_utility.test_io_util import testTiledVolume
 
 import logging
 

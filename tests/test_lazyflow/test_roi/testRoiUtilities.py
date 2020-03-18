@@ -5,6 +5,7 @@ import numpy
 
 from lazyflow.roi import (
     determineBlockShape,
+    determine_optimal_request_blockshape,
     getIntersection,
     enlargeRoiForHalo,
     TinyVector,
@@ -12,6 +13,10 @@ from lazyflow.roi import (
     containing_rois,
     getIntersectingBlocks,
 )
+
+
+def test_determine_optimal_request_blockshape_exceeds_memory():
+    assert (64, 64, 1) == determine_optimal_request_blockshape( (1000,1000,100), (0,0,1), 100000, 10, 1000)
 
 
 class Test_determineBlockShape(object):
