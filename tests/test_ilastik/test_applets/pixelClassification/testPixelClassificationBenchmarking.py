@@ -25,7 +25,7 @@ import numpy
 import pytest
 
 from PyQt5.QtWidgets import QApplication
-from tests.helpers import ShellGuiTestCaseBase
+from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 
@@ -275,6 +275,6 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
 
 
 if __name__ == "__main__":
-    from tests.helpers.shellGuiTestCaseBase import run_shell_test
+    from tests.test_ilastik.helpers.shellGuiTestCaseBase import run_shell_test
 
     run_shell_test(__file__)

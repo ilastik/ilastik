@@ -1,4 +1,4 @@
-from tests.helpers import ShellGuiTestCaseBase
+from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 import h5py
 import filecmp
 import logging
@@ -284,6 +284,6 @@ class TestCarvingnGui(ShellGuiTestCaseBase):
 
 
 if __name__ == "__main__":
-    from tests.helpers.shellGuiTestCaseBase import run_shell_test
+    from tests.test_ilastik.helpers.shellGuiTestCaseBase import run_shell_test
 
     run_shell_test(__file__)
