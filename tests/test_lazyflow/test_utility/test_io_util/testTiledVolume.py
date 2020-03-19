@@ -38,7 +38,7 @@ volume_description_text = """
 
     "tile_shape_2d_yx" : [200,200],
 
-    "tile_url_format" : "http://localhost:{port}/tile_z{z_start:05}_y{y_start:05}_x{x_start:05}.png",
+    "tile_url_format" : "http://127.0.0.1:{port}/tile_z{z_start:05}_y{y_start:05}_x{x_start:05}.png",
     "extend_slices" : [ [40, [41]],
                         [44, [45, 46, 47]] ]
 }
@@ -83,15 +83,17 @@ class DataSetup(object):
         global volume_description_text
         global port
         try:
+            # Using 127.0.0.1 speeds up windows tests.
+            # For localhost it takes long time to resolve hostname
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 # allow the socket port to be reused if in TIME_WAIT state
                 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                sock.bind(("localhost", port))  # try default/previous port
+                sock.bind(("127.0.0.1", port))  # try default/previous port
         except Exception as e:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 # allow the socket port to be reused if in TIME_WAIT state
                 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                sock.bind(("localhost", 0))  # find free port
+                sock.bind(("127.0.0.1", 0))  # find free port
                 port = sock.getsockname()[1]
 
         volume_description_text = volume_description_text.replace("{port}", str(port))
