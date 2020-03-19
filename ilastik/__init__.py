@@ -161,7 +161,6 @@ class Project:
             os.close(tmp_file_handle)
             path = Path(tmp_file_path)
         ilp = h5py.File(tmp_file_path, "w")
-        # import pydevd; pydevd.settrace()
         cls.populate_h5_group(group=ilp["/"], data=data)
         return cls(project_file=ilp)
 

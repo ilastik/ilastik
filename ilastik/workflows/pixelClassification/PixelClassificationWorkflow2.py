@@ -315,7 +315,6 @@ class PixelClassificationWorkflow2(JsonSerializable):
 
         ilp = h5py.File(args.project, "r")
         workflow = cls.from_ilp(ilp)
-        # import pydevd; pydevd.settrace()
         classifier = IlpVigraPixelClassifier.from_ilp_group(ilp["PixelClassification/ClassifierForests"])
         for raw_path in args.raw_data:
             datasource = DataSource.create(raw_path.as_posix())

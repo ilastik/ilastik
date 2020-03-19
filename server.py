@@ -87,13 +87,7 @@ class Context:
     @classmethod
     def get_class_named(cls, name: str):
         name = name if name in workflow_classes else name.title().replace("_", "")
-        try:
-            return workflow_classes[name]
-        except KeyError as e:
-            import pydevd
-
-            pydevd.settrace()
-            print("asdads")
+        return workflow_classes[name]
 
     @classmethod
     def create(cls, klass):
@@ -335,12 +329,7 @@ def handle_feature_data_mismatch(error):
 
 @app.route("/<class_name>/", methods=["POST"])
 def create_object(class_name: str):
-    #    if Context.get_class_named(class_name) == Annotation:
-    #        import pydevd; pydevd.settrace()
-
     obj, uid = Context.create(Context.get_class_named(class_name))
-    if isinstance(obj, Annotation):  # DEBUG!!!!!!!!!!!!!!
-        obj.as_uint8().show_channels()  # DEBUG!!!!!!!!!!!!!!!!!
     return json.dumps(uid)
 
 
