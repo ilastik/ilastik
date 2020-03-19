@@ -23,49 +23,71 @@ class Predictions(Array5D):
     how likely that pixel is to belong to the classification class associated with
     that channel"""
 
+    def __init__(
+        self, arr: np.ndarray, *, axiskeys: str, location: Point5D = Point5D.zero(), color_map: Dict[Color, np.uint8]
+    ):
+        super().__init__(arr, axiskeys=axiskeys, location=location)
+        self.color_map = color_map
+
+    def rebuild(self, arr: np.ndarray, axiskeys: str, location: Point5D = None) -> "Annotation":
+        location = self.location if location is None else location
+        return self.__class__(arr, axiskeys=axiskeys, location=location, color_map=self.color_map)
+
     @classmethod
-    def allocate(cls, slc: Slice5D, dtype=np.float32, axiskeys: str = Point5D.LABELS, value: int = 0):
-        return super().allocate(slc, dtype=dtype, axiskeys=axiskeys, value=value)
+    def allocate(
+        cls, *, slc: Slice5D, dtype=np.float32, axiskeys: str = Point5D.LABELS, color_map: Dict[Color, np.uint8]
+    ):
+        arr = Array5D.allocate(slc, dtype=dtype, axiskeys=axiskeys, value=0)
+        return cls(arr._data, axiskeys=arr.axiskeys, location=arr.location, color_map=color_map)
 
 
 class TrainingData:
-    X: np.ndarray
-    y: np.ndarray
+    feature_extractors: Sequence[FeatureExtractor]
+    combined_extractor: FeatureExtractor
+    strict: bool
+    color_map: Dict[Color, np.uint8]
     classes: List[int]
-    class_map: Dict[Color, int]
+    X: np.ndarray  # shape is (num_samples, num_feature_channels)
+    y: np.ndarray  # shape is (num_samples, 1)
 
-    def __init__(self, feature_extractors: Sequence[FeatureExtractor], annotations: Sequence[Annotation], strict: bool):
+    def __init__(
+        self, *, feature_extractors: Sequence[FeatureExtractor], annotations: Sequence[Annotation], strict: bool
+    ):
         assert len(annotations) > 0
         assert len(feature_extractors) > 0
         if strict:
             (fx.ensure_applicable(annot.raw_data) for annot in annotations for fx in feature_extractors)
-        self.color_map = {}
-        for annot in annotations:
-            if annot.color not in self.color_map:
-                self.color_map[annot.color] = len(self.color_map) + 1
+        annotations = Annotation.sort(annotations)  # sort so the meaning of the channels is always predictable
+        combined_extractor = FeatureExtractorCollection(feature_extractors)
+        feature_samples = [a.get_feature_samples(combined_extractor) for a in annotations]
 
-        feature_extractor = FeatureExtractorCollection(feature_extractors)
-        feature_samples = [a.get_feature_samples(feature_extractor) for a in annotations]
-
-        raw_labels = [
-            np.full((feat_samp.shape.volume, 1), self.color_map[annot.color], dtype=np.uint32)
-            for feat_samp, annot in zip(feature_samples, annotations)
-        ]
-
-        gathered_samples = feature_samples[0].concatenate(*feature_samples[1:])
+        self.feature_extractors = feature_extractors
+        self.combined_extractor = combined_extractor
+        self.strict = strict
+        self.color_map = Color.create_color_map(annot.color for annot in annotations)
         self.classes = list(self.color_map.values())
-        self.X = gathered_samples.linear_raw()
-        self.y = np.concatenate(raw_labels)
+        self.X = np.concatenate([fs.X for fs in feature_samples])
+        self.y = np.concatenate(
+            [fs.get_y(self.color_map[annot.color]) for fs, annot in zip(feature_samples, annotations)]
+        )
         assert self.X.shape[0] == self.y.shape[0]
 
 
 class PixelClassifier(JsonSerializable):
-    def __init__(self, feature_extractors: List[FeatureExtractor], classes: List[int], strict: bool):
+    def __init__(
+        self,
+        *,
+        feature_extractors: List[FeatureExtractor],
+        classes: List[int],
+        strict: bool,
+        color_map: Dict[Color, np.uint8],
+    ):
         self.strict = strict
         self.feature_extractors = feature_extractors
         self.feature_extractor = FeatureExtractorCollection(feature_extractors)
         self.classes = classes
         self.num_classes = len(classes)
+        self.color_map = color_map
 
     @classmethod
     @lru_cache()
@@ -78,7 +100,7 @@ class PixelClassifier(JsonSerializable):
         return data_slice.with_coord(c=slice(c_start, c_stop))
 
     def allocate_predictions(self, data_slice: Slice5D):
-        return Predictions.allocate(self.get_expected_roi(data_slice))
+        return Predictions.allocate(slc=self.get_expected_roi(data_slice), color_map=self.color_map)
 
     def predict(self, data_slice: DataSourceSlice, out: Predictions = None) -> Predictions:
         if self.strict:
@@ -114,12 +136,13 @@ class ScikitLearnPixelClassifier(PixelClassifier):
     def __init__(
         self,
         *,
-        feature_extractor: FeatureExtractor,
+        feature_extractors: Sequence[FeatureExtractor],
         forest: ScikitRandomForestClassifier,
         classes: List[int],
         strict: bool = False,
+        color_map: Dict[Color, np.uint8],
     ):
-        super().__init__(classes=classes, feature_extractor=feature_extractor, strict=strict)
+        super().__init__(classes=classes, feature_extractors=feature_extractors, strict=strict, color_map=color_map)
         self.forest = forest
 
     @classmethod
@@ -132,10 +155,16 @@ class ScikitLearnPixelClassifier(PixelClassifier):
         random_seed: int = 0,
         strict: bool = False,
     ) -> "ScikitLearnPixelClassifier":
-        training_data = TrainingData(feature_extractors, annotations, strict=strict)
+        training_data = TrainingData(feature_extractors=feature_extractors, annotations=annotations, strict=strict)
         forest = ScikitRandomForestClassifier(n_estimators=num_trees, random_state=random_seed)
         forest.fit(training_data.X, training_data.y.squeeze())
-        return cls(forest=forest, feature_extractors=feature_extractors, classes=training_data.classes, strict=strict)
+        return cls(
+            forest=forest,
+            feature_extractors=feature_extractors,
+            classes=training_data.classes,
+            strict=strict,
+            color_map=training_data.color_map,
+        )
 
     @classmethod
     def from_json_data(cls, data: dict) -> "ScikitLearnPixelClassifier":
@@ -162,8 +191,9 @@ class VigraPixelClassifier(PixelClassifier):
         forests: List[VigraRandomForest],
         classes: List[int],
         strict: bool = False,
+        color_map: Dict[Color, np.uint8],
     ):
-        super().__init__(classes=classes, feature_extractors=feature_extractors, strict=strict)
+        super().__init__(classes=classes, feature_extractors=feature_extractors, strict=strict, color_map=color_map)
         self.forests = forests
         self.num_trees = sum(f.treeCount() for f in forests)
 
@@ -178,7 +208,7 @@ class VigraPixelClassifier(PixelClassifier):
         random_seed: int = 0,
         strict: bool = False,
     ):
-        training_data = TrainingData(feature_extractors, annotations, strict=strict)
+        training_data = TrainingData(feature_extractors=feature_extractors, annotations=annotations, strict=strict)
 
         tree_counts = np.array([num_trees // num_forests] * num_forests)
         tree_counts[: num_trees % num_forests] += 1
@@ -192,7 +222,13 @@ class VigraPixelClassifier(PixelClassifier):
         with ThreadPoolExecutor(max_workers=num_forests) as executor:
             for i in range(num_forests):
                 executor.submit(train_forest, i)
-        return cls(feature_extractors=feature_extractors, forests=forests, strict=strict, classes=training_data.classes)
+        return cls(
+            feature_extractors=feature_extractors,
+            forests=forests,
+            strict=strict,
+            classes=training_data.classes,
+            color_map=training_data.color_map,
+        )
 
     @classmethod
     def from_json_data(cls, data: dict) -> "VigraPixelClassifier":

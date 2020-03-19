@@ -1,4 +1,4 @@
-from typing import Sequence, List
+from typing import Sequence, List, Dict
 import multiprocessing
 import pickle
 import tempfile
@@ -12,7 +12,7 @@ import h5py
 
 from .pixel_classifier import VigraPixelClassifier
 from ilastik.features.ilp_filter import IlpFilter
-from ilastik.annotations import Annotation
+from ilastik.annotations import Annotation, Color
 
 from ilastik import Project
 from lazyflow.classifiers.parallelVigraRfLazyflowClassifier import ParallelVigraRfLazyflowClassifierFactory
@@ -28,8 +28,11 @@ class IlpVigraPixelClassifier(VigraPixelClassifier):
         forests: List[VigraRandomForest],
         strict: bool = False,
         classes: List[int],
+        color_map: Dict[Color, np.uint8],
     ):
-        super().__init__(feature_extractors=feature_extractors, forests=forests, strict=strict, classes=classes)
+        super().__init__(
+            feature_extractors=feature_extractors, forests=forests, strict=strict, classes=classes, color_map=color_map
+        )
 
     @classmethod
     def train(

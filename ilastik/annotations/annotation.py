@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Iterator, Tuple, Dict, Iterable, Sequence
+from typing import List, Iterator, Tuple, Dict, Iterable, Sequence, Any, Optional
 from dataclasses import dataclass
 from collections.abc import Mapping as BaseMapping
 from numbers import Number
@@ -39,21 +39,44 @@ class Color:
     def q_rgba(self) -> int:
         return sum(c * (16 ** (3 - idx)) for idx, c in enumerate(self.rgba))
 
+    @property
+    def ilp_data(self) -> np.ndarray:
+        return np.asarray(self.rgba, dtype=np.int64)
+
     def __hash__(self):
         return hash(self.rgba)
 
     def __eq__(self, other):
         return not isinstance(other, Color) or self.rgba == other.rgba
 
+    @classmethod
+    def sort(cls, colors: Iterable["Color"]) -> List["Color"]:
+        return sorted(colors, key=lambda c: c.q_rgba)
+
+    @classmethod
+    def create_color_map(cls, colors: Iterable["Color"]) -> Dict["Color", np.uint8]:
+        out: Dict[Color, np.uint8] = {}
+        for color in cls.sort(colors):
+            if color not in out:
+                out[color] = np.uint8(len(out) + 1)
+        return out
+
 
 class FeatureSamples(FeatureData, StaticLine):
-    """A multi-channel array with a single spacial dimension, with eac channel
-    representing a feature calculated on top of a annotated pixel"""
+    """A multi-channel array with a single spacial dimension, with each channel representing a feature calculated on
+    top of an annotated pixel. Features are assumed to be relative to a single label (annotation color)"""
 
     @classmethod
     def create(cls, annotation: "Annotation", data: FeatureData):
         samples = data.sample_channels(annotation.as_mask())
         return cls.fromArray5D(samples)
+
+    @property
+    def X(self) -> np.ndarray:
+        return self.linear_raw()
+
+    def get_y(self, label_class: np.uint8) -> np.ndarray:
+        return np.full((self.shape.volume, 1), label_class, dtype=np.uint32)
 
 
 class AnnotationOutOfBounds(Exception):
@@ -120,12 +143,6 @@ class Annotation(ScalarData):
     def from_json_data(cls, data):
         return from_json_data(cls.interpolate_from_points, data)
 
-    def json_data(self):
-        data = super().json_data
-        data["color"] = color
-        data["voxels"] = [vx.json_data for vx in self.voxels]
-        return data
-
     def get_feature_samples(self, feature_extractor: FeatureExtractor) -> FeatureSamples:
         all_feature_samples = []
         annotated_roi = self.roi.with_full_c()
@@ -143,6 +160,46 @@ class Annotation(ScalarData):
 
                 executor.submit(make_samples, data_tile)
         return all_feature_samples[0].concatenate(*all_feature_samples[1:])
+
+    @classmethod
+    def sort(self, annotations: Sequence["Annotation"]) -> List["Annotation"]:
+        return sorted(annotations, key=lambda a: a.color.q_rgba)
+
+    def colored(self, value: np.uint8) -> Array5D:
+        return Array5D(self._data * value, axiskeys=self.axiskeys, location=self.location)
+
+    @staticmethod
+    def merge(annotations: Sequence["Annotation"], color_map: Optional[Dict[Color, np.uint8]] = None) -> Array5D:
+        out_roi = Slice5D.enclosing(annot.roi for annot in annotations)
+        out = Array5D.allocate(slc=out_roi, value=0, dtype=np.uint8)
+        color_map = color_map or Color.create_color_map(annot.color for annot in annotations)
+        for annot in annotations:
+            out.set(annot.colored(color_map[annot.color]), mask_value=0)
+        return out
+
+    @staticmethod
+    def dump_as_ilp_data(
+        annotations: Iterable["Annotation"],
+        color_map: Optional[Dict[Color, np.uint8]] = None,
+        block_size: Optional[Shape5D] = None,
+    ) -> Dict[str, Any]:
+        if len(set(annot.raw_data for annot in annotations)) > 1:
+            raise ValueError(f"All Annotations must come from the same datasource!")
+        axiskeys = annotations[0].raw_data.axiskeys
+        merged_annotations = Annotation.merge(annotations, color_map=color_map)
+        block_size = block_size or merged_annotations.shape
+
+        out = {}
+        for block_index, block in enumerate(merged_annotations.split(block_size)):
+            out["block{annot_idx:04d}"] = {
+                "__data__": block.raw(axiskeys),
+                "__attrs__": {
+                    "blockSlice": "["
+                    + ",".join(f"{slc.start}:{slc.stop}" for slc in block.roi.to_slices(axiskeys))
+                    + "]"
+                },
+            }
+        return out
 
     @property
     def ilp_data(self) -> dict:

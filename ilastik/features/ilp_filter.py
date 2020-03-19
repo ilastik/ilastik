@@ -1,5 +1,5 @@
 from abc import abstractmethod, ABC
-from typing import Type, TypeVar, List, TypeVar, ClassVar, Mapping, Iterator
+from typing import Type, TypeVar, List, TypeVar, ClassVar, Mapping, Iterator, Sequence, Dict, Any
 import re
 
 from .feature_extractor import ChannelwiseFilter
@@ -45,6 +45,45 @@ class IlpFilter(ChannelwiseFilter):
             if len(feature_extractors) == 0 or feature_extractors[-1] != extractor:
                 feature_extractors.append(extractor)
         return feature_extractors
+
+    @classmethod
+    def from_ilp_data(cls, data: Mapping, num_input_channels: int) -> List["IlpFilter"]:
+        feature_names: List[str] = [feature_name.decode("utf-8") for feature_name in data["FeatureIds"][()]]
+        compute_in_2d: List[bool] = list(data["ComputeIn2d"][()])
+        scales: List[float] = list(data["Scales"][()])
+        selection_matrix = data["SelectionMatrix"][()]  # feature name x scales
+
+        feature_extractors = []
+        for feature_idx, feature_name in enumerate(feature_names):
+            feature_class = IlpFilter.REGISTRY[feature_name]
+            for scale_idx, (scale, in_2d) in enumerate(zip(scales, compute_in_2d)):
+                if selection_matrix[feature_idx][scale_idx]:
+                    axis_2d = "z" if in_2d else None
+                    extractor = feature_class.from_ilp_scale(
+                        scale, axis_2d=axis_2d, num_input_channels=num_input_channels
+                    )
+                    feature_extractors.append(extractor)
+        return feature_extractors
+
+    @classmethod
+    def dump_as_ilp_data(cls, feature_extractors: Sequence["IlpFilter"]) -> Dict[str, Any]:
+        if not feature_extractors:
+            return {}
+        out = {}
+        feature_names = list(set(fe.__class__.__name__ for fe in feature_extractors))
+        out["FeatureIds"] = np.asarray([fn.encode("utf8") for fn in feature_names])
+        scales: List[float] = list(sorted(set(fe.ilp_scale for fe in feature_extractors)))
+        out["Scales"] = np.asarray(scales)
+        ComputeIn2d = np.zeros(len(feature_names), dtype=bool)
+        SelectionMatrix = np.zeros((len(feature_names), len(scales)), dtype=bool)
+        for fe in feature_extractors:
+            name_idx = feature_names.index(fe.__class__.__name__)
+            scale_idx = scales.index(fe.ilp_scale)
+            SelectionMatrix[name_idx, scale_idx] = True
+            ComputeIn2d[name_idx] = ComputeIn2d[name_idx] or (fe.axis_2d is not None)
+        out["SelectionMatrix"] = SelectionMatrix
+        out["ComputeIn2d"] = ComputeIn2d
+        return out
 
     def to_ilp_feature_names(self) -> Iterator[bytes]:
         for c in range(self.num_input_channels * self.channel_multiplier):
