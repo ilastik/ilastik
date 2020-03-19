@@ -135,10 +135,10 @@ class TiledVolume(object):
         if description.cache_tiles is None:
             description.cache_tiles = False
 
-    def __init__(self, descriptionFilePath, *, num_retries=5):
+    def __init__(self, descriptionFilePath, *, max_retries=5):
         self.description = TiledVolume.readDescription(descriptionFilePath)
         self._session = None
-        self._num_retries = num_retries
+        self._max_retries = max_retries
 
         assert self.description.format in vigra.impex.listExtensions().split(), "Unknown tile format: {}".format(
             self.description.format
@@ -382,8 +382,12 @@ class TiledVolume(object):
 
         # Replace the session http adapters with ones that use larger connection pools
         n_threads = max(1, Request.global_thread_pool.num_workers)
-        adapter = requests.adapters.HTTPAdapter(pool_connections=n_threads, pool_maxsize=n_threads, max_retries=self._num_retries)
-        adapter2 = requests.adapters.HTTPAdapter(pool_connections=n_threads, pool_maxsize=n_threads, max_retries=self._num_retries)
+        adapter = requests.adapters.HTTPAdapter(
+            pool_connections=n_threads, pool_maxsize=n_threads, max_retries=self._max_retries
+        )
+        adapter2 = requests.adapters.HTTPAdapter(
+            pool_connections=n_threads, pool_maxsize=n_threads, max_retries=self._max_retries
+        )
         session.mount("http://", adapter)
         session.mount("https://", adapter2)
         return session
