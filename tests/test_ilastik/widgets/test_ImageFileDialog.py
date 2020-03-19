@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from ilastik.widgets.ImageFileDialog import ImageFileDialog
 from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QApplication
 from volumina.utility import preferences
 
 
@@ -29,29 +30,35 @@ def test_default_image_directory_is_home_with_blank_preferences_file():
     assert dialog.directory().absolutePath() == Path.home().as_posix()
 
 
-def test_picking_file_updates_default_image_directory_to_previously_used(qtbot, image: Path, tmp_preferences):
+def test_picking_file_updates_default_image_directory_to_previously_used(image: Path, tmp_preferences):
     dialog = ImageFileDialog(None)
-    qtbot.waitExposed(dialog)
 
-    dialog.selectFile(image.as_posix())
+    def handle_dialog():
+        while not dialog.isVisible():
+            QApplication.processEvents()
 
-    qtbot.waitUntil(lambda: bool(dialog.selectedFiles()))
-    QTimer.singleShot(0, dialog.accept)
+        dialog.selectFile(image.as_posix())
+        dialog.accept()
 
+    QTimer.singleShot(0, handle_dialog)
     assert dialog.getSelectedPaths() == [image]
 
     with open(tmp_preferences, "rb") as f:
         assert pickle.load(f) == {dialog.preferences_group: {dialog.preferences_setting: image.as_posix()}}
 
 
-def test_picking_n5_json_file_returns_directory_path(qtbot, tmp_n5_file: Path):
+def test_picking_n5_json_file_returns_directory_path(tmp_n5_file: Path):
     dialog = ImageFileDialog(None)
-    qtbot.waitExposed(dialog)
 
-    dialog.setDirectory(str(tmp_n5_file))
-    dialog.selectFile("attributes.json")
+    def handle_dialog():
+        while not dialog.isVisible():
+            QApplication.processEvents()
 
-    qtbot.waitUntil(lambda: bool(dialog.selectedFiles()))
-    QTimer.singleShot(0, dialog.accept)
+        dialog.setDirectory(str(tmp_n5_file))
+        dialog.selectFile("attributes.json")
+        dialog.accept()
+
+
+    QTimer.singleShot(0, handle_dialog)
 
     assert dialog.getSelectedPaths() == [tmp_n5_file]
