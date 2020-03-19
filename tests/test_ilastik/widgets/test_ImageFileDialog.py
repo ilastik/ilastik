@@ -37,7 +37,9 @@ def test_picking_file_updates_default_image_directory_to_previously_used(image: 
         while not dialog.isVisible():
             QApplication.processEvents()
 
+        QApplication.processEvents()
         dialog.selectFile(image.as_posix())
+        QApplication.processEvents()
         dialog.accept()
 
     QTimer.singleShot(0, handle_dialog)
@@ -55,7 +57,9 @@ def test_picking_n5_json_file_returns_directory_path(tmp_n5_file: Path):
             QApplication.processEvents()
 
         dialog.setDirectory(str(tmp_n5_file))
+        QApplication.processEvents()
         dialog.selectFile("attributes.json")
+        QApplication.processEvents()
         dialog.accept()
 
 
