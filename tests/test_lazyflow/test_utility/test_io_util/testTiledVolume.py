@@ -180,7 +180,6 @@ class DataSetup(object):
             for name in files:
                 if name.startswith("tile_z00002"):
                     p = os.path.join(self.TILE_DIRECTORY, name)
-                    print("removing:", p)
                     os.remove(p)
 
         # lastly, start the server
@@ -199,7 +198,7 @@ class DataSetup(object):
                 if ENABLE_SERVER_LOGGING:
                     http.server.SimpleHTTPRequestHandler.log_error(self, *args, **kwargs)
 
-        class Server(socketserver.TCPServer):
+        class Server(socketserver.ThreadingMixIn, socketserver.TCPServer):
             # http://stackoverflow.com/questions/10613977/a-simple-python-server-using-simplehttpserver-and-socketserver-how-do-i-close-t
             allow_reuse_address = True
 
