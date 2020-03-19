@@ -31,7 +31,7 @@ from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QTreeWidget, QTreeWidgetItem
 
 # lazyflow
-from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
+from lazyflow.operators import cacheMemoryManager
 from lazyflow.operators.opCache import MemInfoNode
 
 import warnings
@@ -140,7 +140,7 @@ class MemUsageDialog(QDialog):
         layout.addWidget(self.tree)
         self.setLayout(layout)
 
-        self._mgr = CacheMemoryManager()
+        self._mgr = cacheMemoryManager
 
         self._tracked_caches = {}
 
