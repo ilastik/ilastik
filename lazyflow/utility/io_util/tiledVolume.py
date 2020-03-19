@@ -135,9 +135,10 @@ class TiledVolume(object):
         if description.cache_tiles is None:
             description.cache_tiles = False
 
-    def __init__(self, descriptionFilePath):
+    def __init__(self, descriptionFilePath, *, max_retries=5):
         self.description = TiledVolume.readDescription(descriptionFilePath)
         self._session = None
+        self._max_retries = max_retries
 
         assert self.description.format in vigra.impex.listExtensions().split(), "Unknown tile format: {}".format(
             self.description.format
@@ -206,17 +207,11 @@ class TiledVolume(object):
             else:
                 retrieval_fn = partial(self._retrieve_local_tile, rest_args, tile_relative_intersection, result_region)
 
-            PARALLEL_REQ = True
-            if PARALLEL_REQ:
-                pool.add(Request(retrieval_fn))
-            else:
-                # execute serially (leave the pool empty)
-                retrieval_fn()
+            pool.add(Request(retrieval_fn))
 
-        if PARALLEL_REQ:
-            with Timer() as timer:
-                pool.wait()
-            logger.info("Loading {} tiles took a total of {}".format(len(tile_starts), timer.seconds()))
+        with Timer() as timer:
+            pool.wait()
+        logger.info("Loading {} tiles took a total of {}".format(len(tile_starts), timer.seconds()))
 
     def _get_rest_args(self, tile_blockshape, tile_roi_in):
         """
@@ -313,8 +308,6 @@ class TiledVolume(object):
     requests = None
     PIL = None
 
-    TEST_MODE = False  # For testing purposes only. See below.
-
     def _retrieve_remote_tile(self, rest_args, tile_relative_intersection, data_out):
         # Late import
         if not TiledVolume.requests:
@@ -325,42 +318,14 @@ class TiledVolume(object):
 
         tile_url = self.description.tile_url_format.format(**rest_args)
         logger.debug("Retrieving {}".format(tile_url))
-        try:
-            if self._session is None:
-                self._session = self._create_session()
+        if self._session is None:
+            self._session = self._create_session()
 
-                # Provide authentication if we have the details.
-                if self.description.username and self.description.password:
-                    self._session.auth = (self.description.username, self.description.password)
+            # Provide authentication if we have the details.
+            if self.description.username and self.description.password:
+                self._session.auth = (self.description.username, self.description.password)
 
-            success = False
-            tries = 0
-            while not success:
-                try:
-                    # Note: We give timeout as a tuple, which requires a recent version of requests.
-                    #       If you get an exception about that, upgrade your requests module.
-                    r = self._session.get(tile_url, timeout=(3.0, 20.0))
-                    success = True
-                except requests.ConnectionError:
-                    # This special 'pass' is here because we keep running into exceptions like this:
-                    #   ConnectionError: HTTPConnectionPool(host='neurocean.int.janelia.org', port=6081):
-                    #   Max retries exceeded with url: /ssd-3-tiles/abd1.5/43/24_25_0.jpg
-                    #   (Caused by <class 'httplib.BadStatusLine'>: '')
-                    # So now we loop a few times and only give up if something is really wrong.
-                    if tries == 5:
-                        raise  # give up
-                    tries += 1
-        except:
-            # During testing, the server we're pulling from might be in our own process.
-            # Apparently that means that it is not very responsive, leading to exceptions.
-            # As a cheap workaround, just try one more time.
-            if self.TEST_MODE:
-                import time
-
-                time.sleep(0.01)
-                r = self._session.get(tile_url, timeout=(3.0, 20.0))
-            else:
-                raise
+        r = self._session.get(tile_url, timeout=(3.0, 20.0))
 
         if r.status_code == requests.codes.not_found:
             logger.warning("NOTFOUND: {}".format(tile_url))
@@ -400,8 +365,7 @@ class TiledVolume(object):
                 transform = eval(self.description.data_transform_function)
                 data_out[:] = transform(data_out)
 
-    @classmethod
-    def _create_session(cls):
+    def _create_session(self):
         """
         Generate a requests.Session object to use for this TiledVolume.
         Using a session allows us to benefit from a connection pool
@@ -418,8 +382,12 @@ class TiledVolume(object):
 
         # Replace the session http adapters with ones that use larger connection pools
         n_threads = max(1, Request.global_thread_pool.num_workers)
-        adapter = requests.adapters.HTTPAdapter(pool_connections=n_threads, pool_maxsize=n_threads)
-        adapter2 = requests.adapters.HTTPAdapter(pool_connections=n_threads, pool_maxsize=n_threads)
+        adapter = requests.adapters.HTTPAdapter(
+            pool_connections=n_threads, pool_maxsize=n_threads, max_retries=self._max_retries
+        )
+        adapter2 = requests.adapters.HTTPAdapter(
+            pool_connections=n_threads, pool_maxsize=n_threads, max_retries=self._max_retries
+        )
         session.mount("http://", adapter)
         session.mount("https://", adapter2)
         return session

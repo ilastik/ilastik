@@ -38,7 +38,7 @@ volume_description_text = """
 
     "tile_shape_2d_yx" : [200,200],
 
-    "tile_url_format" : "http://localhost:{port}/tile_z{z_start:05}_y{y_start:05}_x{x_start:05}.png",
+    "tile_url_format" : "http://127.0.0.1:{port}/tile_z{z_start:05}_y{y_start:05}_x{x_start:05}.png",
     "extend_slices" : [ [40, [41]],
                         [44, [45, 46, 47]] ]
 }
@@ -83,15 +83,17 @@ class DataSetup(object):
         global volume_description_text
         global port
         try:
+            # Using 127.0.0.1 speeds up windows tests.
+            # For localhost it takes long time to resolve hostname
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 # allow the socket port to be reused if in TIME_WAIT state
                 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                sock.bind(("localhost", port))  # try default/previous port
+                sock.bind(("127.0.0.1", port))  # try default/previous port
         except Exception as e:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 # allow the socket port to be reused if in TIME_WAIT state
                 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                sock.bind(("localhost", 0))  # find free port
+                sock.bind(("127.0.0.1", 0))  # find free port
                 port = sock.getsockname()[1]
 
         volume_description_text = volume_description_text.replace("{port}", str(port))
@@ -180,7 +182,6 @@ class DataSetup(object):
             for name in files:
                 if name.startswith("tile_z00002"):
                     p = os.path.join(self.TILE_DIRECTORY, name)
-                    print("removing:", p)
                     os.remove(p)
 
         # lastly, start the server
@@ -199,7 +200,7 @@ class DataSetup(object):
                 if ENABLE_SERVER_LOGGING:
                     http.server.SimpleHTTPRequestHandler.log_error(self, *args, **kwargs)
 
-        class Server(socketserver.TCPServer):
+        class Server(socketserver.ThreadingMixIn, socketserver.TCPServer):
             # http://stackoverflow.com/questions/10613977/a-simple-python-server-using-simplehttpserver-and-socketserver-how-do-i-close-t
             allow_reuse_address = True
 
@@ -232,7 +233,6 @@ class TestTiledVolume(object):
 
     def testBasic(self):
         tiled_volume = TiledVolume(self.data_setup.VOLUME_DESCRIPTION_FILE)
-        tiled_volume.TEST_MODE = True
         roi = numpy.array([(10, 150, 100), (30, 550, 550)])
         result_out = numpy.zeros(roi[1] - roi[0], dtype=tiled_volume.description.dtype)
         tiled_volume.read(roi, result_out)
@@ -250,7 +250,6 @@ class TestTiledVolume(object):
 
     def testMissingTiles(self):
         tiled_volume = TiledVolume(self.data_setup.VOLUME_DESCRIPTION_FILE)
-        tiled_volume.TEST_MODE = True
         # The test data should be missing slice 2, and the config doesn't remap the data.
         roi = numpy.array([(0, 150, 100), (10, 550, 550)])
         result_out = numpy.zeros(roi[1] - roi[0], dtype=tiled_volume.description.dtype)
@@ -273,7 +272,6 @@ class TestTiledVolume(object):
         # The config above specifies that slices 45:47 get their data from slice 44,
         #  and slice 41 is the same as 40
         tiled_volume = TiledVolume(self.data_setup.VOLUME_DESCRIPTION_FILE)
-        tiled_volume.TEST_MODE = True
         roi = numpy.array([(40, 150, 100), (50, 550, 550)])
         result_out = numpy.zeros(roi[1] - roi[0], dtype=tiled_volume.description.dtype)
         tiled_volume.read(roi, result_out)
@@ -306,7 +304,6 @@ class TestLocalTiledVolume(object):
 
     def testBasic(self):
         tiled_volume = TiledVolume(self.data_setup.LOCAL_VOLUME_DESCRIPTION_FILE)
-        tiled_volume.TEST_MODE = True
         roi = numpy.array([(10, 150, 100), (30, 550, 550)])
         result_out = numpy.zeros(roi[1] - roi[0], dtype=tiled_volume.description.dtype)
         tiled_volume.read(roi, result_out)
@@ -335,7 +332,6 @@ class TestCustomAxes(object):
 
     def testCustomAxes(self):
         tiled_volume = TiledVolume(self.data_setup.TRANSPOSED_VOLUME_DESCRIPTION_FILE)
-        tiled_volume.TEST_MODE = True
         roi = numpy.array([(10, 150, 100), (30, 550, 550)])
         result_out = numpy.zeros(roi[1] - roi[0], dtype=tiled_volume.description.dtype)
 
@@ -368,7 +364,6 @@ class TestViewOriginOffset(object):
 
     def testViewOriginOffset(self):
         tiled_volume = TiledVolume(self.data_setup.TRANSLATED_VOLUME_DESCRIPTION_FILE)
-        tiled_volume.TEST_MODE = True
         reference_roi = numpy.array([(10, 150, 100), (30, 550, 550)])
         result_out = numpy.zeros(reference_roi[1] - reference_roi[0], dtype=tiled_volume.description.dtype)
 
@@ -403,7 +398,6 @@ class TestSpecialZTranslation(object):
         This tests the special
         """
         tiled_volume = TiledVolume(self.data_setup.SPECIAL_Z_VOLUME_DESCRIPTION_FILE)
-        tiled_volume.TEST_MODE = True
         reference_roi = numpy.array([(20, 150, 100), (40, 550, 550)])
         result_out = numpy.zeros(reference_roi[1] - reference_roi[0], dtype=tiled_volume.description.dtype)
 
