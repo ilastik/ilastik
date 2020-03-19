@@ -29,7 +29,6 @@ class TestOpTiledVolumeReader(object):
         graph = Graph()
         op = OpTiledVolumeReader(graph=graph)
         op.DescriptionFilePath.setValue(self.data_setup.VOLUME_DESCRIPTION_FILE)
-        op.tiled_volume.TEST_MODE = True
 
         roi = numpy.array([(10, 150, 100), (30, 550, 550)])
         result_out = op.Output(*roi).wait()
@@ -64,7 +63,6 @@ class TestOpTiledVolumeReader_Transposed(object):
         graph = Graph()
         op = OpTiledVolumeReader(graph=graph)
         op.DescriptionFilePath.setValue(self.data_setup.TRANSPOSED_VOLUME_DESCRIPTION_FILE)
-        op.tiled_volume.TEST_MODE = True
 
         roi = numpy.array([(10, 150, 100), (30, 550, 550)])
         roi_t = numpy.array([tuple(reversed(roi[0])), tuple(reversed(roi[1]))])
@@ -102,7 +100,6 @@ class TestOpCachedTiledVolumeReader(object):
         graph = Graph()
         op = OpCachedTiledVolumeReader(graph=graph)
         op.DescriptionFilePath.setValue(self.data_setup.VOLUME_DESCRIPTION_FILE)
-        op._opReader.tiled_volume.TEST_MODE = True
 
         roi = numpy.array([(10, 150, 100), (30, 550, 550)])
         cached_result_out = op.CachedOutput(*roi).wait()

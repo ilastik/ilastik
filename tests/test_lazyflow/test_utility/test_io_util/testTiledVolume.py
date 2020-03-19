@@ -233,7 +233,6 @@ class TestTiledVolume(object):
 
     def testBasic(self):
         tiled_volume = TiledVolume(self.data_setup.VOLUME_DESCRIPTION_FILE)
-        tiled_volume.TEST_MODE = True
         roi = numpy.array([(10, 150, 100), (30, 550, 550)])
         result_out = numpy.zeros(roi[1] - roi[0], dtype=tiled_volume.description.dtype)
         tiled_volume.read(roi, result_out)
@@ -251,7 +250,6 @@ class TestTiledVolume(object):
 
     def testMissingTiles(self):
         tiled_volume = TiledVolume(self.data_setup.VOLUME_DESCRIPTION_FILE)
-        tiled_volume.TEST_MODE = True
         # The test data should be missing slice 2, and the config doesn't remap the data.
         roi = numpy.array([(0, 150, 100), (10, 550, 550)])
         result_out = numpy.zeros(roi[1] - roi[0], dtype=tiled_volume.description.dtype)
@@ -274,7 +272,6 @@ class TestTiledVolume(object):
         # The config above specifies that slices 45:47 get their data from slice 44,
         #  and slice 41 is the same as 40
         tiled_volume = TiledVolume(self.data_setup.VOLUME_DESCRIPTION_FILE)
-        tiled_volume.TEST_MODE = True
         roi = numpy.array([(40, 150, 100), (50, 550, 550)])
         result_out = numpy.zeros(roi[1] - roi[0], dtype=tiled_volume.description.dtype)
         tiled_volume.read(roi, result_out)
@@ -307,7 +304,6 @@ class TestLocalTiledVolume(object):
 
     def testBasic(self):
         tiled_volume = TiledVolume(self.data_setup.LOCAL_VOLUME_DESCRIPTION_FILE)
-        tiled_volume.TEST_MODE = True
         roi = numpy.array([(10, 150, 100), (30, 550, 550)])
         result_out = numpy.zeros(roi[1] - roi[0], dtype=tiled_volume.description.dtype)
         tiled_volume.read(roi, result_out)
@@ -336,7 +332,6 @@ class TestCustomAxes(object):
 
     def testCustomAxes(self):
         tiled_volume = TiledVolume(self.data_setup.TRANSPOSED_VOLUME_DESCRIPTION_FILE)
-        tiled_volume.TEST_MODE = True
         roi = numpy.array([(10, 150, 100), (30, 550, 550)])
         result_out = numpy.zeros(roi[1] - roi[0], dtype=tiled_volume.description.dtype)
 
@@ -369,7 +364,6 @@ class TestViewOriginOffset(object):
 
     def testViewOriginOffset(self):
         tiled_volume = TiledVolume(self.data_setup.TRANSLATED_VOLUME_DESCRIPTION_FILE)
-        tiled_volume.TEST_MODE = True
         reference_roi = numpy.array([(10, 150, 100), (30, 550, 550)])
         result_out = numpy.zeros(reference_roi[1] - reference_roi[0], dtype=tiled_volume.description.dtype)
 
@@ -404,7 +398,6 @@ class TestSpecialZTranslation(object):
         This tests the special
         """
         tiled_volume = TiledVolume(self.data_setup.SPECIAL_Z_VOLUME_DESCRIPTION_FILE)
-        tiled_volume.TEST_MODE = True
         reference_roi = numpy.array([(20, 150, 100), (40, 550, 550)])
         result_out = numpy.zeros(reference_roi[1] - reference_roi[0], dtype=tiled_volume.description.dtype)
 
