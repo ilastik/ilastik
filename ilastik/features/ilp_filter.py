@@ -2,6 +2,8 @@ from abc import abstractmethod, ABC
 from typing import Type, TypeVar, List, TypeVar, ClassVar, Mapping, Iterator, Sequence, Dict, Any
 import re
 
+import numpy as np
+
 from .feature_extractor import ChannelwiseFilter
 
 
@@ -82,7 +84,8 @@ class IlpFilter(ChannelwiseFilter):
             SelectionMatrix[name_idx, scale_idx] = True
             ComputeIn2d[name_idx] = ComputeIn2d[name_idx] or (fe.axis_2d is not None)
         out["SelectionMatrix"] = SelectionMatrix
-        out["ComputeIn2d"] = ComputeIn2d
+        out["ComputeIn2d"] = ComputeIn2d[: len(scales)]  # weird .ilp quirk in featureTableWidget.py:524
+        out["StorageVersion"] = "0.1"
         return out
 
     def to_ilp_feature_names(self) -> Iterator[bytes]:
