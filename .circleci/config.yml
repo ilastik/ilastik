@@ -51,6 +51,7 @@ jobs:
         git submodule foreach "git checkout master"
     - run: >
         rm -rf ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
+        rm -rf ${ILASTIK_ROOT}/ilastik-meta/lazyflow &&
         ln -s `pwd` ${ILASTIK_ROOT}/ilastik-meta/ilastik
     - run: >
         conda activate base &&
