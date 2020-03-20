@@ -1,5 +1,5 @@
 import argparse
-from typing import Dict, List, Any, Optional, Tuple, Mapping
+from typing import Dict, List, Any, Optional, Tuple, Mapping, Iterable, Sequence, Set
 from numbers import Number
 import ast
 from pathlib import Path
@@ -12,7 +12,7 @@ import h5py
 import vigra
 import numpy as np
 
-from ndstructs import Array5D, Slice5D, Shape5D
+from ndstructs import Array5D, Slice5D, Shape5D, Point5D
 from ndstructs.datasource import DataSource, N5DataSource, DataSourceSlice
 from ndstructs.datasink import N5DataSink
 from ndstructs.utils import JsonSerializable
@@ -20,7 +20,7 @@ from ndstructs.utils import JsonSerializable
 from ilastik.classifiers.pixel_classifier import PixelClassifierDataSource
 from ilastik.classifiers.ilp_pixel_classifier import IlpVigraPixelClassifier
 from ilastik.features.ilp_filter import IlpFilter
-from ilastik.annotations import Annotation
+from ilastik.annotations import Annotation, Color
 from lazyflow.distributed.TaskOrchestrator import TaskOrchestrator
 
 
@@ -33,7 +33,7 @@ class DisplayMode(enum.Enum):
 
     @property
     def ilp_data(self) -> str:
-        return self.value
+        return self.value.encode("utf8")
 
     @classmethod
     def from_ilp_data(cls, data: bytes) -> "DisplayMode":
@@ -58,7 +58,7 @@ class DataSourceInfo(JsonSerializable):
         drange: Optional[Tuple[Number, Number]] = None,
     ):
         self.datasource = datasource
-        self.nickname = nickname or self.datasouce.name
+        self.nickname = nickname or self.datasource.name
         self.fromstack = fromstack
         self.allowLabels = allowLabels
         self.datasetId = datasetId or str(uuid.uuid1())
@@ -74,14 +74,14 @@ class DataSourceInfo(JsonSerializable):
     def ilp_data(self) -> dict:
         return {
             "allowLabels": True,
-            "axisorder": self.datasource.axiskeys,
-            "axistags": vigra.defaultAxistags(self.datasource.axiskeys).toJSON(),
-            "datasetId": str(uuid.uuid1()),
-            "dtype": str(self.datasource.dtype),
-            "filePath": self.datasource.path.as_posix(),
+            "axisorder": self.datasource.axiskeys.encode("utf8"),
+            "axistags": vigra.defaultAxistags(self.datasource.axiskeys).toJSON().encode("utf8"),
+            "datasetId": str(uuid.uuid1()).encode("utf8"),
+            "dtype": str(self.datasource.dtype).encode("utf8"),
+            "filePath": self.datasource.path.as_posix().encode("utf8"),
             "fromstack": False,  # FIXME
-            "location": self.legacy_location,
-            "nickname": self.nickname,
+            "location": self.legacy_location.encode("utf8"),
+            "nickname": self.nickname.encode("utf8"),
             "shape": self.datasource.shape.to_tuple(self.datasource.axiskeys),
             "display_mode": self.display_mode.ilp_data,
             "normalizeDisplay": self.normalizeDisplay,
@@ -111,20 +111,63 @@ class DataSourceInfo(JsonSerializable):
 
 
 class DataLane:
-    def __init__(self, raw_data: Optional[DataSourceInfo] = None, prediction_mask: Optional[DataSourceInfo] = None):
-        self.raw_data = raw_data
-        self.prediction_mask = prediction_mask
+    def __init__(
+        self,
+        *,
+        RawData: Optional[DataSourceInfo] = None,
+        PredictionMask: Optional[DataSourceInfo] = None,
+        annotations: Sequence[Annotation] = (),
+    ):
+        self.RawData = RawData
+        self.PredictionMask = PredictionMask
+        self.annotations = []
+        for annot in annotations:
+            self.add_annotation(annot)
 
-    @property
-    def ilp_data(self) -> dict:
-        return {
-            "Raw Data": {} if self.raw_data is None else self.raw_data.ilp_data,
-            "Prediction Mask": {} if self.prediction_mask is None else self.prediction_mask.ilp_data,
-        }
+    def add_annotation(self, annotation: Annotation):
+        if self.RawData is None:
+            self.RawData = DataSourceInfo(datasource=datasource)
+        if annotation in self.annotations:
+            raise ValueError("Annotation already exists in this lane")
+        if self.RawData.datasource != annotation.raw_data:
+            raise ValueError(f"Annotation {annotation} should be on top of the lane RawData: {self.RawData}")
+        self.annotations.append(annotation)
+
+    def remove_annotation(self, annotation: Annotation):
+        self.annotations.remove(annotation)
 
     @classmethod
     def from_ilp_data(cls, data):
         raise NotImplementedError(cls.__name__ + ".from_ilp_data")
+
+    @property
+    def ilp_data(self) -> dict:
+        return {
+            "Raw Data": {} if self.RawData is None else self.RawData.ilp_data,
+            "Prediction Mask": {} if self.PredictionMask is None else self.PredictionMask.ilp_data,
+        }
+
+    @classmethod
+    def dump_as_ilp_data_selection_data(cls, lanes: Sequence["DataLane"]) -> Dict[str, Any]:
+        return {
+            "Role Names": np.asarray([b"Raw Data", b"Prediction Mask"]),
+            "StorageVersion": "0.2",
+            "infos": {f"lane{lane_idx:04d}": lane.ilp_data for lane_idx, lane in enumerate(lanes)},
+            "local_data": {},
+        }
+
+    @classmethod
+    def dump_as_ilp_label_data(cls, lanes: Sequence["DataLane"]) -> Dict[str, Any]:
+        out = {}
+        color_map = Color.create_color_map(annot.color for lane in lanes for annot in lane.annotations)
+        out["LabelSets"] = labelSets = {"labels000": {}}  # empty labels still produce this in classic ilastik
+        for lane_idx, lane in enumerate(lanes):
+            label_data = Annotation.dump_as_ilp_data(lane.annotations, color_map=color_map)
+            labelSets[f"labels{lane_idx:03d}"] = label_data
+        out["LabelColors"] = np.asarray([color.rgba[:-1] for color in color_map.keys()], dtype=np.int64)
+        out["PmapColors"] = out["LabelColors"]
+        out["LabelNames"] = np.asarray([color.name.encode("utf8") for color in color_map.keys()])
+        return out
 
 
 class PixelClassificationWorkflow2(JsonSerializable):
@@ -133,126 +176,23 @@ class PixelClassificationWorkflow2(JsonSerializable):
     def __init__(
         self,
         *,
-        lanes: List[DataLane],
-        feature_extractors: List[IlpFilter],
-        annotations: List[Annotation],
-        classifier: Optional[IlpVigraPixelClassifier],
+        lanes: Sequence[DataLane] = (),
+        feature_extractors: Sequence[IlpFilter] = (),
+        classifier: Optional[IlpVigraPixelClassifier] = None,
     ):
-        self.lanes = lanes
-        self.feature_extractors = feature_extractors
-        self.annotations = annotations
+        self.lanes = lanes or []
+        self.feature_extractors = feature_extractors or []
         self.classifier = classifier
-        if annotations and set(annot.raw_data for annot in annotations) != set(
-            lane.raw_data.datasource for lane in lanes
-        ):
-            raise ValueError("Annotations should reference only data in the workflow's lanes")
+
         if classifier is None:
             self.tryUpdatePixelClassifier()
-
-    @property
-    def lanes_ilp_data(self) -> Dict[str, Any]:
-        return {
-            "Role Names": np.asarray([b"Raw Data", b"Prediction Mask"]),
-            "StorageVersion": "0.2",
-            "infos": {f"lane{lane_idx:04d}": lane.ilp_data for lane_idx, lane in enumerate(self.lanes)},
-            "local_data": {},
-        }
-
-    @classmethod
-    def lanes_from_ilp_data(cls, data) -> List[DataLane]:
-        lanes: List[DataLane] = []
-        for info in data["infos"].items:
-            lanes.append(DataLane.from_ilp_data(info))
-        return lanes
-
-    @property
-    def feature_extractor_ilp_data(self) -> Dict[str, Any]:
-        if not self.feature_extractors:
-            return {}
-        out = {}
-        feature_names = list(set(fe.__class__.__name__ for fe in self.feature_extractors))
-        out["FeatureIds"] = np.asarray([fn.encode("utf8") for fn in feature_names])
-        scales: List[float] = list(sorted(set(fe.ilp_scale for fe in self.feature_extractors)))
-        out["Scales"] = np.asarray(scales)
-        ComputeIn2d = np.zeros(len(feature_names), dtype=bool)
-        SelectionMatrix = np.zeros((len(feature_names), len(scales)), dtype=bool)
-        for fe in self.feature_extractors:
-            name_idx = feature_names.index(fe.__class__.__name__)
-            scale_idx = scales.index(fe.ilp_scale)
-            SelectionMatrix[name_idx, scale_idx] = True
-            ComputeIn2d[name_idx] = ComputeIn2d[name_idx] or (fe.axis_2d is not None)
-        out["SelectionMatrix"] = SelectionMatrix
-        out["ComputeIn2d"] = ComputeIn2d
-        return out
-
-    @classmethod
-    def feature_extractors_from_ilp_data(cls, data: Mapping, num_input_channels: int) -> List[IlpFilter]:
-        feature_names: List[str] = [feature_name.decode("utf-8") for feature_name in data["FeatureIds"][()]]
-        compute_in_2d: List[bool] = list(data["ComputeIn2d"][()])
-        scales: List[float] = list(data["Scales"][()])
-        selection_matrix = data["SelectionMatrix"][()]  # feature name x scales
-
-        feature_extractors = []
-        for feature_idx, feature_name in enumerate(feature_names):
-            feature_class = IlpFilter.REGISTRY[feature_name]
-            for scale_idx, (scale, in_2d) in enumerate(zip(scales, compute_in_2d)):
-                if selection_matrix[feature_idx][scale_idx]:
-                    axis_2d = "z" if in_2d else None
-                    extractor = feature_class.from_ilp_scale(
-                        scale, axis_2d=axis_2d, num_input_channels=num_input_channels
-                    )
-                    feature_extractors.append(extractor)
-        return feature_extractors
-
-    @property
-    def classifier_ilp_data(self) -> Dict[str, Any]:
-        out = {
-            "Bookmarks": {"0000": []},
-            "LabelColors": {},  # FIXME
-            "LabelNames": [],  # FIXME
-            "PmapColors": [],  # FIXME
-            "StorageVersion": "0.1",
-        }
-        if self.classifier is not None:
-            out["ClassifierForests"] = self.classifier.ilp_data
-            out["ClassifierFactory"] = self.classifier.ilp_classifier_factory
-        else:
-            out["ClassifierFactory"] = IlpVigraPixelClassifier.DEFAULT_ILP_CLASSIFIER_FACTORY
-
-        lanewise_labels = {"labels000": {}}  # empty labels still produce this in classic ilastik
-        for lane_idx, lane in enumerate(self.lanes):
-            out_lane_data = {}
-            for annot_idx, annot in enumerate(self.annotations):
-                if annot.raw_data == lane.raw_data.datasource:
-                    out_lane_data["block{annot_idx:04d}"] = annot.ilp_data
-            out_lane_data[f"labels{lane_idx:03d}"] = out_lane_data
-        out["LabelSets"] = lanewise_labels
-        return out
-
-    @property
-    def ilp_data(self):
-        return {
-            "Input Data": self.lanes_ilp_data,
-            "FeatureSelections": self.feature_extractor_ilp_data,
-            "PixelClassification": self.classifier_ilp_data,
-            "Prediction Export": {
-                "OutputFilenameFormat": "{dataset_dir}/{nickname}_{result_type}",
-                "OutputFormat": "hdf5",
-                "OutputInternalPath": "exported_data",
-                "StorageVersion": "0.1",
-            },
-            "currentApplet": 0,
-            "ilastikVersion": b"1.3.2post1",  # FIXME
-            "time": b"Wed Mar 11 15:40:37 2020",  # FIXME
-            "workflowName": b"Pixel Classification",
-        }
 
     @classmethod
     def from_ilp_data(cls, data) -> "PixelClassificationWorkflow2":
         lanes = (cls.lanes_from_ilp_data(data["Input Data"]),)
-        if len(lanes) == 0 or not any(lane.raw_data for lane in lanes):
+        if len(lanes) == 0 or not any(lane.RawData for lane in lanes):
             raise ValueError(f"Need at least one lane with Raw Data. Lanes: {lanes}")
-        num_input_channels = lanes[0].raw_data.datasource.shape.c
+        num_input_channels = lanes[0].RawData.datasource.shape.c
         return cls(
             lanes=lanes,
             feature_extractors=cls.feature_extractors_from_ilp_data(
@@ -262,10 +202,21 @@ class PixelClassificationWorkflow2(JsonSerializable):
             annotations=[],  # FIXME
         )
 
+    @property
+    def annotations(self) -> Sequence[Annotation]:
+        annotations = []
+        for lane in self.lanes:
+            annotations += lane.annotations
+        return annotations
+
+    @property
+    def num_annotations(self) -> int:
+        return sum(len(lane.annotations) for lane in self.lanes)
+
     def tryUpdatePixelClassifier(self) -> Optional[IlpVigraPixelClassifier]:
-        if len(self.annotations) > 0 and len(self.feature_extractors) > 0:
+        if self.num_annotations > 0 and len(self.feature_extractors) > 0:
             self.classifier = IlpVigraPixelClassifier.train(
-                feature_extractors=feature_extractors, annotations=annotations
+                feature_extractors=self.feature_extractors, annotations=self.annotations
             )
         else:
             self.classifier = None
@@ -279,8 +230,8 @@ class PixelClassificationWorkflow2(JsonSerializable):
             if extractor in self.feature_extractors:
                 raise ValueError(f"Feature Extractor {extractor} is already present in this Workflow")
             for lane in self.lanes:
-                if not extractor.is_applicable_to(lane.raw_data.datasource):
-                    raise ValueError(f"Feature {extractor} is not applicable to {lane.raw_data.datasource}")
+                if not extractor.is_applicable_to(lane.RawData.datasource):
+                    raise ValueError(f"Feature {extractor} is not applicable to {lane.RawData.datasource}")
             self.feature_extractors.append(extractor)
         self.tryUpdatePixelClassifier()
 
@@ -289,17 +240,57 @@ class PixelClassificationWorkflow2(JsonSerializable):
             self.feature_extractors.pop(self.feature_extractors.index(extractor))
         self.tryUpdatePixelClassifier()
 
-    def addAnnotations(self, annotations: List[Annotation]) -> None:
+    def lane_for_annotation(self, annot: Annotation):
+        for lane in self.lanes:
+            if lane.RawData.datasource == annot.raw_data:
+                return lane
+        raise KeyError(f"No lane has annotation's datasource {annot.raw_data}")
+
+    def add_annotations(self, annotations: List[Annotation]) -> None:
         for annot in annotations:
-            if annot in self.annotations:
-                raise ValueError(f"Annotation {annot} is already present in the workflow")
-            self.annotations.push(annot)
+            try:
+                lane = self.lane_for_annotation(annot)
+            except KeyError:
+                lane = DataLane(RawData=DataSourceInfo(datasource=annot.raw_data))
+                self.lanes.append(lane)
+            lane.add_annotation(annot)
         self.tryUpdatePixelClassifier()
 
-    def removeAnnotations(self, annotations: List[Annotation]) -> None:
+    def remove_annotations(self, annotations: List[Annotation]) -> None:
         for annot in annotations:
-            self.annotations.pop(self.annotations.index(annot))
+            self.lane_for_annotation(annot).remove_annotation(annot)
         self.tryUpdatePixelClassifier()
+
+    @property
+    def classifier_ilp_data(self) -> Dict[str, Any]:
+        out = {
+            "Bookmarks": {"0000": []},
+            "StorageVersion": "0.1",
+            "ClassifierFactory": IlpVigraPixelClassifier.DEFAULT_ILP_CLASSIFIER_FACTORY,
+        }
+        if self.classifier is not None:
+            out["ClassifierForests"] = self.classifier.ilp_data
+            out["ClassifierFactory"] = self.classifier.ilp_classifier_factory
+        out.update(DataLane.dump_as_ilp_label_data(self.lanes))
+        return out
+
+    @property
+    def ilp_data(self):
+        return {
+            "Input Data": DataLane.dump_as_ilp_data_selection_data(self.lanes),
+            "FeatureSelections": IlpFilter.dump_as_ilp_data(self.feature_extractors),
+            "PixelClassification": self.classifier_ilp_data,
+            "Prediction Export": {
+                "OutputFilenameFormat": "{dataset_dir}/{nickname}_{result_type}",
+                "OutputFormat": "hdf5",
+                "OutputInternalPath": "exported_data",
+                "StorageVersion": "0.1",
+            },
+            "currentApplet": 0,
+            "ilastikVersion": b"1.3.2post1",  # FIXME
+            "time": b"Wed Mar 11 15:40:37 2020",  # FIXME
+            "workflowName": b"Pixel Classification",
+        }
 
     @classmethod
     def headless(cls):

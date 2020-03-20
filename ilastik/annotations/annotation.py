@@ -16,11 +16,19 @@ from PIL import Image as PilImage
 
 
 class Color:
-    def __init__(self, r: int = 0, g: int = 0, b: int = 0, a: int = 255):
+    def __init__(
+        self,
+        r: np.uint8 = np.uint8(0),
+        g: np.uint8 = np.uint8(0),
+        b: np.uint8 = np.uint8(0),
+        a: np.uint8 = np.uint8(255),
+        name: str = "",
+    ):
         self.r = r
         self.g = g
         self.b = b
         self.a = a
+        self.name = name or f"Label {self.rgba}"
 
     @classmethod
     def from_channels(cls, channels: List[Number]) -> "Color":
@@ -32,7 +40,7 @@ class Color:
         return cls(*channels)
 
     @property
-    def rgba(self) -> Tuple[int, int, int, int]:
+    def rgba(self) -> Tuple[np.uint8, np.uint8, np.uint8, np.uint8]:
         return (self.r, self.g, self.b, self.a)
 
     @property
@@ -55,11 +63,7 @@ class Color:
 
     @classmethod
     def create_color_map(cls, colors: Iterable["Color"]) -> Dict["Color", np.uint8]:
-        out: Dict[Color, np.uint8] = {}
-        for color in cls.sort(colors):
-            if color not in out:
-                out[color] = np.uint8(len(out) + 1)
-        return out
+        return {color: np.uint8(idx + 1) for idx, color in enumerate(cls.sort(set(colors)))}
 
 
 class FeatureSamples(FeatureData, StaticLine):
@@ -191,7 +195,7 @@ class Annotation(ScalarData):
 
         out = {}
         for block_index, block in enumerate(merged_annotations.split(block_size)):
-            out["block{annot_idx:04d}"] = {
+            out[f"block{block_index:04d}"] = {
                 "__data__": block.raw(axiskeys),
                 "__attrs__": {
                     "blockSlice": "["
