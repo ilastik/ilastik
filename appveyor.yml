@@ -20,7 +20,6 @@ install:
   - cmd: git submodule update --init --recursive
   - cmd: git submodule foreach "git checkout master"
   - ps: rm -Force -Recurse $env:IlASTIK_ROOT\ilastik-meta\ilastik\
-  - ps: rm -Force -Recurse $env:IlASTIK_ROOT\ilastik-meta\lazyflow\
   # replace with whatever version of ilastik triggered the appveyor
   - ps: cp -recurse C:\projects\ilastik $env:IlASTIK_ROOT\ilastik-meta\ilastik
   # Point to the current ilastik-meta
@@ -31,7 +30,7 @@ build: off
 test_script:
   - cmd: set PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
   - cmd: CALL activate %ENV_NAME%
-  - cmd: cd %IlASTIK_ROOT%\ilastik-meta\ilastik\tests
+  - cmd: cd %IlASTIK_ROOT%\ilastik-meta\ilastik
   - cmd: set VOLUMINA_SHOW_3D_WIDGET=0
   - cmd: pytest --run-legacy-gui
 
