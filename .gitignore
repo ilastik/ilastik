@@ -79,5 +79,3 @@ docs/**/_build
 *.*~
 *.jpg
 *.swp
-
-lazyflow/drtile/drtile.pyd
