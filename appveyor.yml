@@ -7,6 +7,8 @@ environment:
   IlASTIK_ROOT: C:\ilastik
   VOLUMINA_SHOW_3D_WIDGET: 0
 
+cache:
+  - '%MINICONDA%\pkgs' -> appveyor.yml
 
 install:
   - cmd: set "PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%

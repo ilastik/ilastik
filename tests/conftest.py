@@ -170,6 +170,7 @@ def pytest_runtestloop(session):
     if session.config.getoption("run_legacy_gui"):
         for tstcls, gui_test_bag in itertools.groupby(_sorted_guitests(guitests), get_guitest_cls):
             run_gui_tests(tstcls, gui_test_bag)
+            ThreadRouter.app_is_shutting_down = False
 
     elif guitests:
         warnings.warn("Skipping legacy GUI test to enable please use --run-legacy-gui option\n")
@@ -184,7 +185,6 @@ def run_gui_tests(tstcls, gui_test_bag):
     tst_queue = queue.Queue()
     app = tstcls.app = QApplication([])
     app.setQuitOnLastWindowClosed(False)
-    ThreadRouter.app_is_shutting_down = False
     app.thread_router = ThreadRouter(app)
     tstcls.shell = launchShell(None, [], [])
 
