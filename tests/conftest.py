@@ -166,7 +166,6 @@ def pytest_runtestloop(session):
     # Modify session leaving only normal tests as session.items
     # Gui test should be run separately
     guitests, session.items = split_guitests(session.items)
-    _pytest_runtestloop(session)
 
     if session.config.getoption("run_legacy_gui"):
         for tstcls, gui_test_bag in itertools.groupby(_sorted_guitests(guitests), get_guitest_cls):
@@ -174,6 +173,8 @@ def pytest_runtestloop(session):
 
     elif guitests:
         warnings.warn("Skipping legacy GUI test to enable please use --run-legacy-gui option\n")
+
+    _pytest_runtestloop(session)
 
     return True
 
