@@ -251,7 +251,7 @@ def command_create(args: argparse.Namespace, env: CondaEnv) -> None:
     if location is None:
         return
 
-    packages = "lazyflow", "volumina", "ilastik"
+    packages = "volumina", "ilastik"
 
     logging.info(f"Installing local ilastik packages in development mode.")
     for pkg in packages:

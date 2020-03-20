@@ -22,17 +22,16 @@ For all our repositories, we follow the GitHub Flow.
 You can read about it in [this guide on github.com](https://guides.github.com/introduction/flow/).
 
 Contributing to ilastik is a little bit more involved than just cloning the repo and committing.
-The three main repositories; ilastik, lazyflow, and volumina are governed by ilastik-meta as submodules.
+The two main repositories; ilastik, and volumina are governed by ilastik-meta as submodules.
 Furthermore, in order to be able to run the code, all dependencies have to be installed.
 By far the most convenient way for this is to use conda.
 The following paragraphs will guide through the process of setting up a working development environment.
 
 ### Fork the relevant repositories
 
-You should begin by forking the three main ilastik repositories, that make up the ilastik application:
+You should begin by forking the two main ilastik repositories, that make up the ilastik application:
 
 * https://github.com/ilastik/ilastik
-* https://github.com/ilastik/lazyflow
 * https://github.com/ilastik/volumina
 
 #### Clone ilastik-meta
@@ -75,7 +74,7 @@ origin  https://github.com/<your_github_username>/ilastik (push)
 
 In order to stay up to date with the overall ilastik developments, you need to synchronize your
 forks with the upstream repositories.
-In the current configuration, each of the three main repositories has a single _remote_, called _origin_,
+In the current configuration, each of the two main repositories has a single _remote_, called _origin_,
 pointing to your forks.
 
 Now add the upstream repository by
@@ -93,9 +92,8 @@ upstream    https://github.com/ilastik/ilastik (fetch)
 upstream    https://github.com/ilastik/ilastik (push)
 ```
 
-Do this for each of the remaining two repositories `lazyflow` and `volumina`,adding
-`https://github.com/ilastik/lazyflow`, and `https://github.com/ilastik/volumina`, respectively, as
-the _upstream_ remote.
+Do this for each of the `volumina` repository as well, adding
+`https://github.com/ilastik/volumina` as the _upstream_ remote.
 
 You can sync your fork with the mother repo by:
 
@@ -108,7 +106,7 @@ git push origin master  # push the updated master to your fork
 git checkout -  # check out the branch you were previously on
 ```
 
-You should make it a habit to stay current in all three repository whilst actively developing.
+You should make it a habit to stay current in both main repositories whilst actively developing.
 To make this task a bit easier you could add the following alias to your `.gitconfig` file:
 
 ```
@@ -116,7 +114,7 @@ To make this task a bit easier you could add the following alias to your `.gitco
     sync-forks = "submodule foreach 'git checkout master; git fetch upstream master; git rebase upstream/master; git push; git checkout -'"
 ```
 
-If you invoke this alias from the `ilastik-meta` repository, it will update all three forks:
+If you invoke this alias from the `ilastik-meta` repository, it will update both forks:
 
 ```bash
 # in ~/sources/ilastik-meta
@@ -175,7 +173,7 @@ Now it might be the time to test whether the installation was successful:
 conda activate idev
 
 # check whether importing ilastik repos works
-python -c "import ilastik; import lazyflow; import volumina"
+python -c "import ilastik; import volumina"
 ```
 
 If there are no errors here, chances are high the development environment was set up correctly.
@@ -220,13 +218,7 @@ After making changes, please confirm that nothing else got broken by running the
    conda activate idev
    pytest --run-legacy-gui
    ```
- * Changes made in lazyflow:
-   ```bash
-   # in ~/source/ilastik-meta/lazyflow
-   conda activate idev
-   pytest
-   ```
-   * please also run the ilastik tests (see above)
+
  * Changes made in volumina:
    ```bash
    # in ~/source/ilastik-meta/volumina/tests

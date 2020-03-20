@@ -51,7 +51,6 @@ jobs:
         git submodule foreach "git checkout master"
     - run: >
         rm -rf ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
-        rm -rf ${ILASTIK_ROOT}/ilastik-meta/lazyflow &&
         ln -s `pwd` ${ILASTIK_ROOT}/ilastik-meta/ilastik
     - run: >
         conda activate base &&
@@ -67,7 +66,7 @@ jobs:
     # Test
     - run: >
         conda activate ${TEST_ENV_NAME} &&
-        cd ${ILASTIK_ROOT}/ilastik-meta/ilastik/tests &&
+        cd ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
         xvfb-run --server-args="-screen 0 1024x768x24" pytest --run-legacy-gui
     - run: >
         conda activate ${TEST_ENV_NAME} &&
