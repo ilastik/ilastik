@@ -126,7 +126,7 @@ def get_default_config(
                 "level": "DEBUG",
                 "class": "logging.handlers.RotatingFileHandler",
                 "filename": logfile_path,
-                "maxBytes": 20e6,  # 20 MB
+                "maxBytes": 50e6,  # 20 MB
                 "backupCount": 5,
                 "formatter": "verbose",
             },

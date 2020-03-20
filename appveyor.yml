@@ -20,6 +20,7 @@ install:
   - cmd: git submodule update --init --recursive
   - cmd: git submodule foreach "git checkout master"
   - ps: rm -Force -Recurse $env:IlASTIK_ROOT\ilastik-meta\ilastik\
+  - ps: rm -Force -Recurse $env:IlASTIK_ROOT\ilastik-meta\lazyflow\
   # replace with whatever version of ilastik triggered the appveyor
   - ps: cp -recurse C:\projects\ilastik $env:IlASTIK_ROOT\ilastik-meta\ilastik
   # Point to the current ilastik-meta

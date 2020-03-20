@@ -1,0 +1,58 @@
+language: generic
+os:
+  - linux
+  - osx
+env:
+  global:
+    - CONDA_ROOT=$HOME/miniconda
+    - TEST_ENV=test-env
+    - ILASTIK_ROOT=$HOME/ilastik
+
+cache:
+  directories:
+    - CONDA_ROOT
+
+install:
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export MINICONDA=https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export MINICONDA=https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh; fi
+  - echo $CONDA_ROOT
+  - echo $TEST_ENV
+  - if [[ ! -d ${CONDA_ROOT} ]]; then
+      echo "Installing Miniconda...";
+      wget $MINICONDA -O miniconda.sh &&
+      bash miniconda.sh -b -p ${CONDA_ROOT};
+    else
+      echo "Using cached Miniconda install";
+    fi
+  - echo ". $CONDA_ROOT/etc/profile.d/conda.sh" >> ~/.bashrc
+  - source ~/.bashrc
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+  - conda install -c conda-forge conda-build
+
+  # Useful for debugging any issues with conda
+  # - conda info -a
+
+  - conda env remove -n ${TEST_ENV}
+  # install current master
+  - git clone http://github.com/ilastik/ilastik-meta ${ILASTIK_ROOT}/ilastik-meta
+  - cd ${ILASTIK_ROOT}/ilastik-meta && git submodule init && git submodule update --recursive && git submodule foreach "git checkout master"
+  - rm -rf ${ILASTIK_ROOT}/ilastik-meta/lazyflow
+  - ln -s $TRAVIS_BUILD_DIR ${ILASTIK_ROOT}/ilastik-meta/lazyflow
+  - conda activate base
+  - >
+    cd ${ILASTIK_ROOT}/ilastik-meta &&
+    python ilastik/scripts/devenv.py create -n ${TEST_ENV}
+    -p ilastik-dependencies-no-solvers pytest-cov coveralls black
+    -c ilastik-forge conda-forge defaults
+
+script:
+  - conda activate $TEST_ENV
+  - echo `which python`
+  - echo `which pytest`
+  - cd ${ILASTIK_ROOT}/ilastik-meta/lazyflow
+  - pytest --capture=no --cov=lazyflow
+  - coveralls || echo "Failed to submit coveralls"
+  - cd $TRAVIS_BUILD_DIR && git diff --name-only --diff-filter=AM master.. | grep ".*\.py" | xargs black --check --line-length=120

@@ -38,7 +38,7 @@ from lazyflow.graph import Graph
 # that hooks will be executed until first not None result is found.
 
 
-GUI_TEST_TIMEOUT = 60  # Seconds
+GUI_TEST_TIMEOUT = 120  # Seconds
 
 
 @pytest.fixture(scope="session", autouse=True)

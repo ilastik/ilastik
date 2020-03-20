@@ -23,6 +23,7 @@ tests/images
 build/
 dist/
 ilastik.egg-info/
+lazyflow.egg-info/
 
 .settings
 
@@ -72,3 +73,9 @@ tests/recorded_test_cases/ObjectClassification/cube_objects_raw.npy
 *.un~
 *.swp
 docs/**/_build
+
+.coverage
+*.backup
+*.*~
+*.jpg
+*.swp
