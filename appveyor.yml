@@ -8,7 +8,7 @@ environment:
   VOLUMINA_SHOW_3D_WIDGET: 0
 
 cache:
-  - '%MINICONDA%\pkgs' -> appveyor.yml
+  - C:\Miniconda37-x64\pkgs -> appveyor.yml
 
 install:
   - cmd: set "PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
