@@ -1,31 +1,23 @@
 # This file was copied from the motmot ufmf GitHub repository: https://github.com/motmot/ufmf commit c795ffe369b7e58de69d34926388af33ce71b711
 
-from __future__ import division
-from __future__ import absolute_import
-from builtins import range
-from builtins import object
-
 # TODO: Convert this file to use bytes instead of str
 # from builtins import chr
 #
 
-import sys
-import struct, collections
+import struct
+import collections
 import warnings
-import os.path, hashlib
-import os, stat
+import hashlib
+import os
 
 import numpy
-from numpy import nan
 import logging
 
-logger = logging.getLogger(__name__)
-
-import time
-
-import math
 
 from . import FlyMovieFormat as FMF
+
+
+logger = logging.getLogger(__name__)
 
 
 class UfmfError(Exception):
@@ -100,46 +92,6 @@ class NoMoreFramesException(Exception):
 
 class InvalidMovieFileException(Exception):
     pass
-
-
-class UfmfParser(object):
-    """derive from this class to create your own parser
-
-    you will need to implemented the following functions:
-
-    def handle_bg(self, timestamp0, bg_im):
-        pass
-
-    def handle_frame(self, timestamp, regions):
-        pass
-    """
-
-    def parse(self, filename):
-        ufmf = Ufmf(filename)
-        bg_im, timestamp0 = ufmf.get_bg_image()
-
-        self.handle_bg(timestamp0, bg_im)
-
-        while 1:
-            buf = fd.read(chunkheadsz)
-            if len(buf) != chunkheadsz:
-                # no more frames (EOF)
-                break
-            intup = struct.unpack(FMT[1].CHUNKHEADER, buf)
-            (timestamp, n_pts) = intup
-            regions = []
-            for ptnum in range(n_pts):
-                subbuf = fd.read(subsz)
-                intup = struct.unpack(FMT[1].SUBHEADER, subbuf)
-                xmin, ymin = intup
-
-                buf = fd.read(chunkimsize)
-                bufim = numpy.fromstring(buf, dtype=numpy.uint8)
-                bufim.shape = chunkheight, chunkwidth
-                regions.append((xmin, ymin, bufim))
-
-            self.handle_frame(timestamp, regions)
-        fd.close()
 
 
 def identify_ufmf_version(filename):
@@ -283,7 +235,7 @@ def Ufmf(filename, **kwargs):
         raise ValueError("unknown .ufmf version %d" % version)
 
 
-class UfmfBase(object):
+class UfmfBase:
     pass
 
 
@@ -407,7 +359,7 @@ class UfmfV1(UfmfBase):
         self._fd.close()
 
 
-class _UFmfV3LowLevelReader(object):
+class _UFmfV3LowLevelReader:
     def __init__(self, fd, version):
         self._fd = fd
         self._version = version
@@ -592,7 +544,7 @@ class _UFmfV4LowLevelReader(_UFmfV3LowLevelReader):
         return timestamp, regions
 
 
-class _UFmfV3Indexer(object):
+class _UFmfV3Indexer:
     """create an index from an un-unindexed .ufmf v3 file"""
 
     def __init__(self, fd, version, ignore_preexisting_index=False, short_file_ok=False, index_progress=False):
@@ -857,7 +809,7 @@ class UfmfV3(UfmfBase):
 
     def get_progress(self):
         locs = self._index[b"frame"][b"loc"]
-        return float(self._next_frame) / len(locs)
+        return self._next_frame / len(locs)
 
     def set_next_frame(self, fno):
         self._next_frame = fno
@@ -1084,7 +1036,7 @@ def md5sum_headtail(filename):
     return m.digest()
 
 
-class FlyMovieEmulator(object):
+class FlyMovieEmulator:
     def __init__(
         self, filename, darken=0, allow_no_such_frame_errors=False, white_background=False, abs_diff=False, **kwargs
     ):
@@ -1347,7 +1299,7 @@ def UfmfSaver(file, frame0=None, timestamp0=None, **kwargs):
         raise ValueError("unknown version %s" % version)
 
 
-class UfmfSaverBase(object):
+class UfmfSaverBase:
     def __init__(self, version):
         self.version = version
 
