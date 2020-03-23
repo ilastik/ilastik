@@ -21,8 +21,13 @@ from __future__ import print_function
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import threading
+import logging
+
 from functools import partial, wraps
 from PyQt5.QtCore import QObject, pyqtSignal, Qt
+
+
+logger = logging.getLogger(__name__)
 
 
 class ThreadRouter(QObject):
@@ -65,6 +70,7 @@ def threadRoutedWithRouter(threadRouter):
         @wraps(func)
         def routed(*args, **kwargs):
             if ThreadRouter.app_is_shutting_down:
+                logger.warning("Won't execute threadRouted function %s because app is shutting down", func)
                 return
 
             router = threadRouter
