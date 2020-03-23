@@ -448,4 +448,4 @@ class OpInterpolate(Operator):
                     ]
             else:
                 # nothing to do for empty block
-                logger.warning(",".join(("Not enough data for interpolation" "leaving slice as is ...")))
+                logger.warning("Not enough data for interpolation" "leaving slice as is ...")
