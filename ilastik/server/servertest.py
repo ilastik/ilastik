@@ -20,6 +20,79 @@ def send(method: str, *args, **kwargs):
     return resp
 
 
+resp = post("http://localhost:5000/PixelClassificationWorkflow2/", data={})
+workflow_id = resp.json()
+
+resp = post(
+    "http://localhost:5000/sequence_data_source/",
+    data={"path": "/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped1.png"},
+)
+data_source_id = resp.json()
+
+resp = post(
+    f"http://localhost:5000/PixelClassificationWorkflow2/{workflow_id}/add_annotations",
+    data=flatten(
+        {
+            "annotations": [
+                {
+                    "voxels": [{"x": 140, "y": 150}, {"x": 145, "y": 155}],
+                    "color": {"r": 0, "g": 255, "b": 0},
+                    "raw_data": data_source_id,
+                },
+                {
+                    "voxels": [{"x": 238, "y": 101}, {"x": 229, "y": 139}],
+                    "color": {"r": 0, "g": 255, "b": 0},
+                    "raw_data": data_source_id,
+                },
+                {
+                    "voxels": [{"x": 283, "y": 87}, {"x": 288, "y": 92}],
+                    "color": {"r": 255, "g": 0, "b": 0},
+                    "raw_data": data_source_id,
+                },
+                {
+                    "voxels": [{"x": 274, "y": 168}, {"x": 256, "y": 191}],
+                    "color": {"r": 255, "g": 0, "b": 0},
+                    "raw_data": data_source_id,
+                },
+            ]
+        }
+    ),
+)
+annot_ids = resp.json()
+print(f"Annotation ids: {annot_ids}")
+
+
+resp = post(
+    f"http://localhost:5000/PixelClassificationWorkflow2/{workflow_id}/add_feature_extractors",
+    data=flatten(
+        {
+            "extractors": [
+                {"__class__": "GaussianSmoothing", "sigma": 0.3, "axis_2d": "z", "num_input_channels": 3},
+                {"__class__": "HessianOfGaussianEigenvalues", "scale": 0.3, "axis_2d": "z", "num_input_channels": 3},
+            ]
+        }
+    ),
+)
+feature_ids = resp.json()
+print(f"feature ids:: {feature_ids}")
+
+resp = get(f"http://localhost:5000/PixelClassificationWorkflow2/{workflow_id}/get_classifier")
+classifier_id = resp.json()
+print(f"Classifier id: {classifier_id}")
+
+predictions_path = f"predictions/{classifier_id}/{data_source_id}"
+info = get(f"http://localhost:5000/{predictions_path}/info").json()
+print(f"INFO:\n{json.dumps(info, indent=4)}")
+
+
+binary = get(f"http://localhost:5000/{predictions_path}/data/0-256_0-256_0-1").content
+data = numpy.frombuffer(binary, dtype=numpy.uint8).reshape(2, 256, 256)
+a = Array5D(data, axiskeys="cyx")
+a.show_channels()
+
+
+exit(0)
+################//////////////////
 resp = post(
     "http://localhost:5000/data_source/",
     data={"path": "/home/tomaz/SampleData/n5tests/317_8_CamKII_tTA_lacZ_Xgal_s123_1.4.n5/data"},

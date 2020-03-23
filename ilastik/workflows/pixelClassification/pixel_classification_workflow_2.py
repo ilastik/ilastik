@@ -17,7 +17,7 @@ from ndstructs.datasource import DataSource, N5DataSource, DataSourceSlice
 from ndstructs.datasink import N5DataSink
 from ndstructs.utils import JsonSerializable
 
-from ilastik.classifiers.pixel_classifier import PixelClassifierDataSource
+from ilastik.classifiers.pixel_classifier import PixelClassifierDataSource, Predictions
 from ilastik.classifiers.ilp_pixel_classifier import IlpVigraPixelClassifier
 from ilastik.features.ilp_filter import IlpFilter
 from ilastik.annotations import Annotation, Color
@@ -114,7 +114,7 @@ class DataLane:
     def __init__(
         self,
         *,
-        RawData: Optional[DataSourceInfo] = None,
+        RawData: DataSourceInfo,
         PredictionMask: Optional[DataSourceInfo] = None,
         annotations: Sequence[Annotation] = (),
     ):
@@ -124,13 +124,20 @@ class DataLane:
         for annot in annotations:
             self.add_annotation(annot)
 
-    def add_annotation(self, annotation: Annotation):
-        if self.RawData is None:
-            self.RawData = DataSourceInfo(datasource=datasource)
+    def __eq__(self, other):
+        if not isinstance(other, DataLane):
+            return False
+        # FIXME
+        return self.RawData.datasource == other.RawData.datasource and self.PredictionMask == other.PredictionMask
+
+    def ensure_compatible_with(self, annotation: Annotation):
         if annotation in self.annotations:
             raise ValueError("Annotation already exists in this lane")
         if self.RawData.datasource != annotation.raw_data:
             raise ValueError(f"Annotation {annotation} should be on top of the lane RawData: {self.RawData}")
+
+    def add_annotation(self, annotation: Annotation):
+        self.ensure_compatible_with(annotation)
         self.annotations.append(annotation)
 
     def remove_annotation(self, annotation: Annotation):
@@ -185,7 +192,7 @@ class PixelClassificationWorkflow2(JsonSerializable):
         self.classifier = classifier
 
         if classifier is None:
-            self.tryUpdatePixelClassifier()
+            self.try_update_pixel_classifier(True)
 
     @classmethod
     def from_ilp_data(cls, data) -> "PixelClassificationWorkflow2":
@@ -202,6 +209,11 @@ class PixelClassificationWorkflow2(JsonSerializable):
             annotations=[],  # FIXME
         )
 
+    def add_lane(self, lane: DataLane):
+        if lane in self.lanes:
+            raise ValueError(f"Lane {lane} already exists")
+        self.lanes.append(lane)
+
     @property
     def annotations(self) -> Sequence[Annotation]:
         annotations = []
@@ -213,7 +225,16 @@ class PixelClassificationWorkflow2(JsonSerializable):
     def num_annotations(self) -> int:
         return sum(len(lane.annotations) for lane in self.lanes)
 
-    def tryUpdatePixelClassifier(self) -> Optional[IlpVigraPixelClassifier]:
+    def dropClassifier(self) -> Optional[IlpVigraPixelClassifier]:
+        out = self.classifier
+        if self.classifier is not None:
+            self.classifier = None
+        return out
+
+    def try_update_pixel_classifier(self, retrain: bool) -> Optional[IlpVigraPixelClassifier]:
+        if not retrain:
+            self.classifier = None
+            return None
         if self.num_annotations > 0 and len(self.feature_extractors) > 0:
             self.classifier = IlpVigraPixelClassifier.train(
                 feature_extractors=self.feature_extractors, annotations=self.annotations
@@ -222,23 +243,27 @@ class PixelClassificationWorkflow2(JsonSerializable):
             self.classifier = None
         return self.classifier
 
-    def clearFeatureExtractors(self) -> None:
+    def clear_feature_extractors(self) -> None:
         self.feature_extractors = []
 
-    def addFeatureExtractors(self, extractors: List[IlpFilter], updateClassifier: bool = True) -> None:
+    def add_feature_extractors(
+        self, extractors: List[IlpFilter], updateClassifier: bool = True
+    ) -> Optional[IlpVigraPixelClassifier]:
         for extractor in extractors:
             if extractor in self.feature_extractors:
                 raise ValueError(f"Feature Extractor {extractor} is already present in this Workflow")
             for lane in self.lanes:
                 if not extractor.is_applicable_to(lane.RawData.datasource):
                     raise ValueError(f"Feature {extractor} is not applicable to {lane.RawData.datasource}")
-            self.feature_extractors.append(extractor)
-        self.tryUpdatePixelClassifier()
+        self.feature_extractors += extractors
+        return self.try_update_pixel_classifier(updateClassifier)
 
-    def removeFeatureExtractors(self, extractors: List[IlpFilter], updateClassifier: bool = True) -> None:
+    def remove_feature_extractors(
+        self, extractors: List[IlpFilter], updateClassifier: bool = True
+    ) -> Optional[IlpVigraPixelClassifier]:
         for extractor in extractors:
             self.feature_extractors.pop(self.feature_extractors.index(extractor))
-        self.tryUpdatePixelClassifier()
+        return self.try_update_pixel_classifier(updateClassifier)
 
     def lane_for_annotation(self, annot: Annotation):
         for lane in self.lanes:
@@ -246,20 +271,31 @@ class PixelClassificationWorkflow2(JsonSerializable):
                 return lane
         raise KeyError(f"No lane has annotation's datasource {annot.raw_data}")
 
-    def add_annotations(self, annotations: List[Annotation]) -> None:
+    def add_annotations(
+        self, annotations: List[Annotation], updateClassifier: bool = True
+    ) -> Optional[IlpVigraPixelClassifier]:
         for annot in annotations:
             try:
                 lane = self.lane_for_annotation(annot)
             except KeyError:
                 lane = DataLane(RawData=DataSourceInfo(datasource=annot.raw_data))
                 self.lanes.append(lane)
+            # FIXME: what if adding one of the annotations fails?
             lane.add_annotation(annot)
-        self.tryUpdatePixelClassifier()
+        return self.try_update_pixel_classifier(updateClassifier)
 
-    def remove_annotations(self, annotations: List[Annotation]) -> None:
+    def remove_annotations(
+        self, annotations: List[Annotation], updateClassifier: bool = True
+    ) -> Optional[IlpVigraPixelClassifier]:
         for annot in annotations:
             self.lane_for_annotation(annot).remove_annotation(annot)
-        self.tryUpdatePixelClassifier()
+        return self.try_update_pixel_classifier(updateClassifier)
+
+    def predict(self, roi: DataSourceSlice) -> Predictions:
+        self.try_update_pixel_classifier(True)
+        if self.classifier is None:
+            raise ValueError("Classifier not yet trained. Add annotations or feature extractors")
+        return self.classifier.predict(roi)
 
     @property
     def classifier_ilp_data(self) -> Dict[str, Any]:

@@ -1,15 +1,10 @@
+from typing import List, Dict
 from concurrent.futures import ThreadPoolExecutor
-from functools import partial
-from threading import Thread
-from typing import Dict, List, Tuple, Optional, Hashable
 import io
 import json
-import os
 import flask
 from flask import Flask, request, Response, send_file
 from flask_cors import CORS
-import uuid
-import numpy as np
 import urllib
 from PIL import Image as PilImage
 import argparse
@@ -25,6 +20,8 @@ from ilastik.classifiers.pixel_classifier import (
     VigraPixelClassifier,
     ScikitLearnPixelClassifier,
 )
+from ilastik.workflows.pixelClassification.pixel_classification_workflow_2 import PixelClassificationWorkflow2
+from ilastik.server.pixel_classification_web_adapter import PixelClassificationWorkflow2WebAdapter
 from ilastik.classifiers.ilp_pixel_classifier import IlpVigraPixelClassifier
 
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureDataMismatchException
@@ -36,7 +33,7 @@ from ilastik.features.fastfilters import (
     DifferenceOfGaussians,
     StructureTensorEigenvalues,
 )
-from ilastik.utility import flatten, unflatten, listify
+from ilastik.server.WebContext import WebContext
 
 parser = argparse.ArgumentParser(description="Runs ilastik prediction web server")
 parser.add_argument("--host", default="localhost", help="ip or hostname where the server will listen")
@@ -48,92 +45,37 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-datasource_classes = [DataSource, SequenceDataSource]
-
-feature_extractor_classes = [
-    FeatureExtractor,  # this allows one to GET /feature_extractor and get a list of all created feature extractors
-    GaussianSmoothing,
-    HessianOfGaussianEigenvalues,
-    GaussianGradientMagnitude,
-    LaplacianOfGaussian,
-    DifferenceOfGaussians,
-    StructureTensorEigenvalues,
-]
-
-classifier_classes = [
-    PixelClassifier,
-    VigraPixelClassifier,
-    ScikitLearnPixelClassifier,
-    IlpVigraPixelClassifier,
-    Annotation,
-]
-
-workflow_classes = {
-    klass.__name__: klass for klass in datasource_classes + feature_extractor_classes + classifier_classes
-}
-
 app = Flask("WebserverHack")
 CORS(app)
 
 
-class Context:
-    objects = {}
+@app.route("/PixelClassificationWorkflow2/<pix_workflow_id>/<method_name>", methods=["POST"])
+def add_to_workflow(pix_workflow_id: str, method_name: str):
+    if method_name not in ("add_annotations", "add_feature_extractors"):
+        return flask.Response(f"Can't call method {method_name} on pixel classification workflow", status=403)
+    return run_pixel_classification_workflow_method(pix_workflow_id, method_name)
 
-    @classmethod
-    def do_rpc(cls):
-        request_payload = cls.get_request_payload()
-        obj = cls.load(request_payload.pop("self"))
 
-    @classmethod
-    def get_class_named(cls, name: str):
-        name = name if name in workflow_classes else name.title().replace("_", "")
-        return workflow_classes[name]
+@app.route("/PixelClassificationWorkflow2/<pix_workflow_id>/<method_name>", methods=["GET"])
+def get_from_workflow(pix_workflow_id: str, method_name: str):
+    if method_name not in ("get_classifier"):
+        return flask.Response(f"Can't call method {method_name} on pixel classification workflow", status=403)
+    return run_pixel_classification_workflow_method(pix_workflow_id, method_name)
 
-    @classmethod
-    def create(cls, klass):
-        request_payload = cls.get_request_payload()
-        obj = klass.from_json_data(request_payload)
-        key = cls.store(request_payload.get("id"), obj)
-        return obj, key
 
-    @classmethod
-    def load(cls, key):
-        return cls.objects[key]
-
-    @classmethod
-    def store(cls, obj_id: Optional[Hashable], obj):
-        obj_id = obj_id if obj_id is not None else uuid.uuid4()
-        key = f"pointer@{obj_id}"
-        cls.objects[key] = obj
-        return key
-
-    @classmethod
-    def remove(cls, klass: type, key):
-        target_class = cls.objects[key].__class__
-        if not issubclass(target_class, klass):
-            raise Exception(f"Unexpected class {target_class} when deleting object with key {key}")
-        return cls.objects.pop(key)
-
-    @classmethod
-    def get_request_payload(cls):
-        payload = {}
-        for k, v in request.form.items():
-            if isinstance(v, str) and v.startswith("pointer@"):
-                payload[k] = cls.load(v)
-            else:
-                payload[k] = v
-        for k, v in request.files.items():
-            payload[k] = v.read()
-        return listify(unflatten(payload))
-
-    @classmethod
-    def get_all(cls, klass) -> Dict[str, object]:
-        return {key: obj for key, obj in cls.objects.items() if isinstance(obj, klass)}
+def run_pixel_classification_workflow_method(pix_workflow_id: str, method_name: str):
+    workflow = WebContext.load(pix_workflow_id)
+    if not isinstance(workflow, PixelClassificationWorkflow2):
+        return flask.Response(f"Could not find PixelClassificationWorkflow2 with id {pix_workflow_id}", status=404)
+    adapter = PixelClassificationWorkflow2WebAdapter(workflow=workflow, web_context=WebContext)
+    payload = WebContext.get_request_payload()
+    resp = from_json_data(getattr(adapter, method_name), payload)
+    return flask.jsonify(resp)
 
 
 def do_predictions(roi: Slice5D, classifier_id: str, datasource_id: str) -> Predictions:
-    classifier = Context.load(classifier_id)
-    datasource = Context.load(datasource_id)
+    classifier = WebContext.load(classifier_id)
+    datasource = WebContext.load(datasource_id)
     backed_roi = DataSourceSlice(datasource, **roi.to_dict()).defined()
 
     predictions = classifier.allocate_predictions(backed_roi)
@@ -190,8 +132,8 @@ def ng_predict(
 
 @app.route("/predictions/<classifier_id>/<datasource_id>/info/")
 def info_dict(classifier_id: str, datasource_id: str) -> Dict:
-    classifier = Context.load(classifier_id)
-    datasource = Context.load(datasource_id)
+    classifier = WebContext.load(classifier_id)
+    datasource = WebContext.load(datasource_id)
 
     expected_predictions_shape = classifier.get_expected_roi(datasource.roi).shape
 
@@ -219,7 +161,7 @@ def info_dict(classifier_id: str, datasource_id: str) -> Dict:
 @app.route("/datasource/<datasource_id>/data/<int:xBegin>-<int:xEnd>_<int:yBegin>-<int:yEnd>_<int:zBegin>-<int:zEnd>")
 def ng_raw(datasource_id: str, xBegin: int, xEnd: int, yBegin: int, yEnd: int, zBegin: int, zEnd: int):
     requested_roi = Slice5D(x=slice(xBegin, xEnd), y=slice(yBegin, yEnd), z=slice(zBegin, zEnd))
-    datasource = Context.load(datasource_id)
+    datasource = WebContext.load(datasource_id)
     data = datasource.retrieve(requested_roi)
 
     resp = flask.make_response(data.raw("xyzc").tobytes("F"))
@@ -248,7 +190,7 @@ def get_sample_datasets() -> List[Dict]:
     prefix = request.headers.get("X-Forwarded-Prefix", "/")
 
     links = []
-    for datasource_id, datasource in Context.get_all(DataSource).items():
+    for datasource_id, datasource in WebContext.get_all(DataSource).items():
         url_data = {
             "layers": [
                 {
@@ -293,7 +235,7 @@ def ng_samples():
 
 @app.route("/datasource/<datasource_id>/info")
 def datasource_info_dict(datasource_id: str) -> Dict:
-    datasource = Context.load(datasource_id)
+    datasource = WebContext.load(datasource_id)
 
     resp = flask.jsonify(
         {
@@ -318,7 +260,7 @@ def datasource_info_dict(datasource_id: str) -> Dict:
 
 @app.route("/<class_name>/<object_id>", methods=["DELETE"])
 def remove_object(class_name, object_id: str):
-    Context.remove(Context.get_class_named(class_name), object_id)
+    WebContext.remove(WebContext.get_class_named(class_name), object_id)
     return flask.jsonify({"id": object_id})
 
 
@@ -329,20 +271,20 @@ def handle_feature_data_mismatch(error):
 
 @app.route("/<class_name>/", methods=["POST"])
 def create_object(class_name: str):
-    obj, uid = Context.create(Context.get_class_named(class_name))
+    obj, uid = WebContext.create(WebContext.get_class_named(class_name))
     return json.dumps(uid)
 
 
 @app.route("/<class_name>/", methods=["GET"])
 def list_objects(class_name):
-    klass = Context.get_class_named(class_name)
-    return flask.Response(JsonSerializable.jsonify(Context.get_all(klass)), mimetype="application/json")
+    klass = WebContext.get_class_named(class_name)
+    return flask.Response(JsonSerializable.jsonify(WebContext.get_all(klass)), mimetype="application/json")
 
 
 @app.route("/<class_name>/<object_id>", methods=["GET"])
 def show_object(class_name: str, object_id: str):
-    klass = Context.get_class_named(class_name)
-    return flask.Response(Context.load(object_id).to_json(), mimetype="application/json")
+    klass = WebContext.get_class_named(class_name)
+    return flask.Response(WebContext.load(object_id).to_json(), mimetype="application/json")
 
 
 for sample_dir in args.sample_dirs or ():
@@ -353,6 +295,6 @@ for sample_dir in args.sample_dirs or ():
                     tile_shape = Shape5D.hypercube(args.sample_tile_size) if args.sample_tile_size else None
                     datasource = DataSource.create(dataset.absolute().as_posix(), tile_shape=tile_shape)
                     print(f"---->> Adding sample {datasource.name}")
-                    Context.store(None, datasource)
+                    WebContext.store(datasource)
 
 app.run(host=args.host, port=args.port)

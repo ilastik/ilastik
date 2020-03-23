@@ -3,6 +3,8 @@ from typing import Type, TypeVar, List, TypeVar, ClassVar, Mapping, Iterator, Se
 import re
 
 import numpy as np
+from ndstructs.utils import from_json_data
+
 
 from .feature_extractor import ChannelwiseFilter
 
@@ -66,6 +68,10 @@ class IlpFilter(ChannelwiseFilter):
                     )
                     feature_extractors.append(extractor)
         return feature_extractors
+
+    @classmethod
+    def from_json_data(cls, data) -> "IlpFilter":
+        return from_json_data(cls.REGISTRY[data["__class__"]], data, initOnly=True)
 
     @classmethod
     def dump_as_ilp_data(cls, feature_extractors: Sequence["IlpFilter"]) -> Dict[str, Any]:
