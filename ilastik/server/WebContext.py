@@ -90,7 +90,14 @@ class WebContext:
 
     @classmethod
     def get_id(cls, obj) -> uuid.UUID:
-        return cls.pyid_to_objid(id(obj))
+        return cls.pyid_to_objid[id(obj)]
+
+    @classmethod
+    def referencer(cls, obj) -> Optional[str]:
+        try:
+            return "pointer@" + str(cls.get_id(obj))
+        except KeyError:
+            return None
 
     @classmethod
     def remove(cls, klass: type, key):

@@ -283,7 +283,9 @@ def list_objects(class_name):
 @app.route("/<class_name>/<object_id>", methods=["GET"])
 def show_object(class_name: str, object_id: str):
     klass = WebContext.get_class_named(class_name)
-    return flask.Response(WebContext.load(object_id).to_json(), mimetype="application/json")
+    obj = WebContext.load(object_id)
+    payload = obj.to_json_data(referencer=WebContext.referencer)
+    return flask.jsonify(payload)
 
 
 for sample_dir in args.sample_dirs or ():

@@ -110,7 +110,7 @@ class DataSourceInfo(JsonSerializable):
         return cls(**params)
 
 
-class DataLane:
+class DataLane(JsonSerializable):
     def __init__(
         self,
         *,

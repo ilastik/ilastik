@@ -95,6 +95,9 @@ ilp_contents = get(f"http://localhost:5000/PixelClassificationWorkflow2/{workflo
 with open("/tmp/generated_project.ilp", "wb") as f:
     f.write(ilp_contents)
 
+workflow_data = get(f"http://localhost:5000/PixelClassificationWorkflow2/{workflow_id}").json()
+print(json.dumps(workflow_data, indent=4))
+
 exit(0)
 ################//////////////////
 resp = post(
