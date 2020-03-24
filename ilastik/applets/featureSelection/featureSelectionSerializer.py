@@ -88,18 +88,18 @@ class FeatureSelectionSerializer(AppletSerializer):
     @timeLogged(logger, logging.DEBUG)
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath, headless=False):
         try:
-            scales = topGroup["Scales"].value
+            scales = topGroup["Scales"][()]
             scales = list(map(float, scales))
 
             # Restoring 'feature computation in 2d' only makes sense, if scales were recovered...
             try:
-                computeIn2d = topGroup["ComputeIn2d"].value
+                computeIn2d = topGroup["ComputeIn2d"][()]
                 computeIn2d = list(map(bool, computeIn2d))
                 self.topLevelOperator.ComputeIn2d.setValue(computeIn2d)
             except KeyError:
                 pass  # older ilastik versions did not support feature computation in 2d
 
-            featureIds = list(map(lambda s: s.decode("utf-8"), topGroup["FeatureIds"].value))
+            featureIds = list(map(lambda s: s.decode("utf-8"), topGroup["FeatureIds"][()]))
         except KeyError:
             pass
         else:
@@ -119,7 +119,7 @@ class FeatureSelectionSerializer(AppletSerializer):
             else:
                 # If the matrix isn't there, just return
                 try:
-                    savedMatrix = topGroup["SelectionMatrix"].value
+                    savedMatrix = topGroup["SelectionMatrix"][()]
                     # Check matrix dimensions
                     assert savedMatrix.shape[0] == len(
                         featureIds
@@ -166,7 +166,7 @@ class Ilastik05FeatureSelectionDeserializer(AppletSerializer):
 
     def deserializeFromHdf5(self, hdf5File, filePath, headless=False):
         # Check the overall file version
-        ilastikVersion = hdf5File["ilastikVersion"].value
+        ilastikVersion = hdf5File["ilastikVersion"][()]
 
         # This is the v0.5 import deserializer.  Don't work with 0.6 projects (or anything else).
         if ilastikVersion != 0.5:
@@ -195,7 +195,7 @@ class Ilastik05FeatureSelectionDeserializer(AppletSerializer):
         try:
             # In ilastik 0.5, features were grouped into user-friendly selections.  We have to split these
             #  selections apart again into the actual features that must be computed.
-            userFriendlyFeatureMatrix = hdf5File["Project"]["FeatureSelection"]["UserSelection"].value
+            userFriendlyFeatureMatrix = hdf5File["Project"]["FeatureSelection"]["UserSelection"][()]
         except KeyError:
             # If the project file doesn't specify feature selections,
             #  we'll just use the default (blank) selections as initialized above

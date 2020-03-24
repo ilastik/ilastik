@@ -1598,7 +1598,7 @@ class IlastikShell(QMainWindow):
                 self.enableWorkflow = True
 
                 if "currentApplet" in list(hdf5File.keys()):
-                    appletName = hdf5File["currentApplet"].value
+                    appletName = hdf5File["currentApplet"][()]
                     self.setSelectedAppletDrawer(appletName)
                 else:
                     self.setSelectedAppletDrawer(self.projectManager.workflow.defaultAppletIndex)

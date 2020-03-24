@@ -137,14 +137,14 @@ class OpCarving(Operator):
             except Exception as e:
                 logger.info("Could not open hint overlay '%s'" % hintOverlayFile)
                 raise e
-            self._hints = f["/hints"].value[numpy.newaxis, :, :, :, numpy.newaxis]
+            self._hints = f["/hints"][numpy.newaxis, :, :, :, numpy.newaxis]
 
         if pmapOverlayFile is not None:
             try:
                 f = h5py.File(pmapOverlayFile, "r")
             except Exception as e:
                 raise RuntimeError("Could not open pmap overlay '%s'" % pmapOverlayFile)
-            self._pmap = f["/data"].value[numpy.newaxis, :, :, :, numpy.newaxis]
+            self._pmap = f["/data"][numpy.newaxis, :, :, :, numpy.newaxis]
 
         self._setCurrObjectName("<not saved yet>")
         self.HasSegmentation.setValue(False)

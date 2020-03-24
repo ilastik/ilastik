@@ -62,15 +62,15 @@ class PreprocessingSerializer(AppletSerializer):
         assert "sigma" in list(topGroup.keys())
         assert "filter" in list(topGroup.keys())
 
-        sigma = topGroup["sigma"].value
-        sfilter = topGroup["filter"].value
+        sigma = topGroup["sigma"][()]
+        sfilter = topGroup["filter"][()]
 
         if "graph" in list(topGroup.keys()):
             graphgroup = topGroup["graph"]
         else:
             assert "graphfile" in list(topGroup.keys())
             # feature: load preprocessed graph from file
-            filePath = topGroup["graphfile"].value
+            filePath = topGroup["graphfile"][()]
             if not os.path.exists(filePath):
                 if headless:
                     raise RuntimeError("Could not find data at " + filePath)

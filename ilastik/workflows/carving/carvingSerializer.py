@@ -130,14 +130,14 @@ class CarvingSerializer(AppletSerializer):
                     fg_voxels = [fg_voxels[:, k] for k in range(3)]
                     bg_voxels = [bg_voxels[:, k] for k in range(3)]
 
-                    sv = g["sv"].value
+                    sv = g["sv"][()]
 
                     mst.object_names[name] = i + 1
                     mst.object_seeds_fg_voxels[name] = fg_voxels
                     mst.object_seeds_bg_voxels[name] = bg_voxels
                     mst.object_lut[name] = sv
-                    mst.bg_priority[name] = g["bg_prio"].value
-                    mst.no_bias_below[name] = g["no_bias_below"].value
+                    mst.bg_priority[name] = g["bg_prio"][()]
+                    mst.no_bias_below[name] = g["no_bias_below"][()]
 
                     logger.info(
                         "[CarvingSerializer] de-serializing %s, with opCarving=%d, mst=%d"

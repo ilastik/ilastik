@@ -382,7 +382,7 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
 
     def deserializeFromHdf5(self, hdf5File, projectFilePath, headless=False):
         # Check the overall file version
-        ilastikVersion = hdf5File["ilastikVersion"].value
+        ilastikVersion = hdf5File["ilastikVersion"][()]
 
         # This is the v0.5 import deserializer.  Don't work with 0.6 projects (or anything else).
         if ilastikVersion != 0.5:

@@ -31,11 +31,10 @@ def test_applet_serialization(project_path, data_export_applet):
         data_export_applet.dataSerializers[0].serializeToHdf5(project_file, project_path)
 
     with h5py.File(project_path) as project_file:
-        assert project_file["Tracking Result Export/SelectedPlugin"].value.decode() == "Fiji-MaMuT"
-        assert project_file["Tracking Result Export/SelectedExportSource"].value.decode() == "Plugin"
+        assert project_file["Tracking Result Export/SelectedPlugin"][()].decode() == "Fiji-MaMuT"
+        assert project_file["Tracking Result Export/SelectedExportSource"][()].decode() == "Plugin"
         assert (
-            project_file["Tracking Result Export/AdditionalPluginArguments/bdvFilePath"].value.decode()
-            == "/tmp/bdv.xml"
+            project_file["Tracking Result Export/AdditionalPluginArguments/bdvFilePath"][()].decode() == "/tmp/bdv.xml"
         )
 
 

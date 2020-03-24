@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
         # Now print the findings for each image
         try:
-            label_names = f["PixelClassification/LabelNames"].value
+            label_names = f["PixelClassification/LabelNames"][()]
         except KeyError:
             label_names = [f"Label {n}" for n in range(1, num_bins)]
 
