@@ -20,12 +20,6 @@
 ###############################################################################
 # TODO: refactor
 # TODO: test many more operators
-
-
-import ilastik.ilastik_logging
-
-ilastik.ilastik_logging.default_config.init()
-
 import unittest
 import numpy as np
 import vigra

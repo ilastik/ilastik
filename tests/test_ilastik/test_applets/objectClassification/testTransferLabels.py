@@ -18,11 +18,6 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from __future__ import division
-import ilastik.ilastik_logging
-
-ilastik.ilastik_logging.default_config.init()
-
 from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification
 import numpy
 

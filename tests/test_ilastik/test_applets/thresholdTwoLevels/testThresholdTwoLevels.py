@@ -31,9 +31,6 @@ from ilastik.applets.thresholdTwoLevels.thresholdingTools import OpSelectLabels
 
 from ilastik.applets.thresholdTwoLevels.opGraphcutSegment import haveGraphCut
 
-import ilastik.ilastik_logging
-
-ilastik.ilastik_logging.default_config.init()
 import unittest
 
 ##

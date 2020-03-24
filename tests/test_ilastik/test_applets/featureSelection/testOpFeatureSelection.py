@@ -27,10 +27,6 @@ from lazyflow.operators.ioOperators import OpInputDataReader
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
 import vigra
 
-import ilastik.ilastik_logging
-
-ilastik.ilastik_logging.default_config.init()
-
 import unittest
 import tempfile
 

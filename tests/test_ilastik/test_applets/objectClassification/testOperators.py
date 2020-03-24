@@ -21,9 +21,6 @@ from __future__ import print_function
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-import ilastik.ilastik_logging
-
-ilastik.ilastik_logging.default_config.init()
 
 import unittest
 import numpy as np

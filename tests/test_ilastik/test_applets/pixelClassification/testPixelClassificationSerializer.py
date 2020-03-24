@@ -32,10 +32,6 @@ from lazyflow.operators import OpTrainClassifierBlocked, OpValueCache
 from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
 from ilastik.applets.pixelClassification.pixelClassificationSerializer import PixelClassificationSerializer
 
-import ilastik.ilastik_logging
-
-ilastik.ilastik_logging.default_config.init()
-
 
 class OpMockPixelClassifier(Operator):
     """

@@ -19,15 +19,10 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import os
-import numpy
 import h5py
 from lazyflow.graph import Graph
 from ilastik.applets.thresholdMasking.opThresholdMasking import OpThresholdMasking
 from ilastik.applets.thresholdMasking.thresholdMaskingSerializer import ThresholdMaskingSerializer
-
-import ilastik.ilastik_logging
-
-ilastik.ilastik_logging.default_config.init()
 
 
 class TestThresholdMaskingSerializer(object):
