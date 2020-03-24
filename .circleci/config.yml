@@ -6,13 +6,13 @@ jobs:
     parallelism: 1
     shell: /bin/bash --login
     environment:
-      CONDA_ROOT: /home/ubuntu/miniconda
+      CONDA_ROOT: /home/circleci/miniconda
       TEST_ENV_NAME: test-env
-      ILASTIK_ROOT: /home/ubuntu/ilastik
+      ILASTIK_ROOT: /home/circleci/ilastik
       VOLUMINA_SHOW_3D_WIDGET: 0
       ON_CIRCLE_CI: 1
     docker:
-    - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
+    - image: cimg/base:2020.01
     steps:
     # add interpolated environment variables (CircleCI 2.0 does not support direct interpolation)
     - run: echo 'export PATH=${CONDA_ROOT}/bin:${PATH}' >> $BASH_ENV
@@ -22,14 +22,6 @@ jobs:
     # 'See docs on artifact collection here https://circleci.com/docs/2.0/artifacts/'
     # - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
     # Restore the dependency cache
-    - restore_cache:
-        keys:
-        # This branch if available
-        - v1.4.2-dep-{{ .Branch }}-
-        # Default branch if not
-        - v1.4.2-dep-master-
-        # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
-        - v1.4.2-dep-
     - run: >
         if [[ ! -d ${CONDA_ROOT} ]]; then
             echo "Installing Miniconda...";
@@ -38,7 +30,15 @@ jobs:
         else
             echo "Using cached Miniconda install";
         fi
-    - run: conda init bash
+    - run: echo 'source "$CONDA_ROOT/etc/profile.d/conda.sh"' >> $BASH_ENV
+    - restore_cache:
+        keys:
+        # This branch if available
+        - v1.4.2-dep-{{ .Branch }}-
+        # Default branch if not
+        - v1.4.2-dep-master-
+        # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
+        - v1.4.2-dep-
     - run: >
         conda config --set always_yes yes --set changeps1 no --set channel_priority strict &&
         conda update -q conda &&
@@ -53,6 +53,8 @@ jobs:
         rm -rf ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
         ln -s `pwd` ${ILASTIK_ROOT}/ilastik-meta/ilastik
     - run: >
+        sudo apt-get update &&
+        sudo apt-get install -yy libgl1-mesa-dev xvfb &&
         conda activate base &&
         cd ${ILASTIK_ROOT}/ilastik-meta &&
         python ilastik/scripts/devenv.py create -n ${TEST_ENV_NAME}
@@ -62,12 +64,13 @@ jobs:
     - save_cache:
         key: v1.4.2-dep-{{ .Branch }}-{{ epoch }}
         paths:
-        - /home/ubuntu/miniconda
+        - /home/circleci/miniconda/pkgs
     # Test
     - run: >
         conda activate ${TEST_ENV_NAME} &&
         cd ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
-        xvfb-run --server-args="-screen 0 1024x768x24" pytest --run-legacy-gui
+        mkdir test-results &&
+        xvfb-run --server-args="-screen 0 1024x768x24" pytest --run-legacy-gui --junitxml=test-results/junit.xml
     - run: >
         conda activate ${TEST_ENV_NAME} &&
         cd ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
@@ -75,13 +78,5 @@ jobs:
             grep ".*\.py" |
             xargs black --check --line-length=120
 
-    # Teardown
-    #   If you break your build into multiple jobs with workflows, you will probably want to do the parts of this that are relevant in each
-    # Save test results
-    # - store_test_results:
-    #     path: /tmp/circleci-test-results
-    # # Save artifacts
-    # - store_artifacts:
-    #     path: /tmp/circleci-artifacts
-    # - store_artifacts:
-    #     path: /tmp/circleci-test-results
+    - store_test_results:
+        path: test-results
