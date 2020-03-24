@@ -32,12 +32,10 @@ from ilastik.applets.objectClassification.opObjectClassification import (
     OpObjectPredict,
     OpObjectClassification,
     OpBadObjectsToWarningMessage,
-    OpMaxLabel,
 )
 
 from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier
 
-from ilastik.applets import objectExtraction
 from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures, OpAdaptTimeListRoi, OpObjectExtraction
 
 

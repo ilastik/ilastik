@@ -22,10 +22,7 @@ from builtins import range
 import numpy
 import vigra
 
-np = numpy
-
 from lazyflow.graph import Graph
-from lazyflow.operators import OpArrayPiper
 from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels import OpThresholdTwoLevels
 from ilastik.applets.thresholdTwoLevels.thresholdingTools import OpSelectLabels
 
@@ -383,8 +380,8 @@ class TestThresholdTwoLevels(Generator2):
     def testOpSelectLabels(self):
         op = OpSelectLabels(graph=Graph())
 
-        small = numpy.asarray([[0, 0, 0], [0, 1, 0], [0, 0, 0]]).astype(np.uint32)
-        big = numpy.asarray([[0, 1, 0], [1, 1, 1], [0, 1, 0]]).astype(np.uint32)
+        small = numpy.asarray([[0, 0, 0], [0, 1, 0], [0, 0, 0]]).astype(numpy.uint32)
+        big = numpy.asarray([[0, 1, 0], [1, 1, 1], [0, 1, 0]]).astype(numpy.uint32)
 
         small = vigra.taggedView(small[:, :, None], "yxc")
         big = vigra.taggedView(big[:, :, None], "yxc")
@@ -418,7 +415,7 @@ class TestThresholdTwoLevels(Generator2):
         """
         Can we connect an image, then replace it with a differently-ordered image?
         """
-        predRaw = np.zeros((20, 22, 21, 3), dtype=np.uint32)
+        predRaw = numpy.zeros((20, 22, 21, 3), dtype=numpy.uint32)
         pred1 = vigra.taggedView(predRaw, axistags="zyxc")
         pred2 = vigra.taggedView(predRaw, axistags="tyxc")
 
@@ -613,7 +610,7 @@ class TestThresholdTwoLevels(Generator2):
         output2 = vigra.taggedView(output2, axistags="zyx")
 
         ref = output * output2
-        idx = np.where(ref != output)
+        idx = numpy.where(ref != output)
 
         #         print(str(oper.Output.meta.getTaggedShape()))
         #         print(str(output.shape))
@@ -627,7 +624,7 @@ class TestThresholdTwoLevels(Generator2):
         oper = OpThresholdTwoLevels(graph=g)
         oper.InputImage.setValue(self.data5d)
         oper.MinSize.setValue(1)
-        oper.MaxSize.setValue(np.prod(self.data5d.shape[1:]))
+        oper.MaxSize.setValue(numpy.prod(self.data5d.shape[1:]))
         oper.HighThreshold.setValue(0.7)
         oper.LowThreshold.setValue(0.3)
         oper.SmootherSigma.setValue({"z": 0, "y": 0, "x": 0})
@@ -678,7 +675,7 @@ class TestThresholdTwoLevels(Generator2):
 #         numpy.testing.assert_array_equal(out5d.shape, self.data5d.shape)
 #
 #     def testStrangeAxesWith(self):
-#         pred = np.zeros((20, 22, 21, 3), dtype=np.uint32)
+#         pred = numpy.zeros((20, 22, 21, 3), dtype=numpy.uint32)
 #         pred = vigra.taggedView(pred, axistags='tyxc')
 #
 #         oper5d = OpThresholdTwoLevels(graph=Graph())
@@ -696,7 +693,7 @@ class TestThresholdTwoLevels(Generator2):
 #         out5d = oper5d.CachedOutput[:].wait()
 #
 #     def testStrangeAxesWithout(self):
-#         pred = np.zeros((20, 22, 21, 3), dtype=np.uint32)
+#         pred = numpy.zeros((20, 22, 21, 3), dtype=numpy.uint32)
 #         pred = vigra.taggedView(pred, axistags='tyxc')
 #
 #         oper5d = OpThresholdTwoLevels(graph=Graph())
@@ -735,18 +732,18 @@ class TestTTLUseCase(unittest.TestCase):
         # plus are around .9, predictions for background are around .1. The
         # axis order is a bit strange.
 
-        shift = np.asarray((5, 4, 3), dtype=np.int)
-        vol = np.ones((70, 60, 50)) * 0.1
+        shift = numpy.asarray((5, 4, 3), dtype=numpy.int)
+        vol = numpy.ones((70, 60, 50)) * 0.1
         vol[11:13, 12:14, 5:15] = 0.9  # bar in z direction
         vol[11:13, 8:18, 9:11] = 0.9  # bar in y direction
         vol[7:17, 12:14, 9:11] = 0.9  # bar in x direction
 
         nt = 5
-        tvol = np.zeros((nt,) + vol.shape)
+        tvol = numpy.zeros((nt,) + vol.shape)
         for i in range(nt):
             for a in range(len(shift)):
-                vol = np.roll(vol, shift[a], axis=a)
-            tvol[i, ...] = vol + (np.random.random(size=vol.shape) - 0.5) * 0.1
+                vol = numpy.roll(vol, shift[a], axis=a)
+            tvol[i, ...] = vol + (numpy.random.random(size=vol.shape) - 0.5) * 0.1
 
         tvol = vigra.taggedView(tvol, axistags="tzyx")
         self.tvol = tvol.withAxes(*"ztyx")
@@ -754,15 +751,15 @@ class TestTTLUseCase(unittest.TestCase):
     def checkCorrect(self, vol):
         vol = vol.withAxes(*"tzyx")
         tvol = self.tvol.withAxes(*"tzyx")
-        assert np.all(vol[tvol > 0.5] > 0)
-        assert np.all(vol[tvol < 0.5] == 0)
+        assert numpy.all(vol[tvol > 0.5] > 0)
+        assert numpy.all(vol[tvol < 0.5] == 0)
 
     def testSimpleUseCase(self):
         g = Graph()
         oper = OpThresholdTwoLevels(graph=g)
         oper.InputImage.setValue(self.tvol)
         oper.MinSize.setValue(1)
-        oper.MaxSize.setValue(np.prod(self.tvol.shape[1:]))
+        oper.MaxSize.setValue(numpy.prod(self.tvol.shape[1:]))
         oper.HighThreshold.setValue(0.7)
         oper.LowThreshold.setValue(0.3)
         oper.SmootherSigma.setValue({"z": 0, "y": 0, "x": 0})

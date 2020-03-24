@@ -24,17 +24,9 @@ import unittest
 import numpy
 import vigra
 from lazyflow.graph import Graph
-from ilastik.applets.objectClassification.opObjectClassification import (
-    OpRelabelSegmentation,
-    OpObjectTrain,
-    OpObjectPredict,
-    OpObjectClassification,
-)
+from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification
 
-from ilastik.applets import objectExtraction
-from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures, OpAdaptTimeListRoi, OpObjectExtraction
-
-import h5py
+from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 
 
 class TestWithCube(unittest.TestCase):

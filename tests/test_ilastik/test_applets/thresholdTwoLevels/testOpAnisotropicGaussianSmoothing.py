@@ -18,11 +18,9 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import numpy
+import numpy as np
 from numpy.testing import assert_array_equal
 import vigra
-
-np = numpy
 
 from lazyflow.graph import Graph
 from lazyflow.operators import OpReorderAxes
