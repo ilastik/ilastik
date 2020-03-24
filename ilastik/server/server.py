@@ -58,7 +58,7 @@ def add_to_workflow(pix_workflow_id: str, method_name: str):
 
 @app.route("/PixelClassificationWorkflow2/<pix_workflow_id>/<method_name>", methods=["GET"])
 def get_from_workflow(pix_workflow_id: str, method_name: str):
-    if method_name not in ("get_classifier"):
+    if method_name not in ("get_classifier", "generate_ilp"):  # FIXME: those can't be cached =/
         return flask.Response(f"Can't call method {method_name} on pixel classification workflow", status=403)
     return run_pixel_classification_workflow_method(pix_workflow_id, method_name)
 
@@ -69,8 +69,7 @@ def run_pixel_classification_workflow_method(pix_workflow_id: str, method_name: 
         return flask.Response(f"Could not find PixelClassificationWorkflow2 with id {pix_workflow_id}", status=404)
     adapter = PixelClassificationWorkflow2WebAdapter(workflow=workflow, web_context=WebContext)
     payload = WebContext.get_request_payload()
-    resp = from_json_data(getattr(adapter, method_name), payload)
-    return flask.jsonify(resp)
+    return from_json_data(getattr(adapter, method_name), payload)
 
 
 def do_predictions(roi: Slice5D, classifier_id: str, datasource_id: str) -> Predictions:

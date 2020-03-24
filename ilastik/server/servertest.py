@@ -68,7 +68,7 @@ resp = post(
         {
             "extractors": [
                 {"__class__": "GaussianSmoothing", "sigma": 0.3, "axis_2d": "z", "num_input_channels": 3},
-                {"__class__": "HessianOfGaussianEigenvalues", "scale": 0.3, "axis_2d": "z", "num_input_channels": 3},
+                {"__class__": "HessianOfGaussianEigenvalues", "scale": 0.7, "axis_2d": "z", "num_input_channels": 3},
             ]
         }
     ),
@@ -90,6 +90,10 @@ data = numpy.frombuffer(binary, dtype=numpy.uint8).reshape(2, 256, 256)
 a = Array5D(data, axiskeys="cyx")
 a.show_channels()
 
+
+ilp_contents = get(f"http://localhost:5000/PixelClassificationWorkflow2/{workflow_id}/generate_ilp").content
+with open("/tmp/generated_project.ilp", "wb") as f:
+    f.write(ilp_contents)
 
 exit(0)
 ################//////////////////

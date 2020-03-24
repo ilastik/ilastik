@@ -26,10 +26,11 @@ import re
 # # Add Submodules to sys.path ##
 ################################
 import os
+import io
 from . import expose_submodules
 import h5py
 import time
-from typing import Optional, Iterable, List, Dict, Any, Mapping
+from typing import Optional, Iterable, List, Dict, Any, Mapping, Tuple
 from pathlib import Path
 from pkg_resources import parse_version
 from collections.abc import Mapping as BaseMapping
@@ -153,16 +154,11 @@ class Project:
         return {"__data__": dataset[()], "__attrs__": {}}  # FIXME
 
     @classmethod
-    def from_ilp_data(cls, data: Mapping[str, Any], path: Optional[Path] = None) -> str:
-        import tempfile
-
-        if not path:
-            tmp_file_handle, tmp_file_path = tempfile.mkstemp(suffix=".ilp")
-            os.close(tmp_file_handle)
-            path = Path(tmp_file_path)
-        ilp = h5py.File(tmp_file_path, "w")
+    def from_ilp_data(cls, data: Mapping[str, Any], path: Optional[Path] = None) -> Tuple["Project", io.BytesIO]:
+        backing_file = open(path, "wb") if path else io.BytesIO()
+        ilp = h5py.File(backing_file, "w")
         cls.populate_h5_group(group=ilp["/"], data=data)
-        return cls(project_file=ilp)
+        return cls(project_file=ilp), backing_file
 
 
 def convertVersion(vstring):
