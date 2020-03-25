@@ -6,6 +6,7 @@ environment:
   MINICONDA: C:\Miniconda37-x64
   IlASTIK_ROOT: C:\ilastik
   VOLUMINA_SHOW_3D_WIDGET: 0
+  APPVEYOR_CACHE_ENTRY_ZIP_ARGS: -xr!*/ -ir-!*.tar.bz2 -ir-!*.conda  # Exclude directories only cache downloaded tars
 
 cache:
   - C:\Miniconda37-x64\pkgs -> appveyor.yml
@@ -26,6 +27,7 @@ install:
   - ps: cp -recurse C:\projects\ilastik $env:IlASTIK_ROOT\ilastik-meta\ilastik
   # Point to the current ilastik-meta
   - python ilastik/scripts/devenv.py create -n %ENV_NAME% -c ilastik-forge conda-forge defaults -p ilastik-dependencies-no-solvers
+  - conda clean -p
 
 build: off
 
