@@ -1,7 +1,6 @@
 version: 2
 
 jobs:
-
   checkout_ilastik:
     working_directory: /root/ilastik/ilastik
     parallelism: 1
@@ -23,11 +22,12 @@ jobs:
             rm -rf ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
             ln -s ${ILASTIK_ROOT}/ilastik ${ILASTIK_ROOT}/ilastik-meta/ilastik
     - save_cache:
+        name: store repo cache
         key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
         paths:
         - /root/ilastik
 
-  build:
+  test:
     working_directory: /root/ilastik/ilastik
     parallelism: 1
     shell: /bin/bash --login
@@ -40,41 +40,49 @@ jobs:
     - image: continuumio/miniconda3
     steps:
     - restore_cache:
-        key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
-    - restore_cache:
+        name: restoring dependency cache
         keys:
         # This branch if available
-        - v1.4.10-dep-{{ .Branch }}-
+        - v1.4.10-dep-{{ .Branch }}-{{ epoch }}
         # Default branch if not
         - v1.4.10-dep-master-
         # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
         - v1.4.10-dep-
-    - run: >
-        conda config --set always_yes yes --set changeps1 no --set channel_priority strict &&
-        conda update -q conda &&
-        conda install -n base -c conda-forge conda-build
-    - run: >
-        sudo apt-get update &&
-        sudo apt-get install -yy libgl1-mesa-dev xvfb &&
-        conda activate base &&
-        cd ${ILASTIK_ROOT}/ilastik-meta &&
-        python ilastik/scripts/devenv.py create -n ${TEST_ENV_NAME}
-        -p pytest-qt ilastik-dependencies-no-solvers black
-        -c ilastik-forge conda-forge defaults
-    # Save dependency cache
+    - restore_cache:
+        name: restore ilastik-repo cache
+        key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+    - run:
+        name: update conda
+        command: >
+            conda config --set always_yes yes --set changeps1 no --set channel_priority strict &&
+            conda update -q conda -c conda-forge -c defaults &&
+            conda install -n base -c conda-forge -c defaults conda-build
+    - run:
+        name: install apt dependencies
+        command: >
+            apt-get update &&
+            apt-get install -yy libgl1-mesa-dev xvfb
+    - run:
+        name: create ilastik conda environment
+        command: >
+            cd ${ILASTIK_ROOT}/ilastik-meta &&
+            python ilastik/scripts/devenv.py create -n ${TEST_ENV_NAME}
+            -p pytest-qt ilastik-dependencies-no-solvers
+            -c ilastik-forge conda-forge defaults
+    - run:
+        name: run ilastik tests
+        command: >
+            conda activate ${TEST_ENV_NAME} &&
+            cd ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
+            mkdir test-results &&
+            xvfb-run --server-args="-screen 0 1024x768x24" pytest --run-legacy-gui --junitxml=test-results/junit.xml
+    - store_test_results:
+        path: test-results
     - save_cache:
+        name: store dependency cache
         key: v1.4.10-dep-{{ .Branch }}-{{ epoch }}
         paths:
         - /opt/conda/pkgs
-    # Test
-    - run: >
-        conda activate ${TEST_ENV_NAME} &&
-        cd ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
-        mkdir test-results &&
-        xvfb-run --server-args="-screen 0 1024x768x24" pytest --run-legacy-gui --junitxml=test-results/junit.xml
-    - store_test_results:
-        path: test-results
-
 
   black:
     working_directory: /root/ilastik/ilastik
@@ -84,25 +92,30 @@ jobs:
     - image: continuumio/miniconda3
     steps:
     - restore_cache:
+        name: restore ilastik-repo cache
         key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
     - restore_cache:
+        name: restore dependency cache
         keys:
-        # This branch if available
         - v1.4.10-dep-{{ .Branch }}-{{ epoch }}
-        # Default branch if not
         - v1.4.10-dep-master-
-        # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
         - v1.4.10-dep-
-    - run: >
-        conda config --set always_yes yes --set changeps1 no --set channel_priority strict &&
-        conda update -q conda -c conda-forge -c defaults
-    - run: >
-        conda create -y -n black -c conda-forge -c base black
-    - run: >
-        conda activate black &&
-        git diff --name-only --diff-filter=AM master.. |
-            grep ".*\.py" |
-            xargs black --check --line-length=120
+    - run:
+        name: update conda
+        command: >
+            conda config --set always_yes yes --set changeps1 no --set channel_priority strict &&
+            conda update -q conda -c conda-forge -c defaults
+    - run:
+        name: create conda environment
+        command: >
+            conda create -y -n black -c conda-forge -c base black
+    - run:
+        name: black check
+        command: >
+            conda activate black &&
+            git diff --name-only --diff-filter=AM master.. |
+                grep ".*\.py" |
+                xargs black --check --line-length=120
 
 
 workflows:
@@ -110,7 +123,7 @@ workflows:
   build_and_test:
     jobs:
       - checkout_ilastik
-      - build:
+      - test:
           requires:
             - checkout_ilastik
       - black:
