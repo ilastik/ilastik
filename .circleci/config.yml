@@ -28,7 +28,7 @@ jobs:
         - /root/ilastik
 
   build:
-    working_directory: ~/ilastik/ilastik
+    working_directory: /root/ilastik/ilastik
     parallelism: 1
     shell: /bin/bash --login
     environment:
@@ -72,15 +72,37 @@ jobs:
         cd ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
         mkdir test-results &&
         xvfb-run --server-args="-screen 0 1024x768x24" pytest --run-legacy-gui --junitxml=test-results/junit.xml
+    - store_test_results:
+        path: test-results
+
+
+  black:
+    working_directory: /root/ilastik/ilastik
+    parallelism: 1
+    shell: /bin/bash --login
+    docker:
+    - image: continuumio/miniconda3
+    steps:
+    - restore_cache:
+        key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+    - restore_cache:
+        keys:
+        # This branch if available
+        - v1.4.10-dep-{{ .Branch }}-{{ epoch }}
+        # Default branch if not
+        - v1.4.10-dep-master-
+        # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
+        - v1.4.10-dep-
     - run: >
-        conda activate ${TEST_ENV_NAME} &&
-        cd ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
+        conda config --set always_yes yes --set changeps1 no --set channel_priority strict &&
+        conda update -q conda -c conda-forge -c defaults
+    - run: >
+        conda create -y -n black -c conda-forge -c base black
+    - run: >
+        conda activate black &&
         git diff --name-only --diff-filter=AM master.. |
             grep ".*\.py" |
             xargs black --check --line-length=120
-
-    - store_test_results:
-        path: test-results
 
 
 workflows:
@@ -91,3 +113,7 @@ workflows:
       - build:
           requires:
             - checkout_ilastik
+      - black:
+          requires:
+            - checkout_ilastik
+
