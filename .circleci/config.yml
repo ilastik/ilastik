@@ -1,20 +1,46 @@
 version: 2
-## Customize the test machine
+
 jobs:
+
+  checkout_ilastik:
+    working_directory: /root/ilastik/ilastik
+    parallelism: 1
+    shell: /bin/bash --login
+    environment:
+      ILASTIK_ROOT: /root/ilastik
+    docker:
+    - image: continuumio/miniconda3
+    steps:
+    - checkout
+    - run:
+        name: initialize ilastik-meta, link to code
+        command: >
+            git clone https://github.com/ilastik/ilastik-meta ${ILASTIK_ROOT}/ilastik-meta && 
+            cd ${ILASTIK_ROOT}/ilastik-meta &&
+            git submodule init &&
+            git submodule update --recursive &&
+            git submodule foreach "git checkout master" &&
+            rm -rf ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
+            ln -s ${ILASTIK_ROOT}/ilastik ${ILASTIK_ROOT}/ilastik-meta/ilastik
+    - save_cache:
+        key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+        paths:
+        - /root/ilastik
+
   build:
     working_directory: ~/ilastik/ilastik
     parallelism: 1
     shell: /bin/bash --login
     environment:
-      CONDA_ROOT: /home/circleci/miniconda
-      TEST_ENV_NAME: test-env
-      ILASTIK_ROOT: /home/circleci/ilastik
-      VOLUMINA_SHOW_3D_WIDGET: 0
+      ILASTIK_ROOT: /root/ilastik
       ON_CIRCLE_CI: 1
+      TEST_ENV_NAME: test-env
+      VOLUMINA_SHOW_3D_WIDGET: 0
     docker:
     - image: continuumio/miniconda3
     steps:
-    - checkout
+    - restore_cache:
+        key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
     - restore_cache:
         keys:
         # This branch if available
@@ -27,15 +53,6 @@ jobs:
         conda config --set always_yes yes --set changeps1 no --set channel_priority strict &&
         conda update -q conda &&
         conda install -n base -c conda-forge conda-build
-    - run: git clone http://github.com/ilastik/ilastik-meta ${ILASTIK_ROOT}/ilastik-meta
-    - run: >
-        cd ${ILASTIK_ROOT}/ilastik-meta &&
-        git submodule init &&
-        git submodule update --recursive &&
-        git submodule foreach "git checkout master"
-    - run: >
-        rm -rf ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
-        ln -s `pwd` ${ILASTIK_ROOT}/ilastik-meta/ilastik
     - run: >
         sudo apt-get update &&
         sudo apt-get install -yy libgl1-mesa-dev xvfb &&
@@ -64,3 +81,13 @@ jobs:
 
     - store_test_results:
         path: test-results
+
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - checkout_ilastik
+      - build:
+          requires:
+            - checkout_ilastik
