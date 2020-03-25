@@ -114,7 +114,7 @@ class TestConservationTrackingHeadless(object):
             assert "exported_data" in f, "Dataset does not exist in tracking result file"
             shape = f["exported_data"].shape
             assert shape == self.EXPECTED_SHAPE, "Exported data has wrong shape: {}".format(shape)
-            data = f["exported_data"].value
+            data = f["exported_data"][()]
             assert len(np.unique(data)) == self.EXPECTED_NUM_LINEAGES + 1  # background also shows up, hence + 1
 
     @timeLogged(logger)

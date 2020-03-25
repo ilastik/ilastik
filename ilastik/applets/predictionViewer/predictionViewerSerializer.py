@@ -39,14 +39,14 @@ class PredictionViewerSerializer(AppletSerializer):
         pmapColors = None
         labelNames = None
         try:
-            pmapColors = predictionGroup["PmapColors"].value
+            pmapColors = predictionGroup["PmapColors"][()]
             self._topLevelOperator.PmapColors.setValue(list(pmapColors))
 
         except KeyError:
             pass
 
         try:
-            labelNames = predictionGroup["LabelNames"].value
+            labelNames = predictionGroup["LabelNames"][()]
             self._topLevelOperator.LabelNames.setValue(list(labelNames))
         except KeyError:
             pass

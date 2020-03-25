@@ -66,12 +66,12 @@ class TestFeatureSelectionSerializer(object):
 
         with h5py.File(testProjectName, "r") as testProject:
             file_feature_ids = numpy.asarray(
-                list(map(lambda s: s.decode("utf-8"), testProject["FeatureSelections/FeatureIds"].value))
+                list(map(lambda s: s.decode("utf-8"), testProject["FeatureSelections/FeatureIds"][()]))
             )
 
-            assert (testProject["FeatureSelections/Scales"].value == scales).all()
+            assert (testProject["FeatureSelections/Scales"][()] == scales).all()
             assert (file_feature_ids == featureIds).all()
-            assert (testProject["FeatureSelections/SelectionMatrix"].value == selectionMatrix).all()
+            assert (testProject["FeatureSelections/SelectionMatrix"][()] == selectionMatrix).all()
 
             # Deserialize into a fresh operator
             operatorToLoad = OpFeatureSelection(graph=graph)

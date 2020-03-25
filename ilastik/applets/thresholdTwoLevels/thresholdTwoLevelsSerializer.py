@@ -60,7 +60,7 @@ class ThresholdTwoLevelsSerializer(AppletSerializer):
         # but now we re-use the 'low threshold' slot for both 'simple' and 'hysteresis' modes.
         method = self.operator.CurOperator.value
         if method == ThresholdMethod.SIMPLE and "SingleThreshold" in list(topGroup.keys()):
-            threshold = topGroup["SingleThreshold"].value
+            threshold = topGroup["SingleThreshold"][()]
             self.operator.LowThreshold.setValue(threshold)
 
         # We used to always compute cores from the same channel as the 'final' threshold input.
@@ -70,5 +70,5 @@ class ThresholdTwoLevelsSerializer(AppletSerializer):
             and "Channel" in list(topGroup.keys())
             and "CoreChannel" not in list(topGroup.keys())
         ):
-            channel = topGroup["Channel"].value
+            channel = topGroup["Channel"][()]
             self.operator.CoreChannel.setValue(channel)
