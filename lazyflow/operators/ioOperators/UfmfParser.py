@@ -1,32 +1,23 @@
 # This file was copied from the motmot ufmf GitHub repository: https://github.com/motmot/ufmf commit c795ffe369b7e58de69d34926388af33ce71b711
 
-from __future__ import division
-from __future__ import absolute_import
-from builtins import range
-from builtins import object
-
 # TODO: Convert this file to use bytes instead of str
 # from builtins import chr
 #
 
-import sys
-import struct, collections
+import struct
+import collections
 import warnings
-import os.path, hashlib
-import os, stat
+import hashlib
+import os
 
 import numpy
-import numpy as np
-from numpy import nan
 import logging
 
-logger = logging.getLogger(__name__)
-
-import time
-
-import math
 
 from . import FlyMovieFormat as FMF
+
+
+logger = logging.getLogger(__name__)
 
 
 class UfmfError(Exception):
@@ -103,46 +94,6 @@ class InvalidMovieFileException(Exception):
     pass
 
 
-class UfmfParser(object):
-    """derive from this class to create your own parser
-
-    you will need to implemented the following functions:
-
-    def handle_bg(self, timestamp0, bg_im):
-        pass
-
-    def handle_frame(self, timestamp, regions):
-        pass
-    """
-
-    def parse(self, filename):
-        ufmf = Ufmf(filename)
-        bg_im, timestamp0 = ufmf.get_bg_image()
-
-        self.handle_bg(timestamp0, bg_im)
-
-        while 1:
-            buf = fd.read(chunkheadsz)
-            if len(buf) != chunkheadsz:
-                # no more frames (EOF)
-                break
-            intup = struct.unpack(FMT[1].CHUNKHEADER, buf)
-            (timestamp, n_pts) = intup
-            regions = []
-            for ptnum in range(n_pts):
-                subbuf = fd.read(subsz)
-                intup = struct.unpack(FMT[1].SUBHEADER, subbuf)
-                xmin, ymin = intup
-
-                buf = fd.read(chunkimsize)
-                bufim = numpy.fromstring(buf, dtype=numpy.uint8)
-                bufim.shape = chunkheight, chunkwidth
-                regions.append((xmin, ymin, bufim))
-
-            self.handle_frame(timestamp, regions)
-        fd.close()
-
-
 def identify_ufmf_version(filename):
     mode = "rb"
     fd = open(filename, mode=mode)
@@ -177,8 +128,8 @@ def _write_dict(fd, save_dict):
         if isinstance(value, dict):
             _write_dict(fd, value)
             continue
-        if isinstance(value, list) or isinstance(value, np.ndarray):
-            larr = np.array(value)
+        if isinstance(value, list) or isinstance(value, numpy.ndarray):
+            larr = numpy.array(value)
             assert larr.ndim == 1
             dtype_char = bytes(larr.dtype.char, "utf-8")
             bytes_per_element = larr.dtype.itemsize
@@ -215,7 +166,7 @@ def _read_array(fd, buf_remaining):
     n_bytes, = struct.unpack("<L", n_bytes_buf)
 
     data_buf, buf_remaining = _read_min_chars(fd, n_bytes, buf_remaining)
-    larr = np.fromstring(data_buf, dtype=dtype_char)
+    larr = numpy.frombuffer(data_buf, dtype=dtype_char)
     return larr, buf_remaining
 
 
@@ -284,7 +235,7 @@ def Ufmf(filename, **kwargs):
         raise ValueError("unknown .ufmf version %d" % version)
 
 
-class UfmfBase(object):
+class UfmfBase:
     pass
 
 
@@ -305,7 +256,7 @@ class UfmfV1(UfmfBase):
         (self._version, self._image_radius, self._timestamp0, self._width, self._height) = intup
         # extract background
         bg_im_buf = self._fd.read(self._width * self._height)
-        self._bg_im = numpy.fromstring(bg_im_buf, dtype=numpy.uint8)
+        self._bg_im = numpy.frombuffer(bg_im_buf, dtype=numpy.uint8)
         self._bg_im.shape = self._height, self._width
         if hasattr(self, "handle_bg"):
             self.handle_bg(self._timestamp0, self._bg_im)
@@ -335,7 +286,7 @@ class UfmfV1(UfmfBase):
                 self._mean_fmf = FMF.FlyMovie(fmf_filename)
                 self._mean_fmf_timestamps = self._mean_fmf.get_all_timestamps()
                 dt = self._mean_fmf_timestamps[1:] - self._mean_fmf_timestamps[:-1]
-                assert np.all(dt > 0)  # make sure searchsorted will work
+                assert numpy.all(dt > 0)  # make sure searchsorted will work
 
                 sumsqf_filename = basename + "_sumsqf.fmf"
                 if os.path.exists(sumsqf_filename):
@@ -346,7 +297,7 @@ class UfmfV1(UfmfBase):
     def get_mean_for_timestamp(self, timestamp, _return_more=False):
         if not hasattr(self, "_mean_fmf_timestamps"):
             raise ValueError("ufmf %s does not have mean image data" % self._filename)
-        fno = np.searchsorted(self._mean_fmf_timestamps, timestamp, side="right") - 1
+        fno = numpy.searchsorted(self._mean_fmf_timestamps, timestamp, side="right") - 1
         mean_image, timestamp_mean = self._mean_fmf.get_frame(fno)
         assert timestamp_mean <= timestamp
         if _return_more:
@@ -399,7 +350,7 @@ class UfmfV1(UfmfBase):
                     read_length = chunkwidth * chunkheight
                     bufshape = chunkheight, chunkwidth
                 buf = self._fd.read(read_length)
-                bufim = numpy.fromstring(buf, dtype=numpy.uint8)
+                bufim = numpy.frombuffer(buf, dtype=numpy.uint8)
                 bufim.shape = bufshape
                 regions.append((xmin, ymin, bufim))
             yield timestamp, regions
@@ -408,7 +359,7 @@ class UfmfV1(UfmfBase):
         self._fd.close()
 
 
-class _UFmfV3LowLevelReader(object):
+class _UFmfV3LowLevelReader:
     def __init__(self, fd, version):
         self._fd = fd
         self._version = version
@@ -442,10 +393,10 @@ class _UFmfV3LowLevelReader(object):
         dtype_char, width, height, timestamp = intup
 
         if dtype_char == b"B":
-            dtype = np.uint8
+            dtype = numpy.uint8
             sz = 1
         elif dtype_char == b"f":
-            dtype = np.float32
+            dtype = numpy.float32
             sz = 4
         else:
             raise ValueError('unknown dtype char "%s" (0x%0x)' % (dtype_char, ord(dtype_char)))
@@ -456,13 +407,13 @@ class _UFmfV3LowLevelReader(object):
         if self._coding == b"rgb24":
             read_len = width * height * sz * self._bytesperpixel
             buf = self._fd_read(read_len)
-            frame = np.fromstring(buf, dtype=dtype)
+            frame = numpy.frombuffer(buf, dtype=dtype)
             frame.shape = (3, height, width)
             frame = frame.transpose((1, 2, 0))
         elif self._coding == b"mono8":
             read_len = width * height * sz
             buf = self._fd_read(read_len)
-            frame = np.fromstring(buf, dtype=dtype)
+            frame = numpy.frombuffer(buf, dtype=dtype)
             frame.shape = (height, width)
         else:
             raise NotImplementedError("Color coding %s not yet implemented" % self._coding)
@@ -488,13 +439,13 @@ class _UFmfV3LowLevelReader(object):
             if self._coding == b"rgb24":
                 lenbuf = w * h * self._bytesperpixel
                 buf = self._fd_read(lenbuf)
-                im = np.fromstring(buf, dtype=np.uint8)
+                im = numpy.frombuffer(buf, dtype=numpy.uint8)
                 im.shape = (self._bytesperpixel, h, w)
                 im = im.transpose((1, 2, 0))
             elif self._coding == b"mono8":
                 lenbuf = w * h
                 buf = self._fd_read(lenbuf)
-                im = np.fromstring(buf, dtype=np.uint8)
+                im = numpy.frombuffer(buf, dtype=numpy.uint8)
                 im.shape = (h, w)
             else:
                 raise NotImplementedError("Color coding %s not yet implemented" % self._coding)
@@ -551,13 +502,13 @@ class _UFmfV4LowLevelReader(_UFmfV3LowLevelReader):
             # all pixel values.
             lenbuf = n_pts * self._points2_sz
             buf = self._fd_read(lenbuf)
-            locs = np.fromstring(buf, dtype=np.uint16)
+            locs = numpy.frombuffer(buf, dtype=numpy.uint16)
             locs.shape = (2, n_pts)
             # the pixel values are indexed by box number, followed by
             # column, followed by row, followed by color
             lenbuf = n_pts * self._w * self._h * self._bytesperpixel
             buf = self._fd_read(lenbuf)
-            im = np.fromstring(buf, dtype=np.uint8)
+            im = numpy.frombuffer(buf, dtype=numpy.uint8)
             im.shape = (self._bytesperpixel, self._h, self._w, n_pts)
             im = im.transpose(1, 2, 0, 3)
             # if we need regions to be backwards compatible, we
@@ -579,13 +530,13 @@ class _UFmfV4LowLevelReader(_UFmfV3LowLevelReader):
                 if self._coding == b"rgb24":
                     lenbuf = w * h * self._bytesperpixel
                     buf = self._fd_read(lenbuf)
-                    im = np.fromstring(buf, dtype=np.uint8)
+                    im = numpy.frombuffer(buf, dtype=numpy.uint8)
                     im.shape = (self._bytesperpixel, h, w)
                     im = im.transpose((1, 2, 0))
                 elif self._coding == b"mono8":
                     lenbuf = w * h
                     buf = self._fd_read(lenbuf)
-                    im = np.fromstring(buf, dtype=np.uint8)
+                    im = numpy.frombuffer(buf, dtype=numpy.uint8)
                     im.shape = (h, w)
                 else:
                     raise NotImplementedError("Color coding %s not yet implemented" % self._coding)
@@ -593,7 +544,7 @@ class _UFmfV4LowLevelReader(_UFmfV3LowLevelReader):
         return timestamp, regions
 
 
-class _UFmfV3Indexer(object):
+class _UFmfV3Indexer:
     """create an index from an un-unindexed .ufmf v3 file"""
 
     def __init__(self, fd, version, ignore_preexisting_index=False, short_file_ok=False, index_progress=False):
@@ -647,9 +598,9 @@ class _UFmfV3Indexer(object):
         # convert to arrays
         for keyframe_type in list(self._index[b"keyframe"].keys()):
             for key in list(self._index[b"keyframe"][keyframe_type].keys()):
-                self._index[b"keyframe"][keyframe_type][key] = np.array(self._index[b"keyframe"][keyframe_type][key])
+                self._index[b"keyframe"][keyframe_type][key] = numpy.array(self._index[b"keyframe"][keyframe_type][key])
         for key in list(self._index[b"frame"].keys()):
-            self._index[b"frame"][key] = np.array(self._index[b"frame"][key])
+            self._index[b"frame"][key] = numpy.array(self._index[b"frame"][key])
         if self._index_chunk_location is None:
             self._index_chunk_location = self._fd.tell()
 
@@ -837,7 +788,7 @@ class UfmfV3(UfmfBase):
         """return the most recent keyframe before or at the time of timestamp"""
         ts = self._index[b"keyframe"][keyframe_type][b"timestamp"]
         cond = timestamp >= ts
-        idxs = np.nonzero(cond)[0]
+        idxs = numpy.nonzero(cond)[0]
         if len(idxs) == 0:
             raise NoMoreFramesException("no keyframe_type %s prior to %s" % (keyframe_type, repr(timestamp)))
         idx = idxs[-1]
@@ -858,7 +809,7 @@ class UfmfV3(UfmfBase):
 
     def get_progress(self):
         locs = self._index[b"frame"][b"loc"]
-        return float(self._next_frame) / len(locs)
+        return self._next_frame / len(locs)
 
     def set_next_frame(self, fno):
         self._next_frame = fno
@@ -1085,7 +1036,7 @@ def md5sum_headtail(filename):
     return m.digest()
 
 
-class FlyMovieEmulator(object):
+class FlyMovieEmulator:
     def __init__(
         self, filename, darken=0, allow_no_such_frame_errors=False, white_background=False, abs_diff=False, **kwargs
     ):
@@ -1181,10 +1132,10 @@ class FlyMovieEmulator(object):
                         more["sumsqf"] = sumsqf_image
                     else:
                         mean_image = tmp
-                    self._last_frame = np.array(mean_image, copy=True).astype(np.uint8)
+                    self._last_frame = numpy.array(mean_image, copy=True).astype(numpy.uint8)
                     more["mean"] = mean_image
                 elif self.white_background:
-                    self._last_frame = numpy.empty(self._bg0.shape, dtype=np.uint8)
+                    self._last_frame = numpy.empty(self._bg0.shape, dtype=numpy.uint8)
                     self._last_frame.fill(255)
                 else:
                     if self._last_frame is None:
@@ -1195,15 +1146,15 @@ class FlyMovieEmulator(object):
                 except (KeyError, NoMoreFramesException):
                     warnings.warn("UfmfV3 fmf emulator filling bg with white")
                     w, h = self._ufmf.get_max_size()
-                    mean_image = numpy.empty((h, w), dtype=np.uint8)
+                    mean_image = numpy.empty((h, w), dtype=numpy.uint8)
                     mean_image.fill(255)
                 if _return_more:
                     sumsqf_image, sq_timestamp = self._ufmf.get_keyframe_for_timestamp("sumsq", timestamp)
                     more["sumsqf"] = sumsqf_image
                 if not self.white_background:
-                    self._last_frame = np.array(mean_image, copy=True).astype(np.uint8)
+                    self._last_frame = numpy.array(mean_image, copy=True).astype(numpy.uint8)
                 else:
-                    self._last_frame = np.empty(mean_image.shape, dtype=np.uint8)
+                    self._last_frame = numpy.empty(mean_image.shape, dtype=numpy.uint8)
                     self._last_frame.fill(255)
                 more["mean"] = mean_image
             have_frame = True
@@ -1215,9 +1166,9 @@ class FlyMovieEmulator(object):
                     im = im.reshape(h, w, npts)
                 if h == 1 and w == 1:
                     if self._last_frame.ndim == 3:
-                        self._last_frame[locs[1, :], locs[0, :], :] = np.reshape(im, (ncolors, npts)).T
+                        self._last_frame[locs[1, :], locs[0, :], :] = numpy.reshape(im, (ncolors, npts)).T
                     else:
-                        self._last_frame[locs[1, :], locs[0, :]] = np.reshape(im, (npts,))
+                        self._last_frame[locs[1, :], locs[0, :]] = numpy.reshape(im, (npts,))
                 else:
                     if self._last_frame.ndim == 3:
                         for ptno in range(npts):
@@ -1235,15 +1186,15 @@ class FlyMovieEmulator(object):
                     if bufim.ndim == 3:
                         h, w, ncolors = bufim.shape
                         tmp = self._last_frame[ymin : ymin + h, xmin : xmin + w, :]
-                        self._last_frame[ymin : ymin + h, xmin : xmin + w, :] = np.clip(bufim - self._darken, 0, 255)
+                        self._last_frame[ymin : ymin + h, xmin : xmin + w, :] = numpy.clip(bufim - self._darken, 0, 255)
                     elif bufim.ndim == 2:
                         h, w = bufim.shape
-                        self._last_frame[ymin : ymin + h, xmin : xmin + w] = np.clip(bufim - self._darken, 0, 255)
+                        self._last_frame[ymin : ymin + h, xmin : xmin + w] = numpy.clip(bufim - self._darken, 0, 255)
                     else:
                         raise NotImplementedError("bufim.ndim = %d not implemented" % bufim.ndim)
             if self.abs_diff:
-                self._last_frame = abs(self._last_frame.astype(np.float32) - mean_image.astype(np.float32))
-                self._last_frame = np.clip(self._last_frame, 0, 255).astype(np.uint8)
+                self._last_frame = abs(self._last_frame.astype(numpy.float32) - mean_image.astype(numpy.float32))
+                self._last_frame = numpy.clip(self._last_frame, 0, 255).astype(numpy.uint8)
             break  # only want 1 frame
         if not have_frame:
             raise NoMoreFramesException("EOF")
@@ -1277,7 +1228,7 @@ class FlyMovieEmulator(object):
 
             # load results from hash file
             if os.path.exists(cache_fname):
-                npz = np.load(cache_fname)
+                npz = numpy.load(cache_fname)
                 cache_hash = str(npz["my_hash"])
                 if cache_hash == my_hash:
                     self._timestamps = npz["timestamps"]
@@ -1309,9 +1260,9 @@ class FlyMovieEmulator(object):
 
         try:
             # save results to hash file
-            timestamps = np.array(self._timestamps)
-            fno2loc = np.array(self._fno2loc)
-            np.savez(cache_fname, my_hash=my_hash, timestamps=timestamps, fno2loc=fno2loc)
+            timestamps = numpy.array(self._timestamps)
+            fno2loc = numpy.array(self._fno2loc)
+            numpy.savez(cache_fname, my_hash=my_hash, timestamps=timestamps, fno2loc=fno2loc)
         except Exception as err:
             if int(os.environ.get("UFMF_FORCE_CACHE", "0")):
                 raise
@@ -1348,7 +1299,7 @@ def UfmfSaver(file, frame0=None, timestamp0=None, **kwargs):
         raise ValueError("unknown version %s" % version)
 
 
-class UfmfSaverBase(object):
+class UfmfSaverBase:
     def __init__(self, version):
         self.version = version
 
@@ -1472,10 +1423,10 @@ class UfmfSaverV3(UfmfSaverBase):
     def add_keyframe(self, keyframe_type, image_data, timestamp):
         char2 = len(keyframe_type)
         np_image_data = numpy.asarray(image_data)
-        if np_image_data.dtype == np.uint8:
+        if np_image_data.dtype == numpy.uint8:
             dtype = b"B"
             strides1 = 1
-        elif np_image_data.dtype == np.float32:
+        elif np_image_data.dtype == numpy.float32:
             dtype = b"f"
             strides1 = 4
         else:
@@ -1523,7 +1474,7 @@ class UfmfSaverV3(UfmfSaverBase):
         self.file.write(fullstr)
 
     def add_frame(self, origframe, timestamp, point_data):
-        origframe = np.asarray(origframe)
+        origframe = numpy.asarray(origframe)
         origframe_h, origframe_w = origframe.shape
         rects = []
         regions = []
