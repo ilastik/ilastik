@@ -29,6 +29,10 @@ resp = post(
 )
 data_source_id = resp.json()
 
+resp = get(f"http://localhost:5000/data_source/{data_source_id}")
+data_source_data = resp.json()
+print(json.dumps(data_source_data, indent=4))
+
 resp = post(
     f"http://localhost:5000/PixelClassificationWorkflow2/{workflow_id}/add_annotations",
     data=flatten(
@@ -76,9 +80,20 @@ resp = post(
 feature_ids = resp.json()
 print(f"feature ids:: {feature_ids}")
 
+resp = post(
+    f"http://localhost:5000/PixelClassificationWorkflow2/{workflow_id}/add_ilp_feature_extractors",
+    data=flatten([{"name": "GaussianSmoothing", "scale": 10.0, "axis_2d": "z", "num_input_channels": 3}]),
+)
+feature_ids = resp.json()
+print(f"feature ids:: {feature_ids}")
+
+
 resp = get(f"http://localhost:5000/PixelClassificationWorkflow2/{workflow_id}/get_classifier")
 classifier_id = resp.json()
 print(f"Classifier id: {classifier_id}")
+
+resp = get(f"http://localhost:5000/predictions/{classifier_id}/neuroglancer_shader")
+print(f"SHADER:\n{resp.text}")
 
 predictions_path = f"predictions/{classifier_id}/{data_source_id}"
 info = get(f"http://localhost:5000/{predictions_path}/info").json()

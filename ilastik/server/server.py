@@ -33,7 +33,7 @@ from ilastik.features.fastfilters import (
     DifferenceOfGaussians,
     StructureTensorEigenvalues,
 )
-from ilastik.server.WebContext import WebContext
+from ilastik.server.WebContext import WebContext, EntityNotFoundException
 
 parser = argparse.ArgumentParser(description="Runs ilastik prediction web server")
 parser.add_argument("--host", default="localhost", help="ip or hostname where the server will listen")
@@ -49,21 +49,34 @@ app = Flask("WebserverHack")
 CORS(app)
 
 
-@app.route("/PixelClassificationWorkflow2/<pix_workflow_id>/<method_name>", methods=["POST"])
-def add_to_workflow(pix_workflow_id: str, method_name: str):
-    if method_name not in ("add_annotations", "add_feature_extractors"):
-        return flask.Response(f"Can't call method {method_name} on pixel classification workflow", status=403)
-    return run_pixel_classification_workflow_method(pix_workflow_id, method_name)
+@app.route("/PixelClassificationWorkflow2/<pix_workflow_id>/add_ilp_feature_extractors", methods=["POST"])
+def add_ilp_feature_extractors(pix_workflow_id: str):
+    workflow = WebContext.load(pix_workflow_id)
+    adapter = PixelClassificationWorkflow2WebAdapter(web_context=WebContext, workflow=workflow)
+    payload = WebContext.get_request_payload()
+    extractors = []
+    for extractor_spec in payload:
+        extractor_class = WebContext.get_class_named(extractor_spec.pop("name"))
+        extractor = from_json_data(extractor_class.from_ilp_scale, extractor_spec)
+        extractors.append(extractor)
+    return adapter.add_feature_extractors(extractors)
 
 
-@app.route("/PixelClassificationWorkflow2/<pix_workflow_id>/<method_name>", methods=["GET"])
-def get_from_workflow(pix_workflow_id: str, method_name: str):
-    if method_name not in ("get_classifier", "generate_ilp"):  # FIXME: those can't be cached =/
-        return flask.Response(f"Can't call method {method_name} on pixel classification workflow", status=403)
-    return run_pixel_classification_workflow_method(pix_workflow_id, method_name)
-
-
+@app.route("/PixelClassificationWorkflow2/<pix_workflow_id>/<method_name>", methods=["GET", "POST", "DELETE"])
 def run_pixel_classification_workflow_method(pix_workflow_id: str, method_name: str):
+    if (
+        request.method == "POST"
+        and method_name not in ("add_annotations", "add_feature_extractors")
+        or request.method == "DELETE"
+        and method_name not in ("remove_annotations", "remove_feature_extractors", "clear_feature_extractors")
+        or request.method == "GET"
+        and method_name not in ("get_classifier", "generate_ilp")
+    ):
+        return flask.Response(f"Can't call method {method_name} on pixel classification workflow", status=403)
+    return do_run_pixel_classification_workflow_method(pix_workflow_id, method_name)
+
+
+def do_run_pixel_classification_workflow_method(pix_workflow_id: str, method_name: str):
     workflow = WebContext.load(pix_workflow_id)
     if not isinstance(workflow, PixelClassificationWorkflow2):
         return flask.Response(f"Could not find PixelClassificationWorkflow2 with id {pix_workflow_id}", status=404)
@@ -78,14 +91,15 @@ def do_predictions(roi: Slice5D, classifier_id: str, datasource_id: str) -> Pred
     backed_roi = DataSourceSlice(datasource, **roi.to_dict()).defined()
 
     predictions = classifier.allocate_predictions(backed_roi)
-    with ThreadPoolExecutor() as executor:
-        for raw_tile in backed_roi.get_tiles():
+    # with ThreadPoolExecutor() as executor:
+    for raw_tile in backed_roi.get_tiles():
 
-            def predict_tile(tile):
-                tile_prediction = classifier.predict(tile)
-                predictions.set(tile_prediction, autocrop=True)
+        def predict_tile(tile):
+            tile_prediction = classifier.predict(tile)
+            predictions.set(tile_prediction, autocrop=True)
 
-            executor.submit(predict_tile, raw_tile)
+        predict_tile(raw_tile)
+        # executor.submit(predict_tile, raw_tile)
     return predictions
 
 
@@ -155,6 +169,31 @@ def info_dict(classifier_id: str, datasource_id: str) -> Dict:
         }
     )
     return resp
+
+
+@app.route("/predictions/<classifier_id>/neuroglancer_shader", methods=["GET"])
+def get_predictions_shader(classifier_id: str):
+    classifier = WebContext.load(classifier_id)
+
+    color_lines: List[str] = []
+    colors_to_mix: List[str] = []
+
+    for idx, color in enumerate(classifier.color_map.keys()):
+        color_line = (
+            f"vec3 color{idx} = (vec3({color.r}, {color.g}, {color.b}) / 255.0) * toNormalized(getDataValue({idx}));"
+        )
+        color_lines.append(color_line)
+        colors_to_mix.append(f"color{idx}")
+
+    shader_lines = [
+        "void main() {",
+        "    " + "\n    ".join(color_lines),
+        "    emitRGBA(",
+        f"        vec4({' + '.join(colors_to_mix)}, 1.0)",
+        "    );",
+        "}",
+    ]
+    return flask.Response("\n".join(shader_lines), mimetype="text/plain")
 
 
 @app.route("/datasource/<datasource_id>/data/<int:xBegin>-<int:xEnd>_<int:yBegin>-<int:yEnd>_<int:zBegin>-<int:zEnd>")
@@ -266,6 +305,11 @@ def remove_object(class_name, object_id: str):
 @app.errorhandler(FeatureDataMismatchException)
 def handle_feature_data_mismatch(error):
     return flask.Response(str(error), status=400)
+
+
+@app.errorhandler(EntityNotFoundException)
+def handle_feature_data_mismatch(error):
+    return flask.Response(str(error), status=404)
 
 
 @app.route("/<class_name>/", methods=["POST"])

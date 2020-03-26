@@ -31,18 +31,24 @@ class PixelClassificationWorkflow2WebAdapter:
         self._store_classifier(self.workflow.add_feature_extractors(extractors, updateClassifier))
         return flask.jsonify([self.web_context.store(extractor) for extractor in extractors])
 
+    def clear_feature_extractors(self, updateClassifier: bool = False) -> flask.Response:
+        return self.remove_feature_extractors(self.workflow.feature_extractors, updateClassifier=updateClassifier)
+
     def remove_feature_extractors(self, extractors: List[IlpFilter], updateClassifier: bool = True) -> flask.Response:
         classifier = self.workflow.remove_feature_extractors(extractors, updateClassifier)
         classifier_id = self._store_classifier(classifier)
         for extractor in extractors:
-            self.web_context.remove(extractor)
+            self.web_context.remove(IlpFilter, extractor)
         return flask.jsonify(classifier_id)
 
     def add_annotations(self, annotations: List[Annotation], updateClassifier: bool = True) -> flask.Response:
         "Adds annotations to workflow, returns uuid of the annotations"
+        old_num_lanes = len(self.workflow.lanes)
         classifier = self.workflow.add_annotations(annotations, updateClassifier=updateClassifier)
         self._store_classifier(classifier)
         annotation_ids = [self.web_context.store(annotation) for annotation in annotations]
+        for lane in self.workflow.lanes[old_num_lanes:]:
+            self.web_context.store(lane)
         return flask.jsonify(annotation_ids)
 
     def remove_annotations(self, annotations: List[Annotation], updateClassifier: bool = True) -> flask.Response:

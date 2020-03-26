@@ -124,12 +124,6 @@ class DataLane(JsonSerializable):
         for annot in annotations:
             self.add_annotation(annot)
 
-    def __eq__(self, other):
-        if not isinstance(other, DataLane):
-            return False
-        # FIXME
-        return self.RawData.datasource == other.RawData.datasource and self.PredictionMask == other.PredictionMask
-
     def ensure_compatible_with(self, annotation: Annotation):
         if annotation in self.annotations:
             raise ValueError("Annotation already exists in this lane")

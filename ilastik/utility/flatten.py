@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from typing import Union, Sequence
 
 
 def is_value(value):
@@ -9,9 +10,10 @@ def is_value(value):
     return True
 
 
-def flatten(d: dict):
+def flatten(d: Union[Sequence, Mapping]):
     out_dict = {}
-    for k, v in d.items():
+    key_values = d.items() if isinstance(d, Mapping) else enumerate(d)
+    for k, v in key_values:
         if is_value(v):
             out_dict[str(k)] = v
         else:

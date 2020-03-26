@@ -55,6 +55,11 @@ workflow_classes = {
 }
 
 
+class EntityNotFoundException(Exception):
+    def __init__(self, entity_id):
+        super().__init__(f"Could find entity with id {entity_id}")
+
+
 class WebContext:
     objects = {}
     pyid_to_objid = {}
@@ -78,7 +83,10 @@ class WebContext:
 
     @classmethod
     def load(cls, key):
-        return cls.objects[key]
+        try:
+            return cls.objects[key]
+        except KeyError as e:
+            raise EntityNotFoundException(key) from e
 
     @classmethod
     def store(cls, obj, obj_id: Optional[Hashable] = None):
@@ -102,7 +110,7 @@ class WebContext:
     @classmethod
     def remove(cls, klass: type, key):
         if not isinstance(key, uuid.UUID):
-            key = cls.pyid_to_objid(id(key))
+            key = cls.get_id(obj)
         target_class = cls.objects[key].__class__
         if not issubclass(target_class, klass):
             raise Exception(f"Unexpected class {target_class} when deleting object with key {key}")
