@@ -28,7 +28,7 @@ class ChannelwiseFastFilter(IlpFilter):
     @property
     def kernel_shape(self) -> Shape5D:
         # FIXME: Add appropriate "kernel_shape" property to filters
-        args = {k: 5 for k in Point5D.SPATIAL_LABELS}
+        args = {k: 30 for k in Point5D.SPATIAL_LABELS}
         if self.axis_2d:
             args[self.axis_2d] = 1
         return Shape5D(**args)
