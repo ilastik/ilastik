@@ -106,7 +106,7 @@ a = Array5D(data, axiskeys="cyx")
 a.show_channels()
 
 
-ilp_contents = get(f"http://localhost:5000/PixelClassificationWorkflow2/{workflow_id}/generate_ilp").content
+ilp_contents = get(f"http://localhost:5000/PixelClassificationWorkflow2/{workflow_id}/ilp_project").content
 with open("/tmp/generated_project.ilp", "wb") as f:
     f.write(ilp_contents)
 

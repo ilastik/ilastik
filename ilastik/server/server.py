@@ -70,7 +70,7 @@ def run_pixel_classification_workflow_method(pix_workflow_id: str, method_name: 
         or request.method == "DELETE"
         and method_name not in ("remove_annotations", "remove_feature_extractors", "clear_feature_extractors")
         or request.method == "GET"
-        and method_name not in ("get_classifier", "generate_ilp")
+        and method_name not in ("get_classifier", "ilp_project")
     ):
         return flask.Response(f"Can't call method {method_name} on pixel classification workflow", status=403)
     return do_run_pixel_classification_workflow_method(pix_workflow_id, method_name)

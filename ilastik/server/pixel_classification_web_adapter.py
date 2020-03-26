@@ -62,7 +62,7 @@ class PixelClassificationWorkflow2WebAdapter:
         classifier_id = self._store_classifier(self.workflow.classifier)
         return flask.jsonify(classifier_id)
 
-    def generate_ilp(self) -> bytes:
+    def ilp_project(self) -> bytes:
         project, backing_file = Project.from_ilp_data(self.workflow.ilp_data)
         project.close()
         backing_file.seek(0)
