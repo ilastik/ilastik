@@ -152,7 +152,7 @@ class Annotation(ScalarData):
         annotated_roi = self.roi.with_full_c()
 
         with ThreadPoolExecutor() as executor:
-            for data_tile in DataSourceSlice(self.raw_data).clamped(annotated_roi).get_tiles():
+            for data_tile in DataSourceSlice(self.raw_data).clamped(annotated_roi).get_tiles(clamp=False):
 
                 def make_samples(data_tile):
                     annotation_tile = self.clamped(data_tile)
