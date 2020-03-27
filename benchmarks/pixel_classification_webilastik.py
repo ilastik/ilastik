@@ -8,7 +8,7 @@ import cProfile
 from ndstructs import Array5D, Slice5D, Shape5D, Point5D
 from ndstructs.datasource import DataSource, N5DataSource, DataSourceSlice
 from ilastik.features.feature_extractor import FeatureExtractor
-from ilastik.features.fastfilters import (
+from ilastik.features import (
     GaussianSmoothing,
     HessianOfGaussianEigenvalues,
     GaussianGradientMagnitude,
@@ -22,9 +22,11 @@ from ilastik.classifiers.ilp_pixel_classifier import IlpVigraPixelClassifier
 from lazyflow.utility.timer import Timer
 import argparse
 
-from ilastik.workflows.pixelClassification.PixelClassificationWorkflow2 import PixelClassificationWorkflow2
-from ilastik.workflows.pixelClassification.PixelClassificationWorkflow2 import DataLane
-from ilastik.workflows.pixelClassification.PixelClassificationWorkflow2 import DataSourceInfo
+from ilastik.workflows.pixelClassification.pixel_classification_workflow_2 import (
+    PixelClassificationWorkflow2,
+    DataLane,
+    DataSourceInfo,
+)
 from ilastik import Project
 
 
@@ -70,14 +72,12 @@ datasource = DataSource.create(Path(args.data_url))
 print(f"Processing {datasource}")
 
 extractors = [
-    GaussianSmoothing(sigma=0.3, axis_2d="z", num_input_channels=datasource.shape.c),
-    HessianOfGaussianEigenvalues(scale=1.0, axis_2d="z", num_input_channels=datasource.shape.c),
-    GaussianGradientMagnitude(sigma=0.3, axis_2d="z", num_input_channels=datasource.shape.c),
-    LaplacianOfGaussian(scale=0.3, axis_2d="z", num_input_channels=datasource.shape.c),
-    DifferenceOfGaussians(sigma0=0.3, sigma1=1.0 * 0.66, axis_2d="z", num_input_channels=datasource.shape.c),
-    StructureTensorEigenvalues(
-        innerScale=1.0, outerScale=1.0 * 0.5, axis_2d="z", num_input_channels=datasource.shape.c
-    ),
+    GaussianSmoothing.from_ilp_scale(scale=0.3, axis_2d="z", num_input_channels=datasource.shape.c),
+    HessianOfGaussianEigenvalues.from_ilp_scale(scale=0.7, axis_2d="z", num_input_channels=datasource.shape.c),
+    GaussianGradientMagnitude.from_ilp_scale(scale=0.7, axis_2d="z", num_input_channels=datasource.shape.c),
+    LaplacianOfGaussian.from_ilp_scale(scale=0.7, axis_2d="z", num_input_channels=datasource.shape.c),
+    DifferenceOfGaussians.from_ilp_scale(scale=0.7, axis_2d="z", num_input_channels=datasource.shape.c),
+    StructureTensorEigenvalues.from_ilp_scale(scale=1.0, axis_2d="z", num_input_channels=datasource.shape.c),
 ]
 
 annotations = []
@@ -96,7 +96,7 @@ pix_classi = PixelClassificationWorkflow2(feature_extractors=extractors, classif
 pix_classi.add_annotations(annotations)
 
 data = pix_classi.ilp_data
-proj = Project.from_ilp_data(data)
+proj, _ = Project.from_ilp_data(data)
 print(proj.file.filename)
 proj.close()
 

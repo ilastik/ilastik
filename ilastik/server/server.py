@@ -13,26 +13,11 @@ from pathlib import Path
 from ndstructs import Point5D, Slice5D, Shape5D, Array5D
 from ndstructs.datasource import DataSource, DataSourceSlice, SequenceDataSource
 from ndstructs.utils import JsonSerializable, from_json_data
-from ilastik.annotations import Annotation
-from ilastik.classifiers.pixel_classifier import (
-    PixelClassifier,
-    Predictions,
-    VigraPixelClassifier,
-    ScikitLearnPixelClassifier,
-)
+
 from ilastik.workflows.pixelClassification.pixel_classification_workflow_2 import PixelClassificationWorkflow2
 from ilastik.server.pixel_classification_web_adapter import PixelClassificationWorkflow2WebAdapter
-from ilastik.classifiers.ilp_pixel_classifier import IlpVigraPixelClassifier
-
-from ilastik.features.feature_extractor import FeatureExtractor, FeatureDataMismatchException
-from ilastik.features.fastfilters import (
-    GaussianSmoothing,
-    HessianOfGaussianEigenvalues,
-    GaussianGradientMagnitude,
-    LaplacianOfGaussian,
-    DifferenceOfGaussians,
-    StructureTensorEigenvalues,
-)
+from ilastik.features.feature_extractor import FeatureDataMismatchException
+from ilastik.classifiers.pixel_classifier import Predictions
 from ilastik.server.WebContext import WebContext, EntityNotFoundException
 
 parser = argparse.ArgumentParser(description="Runs ilastik prediction web server")

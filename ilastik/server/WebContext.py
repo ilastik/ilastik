@@ -19,7 +19,7 @@ from ilastik.workflows.pixelClassification.pixel_classification_workflow_2 impor
 from ilastik.classifiers.ilp_pixel_classifier import IlpVigraPixelClassifier
 
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureDataMismatchException
-from ilastik.features.fastfilters import (
+from ilastik.features import (
     GaussianSmoothing,
     HessianOfGaussianEigenvalues,
     GaussianGradientMagnitude,

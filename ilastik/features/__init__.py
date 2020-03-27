@@ -1,9 +1,9 @@
 from .feature_extractor import FeatureExtractor, FeatureExtractorCollection
-from .fastfilters import (
+from .channelwise_fastfilters import (
     StructureTensorEigenvalues,
     GaussianGradientMagnitude,
     GaussianSmoothing,
     DifferenceOfGaussians,
     HessianOfGaussianEigenvalues,
-    LaplacianOfGaussian
+    LaplacianOfGaussian,
 )

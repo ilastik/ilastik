@@ -243,6 +243,7 @@ class PixelClassificationWorkflow2(JsonSerializable):
     def add_feature_extractors(
         self, extractors: List[IlpFilter], updateClassifier: bool = True
     ) -> Optional[IlpVigraPixelClassifier]:
+        # FIXME: sort features to calculate in identical fashion to clasic ilastik
         for extractor in extractors:
             if extractor in self.feature_extractors:
                 raise ValueError(f"Feature Extractor {extractor} is already present in this Workflow")

@@ -140,10 +140,10 @@ class FeatureExtractorCollection(FeatureExtractor):
 
     def compute_into(self, input_roi: DataSourceSlice, out: FeatureData) -> FeatureData:
         assert out.shape == self.get_expected_shape(input_roi.shape)
-        offset = Point5D.zero()
+        offset = out.roi.start
         for fx in self.extractors:
             out_roi: Slice5D = fx.get_expected_shape(input_roi.shape).to_slice_5d().translated(offset)
-            out_array: FeatureData = out.local_cut(out_roi)
+            out_array: FeatureData = out.cut(out_roi)
             fx.compute_into(input_roi, out=out_array)
             offset += Point5D.zero(c=out_roi.shape.c)
         return out
