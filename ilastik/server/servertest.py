@@ -65,24 +65,16 @@ resp = post(
 annot_ids = resp.json()
 print(f"Annotation ids: {annot_ids}")
 
-
-resp = post(
-    f"http://localhost:5000/PixelClassificationWorkflow2/{workflow_id}/add_feature_extractors",
-    data=flatten(
-        {
-            "extractors": [
-                {"__class__": "GaussianSmoothing", "sigma": 0.3, "axis_2d": "z", "num_input_channels": 3},
-                {"__class__": "HessianOfGaussianEigenvalues", "scale": 0.7, "axis_2d": "z", "num_input_channels": 3},
-            ]
-        }
-    ),
-)
-feature_ids = resp.json()
-print(f"feature ids:: {feature_ids}")
-
 resp = post(
     f"http://localhost:5000/PixelClassificationWorkflow2/{workflow_id}/add_ilp_feature_extractors",
-    data=flatten([{"name": "GaussianSmoothing", "scale": 10.0, "axis_2d": "z", "num_input_channels": 3}]),
+    data=flatten(
+        [
+            {"name": "GaussianSmoothing", "scale": 0.3, "axis_2d": "z", "num_input_channels": 3},
+            {"name": "GaussianSmoothing", "scale": 1.0, "axis_2d": "z", "num_input_channels": 3},
+            {"name": "GaussianSmoothing", "scale": 1.6, "axis_2d": "z", "num_input_channels": 3},
+            {"name": "HessianOfGaussianEigenvalues", "scale": 0.7, "axis_2d": "z", "num_input_channels": 3},
+        ]
+    ),
 )
 feature_ids = resp.json()
 print(f"feature ids:: {feature_ids}")

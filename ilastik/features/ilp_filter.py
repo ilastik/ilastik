@@ -78,16 +78,28 @@ class IlpFilter(ChannelwiseFilter):
         if not feature_extractors:
             return {}
         out = {}
-        feature_names = list(cls.REGISTRY.keys())
+
+        feature_names = [
+            "GaussianSmoothing",
+            "LaplacianOfGaussian",
+            "GaussianGradientMagnitude",
+            "DifferenceOfGaussians",
+            "StructureTensorEigenvalues",
+            "HessianOfGaussianEigenvalues",
+        ]
         out["FeatureIds"] = np.asarray([fn.encode("utf8") for fn in feature_names])
-        default_scales = set((0.3, 0.7, 1.0, 1.6, 3.5, 6.0, 10.0))
-        scales = sorted(default_scales.union(fe.ilp_scale for fe in feature_extractors))
+
+        default_scales = [0.3, 0.7, 1.0, 1.6, 3.5, 6.0, 10.0]
+        extra_scales = set(fe.ilp_scale for fe in feature_extractors if fe.ilp_scale not in default_scales)
+        scales = default_scales + sorted(extra_scales)
         out["Scales"] = np.asarray(scales)
+
         SelectionMatrix = np.zeros((len(feature_names), len(scales)), dtype=bool)
         for fe in feature_extractors:
             name_idx = feature_names.index(fe.__class__.__name__)
             scale_idx = scales.index(fe.ilp_scale)
             SelectionMatrix[name_idx, scale_idx] = True
+
         ComputeIn2d = np.full(len(scales), True, dtype=bool)
         for idx, fname in enumerate(feature_names):
             ComputeIn2d[idx] = all(fe.axis_2d for fe in feature_extractors if fe.__class__.__name__ == fname)

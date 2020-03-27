@@ -4,7 +4,6 @@ from typing import Optional, TypeVar
 import math
 import fastfilters
 
-import vigra
 import numpy
 
 from .feature_extractor import FeatureData
@@ -33,7 +32,7 @@ class ChannelwiseFastFilter(IlpFilter):
         # presmooth_sigma ** 2 = ilp_scale ** 2 - 1.0
         # presmooth_sigma ** 2 + 1 = ilp_scale ** 2
         # math.sqrt(presmooth_sigma ** 2 + 1) = ilp_scale
-        return math.sqrt(self.presmooth_sigma ** 2 + 1)
+        return numpy.around(math.sqrt(self.presmooth_sigma ** 2 + 1), decimals=2)
 
     def __repr__(self):
         props = " ".join(f"{k}={v}" for k, v in self.__dict__.items())
