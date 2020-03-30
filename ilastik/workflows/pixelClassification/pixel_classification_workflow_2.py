@@ -1,12 +1,10 @@
-import argparse
 from typing import Dict, List, Any, Optional, Tuple, Mapping, Iterable, Sequence, Set
 from numbers import Number
-import ast
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 import uuid
 import enum
-import pickle
+import io
+import requests
 
 import h5py
 import vigra
@@ -17,10 +15,12 @@ from ndstructs.datasource import DataSource, N5DataSource, DataSourceSlice
 from ndstructs.datasink import N5DataSink
 from ndstructs.utils import JsonSerializable
 
+from ilastik import Project
 from ilastik.classifiers.pixel_classifier import PixelClassifierDataSource, Predictions
 from ilastik.classifiers.ilp_pixel_classifier import IlpVigraPixelClassifier
 from ilastik.features.ilp_filter import IlpFilter
 from ilastik.annotations import Annotation, Color
+from ilastik.features.feature_extractor import FeatureExtractorCollection
 from lazyflow.distributed.TaskOrchestrator import TaskOrchestrator
 
 
@@ -323,8 +323,54 @@ class PixelClassificationWorkflow2(JsonSerializable):
             "workflowName": b"Pixel Classification",
         }
 
+    @property
+    def ilp_file(self) -> io.BytesIO:
+        project, backing_file = Project.from_ilp_data(self.ilp_data)
+        project.close()
+        backing_file.seek(0)
+        return backing_file
+
+    def upload_to_cloud_ilastik(self, cloud_ilastik_token: str, project_name: str):
+        if not self.classifier:
+            raise RuntimeError("Classifier is not trained yet")
+
+        project_file = self.ilp_file
+
+        file_response = requests.post(
+            "https://web.ilastik.org/v1/files/",
+            data=self.ilp_file.getvalue(),
+            headers={
+                "Authorization": f"Token {cloud_ilastik_token}",
+                "Content-Disposition": f'attachment; filename="{project_name}"',
+            },
+            timeout=10,
+        )
+        file_response.raise_for_status()
+        file_json = file_response.json()
+
+        num_input_channels = max(fx.num_input_channels for fx in self.feature_extractors)
+        kernel_shape = FeatureExtractorCollection(self.feature_extractors).kernel_shape
+
+        project_response = requests.post(
+            "https://web.ilastik.org/v1/batch/projects/",
+            json={
+                "file": file_json["url"],
+                "num_channels": num_input_channels,
+                "min_block_size_z": kernel_shape.z,
+                "min_block_size_y": kernel_shape.y,
+                "min_block_size_x": kernel_shape.x,
+            },
+            headers={"Authorization": f"Token {cloud_ilastik_token}"},
+            timeout=10,
+        )
+        project_response.raise_for_status()
+        return project_response.json()
+
     @classmethod
     def headless(cls):
+        import argparse
+        import ast
+
         parser = argparse.ArgumentParser(description="Headless Pixel Classification Workflow")
         parser.add_argument("--project", required=True, type=Path)
         parser.add_argument("--raw-data", required=True, nargs="+", type=Path, help="Raw Data to be processed")

@@ -7,7 +7,6 @@ from ilastik.server.WebContext import WebContext
 from ilastik.classifiers.ilp_pixel_classifier import IlpVigraPixelClassifier
 from ilastik.features.ilp_filter import IlpFilter
 from ilastik.annotations import Annotation
-from ilastik import Project
 
 
 class PixelClassificationWorkflow2WebAdapter:
@@ -62,8 +61,8 @@ class PixelClassificationWorkflow2WebAdapter:
         classifier_id = self._store_classifier(self.workflow.classifier)
         return flask.jsonify(classifier_id)
 
-    def ilp_project(self) -> bytes:
-        project, backing_file = Project.from_ilp_data(self.workflow.ilp_data)
-        project.close()
-        backing_file.seek(0)
-        return flask.send_file(backing_file, mimetype="application/octet-stream")
+    def ilp_project(self) -> flask.Response:
+        return flask.send_file(self.workflow.ilp_file, mimetype="application/octet-stream")
+
+    def upload_to_cloud_ilastik(self, cloud_ilastik_token: str, project_name: str) -> flask.Response:
+        return flask.jsonify(self.workflow.upload_to_cloud_ilastik(cloud_ilastik_token, project_name))

@@ -51,7 +51,7 @@ def add_ilp_feature_extractors(pix_workflow_id: str):
 def run_pixel_classification_workflow_method(pix_workflow_id: str, method_name: str):
     if (
         request.method == "POST"
-        and method_name not in ("add_annotations", "add_feature_extractors")
+        and method_name not in ("add_annotations", "add_feature_extractors", "upload_to_cloud_ilastik")
         or request.method == "DELETE"
         and method_name not in ("remove_annotations", "remove_feature_extractors", "clear_feature_extractors")
         or request.method == "GET"
