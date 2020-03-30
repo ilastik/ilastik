@@ -233,11 +233,13 @@ class BatchProcessingGui(QTabWidget):
         if not ok:
             return
 
-        project_file = self.parentApplet.dataSelectionApplet.topLevelOperator.ProjectFile.value
+        topLevelOperator = self.parentApplet.dataSelectionApplet.topLevelOperator
+
+        project_file = topLevelOperator.ProjectFile.value
         filename = pathlib.Path(project_file.filename).name
 
-        role_index = self.parentApplet.dataSelectionApplet.topLevelOperator.DatasetRoles.value.index("Raw Data")
-        dataset_info = self.parentApplet.dataSelectionApplet.topLevelOperator.DatasetGroup[0][role_index].value
+        role_index = topLevelOperator.DatasetRoles.value.index("Raw Data")
+        dataset_info = topLevelOperator.DatasetGroup[0][role_index].value
 
         try:
             num_channels = dataset_info.laneShape[dataset_info.axistags.channelIndex]
@@ -299,6 +301,7 @@ class BatchProcessingGui(QTabWidget):
                 ilastik.config.cfg["hbp"]["create_project_url"],
                 json={
                     "file": file_json["url"],
+                    "workflow": topLevelOperator.parent.workflowName,
                     "num_channels": num_channels,
                     "min_block_size_z": 0 if compute_in_2d else min_block_size,
                     "min_block_size_y": min_block_size,
