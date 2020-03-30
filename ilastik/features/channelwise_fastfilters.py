@@ -28,6 +28,8 @@ class ChannelwiseFastFilter(IlpFilter):
     def get_ilp_scale(self, capped_scale: float) -> float:
         if capped_scale < 1:
             return capped_scale
+        if self.presmooth_sigma == 1.0:
+            return 1.0
         # presmooth_sigma = math.sqrt(ilp_scale ** 2 - 1.0)
         # presmooth_sigma ** 2 = ilp_scale ** 2 - 1.0
         # presmooth_sigma ** 2 + 1 = ilp_scale ** 2
