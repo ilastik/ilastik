@@ -1,4 +1,6 @@
 import logging
+import sys
+from pathlib import Path
 import weakref
 from collections import OrderedDict
 from typing import Callable, Dict, Hashable, List, Optional, Union, Mapping, Iterable
@@ -6,6 +8,7 @@ import numpy
 import vigra
 from vigra.vigranumpycore import AxisTags
 from lazyflow.request import Request
+from ndstructs import Shape5D
 from functools import partial
 
 from ilastik.applets.base.applet import Applet
@@ -53,15 +56,38 @@ class BatchProcessingApplet(Applet):
 
     def parse_known_cmdline_args(self, cmdline_args):
         # We use the same parser as the DataSelectionApplet
-        parsed_args, unused_args = DataSelectionApplet.parse_known_cmdline_args(cmdline_args, self.role_names)
+        parser = DataSelectionApplet.get_arg_parser(self.role_names)
+        parser.add_argument(
+            "--distributed",
+            help="Distributed mode. Used for running ilastik on HPCs via SLURM/srun/mpirun",
+            action="store_true",
+        )
+        parser.add_argument(
+            "--distributed_block_size",
+            help="The length of the side of the tiles used in distributed mode",
+            type=int,
+            default=256,
+        )
+
+        parsed_args, unused_args = parser.parse_known_args(cmdline_args)
         return parsed_args, unused_args
 
     def run_export_from_parsed_args(self, parsed_args):
         """
         Run the export for each dataset listed in parsed_args (we use the same parser as DataSelectionApplet).
         """
+        if parsed_args.distributed:
+            export_function = partial(self.do_distributed_export, block_size=parsed_args.distributed_block_size)
+        else:
+            export_function = self.do_normal_export
+
         role_path_dict = self.dataSelectionApplet.role_paths_from_parsed_args(parsed_args)
-        return self.run_export(role_path_dict, parsed_args.input_axes, sequence_axis=parsed_args.stack_along)
+        return self.run_export(
+            role_path_dict,
+            input_axes=parsed_args.input_axes,
+            sequence_axis=parsed_args.stack_along,
+            export_function=export_function,
+        )
 
     def run_export(
         self,
@@ -69,6 +95,7 @@ class BatchProcessingApplet(Applet):
         input_axes: Optional[str] = None,
         export_to_array: bool = False,
         sequence_axis: Optional[str] = None,
+        export_function: Optional[Callable] = None,
     ) -> Union[List[str], List[numpy.array]]:
         """Run the export for each dataset listed in role_data_dict
 
@@ -98,6 +125,8 @@ class BatchProcessingApplet(Applet):
             list containing either strings of paths to exported files,
               or numpy.arrays (depending on export_to_array)
         """
+        assert not (export_to_array and export_function)
+        export_function = export_function or (self.do_export_to_array if export_to_array else self.do_normal_export)
         self.progressSignal(0)
         batches = list(zip(*role_data_dict.values()))
         try:
@@ -113,7 +142,7 @@ class BatchProcessingApplet(Applet):
                 result = self.export_dataset(
                     role_inputs,
                     input_axes=input_axes,
-                    export_to_array=export_to_array,
+                    export_function=export_function,
                     sequence_axis=sequence_axis,
                     progress_callback=partial(lerpProgressSignal, global_progress_start, global_progress_end),
                 )
@@ -133,17 +162,31 @@ class BatchProcessingApplet(Applet):
             infos.append(info_slot.value.axistags if info_slot.ready() else None)
         return infos
 
+    def do_normal_export(self, opDataExport):
+        logger.info(f"Exporting to {opDataExport.ExportPath.value}")
+        opDataExport.run_export()
+        return opDataExport.ExportPath.value
+
+    def do_export_to_array(self, opDataExport):
+        logger.info("Exporting to in-memory array.")
+        return opDataExport.run_export_to_array()
+
+    def do_distributed_export(self, opDataExport, *, block_size: int = 256):
+        logger.info("Exporting to distributed command line...")
+        return opDataExport.run_distributed_export(block_shape=Shape5D.hypercube(block_size))
+
     def export_dataset(
         self,
         role_inputs: List[Union[str, DatasetInfo]],
+        export_function: Callable = None,
         input_axes: Optional[str] = None,
-        export_to_array: bool = False,
         sequence_axis: Optional[str] = None,
         progress_callback: Optional[Callable[[int], None]] = None,
     ) -> Union[str, numpy.array]:
         """
         Configures a lane using the paths specified in the paths from role_inputs and runs the workflow.
         """
+        export_function = export_function or self.do_normal_export
         progress_callback = progress_callback or self.progressSignal
         original_num_lanes = self.num_lanes
         previous_axes_tags = self.get_previous_axes_tags()
@@ -173,14 +216,7 @@ class BatchProcessingApplet(Applet):
             self.dataExportApplet.prepare_lane_for_export(self.num_lanes - 1)
             opDataExport = self.dataExportApplet.topLevelOperator.getLane(self.num_lanes - 1)
             opDataExport.progressSignal.subscribe(progress_callback)
-            if export_to_array:
-                logger.info("Exporting to in-memory array.")
-                result = opDataExport.run_export_to_array()
-            else:
-                logger.info(f"Exporting to {opDataExport.ExportPath.value}")
-                opDataExport.run_export()
-                result = opDataExport.ExportPath.value
-
+            result = export_function(opDataExport)
             # Call customization hook
             self.dataExportApplet.post_process_lane_export(self.num_lanes - 1)
             return result

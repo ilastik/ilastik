@@ -19,8 +19,12 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import os
+from pathlib import Path
+from typing import Dict, List
 import collections
 import numpy
+import z5py
+from ndstructs import Shape5D
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import PathComponents, getPathVariants, format_known_keys
@@ -43,10 +47,7 @@ class DataExportPathFormatter:
         if os.path.pathsep in nickname:
             nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
 
-        known_keys = {
-            "dataset_dir": abs_dataset_dir,
-            "nickname": nickname,
-        }
+        known_keys = {"dataset_dir": abs_dataset_dir, "nickname": nickname}
 
         if self._result_type:
             known_keys["result_type"] = self._result_type
@@ -211,9 +212,7 @@ class OpDataExport(Operator):
         result_types = self.SelectionNames.value
 
         path_formatter = DataExportPathFormatter(
-            dataset_info=rawInfo,
-            working_dir=self.WorkingDirectory.value,
-            result_type=result_types[selection_index]
+            dataset_info=rawInfo, working_dir=self.WorkingDirectory.value, result_type=result_types[selection_index]
         )
 
         self._opFormattedExport.TransactionSlot.disconnect()
@@ -255,6 +254,9 @@ class OpDataExport(Operator):
         # This function can be used to export the results to an in-memory array, instead of to disk
         # (Typically used from pure-python clients in batch mode.)
         return self._opFormattedExport.run_export_to_array()
+
+    def run_distributed_export(self, block_shape: Shape5D):
+        return self._opFormattedExport.run_distributed_export(block_shape)
 
 
 class OpRawSubRegionHelper(Operator):

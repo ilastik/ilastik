@@ -27,6 +27,7 @@ import glob
 import argparse
 import collections
 import logging
+from typing import List
 
 logger = logging.getLogger(__name__)  # noqa
 
@@ -106,6 +107,64 @@ class DataSelectionApplet(Applet):
         return self._serializableItems
 
     @classmethod
+    def get_arg_parser(cls, role_names):
+        def user_expanded_existing_filename(path):
+            if isUrl(path):
+                return path
+            expanded_path = os.path.expanduser(path)
+            all_paths = glob.glob(PathComponents(expanded_path).externalPath)
+            if len(all_paths) == 0:
+                raise ValueError(f"No files found matching path {path}")
+            for p in all_paths:
+                if not os.path.exists(p):
+                    raise ValueError(f"Input file does not exist: {p}")
+            return path
+
+        def make_trailing_args_action(role_names: List[str]):
+            class ExtraTrailingArgumentsAction(argparse.Action):
+                def __call__(self, parser, namespace, values, option_string):
+                    role_arg_names = [DataSelectionApplet._role_name_to_arg_name(role_name) for role_name in role_names]
+                    role_arg_values = [getattr(namespace, arg_name) for arg_name in role_arg_names]
+                    named_configured_roles = {k: v for k, v in zip(role_arg_names, role_arg_values) if v}
+                    if values:
+                        if named_configured_roles:
+                            raise ValueError(
+                                "You can only have trailing file paths if no other role was set by name. "
+                                f"You have set the following roles by name: {named_configured_roles}"
+                            )
+                        setattr(namespace, role_arg_names[0], values)
+
+            return ExtraTrailingArgumentsAction
+
+        arg_parser = argparse.ArgumentParser()
+        for role_name in role_names or []:
+            arg_name = cls._role_name_to_arg_name(role_name)
+            arg_parser.add_argument(
+                "--" + arg_name,
+                nargs="+",
+                help=f"List of input files for the {role_name} role",
+                type=user_expanded_existing_filename,
+            )
+
+        # Finally, a catch-all for role 0 (if the workflow only has one role, there's no need to provide role names
+        arg_parser.add_argument(
+            "unspecified_input_files",
+            nargs="*",
+            help="List of input files to process.",
+            action=make_trailing_args_action(role_names),
+        )
+
+        arg_parser.add_argument(
+            "--preconvert_stacks",
+            help="Convert image stacks to temporary hdf5 files before loading them.",
+            action="store_true",
+            default=False,
+        )
+        arg_parser.add_argument("--input_axes", help="Explicitly specify the axes of your dataset.", required=False)
+        arg_parser.add_argument("--stack_along", help="Sequence axis along which to stack", type=str, default="z")
+        return arg_parser
+
+    @classmethod
     def parse_known_cmdline_args(cls, cmdline_args, role_names):
         """
         Helper function for headless workflows.
@@ -124,81 +183,8 @@ class DataSelectionApplet(Applet):
 
         See also: :py:meth:`configure_operator_with_parsed_args()`.
         """
-        arg_parser = argparse.ArgumentParser()
-        if role_names:
-            for role_name in role_names:
-                arg_name = cls._role_name_to_arg_name(role_name)
-                arg_parser.add_argument(
-                    "--" + arg_name, nargs="+", help="List of input files for the {} role".format(role_name)
-                )
-
-        # Finally, a catch-all for role 0 (if the workflow only has one role, there's no need to provide role names
-        arg_parser.add_argument("unspecified_input_files", nargs="*", help="List of input files to process.")
-
-        arg_parser.add_argument(
-            "--preconvert_stacks",
-            help="Convert image stacks to temporary hdf5 files before loading them.",
-            action="store_true",
-            default=False,
-        )
-        arg_parser.add_argument("--input_axes", help="Explicitly specify the axes of your dataset.", required=False)
-        arg_parser.add_argument("--stack_along", help="Sequence axis along which to stack", type=str, default="z")
-
+        arg_parser = cls.get_arg_parser(role_names)
         parsed_args, unused_args = arg_parser.parse_known_args(cmdline_args)
-
-        if parsed_args.unspecified_input_files:
-            # We allow the file list to go to the 'default' role,
-            # but only if no other roles were explicitly configured.
-            arg_names = list(map(cls._role_name_to_arg_name, role_names))
-            for arg_name in arg_names:
-                if getattr(parsed_args, arg_name):
-                    # FIXME: This error message could be more helpful.
-                    role_args = list(map(cls._role_name_to_arg_name, role_names))
-                    role_args = ["--" + s for s in role_args]
-                    role_args_str = ", ".join(role_args)
-                    raise Exception(
-                        "Invalid command line arguments: All roles must be configured explicitly.\n"
-                        "Use the following flags to specify which files are matched with which inputs:\n"
-                        "" + role_args_str
-                    )
-
-            # Relocate to the 'default' role
-            arg_name = cls._role_name_to_arg_name(role_names[0])
-            setattr(parsed_args, arg_name, parsed_args.unspecified_input_files)
-            parsed_args.unspecified_input_files = None
-
-        # Replace '~' with home dir
-        for role_name in role_names:
-            arg_name = cls._role_name_to_arg_name(role_name)
-            paths_for_role = getattr(parsed_args, arg_name)
-            if paths_for_role:
-                for i, path in enumerate(paths_for_role):
-                    paths_for_role[i] = os.path.expanduser(path)
-
-        # Check for errors: Do all input files exist?
-        all_input_paths = []
-        for role_name in role_names:
-            arg_name = cls._role_name_to_arg_name(role_name)
-            role_paths = getattr(parsed_args, arg_name)
-            if role_paths:
-                all_input_paths += role_paths
-        error = False
-        for p in all_input_paths:
-            if isUrl(p):
-                # Don't error-check urls in advance.
-                continue
-            p = PathComponents(p).externalPath
-            if "*" in p:
-                if len(glob.glob(p)) == 0:
-                    logger.error("Could not find any files for globstring: {}".format(p))
-                    logger.error("Check your quotes!")
-                    error = True
-            elif not os.path.exists(p):
-                logger.error("Input file does not exist: " + p)
-                error = True
-        if error:
-            raise RuntimeError("Could not find one or more input files.  See logged errors.")
-
         return parsed_args, unused_args
 
     @staticmethod

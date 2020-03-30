@@ -27,6 +27,11 @@ import os
 import collections
 import warnings
 import numpy
+from typing import Tuple
+from pathlib import Path
+
+import z5py
+from ndstructs import Shape5D, Slice5D
 
 from lazyflow.utility import format_known_keys
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -34,6 +39,7 @@ from lazyflow.roi import roiFromShape
 from lazyflow.operators.generic import OpSubRegion, OpPixelOperator
 from lazyflow.operators.valueProviders import OpMetadataInjector
 from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.utility.pathHelpers import PathComponents
 
 from .opExportSlot import OpExportSlot
 
@@ -125,7 +131,7 @@ class OpFormattedDataExport(Operator):
         self.FormatSelectionErrorMsg.connect(self._opExportSlot.FormatSelectionErrorMsg)
         self.progressSignal = self._opExportSlot.progressSignal
 
-    def setupOutputs(self):
+    def get_new_roi(self) -> Tuple[Tuple, Tuple]:
         # Prepare subregion operator
         total_roi = roiFromShape(self.Input.meta.shape)
         total_roi = list(map(tuple, total_roi))
@@ -150,7 +156,22 @@ class OpFormattedDataExport(Operator):
             )
 
         new_start, new_stop = tuple(clipped_start), tuple(clipped_stop)
+        return new_start, new_stop
 
+    def get_cutout(self) -> Slice5D:
+        input_axiskeys = self.Input.meta.getAxisKeys()
+        cutout_start, cutout_stop = self.get_new_roi()
+        cutout_slices = tuple(slice(start, stop) for start, stop in zip(cutout_start, cutout_stop))
+        return Slice5D.zero(**{axis: slc for axis, slc in zip(input_axiskeys, cutout_slices)})
+
+    def set_cutout(self, cutout: Slice5D):
+        input_axiskeys = self.Input.meta.getAxisKeys()
+        start = cutout.start.to_tuple(input_axiskeys, int)
+        stop = cutout.stop.to_tuple(input_axiskeys, int)
+        self._opSubRegion.Roi.setValue((start, stop))
+
+    def setupOutputs(self):
+        new_start, new_stop = self.get_new_roi()
         # If we're in the process of switching input data,
         #  then the roi dimensionality might not match up.
         #  Just leave the roi disconnected for now.
@@ -258,3 +279,36 @@ class OpFormattedDataExport(Operator):
 
     def run_export_to_array(self):
         return self._opExportSlot.run_export_to_array()
+
+    def run_distributed_export(self, block_shape: Shape5D):
+        from lazyflow.distributed.TaskOrchestrator import TaskOrchestrator
+
+        orchestrator = TaskOrchestrator()
+        n5_file_path = Path(self.OutputFilenameFormat.value).with_suffix(".n5")
+        output_meta = self.ImageToExport.meta
+        if orchestrator.rank == 0:
+            output_shape = output_meta.getShape5D()
+            block_shape = block_shape.clamped(maximum=output_shape)
+
+            with z5py.File(n5_file_path, "w") as f:
+                ds = f.create_dataset(
+                    self.OutputInternalPath.value,
+                    shape=output_meta.shape,
+                    chunks=block_shape.to_tuple(output_meta.getAxisKeys()),
+                    dtype=output_meta.dtype.__name__,
+                )
+                ds.attrs["axes"] = list(reversed(output_meta.getAxisKeys()))
+                ds[...] = 1  # FIXME: for some reason setting to 0 does nothing
+
+            cutout = self.get_cutout()
+            orchestrator.orchestrate(cutout.split(block_shape=block_shape))
+        else:
+
+            def process_tile(tile: Slice5D, rank: int):
+                self.set_cutout(tile)
+                slices = tile.to_slices(output_meta.getAxisKeys())
+                with z5py.File(n5_file_path, "r+") as n5_file:
+                    dataset = n5_file[self.OutputInternalPath.value]
+                    dataset[slices] = self.ImageToExport.value
+
+            orchestrator.start_as_worker(process_tile)
