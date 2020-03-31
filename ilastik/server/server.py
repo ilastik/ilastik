@@ -25,9 +25,6 @@ parser.add_argument("--host", default="localhost", help="ip or hostname where th
 parser.add_argument("--port", default=5000, type=int, help="port to listen on")
 parser.add_argument("--ngurl", default="http://localhost:8080", help="url where neuroglancer is being served")
 parser.add_argument("--sample-dirs", type=Path, help="List of directories containing n5 samples", nargs="+")
-parser.add_argument(
-    "--sample-tile-size", type=int, help="Force samples to use this tiles with this size (clamped to full image)"
-)
 args = parser.parse_args()
 
 app = Flask("WebserverHack")
@@ -322,8 +319,7 @@ for sample_dir in args.sample_dirs or ():
         if sample_file.is_dir() and sample_file.suffix in (".n5", ".N5"):
             for dataset in sample_file.iterdir():
                 if dataset.is_dir():
-                    tile_shape = Shape5D.hypercube(args.sample_tile_size) if args.sample_tile_size else None
-                    datasource = DataSource.create(dataset.absolute().as_posix(), tile_shape=tile_shape)
+                    datasource = DataSource.create(dataset.absolute())
                     print(f"---->> Adding sample {datasource.name}")
                     WebContext.store(datasource)
 
