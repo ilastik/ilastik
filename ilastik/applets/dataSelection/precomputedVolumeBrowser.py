@@ -34,6 +34,7 @@ class PrecomputedVolumeBrowser(QDialog):
         super().__init__(parent)
         self._history = history or []
         self.selected_url = None
+        self.precomputed_volume = None
 
         self.setup_ui()
 
@@ -52,6 +53,7 @@ class PrecomputedVolumeBrowser(QDialog):
         self.combo = QComboBox(self)
         self.combo.setEditable(True)
         self.combo.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
+        self.combo.currentTextChanged.connect(self.resetVolume)
         self.combo.addItem("")
         for item in self._history:
             self.combo.addItem(item)
@@ -85,12 +87,17 @@ class PrecomputedVolumeBrowser(QDialog):
         main_layout.addWidget(self.qbuttons)
         self.setLayout(main_layout)
 
+    def resetVolume(self):
+        self.precomputed_volume = None
+        self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)
+
     def handle_chk_button_clicked(self, event):
         self.selected_url = self.combo.currentText()
         logger.debug(f"selected url: {self.selected_url}")
         url = self.selected_url.lstrip("precomputed://")
         try:
             rv = RESTfulPrecomputedChunkedVolume(volume_url=url)
+            self.precomputed_volume = rv
         except Exception as e:
             # :<
             self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)

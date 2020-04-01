@@ -301,8 +301,10 @@ def splitPath(path: str) -> List[str]:
     """Splits a string using path separator (e.g.: ':' in unix) without clobbering
     protocol URLs like http://example.com"""
 
-    NOT_FOLLOWED_BY_DOUBLE_SLASH = r"(?!//)"
-    return re.split(os.path.pathsep + NOT_FOLLOWED_BY_DOUBLE_SLASH, path)
+    DOUBLE_SLASH = r"//"
+    PORT_NUMBER = r"\d{1,5}\b"
+    NOT_FOLLOWED_BY_DOUBLE_SLASH_OR_PORT_NUMBER = r"(?!" + DOUBLE_SLASH + "|" + PORT_NUMBER + ")"
+    return [part for part in re.split(os.path.pathsep + NOT_FOLLOWED_BY_DOUBLE_SLASH_OR_PORT_NUMBER, path) if part]
 
 
 def make_absolute(path, cwd=os.getcwd()):

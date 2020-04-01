@@ -24,7 +24,13 @@ from typing import List, Tuple, Callable
 from pathlib import Path
 
 
-from .opDataSelection import OpDataSelection, DatasetInfo, FilesystemDatasetInfo, RelativeFilesystemDatasetInfo
+from .opDataSelection import (
+    OpDataSelection,
+    DatasetInfo,
+    FilesystemDatasetInfo,
+    RelativeFilesystemDatasetInfo,
+    UrlDatasetInfo,
+)
 from .opDataSelection import PreloadedArrayDatasetInfo, ProjectInternalDatasetInfo
 from lazyflow.operators.ioOperators import OpInputDataReader, OpStackLoader, OpH5N5WriterBigDataset
 from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
@@ -57,11 +63,9 @@ class DataSelectionSerializer(AppletSerializer):
     """
 
     # Constants
-    LocationStrings = {"FileSystem": FilesystemDatasetInfo, "ProjectInternal": ProjectInternalDatasetInfo}
     InfoClassNames = {
-        ProjectInternalDatasetInfo.__name__: ProjectInternalDatasetInfo,
-        FilesystemDatasetInfo.__name__: FilesystemDatasetInfo,
-        RelativeFilesystemDatasetInfo.__name__: RelativeFilesystemDatasetInfo,
+        klass.__name__: klass
+        for klass in [ProjectInternalDatasetInfo, FilesystemDatasetInfo, RelativeFilesystemDatasetInfo, UrlDatasetInfo]
     }
 
     def __init__(self, topLevelOperator, projectFileGroupName):
@@ -263,10 +267,16 @@ class DataSelectionSerializer(AppletSerializer):
             info_class = self.InfoClassNames[infoGroup["__class__"][()].decode("utf-8")]
         else:  # legacy support
             location = infoGroup["location"][()].decode("utf-8")
-            if location == "FileSystem" and isRelative(infoGroup["filePath"][()].decode("utf-8")):
-                info_class = RelativeFilesystemDatasetInfo
+            if location == "FileSystem":  # legacy support: a lot of DatasetInfo types are saved as "Filesystem"
+                filePath = infoGroup["filePath"][()].decode("utf-8")
+                if isUrl(filePath):
+                    info_class = UrlDatasetInfo
+                elif isRelative(filePath):
+                    info_class = RelativeFilesystemDatasetInfo
+                else:
+                    info_class = FilesystemDatasetInfo
             else:
-                info_class = self.LocationStrings[location]
+                info_class = PreloadedArrayDatasetInfo
 
         dirty = False
         try:

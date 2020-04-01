@@ -119,6 +119,7 @@ class RESTfulPrecomputedChunkedVolume(object):
         self.available_scales = self._scale_info.keys()
 
         self.dtype = self._json_info["data_type"]
+        self.npdtype = numpy.dtype(self.dtype)
         self.n_channels = self._json_info["num_channels"]
 
     @staticmethod

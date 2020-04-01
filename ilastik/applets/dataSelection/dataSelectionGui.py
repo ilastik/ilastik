@@ -653,7 +653,8 @@ class DataSelectionGui(QWidget):
             return
 
         precomputed_url = browser.selected_url
-        self.addFileNames([precomputed_url], laneIndex, roleIndex)
+        info = UrlDatasetInfo(url=browser.selected_url)
+        self.addLanes([info], roleIndex=roleIndex, startingLaneNum=laneIndex)
 
     def addDvidVolume(self, roleIndex, laneIndex):
         group = "DataSelection"
