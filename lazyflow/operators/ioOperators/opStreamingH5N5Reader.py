@@ -87,7 +87,10 @@ class OpStreamingH5N5Reader(Operator):
                 raise KeyError("?")
         except KeyError:
             # No axistags found.
-            axisorder = get_default_axisordering(dataset.shape)
+            if "axes" in dataset.attrs:
+                axisorder = "".join(dataset.attrs["axes"][::-1]).lower()
+            else:
+                axisorder = get_default_axisordering(dataset.shape)
             axistags = vigra.defaultAxistags(str(axisorder))
 
         assert len(axistags) == len(dataset.shape), f"Mismatch between shape {dataset.shape} and axisorder {axisorder}"
