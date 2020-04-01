@@ -106,9 +106,7 @@ class DataConversionWorkflow(Workflow):
         # Command-line args are applied in onProjectLoaded(), below.
         if workflow_cmdline_args:
             self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args(workflow_cmdline_args)
-            self._batch_input_args, unused_args = self.dataSelectionApplet.parse_known_cmdline_args(
-                unused_args, role_names
-            )
+            self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args(unused_args)
         else:
             unused_args = None
             self._batch_input_args = None
