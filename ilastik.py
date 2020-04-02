@@ -52,8 +52,13 @@ def _clean_paths(root: pathlib.Path) -> None:
 
     def isvalidpath_win(path):
         """Whether an element of PATH is "clean" on Windows."""
-        patterns = "*/cplex/*", "*/guirobi/*", "/windows/system32/*"
-        return any(map(pathlib.PurePath(path).match, patterns))
+
+        def partial_match(path, pattern):
+            """allow arbitrary nesting within those patterns"""
+            return any(p.match(pattern) for p in path.parents)
+
+        patterns = "**/cplex_studio*", "**/gurobi*", "/windows/system32/*"
+        return any(partial_match(pathlib.PurePath(path), pat) for pat in patterns)
 
     # Remove undesired paths from PYTHONPATH and add ilastik's submodules.
     sys_path = list(filter(issubdir, sys.path))
