@@ -21,12 +21,13 @@ from builtins import object
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
+import pytest
 import os
 import sys
 import shutil
 import tempfile
-import numpy
 import h5py
+import numpy
 from lazyflow.roi import sliceToRoi
 from lazyflow.utility.io_util.RESTfulVolume import RESTfulVolume
 
@@ -35,6 +36,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.xfail(reason="Unstable test with external dependency on openconnecto.me")
 class TestRESTfulVolume(object):
     def testBasic(self):
         """
@@ -42,10 +44,6 @@ class TestRESTfulVolume(object):
         """
         # The openconnectome site appears to be down at the moment.
         # This test fails when that happens...
-        import nose
-
-        raise nose.SkipTest
-
         testConfig0 = """
         {
             "_schema_name" : "RESTful-volume-description",

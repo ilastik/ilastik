@@ -98,9 +98,6 @@ class TestOpDvidVolume(unittest.TestCase):
     @unittest.skipIf(not have_dvid, "optional module libdvid not available.")
     @unittest.skipIf(platform.system() == "Windows", "DVID not tested on Windows. Skipping.")
     def setUpClass(cls):
-        """
-        Override.  Called by nosetests.
-        """
         # Choose names
         cls.dvid_repo = "datasetA"
         cls.data_name = "random_data"
@@ -128,9 +125,6 @@ class TestOpDvidVolume(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        """
-        Override.  Called by nosetests.
-        """
         delete_all_data_instances(cls.data_uuid)
 
     def test_cutout(self):

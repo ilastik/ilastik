@@ -21,7 +21,6 @@ from builtins import object
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-import nose
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
 from lazyflow import stype
 from lazyflow import operators

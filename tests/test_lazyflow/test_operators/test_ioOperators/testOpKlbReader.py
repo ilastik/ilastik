@@ -1,27 +1,19 @@
 from builtins import object
 import tempfile
 import shutil
+import pytest
 import numpy as np
-import nose
 from lazyflow.graph import Graph
 
-try:
-    import pyklb
-
-    _klb_available = True
-except ImportError:
-    _klb_available = False
-
 from lazyflow.operators.ioOperators import OpKlbReader
+
+pyklb = pytest.importorskip("pyklb")
 
 
 def test_pyklb():
     """
     This merely tests pyklb itself, to make sure it was compiled correctly.
     """
-    if not _klb_available:
-        raise nose.SkipTest
-
     # Create some simple data. Should compress well.
     shape = (1, 1, 30, 40, 50)
     data_tczyx = np.indices(shape).sum(0).astype(np.uint8)
@@ -42,10 +34,6 @@ def test_pyklb():
 
 
 class TestOpKlbReader(object):
-    def setup(self):
-        if not _klb_available:
-            raise nose.SkipTest
-
     def testBasic(self):
         tmpdir = tempfile.mkdtemp()
         try:

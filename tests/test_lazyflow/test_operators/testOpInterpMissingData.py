@@ -29,9 +29,8 @@ import vigra
 from lazyflow.operators.opInterpMissingData import OpInterpMissingData, OpInterpolate, OpDetectMissing, havesklearn
 
 import unittest
+import pytest
 from numpy.testing import assert_array_almost_equal, assert_array_equal
-
-from nose import SkipTest
 
 try:
     from scipy.interpolate import UnivariateSpline
@@ -40,6 +39,8 @@ try:
 except ImportError:
     haveScipy = False
 
+
+skip_if_no_sklearn = pytest.mark.skipif(not havesklearn, reason="Skipping no sklearn")
 
 _testDescriptions = [
     "large block empty",
@@ -165,9 +166,8 @@ class TestDetection(unittest.TestCase):
         self.op.DetectionMethod.setValue("svm")
         self.op.train(force=True)
 
+    @skip_if_no_sklearn
     def testDetectorOmnipresence(self):
-        if not havesklearn:
-            raise SkipTest
         assert self.op.has(self.op.NHistogramBins.value, method="svm"), "Detector is untrained after call to train()"
         assert not self.op.has(self.op.NHistogramBins.value + 2, method="svm"), "Wrong bin size trained."
 
@@ -178,9 +178,8 @@ class TestDetection(unittest.TestCase):
         assert not self.op.has(self.op.NHistogramBins.value, method="svm"), "Detector not reset."
         assert not op2.has(self.op.NHistogramBins.value, method="svm"), "Detector not reset globally."
 
+    @skip_if_no_sklearn
     def testDetectorPropagation(self):
-        if not havesklearn:
-            raise SkipTest
         s = self.op.Detector[:].wait()
         self.op.reset()
         assert not self.op.has(self.op.NHistogramBins.value, method="svm"), "Detector not reset."
@@ -200,9 +199,8 @@ class TestDetection(unittest.TestCase):
             err_msg="input with single black layer",
         )
 
+    @skip_if_no_sklearn
     def testSVMDetection(self):
-        if not havesklearn:
-            raise SkipTest
         self.op.DetectionMethod.setValue("svm")
         self.op.PatchSize.setValue(1)
         self.op.HaloSize.setValue(0)
@@ -215,10 +213,9 @@ class TestDetection(unittest.TestCase):
             err_msg="input with single black layer",
         )
 
+    @skip_if_no_sklearn
     def testSVMDetectionWithHalo(self):
         nBlack = 15
-        if not havesklearn:
-            raise SkipTest
         self.op.DetectionMethod.setValue("svm")
         self.op.PatchSize.setValue(5)
         self.op.HaloSize.setValue(2)
@@ -231,9 +228,8 @@ class TestDetection(unittest.TestCase):
             err_msg="input with single black layer",
         )
 
+    @skip_if_no_sklearn
     def testSVMWithHalo(self):
-        if not havesklearn:
-            raise SkipTest
         self.op.DetectionMethod.setValue("svm")
         self.op.PatchSize.setValue(2)
         self.op.HaloSize.setValue(1)
@@ -489,9 +485,8 @@ class TestInterpMissingData(unittest.TestCase):
         assert op.detector.has(op.detector.NHistogramBins.value, method="svm"), "Detector not trained."
         self.op = op
 
+    @skip_if_no_sklearn
     def testDetectorPropagation(self):
-        if not havesklearn:
-            raise SkipTest
         method = "svm"
         self.op.DetectionMethod.setValue(method)
         v = _volume()
@@ -609,14 +604,6 @@ class TestInterpMissingData(unittest.TestCase):
 
         assert_array_almost_equal(result.squeeze(), exp[:, :, nz + 1].view(np.ndarray).squeeze(), decimal=3)
         pass
-
-    def testBadImageSize(self):
-        # TODO implement
-        raise SkipTest
-
-    def testHaloSize(self):
-        # TODO implement
-        raise SkipTest
 
     def test4D(self):
         vol = vigra.VigraArray(np.ones((10, 64, 64, 3)), axistags=vigra.defaultAxistags("cxyz"))

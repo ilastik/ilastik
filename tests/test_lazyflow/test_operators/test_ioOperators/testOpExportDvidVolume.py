@@ -97,9 +97,6 @@ class TestOpDvidVolume(unittest.TestCase):
     @unittest.skipIf(not have_dvid, "optional module libdvid not available.")
     @unittest.skipIf(platform.system() == "Windows", "DVID not tested on Windows. Skipping.")
     def setup_method(self, method):
-        """
-        Override.  Called by nosetests.
-        """
         # Choose names
         self.hostname = TEST_DVID_SERVER
         self.dvid_repo = "datasetA"
@@ -107,9 +104,6 @@ class TestOpDvidVolume(unittest.TestCase):
         self.data_uuid = get_testrepo_root_uuid()
 
     def teardown_method(self, method):
-        """
-        Override.  Called by nosetests.
-        """
         delete_all_data_instances(self.data_uuid)
 
     def test_export(self):

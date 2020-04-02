@@ -21,13 +21,13 @@ from builtins import object
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
+import pytest
 import os
 import sys
 import shutil
 import tempfile
 import numpy
 import h5py
-import nose
 import platform
 
 from lazyflow.roi import sliceToRoi
@@ -40,22 +40,18 @@ from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset
 from lazyflow.utility.io_util.RESTfulBlockwiseFileset import RESTfulBlockwiseFileset
 
 
+@pytest.mark.xfail(reason="Unstable test with external dependency on openconnecto.me")
 class TestRESTFullBlockwiseFilset(object):
     @classmethod
     def setup_class(cls):
-        # The openconnectome site appears to be down at the moment.
-        # This test fails when that happens...
-        raise nose.SkipTest
-
         if platform.system() == "Windows":
-            # On windows, there are errors, and we make no attempt to solve them (at the moment).
-            raise nose.SkipTest
+            pytest.skip("Windows")
 
         try:
             BlockwiseFileset._prepare_system()
         except ValueError:
             # If the system isn't configured to allow lots of open files, we can't run this test.
-            raise nose.SkipTest
+            pytest.skip("System is not configured to allow opening a lot of files")
 
         cls.tempDir = tempfile.mkdtemp()
         logger.debug("Working in {}".format(cls.tempDir))

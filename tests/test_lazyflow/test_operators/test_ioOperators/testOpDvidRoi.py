@@ -81,9 +81,6 @@ class TestOpDvidRoi(unittest.TestCase):
     @unittest.skipIf(not have_dvid, "optional module libdvid not available.")
     @unittest.skipIf(platform.system() == "Windows", "DVID not tested on Windows. Skipping.")
     def setUpClass(cls):
-        """
-        Override.  Called by nosetests.
-        """
         cls.uuid = get_testrepo_root_uuid()
         cls.roi_name = "OpDvidRoi_test_roi"
         node_service = DVIDNodeService(TEST_DVID_SERVER, cls.uuid)

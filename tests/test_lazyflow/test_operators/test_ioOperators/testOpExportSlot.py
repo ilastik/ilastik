@@ -26,7 +26,6 @@ import tempfile
 import shutil
 import platform
 
-import nose
 import numpy
 import vigra
 
