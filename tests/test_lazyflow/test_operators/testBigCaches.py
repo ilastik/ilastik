@@ -44,12 +44,3 @@ class TestOpBlockedArrayCache_BIG_INPUT(object):
 
         data = opCache.Output((1500, 10000, 20000, 3), (1510, 10050, 20200, 4)).wait()
         assert (data == 1).all()
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)

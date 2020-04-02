@@ -201,26 +201,3 @@ def test_cancellation_behavior():
     lock.release()
     time.sleep(0.1)
     assert not finished[0] and not failed[0] and cancelled[0]
-
-
-if __name__ == "__main__":
-    import sys
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-
-    import nose
-
-    # Logging is OFF by default when running from command-line nose, i.e.:
-    # nosetests thisFile.py)
-    # but ON by default if running this test directly, i.e.:
-    # python thisFile.py
-    formatter = logging.Formatter("%(levelname)s %(name)s %(message)s")
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(formatter)
-    logging.getLogger().addHandler(handler)
-    logger.setLevel(logging.DEBUG)
-
-    ret = nose.run(defaultTest=__file__)
-    if not ret:
-        sys.exit(1)

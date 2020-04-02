@@ -281,24 +281,3 @@ class OpEnlarge(OpArrayPiperWithAccessCount):
         data = self.Input.get(newroi).wait()
         time.sleep(self.delay)
         result[:] = data[roiToSlice(*result_roi)]
-
-
-if __name__ == "__main__":
-    import sys
-
-    # Set up logging for debug
-    logHandler = logging.StreamHandler(sys.stdout)
-    logger.addHandler(logHandler)
-    mgrLogger.addHandler(logHandler)
-
-    logger.setLevel(logging.DEBUG)
-    mgrLogger.setLevel(logging.DEBUG)
-
-    # Run nose
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    ret = nose.run(defaultTest=__file__)
-    if not ret:
-        sys.exit(1)

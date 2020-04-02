@@ -184,14 +184,3 @@ class TestOpPrecomputedInput(object):
 
         # Compute should still be needed for the 2 that didn't get reset
         assert computeCount[0] == 2
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    ret = nose.run(defaultTest=__file__)
-    if not ret:
-        sys.exit(1)

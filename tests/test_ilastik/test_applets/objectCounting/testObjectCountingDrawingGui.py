@@ -239,9 +239,3 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
-
-
-if __name__ == "__main__":
-    from tests.test_ilastik.helpers.shellGuiTestCaseBase import run_shell_test
-
-    run_shell_test(__file__)

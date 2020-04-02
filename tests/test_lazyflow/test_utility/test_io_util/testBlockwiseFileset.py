@@ -336,15 +336,3 @@ class TestObjectBlockwiseFileset(object):
             for (k1, v1), (k2, v2) in zip(list(a.items()), list(b.items())):
                 assert k1 == k2
                 assert (v1 == v2).all()
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    ret = nose.run(defaultTest=__file__)
-
-    if not ret:
-        sys.exit(1)

@@ -112,12 +112,3 @@ class TestOpDvidRoi(unittest.TestCase):
         subvol = ((30, 60, 50), (40, 70, 70))
         roi_vol = opRoi.Output(*subvol).wait()
         assert (roi_vol == self.expected_data[roiToSlice(*subvol)]).all()
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)

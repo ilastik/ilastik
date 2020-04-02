@@ -965,23 +965,3 @@ class TestOpCompressedCache(object):
 
         assert op.Output.ready()
         assert_array_equal(op.Output.meta.ideal_blockshape, blockShape)
-
-
-if __name__ == "__main__":
-    # Set up logging for debug
-    logHandler = logging.StreamHandler(sys.stdout)
-    logger.addHandler(logHandler)
-    cacheLogger.addHandler(logHandler)
-
-    logger.setLevel(logging.DEBUG)
-    cacheLogger.setLevel(logging.DEBUG)
-
-    # Run nose
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    ret = nose.run(defaultTest=__file__)
-    if not ret:
-        sys.exit(1)

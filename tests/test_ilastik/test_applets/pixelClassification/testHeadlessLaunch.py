@@ -33,7 +33,3 @@ def test_headless_launch():
 
         ilastik_startup = imp.load_source("ilastik_startup", ilastik_entry_file_path)
         ilastik_startup.main()
-
-
-if __name__ == "__main__":
-    sys.exit(test_headless_launch())

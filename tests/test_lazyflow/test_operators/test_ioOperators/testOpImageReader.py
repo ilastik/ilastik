@@ -63,12 +63,3 @@ class TestOpImageReader_2D(object):
         assert op.Image.meta.getAxisKeys() == list("yxc"), "Wrong output axistags: {}".format(op.Image.meta.axistags)
 
         assert (op.Image[10:90, 50:60, :].wait() == self._testdata[10:90, 50:60, None].view(numpy.ndarray)).all()
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)

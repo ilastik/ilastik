@@ -127,7 +127,3 @@ class TestCarvingTools(unittest.TestCase):
         res = parallel_filter(name, x, sigma, outer_scale=outer_scale, max_workers=4)
         exp = fastfilters.structureTensorEigenvalues(x, sigma, outer_scale)
         assert numpy.allclose(res, exp)
-
-
-if __name__ == "__main__":
-    unittest.main()

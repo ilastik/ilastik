@@ -107,23 +107,3 @@ class TestRoiRequestBatch(object):
         #        This only tests one of them (in the notify_finished() handler)
         with pytest.raises(SpecialException):
             batch.execute()
-
-
-if __name__ == "__main__":
-    # Run this file independently to see debug output.
-    handler = logging.StreamHandler(sys.stdout)
-    logger.setLevel(logging.DEBUG)
-    logging.getLogger("lazyflow.utility.roiRequestBatch").setLevel(logging.INFO)
-
-    logger.addHandler(handler)
-    logging.getLogger("lazyflow.utility.roiRequestBatch").addHandler(handler)
-
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    ret = nose.run(defaultTest=__file__)
-
-    if not ret:
-        sys.exit(1)

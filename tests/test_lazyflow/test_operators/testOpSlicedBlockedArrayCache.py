@@ -756,14 +756,3 @@ class TestOpSlicedBlockedArrayCache_masked(object):
 
         _requestFrozenAndUnfrozen(make_key[:, 0:50, 15:45, 0:1, :])
         _requestFrozenAndUnfrozen(make_key[:, 80:100, 80:100, 0:1, :])
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    ret = nose.run(defaultTest=__file__)
-    if not ret:
-        sys.exit(1)

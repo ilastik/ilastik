@@ -101,20 +101,3 @@ class TestOpExportMultipageTiffSequence(object):
                 opReorderAxes.cleanUp()
         finally:
             opReader.cleanUp()
-
-
-if __name__ == "__main__":
-    # Run this file independently to see debug output.
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(logging.StreamHandler(sys.stdout))
-
-    ioOpLogger = logging.getLogger("lazyflow.operators.ioOperators")
-    ioOpLogger.addHandler(logging.StreamHandler(sys.stdout))
-    ioOpLogger.setLevel(logging.DEBUG)
-
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)

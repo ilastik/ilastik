@@ -126,16 +126,3 @@ class TestOpSplitRequestsBlockwise(unittest.TestCase):
 
         data = op.Output[5:14, 32:44, 17:21].wait()
         assert_array_equal(data, self.vol[5:14, 32:44, 17:21].view(np.ndarray))
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-    import logging
-
-    handler = logging.StreamHandler(sys.stdout)
-    logging.getLogger().addHandler(handler)
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)

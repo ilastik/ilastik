@@ -558,9 +558,3 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
             assert tuple(controller.rois()) == ((0, 5, 10, 25), (42, 310, 567, 890))
 
         self.exec_in_shell(impl)
-
-
-if __name__ == "__main__":
-    from tests.test_ilastik.helpers.shellGuiTestCaseBase import run_shell_test
-
-    run_shell_test(__file__)

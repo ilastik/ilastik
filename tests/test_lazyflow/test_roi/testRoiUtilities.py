@@ -16,7 +16,7 @@ from lazyflow.roi import (
 
 
 def test_determine_optimal_request_blockshape_exceeds_memory():
-    assert (64, 64, 1) == determine_optimal_request_blockshape( (1000,1000,100), (0,0,1), 100000, 10, 1000)
+    assert (64, 64, 1) == determine_optimal_request_blockshape((1000, 1000, 100), (0, 0, 1), 100000, 10, 1000)
 
 
 class Test_determineBlockShape(object):
@@ -147,15 +147,3 @@ class TestGetIntersectionBlocks(TestCase):
 
         with self.assertRaises(AssertionError):
             getIntersectingBlocks(numpy.array((256, 256, 0, 2)), ([0, 0, 0, 0], [256, 256, 256, 2]))
-
-
-if __name__ == "__main__":
-    # Run nose
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    ret = nose.run(defaultTest=__file__)
-    if not ret:
-        sys.exit(1)

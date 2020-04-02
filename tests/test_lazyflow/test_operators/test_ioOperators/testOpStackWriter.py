@@ -95,25 +95,3 @@ class TestOpStackWriter(object):
         assert (
             opReorderAxes.Output[:].wait() == self.testData.view(numpy.ndarray)
         ).all(), "Exported data was not correct"
-
-
-if __name__ == "__main__":
-    # Run this file independently to see debug output.
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(logging.StreamHandler(sys.stdout))
-
-    ioOpLogger = logging.getLogger("lazyflow.operators.ioOperators")
-    ioOpLogger.addHandler(logging.StreamHandler(sys.stdout))
-    ioOpLogger.setLevel(logging.DEBUG)
-
-    # BigRequestStreamer is used internally in OpStackWriter, so this logger may be useful...
-    # streamerLogger = logging.getLogger( 'lazyflow.utility.bigRequestStreamer' )
-    # streamerLogger.addHandler( logging.StreamHandler(sys.stdout) )
-    # streamerLogger.setLevel(logging.DEBUG)
-
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)

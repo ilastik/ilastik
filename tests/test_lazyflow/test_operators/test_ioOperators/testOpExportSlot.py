@@ -252,16 +252,3 @@ class TestOpExportSlot(object):
             opExport.OutputFormat.setValue(fmt)
             msg = opExport.FormatSelectionErrorMsg.value
             assert msg, "{} supported although it is actually not".format(fmt)
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-    import logging
-
-    handler = logging.StreamHandler(sys.stdout)
-    logging.getLogger().addHandler(handler)
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)

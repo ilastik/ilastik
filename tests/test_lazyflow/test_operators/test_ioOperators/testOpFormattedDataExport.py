@@ -99,12 +99,3 @@ class TestOpFormattedDataExport(object):
             assert (numpy.abs(difference_from_expected) <= 1).all(), "Read data didn't match exported data!"
         finally:
             opRead.cleanUp()
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)
