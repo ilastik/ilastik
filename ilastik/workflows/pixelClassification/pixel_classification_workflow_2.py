@@ -78,7 +78,7 @@ class DataSourceInfo(JsonSerializable):
             "axistags": vigra.defaultAxistags(self.datasource.axiskeys).toJSON().encode("utf8"),
             "datasetId": str(uuid.uuid1()).encode("utf8"),
             "dtype": str(self.datasource.dtype).encode("utf8"),
-            "filePath": self.datasource.path.as_posix().encode("utf8"),
+            "filePath": self.datasource.url.encode("utf8"),
             "fromstack": False,  # FIXME
             "location": self.legacy_location.encode("utf8"),
             "nickname": self.nickname.encode("utf8"),

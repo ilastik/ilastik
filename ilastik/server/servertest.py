@@ -26,14 +26,22 @@ resp = post("http://localhost:5000/PixelClassificationWorkflow2/", data={})
 workflow_id = resp.json()
 
 resp = post(
-    "http://localhost:5000/sequence_data_source/",
+    "http://localhost:5000/SkimageDataSource/",
     data={"path": "/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped1.png"},
 )
-data_source_id = resp.json()
+_data_source_id = resp.json()
 
-resp = get(f"http://localhost:5000/data_source/{data_source_id}")
-data_source_data = resp.json()
-print(json.dumps(data_source_data, indent=4))
+precomputed_url = (f"precomputed://http://localhost:5000/datasource/{_data_source_id}/data",)
+resp = post(
+    f"http://localhost:5000/PixelClassificationWorkflow2/{workflow_id}/add_lane_for_url", data={"url": precomputed_url}
+)
+lane_id = resp.json()
+
+
+resp = get(f"http://localhost:5000/data_source/{lane_id}")
+lane_data = resp.json()
+print(json.dumps(lane_data, indent=4))
+data_source_id = lane_data["RawData"]
 
 resp = post(
     f"http://localhost:5000/PixelClassificationWorkflow2/{workflow_id}/add_annotations",

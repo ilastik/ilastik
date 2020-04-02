@@ -1,12 +1,17 @@
 from typing import Type, Hashable, Optional, List
+from urllib.parse import urlparse
+from pathlib import Path
 
 import flask
 
-from ilastik.workflows.pixelClassification.pixel_classification_workflow_2 import PixelClassificationWorkflow2
+from ilastik.workflows.pixelClassification.pixel_classification_workflow_2 import PixelClassificationWorkflow2, DataLane
 from ilastik.server.WebContext import WebContext
 from ilastik.classifiers.ilp_pixel_classifier import IlpVigraPixelClassifier
 from ilastik.features.ilp_filter import IlpFilter
 from ilastik.annotations import Annotation
+from ilastik.filesystem import HttpPyFs
+
+from ndstructs.datasource import PrecomputedChunksDataSource
 
 
 class PixelClassificationWorkflow2WebAdapter:
@@ -24,6 +29,25 @@ class PixelClassificationWorkflow2WebAdapter:
             return self.web_context.store(classifier)
         else:
             return None
+
+    def add_lane_for_url(self, url: str):
+        if url.startswith("precomputed://"):
+            url = url.lstrip("precomputed://")
+            ds_class = PrecomputedChunksDataSource
+        else:
+            return flask.Response(f"Unsupported Url: {url}", status=400)
+
+        parsed_url = urlparse(url)
+        pathless_url = parsed_url.scheme + "://" + parsed_url.netloc
+        if parsed_url.scheme in ("http", "https"):
+            fs = HttpPyFs(pathless_url)
+        else:
+            return flask.Response(f"Unsupported Url: {url}", status=400)
+
+        datasource = ds_class(Path(parsed_url.path), filesystem=fs)
+        self.web_context.store(datasource)
+        lane = DataLane(RawData=datasource)
+        return flask.jsonify(self.web_context.store(lane))
 
     def add_feature_extractors(self, extractors: List[IlpFilter], updateClassifier: bool = True) -> flask.Response:
         "Adds feature extractors to workflow, returns uuid of the extractors"

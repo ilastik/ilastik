@@ -19,6 +19,10 @@ class ChannelwiseFastFilter(IlpFilter):
         super().__init__(axis_2d=axis_2d, num_input_channels=num_input_channels)
 
     @classmethod
+    def from_json_data(cls, data):
+        return from_json_data(cls, data)
+
+    @classmethod
     def calc_presmooth_sigma(cls, scale: float) -> float:
         if scale > 1.0:
             return math.sqrt(scale ** 2 - 1.0)

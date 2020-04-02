@@ -71,7 +71,7 @@ class IlpFilter(ChannelwiseFilter):
 
     @classmethod
     def from_json_data(cls, data) -> "IlpFilter":
-        return from_json_data(cls.REGISTRY[data["__class__"]], data, initOnly=True)
+        return cls.REGISTRY[data["__class__"]].from_json_data(data)
 
     @classmethod
     def dump_as_ilp_data(cls, feature_extractors: Sequence["IlpFilter"]) -> Dict[str, Any]:

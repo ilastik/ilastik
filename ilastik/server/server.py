@@ -20,6 +20,7 @@ from ilastik.features.feature_extractor import FeatureDataMismatchException
 from ilastik.classifiers.pixel_classifier import Predictions
 from ilastik.server.WebContext import WebContext, EntityNotFoundException
 
+
 parser = argparse.ArgumentParser(description="Runs ilastik prediction web server")
 parser.add_argument("--host", default="localhost", help="ip or hostname where the server will listen")
 parser.add_argument("--port", default=5000, type=int, help="port to listen on")
@@ -46,15 +47,13 @@ def add_ilp_feature_extractors(pix_workflow_id: str):
 
 @app.route("/PixelClassificationWorkflow2/<pix_workflow_id>/<method_name>", methods=["GET", "POST", "DELETE"])
 def run_pixel_classification_workflow_method(pix_workflow_id: str, method_name: str):
-    if (
-        request.method == "POST"
-        and method_name not in ("add_annotations", "add_feature_extractors", "upload_to_cloud_ilastik")
-        or request.method == "DELETE"
-        and method_name not in ("remove_annotations", "remove_feature_extractors", "clear_feature_extractors")
-        or request.method == "GET"
-        and method_name not in ("get_classifier", "ilp_project")
-    ):
-        return flask.Response(f"Can't call method {method_name} on pixel classification workflow", status=403)
+    allowed_methods = {
+        "POST": {"add_annotations", "add_feature_extractors", "upload_to_cloud_ilastik", "add_lane_for_url"},
+        "DELETE": {"remove_annotations", "remove_feature_extractors", "clear_feature_extractors"},
+        "GET": {"get_classifier", "ilp_project"},
+    }
+    if request.method not in allowed_methods or method_name not in allowed_methods[request.method]:
+        return flask.Response(f"Can't call {request.method} {method_name} on pixel classification workflow", status=403)
     return do_run_pixel_classification_workflow_method(pix_workflow_id, method_name)
 
 

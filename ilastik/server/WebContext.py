@@ -4,7 +4,13 @@ import uuid
 import flask
 
 from ndstructs import Point5D, Slice5D, Shape5D, Array5D
-from ndstructs.datasource import DataSource, DataSourceSlice, SequenceDataSource
+from ndstructs.datasource import (
+    DataSource,
+    DataSourceSlice,
+    SequenceDataSource,
+    SkimageDataSource,
+    PrecomputedChunksDataSource,
+)
 from ndstructs.utils import JsonSerializable, from_json_data
 
 from ilastik.utility import flatten, unflatten, listify
@@ -15,7 +21,7 @@ from ilastik.classifiers.pixel_classifier import (
     VigraPixelClassifier,
     ScikitLearnPixelClassifier,
 )
-from ilastik.workflows.pixelClassification.pixel_classification_workflow_2 import PixelClassificationWorkflow2
+from ilastik.workflows.pixelClassification.pixel_classification_workflow_2 import PixelClassificationWorkflow2, DataLane
 from ilastik.classifiers.ilp_pixel_classifier import IlpVigraPixelClassifier
 
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureDataMismatchException
@@ -29,7 +35,7 @@ from ilastik.features import (
 )
 
 
-datasource_classes = [DataSource, SequenceDataSource]
+datasource_classes = [DataSource, SequenceDataSource, SkimageDataSource, PrecomputedChunksDataSource]
 
 feature_extractor_classes = [
     FeatureExtractor,  # this allows one to GET /feature_extractor and get a list of all created feature extractors
@@ -49,9 +55,11 @@ classifier_classes = [
     Annotation,
 ]
 
-workflow_classes = {
+workflow_classes = [PixelClassificationWorkflow2, DataLane]
+
+context_classes = {
     klass.__name__: klass
-    for klass in datasource_classes + feature_extractor_classes + classifier_classes + [PixelClassificationWorkflow2]
+    for klass in datasource_classes + feature_extractor_classes + classifier_classes + workflow_classes
 }
 
 
@@ -71,8 +79,8 @@ class WebContext:
 
     @classmethod
     def get_class_named(cls, name: str):
-        name = name if name in workflow_classes else name.title().replace("_", "")
-        return workflow_classes[name]
+        name = name if name in context_classes else name.title().replace("_", "")
+        return context_classes[name]
 
     @classmethod
     def create(cls, klass):
