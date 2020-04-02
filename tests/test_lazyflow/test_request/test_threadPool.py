@@ -99,7 +99,6 @@ def test_exception_does_not_kill_worker():
     assert order == [1, 2]
 
 
-@pytest.mark.xfail(reason="grpc=0.16.0 reconfigures the root logger.")
 def test_exception_in_task_logged(caplog, pool):
     stop = threading.Event()
 
