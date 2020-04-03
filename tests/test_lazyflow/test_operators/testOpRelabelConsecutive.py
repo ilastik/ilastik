@@ -1,20 +1,14 @@
 from builtins import object
 import numpy as np
+import pytest
 import vigra
 from lazyflow.graph import Graph
 from lazyflow.operators import OpRelabelConsecutive
 
+pandas = pytest.importorskip("pandas")
+
 
 class TestOpRelabelConsecutive(object):
-    @classmethod
-    def setup_class(cls):
-        try:
-            import pandas
-        except ImportError:
-            import nose
-
-            raise nose.SkipTest
-
     def test_simple(self):
         op = OpRelabelConsecutive(graph=Graph())
 

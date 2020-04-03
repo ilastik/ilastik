@@ -21,11 +21,11 @@ from builtins import object
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-import nose
 import os
 import sys
 import tempfile
 import h5py
+import pytest
 from lazyflow.operators.ioOperators.opRESTfulVolumeReader import OpRESTfulVolumeReader
 from lazyflow.graph import Graph
 
@@ -34,14 +34,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.xfail(reason="Unstable test with external dependency on openconnecto.me")
 class TestRESTfulVolume(object):
     def testBasic(self):
         # The openconnectome site appears to be down at the moment.
         # This test fails when that happens...
-        raise nose.SkipTest
 
-        if "TRAVIS" in os.environ:
-            raise nose.SkipTest
         testConfig0 = """
         {
             "_schema_name" : "RESTful-volume-description",

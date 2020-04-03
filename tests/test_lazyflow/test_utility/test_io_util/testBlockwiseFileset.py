@@ -30,9 +30,9 @@ import shutil
 import tempfile
 import platform
 
+import pytest
 import numpy
 import h5py
-import nose
 
 from lazyflow.utility import PathComponents
 from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset
@@ -48,13 +48,13 @@ class TestBlockwiseFileset(object):
     def setup_class(cls):
         if platform.system() == "Windows":
             # On windows, there are errors, and we make no attempt to solve them (at the moment).
-            raise nose.SkipTest
+            pytest.skip("Windows")
 
         try:
             BlockwiseFileset._prepare_system()
         except ValueError:
             # If the system isn't configured to allow lots of open files, we can't run this test.
-            raise nose.SkipTest
+            pytest.skip("System is not configured to allow opening a lot of files")
 
         testConfig = """
         {
@@ -250,13 +250,13 @@ class TestObjectBlockwiseFileset(object):
     def setup_class(cls):
         if platform.system() == "Windows":
             # On windows, there are errors, and we make no attempt to solve them (at the moment).
-            raise nose.SkipTest
+            pytest.skip("Windows")
 
         try:
             BlockwiseFileset._prepare_system()
         except ValueError:
             # If the system isn't configured to allow lots of open files, we can't run this test.
-            raise nose.SkipTest
+            pytest.skip("System is not configured to allow opening a lot of files")
 
         testConfig = """
         {

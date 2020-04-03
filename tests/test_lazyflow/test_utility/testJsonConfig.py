@@ -21,6 +21,7 @@ from builtins import object
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
+import pytest
 import os
 import sys
 import copy
@@ -28,7 +29,6 @@ import tempfile
 import shutil
 import collections
 import numpy
-import nose
 from lazyflow.utility.jsonConfig import Namespace, JsonConfigParser, AutoEval, RoiTuple, FormattedField
 
 import logging
@@ -166,7 +166,6 @@ class TestJsonConfig(object):
             configFields.__dict__.items()
         ), "Config field ORDER was not preserved after writing/reading"
 
-    @nose.tools.raises(JsonConfigParser.ParsingError)
     def testExceptionIfRepeatedFields(self):
         """
         This test creates a config that has an error: A field has been repeated.
@@ -190,7 +189,8 @@ class TestJsonConfig(object):
             f.write(testConfig)
 
         try:
-            configFields = JsonConfigParser(TestJsonConfig.TestSchema).parseConfigFile(configpath)
+            with pytest.raises(JsonConfigParser.ParsingError):
+                configFields = JsonConfigParser(TestJsonConfig.TestSchema).parseConfigFile(configpath)
         finally:
             # Clean up temporary file
             shutil.rmtree(tempDir)

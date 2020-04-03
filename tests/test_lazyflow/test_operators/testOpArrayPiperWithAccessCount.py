@@ -26,10 +26,9 @@ __author__ = "John Kirkham <kirkhamj@janelia.hhmi.org>"
 __date__ = "$Mar 06, 2015 12:14:39 EST$"
 
 
-import nose
-
 import numpy
 
+import pytest
 import vigra
 
 from lazyflow.graph import Graph
@@ -239,19 +238,18 @@ class TestOpArrayPiperWithAccessCount4(object):
 
         self.operator_identity.Input.meta.axistags = vigra.AxisTags("txyzc")
 
-    @nose.tools.raises(AllowMaskException)
     def test1(self):
         # Generate a random dataset and see if it we get the right masking from the operator.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
         data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
 
         # Provide input read all output.
-        try:
-            self.operator_identity.Input.setValue(data)
-        except AssertionError as e:
-            raise AllowMaskException(str(e))
+        with pytest.raises(AllowMaskException):
+            try:
+                self.operator_identity.Input.setValue(data)
+            except AssertionError as e:
+                raise AllowMaskException(str(e))
 
-    @nose.tools.raises(AllowMaskException)
     def test2(self):
         # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
@@ -263,22 +261,23 @@ class TestOpArrayPiperWithAccessCount4(object):
         output[:] = numpy.ma.nomask
 
         # Provide input and grab chunks.
-        try:
-            self.operator_identity.Input.setValue(data)
-        except AssertionError as e:
-            raise AllowMaskException(str(e))
+        with pytest.raises(AllowMaskException):
+            try:
+                self.operator_identity.Input.setValue(data)
+            except AssertionError as e:
+                raise AllowMaskException(str(e))
 
-    @nose.tools.raises(AllowMaskException)
     def test3(self):
         # Generate a random dataset and see if it we get the right masking from the operator.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
         data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
 
         # Provide input read all output.
-        try:
-            self.operator_identity.Input.setValue(numpy.zeros_like(data))
-        except AssertionError as e:
-            raise AllowMaskException(str(e))
+        with pytest.raises(AllowMaskException):
+            try:
+                self.operator_identity.Input.setValue(numpy.zeros_like(data))
+            except AssertionError as e:
+                raise AllowMaskException(str(e))
 
     def teardown_method(self, method):
         # Take down operators
@@ -297,41 +296,41 @@ class TestOpArrayPiperWithAccessCount5(object):
 
         self.operator_identity.Input.meta.axistags = vigra.AxisTags("txyzc")
 
-    @nose.tools.raises(AllowMaskException)
     def test1(self):
         # Generate a random dataset and see if it we get the right masking from the operator.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
         data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
 
         # Provide input read all output.
-        try:
-            self.operator_identity.Input.setValue(data)
-        except AssertionError as e:
-            raise AllowMaskException(str(e))
+        with pytest.raises(AllowMaskException):
+            try:
+                self.operator_identity.Input.setValue(data)
+            except AssertionError as e:
+                raise AllowMaskException(str(e))
 
-    @nose.tools.raises(AllowMaskException)
     def test2(self):
         # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
         data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
 
         # Provide input and grab chunks.
-        try:
-            self.operator_identity.Input.setValue(data)
-        except AssertionError as e:
-            raise AllowMaskException(str(e))
+        with pytest.raises(AllowMaskException):
+            try:
+                self.operator_identity.Input.setValue(data)
+            except AssertionError as e:
+                raise AllowMaskException(str(e))
 
-    @nose.tools.raises(AllowMaskException)
     def test3(self):
         # Generate a random dataset and see if it we get the right masking from the operator.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
         data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
 
         # Provide input read all output.
-        try:
-            self.operator_identity.Input.setValue(numpy.zeros_like(data))
-        except AssertionError as e:
-            raise AllowMaskException(str(e))
+        with pytest.raises(AllowMaskException):
+            try:
+                self.operator_identity.Input.setValue(numpy.zeros_like(data))
+            except AssertionError as e:
+                raise AllowMaskException(str(e))
 
     def teardown_method(self, method):
         # Take down operators
@@ -352,19 +351,18 @@ class TestOpArrayPiperWithAccessCount6(object):
         self.operator_identity_1.Input.meta.axistags = vigra.AxisTags("txyzc")
         self.operator_identity_2.Input.meta.axistags = vigra.AxisTags("txyzc")
 
-    @nose.tools.raises(AllowMaskException)
     def test1(self):
         # Explicitly set has_mask for the input
         self.operator_identity_1.Input.meta.has_mask = True
         self.operator_identity_1.Output.meta.has_mask = True
 
         # Try to connect the incompatible operators.
-        try:
-            self.operator_identity_2.Input.connect(self.operator_identity_1.Output)
-        except AssertionError as e:
-            raise AllowMaskException(str(e))
+        with pytest.raises(AllowMaskException):
+            try:
+                self.operator_identity_2.Input.connect(self.operator_identity_1.Output)
+            except AssertionError as e:
+                raise AllowMaskException(str(e))
 
-    @nose.tools.raises(AllowMaskException)
     def test2(self):
         # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
@@ -374,10 +372,11 @@ class TestOpArrayPiperWithAccessCount6(object):
         self.operator_identity_1.Input.setValue(data)
 
         # Try to connect the incompatible operators.
-        try:
-            self.operator_identity_2.Input.connect(self.operator_identity_1.Output)
-        except AssertionError as e:
-            raise AllowMaskException(str(e))
+        with pytest.raises(AllowMaskException):
+            try:
+                self.operator_identity_2.Input.connect(self.operator_identity_1.Output)
+            except AssertionError as e:
+                raise AllowMaskException(str(e))
 
     def teardown_method(self, method):
         # Take down operators

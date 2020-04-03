@@ -31,7 +31,6 @@ import gc
 import platform
 from functools import partial
 import unittest
-import nose
 
 import psutil
 
@@ -195,8 +194,7 @@ class TestRequest(unittest.TestCase):
         """
         Start a workload and cancel it.  Verify that it was actually cancelled before all the work was finished.
         """
-        if Request.global_thread_pool.num_workers == 0:
-            raise nose.SkipTest
+        assert Request.global_thread_pool.num_workers > 0
 
         def workload():
             time.sleep(0.1)
@@ -258,8 +256,7 @@ class TestRequest(unittest.TestCase):
         """
         Test that a request isn't cancelled if it has requests pending for it.
         """
-        if Request.global_thread_pool.num_workers == 0:
-            raise nose.SkipTest
+        assert Request.global_thread_pool.num_workers > 0
 
         cancelled_requests = []
 
@@ -552,8 +549,7 @@ class TestRequest(unittest.TestCase):
         Test the timeout feature when calling wait() from a foreign thread.
         See wait() for details.
         """
-        if Request.global_thread_pool.num_workers == 0:
-            raise nose.SkipTest
+        assert Request.global_thread_pool.num_workers > 0
 
         def slowWorkload():
             time.sleep(10.0)
@@ -577,8 +573,7 @@ class TestRequest(unittest.TestCase):
         """
         # This test doesn't work if the request system is working in single-threaded 'debug' mode.
         # It depends on concurrent execution to make progress.  Otherwise it hangs.
-        if Request.global_thread_pool.num_workers == 0:
-            raise nose.SkipTest
+        assert Request.global_thread_pool.num_workers > 0
 
         req_lock = RequestLock()
         l = [0]
@@ -629,8 +624,7 @@ class TestRequest(unittest.TestCase):
         To be used with threading.Condition, RequestLock objects MUST NOT have RLock semantics.
         It is important that the RequestLock is NOT re-entrant.
         """
-        if Request.global_thread_pool.num_workers == 0:
-            raise nose.SkipTest
+        assert Request.global_thread_pool.num_workers > 0
 
         with RequestLock() as lock:
             assert not lock.acquire(0)

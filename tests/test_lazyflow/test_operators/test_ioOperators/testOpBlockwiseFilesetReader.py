@@ -28,7 +28,7 @@ import tempfile
 import platform
 
 import numpy
-import nose
+import pytest
 
 from lazyflow.graph import Graph
 from lazyflow.roi import getIntersectingBlocks
@@ -46,14 +46,13 @@ class TestOpBlockwiseFilesetReader(object):
         Create a blockwise fileset to test with.
         """
         if platform.system() == "Windows":
-            # On windows, there are errors, and we make no attempt to solve them (at the moment).
-            raise nose.SkipTest
+            pytest.skip("Windows")
 
         try:
             BlockwiseFileset._prepare_system()
         except ValueError:
             # If the system isn't configured to allow lots of open files, we can't run this test.
-            raise nose.SkipTest
+            pytest.skip("System is not configured to allow opening a lot of files")
 
         testConfig = """
         {

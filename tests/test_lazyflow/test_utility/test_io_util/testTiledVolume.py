@@ -12,7 +12,6 @@ import copy
 import http.server
 import socket
 import socketserver
-import nose
 
 from lazyflow.utility.io_util.tiledVolume import TiledVolume
 from lazyflow.utility import PathComponents, export_to_tiles
@@ -53,12 +52,6 @@ class DataSetup(object):
     """
 
     def __init__(self):
-        try:
-            import PIL
-            import requests
-        except ImportError:
-            raise nose.SkipTest
-
         self.TILE_DIRECTORY = None
         self.REFERENCE_VOL_FILE = None
         self.REFERENCE_VOL_PATH = None
@@ -217,7 +210,7 @@ class DataSetup(object):
             os.chdir(original_cwd)
             server_thread.join()
 
-        # Set the module teardown function so nosetests shuts the server down before exit.
+        # Set the module teardown function so test runner shuts the server down before exit.
         self.teardown = shutdown_server
 
 

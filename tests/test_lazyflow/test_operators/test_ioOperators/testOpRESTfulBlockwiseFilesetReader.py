@@ -26,9 +26,9 @@ import sys
 import shutil
 import tempfile
 import platform
+import pytest
 
 import numpy
-import nose
 
 from lazyflow.graph import Graph
 from lazyflow.roi import getIntersectingBlocks
@@ -40,16 +40,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.xfail(reason="Unstable test with external dependency on openconnecto.me")
 class TestOpBlockwiseFilesetReader(object):
     @classmethod
     def setup_class(cls):
-        # The openconnectome site appears to be down at the moment.
-        # This test fails when that happens...
-        raise nose.SkipTest
-
         if platform.system() == "Windows":
-            # On windows, there are errors, and we make no attempt to solve them (at the moment).
-            raise nose.SkipTest
+            pytest.skip("Windows")
 
         try:
             from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset
@@ -57,7 +53,7 @@ class TestOpBlockwiseFilesetReader(object):
             BlockwiseFileset._prepare_system()
         except ValueError:
             # If the system isn't configured to allow lots of open files, we can't run this test.
-            raise nose.SkipTest
+            pytest.skip("System is not configured to allow opening a lot of files")
 
         cls.tempDir = tempfile.mkdtemp()
         logger.debug("Working in {}".format(cls.tempDir))

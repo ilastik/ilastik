@@ -24,9 +24,9 @@ from builtins import object
 import os
 import numpy as np
 import vigra
+import pytest
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStreamingMmfReader
-import nose
 
 EXPECTED_DTYPE = np.uint8
 EXPECTED_SHAPE = (180, 2816, 2816, 1)
@@ -47,7 +47,7 @@ class TestOpStreamingMmfReader(object):
     def test_OpStreamingMmfReader(self):
         # Skip tests since the MMF video file is not found
         if not os.path.isfile(self.fileName):
-            raise nose.SkipTest
+            pytest.skip(f"Video file not found {self.fileName}")
 
         # Test the mmf streaming reading operator with a small video containing 180 frames
         self.graph = Graph()
