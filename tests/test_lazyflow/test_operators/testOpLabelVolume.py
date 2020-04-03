@@ -409,22 +409,3 @@ class CountExecutes(Operator):
 
 class PropagateDirtyCalled(Exception):
     pass
-
-
-if __name__ == "__main__":
-    method = np.asarray(["lazy"], dtype=np.object)
-    vol = np.random.randint(255, size=(10, 10, 10))
-    vol = vol.astype(np.uint8)
-    vol = vigra.taggedView(vol, axistags="xyz")
-
-    op = OpLabelVolume(graph=Graph())
-    op.Method.setValue(method)
-    op.Input.setValue(vol)
-
-    out = op.Output[...].wait()
-
-    assert_array_equal(vol.shape, out.shape)
-
-    import nose
-
-    ret = nose.run(defaultTest=__file__)

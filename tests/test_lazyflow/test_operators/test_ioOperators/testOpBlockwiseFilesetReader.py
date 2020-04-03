@@ -100,15 +100,3 @@ class TestOpBlockwiseFilesetReader(object):
         readData = op.Output[slice1].wait()
         assert (readData == self.data[slice1]).all()
         op.cleanUp()
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    ret = nose.run(defaultTest=__file__)
-
-    if not ret:
-        sys.exit(1)

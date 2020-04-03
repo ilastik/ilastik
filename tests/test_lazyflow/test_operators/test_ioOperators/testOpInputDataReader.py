@@ -267,14 +267,3 @@ class TestOpInputDataReader(object):
             assert (all_data == a[10:50, 20:70, 30:90]).all()
         finally:
             opReader.cleanUp()
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    ret = nose.run(defaultTest=__file__)
-    if not ret:
-        sys.exit(1)

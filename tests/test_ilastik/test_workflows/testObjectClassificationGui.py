@@ -674,9 +674,3 @@ def try_convert_to_numeric(val):
         pass
 
     return val, str
-
-
-if __name__ == "__main__":
-    from tests.test_ilastik.helpers.shellGuiTestCaseBase import run_shell_test
-
-    run_shell_test(__file__)

@@ -221,14 +221,3 @@ class TestOpDenseLabelArray(object):
         # The maximum label should be reduced, because all the 3s were removed.
         assert expectedData.max() == 2
         # assert op.maxLabel.value == 2
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    ret = nose.run(defaultTest=__file__)
-    if not ret:
-        sys.exit(1)

@@ -43,12 +43,3 @@ class TestOpTrainClassifierFromFeatureVectors(object):
         assert isinstance(
             trained_classifier, ParallelVigraRfLazyflowClassifier
         ), "classifier is of the wrong type: {}".format(type(trained_classifier))
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)

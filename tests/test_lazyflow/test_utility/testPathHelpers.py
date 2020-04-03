@@ -134,12 +134,3 @@ class TestPathHelpers(object):
             for dg in [data_group, data_group2]:
                 dg.create_dataset("test-{index:02d}".format(index=i), (0, 0), dtype="i8")
         return f
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)

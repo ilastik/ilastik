@@ -58,14 +58,3 @@ class TestOpFilterLabels(object):
         expectedData[0, 0, 50:53, 50:53, 0] = 0
         filtered2 = op.Output[:].wait()
         assert (filtered2 == expectedData).all()
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    ret = nose.run(defaultTest=__file__)
-    if not ret:
-        sys.exit(1)

@@ -62,11 +62,3 @@ class TestOpStreamingMmfReader(object):
 
         # Clean reader
         mmfReader.cleanUp()
-
-
-if __name__ == "__main__":
-    import nose
-
-    ret = nose.run(defaultTest=__file__, env={"NOSE_NOCAPTURE": 1})
-    if not ret:
-        sys.exit(1)

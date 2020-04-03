@@ -218,16 +218,3 @@ class TestOpStackLoader(object):
         assert stack.shape == expected.shape
 
         assert (stack == expected).all(), "stacked 2d images did not match expected data."
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-
-    # Don't steal stdout. Show it on the console as usual.
-    sys.argv.append("--nocapture")
-    # Don't set the logging level to DEBUG. Leave it alone.
-    sys.argv.append("--nologcapture")
-    ret = nose.run(defaultTest=__file__)
-    if not ret:
-        sys.exit(1)

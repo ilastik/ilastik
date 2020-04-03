@@ -235,19 +235,3 @@ class TestReorderAxesDecorator:
         assert opParent.lazyOp2.in_b[:].wait().shape == inner_shape
         assert opParent.lazyOp2.out_a[:].wait().shape == inner_shape
         assert opParent.lazyOp2.out_b[:].wait().shape == inner_shape
-
-
-if __name__ == "__main__":
-    import nose
-    import sys
-
-    # make the program quit on Ctrl+C
-    import signal
-
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-
-    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nocapture")
-    # Don't set the logging level to DEBUG.  Leave it alone.
-    sys.argv.append("--nologcapture")
-    nose.run(defaultTest=__file__)

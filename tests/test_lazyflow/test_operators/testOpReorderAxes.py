@@ -262,8 +262,3 @@ class TestOpReorderAxes(unittest.TestCase):
             lambda *args: None
         )  # We expect an exception here, so disable the default fail handler to hide the traceback
         self.assertRaises(AssertionError, req.wait)
-
-
-if __name__ == "__main__":
-    # logger.setLevel(logging.DEBUG)
-    unittest.main()

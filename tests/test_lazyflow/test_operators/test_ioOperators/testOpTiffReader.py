@@ -119,12 +119,3 @@ class TestOpTiffReader(object):
         assert op.Output.ready()
         assert op.Output.meta.shape == data.shape
         assert_array_equal(data, op.Output[:].wait())
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)

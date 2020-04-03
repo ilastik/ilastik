@@ -75,12 +75,3 @@ class TestOpPixelFeaturesPresmoothed(object):
 
         assert computed_whole.shape == computed_per_slice.shape
         assert numpy.allclose(computed_whole, computed_per_slice), abs(computed_whole - computed_per_slice).max()
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)

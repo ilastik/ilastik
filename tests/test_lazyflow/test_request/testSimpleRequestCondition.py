@@ -65,26 +65,3 @@ class TestSimpleRequestCondition(object):
         assert set(consumed) == set(range(N_ELEMENTS)), "Expected set(range(N_ELEMENTS)), got {}".format(consumed)
 
         # Request.reset_thread_pool(num_workers)
-
-
-if __name__ == "__main__":
-    import sys
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-
-    import nose
-
-    # Logging is OFF by default when running from command-line nose, i.e.:
-    # nosetests thisFile.py)
-    # but ON by default if running this test directly, i.e.:
-    # python thisFile.py
-    formatter = logging.Formatter("%(levelname)s %(name)s %(message)s")
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(formatter)
-    logging.getLogger().addHandler(handler)
-    logger.setLevel(logging.DEBUG)
-
-    ret = nose.run(defaultTest=__file__)
-    if not ret:
-        sys.exit(1)

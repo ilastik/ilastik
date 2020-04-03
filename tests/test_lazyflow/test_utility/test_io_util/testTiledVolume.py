@@ -408,36 +408,3 @@ class TestSpecialZTranslation(object):
         # numpy.save('/tmp/result_out.npy', result_out)
 
         assert (expected == result_out).all()
-
-
-if __name__ == "__main__":
-    # Logging is OFF by default when running from command-line nose, i.e.:
-    # nosetests thisFile.py)
-    # When running this file directly, use the logging configuration below.
-
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
-
-    # Logging for this test
-    logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
-    ENABLE_SERVER_LOGGING = False
-
-    # requests module logging
-    requests_logger = logging.getLogger("requests")
-    requests_logger.addHandler(handler)
-    requests_logger.setLevel(logging.WARN)
-
-    # tiledVolume logging
-    tiledVolumeLogger = logging.getLogger("lazyflow.utility.io_util.tiledVolume")
-    tiledVolumeLogger.addHandler(handler)
-    tiledVolumeLogger.setLevel(logging.ERROR)
-
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    ret = nose.run(defaultTest=__file__)
-    if not ret:
-        sys.exit(1)

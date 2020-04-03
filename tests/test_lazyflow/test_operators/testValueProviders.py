@@ -297,22 +297,3 @@ class TestOpZeroDefault(object):
         op.Input.disconnect()
         output_data = op.Output[:].wait()
         assert (output_data == 0).all()
-
-
-# if __name__ == "__main__":
-#    import logging
-#    traceLogger = logging.getLogger("TRACE.lazyflow.operators.valueProviders.OpValueCache")
-#    traceLogger.setLevel(logging.DEBUG)
-#    handler = logging.StreamHandler()
-#    handler.setLevel(logging.DEBUG)
-#    traceLogger.addHandler(handler)
-
-if __name__ == "__main__":
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    ret = nose.run(defaultTest=__file__)
-    if not ret:
-        sys.exit(1)

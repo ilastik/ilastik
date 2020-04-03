@@ -91,14 +91,3 @@ class TestOpNpyFileReader(object):
                 numpy.testing.assert_almost_equal(b, self.testDataB)
         finally:
             npyReader.cleanUp()
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-
-    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    ret = nose.run(defaultTest=__file__)
-    if not ret:
-        sys.exit(1)
