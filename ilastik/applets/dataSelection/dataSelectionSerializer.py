@@ -274,7 +274,11 @@ class DataSelectionSerializer(AppletSerializer):
         except FileNotFoundError as e:
             if headless:
                 shape = tuple(infoGroup["shape"])
-                return PreloadedArrayDatasetInfo(preloaded_array=numpy.zeros(shape, dtype=numpy.uint8)), True
+                axistags = vigra.AxisTags.fromJSON(infoGroup["axistags"][()].decode("utf-8"))
+                return (
+                    PreloadedArrayDatasetInfo(preloaded_array=numpy.zeros(shape, dtype=numpy.uint8), axistags=axistags),
+                    True,
+                )
 
             from PyQt5.QtWidgets import QMessageBox
             from ilastik.widgets.ImageFileDialog import ImageFileDialog
