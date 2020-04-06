@@ -212,7 +212,8 @@ def get_sample_datasets() -> List[Dict]:
     prefix = request.headers.get("X-Forwarded-Prefix", "/")
 
     links = []
-    for datasource_id, datasource in WebContext.get_all(DataSource).items():
+    for datasource in WebContext.get_all(DataSource):
+        datasource_id = WebContext.get_ref(datasource).to_str()
         url_data = {
             "layers": [
                 {
