@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Hashable
+from typing import Optional, Dict, Hashable, Any, Union, List
 import uuid
 
 import flask
@@ -11,7 +11,7 @@ from ndstructs.datasource import (
     SkimageDataSource,
     PrecomputedChunksDataSource,
 )
-from ndstructs.utils import JsonSerializable, from_json_data
+from ndstructs.utils import JsonSerializable, from_json_data, JsonReference
 
 from ilastik.utility import flatten, unflatten, listify
 from ilastik.annotations import Annotation
@@ -21,7 +21,11 @@ from ilastik.classifiers.pixel_classifier import (
     VigraPixelClassifier,
     ScikitLearnPixelClassifier,
 )
-from ilastik.workflows.pixelClassification.pixel_classification_workflow_2 import PixelClassificationWorkflow2, DataLane
+from ilastik.workflows.pixelClassification.pixel_classification_workflow_2 import (
+    PixelClassificationWorkflow2,
+    DataLane,
+    GuiDataSource,
+)
 from ilastik.classifiers.ilp_pixel_classifier import IlpVigraPixelClassifier
 
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureDataMismatchException
@@ -55,7 +59,7 @@ classifier_classes = [
     Annotation,
 ]
 
-workflow_classes = [PixelClassificationWorkflow2, DataLane]
+workflow_classes = [PixelClassificationWorkflow2, DataLane, GuiDataSource]
 
 context_classes = {
     klass.__name__: klass
@@ -70,12 +74,7 @@ class EntityNotFoundException(Exception):
 
 class WebContext:
     objects = {}
-    pyid_to_objid = {}
-
-    @classmethod
-    def do_rpc(cls):
-        request_payload = cls.get_request_payload()
-        obj = cls.load(request_payload.pop("self"))
+    pyid_to_storage_ref = {}
 
     @classmethod
     def get_class_named(cls, name: str):
@@ -85,40 +84,44 @@ class WebContext:
     @classmethod
     def create(cls, klass):
         request_payload = cls.get_request_payload()
-        obj = klass.from_json_data(request_payload)
-        key = cls.store(obj, obj_id=request_payload.get("id"))
+        obj = klass.from_json_data(request_payload, dereferencer=cls.dereferencer)
+        key = cls.store(obj)
         return obj, key
 
     @classmethod
-    def load(cls, key):
+    def load(cls, ref: Union[JsonReference, str]) -> Any:
         try:
-            return cls.objects[key]
+            ref = ref if isinstance(ref, JsonReference) else JsonReference.from_str(ref)
+            return cls.objects[ref]
         except KeyError as e:
-            raise EntityNotFoundException(key) from e
+            raise EntityNotFoundException(ref) from e
 
     @classmethod
-    def store(cls, obj, obj_id: Optional[Hashable] = None):
-        obj_id = obj_id if obj_id is not None else uuid.uuid4()
-        key = f"pointer@{obj_id}"
-        cls.objects[key] = obj
-        cls.pyid_to_objid[id(obj)] = obj_id
-        return key
+    def store(cls, obj: Any) -> JsonReference:
+        ref = JsonReference.create()
+        cls.objects[ref] = obj
+        cls.pyid_to_storage_ref[id(obj)] = ref
+        return ref
 
     @classmethod
-    def get_id(cls, obj) -> uuid.UUID:
-        return cls.pyid_to_objid[id(obj)]
+    def get_ref(cls, obj: Any) -> JsonReference:
+        return cls.pyid_to_storage_ref[id(obj)]
 
     @classmethod
-    def referencer(cls, obj) -> Optional[str]:
+    def referencer(cls, obj: Any) -> Optional[JsonReference]:
         try:
-            return "pointer@" + str(cls.get_id(obj))
+            return cls.get_ref(obj)
         except KeyError:
             return None
 
     @classmethod
+    def dereferencer(cls, ref: JsonReference) -> Any:
+        return cls.load(ref)
+
+    @classmethod
     def remove(cls, klass: type, key):
         if not isinstance(key, uuid.UUID):
-            key = cls.get_id(obj)
+            key = cls.get_ref(obj)
         target_class = cls.objects[key].__class__
         if not issubclass(target_class, klass):
             raise Exception(f"Unexpected class {target_class} when deleting object with key {key}")
@@ -127,15 +130,11 @@ class WebContext:
     @classmethod
     def get_request_payload(cls):
         payload = {}
-        for k, v in flask.request.form.items():
-            if isinstance(v, str) and v.startswith("pointer@"):
-                payload[k] = cls.load(v)
-            else:
-                payload[k] = v
+        payload.update(flask.request.form)
         for k, v in flask.request.files.items():
             payload[k] = v.read()
         return listify(unflatten(payload))
 
     @classmethod
-    def get_all(cls, klass) -> Dict[str, object]:
-        return {key: obj for key, obj in cls.objects.items() if isinstance(obj, klass)}
+    def get_all(cls, klass) -> List[Any]:
+        return [obj for obj in cls.objects.values() if isinstance(obj, klass)]

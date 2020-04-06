@@ -11,7 +11,7 @@ from ndstructs import Slice5D, Point5D, Shape5D
 from ndstructs import Array5D, Image, ScalarData, StaticLine, LinearData
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureData
 from ndstructs.datasource import DataSource, DataSourceSlice
-from ndstructs.utils import JsonSerializable, from_json_data
+from ndstructs.utils import JsonSerializable, from_json_data, Dereferencer
 from PIL import Image as PilImage
 
 
@@ -144,8 +144,8 @@ class Annotation(ScalarData):
         return cls(scribblings._data, axiskeys=scribblings.axiskeys, color=color, raw_data=raw_data, location=start)
 
     @classmethod
-    def from_json_data(cls, data):
-        return from_json_data(cls.interpolate_from_points, data)
+    def from_json_data(cls, data, dereferencer: Optional[Dereferencer] = None):
+        return from_json_data(cls.interpolate_from_points, data, dereferencer=dereferencer)
 
     def get_feature_samples(self, feature_extractor: FeatureExtractor) -> FeatureSamples:
         all_feature_samples = []

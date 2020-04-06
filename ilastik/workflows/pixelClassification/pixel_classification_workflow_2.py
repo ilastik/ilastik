@@ -13,7 +13,7 @@ import numpy as np
 from ndstructs import Array5D, Slice5D, Shape5D, Point5D
 from ndstructs.datasource import DataSource, N5DataSource, DataSourceSlice
 from ndstructs.datasink import N5DataSink
-from ndstructs.utils import JsonSerializable
+from ndstructs.utils import JsonSerializable, to_json_data, Dereferencer, Referencer
 
 from ilastik import Project
 from ilastik.classifiers.pixel_classifier import PixelClassifierDataSource, Predictions
@@ -31,6 +31,9 @@ class DisplayMode(enum.Enum):
     RANDOM_COLORTABLE = "random-colortable"
     BINARY_MASK = "binary-mask"
 
+    def to_json_data(self, referencer: Optional[Referencer] = None) -> str:
+        return self.value
+
     @property
     def ilp_data(self) -> str:
         return self.value.encode("utf8")
@@ -38,13 +41,17 @@ class DisplayMode(enum.Enum):
     @classmethod
     def from_ilp_data(cls, data: bytes) -> "DisplayMode":
         data_str = data.decode("utf-8")
+        return cls.from_json_data(data)
+
+    @classmethod
+    def from_json_data(cls, data, dereferencer: Optional[Dereferencer] = None) -> "DisplayMode":
         for item in cls:
-            if item.value == data_str:
+            if item.value == data:
                 return item
         raise ValueError(f"Can't deserialize value {data} into a DisplayMode")
 
 
-class DataSourceInfo(JsonSerializable):
+class GuiDataSource(JsonSerializable):
     def __init__(
         self,
         *,
@@ -89,7 +96,7 @@ class DataSourceInfo(JsonSerializable):
         }
 
     @classmethod
-    def from_ilp_data(cls, data) -> "DataSourceInfo":
+    def from_ilp_data(cls, data) -> "GuiDataSource":
         if "axistags" in data:
             axistags = AxisTags.fromJSON(data["axistags"][()].decode("utf-8"))
             axiskeys = "".join(tag.key for tag in axistags)
@@ -114,8 +121,8 @@ class DataLane(JsonSerializable):
     def __init__(
         self,
         *,
-        RawData: DataSourceInfo,
-        PredictionMask: Optional[DataSourceInfo] = None,
+        RawData: GuiDataSource,
+        PredictionMask: Optional[GuiDataSource] = None,
         annotations: Sequence[Annotation] = (),
     ):
         self.RawData = RawData
@@ -273,7 +280,7 @@ class PixelClassificationWorkflow2(JsonSerializable):
             try:
                 lane = self.lane_for_annotation(annot)
             except KeyError:
-                lane = DataLane(RawData=DataSourceInfo(datasource=annot.raw_data))
+                lane = DataLane(RawData=GuiDataSource(datasource=annot.raw_data))
                 self.lanes.append(lane)
             # FIXME: what if adding one of the annotations fails?
             lane.add_annotation(annot)

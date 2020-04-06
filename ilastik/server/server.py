@@ -12,7 +12,7 @@ from pathlib import Path
 
 from ndstructs import Point5D, Slice5D, Shape5D, Array5D
 from ndstructs.datasource import DataSource, DataSourceSlice, SequenceDataSource
-from ndstructs.utils import JsonSerializable, from_json_data
+from ndstructs.utils import JsonSerializable, from_json_data, to_json_data, JsonReference
 
 from ilastik.workflows.pixelClassification.pixel_classification_workflow_2 import PixelClassificationWorkflow2
 from ilastik.server.pixel_classification_web_adapter import PixelClassificationWorkflow2WebAdapter
@@ -25,45 +25,48 @@ parser = argparse.ArgumentParser(description="Runs ilastik prediction web server
 parser.add_argument("--host", default="localhost", help="ip or hostname where the server will listen")
 parser.add_argument("--port", default=5000, type=int, help="port to listen on")
 parser.add_argument("--ngurl", default="http://localhost:8080", help="url where neuroglancer is being served")
-parser.add_argument("--sample-dirs", type=Path, help="List of directories containing n5 samples", nargs="+")
+parser.add_argument("--sample-dirs", type=Path, help="List of directories containing samples", nargs="+")
 args = parser.parse_args()
 
 app = Flask("WebserverHack")
 CORS(app)
 
-
-@app.route("/PixelClassificationWorkflow2/<pix_workflow_id>/add_ilp_feature_extractors", methods=["POST"])
-def add_ilp_feature_extractors(pix_workflow_id: str):
-    workflow = WebContext.load(pix_workflow_id)
-    adapter = PixelClassificationWorkflow2WebAdapter(web_context=WebContext, workflow=workflow)
-    payload = WebContext.get_request_payload()
-    extractors = []
-    for extractor_spec in payload:
-        extractor_class = WebContext.get_class_named(extractor_spec.pop("name"))
-        extractor = from_json_data(extractor_class.from_ilp_scale, extractor_spec)
-        extractors.append(extractor)
-    return adapter.add_feature_extractors(extractors)
-
-
-@app.route("/PixelClassificationWorkflow2/<pix_workflow_id>/<method_name>", methods=["GET", "POST", "DELETE"])
-def run_pixel_classification_workflow_method(pix_workflow_id: str, method_name: str):
-    allowed_methods = {
-        "POST": {"add_annotations", "add_feature_extractors", "upload_to_cloud_ilastik", "add_lane_for_url"},
-        "DELETE": {"remove_annotations", "remove_feature_extractors", "clear_feature_extractors"},
-        "GET": {"get_classifier", "ilp_project"},
+rpc_methods = {
+    PixelClassificationWorkflow2: {
+        "add_annotations",
+        "add_feature_extractors",
+        "upload_to_cloud_ilastik",
+        "add_lane_for_url",
+        "add_ilp_feature_extractors",
+        "remove_annotations",
+        "remove_feature_extractors",
+        "clear_feature_extractors",
+        "get_classifier",
+        "ilp_project",
     }
-    if request.method not in allowed_methods or method_name not in allowed_methods[request.method]:
-        return flask.Response(f"Can't call {request.method} {method_name} on pixel classification workflow", status=403)
-    return do_run_pixel_classification_workflow_method(pix_workflow_id, method_name)
+}
+
+rpc_adapters = {PixelClassificationWorkflow2: PixelClassificationWorkflow2WebAdapter}
 
 
-def do_run_pixel_classification_workflow_method(pix_workflow_id: str, method_name: str):
-    workflow = WebContext.load(pix_workflow_id)
-    if not isinstance(workflow, PixelClassificationWorkflow2):
-        return flask.Response(f"Could not find PixelClassificationWorkflow2 with id {pix_workflow_id}", status=404)
-    adapter = PixelClassificationWorkflow2WebAdapter(workflow=workflow, web_context=WebContext)
-    payload = WebContext.get_request_payload()
-    return from_json_data(getattr(adapter, method_name), payload)
+@app.route("/rpc/<method_name>", methods=["POST"])
+def run_rpc(method_name: str):
+    """Runs method 'method_name' on object specified by the JsonReference data found in the '__self__' key
+    of the POST payload"""
+
+    method_params = WebContext.get_request_payload()
+    self_ref = JsonReference.from_json_data(method_params.pop("__self__"), dereferencer=None)
+    self = WebContext.dereferencer(self_ref)
+    class_name = self.__class__.__name__
+    try:
+        allowed_methods = rpc_methods[self.__class__]
+    except KeyError:
+        return flask.Response(f"Cannot run methods on class {class_name}", status=403)
+    if method_name not in allowed_methods:
+        return flask.Response(f"Can't call {method_name} on {class_name}", status=403)
+
+    adapter = rpc_adapters[self.__class__](WebContext, self)
+    return from_json_data(getattr(adapter, method_name), method_params, dereferencer=WebContext.dereferencer)
 
 
 def do_predictions(roi: Slice5D, classifier_id: str, datasource_id: str) -> Predictions:
@@ -277,12 +280,6 @@ def datasource_info_dict(datasource_id: str) -> Dict:
     return resp
 
 
-@app.route("/<class_name>/<object_id>", methods=["DELETE"])
-def remove_object(class_name, object_id: str):
-    WebContext.remove(WebContext.get_class_named(class_name), object_id)
-    return flask.jsonify({"id": object_id})
-
-
 @app.errorhandler(FeatureDataMismatchException)
 def handle_feature_data_mismatch(error):
     return flask.Response(str(error), status=400)
@@ -293,33 +290,45 @@ def handle_feature_data_mismatch(error):
     return flask.Response(str(error), status=404)
 
 
+@app.route("/<class_name>/<object_id>", methods=["DELETE"])
+def remove_object(class_name, object_id: str):
+    WebContext.remove(WebContext.get_class_named(class_name), object_id)
+    return flask.jsonify({"id": object_id})
+
+
 @app.route("/<class_name>/", methods=["POST"])
 def create_object(class_name: str):
-    obj, uid = WebContext.create(WebContext.get_class_named(class_name))
-    return json.dumps(uid)
+    obj, ref = WebContext.create(WebContext.get_class_named(class_name))
+    return flask.jsonify(ref.to_json_data())
 
 
 @app.route("/<class_name>/", methods=["GET"])
 def list_objects(class_name):
     klass = WebContext.get_class_named(class_name)
-    return flask.Response(JsonSerializable.jsonify(WebContext.get_all(klass)), mimetype="application/json")
+    payload = [value.to_json_data(referencer=WebContext.referencer) for value in WebContext.get_all(klass)]
+    return flask.jsonify(payload)
 
 
 @app.route("/<class_name>/<object_id>", methods=["GET"])
 def show_object(class_name: str, object_id: str):
     klass = WebContext.get_class_named(class_name)
     obj = WebContext.load(object_id)
+    assert isinstance(obj, klass)
     payload = obj.to_json_data(referencer=WebContext.referencer)
     return flask.jsonify(payload)
 
 
-for sample_dir in args.sample_dirs or ():
-    for sample_file in sample_dir.iterdir():
-        if sample_file.is_dir() and sample_file.suffix in (".n5", ".N5"):
-            for dataset in sample_file.iterdir():
-                if dataset.is_dir():
-                    datasource = DataSource.create(dataset.absolute())
-                    print(f"---->> Adding sample {datasource.name}")
-                    WebContext.store(datasource)
+def _add_sample_datasource(path: Path):
+    datasource = DataSource.create(path.absolute())
+    print(f"---->> Adding sample {datasource.name}")
+    WebContext.store(datasource)
+
+
+for sample_dir_path in args.sample_dirs or ():
+    for sample_path in sample_dir_path.iterdir():
+        if sample_path.is_dir() and sample_path.suffix in (".n5", ".N5"):
+            [_add_sample_datasource(dataset_path) for dataset_path in sample_path.iterdir() if dataset_path.is_dir()]
+        if sample_path.is_file() and sample_path.suffix in (".png", ".jpg"):
+            _add_sample_datasource(sample_path)
 
 app.run(host=args.host, port=args.port)

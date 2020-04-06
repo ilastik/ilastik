@@ -1,9 +1,9 @@
 from abc import abstractmethod, ABC
-from typing import Type, TypeVar, List, TypeVar, ClassVar, Mapping, Iterator, Sequence, Dict, Any
+from typing import Type, TypeVar, List, TypeVar, ClassVar, Mapping, Iterator, Sequence, Dict, Any, Optional
 import re
 
 import numpy as np
-from ndstructs.utils import from_json_data
+from ndstructs.utils import from_json_data, Dereferencer
 
 
 from .feature_extractor import ChannelwiseFilter
@@ -70,8 +70,8 @@ class IlpFilter(ChannelwiseFilter):
         return feature_extractors
 
     @classmethod
-    def from_json_data(cls, data) -> "IlpFilter":
-        return cls.REGISTRY[data["__class__"]].from_json_data(data)
+    def from_json_data(cls, data, dereferencer: Optional[Dereferencer] = None) -> "IlpFilter":
+        return cls.REGISTRY[data["__class__"]].from_json_data(data, dereferencer=dereferencer)
 
     @classmethod
     def dump_as_ilp_data(cls, feature_extractors: Sequence["IlpFilter"]) -> Dict[str, Any]:

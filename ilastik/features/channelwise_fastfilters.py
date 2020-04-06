@@ -11,6 +11,7 @@ from .ilp_filter import IlpFilter
 from ndstructs import Array5D, Image, ScalarImage
 from ndstructs import Point5D, Slice5D, Shape5D
 from ndstructs.datasource import DataSource, DataSourceSlice
+from ndstructs.utils import from_json_data, Dereferencer
 
 
 class ChannelwiseFastFilter(IlpFilter):
@@ -19,8 +20,8 @@ class ChannelwiseFastFilter(IlpFilter):
         super().__init__(axis_2d=axis_2d, num_input_channels=num_input_channels)
 
     @classmethod
-    def from_json_data(cls, data):
-        return from_json_data(cls, data)
+    def from_json_data(cls, data, dereferencer: Optional[Dereferencer] = None):
+        return from_json_data(cls, data, dereferencer=dereferencer)
 
     @classmethod
     def calc_presmooth_sigma(cls, scale: float) -> float:

@@ -15,7 +15,7 @@ from ilastik.features.feature_extractor import FeatureExtractor, FeatureData, Ch
 from ilastik.features.feature_extractor import FeatureExtractorCollection
 from ilastik.annotations import Annotation, FeatureSamples, Color
 from ndstructs.datasource import DataSourceSlice, DataSource
-from ndstructs.utils import JsonSerializable, from_json_data
+from ndstructs.utils import JsonSerializable, from_json_data, Dereferencer
 
 
 class Predictions(Array5D):
@@ -167,8 +167,8 @@ class ScikitLearnPixelClassifier(PixelClassifier):
         )
 
     @classmethod
-    def from_json_data(cls, data: dict) -> "ScikitLearnPixelClassifier":
-        return from_json_data(cls.train, data)
+    def from_json_data(cls, data: dict, dereferencer: Optional[Dereferencer] = None) -> "ScikitLearnPixelClassifier":
+        return from_json_data(cls.train, data, dereferencer=dereferencer)
 
     def _do_predict(self, data_slice: DataSourceSlice, out: Optional[Predictions] = None) -> Predictions:
         feature_data = self.feature_extractor.compute(data_slice)
