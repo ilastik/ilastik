@@ -183,10 +183,12 @@ class Annotation(ScalarData):
 
     @staticmethod
     def dump_as_ilp_data(
-        annotations: Iterable["Annotation"],
+        annotations: Sequence["Annotation"],
         color_map: Optional[Dict[Color, np.uint8]] = None,
         block_size: Optional[Shape5D] = None,
     ) -> Dict[str, Any]:
+        if len(annotations) == 0:
+            return {}
         if len(set(annot.raw_data for annot in annotations)) > 1:
             raise ValueError(f"All Annotations must come from the same datasource!")
         axiskeys = annotations[0].raw_data.axiskeys
