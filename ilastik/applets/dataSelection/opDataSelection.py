@@ -47,7 +47,8 @@ from ilastik.utility import OpMultiLaneWrapper
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents
 from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.graph import Graph, Operator
+from lazyflow.operators import OpZeroSource
+from lazyflow.graph import Graph
 
 
 def getTypeRange(numpy_type):
@@ -387,6 +388,47 @@ class PreloadedArrayDatasetInfo(DatasetInfo):
         opReader = OpArrayPiper(parent=parent)
         opReader.Input.setValue(self.preloaded_array)
         return opReader.Output
+
+
+class DummyDatasetInfo(DatasetInfo):
+    """Special DatasetInfo for datasets that can't be found in headless mode
+    """
+
+    def __init__(self, *, project_file: h5py.File = None, **info_kwargs):
+        super().__init__(**info_kwargs)
+
+    @property
+    def legacy_location(self) -> str:
+        return "Outer Space"
+
+    @property
+    def effective_path(self) -> str:
+        return "Outer Space"
+
+    @property
+    def display_string(self) -> str:
+        return "Dummy Zero Array"
+
+    def to_json_data(self) -> Dict:
+        raise NotImplemented("Dummy Slots should not be serialized!")
+
+    def get_provider_slot(self, parent: Operator) -> OutputSlot:
+        opZero = OpZeroSource(shape=self.laneShape, dtype=self.laneDtype, axistags=self.axistags, parent=parent)
+        return opZero.Output
+
+    @classmethod
+    def from_h5_group(cls, data: h5py.Group, params: Dict = None):
+        laneShape = tuple(data["shape"])
+        default_tags = get_default_axisordering(laneShape)
+
+        params = params or {}
+        if "laneShape" not in params:
+            params["laneShape"] = laneShape
+        if "default_tags" not in params:
+            params["default_tags"] = default_tags
+        if "laneDtype" not in params:
+            params["laneDtype"] = numpy.uint8
+        return super().from_h5_group(data, params)
 
 
 class UrlDatasetInfo(DatasetInfo):

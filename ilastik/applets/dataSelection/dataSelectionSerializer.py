@@ -24,7 +24,13 @@ from typing import List, Tuple, Callable
 from pathlib import Path
 
 
-from .opDataSelection import OpDataSelection, DatasetInfo, FilesystemDatasetInfo, RelativeFilesystemDatasetInfo
+from .opDataSelection import (
+    OpDataSelection,
+    DatasetInfo,
+    FilesystemDatasetInfo,
+    RelativeFilesystemDatasetInfo,
+    DummyDatasetInfo,
+)
 from .opDataSelection import PreloadedArrayDatasetInfo, ProjectInternalDatasetInfo
 from lazyflow.operators.ioOperators import OpInputDataReader, OpStackLoader, OpH5N5WriterBigDataset
 from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
@@ -273,12 +279,7 @@ class DataSelectionSerializer(AppletSerializer):
             datasetInfo = info_class.from_h5_group(infoGroup)
         except FileNotFoundError as e:
             if headless:
-                shape = tuple(infoGroup["shape"])
-                axistags = vigra.AxisTags.fromJSON(infoGroup["axistags"][()].decode("utf-8"))
-                return (
-                    PreloadedArrayDatasetInfo(preloaded_array=numpy.zeros(shape, dtype=numpy.uint8), axistags=axistags),
-                    True,
-                )
+                return (DummyDatasetInfo.from_h5_group(infoGroup), True)
 
             from PyQt5.QtWidgets import QMessageBox
             from ilastik.widgets.ImageFileDialog import ImageFileDialog
