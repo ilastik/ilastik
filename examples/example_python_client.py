@@ -11,7 +11,8 @@ import numpy
 import vigra
 
 import ilastik_main
-from ilastik.applets.dataSelection import DatasetInfo, PreloadedArrayDatasetInfo
+from ilastik.applets.dataSelection import DatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import PreloadedArrayDatasetInfo
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 
 # Before we start ilastik, optionally prepare these environment variable settings.
