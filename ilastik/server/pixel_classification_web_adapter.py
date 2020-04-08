@@ -85,7 +85,7 @@ class PixelClassificationWorkflow2WebAdapter:
         return self.add_feature_extractors(extractors)
 
     def clear_feature_extractors(self, updateClassifier: bool = False) -> flask.Response:
-        return self.remove_feature_extractors(self.workflow.feature_extractors, updateClassifier=updateClassifier)
+        return self.remove_feature_extractors(self.workflow.feature_extractors[:], updateClassifier=updateClassifier)
 
     def remove_feature_extractors(self, extractors: List[IlpFilter], updateClassifier: bool = True) -> flask.Response:
         classifier = self.workflow.remove_feature_extractors(extractors, updateClassifier)

@@ -119,13 +119,13 @@ class WebContext:
         return cls.load(ref)
 
     @classmethod
-    def remove(cls, klass: type, key):
-        if not isinstance(key, uuid.UUID):
-            key = cls.get_ref(obj)
-        target_class = cls.objects[key].__class__
+    def remove(cls, klass: type, item):
+        if not isinstance(item, uuid.UUID):
+            item = cls.get_ref(item)
+        target_class = cls.objects[item].__class__
         if not issubclass(target_class, klass):
-            raise Exception(f"Unexpected class {target_class} when deleting object with key {key}")
-        return cls.objects.pop(key)
+            raise Exception(f"Unexpected class {target_class} when deleting object with key {item}")
+        return cls.objects.pop(item)
 
     @classmethod
     def get_request_payload(cls):
