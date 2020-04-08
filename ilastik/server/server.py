@@ -321,8 +321,8 @@ def show_object(class_name: str, object_id: str):
 
 def _add_sample_datasource(path: Path):
     datasource = DataSource.create(path.absolute())
-    print(f"---->> Adding sample {datasource.name}")
-    WebContext.store(datasource)
+    ref = WebContext.store(datasource)
+    print(path.name, " ", f"http://{args.host}:{args.port}/datasource/{ref.to_str()}/data")
 
 
 for sample_dir_path in args.sample_dirs or ():
