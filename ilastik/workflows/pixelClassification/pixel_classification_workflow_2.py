@@ -79,13 +79,16 @@ class GuiDataSource(JsonSerializable):
 
     @property
     def ilp_data(self) -> dict:
+        url = self.datasource.url
+        if url.startswith("precomputed://"):  # FIXME: make ilastik accept url including scale key
+            url = "/".join(url.split("/")[:-1])
         return {
             "allowLabels": True,
             "axisorder": self.datasource.axiskeys.encode("utf8"),
             "axistags": vigra.defaultAxistags(self.datasource.axiskeys).toJSON().encode("utf8"),
             "datasetId": str(uuid.uuid1()).encode("utf8"),
             "dtype": str(self.datasource.dtype).encode("utf8"),
-            "filePath": self.datasource.url.encode("utf8"),
+            "filePath": url.encode("utf8"),
             "fromstack": False,  # FIXME
             "location": self.legacy_location.encode("utf8"),
             "nickname": self.nickname.encode("utf8"),
