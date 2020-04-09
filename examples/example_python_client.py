@@ -10,7 +10,7 @@ from collections import OrderedDict
 import numpy
 import vigra
 
-import ilastik_main
+from ilastik import app
 from ilastik.applets.dataSelection import DatasetInfo, PreloadedArrayDatasetInfo
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 
@@ -20,13 +20,13 @@ os.environ["LAZYFLOW_TOTAL_RAM_MB"] = "2000"
 
 # Programmatically set the command-line arguments directly into the argparse.Namespace object
 # Provide your project file, and don't forget to specify headless.
-args = ilastik_main.parse_args([])
+args = app.parse_args([])
 args.headless = True
 args.project = "/Users/bergs/MyProject.ilp"  # REPLACE WITH YOUR PROJECT FILE
 
 # Instantiate the 'shell', (in this case, an instance of ilastik.shell.HeadlessShell)
 # This also loads the project file into shell.projectManager
-shell = ilastik_main.main(args)
+shell = app.main(args)
 assert isinstance(shell.workflow, PixelClassificationWorkflow)
 
 # Obtain the training operator

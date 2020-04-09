@@ -126,11 +126,11 @@ def main():
     sys.argv[1:1] = arg_opts
     os.environ.update(env_vars)
 
-    import ilastik_main
+    from ilastik import app
 
-    parsed_args, workflow_cmdline_args = ilastik_main.parse_known_args()
+    parsed_args, workflow_cmdline_args = app.parse_known_args()
 
-    hShell = ilastik_main.main(parsed_args, workflow_cmdline_args)
+    hShell = app.main(parsed_args, workflow_cmdline_args)
     # in headless mode the headless shell is returned and its project manager still has an open project file
     hShell.closeCurrentProject()
 
