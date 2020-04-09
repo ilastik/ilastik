@@ -310,6 +310,7 @@ def test_opZeroSource(graph, metadata):
     dtype = metadata.pop("dtype")
 
     op = OpZeroSource(shape=shape, dtype=dtype, graph=graph, **metadata)
+    assert op.Output.ready()
     assert op.Output.meta.dtype == dtype
     assert op.Output.meta.shape == shape
 

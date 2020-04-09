@@ -509,12 +509,15 @@ class OpZeroSource(Operator):
     def __init__(self, dtype, shape, *, graph=None, parent=None, **kwargs):
         super().__init__(graph=graph, parent=parent)
 
-        self._meta = {"dtype": dtype, "shape": shape}
-        self._meta.update(kwargs)
+        self.Output.meta["dtype"] = dtype
+        self.Output.meta["shape"] = shape
+        if kwargs:
+            for k, v in kwargs.items():
+                self.Output.meta[k] = v
 
     def setupOutputs(self):
-        for k, v in self._meta.items():
-            self.Output.meta[k] = v
+        # everything configured via init
+        pass
 
     def execute(self, slot, subindex, roi, result):
         result[...] = 0
