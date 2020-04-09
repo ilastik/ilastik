@@ -62,8 +62,7 @@ class IlpVigraPixelClassifier(VigraPixelClassifier):
         classes = list(data["known_labels"][()])
         return cls(feature_extractors=feature_extractors, forests=forests, classes=classes, strict=True)
 
-    @property
-    def ilp_data(self) -> dict:
+    def get_forest_data(self):
         tmp_file_handle, tmp_file_path = tempfile.mkstemp(suffix=".h5")
         os.close(tmp_file_handle)
         for forest_index, forest in enumerate(self.forests):
@@ -71,7 +70,11 @@ class IlpVigraPixelClassifier(VigraPixelClassifier):
         with h5py.File(tmp_file_path, "r") as f:
             out = Project.h5_group_to_dict(f["/"])
         os.remove(tmp_file_path)
+        return out
 
+    @property
+    def ilp_data(self) -> dict:
+        out = self.get_forest_data()
         feature_names: Iterator[bytes] = itertools.chain(*[ff.to_ilp_feature_names() for ff in self.feature_extractors])
         out["feature_names"] = np.asarray(list(feature_names))
         out[
@@ -79,6 +82,32 @@ class IlpVigraPixelClassifier(VigraPixelClassifier):
         ] = b"clazyflow.classifiers.parallelVigraRfLazyflowClassifier\nParallelVigraRfLazyflowClassifier\np0\n."
         out["known_labels"] = np.asarray(self.classes).astype(np.uint32)
         return out
+
+    def __getstate__(self):
+        out = self.__dict__.copy()
+        forest_data = self.get_forest_data()
+        out["forests"] = self.get_forest_data()
+        return out
+
+    def __setstate__(self, data):
+        forests: List[VigraRandomForest] = []
+        tmp_file_handle, tmp_file_path = tempfile.mkstemp(suffix=".h5")
+        os.close(tmp_file_handle)
+        with h5py.File(tmp_file_path, "r+") as f:
+            for forest_key, forest_data in data["forests"].items():
+                forest_group = f.create_group(forest_key)
+                Project.populate_h5_group(forest_group, forest_data)
+                forests.append(VigraRandomForest(tmp_file_path, forest_group.name))
+        os.remove(tmp_file_path)
+
+        self.forests = forests
+        self.num_trees = data["num_trees"]
+        self.strict = data["strict"]
+        self.feature_extractors = data["feature_extractors"]
+        self.feature_extractor = data["feature_extractor"]
+        self.classes = data["classes"]
+        self.num_classes = data["num_classes"]
+        self.color_map = data["color_map"]
 
     @property
     def ilp_classifier_factory(self) -> bytes:
