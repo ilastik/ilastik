@@ -9,6 +9,7 @@ from collections import OrderedDict
 
 import numpy
 import vigra
+import os
 
 import ilastik_main
 from ilastik.applets.dataSelection import DatasetInfo
