@@ -22,14 +22,6 @@ from ilastik.classifiers.ilp_pixel_classifier import IlpVigraPixelClassifier
 from lazyflow.utility.timer import Timer
 import argparse
 
-from ilastik.workflows.pixelClassification.pixel_classification_workflow_2 import (
-    PixelClassificationWorkflow2,
-    DataLane,
-    DataSourceInfo,
-)
-from ilastik import Project
-
-
 classifier_registry = {
     IlpVigraPixelClassifier.__name__: IlpVigraPixelClassifier,
     ScikitLearnPixelClassifier.__name__: ScikitLearnPixelClassifier,
@@ -91,14 +83,6 @@ with t:
         feature_extractors=extractors, annotations=annotations, random_seed=0
     )
 print(f"Training {classifier.__class__.__name__} took {t.seconds()}")
-
-pix_classi = PixelClassificationWorkflow2(feature_extractors=extractors, classifier=None)  # classifier
-pix_classi.add_annotations(annotations)
-
-data = pix_classi.ilp_data
-proj, _ = Project.from_ilp_data(data)
-print(proj.file.filename)
-proj.close()
 
 predictions = classifier.allocate_predictions(datasource.roi)
 t = Timer()
