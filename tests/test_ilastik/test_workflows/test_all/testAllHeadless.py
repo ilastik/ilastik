@@ -29,7 +29,7 @@ import os
 import sys
 import tempfile
 
-import ilastik_main
+from ilastik import app
 from ilastik.workflow import getAvailableWorkflows
 from ilastik.shell.projectManager import ProjectManager
 
@@ -71,11 +71,9 @@ class TestHeadlessWorkflowStartupProjectCreation(object):
         sys.argv.extend(args)
 
         # Start up the ilastik.py entry script as if we had launched it from the command line
-        parsed_args, workflow_cmdline_args = ilastik_main.parse_known_args()
+        parsed_args, workflow_cmdline_args = app.parse_known_args()
 
-        shell = ilastik_main.main(
-            parsed_args=parsed_args, workflow_cmdline_args=workflow_cmdline_args, init_logging=False
-        )
+        shell = app.main(parsed_args=parsed_args, workflow_cmdline_args=workflow_cmdline_args, init_logging=False)
 
         shell.closeCurrentProject()
 
@@ -110,10 +108,8 @@ class TestHeadlessWorkflowStartupProjectCreation(object):
         sys.argv.extend(args)
 
         # Start up the ilastik.py entry script as if we had launched it from the command line
-        parsed_args, workflow_cmdline_args = ilastik_main.parse_known_args()
-        shell = ilastik_main.main(
-            parsed_args=parsed_args, workflow_cmdline_args=workflow_cmdline_args, init_logging=False
-        )
+        parsed_args, workflow_cmdline_args = app.parse_known_args()
+        shell = app.main(parsed_args=parsed_args, workflow_cmdline_args=workflow_cmdline_args, init_logging=False)
 
         shell.closeCurrentProject()
 

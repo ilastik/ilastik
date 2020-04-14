@@ -32,7 +32,7 @@ from lazyflow.operators.ioOperators import OpStackLoader
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 import ilastik
-import ilastik_main
+from ilastik import app
 from ilastik.applets.dataSelection.opDataSelection import PreloadedArrayDatasetInfo
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 from lazyflow.utility.timer import timeLogged
@@ -209,10 +209,10 @@ class TestPixelClassificationHeadless(object):
             assert pred_shape[-1] == 2, "Prediction volume has wrong shape: {}".format(pred_shape)
 
     def testUsingPreloadedArryasWhenScriptingBatchProcessing(self):
-        args = ilastik_main.parse_args([])
+        args = app.parse_args([])
         args.headless = True
         args.project = self.PROJECT_FILE
-        shell = ilastik_main.main(args)
+        shell = app.main(args)
         assert isinstance(shell.workflow, PixelClassificationWorkflow)
 
         # Obtain the training operator
