@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 from lazyflow.graph import OperatorWrapper
 
 # ilastik
-import ilastik_main
+from ilastik import app
 import ilastik.monkey_patches
 from lazyflow.utility.timer import timeLogged
 from ilastik.clusterConfig import parseClusterConfigFile
@@ -111,8 +111,8 @@ background_thread.start()
 
 
 def runWorkflow(cluster_args):
-    ilastik_main_args = ilastik_main.parse_args([])
-    # Copy relevant args from cluster cmdline options to ilastik_main cmdline options
+    ilastik_main_args = app.parse_args([])
+    # Copy relevant args from cluster cmdline options to app cmdline options
     ilastik_main_args.headless = True
     ilastik_main_args.project = cluster_args.project
     ilastik_main_args.process_name = cluster_args.process_name
@@ -134,15 +134,15 @@ def runWorkflow(cluster_args):
     ilastik.monkey_patches.apply_setting_dict(config.__dict__)
 
     # Configure the thread count.
-    # Nowadays, this is done via an environment variable setting for ilastik_main to detect.
+    # Nowadays, this is done via an environment variable setting for app to detect.
     if cluster_args._node_work_ is not None and config.task_threadpool_size is not None:
         os.environ["LAZYFLOW_THREADS"] = str(config.task_threadpool_size)
 
     if cluster_args._node_work_ is not None and config.task_total_ram_mb is not None:
         os.environ["LAZYFLOW_TOTAL_RAM_MB"] = str(config.task_total_ram_mb)
 
-    # Instantiate 'shell' by calling ilastik_main with our
-    shell = ilastik_main.main(ilastik_main_args)
+    # Instantiate 'shell' by calling app with our
+    shell = app.main(ilastik_main_args)
     workflow = shell.projectManager.workflow
 
     # Attach cluster operators

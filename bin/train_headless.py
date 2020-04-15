@@ -127,7 +127,7 @@ def generate_trained_project_file(
     """
     assert len(raw_data_paths) == len(label_data_paths), "Number of label images must match number of raw images."
 
-    import ilastik_main
+    from ilastik import app
     from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
     from lazyflow.graph import Graph
     from lazyflow.operators.ioOperators import OpInputDataReader
@@ -139,12 +139,12 @@ def generate_trained_project_file(
 
     # Manually configure the arguments to ilastik, as if they were parsed from the command line.
     # (Start with empty args and fill in below.)
-    ilastik_args = ilastik_main.parse_args([])
+    ilastik_args = app.parse_args([])
     ilastik_args.new_project = new_project_path
     ilastik_args.headless = True
     ilastik_args.workflow = "Pixel Classification"
 
-    shell = ilastik_main.main(ilastik_args)
+    shell = app.main(ilastik_args)
     assert isinstance(shell.workflow, PixelClassificationWorkflow)
 
     ##
