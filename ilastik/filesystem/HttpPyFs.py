@@ -32,6 +32,12 @@ class HttpPyFs(FS):
             parsed = urlparse(parsed.scheme + "://" + parsed.netloc + "/")
         self.parsed_url = parsed
 
+    def __getstate__(self) -> Dict[str, Any]:
+        return {"url": self.url}
+
+    def __setstate__(self, data: Dict[str, Any]):
+        self.__init__(url=data["url"])
+
     def desc(self, path: str) -> str:
         return self._make_full_path(path)
 
