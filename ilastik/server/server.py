@@ -1,5 +1,5 @@
-from typing import List, Dict
-from concurrent.futures import ThreadPoolExecutor
+from typing import List, Dict, Tuple, Sequence
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 import io
 import json
 import flask
@@ -9,15 +9,18 @@ import urllib
 from PIL import Image as PilImage
 import argparse
 from pathlib import Path
+import multiprocessing
+import math
+from urllib.parse import urlparse
 
 from ndstructs import Point5D, Slice5D, Shape5D, Array5D
-from ndstructs.datasource import DataSource, DataSourceSlice, SequenceDataSource
+from ndstructs.datasource import DataSource, DataSourceSlice, SequenceDataSource, PrecomputedChunksDataSource
 from ndstructs.utils import JsonSerializable, from_json_data, to_json_data, JsonReference
 
 from ilastik.workflows.pixelClassification.pixel_classification_workflow_2 import PixelClassificationWorkflow2
 from ilastik.server.pixel_classification_web_adapter import PixelClassificationWorkflow2WebAdapter
 from ilastik.features.feature_extractor import FeatureDataMismatchException
-from ilastik.classifiers.pixel_classifier import Predictions
+from ilastik.classifiers.pixel_classifier import Predictions, PixelClassifier
 from ilastik.server.WebContext import WebContext, EntityNotFoundException
 
 
@@ -26,7 +29,16 @@ parser.add_argument("--host", default="localhost", help="ip or hostname where th
 parser.add_argument("--port", default=5000, type=int, help="port to listen on")
 parser.add_argument("--ngurl", default="http://localhost:8080", help="url where neuroglancer is being served")
 parser.add_argument("--sample-dirs", type=Path, help="List of directories containing samples", nargs="+")
+parser.add_argument(
+    "--num-workers",
+    required=False,
+    type=int,
+    default=multiprocessing.cpu_count(),
+    help="Number of process workers to run predictions",
+)
 args = parser.parse_args()
+
+executor = ProcessPoolExecutor(max_workers=args.num_workers)
 
 app = Flask("WebserverHack")
 CORS(app)
@@ -69,21 +81,33 @@ def run_rpc(method_name: str):
     return from_json_data(getattr(adapter, method_name), method_params, dereferencer=WebContext.dereferencer)
 
 
+def do_worker_predict(slice_batch: Tuple[PixelClassifier, Sequence[DataSourceSlice]]):
+    classifier = slice_batch[0]
+    out = []
+    for datasource_slc in slice_batch[1]:
+        pred_tile = classifier.predict(datasource_slc)
+        out.append(pred_tile)
+    return out
+
+
 def do_predictions(roi: Slice5D, classifier_id: str, datasource_id: str) -> Predictions:
     classifier = WebContext.load(classifier_id)
     datasource = WebContext.load(datasource_id)
+    if isinstance(datasource, PrecomputedChunksDataSource) and datasource.url.lstrip("precomputed://").startswith(
+        get_base_url()
+    ):
+        ds_id = datasource.url.rstrip("/").split("/")[-2]
+        datasource = WebContext.load(ds_id)
     backed_roi = DataSourceSlice(datasource, **roi.to_dict()).defined()
 
     predictions = classifier.allocate_predictions(backed_roi)
-    # with ThreadPoolExecutor() as executor:
-    for raw_tile in backed_roi.get_tiles():
 
-        def predict_tile(tile):
-            tile_prediction = classifier.predict(tile)
-            predictions.set(tile_prediction, autocrop=True)
-
-        predict_tile(raw_tile)
-        # executor.submit(predict_tile, raw_tile)
+    all_slices = list(backed_roi.get_tiles())
+    batch_size = math.ceil(len(all_slices) / args.num_workers)
+    batches = [(classifier, all_slices[start : start + batch_size]) for start in range(0, len(all_slices), batch_size)]
+    for result_batch in executor.map(do_worker_predict, batches):
+        for result in result_batch:
+            predictions.set(result)
     return predictions
 
 
@@ -191,6 +215,14 @@ def ng_raw(datasource_id: str, xBegin: int, xEnd: int, yBegin: int, yEnd: int, z
     return resp
 
 
+def get_base_url() -> str:
+    protocol = request.headers.get("X-Forwarded-Proto", "http")
+    host = request.headers.get("X-Forwarded-Host", args.host)
+    port = "" if "X-Forwarded-Host" in request.headers else f":{args.port}"
+    prefix = request.headers.get("X-Forwarded-Prefix", "/")
+    return f"{protocol}://{host}{port}{prefix}"
+
+
 def get_sample_datasets() -> List[Dict]:
     rgb_shader = """void main() {
       emitRGB(vec3(
@@ -205,19 +237,14 @@ def get_sample_datasets() -> List[Dict]:
       emitGrayscale(toNormalized(getDataValue(0)));
     }
     """
-
-    protocol = request.headers.get("X-Forwarded-Proto", "http")
-    host = request.headers.get("X-Forwarded-Host", args.host)
-    port = "" if "X-Forwarded-Host" in request.headers else f":{args.port}"
-    prefix = request.headers.get("X-Forwarded-Prefix", "/")
-
+    base_url = get_base_url()
     links = []
     for datasource in WebContext.get_all(DataSource):
         datasource_id = WebContext.get_ref(datasource).to_str()
         url_data = {
             "layers": [
                 {
-                    "source": f"precomputed://{protocol}://{host}{port}{prefix}datasource/{datasource_id}",
+                    "source": f"precomputed://{base_url}datasource/{datasource_id}",
                     "type": "image",
                     "blend": "default",
                     "shader": grayscale_shader if datasource.shape.c == 1 else rgb_shader,

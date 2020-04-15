@@ -41,10 +41,9 @@ for ds_data in datasources:
 print(f"cropped1 datasource id: {_data_source_id}")
 
 precomputed_url = f"precomputed://http://localhost:5000/datasource/{_data_source_id}/data"
-resp = post(
+lane_ref = post(
     f"http://localhost:5000/rpc/add_lane_for_url", data=flatten({"__self__": workflow_ref, "url": precomputed_url})
-)
-lane_ref = resp.json()
+).json()
 print(f"~~~~~~~>>> Lane ref:")
 print(json.dumps(lane_ref, indent=4))
 
@@ -122,13 +121,13 @@ print(json.dumps(classifier_ref, indent=4))
 resp = get(f"http://localhost:5000/predictions/{classifier_ref['object_id']}/neuroglancer_shader")
 print(f"SHADER:\n{resp.text}")
 
-predictions_path = f"predictions/{classifier_ref['object_id']}/{_data_source_id}"
+predictions_path = f"predictions/{classifier_ref['object_id']}/{datasource_data['__self__']['object_id']}"
 info = get(f"http://localhost:5000/{predictions_path}/info").json()
 print(f"INFO:\n{json.dumps(info, indent=4)}")
 
 
-binary = get(f"http://localhost:5000/{predictions_path}/data/0-256_0-256_0-1").content
-data = numpy.frombuffer(binary, dtype=numpy.uint8).reshape(2, 256, 256)
+binary = get(f"http://localhost:5000/{predictions_path}/data/0-500_0-256_0-1").content
+data = numpy.frombuffer(binary, dtype=numpy.uint8).reshape(2, 256, 500)
 a = Array5D(data, axiskeys="cyx")
 a.show_channels()
 
