@@ -496,3 +496,32 @@ class OpZeroDefault(Operator):
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Input:
             self.Output.setDirty(roi)
+
+
+class OpZeroSource(Operator):
+    """Operator that serves zeros on it's Output
+
+    This operator will never set anything dirty as it cannot be changed.
+    """
+
+    Output = OutputSlot()
+
+    def __init__(self, dtype, shape, *, graph=None, parent=None, **kwargs):
+        super().__init__(graph=graph, parent=parent)
+
+        self.Output.meta["dtype"] = dtype
+        self.Output.meta["shape"] = shape
+        if kwargs:
+            for k, v in kwargs.items():
+                self.Output.meta[k] = v
+
+    def setupOutputs(self):
+        # everything configured via init
+        pass
+
+    def execute(self, slot, subindex, roi, result):
+        result[...] = 0
+        return result
+
+    def propagateDirty(self, *args, **kwargs):
+        raise ValueError("Will never go here, no inputs...")

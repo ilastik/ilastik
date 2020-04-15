@@ -1,6 +1,3 @@
-from builtins import range
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -23,7 +20,6 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import time
-import random
 import threading
 from functools import partial
 import numpy
@@ -37,10 +33,12 @@ from lazyflow.operators.valueProviders import (
     OpValueCache,
     OpMetadataMerge,
     OpZeroDefault,
+    OpZeroSource,
 )
+import pytest
 
 
-class TestOpMetadataInjector(object):
+class TestOpMetadataInjector:
     def test(self):
         g = lazyflow.graph.Graph()
         op = OpMetadataInjector(graph=g)
@@ -69,7 +67,7 @@ class TestOpMetadataInjector(object):
         assert len(dirtyList) == 1
 
 
-class TestOpOutputProvider(object):
+class TestOpOutputProvider:
     def test(self):
         from lazyflow.graph import Graph, MetaDict
 
@@ -90,7 +88,7 @@ class TestOpOutputProvider(object):
                 assert opProvider.Output.meta[k] == v
 
 
-class TestOpMetadataSelector(object):
+class TestOpMetadataSelector:
     def test(self):
         from lazyflow.graph import Graph, MetaDict
 
@@ -116,7 +114,7 @@ class TestOpMetadataSelector(object):
         assert op.Output.value == meta.axistags
 
 
-class TestOpMetadataMerge(object):
+class TestOpMetadataMerge:
     def test(self):
         from lazyflow.graph import Graph, MetaDict
         from lazyflow.operators import OpArrayPiper
@@ -146,7 +144,7 @@ class TestOpMetadataMerge(object):
         assert op.Output.meta.notsospecial is None
 
 
-class TestOpValueCache(object):
+class TestOpValueCache:
     class OpSlowComputation(lazyflow.graph.Operator):
         Input = lazyflow.graph.InputSlot()
         Output = lazyflow.graph.OutputSlot()
@@ -263,7 +261,7 @@ class TestOpValueCache(object):
         assert opCache.Output.value == 100
 
 
-class TestOpZeroDefault(object):
+class TestOpZeroDefault:
     def test_basic(self):
         graph = lazyflow.graph.Graph()
         data = numpy.indices((100, 100), dtype=numpy.uint8).sum(0)
@@ -297,3 +295,29 @@ class TestOpZeroDefault(object):
         op.Input.disconnect()
         output_data = op.Output[:].wait()
         assert (output_data == 0).all()
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [
+        {"shape": (15, 1, 2), "dtype": numpy.bool},
+        {"shape": (200, 100, 42), "dtype": numpy.uint8, "axistags": vigra.defaultAxistags("xyz")},
+        {"shape": (10, 20, 30, 1, 2), "dtype": numpy.float32, "something_else": "blah", "one_more": 42},
+    ],
+)
+def test_opZeroSource(graph, metadata):
+    shape = metadata.pop("shape")
+    dtype = metadata.pop("dtype")
+
+    op = OpZeroSource(shape=shape, dtype=dtype, graph=graph, **metadata)
+    assert op.Output.ready()
+    assert op.Output.meta.dtype == dtype
+    assert op.Output.meta.shape == shape
+
+    for k, v in metadata.items():
+        assert op.Output.meta[k] == v
+
+    full_out = op.Output[:].wait()
+    assert full_out.shape == shape
+    assert full_out.dtype == dtype
+    assert full_out.sum() == 0
