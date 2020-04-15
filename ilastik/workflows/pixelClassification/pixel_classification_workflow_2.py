@@ -21,7 +21,6 @@ from ilastik.classifiers.ilp_pixel_classifier import IlpVigraPixelClassifier
 from ilastik.features.ilp_filter import IlpFilter
 from ilastik.annotations import Annotation, Color
 from ilastik.features.feature_extractor import FeatureExtractorCollection
-from lazyflow.distributed.TaskOrchestrator import TaskOrchestrator
 
 
 class DisplayMode(enum.Enum):
