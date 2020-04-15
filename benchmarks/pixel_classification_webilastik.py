@@ -1,9 +1,9 @@
 import ast
-import time
 from pathlib import Path
-from typing import Any, Union
+from typing import Any, Union, Sequence, Tuple
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-import cProfile
+import math
+
 
 from ndstructs import Array5D, Slice5D, Shape5D, Point5D
 from ndstructs.datasource import DataSource, N5DataSource, DataSourceSlice
@@ -57,7 +57,7 @@ parser.add_argument(
 parser.add_argument(
     "--num-workers", required=False, type=int, default=8, help="Number of process workers to run predictions"
 )
-parser.add_argument("--orchestrator", required=True, choices=["mpi", "thread-pool"])
+parser.add_argument("--orchestrator", required=True, choices=["mpi", "thread-pool", "process-pool"])
 args = parser.parse_args()
 
 
@@ -96,7 +96,6 @@ classifier = pickle.loads(pickled_classifier)
 
 predictions = classifier.allocate_predictions(datasource.roi)
 
-slc_generator = (raw_tile for raw_tile in datasource.roi.split(datasource.tile_shape))
 
 t = Timer()
 if args.orchestrator == "mpi":
@@ -119,19 +118,44 @@ if args.orchestrator == "mpi":
         def collect_predictions(prediction_tile: Predictions):
             predictions.set(prediction_tile)
 
+        slc_generator = (raw_tile for raw_tile in datasource.roi.split(datasource.tile_shape))
         orchestrator.orchestrate(slc_generator, collector=collect_predictions)
 elif args.orchestrator == "thread-pool":
+
+    def do_predict(datasource_slc: DataSourceSlice):
+        print(f">>>>>>>> Predicting on {datasource_slc.roi}")
+        pred_tile = classifier.predict(datasource_slc)
+        print(f"<<<<<<<< DONE Predicting on {datasource_slc.roi}")
+        predictions.set(pred_tile)
+
     with t:
-
-        def do_predict(datasource_slc: DataSourceSlice):
-            print(f">>>>>>>> Predicting on {datasource_slc.roi}")
-            pred_tile = classifier.predict(datasource_slc)
-            print(f"<<<<<<<< DONE Predicting on {datasource_slc.roi}")
-            predictions.set(pred_tile)
-
         with ThreadPoolExecutor(max_workers=args.num_workers) as executor:
             for datasource_slc in DataSourceSlice(datasource).split():
                 executor.submit(do_predict, datasource_slc)
+elif args.orchestrator == "process-pool":
+
+    def do_predict(slice_batch: Tuple[PixelClassifier, Sequence[DataSourceSlice]]):
+        print(f"Stating batch with {len(slice_batch[1])} items")
+        classifier = slice_batch[0]
+        out = []
+        for datasource_slc in slice_batch[1]:
+            print(f">>>>>>>> Predicting on {datasource_slc.roi}")
+            pred_tile = classifier.predict(datasource_slc)
+            print(f"<<<<<<<< DONE Predicting on {datasource_slc.roi}")
+            out.append(pred_tile)
+        return out
+
+    with t:
+        executor = ProcessPoolExecutor(max_workers=args.num_workers)
+        all_slices = list(DataSourceSlice(datasource).split())
+        batch_size = math.ceil(len(all_slices) / args.num_workers)
+        batches = [
+            (classifier, all_slices[start : start + batch_size]) for start in range(0, len(all_slices), batch_size)
+        ]
+        for result_batch in executor.map(do_predict, batches):
+            for result in result_batch:
+                predictions.set(result)
+
 else:
     raise NotImplementedError(f"Please implement orchestraiton for {args.orchestrator}")
 
