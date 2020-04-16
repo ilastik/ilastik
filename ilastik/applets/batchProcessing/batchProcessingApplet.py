@@ -172,7 +172,7 @@ class BatchProcessingApplet(Applet):
         return opDataExport.run_export_to_array()
 
     def do_distributed_export(self, opDataExport, *, block_size: int = 256):
-        logger.info("Exporting to distributed command line...")
+        logger.info("Running ilastik distributed...")
         return opDataExport.run_distributed_export(block_shape=Shape5D.hypercube(block_size))
 
     def export_dataset(
