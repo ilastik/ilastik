@@ -126,7 +126,7 @@ def get_default_config(
                 "level": "DEBUG",
                 "class": "logging.handlers.RotatingFileHandler",
                 "filename": logfile_path,
-                "maxBytes": 20e6,  # 20 MB
+                "maxBytes": 50e6,  # 20 MB
                 "backupCount": 5,
                 "formatter": "verbose",
             },
@@ -153,7 +153,7 @@ def get_default_config(
             "lazyflow.classifiers": {"level": "INFO"},
             "lazyflow.operators.ioOperators": {"level": "INFO"},
             "lazyflow.operators.ioOperators.opRESTfulVolumeReader": {"level": "INFO"},
-            "lazyflow.operators.cacheMemoryManager.CacheMemoryManager": {"level": "INFO"},
+            "lazyflow.operators.cacheMemoryManager": {"level": "INFO"},
             "lazyflow.operators.filterOperators": {"level": "INFO"},
             "lazyflow.operators.ioOperators.ioOperators.OpH5N5WriterBigDataset": {"level": "INFO"},
             "lazyflow.operators.classifierOperators": {"level": "INFO"},

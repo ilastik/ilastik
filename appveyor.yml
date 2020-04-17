@@ -6,12 +6,15 @@ environment:
   MINICONDA: C:\Miniconda37-x64
   IlASTIK_ROOT: C:\ilastik
   VOLUMINA_SHOW_3D_WIDGET: 0
+  APPVEYOR_CACHE_ENTRY_ZIP_ARGS: -xr!*/ -ir-!*.tar.bz2 -ir-!*.conda  # Exclude directories only cache downloaded tars
 
+cache:
+  - C:\Miniconda37-x64\pkgs -> appveyor.yml
 
 install:
   - cmd: set "PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
   - cmd: where conda
-  - cmd: conda config --set always_yes yes --set changeps1 no
+  - cmd: conda config --set always_yes yes --set changeps1 no --set channel_priority flexible
   - cmd: conda update -q conda
   - cmd: conda install -c conda-forge conda-build
   # Get the current master of all submodules
@@ -23,14 +26,15 @@ install:
   # replace with whatever version of ilastik triggered the appveyor
   - ps: cp -recurse C:\projects\ilastik $env:IlASTIK_ROOT\ilastik-meta\ilastik
   # Point to the current ilastik-meta
-  - python ilastik/scripts/devenv.py create -n %ENV_NAME% -c ilastik-forge conda-forge -p ilastik-dependencies-no-solvers
+  - python ilastik/scripts/devenv.py create -n %ENV_NAME% -c ilastik-forge conda-forge defaults -p ilastik-dependencies-no-solvers
+  - conda clean -p
 
 build: off
 
 test_script:
   - cmd: set PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
   - cmd: CALL activate %ENV_NAME%
-  - cmd: cd %IlASTIK_ROOT%\ilastik-meta\ilastik\tests
+  - cmd: cd %IlASTIK_ROOT%\ilastik-meta\ilastik
   - cmd: set VOLUMINA_SHOW_3D_WIDGET=0
   - cmd: pytest --run-legacy-gui
 

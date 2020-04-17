@@ -1,6 +1,13 @@
+Copyright ilastik developers
+
+This repository contains two previously separate projects: ilastik and lazyflow
+respective licenses follow:
+
+====
+
   ilastik: interactive learning and segmentation toolkit
 
-      Copyright (C) 2011-2019, the ilastik developers
+      Copyright (C) 2011-2020, the ilastik developers
                                <team@ilastik.org>
 
 This program is free software; you can redistribute it and/or
@@ -50,3 +57,23 @@ versions of ilastik that preserve the original ilastik applet,
 workflow or plugin interfaces must be distributed under the GNU
 GPL; in which case the license may, but need not, carry forward
 this exception.
+
+====
+
+  lazyflow: data flow based lazy parallel computation framework
+
+      Copyright (C) 2011-2020, the ilastik developers
+                               <team@ilastik.org>
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the Lesser GNU General Public License
+as published by the Free Software Foundation; either version 2.1
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Lesser General Public License for more details.
+
+See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
+GNU Lesser General Public License version 2.1 and 3 respectively.

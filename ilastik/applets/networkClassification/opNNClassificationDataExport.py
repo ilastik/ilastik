@@ -27,5 +27,12 @@ class OpNNClassificationDataExport(OpDataExport):
     Subclass placeholder
     """
 
+    PmapColors = InputSlot()
+    LabelNames = InputSlot()
+
     def __init__(self, *args, **kwargs):
         super(OpNNClassificationDataExport, self).__init__(*args, **kwargs)
+
+    def propagateDirty(self, slot, subindex, roi):
+        if slot is not self.PmapColors and slot is not self.LabelNames:
+            super(OpNNClassificationDataExport, self).propagateDirty(slot, subindex, roi)

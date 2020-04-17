@@ -293,7 +293,7 @@ class Ilastik05ImportDeserializer(AppletSerializer):
            with the saved parameters and datasets."""
         # The group we were given is the root (file).
         # Check the version
-        ilastikVersion = hdf5File["ilastikVersion"].value
+        ilastikVersion = hdf5File["ilastikVersion"][()]
 
         # The pixel classification workflow supports importing projects in the old 0.5 format
         if ilastikVersion == 0.5:

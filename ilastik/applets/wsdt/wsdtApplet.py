@@ -44,13 +44,12 @@ class WsdtApplet(StandardApplet):
         return [
             "FreezeCache",
             "ChannelSelections",
-            "Pmin",
-            "MinMembraneSize",
-            "MinSegmentSize",
-            "SigmaMinima",
-            "SigmaWeights",
-            "GroupSeeds",
-            "PreserveMembranePmaps",
+            "Threshold",
+            "MinSize",
+            "Sigma",
+            "Alpha",
+            "PixelPitch",
+            "ApplyNonmaxSuppression",
         ]
 
     @property

@@ -27,7 +27,6 @@ import re
 ################################
 import os
 import io
-from . import expose_submodules
 import h5py
 import time
 from typing import Optional, Iterable, List, Dict, Any, Mapping, Tuple
@@ -37,15 +36,6 @@ from collections.abc import Mapping as BaseMapping
 
 import numpy as np
 import pickle
-
-this_file = os.path.abspath(__file__)
-this_file = os.path.realpath(this_file)
-ilastik_package_dir = os.path.dirname(this_file)
-ilastik_repo_dir = os.path.dirname(ilastik_package_dir)
-submodule_dir = os.path.join(ilastik_repo_dir, "submodules")
-
-# Add all submodules to the PYTHONPATH
-expose_submodules.expose_submodules(submodule_dir)
 
 ##################
 # # Version info ##
@@ -57,7 +47,8 @@ def _format_version(t):
     return ".".join(str(i) for i in t)
 
 
-__version_info__ = (1, 3, "3post2")
+__version_info__ = (1, 4, "0b3")
+
 __version__ = _format_version(__version_info__)
 
 
@@ -190,7 +181,7 @@ def isVersionCompatible(version):
     v2 = __version_info__[0:2]
 
     # Version 1.0 is compatible in all respects with version 0.6
-    compatible_set = [(0, 6), (1, 0), (1, 1), (1, 2), (1, 3)]
+    compatible_set = [(0, 6), (1, 0), (1, 1), (1, 2), (1, 3), (1, 4)]
     if v1 in compatible_set and v2 in compatible_set:
         return True
 

@@ -24,7 +24,13 @@ from typing import List, Tuple, Callable
 from pathlib import Path
 
 
-from .opDataSelection import OpDataSelection, DatasetInfo, FilesystemDatasetInfo, RelativeFilesystemDatasetInfo
+from .opDataSelection import (
+    OpDataSelection,
+    DatasetInfo,
+    FilesystemDatasetInfo,
+    RelativeFilesystemDatasetInfo,
+    DummyDatasetInfo,
+)
 from .opDataSelection import PreloadedArrayDatasetInfo, ProjectInternalDatasetInfo
 from lazyflow.operators.ioOperators import OpInputDataReader, OpStackLoader, OpH5N5WriterBigDataset
 from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
@@ -98,7 +104,7 @@ class DataSelectionSerializer(AppletSerializer):
 
     @timeLogged(logger, logging.DEBUG)
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
-        getOrCreateGroup(topGroup, 'local_data')
+        getOrCreateGroup(topGroup, "local_data")
         deleteIfPresent(topGroup, "Role Names")
         role_names = [name.encode("utf-8") for name in self.topLevelOperator.DatasetRoles.value]
         topGroup.create_dataset("Role Names", data=role_names)
@@ -261,9 +267,9 @@ class DataSelectionSerializer(AppletSerializer):
 
         if "__class__" in infoGroup:
             info_class = self.InfoClassNames[infoGroup["__class__"][()].decode("utf-8")]
-        else: #legacy support
+        else:  # legacy support
             location = infoGroup["location"][()].decode("utf-8")
-            if location == "FileSystem" and isRelative(infoGroup['filePath'][()].decode("utf-8")):
+            if location == "FileSystem" and isRelative(infoGroup["filePath"][()].decode("utf-8")):
                 info_class = RelativeFilesystemDatasetInfo
             else:
                 info_class = self.LocationStrings[location]
@@ -273,8 +279,7 @@ class DataSelectionSerializer(AppletSerializer):
             datasetInfo = info_class.from_h5_group(infoGroup)
         except FileNotFoundError as e:
             if headless:
-                shape = tuple(infoGroup["shape"])
-                return PreloadedArrayDatasetInfo(preloaded_array=numpy.zeros(shape, dtype=numpy.uint8)), True
+                return (DummyDatasetInfo.from_h5_group(infoGroup), True)
 
             from PyQt5.QtWidgets import QMessageBox
             from ilastik.widgets.ImageFileDialog import ImageFileDialog
@@ -298,8 +303,11 @@ class DataSelectionSerializer(AppletSerializer):
                     raise e
                 dirty = True
                 repaired_paths.extend([str(p) for p in paths])
-            infoGroup["filePath"] = os.path.pathsep.join(repaired_paths)
-            datasetInfo = info_class.from_h5_group(infoGroup)
+
+            if "filePath" in infoGroup:
+                del infoGroup["filePath"]
+            infoGroup["filePath"] = os.path.pathsep.join(repaired_paths).encode("utf-8")
+            datasetInfo = FilesystemDatasetInfo.from_h5_group(infoGroup)
 
         return datasetInfo, dirty
 
@@ -379,7 +387,7 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
 
     def deserializeFromHdf5(self, hdf5File, projectFilePath, headless=False):
         # Check the overall file version
-        ilastikVersion = hdf5File["ilastikVersion"].value
+        ilastikVersion = hdf5File["ilastikVersion"][()]
 
         # This is the v0.5 import deserializer.  Don't work with 0.6 projects (or anything else).
         if ilastikVersion != 0.5:

@@ -104,6 +104,7 @@ if True:
         Beta = InputSlot(value=0.5)
         SolverName = InputSlot(value=DEFAULT_SOLVER_NAME)
         FreezeCache = InputSlot(value=True)
+        ProbabilityThreshold = InputSlot(value=0.5)
 
         Rag = InputSlot()  # value slot.  Rag object.
         Superpixels = InputSlot()
@@ -123,6 +124,7 @@ if True:
             self.opMulticutAgglomerator.SolverName.connect(self.SolverName)
             self.opMulticutAgglomerator.Rag.connect(self.Rag)
             self.opMulticutAgglomerator.EdgeProbabilities.connect(self.EdgeProbabilities)
+            self.opMulticutAgglomerator.ProbabilityThreshold.connect(self.ProbabilityThreshold)
 
             self.opNodeLabelsCache = OpValueCache(parent=self)
             self.opNodeLabelsCache.fixAtCurrent.connect(self.FreezeCache)
@@ -236,6 +238,7 @@ if True:
     class OpMulticutAgglomerator(Operator):
         SolverName = InputSlot()
         Beta = InputSlot()
+        ProbabilityThreshold = InputSlot()
 
         Rag = InputSlot()
         EdgeProbabilities = InputSlot()
@@ -256,7 +259,10 @@ if True:
                 return
 
             with Timer() as timer:
-                node_labeling = self.agglomerate_with_multicut(rag, edge_probabilities, beta, solver_name)
+                node_labeling = self.agglomerate_with_multicut(
+                    rag, edge_probabilities, beta, solver_name, self.ProbabilityThreshold.value
+                )
+
             logger.info("'{}' Multicut took {} seconds".format(solver_name, timer.seconds()))
 
             # FIXME: Is it okay to produce 0-based supervoxels?
@@ -268,7 +274,7 @@ if True:
             self.NodeLabels.setDirty()
 
         @classmethod
-        def agglomerate_with_multicut(cls, rag, edge_probabilities, beta, solver_name):
+        def agglomerate_with_multicut(cls, rag, edge_probabilities, beta, solver_name, threshold):
             """
             rag: ilastikrag.Rag
 
@@ -299,7 +305,7 @@ if True:
             #
             # Solve
             #
-            edge_weights = compute_edge_weights(rag.edge_ids, edge_probabilities, beta)
+            edge_weights = compute_edge_weights(rag.edge_ids, edge_probabilities, beta, threshold)
             assert edge_weights.shape == (rag.num_edges,)
 
             solver_library, solver_method = solver_name.split("_")
@@ -312,7 +318,7 @@ if True:
 
             return mapping_index_array
 
-    def compute_edge_weights(edge_ids, edge_probabilities, beta):
+    def compute_edge_weights(edge_ids, edge_probabilities, beta, threshold):
         """
         Convert edge probabilities to energies for the multicut problem.
 
@@ -322,14 +328,40 @@ if True:
             1-D, float (1.0 means edge is CUT, disconnecting the two SPs)
         beta:
             scalar (float)
+        threshold:
+            scalar (float), moves the 0 of the edge weights (default threshold = 0.5)
 
         Special behavior:
             If any node has ID 0, all of it's edges will be given an
             artificially low energy, to prevent it from merging with its
             neighbors, regardless of what the edge_probabilities say.
         """
+
+        def rescale(probabilities, threshold):
+            """
+            Given a threshold in the range (0,1), rescales the probabilities below and above
+            the threshold to the ranges (0,0.5], and (0.5,1) respectively. This is needed
+            to implement an effective 'moving' of the 0 weight, since the multicut algorithm
+            implicitly calculates that weights change sign at p=0.5.
+
+            :param probabilities: 1d array (float). Probability data within range (0,1)
+            :param threshold: scalar (float). The new threshold for the algorithm.
+            :return: Rescaled data to be used in algorithm.
+            """
+            out = np.zeros_like(probabilities)
+            data_lower = probabilities[probabilities <= threshold]
+            data_upper = probabilities[probabilities > threshold]
+
+            data_lower = (data_lower / threshold) * 0.5
+            data_upper = (((data_upper - threshold) / (1 - threshold)) * 0.5) + 0.5
+
+            out[probabilities <= threshold] = data_lower
+            out[probabilities > threshold] = data_upper
+            return out
+
         p1 = edge_probabilities  # P(Edge=CUT)
         p1 = np.clip(p1, 0.001, 0.999)
+        p1 = rescale(p1, threshold)
         p0 = 1.0 - p1  # P(Edge=NOT CUT)
 
         edge_weights = np.log(old_div(p0, p1)) + np.log(old_div((1 - beta), (beta)))

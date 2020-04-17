@@ -1,86 +1,132 @@
 version: 2
-## Customize the test machine
+
 jobs:
-  build:
-    working_directory: ~/ilastik/ilastik
+  checkout_ilastik:
+    working_directory: /root/ilastik/ilastik
     parallelism: 1
     shell: /bin/bash --login
     environment:
-      CONDA_ROOT: /home/ubuntu/miniconda
+      ILASTIK_ROOT: /root/ilastik
+    docker:
+    - image: continuumio/miniconda3
+    steps:
+    - checkout
+    - run:
+        name: initialize ilastik-meta, link to code
+        command: >
+            git clone https://github.com/ilastik/ilastik-meta ${ILASTIK_ROOT}/ilastik-meta && 
+            cd ${ILASTIK_ROOT}/ilastik-meta &&
+            git submodule init &&
+            git submodule update --recursive &&
+            git submodule foreach "git checkout master" &&
+            rm -rf ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
+            ln -s ${ILASTIK_ROOT}/ilastik ${ILASTIK_ROOT}/ilastik-meta/ilastik
+    - save_cache:
+        name: store repo cache
+        key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+        paths:
+        - /root/ilastik
+
+  test:
+    working_directory: /root/ilastik/ilastik
+    parallelism: 1
+    shell: /bin/bash --login
+    environment:
+      ILASTIK_ROOT: /root/ilastik
+      ON_CIRCLE_CI: 1
       TEST_ENV_NAME: test-env
-      ILASTIK_ROOT: /home/ubuntu/ilastik
       VOLUMINA_SHOW_3D_WIDGET: 0
     docker:
-    - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
+    - image: continuumio/miniconda3
     steps:
-    # add interpolated environment variables (CircleCI 2.0 does not support direct interpolation)
-    - run: echo 'export PATH=${CONDA_ROOT}/bin:${PATH}' >> $BASH_ENV
-    - checkout
-    # Prepare for artifact and test results  collection equivalent to how it was done on 1.0.
-    # In many cases you can simplify this from what is generated here.
-    # 'See docs on artifact collection here https://circleci.com/docs/2.0/artifacts/'
-    # - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
-    # Restore the dependency cache
     - restore_cache:
+        name: restoring dependency cache
         keys:
         # This branch if available
-        - v1.33b7-dep-{{ .Branch }}-
+        - v1.4.10-dep-{{ .Branch }}-{{ epoch }}
         # Default branch if not
-        - v1.33b7-dep-master-
+        - v1.4.10-dep-master-
         # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
-        - v1.33b7-dep-
-    - run: >
-        if [[ ! -d ${CONDA_ROOT} ]]; then
-            echo "Installing Miniconda...";
-            wget --quiet https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh &&
-            bash Miniconda3-latest-Linux-x86_64.sh -b -p ${CONDA_ROOT};
-        else
-            echo "Using cached Miniconda install";
-        fi
-    - run: conda init bash
-    - run: >
-        conda config --set always_yes yes --set changeps1 no &&
-        conda update -q conda &&
-        conda install -n base -c conda-forge conda-build
-    - run: git clone http://github.com/ilastik/ilastik-meta ${ILASTIK_ROOT}/ilastik-meta
-    - run: >
-        cd ${ILASTIK_ROOT}/ilastik-meta &&
-        git submodule init &&
-        git submodule update --recursive &&
-        git submodule foreach "git checkout master"
-    - run: >
-        rm -rf ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
-        ln -s `pwd` ${ILASTIK_ROOT}/ilastik-meta/ilastik
-    - run: >
-        conda activate base &&
-        cd ${ILASTIK_ROOT}/ilastik-meta &&
-        python ilastik/scripts/devenv.py create -n ${TEST_ENV_NAME}
-        -p pytest-qt ilastik-dependencies-no-solvers black
-        -c ilastik-forge conda-forge defaults
-    # Save dependency cache
+        - v1.4.10-dep-
+    - restore_cache:
+        name: restore ilastik-repo cache
+        key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+    - run:
+        name: update conda
+        command: >
+            conda config --set always_yes yes --set changeps1 no --set channel_priority strict &&
+            conda update -q conda -c conda-forge -c defaults &&
+            conda install -n base -c conda-forge -c defaults conda-build
+    - run:
+        name: install apt dependencies
+        command: >
+            apt-get update &&
+            apt-get install -yy libgl1-mesa-dev xvfb
+    - run:
+        name: create ilastik conda environment
+        command: >
+            cd ${ILASTIK_ROOT}/ilastik-meta &&
+            python ilastik/scripts/devenv.py create -n ${TEST_ENV_NAME}
+            -p pytest-qt ilastik-dependencies-no-solvers
+            -c ilastik-forge conda-forge defaults
+    - run:
+        name: run ilastik tests
+        command: >
+            conda activate ${TEST_ENV_NAME} &&
+            cd ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
+            mkdir test-results &&
+            xvfb-run --server-args="-screen 0 1024x768x24" pytest --run-legacy-gui --junitxml=test-results/junit.xml
+    - store_test_results:
+        path: test-results
     - save_cache:
-        key: v1.33b7-dep-{{ .Branch }}-{{ epoch }}
+        name: store dependency cache
+        key: v1.4.10-dep-{{ .Branch }}-{{ epoch }}
         paths:
-        - /home/ubuntu/miniconda
-    # Test
-    - run: >
-        conda activate ${TEST_ENV_NAME} &&
-        cd ${ILASTIK_ROOT}/ilastik-meta/ilastik/tests &&
-        xvfb-run --server-args="-screen 0 1024x768x24" pytest --run-legacy-gui
-    - run: >
-        conda activate ${TEST_ENV_NAME} &&
-        cd ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
-        git diff --name-only --diff-filter=AM master.. |
-            grep ".*\.py" |
-            xargs black --check --line-length=120
+        - /opt/conda/pkgs
 
-    # Teardown
-    #   If you break your build into multiple jobs with workflows, you will probably want to do the parts of this that are relevant in each
-    # Save test results
-    # - store_test_results:
-    #     path: /tmp/circleci-test-results
-    # # Save artifacts
-    # - store_artifacts:
-    #     path: /tmp/circleci-artifacts
-    # - store_artifacts:
-    #     path: /tmp/circleci-test-results
+  black:
+    working_directory: /root/ilastik/ilastik
+    parallelism: 1
+    shell: /bin/bash --login
+    docker:
+    - image: continuumio/miniconda3
+    steps:
+    - restore_cache:
+        name: restore ilastik-repo cache
+        key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+    - restore_cache:
+        name: restore dependency cache
+        keys:
+        - v1.4.10-dep-{{ .Branch }}-{{ epoch }}
+        - v1.4.10-dep-master-
+        - v1.4.10-dep-
+    - run:
+        name: update conda
+        command: >
+            conda config --set always_yes yes --set changeps1 no --set channel_priority strict &&
+            conda update -q conda -c conda-forge -c defaults
+    - run:
+        name: create conda environment
+        command: >
+            conda create -y -n black -c conda-forge -c base black
+    - run:
+        name: black check
+        command: >
+            conda activate black &&
+            git diff --name-only --diff-filter=AM master.. |
+                grep ".*\.py" |
+                xargs black --check --line-length=120
+
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - checkout_ilastik
+      - test:
+          requires:
+            - checkout_ilastik
+      - black:
+          requires:
+            - checkout_ilastik
+

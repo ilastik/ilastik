@@ -38,7 +38,7 @@ from lazyflow.graph import Graph
 # that hooks will be executed until first not None result is found.
 
 
-GUI_TEST_TIMEOUT = 60  # Seconds
+GUI_TEST_TIMEOUT = 120  # Seconds
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -166,14 +166,16 @@ def pytest_runtestloop(session):
     # Modify session leaving only normal tests as session.items
     # Gui test should be run separately
     guitests, session.items = split_guitests(session.items)
-    _pytest_runtestloop(session)
 
     if session.config.getoption("run_legacy_gui"):
         for tstcls, gui_test_bag in itertools.groupby(_sorted_guitests(guitests), get_guitest_cls):
             run_gui_tests(tstcls, gui_test_bag)
+            ThreadRouter.app_is_shutting_down = False
 
     elif guitests:
         warnings.warn("Skipping legacy GUI test to enable please use --run-legacy-gui option\n")
+
+    _pytest_runtestloop(session)
 
     return True
 
@@ -183,7 +185,6 @@ def run_gui_tests(tstcls, gui_test_bag):
     tst_queue = queue.Queue()
     app = tstcls.app = QApplication([])
     app.setQuitOnLastWindowClosed(False)
-    ThreadRouter.app_is_shutting_down = False
     app.thread_router = ThreadRouter(app)
     tstcls.shell = launchShell(None, [], [])
 
@@ -275,7 +276,7 @@ def tmp_h5_multiple_dataset(tmp_path: Path) -> Path:
 @pytest.fixture
 def tmp_n5_file(tmp_path: Path) -> Path:
     n5_dir_path = tmp_path / "my_tmp_file.n5"
-    f = z5py.File(n5_dir_path)
+    f = z5py.File(str(n5_dir_path))
     ds = f.create_dataset("data", shape=(1000, 1000), chunks=(100, 100), dtype="float32")
 
     # write array to a roi

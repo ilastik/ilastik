@@ -23,6 +23,7 @@ tests/images
 build/
 dist/
 ilastik.egg-info/
+lazyflow.egg-info/
 
 .settings
 
@@ -43,7 +44,6 @@ ilastik/applets/counting/cwrapper/Makefile
 .idea
 
 # Vim swap files
-*.s[a-w][a-z]
 *.un~
 .netrwhist
 
@@ -71,4 +71,11 @@ tests/recorded_test_cases/ObjectClassification/cube_objects_raw.npy
 
 # vim undo/swp file
 *.un~
+*.swp
+docs/**/_build
+
+.coverage
+*.backup
+*.*~
+*.jpg
 *.swp

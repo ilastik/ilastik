@@ -44,6 +44,11 @@ plugin_directories: ~/.ilastik/plugins,
 threads: -1
 total_ram_mb: 0
 
+[hbp]
+token_url: https://web.ilastik.org/token/
+upload_file_url: https://web.ilastik.org/v1/files/
+create_project_url: https://web.ilastik.org/v1/batch/projects/
+
 [ipc raw tcp]
 autostart: false
 autoaccept: true
@@ -73,6 +78,7 @@ filename: in
 
 cfg = configparser.SafeConfigParser()
 
+CONFIG_PATH = os.path.expanduser("~/.ilastikrc")
 
 def init_ilastik_config(userConfig=None):
     global cfg
@@ -82,7 +88,7 @@ def init_ilastik_config(userConfig=None):
         raise Exception("ilastik config file does not exist: {}".format(userConfig))
 
     if userConfig is None:
-        userConfig = os.path.expanduser("~/.ilastikrc")
+        userConfig = os.path.expanduser(CONFIG_PATH)
     if os.path.exists(userConfig):
         cfg.read(userConfig)
 

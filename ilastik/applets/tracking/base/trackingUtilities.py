@@ -205,13 +205,13 @@ class LineageH5(h5py.File):
 
     def get_moves(self):
         if self.has_tracking() and path.basename(self.mov_ds) in list(self[self.track_gn].keys()):
-            return self[self.mov_ds].value
+            return self[self.mov_ds][()]
         else:
             return np.empty(0)
 
     def get_move_energies(self):
         if path.basename(self.mov_ener_ds) in list(self[self.track_gn].keys()):
-            e = self[self.mov_ener_ds].value
+            e = self[self.mov_ener_ds][()]
             if isinstance(e, np.ndarray):
                 return e
             else:
@@ -221,7 +221,7 @@ class LineageH5(h5py.File):
 
     def get_divisions(self):
         if self.has_tracking() and path.basename(self.div_ds) in list(self[self.track_gn].keys()):
-            return self[self.div_ds].value
+            return self[self.div_ds][()]
         else:
             return np.empty(0)
 
@@ -233,7 +233,7 @@ class LineageH5(h5py.File):
 
     def get_division_energies(self):
         if path.basename(self.div_ener_ds) in list(self[self.track_gn].keys()):
-            e = self[self.div_ener_ds].value
+            e = self[self.div_ener_ds][()]
             if isinstance(e, np.ndarray):
                 return e
             else:
@@ -243,7 +243,7 @@ class LineageH5(h5py.File):
 
     def get_disappearances(self):
         if self.has_tracking() and path.basename(self.dis_ds) in list(self[self.track_gn].keys()):
-            dis = self[self.dis_ds].value
+            dis = self[self.dis_ds][()]
             if isinstance(dis, np.ndarray):
                 return dis
             else:
@@ -259,7 +259,7 @@ class LineageH5(h5py.File):
 
     def get_disappearance_energies(self):
         if path.basename(self.dis_ener_ds) in list(self[self.track_gn].keys()):
-            e = self[self.dis_ener_ds].value
+            e = self[self.dis_ener_ds][()]
             if isinstance(e, np.ndarray):
                 return e
             else:
@@ -269,7 +269,7 @@ class LineageH5(h5py.File):
 
     def get_appearances(self):
         if self.has_tracking() and path.basename(self.app_ds) in list(self[self.track_gn].keys()):
-            app = self[self.app_ds].value
+            app = self[self.app_ds][()]
             if isinstance(app, np.ndarray):
                 return app
             else:
@@ -285,7 +285,7 @@ class LineageH5(h5py.File):
 
     def get_appearance_energies(self):
         if path.basename(self.app_ener_ds) in list(self[self.track_gn].keys()):
-            e = self[self.app_ener_ds].value
+            e = self[self.app_ener_ds][()]
             if isinstance(e, np.ndarray):
                 return e
             else:
@@ -313,7 +313,7 @@ class LineageH5(h5py.File):
 
     def get_ids(self):
         features_group = self[self.feat_gn]
-        labelcontent = features_group["labelcontent"].value
+        labelcontent = features_group["labelcontent"][()]
         valid_labels = (np.arange(len(labelcontent)) + 1)[labelcontent == 1]
         return valid_labels
 

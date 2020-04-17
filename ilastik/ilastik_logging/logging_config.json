@@ -22,19 +22,19 @@
         "lazyflow.operators.ioOperators.opRESTfulVolumeReader":     { "level":"INFO" },
         "lazyflow.operators.opFeatureMatrixCache":                  { "level":"INFO" },
         "lazyflow.operators.opConcatenateFeatureMatrices":          { "level":"INFO" },
-        
+
         "lazyflow.operators.opBlockedArrayCache.OpBlockedArrayCache":             { "level":"INFO" },
         "lazyflow.operators.opSlicedBlockedArrayCache.OpSlicedBlockedArrayCache": { "level":"INFO" },
         "lazyflow.operators.opCompressedCache.OpCompressedCache":                 { "level":"INFO" },
-        
+
         "lazyflow.operators.ioOperators.opInputDataReader.OpInputDataReader":     { "level":"INFO" },
         "lazyflow.operators.ioOperators.opStreamingH5N5Reader.OpStreamingH5N5Reader":     { "level":"INFO" },
         "lazyflow.operators.ioOperators.ioOperators.OpImageReader":                       { "level":"INFO" },
-        
+
         "volumina.pixelpipeline.imagesources.GrayscaleImageSource":  { "level": "INFO" },
         "volumina.pixelpipeline.imagesources.GrayscaleImageRequest": { "level": "INFO" },
-        
-        "lazyflow.operators.cacheMemoryManager.CacheMemoryManager":  { "level":"INFO" },
+
+        "lazyflow.operators.cacheMemoryManager":                    { "level":"INFO" },
         "lazyflow.operators.filterOperators":                        { "level":"INFO" },
         "lazyflow.operators.ioOperators.ioOperators.OpH5N5WriterBigDataset":  	{ "level":"INFO" },
         "lazyflow.operators.classifierOperators":                   { "level":"INFO" },
@@ -51,6 +51,8 @@
         "ilastik.applets.dataSelection":                            { "level":"INFO" },
         "ilastik.applets.featureSelection":                         { "level":"INFO" },
         "ilastik.applets.pixelClassification":                      { "level":"INFO" },
+        "ilastik.applets.nnClassApplet":                            { "level":"DEBUG" },
+        "ilastik.applets.networkClassification":                    { "level":"DEBUG" },
         "ilastik.applets.thresholdTwoLevels":                       { "level":"INFO" },
         "ilastik.applets.thresholdTwoLevels.ipht":                  { "level":"INFO" },
         "ilastik.applets.objectExtraction":                         { "level":"INFO" },

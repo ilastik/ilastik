@@ -55,7 +55,7 @@ class FillMissingSlicesSerializer(AppletSerializer):
 
     def _getDataset(self, group, dataName):
         try:
-            result = group[dataName].value
+            result = group[dataName][()]
         except KeyError:
             result = ""
         return result

@@ -155,7 +155,7 @@ class ProjectManager(object):
 
         projectVersion = "0.5"
         if "ilastikVersion" in list(hdf5File.keys()):
-            projectVersion = hdf5File["ilastikVersion"].value.decode("utf-8")
+            projectVersion = hdf5File["ilastikVersion"][()].decode("utf-8")
 
         # FIXME: version comparison
         if not isVersionCompatible(projectVersion):
@@ -165,7 +165,7 @@ class ProjectManager(object):
         workflow_class = None
         if "workflowName" in list(hdf5File.keys()):
             # if workflow is found in file, take it
-            workflowName = hdf5File["workflowName"].value.decode("utf-8")
+            workflowName = hdf5File["workflowName"][()].decode("utf-8")
             workflow_class = getWorkflowFromName(workflowName)
 
         return (hdf5File, workflow_class, readOnly)

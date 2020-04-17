@@ -1,7 +1,7 @@
 from collections import OrderedDict
 import numpy as np
 
-from wsdt import wsDtSegmentation
+from elf.segmentation.watershed import distance_transform_watershed
 
 from lazyflow.utility import OrderedSignal
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -18,14 +18,13 @@ class OpWsdt(Operator):
     # (They'll be summed.)
     ChannelSelections = InputSlot(value=[0])
 
-    # Parameters
-    Pmin = InputSlot(value=0.5)
-    MinMembraneSize = InputSlot(value=0)
-    MinSegmentSize = InputSlot(value=0)
-    SigmaMinima = InputSlot(value=3.0)
-    SigmaWeights = InputSlot(value=0.0)
-    GroupSeeds = InputSlot(value=False)
-    PreserveMembranePmaps = InputSlot(value=False)
+    Threshold = InputSlot(value=0.5)
+    MinSize = InputSlot(value=100)
+    Sigma = InputSlot(value=3.0)
+    Alpha = InputSlot(value=0.9)
+    PixelPitch = InputSlot(value=[])
+    ApplyNonmaxSuppression = InputSlot(value=False)
+    InvertPixelProbabilities = InputSlot(value=False)
 
     EnableDebugOutputs = InputSlot(value=False)
 
@@ -38,6 +37,7 @@ class OpWsdt(Operator):
 
         self._opSelectedInput = OpSumChannels(parent=self)
         self._opSelectedInput.ChannelSelections.connect(self.ChannelSelections)
+        self._opSelectedInput.InvertPixelProbabilities.connect(self.InvertPixelProbabilities)
         self._opSelectedInput.Input.connect(self.Input)
 
     def setupOutputs(self):
@@ -62,18 +62,25 @@ class OpWsdt(Operator):
 
         if self.debug_results:
             self.debug_results.clear()
-        ws, max_label = wsDtSegmentation(
+
+        # distance_transform_watershed expects a default value of None for pixel_pitch.
+        if self.PixelPitch.value == []:
+            pixel_pitch_to_pass = None
+        else:
+            pixel_pitch_to_pass = self.PixelPitch.value
+
+        ws, max_id = distance_transform_watershed(
             pmap[..., 0],
-            self.Pmin.value,
-            self.MinMembraneSize.value,
-            self.MinSegmentSize.value,
-            self.SigmaMinima.value,
-            self.SigmaWeights.value,
-            self.GroupSeeds.value,
-            self.PreserveMembranePmaps.value,
-            out_debug_image_dict=self.debug_results,
-            out=result[..., 0],
+            self.Threshold.value,
+            self.Sigma.value,
+            self.Sigma.value,
+            self.MinSize.value,
+            self.Alpha.value,
+            pixel_pitch_to_pass,
+            self.ApplyNonmaxSuppression.value,
         )
+
+        result[..., 0] = ws
 
         self.watershed_completed()
 
@@ -89,14 +96,13 @@ class OpCachedWsdt(Operator):
     Input = InputSlot()  # Can be multi-channel (but you'll have to choose which channel you want to use)
     ChannelSelections = InputSlot(value=[0])
 
-    # Parameters
-    Pmin = InputSlot(value=0.5)
-    MinMembraneSize = InputSlot(value=0)
-    MinSegmentSize = InputSlot(value=0)
-    SigmaMinima = InputSlot(value=3.0)
-    SigmaWeights = InputSlot(value=0.0)
-    GroupSeeds = InputSlot(value=False)
-    PreserveMembranePmaps = InputSlot(value=False)
+    Threshold = InputSlot(value=0.5)
+    MinSize = InputSlot(value=100)
+    Sigma = InputSlot(value=3.0)
+    Alpha = InputSlot(value=0.9)
+    PixelPitch = InputSlot(value=[])
+    ApplyNonmaxSuppression = InputSlot(value=False)
+    InvertPixelProbabilities = InputSlot(value=False)
 
     EnableDebugOutputs = InputSlot(value=False)
 
@@ -116,20 +122,20 @@ class OpCachedWsdt(Operator):
         my_slot_names = set([slot.name for slot in self.inputSlots + self.outputSlots])
         wsdt_slot_names = set([slot.name for slot in OpWsdt.inputSlots + OpWsdt.outputSlots])
         assert wsdt_slot_names.issubset(my_slot_names), (
-            "OpCachedWsdt should have all of the slots that OpWsdt has (and maybe more). "
+            "OpCachedWsdt should have all of the slots that OpWsdt has (and maybe more)."
             "Did you add a slot to OpWsdt and forget to add it to OpCachedWsdt?"
         )
 
         self._opWsdt = OpWsdt(parent=self)
         self._opWsdt.Input.connect(self.Input)
         self._opWsdt.ChannelSelections.connect(self.ChannelSelections)
-        self._opWsdt.Pmin.connect(self.Pmin)
-        self._opWsdt.MinMembraneSize.connect(self.MinMembraneSize)
-        self._opWsdt.MinSegmentSize.connect(self.MinSegmentSize)
-        self._opWsdt.SigmaMinima.connect(self.SigmaMinima)
-        self._opWsdt.SigmaWeights.connect(self.SigmaWeights)
-        self._opWsdt.GroupSeeds.connect(self.GroupSeeds)
-        self._opWsdt.PreserveMembranePmaps.connect(self.PreserveMembranePmaps)
+        self._opWsdt.Threshold.connect(self.Threshold)
+        self._opWsdt.MinSize.connect(self.MinSize)
+        self._opWsdt.Sigma.connect(self.Sigma)
+        self._opWsdt.Alpha.connect(self.Alpha)
+        self._opWsdt.PixelPitch.connect(self.PixelPitch)
+        self._opWsdt.ApplyNonmaxSuppression.connect(self.ApplyNonmaxSuppression)
+        self._opWsdt.InvertPixelProbabilities.connect(self.InvertPixelProbabilities)
         self._opWsdt.EnableDebugOutputs.connect(self.EnableDebugOutputs)
 
         self._opCache = OpBlockedArrayCache(parent=self)
@@ -141,6 +147,7 @@ class OpCachedWsdt(Operator):
         self._opSelectedInput = OpSumChannels(parent=self)
         self._opSelectedInput.ChannelSelections.connect(self.ChannelSelections)
         self._opSelectedInput.Input.connect(self.Input)
+        self._opSelectedInput.InvertPixelProbabilities.connect(self.InvertPixelProbabilities)
         self.SelectedInput.connect(self._opSelectedInput.Output)
 
         self._opThreshold = OpPixelOperator(parent=self)
@@ -148,7 +155,7 @@ class OpCachedWsdt(Operator):
         self.ThresholdedInput.connect(self._opThreshold.Output)
 
     def setupOutputs(self):
-        self._opThreshold.Function.setValue(lambda a: (a >= self.Pmin.value).astype(np.uint8))
+        self._opThreshold.Function.setValue(lambda a: (a >= self.Threshold.value).astype(np.uint8))
 
     @property
     def debug_results(self):
@@ -176,6 +183,7 @@ class OpCachedWsdt(Operator):
 class OpSumChannels(Operator):
     Input = InputSlot()
     ChannelSelections = InputSlot(value=[0])
+    InvertPixelProbabilities = InputSlot(value=False)
     Output = OutputSlot()
 
     def setupOutputs(self):
@@ -197,14 +205,18 @@ class OpSumChannels(Operator):
         if len(channel_indexes) == 1:
             # Fetch in-place
             self.Input(input_roi.start, input_roi.stop).writeInto(result).wait()
+
         else:
             fetched_data = self.Input(input_roi.start, input_roi.stop).wait()
             channel_indexes = channel_indexes - channel_indexes[0]
             selected_data = fetched_data[..., tuple(channel_indexes)]
-            selected_data.sum(axis=-1, out=result[..., 0])
+            result[..., 0] = selected_data.sum(axis=-1)
+
+        if self.InvertPixelProbabilities.value:
+            result[..., 0] = 1 - result[..., 0]
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot == self.ChannelSelections:
+        if slot == self.ChannelSelections or slot == self.InvertPixelProbabilities:
             # Everything is dirty
             self.Output.setDirty()
         elif slot == self.Input:

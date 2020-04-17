@@ -77,7 +77,9 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
 
         # -- DataSelection applet
         #
-        self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", forceAxisOrder=["zyxc", "yxc"])
+        self.dataSelectionApplet = DataSelectionApplet(
+            self, "Input Data", "Input Data", forceAxisOrder=["zyxc", "yxc"], max_lanes=1
+        )
 
         # Dataset inputs
         opDataSelection = self.dataSelectionApplet.topLevelOperator
@@ -252,6 +254,7 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         opEdgeTrainingWithMulticut.VoxelData.connect(opStackRawAndVoxels.Output)
         opEdgeTrainingWithMulticut.Superpixels.connect(opSuperpixelsSelect.Output)
         opEdgeTrainingWithMulticut.GroundtruthSegmentation.connect(opGroundtruthCache.Output)
+        opEdgeTrainingWithMulticut.WatershedSelectedInput.connect(opWsdt.SelectedInput)
 
         # DataExport inputs
         opDataExport.RawData.connect(opDataSelection.ImageGroup[self.DATA_ROLE_RAW])
