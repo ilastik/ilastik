@@ -1,5 +1,6 @@
 from typing import List, Dict, Tuple, Sequence
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+from collections import defaultdict
 import io
 import json
 import flask
@@ -38,7 +39,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-executor = ProcessPoolExecutor(max_workers=args.num_workers)
+executors = [ProcessPoolExecutor(max_workers=1) for i in range(args.num_workers)]
 
 app = Flask("WebserverHack")
 CORS(app)
@@ -81,7 +82,7 @@ def run_rpc(method_name: str):
     return from_json_data(getattr(adapter, method_name), method_params, dereferencer=WebContext.dereferencer)
 
 
-def do_worker_predict(slice_batch: Tuple[PixelClassifier, Sequence[DataSourceSlice]]):
+def do_worker_predict(slice_batch: Tuple[PixelClassifier, Sequence[DataSourceSlice]]) -> List[Predictions]:
     classifier = slice_batch[0]
     out = []
     for datasource_slc in slice_batch[1]:
@@ -103,10 +104,17 @@ def do_predictions(roi: Slice5D, classifier_id: str, datasource_id: str) -> Pred
     predictions = classifier.allocate_predictions(backed_roi)
 
     all_slices = list(backed_roi.get_tiles())
-    batch_size = math.ceil(len(all_slices) / args.num_workers)
-    batches = [(classifier, all_slices[start : start + batch_size]) for start in range(0, len(all_slices), batch_size)]
-    for result_batch in executor.map(do_worker_predict, batches):
-        for result in result_batch:
+    slc_batches = defaultdict(list)
+    for slc in backed_roi.get_tiles():
+        batch_idx = hash(slc) % args.num_workers
+        slc_batches[batch_idx].append(slc)
+
+    result_batch_futures = []
+    for idx, batch in slc_batches.items():
+        executor = executors[idx]
+        result_batch_futures.append(executor.submit(do_worker_predict, (classifier, batch)))
+    for future in result_batch_futures:
+        for result in future.result():
             predictions.set(result)
     return predictions
 
