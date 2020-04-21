@@ -18,8 +18,11 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
+
 import logging
+import os
 import typing
+import webbrowser
 from collections import OrderedDict
 from functools import partial
 
@@ -39,6 +42,7 @@ from PyQt5.QtWidgets import (
 )
 
 import ilastik.config
+from ilastik.applets.batchProcessing import hbp
 from ilastik.utility import log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.widgets.ImageFileDialog import ImageFileDialog
@@ -211,112 +215,44 @@ class BatchProcessingGui(QTabWidget):
         layout.addWidget(self.run_button)
         layout.addWidget(self.cancel_button)
 
-        if ilastik.config.cfg["ilastik"].getboolean("hbp"):
-            from ilastik.workflows import PixelClassificationWorkflow
-
-            if isinstance(self.parentApplet.workflow(), PixelClassificationWorkflow):
-                layout.addWidget(QPushButton("Upload Project File to HBP", self, clicked=self._hbp_upload_project_file))
+        if ilastik.config.cfg["ilastik"].getboolean("hbp") and self._hbp_category:
+            layout.addWidget(QPushButton("Upload Project File to HBP", self, clicked=self._hbp_upload_project_file))
 
         self._drawer = QWidget(parent=self)
         self._drawer.setLayout(layout)
 
-    def _hbp_upload_project_file(self):
-        import io
-        import pathlib
-        import webbrowser
-        import h5py
-        import requests
-        import numpy
+    @property
+    def _hbp_category(self):
+        return hbp.category(self.parentApplet.workflow())
 
-        webbrowser.open_new_tab(ilastik.config.cfg["hbp"]["token_url"])
+    def _hbp_upload_project_file(self):
+        webbrowser.open(ilastik.config.cfg["hbp"]["token_url"])
         token, ok = QInputDialog.getText(self, "Client Token", "Paste your token from a browser window")
         if not ok:
             return
 
-        topLevelOperator = self.parentApplet.dataSelectionApplet.topLevelOperator
-
-        project_file = topLevelOperator.ProjectFile.value
-        filename = pathlib.Path(project_file.filename).name
-
-        role_index = topLevelOperator.DatasetRoles.value.index("Raw Data")
-        dataset_info = topLevelOperator.DatasetGroup[0][role_index].value
-
-        try:
-            num_channels = dataset_info.laneShape[dataset_info.axistags.channelIndex]
-        except IndexError:
-            num_channels = 1
-
-        orders = {
-            "GaussianSmoothing": 0,
-            "LaplacianOfGaussian": 2,
-            "GaussianGradientMagnitude": 1,
-            "DifferenceOfGaussians": 0,
-            "StructureTensorEigenvalues": 1,
-            "HessianOfGaussianEigenvalues": 2,
-        }
-
         workflow = self.parentApplet.workflow()
-        opFeatureSelection = self.parentApplet.workflow().featureSelectionApplet.topLevelOperator
+        opDataSelection = workflow.dataSelectionApplet.topLevelOperator
+        opFeatureSelection = workflow.featureSelectionApplet.topLevelOperator
 
-        min_block_size = 0
-        compute_in_2d = False
+        workflow.shell.projectManager.saveProject()  # Ensure that project_file is in sync.
+        project_file = opDataSelection.ProjectFile.value
 
-        for row, col in numpy.argwhere(opFeatureSelection.SelectionMatrix.value):
-            name = opFeatureSelection.FeatureIds.value[row]
-            sigma = opFeatureSelection.Scales.value[col]
-            min_block_size = max(min_block_size, int(3 * sigma + 0.5 * orders[name] + 0.5))
-            compute_in_2d |= opFeatureSelection.ComputeIn2d.value[col]
-
-        workflow.shell.projectManager.saveProject()
-
-        with io.BytesIO() as buf:
-            with h5py.File(buf) as dest:
-
-                def partial_copy(name, obj):
-                    if isinstance(obj, h5py.Group):
-                        dest.create_group(name).attrs.update(obj.attrs)
-                    elif isinstance(obj, h5py.Dataset) and name.startswith("Input Data/local_data"):
-                        dest.create_dataset_like(name, obj).attrs.update(obj.attrs)
-                    else:
-                        dest.copy(obj, name)
-
-                project_file.visititems(partial_copy)
-
-            data = buf.getvalue()
+        payload = hbp.Payload(
+            token=token,
+            project=hbp.serialize_project_file(project_file),
+            filename=os.path.basename(project_file.filename),
+            num_channels=hbp.num_channels(opDataSelection),
+            min_block_size=hbp.min_block_size(opFeatureSelection),
+            compute_in_2d=hbp.compute_in_2d(opFeatureSelection),
+            workflow=self._hbp_category,
+        )
 
         try:
-            file_response = requests.post(
-                ilastik.config.cfg["hbp"]["upload_file_url"],
-                data=data,
-                headers={
-                    "Authorization": f"Token {token}",
-                    "Content-Disposition": f'attachment; filename="{filename}"',
-                },
-                timeout=10,
-            )
-            file_response.raise_for_status()
-            file_json = file_response.json()
-
-            project_response = requests.post(
-                ilastik.config.cfg["hbp"]["create_project_url"],
-                json={
-                    "file": file_json["url"],
-                    "workflow": topLevelOperator.parent.workflowName,
-                    "num_channels": num_channels,
-                    "min_block_size_z": 0 if compute_in_2d else min_block_size,
-                    "min_block_size_y": min_block_size,
-                    "min_block_size_x": min_block_size,
-                },
-                headers={"Authorization": f"Token {token}"},
-                timeout=10,
-            )
-            project_response.raise_for_status()
-            project_json = project_response.json()
-
-            webbrowser.open_new_tab(project_json["html_url"])
-
-        except requests.exceptions.RequestException as e:
-            QMessageBox.critical(self, "Network Error", str(e))
+            webpage_url = hbp.send_payload(payload)
+            webbrowser.open(webpage_url)
+        except Exception as e:
+            QMessageBox.critical(self, "Exception", f"<pre>{e}</pre>")
 
     def run_export(self):
         role_names = self.parentApplet.dataSelectionApplet.topLevelOperator.DatasetRoles.value
