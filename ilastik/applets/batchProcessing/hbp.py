@@ -109,7 +109,7 @@ def partial_copy(
 
 def serialize_project_file(project_file: h5py.File, *, include_local_data: bool = False) -> bytes:
     """Convert project file into byte representation."""
-    skip_prefix = "Input Data/local_data" if include_local_data else None
+    skip_prefix = None if include_local_data else "Input Data/local_data"
     with io.BytesIO() as buf:
         with h5py.File(buf) as dest:
             project_file.visititems(functools.partial(partial_copy, dest=dest, skip_prefix=skip_prefix))
