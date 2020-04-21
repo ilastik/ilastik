@@ -58,12 +58,7 @@ class Project:
 
     @property
     def local_data_group(self) -> h5py.Group:
-        if "Input Data" not in self.file.keys():
-            self.file.create_group("Input Data")
-        input_data_group = self.file["Input Data"]
-        if "local_data" not in input_data_group:
-            input_data_group.create_group("local_data")
-        return input_data_group["local_data"]
+        return self.file.require_group("Input Data/local_data")
 
     def close(self):
         self.file.close()

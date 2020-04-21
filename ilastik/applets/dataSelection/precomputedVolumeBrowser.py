@@ -7,11 +7,12 @@ Todos:
   - check whether can me somehow merged with dvidDataSelctionBrowser
 
 """
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from urllib.parse import urljoin
 from pathlib import Path
 import os
 import json
+from fs.base import FS
 from PyQt5.QtWidgets import (
     QComboBox,
     QDialog,
@@ -101,7 +102,7 @@ class PrecomputedVolumeBrowser(QDialog):
 
     def resetVolume(self):
         self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)
-        self.debug_text.setText("")
+        self.debug_text.clear()
         self.scale_combo.clear()
         self.base_url = None
 
@@ -115,19 +116,32 @@ class PrecomputedVolumeBrowser(QDialog):
         else:
             return "precomputed://" + url
 
+    def deduce_info_path(self) -> Tuple[FS, Path, str]:
+        url = self.combo.currentText()
+        filesystem, path = get_filesystem_for(url=url)
+        if path.name == "info":
+            return filesystem, path, ""
+        info_path = path / "info"
+        if filesystem.exists(info_path.as_posix()):
+            return filesystem, info_path, ""
+        info_path = path.parent / "info"
+        if filesystem.exists(info_path.as_posix()):
+            return filesystem, info_path, path.name
+        raise ValueError(f"Could not find a volume at {url}")
+
     def handle_chk_button_clicked(self, event):
         try:
-            filesystem, path = get_filesystem_for(url=self.combo.currentText())
-            if 'info' in path.parts:
-                info_idx = path.parts.index('info')
-                path = Path(os.path.join(*path.parts[:info_idx + 1]))
+            filesystem, info_path, scale_name = self.deduce_info_path()
+            info = PrecomputedChunksInfo.load(path=info_path, filesystem=filesystem)
+            self.base_url = filesystem.geturl(info_path.parent.as_posix())
+            scale_names = [scale.key for scale in info.scales]
+            self.scale_combo.addItems(scale_names)
+            if scale_name:
+                if scale_name not in scale_names:
+                    raise ValueError(f"The scale named '{scale_name}' does not exist in the volume")
+                self.scale_combo.setCurrentText(scale_name)
             else:
-                path = path / "info"
-            info = PrecomputedChunksInfo.load(path=path, filesystem=filesystem)
-            self.base_url = filesystem.geturl(path.parent.as_posix())
-            for scale in info.scales:
-                self.scale_combo.addItem(scale.key)
-            self.scale_combo.setCurrentIndex(0)
+                self.scale_combo.setCurrentIndex(0)
             scale_display_infos : List[str] = [json.dumps(scale.to_json_data(), indent=4) for scale in info.scales]
             self.debug_text.setText("\n".join(scale_display_infos))
             self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(True)

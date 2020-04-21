@@ -77,7 +77,10 @@ class HttpPyFs(FS):
     def _head_object(self, path: str) -> Dict:
         full_path = self._make_full_path(path)
         resp = requests.head(full_path)
-        resp.raise_for_status()
+        if not resp.ok:
+            if resp.status_code == 404:
+                raise ResourceNotFound(path)
+            resp.raise_for_status()
         return resp.headers
 
     def _get_type(self, path: str) -> ResourceType:
