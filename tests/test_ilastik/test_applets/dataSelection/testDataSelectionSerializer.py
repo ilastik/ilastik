@@ -32,7 +32,7 @@ from ilastik.applets.dataSelection.opDataSelection import (
     DatasetInfo,
     ProjectInternalDatasetInfo,
 )
-from ilastik.applets.dataSelection.opDataSelection import ProjectInternalDatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import ProjectInternalDatasetInfo, FilesystemDatasetInfo
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 
 
@@ -57,8 +57,9 @@ def serializer(empty_project_file, graph):
 
 @pytest.fixture
 def internal_datasetinfo(serializer, png_image) -> ProjectInternalDatasetInfo:
-    inner_path = serializer.importStackAsLocalDataset([str(png_image)])
     project_file = serializer.topLevelOperator.ProjectFile.value
+    filesystem_info = FilesystemDatasetInfo(filePath=png_image.as_posix())
+    inner_path = filesystem_info.importAsLocalDataset(project_file=project_file)
     info = ProjectInternalDatasetInfo(inner_path=inner_path, project_file=project_file)
     return info
 

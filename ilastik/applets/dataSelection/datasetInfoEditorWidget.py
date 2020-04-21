@@ -45,6 +45,7 @@ from .opDataSelection import (
     ProjectInternalDatasetInfo,
     FilesystemDatasetInfo,
     RelativeFilesystemDatasetInfo,
+    UrlDatasetInfo,
 )
 
 import logging
@@ -236,23 +237,27 @@ class DatasetInfoEditorWidget(QDialog):
     def accept(self):
         normalize = self.get_new_normalization()
         new_drange = self.get_new_drange()
-        new_internal_path = self.internalDatasetNameComboBox.currentText()
+        project_file = self.serializer.topLevelOperator.ProjectFile.value
 
         self.edited_infos = []
         for info in self.current_infos:
             new_display_mode = self.displayModeComboBox.currentData() or info.display_mode
             new_info_class = self.storageComboBox.currentData() or info.__class__
             if new_info_class == ProjectInternalDatasetInfo:
-                project_inner_path = getattr(info, "inner_path", None) or self.serializer.importStackAsLocalDataset(
-                    abs_paths=info.expanded_paths, sequence_axis=info.sequence_axis
+                project_inner_path = info.importAsLocalDataset(project_file=project_file)
+                info_constructor = partial(
+                    ProjectInternalDatasetInfo,
+                    inner_path=project_inner_path,
+                    project_file=project_file,
                 )
-                info_constructor = partial(ProjectInternalDatasetInfo, inner_path=project_inner_path)
+            elif new_info_class == UrlDatasetInfo:
+                info_constructor = partial(UrlDatasetInfo, url=info.url)
             else:
+                new_internal_path = self.internalDatasetNameComboBox.currentText()
                 if new_internal_path:
-                    new_full_paths = [Path(ep) / new_internal_path[1:] for ep in info.external_paths]
+                    filePath = os.path.pathsep.join(Path(ep) / new_internal_path.lstrip("/") for ep in info.external_paths)
                 else:
-                    new_full_paths = info.expanded_paths
-                filePath = os.path.pathsep.join(str(path) for path in new_full_paths)
+                    filePath = info.effective_path
 
                 if new_internal_path and {new_internal_path} != set(info.internal_paths):
                     edited_info = RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
@@ -262,10 +267,12 @@ class DatasetInfoEditorWidget(QDialog):
                     continue
 
                 info_constructor = partial(
-                    new_info_class, filePath=filePath, sequence_axis=getattr(info, "sequence_axis")
+                    new_info_class,
+                    filePath=filePath,
+                    sequence_axis=getattr(info, "sequence_axis"),
+                    project_file=project_file,
                 )
             edited_info = info_constructor(
-                project_file=self.serializer.topLevelOperator.ProjectFile.value,
                 nickname=self.nicknameEdit.text() if self.nicknameEdit.isEnabled() else info.nickname,
                 axistags=self.get_new_axes_tags() or info.axistags,
                 normalizeDisplay=info.normalizeDisplay if normalize is None else normalize,

@@ -23,7 +23,7 @@ import glob
 import os
 import uuid
 from enum import Enum, unique
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional, Callable
 from numbers import Number
 import re
 from pathlib import Path
@@ -43,10 +43,12 @@ from lazyflow.operators.valueProviders import OpMetadataInjector
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from ilastik.applets.base.applet import DatasetConstraintError
 
+from ilastik import Project
 from ilastik.utility import OpMultiLaneWrapper
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents
 from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.operators.ioOperators import OpH5N5WriterBigDataset
 from lazyflow.graph import Graph, Operator
 
 
@@ -277,6 +279,36 @@ class DatasetInfo(ABC):
     def __str__(self):
         return str(self.__dict__)
 
+    def importAsLocalDataset(
+        self, project_file: h5py.File, progress_signal: Callable[[int], None] = lambda x: None
+    ) -> str:
+        progress_signal(0)
+        try:
+            graph = Graph()
+            project = Project(project_file)
+            inner_path = os.path.join(project.local_data_group.name, self.legacy_datasetId)
+            if project_file.get(inner_path) is not None:
+                return inner_path
+            op_writer = OpH5N5WriterBigDataset(
+                graph=graph,
+                h5N5File=project_file,
+                h5N5Path=inner_path,
+                CompressionEnabled=False,
+                BatchSize=1,
+                Image=self.get_provider_slot(graph=graph),
+            )
+            op_writer.progressSignal.subscribe(progress_signal)
+            success = op_writer.WriteImage.value
+            dataset = project_file[inner_path]
+            for index, key in enumerate(self.axiskeys):
+                dataset.dims[index].label = key
+            dataset.attrs["axistags"] = self.axistags.toJSON()
+            if self.drange:
+                dataset.attrs["drange"] = self.drange
+            return inner_path
+        finally:
+            progress_signal(100)
+
 
 class ProjectInternalDatasetInfo(DatasetInfo):
     def __init__(self, *, inner_path: str, project_file: h5py.File, nickname: str = "", **info_kwargs):
@@ -333,8 +365,8 @@ class ProjectInternalDatasetInfo(DatasetInfo):
     def display_string(self) -> str:
         return "Project Internal: " + self.inner_path
 
-    def get_provider_slot(self, parent: Operator):
-        opReader = OpStreamingH5N5Reader(parent=parent)
+    def get_provider_slot(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
+        opReader = OpStreamingH5N5Reader(parent=parent, graph=graph)
         opReader.H5N5File.setValue(self.project_file)
         opReader.InternalPath.setValue(self.inner_path)
         return opReader.OutputImage
@@ -378,8 +410,8 @@ class PreloadedArrayDatasetInfo(DatasetInfo):
     def display_string(self) -> str:
         return "Preloaded Array"
 
-    def get_provider_slot(self, parent: Operator) -> OutputSlot:
-        opReader = OpArrayPiper(parent=parent)
+    def get_provider_slot(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
+        opReader = OpArrayPiper(parent=parent, graph=graph)
         opReader.Input.setValue(self.preloaded_array)
         return opReader.Output
 
@@ -405,8 +437,8 @@ class UrlDatasetInfo(DatasetInfo):
     def effective_path(self) -> str:
         return self.url
 
-    def get_provider_slot(self, parent):
-        op_reader = OpInputDataReader(parent=parent, FilePath=self.url)
+    def get_provider_slot(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
+        op_reader = OpInputDataReader(parent=parent, graph=graph, FilePath=self.url)
         return op_reader.Output
 
     @property
@@ -470,9 +502,9 @@ class FilesystemDatasetInfo(DatasetInfo):
         first_external_path = PathComponents(self.filePath.split(os.path.pathsep)[0]).externalPath
         return Path(first_external_path).parent
 
-    def get_provider_slot(self, parent: Operator):
+    def get_provider_slot(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None):
         op_reader = OpInputDataReader(
-            parent=parent, WorkingDirectory=self.base_dir, FilePath=self.filePath, SequenceAxis=self.sequence_axis
+            parent=parent, graph=graph, WorkingDirectory=self.base_dir, FilePath=self.filePath, SequenceAxis=self.sequence_axis
         )
         return op_reader.Output
 
