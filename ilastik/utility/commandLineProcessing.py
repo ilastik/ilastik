@@ -26,6 +26,27 @@ import argparse
 import json
 
 
+def str2bool(some_string: str) -> bool:
+    """Helper function to convert a string to a boolean
+
+    Args:
+        some_string: typically an argument supplied to a command line option
+
+    Returns:
+        bool: result follows the `configparser` convention
+
+    Raises:
+        ValueError: Description
+    """
+    t = some_string.strip().lower()
+    if t in {"false", "0", "no", "off"}:
+        return False
+    if t in {"true", "1", "yes", "on"}:
+        return True
+
+    raise ValueError(f"{some_string!r} cannot be converted to bool")
+
+
 def convertStringToList(some_string):
     """Helper function in order to parse lists encoded as strings
 
