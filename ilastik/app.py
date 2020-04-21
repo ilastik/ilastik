@@ -27,6 +27,7 @@ from typing import List, Optional, Sequence, Tuple
 
 import ilastik.config
 from ilastik.config import cfg as ilastik_config
+from ilastik.utility.commandLineProcessing import str2bool
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +39,14 @@ def _argparser() -> argparse.ArgumentParser:
     ap.add_argument("--project", help="A project file to open on startup.")
     ap.add_argument(
         "--readonly",
-        help="Open all projects in read-only mode, to ensure you don't " "accidentally make changes.",
-        action="store_true",
+        nargs="?",
+        default=None,
+        const="true",
+        type=str2bool,
+        help=(
+            "Open all projects in read-only mode, to ensure you don't accidentally make changes. "
+            "Per default projects are opened with read access in GUI mode, without read access in headless mode."
+        ),
     )
     ap.add_argument(
         "--new_project", help="Create a new project with the specified name. Must also specify " "--workflow."
@@ -352,6 +359,10 @@ def _prepare_auto_open_project(parsed_args):
     parsed_args.project = os.path.expanduser(parsed_args.project)
     # convert path to convenient format
     path = PathComponents(parsed_args.project).totalPath()
+
+    # readonly
+    if parsed_args.readonly is None:
+        parsed_args.readonly = parsed_args.headless
 
     def loadProject(shell):
         # This should work for both the IlastikShell and the HeadlessShell
