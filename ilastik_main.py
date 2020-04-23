@@ -7,7 +7,7 @@ from typing import List, Optional, Sequence, Tuple
 
 import ilastik.config
 from ilastik.config import cfg as ilastik_config
-from ilastik.utility.commandLineProcessing import str2bool
+from ilastik.utility.commandLineProcessing import OptionalFlagAction
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +19,8 @@ def _argparser() -> argparse.ArgumentParser:
     ap.add_argument("--project", help="A project file to open on startup.")
     ap.add_argument(
         "--readonly",
-        nargs="?",
-        default=None,
-        const="true",
-        type=str2bool,
+        action=OptionalFlagAction,
+        const=True,
         help=(
             "Open all projects in read-only mode, to ensure you don't accidentally make changes. "
             "Per default projects are opened with read access in GUI mode, without read access in headless mode."
