@@ -19,32 +19,50 @@
 # This information is also available on the ilastik web site at:
 #                 http://ilastik.org/license/
 ###############################################################################
-"""
-Some tools and helpers for command line processing
-"""
+
+"""Some tools and helpers for command line processing."""
+
 import argparse
+import configparser
 import json
 
 
-def str2bool(some_string: str) -> bool:
-    """Helper function to convert a string to a boolean
+class OptionalFlagAction(argparse.Action):
+    """Similar to store_true or store_false actions, but also allows an optional argument.
 
-    Args:
-        some_string: typically an argument supplied to a command line option
+    This action is typically used with ``default`` and ``const`` in :meth:`argparse.ArgumentParser.add_argument`.
+      * If the option is not supplied, value of ``default`` will be used (usually left out since it is None by default).
+      * If the option is supplied without an argument, value of ``const`` will be used (usually True or False).
+      * If the option is supplied with an argument, that argument will be converted to boolean.
 
-    Returns:
-        bool: result follows the `configparser` convention
-
-    Raises:
-        ValueError: Description
+    Valid arguments are the same as in :meth:`configparser.ConfigParser.getboolean`.
     """
-    t = some_string.strip().lower()
-    if t in {"false", "0", "no", "off"}:
-        return False
-    if t in {"true", "1", "yes", "on"}:
-        return True
 
-    raise ValueError(f"{some_string!r} cannot be converted to bool")
+    def __init__(self, nargs=argparse.OPTIONAL, **kwargs):
+        if nargs != argparse.OPTIONAL:
+            raise ValueError(f"action {self.__class__.__name__} can only be used with nargs={argparse.OPTIONAL!r}")
+
+        if not isinstance(kwargs.get("const"), bool):
+            raise ValueError(f"action {self.__class__.__name__} can only be used with const=True or const=False")
+
+        super().__init__(nargs=nargs, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        if values is None:
+            value = self.default
+
+        elif isinstance(values, bool):
+            value = values
+
+        else:
+            states = configparser.ConfigParser.BOOLEAN_STATES
+            try:
+                value = states[str(values).lower()]
+            except KeyError:
+                parser.error(f"invalid value {values!r} for {option_string}; try one of: {', '.join(states)}")
+                return
+
+        setattr(namespace, self.dest, value)
 
 
 def convertStringToList(some_string):
@@ -100,18 +118,3 @@ class ParseListFromString(argparse.Action):
             raise argparse.ArgumentError(self, str(e))
 
         setattr(namespace, self.dest, parsed)
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("this", action=ParseListFromString)
-    args = parser.parse_args(["[0, 1]"])
-    print(args)
-    assert isinstance(args.this, list)
-
-    args = parser.parse_args(["(0, 1)"])
-    print(args)
-    assert isinstance(args.this, list)
-
-    # this will raise
-    args = parser.parse_args(["(0, 1"])
