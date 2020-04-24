@@ -13,8 +13,10 @@ from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.dataSelection.opDataSelection import (
     DatasetInfo,
     FilesystemDatasetInfo,
+    UrlDatasetInfo,
     OpMultiLaneDataSelectionGroup,
 )
+from lazyflow.utility import isUrl
 
 logger = logging.getLogger(__name__)  # noqa
 
@@ -53,7 +55,7 @@ class BatchProcessingApplet(Applet):
 
     def parse_known_cmdline_args(self, cmdline_args):
         # We use the same parser as the DataSelectionApplet
-        parsed_args, unused_args = DataSelectionApplet.parse_known_cmdline_args(cmdline_args, self.role_names)
+        parsed_args, unused_args = DataSelectionApplet.parse_known_cmdline_args(cmdline_args, self.opDataSelection.role_names)
         return parsed_args, unused_args
 
     def run_export_from_parsed_args(self, parsed_args):
@@ -123,20 +125,10 @@ class BatchProcessingApplet(Applet):
         finally:
             self.progressSignal(100)
 
-    def get_previous_axes_tags(self) -> List[Optional[AxisTags]]:
-        if self.num_lanes == 0:
-            return [None] * len(self.role_names)
-
-        infos = []
-        for role_index, _ in enumerate(self.role_names):
-            info_slot = self.dataSelectionApplet.topLevelOperator.DatasetGroup[self.num_lanes - 1][role_index]
-            infos.append(info_slot.value.axistags if info_slot.ready() else None)
-        return infos
-
     def export_dataset(
         self,
         role_inputs: List[Union[str, DatasetInfo]],
-        input_axes: Optional[str] = None,
+        input_axes: Union[None, str, List[str]] = None,
         export_to_array: bool = False,
         sequence_axis: Optional[str] = None,
         progress_callback: Optional[Callable[[int], None]] = None,
@@ -144,35 +136,38 @@ class BatchProcessingApplet(Applet):
         """
         Configures a lane using the paths specified in the paths from role_inputs and runs the workflow.
         """
-        progress_callback = progress_callback or self.progressSignal
-        original_num_lanes = self.num_lanes
-        previous_axes_tags = self.get_previous_axes_tags()
+        role_names = self.opDataSelection.role_names
+        if not input_axes:
+            roles_axiskeys = list(self.opDataSelection.get_last_axes_keys().values())
+        elif isinstance(input_axes, str):
+            roles_axiskeys = [input_axes] * len(role_names)
+        else:
+            if len(input_axes) != role_names:
+                raise ValueError(f"Mismatching input_axes and role lengtsh: roles: {role_names} axes: {input_axes}")
+            roles_axiskeys = input_axes
+        info_tags = [keys if keys is None else vigra.defaultAxistags(keys) for keys in roles_axiskeys]
         # Call customization hook
         self.dataExportApplet.prepare_for_entire_export()
-        # Add a lane to the end of the workflow for batch processing
-        # (Expanding OpDataSelection by one has the effect of expanding the whole workflow.)
-        self.dataSelectionApplet.topLevelOperator.addLane(self.num_lanes)
-        batch_lane = self.dataSelectionApplet.topLevelOperator.getLane(self.num_lanes - 1)
+        role_infos : Dict[str, DatasetInfo] = {}
+        for role_name, role_input, role_axis_tags in zip(role_names, role_inputs, info_tags):
+            if isinstance(role_input, (type(None), DatasetInfo)):
+                role_infos[role_name] = role_input
+            elif isUrl(role_input):
+                role_infos[role_name] = UrlDatasetInfo(url=role_input, axistags=role_axis_tags)
+            else:
+                role_infos[role_name] = FilesystemDatasetInfo(
+                    filePath=role_input,
+                    project_file=None,
+                    axistags=role_axis_tags,
+                    sequence_axis=sequence_axis,
+                    guess_tags_for_singleton_axes=True,  # FIXME: add cmd line param to negate this
+                )
+        self.opDataSelection.pushLane(role_infos)
         try:
-            for role_index, (role_input, role_axis_tags) in enumerate(zip(role_inputs, previous_axes_tags)):
-                if not role_input:
-                    continue
-                if isinstance(role_input, DatasetInfo):
-                    role_info = role_input
-                else:
-                    role_info = FilesystemDatasetInfo(
-                        filePath=role_input,
-                        project_file=None,
-                        axistags=vigra.defaultAxistags(input_axes) if input_axes else role_axis_tags,
-                        sequence_axis=sequence_axis,
-                        guess_tags_for_singleton_axes=True,  # FIXME: add cmd line param to negate this
-                    )
-                batch_lane.DatasetGroup[role_index].setValue(role_info)
-            self.workflow().handleNewLanesAdded()
             # Call customization hook
-            self.dataExportApplet.prepare_lane_for_export(self.num_lanes - 1)
-            opDataExport = self.dataExportApplet.topLevelOperator.getLane(self.num_lanes - 1)
-            opDataExport.progressSignal.subscribe(progress_callback)
+            self.dataExportApplet.prepare_lane_for_export(self.opDataSelection.num_lanes - 1)
+            opDataExport = self.dataExportApplet.topLevelOperator.getLane(self.opDataSelection.num_lanes - 1)
+            opDataExport.progressSignal.subscribe(progress_callback or self.progressSignal)
             if export_to_array:
                 logger.info("Exporting to in-memory array.")
                 result = opDataExport.run_export_to_array()
@@ -182,15 +177,11 @@ class BatchProcessingApplet(Applet):
                 result = opDataExport.ExportPath.value
 
             # Call customization hook
-            self.dataExportApplet.post_process_lane_export(self.num_lanes - 1)
+            self.dataExportApplet.post_process_lane_export(self.opDataSelection.num_lanes - 1)
             return result
         finally:
-            self.dataSelectionApplet.topLevelOperator.removeLane(original_num_lanes, original_num_lanes)
+            self.opDataSelection.popLane()
 
     @property
-    def num_lanes(self) -> int:
-        return len(self.dataSelectionApplet.topLevelOperator.DatasetGroup)
-
-    @property
-    def role_names(self) -> List[str]:
-        return self.dataSelectionApplet.topLevelOperator.DatasetRoles.value
+    def opDataSelection(self) -> OpMultiLaneDataSelectionGroup:
+        return self.dataSelectionApplet.topLevelOperator
