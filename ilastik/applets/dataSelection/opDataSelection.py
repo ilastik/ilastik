@@ -23,7 +23,7 @@ import glob
 import os
 import uuid
 from enum import Enum, unique
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional, Union
 from numbers import Number
 import re
 from pathlib import Path
@@ -44,6 +44,7 @@ from lazyflow.operators.opArrayPiper import OpArrayPiper
 from ilastik.applets.base.applet import DatasetConstraintError
 
 from ilastik.utility import OpMultiLaneWrapper
+from ilastik.workflow import Workflow
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents
 from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -93,6 +94,7 @@ class DatasetInfo(ABC):
         self.display_mode = display_mode  # choices: default, grayscale, rgba, random-colortable, binary-mask.
         self.nickname = nickname
         self.normalizeDisplay = (self.drange is not None) if normalizeDisplay is None else normalizeDisplay
+        self.default_tags = default_tags
         self.axistags = axistags or default_tags
         if len(self.axistags) != len(self.laneShape):
             if not guess_tags_for_singleton_axes:
@@ -829,6 +831,25 @@ class OpDataSelectionGroup(Operator):
 
         self.DatasetRoles.notifyReady(handleNewRoles)
 
+    @property
+    def role_names(self) -> List[str]:
+        return self.DatasetRoles.value
+
+    def get_role_info_slot(self, role: Union[str, int]) -> InputSlot:
+        role_index = role if isinstance(role, int) else self.role_name.index(role)
+        return self.DatasetGroup[role_index]
+
+    def get_dataset_info(self, role: Union[str, int]) -> Optional[DatasetInfo]:
+        slot = self.get_role_info_slot(role)
+        if not slot.ready():
+            return None
+        return slot.value
+
+    def configure(self, infos: Dict[str, DatasetInfo]):
+        for role_index, role_name in enumerate(self.role_names):
+            if role_name in infos:
+                self.DatasetGroup[role_index].setValue(infos[role_name])
+
     def setupOutputs(self):
         # Create internal operators
         if self.DatasetRoles.value != self._roles:
@@ -924,9 +945,54 @@ class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):
         # We might be called from within the context of our own insertSlot signal.
         if numLanes == laneIndex:
             super(OpMultiLaneDataSelectionGroup, self).addLane(laneIndex)
+        return self.getLane(laneIndex)
 
     def removeLane(self, laneIndex, finalLength):
         """Reimplemented from base class."""
         numLanes = len(self.innerOperators)
         if numLanes > finalLength:
             super(OpMultiLaneDataSelectionGroup, self).removeLane(laneIndex, finalLength)
+
+    @property
+    def workflow(self) -> Workflow:
+        return self.parent
+
+    @property
+    def role_names(self) -> List[str]:
+        return self.DatasetRoles.value
+
+    def pushLane(self, role_infos: Dict[str, DatasetInfo]):
+        original_num_lanes = self.num_lanes
+        try:
+            lane = self.addLane(self.num_lanes)
+            lane.configure(infos=role_infos)
+            self.workflow.handleNewLanesAdded()
+        except Exception as e:
+            self.removeLane(original_num_lanes, original_num_lanes)
+            raise e
+
+    def popLane(self):
+        self.removeLane(self.num_lanes -1, self.num_lanes - 1)
+
+    @property
+    def num_lanes(self) -> int:
+        return len(self.innerOperators)
+
+    def get_lane(self, lane_idx: int) -> OpDataSelectionGroup:
+        return self.innerOperators[lane_idx]
+
+    def get_role_info(self, lane_idx: int, role: str) -> Optional[DatasetInfo]:
+        info_slot = self.DatasetGroup[lane_idx][self.role_names.index(role)]
+        return info_slot.value if info_slot.ready() else None
+
+    def get_last_axes_keys(self) -> Dict[str, Optional[AxisTags]]:
+        if self.num_lanes == 0:
+            return {role_name: None for role_name in self.role_names}
+
+        lane_idx = self.num_lanes - 1
+        last_axes_keys : Dict[str, Optional[AxisTags]] = {}
+        for role_name in self.role_names:
+            info = self.get_role_info(self.num_lanes - 1, role_name)
+            keys = info.axiskeys if info else None
+            last_axes_keys[role_name] = keys
+        return last_axes_keys

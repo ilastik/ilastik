@@ -24,7 +24,8 @@ from __future__ import absolute_import
 import os
 import re
 from pathlib import Path
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Union, Optional
+from vigra import AxisTags
 import threading
 import h5py
 from functools import partial
@@ -571,12 +572,36 @@ class DataSelectionGui(QWidget):
             self._add_default_inner_path(roleIndex=roleIndex, inner_path=selected_dataset)
             data_path = data_path / re.sub("^/", "", selected_dataset)
 
-        return RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
+        return self.instantiate_dataset_info(
+            role=roleIndex,
+            info_creator=RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute,
             filePath=data_path.as_posix(),
             project_file=self.project_file,
             allowLabels=(self.guiMode == GuiMode.Normal),
             subvolume_roi=roi,
         )
+
+    def guess_axistags_for(self, role: Union[str, int], info: DatasetInfo) -> Optional[AxisTags]:
+        if self.topLevelOperator.num_lanes == 0:
+            return info.axistags
+        lane = self.topLevelOperator.getLane(-1)
+        previous_info = lane.get_dataset_info(role)
+        if previous_info is None or previous_info.default_tags == previous_info.axistags:
+            return info.axistags
+        if previous_info.__class__ != info.__class__ or len(previous_info.axiskeys) != len(info.axiskeys):
+            return info.axistags
+        if Path(previous_info.effective_path).suffix == Path(info.effective_path).suffix:
+            return previous_info.axistags
+        return info.axistags
+
+    def instantiate_dataset_info(self, role: Union[str, int], info_creator, *info_args, **info_kwargs) -> DatasetInfo:
+        info = info_creator(*info_args, **info_kwargs)
+        if info_kwargs.get("axistags") is not None:
+            return info
+        axistags = self.guess_axistags_for(role=role, info=info)
+        if axistags is None:
+            return info
+        return info_creator(*info_args, **info_kwargs, axistags=axistags)
 
     def _checkDataFormatWarnings(self, roleIndex, startingLaneNum, endingLane):
         warn_needed = False
