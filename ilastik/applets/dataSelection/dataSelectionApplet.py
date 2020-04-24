@@ -27,12 +27,13 @@ import glob
 import argparse
 import collections
 import logging
-from typing import List
+from typing import List, Dict, Optional
 
 logger = logging.getLogger(__name__)  # noqa
 
 import vigra
 from lazyflow.utility import PathComponents, isUrl
+from ilastik.utility.commandLineProcessing import parse_axiskeys
 from ilastik.applets.base.applet import Applet
 from .opDataSelection import OpMultiLaneDataSelectionGroup, FilesystemDatasetInfo
 from .dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
@@ -160,7 +161,23 @@ class DataSelectionApplet(Applet):
             action="store_true",
             default=False,
         )
-        arg_parser.add_argument("--input_axes", help="Explicitly specify the axes of your dataset.", required=False)
+
+        def parse_input_axes(raw_input_axes: str) -> List[Optional[vigra.AxisTags]]:
+            input_axes = raw_input_axes.split(",")
+            if len(input_axes) == 1:
+                input_axes = input_axes * len(role_names)
+            if len(input_axes) != len(role_names):
+                raise ValueError(f"Mismatching input_axes and role lengtsh: roles: {role_names} axes: {input_axes}")
+            return [parse_axiskeys(keys) for keys in input_axes]
+
+        arg_parser.add_argument(
+            "--input_axes",
+            help="Explicitly specify the axes of your dataset.",
+            required=False,
+            type=parse_input_axes,
+            default=[None] * len(role_names)
+        )
+
         arg_parser.add_argument("--stack_along", help="Sequence axis along which to stack", type=str, default="z")
         return arg_parser
 
@@ -191,8 +208,8 @@ class DataSelectionApplet(Applet):
     def _role_name_to_arg_name(role_name):
         return role_name.lower().replace(" ", "_").replace("-", "_")
 
-    def role_paths_from_parsed_args(self, parsed_args):
-        role_names = self.topLevelOperator.DatasetRoles.value
+    def role_paths_from_parsed_args(self, parsed_args) -> Dict[str, List[Optional[str]]]:
+        role_names = self.topLevelOperator.role_names
         role_paths = collections.OrderedDict()
         for role_index, role_name in enumerate(role_names):
             arg_name = self._role_name_to_arg_name(role_name)

@@ -60,6 +60,11 @@ class BatchProcessingApplet(Applet):
         # We use the same parser as the DataSelectionApplet
         parser = DataSelectionApplet.get_arg_parser(self.opDataSelection.role_names)
         parser.add_argument(
+            "--no-axes-guessing",
+            help="Do not use training data to guess axis on headless inputs. Can default to file axis conventions",
+            action="store_true",
+        )
+        parser.add_argument(
             "--distributed",
             help="Distributed mode. Used for running ilastik on HPCs via SLURM/srun/mpirun",
             action="store_true",
@@ -84,9 +89,20 @@ class BatchProcessingApplet(Applet):
             export_function = self.do_normal_export
 
         role_path_dict = self.dataSelectionApplet.role_paths_from_parsed_args(parsed_args)
+        input_axes = parsed_args.input_axes
+        if not input_axes or not any(input_axes):
+            if parsed_args.no_axes_guessing or self.opDataSelection.num_lanes == 0:
+                input_axes = [None] * len(role_path_dict)
+                logger.info(f"Using axistags from input files")
+            else:
+                input_axes = list(self.opDataSelection.get_lane(-1).get_axistags().values())
+                logger.info(f"Using axistags from previous lane: {input_axes}")
+        else:
+            logger.info(f"Forcing input axes to {input_axes}")
+
         return self.run_export(
             role_path_dict,
-            input_axes=parsed_args.input_axes,
+            input_axes=input_axes,
             sequence_axis=parsed_args.stack_along,
             export_function=export_function,
         )
@@ -94,7 +110,7 @@ class BatchProcessingApplet(Applet):
     def run_export(
         self,
         role_data_dict: Mapping[Hashable, Iterable[Union[str, DatasetInfo]]],
-        input_axes: Optional[str] = None,
+        input_axes: List[Optional[AxisTags]],
         export_to_array: bool = False,
         sequence_axis: Optional[str] = None,
         export_function: Optional[Callable] = None,
@@ -170,8 +186,8 @@ class BatchProcessingApplet(Applet):
     def export_dataset(
         self,
         role_inputs: List[Union[str, DatasetInfo]],
+        input_axes: List[Optional[AxisTags]],
         export_function: Callable = None,
-        input_axes: Union[None, str, List[str]] = None,
         sequence_axis: Optional[str] = None,
         progress_callback: Optional[Callable[[int], None]] = None,
     ) -> Union[str, numpy.array]:
@@ -180,20 +196,11 @@ class BatchProcessingApplet(Applet):
         """
         export_function = export_function or self.do_normal_export
         role_names = self.opDataSelection.role_names
-        if not input_axes:
-            roles_axiskeys = list(self.opDataSelection.get_last_axes_keys().values())
-        elif isinstance(input_axes, str):
-            roles_axiskeys = [input_axes] * len(role_names)
-        else:
-            if len(input_axes) != role_names:
-                raise ValueError(f"Mismatching input_axes and role lengtsh: roles: {role_names} axes: {input_axes}")
-            roles_axiskeys = input_axes
-        info_tags = [keys if keys is None else vigra.defaultAxistags(keys) for keys in roles_axiskeys]
 
         # Call customization hook
         self.dataExportApplet.prepare_for_entire_export()
         role_infos : Dict[str, DatasetInfo] = {}
-        for role_name, role_input, role_axis_tags in zip(role_names, role_inputs, info_tags):
+        for role_name, role_input, role_axis_tags in zip(role_names, role_inputs, input_axes):
             if isinstance(role_input, (type(None), DatasetInfo)):
                 role_infos[role_name] = role_input
             elif isUrl(role_input):

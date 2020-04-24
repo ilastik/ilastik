@@ -339,7 +339,8 @@ class BatchProcessingGui(QTabWidget):
                 )
 
         # Run the export in a separate thread
-        export_req = Request(partial(self.parentApplet.run_export, role_path_dict))
+        input_axes = list(self.parentApplet.opDataSelection.get_lane(-1).get_axistags().values())
+        export_req = Request(partial(self.parentApplet.run_export, role_path_dict, input_axes=input_axes))
         export_req.notify_failed(self.handle_batch_processing_failure)
         export_req.notify_finished(self.handle_batch_processing_finished)
         export_req.notify_cancelled(self.handle_batch_processing_cancelled)

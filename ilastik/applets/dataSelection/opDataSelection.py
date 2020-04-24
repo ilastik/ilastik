@@ -97,25 +97,7 @@ class DatasetInfo(ABC):
         self.default_tags = default_tags
         self.axistags = axistags or default_tags
         if len(self.axistags) != len(self.laneShape):
-            if not guess_tags_for_singleton_axes:
-                raise UnsuitedAxistagsException(self.axistags, self.laneShape)
-            default_keys = [tag.key for tag in default_tags]
-            tagged_shape = dict(zip(default_keys, self.laneShape))
-            squeezed_shape = {k: v for k, v in tagged_shape.items() if v != 1}
-            requested_keys = [tag.key for tag in axistags]
-            if set(requested_keys).issubset(set(default_keys)) and set(default_keys) - set(requested_keys) == set("c"):
-                self.axistags = default_tags  # allow missing 'c' in axistags; not sure if this is a good idea
-            elif len(requested_keys) == len(squeezed_shape):
-                dummy_axes = [key for key in "ctzxy" if key not in requested_keys]
-                out_axes = ""
-                for k, v in tagged_shape.items():
-                    if v > 1:
-                        out_axes += requested_keys.pop(0)
-                    else:
-                        out_axes += dummy_axes.pop(0)
-                self.axistags = vigra.defaultAxistags(out_axes)
-            else:
-                raise UnsuitedAxistagsException(requested_keys, self.laneShape)
+            raise UnsuitedAxistagsException(self.axistags, self.laneShape)
         self.legacy_datasetId = self.generate_id()
 
     @abstractproperty
@@ -836,7 +818,7 @@ class OpDataSelectionGroup(Operator):
         return self.DatasetRoles.value
 
     def get_role_info_slot(self, role: Union[str, int]) -> InputSlot:
-        role_index = role if isinstance(role, int) else self.role_name.index(role)
+        role_index = role if isinstance(role, int) else self.role_names.index(role)
         return self.DatasetGroup[role_index]
 
     def get_dataset_info(self, role: Union[str, int]) -> Optional[DatasetInfo]:
@@ -844,6 +826,12 @@ class OpDataSelectionGroup(Operator):
         if not slot.ready():
             return None
         return slot.value
+
+    def get_infos(self) -> Dict[str, Optional[DatasetInfo]]:
+        return {role_name: self.get_dataset_info(role_name) for role_name in self.role_names}
+
+    def get_axistags(self) -> Dict[str, Optional[AxisTags]]:
+        return {role_name: info and info.axistags for role_name, info in self.get_infos().items()}
 
     def configure(self, infos: Dict[str, DatasetInfo]):
         for role_index, role_name in enumerate(self.role_names):
@@ -980,19 +968,3 @@ class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):
 
     def get_lane(self, lane_idx: int) -> OpDataSelectionGroup:
         return self.innerOperators[lane_idx]
-
-    def get_role_info(self, lane_idx: int, role: str) -> Optional[DatasetInfo]:
-        info_slot = self.DatasetGroup[lane_idx][self.role_names.index(role)]
-        return info_slot.value if info_slot.ready() else None
-
-    def get_last_axes_keys(self) -> Dict[str, Optional[AxisTags]]:
-        if self.num_lanes == 0:
-            return {role_name: None for role_name in self.role_names}
-
-        lane_idx = self.num_lanes - 1
-        last_axes_keys : Dict[str, Optional[AxisTags]] = {}
-        for role_name in self.role_names:
-            info = self.get_role_info(self.num_lanes - 1, role_name)
-            keys = info.axiskeys if info else None
-            last_axes_keys[role_name] = keys
-        return last_axes_keys
