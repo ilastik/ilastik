@@ -22,7 +22,6 @@ from __future__ import absolute_import
 ###############################################################################
 # Python
 import os
-import re
 from pathlib import Path
 from typing import Dict, List, Set, Union, Optional
 from vigra import AxisTags
@@ -564,44 +563,36 @@ class DataSelectionGui(QWidget):
                 else:
                     # Ask the user which dataset to choose
                     dlg = SubvolumeSelectionDlg(datasetNames, self)
-                    if dlg.exec_() == QDialog.Accepted:
-                        selected_index = dlg.combo.currentIndex()
-                        selected_dataset = str(datasetNames[selected_index])
-                    else:
+                    if dlg.exec_() != QDialog.Accepted:
                         raise DataSelectionGui.UserCancelledError()
+                    selected_index = dlg.combo.currentIndex()
+                    selected_dataset = str(datasetNames[selected_index])
             self._add_default_inner_path(roleIndex=roleIndex, inner_path=selected_dataset)
-            data_path = data_path / re.sub("^/", "", selected_dataset)
+            data_path = data_path / selected_dataset.lstrip("/")
 
-        return self.instantiate_dataset_info(
-            role=roleIndex,
-            info_creator=RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute,
-            filePath=data_path.as_posix(),
-            project_file=self.project_file,
-            allowLabels=(self.guiMode == GuiMode.Normal),
-            subvolume_roi=roi,
-        )
+        return self.instantiate_dataset_info(url=data_path.as_posix(), role=roleIndex)
 
     def guess_axistags_for(self, role: Union[str, int], info: DatasetInfo) -> Optional[AxisTags]:
-        if self.topLevelOperator.num_lanes == 0:
+        if self.parentApplet.num_lanes == 0:
             return info.axistags
-        lane = self.topLevelOperator.getLane(-1)
+        lane = self.parentApplet.get_lane(-1)
         previous_info = lane.get_dataset_info(role)
         if previous_info is None or previous_info.default_tags == previous_info.axistags:
             return info.axistags
-        if previous_info.__class__ != info.__class__ or len(previous_info.axiskeys) != len(info.axiskeys):
+        if Path(previous_info.effective_path).suffix != Path(info.effective_path).suffix:
             return info.axistags
-        if Path(previous_info.effective_path).suffix == Path(info.effective_path).suffix:
-            return previous_info.axistags
-        return info.axistags
+        if previous_info.shape5d.c != info.shape5d.c:
+            return info.axistags
+        return previous_info.axistags
 
-    def instantiate_dataset_info(self, role: Union[str, int], info_creator, *info_args, **info_kwargs) -> DatasetInfo:
-        info = info_creator(*info_args, **info_kwargs)
+    def instantiate_dataset_info(self, url: str, role: Union[str, int], *info_args, **info_kwargs) -> DatasetInfo:
+        info = self.parentApplet.create_dataset_info(url=url, *info_args, **info_kwargs)
         if info_kwargs.get("axistags") is not None:
             return info
         axistags = self.guess_axistags_for(role=role, info=info)
-        if axistags is None:
+        if axistags in (info.axistags, None):
             return info
-        return info_creator(*info_args, **info_kwargs, axistags=axistags)
+        return self.parentApplet.create_dataset_info(url=url, *info_args, **info_kwargs, axistags=axistags)
 
     def _checkDataFormatWarnings(self, roleIndex, startingLaneNum, endingLane):
         warn_needed = False

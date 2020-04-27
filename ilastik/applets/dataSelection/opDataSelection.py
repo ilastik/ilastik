@@ -35,6 +35,7 @@ import vigra
 from vigra import AxisTags
 import h5py
 import z5py
+from ndstructs import Shape5D
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
@@ -99,6 +100,10 @@ class DatasetInfo(ABC):
         if len(self.axistags) != len(self.laneShape):
             raise UnsuitedAxistagsException(self.axistags, self.laneShape)
         self.legacy_datasetId = self.generate_id()
+
+    @property
+    def shape5d(self) -> Shape5D:
+        return Shape5D(**dict(zip(self.axiskeys, self.laneShape)))
 
     @abstractproperty
     def legacy_location(self) -> str:

@@ -33,6 +33,7 @@ import itertools
 logger = logging.getLogger(__name__)  # noqa
 
 import vigra
+import h5py
 from lazyflow.utility import PathComponents, isUrl
 from ilastik.utility.commandLineProcessing import parse_axiskeys
 from ilastik.applets.base.applet import Applet
@@ -222,15 +223,15 @@ class DataSelectionApplet(Applet):
     def _role_name_to_arg_name(role_name):
         return role_name.lower().replace(" ", "_").replace("-", "_")
 
-    def create_dataset_info(self, url: str, axistags: Optional[vigra.AxisTags]=None, stack_along: str="z") -> DatasetInfo:
+    def create_dataset_info(self, url: str, axistags: Optional[vigra.AxisTags]=None, sequence_axis: str="z") -> DatasetInfo:
         if isUrl(url):
             return UrlDatasetInfo(url=url, axistags=role_axis_tags)
         else:
             return RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
                 filePath=url,
-                project_file=None,
+                project_file=self.project_file,
                 axistags=axistags,
-                sequence_axis=stack_along,
+                sequence_axis=sequence_axis,
                 guess_tags_for_singleton_axes=True,  # FIXME: add cmd line param to negate this
             )
 
@@ -251,7 +252,7 @@ class DataSelectionApplet(Applet):
             role_arg_name = self._role_name_to_arg_name(role_name)
             role_urls = getattr(parsed_args, role_arg_name) or []
             rolewise_infos[role_name] = [
-                self.create_dataset_info(url, axistags=axistags, stack_along=parsed_args.stack_along)
+                self.create_dataset_info(url, axistags=axistags, sequence_axis=parsed_args.stack_along)
                 for url in role_urls
             ]
 
@@ -276,6 +277,10 @@ class DataSelectionApplet(Applet):
 
     def get_lane(self, lane_idx: int) -> OpDataSelectionGroup:
         return self.topLevelOperator.get_lane(lane_idx)
+
+    @property
+    def project_file(self) -> Optional[h5py.File]:
+        return self.topLevelOperator.ProjectFile.value if self.topLevelOperator.ProjectFile.ready() else None
 
     @property
     def role_names(self) -> List[str]:
