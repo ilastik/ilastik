@@ -456,7 +456,7 @@ class UrlDatasetInfo(DatasetInfo):
         meta = op_reader.Output.meta.copy()
         super().__init__(
             default_tags=meta.axistags,
-            nickname=nickname or self.url.split("/")[-1],
+            nickname=nickname or self.url.rstrip("/").split("/")[-1],
             laneShape=meta.shape,
             laneDtype=meta.dtype,
             **info_kwargs,

@@ -403,10 +403,10 @@ class DataSelectionGui(QWidget):
 
     def addFileNames(self, paths: List[Path], startingLaneNum: int, roleIndex: int):
         # If the user didn't cancel
-        if paths:
+        for path in paths or []:
             try:
-                new_infos = self._createDatasetInfos(roleIndex, paths)
-                self.addLanes(new_infos, roleIndex=roleIndex, startingLaneNum=startingLaneNum)
+                info = self.instantiate_dataset_info(url=str(path), role=roleIndex)
+                self.addLanes([info], roleIndex=roleIndex, startingLaneNum=startingLaneNum)
             except DataSelectionGui.UserCancelledError:
                 pass
             except Exception as ex:
@@ -515,21 +515,6 @@ class DataSelectionGui(QWidget):
 
         return (startingLaneNum, endingLane)
 
-    def _createDatasetInfos(self, roleIndex: int, filePaths: List[Path], rois=None):
-        """
-        Create a list of DatasetInfos for the given filePaths and rois
-        rois may be None, in which case it is ignored.
-        """
-        if rois is None:
-            rois = [None] * len(filePaths)
-        assert len(rois) == len(filePaths)
-
-        infos = []
-        for filePath, roi in zip(filePaths, rois):
-            info = self._createDatasetInfo(roleIndex, filePath, roi)
-            infos.append(info)
-        return infos
-
     def _add_default_inner_path(self, roleIndex: int, inner_path: str):
         paths = self._default_h5n5_volumes.get(roleIndex, set())
         paths.add(inner_path)
@@ -539,38 +524,27 @@ class DataSelectionGui(QWidget):
         previous_paths = self._default_h5n5_volumes.get(roleIndex, set())
         return previous_paths.copy()
 
-    def _createDatasetInfo(self, roleIndex: int, filePath: Path, roi=None) -> FilesystemDatasetInfo:
-        """
-        Create a DatasetInfo object for the given filePath and roi.
-        roi may be None, in which case it is ignored.
-        """
-        cwd = self.topLevelOperator.WorkingDirectory.value
-        try:
-            data_path = filePath.absolute().relative_to(cwd)
-        except ValueError:
-            data_path = filePath.absolute()
-
-        if DatasetInfo.fileHasInternalPaths(str(data_path)):
-            datasetNames = DatasetInfo.getPossibleInternalPathsFor(filePath.absolute())
-            if len(datasetNames) == 0:
-                raise RuntimeError(f"File {data_path} has no image datasets")
-            if len(datasetNames) == 1:
-                selected_dataset = datasetNames.pop()
+    def _get_dataset_full_path(self, filePath: Path) -> Path:
+        if not DatasetInfo.fileHasInternalPaths(filePath):
+            return filePath
+        datasetNames = DatasetInfo.getPossibleInternalPathsFor(filePath.absolute())
+        if len(datasetNames) == 0:
+            raise RuntimeError(f"File {data_path} has no image datasets")
+        if len(datasetNames) == 1:
+            selected_dataset = datasetNames.pop()
+        else:
+            auto_inner_paths = self._get_previously_used_inner_paths(roleIndex).intersection(set(datasetNames))
+            if len(auto_inner_paths) == 1:
+                selected_dataset = auto_inner_paths.pop()
             else:
-                auto_inner_paths = self._get_previously_used_inner_paths(roleIndex).intersection(set(datasetNames))
-                if len(auto_inner_paths) == 1:
-                    selected_dataset = auto_inner_paths.pop()
-                else:
-                    # Ask the user which dataset to choose
-                    dlg = SubvolumeSelectionDlg(datasetNames, self)
-                    if dlg.exec_() != QDialog.Accepted:
-                        raise DataSelectionGui.UserCancelledError()
-                    selected_index = dlg.combo.currentIndex()
-                    selected_dataset = str(datasetNames[selected_index])
-            self._add_default_inner_path(roleIndex=roleIndex, inner_path=selected_dataset)
-            data_path = data_path / selected_dataset.lstrip("/")
-
-        return self.instantiate_dataset_info(url=data_path.as_posix(), role=roleIndex)
+                # Ask the user which dataset to choose
+                dlg = SubvolumeSelectionDlg(datasetNames, self)
+                if dlg.exec_() != QDialog.Accepted:
+                    raise DataSelectionGui.UserCancelledError()
+                selected_index = dlg.combo.currentIndex()
+                selected_dataset = str(datasetNames[selected_index])
+        self._add_default_inner_path(roleIndex=roleIndex, inner_path=selected_dataset)
+        return data_path / selected_dataset.lstrip("/")
 
     def guess_axistags_for(self, role: Union[str, int], info: DatasetInfo) -> Optional[AxisTags]:
         if self.parentApplet.num_lanes == 0:
@@ -579,9 +553,7 @@ class DataSelectionGui(QWidget):
         previous_info = lane.get_dataset_info(role)
         if previous_info is None or previous_info.default_tags == previous_info.axistags:
             return info.axistags
-        if Path(previous_info.effective_path).suffix != Path(info.effective_path).suffix:
-            return info.axistags
-        if previous_info.shape5d.c != info.shape5d.c:
+        if len(previous_info.axistags) != len(info.axistags) or previous_info.shape5d.c != info.shape5d.c:
             return info.axistags
         return previous_info.axistags
 
@@ -622,8 +594,8 @@ class DataSelectionGui(QWidget):
 
         # FIXME: ask first if stack should be internalized to project file
         # also, check prefer_2d, size/volume and presence of 'z' to determine this
-        filePath = os.path.pathsep.join(stackDlg.selectedFiles)
-        stack_info = FilesystemDatasetInfo(filePath=filePath, sequence_axis=stackDlg.sequence_axis)
+        url = os.path.pathsep.join(stackDlg.selectedFiles)
+        stack_info = self.instantiate_dataset_info(url=url, role=roleIndex, sequence_axis=stackDlg.sequence_axis)
 
         try:
             # FIXME: do this inside a Request
@@ -668,7 +640,7 @@ class DataSelectionGui(QWidget):
         if browser.exec_() == PrecomputedVolumeBrowser.Rejected:
             return
 
-        info = UrlDatasetInfo(url=browser.selected_url)
+        info = self.instantiate_dataset_info(url=browser.selected_url, role=roleIndex)
         self.addLanes([info], roleIndex=roleIndex, startingLaneNum=laneIndex)
 
     def addDvidVolume(self, roleIndex, laneIndex):

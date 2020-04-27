@@ -225,7 +225,7 @@ class DataSelectionApplet(Applet):
 
     def create_dataset_info(self, url: str, axistags: Optional[vigra.AxisTags]=None, sequence_axis: str="z") -> DatasetInfo:
         if isUrl(url):
-            return UrlDatasetInfo(url=url, axistags=role_axis_tags)
+            return UrlDatasetInfo(url=url, axistags=axistags)
         else:
             return RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
                 filePath=url,
