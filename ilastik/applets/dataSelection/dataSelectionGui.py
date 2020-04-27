@@ -622,19 +622,19 @@ class DataSelectionGui(QWidget):
 
         # FIXME: ask first if stack should be internalized to project file
         # also, check prefer_2d, size/volume and presence of 'z' to determine this
-        nickname = DatasetInfo.create_nickname(stackDlg.selectedFiles)
+        filePath = os.path.pathsep.join(stackDlg.selectedFiles)
+        stack_info = FilesystemDatasetInfo(filePath=filePath, sequence_axis=stackDlg.sequence_axis)
 
         try:
             # FIXME: do this inside a Request
             self.parentApplet.busy = True
-            inner_path = self.serializer.importStackAsLocalDataset(
-                abs_paths=stackDlg.selectedFiles, sequence_axis=stackDlg.sequence_axis
+            inner_path = stack_info.importAsLocalDataset(project_file=self.project_file)
+            internal_info = ProjectInternalDatasetInfo(
+                inner_path=inner_path, nickname=stack_info.nickname, project_file=self.project_file
             )
-            info = ProjectInternalDatasetInfo(inner_path=inner_path, nickname=nickname, project_file=self.project_file)
+            self.addLanes([internal_info], roleIndex, laneIndex)
         finally:
             self.parentApplet.busy = False
-
-        self.addLanes([info], roleIndex, laneIndex)
 
     def handleClearDatasets(self, roleIndex, selectedRows):
         for row in selectedRows:
@@ -668,8 +668,8 @@ class DataSelectionGui(QWidget):
         if browser.exec_() == PrecomputedVolumeBrowser.Rejected:
             return
 
-        precomputed_url = browser.selected_url
-        self.addFileNames([precomputed_url], laneIndex, roleIndex)
+        info = UrlDatasetInfo(url=browser.selected_url)
+        self.addLanes([info], roleIndex=roleIndex, startingLaneNum=laneIndex)
 
     def addDvidVolume(self, roleIndex, laneIndex):
         group = "DataSelection"

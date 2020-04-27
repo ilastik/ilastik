@@ -23,7 +23,7 @@ import glob
 import os
 import uuid
 from enum import Enum, unique
-from typing import List, Tuple, Dict, Optional, Union
+from typing import List, Tuple, Dict, Optional, Union, Callable
 from numbers import Number
 import re
 from pathlib import Path
@@ -44,13 +44,15 @@ from lazyflow.operators.valueProviders import OpMetadataInjector
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from ilastik.applets.base.applet import DatasetConstraintError
 
+from ilastik import Project
 from ilastik.utility import OpMultiLaneWrapper
 from ilastik.workflow import Workflow
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents
 from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators import OpZeroSource
-from lazyflow.graph import Graph
+from lazyflow.operators.ioOperators import OpH5N5WriterBigDataset
+from lazyflow.graph import Graph, Operator
 
 
 def getTypeRange(numpy_type):
@@ -128,13 +130,7 @@ class DatasetInfo(ABC):
     @classmethod
     def from_h5_group(cls, data: h5py.Group, params: Dict = None):
         params = params or {}
-        params.update(
-            {
-                "allowLabels": data["allowLabels"][()],
-                "nickname": data["nickname"][()].decode("utf-8"),
-                "project_file": data.file,
-            }
-        )
+        params.update({"allowLabels": data["allowLabels"][()], "nickname": data["nickname"][()].decode("utf-8")})
         if "axistags" in data:
             params["axistags"] = AxisTags.fromJSON(data["axistags"][()].decode("utf-8"))
         elif "axisorder" in data:  # legacy support
@@ -273,6 +269,36 @@ class DatasetInfo(ABC):
     def __str__(self):
         return str(self.__dict__)
 
+    def importAsLocalDataset(
+        self, project_file: h5py.File, progress_signal: Callable[[int], None] = lambda x: None
+    ) -> str:
+        progress_signal(0)
+        try:
+            graph = Graph()
+            project = Project(project_file)
+            inner_path = os.path.join(project.local_data_group.name, self.legacy_datasetId)
+            if project_file.get(inner_path) is not None:
+                return inner_path
+            op_writer = OpH5N5WriterBigDataset(
+                graph=graph,
+                h5N5File=project_file,
+                h5N5Path=inner_path,
+                CompressionEnabled=False,
+                BatchSize=1,
+                Image=self.get_provider_slot(graph=graph),
+            )
+            op_writer.progressSignal.subscribe(progress_signal)
+            success = op_writer.WriteImage.value
+            dataset = project_file[inner_path]
+            for index, key in enumerate(self.axiskeys):
+                dataset.dims[index].label = key
+            dataset.attrs["axistags"] = self.axistags.toJSON()
+            if self.drange:
+                dataset.attrs["drange"] = self.drange
+            return inner_path
+        finally:
+            progress_signal(100)
+
 
 class ProjectInternalDatasetInfo(DatasetInfo):
     def __init__(self, *, inner_path: str, project_file: h5py.File, nickname: str = "", **info_kwargs):
@@ -305,6 +331,7 @@ class ProjectInternalDatasetInfo(DatasetInfo):
     @classmethod
     def from_h5_group(cls, data: h5py.Group, params: Dict = None):
         params = params or {}
+        params["project_file"] = data.file
         if "datasetId" in data and "inner_path" not in data:  # legacy format
             dataset_id = data["datasetId"][()].decode("utf-8")
             inner_path = None
@@ -328,8 +355,8 @@ class ProjectInternalDatasetInfo(DatasetInfo):
     def display_string(self) -> str:
         return "Project Internal: " + self.inner_path
 
-    def get_provider_slot(self, parent: Operator):
-        opReader = OpStreamingH5N5Reader(parent=parent)
+    def get_provider_slot(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
+        opReader = OpStreamingH5N5Reader(parent=parent, graph=graph)
         opReader.H5N5File.setValue(self.project_file)
         opReader.InternalPath.setValue(self.inner_path)
         return opReader.OutputImage
@@ -373,8 +400,8 @@ class PreloadedArrayDatasetInfo(DatasetInfo):
     def display_string(self) -> str:
         return "Preloaded Array"
 
-    def get_provider_slot(self, parent: Operator) -> OutputSlot:
-        opReader = OpArrayPiper(parent=parent)
+    def get_provider_slot(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
+        opReader = OpArrayPiper(parent=parent, graph=graph)
         opReader.Input.setValue(self.preloaded_array)
         return opReader.Output
 
@@ -383,7 +410,7 @@ class DummyDatasetInfo(DatasetInfo):
     """Special DatasetInfo for datasets that can't be found in headless mode
     """
 
-    def __init__(self, *, project_file: h5py.File = None, **info_kwargs):
+    def __init__(self, **info_kwargs):
         super().__init__(**info_kwargs)
 
     @property
@@ -401,8 +428,10 @@ class DummyDatasetInfo(DatasetInfo):
     def to_json_data(self) -> Dict:
         raise NotImplemented("Dummy Slots should not be serialized!")
 
-    def get_provider_slot(self, parent: Operator) -> OutputSlot:
-        opZero = OpZeroSource(shape=self.laneShape, dtype=self.laneDtype, axistags=self.axistags, parent=parent)
+    def get_provider_slot(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
+        opZero = OpZeroSource(
+            shape=self.laneShape, dtype=self.laneDtype, axistags=self.axistags, parent=parent, graph=graph
+        )
         return opZero.Output
 
     @classmethod
@@ -421,9 +450,17 @@ class DummyDatasetInfo(DatasetInfo):
 
 
 class UrlDatasetInfo(DatasetInfo):
-    def __init__(self, *, url: str, **info_kwargs):
+    def __init__(self, *, url: str, nickname: str = "", **info_kwargs):
         self.url = url
-        super().__init__(**info_kwargs)
+        op_reader = OpInputDataReader(graph=Graph(), FilePath=self.url)
+        meta = op_reader.Output.meta.copy()
+        super().__init__(
+            default_tags=meta.axistags,
+            nickname=nickname or self.url.split("/")[-1],
+            laneShape=meta.shape,
+            laneDtype=meta.dtype,
+            **info_kwargs,
+        )
 
     @property
     def legacy_location(self) -> str:
@@ -433,8 +470,8 @@ class UrlDatasetInfo(DatasetInfo):
     def effective_path(self) -> str:
         return self.url
 
-    def get_provider_slot(self, parent):
-        op_reader = OpInputDataReader(parent=parent, FilePath=self.effective_path)
+    def get_provider_slot(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
+        op_reader = OpInputDataReader(parent=parent, graph=graph, FilePath=self.url)
         return op_reader.Output
 
     @property
@@ -445,6 +482,10 @@ class UrlDatasetInfo(DatasetInfo):
         out = super().to_json_data()
         out["url"] = self.url
         return out
+
+    @classmethod
+    def from_h5_group(cls, group: h5py.Group):
+        return super().from_h5_group(group, {"url": group["filePath"][()].decode("utf-8")})
 
 
 class FilesystemDatasetInfo(DatasetInfo):
@@ -494,15 +535,16 @@ class FilesystemDatasetInfo(DatasetInfo):
         first_external_path = PathComponents(self.filePath.split(os.path.pathsep)[0]).externalPath
         return Path(first_external_path).parent
 
-    def get_provider_slot(self, parent: Operator):
+    def get_provider_slot(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None):
         op_reader = OpInputDataReader(
-            parent=parent, WorkingDirectory=self.base_dir, FilePath=self.filePath, SequenceAxis=self.sequence_axis
+            parent=parent, graph=graph, WorkingDirectory=self.base_dir, FilePath=self.filePath, SequenceAxis=self.sequence_axis
         )
         return op_reader.Output
 
     @classmethod
-    def from_h5_group(cls, group: h5py.Group):
-        return super().from_h5_group(group, {"filePath": group["filePath"][()].decode("utf-8")})
+    def from_h5_group(cls, data: h5py.Group):
+        params = {"project_file": data.file, "filePath": data["filePath"][()].decode("utf-8")}
+        return super().from_h5_group(data, params)
 
     def isHdf5(self) -> bool:
         return any(self.pathIsHdf5(ep) for ep in self.external_paths)

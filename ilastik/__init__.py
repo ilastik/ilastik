@@ -56,6 +56,10 @@ class Project:
     def __init__(self, project_file: h5py.File):
         self.file = project_file
 
+    @property
+    def local_data_group(self) -> h5py.Group:
+        return self.file.require_group("Input Data/local_data")
+
     def close(self):
         self.file.close()
 

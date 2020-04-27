@@ -30,6 +30,7 @@ from .opDataSelection import (
     FilesystemDatasetInfo,
     RelativeFilesystemDatasetInfo,
     DummyDatasetInfo,
+    UrlDatasetInfo,
 )
 from .opDataSelection import PreloadedArrayDatasetInfo, ProjectInternalDatasetInfo
 from lazyflow.operators.ioOperators import OpInputDataReader, OpStackLoader, OpH5N5WriterBigDataset
@@ -63,11 +64,9 @@ class DataSelectionSerializer(AppletSerializer):
     """
 
     # Constants
-    LocationStrings = {"FileSystem": FilesystemDatasetInfo, "ProjectInternal": ProjectInternalDatasetInfo}
     InfoClassNames = {
-        ProjectInternalDatasetInfo.__name__: ProjectInternalDatasetInfo,
-        FilesystemDatasetInfo.__name__: FilesystemDatasetInfo,
-        RelativeFilesystemDatasetInfo.__name__: RelativeFilesystemDatasetInfo,
+        klass.__name__: klass
+        for klass in [ProjectInternalDatasetInfo, FilesystemDatasetInfo, RelativeFilesystemDatasetInfo, UrlDatasetInfo]
     }
 
     def __init__(self, topLevelOperator, projectFileGroupName):
@@ -135,44 +134,6 @@ class DataSelectionSerializer(AppletSerializer):
                 if dataset not in internal_datasets_to_keep:
                     del hdf5File[dataset.name]
         self._dirty = False
-
-    def importStackAsLocalDataset(
-        self, abs_paths: List[str], sequence_axis: str = "z", progress_signal: Callable[[int], None] = None
-    ):
-        progress_signal = progress_signal or self.progressSignal
-        progress_signal(0)
-        op_reader = None
-        op_writer = None
-        try:
-            colon_paths = os.path.pathsep.join(abs_paths)
-            op_reader = OpInputDataReader(
-                graph=self.topLevelOperator.graph, FilePath=colon_paths, SequenceAxis=sequence_axis
-            )
-            axistags = op_reader.Output.meta.axistags
-            inner_path = self.local_data_path.joinpath(DatasetInfo.generate_id()).as_posix()
-            project_file = self.topLevelOperator.ProjectFile.value
-            op_writer = OpH5N5WriterBigDataset(
-                graph=self.topLevelOperator.graph,
-                h5N5File=project_file,
-                h5N5Path=inner_path,
-                CompressionEnabled=False,
-                BatchSize=1,
-                Image=op_reader.Output,
-            )
-            op_writer.progressSignal.subscribe(progress_signal)
-            success = op_writer.WriteImage.value
-            for index, tag in enumerate(axistags):
-                project_file[inner_path].dims[index].label = tag.key
-            project_file[inner_path].attrs["axistags"] = axistags.toJSON()
-            if op_reader.Output.meta.get("drange"):
-                project_file[inner_path].attrs["drange"] = op_reader.Output.meta.get("drange")
-            return inner_path
-        finally:
-            if op_writer:
-                op_writer.Image.disconnect()
-            if op_reader:
-                op_reader.cleanUp()
-            progress_signal(100)
 
     def initWithoutTopGroup(self, hdf5File, projectFilePath):
         """
@@ -269,10 +230,16 @@ class DataSelectionSerializer(AppletSerializer):
             info_class = self.InfoClassNames[infoGroup["__class__"][()].decode("utf-8")]
         else:  # legacy support
             location = infoGroup["location"][()].decode("utf-8")
-            if location == "FileSystem" and isRelative(infoGroup["filePath"][()].decode("utf-8")):
-                info_class = RelativeFilesystemDatasetInfo
+            if location == "FileSystem":  # legacy support: a lot of DatasetInfo types are saved as "Filesystem"
+                filePath = infoGroup["filePath"][()].decode("utf-8")
+                if isUrl(filePath):
+                    info_class = UrlDatasetInfo
+                elif isRelative(filePath):
+                    info_class = RelativeFilesystemDatasetInfo
+                else:
+                    info_class = FilesystemDatasetInfo
             else:
-                info_class = self.LocationStrings[location]
+                info_class = PreloadedArrayDatasetInfo
 
         dirty = False
         try:
