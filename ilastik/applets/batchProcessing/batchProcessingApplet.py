@@ -58,12 +58,7 @@ class BatchProcessingApplet(Applet):
 
     def parse_known_cmdline_args(self, cmdline_args):
         # We use the same parser as the DataSelectionApplet
-        parser = DataSelectionApplet.get_arg_parser(self.opDataSelection.role_names)
-        parser.add_argument(
-            "--no-axes-guessing",
-            help="Do not use training data to guess axis on headless inputs. Can default to file axis conventions",
-            action="store_true",
-        )
+        parser = DataSelectionApplet.get_arg_parser(self.dataSelectionApplet.role_names)
         parser.add_argument(
             "--distributed",
             help="Distributed mode. Used for running ilastik on HPCs via SLURM/srun/mpirun",
@@ -88,31 +83,15 @@ class BatchProcessingApplet(Applet):
         else:
             export_function = self.do_normal_export
 
-        role_path_dict = self.dataSelectionApplet.role_paths_from_parsed_args(parsed_args)
-        input_axes = parsed_args.input_axes
-        if not input_axes or not any(input_axes):
-            if parsed_args.no_axes_guessing or self.opDataSelection.num_lanes == 0:
-                input_axes = [None] * len(role_path_dict)
-                logger.info(f"Using axistags from input files")
-            else:
-                input_axes = list(self.opDataSelection.get_lane(-1).get_axistags().values())
-                logger.info(f"Using axistags from previous lane: {input_axes}")
-        else:
-            logger.info(f"Forcing input axes to {input_axes}")
-
         return self.run_export(
-            role_path_dict,
-            input_axes=input_axes,
-            sequence_axis=parsed_args.stack_along,
+            lane_configs=self.dataSelectionApplet.lane_configs_from_parsed_args(parsed_args),
             export_function=export_function,
         )
 
     def run_export(
         self,
-        role_data_dict: Mapping[Hashable, Iterable[Union[str, DatasetInfo]]],
-        input_axes: List[Optional[AxisTags]],
+        lane_configs: List[Dict[str, Union[DatasetInfo]]],
         export_to_array: bool = False,
-        sequence_axis: Optional[str] = None,
         export_function: Optional[Callable] = None,
     ) -> Union[List[str], List[numpy.array]]:
         """Run the export for each dataset listed in role_data_dict
@@ -132,12 +111,10 @@ class BatchProcessingApplet(Applet):
             signature: lane_postprocessing_callback(batch_lane_index)
 
         Args:
-            role_data_dict: dict with role_name: list(paths) of data that should be processed.
-            input_axes: axis description to override from the default role
+            lane_configs: A list dicts with one dict of role_name -> DatasetInfo for each lane
             export_to_array: If True do NOT export to disk as usual.
               Instead, export the results to a list of arrays, which is returned.
               If False, return a list of the filenames we produced to.
-            sequence_axis: stack along this axis, overrides setting from default role
 
         Returns:
             list containing either strings of paths to exported files,
@@ -146,22 +123,19 @@ class BatchProcessingApplet(Applet):
         assert not (export_to_array and export_function)
         export_function = export_function or (self.do_export_to_array if export_to_array else self.do_normal_export)
         self.progressSignal(0)
-        batches = list(zip(*role_data_dict.values()))
         try:
             results = []
-            for batch_index, role_inputs in enumerate(batches):
+            for batch_index, lane_config in enumerate(lane_configs):
 
                 def lerpProgressSignal(a, b, p):
                     self.progressSignal((100 - p) * a + p * b)
 
-                global_progress_start = batch_index / len(batches)
-                global_progress_end = (batch_index + 1) / len(batches)
+                global_progress_start = batch_index / len(lane_configs)
+                global_progress_end = (batch_index + 1) / len(lane_configs)
 
                 result = self.export_dataset(
-                    role_inputs,
-                    input_axes=input_axes,
+                    lane_config,
                     export_function=export_function,
-                    sequence_axis=sequence_axis,
                     progress_callback=partial(lerpProgressSignal, global_progress_start, global_progress_end),
                 )
                 results.append(result)
@@ -185,47 +159,27 @@ class BatchProcessingApplet(Applet):
 
     def export_dataset(
         self,
-        role_inputs: List[Union[str, DatasetInfo]],
-        input_axes: List[Optional[AxisTags]],
+        lane_config: Dict[str, DatasetInfo],
         export_function: Callable = None,
-        sequence_axis: Optional[str] = None,
         progress_callback: Optional[Callable[[int], None]] = None,
     ) -> Union[str, numpy.array]:
         """
         Configures a lane using the paths specified in the paths from role_inputs and runs the workflow.
         """
         export_function = export_function or self.do_normal_export
-        role_names = self.opDataSelection.role_names
+        role_names = self.dataSelectionApplet.role_names
 
         # Call customization hook
         self.dataExportApplet.prepare_for_entire_export()
-        role_infos : Dict[str, DatasetInfo] = {}
-        for role_name, role_input, role_axis_tags in zip(role_names, role_inputs, input_axes):
-            if isinstance(role_input, (type(None), DatasetInfo)):
-                role_infos[role_name] = role_input
-            elif isUrl(role_input):
-                role_infos[role_name] = UrlDatasetInfo(url=role_input, axistags=role_axis_tags)
-            else:
-                role_infos[role_name] = FilesystemDatasetInfo(
-                    filePath=role_input,
-                    project_file=None,
-                    axistags=role_axis_tags,
-                    sequence_axis=sequence_axis,
-                    guess_tags_for_singleton_axes=True,  # FIXME: add cmd line param to negate this
-                )
-        self.opDataSelection.pushLane(role_infos)
+        self.dataSelectionApplet.pushLane(lane_config)
         try:
             # Call customization hook
-            self.dataExportApplet.prepare_lane_for_export(self.opDataSelection.num_lanes - 1)
-            opDataExport = self.dataExportApplet.topLevelOperator.getLane(self.opDataSelection.num_lanes - 1)
+            self.dataExportApplet.prepare_lane_for_export(self.dataSelectionApplet.num_lanes - 1)
+            opDataExport = self.dataExportApplet.topLevelOperator.getLane(self.dataSelectionApplet.num_lanes - 1)
             opDataExport.progressSignal.subscribe(progress_callback or self.progressSignal)
             result = export_function(opDataExport)
             # Call customization hook
-            self.dataExportApplet.post_process_lane_export(self.opDataSelection.num_lanes - 1)
+            self.dataExportApplet.post_process_lane_export(self.dataSelectionApplet.num_lanes - 1)
             return result
         finally:
-            self.opDataSelection.popLane()
-
-    @property
-    def opDataSelection(self) -> OpMultiLaneDataSelectionGroup:
-        return self.dataSelectionApplet.topLevelOperator
+            self.dataSelectionApplet.popLane()

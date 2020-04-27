@@ -28,6 +28,7 @@ import argparse
 import collections
 import logging
 from typing import List, Dict, Optional
+import itertools
 
 logger = logging.getLogger(__name__)  # noqa
 
@@ -35,7 +36,14 @@ import vigra
 from lazyflow.utility import PathComponents, isUrl
 from ilastik.utility.commandLineProcessing import parse_axiskeys
 from ilastik.applets.base.applet import Applet
-from .opDataSelection import OpMultiLaneDataSelectionGroup, FilesystemDatasetInfo
+from .opDataSelection import (
+    OpMultiLaneDataSelectionGroup,
+    DatasetInfo,
+    RelativeFilesystemDatasetInfo,
+    UrlDatasetInfo,
+    FilesystemDatasetInfo,
+    OpDataSelectionGroup
+)
 from .dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
 
 
@@ -141,7 +149,7 @@ class DataSelectionApplet(Applet):
         for role_name in role_names or []:
             arg_name = cls._role_name_to_arg_name(role_name)
             arg_parser.add_argument(
-                "--" + arg_name,
+                "--" + arg_name, "--" + arg_name.replace("_", "-"),
                 nargs="+",
                 help=f"List of input files for the {role_name} role",
                 type=user_expanded_existing_filename,
@@ -156,14 +164,14 @@ class DataSelectionApplet(Applet):
         )
 
         arg_parser.add_argument(
-            "--preconvert_stacks",
+            "--preconvert-stacks", "--preconvert_stacks",
             help="Convert image stacks to temporary hdf5 files before loading them.",
             action="store_true",
             default=False,
         )
 
         def parse_input_axes(raw_input_axes: str) -> List[Optional[vigra.AxisTags]]:
-            input_axes = raw_input_axes.split(",")
+            input_axes = [axes.strip() for axes in raw_input_axes.split(",")]
             if len(input_axes) == 1:
                 input_axes = input_axes * len(role_names)
             if len(input_axes) != len(role_names):
@@ -171,14 +179,20 @@ class DataSelectionApplet(Applet):
             return [parse_axiskeys(keys) for keys in input_axes]
 
         arg_parser.add_argument(
-            "--input_axes",
+            "--input-axes", "--input_axes",
             help="Explicitly specify the axes of your dataset.",
             required=False,
             type=parse_input_axes,
             default=[None] * len(role_names)
         )
 
-        arg_parser.add_argument("--stack_along", help="Sequence axis along which to stack", type=str, default="z")
+        arg_parser.add_argument(
+            "--no-axes-guessing", "--no_axes_guessing",
+            help="Do not use training data to guess input data axis on headless runs. Can still use file axis conventions",
+            action="store_true",
+        )
+
+        arg_parser.add_argument("--stack-along", "--stack_along", help="Sequence axis along which to stack", type=str, default="z")
         return arg_parser
 
     @classmethod
@@ -208,23 +222,64 @@ class DataSelectionApplet(Applet):
     def _role_name_to_arg_name(role_name):
         return role_name.lower().replace(" ", "_").replace("-", "_")
 
-    def role_paths_from_parsed_args(self, parsed_args) -> Dict[str, List[Optional[str]]]:
-        role_names = self.topLevelOperator.role_names
-        role_paths = collections.OrderedDict()
-        for role_index, role_name in enumerate(role_names):
-            arg_name = self._role_name_to_arg_name(role_name)
-            input_paths = getattr(parsed_args, arg_name)
-            role_paths[role_index] = input_paths or []
+    def create_dataset_info(self, url: str, axistags: Optional[vigra.AxisTags]=None, stack_along: str="z") -> DatasetInfo:
+        if isUrl(url):
+            return UrlDatasetInfo(url=url, axistags=role_axis_tags)
+        else:
+            return RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
+                filePath=url,
+                project_file=None,
+                axistags=axistags,
+                sequence_axis=stack_along,
+                guess_tags_for_singleton_axes=True,  # FIXME: add cmd line param to negate this
+            )
 
-        # As far as this parser is concerned, all roles except the first are optional.
-        # (Workflows that require the other roles are responsible for raising an error themselves.)
-        for role_index in range(1, len(role_names)):
-            # Fill in None for missing files
-            if role_index not in role_paths:
-                role_paths[role_index] = []
-            num_missing = len(role_paths[0]) - len(role_paths[role_index])
-            role_paths[role_index] += [None] * num_missing
-        return role_paths
+    def lane_configs_from_parsed_args(self, parsed_args) -> List[Dict[str, Optional[DatasetInfo]]]:
+        input_axes = parsed_args.input_axes
+        if not input_axes or not any(input_axes):
+            if parsed_args.no_axes_guessing or self.num_lanes == 0:
+                input_axes = [None] * len(self.role_names)
+                logger.info(f"Using axistags from input files")
+            else:
+                input_axes = list(self.get_lane(-1).get_axistags().values())
+                logger.info(f"Using axistags from previous lane: {input_axes}")
+        else:
+            logger.info(f"Forcing input axes to {input_axes}, as per command line")
+
+        rolewise_infos : Dict[str, List[DatasetInfo]] = {}
+        for role_name, axistags in zip(self.role_names, input_axes):
+            role_arg_name = self._role_name_to_arg_name(role_name)
+            role_urls = getattr(parsed_args, role_arg_name) or []
+            rolewise_infos[role_name] = [
+                self.create_dataset_info(url, axistags=axistags, stack_along=parsed_args.stack_along)
+                for url in role_urls
+            ]
+
+        lane_configs : List[Dict[str, Optional[DatasetInfo]]] = []
+        for info_group in itertools.zip_longest(*rolewise_infos.values()):
+            lane_configs.append(dict(zip(self.role_names, info_group)))
+
+        main_role = self.role_names[0]
+        if any(lane_conf[main_role] is None for lane_conf in lane_configs):
+            raise ValueError(f"You must provide values for {main_role} for every lane. Provided was {lane_configs}")
+        return lane_configs
+
+    def pushLane(self, role_infos: Dict[str, DatasetInfo]):
+        return self.topLevelOperator.pushLane(role_infos)
+
+    def popLane(self):
+        return self.topLevelOperator.popLane()
+
+    @property
+    def num_lanes(self) -> int:
+        return self.topLevelOperator.num_lanes
+
+    def get_lane(self, lane_idx: int) -> OpDataSelectionGroup:
+        return self.topLevelOperator.get_lane(lane_idx)
+
+    @property
+    def role_names(self) -> List[str]:
+        return self.topLevelOperator.role_names
 
     def configure_operator_with_parsed_args(self, parsed_args):
         """
