@@ -75,7 +75,7 @@ class TestStructuredLearningTrackingHeadless(object):
 
     EXPECTED_TRACKING_RESULT_FILE = (
         ilastik_tests_file_path
-        + "data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17_Tracking-Result.h5"
+        + "data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17-exported_data_Tracking-Result.h5"
     )
     EXPECTED_CSV_FILE = (
         ilastik_tests_file_path
@@ -105,7 +105,7 @@ class TestStructuredLearningTrackingHeadless(object):
     def teardown_class(cls):
         removeFiles = [
             cls.ilastik_tests_file_path
-            + "data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17_Tracking-Result.h5",
+            + "data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17-exported_data_Tracking-Result.h5",
             cls.ilastik_tests_file_path
             + "data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17_CSV-Table.csv",
         ]
