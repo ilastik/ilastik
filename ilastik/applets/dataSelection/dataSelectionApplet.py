@@ -27,8 +27,10 @@ import glob
 import argparse
 import collections
 import logging
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 import itertools
+from pathlib import Path
+import tempfile
 
 logger = logging.getLogger(__name__)  # noqa
 
@@ -121,8 +123,7 @@ class DataSelectionApplet(Applet):
         def user_expanded_existing_filename(path):
             if isUrl(path):
                 return path
-            expanded_path = os.path.expanduser(path)
-            all_paths = glob.glob(PathComponents(expanded_path).externalPath)
+            all_paths = DatasetInfo.expand_path(path)
             if len(all_paths) == 0:
                 raise ValueError(f"No files found matching path {path}")
             for p in all_paths:
@@ -223,7 +224,10 @@ class DataSelectionApplet(Applet):
     def _role_name_to_arg_name(role_name):
         return role_name.lower().replace(" ", "_").replace("-", "_")
 
-    def create_dataset_info(self, url: str, axistags: Optional[vigra.AxisTags]=None, sequence_axis: str="z") -> DatasetInfo:
+    def create_dataset_info(
+        self, url: Union[Path, str], axistags: Optional[vigra.AxisTags]=None, sequence_axis: str="z"
+    ) -> DatasetInfo:
+        url = str(url)
         if isUrl(url):
             return UrlDatasetInfo(url=url, axistags=axistags)
         else:
@@ -234,6 +238,15 @@ class DataSelectionApplet(Applet):
                 sequence_axis=sequence_axis,
                 guess_tags_for_singleton_axes=True,  # FIXME: add cmd line param to negate this
             )
+
+    def convert_info_to_h5(self, info: DatasetInfo) -> DatasetInfo:
+        tmp_path = tempfile.mktemp() + ".h5"
+        inner_path = "volume/data"
+        full_path = Path(tmp_path) / inner_path
+        with h5py.File(tmp_path, mode="w") as tmp_h5:
+            logger.info(f"Converting info {info.effective_path} to h5 at {full_path}")
+            info.dumpToHdf5(h5_file=tmp_h5, inner_path=inner_path)
+            return self.create_dataset_info(url=full_path)
 
     def lane_configs_from_parsed_args(self, parsed_args) -> List[Dict[str, Optional[DatasetInfo]]]:
         input_axes = parsed_args.input_axes
@@ -251,10 +264,13 @@ class DataSelectionApplet(Applet):
         for role_name, axistags in zip(self.role_names, input_axes):
             role_arg_name = self._role_name_to_arg_name(role_name)
             role_urls = getattr(parsed_args, role_arg_name) or []
-            rolewise_infos[role_name] = [
+            infos = [
                 self.create_dataset_info(url, axistags=axistags, sequence_axis=parsed_args.stack_along)
                 for url in role_urls
             ]
+            if parsed_args.preconvert_stacks:
+                infos = [self.convert_info_to_h5(info) if info.is_stack() else info for info in infos]
+            rolewise_infos[role_name] = infos
 
         lane_configs : List[Dict[str, Optional[DatasetInfo]]] = []
         for info_group in itertools.zip_longest(*rolewise_infos.values()):
@@ -286,110 +302,7 @@ class DataSelectionApplet(Applet):
     def role_names(self) -> List[str]:
         return self.topLevelOperator.role_names
 
-    def configure_operator_with_parsed_args(self, parsed_args):
-        """
-        Helper function for headless workflows.
-        Configures this applet's top-level operator according to the settings provided in ``parsed_args``.
+    def configure_operator_with_parsed_args(self, parsed_args: argparse.Namespace):
+        for lane_config in self.lane_configs_from_parsed_args(parsed_args):
+            self.pushLane(lane_config)
 
-        :param parsed_args: Must be an ``argparse.Namespace`` as returned by :py:meth:`parse_known_cmdline_args()`.
-        """
-        role_names = self.topLevelOperator.DatasetRoles.value
-        role_paths = self.role_paths_from_parsed_args(parsed_args)
-
-        for role_index, input_paths in list(role_paths.items()):
-            # If the user doesn't want image stacks to be copied into the project file,
-            #  we generate hdf5 volumes in a temporary directory and use those files instead.
-            if parsed_args.preconvert_stacks:
-                import tempfile
-
-                input_paths = self.convertStacksToH5(input_paths, tempfile.gettempdir())
-
-            input_infos = [FilesystemDatasetInfo(filepath=p) if p else None for p in input_paths]
-            if parsed_args.input_axes:
-                for info in [_f for _f in input_infos if _f]:
-                    info.axistags = vigra.defaultAxistags(parsed_args.input_axes)
-
-            opDataSelection = self.topLevelOperator
-            existing_lanes = len(opDataSelection.DatasetGroup)
-            opDataSelection.DatasetGroup.resize(max(len(input_infos), existing_lanes))
-            for lane_index, info in enumerate(input_infos):
-                if info:
-                    opDataSelection.DatasetGroup[lane_index][role_index].setValue(info)
-
-            need_warning = False
-            for lane_index in range(len(input_infos)):
-                output_slot = opDataSelection.ImageGroup[lane_index][role_index]
-                if output_slot.ready() and output_slot.meta.prefer_2d and "z" in output_slot.meta.axistags:
-                    need_warning = True
-                    break
-
-            if need_warning:
-                logger.warning(
-                    "*******************************************************************************************"
-                )
-                logger.warning(
-                    "Some of your input data is stored in a format that is not efficient for 3D access patterns."
-                )
-                logger.warning("Performance may suffer as a result.  For best performance, use a chunked HDF5 volume.")
-                logger.warning(
-                    "*******************************************************************************************"
-                )
-
-    @classmethod
-    def convertStacksToH5(cls, filePaths, stackVolumeCacheDir):
-        """
-        If any of the files in filePaths appear to be globstrings for a stack,
-        convert the given stack to hdf5 format.
-
-        Return the filePaths list with globstrings replaced by the paths to the new hdf5 volumes.
-        """
-        import hashlib
-        import pickle
-        import h5py
-        from lazyflow.graph import Graph
-        from lazyflow.operators.ioOperators import OpStackToH5Writer
-
-        filePaths = list(filePaths)
-        for i, path in enumerate(filePaths):
-            if not path or "*" not in path:
-                continue
-            globstring = path
-
-            # Embrace paranoia:
-            # We want to make sure we never re-use a stale cache file for a new dataset,
-            #  even if the dataset is located in the same location as a previous one and has the same globstring!
-            # Create a sha-1 of the file name and modification date.
-            sha = hashlib.sha1()
-            files = sorted([k.replace("\\", "/") for k in glob.glob(path)])
-            for f in files:
-                sha.update(f)
-                sha.update(pickle.dumps(os.stat(f).st_mtime, 0))
-            stackFile = sha.hexdigest() + ".h5"
-            stackPath = os.path.join(stackVolumeCacheDir, stackFile).replace("\\", "/")
-
-            # Overwrite original path
-            filePaths[i] = stackPath + "/volume/data"
-
-            # Generate the hdf5 if it doesn't already exist
-            if os.path.exists(stackPath):
-                logger.info("Using previously generated hdf5 volume for stack {}".format(path))
-                logger.info("Volume path: {}".format(filePaths[i]))
-            else:
-                logger.info("Generating hdf5 volume for stack {}".format(path))
-                logger.info("Volume path: {}".format(filePaths[i]))
-
-                if not os.path.exists(stackVolumeCacheDir):
-                    os.makedirs(stackVolumeCacheDir)
-
-                with h5py.File(stackPath) as f:
-                    # Configure the conversion operator
-                    opWriter = OpStackToH5Writer(graph=Graph())
-                    opWriter.hdf5Group.setValue(f)
-                    opWriter.hdf5Path.setValue("volume/data")
-                    opWriter.GlobString.setValue(globstring)
-
-                    # Initiate the write
-                    success = opWriter.WriteImage.value
-                    assert success, "Something went wrong when generating an hdf5 file from an image sequence."
-
-        return filePaths

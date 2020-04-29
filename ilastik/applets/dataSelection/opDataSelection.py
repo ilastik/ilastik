@@ -182,19 +182,15 @@ class DatasetInfo(ABC):
     @classmethod
     def expand_path(cls, file_path: str, cwd: str = None) -> List[str]:
         """Expands path with globs and colons into a list of absolute paths"""
-        cwd = cwd or os.getcwd()
+        cwd = Path(cwd) if cwd else Path.cwd()
         pathComponents = [PathComponents(path) for path in splitPath(file_path)]
         expanded_paths = []
         missing_files = []
         for components in pathComponents:
-            if os.path.isabs(components.externalPath):
-                externalPath = components.externalPath
-            else:
-                externalPath = os.path.join(cwd, components.externalPath)
-            expanded_path = os.path.expanduser(externalPath)
-            unglobbed_paths = glob.glob(expanded_path)
+            externalPath = cwd / Path(components.externalPath).expanduser()
+            unglobbed_paths = glob.glob(str(externalPath))
             if not unglobbed_paths:
-                missing_files.append(expanded_path)
+                missing_files.append(components.externalPath)
                 continue
             for ext_path in unglobbed_paths:
                 if not cls.fileHasInternalPaths(ext_path) or not components.internalPath:
@@ -272,16 +268,23 @@ class DatasetInfo(ABC):
     def importAsLocalDataset(
         self, project_file: h5py.File, progress_signal: Callable[[int], None] = lambda x: None
     ) -> str:
+        project = Project(project_file)
+        inner_path = os.path.join(project.local_data_group.name, self.legacy_datasetId)
+        if project_file.get(inner_path) is not None:
+            return inner_path
+        self.dumpToHdf5(h5_file=project_file, inner_path=inner_path, progress_signal=progress_signal)
+        return inner_path
+
+    def dumpToHdf5(
+        self, h5_file: h5py.File, inner_path: str, progress_signal: Callable[[int], None] = lambda x: None
+    ) -> str:
         progress_signal(0)
         try:
+            h5_file.require_group(Path("/").joinpath(inner_path).parent.as_posix())
             graph = Graph()
-            project = Project(project_file)
-            inner_path = os.path.join(project.local_data_group.name, self.legacy_datasetId)
-            if project_file.get(inner_path) is not None:
-                return inner_path
             op_writer = OpH5N5WriterBigDataset(
                 graph=graph,
-                h5N5File=project_file,
+                h5N5File=h5_file,
                 h5N5Path=inner_path,
                 CompressionEnabled=False,
                 BatchSize=1,
@@ -289,16 +292,17 @@ class DatasetInfo(ABC):
             )
             op_writer.progressSignal.subscribe(progress_signal)
             success = op_writer.WriteImage.value
-            dataset = project_file[inner_path]
+            dataset = h5_file[inner_path]
             for index, key in enumerate(self.axiskeys):
                 dataset.dims[index].label = key
             dataset.attrs["axistags"] = self.axistags.toJSON()
             if self.drange:
                 dataset.attrs["drange"] = self.drange
-            return inner_path
         finally:
             progress_signal(100)
 
+    def is_stack(self) -> bool:
+        return len(splitPath(self.effective_path)) > 1
 
 class ProjectInternalDatasetInfo(DatasetInfo):
     def __init__(self, *, inner_path: str, project_file: h5py.File, nickname: str = "", **info_kwargs):
