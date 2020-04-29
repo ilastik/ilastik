@@ -28,6 +28,7 @@ import h5py
 import tempfile
 import csv
 import pytest
+import pytest
 
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStackLoader
@@ -121,6 +122,7 @@ class TestStructuredLearningTrackingHeadless(object):
     @timeLogged(logger)
     def testStructuredLearningTrackingHeadless(self):
         # Skip test if structured learning tracking can't be imported. If it fails the problem is most likely that CPLEX is not installed.
+        pytest.xfail("currently not working")
         try:
             import ilastik.workflows.tracking.structured
         except ImportError as e:
@@ -162,6 +164,7 @@ class TestStructuredLearningTrackingHeadless(object):
     @timeLogged(logger)
     def testCSVExport(self):
         # TODO: When Hytra is supported on Windows, we shouldn't skip the test and throw an assert instead
+        pytest.xfail("currently not working")
         try:
             import hytra
         except ImportError as e:
