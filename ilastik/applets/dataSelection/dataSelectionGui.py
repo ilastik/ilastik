@@ -604,9 +604,9 @@ class DataSelectionGui(QWidget):
             internal_info = ProjectInternalDatasetInfo(
                 inner_path=inner_path, nickname=stack_info.nickname, project_file=self.project_file
             )
-            self.addLanes([internal_info], roleIndex, laneIndex)
         finally:
             self.parentApplet.busy = False
+        self.addLanes([internal_info], roleIndex, laneIndex)
 
     def handleClearDatasets(self, roleIndex, selectedRows):
         for row in selectedRows:
