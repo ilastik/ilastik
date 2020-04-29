@@ -10,6 +10,7 @@ from vigra.vigranumpycore import AxisTags
 from lazyflow.request import Request
 from ndstructs import Shape5D
 from functools import partial
+import argparse
 
 from ilastik.applets.base.applet import Applet
 from ilastik.applets.dataSelection import DataSelectionApplet
@@ -74,10 +75,8 @@ class BatchProcessingApplet(Applet):
         parsed_args, unused_args = parser.parse_known_args(cmdline_args)
         return parsed_args, unused_args
 
-    def run_export_from_parsed_args(self, parsed_args):
-        """
-        Run the export for each dataset listed in parsed_args (we use the same parser as DataSelectionApplet).
-        """
+    def run_export_from_parsed_args(self, parsed_args: argparse.Namespace):
+        "Run the export for each dataset listed in parsed_args as interpreted by DataSelectionApplet."
         if parsed_args.distributed:
             export_function = partial(self.do_distributed_export, block_size=parsed_args.distributed_block_size)
         else:
@@ -90,7 +89,7 @@ class BatchProcessingApplet(Applet):
 
     def run_export(
         self,
-        lane_configs: List[Dict[str, Union[DatasetInfo]]],
+        lane_configs: List[Dict[str, Optional[DatasetInfo]]],
         export_to_array: bool = False,
         export_function: Optional[Callable] = None,
     ) -> Union[List[str], List[numpy.array]]:
@@ -107,11 +106,8 @@ class BatchProcessingApplet(Applet):
             prepareForNewLane() and connectLane() logic, which ensures that we get a fresh new lane that's
             ready to process data.
 
-            After each lane is processed, the given post-processing callback will be executed.
-            signature: lane_postprocessing_callback(batch_lane_index)
-
         Args:
-            lane_configs: A list dicts with one dict of role_name -> DatasetInfo for each lane
+            lane_configs: A list of dicts with one dict of role_name -> DatasetInfo for each lane
             export_to_array: If True do NOT export to disk as usual.
               Instead, export the results to a list of arrays, which is returned.
               If False, return a list of the filenames we produced to.
