@@ -316,31 +316,16 @@ class BatchProcessingGui(QTabWidget):
             QMessageBox.critical(self, "Network Error", str(e))
 
     def run_export(self):
-        role_names = self.parentApplet.dataSelectionApplet.topLevelOperator.DatasetRoles.value
+        role_names = self.parentApplet.dataSelectionApplet.role_names
 
         # Prepare file lists in an OrderedDict
-        role_path_dict = OrderedDict(
-            (role_name, self._data_role_widgets[role_name].filepaths) for role_name in role_names
-        )
-        dominant_role_name = role_names[0]
-        num_paths = len(role_path_dict[dominant_role_name])
-
-        if num_paths == 0:
-            return
-
-        for role_name in role_names[1:]:
-            paths = role_path_dict[role_name]
-            if len(paths) == 0:
-                role_path_dict[role_name] = [None] * num_paths
-
-            if len(role_path_dict[role_name]) != num_paths:
-                raise BatchProcessingDataConstraintException(
-                    f"Number of files for '{role_name!r}' does not match! " f"Exptected {num_paths} files."
-                )
+        role_inputs = {role_name: self._data_role_widgets[role_name].filepaths for role_name in role_names}
 
         # Run the export in a separate thread
-        input_axes = list(self.parentApplet.opDataSelection.get_lane(-1).get_axistags().values())
-        export_req = Request(partial(self.parentApplet.run_export, role_path_dict, input_axes=input_axes))
+        input_axes = list(self.parentApplet.dataSelectionApplet.get_lane(-1).get_axistags().values())
+        lane_configs = self.parentApplet.dataSelectionApplet.create_lane_configs(role_inputs=role_inputs, input_axes=input_axes)
+
+        export_req = Request(partial(self.parentApplet.run_export, lane_configs=lane_configs))
         export_req.notify_failed(self.handle_batch_processing_failure)
         export_req.notify_finished(self.handle_batch_processing_finished)
         export_req.notify_cancelled(self.handle_batch_processing_cancelled)

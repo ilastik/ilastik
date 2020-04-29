@@ -248,10 +248,16 @@ class DataSelectionApplet(Applet):
             info.dumpToHdf5(h5_file=tmp_h5, inner_path=inner_path)
             return self.create_dataset_info(url=full_path)
 
-    def lane_configs_from_parsed_args(self, parsed_args) -> List[Dict[str, Optional[DatasetInfo]]]:
-        input_axes = parsed_args.input_axes
+    def create_lane_configs(
+        self,
+        role_inputs: Dict[str, List[str]],
+        input_axes: List[Optional[vigra.AxisTags]],
+        preconvert_stacks: bool = False,
+        no_axes_guessing: bool = False,
+        stack_along: str = 'z',
+    ) -> List[Dict[str, DatasetInfo]]:
         if not input_axes or not any(input_axes):
-            if parsed_args.no_axes_guessing or self.num_lanes == 0:
+            if no_axes_guessing or self.num_lanes == 0:
                 input_axes = [None] * len(self.role_names)
                 logger.info(f"Using axistags from input files")
             else:
@@ -262,13 +268,12 @@ class DataSelectionApplet(Applet):
 
         rolewise_infos : Dict[str, List[DatasetInfo]] = {}
         for role_name, axistags in zip(self.role_names, input_axes):
-            role_arg_name = self._role_name_to_arg_name(role_name)
-            role_urls = getattr(parsed_args, role_arg_name) or []
+            role_urls = role_inputs.get(role_name, [])
             infos = [
-                self.create_dataset_info(url, axistags=axistags, sequence_axis=parsed_args.stack_along)
+                self.create_dataset_info(url, axistags=axistags, sequence_axis=stack_along)
                 for url in role_urls
             ]
-            if parsed_args.preconvert_stacks:
+            if preconvert_stacks:
                 infos = [self.convert_info_to_h5(info) if info.is_stack() else info for info in infos]
             rolewise_infos[role_name] = infos
 
@@ -280,6 +285,19 @@ class DataSelectionApplet(Applet):
         if any(lane_conf[main_role] is None for lane_conf in lane_configs):
             raise ValueError(f"You must provide values for {main_role} for every lane. Provided was {lane_configs}")
         return lane_configs
+
+    def lane_configs_from_parsed_args(self, parsed_args: argparse.Namespace) -> List[Dict[str, Optional[DatasetInfo]]]:
+        role_inputs : Dict[str, List[str]] = {}
+        for role_name in self.role_names:
+            role_arg_name = self._role_name_to_arg_name(role_name)
+            role_inputs[role_name] = getattr(parsed_args, role_arg_name) or []
+        return self.create_lane_configs(
+            role_inputs=role_inputs,
+            input_axes=parsed_args.input_axes,
+            preconvert_stacks=parsed_args.preconvert_stacks,
+            no_axes_guessing=parsed_args.no_axes_guessing,
+            stack_along=parsed_args.stack_along,
+        )
 
     def pushLane(self, role_infos: Dict[str, DatasetInfo]):
         return self.topLevelOperator.pushLane(role_infos)
