@@ -47,10 +47,6 @@ from lazyflow.request import Request
 logger = logging.getLogger(__name__)
 
 
-class BatchProcessingDataConstraintException(Exception):
-    pass
-
-
 class FileListWidget(QListWidget):
     """QListWidget with custom drag-n-drop for file paths
     """
@@ -182,10 +178,8 @@ class BatchProcessingGui(QTabWidget):
         self.export_req = None
 
     def initMainUi(self):
-
-        role_names = self.parentApplet.dataSelectionApplet.topLevelOperator.DatasetRoles.value
         # Create a tab for each role
-        for role_name in role_names:
+        for role_name in self.parentApplet.dataSelectionApplet.role_names:
             assert role_name not in self._data_role_widgets
             data_role_widget = BatchRoleWidget(role_name=role_name, parent=self)
             self.addTab(data_role_widget, role_name)
@@ -320,10 +314,11 @@ class BatchProcessingGui(QTabWidget):
 
         # Prepare file lists in an OrderedDict
         role_inputs = {role_name: self._data_role_widgets[role_name].filepaths for role_name in role_names}
+        if all(len(role_inp) == 0 for role_inp in role_inputs.values()):
+            return
 
         # Run the export in a separate thread
-        input_axes = list(self.parentApplet.dataSelectionApplet.get_lane(-1).get_axistags().values())
-        lane_configs = self.parentApplet.dataSelectionApplet.create_lane_configs(role_inputs=role_inputs, input_axes=input_axes)
+        lane_configs = self.parentApplet.dataSelectionApplet.create_lane_configs(role_inputs=role_inputs)
 
         export_req = Request(partial(self.parentApplet.run_export, lane_configs=lane_configs))
         export_req.notify_failed(self.handle_batch_processing_failure)

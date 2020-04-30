@@ -4,11 +4,11 @@ from contextlib import contextmanager, nullcontext
 import pytest
 from pytestqt.exceptions import capture_exceptions
 from ilastik.applets.batchProcessing.batchProcessingGui import (
-    BatchProcessingDataConstraintException,
     BatchProcessingGui,
     BatchRoleWidget,
     FileListWidget,
 )
+from ilastik.applets.dataSelection.dataSelectionApplet import RoleMismatchException
 from PyQt5.QtCore import Qt, QUrl
 
 
@@ -37,7 +37,7 @@ def role_names():
 @pytest.fixture()
 def parent_applet(role_names):
     parent_applet = mock.Mock()
-    parent_applet.dataSelectionApplet.topLevelOperator.DatasetRoles.value = role_names
+    parent_applet.dataSelectionApplet.role_names = role_names
     parent_applet.run_export = mock.Mock()
 
     return parent_applet
@@ -207,10 +207,10 @@ def assert_raises(exception_type):
     "secondary_files,expectation",
     [
         (tuple(), does_not_raise),
-        (("sec1",), assert_raises(BatchProcessingDataConstraintException)),
+        (("sec1",), does_not_raise),
         (("sec1", "sec2"), does_not_raise),
-        (("sec1", "sec2", "sec3"), assert_raises(BatchProcessingDataConstraintException)),
-        (("sec1", "sec2", "sec3", "sec4"), assert_raises(BatchProcessingDataConstraintException)),
+        #(("sec1", "sec2", "sec3"), assert_raises(RoleMismatchException)), # needs a real DataSelectionApplet
+        #(("sec1", "sec2", "sec3", "sec4"), assert_raises(RoleMismatchException)), # needs a real DataSelectionApplet
     ],
 )
 def test_BatchProcessingGui_nonmatching_raises(
