@@ -405,7 +405,8 @@ class DataSelectionGui(QWidget):
         # If the user didn't cancel
         for path in paths or []:
             try:
-                info = self.instantiate_dataset_info(url=str(path), role=roleIndex)
+                full_path = self._get_dataset_full_path(path, roleIndex=roleIndex)
+                info = self.instantiate_dataset_info(url=str(full_path), role=roleIndex)
                 self.addLanes([info], roleIndex=roleIndex, startingLaneNum=startingLaneNum)
             except DataSelectionGui.UserCancelledError:
                 pass
@@ -524,7 +525,7 @@ class DataSelectionGui(QWidget):
         previous_paths = self._default_h5n5_volumes.get(roleIndex, set())
         return previous_paths.copy()
 
-    def _get_dataset_full_path(self, filePath: Path) -> Path:
+    def _get_dataset_full_path(self, filePath: Path, roleIndex: int) -> Path:
         if not DatasetInfo.fileHasInternalPaths(filePath):
             return filePath
         datasetNames = DatasetInfo.getPossibleInternalPathsFor(filePath.absolute())
@@ -544,7 +545,7 @@ class DataSelectionGui(QWidget):
                 selected_index = dlg.combo.currentIndex()
                 selected_dataset = str(datasetNames[selected_index])
         self._add_default_inner_path(roleIndex=roleIndex, inner_path=selected_dataset)
-        return data_path / selected_dataset.lstrip("/")
+        return filePath / selected_dataset.lstrip("/")
 
     def guess_axistags_for(self, role: Union[str, int], info: DatasetInfo) -> Optional[AxisTags]:
         if self.parentApplet.num_lanes == 0:
