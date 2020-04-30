@@ -268,7 +268,7 @@ class DatasetInfo(ABC):
         self, project_file: h5py.File, progress_signal: Callable[[int], None] = lambda x: None
     ) -> str:
         project = Project(project_file)
-        inner_path = os.path.join(project.local_data_group.name, self.legacy_datasetId)
+        inner_path = project.local_data_group.name + "/" + self.legacy_datasetId
         if project_file.get(inner_path) is not None:
             return inner_path
         self.dumpToHdf5(h5_file=project_file, inner_path=inner_path, progress_signal=progress_signal)
