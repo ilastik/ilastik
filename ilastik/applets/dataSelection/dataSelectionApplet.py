@@ -226,7 +226,6 @@ class DataSelectionApplet(Applet):
         else:
             return RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
                 filePath=url,
-                project_file=self.project_file,
                 axistags=axistags,
                 sequence_axis=sequence_axis,
             )
