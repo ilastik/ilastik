@@ -50,6 +50,9 @@ from .opDataSelection import (
 from .dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
 
 
+class RoleMismatchException(Exception):
+    pass
+
 class DataSelectionApplet(Applet):
     """
     This applet allows the user to select sets of input data,
@@ -120,17 +123,6 @@ class DataSelectionApplet(Applet):
 
     @classmethod
     def get_arg_parser(cls, role_names):
-        def user_expanded_existing_filename(path):
-            if isUrl(path):
-                return path
-            all_paths = DatasetInfo.expand_path(path)
-            if len(all_paths) == 0:
-                raise ValueError(f"No files found matching path {path}")
-            for p in all_paths:
-                if not os.path.exists(p):
-                    raise ValueError(f"Input file does not exist: {p}")
-            return path
-
         def make_trailing_args_action(role_names: List[str]):
             class ExtraTrailingArgumentsAction(argparse.Action):
                 def __call__(self, parser, namespace, values, option_string):
@@ -154,7 +146,6 @@ class DataSelectionApplet(Applet):
                 "--" + arg_name, "--" + arg_name.replace("_", "-"),
                 nargs="+",
                 help=f"List of input files for the {role_name} role",
-                type=user_expanded_existing_filename,
             )
 
         # Finally, a catch-all for role 0 (if the workflow only has one role, there's no need to provide role names
@@ -174,10 +165,12 @@ class DataSelectionApplet(Applet):
 
         def parse_input_axes(raw_input_axes: str) -> List[Optional[vigra.AxisTags]]:
             input_axes = [axes.strip() for axes in raw_input_axes.split(",")]
+            if len(input_axes) > len(role_names):
+                raise ValueError("Specified input axes exceed number of data roles ({role_names})")
             if len(input_axes) == 1:
                 input_axes = input_axes * len(role_names)
-            if len(input_axes) != len(role_names):
-                raise ValueError(f"Mismatching input_axes and role lengtsh: roles: {role_names} axes: {input_axes}")
+            else:
+                input_axes += ["None"] * (len(role_names) - len(input_axes))
             return [parse_axiskeys(keys) for keys in input_axes]
 
         arg_parser.add_argument(
@@ -282,7 +275,8 @@ class DataSelectionApplet(Applet):
 
         main_role = self.role_names[0]
         if any(lane_conf[main_role] is None for lane_conf in lane_configs):
-            raise ValueError(f"You must provide values for {main_role} for every lane. Provided was {lane_configs}")
+            message = f"You must provide values for {main_role} for every lane. Provided was {lane_configs}"
+            raise RoleMismatchException(message)
         return lane_configs
 
     def lane_configs_from_parsed_args(self, parsed_args: argparse.Namespace) -> List[Dict[str, Optional[DatasetInfo]]]:

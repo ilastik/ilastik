@@ -491,7 +491,6 @@ class TestAxesOrderPreservation(object):
         args.append("--export_drange=(0,255)")
 
         # Input args
-        args.append("--input_axes={}".format(input_axes))
         input_source_path1 = os.path.join(self.PROJECT_FILE_BASE, "inputdata", "{}.h5".format(dims))
         input_path1 = self.create_input(input_source_path1, input_axes)
         args.append("--raw_data=" + input_path1)
@@ -501,6 +500,7 @@ class TestAxesOrderPreservation(object):
             prob_axes += "c"
         input_path2 = self.create_input(input_source_path2, prob_axes)
         args.append("--probabilities=" + input_path2)
+        args.append(f"--input_axes={input_axes},{prob_axes}")
 
         # Clear the existing commandline args so it looks like we're starting
         # fresh.

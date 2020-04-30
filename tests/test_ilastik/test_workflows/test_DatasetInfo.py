@@ -202,14 +202,3 @@ def test_h5_stack_via_star_file_glob_and_stared_internal_path(h5_stack_dir, empt
     )
 
     assert info.filePath == expected_filepath
-
-
-def test_guess_tags_for_singleton_axes(h5_1_100_200_1_1, empty_project_file):
-    info = FilesystemDatasetInfo(
-        filePath=h5_1_100_200_1_1,
-        project_file=empty_project_file,
-        axistags=vigra.defaultAxistags("yx"),
-        guess_tags_for_singleton_axes=True,
-        sequence_axis="z",
-    )
-    assert info.axiskeys[1:3] == "yx"
