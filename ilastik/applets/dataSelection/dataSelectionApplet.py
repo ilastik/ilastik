@@ -175,7 +175,13 @@ class DataSelectionApplet(Applet):
 
         arg_parser.add_argument(
             "--input-axes", "--input_axes",
-            help="Explicitly specify the axes of your dataset.",
+            help=("Dataset axes names; a list of comma-separated axis names, representing how datasets are to be "
+                  "interpreted in each workflow role e.g.: 'xyz,xyz' ."
+                  " If a single value is provided, it is assumed to apply to all roles ({role_names}). If more than "
+                  "one value is provided but less than the total number of roles, the missing roles will have their "
+                  "axistags defined by the training data axistags. If --no-axes-guessing is set, dataset axistags "
+                  "will be inferred from the file conventions, e.g.: 'axes' in .n5, and not from the "
+                  "training data axistags. Defaults to using the training data axistags"),
             required=False,
             type=parse_input_axes,
             default=[None] * len(role_names)
@@ -187,7 +193,13 @@ class DataSelectionApplet(Applet):
             action="store_true",
         )
 
-        arg_parser.add_argument("--stack-along", "--stack_along", help="Sequence axis along which to stack", type=str, default="z")
+        arg_parser.add_argument(
+            "--stack-along",
+            "--stack_along",
+            help="Axis along which stack datasets (e.g.: my_yx_slices*.tiff) are to be stacked",
+            type=str,
+            default="z"
+        )
         return arg_parser
 
     @classmethod
