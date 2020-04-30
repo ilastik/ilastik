@@ -84,7 +84,6 @@ class DatasetInfo(ABC):
         nickname: str = "",
         normalizeDisplay: bool = None,
         drange: Tuple[Number, Number] = None,
-        guess_tags_for_singleton_axes: bool = False,
     ):
         self.laneShape = laneShape
         self.laneDtype = laneDtype

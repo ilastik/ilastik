@@ -236,7 +236,6 @@ class DataSelectionApplet(Applet):
                 project_file=self.project_file,
                 axistags=axistags,
                 sequence_axis=sequence_axis,
-                guess_tags_for_singleton_axes=True,  # FIXME: add cmd line param to negate this
             )
 
     def convert_info_to_h5(self, info: DatasetInfo) -> DatasetInfo:
@@ -264,7 +263,7 @@ class DataSelectionApplet(Applet):
                 input_axes = list(self.get_lane(-1).get_axistags().values())
                 logger.info(f"Using axistags from previous lane: {input_axes}")
         else:
-            logger.info(f"Forcing input axes to {input_axes}, as per command line")
+            logger.info(f"Forcing input axes to {input_axes}")
 
         rolewise_infos : Dict[str, List[DatasetInfo]] = {}
         for role_name, axistags in zip(self.role_names, input_axes):
