@@ -46,6 +46,7 @@ from volumina.utility import ShortcutManager
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.multicut.opMulticut import OpMulticutAgglomerator, AVAILABLE_SOLVER_NAMES, DEFAULT_SOLVER_NAME
+from ilastik.config import cfg as ilastik_config
 
 from lazyflow.request import Request
 
@@ -127,6 +128,7 @@ class MulticutGuiMixin(object):
         configure_update_handlers(solver_name_combo.currentIndexChanged, op.SolverName)
 
         # Only add the solver checkbox in debug mode
+        dbg = ilastik_config.getboolean("ilastik", "debug")
         if dbg:
             drawer_layout.addLayout(control_layout("Solver", solver_name_combo))
 
