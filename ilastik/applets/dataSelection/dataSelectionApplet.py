@@ -179,7 +179,7 @@ class DataSelectionApplet(Applet):
                   "interpreted in each workflow role e.g.: 'xyz,xyz' ."
                   " If a single value is provided, it is assumed to apply to all roles ({role_names}). If more than "
                   "one value is provided but less than the total number of roles, the missing roles will have their "
-                  "axistags defined by the training data axistags. If --no-axes-guessing is set, dataset axistags "
+                  "axistags defined by the training data axistags. If --ignore-training-axistags is set, dataset axistags "
                   "will be inferred from the file conventions, e.g.: 'axes' in .n5, and not from the "
                   "training data axistags. Defaults to using the training data axistags"),
             required=False,
@@ -188,7 +188,7 @@ class DataSelectionApplet(Applet):
         )
 
         arg_parser.add_argument(
-            "--no-axes-guessing", "--no_axes_guessing",
+            "--ignore-training-axistags", "--ignore_training_axistags",
             help="Do not use training data to guess input data axis on headless runs. Can still use file axis conventions",
             action="store_true",
         )
@@ -256,11 +256,11 @@ class DataSelectionApplet(Applet):
         role_inputs: Dict[str, List[str]],
         input_axes: List[Optional[vigra.AxisTags]],
         preconvert_stacks: bool = False,
-        no_axes_guessing: bool = False,
+        ignore_training_axistags: bool = False,
         stack_along: str = 'z',
     ) -> List[Dict[str, DatasetInfo]]:
         if not input_axes or not any(input_axes):
-            if no_axes_guessing or self.num_lanes == 0:
+            if ignore_training_axistags or self.num_lanes == 0:
                 input_axes = [None] * len(self.role_names)
                 logger.info(f"Using axistags from input files")
             else:
@@ -299,7 +299,7 @@ class DataSelectionApplet(Applet):
             role_inputs=role_inputs,
             input_axes=parsed_args.input_axes,
             preconvert_stacks=parsed_args.preconvert_stacks,
-            no_axes_guessing=parsed_args.no_axes_guessing,
+            ignore_training_axistags=parsed_args.ignore_training_axistags,
             stack_along=parsed_args.stack_along,
         )
 
