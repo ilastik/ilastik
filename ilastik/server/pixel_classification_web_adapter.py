@@ -17,6 +17,7 @@ from ilastik.annotations import Annotation
 from ilastik.filesystem import HttpPyFs
 
 from ndstructs.datasource import PrecomputedChunksDataSource
+from ndstructs.utils import to_json_data
 
 
 @dataclass
@@ -84,6 +85,19 @@ class PixelClassificationWorkflow2WebAdapter:
             extractors.append(extractor)
         return self.add_feature_extractors(extractors)
 
+    def get_ilp_feature_extractors(self) -> flask.Response:
+        specs: List[FeatureSpec] = []
+        for fe in self.workflow.feature_extractors:
+            specs.append(
+                FeatureSpec(
+                    name=fe.__class__.__name__,
+                    scale=fe.ilp_scale,
+                    axis_2d=fe.axis_2d,
+                    num_input_channels=fe.num_input_channels,
+                )
+            )
+        return flask.jsonify([to_json_data(spec) for spec in specs])
+
     def clear_feature_extractors(self, updateClassifier: bool = False) -> flask.Response:
         return self.remove_feature_extractors(self.workflow.feature_extractors[:], updateClassifier=updateClassifier)
 
@@ -107,7 +121,7 @@ class PixelClassificationWorkflow2WebAdapter:
     def remove_annotations(self, annotations: List[Annotation], updateClassifier: bool = True) -> flask.Response:
         classifier = self.workflow.remove_annotations(annotations, updateClassifier=updateClassifier)
         classifier_id = self._store_classifier(classifier)
-        return flask.jsonify(classifier_id)
+        return flask.jsonify(classifier_id and classifier_id.to_json_data())
 
     def get_classifier(self) -> flask.Response:
         if self.workflow.classifier is None:

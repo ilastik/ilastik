@@ -51,6 +51,7 @@ rpc_methods = {
         "upload_to_cloud_ilastik",
         "add_lane_for_url",
         "add_ilp_feature_extractors",
+        "get_ilp_feature_extractors",
         "remove_annotations",
         "remove_feature_extractors",
         "clear_feature_extractors",
