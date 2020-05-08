@@ -32,7 +32,7 @@ from .opDataSelection import (
     DummyDatasetInfo,
     UrlDatasetInfo,
 )
-from .opDataSelection import PreloadedArrayDatasetInfo, ProjectInternalDatasetInfo
+from .opDataSelection import PreloadedArrayDatasetInfo, ProjectInternalDatasetInfo, ResourceNotFoundException
 from lazyflow.operators.ioOperators import OpInputDataReader, OpStackLoader, OpH5N5WriterBigDataset
 from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
 from lazyflow.operators.ioOperators.opTiffSequenceReader import OpTiffSequenceReader
@@ -244,7 +244,7 @@ class DataSelectionSerializer(AppletSerializer):
         dirty = False
         try:
             datasetInfo = info_class.from_h5_group(infoGroup)
-        except FileNotFoundError as e:
+        except ResourceNotFoundException as e:
             if headless:
                 return (DummyDatasetInfo.from_h5_group(infoGroup), True)
 
@@ -252,7 +252,7 @@ class DataSelectionSerializer(AppletSerializer):
             from ilastik.widgets.ImageFileDialog import ImageFileDialog
 
             repaired_paths = []
-            for missing_path in e.filename.split(os.path.pathsep):
+            for missing_path in e.paths:
                 should_repair = QMessageBox.question(
                     None,
                     "Missing file",

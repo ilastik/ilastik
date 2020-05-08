@@ -23,7 +23,7 @@ import glob
 import os
 import uuid
 from enum import Enum, unique
-from typing import List, Tuple, Dict, Optional, Union, Callable
+from typing import List, Tuple, Dict, Optional, Union, Callable, Sequence
 from numbers import Number
 import re
 from pathlib import Path
@@ -35,6 +35,7 @@ import vigra
 from vigra import AxisTags
 import h5py
 import z5py
+from fs.errors import ResourceNotFound as FsResourceNotFound
 from ndstructs import Shape5D
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
@@ -69,6 +70,11 @@ class UnsuitedAxistagsException(Exception):
     def __init__(self, axistags, shape):
         super().__init__(f"Axistags {axistags} don't fit data shape {shape}")
 
+class ResourceNotFoundException(Exception):
+    def __init__(self, paths: Sequence[Union[str, Path]]):
+        self.paths = paths
+        paths_display = os.path.pathsep.join(str(p) for p in paths)
+        super().__init__(f"Could not fetch resource at {paths_display}")
 
 class DatasetInfo(ABC):
     def __init__(
@@ -199,7 +205,7 @@ class DatasetInfo(ABC):
                 expanded_paths.extend([os.path.join(ext_path, int_path) for int_path in internal_paths])
 
         if missing_files:
-            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), os.path.pathsep.join(missing_files))
+            raise ResourceNotFoundException(missing_files)
         return sorted(p.replace("\\", "/") for p in expanded_paths)
 
     @classmethod
@@ -455,7 +461,11 @@ class DummyDatasetInfo(DatasetInfo):
 class UrlDatasetInfo(DatasetInfo):
     def __init__(self, *, url: str, nickname: str = "", **info_kwargs):
         self.url = url
-        op_reader = OpInputDataReader(graph=Graph(), FilePath=self.url)
+        try:
+            op_reader = OpInputDataReader(graph=Graph(), FilePath=self.url)
+        except FsResourceNotFound as e:
+            raise ResourceNotFoundException([url]) from e
+
         meta = op_reader.Output.meta.copy()
         super().__init__(
             default_tags=meta.axistags,

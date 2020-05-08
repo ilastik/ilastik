@@ -5,6 +5,7 @@ import io
 from typing import Dict, Iterable, List, Any, Callable, Optional, Tuple
 import requests
 from requests import HTTPError
+from requests.exceptions import RequestException
 import sys
 
 from fs.base import FS
@@ -70,9 +71,12 @@ class HttpPyFs(FS):
 
     def _get_object(self, path: str) -> Tuple[Dict[str, str], bytes]:
         full_path = self._make_full_path(path)
-        response = requests.get(full_path)
-        response.raise_for_status()
-        return response.headers, response.content
+        try:
+            response = requests.get(full_path)
+            response.raise_for_status()
+            return response.headers, response.content
+        except RequestException as e:
+            raise ResourceNotFound(full_path) from e
 
     def _head_object(self, path: str) -> Dict:
         full_path = self._make_full_path(path)
