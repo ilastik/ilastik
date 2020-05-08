@@ -255,7 +255,7 @@ class DatasetInfoEditorWidget(QDialog):
             else:
                 new_internal_path = self.internalDatasetNameComboBox.currentText()
                 if new_internal_path:
-                    filePath = os.path.pathsep.join(Path(ep) / new_internal_path.lstrip("/") for ep in info.external_paths)
+                    filePath = os.path.pathsep.join(ep + "/" + new_internal_path.lstrip("/") for ep in info.external_paths)
                 else:
                     filePath = info.effective_path
 
