@@ -34,9 +34,10 @@ from lazyflow.operators.ioOperators import (
     OpCachedTiledVolumeReader,
     OpRawBinaryFileReader,
     OpStackLoader,
-    OpRESTfulPrecomputedChunkedVolumeReader,
+    OpPrecomputedChunksDataSource,
     OpImageReader,
 )
+from ilastik.filesystem import get_filesystem_for
 from lazyflow.utility.jsonConfig import JsonConfigParser
 from lazyflow.utility.pathHelpers import lsH5N5, isUrl, isRelative, splitPath, PathComponents
 
@@ -187,7 +188,7 @@ class OpInputDataReader(Operator):
             self._attemptOpenAsKlb,
             self._attemptOpenAsUfmf,
             self._attemptOpenAsMmf,
-            self._attemptOpenAsRESTfulPrecomputedChunkedVolume,
+            self._attemptOpenAsPrecomputedChunksDataSource,
             self._attemptOpenAsDvidVolume,
             self._attemptOpenAsH5N5Stack,
             self._attemptOpenAsTiffStack,
@@ -289,13 +290,12 @@ class OpInputDataReader(Operator):
         else:
             return ([], None)
 
-    def _attemptOpenAsRESTfulPrecomputedChunkedVolume(self, filePath):
+    def _attemptOpenAsPrecomputedChunksDataSource(self, filePath):
         if not filePath.lower().startswith("precomputed://"):
             return ([], None)
         else:
-            url = filePath.lstrip("precomputed://")
-            reader = OpRESTfulPrecomputedChunkedVolumeReader(parent=self)
-            reader.BaseUrl.setValue(url)
+            filesystem, path = get_filesystem_for(url=filePath)
+            reader = OpPrecomputedChunksDataSource(path=path, filesystem=filesystem, parent=self)
             return [reader], reader.Output
 
     def _attemptOpenAsH5N5Stack(self, filePath):
