@@ -79,8 +79,6 @@ class GuiDataSource(JsonSerializable):
     @property
     def ilp_data(self) -> dict:
         url = self.datasource.url
-        if url.startswith("precomputed://"):  # FIXME: make ilastik accept url including scale key
-            url = "/".join(url.split("/")[:-1])
         return {
             "allowLabels": True,
             "axisorder": self.datasource.axiskeys.encode("utf8"),
