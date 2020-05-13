@@ -18,17 +18,15 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from abc import abstractproperty, ABC
+from abc import abstractproperty, abstractmethod, ABC
 import glob
 import os
 import uuid
-from enum import Enum, unique
 from typing import List, Tuple, Dict, Optional, Union, Callable
 from numbers import Number
 import re
 from pathlib import Path
 import errno
-import inspect
 
 import numpy
 import vigra
@@ -108,6 +106,35 @@ class DatasetInfo(ABC):
 
     @abstractproperty
     def legacy_location(self) -> str:
+        pass
+
+    def get_provider_slot(
+        self, meta: Optional[Dict] = None, parent: Optional[Operator] = None, graph: Optional[Graph] = None
+    ) -> OutputSlot:
+        metadata = {"display_mode": self.display_mode, "axistags": self.axistags}
+        metadata.update(meta or {})
+
+        if self.drange is not None:
+            metadata["drange"] = self.drange
+        elif self.laneDtype == numpy.uint8:
+            metadata["drange"] = (0, 255)
+        if self.normalizeDisplay is not None:
+            metadata["normalizeDisplay"] = self.normalizeDisplay
+        if self.subvolume_roi is not None:
+            metadata["subvolume_roi"] = self.subvolume_roi
+
+        opMetadataInjector = OpMetadataInjector(parent=parent, graph=graph)
+        opMetadataInjector.Input.connect(self.get_non_transposed_provider_slot(parent=parent, graph=graph))
+        opMetadataInjector.Metadata.setValue(metadata)
+        return opMetadataInjector.Output
+
+    @abstractmethod
+    def get_non_transposed_provider_slot(
+        self, parent: Optional[Operator] = None, graph: Optional[Graph] = None
+    ) -> OutputSlot:
+        """Gets an OutputSlot which can be queried for the data of this DatasetInfo.
+
+        Like with operators, either parent or graph must be provided, but not both"""
         pass
 
     def to_json_data(self) -> Dict:
@@ -290,18 +317,13 @@ class DatasetInfo(ABC):
                 Image=self.get_provider_slot(graph=graph),
             )
             op_writer.progressSignal.subscribe(progress_signal)
-            success = op_writer.WriteImage.value
-            dataset = h5_file[inner_path]
-            for index, key in enumerate(self.axiskeys):
-                dataset.dims[index].label = key
-            dataset.attrs["axistags"] = self.axistags.toJSON()
-            if self.drange:
-                dataset.attrs["drange"] = self.drange
+            success = op_writer.WriteImage.value  # reading this slot triggers the write
         finally:
             progress_signal(100)
 
     def is_stack(self) -> bool:
         return len(splitPath(self.effective_path)) > 1
+
 
 class ProjectInternalDatasetInfo(DatasetInfo):
     def __init__(self, *, inner_path: str, project_file: h5py.File, nickname: str = "", **info_kwargs):
@@ -358,7 +380,9 @@ class ProjectInternalDatasetInfo(DatasetInfo):
     def display_string(self) -> str:
         return "Project Internal: " + self.inner_path
 
-    def get_provider_slot(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
+    def get_non_transposed_provider_slot(
+        self, parent: Optional[Operator] = None, graph: Optional[Graph] = None
+    ) -> OutputSlot:
         opReader = OpStreamingH5N5Reader(parent=parent, graph=graph)
         opReader.H5N5File.setValue(self.project_file)
         opReader.InternalPath.setValue(self.inner_path)
@@ -403,7 +427,9 @@ class PreloadedArrayDatasetInfo(DatasetInfo):
     def display_string(self) -> str:
         return "Preloaded Array"
 
-    def get_provider_slot(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
+    def get_non_transposed_provider_slot(
+        self, parent: Optional[Operator] = None, graph: Optional[Graph] = None
+    ) -> OutputSlot:
         opReader = OpArrayPiper(parent=parent, graph=graph)
         opReader.Input.setValue(self.preloaded_array)
         return opReader.Output
@@ -431,7 +457,9 @@ class DummyDatasetInfo(DatasetInfo):
     def to_json_data(self) -> Dict:
         raise NotImplemented("Dummy Slots should not be serialized!")
 
-    def get_provider_slot(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
+    def get_non_transposed_provider_slot(
+        self, parent: Optional[Operator] = None, graph: Optional[Graph] = None
+    ) -> OutputSlot:
         opZero = OpZeroSource(
             shape=self.laneShape, dtype=self.laneDtype, axistags=self.axistags, parent=parent, graph=graph
         )
@@ -473,7 +501,9 @@ class UrlDatasetInfo(DatasetInfo):
     def effective_path(self) -> str:
         return self.url
 
-    def get_provider_slot(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
+    def get_non_transposed_provider_slot(
+        self, parent: Optional[Operator] = None, graph: Optional[Graph] = None
+    ) -> OutputSlot:
         op_reader = OpInputDataReader(parent=parent, graph=graph, FilePath=self.url)
         return op_reader.Output
 
@@ -538,9 +568,15 @@ class FilesystemDatasetInfo(DatasetInfo):
         first_external_path = PathComponents(self.filePath.split(os.path.pathsep)[0]).externalPath
         return Path(first_external_path).parent
 
-    def get_provider_slot(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None):
+    def get_non_transposed_provider_slot(
+        self, parent: Optional[Operator] = None, graph: Optional[Graph] = None
+    ) -> OutputSlot:
         op_reader = OpInputDataReader(
-            parent=parent, graph=graph, WorkingDirectory=self.base_dir, FilePath=self.filePath, SequenceAxis=self.sequence_axis
+            parent=parent,
+            graph=graph,
+            WorkingDirectory=self.base_dir,
+            FilePath=self.filePath,
+            SequenceAxis=self.sequence_axis,
         )
         return op_reader.Output
 
@@ -651,20 +687,7 @@ class OpDataSelection(Operator):
     Image = OutputSlot()  # : The output image
     AllowLabels = OutputSlot(stype="bool")  # : A bool indicating whether or not this image can be used for training
 
-    # : The output slot, in the data's original axis ordering (regardless of forceAxisOrder)
-    _NonTransposedImage = OutputSlot()
-
     ImageName = OutputSlot(stype="string")  # : The name of the output image
-
-    class InvalidDimensionalityError(Exception):
-        """Raised if the user tries to replace the dataset with a new one of differing dimensionality."""
-
-        def __init__(self, message):
-            super(OpDataSelection.InvalidDimensionalityError, self).__init__()
-            self.message = message
-
-        def __str__(self):
-            return self.message
 
     def __init__(
         self,
@@ -705,7 +728,6 @@ class OpDataSelection(Operator):
     def internalCleanup(self, *args):
         if len(self._opReaders) > 0:
             self.Image.disconnect()
-            self._NonTransposedImage.disconnect()
             for reader in reversed(self._opReaders):
                 reader.cleanUp()
             self._opReaders = []
@@ -715,51 +737,14 @@ class OpDataSelection(Operator):
         datasetInfo = self.Dataset.value
 
         try:
-            providerSlot = datasetInfo.get_provider_slot(parent=self)
+            role_name = self.RoleName.value
+            if datasetInfo.shape5d.c > 1:
+                meta = {"channel_names": [f"{role_name}-{i}" for i in range(datasetInfo.shape5d.c)]}
+            else:
+                meta = {"channel_names": [role_name]}
+            providerSlot = datasetInfo.get_provider_slot(meta=meta, parent=self)
             opReader = providerSlot.operator
             self._opReaders.append(opReader)
-
-            # Inject metadata if the dataset info specified any.
-            # Also, inject if if dtype is uint8, which we can reasonably assume has drange (0,255)
-            metadata = {}
-            metadata["display_mode"] = datasetInfo.display_mode
-
-            role_name = self.RoleName.value
-            if "c" not in providerSlot.meta.getTaggedShape():
-                num_channels = 0
-            else:
-                num_channels = providerSlot.meta.getTaggedShape()["c"]
-            if num_channels > 1:
-                metadata["channel_names"] = [f"{role_name}-{i}" for i in range(num_channels)]
-            else:
-                metadata["channel_names"] = [role_name]
-
-            if datasetInfo.drange is not None:
-                metadata["drange"] = datasetInfo.drange
-            elif providerSlot.meta.dtype == numpy.uint8:
-                metadata["drange"] = (0, 255)
-            if datasetInfo.normalizeDisplay is not None:
-                metadata["normalizeDisplay"] = datasetInfo.normalizeDisplay
-            if datasetInfo.axistags is not None:
-                metadata["axistags"] = datasetInfo.axistags
-
-            if datasetInfo.subvolume_roi is not None:
-                metadata["subvolume_roi"] = datasetInfo.subvolume_roi
-
-                # FIXME: We are overwriting the axistags metadata to intentionally allow
-                #        the user to change our interpretation of which axis is which.
-                #        That's okay, but technically there's a special corner case if
-                #        the user redefines the channel axis index.
-                #        Technically, it invalidates the meaning of meta.ram_usage_per_requested_pixel.
-                #        For most use-cases, that won't really matter, which is why I'm not worrying about it right now.
-
-            opMetadataInjector = OpMetadataInjector(parent=self)
-            opMetadataInjector.Input.connect(providerSlot)
-            opMetadataInjector.Metadata.setValue(metadata)
-            providerSlot = opMetadataInjector.Output
-            self._opReaders.append(opMetadataInjector)
-
-            self._NonTransposedImage.connect(providerSlot)
 
             # make sure that x and y axes are present in the selected axis order
             if "x" not in providerSlot.meta.axistags or "y" not in providerSlot.meta.axistags:
@@ -845,8 +830,6 @@ class OpDataSelectionGroup(Operator):
     Image2 = OutputSlot()  # The third dataset. Equivalent to ImageGroup[2]
     AllowLabels = OutputSlot(stype="bool")  # Pulled from the first dataset only.
 
-    _NonTransposedImageGroup = OutputSlot(level=1)
-
     # Must be the LAST slot declared in this class.
     # When the shell detects that this slot has been resized,
     #  it assumes all the others have already been resized.
@@ -897,7 +880,6 @@ class OpDataSelectionGroup(Operator):
             self.Image.disconnect()
             self.Image1.disconnect()
             self.Image2.disconnect()
-            self._NonTransposedImageGroup.disconnect()
             if self._opDatasets is not None:
                 self._opDatasets.cleanUp()
 
@@ -908,7 +890,6 @@ class OpDataSelectionGroup(Operator):
                 broadcastingSlotNames=["ProjectFile", "ProjectDataGroup", "WorkingDirectory"],
             )
             self.ImageGroup.connect(self._opDatasets.Image)
-            self._NonTransposedImageGroup.connect(self._opDatasets._NonTransposedImage)
             self._opDatasets.Dataset.connect(self.DatasetGroup)
             self._opDatasets.ProjectFile.connect(self.ProjectFile)
             self._opDatasets.ProjectDataGroup.connect(self.ProjectDataGroup)
@@ -1010,7 +991,7 @@ class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):
             raise e
 
     def popLane(self):
-        self.removeLane(self.num_lanes -1, self.num_lanes - 1)
+        self.removeLane(self.num_lanes - 1, self.num_lanes - 1)
 
     @property
     def num_lanes(self) -> int:

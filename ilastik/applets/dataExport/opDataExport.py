@@ -19,18 +19,14 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import os
-from pathlib import Path
-from typing import Dict, List
 import collections
 import numpy
-import z5py
 from ndstructs import Shape5D
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import PathComponents, getPathVariants, format_known_keys
-from lazyflow.operators.ioOperators import OpInputDataReader, OpFormattedDataExport
+from lazyflow.operators.ioOperators import OpFormattedDataExport
 from lazyflow.operators.generic import OpSubRegion
-from lazyflow.operators.valueProviders import OpMetadataInjector
 
 
 class DataExportPathFormatter:

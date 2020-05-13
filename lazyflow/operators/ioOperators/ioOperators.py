@@ -641,6 +641,14 @@ class OpH5N5WriterBigDataset(Operator):
 
         # Save the axistags as a dataset attribute
         self.d.attrs["axistags"] = self.Image.meta.axistags.toJSON()
+        if isinstance(self.d, h5py.Dataset):
+            for index, tag in enumerate(self.Image.meta.axistags):
+                self.d.dims[index].label = tag.key
+        else:  # if n5 dataset, apply neuroglancer's axes tags convention
+            self.d.attrs["axes"] = "".join(tag.key for tag in self.Image.meta.axistags)[::-1]
+        drange = self.Image.meta.get("drange")
+        if drange:
+            self.d.attrs["drange"] = drange
 
         def handle_block_result(roi, data):
             slicing = roiToSlice(*roi)

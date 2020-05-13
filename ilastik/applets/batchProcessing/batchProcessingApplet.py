@@ -1,26 +1,15 @@
 import logging
-import sys
-from pathlib import Path
 import weakref
-from collections import OrderedDict
-from typing import Callable, Dict, Hashable, List, Optional, Union, Mapping, Iterable
+from typing import Callable, Dict, List, Optional, Union
 import numpy
-import vigra
-from vigra.vigranumpycore import AxisTags
-from lazyflow.request import Request
 from ndstructs import Shape5D
 from functools import partial
 import argparse
 
 from ilastik.applets.base.applet import Applet
+from ilastik.applets.dataExport.opDataExport import OpDataExport
 from ilastik.applets.dataSelection import DataSelectionApplet
-from ilastik.applets.dataSelection.opDataSelection import (
-    DatasetInfo,
-    FilesystemDatasetInfo,
-    UrlDatasetInfo,
-    OpMultiLaneDataSelectionGroup,
-)
-from lazyflow.utility import isUrl
+from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, OpMultiLaneDataSelectionGroup
 
 logger = logging.getLogger(__name__)  # noqa
 
@@ -117,7 +106,8 @@ class BatchProcessingApplet(Applet):
               or numpy.arrays (depending on export_to_array)
         """
         assert not (export_to_array and export_function)
-        export_function = export_function or (self.do_export_to_array if export_to_array else self.do_normal_export)
+        if not export_function:
+            export_function = self.do_export_to_array if export_to_array else self.do_normal_export
         self.progressSignal(0)
         try:
             results = []
@@ -156,14 +146,13 @@ class BatchProcessingApplet(Applet):
     def export_dataset(
         self,
         lane_config: Dict[str, DatasetInfo],
-        export_function: Callable = None,
+        export_function: Optional[Callable[[OpDataExport], Union[str, numpy.array]]] = None,
         progress_callback: Optional[Callable[[int], None]] = None,
     ) -> Union[str, numpy.array]:
         """
         Configures a lane using the paths specified in the paths from role_inputs and runs the workflow.
         """
         export_function = export_function or self.do_normal_export
-        role_names = self.dataSelectionApplet.role_names
 
         # Call customization hook
         self.dataExportApplet.prepare_for_entire_export()

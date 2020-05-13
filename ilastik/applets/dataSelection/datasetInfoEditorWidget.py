@@ -21,26 +21,19 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import os
-import copy
 from pathlib import Path
 from typing import List, Tuple, Optional
 from numbers import Number
 from functools import partial
 
-import h5py
 import numpy
 import vigra
 
 from PyQt5 import uic
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QDialog, QMessageBox, QDoubleSpinBox, QApplication
+from PyQt5.QtWidgets import QDialog
 
-from ilastik.utility import log_exception
-from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
-from lazyflow.utility import getPathVariants, PathComponents, isUrl
 from .opDataSelection import (
-    OpDataSelection,
     DatasetInfo,
     ProjectInternalDatasetInfo,
     FilesystemDatasetInfo,
@@ -246,16 +239,15 @@ class DatasetInfoEditorWidget(QDialog):
             if new_info_class == ProjectInternalDatasetInfo:
                 project_inner_path = info.importAsLocalDataset(project_file=project_file)
                 info_constructor = partial(
-                    ProjectInternalDatasetInfo,
-                    inner_path=project_inner_path,
-                    project_file=project_file,
+                    ProjectInternalDatasetInfo, inner_path=project_inner_path, project_file=project_file
                 )
             elif new_info_class == UrlDatasetInfo:
                 info_constructor = partial(UrlDatasetInfo, url=info.url)
             else:
                 new_internal_path = self.internalDatasetNameComboBox.currentText()
                 if new_internal_path:
-                    filePath = os.path.pathsep.join(ep + "/" + new_internal_path.lstrip("/") for ep in info.external_paths)
+                    new_full_paths = [Path(ep) / new_internal_path.lstrip("/") for ep in info.external_paths]
+                    filePath = os.path.pathsep.join(str(p) for p in new_full_paths)
                 else:
                     filePath = info.effective_path
 
@@ -267,10 +259,7 @@ class DatasetInfoEditorWidget(QDialog):
                     continue
 
                 info_constructor = partial(
-                    new_info_class,
-                    filePath=filePath,
-                    sequence_axis=getattr(info, "sequence_axis"),
-                    project_file=project_file,
+                    new_info_class, filePath=filePath, sequence_axis=info.sequence_axis, project_file=project_file
                 )
             edited_info = info_constructor(
                 nickname=self.nicknameEdit.text() if self.nicknameEdit.isEnabled() else info.nickname,
