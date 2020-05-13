@@ -115,7 +115,7 @@ def _parse_internal_config(path: Union[str, os.PathLike]) -> Tuple[Sequence[str]
 def main():
     if "--clean_paths" in sys.argv:
         script_dir = pathlib.Path(__file__).parent
-        ilastik_root = script_dir.parent.parent
+        ilastik_root = script_dir.parent.parent.parent
         _clean_paths(ilastik_root)
 
     # Allow to start-up by double-clicking a project file.
