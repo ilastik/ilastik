@@ -45,13 +45,14 @@ from .opDataSelection import (
     RelativeFilesystemDatasetInfo,
     UrlDatasetInfo,
     FilesystemDatasetInfo,
-    OpDataSelectionGroup
+    OpDataSelectionGroup,
 )
 from .dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
 
 
 class RoleMismatchException(Exception):
     pass
+
 
 class DataSelectionApplet(Applet):
     """
@@ -143,7 +144,8 @@ class DataSelectionApplet(Applet):
         for role_name in role_names or []:
             arg_name = cls._role_name_to_arg_name(role_name)
             arg_parser.add_argument(
-                "--" + arg_name, "--" + arg_name.replace("_", "-"),
+                "--" + arg_name,
+                "--" + arg_name.replace("_", "-"),
                 nargs="+",
                 help=f"List of input files for the {role_name} role",
             )
@@ -157,7 +159,8 @@ class DataSelectionApplet(Applet):
         )
 
         arg_parser.add_argument(
-            "--preconvert-stacks", "--preconvert_stacks",
+            "--preconvert-stacks",
+            "--preconvert_stacks",
             help="Convert image stacks to temporary hdf5 files before loading them.",
             action="store_true",
             default=False,
@@ -174,21 +177,25 @@ class DataSelectionApplet(Applet):
             return [parse_axiskeys(keys) for keys in input_axes]
 
         arg_parser.add_argument(
-            "--input-axes", "--input_axes",
-            help=("Dataset axes names; a list of comma-separated axis names, representing how datasets are to be "
-                  "interpreted in each workflow role e.g.: 'xyz,xyz' ."
-                  " If a single value is provided, it is assumed to apply to all roles ({role_names}). If more than "
-                  "one value is provided but less than the total number of roles, the missing roles will have their "
-                  "axistags defined by the training data axistags. If --ignore-training-axistags is set, dataset axistags "
-                  "will be inferred from the file conventions, e.g.: 'axes' in .n5, and not from the "
-                  "training data axistags. Defaults to using the training data axistags"),
+            "--input-axes",
+            "--input_axes",
+            help=(
+                "Dataset axes names; a list of comma-separated axis names, representing how datasets are to be "
+                "interpreted in each workflow role e.g.: 'xyz,xyz' ."
+                " If a single value is provided, it is assumed to apply to all roles ({role_names}). If more than "
+                "one value is provided but less than the total number of roles, the missing roles will have their "
+                "axistags defined by the training data axistags. If --ignore-training-axistags is set, dataset axistags "
+                "will be inferred from the file conventions, e.g.: 'axes' in .n5, and not from the "
+                "training data axistags. Defaults to using the training data axistags"
+            ),
             required=False,
             type=parse_input_axes,
-            default=[None] * len(role_names)
+            default=[None] * len(role_names),
         )
 
         arg_parser.add_argument(
-            "--ignore-training-axistags", "--ignore_training_axistags",
+            "--ignore-training-axistags",
+            "--ignore_training_axistags",
             help="Do not use training data to guess input data axis on headless runs. Can still use file axis conventions",
             action="store_true",
         )
@@ -198,7 +205,7 @@ class DataSelectionApplet(Applet):
             "--stack_along",
             help="Axis along which stack datasets (e.g.: my_yx_slices*.tiff) are to be stacked",
             type=str,
-            default="z"
+            default="z",
         )
         return arg_parser
 
@@ -230,16 +237,14 @@ class DataSelectionApplet(Applet):
         return role_name.lower().replace(" ", "_").replace("-", "_")
 
     def create_dataset_info(
-        self, url: Union[Path, str], axistags: Optional[vigra.AxisTags]=None, sequence_axis: str="z"
+        self, url: Union[Path, str], axistags: Optional[vigra.AxisTags] = None, sequence_axis: str = "z"
     ) -> DatasetInfo:
         url = str(url)
         if isUrl(url):
             return UrlDatasetInfo(url=url, axistags=axistags)
         else:
             return RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
-                filePath=url,
-                axistags=axistags,
-                sequence_axis=sequence_axis,
+                filePath=url, axistags=axistags, sequence_axis=sequence_axis
             )
 
     def convert_info_to_h5(self, info: DatasetInfo) -> DatasetInfo:
@@ -257,7 +262,7 @@ class DataSelectionApplet(Applet):
         input_axes: List[Optional[vigra.AxisTags]],
         preconvert_stacks: bool = False,
         ignore_training_axistags: bool = False,
-        stack_along: str = 'z',
+        stack_along: str = "z",
     ) -> List[Dict[str, DatasetInfo]]:
         if not input_axes or not any(input_axes):
             if ignore_training_axistags or self.num_lanes == 0:
@@ -269,18 +274,15 @@ class DataSelectionApplet(Applet):
         else:
             logger.info(f"Forcing input axes to {input_axes}")
 
-        rolewise_infos : Dict[str, List[DatasetInfo]] = {}
+        rolewise_infos: Dict[str, List[DatasetInfo]] = {}
         for role_name, axistags in zip(self.role_names, input_axes):
             role_urls = role_inputs.get(role_name, [])
-            infos = [
-                self.create_dataset_info(url, axistags=axistags, sequence_axis=stack_along)
-                for url in role_urls
-            ]
+            infos = [self.create_dataset_info(url, axistags=axistags, sequence_axis=stack_along) for url in role_urls]
             if preconvert_stacks:
                 infos = [self.convert_info_to_h5(info) if info.is_stack() else info for info in infos]
             rolewise_infos[role_name] = infos
 
-        lane_configs : List[Dict[str, Optional[DatasetInfo]]] = []
+        lane_configs: List[Dict[str, Optional[DatasetInfo]]] = []
         for info_group in itertools.zip_longest(*rolewise_infos.values()):
             lane_configs.append(dict(zip(self.role_names, info_group)))
 
@@ -291,7 +293,7 @@ class DataSelectionApplet(Applet):
         return lane_configs
 
     def lane_configs_from_parsed_args(self, parsed_args: argparse.Namespace) -> List[Dict[str, Optional[DatasetInfo]]]:
-        role_inputs : Dict[str, List[str]] = {}
+        role_inputs: Dict[str, List[str]] = {}
         for role_name in self.role_names:
             role_arg_name = self._role_name_to_arg_name(role_name)
             role_inputs[role_name] = getattr(parsed_args, role_arg_name) or []
@@ -306,8 +308,8 @@ class DataSelectionApplet(Applet):
     def pushLane(self, role_infos: Dict[str, DatasetInfo]):
         return self.topLevelOperator.pushLane(role_infos)
 
-    def popLane(self):
-        return self.topLevelOperator.popLane()
+    def dropLastLane(self):
+        return self.topLevelOperator.dropLastLane()
 
     @property
     def num_lanes(self) -> int:
@@ -327,4 +329,3 @@ class DataSelectionApplet(Applet):
     def configure_operator_with_parsed_args(self, parsed_args: argparse.Namespace):
         for lane_config in self.lane_configs_from_parsed_args(parsed_args):
             self.pushLane(lane_config)
-

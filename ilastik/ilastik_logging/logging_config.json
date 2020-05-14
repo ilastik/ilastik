@@ -44,6 +44,7 @@
         "lazyflow.utility.roiRequestBatch":                         { "level":"INFO" },
         "lazyflow.utility.io_util.RESTfulVolume":                        { "level":"INFO" },
         "lazyflow.utility.io_util.tiledVolume":                          { "level":"INFO" },
+        "lazyflow.distributed.TaskOrchestrator":                    { "level":"DEBUG"},
         "ilastik":                                                  { "level":"INFO" },
         "ilastik.clusterOps":                                       { "level":"INFO" },
         "ilastik.applets":                                          { "level":"INFO" },

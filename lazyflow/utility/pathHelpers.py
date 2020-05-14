@@ -299,7 +299,15 @@ def isRelative(path: str) -> bool:
 
 def splitPath(path: str) -> List[str]:
     """Splits a string using path separator (e.g.: ':' in unix) without clobbering
-    protocol URLs like http://example.com"""
+    protocol URLs like http://example.com
+
+    >>> from os.path import pathsep
+    >>> splitPath(f"/some/file.txt{pathsep}http://example.com:5000{pathsep}/some/other/file")
+    ['/some/file.txt', 'http://example.com:5000', '/some/other/file']
+
+    >>> splitPath(f"http://example1.com:5000/some/endpoint{pathsep}http://example2/another/endpoint{pathsep}my/file.txt")
+    ['http://example1.com:5000/some/endpoint', 'http://example2/another/endpoint', 'my/file.txt']
+    """
 
     DOUBLE_SLASH = r"//"
     PORT_NUMBER = r"\d{1,5}\b"
@@ -415,3 +423,9 @@ def globNpz(path: str, globString: str):
 def globList(listOfPaths, globString):
     matches = [x for x in listOfPaths if fnmatch.fnmatch(x, globString)]
     return matches
+
+
+if __name__ == "__main__":
+    import doctest
+
+    doctest.testmod()

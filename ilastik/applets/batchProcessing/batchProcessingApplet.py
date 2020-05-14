@@ -167,4 +167,4 @@ class BatchProcessingApplet(Applet):
             self.dataExportApplet.post_process_lane_export(self.dataSelectionApplet.num_lanes - 1)
             return result
         finally:
-            self.dataSelectionApplet.popLane()
+            self.dataSelectionApplet.dropLastLane()

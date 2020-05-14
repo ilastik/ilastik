@@ -956,7 +956,7 @@ class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):
         # Indexed by [lane][role]
         assert self.DatasetGroup.level == 2, "DatasetGroup is supposed to be a level-2 slot, indexed by [lane][role]"
 
-    def addLane(self, laneIndex):
+    def addLane(self, laneIndex) -> OpDataSelectionGroup:
         """Reimplemented from base class."""
         numLanes = len(self.innerOperators)
 
@@ -964,7 +964,7 @@ class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):
         # We might be called from within the context of our own insertSlot signal.
         if numLanes == laneIndex:
             super(OpMultiLaneDataSelectionGroup, self).addLane(laneIndex)
-        return self.getLane(laneIndex)
+        return self.get_lane(laneIndex)
 
     def removeLane(self, laneIndex, finalLength):
         """Reimplemented from base class."""
@@ -990,7 +990,7 @@ class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):
             self.removeLane(original_num_lanes, original_num_lanes)
             raise e
 
-    def popLane(self):
+    def dropLastLane(self):
         self.removeLane(self.num_lanes - 1, self.num_lanes - 1)
 
     @property

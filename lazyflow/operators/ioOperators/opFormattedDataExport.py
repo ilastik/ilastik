@@ -158,16 +158,16 @@ class OpFormattedDataExport(Operator):
         new_start, new_stop = tuple(clipped_start), tuple(clipped_stop)
         return new_start, new_stop
 
-    def get_cutout(self) -> Slice5D:
+    def get_roi(self) -> Slice5D:
         input_axiskeys = self.Input.meta.getAxisKeys()
-        cutout_start, cutout_stop = self.get_new_roi()
-        cutout_slices = tuple(slice(start, stop) for start, stop in zip(cutout_start, cutout_stop))
-        return Slice5D.zero(**{axis: slc for axis, slc in zip(input_axiskeys, cutout_slices)})
+        roi_start, roi_stop = self.get_new_roi()
+        roi_slices = tuple(slice(start, stop) for start, stop in zip(roi_start, roi_stop))
+        return Slice5D.zero(**{axis: slc for axis, slc in zip(input_axiskeys, roi_slices)})
 
-    def set_cutout(self, cutout: Slice5D):
+    def set_roi(self, roi: Slice5D):
         input_axiskeys = self.Input.meta.getAxisKeys()
-        start = cutout.start.to_tuple(input_axiskeys, int)
-        stop = cutout.stop.to_tuple(input_axiskeys, int)
+        start = roi.start.to_tuple(input_axiskeys, int)
+        stop = roi.stop.to_tuple(input_axiskeys, int)
         self._opSubRegion.Roi.setValue((start, stop))
 
     def setupOutputs(self):
@@ -300,12 +300,12 @@ class OpFormattedDataExport(Operator):
                 ds.attrs["axes"] = list(reversed(output_meta.getAxisKeys()))
                 ds[...] = 1  # FIXME: for some reason setting to 0 does nothing
 
-            cutout = self.get_cutout()
+            cutout = self.get_roi()
             orchestrator.orchestrate(cutout.split(block_shape=block_shape))
         else:
 
             def process_tile(tile: Slice5D, rank: int):
-                self.set_cutout(tile)
+                self.set_roi(tile)
                 slices = tile.to_slices(output_meta.getAxisKeys())
                 with z5py.File(n5_file_path, "r+") as n5_file:
                     dataset = n5_file[self.OutputInternalPath.value]

@@ -208,8 +208,7 @@ class TestOpDataSelection_Basic2D(object):
                 continue
             numpy.testing.assert_array_equal(imgData2Dc, self.imgData2Dc)
 
-    def testProjectLocalData(self, serializer, empty_project_file):
-        graph = lazyflow.graph.Graph()
+    def testProjectLocalData(self, serializer, empty_project_file, graph):
         for fileName in self.generatedImages2Dc:
             # For some reason vigra saves 2D+c data compressed in gifs, so skip!
             if Path(fileName).suffix in self.compressedExtensions + [".gif"]:
@@ -370,8 +369,7 @@ class TestOpDataSelection_Basic_native_3D(object):
             # skip this if image was saved compressed:
             numpy.testing.assert_array_equal(imgData3Dc, self.imgData3Dc)
 
-    def test3DProjectLocalData(self, serializer, empty_project_file):
-        graph = lazyflow.graph.Graph()
+    def test3DProjectLocalData(self, serializer, empty_project_file, graph):
         empty_project_file.create_group("DataSelection")
         empty_project_file["DataSelection"].create_group("local_data")
         empty_project_file["DataSelection/local_data"].create_dataset("dataset1", data=self.imgData3Dc)
