@@ -29,6 +29,7 @@ import os
 import io
 import h5py
 import time
+import numpy as np
 from typing import Optional, Iterable, List, Dict, Any, Mapping, Tuple
 from pathlib import Path
 from pkg_resources import parse_version
@@ -124,7 +125,10 @@ class Project:
                 value = {"__data__": value}
             if "__data__" in value:
                 h5_value, extra_attributes = cls.to_h5_dataset_value(value["__data__"])
-                group.create_dataset(key, data=h5_value)
+                if isinstance(h5_value, np.ndarray):
+                    group.create_dataset(key, data=h5_value, compression="gzip")
+                else:
+                    group.create_dataset(key, data=h5_value)
                 extra_attributes.update(value.get("__attrs__", {}))
                 for attr_key, attr_value in extra_attributes.items():
                     group[key].attrs[attr_key] = attr_value
