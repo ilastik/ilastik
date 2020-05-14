@@ -85,7 +85,7 @@ class FeatureSamples(FeatureData, StaticLine):
 
 class AnnotationOutOfBounds(Exception):
     def __init__(self, annotation_roi: Slice5D, raw_data: DataSource):
-        super().__init__(f"Annotation roi {roi} exceeds bounds of raw_data {raw_data}")
+        super().__init__(f"Annotation roi {annotation_roi} exceeds bounds of raw_data {raw_data}")
 
 
 class Annotation(ScalarData):
