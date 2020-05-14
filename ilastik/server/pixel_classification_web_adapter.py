@@ -130,7 +130,12 @@ class PixelClassificationWorkflow2WebAdapter:
         return flask.jsonify(classifier_ref.to_json_data())
 
     def ilp_project(self) -> flask.Response:
-        return flask.send_file(self.workflow.ilp_file, mimetype="application/octet-stream")
+        return flask.send_file(
+            self.workflow.ilp_file,
+            mimetype="application/octet-stream",
+            as_attachment=True,
+            attachment_filename="MyProject.ilp",
+        )
 
     def upload_to_cloud_ilastik(self, cloud_ilastik_token: str, project_name: str) -> flask.Response:
         return flask.jsonify(self.workflow.upload_to_cloud_ilastik(cloud_ilastik_token, project_name))
