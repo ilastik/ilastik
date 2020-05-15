@@ -1,0 +1,3 @@
+[submodule "volumina"]
+	path = volumina
+	url = https://github.com/ilastik/volumina
