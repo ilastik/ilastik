@@ -1,0 +1,25 @@
+name: make release
+on:
+  push:
+    tags:
+    - '*'
+
+jobs:
+  build:
+    name: trigger-release
+    runs-on: ubuntu-latest
+    env:
+      GL_TOKEN: ${{ secrets.GL_TOKEN }}
+      GL_URL: ${{ secrets.GL_URL }}
+    steps:
+      - name: trigger
+        run: |
+          echo "Triggering release pipeline!"
+          curl \
+            --silent \
+            -X POST \
+            -F token=${GL_TOKEN} \
+            -F "ref=master" \
+            -F "variables[tag]=${GITHUB_REF}" \
+            --output /dev/null \
+            ${GL_URL}
