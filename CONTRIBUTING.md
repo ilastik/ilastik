@@ -7,8 +7,7 @@ The following text equips you with knowledge that makes contributing to ilastik 
 
 * [Setting up a development environment](#setting-up-a-development-environment)
   * [Fork the relevant repositories](#fork-the-relevant-repositories)
-  * [Clone ilastik-meta](#clone-ilastik-meta)
-  * [Initialize the source tree own forks](#initialize-the-source-tree-with-your-own-forks)
+  * [Clone ilastik](#clone-ilastik)
   * [Add upstream repositories](#add-upstream-repositories-from-the-ilastik-organization)
   * [Install dependencies via conda](#installing-dependencies-via-conda)
 * [Coding](#coding)
@@ -22,66 +21,46 @@ For all our repositories, we follow the GitHub Flow.
 You can read about it in [this guide on github.com](https://guides.github.com/introduction/flow/).
 
 Contributing to ilastik is a little bit more involved than just cloning the repo and committing.
-The two main repositories; ilastik, and volumina are governed by ilastik-meta as submodules.
-Furthermore, in order to be able to run the code, all dependencies have to be installed.
+The main ilastik repository holds a reference to the 5D slice viewer volumina as a submodule.
+Furthermore, to be able to run the code, all dependencies have to be installed.
 By far the most convenient way for this is to use conda.
 The following paragraphs will guide through the process of setting up a working development environment.
 
 ### Fork the relevant repositories
 
-You should begin by forking the two main ilastik repositories, that make up the ilastik application:
+You should begin by forking the main ilastik repositories, that make up the ilastik application:
 
 * https://github.com/ilastik/ilastik
-* https://github.com/ilastik/volumina
+* https://github.com/ilastik/volumina (optional)
 
-#### Clone ilastik-meta
+#### Clone ilastik
 
-Having done that, you should clone our `ilastik-meta` repository with:
+Having done that, continue by cloning your `ilastik` fork with:
 
 ```bash
 # navigate to an appropriate folder, e.g. `~/sources`
-git clone https://github.com/ilastik/ilastik-meta
+git clone https://github.com/<your_github_username>/ilastik
 ```
 
-#### Initialize the source tree with your own forks
-
-Examining the created folder, e.g. `~/sources/ilastik-meta`, you can find the `.gitmodules` file.
-Check out a new branch in ilastik-meta, e.g. `git checkout -b my-forks` and edit the `.gitmodules`
-file such that it points to your own forks: replace all occurrences of `https://github.com/ilastik`
-with `https://github.com/<your_github_username>`.
-
-Now it is time to initialize the repository:
+initialize the volumina submodule with:
 
 ```bash
-# in ~/sources/ilastik-meta (or wherever you have cloned ilastik-meta to)
 git submodule update --init --recursive
-git submodule foreach 'git checkout master'
 ```
 
-Your forks are now set as the _origin_ remote for the respective repository.
-You can confirm this, e.g. by
-
-```bash
-# in ~/sources/ilastik-meta/ilastik
-git remote -v
-
-# Which should give you an output like
-origin  https://github.com/<your_github_username>/ilastik (fetch)
-origin  https://github.com/<your_github_username>/ilastik (push)
-```
-
-#### Add upstream repositories from the ilastik organization
+#### Add upstream repository from the ilastik organization
 
 In order to stay up to date with the overall ilastik developments, you need to synchronize your
-forks with the upstream repositories.
+fork with the upstream repository.
 In the current configuration, each of the two main repositories has a single _remote_, called _origin_,
 pointing to your forks.
 
 Now add the upstream repository by
 
 ```bash
-# in ~/sources/ilastik-meta/ilastik
+# in ~/sources/ilastik
 git remote add upstream https://github.com/ilastik/ilastik
+```
 
 # confirm successful addition of the remote
 git remote -v
@@ -92,34 +71,50 @@ upstream    https://github.com/ilastik/ilastik (fetch)
 upstream    https://github.com/ilastik/ilastik (push)
 ```
 
-Do this for each of the `volumina` repository as well, adding
-`https://github.com/ilastik/volumina` as the _upstream_ remote.
-
 You can sync your fork with the mother repo by:
 
 ```bash
-# in ~/sources/ilastik-meta/ilastik
+# in ~/sources/ilastik
 git checkout master  # make sure you are on the master branch
 git fetch upstream master  # get the latest changes from the mother repo
 git rebase upstream/master  # rebase your master branch with the mother repo
 git push origin master  # push the updated master to your fork
-git checkout -  # check out the branch you were previously on
+git submodule update --recursive  # make sure volumina is up-to-date, too
 ```
 
-You should make it a habit to stay current in both main repositories whilst actively developing.
+We recommend making it a habit to stay current with the upstream repository while actively developing.
 To make this task a bit easier you could add the following alias to your `.gitconfig` file:
 
 ```
 [alias]
-    sync-forks = "submodule foreach 'git checkout master; git fetch upstream master; git rebase upstream/master; git push; git checkout -'"
+    sync-fork = !git checkout master && git fetch upstream master && git rebase upstream/master && git push && git submodule update --recursive && git checkout -'"
 ```
 
-If you invoke this alias from the `ilastik-meta` repository, it will update both forks:
+If you invoke this alias from the `ilastik` repository, it will update ilastik and make sure `volumina` is at the right commit, too:
 
 ```bash
-# in ~/sources/ilastik-meta
-git sync-forks
+# in ~/sources/ilastik
+git sync-fork
 ```
+
+#### (Optional) Setup volumina in development mode
+
+Volumina is separated well from ilastik (but not entirely), so some changes to ilastik might involve changing `volumina` as well.
+If you need to change parts of `volumina`, we suggest the following workflow:
+
+* rename the ilastik fork to upstream, in order to have a consistent remote naming everywhere
+  ```bash
+  # navigate to the volumina submodule folder, e.g. ~/sources/ilastik/volumina
+  git remote rename origin upstream
+  ```
+* add your own fork of `volumina` as a remote in the submodule
+  ```bash
+  # navigate to the volumina submodule folder, e.g. ~/sources/ilastik/volumina
+  git remote add origin https://github.com/<your_github_username>/volumina
+  git checkout master
+  ```
+
+From there you can start branching off, pushing to your `origin` repository and eventually starting a pull request with the upstream repository.
 
 ### Installing dependencies via conda
 
@@ -150,38 +145,21 @@ source ~/.bash_profile  # MAC
 conda install -n base -c conda-forge conda-build
 ```
 
-**Note:** the following steps guide you through the manual process of creating a development environment.
-For convenience, there is a `ilastik-meta/ilastik/scripts/devenv.py` script that automates this process.
-Ensure that your current working directory is `ilastik-meta` and run `python ilastik/scripts/devenv.py create -n idev`.
-
-#### Manual Creation of development environment
-Create the ilastik development environment (we assume that the dev-environment will have the name _idev_, but you can, of course choose a name to your liking):
+Now create the environment using the `devenv.py` script, starting it from the ilastik source folder:
 ```bash
-conda create --name idev -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers
+# from your ilastik source folder, e.g. ~/sources/ilastik
+conda activate base
+python scripts/devenv.py create -n idev
 ```
 
-In order to run your own code, you need to install the local ilastik packages with `conda develop`.
+Once you have created  the environment, make sure everything has worked by trying to import some of the ilastik core packages:
 
-```bash
-# from you local ilastik-meta folder
-git submodule foreach 'conda develop .'
-```
-
-Now it might be the time to test whether the installation was successful:
 ```bash
 # activate your conda environment
 conda activate idev
 
 # check whether importing ilastik repos works
-python -c "import ilastik; import volumina"
-```
-
-If there are no errors here, chances are high the development environment was set up correctly.
-If the above line already works, you can start ilastik by:
-
-```bash
-# in ~/source/ilastik-meta/ilastik
-python ilastik.py
+python -c "import ilastik; import lazyflow; import volumina; import vigra"
 ```
 
 More information on conda, and building the ilastik packages yourself:
@@ -214,14 +192,14 @@ After making changes, please confirm that nothing else got broken by running the
 
  * Changes made in the ilastik repository _ilastik_:
    ```bash
-   # in ~/source/ilastik-meta/ilastik/tests
+   # in ~/sources/ilastik/
    conda activate idev
    pytest --run-legacy-gui
    ```
 
  * Changes made in volumina:
    ```bash
-   # in ~/source/ilastik-meta/volumina/tests
+   # in ~/sources/ilastik/volumina/
    conda activate idev
    pytest
    ```
