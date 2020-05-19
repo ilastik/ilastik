@@ -199,7 +199,7 @@ def main():
     create_ap.add_argument(
         "-l",
         "--location",
-        help="local ilastik-meta directory",
+        help="local ilastik directory",
         metavar="DIR",
         nargs="?",
         const=None,
@@ -251,7 +251,7 @@ def command_create(args: argparse.Namespace, env: CondaEnv) -> None:
     if location is None:
         return
 
-    packages = "volumina", "ilastik"
+    packages = "volumina", "."
 
     logging.info(f"Installing local ilastik packages in development mode.")
     for pkg in packages:
