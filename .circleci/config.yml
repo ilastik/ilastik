@@ -67,7 +67,7 @@ jobs:
         command: >
             cd ${ILASTIK_ROOT}/ilastik-meta &&
             python ilastik/scripts/devenv.py create -n ${TEST_ENV_NAME}
-            -p pytest-qt ilastik-dependencies-no-solvers
+            -p pytest-qt ilastik-dependencies-no-solvers mpi4py
             -c ilastik-forge conda-forge defaults
     - run:
         name: run ilastik tests

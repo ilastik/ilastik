@@ -167,6 +167,7 @@ class TestPixelClassificationHeadless(object):
 
         # Save and close
         shell.projectManager.saveProject()
+        shell.closeCurrentProject()
         del shell
 
     @timeLogged(logger)

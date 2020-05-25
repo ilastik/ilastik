@@ -45,7 +45,7 @@ install:
   - >
     cd ${ILASTIK_ROOT}/ilastik-meta &&
     python ilastik/scripts/devenv.py create -n ${TEST_ENV}
-    -p ilastik-dependencies-no-solvers pytest-cov coveralls black
+    -p ilastik-dependencies-no-solvers pytest-cov coveralls black mpi4py
     -c ilastik-forge conda-forge defaults
 
 script:
