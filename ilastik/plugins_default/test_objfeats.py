@@ -20,7 +20,6 @@
 ###############################################################################
 from builtins import range
 from ilastik.plugins import ObjectFeaturesPlugin
-import vigra
 import numpy
 
 
@@ -30,6 +29,13 @@ class TestFeatures(ObjectFeaturesPlugin):
 
     def availableFeatures(self, image, labels):
         return self.all_features
+
+    def fill_properties(self, features):
+        return {
+            "with_nans": {"displaytext": "with_nans", "detailtext": "with_nans details"},
+            "with_nones": {"displaytext": "with_nones", "detailtext": "with_nones details"},
+            "fail_on_zero": {"displaytext": "fail_on_zero", "detailtext": "fail_on_zero details"},
+        }
 
     def compute_global(self, image, labels, features, axes):
         lmax = numpy.max(labels)
