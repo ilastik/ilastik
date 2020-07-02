@@ -10,7 +10,7 @@ if __name__ == "__main__":
     projectfile = sys.argv[1]
     axisorder = sys.argv[2]
 
-    with h5py.File(projectfile) as f:
+    with h5py.File(projectfile, "r+") as f:
         # Delete the old axisorder and replace it with our new one.
         try:
             del f["Input Data/infos/lane0000/Raw Data/axisorder"]
