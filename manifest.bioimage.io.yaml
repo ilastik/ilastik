@@ -1,0 +1,35 @@
+format_version: 0.2.0
+config:
+  id: ilastik
+  name: ilastik
+  tags:
+    - ilastik
+  logo: https://raw.githubusercontent.com/deepimagej/models/master/logos/logo.png
+  icon: https://raw.githubusercontent.com/deepimagej/models/master/logos/icon.png
+  splash_title: deepImageJ
+  splash_subtitle: "What's the ilastik blurb?"
+  splash_feature_list:
+  explore_button_text: "Start Exploring"
+  background_image: "static/img/zoo-background.svg"
+  resource_types:
+    - model
+  url_root: https://raw.githubusercontent.com/deepimagej/models/master
+
+model:
+  - id: UNet2DNucleiBroad
+    source: https://raw.githubusercontent.com/bioimage-io/pytorch-bioimage-io/v0.1.1/specs/models/unet2d/nuclei_broad/UNet2DNucleiBroad.model.yaml
+    links:
+      - Ilastik Model Preview
+    download_url: https://github.com/bioimage-io/pytorch-bioimage-io/releases/download/v0.1.1/UNet2DNucleiBroad.model.zip
+
+  - id: UNet3DArabidopsisOvules
+    source: https://raw.githubusercontent.com/wolny/pytorch-3dunet/37f186c80f4d64b1dab5d165d8c2aae15b5aede1/bioimage-io/UNet3DArabidopsisOvules.model/UNet3DArabidopsisOvules.model.yaml
+    links:
+      - Ilastik Model Preview
+    download_url: https://github.com/wolny/pytorch-3dunet/releases/download/1.2.6/UNet3DArabidopsisOvules.model.zip
+
+  - id: UNet3DPlatyCellProbs
+    source: https://raw.githubusercontent.com/platybrowser/platybrowser/3711f1c26e5db8c38c3faff4cccb3110560e3c67/segmentation/cells/UNet3DPlatyCellProbs.model/UNet3DPlatyCellProbs.model.yaml
+    links:
+      - Ilastik Model Preview
+    download_url: https://github.com/platybrowser/platybrowser/releases/download/1.0.0/UNet3DPlatyCellProbs.model.zip
