@@ -247,7 +247,8 @@ class BigRequestStreamer(object):
             blockshape = determine_optimal_request_blockshape(
                 max_blockshape, ideal_blockshape, ram_usage_per_requested_pixel, self._num_threads, available_ram
             )
-
+        # compute the RAM size of the block before adding back t anc c dimensions
+        fmt = Memory.format(ram_usage_per_requested_pixel * numpy.prod(blockshape))
         # If we removed time and channel from consideration, add them back now before returning
         if "t" in outputSlot.meta.getAxisKeys():
             blockshape = blockshape[:time_index] + (blockshape_time_steps,) + blockshape[time_index:]
@@ -256,7 +257,6 @@ class BigRequestStreamer(object):
             blockshape = blockshape[:channel_index] + (num_channels,) + blockshape[channel_index:]
 
         logger.info("Chose blockshape: {}".format(blockshape))
-        fmt = Memory.format(ram_usage_per_requested_pixel * numpy.prod(blockshape[:-1]))
         logger.info("Estimated RAM usage per block is {}".format(fmt))
 
         return blockshape
