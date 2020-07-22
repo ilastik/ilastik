@@ -523,6 +523,7 @@ class SerialBlockSlot(SerialSlot):
                     slicing = roiToSlice(*slicing)
 
                 block = self.slot[index][slicing].wait()
+                block_tags = self.slot[index].meta.axistags
                 blockName = "block{:04d}".format(blockIndex)
 
                 if self._shrink_to_bb:
@@ -556,9 +557,11 @@ class SerialBlockSlot(SerialSlot):
                     block_group.create_dataset("fill_value", data=block.fill_value)
 
                     block_group.attrs["blockSlice"] = slicingToString(slicing)
+                    block_group.attrs["axistags"] = block_tags.toJSON()
                 else:
                     subgroup.create_dataset(blockName, data=block)
                     subgroup[blockName].attrs["blockSlice"] = slicingToString(slicing)
+                    subgroup[blockName].attrs["axistags"] = block_tags.toJSON()
 
     def reshape_datablock_and_slicing_for_input(
         self, block: numpy.ndarray, slicing: List[slice], slot: Slot, project: Project
