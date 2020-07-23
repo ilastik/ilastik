@@ -50,8 +50,12 @@ class BackwardsCompatibleLabelSerialBlockSlot(SerialBlockSlot):
     def get_input_image_original_axiskeys(self, labelSlot: OutputSlot) -> str:
         return "".join(self.get_corresponding_input_image_slot(labelSlot).meta.getOriginalAxisKeys())
 
-    def deserialization_requires_data_conversion(self, project) -> bool:
-        return self.get_saved_data_axiskeys(slot, project) != self.get_input_image_current_axiskeys(slot)
+    def deserialization_requires_data_conversion(self, project: Project) -> bool:
+        if self.labels_were_saved_in_forced_canonical_order(project):
+            return True
+        if self.labels_were_saved_in_slot_original_order(project):
+            return True
+        return False
 
     def labels_were_saved_in_forced_canonical_order(self, project: Project) -> bool:
         pixel_plus_object_workflow_name = "Object Classification (from pixel classification)"
@@ -89,6 +93,12 @@ class BackwardsCompatibleLabelSerialBlockSlot(SerialBlockSlot):
             self.dirty = True
 
         return fixed_block, fixed_slicing
+
+    def deserialize(self, group):
+        super().deserialize(group)
+        if self.deserialization_requires_data_conversion(Project(group.file)):
+            self.ignoreDirty = False
+            self.dirty = True
 
 
 class PixelClassificationSerializer(AppletSerializer):
