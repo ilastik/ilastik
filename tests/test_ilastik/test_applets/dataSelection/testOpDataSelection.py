@@ -135,7 +135,7 @@ class TestOpDataSelection_Basic2D(object):
                 )
 
         # Create a 'project' file and give it some data
-        cls.projectFile = h5py.File(cls.projectFileName, "a")
+        cls.projectFile = h5py.File(cls.projectFileName, "w")
         cls.projectFile.create_group("DataSelection")
         cls.projectFile["DataSelection"].create_group("local_data")
         # Use the same data as the 2d+c data (above)
@@ -299,7 +299,7 @@ class TestOpDataSelection_Basic_native_3D(object):
         cls.generatedImages3Dc.append(testH5FileName)
 
         # Create a 'project' file and give it some data
-        cls.projectFile = h5py.File(cls.projectFileName, "a")
+        cls.projectFile = h5py.File(cls.projectFileName, "w")
         cls.projectFile.create_group("DataSelection")
         cls.projectFile["DataSelection"].create_group("local_data")
         # Use the same data as the 3d+c data (above)
@@ -519,7 +519,7 @@ class TestOpDataSelection_3DStacks(object):
         # os.path.join(cls.tmpdir, "testimage2Dc_*.npy"),
 
         # Create a 'project' file and give it some data
-        cls.projectFile = h5py.File(cls.projectFileName, "a")
+        cls.projectFile = h5py.File(cls.projectFileName, "w")
         cls.projectFile.create_group("DataSelection")
         cls.projectFile["DataSelection"].create_group("local_data")
         # Use the same data as the 3d+c data (above)
@@ -621,7 +621,7 @@ class TestOpDataSelection_SingleFileH5Stacks:
 
         cls.glob_string = "{}/g1/timeslice_*".format(cls.image_file_name)
         # Create a 'project' file and give it some data
-        cls.projectFile = h5py.File(cls.projectFileName, "a")
+        cls.projectFile = h5py.File(cls.projectFileName, "w")
         cls.projectFile.create_group("DataSelection")
         cls.projectFile["DataSelection"].create_group("local_data")
         # Use the same data as the 3d+c data (above)
@@ -687,7 +687,7 @@ class TestOpDataSelection_FakeDataReader:
         numpy.save(cls.testRawDataFileName, cls.imgData)
 
         # Create a 'project' file and give it some data
-        cls.projectFile = h5py.File(cls.projectFileName, "a")
+        cls.projectFile = h5py.File(cls.projectFileName, "w")
         cls.projectFile.create_group("DataSelection")
         cls.projectFile["DataSelection"].create_group("local_data")
         # Use the same data as the 2d+c data (above)
