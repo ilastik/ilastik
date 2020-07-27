@@ -318,7 +318,7 @@ class DataSelectionApplet(Applet):
                 if not os.path.exists(stackVolumeCacheDir):
                     os.makedirs(stackVolumeCacheDir)
 
-                with h5py.File(stackPath) as f:
+                with h5py.File(stackPath, "w") as f:
                     # Configure the conversion operator
                     opWriter = OpStackToH5Writer(graph=Graph())
                     opWriter.hdf5Group.setValue(f)

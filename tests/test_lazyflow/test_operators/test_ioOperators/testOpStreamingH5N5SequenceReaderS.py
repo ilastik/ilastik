@@ -34,8 +34,8 @@ class TestOpStreamingH5N5SequenceReaderS(unittest.TestCase):
             testDataN5FileName = f"{self.tempdir_normalized_name}/test.n5"
             # Write the dataset to an hdf5 and a n5 file
             # (Note: Don't use vigra to do this, which may reorder the axes)
-            h5File = h5py.File(testDataH5FileName)
-            n5File = z5py.N5File(testDataN5FileName)
+            h5File = h5py.File(testDataH5FileName, "w")
+            n5File = z5py.N5File(testDataN5FileName, "w")
             try:
                 h5File.create_group("volumes")
                 n5File.create_group("volumes")
@@ -87,8 +87,8 @@ class TestOpStreamingH5N5SequenceReaderS(unittest.TestCase):
             testDataN5FileName = f"{self.tempdir_normalized_name}/test.n5"
             # Write the dataset to an hdf5 and a n5 file
             # (Note: Don't use vigra to do this, which may reorder the axes)
-            h5File = h5py.File(testDataH5FileName)
-            n5File = z5py.N5File(testDataN5FileName)
+            h5File = h5py.File(testDataH5FileName, "w")
+            n5File = z5py.N5File(testDataN5FileName, "w")
             try:
                 h5File.create_group("volumes")
                 n5File.create_group("volumes")
@@ -140,8 +140,8 @@ class TestOpStreamingH5N5SequenceReaderS(unittest.TestCase):
             testDataN5FileName = f"{self.tempdir_normalized_name}/test.n5"
             # Write the dataset to an hdf5 file
             # (Note: Don't use vigra to do this, which may reorder the axes)
-            h5File = h5py.File(testDataH5FileName)
-            n5File = z5py.N5File(testDataN5FileName)
+            h5File = h5py.File(testDataH5FileName, "w")
+            n5File = z5py.N5File(testDataN5FileName, "w")
 
             try:
                 h5File.create_group("volumes")

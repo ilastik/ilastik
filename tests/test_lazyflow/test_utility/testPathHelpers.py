@@ -126,7 +126,7 @@ class TestPathHelpers(object):
 
     def createHdf5Data(self):
         """Creates Hdf5 file in memory for testHff5Glob"""
-        f = h5py.File(name="test", driver="core", backing_store=False)
+        f = h5py.File(name="test", driver="core", backing_store=False, mode="a")
         data_group = f.create_group("here/is/the/data")
         data_group2 = f.create_group("this/is/also/some/data")
 

@@ -46,8 +46,8 @@ class TestH5Py(object):
         filename2 = "test2.h5"
         self.prepare_tstfile(shape, filename2)
 
-        f1 = h5py.File(filename1)
-        f2 = h5py.File(filename2)
+        f1 = h5py.File(filename1, "r")
+        f2 = h5py.File(filename2, "r")
 
         self.tst_multithread_greenlet([f1, f2])
 
@@ -78,7 +78,7 @@ class TestH5Py(object):
         f.close()
 
     def tst_multithread(self, filename):
-        f = h5py.File(filename)
+        f = h5py.File(filename, "r")
 
         threads = []
         for i in range(100):

@@ -195,7 +195,7 @@ class TestPixelClassificationSerializer(object):
                 pass
 
         # Create an empty project
-        with h5py.File(testProjectName) as testProject:
+        with h5py.File(testProjectName, "a") as testProject:
             testProject.create_dataset("ilastikVersion", data=b"1.0.0")
 
             # Create an operator to work with and give it some input

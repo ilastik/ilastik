@@ -682,7 +682,7 @@ if __name__ == "__main__":
     traceLogger.setLevel(logging.DEBUG)
     traceLogger.debug("HELLO")
 
-    f = h5py.File("/tmp/flyem_sample_stack.h5")
+    f = h5py.File("/tmp/flyem_sample_stack.h5", "r")
     internalPath = "volume/data"
 
     # OpStackToH5Writer
