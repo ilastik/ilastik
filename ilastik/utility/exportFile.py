@@ -249,6 +249,10 @@ def create_slicing(axistags, dimensions, margin, feature_table):
         yields also the actual object id
     """
     assert margin >= 0, "Margin muss be greater than or equal to 0"
+    if len(feature_table) == 0:
+        yield from ()
+        return
+
     time = feature_table[Default.TimeColumnName].astype(np.int32)
     minx = feature_table["Bounding Box Minimum_0"].astype(np.int32)
     maxx = feature_table["Bounding Box Maximum_0"].astype(np.int32)
@@ -443,7 +447,7 @@ class ExportFile(object):
                     for file_name in file_names:
                         zip_file.write(file_name)
         self.ExportProgress(100)
-        logger.info("exported %i tables" % count)
+        logger.info(f"exported {count} tables to {self.file_name}.")
 
     def _add_columns(self, table_name, columns):
         if table_name in iter(self.table_dict.keys()):
