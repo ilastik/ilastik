@@ -4,9 +4,7 @@ from typing import Iterable, TypeVar, Generic, Callable, Tuple
 import uuid
 import logging
 
-print(f"THIS IS MY NAME: {__name__}")
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 # message payload to signal a worker that it should terminate. Value is arbitrary but should be universally unique
 COMMAND_STOP_WORKER = "COMMAND_STOP_WORKER-eb23ae13-709e-4ac3-931d-99ab059ef0c2"
@@ -49,7 +47,7 @@ class TaskOrchestrator(Generic[UNIT_OF_WORK]):
         self.rank = self.comm.Get_rank()
         num_workers = self.comm.size - 1
         if num_workers <= 0:
-            raise Exception("Trying to orchestrate tasks with no workers!!!")
+            raise ValueError("Trying to orchestrate tasks with {num_workers} workers")
         self.workers = {rank: _Worker(self.comm, rank) for rank in range(1, num_workers + 1)}
 
     def _get_finished_worker(self) -> _Worker[UNIT_OF_WORK]:
