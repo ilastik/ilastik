@@ -27,7 +27,7 @@ import glob
 import argparse
 import collections
 import logging
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Union, Sequence
 import itertools
 from pathlib import Path
 import tempfile
@@ -259,7 +259,7 @@ class DataSelectionApplet(Applet):
     def create_lane_configs(
         self,
         role_inputs: Dict[str, List[str]],
-        input_axes: List[Optional[vigra.AxisTags]],
+        input_axes: Sequence[Optional[vigra.AxisTags]] = (),
         preconvert_stacks: bool = False,
         ignore_training_axistags: bool = False,
         stack_along: str = "z",
