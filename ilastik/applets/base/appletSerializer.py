@@ -523,6 +523,7 @@ class SerialBlockSlot(SerialSlot):
                     slicing = roiToSlice(*slicing)
 
                 block = self.slot[index][slicing].wait()
+                block_tags = self.slot[index].meta.axistags
                 blockName = "block{:04d}".format(blockIndex)
 
                 if self._shrink_to_bb:
@@ -539,7 +540,6 @@ class SerialBlockSlot(SerialSlot):
                         slicing = roiToSlice(*bounding_box_roi)
                         block = block[block_slicing]
 
-                block, slicing = self.reshape_datablock_and_slicing_for_output(block, slicing, slot[index])
                 # If we have a masked array, convert it to a structured array so that h5py can handle it.
                 if slot[index].meta.has_mask:
                     mygroup.attrs["meta.has_mask"] = True
@@ -557,16 +557,11 @@ class SerialBlockSlot(SerialSlot):
                     block_group.create_dataset("fill_value", data=block.fill_value)
 
                     block_group.attrs["blockSlice"] = slicingToString(slicing)
+                    block_group.attrs["axistags"] = block_tags.toJSON()
                 else:
                     subgroup.create_dataset(blockName, data=block)
                     subgroup[blockName].attrs["blockSlice"] = slicingToString(slicing)
-
-    def reshape_datablock_and_slicing_for_output(
-        self, block: numpy.ndarray, slicing: List[slice], slot: Slot
-    ) -> Tuple[numpy.ndarray, List[slice]]:
-        """Reshapes a block of data and its corresponding slicing relative to the whole data into a shape that is
-           adequate for serialization (out)"""
-        return block, slicing
+                    subgroup[blockName].attrs["axistags"] = block_tags.toJSON()
 
     def reshape_datablock_and_slicing_for_input(
         self, block: numpy.ndarray, slicing: List[slice], slot: Slot, project: Project

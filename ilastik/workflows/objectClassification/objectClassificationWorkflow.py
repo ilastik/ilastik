@@ -201,7 +201,7 @@ class ObjectClassificationWorkflow(Workflow):
             "Input Data",
             "Input Data",
             batchDataGui=False,
-            forceAxisOrder=["txyzc"],
+            forceAxisOrder=None,
             instructionText=self.data_instructions,
         )
 
@@ -740,7 +740,9 @@ class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
 
     def connectInputs(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
-        return self.createRawDataSourceSlot(laneIndex), opData.ImageGroup[self.InputImageRoles.SEGMENTATION_IMAGE]
+        canonicalRawDataSlot = self.createRawDataSourceSlot(laneIndex)
+        canonicalSegmentationSlot = self.toDefaultAxisOrder(opData.ImageGroup[self.InputImageRoles.SEGMENTATION_IMAGE])
+        return canonicalRawDataSlot, canonicalSegmentationSlot
 
     def handleAppletStateUpdateRequested(self):
         """
