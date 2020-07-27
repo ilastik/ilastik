@@ -21,7 +21,7 @@
 import os
 import collections
 import numpy
-from ndstructs import Shape5D
+from ndstructs import Slice5D
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import PathComponents, getPathVariants, format_known_keys
@@ -251,8 +251,8 @@ class OpDataExport(Operator):
         # (Typically used from pure-python clients in batch mode.)
         return self._opFormattedExport.run_export_to_array()
 
-    def run_distributed_export(self, block_shape: Shape5D):
-        return self._opFormattedExport.run_distributed_export(block_shape)
+    def run_distributed_export(self, block_roi: Slice5D):
+        return self._opFormattedExport.run_distributed_export(block_roi)
 
 
 class OpRawSubRegionHelper(Operator):

@@ -2,9 +2,11 @@ import logging
 import weakref
 from typing import Callable, Dict, List, Optional, Union
 import numpy
-from ndstructs import Shape5D
+from ndstructs import Slice5D
 from functools import partial
 import argparse
+import ast
+import textwrap
 
 from ilastik.applets.base.applet import Applet
 from ilastik.applets.dataExport.opDataExport import OpDataExport
@@ -54,11 +56,42 @@ class BatchProcessingApplet(Applet):
             help="Distributed mode. Used for running ilastik on HPCs via SLURM/srun/mpirun",
             action="store_true",
         )
+
+        default_block_roi = Slice5D.all(x=slice(0, 256), y=slice(0, 256), z=slice(0, 256), t=slice(0, 1))
+
+        def parse_distributed_block_roi(value: str) -> Slice5D:
+            parsed = ast.literal_eval(value)
+            if isinstance(parsed, dict):
+                if not set(parsed.keys()).issubset("xyztc"):
+                    raise ValueError(f"Bad keys for distributed-block-roi: {value}")
+                if not all(isinstance(v, (int, None.__class__)) for v in parsed.values()):
+                    raise ValueError(f"Bad values for distributed-block-roi: {value}")
+                overrides = {k: slice(0, int(v)) for k, v in parsed.items()}
+            elif isinstance(parsed, int):
+                overrides = {k: slice(0, parsed) for k in "xyz"}
+            else:
+                raise TypeError(f"Could not convert value {value} into a Slice5D")
+
+            return Slice5D(**{**default_block_roi.to_dict(), **overrides})
+
         parser.add_argument(
-            "--distributed_block_size",
-            help="The length of the side of the tiles used in distributed mode",
-            type=int,
-            default=256,
+            "--distributed_block_roi",
+            "--distributed-block-roi",
+            help=textwrap.dedent(
+                """
+                Determines the dimensions of the blocks used to split the data in distributed mode.
+                Values can be:"
+                    A literal python Dict[str, Optional[int]], with keys in 'xyztc'. Missing keys will default like so:
+                    {'x': 256, 'y': 256, 'z': 256, 't': 1, 'c':None}
+                    Use None anywhere in the dict to mean "the whole dimension".
+
+                    An integer, which will be interpreted as if the following dict was passed in:
+                    {'x': value, 'y': value, 'z': value}
+                    where the dict defaults still apply.
+            """
+            ),
+            type=parse_distributed_block_roi,
+            default=default_block_roi,
         )
 
         parsed_args, unused_args = parser.parse_known_args(cmdline_args)
@@ -67,7 +100,7 @@ class BatchProcessingApplet(Applet):
     def run_export_from_parsed_args(self, parsed_args: argparse.Namespace):
         "Run the export for each dataset listed in parsed_args as interpreted by DataSelectionApplet."
         if parsed_args.distributed:
-            export_function = partial(self.do_distributed_export, block_size=parsed_args.distributed_block_size)
+            export_function = partial(self.do_distributed_export, block_roi=parsed_args.distributed_block_roi)
         else:
             export_function = self.do_normal_export
 
@@ -139,9 +172,9 @@ class BatchProcessingApplet(Applet):
         logger.info("Exporting to in-memory array.")
         return opDataExport.run_export_to_array()
 
-    def do_distributed_export(self, opDataExport, *, block_size: int = 256):
+    def do_distributed_export(self, opDataExport, *, block_roi: Slice5D):
         logger.info("Running ilastik distributed...")
-        return opDataExport.run_distributed_export(block_shape=Shape5D.hypercube(block_size))
+        return opDataExport.run_distributed_export(block_roi=block_roi)
 
     def export_dataset(
         self,

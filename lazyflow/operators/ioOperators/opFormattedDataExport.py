@@ -31,7 +31,7 @@ from typing import Tuple
 from pathlib import Path
 
 import z5py
-from ndstructs import Shape5D, Slice5D
+from ndstructs import Slice5D
 
 from lazyflow.utility import format_known_keys
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -280,7 +280,7 @@ class OpFormattedDataExport(Operator):
     def run_export_to_array(self):
         return self._opExportSlot.run_export_to_array()
 
-    def run_distributed_export(self, block_shape: Shape5D):
+    def run_distributed_export(self, block_roi: Slice5D):
         from lazyflow.distributed.TaskOrchestrator import TaskOrchestrator
 
         orchestrator = TaskOrchestrator()
@@ -288,7 +288,7 @@ class OpFormattedDataExport(Operator):
         output_meta = self.ImageToExport.meta
         if orchestrator.rank == 0:
             output_shape = output_meta.getShape5D()
-            block_shape = block_shape.clamped(maximum=output_shape)
+            block_shape = block_roi.clamped(output_shape.to_slice_5d()).shape
 
             with z5py.File(n5_file_path, "w") as f:
                 ds = f.create_dataset(

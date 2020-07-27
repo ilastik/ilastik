@@ -5,6 +5,7 @@ import logging
 import tempfile
 import json
 import os
+from typing import Dict, Optional
 
 import pytest
 import numpy
@@ -64,6 +65,7 @@ def run_headless_pixel_classification(
     testdir,
     *,
     num_distributed_workers: int = 0,
+    distributed_block_roi: Optional[Dict[str, slice]] = None,
     project: Path,
     raw_data: Path,
     output_filename_format: str,
@@ -95,6 +97,8 @@ def run_headless_pixel_classification(
         os.environ["OMPI_ALLOW_RUN_AS_ROOT"] = "1"
         os.environ["OMPI_ALLOW_RUN_AS_ROOT_CONFIRM"] = "1"
         subprocess_args = ["mpiexec", "-n", str(num_distributed_workers)] + subprocess_args + ["--distributed"]
+        if distributed_block_roi:
+            subprocess_args += ["--distributed-block-roi", str(distributed_block_roi)]
 
     result = testdir.run(*subprocess_args)
     if result.ret != 0:
@@ -111,7 +115,7 @@ def test_headless_2d3c_with_same_raw_data_axis(testdir, pixel_classification_ilp
     )
 
 
-def test_headless_2d3c_with_swizzled_raw_data_axis(testdir, pixel_classification_ilp_2d3c: Path, tmp_path: Path):
+def test_headless_2d3c_with_permuted_raw_data_axis(testdir, pixel_classification_ilp_2d3c: Path, tmp_path: Path):
     raw_3c100x100y: Path = create_h5(numpy.random.rand(3, 100, 100), axiskeys="cyx")
     output_path = tmp_path / "out_3c100x100y.h5"
 
@@ -176,3 +180,19 @@ def test_distributed_results_are_identical_to_single_process_results(
         distributed_out_data = f["exported_data"][()]
 
     assert (single_process_out_data == distributed_out_data).all()
+
+    distributed_50x50block_output_path = tmp_path / "distributed_50x50block_out_100x100y3c.n5"
+    run_headless_pixel_classification(
+        testdir,
+        num_distributed_workers=4,
+        distributed_block_roi={"x": 50, "y": 50},
+        output_format="n5",
+        project=pixel_classification_ilp_2d3c,
+        raw_data=raw_100x100y3c,
+        output_filename_format=str(distributed_50x50block_output_path),
+    )
+
+    with z5py.File(distributed_50x50block_output_path, "r") as f:
+        distributed_50x50block_data = f["exported_data"][()]
+
+    assert (single_process_out_data == distributed_50x50block_data).all()
