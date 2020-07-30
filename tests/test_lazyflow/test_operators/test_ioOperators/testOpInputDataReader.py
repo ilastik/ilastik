@@ -143,7 +143,7 @@ class TestOpInputDataReader(object):
 
     def test_h5(self):
         # Create HDF5 test data
-        with h5py.File(self.testH5FileName) as f:
+        with h5py.File(self.testH5FileName, "w") as f:
             f.create_group("volume")
             shape = (1, 2, 3, 4, 5)
             f["volume"].create_dataset(
@@ -176,7 +176,7 @@ class TestOpInputDataReader(object):
         """Test stack/sequence reading in hdf5-files for given 'sequence_axis'"""
         shape = (4, 8, 16, 32, 3)  # assuming axis guess order is 'tzyxc'
         data = numpy.random.randint(0, 255, size=shape).astype(numpy.uint8)
-        with h5py.File(self.testH5FileName) as f:
+        with h5py.File(self.testH5FileName, "w") as f:
             data_group = f.create_group("volumes")
             for index, t_slice in enumerate(data):
                 data_group.create_dataset("timepoint-{index:02d}".format(index=index), data=t_slice)
@@ -206,7 +206,7 @@ class TestOpInputDataReader(object):
         data = numpy.random.randint(0, 255, size=shape).astype(numpy.uint8)
         for index, t_slice in enumerate(data):
             fname = self.testmultiH5FileName.format(index=index)
-            with h5py.File(fname) as f:
+            with h5py.File(fname, "w") as f:
                 data_group = f.create_group("volume")
                 data_group.create_dataset("data", data=t_slice)
 

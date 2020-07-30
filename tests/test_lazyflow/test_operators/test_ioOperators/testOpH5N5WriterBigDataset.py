@@ -60,8 +60,8 @@ class TestOpH5N5WriterBigDataset(object):
 
     def test_Writer(self):
         # Create the h5 file
-        hdf5File = h5py.File(self.testDataH5FileName)
-        n5File = z5py.N5File(self.testDataN5FileName)
+        hdf5File = h5py.File(self.testDataH5FileName, "w")
+        n5File = z5py.N5File(self.testDataN5FileName, "w")
 
         opPiper = OpArrayPiper(graph=self.graph)
         opPiper.Input.setValue(self.testData)
@@ -123,8 +123,8 @@ class TestOpH5N5WriterBigDataset_2(object):
     def test_Writer(self):
 
         # Create the h5 file
-        hdf5File = h5py.File(self.testDataH5FileName)
-        n5File = z5py.N5File(self.testDataN5FileName)
+        hdf5File = h5py.File(self.testDataH5FileName, "w")
+        n5File = z5py.N5File(self.testDataN5FileName, "w")
 
         opPiper = OpArrayPiper(graph=self.graph)
         opPiper.Input.setValue(self.testData)
@@ -189,8 +189,8 @@ class TestOpH5N5WriterBigDataset_3(object):
 
     def test_Writer(self):
         # Create the h5 file
-        hdf5File = h5py.File(self.testDataH5FileName)
-        n5File = z5py.N5File(self.testDataN5FileName)
+        hdf5File = h5py.File(self.testDataH5FileName, "w")
+        n5File = z5py.N5File(self.testDataN5FileName, "w")
 
         opPiper = OpArrayPiper(graph=self.graph)
         opPiper.Input.setValue(self.testData)

@@ -44,14 +44,18 @@ class BackwardsCompatibleLabelSerialBlockSlot(SerialBlockSlot):
     def get_corresponding_input_image_slot(self, labelSlot: OutputSlot) -> OutputSlot:
         return labelSlot.operator.InputImages[labelSlot.subindex]
 
-    def get_input_image_original_axiskeys(self, labelSlot: OutputSlot) -> str:
-        return "".join(self.get_corresponding_input_image_slot(labelSlot).meta.getOriginalAxisKeys())
-
     def get_input_image_current_axiskeys(self, labelSlot: OutputSlot) -> str:
         return "".join(self.get_corresponding_input_image_slot(labelSlot).meta.getAxisKeys())
 
-    def deserialization_requires_data_conversion(self, project) -> bool:
-        return self.labels_were_saved_in_forced_canonical_order(project)
+    def get_input_image_original_axiskeys(self, labelSlot: OutputSlot) -> str:
+        return "".join(self.get_corresponding_input_image_slot(labelSlot).meta.getOriginalAxisKeys())
+
+    def deserialization_requires_data_conversion(self, project: Project) -> bool:
+        if self.labels_were_saved_in_forced_canonical_order(project):
+            return True
+        if self.labels_were_saved_in_slot_original_order(project):
+            return True
+        return False
 
     def labels_were_saved_in_forced_canonical_order(self, project: Project) -> bool:
         pixel_plus_object_workflow_name = "Object Classification (from pixel classification)"
@@ -62,38 +66,32 @@ class BackwardsCompatibleLabelSerialBlockSlot(SerialBlockSlot):
             v1_3_3 <= project.ilastikVersion < v1_3_3post2 and project.workflowName == pixel_plus_object_workflow_name
         )
 
+    def labels_were_saved_in_slot_original_order(self, project: Project):
+        v1_3_3post2 = parse_version("1.3.3post2")
+        v1_4_0b7 = parse_version("1.4.0b7")
+
+        return v1_3_3post2 <= project.ilastikVersion <= v1_4_0b7
+
     def get_saved_data_axiskeys(self, slot: OutputSlot, project: Project) -> str:
         if self.labels_were_saved_in_forced_canonical_order(project):
             return "txyzc"
-        else:
+        if self.labels_were_saved_in_slot_original_order(project):
             return self.get_input_image_original_axiskeys(slot)
+        return self.get_input_image_current_axiskeys(slot)
 
     def reshape_datablock_and_slicing_for_input(
         self, block: numpy.ndarray, slicing: List[slice], slot: OutputSlot, project: Project
     ) -> Tuple[numpy.ndarray, List[slice]]:
-        """Reshapes a block of data and its corresponding slicing into the slot's current shape, so as to be
-        compatible with versions of ilastik that saved and loaded block slots in their original shape
-
-        Checks for version 1.3.3 and 1.3.3post1 because those were the versions that saved labels in 5D
-        """
+        """Reshapes a block of data and its corresponding slicing into the slot's current shape"""
         current_axiskeys = self.get_input_image_current_axiskeys(slot)
         saved_data_axiskeys = self.get_saved_data_axiskeys(slot, project)
         fixed_slicing = Slice5D.zero(**dict(zip(saved_data_axiskeys, slicing))).to_slices(current_axiskeys)
         fixed_block = Array5D(block, saved_data_axiskeys).raw(current_axiskeys)
-        return fixed_block, fixed_slicing
 
-    def reshape_datablock_and_slicing_for_output(
-        self, block: numpy.ndarray, slicing: List[slice], slot: OutputSlot
-    ) -> Tuple[numpy.ndarray, List[slice]]:
-        """Reshapes a block of data and its corresponding slicing into the slot's original shape, so as to be
-        compatible with versions of ilastik that saved and loaded block slots in their original shape
+        if current_axiskeys != saved_data_axiskeys:
+            self.ignoreDirty = False
+            self.dirty = True
 
-        Always save using original shape to be backwards compatible with 1.3.2
-        """
-        original_axiskeys = self.get_input_image_original_axiskeys(slot)
-        current_axiskeys = self.get_input_image_current_axiskeys(slot)
-        fixed_block = Array5D(block, current_axiskeys).raw(original_axiskeys)
-        fixed_slicing = Slice5D.zero(**dict(zip(current_axiskeys, slicing))).to_slices(original_axiskeys)
         return fixed_block, fixed_slicing
 
     def deserialize(self, group):

@@ -27,10 +27,10 @@ def data_export_applet():
 
 
 def test_applet_serialization(project_path, data_export_applet):
-    with h5py.File(project_path) as project_file:
+    with h5py.File(project_path, "w") as project_file:
         data_export_applet.dataSerializers[0].serializeToHdf5(project_file, project_path)
 
-    with h5py.File(project_path) as project_file:
+    with h5py.File(project_path, "r") as project_file:
         assert project_file["Tracking Result Export/SelectedPlugin"][()].decode() == "Fiji-MaMuT"
         assert project_file["Tracking Result Export/SelectedExportSource"][()].decode() == "Plugin"
         assert (
@@ -39,13 +39,13 @@ def test_applet_serialization(project_path, data_export_applet):
 
 
 def test_applet_deserialization(project_path, data_export_applet):
-    with h5py.File(project_path) as project_file:
+    with h5py.File(project_path, "w") as project_file:
         data_export_applet.dataSerializers[0].serializeToHdf5(project_file, project_path)
 
     op = Operator(graph=Graph())
     data_export_applet = TrackingBaseDataExportApplet(op, "Tracking Result Export")
 
-    with h5py.File(project_path) as project_file:
+    with h5py.File(project_path, "r") as project_file:
         data_export_applet.dataSerializers[0].deserializeFromHdf5(project_file, project_path)
 
     opTrackingBaseDataExport = data_export_applet.dataSerializers[0].topLevelOperator
