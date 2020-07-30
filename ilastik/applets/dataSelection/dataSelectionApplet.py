@@ -203,7 +203,13 @@ class DataSelectionApplet(Applet):
         arg_parser.add_argument(
             "--stack-along",
             "--stack_along",
-            help="Axis along which stack datasets (e.g.: my_yx_slices*.tiff) are to be stacked",
+            help=(
+                "Axis along which stack datasets (e.g.: my_yx_slices*.tiff) are to be stacked. If the axis is not "
+                "present in the input files, it will appear prepended to the input files axis (e.g.: when stacking "
+                "'yxc' files along the 'z' axis, the resulting axis order will be zyxc). Otherwise, the stack axis "
+                "remain in the same order as the input images, but with with size equal to the sum of the sizes of "
+                "all images, in that dimension"
+            ),
             type=str,
             default="z",
         )

@@ -80,15 +80,15 @@ class BatchProcessingApplet(Applet):
             help=textwrap.dedent(
                 """
                 Determines the dimensions of the blocks used to split the data in distributed mode.
-                Values can be:"
-                    A literal python Dict[str, Optional[int]], with keys in 'xyztc'. Missing keys will default like so:
-                    {'x': 256, 'y': 256, 'z': 256, 't': 1, 'c':None}
-                    Use None anywhere in the dict to mean "the whole dimension".
-
+                Values can be either:"
                     An integer, which will be interpreted as if the following dict was passed in:
-                    {'x': value, 'y': value, 'z': value}
-                    where the dict defaults still apply.
-            """
+                    {'x': value, 'y': value, 'z': value, 't': 1, 'c': None}
+
+                    or a literal python Dict[str, Optional[int]], with keys in 'xyztc'.
+                    Missing keys will default like so:
+                    {'x': 256, 'y': 256, 'z': 256, 't': 1, 'c': None}
+                    Use None anywhere in the dict to mean "the whole dimension".
+                """
             ),
             type=parse_distributed_block_roi,
             default=default_block_roi,
