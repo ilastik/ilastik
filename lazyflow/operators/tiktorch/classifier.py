@@ -77,7 +77,7 @@ class ModelSession:
 
     def get_halo(self, axes: str = "zyx"):
         dim_size_by_name = {d.name: d.size for d in self.__session.halo}
-        return [dim_size_by_name.get(axis, 1) for axis in axes]
+        return [dim_size_by_name.get(axis, 0) for axis in axes]
 
     def get_valid_shapes(self, axes: str = "zyx"):
         result = []
