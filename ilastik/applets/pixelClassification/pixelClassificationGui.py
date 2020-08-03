@@ -679,7 +679,7 @@ class PixelClassificationGui(LabelingGui):
         if uncertaintySlot.ready():
             uncertaintySrc = createDataSource(uncertaintySlot)
             uncertaintyLayer = AlphaModulatedLayer(
-                uncertaintySrc, tintColor=QColor(Qt.cyan), range=(0.0, 1.0), normalize=(0.0, 1.0)
+                uncertaintySrc, tintColor=QColor(Qt.cyan), normalize=(0.0, 1.0)
             )
             uncertaintyLayer.name = "Uncertainty"
             uncertaintyLayer.visible = False
@@ -705,7 +705,7 @@ class PixelClassificationGui(LabelingGui):
                 ref_label = labels[channel]
                 segsrc = createDataSource(segmentationSlot)
                 segLayer = AlphaModulatedLayer(
-                    segsrc, tintColor=ref_label.pmapColor(), range=(0.0, 1.0), normalize=(0.0, 1.0)
+                    segsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0)
                 )
 
                 segLayer.opacity = 1
@@ -754,7 +754,7 @@ class PixelClassificationGui(LabelingGui):
                 ref_label = labels[channel]
                 predictsrc = createDataSource(predictionSlot)
                 predictLayer = AlphaModulatedLayer(
-                    predictsrc, tintColor=ref_label.pmapColor(), range=(0.0, 1.0), normalize=(0.0, 1.0)
+                    predictsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0)
                 )
                 predictLayer.opacity = 0.25
                 predictLayer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()

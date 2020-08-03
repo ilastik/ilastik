@@ -569,7 +569,7 @@ class NNClassGui(LabelingGui):
                 ref_label = labels[channel]
                 predictsrc = LazyflowSource(predictionSlot)
                 predictionLayer = AlphaModulatedLayer(
-                    predictsrc, tintColor=ref_label.pmapColor(), range=(0.0, 1.0), normalize=(0.0, 1.0)
+                    predictsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0)
                 )
                 predictionLayer.visible = self.labelingDrawerUi.livePrediction.isChecked()
                 predictionLayer.opacity = 0.25
