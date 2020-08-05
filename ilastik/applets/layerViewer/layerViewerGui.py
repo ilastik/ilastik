@@ -339,9 +339,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         source = createDataSource(slot)
         layer = GrayscaleLayer(source, window_leveling=True)
         layer.numberOfChannels = n_channels
-        layer.set_range(0, slot.meta.drange)
-        normalize = cls._should_normalize_display(slot)
-        layer.set_normalize(0, normalize)
+        layer.set_normalize(0, (slot.meta.normalizeDisplay and slot.meta.drange) or None)
         return layer
 
     @classmethod
@@ -354,7 +352,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
     @classmethod
     def _create_alpha_modulated_layer_from_slot(cls, slot):
         layer = AlphaModulatedLayer(
-            createDataSource(slot), tintColor=QColor(Qt.cyan), range=(0.0, 1.0), normalize=(0.0, 1.0)
+            createDataSource(slot), tintColor=QColor(Qt.cyan), normalize=(0.0, 1.0)
         )
         return layer
 
@@ -418,30 +416,11 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
             alphaSource.additional_owned_ops.append(alphaProvider)
 
         layer = RGBALayer(red=redSource, green=greenSource, blue=blueSource, alpha=alphaSource)
-        normalize = cls._should_normalize_display(slot)
         for i in range(4):
             if [redSource, greenSource, blueSource, alphaSource][i]:
-                layer.set_range(i, slot.meta.drange)
-                layer.set_normalize(i, normalize)
+                layer.set_normalize(i, (slot.meta.normalizeDisplay and slot.meta.drange) or None)
 
         return layer
-
-    def _get_numchannels(self, slot, n_channels):
-        pass
-
-    @classmethod
-    def _should_normalize_display(cls, slot):
-        if slot.meta.drange is not None and slot.meta.normalizeDisplay is False:
-            # do not normalize if the user provided a range and set normalization to False
-            return False
-        else:
-            # If we don't know the range of the data and normalization is allowed
-            # by the user, create a layer that is auto-normalized.
-            # See volumina.api for details.
-            #
-            # Even in the case of integer data, which has more than 255 possible values,
-            # (like uint16), it seems reasonable to use this setting as default
-            return None  # means autoNormalize
 
     @threadRouted
     def updateAllLayers(self, slot=None):

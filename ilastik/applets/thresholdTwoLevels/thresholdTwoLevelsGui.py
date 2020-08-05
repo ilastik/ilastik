@@ -359,7 +359,7 @@ class ThresholdTwoLevelsGui(LayerViewerGui):
                 drange = (0.0, 1.0)
             channelSrc = createDataSource(channelProvider.Output)
             inputChannelLayer = AlphaModulatedLayer(
-                channelSrc, tintColor=input_channel_colors[channel], range=drange, normalize=drange
+                channelSrc, tintColor=input_channel_colors[channel], normalize=drange
             )
             inputChannelLayer.opacity = 0.5
             inputChannelLayer.visible = True

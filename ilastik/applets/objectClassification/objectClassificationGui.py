@@ -578,7 +578,7 @@ class ObjectClassificationGui(LabelingGui):
                 ref_label = labels[channel]
                 probsrc = createDataSource(probSlot)
                 probLayer = AlphaModulatedLayer(
-                    probsrc, tintColor=ref_label.pmapColor(), range=(0.0, 1.0), normalize=(0.0, 1.0)
+                    probsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0)
                 )
                 probLayer.opacity = 0.25
                 # probLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
@@ -664,7 +664,7 @@ class ObjectClassificationGui(LabelingGui):
         if uncertaintySlot.ready():
             uncertaintySrc = createDataSource(uncertaintySlot)
             uncertaintyLayer = AlphaModulatedLayer(
-                uncertaintySrc, tintColor=QColor(Qt.cyan), range=(0.0, 1.0), normalize=(0.0, 1.0)
+                uncertaintySrc, tintColor=QColor(Qt.cyan), normalize=(0.0, 1.0)
             )
             uncertaintyLayer.name = "Uncertainty"
             uncertaintyLayer.visible = False

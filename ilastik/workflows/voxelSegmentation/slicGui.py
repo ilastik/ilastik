@@ -50,7 +50,6 @@ class SlicGui(LayerViewerGui):
             layer = AlphaModulatedLayer(
                 LazyflowSource(superVoxelBoundarySlot),
                 tintColor=QColor(Qt.blue),
-                range=(0.0, 1.0),
                 normalize=(0.0, 1.0),
             )
             layer.name = "Supervoxel Boundaries"

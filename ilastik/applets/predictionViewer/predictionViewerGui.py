@@ -82,7 +82,7 @@ class PredictionViewerGui(LayerViewerGui):
             if channelSlot.ready() and channel < len(colors) and channel < len(names):
                 predictsrc = createDataSource(channelSlot)
                 predictLayer = AlphaModulatedLayer(
-                    predictsrc, tintColor=colors[channel], range=(0.0, 1.0), normalize=(0.0, 1.0)
+                    predictsrc, tintColor=colors[channel], normalize=(0.0, 1.0)
                 )
                 predictLayer.opacity = 0.25
                 predictLayer.visible = True

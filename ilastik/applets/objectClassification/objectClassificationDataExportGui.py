@@ -146,8 +146,6 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
                 predictLayer = AlphaModulatedLayer(
                     predictsrc,
                     tintColor=QColor.fromRgba(self._colorTable16[channel + 1]),
-                    # FIXME: This is weird.  Why are range and normalize both set to the same thing?
-                    range=drange,
                     normalize=drange,
                 )
                 predictLayer.opacity = 1.0

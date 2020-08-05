@@ -138,8 +138,6 @@ class NNClassificationResultsViewer(DataExportLayerViewerGui):
                 predictsrc = LazyflowSource(channelSlot)
                 predictLayer = AlphaModulatedLayer( predictsrc,
                                                     tintColor=QColor(*colors[channel]),
-                                                    # FIXME: This is weird.  Why are range and normalize both set to the same thing?
-                                                    range=drange,
                                                     normalize=drange )
                 predictLayer.opacity = 0.25
                 predictLayer.visible = True

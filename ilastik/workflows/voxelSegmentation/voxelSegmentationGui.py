@@ -316,7 +316,7 @@ class VoxelSegmentationGui(LabelingGui):
         if uncertaintySlot.ready():
             uncertaintySrc = LazyflowSource(uncertaintySlot)
             uncertaintyLayer = AlphaModulatedLayer(
-                uncertaintySrc, tintColor=QColor(Qt.cyan), range=(0.0, 1.0), normalize=(0.0, 1.0)
+                uncertaintySrc, tintColor=QColor(Qt.cyan), normalize=(0.0, 1.0)
             )
             uncertaintyLayer.name = "Uncertainty"
             uncertaintyLayer.visible = False
@@ -339,7 +339,7 @@ class VoxelSegmentationGui(LabelingGui):
         if topUncertaintySlot.ready():
             topUncertaintySrc = LazyflowSource(topUncertaintySlot)
             topUncertaintyLayer = AlphaModulatedLayer(
-                topUncertaintySrc, tintColor=QColor(Qt.cyan), range=(0.0, 1.0), normalize=(0.0, 1.0)
+                topUncertaintySrc, tintColor=QColor(Qt.cyan), normalize=(0.0, 1.0)
             )
             topUncertaintyLayer.name = "topUncertainty"
             topUncertaintyLayer.visible = True
@@ -365,7 +365,7 @@ class VoxelSegmentationGui(LabelingGui):
                 ref_label = labels[channel]
                 segsrc = LazyflowSource(segmentationSlot)
                 segLayer = AlphaModulatedLayer(
-                    segsrc, tintColor=ref_label.pmapColor(), range=(0.0, 1.0), normalize=(0.0, 1.0)
+                    segsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0)
                 )
 
                 segLayer.opacity = 1
@@ -414,7 +414,7 @@ class VoxelSegmentationGui(LabelingGui):
                 ref_label = labels[channel]
                 predictsrc = LazyflowSource(predictionSlot)
                 predictLayer = AlphaModulatedLayer(
-                    predictsrc, tintColor=ref_label.pmapColor(), range=(0.0, 1.0), normalize=(0.0, 1.0)
+                    predictsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0)
                 )
                 predictLayer.opacity = 0.25
                 predictLayer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
@@ -486,7 +486,7 @@ class VoxelSegmentationGui(LabelingGui):
         superVoxelSlot = self.topLevelOperatorView.SupervoxelBoundaries
         if superVoxelSlot.ready():
             layer = AlphaModulatedLayer(
-                LazyflowSource(superVoxelSlot), tintColor=QColor(Qt.black), range=(0.0, 1.0), normalize=(0.0, 1.0)
+                LazyflowSource(superVoxelSlot), tintColor=QColor(Qt.black), normalize=(0.0, 1.0)
             )
             layer.name = "SLIC segmentation"
             layer.visible = True
