@@ -18,49 +18,77 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+
+from typing import List, Optional
+
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
-    QDialogButtonBox,
     QButtonGroup,
     QComboBox,
     QDialog,
+    QDialogButtonBox,
     QLabel,
     QLineEdit,
+    QListWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
-from PyQt5.QtCore import Qt
-
 from lazyflow.utility import globList
 
 
 class SubvolumeSelectionDlg(QDialog):
-    """
-    A window to ask the user to choose between multiple HDF5 datasets in a single file.
+    """A window to ask the user to choose between multiple HDF5 datasets in a single file.
+
+    If multi is True, user can select multiple datasets at once.
     """
 
-    def __init__(self, datasetNames, parent):
+    def __init__(self, datasetNames, parent, *, multi=False):
         super().__init__(parent)
-        label = QLabel(
-            "Your HDF5/N5 File contains multiple image volumes.\n" "Please select the one you would like to open."
-        )
-
-        self.combo = QComboBox()
-        for name in datasetNames:
-            self.combo.addItem(name)
-
-        buttonbox = QDialogButtonBox(Qt.Horizontal, parent=self)
-        buttonbox.setStandardButtons(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttonbox.accepted.connect(self.accept)
-        buttonbox.rejected.connect(self.reject)
+        self.multi = multi
 
         layout = QVBoxLayout()
-        layout.addWidget(label)
-        layout.addWidget(self.combo)
-        layout.addWidget(buttonbox)
-
         self.setLayout(layout)
+
+        label_lines = ["<p>Your file contains multiple images.</p>"]
+        if multi:
+            label_lines.append("<p>Select images that you would like to open.</p>")
+        else:
+            label_lines.append("<p>Select image that you would like to open.</p>")
+        layout.addWidget(QLabel("".join(label_lines), parent=self))
+
+        if multi:
+            self.items = QListWidget(parent=self)
+            self.items.setSelectionMode(QListWidget.MultiSelection)
+            self.items.insertItems(0, datasetNames)
+            layout.addWidget(self.items)
+        else:
+            self.combo = QComboBox(parent=self)
+            self.combo.addItems(datasetNames)
+            layout.addWidget(self.combo)
+
+        buttons = QDialogButtonBox(Qt.Horizontal, parent=self)
+        buttons.setStandardButtons(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def select_path(self) -> Optional[str]:
+        """Select and return an item text, or None if the dialog has not been accepted."""
+        if self.multi:
+            raise ValueError("selectedPath can be used only when multi=False")
+        if self.exec_() != self.Accepted:
+            return None
+        return self.combo.currentText()
+
+    def select_paths(self) -> Optional[List[str]]:
+        """Select and return item texts, or None if the dialog has not been accepted."""
+        if not self.multi:
+            raise ValueError("selectedPaths can be used only when multi=True")
+        if self.exec_() != self.Accepted:
+            return None
+        return [item.text() for item in self.items.selectedItems()]
 
 
 class Hdf5StackSelectionWidget(QWidget):
@@ -147,12 +175,3 @@ class H5N5StackingDlg(QDialog):
 
     def get_globstring(self):
         return self.stack_widget.input_text.text()
-
-
-if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
-
-    app = QApplication([])
-    w = H5N5StackingDlg(list_of_paths=["a/1", "a/2", "a/3", "b/1", "b/2"])
-    w.show()
-    app.exec_()

@@ -168,24 +168,23 @@ class StackFileSelectionWidget(QDialog):
                 if ext in h5exts + n5exts:
                     # be even more helpful and try to find a common internal path
                     internal_paths = self._h5N5FindCommonInternal(new_filenames)
+
                     if len(internal_paths) == 0:
                         msg += "Could not find a unique common internal path in"
                         msg += directory + "\n"
                         raise StackFileSelectionWidget.DetermineStackError(msg)
+
                     elif len(internal_paths) == 1:
-                        new_filenames = ["{}/{}".format(fn, internal_paths[0]) for fn in new_filenames]
-                        globstring = "{}/{}".format(globstring, internal_paths[0])
+                        new_filenames = [f"{fn}/{internal_paths[0]}" for fn in new_filenames]
+                        globstring = f"{globstring}/{internal_paths[0]}"
+
                     elif len(internal_paths) > 1:
                         # Ask the user which dataset to choose
-                        dlg = SubvolumeSelectionDlg(internal_paths, self)
-                        if dlg.exec_() == QDialog.Accepted:
-                            selected_index = dlg.combo.currentIndex()
-                            selected_dataset = str(internal_paths[selected_index])
-                            new_filenames = ["{}/{}".format(fn, selected_dataset) for fn in new_filenames]
-                            globstring = "{}/{}".format(globstring, selected_dataset)
-                        else:
-                            msg = "No valid internal path selected."
-                            raise StackFileSelectionWidget.DetermineStackError(msg)
+                        selected_dataset = SubvolumeSelectionDlg(internal_paths, self).select_path()
+                        if selected_dataset is None:
+                            raise StackFileSelectionWidget.DetermineStackError("No valid internal path selected.")
+                        new_filenames = [f"{fn}/{selected_dataset}" for fn in new_filenames]
+                        globstring = f"{globstring}/{selected_dataset}"
 
                 globstrings.append(globstring)
                 all_filenames += new_filenames
@@ -326,19 +325,18 @@ class StackFileSelectionWidget(QDialog):
                     msg += directory + "\n"
                     QMessageBox.warning(self, "Invalid selection", msg)
                     return None
+
                 elif len(internal_paths) == 1:
-                    fileNames = ["{}/{}".format(fn, internal_paths[0]) for fn in fileNames]
+                    fileNames = [f"{fn}/{internal_paths[0]}" for fn in fileNames]
+
                 else:
                     # Ask the user which dataset to choose
-                    dlg = SubvolumeSelectionDlg(internal_paths, self)
-                    if dlg.exec_() == QDialog.Accepted:
-                        selected_index = dlg.combo.currentIndex()
-                        selected_dataset = str(internal_paths[selected_index])
-                        fileNames = ["{}/{}".format(fn, selected_dataset) for fn in fileNames]
-                    else:
-                        msg = "No valid internal path selected."
-                        QMessageBox.warning(self, "Invalid selection", msg)
+                    selected_dataset = SubvolumeSelectionDlg(internal_paths, self).select_path()
+                    if selected_dataset is None:
+                        QMessageBox.warning(self, "Invalid selection", "No valid internal path selected.")
                         return None
+                    fileNames = [f"{fn}/{selected_dataset}" for fn in fileNames]
+
         self._updateFileList(fileNames)
 
     def _applyPattern(self):

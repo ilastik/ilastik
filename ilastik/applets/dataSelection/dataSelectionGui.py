@@ -21,10 +21,10 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Python
+import contextlib
 import os
-import re
 from pathlib import Path
-from typing import Dict, List, Set
+from typing import Dict, List, Optional, Set
 import threading
 import h5py
 from functools import partial
@@ -35,9 +35,6 @@ logger = logging.getLogger(__name__)
 # PyQt
 from PyQt5 import uic
 from PyQt5.QtWidgets import QDialog, QMessageBox, QStackedWidget, QWidget
-
-# lazyflow
-from lazyflow.request import Request
 
 # volumina
 from volumina.utility import preferences
@@ -51,7 +48,6 @@ from ilastik.applets.base.applet import DatasetConstraintError
 from .opDataSelection import (
     DatasetInfo,
     RelativeFilesystemDatasetInfo,
-    FilesystemDatasetInfo,
     ProjectInternalDatasetInfo,
     UrlDatasetInfo,
 )
@@ -138,12 +134,6 @@ class DataSelectionGui(QWidget):
 
     ###########################################
     ###########################################
-
-    class UserCancelledError(Exception):
-        # This exception type is raised when the user cancels the
-        #  addition of dataset files in the middle of the process somewhere.
-        # It isn't an error -- it's used for control flow.
-        pass
 
     def __init__(
         self,
@@ -401,17 +391,17 @@ class DataSelectionGui(QWidget):
         paths = ImageFileDialog(self).getSelectedPaths()
         self.addFileNames(paths, startingLaneNum, roleIndex)
 
-    def addFileNames(self, paths: List[Path], startingLaneNum: int, roleIndex: int):
-        # If the user didn't cancel
-        if paths:
-            try:
-                new_infos = self._createDatasetInfos(roleIndex, paths)
-                self.addLanes(new_infos, roleIndex=roleIndex, startingLaneNum=startingLaneNum)
-            except DataSelectionGui.UserCancelledError:
-                pass
-            except Exception as ex:
-                log_exception(logger)
-                QMessageBox.critical(self, "Error loading file", str(ex))
+    def addFileNames(self, paths: List[Path], startingLaneNum: int, roleIndex: int) -> None:
+        try:
+            new_infos = self._dataset_infos(roleIndex, paths)
+            if not new_infos:
+                return
+
+            self.addLanes(new_infos, roleIndex=roleIndex, startingLaneNum=startingLaneNum)
+
+        except Exception as ex:
+            log_exception(logger)
+            QMessageBox.critical(self, "Error loading file", str(ex))
 
     def _findFirstEmptyLane(self, roleIndex):
         opTop = self.topLevelOperator
@@ -515,20 +505,59 @@ class DataSelectionGui(QWidget):
 
         return (startingLaneNum, endingLane)
 
-    def _createDatasetInfos(self, roleIndex: int, filePaths: List[Path], rois=None):
-        """
-        Create a list of DatasetInfos for the given filePaths and rois
-        rois may be None, in which case it is ignored.
-        """
-        if rois is None:
-            rois = [None] * len(filePaths)
-        assert len(rois) == len(filePaths)
+    def _join_dataset_path(self, file_path: Path, internal_path: str) -> str:
+        """Return a proper path to the dataset in a file."""
+        p = file_path.absolute()
+        with contextlib.suppress(ValueError):
+            p = p.relative_to(self.topLevelOperator.WorkingDirectory.value)
 
+        prefix = str(p.as_posix())
+        suffix = internal_path.strip("/")
+        return f"{prefix}/{suffix}" if suffix else prefix
+
+    def _dataset_infos(self, role_index: int, file_paths: List[Path]) -> List[DatasetInfo]:
+        """Return combined DatasetInfo objects for all files."""
         infos = []
-        for filePath, roi in zip(filePaths, rois):
-            info = self._createDatasetInfo(roleIndex, filePath, roi)
-            infos.append(info)
+
+        for file_path in file_paths:
+            internal_paths = self._internal_paths(role_index, file_path)
+            if internal_paths is None:
+                return []
+
+            if len(internal_paths) == 1 and internal_paths[0]:
+                self._add_default_inner_path(roleIndex=role_index, inner_path=internal_paths[0])
+
+            infos += [
+                RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
+                    filePath=self._join_dataset_path(file_path, internal_path),
+                    project_file=self.project_file,
+                    allowLabels=(self.guiMode == GuiMode.Normal),
+                )
+                for internal_path in internal_paths
+            ]
+
         return infos
+
+    def _internal_paths(self, role_index: int, file_path: Path) -> Optional[List[str]]:
+        """Return internal dataset paths for a file, possibly selected by a user.
+
+        If the file does not have internal datasets, return a singleton list with empty string.
+        If the user does not want to continue, return None.
+        """
+        if not DatasetInfo.fileHasInternalPaths(file_path):
+            return [""]
+
+        internal_paths = DatasetInfo.getPossibleInternalPathsFor(file_path)
+        if not internal_paths:
+            raise RuntimeError(f"File {file_path} has no image datasets")
+        if len(internal_paths) == 1:
+            return internal_paths
+
+        auto_internal_paths = list(self._get_previously_used_inner_paths(role_index).intersection(internal_paths))
+        if len(auto_internal_paths) == 1:
+            return auto_internal_paths
+
+        return SubvolumeSelectionDlg(internal_paths, parent=self, multi=True).select_paths()
 
     def _add_default_inner_path(self, roleIndex: int, inner_path: str):
         paths = self._default_h5n5_volumes.get(roleIndex, set())
@@ -538,45 +567,6 @@ class DataSelectionGui(QWidget):
     def _get_previously_used_inner_paths(self, roleIndex: int) -> Set[str]:
         previous_paths = self._default_h5n5_volumes.get(roleIndex, set())
         return previous_paths.copy()
-
-    def _createDatasetInfo(self, roleIndex: int, filePath: Path, roi=None) -> FilesystemDatasetInfo:
-        """
-        Create a DatasetInfo object for the given filePath and roi.
-        roi may be None, in which case it is ignored.
-        """
-        cwd = self.topLevelOperator.WorkingDirectory.value
-        try:
-            data_path = filePath.absolute().relative_to(cwd)
-        except ValueError:
-            data_path = filePath.absolute()
-
-        if DatasetInfo.fileHasInternalPaths(str(data_path)):
-            datasetNames = DatasetInfo.getPossibleInternalPathsFor(filePath.absolute())
-            if len(datasetNames) == 0:
-                raise RuntimeError(f"File {data_path} has no image datasets")
-            if len(datasetNames) == 1:
-                selected_dataset = datasetNames.pop()
-            else:
-                auto_inner_paths = self._get_previously_used_inner_paths(roleIndex).intersection(set(datasetNames))
-                if len(auto_inner_paths) == 1:
-                    selected_dataset = auto_inner_paths.pop()
-                else:
-                    # Ask the user which dataset to choose
-                    dlg = SubvolumeSelectionDlg(datasetNames, self)
-                    if dlg.exec_() == QDialog.Accepted:
-                        selected_index = dlg.combo.currentIndex()
-                        selected_dataset = str(datasetNames[selected_index])
-                    else:
-                        raise DataSelectionGui.UserCancelledError()
-            self._add_default_inner_path(roleIndex=roleIndex, inner_path=selected_dataset)
-            data_path = data_path / re.sub("^/", "", selected_dataset)
-
-        return RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
-            filePath=data_path.as_posix(),
-            project_file=self.project_file,
-            allowLabels=(self.guiMode == GuiMode.Normal),
-            subvolume_roi=roi,
-        )
 
     def _checkDataFormatWarnings(self, roleIndex, startingLaneNum, endingLane):
         warn_needed = False
