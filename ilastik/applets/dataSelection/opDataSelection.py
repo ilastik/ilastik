@@ -23,7 +23,7 @@ import glob
 import os
 import uuid
 from enum import Enum, unique
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Union
 from numbers import Number
 import re
 from pathlib import Path
@@ -245,20 +245,21 @@ class DatasetInfo(ABC):
         return sorted(internal_paths)
 
     @classmethod
-    def pathIsHdf5(cls, path: Path) -> bool:
+    def pathIsHdf5(cls, path: Union[str, os.PathLike]) -> bool:
         return PathComponents(Path(path).as_posix()).extension in [".ilp", ".h5", ".hdf5"]
 
     @classmethod
-    def pathIsNpz(cls, path: Path) -> bool:
+    def pathIsNpz(cls, path: Union[str, os.PathLike]) -> bool:
         return PathComponents(Path(path).as_posix()).extension in [".npz"]
 
     @classmethod
-    def pathIsN5(cls, path: Path) -> bool:
+    def pathIsN5(cls, path: Union[str, os.PathLike]) -> bool:
         return PathComponents(Path(path).as_posix()).extension in [".n5"]
 
     @classmethod
-    def fileHasInternalPaths(cls, path: str) -> bool:
-        return cls.pathIsHdf5(path) or cls.pathIsN5(path) or cls.pathIsNpz(path)
+    def fileHasInternalPaths(cls, path: Union[str, os.PathLike]) -> bool:
+        p = Path(path)
+        return cls.pathIsHdf5(p) or cls.pathIsN5(p) or cls.pathIsNpz(p)
 
     @classmethod
     def getPossibleInternalPathsFor(cls, file_path: Path, min_ndim=2, max_ndim=5) -> List[str]:

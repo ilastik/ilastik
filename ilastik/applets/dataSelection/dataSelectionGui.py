@@ -21,6 +21,7 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Python
+import contextlib
 import os
 import re
 from pathlib import Path
@@ -401,17 +402,23 @@ class DataSelectionGui(QWidget):
         paths = ImageFileDialog(self).getSelectedPaths()
         self.addFileNames(paths, startingLaneNum, roleIndex)
 
-    def addFileNames(self, paths: List[Path], startingLaneNum: int, roleIndex: int):
-        # If the user didn't cancel
-        if paths:
-            try:
-                new_infos = self._createDatasetInfos(roleIndex, paths)
-                self.addLanes(new_infos, roleIndex=roleIndex, startingLaneNum=startingLaneNum)
-            except DataSelectionGui.UserCancelledError:
-                pass
-            except Exception as ex:
-                log_exception(logger)
-                QMessageBox.critical(self, "Error loading file", str(ex))
+    def addFileNames(self, paths: List[Path], startingLaneNum: int, roleIndex: int) -> None:
+        if not paths:
+            return
+
+        try:
+            self.addLanes(
+                self._datasetInfos(roleIndex, paths),
+                roleIndex=roleIndex,
+                startingLaneNum=startingLaneNum,
+            )
+
+        except DataSelectionGui.UserCancelledError:
+            pass
+
+        except Exception as ex:
+            log_exception(logger)
+            QMessageBox.critical(self, "Error loading file", str(ex))
 
     def _findFirstEmptyLane(self, roleIndex):
         opTop = self.topLevelOperator
@@ -515,20 +522,57 @@ class DataSelectionGui(QWidget):
 
         return (startingLaneNum, endingLane)
 
-    def _createDatasetInfos(self, roleIndex: int, filePaths: List[Path], rois=None):
-        """
-        Create a list of DatasetInfos for the given filePaths and rois
-        rois may be None, in which case it is ignored.
-        """
-        if rois is None:
-            rois = [None] * len(filePaths)
-        assert len(rois) == len(filePaths)
+    def _joinDatasetPath(self, filePath: Path, internalPath: str) -> str:
+        path = filePath.absolute()
+        with contextlib.suppress(ValueError):
+            path = path.relative_to(self.topLevelOperator.WorkingDirectory.value)
 
+        prefix = str(path.as_posix())
+        suffix = internalPath.strip("/")
+        return f"{prefix}/{suffix}" if suffix else prefix
+
+    def _datasetInfos(self, roleIndex: int, filePaths: List[Path]) -> List[DatasetInfo]:
         infos = []
-        for filePath, roi in zip(filePaths, rois):
-            info = self._createDatasetInfo(roleIndex, filePath, roi)
-            infos.append(info)
+
+        for filePathRaw in filePaths:
+            # filePath = self._relativeToCwd(filePathRaw)
+            filePath = filePathRaw
+            internalPaths = self._internalPaths(roleIndex, filePath)
+
+            if len(internalPaths) == 1 and internalPaths[0]:
+                self._add_default_inner_path(roleIndex=roleIndex, inner_path=internalPaths[0])
+
+            infos += [
+                RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
+                    filePath=self._joinDatasetPath(filePath, internalPath),
+                    project_file=self.project_file,
+                    allowLabels=(self.guiMode == GuiMode.Normal),
+                )
+                for internalPath in internalPaths
+            ]
+
         return infos
+
+    def _internalPaths(self, roleIndex: int, filePath: Path) -> List[str]:
+        if not DatasetInfo.fileHasInternalPaths(filePath):
+            return [""]
+
+        internalPaths = DatasetInfo.getPossibleInternalPathsFor(filePath)
+        if not internalPaths:
+            raise RuntimeError(f"File {filePath} has no image datasets")
+
+        if len(internalPaths) == 1:
+            return internalPaths
+
+        autoInternalPaths = list(self._get_previously_used_inner_paths(roleIndex).intersection(internalPaths))
+        if len(autoInternalPaths) == 1:
+            return autoInternalPaths
+
+        selectedPaths = SubvolumeSelectionDlg(internalPaths, parent=self, multi=True).selectPaths()
+        if selectedPaths is None:
+            raise DataSelectionGui.UserCancelledError
+
+        return selectedPaths
 
     def _add_default_inner_path(self, roleIndex: int, inner_path: str):
         paths = self._default_h5n5_volumes.get(roleIndex, set())
@@ -538,45 +582,6 @@ class DataSelectionGui(QWidget):
     def _get_previously_used_inner_paths(self, roleIndex: int) -> Set[str]:
         previous_paths = self._default_h5n5_volumes.get(roleIndex, set())
         return previous_paths.copy()
-
-    def _createDatasetInfo(self, roleIndex: int, filePath: Path, roi=None) -> FilesystemDatasetInfo:
-        """
-        Create a DatasetInfo object for the given filePath and roi.
-        roi may be None, in which case it is ignored.
-        """
-        cwd = self.topLevelOperator.WorkingDirectory.value
-        try:
-            data_path = filePath.absolute().relative_to(cwd)
-        except ValueError:
-            data_path = filePath.absolute()
-
-        if DatasetInfo.fileHasInternalPaths(str(data_path)):
-            datasetNames = DatasetInfo.getPossibleInternalPathsFor(filePath.absolute())
-            if len(datasetNames) == 0:
-                raise RuntimeError(f"File {data_path} has no image datasets")
-            if len(datasetNames) == 1:
-                selected_dataset = datasetNames.pop()
-            else:
-                auto_inner_paths = self._get_previously_used_inner_paths(roleIndex).intersection(set(datasetNames))
-                if len(auto_inner_paths) == 1:
-                    selected_dataset = auto_inner_paths.pop()
-                else:
-                    # Ask the user which dataset to choose
-                    dlg = SubvolumeSelectionDlg(datasetNames, self)
-                    if dlg.exec_() == QDialog.Accepted:
-                        selected_index = dlg.combo.currentIndex()
-                        selected_dataset = str(datasetNames[selected_index])
-                    else:
-                        raise DataSelectionGui.UserCancelledError()
-            self._add_default_inner_path(roleIndex=roleIndex, inner_path=selected_dataset)
-            data_path = data_path / re.sub("^/", "", selected_dataset)
-
-        return RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
-            filePath=data_path.as_posix(),
-            project_file=self.project_file,
-            allowLabels=(self.guiMode == GuiMode.Normal),
-            subvolume_roi=roi,
-        )
 
     def _checkDataFormatWarnings(self, roleIndex, startingLaneNum, endingLane):
         warn_needed = False

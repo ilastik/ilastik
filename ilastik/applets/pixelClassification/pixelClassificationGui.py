@@ -362,11 +362,9 @@ class PixelClassificationGui(LabelingGui):
             if len(internal_paths) == 1:
                 internal_path = internal_paths[0]
             else:
-                dlg = SubvolumeSelectionDlg(internal_paths, self)
-                if dlg.exec_() == QDialog.Rejected:
+                internal_path = SubvolumeSelectionDlg(internal_paths, self).selectPath()
+                if internal_path is None:
                     return
-                selected_index = dlg.combo.currentIndex()
-                internal_path = str(internal_paths[selected_index])
 
             path_components = PathComponents(file_path)
             path_components.internalPath = str(internal_path)
