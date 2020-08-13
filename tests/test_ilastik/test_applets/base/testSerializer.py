@@ -25,6 +25,7 @@ import vigra
 import unittest
 import shutil
 import tempfile
+import pytest
 from copy import deepcopy
 from ilastik.applets.base.appletSerializer import SerialObjectFeatureNamesSlot
 from lazyflow.graph import Graph, Operator, InputSlot, Slot, OperatorWrapper
@@ -33,6 +34,7 @@ from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
 
+from ilastik.applets.base import jsonSerializerRegistry
 from ilastik.applets.base.appletSerializer import (
     getOrCreateGroup,
     deleteIfPresent,
@@ -41,6 +43,7 @@ from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
     SerialDictSlot,
     SerialBlockSlot,
+    JSONSerialSlot,
 )
 
 
@@ -798,3 +801,62 @@ class TestSerialBlockSlot2(unittest.TestCase):
 
         os.remove(h5_filepath)
         shutil.rmtree(tmp_dir)
+
+
+class MyObj:
+    def __init__(self, val):
+        self.val = val
+
+    def __eq__(self, other):
+        return isinstance(other, MyObj) and other.val == self.val
+
+    def __repr__(self):
+        return f"MyObj(val={self.val})"
+
+
+class TestJSONSerialSlot:
+    @pytest.fixture
+    def registry(self):
+        return jsonSerializerRegistry._DictSerialzierRegistry()
+
+    @pytest.fixture
+    def serializer(self, registry):
+        @registry.register_serializer(MyObj)
+        class MyObjSerializer(jsonSerializerRegistry.IDictSerializer):
+            def serialize(self, obj):
+                return {"val": obj.val}
+
+            def deserialize(self, dct):
+                return MyObj(dct["val"])
+
+    @pytest.fixture
+    def operator(self, graph):
+        class OpJson(Operator):
+            TestSlot = InputSlot(name="TestSlot", stype=Opaque)
+
+            def propagateDirty(self, *args, **kwargs):
+                pass
+
+        return OpJson(graph=graph)
+
+    def test_serial_slot_raises_if_instantiated_with_unknown_type(self, operator, registry):
+        with pytest.raises(ValueError):
+            JSONSerialSlot(operator.TestSlot, obj_class=MyObj, registry=registry)
+
+    def test_serializing(self, operator, registry, tmpdir, serializer):
+        operator.TestSlot.setValue(MyObj(42))
+        slot = JSONSerialSlot(operator.TestSlot, obj_class=MyObj, registry=registry)
+
+        with h5py.File(str(tmpdir / "test.h5"), "a") as f:
+            group = f.create_group("test")
+            slot.serialize(group)
+            assert group.attrs["TestSlot"] == '{"val": 42, "__serializer_version": 1}'
+
+    def test_deserializing(self, operator, registry, tmpdir, serializer):
+        slot = JSONSerialSlot(operator.TestSlot, obj_class=MyObj, registry=registry)
+
+        with h5py.File(str(tmpdir / "test.h5"), "a") as f:
+            group = f.create_group("test")
+            group.attrs["TestSlot"] = '{"val": 14, "__serializer_version": 1}'
+            slot.deserialize(group)
+            assert MyObj(14) == operator.TestSlot.value
