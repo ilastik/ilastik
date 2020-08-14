@@ -241,7 +241,7 @@ class DataSelectionApplet(Applet):
 
                 input_paths = self.convertStacksToH5(input_paths, tempfile.gettempdir())
 
-            input_infos = [FilesystemDatasetInfo(filepath=p) if p else None for p in input_paths]
+            input_infos = [FilesystemDatasetInfo(filePath=p) if p else None for p in input_paths]
             if parsed_args.input_axes:
                 for info in [_f for _f in input_infos if _f]:
                     info.axistags = vigra.defaultAxistags(parsed_args.input_axes)
