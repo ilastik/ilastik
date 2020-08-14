@@ -154,7 +154,8 @@ def generate_trained_project_file(
     data_selection_applet = shell.workflow.dataSelectionApplet
 
     # To configure data selection, start with empty cmdline args and manually fill them in
-    data_selection_args, _ = data_selection_applet.parse_known_cmdline_args([], PixelClassificationWorkflow.ROLE_NAMES)
+    data_selection_args, _ = data_selection_applet.parse_known_cmdline_args(cmdline_args=[],
+                                                                            role_names=["Raw Data", "Prediction Mask"])
     data_selection_args.raw_data = raw_data_paths
     data_selection_args.preconvert_stacks = True
 
