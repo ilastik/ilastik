@@ -14,7 +14,7 @@ jobs:
     - run:
         name: initialize ilastik-meta, link to code
         command: >
-            git clone https://github.com/ilastik/ilastik-meta ${ILASTIK_ROOT}/ilastik-meta && 
+            git clone https://github.com/ilastik/ilastik-meta ${ILASTIK_ROOT}/ilastik-meta &&
             cd ${ILASTIK_ROOT}/ilastik-meta &&
             git submodule init &&
             git submodule update --recursive &&
@@ -113,7 +113,7 @@ jobs:
         name: black check
         command: >
             conda activate black &&
-            git diff --name-only --diff-filter=AM master.. |
+            git diff --name-only --diff-filter=AM origin/master.. |
                 grep ".*\.py" |
                 xargs black --check --line-length=120
 
