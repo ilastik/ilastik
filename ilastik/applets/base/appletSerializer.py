@@ -40,6 +40,7 @@ import sys
 import re
 import tempfile
 import h5py
+import json
 import numpy
 import warnings
 import pickle as pickle
@@ -47,6 +48,8 @@ import pickle as pickle
 from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
 from lazyflow.utility import timeLogged
 from lazyflow.slot import OutputSlot, Slot
+
+from . import jsonSerializerRegistry
 
 #######################
 # Convenience methods #
@@ -566,7 +569,7 @@ class SerialBlockSlot(SerialSlot):
     def reshape_datablock_and_slicing_for_input(
         self, block: numpy.ndarray, slicing: List[slice], slot: Slot, project: Project
     ) -> Tuple[numpy.ndarray, List[slice]]:
-        """Reshapes a block of data and its corresponding slicing relative to the whole data into a shape that is 
+        """Reshapes a block of data and its corresponding slicing relative to the whole data into a shape that is
            adequate for deserialization (in), i.e., the shape expected by the slot being deserialized"""
         return block, slicing
 
@@ -1193,3 +1196,35 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
         to be updated. Child Classes should overwrite this method
         if they store relative paths."""
         pass
+
+
+class JSONSerialSlot(SerialSlot):
+    """
+    Implements the logic for serializing a json serializable object slot.
+    """
+
+    def __init__(self, *args, obj_class, registry=jsonSerializerRegistry, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._obj_class = obj_class
+        self._registry = registry
+
+        if self.slot.level > 0:
+            raise Exception("slots of levels > 0 not supported")
+
+        if not self._registry.is_type_known(self._obj_class):
+            raise ValueError(f"No serializer for type {self._obj_class}")
+
+    def _saveValue(self, group, name, value):
+        data = self._registry.serialize(value)
+        jsonStr = json.dumps(data)
+        group.attrs[name] = jsonStr
+
+    def deserialize(self, group):
+        """
+        Overrides main deserialize method to store data in attributes
+        """
+        val = group.attrs[self.name]
+        jsonData = json.loads(val)
+        result = self._registry.deserialize(self._obj_class, jsonData)
+        self.inslot.setValue(result)
+        self.dirty = False
