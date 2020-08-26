@@ -120,7 +120,7 @@ def test_headless_2d3c_with_permuted_raw_data_axis(testdir, pixel_classification
     output_path = tmp_path / "out_3c100x100y.h5"
 
     # default behavior is to try to apply training axistags to the batch data, and therefore fail because raw data's
-    # dimensions do not match that of the training data
+    # axis (cyx) are not in the expected order (yxc)
     with pytest.raises(FailedHeadlessExecutionException):
         run_headless_pixel_classification(
             testdir,
