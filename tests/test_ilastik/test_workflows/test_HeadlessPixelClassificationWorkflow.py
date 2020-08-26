@@ -68,6 +68,7 @@ def run_headless_pixel_classification(
     distributed_block_roi: Optional[Dict[str, slice]] = None,
     project: Path,
     raw_data: Path,
+    use_raw_data_as_positional_argument: bool = False,
     output_filename_format: str,
     input_axes: str = "",
     output_format: str = "hdf5",
@@ -82,7 +83,6 @@ def run_headless_pixel_classification(
         str(ilastik_dot_py),
         "--headless",
         "--project=" + str(project),
-        "--raw-data=" + str(raw_data),
         "--output_filename_format=" + str(output_filename_format),
         "--output_format=" + output_format,
     ]
@@ -99,6 +99,9 @@ def run_headless_pixel_classification(
         subprocess_args = ["mpiexec", "-n", str(num_distributed_workers)] + subprocess_args + ["--distributed"]
         if distributed_block_roi:
             subprocess_args += ["--distributed-block-roi", str(distributed_block_roi)]
+
+    raw_data_arg_prefix = "" if use_raw_data_as_positional_argument else "--raw-data="
+    subprocess_args.append(raw_data_arg_prefix + str(raw_data))
 
     result = testdir.run(*subprocess_args)
     if result.ret != 0:
@@ -189,10 +192,14 @@ def test_distributed_results_are_identical_to_single_process_results(
         output_format="n5",
         project=pixel_classification_ilp_2d3c,
         raw_data=raw_100x100y3c,
+        use_raw_data_as_positional_argument=True,
         output_filename_format=str(distributed_50x50block_output_path),
     )
 
     with z5py.File(distributed_50x50block_output_path, "r") as f:
-        distributed_50x50block_data = f["exported_data"][()]
+        dataset = f["exported_data"]
+        axiskeys = "".join(dataset.attrs["axes"]).lower()[::-1]
+        assert {k: v for k, v in zip(axiskeys, dataset.chunks)} == {"x": 50, "y": 50, "c": 2}
+        distributed_50x50block_data = dataset[()]
 
     assert (single_process_out_data == distributed_50x50block_data).all()
