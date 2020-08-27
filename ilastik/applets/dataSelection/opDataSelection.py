@@ -18,23 +18,22 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from abc import abstractproperty, ABC
+from abc import abstractproperty, abstractmethod, ABC
 import glob
 import os
 import uuid
-from enum import Enum, unique
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional, Union, Callable
 from numbers import Number
 import re
 from pathlib import Path
 import errno
-import inspect
 
 import numpy
 import vigra
 from vigra import AxisTags
 import h5py
 import z5py
+from ndstructs import Shape5D
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
@@ -43,12 +42,15 @@ from lazyflow.operators.valueProviders import OpMetadataInjector
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from ilastik.applets.base.applet import DatasetConstraintError
 
+from ilastik import Project
 from ilastik.utility import OpMultiLaneWrapper
+from ilastik.workflow import Workflow
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents
 from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators import OpZeroSource
-from lazyflow.graph import Graph
+from lazyflow.operators.ioOperators import OpH5N5WriterBigDataset
+from lazyflow.graph import Graph, Operator
 
 
 def getTypeRange(numpy_type):
@@ -80,7 +82,6 @@ class DatasetInfo(ABC):
         nickname: str = "",
         normalizeDisplay: bool = None,
         drange: Tuple[Number, Number] = None,
-        guess_tags_for_singleton_axes: bool = False,
     ):
         self.laneShape = laneShape
         self.laneDtype = laneDtype
@@ -93,31 +94,47 @@ class DatasetInfo(ABC):
         self.display_mode = display_mode  # choices: default, grayscale, rgba, random-colortable, binary-mask.
         self.nickname = nickname
         self.normalizeDisplay = (self.drange is not None) if normalizeDisplay is None else normalizeDisplay
+        self.default_tags = default_tags
         self.axistags = axistags or default_tags
         if len(self.axistags) != len(self.laneShape):
-            if not guess_tags_for_singleton_axes:
-                raise UnsuitedAxistagsException(self.axistags, self.laneShape)
-            default_keys = [tag.key for tag in default_tags]
-            tagged_shape = dict(zip(default_keys, self.laneShape))
-            squeezed_shape = {k: v for k, v in tagged_shape.items() if v != 1}
-            requested_keys = [tag.key for tag in axistags]
-            if set(requested_keys).issubset(set(default_keys)) and set(default_keys) - set(requested_keys) == set("c"):
-                self.axistags = default_tags  # allow missing 'c' in axistags; not sure if this is a good idea
-            elif len(requested_keys) == len(squeezed_shape):
-                dummy_axes = [key for key in "ctzxy" if key not in requested_keys]
-                out_axes = ""
-                for k, v in tagged_shape.items():
-                    if v > 1:
-                        out_axes += requested_keys.pop(0)
-                    else:
-                        out_axes += dummy_axes.pop(0)
-                self.axistags = vigra.defaultAxistags(out_axes)
-            else:
-                raise UnsuitedAxistagsException(requested_keys, self.laneShape)
+            raise UnsuitedAxistagsException(self.axistags, self.laneShape)
         self.legacy_datasetId = self.generate_id()
+
+    @property
+    def shape5d(self) -> Shape5D:
+        return Shape5D(**dict(zip(self.axiskeys, self.laneShape)))
 
     @abstractproperty
     def legacy_location(self) -> str:
+        pass
+
+    def get_provider_slot(
+        self, meta: Optional[Dict] = None, parent: Optional[Operator] = None, graph: Optional[Graph] = None
+    ) -> OutputSlot:
+        metadata = {"display_mode": self.display_mode, "axistags": self.axistags}
+        metadata.update(meta or {})
+
+        if self.drange is not None:
+            metadata["drange"] = self.drange
+        elif self.laneDtype == numpy.uint8:
+            metadata["drange"] = (0, 255)
+        if self.normalizeDisplay is not None:
+            metadata["normalizeDisplay"] = self.normalizeDisplay
+        if self.subvolume_roi is not None:
+            metadata["subvolume_roi"] = self.subvolume_roi
+
+        opMetadataInjector = OpMetadataInjector(parent=parent, graph=graph)
+        opMetadataInjector.Input.connect(self.get_non_transposed_provider_slot(parent=parent, graph=graph))
+        opMetadataInjector.Metadata.setValue(metadata)
+        return opMetadataInjector.Output
+
+    @abstractmethod
+    def get_non_transposed_provider_slot(
+        self, parent: Optional[Operator] = None, graph: Optional[Graph] = None
+    ) -> OutputSlot:
+        """Gets an OutputSlot which can be queried for the data of this DatasetInfo.
+
+        Like with operators, either parent or graph must be provided, but not both"""
         pass
 
     def to_json_data(self) -> Dict:
@@ -139,13 +156,7 @@ class DatasetInfo(ABC):
     @classmethod
     def from_h5_group(cls, data: h5py.Group, params: Dict = None):
         params = params or {}
-        params.update(
-            {
-                "allowLabels": data["allowLabels"][()],
-                "nickname": data["nickname"][()].decode("utf-8"),
-                "project_file": data.file,
-            }
-        )
+        params.update({"allowLabels": data["allowLabels"][()], "nickname": data["nickname"][()].decode("utf-8")})
         if "axistags" in data:
             params["axistags"] = AxisTags.fromJSON(data["axistags"][()].decode("utf-8"))
         elif "axisorder" in data:  # legacy support
@@ -197,19 +208,15 @@ class DatasetInfo(ABC):
     @classmethod
     def expand_path(cls, file_path: str, cwd: str = None) -> List[str]:
         """Expands path with globs and colons into a list of absolute paths"""
-        cwd = cwd or os.getcwd()
+        cwd = Path(cwd) if cwd else Path.cwd()
         pathComponents = [PathComponents(path) for path in splitPath(file_path)]
         expanded_paths = []
         missing_files = []
         for components in pathComponents:
-            if os.path.isabs(components.externalPath):
-                externalPath = components.externalPath
-            else:
-                externalPath = os.path.join(cwd, components.externalPath)
-            expanded_path = os.path.expanduser(externalPath)
-            unglobbed_paths = glob.glob(expanded_path)
+            externalPath = cwd / Path(components.externalPath).expanduser()
+            unglobbed_paths = glob.glob(str(externalPath))
             if not unglobbed_paths:
-                missing_files.append(expanded_path)
+                missing_files.append(components.externalPath)
                 continue
             for ext_path in unglobbed_paths:
                 if not cls.fileHasInternalPaths(ext_path) or not components.internalPath:
@@ -284,6 +291,39 @@ class DatasetInfo(ABC):
     def __str__(self):
         return str(self.__dict__)
 
+    def importAsLocalDataset(
+        self, project_file: h5py.File, progress_signal: Callable[[int], None] = lambda x: None
+    ) -> str:
+        project = Project(project_file)
+        inner_path = project.local_data_group.name + "/" + self.legacy_datasetId
+        if project_file.get(inner_path) is not None:
+            return inner_path
+        self.dumpToHdf5(h5_file=project_file, inner_path=inner_path, progress_signal=progress_signal)
+        return inner_path
+
+    def dumpToHdf5(
+        self, h5_file: h5py.File, inner_path: str, progress_signal: Callable[[int], None] = lambda x: None
+    ) -> str:
+        progress_signal(0)
+        try:
+            h5_file.require_group(Path("/").joinpath(inner_path).parent.as_posix())
+            graph = Graph()
+            op_writer = OpH5N5WriterBigDataset(
+                graph=graph,
+                h5N5File=h5_file,
+                h5N5Path=inner_path,
+                CompressionEnabled=False,
+                BatchSize=1,
+                Image=self.get_provider_slot(graph=graph),
+            )
+            op_writer.progressSignal.subscribe(progress_signal)
+            success = op_writer.WriteImage.value  # reading this slot triggers the write
+        finally:
+            progress_signal(100)
+
+    def is_stack(self) -> bool:
+        return len(splitPath(self.effective_path)) > 1
+
 
 class ProjectInternalDatasetInfo(DatasetInfo):
     def __init__(self, *, inner_path: str, project_file: h5py.File, nickname: str = "", **info_kwargs):
@@ -316,6 +356,7 @@ class ProjectInternalDatasetInfo(DatasetInfo):
     @classmethod
     def from_h5_group(cls, data: h5py.Group, params: Dict = None):
         params = params or {}
+        params["project_file"] = data.file
         if "datasetId" in data and "inner_path" not in data:  # legacy format
             dataset_id = data["datasetId"][()].decode("utf-8")
             inner_path = None
@@ -339,8 +380,10 @@ class ProjectInternalDatasetInfo(DatasetInfo):
     def display_string(self) -> str:
         return "Project Internal: " + self.inner_path
 
-    def get_provider_slot(self, parent: Operator):
-        opReader = OpStreamingH5N5Reader(parent=parent)
+    def get_non_transposed_provider_slot(
+        self, parent: Optional[Operator] = None, graph: Optional[Graph] = None
+    ) -> OutputSlot:
+        opReader = OpStreamingH5N5Reader(parent=parent, graph=graph)
         opReader.H5N5File.setValue(self.project_file)
         opReader.InternalPath.setValue(self.inner_path)
         return opReader.OutputImage
@@ -384,8 +427,10 @@ class PreloadedArrayDatasetInfo(DatasetInfo):
     def display_string(self) -> str:
         return "Preloaded Array"
 
-    def get_provider_slot(self, parent: Operator) -> OutputSlot:
-        opReader = OpArrayPiper(parent=parent)
+    def get_non_transposed_provider_slot(
+        self, parent: Optional[Operator] = None, graph: Optional[Graph] = None
+    ) -> OutputSlot:
+        opReader = OpArrayPiper(parent=parent, graph=graph)
         opReader.Input.setValue(self.preloaded_array)
         return opReader.Output
 
@@ -394,7 +439,7 @@ class DummyDatasetInfo(DatasetInfo):
     """Special DatasetInfo for datasets that can't be found in headless mode
     """
 
-    def __init__(self, *, project_file: h5py.File = None, **info_kwargs):
+    def __init__(self, **info_kwargs):
         super().__init__(**info_kwargs)
 
     @property
@@ -412,8 +457,12 @@ class DummyDatasetInfo(DatasetInfo):
     def to_json_data(self) -> Dict:
         raise NotImplemented("Dummy Slots should not be serialized!")
 
-    def get_provider_slot(self, parent: Operator) -> OutputSlot:
-        opZero = OpZeroSource(shape=self.laneShape, dtype=self.laneDtype, axistags=self.axistags, parent=parent)
+    def get_non_transposed_provider_slot(
+        self, parent: Optional[Operator] = None, graph: Optional[Graph] = None
+    ) -> OutputSlot:
+        opZero = OpZeroSource(
+            shape=self.laneShape, dtype=self.laneDtype, axistags=self.axistags, parent=parent, graph=graph
+        )
         return opZero.Output
 
     @classmethod
@@ -432,9 +481,17 @@ class DummyDatasetInfo(DatasetInfo):
 
 
 class UrlDatasetInfo(DatasetInfo):
-    def __init__(self, *, url: str, **info_kwargs):
+    def __init__(self, *, url: str, nickname: str = "", **info_kwargs):
         self.url = url
-        super().__init__(**info_kwargs)
+        op_reader = OpInputDataReader(graph=Graph(), FilePath=self.url)
+        meta = op_reader.Output.meta.copy()
+        super().__init__(
+            default_tags=meta.axistags,
+            nickname=nickname or self.url.rstrip("/").split("/")[-1],
+            laneShape=meta.shape,
+            laneDtype=meta.dtype,
+            **info_kwargs,
+        )
 
     @property
     def legacy_location(self) -> str:
@@ -444,8 +501,10 @@ class UrlDatasetInfo(DatasetInfo):
     def effective_path(self) -> str:
         return self.url
 
-    def get_provider_slot(self, parent):
-        op_reader = OpInputDataReader(parent=parent, FilePath=self.effective_path)
+    def get_non_transposed_provider_slot(
+        self, parent: Optional[Operator] = None, graph: Optional[Graph] = None
+    ) -> OutputSlot:
+        op_reader = OpInputDataReader(parent=parent, graph=graph, FilePath=self.url)
         return op_reader.Output
 
     @property
@@ -456,6 +515,10 @@ class UrlDatasetInfo(DatasetInfo):
         out = super().to_json_data()
         out["url"] = self.url
         return out
+
+    @classmethod
+    def from_h5_group(cls, group: h5py.Group):
+        return super().from_h5_group(group, {"url": group["filePath"][()].decode("utf-8")})
 
 
 class FilesystemDatasetInfo(DatasetInfo):
@@ -505,15 +568,22 @@ class FilesystemDatasetInfo(DatasetInfo):
         first_external_path = PathComponents(self.filePath.split(os.path.pathsep)[0]).externalPath
         return Path(first_external_path).parent
 
-    def get_provider_slot(self, parent: Operator):
+    def get_non_transposed_provider_slot(
+        self, parent: Optional[Operator] = None, graph: Optional[Graph] = None
+    ) -> OutputSlot:
         op_reader = OpInputDataReader(
-            parent=parent, WorkingDirectory=self.base_dir, FilePath=self.filePath, SequenceAxis=self.sequence_axis
+            parent=parent,
+            graph=graph,
+            WorkingDirectory=self.base_dir,
+            FilePath=self.filePath,
+            SequenceAxis=self.sequence_axis,
         )
         return op_reader.Output
 
     @classmethod
-    def from_h5_group(cls, group: h5py.Group):
-        return super().from_h5_group(group, {"filePath": group["filePath"][()].decode("utf-8")})
+    def from_h5_group(cls, data: h5py.Group):
+        params = {"project_file": data.file, "filePath": data["filePath"][()].decode("utf-8")}
+        return super().from_h5_group(data, params)
 
     def isHdf5(self) -> bool:
         return any(self.pathIsHdf5(ep) for ep in self.external_paths)
@@ -617,20 +687,7 @@ class OpDataSelection(Operator):
     Image = OutputSlot()  # : The output image
     AllowLabels = OutputSlot(stype="bool")  # : A bool indicating whether or not this image can be used for training
 
-    # : The output slot, in the data's original axis ordering (regardless of forceAxisOrder)
-    _NonTransposedImage = OutputSlot()
-
     ImageName = OutputSlot(stype="string")  # : The name of the output image
-
-    class InvalidDimensionalityError(Exception):
-        """Raised if the user tries to replace the dataset with a new one of differing dimensionality."""
-
-        def __init__(self, message):
-            super(OpDataSelection.InvalidDimensionalityError, self).__init__()
-            self.message = message
-
-        def __str__(self):
-            return self.message
 
     def __init__(
         self,
@@ -671,7 +728,6 @@ class OpDataSelection(Operator):
     def internalCleanup(self, *args):
         if len(self._opReaders) > 0:
             self.Image.disconnect()
-            self._NonTransposedImage.disconnect()
             for reader in reversed(self._opReaders):
                 reader.cleanUp()
             self._opReaders = []
@@ -681,51 +737,14 @@ class OpDataSelection(Operator):
         datasetInfo = self.Dataset.value
 
         try:
-            providerSlot = datasetInfo.get_provider_slot(parent=self)
+            role_name = self.RoleName.value
+            if datasetInfo.shape5d.c > 1:
+                meta = {"channel_names": [f"{role_name}-{i}" for i in range(datasetInfo.shape5d.c)]}
+            else:
+                meta = {"channel_names": [role_name]}
+            providerSlot = datasetInfo.get_provider_slot(meta=meta, parent=self)
             opReader = providerSlot.operator
             self._opReaders.append(opReader)
-
-            # Inject metadata if the dataset info specified any.
-            # Also, inject if if dtype is uint8, which we can reasonably assume has drange (0,255)
-            metadata = {}
-            metadata["display_mode"] = datasetInfo.display_mode
-
-            role_name = self.RoleName.value
-            if "c" not in providerSlot.meta.getTaggedShape():
-                num_channels = 0
-            else:
-                num_channels = providerSlot.meta.getTaggedShape()["c"]
-            if num_channels > 1:
-                metadata["channel_names"] = [f"{role_name}-{i}" for i in range(num_channels)]
-            else:
-                metadata["channel_names"] = [role_name]
-
-            if datasetInfo.drange is not None:
-                metadata["drange"] = datasetInfo.drange
-            elif providerSlot.meta.dtype == numpy.uint8:
-                metadata["drange"] = (0, 255)
-            if datasetInfo.normalizeDisplay is not None:
-                metadata["normalizeDisplay"] = datasetInfo.normalizeDisplay
-            if datasetInfo.axistags is not None:
-                metadata["axistags"] = datasetInfo.axistags
-
-            if datasetInfo.subvolume_roi is not None:
-                metadata["subvolume_roi"] = datasetInfo.subvolume_roi
-
-                # FIXME: We are overwriting the axistags metadata to intentionally allow
-                #        the user to change our interpretation of which axis is which.
-                #        That's okay, but technically there's a special corner case if
-                #        the user redefines the channel axis index.
-                #        Technically, it invalidates the meaning of meta.ram_usage_per_requested_pixel.
-                #        For most use-cases, that won't really matter, which is why I'm not worrying about it right now.
-
-            opMetadataInjector = OpMetadataInjector(parent=self)
-            opMetadataInjector.Input.connect(providerSlot)
-            opMetadataInjector.Metadata.setValue(metadata)
-            providerSlot = opMetadataInjector.Output
-            self._opReaders.append(opMetadataInjector)
-
-            self._NonTransposedImage.connect(providerSlot)
 
             # make sure that x and y axes are present in the selected axis order
             if "x" not in providerSlot.meta.axistags or "y" not in providerSlot.meta.axistags:
@@ -811,8 +830,6 @@ class OpDataSelectionGroup(Operator):
     Image2 = OutputSlot()  # The third dataset. Equivalent to ImageGroup[2]
     AllowLabels = OutputSlot(stype="bool")  # Pulled from the first dataset only.
 
-    _NonTransposedImageGroup = OutputSlot(level=1)
-
     # Must be the LAST slot declared in this class.
     # When the shell detects that this slot has been resized,
     #  it assumes all the others have already been resized.
@@ -829,6 +846,31 @@ class OpDataSelectionGroup(Operator):
 
         self.DatasetRoles.notifyReady(handleNewRoles)
 
+    @property
+    def role_names(self) -> List[str]:
+        return self.DatasetRoles.value
+
+    def get_role_info_slot(self, role: Union[str, int]) -> InputSlot:
+        role_index = role if isinstance(role, int) else self.role_names.index(role)
+        return self.DatasetGroup[role_index]
+
+    def get_dataset_info(self, role: Union[str, int]) -> Optional[DatasetInfo]:
+        slot = self.get_role_info_slot(role)
+        if not slot.ready():
+            return None
+        return slot.value
+
+    def get_infos(self) -> Dict[str, Optional[DatasetInfo]]:
+        return {role_name: self.get_dataset_info(role_name) for role_name in self.role_names}
+
+    def get_axistags(self) -> Dict[str, Optional[AxisTags]]:
+        return {role_name: info and info.axistags for role_name, info in self.get_infos().items()}
+
+    def configure(self, infos: Dict[str, DatasetInfo]):
+        for role_index, role_name in enumerate(self.role_names):
+            if role_name in infos:
+                self.DatasetGroup[role_index].setValue(infos[role_name])
+
     def setupOutputs(self):
         # Create internal operators
         if self.DatasetRoles.value != self._roles:
@@ -838,7 +880,6 @@ class OpDataSelectionGroup(Operator):
             self.Image.disconnect()
             self.Image1.disconnect()
             self.Image2.disconnect()
-            self._NonTransposedImageGroup.disconnect()
             if self._opDatasets is not None:
                 self._opDatasets.cleanUp()
 
@@ -849,7 +890,6 @@ class OpDataSelectionGroup(Operator):
                 broadcastingSlotNames=["ProjectFile", "ProjectDataGroup", "WorkingDirectory"],
             )
             self.ImageGroup.connect(self._opDatasets.Image)
-            self._NonTransposedImageGroup.connect(self._opDatasets._NonTransposedImage)
             self._opDatasets.Dataset.connect(self.DatasetGroup)
             self._opDatasets.ProjectFile.connect(self.ProjectFile)
             self._opDatasets.ProjectDataGroup.connect(self.ProjectDataGroup)
@@ -916,7 +956,7 @@ class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):
         # Indexed by [lane][role]
         assert self.DatasetGroup.level == 2, "DatasetGroup is supposed to be a level-2 slot, indexed by [lane][role]"
 
-    def addLane(self, laneIndex):
+    def addLane(self, laneIndex) -> OpDataSelectionGroup:
         """Reimplemented from base class."""
         numLanes = len(self.innerOperators)
 
@@ -924,9 +964,38 @@ class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):
         # We might be called from within the context of our own insertSlot signal.
         if numLanes == laneIndex:
             super(OpMultiLaneDataSelectionGroup, self).addLane(laneIndex)
+        return self.get_lane(laneIndex)
 
     def removeLane(self, laneIndex, finalLength):
         """Reimplemented from base class."""
         numLanes = len(self.innerOperators)
         if numLanes > finalLength:
             super(OpMultiLaneDataSelectionGroup, self).removeLane(laneIndex, finalLength)
+
+    @property
+    def workflow(self) -> Workflow:
+        return self.parent
+
+    @property
+    def role_names(self) -> List[str]:
+        return self.DatasetRoles.value
+
+    def pushLane(self, role_infos: Dict[str, DatasetInfo]):
+        original_num_lanes = self.num_lanes
+        try:
+            lane = self.addLane(self.num_lanes)
+            lane.configure(infos=role_infos)
+            self.workflow.handleNewLanesAdded()
+        except Exception as e:
+            self.removeLane(original_num_lanes, original_num_lanes)
+            raise e
+
+    def dropLastLane(self):
+        self.removeLane(self.num_lanes - 1, self.num_lanes - 1)
+
+    @property
+    def num_lanes(self) -> int:
+        return len(self.innerOperators)
+
+    def get_lane(self, lane_idx: int) -> OpDataSelectionGroup:
+        return self.innerOperators[lane_idx]

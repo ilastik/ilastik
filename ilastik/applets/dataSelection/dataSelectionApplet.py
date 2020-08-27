@@ -27,14 +27,31 @@ import glob
 import argparse
 import collections
 import logging
+from typing import List, Dict, Optional, Union, Sequence
+import itertools
+from pathlib import Path
+import tempfile
 
 logger = logging.getLogger(__name__)  # noqa
 
 import vigra
+import h5py
 from lazyflow.utility import PathComponents, isUrl
+from ilastik.utility.commandLineProcessing import parse_axiskeys
 from ilastik.applets.base.applet import Applet
-from .opDataSelection import OpMultiLaneDataSelectionGroup, FilesystemDatasetInfo
+from .opDataSelection import (
+    OpMultiLaneDataSelectionGroup,
+    DatasetInfo,
+    RelativeFilesystemDatasetInfo,
+    UrlDatasetInfo,
+    FilesystemDatasetInfo,
+    OpDataSelectionGroup,
+)
 from .dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
+
+
+class RoleMismatchException(Exception):
+    pass
 
 
 class DataSelectionApplet(Applet):
@@ -106,6 +123,99 @@ class DataSelectionApplet(Applet):
         return self._serializableItems
 
     @classmethod
+    def get_arg_parser(cls, role_names):
+        def make_trailing_args_action(role_names: List[str]):
+            class ExtraTrailingArgumentsAction(argparse.Action):
+                def __call__(self, parser, namespace, values, option_string):
+                    role_arg_names = [DataSelectionApplet._role_name_to_arg_name(role_name) for role_name in role_names]
+                    role_arg_values = [getattr(namespace, arg_name) for arg_name in role_arg_names]
+                    named_configured_roles = {k: v for k, v in zip(role_arg_names, role_arg_values) if v}
+                    if values:
+                        if named_configured_roles:
+                            raise ValueError(
+                                "You can only have trailing file paths if no other role was set by name. "
+                                f"You have set the following roles by name: {named_configured_roles}"
+                            )
+                        setattr(namespace, role_arg_names[0], values)
+
+            return ExtraTrailingArgumentsAction
+
+        arg_parser = argparse.ArgumentParser()
+        for role_name in role_names or []:
+            arg_name = cls._role_name_to_arg_name(role_name)
+            arg_parser.add_argument(
+                "--" + arg_name,
+                "--" + arg_name.replace("_", "-"),
+                nargs="+",
+                help=f"List of input files for the {role_name} role",
+            )
+
+        # Finally, a catch-all for role 0 (if the workflow only has one role, there's no need to provide role names
+        arg_parser.add_argument(
+            "unspecified_input_files",
+            nargs="*",
+            help="List of input files to process.",
+            action=make_trailing_args_action(role_names),
+        )
+
+        arg_parser.add_argument(
+            "--preconvert-stacks",
+            "--preconvert_stacks",
+            help="Convert image stacks to temporary hdf5 files before loading them.",
+            action="store_true",
+            default=False,
+        )
+
+        def parse_input_axes(raw_input_axes: str) -> List[Optional[vigra.AxisTags]]:
+            input_axes = [axes.strip() for axes in raw_input_axes.split(",")]
+            if len(input_axes) > len(role_names):
+                raise ValueError("Specified input axes exceed number of data roles ({role_names})")
+            if len(input_axes) == 1:
+                input_axes = input_axes * len(role_names)
+            else:
+                input_axes += ["None"] * (len(role_names) - len(input_axes))
+            return [parse_axiskeys(keys) for keys in input_axes]
+
+        arg_parser.add_argument(
+            "--input-axes",
+            "--input_axes",
+            help=(
+                "Dataset axes names; a list of comma-separated axis names, representing how datasets are to be "
+                "interpreted in each workflow role e.g.: 'xyz,xyz' ."
+                " If a single value is provided, it is assumed to apply to all roles ({role_names}). If more than "
+                "one value is provided but less than the total number of roles, the missing roles will have their "
+                "axistags defined by the training data axistags. If --ignore-training-axistags is set, dataset axistags "
+                "will be inferred from the file conventions, e.g.: 'axes' in .n5, and not from the "
+                "training data axistags. Defaults to using the training data axistags"
+            ),
+            required=False,
+            type=parse_input_axes,
+            default=[None] * len(role_names),
+        )
+
+        arg_parser.add_argument(
+            "--ignore-training-axistags",
+            "--ignore_training_axistags",
+            help="Do not use training data to guess input data axis on headless runs. Can still use file axis conventions",
+            action="store_true",
+        )
+
+        arg_parser.add_argument(
+            "--stack-along",
+            "--stack_along",
+            help=(
+                "Axis along which stack datasets (e.g.: my_yx_slices*.tiff) are to be stacked. If the axis is not "
+                "present in the input files, it will appear prepended to the input files axis (e.g.: when stacking "
+                "'yxc' files along the 'z' axis, the resulting axis order will be zyxc). Otherwise, the stack axis "
+                "remain in the same order as the input images, but with with size equal to the sum of the sizes of "
+                "all images, in that dimension"
+            ),
+            type=str,
+            default="z",
+        )
+        return arg_parser
+
+    @classmethod
     def parse_known_cmdline_args(cls, cmdline_args, role_names):
         """
         Helper function for headless workflows.
@@ -124,209 +234,104 @@ class DataSelectionApplet(Applet):
 
         See also: :py:meth:`configure_operator_with_parsed_args()`.
         """
-        arg_parser = argparse.ArgumentParser()
-        if role_names:
-            for role_name in role_names:
-                arg_name = cls._role_name_to_arg_name(role_name)
-                arg_parser.add_argument(
-                    "--" + arg_name, nargs="+", help="List of input files for the {} role".format(role_name)
-                )
-
-        # Finally, a catch-all for role 0 (if the workflow only has one role, there's no need to provide role names
-        arg_parser.add_argument("unspecified_input_files", nargs="*", help="List of input files to process.")
-
-        arg_parser.add_argument(
-            "--preconvert_stacks",
-            help="Convert image stacks to temporary hdf5 files before loading them.",
-            action="store_true",
-            default=False,
-        )
-        arg_parser.add_argument("--input_axes", help="Explicitly specify the axes of your dataset.", required=False)
-        arg_parser.add_argument("--stack_along", help="Sequence axis along which to stack", type=str, default="z")
-
+        arg_parser = cls.get_arg_parser(role_names)
         parsed_args, unused_args = arg_parser.parse_known_args(cmdline_args)
-
-        if parsed_args.unspecified_input_files:
-            # We allow the file list to go to the 'default' role,
-            # but only if no other roles were explicitly configured.
-            arg_names = list(map(cls._role_name_to_arg_name, role_names))
-            for arg_name in arg_names:
-                if getattr(parsed_args, arg_name):
-                    # FIXME: This error message could be more helpful.
-                    role_args = list(map(cls._role_name_to_arg_name, role_names))
-                    role_args = ["--" + s for s in role_args]
-                    role_args_str = ", ".join(role_args)
-                    raise Exception(
-                        "Invalid command line arguments: All roles must be configured explicitly.\n"
-                        "Use the following flags to specify which files are matched with which inputs:\n"
-                        "" + role_args_str
-                    )
-
-            # Relocate to the 'default' role
-            arg_name = cls._role_name_to_arg_name(role_names[0])
-            setattr(parsed_args, arg_name, parsed_args.unspecified_input_files)
-            parsed_args.unspecified_input_files = None
-
-        # Replace '~' with home dir
-        for role_name in role_names:
-            arg_name = cls._role_name_to_arg_name(role_name)
-            paths_for_role = getattr(parsed_args, arg_name)
-            if paths_for_role:
-                for i, path in enumerate(paths_for_role):
-                    paths_for_role[i] = os.path.expanduser(path)
-
-        # Check for errors: Do all input files exist?
-        all_input_paths = []
-        for role_name in role_names:
-            arg_name = cls._role_name_to_arg_name(role_name)
-            role_paths = getattr(parsed_args, arg_name)
-            if role_paths:
-                all_input_paths += role_paths
-        error = False
-        for p in all_input_paths:
-            if isUrl(p):
-                # Don't error-check urls in advance.
-                continue
-            p = PathComponents(p).externalPath
-            if "*" in p:
-                if len(glob.glob(p)) == 0:
-                    logger.error("Could not find any files for globstring: {}".format(p))
-                    logger.error("Check your quotes!")
-                    error = True
-            elif not os.path.exists(p):
-                logger.error("Input file does not exist: " + p)
-                error = True
-        if error:
-            raise RuntimeError("Could not find one or more input files.  See logged errors.")
-
         return parsed_args, unused_args
 
     @staticmethod
     def _role_name_to_arg_name(role_name):
         return role_name.lower().replace(" ", "_").replace("-", "_")
 
-    def role_paths_from_parsed_args(self, parsed_args):
-        role_names = self.topLevelOperator.DatasetRoles.value
-        role_paths = collections.OrderedDict()
-        for role_index, role_name in enumerate(role_names):
-            arg_name = self._role_name_to_arg_name(role_name)
-            input_paths = getattr(parsed_args, arg_name)
-            role_paths[role_index] = input_paths or []
+    def create_dataset_info(
+        self, url: Union[Path, str], axistags: Optional[vigra.AxisTags] = None, sequence_axis: str = "z"
+    ) -> DatasetInfo:
+        url = str(url)
+        if isUrl(url):
+            return UrlDatasetInfo(url=url, axistags=axistags)
+        else:
+            return RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
+                filePath=url, axistags=axistags, sequence_axis=sequence_axis
+            )
 
-        # As far as this parser is concerned, all roles except the first are optional.
-        # (Workflows that require the other roles are responsible for raising an error themselves.)
-        for role_index in range(1, len(role_names)):
-            # Fill in None for missing files
-            if role_index not in role_paths:
-                role_paths[role_index] = []
-            num_missing = len(role_paths[0]) - len(role_paths[role_index])
-            role_paths[role_index] += [None] * num_missing
-        return role_paths
+    def convert_info_to_h5(self, info: DatasetInfo) -> DatasetInfo:
+        tmp_path = tempfile.mktemp() + ".h5"
+        inner_path = "volume/data"
+        full_path = Path(tmp_path) / inner_path
+        with h5py.File(tmp_path, mode="w") as tmp_h5:
+            logger.info(f"Converting info {info.effective_path} to h5 at {full_path}")
+            info.dumpToHdf5(h5_file=tmp_h5, inner_path=inner_path)
+            return self.create_dataset_info(url=full_path)
 
-    def configure_operator_with_parsed_args(self, parsed_args):
-        """
-        Helper function for headless workflows.
-        Configures this applet's top-level operator according to the settings provided in ``parsed_args``.
-
-        :param parsed_args: Must be an ``argparse.Namespace`` as returned by :py:meth:`parse_known_cmdline_args()`.
-        """
-        role_names = self.topLevelOperator.DatasetRoles.value
-        role_paths = self.role_paths_from_parsed_args(parsed_args)
-
-        for role_index, input_paths in list(role_paths.items()):
-            # If the user doesn't want image stacks to be copied into the project file,
-            #  we generate hdf5 volumes in a temporary directory and use those files instead.
-            if parsed_args.preconvert_stacks:
-                import tempfile
-
-                input_paths = self.convertStacksToH5(input_paths, tempfile.gettempdir())
-
-            input_infos = [FilesystemDatasetInfo(filepath=p) if p else None for p in input_paths]
-            if parsed_args.input_axes:
-                for info in [_f for _f in input_infos if _f]:
-                    info.axistags = vigra.defaultAxistags(parsed_args.input_axes)
-
-            opDataSelection = self.topLevelOperator
-            existing_lanes = len(opDataSelection.DatasetGroup)
-            opDataSelection.DatasetGroup.resize(max(len(input_infos), existing_lanes))
-            for lane_index, info in enumerate(input_infos):
-                if info:
-                    opDataSelection.DatasetGroup[lane_index][role_index].setValue(info)
-
-            need_warning = False
-            for lane_index in range(len(input_infos)):
-                output_slot = opDataSelection.ImageGroup[lane_index][role_index]
-                if output_slot.ready() and output_slot.meta.prefer_2d and "z" in output_slot.meta.axistags:
-                    need_warning = True
-                    break
-
-            if need_warning:
-                logger.warning(
-                    "*******************************************************************************************"
-                )
-                logger.warning(
-                    "Some of your input data is stored in a format that is not efficient for 3D access patterns."
-                )
-                logger.warning("Performance may suffer as a result.  For best performance, use a chunked HDF5 volume.")
-                logger.warning(
-                    "*******************************************************************************************"
-                )
-
-    @classmethod
-    def convertStacksToH5(cls, filePaths, stackVolumeCacheDir):
-        """
-        If any of the files in filePaths appear to be globstrings for a stack,
-        convert the given stack to hdf5 format.
-
-        Return the filePaths list with globstrings replaced by the paths to the new hdf5 volumes.
-        """
-        import hashlib
-        import pickle
-        import h5py
-        from lazyflow.graph import Graph
-        from lazyflow.operators.ioOperators import OpStackToH5Writer
-
-        filePaths = list(filePaths)
-        for i, path in enumerate(filePaths):
-            if not path or "*" not in path:
-                continue
-            globstring = path
-
-            # Embrace paranoia:
-            # We want to make sure we never re-use a stale cache file for a new dataset,
-            #  even if the dataset is located in the same location as a previous one and has the same globstring!
-            # Create a sha-1 of the file name and modification date.
-            sha = hashlib.sha1()
-            files = sorted([k.replace("\\", "/") for k in glob.glob(path)])
-            for f in files:
-                sha.update(f)
-                sha.update(pickle.dumps(os.stat(f).st_mtime, 0))
-            stackFile = sha.hexdigest() + ".h5"
-            stackPath = os.path.join(stackVolumeCacheDir, stackFile).replace("\\", "/")
-
-            # Overwrite original path
-            filePaths[i] = stackPath + "/volume/data"
-
-            # Generate the hdf5 if it doesn't already exist
-            if os.path.exists(stackPath):
-                logger.info("Using previously generated hdf5 volume for stack {}".format(path))
-                logger.info("Volume path: {}".format(filePaths[i]))
+    def create_lane_configs(
+        self,
+        role_inputs: Dict[str, List[str]],
+        input_axes: Sequence[Optional[vigra.AxisTags]] = (),
+        preconvert_stacks: bool = False,
+        ignore_training_axistags: bool = False,
+        stack_along: str = "z",
+    ) -> List[Dict[str, DatasetInfo]]:
+        if not input_axes or not any(input_axes):
+            if ignore_training_axistags or self.num_lanes == 0:
+                input_axes = [None] * len(self.role_names)
+                logger.info(f"Using axistags from input files")
             else:
-                logger.info("Generating hdf5 volume for stack {}".format(path))
-                logger.info("Volume path: {}".format(filePaths[i]))
+                input_axes = list(self.get_lane(-1).get_axistags().values())
+                logger.info(f"Using axistags from previous lane: {input_axes}")
+        else:
+            logger.info(f"Forcing input axes to {input_axes}")
 
-                if not os.path.exists(stackVolumeCacheDir):
-                    os.makedirs(stackVolumeCacheDir)
+        rolewise_infos: Dict[str, List[DatasetInfo]] = {}
+        for role_name, axistags in zip(self.role_names, input_axes):
+            role_urls = role_inputs.get(role_name, [])
+            infos = [self.create_dataset_info(url, axistags=axistags, sequence_axis=stack_along) for url in role_urls]
+            if preconvert_stacks:
+                infos = [self.convert_info_to_h5(info) if info.is_stack() else info for info in infos]
+            rolewise_infos[role_name] = infos
 
-                with h5py.File(stackPath, "w") as f:
-                    # Configure the conversion operator
-                    opWriter = OpStackToH5Writer(graph=Graph())
-                    opWriter.hdf5Group.setValue(f)
-                    opWriter.hdf5Path.setValue("volume/data")
-                    opWriter.GlobString.setValue(globstring)
+        lane_configs: List[Dict[str, Optional[DatasetInfo]]] = []
+        for info_group in itertools.zip_longest(*rolewise_infos.values()):
+            lane_configs.append(dict(zip(self.role_names, info_group)))
 
-                    # Initiate the write
-                    success = opWriter.WriteImage.value
-                    assert success, "Something went wrong when generating an hdf5 file from an image sequence."
+        main_role = self.role_names[0]
+        if any(lane_conf[main_role] is None for lane_conf in lane_configs):
+            message = f"You must provide values for {main_role} for every lane. Provided was {lane_configs}"
+            raise RoleMismatchException(message)
+        return lane_configs
 
-        return filePaths
+    def lane_configs_from_parsed_args(self, parsed_args: argparse.Namespace) -> List[Dict[str, Optional[DatasetInfo]]]:
+        role_inputs: Dict[str, List[str]] = {}
+        for role_name in self.role_names:
+            role_arg_name = self._role_name_to_arg_name(role_name)
+            role_inputs[role_name] = getattr(parsed_args, role_arg_name) or []
+        return self.create_lane_configs(
+            role_inputs=role_inputs,
+            input_axes=parsed_args.input_axes,
+            preconvert_stacks=parsed_args.preconvert_stacks,
+            ignore_training_axistags=parsed_args.ignore_training_axistags,
+            stack_along=parsed_args.stack_along,
+        )
+
+    def pushLane(self, role_infos: Dict[str, DatasetInfo]):
+        return self.topLevelOperator.pushLane(role_infos)
+
+    def dropLastLane(self):
+        return self.topLevelOperator.dropLastLane()
+
+    @property
+    def num_lanes(self) -> int:
+        return self.topLevelOperator.num_lanes
+
+    def get_lane(self, lane_idx: int) -> OpDataSelectionGroup:
+        return self.topLevelOperator.get_lane(lane_idx)
+
+    @property
+    def project_file(self) -> Optional[h5py.File]:
+        return self.topLevelOperator.ProjectFile.value if self.topLevelOperator.ProjectFile.ready() else None
+
+    @property
+    def role_names(self) -> List[str]:
+        return self.topLevelOperator.role_names
+
+    def configure_operator_with_parsed_args(self, parsed_args: argparse.Namespace):
+        for lane_config in self.lane_configs_from_parsed_args(parsed_args):
+            self.pushLane(lane_config)

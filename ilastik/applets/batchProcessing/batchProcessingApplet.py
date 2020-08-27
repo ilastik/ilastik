@@ -1,20 +1,17 @@
 import logging
 import weakref
-from collections import OrderedDict
-from typing import Callable, Dict, Hashable, List, Optional, Union, Mapping, Iterable
+from typing import Callable, Dict, List, Optional, Union
 import numpy
-import vigra
-from vigra.vigranumpycore import AxisTags
-from lazyflow.request import Request
+from ndstructs import Slice5D
 from functools import partial
+import argparse
+import ast
+import textwrap
 
 from ilastik.applets.base.applet import Applet
+from ilastik.applets.dataExport.opDataExport import OpDataExport
 from ilastik.applets.dataSelection import DataSelectionApplet
-from ilastik.applets.dataSelection.opDataSelection import (
-    DatasetInfo,
-    FilesystemDatasetInfo,
-    OpMultiLaneDataSelectionGroup,
-)
+from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, OpMultiLaneDataSelectionGroup
 
 logger = logging.getLogger(__name__)  # noqa
 
@@ -53,22 +50,70 @@ class BatchProcessingApplet(Applet):
 
     def parse_known_cmdline_args(self, cmdline_args):
         # We use the same parser as the DataSelectionApplet
-        parsed_args, unused_args = DataSelectionApplet.parse_known_cmdline_args(cmdline_args, self.role_names)
+        parser = DataSelectionApplet.get_arg_parser(self.dataSelectionApplet.role_names)
+        parser.add_argument(
+            "--distributed",
+            help="Distributed mode. Used for running ilastik on HPCs via SLURM/srun/mpirun",
+            action="store_true",
+        )
+
+        default_block_roi = Slice5D.all(x=slice(0, 256), y=slice(0, 256), z=slice(0, 256), t=slice(0, 1))
+
+        def parse_distributed_block_roi(value: str) -> Slice5D:
+            parsed = ast.literal_eval(value)
+            if isinstance(parsed, dict):
+                if not set(parsed.keys()).issubset("xyztc"):
+                    raise ValueError(f"Bad keys for distributed-block-roi: {value}")
+                if not all(isinstance(v, (int, None.__class__)) for v in parsed.values()):
+                    raise ValueError(f"Bad values for distributed-block-roi: {value}")
+                overrides = {k: slice(0, int(v)) for k, v in parsed.items()}
+            elif isinstance(parsed, int):
+                overrides = {k: slice(0, parsed) for k in "xyz"}
+            else:
+                raise TypeError(f"Could not convert value {value} into a Slice5D")
+
+            return Slice5D(**{**default_block_roi.to_dict(), **overrides})
+
+        parser.add_argument(
+            "--distributed_block_roi",
+            "--distributed-block-roi",
+            help=textwrap.dedent(
+                """
+                Determines the dimensions of the blocks used to split the data in distributed mode.
+                Values can be either:"
+                    An integer, which will be interpreted as if the following dict was passed in:
+                    {'x': value, 'y': value, 'z': value, 't': 1, 'c': None}
+
+                    or a literal python Dict[str, Optional[int]], with keys in 'xyztc'.
+                    Missing keys will default like so:
+                    {'x': 256, 'y': 256, 'z': 256, 't': 1, 'c': None}
+                    Use None anywhere in the dict to mean "the whole dimension".
+                """
+            ),
+            type=parse_distributed_block_roi,
+            default=default_block_roi,
+        )
+
+        parsed_args, unused_args = parser.parse_known_args(cmdline_args)
         return parsed_args, unused_args
 
-    def run_export_from_parsed_args(self, parsed_args):
-        """
-        Run the export for each dataset listed in parsed_args (we use the same parser as DataSelectionApplet).
-        """
-        role_path_dict = self.dataSelectionApplet.role_paths_from_parsed_args(parsed_args)
-        return self.run_export(role_path_dict, parsed_args.input_axes, sequence_axis=parsed_args.stack_along)
+    def run_export_from_parsed_args(self, parsed_args: argparse.Namespace):
+        "Run the export for each dataset listed in parsed_args as interpreted by DataSelectionApplet."
+        if parsed_args.distributed:
+            export_function = partial(self.do_distributed_export, block_roi=parsed_args.distributed_block_roi)
+        else:
+            export_function = self.do_normal_export
+
+        return self.run_export(
+            lane_configs=self.dataSelectionApplet.lane_configs_from_parsed_args(parsed_args),
+            export_function=export_function,
+        )
 
     def run_export(
         self,
-        role_data_dict: Mapping[Hashable, Iterable[Union[str, DatasetInfo]]],
-        input_axes: Optional[str] = None,
+        lane_configs: List[Dict[str, Optional[DatasetInfo]]],
         export_to_array: bool = False,
-        sequence_axis: Optional[str] = None,
+        export_function: Optional[Callable] = None,
     ) -> Union[List[str], List[numpy.array]]:
         """Run the export for each dataset listed in role_data_dict
 
@@ -83,38 +128,33 @@ class BatchProcessingApplet(Applet):
             prepareForNewLane() and connectLane() logic, which ensures that we get a fresh new lane that's
             ready to process data.
 
-            After each lane is processed, the given post-processing callback will be executed.
-            signature: lane_postprocessing_callback(batch_lane_index)
-
         Args:
-            role_data_dict: dict with role_name: list(paths) of data that should be processed.
-            input_axes: axis description to override from the default role
+            lane_configs: A list of dicts with one dict of role_name -> DatasetInfo for each lane
             export_to_array: If True do NOT export to disk as usual.
               Instead, export the results to a list of arrays, which is returned.
               If False, return a list of the filenames we produced to.
-            sequence_axis: stack along this axis, overrides setting from default role
 
         Returns:
             list containing either strings of paths to exported files,
               or numpy.arrays (depending on export_to_array)
         """
+        assert not (export_to_array and export_function)
+        if not export_function:
+            export_function = self.do_export_to_array if export_to_array else self.do_normal_export
         self.progressSignal(0)
-        batches = list(zip(*role_data_dict.values()))
         try:
             results = []
-            for batch_index, role_inputs in enumerate(batches):
+            for batch_index, lane_config in enumerate(lane_configs):
 
                 def lerpProgressSignal(a, b, p):
                     self.progressSignal((100 - p) * a + p * b)
 
-                global_progress_start = batch_index / len(batches)
-                global_progress_end = (batch_index + 1) / len(batches)
+                global_progress_start = batch_index / len(lane_configs)
+                global_progress_end = (batch_index + 1) / len(lane_configs)
 
                 result = self.export_dataset(
-                    role_inputs,
-                    input_axes=input_axes,
-                    export_to_array=export_to_array,
-                    sequence_axis=sequence_axis,
+                    lane_config,
+                    export_function=export_function,
                     progress_callback=partial(lerpProgressSignal, global_progress_start, global_progress_end),
                 )
                 results.append(result)
@@ -123,74 +163,41 @@ class BatchProcessingApplet(Applet):
         finally:
             self.progressSignal(100)
 
-    def get_previous_axes_tags(self) -> List[Optional[AxisTags]]:
-        if self.num_lanes == 0:
-            return [None] * len(self.role_names)
+    def do_normal_export(self, opDataExport):
+        logger.info(f"Exporting to {opDataExport.ExportPath.value}")
+        opDataExport.run_export()
+        return opDataExport.ExportPath.value
 
-        infos = []
-        for role_index, _ in enumerate(self.role_names):
-            info_slot = self.dataSelectionApplet.topLevelOperator.DatasetGroup[self.num_lanes - 1][role_index]
-            infos.append(info_slot.value.axistags if info_slot.ready() else None)
-        return infos
+    def do_export_to_array(self, opDataExport):
+        logger.info("Exporting to in-memory array.")
+        return opDataExport.run_export_to_array()
+
+    def do_distributed_export(self, opDataExport, *, block_roi: Slice5D):
+        logger.info("Running ilastik distributed...")
+        return opDataExport.run_distributed_export(block_roi=block_roi)
 
     def export_dataset(
         self,
-        role_inputs: List[Union[str, DatasetInfo]],
-        input_axes: Optional[str] = None,
-        export_to_array: bool = False,
-        sequence_axis: Optional[str] = None,
+        lane_config: Dict[str, DatasetInfo],
+        export_function: Optional[Callable[[OpDataExport], Union[str, numpy.array]]] = None,
         progress_callback: Optional[Callable[[int], None]] = None,
     ) -> Union[str, numpy.array]:
         """
         Configures a lane using the paths specified in the paths from role_inputs and runs the workflow.
         """
-        progress_callback = progress_callback or self.progressSignal
-        original_num_lanes = self.num_lanes
-        previous_axes_tags = self.get_previous_axes_tags()
+        export_function = export_function or self.do_normal_export
+
         # Call customization hook
         self.dataExportApplet.prepare_for_entire_export()
-        # Add a lane to the end of the workflow for batch processing
-        # (Expanding OpDataSelection by one has the effect of expanding the whole workflow.)
-        self.dataSelectionApplet.topLevelOperator.addLane(self.num_lanes)
-        batch_lane = self.dataSelectionApplet.topLevelOperator.getLane(self.num_lanes - 1)
+        self.dataSelectionApplet.pushLane(lane_config)
         try:
-            for role_index, (role_input, role_axis_tags) in enumerate(zip(role_inputs, previous_axes_tags)):
-                if not role_input:
-                    continue
-                if isinstance(role_input, DatasetInfo):
-                    role_info = role_input
-                else:
-                    role_info = FilesystemDatasetInfo(
-                        filePath=role_input,
-                        project_file=None,
-                        axistags=vigra.defaultAxistags(input_axes) if input_axes else role_axis_tags,
-                        sequence_axis=sequence_axis,
-                        guess_tags_for_singleton_axes=True,  # FIXME: add cmd line param to negate this
-                    )
-                batch_lane.DatasetGroup[role_index].setValue(role_info)
-            self.workflow().handleNewLanesAdded()
             # Call customization hook
-            self.dataExportApplet.prepare_lane_for_export(self.num_lanes - 1)
-            opDataExport = self.dataExportApplet.topLevelOperator.getLane(self.num_lanes - 1)
-            opDataExport.progressSignal.subscribe(progress_callback)
-            if export_to_array:
-                logger.info("Exporting to in-memory array.")
-                result = opDataExport.run_export_to_array()
-            else:
-                logger.info(f"Exporting to {opDataExport.ExportPath.value}")
-                opDataExport.run_export()
-                result = opDataExport.ExportPath.value
-
+            self.dataExportApplet.prepare_lane_for_export(self.dataSelectionApplet.num_lanes - 1)
+            opDataExport = self.dataExportApplet.topLevelOperator.getLane(self.dataSelectionApplet.num_lanes - 1)
+            opDataExport.progressSignal.subscribe(progress_callback or self.progressSignal)
+            result = export_function(opDataExport)
             # Call customization hook
-            self.dataExportApplet.post_process_lane_export(self.num_lanes - 1)
+            self.dataExportApplet.post_process_lane_export(self.dataSelectionApplet.num_lanes - 1)
             return result
         finally:
-            self.dataSelectionApplet.topLevelOperator.removeLane(original_num_lanes, original_num_lanes)
-
-    @property
-    def num_lanes(self) -> int:
-        return len(self.dataSelectionApplet.topLevelOperator.DatasetGroup)
-
-    @property
-    def role_names(self) -> List[str]:
-        return self.dataSelectionApplet.topLevelOperator.DatasetRoles.value
+            self.dataSelectionApplet.dropLastLane()

@@ -25,6 +25,8 @@
 import argparse
 import configparser
 import json
+from typing import Optional
+import vigra
 
 
 class OptionalFlagAction(argparse.Action):
@@ -118,3 +120,18 @@ class ParseListFromString(argparse.Action):
             raise argparse.ArgumentError(self, str(e))
 
         setattr(namespace, self.dest, parsed)
+
+
+def parse_axiskeys(axiskeys: str, dataset_dims: int = 0) -> Optional[vigra.AxisTags]:
+    if axiskeys == "None":
+        return None
+    dataset_dims = dataset_dims or len(axiskeys)
+    if len(axiskeys) != dataset_dims:
+        raise ValueError(f"Dataset has {dataset_dims} dimensions, so you need to provide that many axes keys")
+    if not set(axiskeys).issubset(set("xyztc")):
+        raise ValueError(f'Axes must be a combination of "xyztc"')
+    if len(set(axiskeys)) < len(axiskeys):
+        raise ValueError(f"Repeated axis keys: {axiskeys}")
+    if not set("xy").issubset(set(axiskeys)):
+        raise ValueError(f"x and y need to be present. Provided value was {axiskeys}")
+    return vigra.defaultAxistags(axiskeys)

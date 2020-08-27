@@ -23,7 +23,8 @@ from builtins import object
 ###############################################################################
 import os
 import h5py
-from lazyflow.utility.pathHelpers import compressPathForDisplay, getPathVariants, PathComponents, globH5N5
+from lazyflow.utility.pathHelpers import compressPathForDisplay, getPathVariants, PathComponents, globH5N5, splitPath
+import os
 
 SIMULATE_WINDOWS = False
 
@@ -85,6 +86,19 @@ class TestPathHelpers(object):
         assert components.totalPath() == "/new/externalpath/newfilename.h5/new/internal/dir/newdata"
         components.internalPath = "/new/internal/path/dataset"
         assert components.totalPath() == "/new/externalpath/newfilename.h5/new/internal/path/dataset"
+
+    def testSplitPath(self):
+        pathsep = os.path.pathsep
+
+        multipath1 = f"/some/file.txt{pathsep}http://example.com:5000{pathsep}/some/other/file"
+        expected1 = ["/some/file.txt", "http://example.com:5000", "/some/other/file"]
+        assert splitPath(multipath1) == expected1
+
+        multipath2 = (
+            f"http://example1.com:5000/some/endpoint{pathsep}http://example2/another/endpoint{pathsep}my/file.txt"
+        )
+        expected2 = ["http://example1.com:5000/some/endpoint", "http://example2/another/endpoint", "my/file.txt"]
+        assert splitPath(multipath2) == expected2
 
     def testCompressPathForDisplay(self):
         assert compressPathForDisplay("/a/b.txt", 30) == "/a/b.txt"

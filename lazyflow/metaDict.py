@@ -25,6 +25,7 @@ from builtins import zip
 import copy
 import numpy
 from collections import OrderedDict, defaultdict
+from ndstructs import Shape5D
 
 
 class MetaDict(defaultdict):
@@ -152,6 +153,9 @@ class MetaDict(defaultdict):
         assert self.shape is not None
         keys = self.getAxisKeys()
         return OrderedDict(list(zip(keys, self.shape)))
+
+    def getShape5D(self):
+        return Shape5D(**self.getTaggedShape())
 
     def getAxisKeys(self):
         assert self.axistags is not None

@@ -167,6 +167,7 @@ class TestPixelClassificationHeadless(object):
 
         # Save and close
         shell.projectManager.saveProject()
+        shell.closeCurrentProject()
         del shell
 
     @timeLogged(logger)
@@ -225,12 +226,10 @@ class TestPixelClassificationHeadless(object):
         input_data1 = numpy.random.randint(0, 255, (2, 20, 20, 5, 1)).astype(numpy.uint8)
         input_data2 = numpy.random.randint(0, 255, (2, 20, 20, 5, 1)).astype(numpy.uint8)
 
-        role_data_dict = {
-            "Raw Data": [
-                PreloadedArrayDatasetInfo(preloaded_array=input_data1, axistags=vigra.AxisTags("tzyxc")),
-                PreloadedArrayDatasetInfo(preloaded_array=input_data2, axistags=vigra.AxisTags("tzyxc")),
-            ]
-        }
+        role_data_dict = [
+            {"Raw Data": PreloadedArrayDatasetInfo(preloaded_array=input_data1, axistags=vigra.AxisTags("tzyxc"))},
+            {"Raw Data": PreloadedArrayDatasetInfo(preloaded_array=input_data2, axistags=vigra.AxisTags("tzyxc"))},
+        ]
 
         predictions = shell.workflow.batchProcessingApplet.run_export(role_data_dict, export_to_array=True)
         for result in predictions:

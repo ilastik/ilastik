@@ -202,28 +202,11 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
         # Axis order
         if index.column() == DatasetDetailedInfoColumn.AxisOrder:
-            if imageSlot.meta.original_axistags is not None:
-                return "".join(imageSlot.meta.getOriginalAxisKeys())
-                assert (
-                    imageSlot.meta.original_shape is not None
-                ), "if original axistags are available, original shape has to exist as well"
-
-            if imageSlot.meta.axistags is not None:
-                return "".join(imageSlot.meta.getAxisKeys())
-            return ""
+            return datasetInfo.axiskeys
 
         # Shape
         if index.column() == DatasetDetailedInfoColumn.Shape:
-            original_shape = imageSlot.meta.original_shape
-            if original_shape is not None:
-                assert (
-                    imageSlot.meta.original_axistags is not None
-                ), "if original shape is available, original axistags have to exist as well"
-                return str(original_shape)
-            shape = imageSlot.meta.shape
-            if shape is None:
-                return ""
-            return str(shape)
+            return str(datasetInfo.laneShape)
 
         # Range
         if index.column() == DatasetDetailedInfoColumn.Range:

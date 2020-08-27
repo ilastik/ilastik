@@ -208,23 +208,18 @@ class TestOpDataSelection_Basic2D(object):
                 continue
             numpy.testing.assert_array_equal(imgData2Dc, self.imgData2Dc)
 
-    def testProjectLocalData(self, serializer, empty_project_file):
+    def testProjectLocalData(self, serializer, empty_project_file, graph):
         for fileName in self.generatedImages2Dc:
             # For some reason vigra saves 2D+c data compressed in gifs, so skip!
             if Path(fileName).suffix in self.compressedExtensions + [".gif"]:
                 continue
-            graph = lazyflow.graph.Graph()
-            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
-            reader.ProjectFile.setValue(empty_project_file)
-            reader.WorkingDirectory.setValue(str(Path(empty_project_file.filename).parent))
+            filesystem_info = FilesystemDatasetInfo(filePath=fileName)
 
             # From project
-            inner_path = serializer.importStackAsLocalDataset([fileName])
+            inner_path = filesystem_info.importAsLocalDataset(project_file=empty_project_file)
             info = ProjectInternalDatasetInfo(project_file=empty_project_file, inner_path=inner_path)
 
-            reader.Dataset.setValues([info])
-
-            projectInternalData = reader.Image[0][...].wait()
+            projectInternalData = info.get_provider_slot(graph=graph)[...].wait()
 
             assert projectInternalData.shape == self.imgData2Dc.shape, (
                 projectInternalData.shape,
@@ -374,28 +369,24 @@ class TestOpDataSelection_Basic_native_3D(object):
             # skip this if image was saved compressed:
             numpy.testing.assert_array_equal(imgData3Dc, self.imgData3Dc)
 
-    def test3DProjectLocalData(self, serializer, empty_project_file):
+    def test3DProjectLocalData(self, serializer, empty_project_file, graph):
         empty_project_file.create_group("DataSelection")
         empty_project_file["DataSelection"].create_group("local_data")
         empty_project_file["DataSelection/local_data"].create_dataset("dataset1", data=self.imgData3Dc)
-        reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={"forceAxisOrder": False})
-        reader.WorkingDirectory.setValue(str(Path(empty_project_file.filename).parent))
         info = ProjectInternalDatasetInfo(
             inner_path="DataSelection/local_data/dataset1", project_file=empty_project_file
         )
-        reader.Dataset.setValues([info])
 
-        projectInternalData = reader.Image[0][...].wait()
+        projectInternalData = info.get_provider_slot(graph=graph)[...].wait()
         assert projectInternalData.shape == self.imgData3Dc.shape, (projectInternalData.shape, self.imgData3Dc.shape)
         assert (projectInternalData == self.imgData3Dc).all()
 
         for fileName in self.generatedImages3Dc:
-            inner_path = serializer.importStackAsLocalDataset([fileName])
+            filesystem_info = FilesystemDatasetInfo(filePath=fileName)
+            inner_path = filesystem_info.importAsLocalDataset(project_file=empty_project_file)
             info = ProjectInternalDatasetInfo(project_file=empty_project_file, inner_path=inner_path)
 
-            reader.Dataset.setValues([info])
-
-            projectInternalData = reader.Image[0][...].wait()
+            projectInternalData = info.get_provider_slot(graph=graph)[...].wait()
 
             assert projectInternalData.shape == self.imgData3Dc.shape, (
                 projectInternalData.shape,
