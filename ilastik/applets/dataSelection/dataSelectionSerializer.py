@@ -230,7 +230,7 @@ class DataSelectionSerializer(AppletSerializer):
             info_class = self.InfoClassNames[infoGroup["__class__"][()].decode("utf-8")]
         else:  # legacy support
             location = infoGroup["location"][()].decode("utf-8")
-            if location == "FileSystem":  # legacy support: a lot of DatasetInfo types are saved as "Filesystem"
+            if location == "FileSystem":  # legacy support: a lot of DatasetInfo types are saved as "FileSystem"
                 filePath = infoGroup["filePath"][()].decode("utf-8")
                 if isUrl(filePath):
                     info_class = UrlDatasetInfo
@@ -238,6 +238,8 @@ class DataSelectionSerializer(AppletSerializer):
                     info_class = RelativeFilesystemDatasetInfo
                 else:
                     info_class = FilesystemDatasetInfo
+            elif location == "ProjectInternal":
+                info_class = ProjectInternalDatasetInfo
             else:
                 info_class = PreloadedArrayDatasetInfo
 
