@@ -40,6 +40,7 @@ from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet i
 from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 from ilastik.plugins import pluginManager
+from ilastik.workflows.tracking.common import DIVISION_CLASSIFIER_LABEL_NAMES
 
 import logging
 
@@ -199,9 +200,7 @@ class StructuredTrackingWorkflowBase(Workflow):
 
         opCellClassification = self.cellClassificationApplet.topLevelOperator
         opCellClassification.SelectedFeatures.setValue(configConservation.selectedFeaturesObjectCount)
-        opCellClassification.SuggestedLabelNames.setValue(
-            ["False Detection"] + [str(1) + " Object"] + [str(i) + " Objects" for i in range(2, 10)]
-        )
+        opCellClassification.SuggestedLabelNames.setValue(DIVISION_CLASSIFIER_LABEL_NAMES)
         opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
         opCellClassification.EnableLabelTransfer.setValue(False)
 

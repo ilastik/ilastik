@@ -24,7 +24,6 @@ from builtins import filter
 import os
 import re
 import logging
-import itertools
 from functools import partial
 
 # Third-party
