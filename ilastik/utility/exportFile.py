@@ -1,4 +1,3 @@
-from builtins import range
 import collections
 import numpy as np
 import numpy.lib.recfunctions as nlr
@@ -9,6 +8,9 @@ from sys import stdout
 from zipfile import ZipFile
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 import logging
+
+from typing import Iterator, List, Tuple
+
 
 logger = logging.getLogger(__name__)
 try:
@@ -243,16 +245,48 @@ def _slice_range(low, high, max_):
     return slice(start, end, None)
 
 
-def create_slicing(axistags, dimensions, margin, feature_table):
-    """
-    Returns an iterator on the slices for each object roi
-        yields also the actual object id
+def create_slicing(
+    axistags: AxisTags, dimensions: Tuple[int, int, int, int, int], margin: int, feature_table: np.ndarray
+) -> Iterator[Tuple[List[slice], int]]:
+    """Transforms bounding box in feature table to slicing
+
+    ``feature_table`` should have the following fields:
+
+        ``labelimage_oid``
+            object ids, reset per timeframe
+        ``Bounding Box Minimum_0``
+            minimum in x-direction
+        ``Bounding Box Maximum_0``
+            maximum in x-direction
+        ``Bounding Box Minimum_1``
+            minimum in y-direction
+        ``Bounding Box Maximum_1``
+            maximum in y-direction
+
+        ``feature_table`` may also have the following fields (in case of 3D data):
+
+        ``Bounding Box Minimum_2``
+            minimum in z-direction
+        ``Bounding Box Maximum_2``
+            maximum in z-direction
+
+
+    Args:
+        axistags: image axis tags
+        dimensions: 5D image dimensions in (t, x, y, z, c) -order
+        margin: how much "halo" around each object's bounding box
+        feature_table: structured feature array
+
+
+    Yields:
+        tuple with slices for each object (bounding box + margin) and the object id
     """
     assert margin >= 0, "Margin muss be greater than or equal to 0"
+    assert len(dimensions) == 5, "Dimensions must be 5D"
     if len(feature_table) == 0:
-        yield from ()
         return
 
+    oids = feature_table["labelimage_oid"].astype(np.int64)
     time = feature_table[Default.TimeColumnName].astype(np.int32)
     minx = feature_table["Bounding Box Minimum_0"].astype(np.int32)
     maxx = feature_table["Bounding Box Maximum_0"].astype(np.int32)
@@ -263,25 +297,20 @@ def create_slicing(axistags, dimensions, margin, feature_table):
         minz = feature_table["Bounding Box Minimum_2"].astype(np.int32)
         maxz = feature_table["Bounding Box Maximum_2"].astype(np.int32)
     except ValueError:
-        minz = [0] * table_shape
-        maxz = [1] * table_shape
+        minz = np.zeros(table_shape, np.int32)
+        maxz = np.ones(table_shape, np.int32)
 
-    indices = list(map(axistags.index, "txyzc"))
-    excludes = indices.count(-1)
-    oid = 1
     for i in range(table_shape):
-        if time[i] != time[i - 1]:
-            oid = 1
+        oid = oids[i]
         # noinspection PyTypeChecker
-        slicing = [
-            slice(time[i], time[i] + 1),
-            _slice_range(minx[i] - margin, maxx[i] + margin, dimensions[1]),
-            _slice_range(miny[i] - margin, maxy[i] + margin, dimensions[2]),
-            _slice_range(minz[i] - margin, maxz[i] + margin, dimensions[3]),
-            slice(None),
-        ]
-        yield [slicing[x] for x in indices][: 5 - excludes], oid
-        oid += 1
+        slicing = {
+            "t": slice(time[i], time[i] + 1),
+            "x": _slice_range(minx[i] - margin, maxx[i] + margin, dimensions[1]),
+            "y": _slice_range(miny[i] - margin, maxy[i] + margin, dimensions[2]),
+            "z": _slice_range(minz[i] - margin, maxz[i] + margin, dimensions[3]),
+            "c": slice(None),
+        }
+        yield [slicing[axistag.key] for axistag in axistags], oid
 
 
 def actual_axistags(axistags, shape):
@@ -522,13 +551,3 @@ class ProgressPrinter(object):
         if p == 100 and not self.first:
             self.first = True
             stdout.write("\n")
-
-
-if __name__ == "__main__":
-    l = [1, 2, 3, 4]
-    l2 = [(1, 2), (3, 4), (5, 6), (7, 8)]
-
-    l = prepare_list(l, ("a",))
-    l2 = prepare_list(l2, ("a", "b"))
-    print(l)
-    print(l2)
