@@ -31,12 +31,12 @@ from ilastik.applets.networkClassification import NNClassApplet, NNClassificatio
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
 from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.operators import tiktorch
 
 from lazyflow.graph import Graph
 
 
 logger = logging.getLogger(__name__)
-
 
 class NNClassificationWorkflow(Workflow):
     """
@@ -104,9 +104,11 @@ class NNClassificationWorkflow(Workflow):
         # see role constants, above
         opDataSelection.DatasetRoles.setValue(NNClassificationWorkflow.ROLE_NAMES)
 
-        self.serverConfigApplet = ServerConfigApplet(self)
+        connFactory = tiktorch.TiktorchConnectionFactory()
 
-        self.nnClassificationApplet = NNClassApplet(self, "NNClassApplet")
+        self.serverConfigApplet = ServerConfigApplet(self, connectionFactory=connFactory)
+        self.nnClassificationApplet = NNClassApplet(self, "NNClassApplet", connectionFactory=self.serverConfigApplet.connectionFactory)
+
         opClassify = self.nnClassificationApplet.topLevelOperator
 
         self.dataExportApplet = NNClassificationDataExportApplet(self, "Data Export")

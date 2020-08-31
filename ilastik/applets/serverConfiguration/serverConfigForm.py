@@ -1,4 +1,5 @@
 import os
+import logging
 
 from contextlib import contextmanager
 
@@ -8,6 +9,9 @@ from PyQt5.QtCore import QStateMachine, QState, QSignalTransition, pyqtSignal
 from PyQt5.QtWidgets import QWidget, QComboBox, QLabel, QLineEdit, QListWidget, QCheckBox, QMessageBox
 
 from . import types
+
+
+logger = logging.getLogger(__name__)
 
 
 class ServerConfigForm(QWidget):
@@ -37,12 +41,12 @@ class ServerConfigForm(QWidget):
         self._config = value
         self._updateFieldsFromConfig()
 
-    def __init__(self, device_getter) -> None:
+    def __init__(self, connectionFactory) -> None:
         super().__init__(None)
         self._config = types.ServerConfig.default()
         self._initUI()
 
-        self._device_getter = device_getter
+        self._connectionFactory = connectionFactory
         self._updating = False
         self._setRemoteFieldsVisibility(False)
 
@@ -114,8 +118,10 @@ class ServerConfigForm(QWidget):
             return False
 
         try:
-            devices = self._device_getter(self._config)
+            conn = self._connectionFactory.ensure_connection(self._config)
+            devices = conn.get_devices()
         except Exception:
+            logger.exception("Failed to connect to tiktoch server please check settings and try again")
             QMessageBox.critical(
                 self, "Connection failed", "Failed to connect to tiktoch server please check settings and try again"
             )

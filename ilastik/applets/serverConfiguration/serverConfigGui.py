@@ -26,10 +26,6 @@ from PyQt5 import uic, QtCore
 from PyQt5.QtWidgets import QWidget, QStackedWidget, QListWidgetItem, QListWidget
 from PyQt5.QtCore import QStateMachine, QState, QSignalTransition, pyqtSignal
 
-from tiktorch.launcher import LocalServerLauncher, RemoteSSHServerLauncher, SSHCred
-from tiktorch.launcher import ConnConf
-
-
 logger = logging.getLogger(__name__)
 from PyQt5.Qt import QIcon, QStringListModel, QAbstractItemModel, QAbstractItemDelegate, Qt, QModelIndex, QDataWidgetMapper, pyqtProperty, QItemDelegate, QAbstractListModel, QListWidgetItem, pyqtSignal
 from PyQt5.QtWidgets import QWidget, QComboBox, QToolButton, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QListWidget
@@ -39,9 +35,7 @@ from .serverListWidget import ServerListWidget, ServerListModel
 from .configStorage import ServerConfigStorage
 from . import types
 from ilastik import config
-import grpc
 import tiktorch
-import inference_pb2_grpc, inference_pb2
 
 
 
@@ -78,7 +72,7 @@ class ServerConfigGui(QWidget):
         self.topLevelOp.ServerId.setValue(self._centralWidget.currentServerId())
 
     def _makeServerConfigWidget(self, serverId):
-        w = ServerConfigurationEditor()
+        w = ServerConfigurationEditor(self.parentApplet.connectionFactory)
         srv_storage = ServerConfigStorage(config.cfg, dst=config.CONFIG_PATH)
         w.setModel(ServerListModel(conf_store=srv_storage))
         w.selectServer(serverId)
@@ -105,64 +99,14 @@ class ServerFormItemDelegate(QItemDelegate):
         super().setEditorData(editor, index)
 
 
-class _NullLauncher:
-    def start(self):
-        pass
-
-    def stop(self):
-        pass
-
-
-def _fetch_devices(config: types.ServerConfig):
-    try:
-        port = config.port
-        if config.autostart:
-            # in order not to block address for real server todo: remove port hack
-            port = str(int(config.port) - 20)
-
-        addr = socket.gethostbyname(config.address)
-        conn_conf = ConnConf(addr, port, timeout=10)
-
-        if config.autostart:
-            if addr == "127.0.0.1":
-                launcher = LocalServerLauncher(conn_conf, path=config.path)
-            else:
-                launcher = RemoteSSHServerLauncher(
-                    conn_conf, cred=SSHCred(user=config.username, key_path=config.ssh_key), path=config.path
-                )
-        else:
-            launcher = _NullLauncher()
-
-        try:
-            launcher.start()
-            with grpc.insecure_channel(f"{addr}:{port}") as chan:
-                client = inference_pb2_grpc.InferenceStub(chan)
-                resp = client.ListDevices(inference_pb2.Empty())
-                return [(d.id, d.id) for d in resp.devices]
-        except Exception as e:
-            logger.exception('Failed to fetch devices')
-            raise
-        finally:
-            try:
-                launcher.stop()
-            except Exception:
-                pass
-
-    except Exception as e:
-        logger.error(e)
-        raise
-
-    return []
-
-
 class ServerConfigurationEditor(QWidget):
     currentConfigChanged = pyqtSignal(object)
     saved = pyqtSignal()
 
-    def __init__(self, parent=None) -> None:
+    def __init__(self, connectionFactory, parent=None) -> None:
         super().__init__(parent)
         self._srv_list = ServerListWidget()
-        self._srv_form = ServerConfigForm(_fetch_devices)
+        self._srv_form = ServerConfigForm(connectionFactory)
         self._workflow = ServerFormWorkflow(self._srv_form)
         self._model = None
         layout = QVBoxLayout(self)
