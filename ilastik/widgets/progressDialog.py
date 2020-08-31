@@ -1,4 +1,4 @@
-from builtins import range
+import os
 from PyQt5 import uic
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QDialog, QMessageBox
@@ -81,6 +81,28 @@ class ProgressDialog(QDialog):
 
     def safe_popup_noclose(self, level, title, description, *args):
         self.trigger_popup.emit(level, title, description, args, False)
+
+
+class PercentProgressDialog(QDialog):
+    cancel = pyqtSignal()
+
+    def __init__(self, parent=None, *, title=None):
+        super().__init__(parent)
+        localDir = os.path.split(__file__)[0]
+        form, _ = uic.loadUiType(os.path.join(localDir, "percentProgressDialog.ui"))
+        self._ui = form()
+        self._ui.setupUi(self)
+        self._ui.cancel.clicked.connect(self.cancel)
+
+        if title:
+            self.setWindowTitle(title)
+            self._ui.progress.setFormat(f"{title}: %p%")
+
+    def updateProgress(self, progress: int):
+        self._ui.progress.setValue(progress)
+
+    def setBusy(self):
+        self._ui.progress.setMaximum(0)
 
 
 if __name__ == "__main__":
