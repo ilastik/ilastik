@@ -25,7 +25,7 @@ import numpy
 import warnings
 import numpy as np
 
-from typing import Iterable, Tuple, Optional, List
+from typing import Iterable, Tuple, Optional, List, Callable
 
 import vigra
 import grpc
@@ -42,6 +42,8 @@ from tiktorch.proto import inference_pb2, inference_pb2_grpc
 
 from vigra import AxisTags
 
+from . import _base
+
 logger = logging.getLogger(__name__)
 
 
@@ -52,7 +54,7 @@ class ModelSession:
 
     @property
     def tiktorchClient(self):
-        return self.__factory.tikTorchClient
+        return self.__factory._client
 
     def create_and_train_pixelwise(self, *args, **kwargs):
         self.__factory.create_and_train_pixelwise(*args, **kwargs)
@@ -99,6 +101,10 @@ class ModelSession:
     @property
     def known_classes(self):
         return [1, 2]
+
+    @property
+    def num_classes(self):
+        return len(self.known_classes)
 
     def update(self, feature_images: Iterable, label_images: Iterable, axistags, image_ids: Iterable):
         # TODO: check whether loaded network has the same number of classes as specified in ilastik!
@@ -207,23 +213,48 @@ class _NullLauncher:
         pass
 
 
-class TikTorchLazyflowClassifierFactory:
-    # The version is used to determine compatibility of pickled classifier factories.
-    # You must bump this if any instance members are added/removed/renamed.
-    VERSION = 1
 
-    def create_model_session(self, model_str: bytes, devices: List[str]):
-        session = self._tikTorchClient.CreateModelSession(
-            inference_pb2.CreateModelSessionRequest(model_blob=inference_pb2.Blob(content=model_str), deviceIds=devices)
+class Connection(_base.IConnection):
+    UPLOAD_CHUNK_SIZE = 1 * 1024 * 1024  # 1mb
+    def __init__(self, client, upload_client):
+        self._client = client
+        self._upload_client = upload_client
+
+    def get_devices(self):
+        resp = self._client.ListDevices(inference_pb2.Empty())
+        return [(d.id, d.id) for d in resp.devices]
+
+    def upload(self, content: bytes, *, progress_callback: Optional[Callable[[int], None]]) -> str:
+        import time
+        def _gen():
+            total_size = len(content)
+            print("TOTAL SIZE", total_size)
+            yield data_store_pb2.UploadRequest(info=data_store_pb2.UploadInfo(size=total_size))
+            for i in range(0, total_size, self.UPLOAD_CHUNK_SIZE):
+                time.sleep(1)
+                print("CHUNK", i)
+                yield data_store_pb2.UploadRequest(content=content[i:i+self.UPLOAD_CHUNK_SIZE])
+                progress_callback(int(min(i + self.UPLOAD_CHUNK_SIZE, total_size)  * 100 / total_size))
+
+            progress_callback(100)
+
+        resp = self._upload_client.Upload(_gen())
+        return resp.id
+
+    def create_model_session(self, upload_id: str, devices: List[str]):
+        session = self._client.CreateModelSession(
+            inference_pb2.CreateModelSessionRequest(model_uri=f"upload://{upload_id}", deviceIds=devices)
         )
         return ModelSession(session, self)
 
-    def __init__(self, server_config) -> None:
-        _100_MB = 100 * 1024 * 1024
-        self._tikTorchClassifier = None
-        self._train_model = None
-        self._shutdown_sent = False
 
+class TiktorchConnectionFactory(_base.IConnectionFactory):
+    def ensure_connection(self, config):
+        if self._connection:
+            return self._connection
+
+        _100_MB = 100 * 1024 * 1024
+        server_config = config
         addr, port = socket.gethostbyname(server_config.address), server_config.port
         conn_conf = ConnConf(addr, port, timeout=20)
 
@@ -245,8 +276,17 @@ class TikTorchLazyflowClassifierFactory:
             f"{addr}:{port}",
             options=[("grpc.max_send_message_length", _100_MB), ("grpc.max_receive_message_length", _100_MB)],
         )
-        self._tikTorchClient = inference_pb2_grpc.InferenceStub(self._chan)
+        client = inference_pb2_grpc.InferenceStub(self._chan)
+        upload_client = data_store_pb2_grpc.DataStoreStub(self._chan)
         self._devices = [d.id for d in server_config.devices if d.enabled]
+        self._connection = Connection(client, upload_client)
+        return self._connection
+
+    def __init__(self) -> None:
+        self._tikTorchClassifier = None
+        self._train_model = None
+        self._shutdown_sent = False
+        self._connection = None
 
     def shutdown(self):
         self._shutdown_sent = True
