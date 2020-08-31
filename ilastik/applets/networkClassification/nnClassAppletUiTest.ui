@@ -37,7 +37,7 @@
      <item>
       <layout class="QHBoxLayout" name="LoadModelLayout">
        <item>
-        <widget class="QToolButton" name="addModel">
+        <widget class="QPushButton" name="addModel">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -50,15 +50,25 @@
          <property name="checkable">
           <bool>true</bool>
          </property>
-         <property name="toolButtonStyle">
-          <enum>Qt::ToolButtonTextBesideIcon</enum>
-         </property>
         </widget>
        </item>
        <item>
         <widget class="QToolButton" name="closeModel">
          <property name="enabled">
           <bool>true</bool>
+         </property>
+         <property name="toolTip">
+          <string>Closes model session and removes model from project file</string>
+         </property>
+         <property name="text">
+          <string>...</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QToolButton" name="uploadModel">
+         <property name="toolTip">
+          <string>Upload model to tiktorch server</string>
          </property>
          <property name="text">
           <string>...</string>

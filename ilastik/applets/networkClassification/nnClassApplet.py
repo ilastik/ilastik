@@ -18,10 +18,10 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from __future__ import absolute_import
 from ilastik.applets.base.standardApplet import StandardApplet
 from .opNNclass import OpNNClassification
 from .nnClassSerializer import NNClassificationSerializer
+from .tiktorchController import TiktorchController
 
 
 class NNClassApplet(StandardApplet):
@@ -29,8 +29,8 @@ class NNClassApplet(StandardApplet):
     StandartApplet Subclass with SingleLangeGui and SingeLaneOperator
     """
 
-    def __init__(self, workflow, projectFileGroupName):
-        self._topLevelOperator = OpNNClassification(parent=workflow)
+    def __init__(self, workflow, projectFileGroupName, connectionFactory):
+        self._topLevelOperator = OpNNClassification(parent=workflow, connectionFactory=connectionFactory)
 
         def on_classifier_changed(slot, roi):
             if (
@@ -48,7 +48,7 @@ class NNClassApplet(StandardApplet):
 
         self._serializableItems = [
             NNClassificationSerializer(self.topLevelOperator, projectFileGroupName)
-        ]  # Legacy (v0.5) importer
+        ]
         self._gui = None
         self.predictionSerializer = self._serializableItems[0]
         # FIXME: For now, we can directly connect the progress signal from the classifier training operator
@@ -56,6 +56,8 @@ class NNClassApplet(StandardApplet):
         # If we start reporting progress for multiple tasks that might occur simulatneously,
         # we'll need to aggregate the progress updates.
         self._topLevelOperator.opTrain.progressSignal.subscribe(self.progressSignal)
+        self.tiktorchController = TiktorchController(self.topLevelOperator, connectionFactory)
+
 
     @property
     def dataSerializers(self):

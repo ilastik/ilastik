@@ -31,7 +31,27 @@ from ilastik.applets.base.appletSerializer import (
     SerialSlot,
     SerialListSlot,
     SerialBlockSlot,
+    JSONSerialSlot,
+    jsonSerializerRegistry,
 )
+from .tiktorchController import ModelInfo
+
+
+@jsonSerializerRegistry.registerSerializer(ModelInfo)
+class ModelInfoSerializer(jsonSerializerRegistry.IDictSerializer):
+    def serialize(self, obj: ModelInfo):
+        return {
+            "name": obj.name,
+            "hasTraining": obj.hasTraining,
+            "knownClasses": obj.knownClasses,
+        }
+
+    def deserialize(self, dct) -> ModelInfo:
+        return ModelInfo(
+            name=dct["name"],
+            knownClasses=dct["knownClasses"],
+            hasTraining=dct["hasTraining"],
+        )
 
 
 class BinarySlot(SerialSlot):
@@ -52,6 +72,7 @@ class BinarySlot(SerialSlot):
         slot.setValue(val.tobytes())
 
 
+
 class NNClassificationSerializer(AppletSerializer):
     def __init__(self, topLevelOperator, projectFileGroupName):
         self.VERSION = 1
@@ -60,6 +81,7 @@ class NNClassificationSerializer(AppletSerializer):
             SerialListSlot(topLevelOperator.LabelNames),
             SerialListSlot(topLevelOperator.LabelColors, transform=lambda x: tuple(x.flat)),
             SerialListSlot(topLevelOperator.PmapColors, transform=lambda x: tuple(x.flat)),
+            JSONSerialSlot(topLevelOperator.ModelInfo, obj_class=ModelInfo),
             SerialBlockSlot(
                 topLevelOperator.LabelImages,
                 topLevelOperator.LabelInputs,
