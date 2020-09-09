@@ -57,6 +57,7 @@ from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.utility import preferences
 
 from lazyflow.operators import tiktorch
+from lazyflow.cancel_token import CancellationTokenSource
 from tiktorch.types import ModelState
 from tiktorch.configkeys import TRAINING, NUM_ITERATIONS_DONE, NUM_ITERATIONS_MAX
 
@@ -68,6 +69,8 @@ def _listReplace(old, new):
         return new + old[len(new) :]
     else:
         return new
+
+
 
 
 class ParameterDlg(QDialog):
@@ -715,6 +718,10 @@ class NNClassGui(LabelingGui):
     def closeModelClicked(self):
         self.tiktorchController.closeModel()
 
+    def cc(self, *args, **kwargs):
+        self.cancel_src.cancel()
+        print("CANCEL CLICKED", args, kwargs)
+
     def addModelClicked(self):
         """
         When AddModel button is clicked.
@@ -733,13 +740,20 @@ class NNClassGui(LabelingGui):
             if not projectManager.currentProjectIsReadOnly:
                 projectManager.saveProject()
 
-            self.tiktorchController.loadModel(filename)
+            cancel_src = self.cancel_src = CancellationTokenSource()
+            dialog = PercentProgressDialog(self, title="Uploading model")
+            dialog.cancel.connect(cancel_src.cancel)
+            dialog.cancel.connect(self.cc)
+            progress = self.tiktorchController.loadModel(filename, progress_cb=dialog.updateProgress, cancel_token=cancel_src.token)
+            dialog.open()
 
             preferences.set("DataSelection", "recent model", filename)
             self.parentApplet.appletStateUpdateRequested()
 
     def uploadModelClicked(self):
-        self.tiktorchController.uploadModel()
+        progress = self.tiktorchController.uploadModel()
+        #print("PROGReSS", progress)
+        #self.openProgressDialog(progress)
 
     def _onModelStateChanged(self, state):
         self.labelingDrawerUi.liveTraining.setVisible(False)
@@ -783,11 +797,11 @@ class NNClassGui(LabelingGui):
             self._progress.close()
 
         elif state == TiktorchController.State.Uploading:
-            self.labelingDrawerUi.uploadModel.setEnabled(False)
-            self.labelingDrawerUi.closeModel.setEnabled(False)
-            self.labelingDrawerUi.addModel.setEnabled(False)
-            self._progress.updateProgress(self.tiktorchController.progress)
-            self._progress.exec_()
+            #self.tiktorchController.removeListener(self._onModelStateChanged)
+            #self._progress.updateProgress(self.tiktorchController.progress)
+            #self.openProgressDialog(self.tiktorchController.progress)
+            #self.tiktorchController.registerListener(self._onModelStateChanged)
+            pass
 
         elif state == TiktorchController.State.Error:
             self.labelingDrawerUi.addModel.setEnabled(True)

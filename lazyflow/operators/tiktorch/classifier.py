@@ -38,7 +38,7 @@ from lazyflow.roi import roiToSlice
 
 from tiktorch.launcher import LocalServerLauncher, RemoteSSHServerLauncher, SSHCred, ConnConf
 from tiktorch import converters
-from tiktorch.proto import inference_pb2, inference_pb2_grpc
+from tiktorch.proto import data_store_pb2, data_store_pb2_grpc, inference_pb2, inference_pb2_grpc
 
 from vigra import AxisTags
 
@@ -213,6 +213,19 @@ class _NullLauncher:
         pass
 
 
+class Progress:
+    def __init__(self):
+        self.__cancelled = False
+
+    def cancel(self):
+        self.__cancelled = True
+
+    def canceled(self):
+        return self.__cancelled
+
+    def report(self, percent: int) -> None:
+        raise NotImplementedError
+
 
 class Connection(_base.IConnection):
     UPLOAD_CHUNK_SIZE = 1 * 1024 * 1024  # 1mb
@@ -224,7 +237,7 @@ class Connection(_base.IConnection):
         resp = self._client.ListDevices(inference_pb2.Empty())
         return [(d.id, d.id) for d in resp.devices]
 
-    def upload(self, content: bytes, *, progress_callback: Optional[Callable[[int], None]]) -> str:
+    def upload(self, content: bytes, *, progress_cb: Callable[[int], None], cancel_token) -> str:
         import time
         def _gen():
             total_size = len(content)
@@ -232,13 +245,17 @@ class Connection(_base.IConnection):
             yield data_store_pb2.UploadRequest(info=data_store_pb2.UploadInfo(size=total_size))
             for i in range(0, total_size, self.UPLOAD_CHUNK_SIZE):
                 time.sleep(1)
+                if cancel_token.cancelled:
+                    return
                 print("CHUNK", i)
                 yield data_store_pb2.UploadRequest(content=content[i:i+self.UPLOAD_CHUNK_SIZE])
-                progress_callback(int(min(i + self.UPLOAD_CHUNK_SIZE, total_size)  * 100 / total_size))
+                progress_cb(int(min(i + self.UPLOAD_CHUNK_SIZE, total_size)  * 100 / total_size))
 
-            progress_callback(100)
+            progress_cb(100)
 
         resp = self._upload_client.Upload(_gen())
+        if cancel_token.cancelled:
+            return None
         return resp.id
 
     def create_model_session(self, upload_id: str, devices: List[str]):

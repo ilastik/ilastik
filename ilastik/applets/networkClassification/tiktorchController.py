@@ -31,7 +31,7 @@ class TiktorchController:
     def __init__(self, operator, connectionFactory):
         self.connectionFactory = connectionFactory
         self.operator = operator
-        self._stateListeners = []
+        self._stateListeners = set()
         self._state = self.State.Empty
 
         self.operator.ModelInfo.notifyDirty(self._handleOperatorStateChange)
@@ -47,7 +47,7 @@ class TiktorchController:
         self.operator.ModelInfo.setValue(None)
         self.operator.NumClasses.setValue(None)
 
-    def loadModel(self, modelPath: str) -> None:
+    def loadModel(self, modelPath: str, *, progress_cb=None, cancel_token=None) -> None:
         self._emptyState()
         self._notifyStateChanged()
 
@@ -55,23 +55,17 @@ class TiktorchController:
             modelBytes = modelFile.read()
 
         self.operator.ModelBinary.setValue(modelBytes)
-        self.uploadModel()
+        return self.uploadModel(progress_cb=progress_cb, cancel_token=cancel_token)
 
-    def uploadModel(self):
+    def uploadModel(self, *, progress_cb=None, cancel_token=None):
         srvConfig = self.operator.ServerConfig.value
         modelBytes = self.operator.ModelBinary.value
-
-        def _reportProgress(progress):
-            print("REPORTING", progress)
-            self.progress = progress
-            self._state = self.State.Uploading
-            self._notifyStateChanged()
 
         def _uploadModel():
             connection = self.connectionFactory.ensure_connection(srvConfig)
 
             try:
-                uploadId = connection.upload(modelBytes, progress_callback=_reportProgress)
+                uploadId = connection.upload(modelBytes, progress_cb=progress_cb, cancel_token=cancel_token)
                 model = connection.create_model_session(uploadId, [d.id for d in srvConfig.devices])
             except Exception:
                 self._state = self.State.Error
@@ -115,8 +109,11 @@ class TiktorchController:
         return self.operator.ModelInfo.value
 
     def registerListener(self, fn):
-        self._stateListeners.append(fn)
+        self._stateListeners.add(fn)
         self._callListener(fn)
+
+    def removeListener(self, fn):
+        self._stateListeners.discard(fn)
 
     def _callListener(self, fn):
         try:
@@ -126,5 +123,4 @@ class TiktorchController:
 
     def _notifyStateChanged(self):
         for fn in self._stateListeners:
-            print("CALLING", fn)
             self._callListener(fn)
