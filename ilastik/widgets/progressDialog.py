@@ -84,15 +84,13 @@ class ProgressDialog(QDialog):
 
 
 class PercentProgressDialog(QDialog):
-    cancel = pyqtSignal()
-
     def __init__(self, parent=None, *, title=None):
         super().__init__(parent)
         localDir = os.path.split(__file__)[0]
         form, _ = uic.loadUiType(os.path.join(localDir, "percentProgressDialog.ui"))
         self._ui = form()
         self._ui.setupUi(self)
-        self._ui.cancel.clicked.connect(self.cancel)
+        self._ui.cancel.clicked.connect(self.reject)
 
         if title:
             self.setWindowTitle(title)
