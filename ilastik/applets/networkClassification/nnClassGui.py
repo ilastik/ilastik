@@ -766,21 +766,19 @@ class NNClassGui(LabelingGui):
 
         dialog = PercentProgressDialog(self, title="Uploading model")
         dialog.rejected.connect(cancelSrc.cancel)
-        dialog.finished.connect(evtLoop.quit)
         dialog.open()
 
         modelInfo = self.tiktorchController.uploadModel(modelBytes=modelBytes, progressCallback=dialog.updateProgress, cancelToken=cancelSrc.token)
 
         def _onDone(fut):
             dialog.accept()
+            evtLoop.quit()
 
             if fut.cancelled():
                 return
 
             if fut.exception() and dialog.result() == QDialog.Accepted:
                 self._showErrorMessage(fut.exception())
-
-            dialog.accept()
 
         modelInfo.add_done_callback(_onDone)
         evtLoop.exec_()

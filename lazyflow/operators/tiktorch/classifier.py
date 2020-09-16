@@ -242,14 +242,12 @@ class Connection(_base.IConnection):
         return [(d.id, d.id) for d in resp.devices]
 
     def upload(self, content: bytes, *, progress_cb: Callable[[int], None], cancel_token=None) -> MappableFuture[str]:
-        import time
         def _content_iter():
             total_size = len(content)
 
             yield data_store_pb2.UploadRequest(info=data_store_pb2.UploadInfo(size=total_size))
 
             for i in range(0, total_size, self.UPLOAD_CHUNK_SIZE):
-                time.sleep(1)
                 if cancel_token.cancelled:
                     return
 
