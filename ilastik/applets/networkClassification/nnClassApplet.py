@@ -21,7 +21,7 @@
 from ilastik.applets.base.standardApplet import StandardApplet
 from .opNNclass import OpNNClassification
 from .nnClassSerializer import NNClassificationSerializer
-from .tiktorchController import TiktorchController
+from .tiktorchController import TiktorchController, TiktorchOperatorModel
 
 
 class NNClassApplet(StandardApplet):
@@ -56,8 +56,8 @@ class NNClassApplet(StandardApplet):
         # If we start reporting progress for multiple tasks that might occur simulatneously,
         # we'll need to aggregate the progress updates.
         self._topLevelOperator.opTrain.progressSignal.subscribe(self.progressSignal)
-        self.tiktorchController = TiktorchController(self.topLevelOperator, connectionFactory)
-
+        self.tiktorchOpModel = TiktorchOperatorModel(self.topLevelOperator)
+        self.tiktorchController = TiktorchController(self.tiktorchOpModel, connectionFactory)
 
     @property
     def dataSerializers(self):

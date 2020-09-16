@@ -21,11 +21,12 @@
 ###############################################################################
 import logging
 import socket
+import threading
 import numpy
 import warnings
 import numpy as np
-
-from typing import Iterable, Tuple, Optional, List, Callable
+from concurrent.futures import CancelledError
+from typing import Iterable, List, Callable
 
 import vigra
 import grpc
@@ -35,6 +36,7 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.graph import Graph
 from lazyflow.request import Request
 from lazyflow.roi import roiToSlice
+from lazyflow.futures_utils import MappableFuture
 
 from tiktorch.launcher import LocalServerLauncher, RemoteSSHServerLauncher, SSHCred, ConnConf
 from tiktorch import converters
@@ -45,6 +47,8 @@ from vigra import AxisTags
 from . import _base
 
 logger = logging.getLogger(__name__)
+
+
 
 
 class ModelSession:
@@ -237,26 +241,39 @@ class Connection(_base.IConnection):
         resp = self._client.ListDevices(inference_pb2.Empty())
         return [(d.id, d.id) for d in resp.devices]
 
-    def upload(self, content: bytes, *, progress_cb: Callable[[int], None], cancel_token) -> str:
+    def upload(self, content: bytes, *, progress_cb: Callable[[int], None], cancel_token=None) -> MappableFuture[str]:
         import time
-        def _gen():
+        def _content_iter():
             total_size = len(content)
-            print("TOTAL SIZE", total_size)
+
             yield data_store_pb2.UploadRequest(info=data_store_pb2.UploadInfo(size=total_size))
+
             for i in range(0, total_size, self.UPLOAD_CHUNK_SIZE):
                 time.sleep(1)
                 if cancel_token.cancelled:
                     return
-                print("CHUNK", i)
+
                 yield data_store_pb2.UploadRequest(content=content[i:i+self.UPLOAD_CHUNK_SIZE])
                 progress_cb(int(min(i + self.UPLOAD_CHUNK_SIZE, total_size)  * 100 / total_size))
 
             progress_cb(100)
 
-        resp = self._upload_client.Upload(_gen())
-        if cancel_token.cancelled:
-            return None
-        return resp.id
+        result = MappableFuture()
+
+        def _upload():
+            try:
+                resp = self._upload_client.Upload(_content_iter())
+                result.set_result(resp.id)
+            except grpc.RpcError as e:
+                if cancel_token.cancelled:
+                    result.cancel()
+                else:
+                    result.set_exception(e)
+
+        uploadThread = threading.Thread(target=_upload, name="UploadRequestThread", daemon=True)
+        uploadThread.start()
+
+        return result
 
     def create_model_session(self, upload_id: str, devices: List[str]):
         session = self._client.CreateModelSession(

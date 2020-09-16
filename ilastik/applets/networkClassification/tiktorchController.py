@@ -20,93 +20,62 @@ class ModelInfo:
         return len(self.knownClasses)
 
 
-class TiktorchController:
+class TiktorchOperatorModel:
     class State:
         ReadFromProjectFile = "READ_FROM_PROJECT"
-        Uploading = "UPLOADING"
         Ready = "READY"
         Empty = "EMPTY"
-        Error = "ERROR"
 
-    def __init__(self, operator, connectionFactory):
-        self.connectionFactory = connectionFactory
-        self.operator = operator
+    def __init__(self, operator):
+        self._operator = operator
+        self._operator.ModelInfo.notifyDirty(self._handleOperatorStateChange)
+        self._operator.ModelSession.notifyDirty(self._handleOperatorStateChange)
+        self._operator.ModelBinary.notifyDirty(self._handleOperatorStateChange)
         self._stateListeners = set()
         self._state = self.State.Empty
 
-        self.operator.ModelInfo.notifyDirty(self._handleOperatorStateChange)
-        self.operator.ModelSession.notifyDirty(self._handleOperatorStateChange)
-        self.operator.ModelBinary.notifyDirty(self._handleOperatorStateChange)
+    @property
+    def serverConfig(self):
+        return self._operator.ServerConfig.value
 
-    def _emptyState(self):
-        assert self._state != self.State.Uploading
-
-        self._state = self.State.Empty
-        self.operator.ModelBinary.setValue(None)
-        self.operator.ModelSession.setValue(None)
-        self.operator.ModelInfo.setValue(None)
-        self.operator.NumClasses.setValue(None)
-
-    def loadModel(self, modelPath: str, *, progress_cb=None, cancel_token=None) -> None:
-        self._emptyState()
-        self._notifyStateChanged()
-
-        with open(modelPath, "rb") as modelFile:
-            modelBytes = modelFile.read()
-
-        self.operator.ModelBinary.setValue(modelBytes)
-        return self.uploadModel(progress_cb=progress_cb, cancel_token=cancel_token)
-
-    def uploadModel(self, *, progress_cb=None, cancel_token=None):
-        srvConfig = self.operator.ServerConfig.value
-        modelBytes = self.operator.ModelBinary.value
-
-        def _uploadModel():
-            connection = self.connectionFactory.ensure_connection(srvConfig)
-
-            try:
-                uploadId = connection.upload(modelBytes, progress_cb=progress_cb, cancel_token=cancel_token)
-                model = connection.create_model_session(uploadId, [d.id for d in srvConfig.devices])
-            except Exception:
-                self._state = self.State.Error
-                self._notifyStateChanged()
-
-            else:
-                info = ModelInfo(model.name, model.known_classes, model.has_training)
-
-                self.operator.ModelBinary.setValue(modelBytes)
-                self.operator.ModelSession.setValue(model)
-                self.operator.ModelInfo.setValue(info)
-                self.operator.NumClasses.setValue(info.numClasses)
-
-                self._state = self.State.Ready
-                self._notifyStateChanged()
-
-        uploadThread = threading.Thread(target=_uploadModel, name="ModelUploadThread", daemon=True)
-        uploadThread.start()
-
-    def closeModel(self):
-        self.operator.ModelBinary.setValue(b"")
-        self.operator.ModelInfo.setValue(None)
-
-        model = self.operator.ModelSession.value
-        self.operator.ModelSession.setValue(None)
-
-        model.close()
-
-    def _handleOperatorStateChange(self, *args, **kwargs):
-        if self.operator.ModelInfo.ready() and self.operator.ModelBinary.ready() and not self.operator.ModelSession.ready():
-            self._state = self.State.ReadFromProjectFile
-        elif self.operator.ModelInfo.ready() and self.operator.ModelBinary.ready() and self.operator.ModelSession.ready():
-            self._state = self.State.Ready
-        elif not self.operator.ModelInfo.ready():
-            self._state = self.State.Empty
-
-        self._notifyStateChanged()
+    @property
+    def modelBytes(self):
+        return self._operator.ModelBinary.value
 
     @property
     def modelInfo(self):
-        return self.operator.ModelInfo.value
+        return self._operator.ModelInfo.value
+
+    @property
+    def session(self):
+        if self._operator.ModelSession.ready():
+            return self._operator.ModelSession.value
+        return None
+
+    def clear(self):
+        self._state = self.State.Empty
+        self._operator.ModelBinary.setValue(None)
+        self._operator.ModelSession.setValue(None)
+        self._operator.ModelInfo.setValue(None)
+        self._operator.NumClasses.setValue(None)
+
+    def setState(self, content, info, session):
+        self._operator.NumClasses.disconnect()
+
+        self._operator.ModelBinary.setValue(content)
+        self._operator.ModelSession.setValue(session)
+        self._operator.ModelInfo.setValue(info)
+        self._operator.NumClasses.setValue(info.numClasses)
+
+    def _handleOperatorStateChange(self, *args, **kwargs):
+        if self._operator.ModelInfo.ready() and self._operator.ModelBinary.ready() and not self._operator.ModelSession.ready():
+            self._state = self.State.ReadFromProjectFile
+        elif self._operator.ModelInfo.ready() and self._operator.ModelBinary.ready() and self._operator.ModelSession.ready():
+            self._state = self.State.Ready
+        elif not self._operator.ModelInfo.ready():
+            self._state = self.State.Empty
+
+        self._notifyStateChanged()
 
     def registerListener(self, fn):
         self._stateListeners.add(fn)
@@ -124,3 +93,37 @@ class TiktorchController:
     def _notifyStateChanged(self):
         for fn in self._stateListeners:
             self._callListener(fn)
+
+
+
+class TiktorchController:
+    def __init__(self, model, connectionFactory):
+        self.connectionFactory = connectionFactory
+        self._model = model
+
+    def loadModel(self, modelPath: str, *, progressCallback=None, cancelToken=None) -> None:
+        with open(modelPath, "rb") as modelFile:
+            modelBytes = modelFile.read()
+
+        return self.uploadModel(modelBytes=modelBytes, progressCallback=progressCallback, cancelToken=cancelToken)
+
+    def uploadModel(self, *, modelBytes=None, progressCallback=None, cancelToken=None):
+        srvConfig = self._model.serverConfig
+
+        connection = self.connectionFactory.ensure_connection(srvConfig)
+
+        def _createModelFromUpload(uploadId: str):
+            if cancelToken.cancelled:
+                return None
+            session = connection.create_model_session(uploadId, [d.id for d in srvConfig.devices])
+            info = ModelInfo(session.name, session.known_classes, session.has_training)
+            self._model.setState(modelBytes, info, session)
+            return info
+
+        return connection.upload(modelBytes, progress_cb=progressCallback, cancel_token=cancelToken).map(_createModelFromUpload)
+
+    def closeSession(self):
+        session = self._model.session
+        self._model.clear()
+        if session:
+            session.close()

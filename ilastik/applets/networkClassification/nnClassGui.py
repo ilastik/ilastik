@@ -20,18 +20,21 @@
 ###############################################################################
 import os
 import logging
+import threading
 
 from functools import partial
 from collections import OrderedDict
+from concurrent.futures import wait
 
 import numpy
 import yaml
 
 from ilastik.widgets.progressDialog import PercentProgressDialog
 from PyQt5 import uic
-from PyQt5.QtCore import Qt, pyqtSlot, pyqtSignal, QTimer, QStringListModel, QObject, QModelIndex, QPersistentModelIndex
+from PyQt5.QtCore import Qt, pyqtSlot, pyqtSignal, QTimer, QStringListModel, QObject, QModelIndex, QPersistentModelIndex, QEventLoop
 from PyQt5.QtGui import QColor, QIcon
 from PyQt5.QtWidgets import (
+    QMessageBox,
     QWidget,
     QStackedWidget,
     QFileDialog,
@@ -51,7 +54,7 @@ from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.utility.gui import threadRouted
 from ilastik.utility import bind
 from ilastik.shell.gui.iconMgr import ilastikIcons
-from .tiktorchController import TiktorchController
+from .tiktorchController import TiktorchController, TiktorchOperatorModel
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.utility import preferences
@@ -331,7 +334,6 @@ class CheckpointWidget(QWidget):
             self.load_clicked.emit(QPersistentModelIndex(idx))
 
 
-
 class NNClassGui(LabelingGui):
     """
     LayerViewerGui class for Neural Network Classification
@@ -481,10 +483,15 @@ class NNClassGui(LabelingGui):
 
         self.invalidatePredictionsTimer = QTimer()
         self.invalidatePredictionsTimer.timeout.connect(self.updatePredictions)
-        self.tiktorchController = parentApplet.tiktorchController
-        #self._stateMachine = NNGuiStateMachineBuilder(self.labelingDrawerUi, self.tiktorchController)
-        self.tiktorchController.registerListener(self._onModelStateChanged)
-        self._progress = PercentProgressDialog(self, title="Uploading model")
+        self.tiktorchModel.registerListener(self._onModelStateChanged)
+
+    @property
+    def tiktorchController(self):
+        return self.parentApplet.tiktorchController
+
+    @property
+    def tiktorchModel(self):
+        return self.parentApplet.tiktorchOpModel
 
     def set_live_training_icon(self, active: bool):
         if active:
@@ -716,11 +723,10 @@ class NNClassGui(LabelingGui):
             self._viewerControlUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
 
     def closeModelClicked(self):
-        self.tiktorchController.closeModel()
+        self.tiktorchController.closeSession()
 
     def cc(self, *args, **kwargs):
         self.cancel_src.cancel()
-        print("CANCEL CLICKED", args, kwargs)
 
     def addModelClicked(self):
         """
@@ -740,27 +746,56 @@ class NNClassGui(LabelingGui):
             if not projectManager.currentProjectIsReadOnly:
                 projectManager.saveProject()
 
-            cancel_src = self.cancel_src = CancellationTokenSource()
-            dialog = PercentProgressDialog(self, title="Uploading model")
-            dialog.cancel.connect(cancel_src.cancel)
-            dialog.cancel.connect(self.cc)
-            progress = self.tiktorchController.loadModel(filename, progress_cb=dialog.updateProgress, cancel_token=cancel_src.token)
-            dialog.open()
+            with open(filename, "rb") as modelFile:
+                modelBytes = modelFile.read()
+
+            self._uploadModel(modelBytes)
 
             preferences.set("DataSelection", "recent model", filename)
             self.parentApplet.appletStateUpdateRequested()
 
+    @threadRouted
+    def _showErrorMessage(self, exc):
+        QMessageBox.critical(
+            self, "Model Server Error", f"Failed to upload model:\n {exc}"
+        )
+
+    def _uploadModel(self, modelBytes):
+        evtLoop = QEventLoop()
+        cancelSrc = CancellationTokenSource()
+
+        dialog = PercentProgressDialog(self, title="Uploading model")
+        dialog.rejected.connect(cancelSrc.cancel)
+        dialog.finished.connect(evtLoop.quit)
+        dialog.open()
+
+        modelInfo = self.tiktorchController.uploadModel(modelBytes=modelBytes, progressCallback=dialog.updateProgress, cancelToken=cancelSrc.token)
+
+        def _onDone(fut):
+            dialog.accept()
+
+            if fut.cancelled():
+                return
+
+            if fut.exception() and dialog.result() == QDialog.Accepted:
+                self._showErrorMessage(fut.exception())
+
+            dialog.accept()
+
+        modelInfo.add_done_callback(_onDone)
+        evtLoop.exec_()
+
     def uploadModelClicked(self):
-        progress = self.tiktorchController.uploadModel()
-        #print("PROGReSS", progress)
-        #self.openProgressDialog(progress)
+        try:
+            self._uploadModel(self.tiktorchModel.modelBytes)
+        except Exception as e:
+            self._showErrorMessage(e)
 
     def _onModelStateChanged(self, state):
         self.labelingDrawerUi.liveTraining.setVisible(False)
         self.labelingDrawerUi.checkpoints.setVisible(False)
-        print("STATE", state)
 
-        if state == TiktorchController.State.Empty:
+        if state == TiktorchOperatorModel.State.Empty:
             self.labelingDrawerUi.addModel.setText("Load model")
             self.labelingDrawerUi.addModel.setEnabled(True)
             self.labelingDrawerUi.closeModel.setEnabled(False)
@@ -768,8 +803,8 @@ class NNClassGui(LabelingGui):
             self.labelingDrawerUi.livePrediction.setEnabled(False)
             self.updateAllLayers()
 
-        elif state == TiktorchController.State.ReadFromProjectFile:
-            info = self.tiktorchController.modelInfo
+        elif state == TiktorchOperatorModel.State.ReadFromProjectFile:
+            info = self.tiktorchModel.modelInfo
 
             self.labelingDrawerUi.addModel.setText(f"{info.name}")
             self.labelingDrawerUi.addModel.setEnabled(True)
@@ -782,8 +817,8 @@ class NNClassGui(LabelingGui):
 
             self.updateAllLayers()
 
-        elif state == TiktorchController.State.Ready:
-            info = self.tiktorchController.modelInfo
+        elif state == TiktorchOperatorModel.State.Ready:
+            info = self.tiktorchModel.modelInfo
 
             self.labelingDrawerUi.addModel.setText(f"{info.name}")
             self.labelingDrawerUi.addModel.setEnabled(True)
@@ -794,18 +829,6 @@ class NNClassGui(LabelingGui):
             self.minLabelNumber = info.numClasses
             self.maxLabelNumber = info.numClasses
             self.updateAllLayers()
-            self._progress.close()
-
-        elif state == TiktorchController.State.Uploading:
-            #self.tiktorchController.removeListener(self._onModelStateChanged)
-            #self._progress.updateProgress(self.tiktorchController.progress)
-            #self.openProgressDialog(self.tiktorchController.progress)
-            #self.tiktorchController.registerListener(self._onModelStateChanged)
-            pass
-
-        elif state == TiktorchController.State.Error:
-            self.labelingDrawerUi.addModel.setEnabled(True)
-            self._progress.close()
 
     def _load_checkpoint(self, model_state: ModelState):
         self.topLevelOperatorView.set_model_state(model_state)
