@@ -14,11 +14,11 @@ Idea behind a concept to separate client code that can cancel request (owner of 
 and cancellable procedure that only can query state of cancellation token
 """
 
+
 class CancellationToken:
     @property
     def cancelled(self):
         ...
-
 
 
 class CancellationTokenSource:
@@ -28,7 +28,6 @@ class CancellationTokenSource:
 
         @property
         def cancelled(self):
-            print("CANCEL?", self._cancelled)
             return self._cancelled
 
         def __repr__(self):
@@ -42,5 +41,4 @@ class CancellationTokenSource:
         return self.__token
 
     def cancel(self):
-        print("CALLED CANCEL")
         self.__token._cancelled = True
