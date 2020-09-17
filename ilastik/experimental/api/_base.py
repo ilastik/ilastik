@@ -99,7 +99,7 @@ class ClassifierBuilder:
         return self._construct_graph()
 
     @classmethod
-    def from_project_file(self, path):
+    def from_project_file(cls, path):
         import h5py
         import pickle
 
