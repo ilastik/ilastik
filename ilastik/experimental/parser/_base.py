@@ -56,24 +56,25 @@ class _MatrixFeatureList(types.FeatureList):
                 if self.__sel_matrix[row_idx][col_idx]:
                     yield features.create_feature_by_name(name, int(scale * 10))
 
+class _Keys:
+    INPUT_DATA = "Input Data"
+    INPUT_DATA_INFOS = "infos"
+    INPUT_DATA_RAW = "Raw Data"
+    INPUT_DATA_AXIS_TAGS = "axistags"
+    INPUT_DATA_SHAPE = "shape"
+
+    FEATURES = "FeatureSelections"
+    FEATURES_IDS = "FeatureIds"
+    FEATURES_SCALES = "Scales"
+    FEATURES_SELECTION_MATRIX = "SelectionMatrix"
+    PIXEL_CLASSIFICATION = "PixelClassification"
+    PIXEL_CLASSIFICATION_TYPE = "pickled_type"
+    PIXEL_CLASSIFICATION_FACTORY = "ClassifierFactory"
+    PIXEL_CLASSIFICATION_FORESTS = "ClassifierForests"
+    LABEL_NAMES = "LabelNames"
+
 
 class _PixelClassProjectImpl(types.PixelClassificationProject):
-    INPUT_DATA_KEY = "Input Data"
-    INPUT_DATA_INFOS_KEY = "infos"
-    INPUT_DATA_RAW_KEY = "Raw Data"
-    INPUT_DATA_AXIS_TAGS_KEY = "axistags"
-    INPUT_DATA_SHAPE_KEY = "shape"
-
-    FEATURES_KEY = "FeatureSelections"
-    FEATURES_IDS_KEY = "FeatureIds"
-    FEATURES_SCALES_KEY = "Scales"
-    FEATURES_SELECTION_MATRIX_KEY = "SelectionMatrix"
-    PIXEL_CLASSIFICATION_KEY = "PixelClassification"
-    PIXEL_CLASSIFICATION_TYPE_KEY = "pickled_type"
-    PIXEL_CLASSIFICATION_FACTORY_KEY = "ClassifierFactory"
-    PIXEL_CLASSIFICATION_FORESTS_KEY = "ClassifierForests"
-    LABEL_NAMES_KEY = "LabelNames"
-
     _SENTINEL = object()
 
     def __init__(self, hdf5_file: h5py.File) -> None:
@@ -85,7 +86,7 @@ class _PixelClassProjectImpl(types.PixelClassificationProject):
         if self.__project_data_info is self._SENTINEL:
             no_data = False
             try:
-                infos_group = self.__file[self.INPUT_DATA_KEY][self.INPUT_DATA_INFOS_KEY]
+                infos_group = self.__file[_Keys.INPUT_DATA][_Keys.INPUT_DATA_INFOS]
             except KeyError:
                 no_data = True
 
@@ -95,9 +96,9 @@ class _PixelClassProjectImpl(types.PixelClassificationProject):
 
             info = next(iter(infos_group.values()))
 
-            json_bytes = info[self.INPUT_DATA_RAW_KEY][self.INPUT_DATA_AXIS_TAGS_KEY][()]
+            json_bytes = info[_Keys.INPUT_DATA_RAW][_Keys.INPUT_DATA_AXIS_TAGS][()]
             tags_dict = json.loads(json_bytes.decode("ascii"))
-            shape = info[self.INPUT_DATA_RAW_KEY][self.INPUT_DATA_SHAPE_KEY][()]
+            shape = info[_Keys.INPUT_DATA_RAW][_Keys.INPUT_DATA_SHAPE][()]
 
             if len(shape) != len(tags_dict["axes"]):
                 raise ValueError(f"Shape {shape} and axistags {tags_dict} mismatch")
@@ -118,10 +119,10 @@ class _PixelClassProjectImpl(types.PixelClassificationProject):
     @property
     def features(self) -> Optional[types.FeatureList]:
         try:
-            features_group = self.__file[self.FEATURES_KEY]
-            feature_names = [name.decode("ascii") for name in features_group[self.FEATURES_IDS_KEY][()]]
-            scales = features_group[self.FEATURES_SCALES_KEY][()]
-            sel_matrix = features_group[self.FEATURES_SELECTION_MATRIX_KEY][()]
+            features_group = self.__file[_Keys.FEATURES]
+            feature_names = [name.decode("ascii") for name in features_group[_Keys.FEATURES_IDS][()]]
+            scales = features_group[_Keys.FEATURES_SCALES][()]
+            sel_matrix = features_group[_Keys.FEATURES_SELECTION_MATRIX][()]
         except KeyError:
             # Project has no selected features
             return None
@@ -132,14 +133,14 @@ class _PixelClassProjectImpl(types.PixelClassificationProject):
     @property
     def classifier(self):
         try:
-            pixel_class_group = self.__file[self.PIXEL_CLASSIFICATION_KEY]
+            pixel_class_group = self.__file[_Keys.PIXEL_CLASSIFICATION]
 
-            classfier_group = pixel_class_group[self.PIXEL_CLASSIFICATION_FORESTS_KEY]
-            classifier_type = pickle.loads(classfier_group[self.PIXEL_CLASSIFICATION_TYPE_KEY][()])
+            classfier_group = pixel_class_group[_Keys.PIXEL_CLASSIFICATION_FORESTS]
+            classifier_type = pickle.loads(classfier_group[_Keys.PIXEL_CLASSIFICATION_TYPE][()])
             classifier = classifier_type.deserialize_hdf5(classfier_group)
 
-            classifier_factory = pickle.loads(pixel_class_group[self.PIXEL_CLASSIFICATION_FACTORY_KEY][()])
-            label_count = len(pixel_class_group[self.LABEL_NAMES_KEY])
+            classifier_factory = pickle.loads(pixel_class_group[_Keys.PIXEL_CLASSIFICATION_FACTORY][()])
+            label_count = len(pixel_class_group[_Keys.LABEL_NAMES])
         except KeyError:
             # Project has no trained classifier
             return None
