@@ -119,25 +119,28 @@ class ClassifierBuilder:
 
             label_count = len(project_file[PIXEL_CLASSIFICATION_KEY][LABEL_NAMES_KEY])
 
-        graph = Graph()
 
         class _ClassifierImpl(Classifier):
+            def __init__(self):
+                graph = Graph()
+                self._feature_sel_op = OpFeatureSelection(graph=graph)
+                self._feature_sel_op.FeatureIds.setValue(feature_names)
+                self._feature_sel_op.Scales.setValue([s / 10 for s in scales])
+                self._feature_sel_op.SelectionMatrix.setValue(numpy.array(sel_matrix))
+
+                self._predict_op = OpClassifierPredict(graph=graph)
+                self._predict_op.Classifier.setValue(classifier)
+                self._predict_op.Classifier.meta.classifier_factory = ParallelVigraRfLazyflowClassifierFactory(100)  # FIXME
+                self._predict_op.Image.connect(self._feature_sel_op.OutputImage)
+                self._predict_op.LabelsCount.setValue(label_count)
+
             def predict(self, data):
                 axes = _guess_axistags(data.shape)
                 data = _make_vigra_with_cannel_axis(data, axes)
 
-                feature_sel_op = OpFeatureSelection(graph=graph)
-                feature_sel_op.InputImage.setValue(data)
-                feature_sel_op.FeatureIds.setValue(feature_names)
-                feature_sel_op.Scales.setValue([s / 10 for s in scales])
-                feature_sel_op.SelectionMatrix.setValue(numpy.array(sel_matrix))
+                self._feature_sel_op.InputImage.setValue(data)
 
-                predict_op = OpClassifierPredict(graph=graph)
-                predict_op.Classifier.setValue(classifier)
-                predict_op.Classifier.meta.classifier_factory = ParallelVigraRfLazyflowClassifierFactory(100)  # FIXME
-                predict_op.Image.connect(feature_sel_op.OutputImage)
-                predict_op.LabelsCount.setValue(label_count)
-                return predict_op.PMaps.value[:,:,0]
+                return self._predict_op.PMaps.value[:,:,0]
 
         return _ClassifierImpl()
 
