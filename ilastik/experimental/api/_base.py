@@ -7,6 +7,17 @@ from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
 from .types import Classifier
 
+WORKFLOW_KEY = "workflowName"
+FEATURES_KEY = "FeatureSelections"
+FEATURES_IDS_KEY = "FeatureIds"
+FEATURES_SCALES_KEY = "Scales"
+FEATURES_SELECTION_MATRIX_KEY = "SelectionMatrix"
+PIXEL_CLASSIFICATION_KEY = "PixelClassification"
+PIXEL_CLASSIFICATION_TYPE_KEY = "pickled_type"
+PIXEL_CLASSIFICATION_FORESTS_KEY = "ClassifierForests"
+LABEL_NAMES_KEY = "LabelNames"
+
+PIXEL_CLASSIFICATION = b"Pixel Classification"
 
 class ClassifierBuilder:
     def __init__(self):
@@ -45,11 +56,11 @@ class ClassifierBuilder:
     def _construct_graph(self):
         graph = Graph()
 
-        feaure_names, scales, sel_matrix = _collect_features(self._features)
+        feature_names, scales, sel_matrix = _collect_features(self._features)
 
         feature_sel_op = OpFeatureSelection(graph=graph)
         feature_sel_op.InputImage.setValue(self._data)
-        feature_sel_op.FeatureIds.setValue(feaure_names)
+        feature_sel_op.FeatureIds.setValue(feature_names)
         feature_sel_op.Scales.setValue([s / 10 for s in scales])
         feature_sel_op.SelectionMatrix.setValue(numpy.array(sel_matrix))
 
@@ -70,7 +81,7 @@ class ClassifierBuilder:
 
                 feature_sel_op = OpFeatureSelection(graph=graph)
                 feature_sel_op.InputImage.setValue(data)
-                feature_sel_op.FeatureIds.setValue(feaure_names)
+                feature_sel_op.FeatureIds.setValue(feature_names)
                 feature_sel_op.Scales.setValue([s / 10 for s in scales])
                 feature_sel_op.SelectionMatrix.setValue(numpy.array(sel_matrix))
 
@@ -86,6 +97,49 @@ class ClassifierBuilder:
         self._validate_data_and_labels(self._data, self._labels)
         self._validate_features(self._features)
         return self._construct_graph()
+
+    @classmethod
+    def from_project_file(self, path):
+        import h5py
+        import pickle
+
+        with h5py.File(path, "r") as project_file:
+            print(project_file.keys())
+            workflow = project_file[WORKFLOW_KEY][()]
+            if workflow != PIXEL_CLASSIFICATION:
+                raise NotImplementedError(f"Unsupported workflow {workflow}")
+
+            feature_names = [name.decode("ascii") for name in project_file[FEATURES_KEY][FEATURES_IDS_KEY][()]]
+            scales = project_file[FEATURES_KEY][FEATURES_SCALES_KEY][()]
+            sel_matrix = project_file[FEATURES_KEY][FEATURES_SELECTION_MATRIX_KEY][()]
+
+            classfier_group = project_file[PIXEL_CLASSIFICATION_KEY][PIXEL_CLASSIFICATION_FORESTS_KEY]
+            classifier_type = pickle.loads(classfier_group[PIXEL_CLASSIFICATION_TYPE_KEY][()])
+            classifier = classifier_type.deserialize_hdf5(classfier_group)
+
+            label_count = len(project_file[PIXEL_CLASSIFICATION_KEY][LABEL_NAMES_KEY])
+
+        graph = Graph()
+
+        class _ClassifierImpl(Classifier):
+            def predict(self, data):
+                axes = _guess_axistags(data.shape)
+                data = _make_vigra_with_cannel_axis(data, axes)
+
+                feature_sel_op = OpFeatureSelection(graph=graph)
+                feature_sel_op.InputImage.setValue(data)
+                feature_sel_op.FeatureIds.setValue(feature_names)
+                feature_sel_op.Scales.setValue([s / 10 for s in scales])
+                feature_sel_op.SelectionMatrix.setValue(numpy.array(sel_matrix))
+
+                predict_op = OpClassifierPredict(graph=graph)
+                predict_op.Classifier.setValue(classifier)
+                predict_op.Classifier.meta.classifier_factory = ParallelVigraRfLazyflowClassifierFactory(100)  # FIXME
+                predict_op.Image.connect(feature_sel_op.OutputImage)
+                predict_op.LabelsCount.setValue(label_count)
+                return predict_op.PMaps.value[:,:,0]
+
+        return _ClassifierImpl()
 
 
 def _guess_axistags(shape):
