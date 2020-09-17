@@ -1,3 +1,2 @@
-from ._base import ClassifierBuilder
-from .features import DEFAULT_FEATURES
+from ._base import ClassifierFactory
 from .types import Classifier

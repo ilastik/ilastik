@@ -14,6 +14,9 @@ class _Feature:
     def __eq__(self, other):
         return isinstance(other, _Feature) and self.key() == other.key()
 
+    def __repr__(self):
+        return f"{self.name}(scale={self.scale/10:.1f})"
+
 
 class Gaussian(_Feature):
     name = "GaussianSmoothing"
@@ -34,19 +37,25 @@ class DifferenceOfGaussians(_Feature):
     name = "DifferenceOfGaussians"
 
 
-_FEAUTURE_CLASSES = [
-    DifferenceOfGaussians,
-    Gaussian,
-    GaussianGradientMagnitude,
-    HessianOfGaussianEigenvalues,
-    LaplacianOfGaussian,
-    StructureTensorEigenvalues,
-]
+_FEAUTURE_CLASSES = {
+    DifferenceOfGaussians.name: DifferenceOfGaussians,
+    Gaussian.name: Gaussian,
+    GaussianGradientMagnitude.name: GaussianGradientMagnitude,
+    HessianOfGaussianEigenvalues.name: HessianOfGaussianEigenvalues,
+    LaplacianOfGaussian.name: LaplacianOfGaussian,
+    StructureTensorEigenvalues.name: StructureTensorEigenvalues,
+}
 
-_SCALES = [3, 7, 10, 16, 35, 50, 100]
+_DEFAULT_SCALES = [3, 7, 10, 16, 35, 50, 100]
+
+
+def create_feature_by_name(name, scale):
+    type_ = _FEAUTURE_CLASSES[name]
+    return type_(scale)
+
 
 DEFAULT_FEATURES = [
     cls(scale)
-    for cls in _FEAUTURE_CLASSES
-    for scale in _SCALES
+    for cls in _FEAUTURE_CLASSES.values()
+    for scale in _DEFAULT_SCALES
 ]
