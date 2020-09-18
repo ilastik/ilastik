@@ -61,6 +61,7 @@ class BinarySlot(SerialSlot):
     wraps value with numpy.void to avoid the following error:
     ValueError: VLEN strings do not support embedded NULLs
     """
+
     @staticmethod
     def _saveValue(group, name, value):
         if value:
@@ -70,7 +71,6 @@ class BinarySlot(SerialSlot):
     def _getValue(subgroup, slot):
         val = subgroup[()]
         slot.setValue(val.tobytes())
-
 
 
 class NNClassificationSerializer(AppletSerializer):

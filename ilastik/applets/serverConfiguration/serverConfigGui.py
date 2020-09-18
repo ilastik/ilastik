@@ -27,7 +27,20 @@ from PyQt5.QtWidgets import QWidget, QStackedWidget, QListWidgetItem, QListWidge
 from PyQt5.QtCore import QStateMachine, QState, QSignalTransition, pyqtSignal
 
 logger = logging.getLogger(__name__)
-from PyQt5.Qt import QIcon, QStringListModel, QAbstractItemModel, QAbstractItemDelegate, Qt, QModelIndex, QDataWidgetMapper, pyqtProperty, QItemDelegate, QAbstractListModel, QListWidgetItem, pyqtSignal
+from PyQt5.Qt import (
+    QIcon,
+    QStringListModel,
+    QAbstractItemModel,
+    QAbstractItemDelegate,
+    Qt,
+    QModelIndex,
+    QDataWidgetMapper,
+    pyqtProperty,
+    QItemDelegate,
+    QAbstractListModel,
+    QListWidgetItem,
+    pyqtSignal,
+)
 from PyQt5.QtWidgets import QWidget, QComboBox, QToolButton, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QListWidget
 
 from .serverConfigForm import ServerConfigForm, ServerFormWorkflow
@@ -36,7 +49,6 @@ from .configStorage import ServerConfigStorage
 from . import types
 from ilastik import config
 import tiktorch
-
 
 
 class ServerConfigGui(QWidget):

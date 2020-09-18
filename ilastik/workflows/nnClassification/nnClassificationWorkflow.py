@@ -38,6 +38,7 @@ from lazyflow.graph import Graph
 
 logger = logging.getLogger(__name__)
 
+
 class NNClassificationWorkflow(Workflow):
     """
     Workflow for the Neural Network Classification Applet
@@ -107,7 +108,9 @@ class NNClassificationWorkflow(Workflow):
         connFactory = tiktorch.TiktorchConnectionFactory()
 
         self.serverConfigApplet = ServerConfigApplet(self, connectionFactory=connFactory)
-        self.nnClassificationApplet = NNClassApplet(self, "NNClassApplet", connectionFactory=self.serverConfigApplet.connectionFactory)
+        self.nnClassificationApplet = NNClassApplet(
+            self, "NNClassApplet", connectionFactory=self.serverConfigApplet.connectionFactory
+        )
 
         opClassify = self.nnClassificationApplet.topLevelOperator
 

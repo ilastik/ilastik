@@ -49,8 +49,6 @@ from . import _base
 logger = logging.getLogger(__name__)
 
 
-
-
 class ModelSession:
     def __init__(self, session, factory):
         self.__session = session
@@ -233,6 +231,7 @@ class Progress:
 
 class Connection(_base.IConnection):
     UPLOAD_CHUNK_SIZE = 1 * 1024 * 1024  # 1mb
+
     def __init__(self, client, upload_client):
         self._client = client
         self._upload_client = upload_client
@@ -251,8 +250,8 @@ class Connection(_base.IConnection):
                 if cancel_token.cancelled:
                     return
 
-                yield data_store_pb2.UploadRequest(content=content[i:i+self.UPLOAD_CHUNK_SIZE])
-                progress_cb(int(min(i + self.UPLOAD_CHUNK_SIZE, total_size)  * 100 / total_size))
+                yield data_store_pb2.UploadRequest(content=content[i : i + self.UPLOAD_CHUNK_SIZE])
+                progress_cb(int(min(i + self.UPLOAD_CHUNK_SIZE, total_size) * 100 / total_size))
 
             progress_cb(100)
 

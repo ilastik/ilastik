@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import logging
 
@@ -33,7 +33,7 @@ class ServerConfigApplet(StandardApplet):
     def __init__(self, workflow, *, connectionFactory: tiktorch.IConnectionFactory):
         self._topLevelOperator = OpServerConfig(parent=workflow)
         super().__init__("Server configuration", workflow)
-        self._serializableItems = [ServerConfigSerializer('ServerConfiguration', operator=self._topLevelOperator)]
+        self._serializableItems = [ServerConfigSerializer("ServerConfiguration", operator=self._topLevelOperator)]
         self._topLevelOperator.ServerConfig.notifyReady(self._requestUpdate)
         self._topLevelOperator.ServerConfig.notifyValueChanged(self._configChanged)
         self._connectionFactory = connectionFactory
@@ -55,6 +55,7 @@ class ServerConfigApplet(StandardApplet):
     @property
     def singleLaneGuiClass(self):
         from .serverConfigGui import ServerConfigGui
+
         return ServerConfigGui
 
     @property

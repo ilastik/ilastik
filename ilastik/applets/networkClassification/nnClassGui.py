@@ -31,7 +31,17 @@ import yaml
 
 from ilastik.widgets.progressDialog import PercentProgressDialog
 from PyQt5 import uic
-from PyQt5.QtCore import Qt, pyqtSlot, pyqtSignal, QTimer, QStringListModel, QObject, QModelIndex, QPersistentModelIndex, QEventLoop
+from PyQt5.QtCore import (
+    Qt,
+    pyqtSlot,
+    pyqtSignal,
+    QTimer,
+    QStringListModel,
+    QObject,
+    QModelIndex,
+    QPersistentModelIndex,
+    QEventLoop,
+)
 from PyQt5.QtGui import QColor, QIcon
 from PyQt5.QtWidgets import (
     QMessageBox,
@@ -72,8 +82,6 @@ def _listReplace(old, new):
         return new + old[len(new) :]
     else:
         return new
-
-
 
 
 class ParameterDlg(QDialog):
@@ -562,9 +570,7 @@ class NNClassGui(LabelingGui):
             if predictionSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
                 predictsrc = LazyflowSource(predictionSlot)
-                predictionLayer = AlphaModulatedLayer(
-                    predictsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0)
-                )
+                predictionLayer = AlphaModulatedLayer(predictsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0))
                 predictionLayer.visible = self.labelingDrawerUi.livePrediction.isChecked()
                 predictionLayer.opacity = 0.25
                 predictionLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
@@ -756,9 +762,7 @@ class NNClassGui(LabelingGui):
 
     @threadRouted
     def _showErrorMessage(self, exc):
-        QMessageBox.critical(
-            self, "Model Server Error", f"Failed to upload model:\n {exc}"
-        )
+        QMessageBox.critical(self, "Model Server Error", f"Failed to upload model:\n {exc}")
 
     def _uploadModel(self, modelBytes):
         evtLoop = QEventLoop()
@@ -768,7 +772,9 @@ class NNClassGui(LabelingGui):
         dialog.rejected.connect(cancelSrc.cancel)
         dialog.open()
 
-        modelInfo = self.tiktorchController.uploadModel(modelBytes=modelBytes, progressCallback=dialog.updateProgress, cancelToken=cancelSrc.token)
+        modelInfo = self.tiktorchController.uploadModel(
+            modelBytes=modelBytes, progressCallback=dialog.updateProgress, cancelToken=cancelSrc.token
+        )
 
         def _onDone(fut):
             dialog.accept()
@@ -830,7 +836,6 @@ class NNClassGui(LabelingGui):
 
     def _load_checkpoint(self, model_state: ModelState):
         self.topLevelOperatorView.set_model_state(model_state)
-
 
     @classmethod
     def getModelToOpen(cls, parent_window, defaultDirectory):

@@ -67,9 +67,17 @@ class TiktorchOperatorModel:
         self._operator.NumClasses.setValue(info.numClasses)
 
     def _handleOperatorStateChange(self, *args, **kwargs):
-        if self._operator.ModelInfo.ready() and self._operator.ModelBinary.ready() and not self._operator.ModelSession.ready():
+        if (
+            self._operator.ModelInfo.ready()
+            and self._operator.ModelBinary.ready()
+            and not self._operator.ModelSession.ready()
+        ):
             self._state = self.State.ReadFromProjectFile
-        elif self._operator.ModelInfo.ready() and self._operator.ModelBinary.ready() and self._operator.ModelSession.ready():
+        elif (
+            self._operator.ModelInfo.ready()
+            and self._operator.ModelBinary.ready()
+            and self._operator.ModelSession.ready()
+        ):
             self._state = self.State.Ready
         elif not self._operator.ModelInfo.ready():
             self._state = self.State.Empty
@@ -92,7 +100,6 @@ class TiktorchOperatorModel:
     def _notifyStateChanged(self):
         for fn in self._stateListeners:
             self._callListener(fn)
-
 
 
 class TiktorchController:
@@ -119,7 +126,9 @@ class TiktorchController:
             self._model.setState(modelBytes, info, session)
             return info
 
-        return connection.upload(modelBytes, progress_cb=progressCallback, cancel_token=cancelToken).map(_createModelFromUpload)
+        return connection.upload(modelBytes, progress_cb=progressCallback, cancel_token=cancelToken).map(
+            _createModelFromUpload
+        )
 
     def closeSession(self):
         session = self._model.session

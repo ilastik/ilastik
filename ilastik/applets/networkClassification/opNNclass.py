@@ -110,7 +110,7 @@ class OpNNClassification(Operator):
         """
         super(OpNNClassification, self).__init__(*args, **kwargs)
         self._connectionFactory = connectionFactory
-#
+        #
         # Default values for some input slots
         self.FreezePredictions.setValue(True)
         self.LabelNames.setValue([])

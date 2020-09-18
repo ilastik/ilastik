@@ -46,9 +46,7 @@ class NNClassApplet(StandardApplet):
 
         super(NNClassApplet, self).__init__("NN Training", workflow=workflow)
 
-        self._serializableItems = [
-            NNClassificationSerializer(self.topLevelOperator, projectFileGroupName)
-        ]
+        self._serializableItems = [NNClassificationSerializer(self.topLevelOperator, projectFileGroupName)]
         self._gui = None
         self.predictionSerializer = self._serializableItems[0]
         # FIXME: For now, we can directly connect the progress signal from the classifier training operator
