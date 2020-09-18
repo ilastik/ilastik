@@ -1,2 +1,2 @@
-from ._base import ClassifierFactory
-from .types import Classifier
+from ._base import from_project_file
+from .types import Pipeline
