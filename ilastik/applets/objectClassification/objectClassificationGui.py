@@ -111,9 +111,7 @@ class ObjectClassificationGui(LabelingGui):
     _knime_exporter = None
 
     def __init__(self, parentApplet, op):
-        self.isInitialized = (
-            False
-        )  # Need this flag in objectClassificationApplet where initialization is terminated with label selection
+        self.isInitialized = False  # Need this flag in objectClassificationApplet where initialization is terminated with label selection
         self.__cleanup_fns = []
         # Tell our base class which slots to monitor
         labelSlots = LabelingGui.LabelingSlots()
@@ -578,9 +576,7 @@ class ObjectClassificationGui(LabelingGui):
             if probSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
                 probsrc = createDataSource(probSlot)
-                probLayer = AlphaModulatedLayer(
-                    probsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0)
-                )
+                probLayer = AlphaModulatedLayer(probsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0))
                 probLayer.opacity = 0.25
                 # probLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
                 # False, because it's much faster to draw predictions without these layers below
@@ -664,9 +660,7 @@ class ObjectClassificationGui(LabelingGui):
         uncertaintySlot = self.op.UncertaintyEstimateImage
         if uncertaintySlot.ready():
             uncertaintySrc = createDataSource(uncertaintySlot)
-            uncertaintyLayer = AlphaModulatedLayer(
-                uncertaintySrc, tintColor=QColor(Qt.cyan), normalize=(0.0, 1.0)
-            )
+            uncertaintyLayer = AlphaModulatedLayer(uncertaintySrc, tintColor=QColor(Qt.cyan), normalize=(0.0, 1.0))
             uncertaintyLayer.name = "Uncertainty"
             uncertaintyLayer.visible = False
             uncertaintyLayer.opacity = 1.0

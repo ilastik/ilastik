@@ -106,8 +106,8 @@ class CountingGui(LabelingGui):
     @traceLogged(traceLogger)
     def __init__(self, parentApplet, topLevelOperatorView):
         self.isInitialized = (
-            False
-        )  # need this flag in countingApplet where initialization is terminated with label selection
+            False  # need this flag in countingApplet where initialization is terminated with label selection
+        )
         self.parentApplet = parentApplet
 
         # Tell our base class which slots to monitor
