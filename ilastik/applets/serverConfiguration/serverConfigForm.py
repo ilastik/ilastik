@@ -39,9 +39,9 @@ class ServerConfigForm(QWidget):
 
     def __init__(self, device_getter) -> None:
         super().__init__(None)
+        self._config = types.ServerConfig.default()
         self._initUI()
 
-        self._config = types.ServerConfig.default()
         self._device_getter = device_getter
         self._updating = False
         self._setRemoteFieldsVisibility(False)

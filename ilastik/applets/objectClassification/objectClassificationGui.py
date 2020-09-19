@@ -132,13 +132,20 @@ class ObjectClassificationGui(LabelingGui):
         #
         labelingDrawerUiPath = os.path.split(__file__)[0] + "/labelingDrawer.ui"
 
+        # button handlers
+        self._interactiveMode = False
+        self._showPredictions = False
+        self._labelMode = True
+
+        self.op = op
+        self.applet = parentApplet
+
         # Base class init
         super(ObjectClassificationGui, self).__init__(
             parentApplet, labelSlots, op, labelingDrawerUiPath, op.RawImages, crosshair=False
         )
 
-        self.op = op
-        self.applet = parentApplet
+        self.interactiveMode = False  # This calls the setter function: interactiveMode(self, val)
 
         self.threadRouter = ThreadRouter(self)
         op.Warnings.notifyDirty(self.handleWarnings)
@@ -157,12 +164,6 @@ class ObjectClassificationGui(LabelingGui):
 
         self._colorTable16_forpmaps = list(colortables.default16_new)
         self._colorTable16_forpmaps[15] = QColor(Qt.black).rgba()  # for objects with NaNs in features
-
-        # button handlers
-        self._interactiveMode = False
-        self.interactiveMode = False  # This calls the setter function: interactiveMode(self, val)
-        self._showPredictions = False
-        self._labelMode = True
 
         self.labelingDrawerUi.subsetFeaturesButton.clicked.connect(self.handleSubsetFeaturesClicked)
         self.labelingDrawerUi.labelAssistButton.clicked.connect(self.handleLabelAssistClicked)

@@ -358,6 +358,7 @@ class IlastikShell(QMainWindow):
 
         self.projectManager = None
         self.projectDisplayManager = None
+        self._currentImageIndex = -1
 
         self._loaduifile()
 
@@ -407,7 +408,6 @@ class IlastikShell(QMainWindow):
 
         self.currentAppletIndex = 0
 
-        self._currentImageIndex = -1
         self.populatingImageSelectionCombo = False
         self.imageSelectionCombo.currentIndexChanged.connect(self.changeCurrentInputImageIndex)
 
