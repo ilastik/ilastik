@@ -270,7 +270,7 @@ class CountingGui(LabelingGui):
     def _importBoxes(self) -> None:
         """Show file dialog and import boxes from the selected file."""
         filename, _filter = QFileDialog.getOpenFileName(
-            self, "Import Boxes", self._cwd, self._FILE_DIALOG_FILTER, self._FILE_DIALOG_FILTER
+            self, "Import Boxes", self.get_cwd(), self._FILE_DIALOG_FILTER, self._FILE_DIALOG_FILTER
         )
 
         if not filename:
@@ -287,7 +287,7 @@ class CountingGui(LabelingGui):
     def _exportBoxes(self) -> None:
         """Show file dialog and export boxes to the selected file."""
         filename, _filter = QFileDialog.getSaveFileName(
-            self, "Export Boxes", self._cwd, self._FILE_DIALOG_FILTER, self._FILE_DIALOG_FILTER
+            self, "Export Boxes", self.get_cwd(), self._FILE_DIALOG_FILTER, self._FILE_DIALOG_FILTER
         )
 
         if not filename:
@@ -305,8 +305,7 @@ class CountingGui(LabelingGui):
             QMessageBox.critical(self, msg.title(), str(e))
             os.remove(filename)
 
-    @property
-    def _cwd(self) -> str:
+    def get_cwd(self) -> str:
         """Current working directory, or user's home directory if the real cwd is unavailable."""
         home = os.path.expanduser("~")
 

@@ -508,7 +508,6 @@ class CoupledRectangleElement(object):
         self._rectItem.Signaller.signalHasResized.connect(self._updateTextWhenChanges)
         self._updateTextWhenChanges()
 
-    @pyqtSlot()
     def _updateTextWhenChanges(self, *args, **kwargs):
         """
             Do the actual job of displaying a new number when the region gets

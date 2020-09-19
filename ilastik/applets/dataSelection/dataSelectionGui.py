@@ -198,8 +198,7 @@ class DataSelectionGui(QWidget):
             opWorkflow.shell, "onSaveProjectActionTriggered"
         ), "This class uses the IlastikShell.onSaveProjectActionTriggered function.  Did you rename it?"
 
-    @property
-    def project_file(self) -> h5py.File:
+    def get_project_file(self) -> h5py.File:
         return self.topLevelOperator.ProjectFile.value
 
     def _initCentralUic(self):
@@ -601,9 +600,9 @@ class DataSelectionGui(QWidget):
         try:
             # FIXME: do this inside a Request
             self.parentApplet.busy = True
-            inner_path = stack_info.importAsLocalDataset(project_file=self.project_file)
+            inner_path = stack_info.importAsLocalDataset(project_file=self.get_project_file())
             internal_info = ProjectInternalDatasetInfo(
-                inner_path=inner_path, nickname=stack_info.nickname, project_file=self.project_file
+                inner_path=inner_path, nickname=stack_info.nickname, project_file=self.get_project_file()
             )
         finally:
             self.parentApplet.busy = False
