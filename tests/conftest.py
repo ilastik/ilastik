@@ -190,6 +190,8 @@ def run_gui_tests(tstcls, gui_test_bag):
     app.thread_router = ThreadRouter(app)
     tstcls.shell = launchShell(None, [], [])
 
+    QApplication.setAttribute(Qt.AA_DontUseNativeDialogs, True)
+
     platform_str = platform.platform().lower()
     if "ubuntu" in platform_str or "fedora" in platform_str:
         QApplication.setAttribute(Qt.AA_X11InitThreads, True)
