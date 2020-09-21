@@ -288,6 +288,9 @@ class ThresholdTwoLevelsGui(LayerViewerGui):
     def _onApplyButtonClicked(self):
         self._updateOperatorFromGui()
         self.updateAllLayers()
+        for layer in self.layerstack:
+            if "Final" in layer.name:
+                layer.visible = True
 
     def _onTabCurrentChanged(self):
         pass
@@ -338,7 +341,7 @@ class ThresholdTwoLevelsGui(LayerViewerGui):
             outputSrc = createDataSource(op.CachedOutput)
             outputLayer = ColortableLayer(outputSrc, ct)
             outputLayer.name = "Final output"
-            outputLayer.visible = True
+            outputLayer.visible = False
             outputLayer.opacity = 1.0
             outputLayer.colortableIsRandom = True
             outputLayer.setToolTip("Object Identities: Results of thresholding, connected components and size filter")
