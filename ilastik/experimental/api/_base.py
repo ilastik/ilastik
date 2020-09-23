@@ -18,6 +18,7 @@ def from_project_file(path) -> Pipeline:
         feature_matrix = project.features.as_matrix()
         classifer = project.classifier
         num_channels = project.data_info.num_channels
+        num_spatial_dims = len(project.data_info.spatial_axes)
 
     class _PipelineImpl(Pipeline):
         def __init__(self):
@@ -39,6 +40,13 @@ def from_project_file(path) -> Pipeline:
             num_channels_in_data = data.shape[data.axistags.index("c")]
             if num_channels_in_data != num_channels:
                 raise ValueError(f"Number of channels mismatch. Classifier trained for {num_channels} but input has {num_channels_in_data}")
+
+            num_spatial_in_data = sum(a.isSpatial() for a in data.axistags)
+            if num_spatial_in_data != num_spatial_dims:
+                raise ValueError(
+                    "Number of spatial dims doesn't match. "
+                    f"Classifier trained for {num_spatial_dims} but input has {num_spatial_in_data}"
+                )
 
             self._feature_sel_op.InputImage.setValue(data)
 

@@ -50,6 +50,19 @@ class TestIlastikApi:
         with pytest.raises(ValueError):
             prediction = pipeline.predict(data)
 
+    @pytest.mark.parametrize("input, proj", [
+        (TestData.DATA_1_CHANNEL_3D, TestData.PIXEL_CLASS_1_CHANNEL),
+        (TestData.DATA_1_CHANNEL, TestData.PIXEL_CLASS_3D),
+    ], indirect=["input"])
+    def test_project_wrong_dimensionality(self, test_data_lookup, input, proj):
+        project_path = test_data_lookup.find(proj)
+
+        data = input
+        pipeline = from_project_file(project_path)
+
+        with pytest.raises(ValueError):
+            prediction = pipeline.predict(data)
+
     @pytest.mark.parametrize("proj", [
         TestData.PIXEL_CLASS_NO_CLASSIFIER,
         TestData.PIXEL_CLASS_NO_DATA,
