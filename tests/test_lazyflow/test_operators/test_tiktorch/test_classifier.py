@@ -3,7 +3,7 @@ from unittest import mock
 from lazyflow.operators.tiktorch.classifier import ModelSession
 
 import pytest
-import inference_pb2
+from tiktorch.proto import inference_pb2
 
 
 @pytest.fixture
