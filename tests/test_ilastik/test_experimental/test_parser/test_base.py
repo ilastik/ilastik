@@ -13,11 +13,7 @@ from lazyflow.classifiers.sklearnLazyflowClassifier import SklearnLazyflowClassi
 
 class TestIlastikParser:
     @pytest.mark.parametrize(
-        "proj, expected_num_channels",
-        [
-            (TestData.PIXEL_CLASS_1_CHANNEL, 1),
-            (TestData.PIXEL_CLASS_3_CHANNEL, 3),
-        ],
+        "proj, expected_num_channels", [(TestData.PIXEL_CLASS_1_CHANNEL, 1), (TestData.PIXEL_CLASS_3_CHANNEL, 3),],
     )
     def test_parse_project_number_of_channels(self, test_data_lookup: ApiTestDataLookup, proj, expected_num_channels):
         project_path = test_data_lookup.find(proj)

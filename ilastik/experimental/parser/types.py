@@ -4,6 +4,7 @@ from typing import Any, List, Optional
 
 import numpy
 
+
 @dataclass(frozen=True)
 class FeatureMatrix:
     """
@@ -15,6 +16,7 @@ class FeatureMatrix:
         selections: Boolean matrix where rows are feature names and scales are columuns
             True value means feature is enabled
     """
+
     names: List[str]
     scales: List[float]
     selections: numpy.ndarray
@@ -56,6 +58,3 @@ class PixelClassificationProject(abc.ABC):
     @abc.abstractproperty
     def data_info(self) -> Optional[ProjectDataInfo]:
         ...
-
-
-

@@ -22,7 +22,6 @@ def from_project_file(path) -> Pipeline:
         axis_order = project.data_info.axis_order
         num_spatial_dims = len(project.data_info.spatial_axes)
 
-
     class _PipelineImpl(Pipeline):
         def __init__(self):
             graph = Graph()
@@ -44,7 +43,9 @@ def from_project_file(path) -> Pipeline:
             data = _make_vigra_with_cannel_axis(data)
             num_channels_in_data = data.shape[data.axistags.index("c")]
             if num_channels_in_data != num_channels:
-                raise ValueError(f"Number of channels mismatch. Classifier trained for {num_channels} but input has {num_channels_in_data}")
+                raise ValueError(
+                    f"Number of channels mismatch. Classifier trained for {num_channels} but input has {num_channels_in_data}"
+                )
 
             num_spatial_in_data = sum(a.isSpatial() for a in data.axistags)
             if num_spatial_in_data != num_spatial_dims:

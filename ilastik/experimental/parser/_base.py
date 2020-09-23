@@ -32,6 +32,7 @@ class IlastikProject:
 
 WORKFLOW_KEY = "workflowName"
 
+
 def _create_project_wrap(hdf5_file):
     type_ = hdf5_file[WORKFLOW_KEY][()]
     if type_ == PIXEL_CLASSIFICATION:
@@ -55,6 +56,7 @@ class _MatrixFeatureList(types.FeatureList):
             for col_idx, scale in enumerate(self.__scales):
                 if self.__sel_matrix[row_idx][col_idx]:
                     yield features.create_feature_by_name(name, int(scale * 10))
+
 
 class _Keys:
     INPUT_DATA = "Input Data"

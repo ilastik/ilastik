@@ -21,17 +21,22 @@ class _Feature:
 class Gaussian(_Feature):
     name = "GaussianSmoothing"
 
+
 class LaplacianOfGaussian(_Feature):
     name = "LaplacianOfGaussian"
+
 
 class StructureTensorEigenvalues(_Feature):
     name = "StructureTensorEigenvalues"
 
+
 class HessianOfGaussianEigenvalues(_Feature):
     name = "HessianOfGaussianEigenvalues"
 
+
 class GaussianGradientMagnitude(_Feature):
     name = "GaussianGradientMagnitude"
+
 
 class DifferenceOfGaussians(_Feature):
     name = "DifferenceOfGaussians"
@@ -54,8 +59,4 @@ def create_feature_by_name(name, scale):
     return type_(scale)
 
 
-DEFAULT_FEATURES = [
-    cls(scale)
-    for cls in _FEAUTURE_CLASSES.values()
-    for scale in _DEFAULT_SCALES
-]
+DEFAULT_FEATURES = [cls(scale) for cls in _FEAUTURE_CLASSES.values() for scale in _DEFAULT_SCALES]
