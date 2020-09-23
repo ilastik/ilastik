@@ -35,8 +35,7 @@ def from_project_file(path) -> Pipeline:
             self._predict_op.LabelsCount.setValue(classifer.label_count)
 
         def predict(self, data):
-            axes = _guess_axistags(data.shape)
-            data = _make_vigra_with_cannel_axis(data, axes)
+            data = _make_vigra_with_cannel_axis(data)
             num_channels_in_data = data.shape[data.axistags.index("c")]
             if num_channels_in_data != num_channels:
                 raise ValueError(f"Number of channels mismatch. Classifier trained for {num_channels} but input has {num_channels_in_data}")
@@ -81,7 +80,8 @@ def _guess_axistags(shape):
     return guessed_tags
 
 
-def _make_vigra_with_cannel_axis(data, axes):
+def _make_vigra_with_cannel_axis(data):
+    axes = _guess_axistags(data.shape)
     if "c" not in axes:
         result = data.reshape(*data.shape, 1)
         return vigra.taggedView(result, axes + "c")
