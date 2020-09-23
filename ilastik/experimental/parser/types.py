@@ -4,11 +4,20 @@ from typing import Any, List, Optional
 
 import numpy
 
-@dataclass
+@dataclass(frozen=True)
 class FeatureMatrix:
-    rows: List[str]
-    cols: List[int]
-    matrix: numpy.ndarray
+    """
+    Provides OpFeatureSelection compatible interface
+
+    Attributes:
+        names: List of feature ids
+        scales: List of feature scales
+        selections: Boolean matrix where rows are feature names and scales are columuns
+            True value means feature is enabled
+    """
+    names: List[str]
+    scales: List[float]
+    selections: numpy.ndarray
 
 
 class FeatureList(abc.ABC):

@@ -23,9 +23,9 @@ def from_project_file(path) -> Pipeline:
         def __init__(self):
             graph = Graph()
             self._feature_sel_op = OpFeatureSelection(graph=graph)
-            self._feature_sel_op.FeatureIds.setValue(feature_matrix.rows)
-            self._feature_sel_op.Scales.setValue(feature_matrix.cols)
-            self._feature_sel_op.SelectionMatrix.setValue(feature_matrix.matrix)
+            self._feature_sel_op.FeatureIds.setValue(feature_matrix.names)
+            self._feature_sel_op.Scales.setValue(feature_matrix.scales)
+            self._feature_sel_op.SelectionMatrix.setValue(feature_matrix.selections)
 
             self._predict_op = OpClassifierPredict(graph=graph)
             self._predict_op.Classifier.setValue(classifer.instance)

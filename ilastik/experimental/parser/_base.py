@@ -43,16 +43,16 @@ def _create_project_wrap(hdf5_file):
 class _MatrixFeatureList(types.FeatureList):
     def __init__(self, *, names: List[str], scales: List[int], sel_matrix: numpy.ndarray) -> None:
         # TODO: Validate size
-        self.__rows = names
-        self.__cols = scales
+        self.__names = names
+        self.__scales = scales
         self.__sel_matrix = sel_matrix
 
     def as_matrix(self):
-        return types.FeatureMatrix(self.__rows, self.__cols, self.__sel_matrix)
+        return types.FeatureMatrix(self.__names, self.__scales, self.__sel_matrix)
 
     def __iter__(self):
-        for row_idx, name in enumerate(self.__rows):
-            for col_idx, scale in enumerate(self.__cols):
+        for row_idx, name in enumerate(self.__names):
+            for col_idx, scale in enumerate(self.__scales):
                 if self.__sel_matrix[row_idx][col_idx]:
                     yield features.create_feature_by_name(name, int(scale * 10))
 
