@@ -46,7 +46,9 @@ class TestIlastikApi:
 
     @pytest.mark.parametrize(
         "input, proj, out",
-        [(TestData.DATA_1_CHANNEL, TestData.PIXEL_CLASS_1_CHANNEL, TestData.PIXEL_CLASS_1_CHANNEL_OUT),],
+        [
+            (TestData.DATA_1_CHANNEL, TestData.PIXEL_CLASS_1_CHANNEL, TestData.PIXEL_CLASS_1_CHANNEL_OUT),
+        ],
         indirect=["input"],
     )
     def test_predict_pretrained_with_axes_reordering(self, test_data_lookup: ApiTestDataLookup, input, proj, out):
@@ -93,7 +95,13 @@ class TestIlastikApi:
         with pytest.raises(ValueError):
             prediction = pipeline.predict(input)
 
-    @pytest.mark.parametrize("proj", [TestData.PIXEL_CLASS_NO_CLASSIFIER, TestData.PIXEL_CLASS_NO_DATA,])
+    @pytest.mark.parametrize(
+        "proj",
+        [
+            TestData.PIXEL_CLASS_NO_CLASSIFIER,
+            TestData.PIXEL_CLASS_NO_DATA,
+        ],
+    )
     def test_project_insufficient_data(self, test_data_lookup, proj):
         project_path = test_data_lookup.find(proj)
         with pytest.raises(ValueError):
