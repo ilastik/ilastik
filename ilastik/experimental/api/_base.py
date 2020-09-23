@@ -17,6 +17,7 @@ def from_project_file(path) -> Pipeline:
 
         feature_matrix = project.features.as_matrix()
         classifer = project.classifier
+        num_channels = project.data_info.num_channels
 
     class _PipelineImpl(Pipeline):
         def __init__(self):
@@ -36,17 +37,25 @@ def from_project_file(path) -> Pipeline:
             # TODO: Validate using project info
             axes = _guess_axistags(data.shape)
             data = _make_vigra_with_cannel_axis(data, axes)
+            num_channels_in_data = data.shape[data.axistags.index("c")]
+            if num_channels_in_data != num_channels:
+                raise ValueError(f"Number of channels mismatch. Classifier trained for {num_channels} but input has {num_channels_in_data}")
 
             self._feature_sel_op.InputImage.setValue(data)
 
-            return self._predict_op.PMaps.value[:,:,0]
+            return self._predict_op.PMaps.value[...]
 
     return _PipelineImpl()
 
 
 def _guess_axistags(shape):
     if len(shape) == 3:
-        return "zyx"
+        if shape[0] < 4:
+            return "cyx"
+        elif shape[-1] < 4:
+            return "yxc"
+        else:
+            return "zyx"
     elif len(shape) == 2:
         return "yx"
     else:
@@ -54,6 +63,9 @@ def _guess_axistags(shape):
 
 
 def _make_vigra_with_cannel_axis(data, axes):
-    assert "c" not in axes
-    result = data.reshape(*data.shape, 1)
-    return vigra.taggedView(result, axes + "c")
+    if "c" not in axes:
+        result = data.reshape(*data.shape, 1)
+        return vigra.taggedView(result, axes + "c")
+    else:
+        return vigra.taggedView(data, axes)
+
