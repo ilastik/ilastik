@@ -20,10 +20,10 @@ class TestIlastikApi:
         expected_prediction_path = test_data_lookup.find(out)
 
         data = imread(input_data_path)
-        some = from_project_file(project_path)
+        pipeline = from_project_file(project_path)
         expected_prediction = np.load(expected_prediction_path)
 
-        prediction = some.predict(data)
+        prediction = pipeline.predict(data)
         assert prediction.shape == expected_prediction.shape
         np.testing.assert_almost_equal(prediction, expected_prediction)
 
@@ -36,7 +36,16 @@ class TestIlastikApi:
         project_path = test_data_lookup.find(proj)
 
         data = imread(input_data_path)
-        some = from_project_file(project_path)
+        pipeline = from_project_file(project_path)
 
         with pytest.raises(ValueError):
-            prediction = some.predict(data)
+            prediction = pipeline.predict(data)
+
+    @pytest.mark.parametrize("proj", [
+        TestData.PIXEL_CLASS_NO_CLASSIFIER,
+        TestData.PIXEL_CLASS_NO_DATA,
+    ])
+    def test_project_insufficient_data(self, test_data_lookup, proj):
+        project_path = test_data_lookup.find(proj)
+        with pytest.raises(ValueError):
+            pipeline = from_project_file(project_path)

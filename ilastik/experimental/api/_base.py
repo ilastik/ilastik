@@ -34,7 +34,6 @@ def from_project_file(path) -> Pipeline:
             self._predict_op.LabelsCount.setValue(classifer.label_count)
 
         def predict(self, data):
-            # TODO: Validate using project info
             axes = _guess_axistags(data.shape)
             data = _make_vigra_with_cannel_axis(data, axes)
             num_channels_in_data = data.shape[data.axistags.index("c")]
@@ -68,4 +67,3 @@ def _make_vigra_with_cannel_axis(data, axes):
         return vigra.taggedView(result, axes + "c")
     else:
         return vigra.taggedView(data, axes)
-

@@ -15,6 +15,9 @@ class TestData(enum.Enum):
     PIXEL_CLASS_3_CHANNEL: str = "PixelClass3Channel.ilp"
     PIXEL_CLASS_3_CHANNEL_OUT: str = "PixelClass3Channel_Output.npy"
 
+    PIXEL_CLASS_NO_CLASSIFIER: str = "PixelClassNoClassifier.ilp"
+    PIXEL_CLASS_NO_DATA: str = "PixelClassNoData.ilp"
+
 
 class ApiTestDataLookup:
     def __init__(self, path_by_name):
