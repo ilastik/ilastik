@@ -3,6 +3,7 @@ import numpy
 
 from lazyflow.graph import Graph
 from lazyflow.operators.classifierOperators import OpClassifierPredict
+from lazyflow.operators import OpReorderAxes
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
 from ilastik.experimental import parser
 from .types import Pipeline
@@ -18,12 +19,17 @@ def from_project_file(path) -> Pipeline:
         feature_matrix = project.features.as_matrix()
         classifer = project.classifier
         num_channels = project.data_info.num_channels
+        axis_order = project.data_info.axis_order
         num_spatial_dims = len(project.data_info.spatial_axes)
+
 
     class _PipelineImpl(Pipeline):
         def __init__(self):
             graph = Graph()
+            self._reorder_op = OpReorderAxes(graph=graph, AxisOrder=axis_order)
+
             self._feature_sel_op = OpFeatureSelection(graph=graph)
+            self._feature_sel_op.InputImage.connect(self._reorder_op.Output)
             self._feature_sel_op.FeatureIds.setValue(feature_matrix.names)
             self._feature_sel_op.Scales.setValue(feature_matrix.scales)
             self._feature_sel_op.SelectionMatrix.setValue(feature_matrix.selections)
@@ -47,7 +53,7 @@ def from_project_file(path) -> Pipeline:
                     f"Classifier trained for {num_spatial_dims} but input has {num_spatial_in_data}"
                 )
 
-            self._feature_sel_op.InputImage.setValue(data)
+            self._reorder_op.Input.setValue(data)
 
             return self._predict_op.PMaps.value[...]
 

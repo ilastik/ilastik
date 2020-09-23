@@ -105,6 +105,7 @@ class _PixelClassProjectImpl(types.PixelClassificationProject):
 
             res = []
             spatial_axes = ""
+            axis_order = ""
             num_channels = 1
             for size, dim in zip(shape, tags_dict["axes"]):
                 if dim["key"] in "xyz":
@@ -112,7 +113,9 @@ class _PixelClassProjectImpl(types.PixelClassificationProject):
                 elif dim["key"] == "c":
                     num_channels = size
 
-            self.__project_data_info = types.ProjectDataInfo(spatial_axes, num_channels)
+                axis_order += dim["key"]
+
+            self.__project_data_info = types.ProjectDataInfo(spatial_axes, num_channels, axis_order)
 
         return self.__project_data_info
 

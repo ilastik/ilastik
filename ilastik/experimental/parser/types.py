@@ -41,6 +41,7 @@ class Classifier:
 class ProjectDataInfo:
     spatial_axes: str
     num_channels: int
+    axis_order: str
 
 
 class PixelClassificationProject(abc.ABC):
