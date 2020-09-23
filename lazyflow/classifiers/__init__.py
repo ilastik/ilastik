@@ -14,3 +14,4 @@ from .sklearnLazyflowClassifier import SklearnLazyflowClassifier, SklearnLazyflo
 
 # Testing
 from .vigraRfPixelwiseClassifier import VigraRfPixelwiseClassifier, VigraRfPixelwiseClassifierFactory
+from ._catboost import CatBoostClassifierFactory, CatBoostLazyflowClassifier
