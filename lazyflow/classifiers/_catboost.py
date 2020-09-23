@@ -27,7 +27,7 @@ class CatBoostClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
 
         assert X.ndim == 2
         assert len(X) == len(y)
-        classifier = catboost.CatBoostClassifier(*self._args, **self._kwargs)
+        classifier = catboost.CatBoostClassifier(*self._args, **self._kwargs, verbose=False, eval_metric="F1")
         logger.debug("Training new classifier: {}".format(type(classifier).__name__))
         classifier.fit(X, y)
 

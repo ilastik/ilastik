@@ -173,7 +173,7 @@ class ClassifierSelectionDlg(QDialog):
         classifiers[
             "Parallel Random Forest with Variable Importance (VIGRA)"
         ] = ParallelVigraRfLazyflowClassifierFactory(100, variable_importance_enabled=True)
-        classifiers["CatBoost"] = CatBoostClassifierFactory(iterations=10)
+        classifiers["CatBoost"] = CatBoostClassifierFactory(iterations=100)
         classifiers["(debug) Single-threaded Random Forest (VIGRA)"] = VigraRfLazyflowClassifierFactory(100)
         classifiers["(debug) Pixelwise Random Forest (VIGRA)"] = VigraRfPixelwiseClassifierFactory(100)
 
