@@ -47,18 +47,30 @@ def from_project_file(path) -> Pipeline:
     return _PipelineImpl()
 
 
+def _guess_channel_axis_idx(shape):
+    for idx, val in enumerate(shape):
+        if val < 4:
+            return idx
+    return None
+
+
 def _guess_axistags(shape):
-    if len(shape) == 3:
-        if shape[0] < 4:
-            return "cyx"
-        elif shape[-1] < 4:
-            return "yxc"
-        else:
-            return "zyx"
-    elif len(shape) == 2:
-        return "yx"
-    else:
+    if len(shape) > 5 or len(shape) < 2:
         raise NotImplementedError(f"Got shape {shape}")
+
+    ch_idx = _guess_channel_axis_idx(shape)
+    spatial = ["z", "y", "x"]
+
+    guessed_tags = ""
+
+    for idx, size in enumerate(shape):
+        if idx != ch_idx:
+            guessed_tags = spatial.pop() + guessed_tags
+
+    if ch_idx is not None:
+        guessed_tags = guessed_tags[:ch_idx] + "c" + guessed_tags[ch_idx:]
+
+    return guessed_tags
 
 
 def _make_vigra_with_cannel_axis(data, axes):

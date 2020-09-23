@@ -7,19 +7,28 @@ from ilastik.experimental.api import from_project_file
 
 from ..types import TestData, ApiTestDataLookup
 
-
 class TestIlastikApi:
+    @pytest.fixture
+    def input(self, request, test_data_lookup):
+        print(request, test_data_lookup)
+        input_data_path = test_data_lookup.find(request.param)
+
+        loader = imread
+        if input_data_path.endswith(".npy"):
+            loader = np.load
+        return loader(input_data_path)
+
     @pytest.mark.parametrize("input, proj, out", [
         (TestData.DATA_1_CHANNEL, TestData.PIXEL_CLASS_1_CHANNEL, TestData.PIXEL_CLASS_1_CHANNEL_OUT),
         (TestData.DATA_1_CHANNEL, TestData.PIXEL_CLASS_1_CHANNEL_SKLEARN, TestData.PIXEL_CLASS_1_CHANNEL_SKLEARN_OUT),
         (TestData.DATA_3_CHANNEL, TestData.PIXEL_CLASS_3_CHANNEL, TestData.PIXEL_CLASS_3_CHANNEL_OUT),
-    ])
+        (TestData.DATA_1_CHANNEL_3D, TestData.PIXEL_CLASS_3D, TestData.PIXEL_CLASS_3D_OUT),
+    ], indirect=["input"])
     def test_predict_pretrained(self, test_data_lookup: ApiTestDataLookup, input, proj, out):
-        input_data_path = test_data_lookup.find(input)
         project_path = test_data_lookup.find(proj)
         expected_prediction_path = test_data_lookup.find(out)
 
-        data = imread(input_data_path)
+        data = input
         pipeline = from_project_file(project_path)
         expected_prediction = np.load(expected_prediction_path)
 
