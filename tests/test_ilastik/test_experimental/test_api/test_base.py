@@ -28,27 +28,24 @@ class TestIlastikApi:
         project_path = test_data_lookup.find(proj)
         expected_prediction_path = test_data_lookup.find(out)
 
-        data = input
         pipeline = from_project_file(project_path)
         expected_prediction = np.load(expected_prediction_path)
 
-        prediction = pipeline.predict(data)
+        prediction = pipeline.predict(input)
         assert prediction.shape == expected_prediction.shape
         np.testing.assert_almost_equal(prediction, expected_prediction)
 
     @pytest.mark.parametrize("input, proj", [
         (TestData.DATA_3_CHANNEL, TestData.PIXEL_CLASS_1_CHANNEL),
         (TestData.DATA_1_CHANNEL, TestData.PIXEL_CLASS_3_CHANNEL),
-    ])
+    ], indirect=["input"])
     def test_project_wrong_num_channels(self, test_data_lookup, input, proj):
-        input_data_path = test_data_lookup.find(input)
         project_path = test_data_lookup.find(proj)
 
-        data = imread(input_data_path)
         pipeline = from_project_file(project_path)
 
         with pytest.raises(ValueError):
-            prediction = pipeline.predict(data)
+            prediction = pipeline.predict(input)
 
     @pytest.mark.parametrize("input, proj", [
         (TestData.DATA_1_CHANNEL_3D, TestData.PIXEL_CLASS_1_CHANNEL),
@@ -57,11 +54,10 @@ class TestIlastikApi:
     def test_project_wrong_dimensionality(self, test_data_lookup, input, proj):
         project_path = test_data_lookup.find(proj)
 
-        data = input
         pipeline = from_project_file(project_path)
 
         with pytest.raises(ValueError):
-            prediction = pipeline.predict(data)
+            prediction = pipeline.predict(input)
 
     @pytest.mark.parametrize("proj", [
         TestData.PIXEL_CLASS_NO_CLASSIFIER,
