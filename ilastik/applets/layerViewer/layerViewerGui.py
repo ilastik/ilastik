@@ -32,7 +32,7 @@ traceLogger = logging.getLogger("TRACE." + __name__)
 import numpy
 
 # PyQt
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5 import uic
@@ -93,6 +93,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
     Provides: Central widget (viewer), View Menu, and Layer controls
     Provides an EMPTY applet drawer widget.  Subclasses should replace it with their own applet drawer.
     """
+    layersUpdated = pyqtSignal()
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
@@ -516,6 +517,8 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
 
         if len(self.layerstack) > 0:
             self.centralWidget().setEnabled(True)
+
+        self.layersUpdated.emit()
 
     def determineDatashape(self):
         newDataShape = None

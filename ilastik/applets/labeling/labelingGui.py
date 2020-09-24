@@ -207,6 +207,7 @@ class LabelingGui(LayerViewerGui):
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
         self._changeInteractionMode(Tool.Navigation)
+        self.layersUpdated.connect(self._handleLayersUpdated)
 
     def _initLabelUic(self, drawerUiPath):
         _labelControlUi = uic.loadUi(drawerUiPath)
@@ -934,6 +935,11 @@ class LabelingGui(LayerViewerGui):
 
             return labellayer, labelsrc
 
+    def _handleLayersUpdated(self):
+        labels_layer = self.getLayerByName("Labels")
+        if labels_layer:
+            self.editor.setLabelSink(labels_layer.data)
+
     def setupLayers(self):
         """
         Sets up the label layer for display by our base class (LayerViewerGui).
@@ -946,9 +952,6 @@ class LabelingGui(LayerViewerGui):
         labellayer, labelsrc = self.createLabelLayer()
         if labellayer is not None:
             layers.append(labellayer)
-
-            # Tell the editor where to draw label data
-            self.editor.setLabelSink(labelsrc)
 
         # Side effect 1: We want to guarantee that the label list
         #  is up-to-date before our subclass adds his layers
