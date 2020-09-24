@@ -140,6 +140,8 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
 
     _init_threading_logging_monkeypatch()
 
+    _init_preferences()
+
     # Extra initialization functions.
     # These are called during app startup, but before the shell is created.
     preinit_funcs = []
@@ -280,6 +282,12 @@ def _init_threading_logging_monkeypatch():
             thread_start_logger.debug(f"Started thread: id={self.ident:x}, name={self.name}")
 
         threading.Thread.start = logged_start
+
+
+def _init_preferences():
+    from volumina.utility.preferences import migrate
+
+    migrate()
 
 
 def _import_opengm():
