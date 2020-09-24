@@ -93,6 +93,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
     Provides: Central widget (viewer), View Menu, and Layer controls
     Provides an EMPTY applet drawer widget.  Subclasses should replace it with their own applet drawer.
     """
+
     layersUpdated = pyqtSignal()
 
     ###########################################
@@ -352,9 +353,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
 
     @classmethod
     def _create_alpha_modulated_layer_from_slot(cls, slot):
-        layer = AlphaModulatedLayer(
-            createDataSource(slot), tintColor=QColor(Qt.cyan), normalize=(0.0, 1.0)
-        )
+        layer = AlphaModulatedLayer(createDataSource(slot), tintColor=QColor(Qt.cyan), normalize=(0.0, 1.0))
         return layer
 
     @classmethod

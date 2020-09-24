@@ -119,7 +119,7 @@ class LabelingGui(LayerViewerGui):
 
     def selectLabel(self, labelIndex):
         """Programmatically select the given labelIndex, which start from 0.
-           Equivalent to clicking on the (labelIndex+1)'th position in the label widget."""
+        Equivalent to clicking on the (labelIndex+1)'th position in the label widget."""
         self._labelControlUi.labelListModel.select(labelIndex)
 
     class LabelingSlots(object):

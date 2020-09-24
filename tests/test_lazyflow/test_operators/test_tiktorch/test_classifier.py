@@ -8,11 +8,13 @@ from tiktorch.proto import inference_pb2
 
 @pytest.fixture
 def pb_session():
-    return inference_pb2.ModelSession(halo=[
-        inference_pb2.TensorDim(name="x", size=256),
-        inference_pb2.TensorDim(name="y", size=128),
-        inference_pb2.TensorDim(name="c", size=1),
-    ])
+    return inference_pb2.ModelSession(
+        halo=[
+            inference_pb2.TensorDim(name="x", size=256),
+            inference_pb2.TensorDim(name="y", size=128),
+            inference_pb2.TensorDim(name="c", size=1),
+        ]
+    )
 
 
 def test_get_halo_returns_values_specified_by_tags(pb_session):
