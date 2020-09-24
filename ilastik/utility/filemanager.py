@@ -22,18 +22,15 @@ def open(path: Union[str, bytes, os.PathLike]):
     if cmd is None:
         raise MissingProgramError(cmd)
 
-    _run(cmd, path)
+    args = (cmd,)
+    exitcode = subprocess.Popen(
+        args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True, start_new_session=True
+    ).wait()
+    if exitcode:
+        raise subprocess.CalledProcessError(exitcode, args)
 
 
 class MissingProgramError(RuntimeError):
     def __init__(self, name):
         super().__init__(f"Program {name} is not installed")
         self.name = name
-
-
-def _run(*args):
-    exitcode = subprocess.Popen(
-        args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True, start_new_session=True
-    ).wait()
-    if exitcode:
-        raise subprocess.CalledProcessError(exitcode, args)
