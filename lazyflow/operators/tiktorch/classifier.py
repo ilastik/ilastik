@@ -38,8 +38,7 @@ from lazyflow.roi import roiToSlice
 
 from tiktorch.launcher import LocalServerLauncher, RemoteSSHServerLauncher, SSHCred, ConnConf
 from tiktorch import converters
-import inference_pb2
-import inference_pb2_grpc
+from tiktorch.proto import inference_pb2, inference_pb2_grpc
 
 from vigra import AxisTags
 
