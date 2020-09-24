@@ -20,7 +20,8 @@ from lazyflow.slot import InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
 from lazyflow.metaDict import MetaDict
 from lazyflow.request import Request, RequestPool
-from lazyflow.operators import OpBlockedArrayCache, OpReorderAxes
+from .opReorderAxes import OpReorderAxes
+from .opBlockedArrayCache import OpBlockedArrayCache
 from .opLazyConnectedComponents import OpLazyConnectedComponents
 from future.utils import with_metaclass
 
