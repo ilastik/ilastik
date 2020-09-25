@@ -42,7 +42,7 @@ class TestIlastikApi:
 
         prediction = pipeline.predict(input)
         assert prediction.shape == expected_prediction.shape
-        np.testing.assert_almost_equal(prediction, expected_prediction)
+        np.testing.assert_array_almost_equal_nulp(prediction, expected_prediction)
 
     @pytest.mark.parametrize(
         "input, proj, out",
@@ -61,7 +61,7 @@ class TestIlastikApi:
         reshaped_input = input.reshape(1, *input.shape)
         prediction = pipeline.predict(reshaped_input)
         assert prediction.shape == expected_prediction.shape
-        np.testing.assert_almost_equal(prediction, expected_prediction)
+        np.testing.assert_array_almost_equal_nulp(prediction, expected_prediction)
 
     @pytest.mark.parametrize(
         "input, proj",
@@ -77,7 +77,7 @@ class TestIlastikApi:
         pipeline = from_project_file(project_path)
 
         with pytest.raises(ValueError):
-            prediction = pipeline.predict(input)
+            pipeline.predict(input)
 
     @pytest.mark.parametrize(
         "input, proj",
@@ -93,7 +93,7 @@ class TestIlastikApi:
         pipeline = from_project_file(project_path)
 
         with pytest.raises(ValueError):
-            prediction = pipeline.predict(input)
+            pipeline.predict(input)
 
     @pytest.mark.parametrize(
         "proj",
@@ -105,4 +105,4 @@ class TestIlastikApi:
     def test_project_insufficient_data(self, test_data_lookup, proj):
         project_path = test_data_lookup.find(proj)
         with pytest.raises(ValueError):
-            pipeline = from_project_file(project_path)
+            from_project_file(project_path)
