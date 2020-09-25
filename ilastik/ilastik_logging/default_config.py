@@ -29,7 +29,7 @@ import appdirs
 from . import loggingHelpers
 from ilastik.config import cfg as ilastik_config
 
-DEFAULT_LOGFILE_PATH = os.path.join(appdirs.user_log_dir(appname="ilastik"), "log.txt")
+DEFAULT_LOGFILE_PATH = os.path.join(appdirs.user_log_dir(appname="ilastik", appauthor=False), "log.txt")
 os.makedirs(os.path.dirname(DEFAULT_LOGFILE_PATH), exist_ok=True)
 
 

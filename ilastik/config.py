@@ -18,11 +18,12 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from future import standard_library
 
-standard_library.install_aliases()
 import configparser
 import os
+import shutil
+
+import appdirs
 
 """
 ilastik will read settings from ~/.ilastikrc
@@ -78,7 +79,8 @@ filename: in
 
 cfg = configparser.SafeConfigParser()
 
-CONFIG_PATH = os.path.expanduser("~/.ilastikrc")
+CONFIG_PATH = os.path.join(appdirs.user_config_dir(appname="ilastik", appauthor=False), "ilastik.ini")
+
 
 def init_ilastik_config(userConfig=None):
     global cfg
@@ -86,6 +88,12 @@ def init_ilastik_config(userConfig=None):
 
     if userConfig is not None and not os.path.exists(userConfig):
         raise Exception("ilastik config file does not exist: {}".format(userConfig))
+
+    # Move default config to the new location.
+    oldConfigPath = os.path.expanduser("~/.ilastikrc")
+    if userConfig is None and os.path.exists(oldConfigPath) and not os.path.exists(CONFIG_PATH):
+        os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
+        shutil.move(oldConfigPath, CONFIG_PATH)
 
     if userConfig is None:
         userConfig = os.path.expanduser(CONFIG_PATH)
