@@ -1,5 +1,6 @@
 from builtins import range
 import numpy as np
+import pytest
 import vigra
 
 import unittest
@@ -12,13 +13,13 @@ from lazyflow.operator import Operator
 from lazyflow.slot import InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
 from lazyflow.utility.testing import assertEquivalentLabeling
-from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 
 from numpy.testing import assert_array_equal
 
 from lazyflow.operators.opLabelVolume import haveBlocked
 
 
+@pytest.mark.usefixtures("cacheMemoryManager")
 class TestVigra(unittest.TestCase):
     def setup_method(self, method):
         self.method = np.asarray(["vigra"], dtype=np.object)
@@ -281,9 +282,9 @@ class TestVigra(unittest.TestCase):
                 else:
                     assertEquivalentLabeling(vol[..., c, t], out.squeeze())
 
-    def testCleanup(self):
+    def testCleanup(self, cacheMemoryManager):
         try:
-            CacheMemoryManager().disable()
+            cacheMemoryManager.disable()
 
             sampleData = np.random.randint(0, 256, size=(50, 30, 10))
             sampleData = sampleData.astype(np.uint8)
@@ -309,7 +310,7 @@ class TestVigra(unittest.TestCase):
 
             assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
         finally:
-            CacheMemoryManager().enable()
+            cacheMemoryManager.enable()
 
 
 if haveBlocked():
