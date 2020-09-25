@@ -1,3 +1,4 @@
+import sys
 import subprocess
 
 import pytest
@@ -22,7 +23,7 @@ class TestIlastikApi:
         def _run_headless(proj, input):
             out_path = str(tmpdir / "out.npy")
             args = [
-                "python",
+                sys.executable,
                 ilastik_py,
                 "--headless",
                 "--project",
@@ -33,7 +34,7 @@ class TestIlastikApi:
                 "--output_filename_format",
                 out_path,
             ]
-            subprocess.check_call(" ".join(args))
+            subprocess.check_call(args)
             return np.load(out_path)
 
         return _run_headless
