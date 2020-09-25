@@ -133,13 +133,17 @@ class OpPixelFeaturesPresmoothed(Operator):
         dimCol = len(self.scales)
         dimRow = len(self.inputs["FeatureIds"].value)
 
-        assert dimRow == self.matrix.shape[0], (
-            "Please check the matrix or the scales they are not the same (scales = %r, matrix.shape = %r)"
-            % (self.scales, self.matrix.shape)
+        assert (
+            dimRow == self.matrix.shape[0]
+        ), "Please check the matrix or the scales they are not the same (scales = %r, matrix.shape = %r)" % (
+            self.scales,
+            self.matrix.shape,
         )
-        assert dimCol == self.matrix.shape[1], (
-            "Please check the matrix or the scales they are not the same (scales = %r, matrix.shape = %r)"
-            % (self.scales, self.matrix.shape)
+        assert (
+            dimCol == self.matrix.shape[1]
+        ), "Please check the matrix or the scales they are not the same (scales = %r, matrix.shape = %r)" % (
+            self.scales,
+            self.matrix.shape,
         )
 
         featureNameArray = []
@@ -1169,7 +1173,8 @@ import h5py
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2
-from lazyflow.operators import OpReorderAxes, OperatorWrapper
+from lazyflow.operators import OpReorderAxes
+from lazyflow.operatorWrapper import OperatorWrapper
 
 from ilastik.applets.base.applet import DatasetConstraintError
 

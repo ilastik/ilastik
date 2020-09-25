@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -21,70 +19,74 @@ from __future__ import absolute_import
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-import traceback, os, sys
-import logging
-
-logger = logging.getLogger(__name__)
-
-import lazyflow
-
-from lazyflow.graph import Operator
-from lazyflow.utility.helpers import itersubclasses
-
-from . import generic
-from . import filterOperators
-from . import classifierOperators
-from . import valueProviders
-from . import operators
-
-ops = itersubclasses(Operator)
-logger.debug("Loading default Operators...")
-loaded = ""
-for i, o in enumerate(ops):
-    loaded += o.__name__ + " "
-    globals()[o.__name__] = o
-loaded += os.linesep
-logger.debug(loaded)
-
-from .opSimpleStacker import OpSimpleStacker
+from . import classifierOperators, filterOperators, generic, operators, valueProviders
+from .classifierOperators import (
+    OpBaseClassifierPredict,
+    OpClassifierPredict,
+    OpPixelwiseClassifierPredict,
+    OpTrainClassifierBlocked,
+    OpTrainClassifierFromFeatureVectors,
+    OpTrainPixelwiseClassifierBlocked,
+    OpTrainVectorwiseClassifierBlocked,
+    OpVectorwiseClassifierPredict,
+)
+from .filterOperators import (
+    OpBaseFilter,
+    OpDifferenceOfGaussians,
+    OpGaussianGradientMagnitude,
+    OpGaussianSmoothing,
+    OpHessianOfGaussian,
+    OpHessianOfGaussianEigenvalues,
+    OpHessianOfGaussianEigenvaluesFirst,
+    OpLaplacianOfGaussian,
+    OpStructureTensorEigenvalues,
+)
+from .generic import (
+    OpConvertDtype,
+    OpDtypeView,
+    OpMaxChannelIndicatorOperator,
+    OpMultiArrayMerger,
+    OpMultiArraySlicer2,
+    OpMultiArrayStacker,
+    OpMultiInputConcatenater,
+    OpPixelOperator,
+    OpSelectSubslot,
+    OpSingleChannelSelector,
+    OpSubRegion,
+    OpTransposeSlots,
+    OpWrapSlot,
+)
+from .opArrayPiper import OpArrayPiper
 from .opBlockedArrayCache import OpBlockedArrayCache
-from .opVigraWatershed import OpVigraWatershed
-from .opVigraLabelVolume import OpVigraLabelVolume
-from .opFilterLabels import OpFilterLabels
-from .opObjectFeatures import OpObjectFeatures
+from .opCacheFixer import OpCacheFixer
 from .opCompressedCache import OpCompressedCache
 from .opCompressedUserLabelArray import OpCompressedUserLabelArray
-from .opLabelImage import OpLabelImage
+from .opConcatenateFeatureMatrices import OpConcatenateFeatureMatrices
+from .opFeatureMatrixCache import OpFeatureMatrixCache
+from .opFilterLabels import OpFilterLabels
 from .opInterpMissingData import OpInterpMissingData
-from .opReorderAxes import OpReorderAxes
+from .opLabelImage import OpLabelImage
 from .opLabelVolume import OpLabelVolume
-from .opRelabelConsecutive import OpRelabelConsecutive
+from .opObjectFeatures import OpObjectFeatures
 from .opPixelFeaturesPresmoothed import OpPixelFeaturesPresmoothed
-
-ops = list(itersubclasses(Operator))
-"""
-dirs = lazyflow.graph.CONFIG.get("Operators","directories", lazyflow.graph.CONFIG_DIR + "operators")
-dirs = dirs.split(",")
-for d in dirs:
-    print "Loading Operators from ", d,"..."
-    d = os.path.expanduser(d.strip())
-    sys.path.append(d)
-    files = os.listdir(d)
-    for f in files:
-        if os.path.isfile(d + "/" + f) and f[-3:] == ".py":
-            try:
-                print "  Processing file", f
-                module = __import__(f[:-2])
-            except Exception, e:
-                traceback.print_exc(file=sys.stdout)
-                pass
-
-    ops2 = list(itersubclasses(Operator))
-
-    newOps = list(set(list(ops2)).difference(set(list(ops))))
-
-    for o in newOps:
-        print "    Adding", o.__name__
-        globals()[o.__name__] = o
-    """
-# sys.stdout.write(os.linesep)
+from .opRelabelConsecutive import OpRelabelConsecutive
+from .opReorderAxes import OpReorderAxes
+from .opSimpleBlockedArrayCache import OpSimpleBlockedArrayCache
+from .opSimpleStacker import OpSimpleStacker
+from .opSlicedBlockedArrayCache import OpSlicedBlockedArrayCache
+from .opUnblockedArrayCache import OpUnblockedArrayCache
+from .opVigraLabelVolume import OpVigraLabelVolume
+from .opVigraWatershed import OpVigraWatershed
+from .valueProviders import (
+    ListToMultiOperator,
+    OpAttributeSelector,
+    OpDummyData,
+    OpMetadataInjector,
+    OpMetadataMerge,
+    OpMetadataSelector,
+    OpOutputProvider,
+    OpPrecomputedInput,
+    OpValueCache,
+    OpZeroDefault,
+    OpZeroSource,
+)

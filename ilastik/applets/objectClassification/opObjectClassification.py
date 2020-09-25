@@ -32,7 +32,8 @@ from functools import partial
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
-from lazyflow.operators import OpValueCache, OpSlicedBlockedArrayCache, OperatorWrapper, OpMultiArrayStacker
+from lazyflow.operators import OpValueCache, OpSlicedBlockedArrayCache, OpMultiArrayStacker
+from lazyflow.operatorWrapper import OperatorWrapper
 from lazyflow.request import Request, RequestPool, RequestLock
 
 from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory, ParallelVigraRfLazyflowClassifier

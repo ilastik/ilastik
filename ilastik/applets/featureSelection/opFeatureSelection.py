@@ -28,7 +28,8 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpSlicedBlockedArrayCache
 from lazyflow.operators import OpPixelFeaturesPresmoothed
-from lazyflow.operators import OpReorderAxes, OperatorWrapper
+from lazyflow.operators import OpReorderAxes
+from lazyflow.operatorWrapper import OperatorWrapper
 
 from ilastik.applets.base.applet import DatasetConstraintError
 

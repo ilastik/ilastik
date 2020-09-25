@@ -38,8 +38,8 @@ import itertools
 
 from lazyflow.operator import Operator, InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
-from lazyflow.operators import OpReorderAxes
 from lazyflow.operators.opCache import ObservableCache
+from .opReorderAxes import OpReorderAxes
 
 # the lazyflow lock seems to have deadlock issues sometimes
 Lock = HardLock
