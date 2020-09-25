@@ -936,21 +936,17 @@ class IlastikShell(QMainWindow):
             mgrDlg = ShortcutManagerDlg(self)
 
         def openConfigFolder():
-            from ilastik.utility import filemanager
             from volumina.utility import preferences
 
             path = preferences.get_path().parent
-            msg = None
 
             try:
-                filemanager.open(path)
-            except filemanager.MissingProgramError as e:
-                msg = f"<p>Program <tt>{e.name}</tt> is not installed</p>"
+                QDesktopServices.openUrl(QUrl(path.absolute().as_uri()))
             except Exception as e:
-                msg = f"<p>Failed to open the default file manager:<br><tt>{e}</tt></p>"
-
-            if msg:
-                msg += f"<p>Open the following config folder manually:<br><tt>{path}</tt></p>"
+                msg = (
+                    f"<p>Failed to open the default file manager:<br><tt>{e}</tt></p>"
+                    f"<p>Open the following config folder manually:<br><tt>{path}</tt></p>"
+                )
                 QMessageBox.critical(self, "Config Folder Error", msg)
 
         menu.addAction("&Keyboard Shortcuts").triggered.connect(editShortcuts)
