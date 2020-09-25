@@ -3,65 +3,83 @@ import pytest
 import numpy as np
 from imageio import imread
 
+from ilastik import app
 from ilastik.experimental.api import from_project_file
 
 from ..types import TestData, ApiTestDataLookup
 
 
+def _load_as_numpy(path):
+    loader = imread
+    if path.endswith(".npy"):
+        loader = np.load
+    return loader(path)
+
+
 class TestIlastikApi:
     @pytest.fixture
-    def input(self, request, test_data_lookup):
-        print(request, test_data_lookup)
-        input_data_path = test_data_lookup.find(request.param)
+    def run_headless(self, tmpdir):
+        def _run_headless(proj, input):
+            out_path = str(tmpdir / "out.npy")
+            parsed_args, workflow_cmdline_args = app.parse_known_args(
+                [
+                    "--headless",
+                    "--project",
+                    proj,
+                    input,
+                    "--output_format",
+                    "numpy",
+                    "--output_filename_format",
+                    out_path,
+                ]
+            )
 
-        loader = imread
-        if input_data_path.endswith(".npy"):
-            loader = np.load
-        return loader(input_data_path)
+            shell = app.main(parsed_args, workflow_cmdline_args)
+            shell.closeCurrentProject()
+            return np.load(out_path)
+
+        return _run_headless
 
     @pytest.mark.parametrize(
-        "input, proj, out",
+        "input, proj",
         [
-            (TestData.DATA_1_CHANNEL, TestData.PIXEL_CLASS_1_CHANNEL, TestData.PIXEL_CLASS_1_CHANNEL_OUT),
-            (
-                TestData.DATA_1_CHANNEL,
-                TestData.PIXEL_CLASS_1_CHANNEL_SKLEARN,
-                TestData.PIXEL_CLASS_1_CHANNEL_SKLEARN_OUT,
-            ),
-            (TestData.DATA_3_CHANNEL, TestData.PIXEL_CLASS_3_CHANNEL, TestData.PIXEL_CLASS_3_CHANNEL_OUT),
-            (TestData.DATA_1_CHANNEL_3D, TestData.PIXEL_CLASS_3D, TestData.PIXEL_CLASS_3D_OUT),
+            (TestData.DATA_1_CHANNEL, TestData.PIXEL_CLASS_1_CHANNEL),
+            (TestData.DATA_1_CHANNEL, TestData.PIXEL_CLASS_1_CHANNEL_SKLEARN),
+            (TestData.DATA_3_CHANNEL, TestData.PIXEL_CLASS_3_CHANNEL),
+            (TestData.DATA_1_CHANNEL_3D, TestData.PIXEL_CLASS_3D),
         ],
-        indirect=["input"],
     )
-    def test_predict_pretrained(self, test_data_lookup: ApiTestDataLookup, input, proj, out):
+    def test_predict_pretrained(self, test_data_lookup: ApiTestDataLookup, input, proj, run_headless):
         project_path = test_data_lookup.find(proj)
-        expected_prediction_path = test_data_lookup.find(out)
+        input_path = test_data_lookup.find(input)
 
+        expected_prediction = run_headless(project_path, input_path)
         pipeline = from_project_file(project_path)
-        expected_prediction = np.load(expected_prediction_path)
 
-        prediction = pipeline.predict(input)
+        prediction = pipeline.predict(_load_as_numpy(input_path))
         assert prediction.shape == expected_prediction.shape
-        np.testing.assert_array_almost_equal_nulp(prediction, expected_prediction)
+        np.testing.assert_array_almost_equal(prediction, expected_prediction)
 
     @pytest.mark.parametrize(
-        "input, proj, out",
+        "input, proj",
         [
-            (TestData.DATA_1_CHANNEL, TestData.PIXEL_CLASS_1_CHANNEL, TestData.PIXEL_CLASS_1_CHANNEL_OUT),
+            (TestData.DATA_1_CHANNEL, TestData.PIXEL_CLASS_1_CHANNEL),
         ],
-        indirect=["input"],
     )
-    def test_predict_pretrained_with_axes_reordering(self, test_data_lookup: ApiTestDataLookup, input, proj, out):
+    def test_predict_pretrained_with_axes_reordering(
+        self, test_data_lookup: ApiTestDataLookup, input, proj, run_headless
+    ):
         project_path = test_data_lookup.find(proj)
-        expected_prediction_path = test_data_lookup.find(out)
+        input_path = test_data_lookup.find(input)
 
         pipeline = from_project_file(project_path)
-        expected_prediction = np.load(expected_prediction_path)
+        expected_prediction = run_headless(project_path, input_path)
 
-        reshaped_input = input.reshape(1, *input.shape)
+        input_data = _load_as_numpy(input_path)
+        reshaped_input = input_data.reshape(1, *input_data.shape)
         prediction = pipeline.predict(reshaped_input)
         assert prediction.shape == expected_prediction.shape
-        np.testing.assert_array_almost_equal_nulp(prediction, expected_prediction)
+        np.testing.assert_array_almost_equal(prediction, expected_prediction, decimal=1)
 
     @pytest.mark.parametrize(
         "input, proj",
@@ -69,15 +87,15 @@ class TestIlastikApi:
             (TestData.DATA_3_CHANNEL, TestData.PIXEL_CLASS_1_CHANNEL),
             (TestData.DATA_1_CHANNEL, TestData.PIXEL_CLASS_3_CHANNEL),
         ],
-        indirect=["input"],
     )
     def test_project_wrong_num_channels(self, test_data_lookup, input, proj):
         project_path = test_data_lookup.find(proj)
+        input_path = test_data_lookup.find(input)
 
         pipeline = from_project_file(project_path)
 
         with pytest.raises(ValueError):
-            pipeline.predict(input)
+            pipeline.predict(_load_as_numpy(input_path))
 
     @pytest.mark.parametrize(
         "input, proj",
@@ -85,15 +103,15 @@ class TestIlastikApi:
             (TestData.DATA_1_CHANNEL_3D, TestData.PIXEL_CLASS_1_CHANNEL),
             (TestData.DATA_1_CHANNEL, TestData.PIXEL_CLASS_3D),
         ],
-        indirect=["input"],
     )
     def test_project_wrong_dimensionality(self, test_data_lookup, input, proj):
         project_path = test_data_lookup.find(proj)
+        input_path = test_data_lookup.find(input)
 
         pipeline = from_project_file(project_path)
 
         with pytest.raises(ValueError):
-            pipeline.predict(input)
+            pipeline.predict(_load_as_numpy(input_path))
 
     @pytest.mark.parametrize(
         "proj",
