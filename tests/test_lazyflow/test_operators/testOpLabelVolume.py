@@ -20,7 +20,7 @@ from lazyflow.operators.opLabelVolume import haveBlocked
 
 
 @pytest.mark.usefixtures("cacheMemoryManager")
-class TestVigra(unittest.TestCase):
+class TestVigra:
     def setup_method(self, method):
         self.method = np.asarray(["vigra"], dtype=np.object)
 
@@ -211,7 +211,7 @@ class TestVigra(unittest.TestCase):
         opCheck.willBeDirty(1, 1)
 
         roi = SubRegion(op.Input, start=(1, 1, 0, 0, 0), stop=(2, 2, 200, 100, 10))
-        with self.assertRaises(PropagateDirtyCalled):
+        with pytest.raises(PropagateDirtyCalled):
             op.Input.setDirty(roi)
 
         opCheck.Input.disconnect()
@@ -221,7 +221,7 @@ class TestVigra(unittest.TestCase):
         out = op.Output[...].wait()
 
         roi = SubRegion(op.Input, start=(1, 1, 0, 0, 0), stop=(2, 2, 200, 100, 10))
-        with self.assertRaises(PropagateDirtyCalled):
+        with pytest.raises(PropagateDirtyCalled):
             op.Input.setDirty(roi)
 
     def testUnsupported(self):
@@ -234,7 +234,7 @@ class TestVigra(unittest.TestCase):
 
         op = OpLabelVolume(graph=g)
         op.Method.setValue(self.method)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             op.Input.setValue(vol)
 
     def testBackground(self):
@@ -343,7 +343,7 @@ class TestLazy(TestVigra):
 
     # setting particular regions dirty is currently not supported by lazy
     # connected components
-    @unittest.expectedFailure
+    @pytest.mark.xfail
     def testSetDirty(self):
         super(TestLazy, self).testSetDirty()
 

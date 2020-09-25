@@ -54,7 +54,7 @@ make_key = KeyMaker()
 
 
 @pytest.mark.usefixtures("cacheMemoryManager")
-class TestOpBlockedArrayCache(unittest.TestCase):
+class TestOpBlockedArrayCache:
     def setup_method(self, method):
         self.dataShape = (1, 100, 100, 10, 1)
         self.data = numpy.random.randint(0, 256, size=self.dataShape)
