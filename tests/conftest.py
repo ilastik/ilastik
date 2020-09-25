@@ -24,10 +24,12 @@ from _pytest.main import pytest_runtestloop as _pytest_runtestloop
 
 import ilastik.config
 
+import lazyflow.operators
 from ilastik.utility.gui.threadRouter import ThreadRouter
 from ilastik.utility.itertools import pairwise
 from ilastik.shell.gui.startShellGui import launchShell
 from lazyflow.graph import Graph
+from lazyflow.operators.cacheMemoryManager import _CacheMemoryManager
 
 # Every function starting with pytest_ in this module is a pytest hook
 # that modifies specific behavior of test life cycle
@@ -318,3 +320,10 @@ def empty_project_file(tmp_path) -> h5py.File:
 @pytest.fixture
 def graph():
     return Graph()
+
+
+@pytest.fixture
+def cacheMemoryManager(monkeypatch):
+    mem_manager = _CacheMemoryManager()
+    monkeypatch.setattr(lazyflow.operators.cacheMemoryManager, "_cache_memory_manager", mem_manager)
+    return mem_manager
