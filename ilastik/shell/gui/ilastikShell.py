@@ -21,6 +21,7 @@
 import re
 import os
 import time
+import pathlib
 from functools import partial
 import weakref
 import logging
@@ -69,6 +70,7 @@ from lazyflow.request import Request
 from volumina.utility import preferences, ShortcutManagerDlg, ShortcutManager
 
 # ilastik
+import ilastik.ilastik_logging.default_config
 from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
 from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
@@ -935,22 +937,19 @@ class IlastikShell(QMainWindow):
         def editShortcuts():
             mgrDlg = ShortcutManagerDlg(self)
 
-        def openConfigFolder():
-            from volumina.utility import preferences
-
-            path = preferences.get_path().parent
-
-            try:
-                QDesktopServices.openUrl(QUrl(path.absolute().as_uri()))
-            except Exception as e:
-                msg = (
-                    f"<p>Failed to open the default file manager:<br><tt>{e}</tt></p>"
-                    f"<p>Open the following config folder manually:<br><tt>{path}</tt></p>"
+        def try_open_parent(path):
+            path = pathlib.Path(path).absolute().parent
+            if not QDesktopServices.openUrl(QUrl(path.as_uri())):
+                QMessageBox.critical(
+                    self, "Error", f"<p>Failed to open file system path<br><tt>{path}</tt></p>"
                 )
-                QMessageBox.critical(self, "Config Folder Error", msg)
 
         menu.addAction("&Keyboard Shortcuts").triggered.connect(editShortcuts)
-        menu.addAction("Open &Config Folder...").triggered.connect(openConfigFolder)
+        menu.addAction("Open &Config Folder...").triggered.connect(partial(try_open_parent, preferences.get_path()))
+
+        logfile_path = ilastik.ilastik_logging.default_config.get_logfile_path()
+        if logfile_path:
+            menu.addAction("Open &Log Folder...").triggered.connect(partial(try_open_parent, logfile_path))
 
         return menu
 
