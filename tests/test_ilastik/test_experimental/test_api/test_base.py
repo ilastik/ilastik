@@ -1,9 +1,9 @@
-import pytest
+import subprocess
 
+import pytest
 import numpy as np
 from imageio import imread
 
-from ilastik import app
 from ilastik.experimental.api import from_project_file
 
 from ..types import TestData, ApiTestDataLookup
@@ -18,24 +18,22 @@ def _load_as_numpy(path):
 
 class TestIlastikApi:
     @pytest.fixture
-    def run_headless(self, tmpdir):
+    def run_headless(self, tmpdir, ilastik_py):
         def _run_headless(proj, input):
             out_path = str(tmpdir / "out.npy")
-            parsed_args, workflow_cmdline_args = app.parse_known_args(
-                [
-                    "--headless",
-                    "--project",
-                    proj,
-                    input,
-                    "--output_format",
-                    "numpy",
-                    "--output_filename_format",
-                    out_path,
-                ]
-            )
-
-            shell = app.main(parsed_args, workflow_cmdline_args)
-            shell.closeCurrentProject()
+            args = [
+                "python",
+                ilastik_py,
+                "--headless",
+                "--project",
+                proj,
+                input,
+                "--output_format",
+                "numpy",
+                "--output_filename_format",
+                out_path,
+            ]
+            subprocess.check_call(" ".join(args))
             return np.load(out_path)
 
         return _run_headless
