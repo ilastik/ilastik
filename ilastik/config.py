@@ -21,7 +21,9 @@
 
 import configparser
 import os
-import shutil
+import warnings
+from pathlib import Path
+from typing import Optional, Union
 
 import appdirs
 
@@ -77,28 +79,48 @@ filename: in
 """
 
 
-cfg = configparser.SafeConfigParser()
+cfg: configparser.ConfigParser = configparser.ConfigParser()
+cfg_path: Optional[Path] = None
 
-CONFIG_PATH = os.path.join(appdirs.user_config_dir(appname="ilastik", appauthor=False), "ilastik.ini")
+
+def _init(path: Union[None, str, bytes, os.PathLike]) -> None:
+    """Initialize module variables."""
+    config_path = Path(path) if path is not None else None
+
+    config = configparser.ConfigParser()
+    config.read_string(default_config)
+    if config_path is not None:
+        config.read(config_path)
+
+    global cfg, cfg_path
+    cfg, cfg_path = config, config_path
 
 
-def init_ilastik_config(userConfig=None):
-    global cfg
-    cfg.read_string(default_config)
+def _get_default_config_path() -> Optional[Path]:
+    """Return a default, valid config path, or None if none of the default paths are valid."""
+    old = Path.home() / ".ilastikrc"
+    new = Path(appdirs.user_config_dir(appname="ilastik", appauthor=False)) / "ilastik.ini"
 
-    if userConfig is not None and not os.path.exists(userConfig):
-        raise Exception("ilastik config file does not exist: {}".format(userConfig))
+    if old.is_file():
+        warnings.warn(
+            f"ilastik config file location {str(old)!r} is deprecated; "
+            f"move config file to the new location {str(new)!r}",
+            DeprecationWarning,
+        )
+        return old
+    elif new.is_file():
+        return new
+    else:
+        return None
 
-    # Move default config to the new location.
-    oldConfigPath = os.path.expanduser("~/.ilastikrc")
-    if userConfig is None and os.path.exists(oldConfigPath) and not os.path.exists(CONFIG_PATH):
-        os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
-        shutil.move(oldConfigPath, CONFIG_PATH)
 
-    if userConfig is None:
-        userConfig = os.path.expanduser(CONFIG_PATH)
-    if os.path.exists(userConfig):
-        cfg.read(userConfig)
+def init_ilastik_config(path: Union[None, str, bytes, os.PathLike] = None) -> None:
+    if path is None:
+        _init(_get_default_config_path())
+    elif os.path.isfile(path):
+        _init(path)
+    else:
+        raise RuntimeError(f"ilastik config file {path} does not exist or is not a file")
 
 
 init_ilastik_config()

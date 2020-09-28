@@ -30,7 +30,6 @@ from . import loggingHelpers
 from ilastik.config import cfg as ilastik_config
 
 DEFAULT_LOGFILE_PATH = os.path.join(appdirs.user_log_dir(appname="ilastik", appauthor=False), "log.txt")
-os.makedirs(os.path.dirname(DEFAULT_LOGFILE_PATH), exist_ok=True)
 
 
 class OutputMode(object):
@@ -223,6 +222,9 @@ def init(format_prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, l
     if logfile_path == "/dev/null":
         assert output_mode != OutputMode.LOGFILE, "Must enable a logging mode."
         output_mode = OutputMode.CONSOLE
+
+    if output_mode != OutputMode.CONSOLE:
+        os.makedirs(os.path.dirname(DEFAULT_LOGFILE_PATH), exist_ok=True)
 
     # Preserve pre-existing handlers
     original_root_handlers = list(logging.getLogger().handlers)

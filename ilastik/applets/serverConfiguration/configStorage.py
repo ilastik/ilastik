@@ -134,4 +134,4 @@ class ServerConfigStorage:
             self._config.write(self._dst)
 
 
-SERVER_CONFIG = ServerConfigStorage(config.cfg, config.CONFIG_PATH)
+SERVER_CONFIG = ServerConfigStorage(config.cfg, str(config.cfg_path))
