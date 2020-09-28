@@ -208,10 +208,11 @@ def _import_h5py_with_utf8_encoding():
 
 
 def _init_configfile(parsed_args):
-    # If the user provided a custom config path to use instead of the default
-    # .ilastikrc, re-initialize the config module for it.
     if parsed_args.configfile:
         ilastik.config.init_ilastik_config(parsed_args.configfile)
+
+    path = ilastik.config.cfg_path
+    logger.info("config file location: %s", path if path is not None else "<none>")
 
 
 stdout_redirect_file = None
