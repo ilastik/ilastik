@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+import contextlib
 import os
 import time
 from pathlib import Path
@@ -25,6 +26,7 @@ import sys
 import tempfile
 import pytest
 import numpy
+from PyQt5.QtCore import QEventLoop, Qt, QTimer
 from PyQt5.QtWidgets import QApplication, QAction
 from volumina.layer import AlphaModulatedLayer
 from lazyflow.operators import OpPixelFeaturesPresmoothed
@@ -57,6 +59,62 @@ def wait_until(f, timeout=10):
     if not result:
         raise Exception(f"TIMEOUT! waiting for {f}")
     return result
+
+
+@contextlib.contextmanager
+def wait_signal(signal, timeout=1000):
+    """
+    Context manager
+    on exit would wait for signal to fire before continuing
+    :param timeout: timeout in ms
+    :param signal:
+    """
+    evtLoop = QEventLoop()
+    # QueuedConnection so we don't receive signal before entering the loop
+    signal.connect(evtLoop.quit, Qt.QueuedConnection)
+
+    yield
+
+    _exec_with_timeout(evtLoop, timeout, signal)
+
+
+@contextlib.contextmanager
+def wait_slot_ready(slot, timeout=1000):
+    """
+    Wait for slot to become ready
+    :param timeout: timeout in ms
+    :param slot: lazyflow slot
+    :return:
+    """
+    evtLoop = QEventLoop()
+
+    def _register():
+        if slot.ready():
+            evtLoop.quit()
+        else:
+            slot.notifyReady(lambda *a, **kw: evtLoop.quit())
+
+    # Use QTimer to avoid event firing before waiting has started
+    QTimer.singleShot(0, _register)
+
+    yield
+
+    _exec_with_timeout(evtLoop, timeout, slot)
+
+
+def _exec_with_timeout(loop, timeout, timeout_obj):
+    timeout_exceeded = False
+
+    def _timeout():
+        nonlocal timeout_exceeded
+        timeout_exceeded = True
+        loop.quit()
+
+    QTimer.singleShot(timeout, _timeout)
+    loop.exec_()
+
+    if timeout_exceeded:
+        raise RuntimeError(f"Timeout exceeded for {timeout_obj}")
 
 
 class TestPixelClassificationGui(ShellGuiTestCaseBase):
@@ -126,12 +184,14 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         return self.shell.workflow.applets[DATA_SELECTION_INDEX].getMultiLaneGui()
 
     def add_file(self, path: Path, inner_path: str = ""):
-        add_file_role_0_button = self.data_selection_gui.laneSummaryTableView.addFilesButtons[0]
-        add_file_role_0_button.click()
-        add_file_role_0_button.menu().actions()[0].activate(QAction.Trigger)
-        self.select_file(path)
-        if inner_path:
-            self.select_inner_path(inner_path)
+        model = self.data_selection_gui._detailViewerWidgets[0].model()
+        with wait_signal(model.rowsInserted):
+            add_file_role_0_button = self.data_selection_gui.laneSummaryTableView.addFilesButtons[0]
+            add_file_role_0_button.click()
+            add_file_role_0_button.menu().actions()[0].activate(QAction.Trigger)
+            self.select_file(path)
+            if inner_path:
+                self.select_inner_path(inner_path)
 
     def select_file(self, path: Path):
         file_dialog = wait_until(QApplication.instance().activeModalWidget)
@@ -149,10 +209,11 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         inner_path_dialog.accept()
 
     def remove_first_dataset(self):
-        self.data_selection_gui._detailViewerWidgets[0].overlay.placeAtRow(0)
-        self.data_selection_gui._detailViewerWidgets[0].overlay.current_row = 0
-        time.sleep(3)  # FIXME: there should be a way to wait for whatever is happening behind the scenes
-        self.data_selection_gui._detailViewerWidgets[0].overlay.click()
+        model = self.data_selection_gui._detailViewerWidgets[0].model()
+        with wait_signal(model.rowsRemoved):
+            self.data_selection_gui._detailViewerWidgets[0].overlay.placeAtRow(0)
+            self.data_selection_gui._detailViewerWidgets[0].overlay.current_row = 0
+            self.data_selection_gui._detailViewerWidgets[0].overlay.click()
 
     def test_1_NewProject(self):
         """
@@ -165,14 +226,28 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         if os.name != "nt":  # FIXME: enable these on windows without hangs or segfaults
             # opens multi dataset file and expects second dialog to choose inner path
             self.add_file(self.tmp_h5_multiple_dataset, "/test_group_3d/test_data_3d")
+            with wait_slot_ready(opDataSelection.get_lane(0).DatasetGroup[0]):
+                assert (
+                    opDataSelection.get_lane(0).DatasetGroup[0].value.nickname
+                    == "multiple_datasets-test_group_3d-test_data_3d"
+                )
             self.remove_first_dataset()
 
             # opens multi dataset file and expects inner path to be picked automatically
             self.add_file(self.tmp_h5_multiple_dataset)
+            with wait_slot_ready(opDataSelection.get_lane(0).DatasetGroup[0]):
+                assert (
+                    opDataSelection.get_lane(0).DatasetGroup[0].value.nickname
+                    == "multiple_datasets-test_group_3d-test_data_3d"
+                )
             self.remove_first_dataset()
 
             # opens single dataset file and expects inner path to be picked automatically
             self.add_file(self.tmp_h5_single_dataset)
+            with wait_slot_ready(opDataSelection.get_lane(0).DatasetGroup[0]):
+                assert (
+                    opDataSelection.get_lane(0).DatasetGroup[0].value.nickname == "single_dataset-test_group-test_data"
+                )
             self.remove_first_dataset()
 
         def impl():
