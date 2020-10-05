@@ -53,13 +53,6 @@ logger = logging.getLogger("tests.testCacheMemoryManager")
 mgrLogger = logging.getLogger("lazyflow.operators.cacheMemoryManager")
 
 
-@pytest.fixture
-def cacheMemoryManager(monkeypatch):
-    mem_manager = _CacheMemoryManager()
-    monkeypatch.setattr(lazyflow.operators.cacheMemoryManager, "_cache_memory_manager", mem_manager)
-    return mem_manager
-
-
 class NonRegisteredCache(object):
     def __init__(self, name):
         self.name = name

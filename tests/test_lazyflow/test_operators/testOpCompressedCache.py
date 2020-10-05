@@ -38,6 +38,7 @@ import shutil
 
 import numpy
 import h5py
+import pytest
 import vigra
 
 from numpy.testing import assert_array_equal
@@ -46,7 +47,6 @@ from lazyflow.graph import Graph
 from lazyflow.operators import OpCompressedCache, OpArrayPiper
 from lazyflow.utility.slicingtools import slicing2shape
 from lazyflow.operators.opCache import MemInfoNode
-from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 
@@ -54,6 +54,7 @@ logger = logging.getLogger("tests.testOpCompressedCache")
 cacheLogger = logging.getLogger("lazyflow.operators.opCompressedCache")
 
 
+@pytest.mark.usefixtures("cacheMemoryManager")
 class TestOpCompressedCache(object):
     def testBasic5d(self):
         logger.info("Generating sample data...")
@@ -752,9 +753,9 @@ class TestOpCompressedCache(object):
             ).all()
         ), "Incorrect output!"
 
-    def testCleanup(self):
+    def testCleanup(self, cacheMemoryManager):
         try:
-            CacheMemoryManager().disable()
+            cacheMemoryManager.disable()
             sampleData = numpy.indices((100, 200, 150), dtype=numpy.float32).sum(0)
             sampleData = vigra.taggedView(sampleData, axistags="xyz")
 
@@ -773,7 +774,7 @@ class TestOpCompressedCache(object):
             gc.collect()
             assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
         finally:
-            CacheMemoryManager().enable()
+            cacheMemoryManager.enable()
 
     def testFree(self):
         sampleData = numpy.indices((100, 200, 150), dtype=numpy.float32).sum(0)

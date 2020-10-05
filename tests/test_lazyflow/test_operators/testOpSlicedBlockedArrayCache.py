@@ -26,12 +26,12 @@ import weakref
 import gc
 
 import numpy
+import pytest
 import vigra
 from lazyflow.graph import Graph
 from lazyflow.roi import roiToSlice
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 from lazyflow.operators.opSlicedBlockedArrayCache import OpSlicedBlockedArrayCache
-from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 
 
 class KeyMaker(object):
@@ -42,6 +42,7 @@ class KeyMaker(object):
 make_key = KeyMaker()
 
 
+@pytest.mark.usefixtures("cacheMemoryManager")
 class TestOpSlicedBlockedArrayCache(object):
     def setup_method(self, method):
         self.dataShape = (1, 100, 100, 10, 1)
@@ -371,9 +372,9 @@ class TestOpSlicedBlockedArrayCache(object):
         _requestFrozenAndUnfrozen(make_key[:, 0:50, 15:45, 0:1, :])
         _requestFrozenAndUnfrozen(make_key[:, 80:100, 80:100, 0:1, :])
 
-    def testCleanup(self):
+    def testCleanup(self, cacheMemoryManager):
         try:
-            CacheMemoryManager().disable()
+            cacheMemoryManager.disable()
 
             op = OpSlicedBlockedArrayCache(graph=self.opProvider.graph)
             op.Input.connect(self.opProvider.Output)
@@ -388,7 +389,7 @@ class TestOpSlicedBlockedArrayCache(object):
             gc.collect()
             assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
         finally:
-            CacheMemoryManager().enable()
+            cacheMemoryManager.enable()
 
     def testBypassMode(self):
         opCache = self.opCache

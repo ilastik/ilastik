@@ -29,6 +29,7 @@ import gc
 import unittest
 
 import numpy
+import pytest
 import vigra
 from lazyflow.graph import Graph
 
@@ -37,7 +38,6 @@ from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.opCache import MemInfoNode
 
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
-from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 from functools import reduce
 
 
@@ -53,7 +53,8 @@ class KeyMaker(object):
 make_key = KeyMaker()
 
 
-class TestOpBlockedArrayCache(unittest.TestCase):
+@pytest.mark.usefixtures("cacheMemoryManager")
+class TestOpBlockedArrayCache:
     def setup_method(self, method):
         self.dataShape = (1, 100, 100, 10, 1)
         self.data = numpy.random.randint(0, 256, size=self.dataShape)
@@ -211,9 +212,9 @@ class TestOpBlockedArrayCache(unittest.TestCase):
         assert opProvider.accessCount <= maxAccess
         oldAccessCount = opProvider.accessCount
 
-    def testFixAtCurrent(self):
+    def testFixAtCurrent(self, cacheMemoryManager):
         try:
-            CacheMemoryManager().disable()
+            cacheMemoryManager.disable()
             opCache = self.opCache
             opProvider = self.opProvider
 
@@ -390,7 +391,7 @@ class TestOpBlockedArrayCache(unittest.TestCase):
             oldAccessCount = opProvider.accessCount
 
         finally:
-            CacheMemoryManager().enable()
+            cacheMemoryManager.enable()
 
     # # the refactored OpBlockedArrayCache is not a cache by itself
     # # keep for reference
@@ -416,9 +417,9 @@ class TestOpBlockedArrayCache(unittest.TestCase):
     #        usedMemory = 20*20*10*4
     #        numpy.testing.assert_equal(r.usedMemory, usedMemory)
 
-    def testCleanup(self):
+    def testCleanup(self, cacheMemoryManager):
         try:
-            CacheMemoryManager().disable()
+            cacheMemoryManager.disable()
 
             op = OpBlockedArrayCache(graph=self.opProvider.graph)
             op.Input.connect(self.opProvider.Output)
@@ -439,7 +440,7 @@ class TestOpBlockedArrayCache(unittest.TestCase):
 
             assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
         finally:
-            CacheMemoryManager().enable()
+            cacheMemoryManager.enable()
 
     def testDirtyPropagation(self):
         opCache = self.opCache
@@ -495,6 +496,7 @@ class TestOpBlockedArrayCache(unittest.TestCase):
         )
 
 
+@pytest.mark.usefixtures("cacheMemoryManager")
 class TestOpBlockedArrayCache_masked(object):
     def setup_method(self, method):
         self.dataShape = (1, 100, 100, 10, 1)

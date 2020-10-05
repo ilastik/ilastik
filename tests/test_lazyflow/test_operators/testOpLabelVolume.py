@@ -1,5 +1,6 @@
 from builtins import range
 import numpy as np
+import pytest
 import vigra
 
 import unittest
@@ -12,14 +13,14 @@ from lazyflow.operator import Operator
 from lazyflow.slot import InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
 from lazyflow.utility.testing import assertEquivalentLabeling
-from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 
 from numpy.testing import assert_array_equal
 
 from lazyflow.operators.opLabelVolume import haveBlocked
 
 
-class TestVigra(unittest.TestCase):
+@pytest.mark.usefixtures("cacheMemoryManager")
+class TestVigra:
     def setup_method(self, method):
         self.method = np.asarray(["vigra"], dtype=np.object)
 
@@ -210,7 +211,7 @@ class TestVigra(unittest.TestCase):
         opCheck.willBeDirty(1, 1)
 
         roi = SubRegion(op.Input, start=(1, 1, 0, 0, 0), stop=(2, 2, 200, 100, 10))
-        with self.assertRaises(PropagateDirtyCalled):
+        with pytest.raises(PropagateDirtyCalled):
             op.Input.setDirty(roi)
 
         opCheck.Input.disconnect()
@@ -220,7 +221,7 @@ class TestVigra(unittest.TestCase):
         out = op.Output[...].wait()
 
         roi = SubRegion(op.Input, start=(1, 1, 0, 0, 0), stop=(2, 2, 200, 100, 10))
-        with self.assertRaises(PropagateDirtyCalled):
+        with pytest.raises(PropagateDirtyCalled):
             op.Input.setDirty(roi)
 
     def testUnsupported(self):
@@ -233,7 +234,7 @@ class TestVigra(unittest.TestCase):
 
         op = OpLabelVolume(graph=g)
         op.Method.setValue(self.method)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             op.Input.setValue(vol)
 
     def testBackground(self):
@@ -281,9 +282,9 @@ class TestVigra(unittest.TestCase):
                 else:
                     assertEquivalentLabeling(vol[..., c, t], out.squeeze())
 
-    def testCleanup(self):
+    def testCleanup(self, cacheMemoryManager):
         try:
-            CacheMemoryManager().disable()
+            cacheMemoryManager.disable()
 
             sampleData = np.random.randint(0, 256, size=(50, 30, 10))
             sampleData = sampleData.astype(np.uint8)
@@ -309,7 +310,7 @@ class TestVigra(unittest.TestCase):
 
             assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
         finally:
-            CacheMemoryManager().enable()
+            cacheMemoryManager.enable()
 
 
 if haveBlocked():
@@ -342,7 +343,7 @@ class TestLazy(TestVigra):
 
     # setting particular regions dirty is currently not supported by lazy
     # connected components
-    @unittest.expectedFailure
+    @pytest.mark.xfail
     def testSetDirty(self):
         super(TestLazy, self).testSetDirty()
 
