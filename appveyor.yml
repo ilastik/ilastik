@@ -1,3 +1,5 @@
+image: Visual Studio 2017
+
 clone_folder: c:\projects\ilastik
 
 environment:
