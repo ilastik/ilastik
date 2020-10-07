@@ -8,18 +8,22 @@ S = TypeVar("S")
 
 class MappableFuture(Future, Generic[T]):
     def map(self, func: Callable[[T], S]) -> "MappableFuture[S]":
-        new_fut: S = MappableFuture()
+        return map_future(self, func)
 
-        def _do_map(f):
-            try:
-                if f.cancelled():
-                    new_fut.cancel()
-                    return
 
-                res = func(f.result())
-                new_fut.set_result(res)
-            except Exception as e:
-                new_fut.set_exception(e)
+def map_future(future: Future, func: Callable[[T], S]) -> "MappableFuture[S]":
+    new_fut: S = MappableFuture()
 
-        self.add_done_callback(_do_map)
-        return new_fut
+    def _do_map(f):
+        try:
+            if f.cancelled():
+                new_fut.cancel()
+                return
+
+            res = func(f.result())
+            new_fut.set_result(res)
+        except Exception as e:
+            new_fut.set_exception(e)
+
+    future.add_done_callback(_do_map)
+    return new_fut
