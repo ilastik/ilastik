@@ -103,12 +103,13 @@ class ServerConfigGui(QWidget):
 
 class ServerFormItemDelegate(QItemDelegate):
     def setEditorData(self, editor: QWidget, index: QModelIndex) -> None:
-        dst_prop = editor.metaObject().userProperty()
-        if dst_prop.isValid():
-            name = dst_prop.name()
-            setattr(editor, name, index.data(role=Qt.EditRole))
-
+        conf = index.data(role=Qt.EditRole)
+        editor.config = conf
         super().setEditorData(editor, index)
+
+    def setModelData(self, editor: QWidget, model: QAbstractItemModel, index: QModelIndex) -> None:
+        conf = editor.config
+        model.setData(index, conf)
 
 
 class ServerConfigurationEditor(QWidget):

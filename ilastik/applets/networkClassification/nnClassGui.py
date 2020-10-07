@@ -442,6 +442,7 @@ class NNClassGui(LabelingGui):
         labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
         labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.DeleteLabel
         labelSlots.labelNames = topLevelOperatorView.LabelNames
+        self.parentApplet = parentApplet
 
         if labelingDrawerUiPath is None:
             localDir = os.path.split(__file__)[0]
@@ -451,7 +452,6 @@ class NNClassGui(LabelingGui):
 
         self._initCheckpointActions()
 
-        self.parentApplet = parentApplet
         self.classifiers = OrderedDict()
 
         self.liveTraining = False
