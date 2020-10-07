@@ -765,9 +765,7 @@ class NNClassGui(LabelingGui):
         QMessageBox.critical(self, "Model Server Error", f"Failed to upload model:\n {exc}")
 
     def _uploadModel(self, modelBytes):
-        evtLoop = QEventLoop()
         cancelSrc = CancellationTokenSource()
-
         dialog = PercentProgressDialog(self, title="Uploading model")
         dialog.rejected.connect(cancelSrc.cancel)
         dialog.open()
@@ -778,7 +776,6 @@ class NNClassGui(LabelingGui):
 
         def _onDone(fut):
             dialog.accept()
-            evtLoop.quit()
 
             if fut.cancelled():
                 return
@@ -787,7 +784,6 @@ class NNClassGui(LabelingGui):
                 self._showErrorMessage(fut.exception())
 
         modelInfo.add_done_callback(_onDone)
-        evtLoop.exec_()
 
     def uploadModelClicked(self):
         try:

@@ -36,7 +36,7 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.graph import Graph
 from lazyflow.request import Request
 from lazyflow.roi import roiToSlice
-from lazyflow.futures_utils import MappableFuture
+from lazyflow.futures_utils import MappableFuture, map_future
 
 from tiktorch.launcher import LocalServerLauncher, RemoteSSHServerLauncher, SSHCred, ConnConf
 from tiktorch import converters
@@ -247,30 +247,15 @@ class Connection(_base.IConnection):
             yield data_store_pb2.UploadRequest(info=data_store_pb2.UploadInfo(size=total_size))
 
             for i in range(0, total_size, self.UPLOAD_CHUNK_SIZE):
-                if cancel_token.cancelled:
-                    return
-
                 yield data_store_pb2.UploadRequest(content=content[i : i + self.UPLOAD_CHUNK_SIZE])
                 progress_cb(int(min(i + self.UPLOAD_CHUNK_SIZE, total_size) * 100 / total_size))
 
             progress_cb(100)
 
-        result = MappableFuture()
+        result = self._upload_client.Upload.future(_content_iter())
+        cancel_token.add_callback(result.cancel)
 
-        def _upload():
-            try:
-                resp = self._upload_client.Upload(_content_iter())
-                result.set_result(resp.id)
-            except grpc.RpcError as e:
-                if cancel_token.cancelled:
-                    result.cancel()
-                else:
-                    result.set_exception(e)
-
-        uploadThread = threading.Thread(target=_upload, name="UploadRequestThread", daemon=True)
-        uploadThread.start()
-
-        return result
+        return map_future(result, lambda res: res.id)
 
     def create_model_session(self, upload_id: str, devices: List[str]):
         session = self._client.CreateModelSession(

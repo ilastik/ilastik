@@ -121,14 +121,15 @@ class TiktorchController:
         def _createModelFromUpload(uploadId: str):
             if cancelToken.cancelled:
                 return None
+
             session = connection.create_model_session(uploadId, [d.id for d in srvConfig.devices])
             info = ModelInfo(session.name, session.known_classes, session.has_training)
+            # TODO: Move to main thread
             self._model.setState(modelBytes, info, session)
             return info
 
-        return connection.upload(modelBytes, progress_cb=progressCallback, cancel_token=cancelToken).map(
-            _createModelFromUpload
-        )
+        result = connection.upload(modelBytes, progress_cb=progressCallback, cancel_token=cancelToken)
+        return result.map(_createModelFromUpload)
 
     def closeSession(self):
         session = self._model.session
