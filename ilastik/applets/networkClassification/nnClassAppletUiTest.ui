@@ -78,6 +78,22 @@
       </layout>
      </item>
      <item>
+      <widget class="QLabel" name="downloadModelsLabel">
+       <property name="text">
+        <string>&lt;a href=&quot;https://bioimage.io/#/?partner=ilastik&amp;type=model&quot;&gt;Download models&lt;/a&gt;</string>
+       </property>
+       <property name="textFormat">
+        <enum>Qt::RichText</enum>
+       </property>
+       <property name="openExternalLinks">
+        <bool>true</bool>
+       </property>
+       <property name="textInteractionFlags">
+        <set>Qt::TextBrowserInteraction</set>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="LabelListView" name="labelListView">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
