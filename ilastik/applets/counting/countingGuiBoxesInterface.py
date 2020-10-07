@@ -166,8 +166,8 @@ class ResizeHandle(QGraphicsRectItem):
 
 class QGraphicsResizableRectSignaller(QObject):
     """
-     This class is used to emit signals since only QObjects can do it.
-     Multiple inheritance is not supported for qt-python classes (Qt 4.10)
+    This class is used to emit signals since only QObjects can do it.
+    Multiple inheritance is not supported for qt-python classes (Qt 4.10)
     """
 
     signalHasMoved = pyqtSignal(QPointF)  # The resizable rectangle has moved the new position
@@ -183,7 +183,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     hoverColor = QColor(255, 0, 0)  # _hovering and selection color
 
     def __init__(self, x, y, h, w, scene=None, parent=None, editor=None):
-        """"
+        """
         This class implements the resizable rectangle item which is dispalied on the scene
          x y should be the original positions in scene coordinates
          h,w are the height and the width of the rectangle
@@ -508,11 +508,10 @@ class CoupledRectangleElement(object):
         self._rectItem.Signaller.signalHasResized.connect(self._updateTextWhenChanges)
         self._updateTextWhenChanges()
 
-    @pyqtSlot()
     def _updateTextWhenChanges(self, *args, **kwargs):
         """
-            Do the actual job of displaying a new number when the region gets
-            notified dirty or the rectangle is moved or resized
+        Do the actual job of displaying a new number when the region gets
+        notified dirty or the rectangle is moved or resized
         """
         time.sleep(DELAY * 0.001)
 

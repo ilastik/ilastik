@@ -133,7 +133,7 @@ class ShellActions(object):
 
 class MemoryWidget(QWidget):
     """Displays the current memory consumption and a button to open
-       a detailed memory consumption / usage dialog.
+    a detailed memory consumption / usage dialog.
     """
 
     def __init__(self, parent=None):
@@ -173,8 +173,7 @@ class ProgressDisplayManager(QObject):
     dispatchSignal = pyqtSignal(int, int, "bool")
 
     def __init__(self, statusBar):
-        """
-        """
+        """"""
         super(ProgressDisplayManager, self).__init__(parent=statusBar.parent())
         self.statusBar = statusBar
         self.appletPercentages = {}  # applet_index : percent_progress
@@ -215,8 +214,7 @@ class ProgressDisplayManager(QObject):
         self.dispatchSignal.connect(self.handleAppletProgressImpl, Qt.QueuedConnection)
 
     def initializeForWorkflow(self, workflow):
-        """When a workflow is available, call this method to connect the workflows' progress signals
-        """
+        """When a workflow is available, call this method to connect the workflows' progress signals"""
         for index, app in enumerate(workflow.applets):
             self._addApplet(index, app)
 
@@ -358,6 +356,7 @@ class IlastikShell(QMainWindow):
 
         self.projectManager = None
         self.projectDisplayManager = None
+        self._currentImageIndex = -1
 
         self._loaduifile()
 
@@ -407,7 +406,6 @@ class IlastikShell(QMainWindow):
 
         self.currentAppletIndex = 0
 
-        self._currentImageIndex = -1
         self.populatingImageSelectionCombo = False
         self.imageSelectionCombo.currentIndexChanged.connect(self.changeCurrentInputImageIndex)
 
@@ -1189,7 +1187,7 @@ class IlastikShell(QMainWindow):
 
     def postErrorMessage(self, caption, text):
         """Thread-safe function to have the GUI display an error dialog with
-           the given caption and text.
+        the given caption and text.
         """
         self.thunkEventHandler.post(self.errorMessageFilter.showErrorMessage, caption, text)
 

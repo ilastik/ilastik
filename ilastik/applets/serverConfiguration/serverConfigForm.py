@@ -39,9 +39,9 @@ class ServerConfigForm(QWidget):
 
     def __init__(self, device_getter) -> None:
         super().__init__(None)
+        self._config = types.ServerConfig.default()
         self._initUI()
 
-        self._config = types.ServerConfig.default()
         self._device_getter = device_getter
         self._updating = False
         self._setRemoteFieldsVisibility(False)
@@ -93,7 +93,7 @@ class ServerConfigForm(QWidget):
         else:
             self._setRemoteFieldsVisibility(True)
 
-    def _deviceListSetCheckboxOnClick(self, item: 'DeviceListWidgetItem') -> None:
+    def _deviceListSetCheckboxOnClick(self, item: "DeviceListWidgetItem") -> None:
         if not item:
             return
         item.setCheckState(not item.checkState())
@@ -135,11 +135,7 @@ class ServerConfigForm(QWidget):
         result = []
         for idx in range(self.deviceList.count()):
             item = self.deviceList.item(idx)
-            result.append(types.Device(
-                id=item.id,
-                name=item.name,
-                enabled=bool(item.checkState())
-            ))
+            result.append(types.Device(id=item.id, name=item.name, enabled=bool(item.checkState())))
 
         return result
 
@@ -148,7 +144,6 @@ class ServerConfigForm(QWidget):
         self._updating = True
         yield
         self._updating = False
-
 
     def _updateConfigFromFields(self):
         if self._updating:
@@ -286,4 +281,4 @@ class DeviceListWidgetItem(QListWidgetItem):
         self.setFlags(self.flags() & (~Qt.ItemIsUserCheckable))
 
     def __repr__(self) -> str:
-        return f'DeviceListWidgetItem(id: {self.id})'
+        return f"DeviceListWidgetItem(id: {self.id})"

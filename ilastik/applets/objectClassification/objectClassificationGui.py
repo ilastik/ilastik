@@ -111,9 +111,7 @@ class ObjectClassificationGui(LabelingGui):
     _knime_exporter = None
 
     def __init__(self, parentApplet, op):
-        self.isInitialized = (
-            False
-        )  # Need this flag in objectClassificationApplet where initialization is terminated with label selection
+        self.isInitialized = False  # Need this flag in objectClassificationApplet where initialization is terminated with label selection
         self.__cleanup_fns = []
         # Tell our base class which slots to monitor
         labelSlots = LabelingGui.LabelingSlots()
@@ -132,13 +130,20 @@ class ObjectClassificationGui(LabelingGui):
         #
         labelingDrawerUiPath = os.path.split(__file__)[0] + "/labelingDrawer.ui"
 
+        # button handlers
+        self._interactiveMode = False
+        self._showPredictions = False
+        self._labelMode = True
+
+        self.op = op
+        self.applet = parentApplet
+
         # Base class init
         super(ObjectClassificationGui, self).__init__(
             parentApplet, labelSlots, op, labelingDrawerUiPath, op.RawImages, crosshair=False
         )
 
-        self.op = op
-        self.applet = parentApplet
+        self.interactiveMode = False  # This calls the setter function: interactiveMode(self, val)
 
         self.threadRouter = ThreadRouter(self)
         op.Warnings.notifyDirty(self.handleWarnings)
@@ -157,12 +162,6 @@ class ObjectClassificationGui(LabelingGui):
 
         self._colorTable16_forpmaps = list(colortables.default16_new)
         self._colorTable16_forpmaps[15] = QColor(Qt.black).rgba()  # for objects with NaNs in features
-
-        # button handlers
-        self._interactiveMode = False
-        self.interactiveMode = False  # This calls the setter function: interactiveMode(self, val)
-        self._showPredictions = False
-        self._labelMode = True
 
         self.labelingDrawerUi.subsetFeaturesButton.clicked.connect(self.handleSubsetFeaturesClicked)
         self.labelingDrawerUi.labelAssistButton.clicked.connect(self.handleLabelAssistClicked)
@@ -577,9 +576,7 @@ class ObjectClassificationGui(LabelingGui):
             if probSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
                 probsrc = createDataSource(probSlot)
-                probLayer = AlphaModulatedLayer(
-                    probsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0)
-                )
+                probLayer = AlphaModulatedLayer(probsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0))
                 probLayer.opacity = 0.25
                 # probLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
                 # False, because it's much faster to draw predictions without these layers below
@@ -663,9 +660,7 @@ class ObjectClassificationGui(LabelingGui):
         uncertaintySlot = self.op.UncertaintyEstimateImage
         if uncertaintySlot.ready():
             uncertaintySrc = createDataSource(uncertaintySlot)
-            uncertaintyLayer = AlphaModulatedLayer(
-                uncertaintySrc, tintColor=QColor(Qt.cyan), normalize=(0.0, 1.0)
-            )
+            uncertaintyLayer = AlphaModulatedLayer(uncertaintySrc, tintColor=QColor(Qt.cyan), normalize=(0.0, 1.0))
             uncertaintyLayer.name = "Uncertainty"
             uncertaintyLayer.visible = False
             uncertaintyLayer.opacity = 1.0

@@ -1,6 +1,5 @@
 from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 import h5py
-import filecmp
 import logging
 import numpy
 import os
@@ -8,12 +7,11 @@ import sys
 import shutil
 import tempfile
 import threading
-import time
 import zipfile
 
 from PyQt5.QtWidgets import QApplication
 
-from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, FilesystemDatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
 from ilastik.workflows.carving import CarvingWorkflow
 from lazyflow.utility.timer import Timer
 
@@ -23,14 +21,12 @@ from lazyflow import roi
 
 from volumina.widgets.exportHelper import get_export_operator
 
-from ilastik.utility import bind
-
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 logger.setLevel(logging.DEBUG)
 
 
-class TestCarvingnGui(ShellGuiTestCaseBase):
+class TestCarvingGui(ShellGuiTestCaseBase):
     """Run a set of GUI-based tests on the carving workflow.
 
     Note: These tests are named (prefixed with `test_%02d`) in order to impose
@@ -249,6 +245,7 @@ class TestCarvingnGui(ShellGuiTestCaseBase):
                 right = f.read()
 
             # TODO: might result in errors due to rounding on different systems
+            assert len(left) == len(right)
             assert left == right
 
             # export the completed segments layer
