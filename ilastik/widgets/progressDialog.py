@@ -1,6 +1,6 @@
 import os
 from PyQt5 import uic
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QDialog, QMessageBox
 from os.path import split as split_path
 
@@ -84,6 +84,12 @@ class ProgressDialog(QDialog):
 
 
 class PercentProgressDialog(QDialog):
+    class _ProgressEmitter(QObject):
+        progress = pyqtSignal(int)
+
+        def __call__(self, val):
+            self.progress.emit(val)
+
     def __init__(self, parent=None, *, title=None):
         super().__init__(parent)
         localDir = os.path.split(__file__)[0]
@@ -91,13 +97,16 @@ class PercentProgressDialog(QDialog):
         self._ui = form()
         self._ui.setupUi(self)
         self._ui.cancel.clicked.connect(self.reject)
+        self._emitter = self._ProgressEmitter(parent=self)
+        self._emitter.progress.connect(self._ui.progress.setValue)
 
         if title:
             self.setWindowTitle(title)
             self._ui.progress.setFormat(f"{title}: %p%")
 
     def updateProgress(self, progress: int):
-        self._ui.progress.setValue(progress)
+        # Using emitter to avoid updating UI from non-main thread
+        self._emitter(progress)
 
     def setBusy(self):
         self._ui.progress.setMaximum(0)
