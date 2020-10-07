@@ -13,6 +13,12 @@ Usage example:
 Idea behind a concept to separate client code that can cancel request (owner of CancellationTokenSource)
 and cancellable procedure that only can query state of cancellation token
 """
+import logging
+from typing import Callable, List
+
+logger = logging.getLogger(__name__)
+
+Thunk = Callable[[], None]
 
 
 class CancellationToken:
@@ -20,15 +26,24 @@ class CancellationToken:
     def cancelled(self):
         ...
 
+    def add_callback(self, fn: Thunk) -> None:
+        pass
+
 
 class CancellationTokenSource:
     class _CancellationTokenImpl(CancellationToken):
+        _callbacks: List[Thunk]
+
         def __init__(self):
             self._cancelled = False
+            self._callbacks = []
 
         @property
         def cancelled(self):
             return self._cancelled
+
+        def add_callback(self, fn: Thunk) -> None:
+            self._callbacks.append(fn)
 
         def __repr__(self):
             return f"CancellationToken(id={id(self)}, cancelled={self._cancelled})"
@@ -42,3 +57,9 @@ class CancellationTokenSource:
 
     def cancel(self):
         self.__token._cancelled = True
+
+        for cb in self.__token._callbacks:
+            try:
+                cb()
+            except Exception:
+                logger.exception("Failed to invoke callback %s", cb)
