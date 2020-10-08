@@ -18,13 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-import pickle
-import json
-
 import numpy as np
-import typing
-
-from tiktorch.types import Model, ModelState
 
 from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
@@ -37,7 +31,7 @@ from ilastik.applets.base.appletSerializer import (
 from .tiktorchController import ModelInfo
 
 
-@jsonSerializerRegistry.registerSerializer(ModelInfo)
+@jsonSerializerRegistry.register_serializer(ModelInfo)
 class ModelInfoSerializer(jsonSerializerRegistry.IDictSerializer):
     def serialize(self, obj: ModelInfo):
         return {
