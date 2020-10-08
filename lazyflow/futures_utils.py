@@ -10,6 +10,7 @@ class MappableFuture(Future, Generic[T]):
     """
     Future class with helper methods to simplify combining and transforming underlying value
     """
+
     def map(self, func: Callable[[T], S]) -> "MappableFuture[S]":
         return map_future(self, func)
 

@@ -17,6 +17,14 @@ class TestMappableFuture:
         fut.set_result(30)
         assert mapped_fut.result() == 42
 
+    def test_result_mapping_on_completed_future(self):
+        fut = MappableFuture()
+        fut.set_result(130)
+
+        mapped_fut = fut.map(lambda v: v + 12)
+
+        assert mapped_fut.result() == 142
+
     def test_result_mapping_concurrent_future(self):
         fut = Future()
         mapped_fut = map_future(fut, lambda v: v + 12)
