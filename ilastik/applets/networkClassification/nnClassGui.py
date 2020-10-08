@@ -446,7 +446,7 @@ class NNClassGui(LabelingGui):
 
         if labelingDrawerUiPath is None:
             localDir = os.path.split(__file__)[0]
-            labelingDrawerUiPath = os.path.join(localDir, "nnClassAppletUiTest.ui")
+            labelingDrawerUiPath = os.path.join(localDir, "nnClass.ui")
 
         super(NNClassGui, self).__init__(parentApplet, labelSlots, topLevelOperatorView, labelingDrawerUiPath)
 
