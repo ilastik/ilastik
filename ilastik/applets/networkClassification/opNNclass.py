@@ -22,8 +22,7 @@ from functools import partial
 import numpy
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.request import RequestLock
-from lazyflow import stype, rtype
+from lazyflow import stype
 from lazyflow.operators import OpMultiArraySlicer2, OpValueCache, OpBlockedArrayCache
 from lazyflow.operators.tiktorch import (
     OpTikTorchTrainClassifierBlocked,
@@ -33,9 +32,6 @@ from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
 from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline, DatasetConstraintError
-
-from tiktorch.types import Model, ModelState
-from tiktorch.configkeys import TRAINING, NUM_ITERATIONS_MAX
 
 import logging
 
