@@ -7,11 +7,25 @@ S = TypeVar("S")
 
 
 class MappableFuture(Future, Generic[T]):
+    """
+    Future class with helper methods to simplify combining and transforming underlying value
+    """
     def map(self, func: Callable[[T], S]) -> "MappableFuture[S]":
         return map_future(self, func)
 
 
 def map_future(future: Future, func: Callable[[T], S]) -> "MappableFuture[S]":
+    """
+    Apply function to underlying value preserving Future interface
+    :param future:
+    :param func:
+    :return: new future which will be resolved once original future completes
+    >>> fut = Future()
+    >>> mapped = map_future(fut, lambda val: val + 10)
+    >>> fut.set_result(32)
+    >>> mapped.result()
+    42
+    """
     new_fut: S = MappableFuture()
 
     def _do_map(f):

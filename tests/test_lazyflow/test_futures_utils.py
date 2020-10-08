@@ -1,5 +1,6 @@
 from unittest import mock
-from lazyflow.futures_utils import MappableFuture
+from concurrent.futures import Future
+from lazyflow.futures_utils import MappableFuture, map_future
 
 import pytest
 
@@ -14,6 +15,14 @@ class TestMappableFuture:
         mapped_fut = fut.map(lambda v: v + 12)
 
         fut.set_result(30)
+        assert mapped_fut.result() == 42
+
+    def test_result_mapping_concurrent_future(self):
+        fut = Future()
+        mapped_fut = map_future(fut, lambda v: v + 12)
+
+        fut.set_result(30)
+        assert isinstance(mapped_fut, MappableFuture)
         assert mapped_fut.result() == 42
 
     def test_result_mapping_map_function_raises(self):
