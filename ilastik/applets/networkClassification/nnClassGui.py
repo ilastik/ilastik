@@ -659,10 +659,6 @@ class NNClassGui(LabelingGui):
         self.parentApplet.appletStateUpdateRequested()
         self.labelingDrawerUi.livePrediction.setEnabled(True)
 
-    @property
-    def connectionFactory(self) -> tiktorch.IConnectionFactory:
-        return self.parentApplet.connectionFactory
-
     def toggleLiveTraining(self, checked):
         logger.debug("toggle live training, checked: %r", checked)
         if not self.topLevelOperatorView.ClassifierFactory.ready():
