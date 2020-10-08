@@ -31,25 +31,43 @@ class CancellationToken:
 
 
 class CancellationTokenSource:
+    """
+    This class provides interface to set cancellation state
+    and cancellation tokens for cancellable functions to query this state
+    """
+
     class _CancellationTokenImpl(CancellationToken):
         _callbacks: List[Thunk]
 
-        def __init__(self):
+        def __init__(self, register_cb):
             self._cancelled = False
-            self._callbacks = []
+            self.__register_cb = register_cb
 
         @property
         def cancelled(self):
             return self._cancelled
 
         def add_callback(self, fn: Thunk) -> None:
-            self._callbacks.append(fn)
+            return self.__register_cb(fn)
 
         def __repr__(self):
             return f"CancellationToken(id={id(self)}, cancelled={self._cancelled})"
 
     def __init__(self):
-        self.__token = self._CancellationTokenImpl()
+        self.__token = self._CancellationTokenImpl(self.__register_callback)
+        self.__callbacks = []
+
+    def __register_callback(self, fn: Thunk) -> None:
+        if self.__token.cancelled:
+            self.__invoke_callback(fn)
+        else:
+            self.__callbacks.append(fn)
+
+    def __invoke_callback(self, cb):
+        try:
+            cb()
+        except Exception:
+            logger.exception("Failed to invoke callback %s", cb)
 
     @property
     def token(self):
@@ -58,8 +76,5 @@ class CancellationTokenSource:
     def cancel(self):
         self.__token._cancelled = True
 
-        for cb in self.__token._callbacks:
-            try:
-                cb()
-            except Exception:
-                logger.exception("Failed to invoke callback %s", cb)
+        for cb in self.__callbacks:
+            self.__invoke_callback(cb)
