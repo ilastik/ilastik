@@ -142,7 +142,7 @@ class ModelSession:
         :return: probabilities
         """
         assert isinstance(roi, numpy.ndarray)
-        logger.error("predict tile shape: %s (axistags: %r)", feature_image.shape, axistags)
+        logger.debug("predict tile shape: %s (axistags: %r)", feature_image.shape, axistags)
 
         # translate roi axes todo: remove with tczyx standard
         # output_axis_order = self._model_conf.output_axis_order
