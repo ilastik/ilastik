@@ -1,9 +1,10 @@
 import enum
 import dataclasses
-import threading
 import logging
 
 from typing import List
+
+from lazyflow.operators.tiktorch import IConnectionFactory
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,8 @@ class ModelInfo:
 
 
 class TiktorchOperatorModel:
-    class State:
+    @enum.unique
+    class State(enum.Enum):
         ReadFromProjectFile = "READ_FROM_PROJECT"
         Ready = "READY"
         Empty = "EMPTY"
@@ -103,7 +105,7 @@ class TiktorchOperatorModel:
 
 
 class TiktorchController:
-    def __init__(self, model, connectionFactory):
+    def __init__(self, model: TiktorchOperatorModel, connectionFactory: IConnectionFactory) -> None:
         self.connectionFactory = connectionFactory
         self._model = model
 

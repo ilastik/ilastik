@@ -795,7 +795,7 @@ class NNClassGui(LabelingGui):
         self.labelingDrawerUi.liveTraining.setVisible(False)
         self.labelingDrawerUi.checkpoints.setVisible(False)
 
-        if state == TiktorchOperatorModel.State.Empty:
+        if state is TiktorchOperatorModel.State.Empty:
             self.labelingDrawerUi.addModel.setText("Load model")
             self.labelingDrawerUi.addModel.setEnabled(True)
             self.labelingDrawerUi.closeModel.setEnabled(False)
@@ -803,7 +803,7 @@ class NNClassGui(LabelingGui):
             self.labelingDrawerUi.livePrediction.setEnabled(False)
             self.updateAllLayers()
 
-        elif state == TiktorchOperatorModel.State.ReadFromProjectFile:
+        elif state is TiktorchOperatorModel.State.ReadFromProjectFile:
             info = self.tiktorchModel.modelInfo
 
             self.labelingDrawerUi.addModel.setText(f"{info.name}")
@@ -817,7 +817,7 @@ class NNClassGui(LabelingGui):
 
             self.updateAllLayers()
 
-        elif state == TiktorchOperatorModel.State.Ready:
+        elif state is TiktorchOperatorModel.State.Ready:
             info = self.tiktorchModel.modelInfo
 
             self.labelingDrawerUi.addModel.setText(f"{info.name}")
