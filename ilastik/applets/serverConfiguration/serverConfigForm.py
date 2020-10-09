@@ -1,4 +1,5 @@
 import os
+import logging
 
 from contextlib import contextmanager
 
@@ -8,6 +9,9 @@ from PyQt5.QtCore import QStateMachine, QState, QSignalTransition, pyqtSignal
 from PyQt5.QtWidgets import QWidget, QComboBox, QLabel, QLineEdit, QListWidget, QCheckBox, QMessageBox
 
 from . import types
+
+
+logger = logging.getLogger(__name__)
 
 
 class ServerConfigForm(QWidget):
@@ -28,7 +32,7 @@ class ServerConfigForm(QWidget):
 
     UI_FILE = "serverConfigForm.ui"
 
-    @pyqtProperty(object, user=True)
+    @property
     def config(self):
         return self._config
 
@@ -37,12 +41,12 @@ class ServerConfigForm(QWidget):
         self._config = value
         self._updateFieldsFromConfig()
 
-    def __init__(self, device_getter) -> None:
+    def __init__(self, connectionFactory) -> None:
         super().__init__(None)
         self._config = types.ServerConfig.default()
         self._initUI()
 
-        self._device_getter = device_getter
+        self._connectionFactory = connectionFactory
         self._updating = False
         self._setRemoteFieldsVisibility(False)
 
@@ -100,12 +104,12 @@ class ServerConfigForm(QWidget):
 
     def _setDevicesFromConfig(self):
         self.deviceList.clear()
-        for dev in self.config.devices:
+        for dev in self._config.devices:
             item = DeviceListWidgetItem(dev.id, dev.name, self.deviceList)
             item.setCheckState(dev.enabled)
 
     def _setDevices(self):
-        current_devices = self.config.devices
+        current_devices = self._config.devices
 
         def get_device_state(id_):
             for dev in current_devices:
@@ -114,8 +118,10 @@ class ServerConfigForm(QWidget):
             return False
 
         try:
-            devices = self._device_getter(self._config)
+            conn = self._connectionFactory.ensure_connection(self._config)
+            devices = conn.get_devices()
         except Exception:
+            logger.exception("Failed to connect to tiktoch server please check settings and try again")
             QMessageBox.critical(
                 self, "Connection failed", "Failed to connect to tiktoch server please check settings and try again"
             )
@@ -127,7 +133,7 @@ class ServerConfigForm(QWidget):
             state = get_device_state(id_)
             new_devices.append(types.Device(id=id_, name=name, enabled=state))
 
-        self._config = self.config.evolve(devices=new_devices)
+        self._config = self._config.evolve(devices=new_devices)
         self._updateFieldsFromConfig()
         self.gotDevices.emit()
 

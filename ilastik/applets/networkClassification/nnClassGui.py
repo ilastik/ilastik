@@ -20,17 +20,31 @@
 ###############################################################################
 import os
 import logging
+import threading
 
 from functools import partial
 from collections import OrderedDict
+from concurrent.futures import wait
 
 import numpy
 import yaml
 
+from ilastik.widgets.progressDialog import PercentProgressDialog
 from PyQt5 import uic
-from PyQt5.QtCore import Qt, pyqtSlot, pyqtSignal, QTimer, QStringListModel, QObject, QModelIndex, QPersistentModelIndex
+from PyQt5.QtCore import (
+    Qt,
+    pyqtSlot,
+    pyqtSignal,
+    QTimer,
+    QStringListModel,
+    QObject,
+    QModelIndex,
+    QPersistentModelIndex,
+    QEventLoop,
+)
 from PyQt5.QtGui import QColor, QIcon
 from PyQt5.QtWidgets import (
+    QMessageBox,
     QWidget,
     QStackedWidget,
     QFileDialog,
@@ -50,10 +64,13 @@ from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.utility.gui import threadRouted
 from ilastik.utility import bind
 from ilastik.shell.gui.iconMgr import ilastikIcons
+from .tiktorchController import TiktorchController, TiktorchOperatorModel
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.utility import preferences
 
+from lazyflow.operators import tiktorch
+from lazyflow.cancel_token import CancellationTokenSource
 from tiktorch.types import ModelState
 from tiktorch.configkeys import TRAINING, NUM_ITERATIONS_DONE, NUM_ITERATIONS_MAX
 
@@ -425,37 +442,35 @@ class NNClassGui(LabelingGui):
         labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
         labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.DeleteLabel
         labelSlots.labelNames = topLevelOperatorView.LabelNames
+        self.parentApplet = parentApplet
 
         if labelingDrawerUiPath is None:
             localDir = os.path.split(__file__)[0]
-            labelingDrawerUiPath = os.path.join(localDir, "nnClassAppletUiTest.ui")
+            labelingDrawerUiPath = os.path.join(localDir, "nnClass.ui")
 
         super(NNClassGui, self).__init__(parentApplet, labelSlots, topLevelOperatorView, labelingDrawerUiPath)
+
         self._initCheckpointActions()
 
-        self.parentApplet = parentApplet
         self.classifiers = OrderedDict()
 
-        has_classifier_factory = self.topLevelOperatorView.ClassifierFactory.ready()
         self.liveTraining = False
         self.livePrediction = False
 
         self.__cleanup_fns = []
 
-        self.labelingDrawerUi.liveTraining.setEnabled(has_classifier_factory)
         self.labelingDrawerUi.liveTraining.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        self.set_live_training_icon(self.liveTraining)
         self.labelingDrawerUi.liveTraining.toggled.connect(self.toggleLiveTraining)
 
-        self.labelingDrawerUi.livePrediction.setEnabled(has_classifier_factory)
         self.labelingDrawerUi.livePrediction.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.set_live_predict_icon(self.livePrediction)
         self.labelingDrawerUi.livePrediction.toggled.connect(self.toggleLivePrediction)
 
-        self.labelingDrawerUi.addModel.clicked.connect(self.addModel)
-        self.labelingDrawerUi.closeModel.setVisible(False)
+        self.labelingDrawerUi.addModel.clicked.connect(self.addModelClicked)
         self.labelingDrawerUi.closeModel.setIcon(QIcon(ilastikIcons.ProcessStop))
-        self.labelingDrawerUi.closeModel.clicked.connect(self.closeModelClick)
+        self.labelingDrawerUi.closeModel.clicked.connect(self.closeModelClicked)
+        self.labelingDrawerUi.uploadModel.setIcon(QIcon(ilastikIcons.Upload))
+        self.labelingDrawerUi.uploadModel.clicked.connect(self.uploadModelClicked)
 
         self.initViewerControls()
         self.initViewerControlUi()
@@ -476,28 +491,15 @@ class NNClassGui(LabelingGui):
 
         self.invalidatePredictionsTimer = QTimer()
         self.invalidatePredictionsTimer.timeout.connect(self.updatePredictions)
+        self.tiktorchModel.registerListener(self._onModelStateChanged)
 
-        self._notifyModelSession(self.topLevelOperatorView.ModelSession)
-        self.topLevelOperatorView.ModelSession.notifyDirty(self._notifyModelSession)
+    @property
+    def tiktorchController(self):
+        return self.parentApplet.tiktorchController
 
-    def _notifyModelSession(self, slot, roi=None):
-        if slot.ready():
-            model = slot.value
-            if model is not self.topLevelOperatorView.NO_MODEL:
-                self.labelingDrawerUi.addModel.setText(f"{model.name}")
-                self.labelingDrawerUi.closeModel.setVisible(True)
-                self.labelingDrawerUi.closeModel.setVisible(True)
-                self.labelingDrawerUi.livePrediction.setEnabled(True)
-                self.labelingDrawerUi.liveTraining.setVisible(model.has_training)
-                self.labelingDrawerUi.checkpoints.setVisible(model.has_training)
-                return
-
-        self.labelingDrawerUi.addModel.setText("Load model")
-        self.labelingDrawerUi.addModel.setChecked(False)
-        self.labelingDrawerUi.closeModel.setVisible(False)
-        self.labelingDrawerUi.livePrediction.setEnabled(False)
-        self.labelingDrawerUi.liveTraining.setVisible(False)
-        self.labelingDrawerUi.checkpoints.setVisible(False)
+    @property
+    def tiktorchModel(self):
+        return self.parentApplet.tiktorchOpModel
 
     def set_live_training_icon(self, active: bool):
         if active:
@@ -568,9 +570,7 @@ class NNClassGui(LabelingGui):
             if predictionSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
                 predictsrc = LazyflowSource(predictionSlot)
-                predictionLayer = AlphaModulatedLayer(
-                    predictsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0)
-                )
+                predictionLayer = AlphaModulatedLayer(predictsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0))
                 predictionLayer.visible = self.labelingDrawerUi.livePrediction.isChecked()
                 predictionLayer.opacity = 0.25
                 predictionLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
@@ -724,10 +724,13 @@ class NNClassGui(LabelingGui):
         else:
             self._viewerControlUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
 
-    def closeModelClick(self):
-        model = self.topLevelOperatorView.set_model(b"")
+    def closeModelClicked(self):
+        self.tiktorchController.closeSession()
 
-    def addModel(self):
+    def cc(self, *args, **kwargs):
+        self.cancel_src.cancel()
+
+    def addModelClicked(self):
         """
         When AddModel button is clicked.
         """
@@ -745,51 +748,88 @@ class NNClassGui(LabelingGui):
             if not projectManager.currentProjectIsReadOnly:
                 projectManager.saveProject()
 
-            # TODO: shutdown removed
-            # if self.topLevelOperatorView.ClassifierFactory.ready():
-            #     tiktorchFactory = self.topLevelOperatorView.ClassifierFactory.value
-            #     if tiktorchFactory is not None:
-            #         tiktorchFactory.shutdown()
+            with open(filename, "rb") as modelFile:
+                modelBytes = modelFile.read()
 
-            # user did not cancel selection
-            self.add_NN_classifiers(filename)
+            self._uploadModel(modelBytes)
+
             preferences.set("DataSelection", "recent model", filename)
             self.parentApplet.appletStateUpdateRequested()
+
+    @threadRouted
+    def _showErrorMessage(self, exc):
+        QMessageBox.critical(self, "Model Server Error", f"Failed to upload model:\n {exc}")
+
+    def _uploadModel(self, modelBytes):
+        cancelSrc = CancellationTokenSource()
+        dialog = PercentProgressDialog(self, title="Uploading model")
+        dialog.rejected.connect(cancelSrc.cancel)
+        dialog.open()
+
+        modelInfo = self.tiktorchController.uploadModel(
+            modelBytes=modelBytes, progressCallback=dialog.updateProgress, cancelToken=cancelSrc.token
+        )
+
+        def _onDone(fut):
+            dialog.accept()
+
+            if fut.cancelled():
+                return
+
+            if fut.exception() and dialog.result() == QDialog.Accepted:
+                self._showErrorMessage(fut.exception())
+
+        modelInfo.add_done_callback(_onDone)
+
+    def uploadModelClicked(self):
+        try:
+            self._uploadModel(self.tiktorchModel.modelBytes)
+        except Exception as e:
+            self._showErrorMessage(e)
+
+    def _onModelStateChanged(self, state):
+        self.labelingDrawerUi.liveTraining.setVisible(False)
+        self.labelingDrawerUi.checkpoints.setVisible(False)
+
+        if state is TiktorchOperatorModel.State.Empty:
+            self.labelingDrawerUi.addModel.setText("Load model")
             self.labelingDrawerUi.addModel.setEnabled(True)
+            self.labelingDrawerUi.closeModel.setEnabled(False)
+            self.labelingDrawerUi.uploadModel.setEnabled(False)
+            self.labelingDrawerUi.livePrediction.setEnabled(False)
+            self.updateAllLayers()
+
+        elif state is TiktorchOperatorModel.State.ReadFromProjectFile:
+            info = self.tiktorchModel.modelInfo
+
+            self.labelingDrawerUi.addModel.setText(f"{info.name}")
+            self.labelingDrawerUi.addModel.setEnabled(True)
+            self.labelingDrawerUi.closeModel.setEnabled(True)
+            self.labelingDrawerUi.uploadModel.setEnabled(True)
+            self.labelingDrawerUi.livePrediction.setEnabled(False)
+
+            self.minLabelNumber = info.numClasses
+            self.maxLabelNumber = info.numClasses
+
+            self.updateAllLayers()
+
+        elif state is TiktorchOperatorModel.State.Ready:
+            info = self.tiktorchModel.modelInfo
+
+            self.labelingDrawerUi.addModel.setText(f"{info.name}")
+            self.labelingDrawerUi.addModel.setEnabled(True)
+            self.labelingDrawerUi.closeModel.setEnabled(True)
+            self.labelingDrawerUi.uploadModel.setEnabled(False)
+            self.labelingDrawerUi.livePrediction.setEnabled(True)
+
+            self.minLabelNumber = info.numClasses
+            self.maxLabelNumber = info.numClasses
+            self.updateAllLayers()
 
     def _load_checkpoint(self, model_state: ModelState):
         self.topLevelOperatorView.set_model_state(model_state)
 
-    def add_NN_classifiers(self, model_path):
-        """
-        Adds the chosen FilePath to the classifierDictionary and to the ComboBox
-        """
-        # clear first the comboBox or addItems will duplicate names
-        # self.labelingDrawerUi.comboBox.clear()
-        # self.labelingDrawerUi.comboBox.addItems(self.classifiers)
-        self.labelingDrawerUi.liveTraining.setEnabled(True)
-        self.labelingDrawerUi.livePrediction.setEnabled(True)
-
-        # factory = self.topLevelOperatorView.ClassifierFactory[:].wait()[0]
-        # return
-
-
-        with open(model_path, "rb") as model_f:
-            success = self.topLevelOperatorView.set_model(model_f.read())
-
-        if success:
-            model = self.topLevelOperatorView.opModel.TiktorchModel.value
-            num_classes = len(model.known_classes)
-            self.minLabelNumber = num_classes
-            self.maxLabelNumber = num_classes
-            # for i in range(num_classes):
-            #     self.labelingDrawerUi.labelListModel.makeRowPermanent(i)
-            # self.setupLayers()
-            self.updateAllLayers()
-
-    def set_NN_classifier_name(self, name: str):
-        pass
-
+    @classmethod
     def getModelToOpen(cls, parent_window, defaultDirectory):
         """
         opens a QFileDialog for importing files
@@ -900,5 +940,5 @@ class NNClassGui(LabelingGui):
             except KeyError:
                 continue
             color = layer.tintColor
-            color = (old_div(color.red(), 255.0), old_div(color.green(), 255.0), old_div(color.blue(), 255.0))
+            color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
             self._renderMgr.setColor(label, color)

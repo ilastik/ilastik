@@ -570,7 +570,7 @@ class SerialBlockSlot(SerialSlot):
         self, block: numpy.ndarray, slicing: List[slice], slot: Slot, project: Project
     ) -> Tuple[numpy.ndarray, List[slice]]:
         """Reshapes a block of data and its corresponding slicing relative to the whole data into a shape that is
-           adequate for deserialization (in), i.e., the shape expected by the slot being deserialized"""
+        adequate for deserialization (in), i.e., the shape expected by the slot being deserialized"""
         return block, slicing
 
     @timeLogged(logger, logging.DEBUG)
@@ -1223,6 +1223,9 @@ class JSONSerialSlot(SerialSlot):
         """
         Overrides main deserialize method to store data in attributes
         """
+        if self.name not in group.attrs:
+            return
+
         val = group.attrs[self.name]
         jsonData = json.loads(val)
         result = self._registry.deserialize(self._obj_class, jsonData)

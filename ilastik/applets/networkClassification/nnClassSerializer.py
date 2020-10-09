@@ -18,20 +18,34 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-import pickle
-import json
-
 import numpy as np
-import typing
-
-from tiktorch.types import Model, ModelState
 
 from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
     SerialSlot,
     SerialListSlot,
     SerialBlockSlot,
+    JSONSerialSlot,
+    jsonSerializerRegistry,
 )
+from .tiktorchController import ModelInfo
+
+
+@jsonSerializerRegistry.register_serializer(ModelInfo)
+class ModelInfoSerializer(jsonSerializerRegistry.IDictSerializer):
+    def serialize(self, obj: ModelInfo):
+        return {
+            "name": obj.name,
+            "hasTraining": obj.hasTraining,
+            "knownClasses": obj.knownClasses,
+        }
+
+    def deserialize(self, dct) -> ModelInfo:
+        return ModelInfo(
+            name=dct["name"],
+            knownClasses=dct["knownClasses"],
+            hasTraining=dct["hasTraining"],
+        )
 
 
 class BinarySlot(SerialSlot):
@@ -41,6 +55,7 @@ class BinarySlot(SerialSlot):
     wraps value with numpy.void to avoid the following error:
     ValueError: VLEN strings do not support embedded NULLs
     """
+
     @staticmethod
     def _saveValue(group, name, value):
         if value:
@@ -60,6 +75,7 @@ class NNClassificationSerializer(AppletSerializer):
             SerialListSlot(topLevelOperator.LabelNames),
             SerialListSlot(topLevelOperator.LabelColors, transform=lambda x: tuple(x.flat)),
             SerialListSlot(topLevelOperator.PmapColors, transform=lambda x: tuple(x.flat)),
+            JSONSerialSlot(topLevelOperator.ModelInfo, obj_class=ModelInfo),
             SerialBlockSlot(
                 topLevelOperator.LabelImages,
                 topLevelOperator.LabelInputs,
