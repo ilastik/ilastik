@@ -1,5 +1,5 @@
+import json
 import pathlib
-import pickle
 from pathlib import Path
 
 import pytest
@@ -11,11 +11,11 @@ from volumina.utility import preferences
 
 @pytest.fixture(autouse=True)
 def tmp_preferences(tmp_path) -> pathlib.Path:
-    old = preferences.get_location()
+    old = preferences.get_path()
     new = tmp_path / "tmp_preferences"
-    preferences.set_location(new)
+    preferences.set_path(new)
     yield new
-    preferences.set_location(old)
+    preferences.set_path(old)
 
 
 @pytest.fixture
@@ -43,8 +43,8 @@ def test_picking_file_updates_default_image_directory_to_previously_used(image: 
     QTimer.singleShot(0, handle_dialog)
     assert dialog.getSelectedPaths() == [image]
 
-    with open(tmp_preferences, "rb") as f:
-        assert pickle.load(f) == {dialog.preferences_group: {dialog.preferences_setting: image.as_posix()}}
+    with open(tmp_preferences, "r") as f:
+        assert json.load(f) == {"DataSelection": {"recent image": image.as_posix()}}
 
 
 def test_picking_n5_json_file_returns_directory_path(tmp_n5_file: Path):
@@ -57,7 +57,6 @@ def test_picking_n5_json_file_returns_directory_path(tmp_n5_file: Path):
             QApplication.processEvents()
 
         dialog.accept()
-
 
     QTimer.singleShot(0, handle_dialog)
 
