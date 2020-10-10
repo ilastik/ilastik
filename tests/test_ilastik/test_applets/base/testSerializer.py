@@ -859,4 +859,13 @@ class TestJSONSerialSlot:
             group = f.create_group("test")
             group.attrs["TestSlot"] = '{"val": 14, "__serializer_version": 1}'
             slot.deserialize(group)
+            assert operator.TestSlot.ready()
             assert MyObj(14) == operator.TestSlot.value
+
+    def test_deserializing_no_value(self, operator, registry, tmpdir, serializer):
+        slot = JSONSerialSlot(operator.TestSlot, obj_class=MyObj, registry=registry)
+
+        with h5py.File(str(tmpdir / "test.h5"), "a") as f:
+            group = f.create_group("test")
+            slot.deserialize(group)
+            assert not operator.TestSlot.ready()

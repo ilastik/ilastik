@@ -99,6 +99,7 @@ class ilastikIcons(object):
     Refresh = iconPath + "actions/view-refresh.png"
     ChevronRight = iconPath + "chevron-right.png"
     ChevronDown = iconPath + "chevron-down.png"
+    Upload = iconPath + "actions/go-up.png"
 
     Ilastik = iconPath + "ilastik-icon.png"
 

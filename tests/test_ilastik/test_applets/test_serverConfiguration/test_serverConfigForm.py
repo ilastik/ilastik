@@ -8,28 +8,34 @@ from ilastik.applets.serverConfiguration import types
 
 class TestServerConfigForm:
     DEVICE_LIST = [
-        ('cpu', 'CPU'),
-        ('gpu:0', 'GPU 0'),
-        ('gpu:1', 'GPU 1'),
+        ("cpu", "CPU"),
+        ("gpu:0", "GPU 0"),
+        ("gpu:1", "GPU 1"),
     ]
 
     @pytest.fixture
     def form(self, qtbot):
-        def _devices_list(config):
-            return self.DEVICE_LIST
+        class ConnFactory:
+            def ensure_connection(self, *args, **kwargs):
+                return self
 
-        form = ServerConfigForm(_devices_list)
+            def get_devices(self):
+                return TestServerConfigForm.DEVICE_LIST
+
+        form = ServerConfigForm(ConnFactory())
         form.show()
 
         qtbot.addWidget(form)
         return form
 
     def test_form_creation_line_edits(self, qtbot, form):
-        data = types.ServerConfig.default(**{
-            "name": "MyTestName",
-            "address": "test.com",
-            "port": "8291",
-        })
+        data = types.ServerConfig.default(
+            **{
+                "name": "MyTestName",
+                "address": "test.com",
+                "port": "8291",
+            }
+        )
 
         fields = [
             (form.nameEdit, "name"),
@@ -59,10 +65,7 @@ class TestServerConfigForm:
 
     def test_device_list(self, qtbot, form):
         qtbot.mouseClick(form.getDevicesBtn, Qt.LeftButton)
-        expected_devices = [
-            types.Device(enabled=False, id=id_, name=name)
-            for id_, name in self.DEVICE_LIST
-        ]
+        expected_devices = [types.Device(enabled=False, id=id_, name=name) for id_, name in self.DEVICE_LIST]
         assert expected_devices == form.config.devices
 
         test_item = form.deviceList.item(1)
@@ -73,10 +76,12 @@ class TestServerConfigForm:
         assert form.config.devices[1].enabled
 
     def test_device_list_from_config(self, qtbot, form):
-        config = types.ServerConfig.default(devices=[
-            types.Device(enabled=True, id="cpu", name="CPU"),
-            types.Device(enabled=False, id="gpu:0", name="GPU 12"),
-        ])
+        config = types.ServerConfig.default(
+            devices=[
+                types.Device(enabled=True, id="cpu", name="CPU"),
+                types.Device(enabled=False, id="gpu:0", name="GPU 12"),
+            ]
+        )
         form.config = config
         assert 2 == form.deviceList.count()
         for idx in range(form.deviceList.count()):
@@ -86,9 +91,11 @@ class TestServerConfigForm:
             assert device.name in widget_item.text()
 
     def test_device_list_merging(self, qtbot, form):
-        config = types.ServerConfig.default(devices=[
-            types.Device(enabled=True, id="gpu:1", name="GPU 12"),
-        ])
+        config = types.ServerConfig.default(
+            devices=[
+                types.Device(enabled=True, id="gpu:1", name="GPU 12"),
+            ]
+        )
         form.config = config
 
         qtbot.mouseClick(form.getDevicesBtn, Qt.LeftButton)
