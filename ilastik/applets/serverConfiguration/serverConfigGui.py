@@ -85,7 +85,7 @@ class ServerConfigGui(QWidget):
 
     def _makeServerConfigWidget(self, serverId):
         w = ServerConfigurationEditor(self.parentApplet.connectionFactory)
-        srv_storage = ServerConfigStorage(config.cfg, dst=config.CONFIG_PATH)
+        srv_storage = ServerConfigStorage(config.cfg, dst=str(config.cfg_path))
         w.setModel(ServerListModel(conf_store=srv_storage))
         w.selectServer(serverId)
         return w

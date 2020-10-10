@@ -21,6 +21,7 @@
 import re
 import os
 import time
+import pathlib
 from functools import partial
 import weakref
 import logging
@@ -69,6 +70,7 @@ from lazyflow.request import Request
 from volumina.utility import preferences, ShortcutManagerDlg, ShortcutManager
 
 # ilastik
+import ilastik.ilastik_logging.default_config
 from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
 from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
@@ -935,7 +937,21 @@ class IlastikShell(QMainWindow):
         def editShortcuts():
             mgrDlg = ShortcutManagerDlg(self)
 
+        def open_dir_func(path):
+            path = pathlib.Path(path).absolute().parent
+
+            def func():
+                if not QDesktopServices.openUrl(QUrl(path.as_uri())):
+                    QMessageBox.critical(self, "Error", f"<p>Failed to open file system path<br><tt>{path}</tt></p>")
+
+            return func
+
         menu.addAction("&Keyboard Shortcuts").triggered.connect(editShortcuts)
+        menu.addAction("Open &Config Folder...").triggered.connect(open_dir_func(preferences.get_path()))
+
+        logfile_path = ilastik.ilastik_logging.default_config.get_logfile_path()
+        if logfile_path:
+            menu.addAction("Open &Log Folder...").triggered.connect(open_dir_func(logfile_path))
 
         return menu
 

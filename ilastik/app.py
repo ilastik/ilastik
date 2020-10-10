@@ -140,6 +140,8 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
 
     _init_threading_logging_monkeypatch()
 
+    _init_preferences()
+
     # Extra initialization functions.
     # These are called during app startup, but before the shell is created.
     preinit_funcs = []
@@ -206,10 +208,11 @@ def _import_h5py_with_utf8_encoding():
 
 
 def _init_configfile(parsed_args):
-    # If the user provided a custom config path to use instead of the default
-    # .ilastikrc, re-initialize the config module for it.
     if parsed_args.configfile:
         ilastik.config.init_ilastik_config(parsed_args.configfile)
+
+    path = ilastik.config.cfg_path
+    logger.info("config file location: %s", path if path is not None else "<none>")
 
 
 stdout_redirect_file = None
@@ -280,6 +283,12 @@ def _init_threading_logging_monkeypatch():
             thread_start_logger.debug(f"Started thread: id={self.ident:x}, name={self.name}")
 
         threading.Thread.start = logged_start
+
+
+def _init_preferences():
+    from volumina.utility.preferences import migrate
+
+    migrate()
 
 
 def _import_opengm():

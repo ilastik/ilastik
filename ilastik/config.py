@@ -18,11 +18,14 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from future import standard_library
 
-standard_library.install_aliases()
 import configparser
 import os
+import warnings
+from pathlib import Path
+from typing import Optional, Union
+
+import appdirs
 
 """
 ilastik will read settings from ~/.ilastikrc
@@ -76,21 +79,48 @@ filename: in
 """
 
 
-cfg = configparser.SafeConfigParser()
+cfg: configparser.ConfigParser = configparser.ConfigParser()
+cfg_path: Optional[Path] = None
 
-CONFIG_PATH = os.path.expanduser("~/.ilastikrc")
 
-def init_ilastik_config(userConfig=None):
-    global cfg
-    cfg.read_string(default_config)
+def _init(path: Union[None, str, bytes, os.PathLike]) -> None:
+    """Initialize module variables."""
+    config_path = Path(path) if path is not None else None
 
-    if userConfig is not None and not os.path.exists(userConfig):
-        raise Exception("ilastik config file does not exist: {}".format(userConfig))
+    config = configparser.ConfigParser()
+    config.read_string(default_config)
+    if config_path is not None:
+        config.read(config_path)
 
-    if userConfig is None:
-        userConfig = os.path.expanduser(CONFIG_PATH)
-    if os.path.exists(userConfig):
-        cfg.read(userConfig)
+    global cfg, cfg_path
+    cfg, cfg_path = config, config_path
+
+
+def _get_default_config_path() -> Optional[Path]:
+    """Return a default, valid config path, or None if none of the default paths are valid."""
+    old = Path.home() / ".ilastikrc"
+    new = Path(appdirs.user_config_dir(appname="ilastik", appauthor=False)) / "ilastik.ini"
+
+    if old.is_file():
+        warnings.warn(
+            f"ilastik config file location {str(old)!r} is deprecated; "
+            f"move config file to the new location {str(new)!r}",
+            DeprecationWarning,
+        )
+        return old
+    elif new.is_file():
+        return new
+    else:
+        return None
+
+
+def init_ilastik_config(path: Union[None, str, bytes, os.PathLike] = None) -> None:
+    if path is None:
+        _init(_get_default_config_path())
+    elif os.path.isfile(path):
+        _init(path)
+    else:
+        raise RuntimeError(f"ilastik config file {path} does not exist or is not a file")
 
 
 init_ilastik_config()
