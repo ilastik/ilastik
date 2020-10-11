@@ -51,8 +51,7 @@ class ObjectClassificationDataExportGui(DataExportGui, ExportingGui):
     def get_export_dialog_title(self):
         return "Export Object Information"
 
-    @property
-    def gui_applet(self):
+    def get_gui_applet(self):
         return self.parentApplet
 
     def get_table_export_settings(self):
@@ -144,9 +143,7 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
                 drange = channelSlot.meta.drange or (0.0, 1.0)
                 predictsrc = createDataSource(channelSlot)
                 predictLayer = AlphaModulatedLayer(
-                    predictsrc,
-                    tintColor=QColor.fromRgba(self._colorTable16[channel + 1]),
-                    normalize=drange,
+                    predictsrc, tintColor=QColor.fromRgba(self._colorTable16[channel + 1]), normalize=drange,
                 )
                 predictLayer.opacity = 1.0
                 predictLayer.visible = True

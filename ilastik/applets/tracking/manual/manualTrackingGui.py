@@ -1376,6 +1376,5 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
     def get_exporting_operator(self, lane=0):
         return self.topLevelOperatorView
 
-    @property
-    def gui_applet(self):
+    def get_gui_applet(self):
         return self.applet

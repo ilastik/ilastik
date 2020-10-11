@@ -511,7 +511,7 @@ class DataSelectionGui(QWidget):
             endingLane = min(startingLaneNum + len(infos) - 1, len(self.topLevelOperator.DatasetGroup))
 
         if self._max_lanes and endingLane >= self._max_lanes:
-            raise Exception("You may not add more than {self._max_lanes} file(s) to this workflow.")
+            raise Exception(f"You may not add more than {self._max_lanes} file(s) to this workflow.")
 
         return (startingLaneNum, endingLane)
 

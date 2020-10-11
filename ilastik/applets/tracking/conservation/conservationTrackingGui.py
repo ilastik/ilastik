@@ -399,8 +399,7 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         label = self.mainOperator.RelabeledImage(slicing).wait()
         return label.flat[0], pos5d[0]
 
-    @property
-    def gui_applet(self):
+    def get_gui_applet(self):
         return self.applet
 
     def get_export_dialog_title(self):

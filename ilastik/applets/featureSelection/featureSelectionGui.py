@@ -57,8 +57,7 @@ logger = logging.getLogger(__name__)
 # === FeatureSelectionGui                                                                                           ===
 # ===---------------------------------------------------------------------------------------------------------------===
 class FeatureSelectionGui(LayerViewerGui):
-    """
-    """
+    """"""
 
     # ##########################################
     # ## AppletGuiInterface Concrete Methods ###
@@ -78,8 +77,7 @@ class FeatureSelectionGui(LayerViewerGui):
             fn()
 
     def __init__(self, parentApplet, topLevelOperatorView):
-        """
-        """
+        """"""
         self.topLevelOperatorView = topLevelOperatorView
         super(FeatureSelectionGui, self).__init__(parentApplet, topLevelOperatorView, crosshair=False)
         self.parentApplet = parentApplet
@@ -361,7 +359,7 @@ class FeatureSelectionGui(LayerViewerGui):
                 reorderedMatrix[newrow] = matrix[oldrow]
                 newrow += 1
 
-        self.featureDlg.selectionMatrix = reorderedMatrix
+        self.featureDlg.set_selectionMatrix(reorderedMatrix)
 
         # Now open the feature selection dialog
         self.featureDlg.exec_()
@@ -384,10 +382,10 @@ class FeatureSelectionGui(LayerViewerGui):
                 # Disconnect an input (used like a transaction slot)
                 opFeatureSelection.SelectionMatrix.disconnect()
 
-                opFeatureSelection.Scales.setValue(self.featureDlg.scales)
-                opFeatureSelection.ComputeIn2d.setValue(self.featureDlg.computeIn2d)
+                opFeatureSelection.Scales.setValue(self.featureDlg.get_scales())
+                opFeatureSelection.ComputeIn2d.setValue(self.featureDlg.get_computeIn2d())
                 # set disconnected slot at last (used like a transaction slot)
-                opFeatureSelection.SelectionMatrix.setValue(self.featureDlg.selectionMatrix)
+                opFeatureSelection.SelectionMatrix.setValue(self.featureDlg.get_selectionMatrix())
             except (DatasetConstraintError, RuntimeError) as ex:
                 # The user selected some scales that were too big.
                 if isinstance(ex, DatasetConstraintError):
