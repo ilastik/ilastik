@@ -47,23 +47,19 @@ class FeatureDlg(QDialog):
 
     # methods
     # ------------------------------------------------
-    @property
-    def scales(self):
+    def get_scales(self):
         """Return the list of scale values that the user might have edited."""
         return self.featureTableWidget.sigmas
 
-    @property
-    def computeIn2d(self):
+    def get_computeIn2d(self):
         """Return the list of scale values that the user might have edited."""
         return self.featureTableWidget.computeIn2d
 
-    @property
-    def selectionMatrix(self):
+    def get_selectionMatrix(self):
         """Return the bool matrix of features that the user selected."""
         return numpy.asarray(self.featureTableWidget.featureMatrix)
 
-    @selectionMatrix.setter
-    def selectionMatrix(self, newMatrix):
+    def set_selectionMatrix(self, newMatrix):
         """Populate the table of selected features with the provided matrix."""
         self.featureTableWidget.setFeatureMatrix(newMatrix)
 
@@ -129,7 +125,7 @@ if __name__ == "__main__":
 
     def handle_accepted():
         print("ACCEPTED")
-        print(ex.selectionMatrix)
+        print(ex.get_selectionMatrix)
 
     ex.accepted.connect(handle_accepted)
     ex.exec_()

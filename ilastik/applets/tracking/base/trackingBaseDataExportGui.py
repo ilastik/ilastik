@@ -44,8 +44,7 @@ class TrackingBaseDataExportGui(DataExportGui, ExportingGui):
     A subclass of the generic data export gui that creates custom layer viewers.
     """
 
-    @property
-    def gui_applet(self):
+    def get_gui_applet(self):
         return self.parentApplet
 
     def __init__(self, applet, op, enable_plugins, *args, **kwargs):

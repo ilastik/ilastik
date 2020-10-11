@@ -143,8 +143,7 @@ class ExportingGui(object):
     def get_exporting_operator(self, lane=0):
         raise NotImplementedError
 
-    @property
-    def gui_applet(self):
+    def get_gui_applet(self):
         raise NotImplementedError
 
     def show_export_dialog(self):
@@ -202,12 +201,14 @@ class ExportingGui(object):
         raise NotImplementedError
 
     def unlock_gui(self, *_):
-        self.gui_applet.busy = False
-        self.gui_applet.appletStateUpdateRequested()
+        gui_applet = self.get_gui_applet()
+        gui_applet.busy = False
+        gui_applet.appletStateUpdateRequested()
 
     def lock_gui(self):
-        self.gui_applet.busy = True
-        self.gui_applet.appletStateUpdateRequested()
+        gui_applet = self.get_gui_applet()
+        gui_applet.busy = True
+        gui_applet.appletStateUpdateRequested()
 
     def get_export_dialog_title(self):
         raise NotImplementedError
