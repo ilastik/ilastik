@@ -186,9 +186,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             gui.currentGui()._drawer.lowThresholdSpinBox.setValue(threshold)
 
             # get the final layer and check that it is not visible yet
-            layermatch = [x.name.startswith("Final") for x in gui.currentGui().layerstack]
-            assert sum(layermatch) == 1, "Only a single layer with 'Final' in the name expected."
-            final_layer = gui.currentGui().layerstack[layermatch.index(True)]
+            final_layer = gui.currentGui().getLayerByName("Final output")
             assert not final_layer.visible, "Expected the final layer not to be visible before apply is triggered."
 
             gui.currentGui()._drawer.applyButton.click()
@@ -196,6 +194,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             saveThread = self.shell.onSaveProjectActionTriggered()
             saveThread.join()
 
+            final_layer = gui.currentGui().getLayerByName("Final output")
             assert final_layer.visible
 
             op_sigmas = op_threshold.SmootherSigma.value
