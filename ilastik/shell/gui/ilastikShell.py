@@ -1572,25 +1572,15 @@ class IlastikShell(QMainWindow):
                 stop = time.perf_counter()
                 logger.debug("Loading the project took {:.2f} sec.".format(stop - start))
 
-                # add file and workflow to users preferences
-                mostRecentProjectPaths = preferences.get("shell", "recently opened list")
-                if mostRecentProjectPaths is None:
-                    mostRecentProjectPaths = []
-
                 workflowName = self.projectManager.workflow.workflowName
                 workflowDisplayName = self.projectManager.workflow.workflowDisplayName
 
-                for proj, work in mostRecentProjectPaths[:]:
-                    if proj == projectFilePath and (proj, work) in mostRecentProjectPaths:
-                        mostRecentProjectPaths.remove((proj, work))
-
-                mostRecentProjectPaths.insert(0, (projectFilePath, workflowDisplayName))
-
-                # cut list of stored files at randomly chosen number of 5
-                if len(mostRecentProjectPaths) > 5:
-                    mostRecentProjectPaths = mostRecentProjectPaths[:5]
-
-                preferences.set("shell", "recently opened list", mostRecentProjectPaths)
+                recentlyOpenedList = [(projectFilePath, workflowDisplayName)] + [
+                    (path, name)
+                    for path, name in preferences.get("shell", "recently opened list", [])
+                    if path != projectFilePath
+                ]
+                preferences.set("shell", "recently opened list", recentlyOpenedList[:5])
                 preferences.set("shell", "recently opened", projectFilePath)
 
                 # be friendly to user: if this file has not specified a default workflow, do it now
