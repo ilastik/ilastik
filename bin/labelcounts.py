@@ -21,15 +21,13 @@
 """
 Give the histogram of labels in a project file.
 """
-from __future__ import print_function
-from builtins import range
 import sys
 import os
 import h5py
 import numpy
 
 if len(sys.argv) != 2 or not sys.argv[1].endswith(".ilp"):
-    sys.stderr.write("Usage: {} <my_project.ilp>\n".format(sys.argv[0]))
+    sys.stderr.write(f"Usage: {sys.argv[0]} <my_project.ilp>\n")
     sys.exit(1)
 
 project_path = sys.argv[1]
@@ -44,13 +42,13 @@ def print_bincounts(label_names, bins_list, image_name):
     # Sum up the bincounts we got from each label block
     sum_bins = numpy.array([0] * (len(label_names) + 1), dtype=numpy.uint32)
     for bins in bins_list:
-        zero_pad_bins = numpy.append(bins, [0] * (len(sum_bins) - len(bins)))
+        zero_pad_bins = numpy.append(bins, [0] * (len(sum_bins) - len(bins))).astype("uint32")
         sum_bins += zero_pad_bins
 
-    print("Counted a total of {} label points for {}.".format(sum_bins.sum(), image_name))
+    print(f"Counted a total of {sum_bins.sum()} label points for {image_name}.")
     max_name_len = max(list(map(len, label_names)))
     for name, count in zip(label_names, sum_bins[1:]):
-        print(("{:" + str(max_name_len) + "} : {}").format(name, count))
+        print(f"{str(name).ljust(max_name_len, ' ')} : {count}")
     print("")
 
 
@@ -79,7 +77,7 @@ if __name__ == "__main__":
             label_names = [f"Label {n}" for n in range(1, num_bins)]
 
         for image_index, img_bins in enumerate(bins_by_image):
-            print_bincounts(label_names, img_bins, "Image #{}".format(image_index + 1))
+            print_bincounts(label_names, img_bins, f"Image #{image_index + 1}")
 
         # Finally, print the total results
         print_bincounts(label_names, all_bins, "ALL IMAGES")
