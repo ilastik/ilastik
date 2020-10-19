@@ -160,8 +160,7 @@ class ObjectClassificationGui(LabelingGui):
 
         self.labelingDrawerUi.brushSizeCaption.setVisible(False)
 
-        self._colorTable16_forpmaps = list(colortables.default16_new)
-        self._colorTable16_forpmaps[15] = QColor(Qt.black).rgba()  # for objects with NaNs in features
+        self._colorTable_forpmaps = list(colortables.default16_new)
 
         self.labelingDrawerUi.subsetFeaturesButton.clicked.connect(self.handleSubsetFeaturesClicked)
         self.labelingDrawerUi.labelAssistButton.clicked.connect(self.handleLabelAssistClicked)
@@ -453,14 +452,10 @@ class ObjectClassificationGui(LabelingGui):
         return self.topLevelOperatorView.SuggestedLabelNames([]).wait()[row_idx]
 
     def getNextLabelName(self):
-        if self._labelControlUi.labelListModel.rowCount() >= len(
-            self.topLevelOperatorView.SuggestedLabelNames([]).wait()
-        ):
-            return self._getNext(
-                self.topLevelOperatorView.LabelNames, super(ObjectClassificationGui, self).getNextLabelName
-            )
-        else:
+        try:
             return self._getNext(self.topLevelOperatorView.LabelNames, self._getNextSuggestedLabelName)
+        except IndexError:
+            return self._getNext(self.topLevelOperatorView.LabelNames, super().getNextLabelName)
 
     def getNextLabelColor(self):
         return self._getNext(
@@ -508,14 +503,14 @@ class ObjectClassificationGui(LabelingGui):
         # update the pmap colors. copied from labelingGui._onLabelRemoved
         # Remove the deleted label's color from the color table so that renumbered labels keep their colors.
         oldcount = self._labelControlUi.labelListModel.rowCount() + 1
-        oldColor = self._colorTable16_forpmaps.pop(start+1)
+        oldColor = self._colorTable_forpmaps.pop(start+1)
         # Recycle the deleted color back into the table (for the next label to be added)
-        self._colorTable16_forpmaps.insert(oldcount, oldColor)
+        self._colorTable_forpmaps.insert(oldcount, oldColor)
 
         # Find the prediction layer and update its colortable
         layer_index = self.layerstack.findMatchingIndex(lambda x: x.name == self.PREDICTION_LAYER_NAME)
         predictLayer = self.layerstack[layer_index]
-        predictLayer.colorTable = self._colorTable16_forpmaps
+        predictLayer.colorTable = self._colorTable_forpmaps
         """
         op = self.topLevelOperatorView
         op.removeLabel(start)
@@ -546,7 +541,6 @@ class ObjectClassificationGui(LabelingGui):
         if not labelOutput.ready():
             return (None, None)
         else:
-            self._colorTable16[15] = QColor(Qt.black).rgba()  # for the objects with NaNs in features
 
             labelsrc = LazyflowSinkSource(labelOutput, labelInput)
             labellayer = ColortableLayer(labelsrc, colorTable=self._colorTable16, direct=direct)
@@ -606,8 +600,8 @@ class ObjectClassificationGui(LabelingGui):
         predictionSlot = self.op.PredictionImages
         if predictionSlot.ready():
             predictsrc = createDataSource(predictionSlot)
-            self._colorTable16_forpmaps[0] = 0
-            predictLayer = ColortableLayer(predictsrc, colorTable=self._colorTable16_forpmaps)
+            self._colorTable_forpmaps[0] = 0
+            predictLayer = ColortableLayer(predictsrc, colorTable=self._colorTable_forpmaps)
 
             predictLayer.name = self.PREDICTION_LAYER_NAME
             predictLayer.ref_object = None
@@ -718,10 +712,16 @@ class ObjectClassificationGui(LabelingGui):
 
         if row >= 0 and row < self._labelControlUi.labelListModel.rowCount():
             element = self._labelControlUi.labelListModel[row]
-            oldcolor = self._colorTable16_forpmaps[row + 1]
+            try:
+                oldcolor = self._colorTable_forpmaps[row + 1]
+            except IndexError:
+                self._colorTable_forpmaps.append(element.pmapColor().rgba())
+                predictLayer.colorTable = self._colorTable_forpmaps
+                return
+
             if oldcolor != element.pmapColor().rgba():
-                self._colorTable16_forpmaps[row + 1] = element.pmapColor().rgba()
-                predictLayer.colorTable = self._colorTable16_forpmaps
+                self._colorTable_forpmaps[row + 1] = element.pmapColor().rgba()
+                predictLayer.colorTable = self._colorTable_forpmaps
 
     @staticmethod
     def _getObject(slot, pos5d):
