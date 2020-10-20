@@ -21,17 +21,16 @@ The following text equips you with knowledge that makes contributing to ilastik 
 
 1. Download and install _the latest 64-bit_ [miniconda](https://docs.conda.io/en/latest/miniconda.html).
 
-1. Install [mamba](https://github.com/mamba-org/mamba) and [conda-develop](https://docs.conda.io/projects/conda-build/en/latest/resources/commands/conda-develop.html):
+1. Install [conda-develop](https://docs.conda.io/projects/conda-build/en/latest/resources/commands/conda-develop.html):
     ```
-    conda install --name base --channel conda-forge mamba
-    mamba install --name base conda-develop
+    conda install --name base conda-develop
     ```
 
 1. Create a new environment and install dependencies:
     ```
     conda deactivate
     conda env remove --name ilastik
-    mamba create --name ilastik --channel ilastik-forge --channel conda-forge ilastik-dependencies-no-solvers pre-commit
+    conda create --name ilastik --channel ilastik-forge --channel conda-forge ilastik-dependencies-no-solvers pre-commit
     ```
 
 1. Install repositories as packages in development mode:
