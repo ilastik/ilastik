@@ -52,11 +52,13 @@ class ServerConfigApplet(StandardApplet):
     def topLevelOperator(self):
         return self._topLevelOperator
 
-    @property
-    def singleLaneGuiClass(self):
-        from .serverConfigGui import ServerConfigGui
+    def getMultiLaneGui(self):
+        if self._gui is None:
+            from .serverConfigGui import ServerConfigGui
 
-        return ServerConfigGui
+            self._gui = ServerConfigGui(self, self.topLevelOperator)
+
+        return self._gui
 
     @property
     def broadcastingSlots(self):

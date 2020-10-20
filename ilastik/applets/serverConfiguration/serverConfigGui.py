@@ -100,6 +100,21 @@ class ServerConfigGui(QWidget):
     def stopAndCleanUp(self):
         pass
 
+    def setEnabled(self, enabled):
+        pass
+
+    def setImageIndex(self, index):
+        pass
+
+    def imageLaneAdded(self, laneIndex):
+        pass
+
+    def imageLaneRemoved(self, laneIndex):
+        pass
+
+    def allowLaneSelectionChange(self):
+        return False
+
 
 class ServerFormItemDelegate(QItemDelegate):
     def setEditorData(self, editor: QWidget, index: QModelIndex) -> None:
