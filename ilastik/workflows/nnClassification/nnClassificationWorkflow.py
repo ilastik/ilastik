@@ -131,8 +131,8 @@ class NNClassificationWorkflow(Workflow):
         )
 
         # Expose for shell
-        self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.serverConfigApplet)
+        self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.nnClassificationApplet)
         self._applets.append(self.dataExportApplet)
         self._applets.append(self.batchProcessingApplet)
@@ -206,10 +206,9 @@ class NNClassificationWorkflow(Workflow):
         # The user isn't allowed to touch anything while batch processing is running.
         batch_processing_busy = self.batchProcessingApplet.busy
 
-        self._shell.setAppletEnabled(self.dataSelectionApplet, not batch_processing_busy)
-        self._shell.setAppletEnabled(
-            self.serverConfigApplet, input_ready and not batch_processing_busy and not live_update_active
-        )
+        self._shell.setAppletEnabled(self.serverConfigApplet, not batch_processing_busy and not live_update_active)
+        self._shell.setAppletEnabled(self.dataSelectionApplet, serverConfig_finished and not batch_processing_busy)
+
         self._shell.setAppletEnabled(
             self.nnClassificationApplet, input_ready and serverConfig_finished and not batch_processing_busy
         )
