@@ -24,6 +24,7 @@ from abc import abstractproperty, abstractmethod
 from lazyflow.graph import Operator, Graph
 from string import ascii_uppercase
 from ilastik.shell.shellAbc import ShellABC
+from ilastik.utility.info import InfoMessageData
 import logging
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,7 @@ class Workflow(Operator):
 
     name = "Workflow (base class)"
     workflowDisplayName = None  # override in your own workflow if you need it different from name
+    WELCOME_MESSAGE: InfoMessageData = None  # override in workflow class
 
     ###############################
     # Abstract methods/properties #
@@ -115,7 +117,9 @@ class Workflow(Operator):
         Called by the project manager after the project is loaded (deserialized).
         Extra workflow initialization be done here.
         """
-        pass
+        if not self._headless:
+            if self.WELCOME_MESSAGE is not None:
+                self._shell.showInfoMessage(self.WELCOME_MESSAGE)
 
     def handleAppletStateUpdateRequested(self):
         """

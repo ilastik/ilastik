@@ -70,6 +70,7 @@ from lazyflow.request import Request
 from volumina.utility import preferences, ShortcutManagerDlg, ShortcutManager
 
 # ilastik
+from ilastik.utility.gui.infoMessageBox import InfoMessageBox
 import ilastik.ilastik_logging.default_config
 from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
 from ilastik.utility import bind, log_exception
@@ -928,6 +929,10 @@ class IlastikShell(QMainWindow):
         else:
             self._memDlg.show()
             self._memDlg.raise_()
+
+    def showInfoMessage(self, message_data):
+        msgbox = InfoMessageBox(self, message_data)
+        msgbox.show()
 
     def _createSettingsMenu(self):
         menu = QMenu("Settings", self)
