@@ -21,6 +21,7 @@
 from __future__ import division
 import argparse
 import logging
+from pathlib import Path
 
 import numpy
 
@@ -29,8 +30,8 @@ from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.serverConfiguration import ServerConfigApplet
 from ilastik.applets.networkClassification import NNClassApplet, NNClassificationDataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
+from ilastik.utility.info import InfoMessageData
 
-from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators import tiktorch
 
 from lazyflow.graph import Graph
@@ -47,6 +48,11 @@ class NNClassificationWorkflow(Workflow):
     workflowName = "Neural Network Classification (Beta)"
     workflowDescription = "This is obviously self-explanatory."
     defaultAppletIndex = 0  # show DataSelection by default
+    WELCOME_MESSAGE = InfoMessageData(
+        title="Welcome!",
+        filename=Path(__file__).parent / "nn_welcome_message.html",
+        message_id="NNClassificationWorkflow/welcome-1.4.0-1",
+    )
 
     DATA_ROLE_RAW = 0
     ROLE_NAMES = ["Raw Data"]
@@ -264,6 +270,8 @@ class NNClassificationWorkflow(Workflow):
             logger.info("Beginning Batch Processing")
             self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
             logger.info("Completed Batch Processing")
+
+        super().onProjectLoaded(projectManager)
 
     def getBlockShape(self, model, halo_size):
         """
