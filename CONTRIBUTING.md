@@ -3,7 +3,13 @@
 Thank you for considering contributing to ilastik, we really appreciate it.
 The following text equips you with knowledge that makes contributing to ilastik easier.
 
-## Create a Development Environment
+---
+
+* [Development Environment](development-environment)
+* [Workflow](workflow)
+* [Coding Style](coding-style)
+
+## Development Environment
 
 1. Download and install [GitHub CLI](https://cli.github.com/).
 
@@ -110,7 +116,7 @@ We use [GitHub Flow](https://guides.github.com/introduction/flow/) workflow with
 
     You can also remove your remote branches by clicking "Delete branch" in the pull request web page.
 
-### Coding style
+## Coding style
 
 Many users with different backgrounds have contributed to ilastik in the past.
 Code quality and coding styles can be quite different throughout the code-base.

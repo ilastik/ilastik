@@ -18,6 +18,14 @@ Most operations are interactive, even on large datasets: you just draw the label
 
 See [ilastik.org](https://ilastik.org) for more info.
 
+---
+
+* [Installation](#installation)
+* [Usage](#usage)
+* [Support](#support)
+* [Contributing](#contributing)
+* [License](#license)
+
 ## Installation
 
 Go to the [download page][download-page], get the latest _non-beta_ version for your operating system, and follow the [installation instructions][how-to-install].
