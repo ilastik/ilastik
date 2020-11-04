@@ -5,116 +5,135 @@ The following text equips you with knowledge that makes contributing to ilastik 
 
 ---
 
-* [Development Environment](development-environment)
-* [Workflow](workflow)
-* [Coding Style](coding-style)
+* [Development Environment](#development-environment)
+* [Workflow](#workflow)
+* [Coding Style](#coding-style)
 
 ## Development Environment
 
-1. Download and install [GitHub CLI](https://cli.github.com/).
+1. Download and install [GitHub CLI][github-cli].
 
 1. Fork and clone repositories:
-    ```
-    gh repo fork --clone=true --remote=true ilastik/volumina
-    gh repo fork --clone=true --remote=true ilastik/ilastik
-    ```
+   ```
+   gh repo fork --clone=true --remote=true ilastik/volumina
+   gh repo fork --clone=true --remote=true ilastik/ilastik
+   ```
 
-    If you already forked repositories before, just clone them:
-    ```
-    gh repo clone volumina
-    gh repo clone ilastik
-    ```
+   If you already forked repositories before, just clone them:
 
-1. Download and install _the latest 64-bit_ [miniconda](https://docs.conda.io/en/latest/miniconda.html).
+   ```
+   gh repo clone volumina
+   gh repo clone ilastik
+   ```
 
-1. Install [conda-develop](https://docs.conda.io/projects/conda-build/en/latest/resources/commands/conda-develop.html):
-    ```
-    conda install --name base conda-develop
-    ```
+1. Download and install _the latest 64-bit_ [miniconda][miniconda].
+
+1. Install [conda-build][conda-build] in order to access the [conda develop][conda-develop] command:
+
+   ```
+   conda install --name base conda-build
+   ```
 
 1. Create a new environment and install dependencies:
-    ```
-    conda deactivate
-    conda env remove --name ilastik
-    conda create --name ilastik --channel ilastik-forge --channel conda-forge ilastik-dependencies-no-solvers pre-commit
-    ```
+
+   ```
+   conda deactivate
+   conda env remove --name ilastik
+   conda create --name ilastik --channel ilastik-forge --channel conda-forge ilastik-dependencies-no-solvers pre-commit
+   ```
 
 1. Install repositories as packages in development mode:
-    ```
-    conda develop --name ilastik volumina
-    conda develop --name ilastik ilastik
-    ```
+
+   ```
+   conda develop --name ilastik volumina
+   conda develop --name ilastik ilastik
+   ```
 
 1. Install pre-commit hooks:
-    ```
-    conda activate ilastik
 
-    cd volumina
-    pre-commit install
-    cd ..
+   ```
+   conda activate ilastik
 
-    cd ilastik
-    pre-commit install
-    cd ..
-    ```
+   cd volumina
+   pre-commit install
+   cd ..
+
+   cd ilastik
+   pre-commit install
+   cd ..
+   ```
 
 1. Launch ilastik:
-    ```
-    conda activate ilastik
-    cd ilastik
-    python ilastik.py
-    ```
+
+   ```
+   conda activate ilastik
+   cd ilastik
+   python ilastik.py
+   ```
 
 ## Workflow
 
-We use [GitHub Flow](https://guides.github.com/introduction/flow/) workflow without the _Deploy_ step.
+We use [GitHub Flow][github-flow] workflow without the _Deploy_ step.
 
-1. Sync your local and remote _master_ branches with the upstream.
-    ```
-    git -C volumina pull --ff-only upstream master:master
-    git -C volumina push origin master:master
+The whole ilastik project is split into 2 repositories: [ilastik][ilastik] and [volumina][volumina].
+Therefore, *for some changes you need to repeat the instructions twice in the corresponding directories*.
 
-    git -C ilastik pull --ff-only upstream master:master
-    git -C ilastik push origin master:master
-    ```
+1. Make sure that your local and remote _master_ branches are synced with the upstream.
 
-1. Switch to new branches:
-    ```
-    git -C volumina checkout -b your-branch-name-here master
-    git -C ilastik checkout -b your-branch-name-here master
-    ```
+   ```
+   git pull --ff-only upstream master:master
+   git push origin master
+   ```
+
+1. Create a new branch from *master*:
+
+   ```
+   git switch --create your-branch-name-here master
+   ```
 
 1. Write some code, and, if possible, add tests for your changes.
 
-1. Run the test suite:
-    ```
-    cd volumina
-    pytest
-    cd ..
+1. Run the test suite *for all repositories*:
 
-    cd ilasitk
-    pytest --run-legacy-gui
-    cd ..
-    ```
+   ```
+   cd volumina
+   pytest
+   cd ..
+
+   cd ilasitk
+   pytest --run-legacy-gui
+   cd ..
+   ```
 
 1. Commit the changes; see https://chris.beams.io/posts/git-commit/ on how to write a good commit message.
 
 1. Create a pull request:
-    ```
-    gh pr create --web
-    ```
 
-    If your changes require feedback, create a draft pull request (select the PR type from the dropdown list on the green button).
+   ```
+   gh pr create --web
+   ```
+
+   - If you have changes in multiple repositories, create multiple pull requests, and then append the following paragraph to each one:
+
+     ```
+     See also: OTHER_PULL_REQUEST_URL_HERE
+     ```
+
+   - If your changes require feedback, create a draft pull request (select the type from the dropdown list on the green button).
 
 1. Discuss your work with the other people, and wait for the approval from maintainers.
 
 1. After your pull request has been merged, remove your local branches:
-    ```
-    git -C volumina branch --delete your-branch-name-here
-    git -C ilastik branch --delete your-branch-name-here
-    ```
 
-    You can also remove your remote branches by clicking "Delete branch" in the pull request web page.
+   ```
+   git branch --delete your-branch-name-here
+   ```
+
+   You can also remove your remote branches by clicking "Delete branch" in the pull request web page, or running the following:
+
+   ```
+   git push --delete origin your-branch-name-here
+   ```
 
 ## Coding style
 
@@ -124,8 +143,18 @@ Code quality and coding styles can be quite different throughout the code-base.
 In general, when working on an existing file, please try to deduce the used coding style from what you see there,
 and adapt to it while working on this particular file.
 
-For new files, we adhere to [the google python style guide](https://github.com/google/styleguide/blob/gh-pages/pyguide.md).
+For new files, we adhere to the [Google Python style guide][google-style] and [black code style][black].
 
 __Note__: please refrain from including changes by some automatic tools on existing code in your pull requests.
 We would like to preserve the history there.
 But please run those tools on the code you are contributing :)
+
+[github-cli]: https://cli.github.com/
+[miniconda]: https://docs.conda.io/en/latest/miniconda.html
+[conda-build]: https://docs.conda.io/projects/conda-build/en/latest/
+[conda-develop]: https://docs.conda.io/projects/conda-build/en/latest/resources/commands/conda-develop.html
+[ilastik]: https://github.com/ilastik/ilastik
+[volumina]: https://github.com/ilastik/volumina
+[github-flow]: https://guides.github.com/introduction/flow/
+[google-style]: https://github.com/google/styleguide/blob/gh-pages/pyguide.md
+[black]: https://github.com/psf/black
