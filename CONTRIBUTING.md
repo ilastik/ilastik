@@ -157,4 +157,4 @@ But please run those tools on the code you are contributing :)
 [volumina]: https://github.com/ilastik/volumina
 [github-flow]: https://guides.github.com/introduction/flow/
 [google-style]: https://github.com/google/styleguide/blob/gh-pages/pyguide.md
-[black]: https://github.com/psf/black
+[black]: https://black.readthedocs.io/en/stable/
