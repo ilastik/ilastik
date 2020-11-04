@@ -43,12 +43,13 @@ See more details on the [documentation page][documentation].
 
 If you have a question, please create a topic on the [image.sc forum][imagesc-url].
 Before doing that, [search][imagesc-search] for similar topics first: maybe your issue has been already solved!
-You can also open an [issue](https://github.com/ilastik/ilastik/issues) here on GitHub if you have a technical bug report and/or feature suggestion.
+You can also open an [issue][issues] here on GitHub if you have a technical bug report and/or feature suggestion.
 
 ## Contributing
 
 We always welcome good pull requests!
-See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+If you just want to suggest a documentation edit, [you can do this directly here, on GitHub][edit-files-on-github].
+For more complex changes, see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## License
 
@@ -74,3 +75,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 [data-selection]: https://www.ilastik.org/documentation/basics/dataselection
 [data-navigation]: https://www.ilastik.org/documentation/basics/navigation
 [imagesc-search]: https://forum.image.sc/search
+[issues]: https://github.com/ilastik/ilastik/issues
+[edit-files-on-github]: https://docs.github.com/en/free-pro-team@latest/github/managing-files-in-a-repository/editing-files-in-another-users-repository
