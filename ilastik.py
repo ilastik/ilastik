@@ -1,6 +1,6 @@
-# we need to clean paths first
 import os
 import pathlib
+import platform
 import shlex
 import sys
 from typing import Iterable, Mapping, Sequence, Tuple, Union
@@ -107,6 +107,11 @@ def path_setup():
 
 def main():
     path_setup()
+
+    # https://bugreports.qt.io/browse/QTBUG-87014
+    if platform.mac_ver()[0] == "10.16":
+        os.environ["QT_MAC_WANTS_LAYER"] = "1"
+
     from ilastik.__main__ import main
 
     main()
