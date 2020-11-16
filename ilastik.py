@@ -111,6 +111,7 @@ def main():
     # https://bugreports.qt.io/browse/QTBUG-87014
     if platform.mac_ver()[0] == "10.16":
         os.environ["QT_MAC_WANTS_LAYER"] = "1"
+        os.environ["VOLUMINA_SHOW_3D_WIDGET"] = "0"
 
     from ilastik.__main__ import main
 
