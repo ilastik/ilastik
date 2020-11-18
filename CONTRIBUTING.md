@@ -117,7 +117,7 @@ Therefore, *for some changes you need to repeat the instructions twice in the co
    - If you have changes in multiple repositories, create multiple pull requests, and then append the following paragraph to each one:
 
      ```
-     See also: OTHER_PULL_REQUEST_URL_HERE
+     Related: OTHER_PULL_REQUEST_URL_HERE
      ```
 
    - If your changes require feedback, create a draft pull request (select the type from the dropdown list on the green button).
