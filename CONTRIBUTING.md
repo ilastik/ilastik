@@ -12,6 +12,7 @@ The following text equips you with knowledge that makes contributing to ilastik 
 ## Development Environment
 
 1. Download and install [Git][git], [GitHub CLI][github-cli], and _the latest 64-bit_ [miniconda][miniconda].
+   - Windows: all following commands should be executed in the _Anaconda Prompt_ from the Start Menu.
    - Linux: Git might be already preinstalled, GitHub CLI might be available in your system package manager.
    - macOS: Git is already preinstalled, GitHub CLI is available in [Homebrew][homebrew].
 
@@ -151,7 +152,7 @@ But please run those tools on the code you are contributing :)
 
 [git]: https://git-scm.com/
 [github-cli]: https://cli.github.com/
-[miniconda]: https://docs.conda.io/en/latest/miniconda.html\
+[miniconda]: https://docs.conda.io/en/latest/miniconda.html
 [homebrew]: https://brew.sh/
 [conda-build]: https://docs.conda.io/projects/conda-build/en/latest/
 [conda-develop]: https://docs.conda.io/projects/conda-build/en/latest/resources/commands/conda-develop.html
