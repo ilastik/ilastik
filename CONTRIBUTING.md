@@ -11,7 +11,9 @@ The following text equips you with knowledge that makes contributing to ilastik 
 
 ## Development Environment
 
-1. Download and install [GitHub CLI][github-cli].
+1. Download and install [Git][git], [GitHub CLI][github-cli], and _the latest 64-bit_ [miniconda][miniconda].
+   - Linux: Git might be already preinstalled, GitHub CLI might be available in your system package manager.
+   - macOS: Git is already preinstalled, GitHub CLI is available in [Homebrew][homebrew].
 
 1. Fork and clone repositories:
    ```
@@ -25,8 +27,6 @@ The following text equips you with knowledge that makes contributing to ilastik 
    gh repo clone volumina
    gh repo clone ilastik
    ```
-
-1. Download and install _the latest 64-bit_ [miniconda][miniconda].
 
 1. Install [conda-build][conda-build] in order to access the [conda develop][conda-develop] command:
 
@@ -149,8 +149,10 @@ __Note__: please refrain from including changes by some automatic tools on exist
 We would like to preserve the history there.
 But please run those tools on the code you are contributing :)
 
+[git]: https://git-scm.com/
 [github-cli]: https://cli.github.com/
-[miniconda]: https://docs.conda.io/en/latest/miniconda.html
+[miniconda]: https://docs.conda.io/en/latest/miniconda.html\
+[homebrew]: https://brew.sh/
 [conda-build]: https://docs.conda.io/projects/conda-build/en/latest/
 [conda-develop]: https://docs.conda.io/projects/conda-build/en/latest/resources/commands/conda-develop.html
 [ilastik]: https://github.com/ilastik/ilastik
