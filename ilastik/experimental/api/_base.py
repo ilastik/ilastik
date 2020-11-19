@@ -41,7 +41,7 @@ def from_project_file(path) -> Pipeline:
 
         def predict(self, data):
             data = _make_vigra_with_cannel_axis(data)
-            num_channels_in_data = data.shape[data.axistags.index("c")]
+            num_channels_in_data = data.channels
             if num_channels_in_data != num_channels:
                 raise ValueError(
                     f"Number of channels mismatch. Classifier trained for {num_channels} but input has {num_channels_in_data}"
@@ -69,6 +69,11 @@ def _guess_channel_axis_idx(shape):
 
 
 def _guess_axistags(shape):
+    """
+    Guesses axistags
+    Difference to lazyflow.utility.heplers.get_default_axistags
+    that this function tries to deduce which is a channel axis based on the size of the axis
+    """
     if len(shape) > 5 or len(shape) < 2:
         raise NotImplementedError(f"Got shape {shape}")
 
