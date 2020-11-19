@@ -5,11 +5,6 @@ from uuid import uuid4
 import attr
 
 
-LOCAL = "local"
-REMOTE = "remote"
-SERVER_TYPES = (LOCAL, REMOTE)
-
-
 def _validate_id(inst, attrib, value):
     if not value:
         raise ValueError("id should not be empty")
@@ -33,16 +28,9 @@ class Device:
 @attr.s(auto_attribs=True, kw_only=True) #, frozen=True)
 class ServerConfig:
     id: str = attr.ib(validator=_validate_id)
-    type: str = attr.ib()
     address: str = attr.ib(validator=_non_empty)
-    port: str = attr.ib(validator=_non_empty)
     devices: typing.List[Device] = attr.ib()
-
-    path: str = attr.ib(default="tiktorch")
     name: str = attr.ib(default="Unknown", validator=_non_empty)
-    autostart: bool = False
-    username: str = ""
-    ssh_key: str = ""
 
     def evolve(self, **kwargs):
         return attr.evolve(self, **kwargs)
@@ -52,20 +40,11 @@ class ServerConfig:
         defaults = {
             "id": uuid4().hex,
             "name": "MyServer",
-            "type": "local",
-            "path": "tiktorch",
-            "address": "127.0.0.1",
-            "port": "5567",
-            "autostart": False,
+            "address": "127.0.0.1:5567",
             "devices": [],
             **kwargs,
         }
         return cls(**defaults)
-
-    @type.validator
-    def _validate_type(self, attrib, value):
-        if value not in SERVER_TYPES:
-            raise ValueError("type should be either 'local' or 'remote'")
 
     @devices.validator
     def _validate_devices(self, attrib, value):

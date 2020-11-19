@@ -118,6 +118,9 @@ class ServerListModel(QAbstractListModel):
         return True
 
     def data(self, index: QModelIndex, role: int):
+        if not index.isValid():
+            return None
+
         row = index.row()
 
         if role == Qt.DisplayRole:

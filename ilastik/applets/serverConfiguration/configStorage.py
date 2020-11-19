@@ -5,17 +5,18 @@ from configparser import ConfigParser
 import attr
 
 from ilastik import config
+from volumina.utility import preferences
 
 from . import types
 
 
-class ServerConfigStorage:
-    PREFIX = "tiktorch-server::"
-    DEVICE_PREFIX = "device::"
+SERVER_CONFIG_GROUP = "ServerConfig"
+SERVER_CONFIG_LIST_KEY = "Servers"
 
-    def __init__(self, config: ConfigParser, dst: str) -> None:
-        self._config = config
-        self._dst = dst
+
+class ServerConfigStorage:
+    def __init__(self) -> None:
+        pass
 
     def _parse_autostart(self, entry):
         if entry == "1":
@@ -60,18 +61,14 @@ class ServerConfigStorage:
         return res
 
     def get_servers(self):
-        res = []
-
-        for section in self._config.sections():
-            if section.startswith(self.PREFIX):
-                try:
-                    srv = self._parse_server_section(section)
-                except Exception:
-                    continue
-
-                res.append(srv)
-
-        return res
+        servers_data = preferences.get(SERVER_CONFIG_GROUP, SERVER_CONFIG_LIST_KEY, [])
+        result = []
+        for server_dict in servers_data:
+            server_dict["devices"] = [types.Device(**d) for d in server_dict.get("devices", [])]
+            result.append(
+                types.ServerConfig(**server_dict)
+            )
+        return result
 
     def get_server(self, id_) -> typing.Optional[types.ServerConfig]:
         for srv in self.get_servers():
@@ -80,58 +77,13 @@ class ServerConfigStorage:
 
         return None
 
-    def _server_as_dict(self, srv):
-        res = attr.asdict(srv)
-        res["autostart"] = str(int(res.get("autostart", False)))
-        return res
-
-    def _serialize_device(self, device):
-        device_str = f"{device['id']}::{device['name']}"
-        if device["enabled"]:
-            device_str += "::enabled"
-        return device_str
-
-    def _serialize_devices(self, devices):
-        result = []
-
-        for dev in devices:
-            try:
-                result.append(self._serialize_device(dev))
-            except Exception:
-                pass
-
-        if len(result) > 1:
-            result.insert(0, '')
-
-        return '\n'.join(result)
-
-    def _write_server_entry(self, srv):
-        section_id = f"{self.PREFIX}{srv.id}"
-
-        self._config.add_section(section_id)
-        for key, value in self._server_as_dict(srv).items():
-            if key == "id":
-                continue
-
-            if key == "devices":
-                value = self._serialize_devices(value)
-
-            self._config.set(section_id, key, value)
-
     def store(self, servers) -> None:
-        current_servers = self.get_servers()
-
-        for srv in current_servers:
-            self._config.remove_section(f"{self.PREFIX}{srv.id}")
+        servers_data = []
 
         for srv in servers:
-            self._write_server_entry(srv)
+            servers_data.append(attr.asdict(srv))
 
-        if isinstance(self._dst, str):
-            with open(self._dst, 'w+') as out:
-                self._config.write(out)
-        else:
-            self._config.write(self._dst)
+        preferences.set(SERVER_CONFIG_GROUP, SERVER_CONFIG_LIST_KEY, servers_data)
 
 
-SERVER_CONFIG = ServerConfigStorage(config.cfg, str(config.cfg_path))
+SERVER_CONFIG = ServerConfigStorage()

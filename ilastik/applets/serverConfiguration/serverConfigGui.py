@@ -45,7 +45,7 @@ from PyQt5.QtWidgets import QWidget, QComboBox, QToolButton, QHBoxLayout, QVBoxL
 
 from .serverConfigForm import ServerConfigForm, ServerFormWorkflow
 from .serverListWidget import ServerListWidget, ServerListModel
-from .configStorage import ServerConfigStorage
+from .configStorage import SERVER_CONFIG
 from . import types
 from ilastik import config
 import tiktorch
@@ -85,8 +85,7 @@ class ServerConfigGui(QWidget):
 
     def _makeServerConfigWidget(self, serverId):
         w = ServerConfigurationEditor(self.parentApplet.connectionFactory)
-        srv_storage = ServerConfigStorage(config.cfg, dst=str(config.cfg_path))
-        w.setModel(ServerListModel(conf_store=srv_storage))
+        w.setModel(ServerListModel(conf_store=SERVER_CONFIG))
         w.selectServer(serverId)
         return w
 
