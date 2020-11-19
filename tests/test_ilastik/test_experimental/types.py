@@ -22,6 +22,9 @@ class TestData(enum.Enum):
     PIXEL_CLASS_NO_CLASSIFIER: str = "PixelClassNoClassifier.ilp"
     PIXEL_CLASS_NO_DATA: str = "PixelClassNoData.ilp"
 
+    PIXEL_CLASS_3D_2D_3D_FEATURE_MIX: str = "PixelClass3D_2D_3D_feature_mix.ilp"
+    PIXEL_CLASS_3D_2D_3D_FEATURE_MIX_OUT: str = "PixelClass3D_2D_3D_feature_mix_Output.npy"
+
 
 class ApiTestDataLookup:
     def __init__(self, path_by_name):

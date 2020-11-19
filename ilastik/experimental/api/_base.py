@@ -13,10 +13,10 @@ def from_project_file(path) -> Pipeline:
     project: parser.PixelClassificationProject
 
     with parser.IlastikProject(path, "r") as project:
-        if not all([project.data_info, project.features, project.classifier]):
+        if not all([project.data_info, project.feature_matrix, project.classifier]):
             raise ValueError("not sufficient data in project file for predition")
 
-        feature_matrix = project.features.as_matrix()
+        feature_matrix = project.feature_matrix
         classifer = project.classifier
         num_channels = project.data_info.num_channels
         axis_order = project.data_info.axis_order
@@ -32,6 +32,7 @@ def from_project_file(path) -> Pipeline:
             self._feature_sel_op.FeatureIds.setValue(feature_matrix.names)
             self._feature_sel_op.Scales.setValue(feature_matrix.scales)
             self._feature_sel_op.SelectionMatrix.setValue(feature_matrix.selections)
+            self._feature_sel_op.ComputeIn2d.setValue(feature_matrix.compute_in_2d.tolist())
 
             self._predict_op = OpClassifierPredict(graph=graph)
             self._predict_op.Classifier.setValue(classifer.instance)

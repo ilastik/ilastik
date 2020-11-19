@@ -5,8 +5,6 @@ from typing import Any, List, Optional
 import h5py
 import numpy
 
-from ilastik.experimental import features
-
 from . import types
 
 PIXEL_CLASSIFICATION = b"Pixel Classification"
@@ -41,23 +39,6 @@ def _create_project_wrap(hdf5_file):
     raise NotImplementedError("Unknown project type {type_}")
 
 
-class _MatrixFeatureList(types.FeatureList):
-    def __init__(self, *, names: List[str], scales: List[int], sel_matrix: numpy.ndarray) -> None:
-        # TODO: Validate size
-        self.__names = names
-        self.__scales = scales
-        self.__sel_matrix = sel_matrix
-
-    def as_matrix(self):
-        return types.FeatureMatrix(self.__names, self.__scales, self.__sel_matrix)
-
-    def __iter__(self):
-        for row_idx, name in enumerate(self.__names):
-            for col_idx, scale in enumerate(self.__scales):
-                if self.__sel_matrix[row_idx][col_idx]:
-                    yield features.create_feature_by_name(name, int(scale * 10))
-
-
 class _Keys:
     INPUT_DATA = "Input Data"
     INPUT_DATA_INFOS = "infos"
@@ -68,6 +49,7 @@ class _Keys:
     FEATURES = "FeatureSelections"
     FEATURES_IDS = "FeatureIds"
     FEATURES_SCALES = "Scales"
+    FEATURES_COMPUTE_IN_2D = "ComputeIn2d"
     FEATURES_SELECTION_MATRIX = "SelectionMatrix"
     PIXEL_CLASSIFICATION = "PixelClassification"
     PIXEL_CLASSIFICATION_TYPE = "pickled_type"
@@ -122,18 +104,19 @@ class _PixelClassProjectImpl(types.PixelClassificationProject):
         return self.__project_data_info
 
     @property
-    def features(self) -> Optional[types.FeatureList]:
+    def feature_matrix(self) -> Optional[types.FeatureMatrix]:
         try:
             features_group = self.__file[_Keys.FEATURES]
             feature_names = [name.decode("ascii") for name in features_group[_Keys.FEATURES_IDS][()]]
             scales = features_group[_Keys.FEATURES_SCALES][()]
             sel_matrix = features_group[_Keys.FEATURES_SELECTION_MATRIX][()]
+            compute_in_2d = features_group[_Keys.FEATURES_COMPUTE_IN_2D][()]
         except KeyError:
             # Project has no selected features
             return None
 
         else:
-            return _MatrixFeatureList(names=feature_names, scales=scales, sel_matrix=sel_matrix)
+            return types.FeatureMatrix(feature_names, scales, sel_matrix, compute_in_2d)
 
     @property
     def classifier(self):

@@ -55,6 +55,7 @@ class TestIlastikParser:
                     [False, False, True, False, True, False, True],
                 ]
             ),
+            np.array([True, True, True, True, True, True, True]),
         ),
         (
             TestData.PIXEL_CLASS_3_CHANNEL,
@@ -68,15 +69,30 @@ class TestIlastikParser:
                     [False, True, True, True, False, False, False],
                 ]
             ),
+            np.array([True, True, True, True, True, True, True]),
+        ),
+        (
+            TestData.PIXEL_CLASS_3D_2D_3D_FEATURE_MIX,
+            np.array(
+                [
+                    [True, False, False, False, False, True, False],
+                    [False, False, False, True, False, False, False],
+                    [False, False, False, True, False, False, False],
+                    [False, False, False, True, False, False, False],
+                    [False, False, False, False, True, False, False],
+                    [False, False, False, False, True, False, False],
+                ]
+            ),
+            np.array([False, False, False, True, False, True, False]),
         ),
     ]
 
-    @pytest.mark.parametrize("proj, expected_sel_matrix", tests)
-    def test_parse_project_features(self, test_data_lookup, proj, expected_sel_matrix):
+    @pytest.mark.parametrize("proj, expected_sel_matrix, expected_compute_in_2d", tests)
+    def test_parse_project_features(self, test_data_lookup, proj, expected_sel_matrix, expected_compute_in_2d):
         project_path = test_data_lookup.find(proj)
 
         with IlastikProject(project_path) as proj:
-            matrix = proj.features.as_matrix()
-
+            matrix = proj.feature_matrix
             assert matrix
             np.testing.assert_array_equal(matrix.selections, expected_sel_matrix)
+            np.testing.assert_array_equal(matrix.compute_in_2d, expected_compute_in_2d)

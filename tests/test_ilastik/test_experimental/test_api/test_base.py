@@ -46,6 +46,7 @@ class TestIlastikApi:
             (TestData.DATA_1_CHANNEL, TestData.PIXEL_CLASS_1_CHANNEL_SKLEARN),
             (TestData.DATA_3_CHANNEL, TestData.PIXEL_CLASS_3_CHANNEL),
             (TestData.DATA_1_CHANNEL_3D, TestData.PIXEL_CLASS_3D),
+            (TestData.DATA_1_CHANNEL_3D, TestData.PIXEL_CLASS_3D_2D_3D_FEATURE_MIX),
         ],
     )
     def test_predict_pretrained(self, test_data_lookup: ApiTestDataLookup, input, proj, run_headless):
