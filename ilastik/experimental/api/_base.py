@@ -1,7 +1,9 @@
 import vigra
 import numpy
 
+from functools import singledispatch
 from lazyflow.graph import Graph
+from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.classifierOperators import OpClassifierPredict
 from lazyflow.operators import OpReorderAxes
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
@@ -41,7 +43,7 @@ def from_project_file(path) -> Pipeline:
             self._predict_op.LabelsCount.setValue(classifer.label_count)
 
         def predict(self, data):
-            data = _make_vigra_with_cannel_axis(data)
+            data = convert_to_vigra(data)
             num_channels_in_data = data.channels
             if num_channels_in_data != num_channels:
                 raise ValueError(
@@ -62,39 +64,19 @@ def from_project_file(path) -> Pipeline:
     return _PipelineImpl()
 
 
-def _guess_channel_axis_idx(shape):
-    for idx, val in enumerate(shape):
-        if val < 4:
-            return idx
-    return None
+@singledispatch
+def convert_to_vigra(data):
+    raise NotImplementedError(f"{type(data)}")
 
 
-def _guess_axistags(shape):
-    """
-    Guesses axistags
-    Difference to lazyflow.utility.heplers.get_default_axistags
-    that this function tries to deduce which is a channel axis based on the size of the axis
-    """
-    if len(shape) > 5 or len(shape) < 2:
-        raise NotImplementedError(f"Got shape {shape}")
-
-    ch_idx = _guess_channel_axis_idx(shape)
-    spatial = ["z", "y", "x"]
-
-    guessed_tags = ""
-
-    for idx, size in enumerate(shape):
-        if idx != ch_idx:
-            guessed_tags = spatial.pop() + guessed_tags
-
-    if ch_idx is not None:
-        guessed_tags = guessed_tags[:ch_idx] + "c" + guessed_tags[ch_idx:]
-
-    return guessed_tags
+@convert_to_vigra.register
+def _(data: vigra.VigraArray):
+    return data
 
 
-def _make_vigra_with_cannel_axis(data):
-    axes = _guess_axistags(data.shape)
+@convert_to_vigra.register
+def _(data: numpy.ndarray):
+    axes = get_default_axisordering(data.shape)
     if "c" not in axes:
         result = data.reshape(*data.shape, 1)
         return vigra.taggedView(result, axes + "c")

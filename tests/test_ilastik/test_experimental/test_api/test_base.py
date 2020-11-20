@@ -3,6 +3,7 @@ import subprocess
 
 import pytest
 import numpy as np
+import vigra
 from imageio import imread
 
 from ilastik.experimental.api import from_project_file
@@ -61,13 +62,18 @@ class TestIlastikApi:
         np.testing.assert_array_almost_equal(prediction, expected_prediction)
 
     @pytest.mark.parametrize(
-        "input, proj",
+        "input, proj, axes",
         [
-            (TestData.DATA_1_CHANNEL, TestData.PIXEL_CLASS_1_CHANNEL),
+            (TestData.DATA_1_CHANNEL, TestData.PIXEL_CLASS_1_CHANNEL, "yx"),
         ],
     )
     def test_predict_pretrained_with_axes_reordering(
-        self, test_data_lookup: ApiTestDataLookup, input, proj, run_headless
+        self,
+        test_data_lookup: ApiTestDataLookup,
+        input,
+        proj,
+        run_headless,
+        axes,
     ):
         project_path = test_data_lookup.find(proj)
         input_path = test_data_lookup.find(input)
@@ -77,7 +83,7 @@ class TestIlastikApi:
 
         input_data = _load_as_numpy(input_path)
         reshaped_input = input_data.reshape(1, *input_data.shape)
-        prediction = pipeline.predict(reshaped_input)
+        prediction = pipeline.predict(vigra.taggedView(reshaped_input, "c" + axes))
         assert prediction.shape == expected_prediction.shape
         np.testing.assert_array_almost_equal(prediction, expected_prediction, decimal=1)
 
