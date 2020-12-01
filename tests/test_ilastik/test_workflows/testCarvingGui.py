@@ -25,7 +25,11 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 logger.setLevel(logging.DEBUG)
 
+import platform
+import pytest
 
+
+@pytest.mark.skipif(platform.mac_ver()[0] == "10.16", reason="CPython cannot find OpenGL system shared lib on macOS 11")
 class TestCarvingGui(ShellGuiTestCaseBase):
     """Run a set of GUI-based tests on the carving workflow.
 
