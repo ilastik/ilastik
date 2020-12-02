@@ -127,12 +127,5 @@ class ServerConfigStorage:
         for srv in servers:
             self._write_server_entry(srv)
 
-        if self._dst:
-            if isinstance(self._dst, str):
-                with open(self._dst, "w+") as out:
-                    self._config.write(out)
-            else:
-                self._config.write(self._dst)
-
 
 SERVER_CONFIG = ServerConfigStorage(config.cfg, str(config.cfg_path))
