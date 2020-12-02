@@ -205,6 +205,7 @@ class TestStoringServers:
             types.ServerConfig(id='myid1', name='Server1', type='local', address='127.0.0.1', port='3123', devices=[types.Device(id='cpu0', name='MyCpu1', enabled=True), types.Device(id='gpu1', name='GPU1', enabled=False)])
         ]
 
+    @pytest.mark.xfail(reason="Disabled buggy persistence to .ilastikrc")
     def test_me(self, store, servers):
         out = StringIO()
         store(out, servers)
@@ -231,6 +232,8 @@ devices =
    gpu1::GPU6::enabled
 """
 
+
+@pytest.mark.xfail(reason="Disabled buggy persistence to .ilastikrc")
 def test_server_config_storing_server():
     conf = ConfigParser()
     conf.read_string(CONFIG)
