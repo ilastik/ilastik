@@ -1,5 +1,6 @@
 import vigra
 import numpy
+import xarray
 
 from functools import singledispatch
 from lazyflow.graph import Graph
@@ -59,7 +60,8 @@ def from_project_file(path) -> Pipeline:
 
             self._reorder_op.Input.setValue(data)
 
-            return self._predict_op.PMaps.value[...]
+            data = self._predict_op.PMaps.value[...]
+            return xarray.DataArray(data, dims=tuple(self._predict_op.PMaps.meta.axistags.keys()))
 
     return _PipelineImpl()
 
@@ -76,9 +78,10 @@ def _(data: vigra.VigraArray):
 
 @convert_to_vigra.register
 def _(data: numpy.ndarray):
-    axes = get_default_axisordering(data.shape)
-    if "c" not in axes:
-        result = data.reshape(*data.shape, 1)
-        return vigra.taggedView(result, axes + "c")
-    else:
-        return vigra.taggedView(data, axes)
+    raise ValueError("numpy arrays don't provide information about axistags expecting xarray")
+
+
+@convert_to_vigra.register
+def _(data: xarray.DataArray):
+    axistags = "".join(data.dims)
+    return vigra.taggedView(data.values, axistags)

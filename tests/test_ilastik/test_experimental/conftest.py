@@ -13,7 +13,9 @@ def test_data_lookup(data_path, tmpdir_factory) -> types.ApiTestDataLookup:
     with ZipFile(projects_zip) as zip:
         zip.extractall(unpacking_dir)
 
-        known_filenames = set(e.value for e in types.TestData)
+        known_filenames = set(data.value for data in types.TestData)
+        for prj in types.TestProjects:
+            known_filenames.add(prj.value)
 
         path_by_name = {}
         unknown_names = set()
@@ -28,12 +30,12 @@ def test_data_lookup(data_path, tmpdir_factory) -> types.ApiTestDataLookup:
             unused_names_str = "\n".join(f"\t* {name}" for name in known_filenames)
             unknown_names_str = "\n".join(f"\t* {name}" for name in unknown_names)
 
-            fail_msg = f"ApiTest enum doesn't match contents of api_projects.zip."
+            fail_msg = f" enum doesn't match contents of api_projects.zip."
             if unknown_names_str:
                 fail_msg += f"\napi_project.zip has extra files:\n{unknown_names_str}"
 
             if unused_names_str:
-                fail_msg += f"\nTestData enum has extra entries:\n{unused_names_str}"
+                fail_msg += f"\nTestData & TestProjects enum have extra entries:\n{unused_names_str}"
 
             pytest.fail(fail_msg)
 
