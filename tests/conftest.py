@@ -324,6 +324,16 @@ def empty_project_file(tmp_path) -> h5py.File:
         yield f
 
 
+@pytest.fixture(scope="session")
+def ilastik_py():
+    import ilastik
+
+    ilastik_py = Path(ilastik.__file__).parent.parent / "ilastik.py"
+    if not ilastik_py.exists():
+        pytest.fail("Could not find ilastik.py file")
+    return str(ilastik_py)
+
+
 @pytest.fixture
 def graph():
     return Graph()
