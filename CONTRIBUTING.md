@@ -3,198 +3,140 @@
 Thank you for considering contributing to ilastik, we really appreciate it.
 The following text equips you with knowledge that makes contributing to ilastik easier.
 
-## Overview
+---
 
-* [Setting up a development environment](#setting-up-a-development-environment)
-  * [Fork the relevant repositories](#fork-the-relevant-repositories)
-  * [Clone ilastik-meta](#clone-ilastik-meta)
-  * [Initialize the source tree own forks](#initialize-the-source-tree-with-your-own-forks)
-  * [Add upstream repositories](#add-upstream-repositories-from-the-ilastik-organization)
-  * [Install dependencies via conda](#installing-dependencies-via-conda)
-* [Coding](#coding)
-  * [Coding style](#coding-style)
-  * [Tests](#tests)
-  * [Pull requests](#pull-requests)
+* [Development Environment](#development-environment)
+* [Workflow](#workflow)
+* [Coding Style](#coding-style)
 
-## Setting up a development environment
+## Development Environment
 
-For all our repositories, we follow the GitHub Flow.
-You can read about it in [this guide on github.com](https://guides.github.com/introduction/flow/).
+1. Download and install [Git][git], [GitHub CLI][github-cli], and _the latest 64-bit_ [miniconda][miniconda].
+   - Windows: all following commands should be executed in the _Anaconda Prompt_ from the Start Menu.
+   - Linux: Git might be already preinstalled, GitHub CLI might be available in your system package manager.
+   - macOS: Git is already preinstalled, GitHub CLI is available in [Homebrew][homebrew].
 
-Contributing to ilastik is a little bit more involved than just cloning the repo and committing.
-The two main repositories; ilastik, and volumina are governed by ilastik-meta as submodules.
-Furthermore, in order to be able to run the code, all dependencies have to be installed.
-By far the most convenient way for this is to use conda.
-The following paragraphs will guide through the process of setting up a working development environment.
+1. Fork and clone repositories:
+   ```
+   gh repo fork --clone=true --remote=true ilastik/volumina
+   gh repo fork --clone=true --remote=true ilastik/ilastik
+   ```
 
-### Fork the relevant repositories
+   If you already forked repositories before, just clone them:
 
-You should begin by forking the two main ilastik repositories, that make up the ilastik application:
+   ```
+   gh repo clone volumina
+   gh repo clone ilastik
+   ```
 
-* https://github.com/ilastik/ilastik
-* https://github.com/ilastik/volumina
+1. Install [conda-build][conda-build] in order to access the [conda develop][conda-develop] command:
 
-#### Clone ilastik-meta
+   ```
+   conda install --name base conda-build
+   ```
 
-Having done that, you should clone our `ilastik-meta` repository with:
+1. Create a new environment and install dependencies:
 
-```bash
-# navigate to an appropriate folder, e.g. `~/sources`
-git clone https://github.com/ilastik/ilastik-meta
-```
+   ```
+   conda deactivate
+   conda env remove --name ilastik
+   conda create --name ilastik --channel ilastik-forge --channel conda-forge ilastik-dependencies-no-solvers pre-commit
+   ```
 
-#### Initialize the source tree with your own forks
+1. Install repositories as packages in development mode:
 
-Examining the created folder, e.g. `~/sources/ilastik-meta`, you can find the `.gitmodules` file.
-Check out a new branch in ilastik-meta, e.g. `git checkout -b my-forks` and edit the `.gitmodules`
-file such that it points to your own forks: replace all occurrences of `https://github.com/ilastik`
-with `https://github.com/<your_github_username>`.
+   ```
+   conda develop --name ilastik volumina
+   conda develop --name ilastik ilastik
+   ```
 
-Now it is time to initialize the repository:
+1. Install pre-commit hooks:
 
-```bash
-# in ~/sources/ilastik-meta (or wherever you have cloned ilastik-meta to)
-git submodule update --init --recursive
-git submodule foreach 'git checkout master'
-```
+   ```
+   conda activate ilastik
 
-Your forks are now set as the _origin_ remote for the respective repository.
-You can confirm this, e.g. by
+   cd volumina
+   pre-commit install
+   cd ..
 
-```bash
-# in ~/sources/ilastik-meta/ilastik
-git remote -v
+   cd ilastik
+   pre-commit install
+   cd ..
+   ```
 
-# Which should give you an output like
-origin  https://github.com/<your_github_username>/ilastik (fetch)
-origin  https://github.com/<your_github_username>/ilastik (push)
-```
+1. Launch ilastik:
 
-#### Add upstream repositories from the ilastik organization
+   ```
+   conda activate ilastik
+   cd ilastik
+   python ilastik.py
+   ```
 
-In order to stay up to date with the overall ilastik developments, you need to synchronize your
-forks with the upstream repositories.
-In the current configuration, each of the two main repositories has a single _remote_, called _origin_,
-pointing to your forks.
+## Workflow
 
-Now add the upstream repository by
+We use [GitHub Flow][github-flow] workflow without the _Deploy_ step.
 
-```bash
-# in ~/sources/ilastik-meta/ilastik
-git remote add upstream https://github.com/ilastik/ilastik
+The whole ilastik project is split into 2 repositories: [ilastik][ilastik] and [volumina][volumina].
+Therefore, *for some changes you need to repeat the instructions twice in the corresponding directories*.
 
-# confirm successful addition of the remote
-git remote -v
-# with the output
-origin  https://github.com/<your_githug_usernameur>/ilastik (fetch)
-origin  https://github.com/<your_githug_usernameur>/ilastik (push)
-upstream    https://github.com/ilastik/ilastik (fetch)
-upstream    https://github.com/ilastik/ilastik (push)
-```
+1. Make sure that your local and remote _master_ branches are synced with the upstream.
 
-Do this for each of the `volumina` repository as well, adding
-`https://github.com/ilastik/volumina` as the _upstream_ remote.
+   ```
+   git pull --ff-only upstream master:master
+   git push origin master
+   ```
 
-You can sync your fork with the mother repo by:
+1. Create a new branch from *master*:
 
-```bash
-# in ~/sources/ilastik-meta/ilastik
-git checkout master  # make sure you are on the master branch
-git fetch upstream master  # get the latest changes from the mother repo
-git rebase upstream/master  # rebase your master branch with the mother repo
-git push origin master  # push the updated master to your fork
-git checkout -  # check out the branch you were previously on
-```
+   ```
+   git switch --create your-branch-name-here master
+   ```
 
-You should make it a habit to stay current in both main repositories whilst actively developing.
-To make this task a bit easier you could add the following alias to your `.gitconfig` file:
+1. Write some code, and, if possible, add tests for your changes.
 
-```
-[alias]
-    sync-forks = "submodule foreach 'git checkout master; git fetch upstream master; git rebase upstream/master; git push; git checkout -'"
-```
+1. Run the test suite *for all repositories*:
 
-If you invoke this alias from the `ilastik-meta` repository, it will update both forks:
+   ```
+   cd volumina
+   pytest
+   cd ..
 
-```bash
-# in ~/sources/ilastik-meta
-git sync-forks
-```
+   cd ilasitk
+   pytest --run-legacy-gui
+   cd ..
+   ```
 
-### Installing dependencies via conda
+1. Commit the changes; see https://chris.beams.io/posts/git-commit/ on how to write a good commit message.
 
-ilastik depends on ~120 packages - some of which pure python packages but also compiled C++ ones.
-[Conda](https://conda.io/miniconda.html) allows for isolated python environments and for distribution of pre-build binary packages and a lot of
-our dependencies are already built by the community around conda.
-The remaining packages we maintain ourselves in our _ilastik-forge_ conda channel.
+1. Create a pull request:
 
-Install miniconda:
+   ```
+   gh pr create --web
+   ```
 
-```bash
-# Install miniconda to the prefix of your choice, e.g. /home/<myuser>/miniconda3
+   - If you have changes in multiple repositories, create multiple pull requests, and then append the following paragraph to each one:
 
-# LINUX:
-wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
-bash Miniconda3-latest-Linux-x86_64.sh
+     ```
+     Related: OTHER_PULL_REQUEST_URL_HERE
+     ```
 
-# MAC:
-wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh
-bash Miniconda3-latest-MacOSX-x86_64.sh
+   - If your changes require feedback, create a draft pull request (select the type from the dropdown list on the green button).
 
-# During the installation, conda edits your .bashrc to add its paths
-# Either re-open the terminal, or
-source ~/.bashrc  # Linux
-source ~/.bash_profile  # MAC
+1. Discuss your work with the other people, and wait for the approval from maintainers.
 
-# Install conda-build which is needed to correctly setup a development environment:
-conda install -n base -c conda-forge conda-build
-```
+1. After your pull request has been merged, remove your local branches:
 
-**Note:** the following steps guide you through the manual process of creating a development environment.
-For convenience, there is a `ilastik-meta/ilastik/scripts/devenv.py` script that automates this process.
-Ensure that your current working directory is `ilastik-meta` and run `python ilastik/scripts/devenv.py create -n idev`.
+   ```
+   git branch --delete your-branch-name-here
+   ```
 
-#### Manual Creation of development environment
-Create the ilastik development environment (we assume that the dev-environment will have the name _idev_, but you can, of course choose a name to your liking):
-```bash
-conda create --name idev -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers
-```
+   You can also remove your remote branches by clicking "Delete branch" in the pull request web page, or running the following:
 
-In order to run your own code, you need to install the local ilastik packages with `conda develop`.
+   ```
+   git push --delete origin your-branch-name-here
+   ```
 
-```bash
-# from you local ilastik-meta folder
-git submodule foreach 'conda develop .'
-```
-
-Now it might be the time to test whether the installation was successful:
-```bash
-# activate your conda environment
-conda activate idev
-
-# check whether importing ilastik repos works
-python -c "import ilastik; import volumina"
-```
-
-If there are no errors here, chances are high the development environment was set up correctly.
-If the above line already works, you can start ilastik by:
-
-```bash
-# in ~/source/ilastik-meta/ilastik
-python ilastik.py
-```
-
-More information on conda, and building the ilastik packages yourself:
- * [miniconda](https://conda.io/miniconda.html)
- * [conda user guide](https://conda.io/docs/user-guide/index.html)
- * [conda build docs](https://conda.io/docs/commands/build/conda-build.html)
- * [On building ilastik packages with conda-build](https://github.com/ilastik/ilastik-publish-packages)
-
-## Coding
-
-In order to follow the [GitHub Flow](https://guides.github.com/introduction/flow/), please always start from a current master (see the above section on how to sync your forks) and create a feature branch that you will push to your own fork.
-
-### Coding style
+## Coding style
 
 Many users with different backgrounds have contributed to ilastik in the past.
 Code quality and coding styles can be quite different throughout the code-base.
@@ -202,36 +144,20 @@ Code quality and coding styles can be quite different throughout the code-base.
 In general, when working on an existing file, please try to deduce the used coding style from what you see there,
 and adapt to it while working on this particular file.
 
-For new files, we adhere to [the google python style guide](https://github.com/google/styleguide/blob/gh-pages/pyguide.md).
+For new files, we adhere to the [Google Python style guide][google-style] and [black code style][black].
 
 __Note__: please refrain from including changes by some automatic tools on existing code in your pull requests.
 We would like to preserve the history there.
 But please run those tools on the code you are contributing :)
 
-### Tests
-
-After making changes, please confirm that nothing else got broken by running the tests:
-
- * Changes made in the ilastik repository _ilastik_:
-   ```bash
-   # in ~/source/ilastik-meta/ilastik/tests
-   conda activate idev
-   pytest --run-legacy-gui
-   ```
-
- * Changes made in volumina:
-   ```bash
-   # in ~/source/ilastik-meta/volumina/tests
-   conda activate idev
-   pytest
-   ```
-   * please also run the ilastik tests (see above)
-
-
-### Pull requests
-
-In order to get your changes from the feature branch in your fork to the master branch of the upstream repository, you have to open a [pull request (PR)](https://help.github.com/articles/about-pull-requests/).
-You can open PRs as early as you want if you want feedback on preliminary work.
-In this case, please prefix the title with "[wip]" (for work in progress).
-Please try to give the PR a meaningful title and summarize the changes made in your PR, explain the motivation and reference relevant issues that this PR addresses in the message.
-At least one of the core developers will have a look and give you feedback.
+[git]: https://git-scm.com/
+[github-cli]: https://cli.github.com/
+[miniconda]: https://docs.conda.io/en/latest/miniconda.html
+[homebrew]: https://brew.sh/
+[conda-build]: https://docs.conda.io/projects/conda-build/en/latest/
+[conda-develop]: https://docs.conda.io/projects/conda-build/en/latest/resources/commands/conda-develop.html
+[ilastik]: https://github.com/ilastik/ilastik
+[volumina]: https://github.com/ilastik/volumina
+[github-flow]: https://guides.github.com/introduction/flow/
+[google-style]: https://github.com/google/styleguide/blob/gh-pages/pyguide.md
+[black]: https://black.readthedocs.io/en/stable/
