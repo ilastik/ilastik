@@ -74,15 +74,13 @@ class AddFileButton(QPushButton):
         self.index = index
         # drop down menu for different add options
         menu = QMenu(parent=self)
-        menu.addAction("Add separate Image(s)...").triggered.connect(self.addFilesRequested.emit)
-        menu.addAction("Add a single 3D/4D Volume from Sequence...").triggered.connect(self.addStackRequested.emit)
+        menu.addAction("Add separate Image(s)...").triggered.connect(self.addFilesRequested)
+        menu.addAction("Add a single 3D/4D Volume from Sequence...").triggered.connect(self.addStackRequested)
 
         if ilastik.config.cfg.getboolean("ilastik", "hbp", fallback=False):
-            menu.addAction("Add a precomputed chunked volume...").triggered.connect(
-                self.addPrecomputedVolumeRequested.emit
-            )
+            menu.addAction("Add a precomputed chunked volume...").triggered.connect(self.addPrecomputedVolumeRequested)
 
         if _supports_dvid:
-            menu.addAction("Add DVID Volume...").triggered.connect(self.addRemoteVolumeRequested.emit)
+            menu.addAction("Add DVID Volume...").triggered.connect(self.addRemoteVolumeRequested)
 
         self.setMenu(menu)
