@@ -19,23 +19,17 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 
+import importlib.util
 from pathlib import Path
 
 from PyQt5.QtCore import pyqtSignal, QModelIndex
 from PyQt5.QtWidgets import QMenu, QPushButton
 from PyQt5.QtGui import QIcon
 
-# Is DVID available?
-try:
-    import libdvid
-
-    _supports_dvid = True
-except ImportError:
-    _supports_dvid = False
-
 import ilastik.config
 
 _ICON_PATH = Path(__file__).parents[2] / "shell/gui/icons/16x16/actions/list-add.png"
+_SUPPORTS_DVID = importlib.util.find_spec("libdvid") is not None
 
 
 class AddFileButton(QPushButton):
@@ -76,7 +70,7 @@ class AddFileButton(QPushButton):
         if ilastik.config.cfg.getboolean("ilastik", "hbp", fallback=False):
             menu.addAction("Add a precomputed chunked volume...").triggered.connect(self.addPrecomputedVolumeRequested)
 
-        if _supports_dvid:
+        if _SUPPORTS_DVID:
             menu.addAction("Add DVID Volume...").triggered.connect(self.addRemoteVolumeRequested)
 
         self.setMenu(menu)
