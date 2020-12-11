@@ -14,6 +14,7 @@ import h5py
 import z5py
 import zipfile
 from ndstructs import Array5D, Shape5D
+import psutil
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -172,7 +173,7 @@ def test_distributed_results_are_identical_to_single_process_results(
     distributed_output_path = tmp_path / "distributed_out_100x100y3c.n5"
     run_headless_pixel_classification(
         testdir,
-        num_distributed_workers=4,
+        num_distributed_workers=min(4, psutil.cpu_count(logical=False)),
         output_format="n5",
         project=pixel_classification_ilp_2d3c,
         raw_data=raw_100x100y3c,
@@ -187,7 +188,7 @@ def test_distributed_results_are_identical_to_single_process_results(
     distributed_50x50block_output_path = tmp_path / "distributed_50x50block_out_100x100y3c.n5"
     run_headless_pixel_classification(
         testdir,
-        num_distributed_workers=4,
+        num_distributed_workers=min(4, psutil.cpu_count(logical=False)),
         distributed_block_roi={"x": 50, "y": 50},
         output_format="n5",
         project=pixel_classification_ilp_2d3c,

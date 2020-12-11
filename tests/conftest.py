@@ -12,6 +12,11 @@ import itertools
 
 from concurrent import futures
 
+# https://bugreports.qt.io/browse/QTBUG-87014
+if platform.mac_ver()[0] == "10.16":
+    os.environ["QT_MAC_WANTS_LAYER"] = "1"
+    os.environ["VOLUMINA_SHOW_3D_WIDGET"] = "0"
+
 import pytest
 import h5py
 import z5py
@@ -317,6 +322,16 @@ def empty_project_file(tmp_path) -> h5py.File:
     project_path = tmp_path / tempfile.mkstemp(suffix=".ilp")[1]
     with h5py.File(project_path, "r+") as f:
         yield f
+
+
+@pytest.fixture(scope="session")
+def ilastik_py():
+    import ilastik
+
+    ilastik_py = Path(ilastik.__file__).parent.parent / "ilastik.py"
+    if not ilastik_py.exists():
+        pytest.fail("Could not find ilastik.py file")
+    return str(ilastik_py)
 
 
 @pytest.fixture

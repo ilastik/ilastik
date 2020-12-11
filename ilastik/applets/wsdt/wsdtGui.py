@@ -290,6 +290,7 @@ class WsdtGui(LayerViewerGui):
         th = threading.Thread(target=updateThread)
         th.start()
 
+    @threadRouted
     def setConfigWidgetsEnabled(self, enable):
         """
         Enable or disable all configuration widgets and the live update button
