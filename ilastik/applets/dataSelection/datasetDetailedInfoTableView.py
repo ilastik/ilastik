@@ -1,6 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,16 +18,19 @@ from __future__ import division
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+
+from functools import partial
+from pathlib import Path
+
 from past.utils import old_div
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QUrl, QObject, QEvent, QTimer
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QTableView, QHeaderView, QMenu, QAction, QWidget, QHBoxLayout, QPushButton, QItemDelegate
 
 from .datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
-from .addFileButton import AddFileButton, FILEPATH
+from .addFileButton import AddFileButton
 
-from pathlib import Path
-from functools import partial
+_ICON_PATH = Path(__file__).parents[2] / "shell/gui/icons/16x16/actions/list-remove.png"
 
 
 class ButtonOverlay(QPushButton):
@@ -39,12 +39,7 @@ class ButtonOverlay(QPushButton):
     """
 
     def __init__(self, parent=None):
-        super(ButtonOverlay, self).__init__(
-            QIcon(FILEPATH + "/../../shell/gui/icons/16x16/actions/list-remove.png"),
-            "",
-            parent,
-            clicked=self.removeButtonClicked,
-        )
+        super(ButtonOverlay, self).__init__(QIcon(str(_ICON_PATH)), "", parent, clicked=self.removeButtonClicked)
         self.setFixedSize(20, 20)  # size is fixed based on the icon above
         # these are used to compute placement at the right end of the
         # first column

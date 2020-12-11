@@ -18,14 +18,12 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+
+from pathlib import Path
+
 from PyQt5.QtCore import pyqtSignal, QModelIndex
 from PyQt5.QtWidgets import QMenu, QPushButton
 from PyQt5.QtGui import QIcon
-
-# this is used to find the location of the icon file
-import os.path
-
-FILEPATH = os.path.split(__file__)[0]
 
 # Is DVID available?
 try:
@@ -36,6 +34,8 @@ except ImportError:
     _supports_dvid = False
 
 import ilastik.config
+
+_ICON_PATH = Path(__file__).parents[2] / "shell/gui/icons/16x16/actions/list-add.png"
 
 
 class AddFileButton(QPushButton):
@@ -65,11 +65,7 @@ class AddFileButton(QPushButton):
             new (bool): Indicating if this button is used to add new lanes or files to new roles
             corresponding to an existing lane (such as prediction maps)
         """
-        super(AddFileButton, self).__init__(
-            QIcon(FILEPATH + "/../../shell/gui/icons/16x16/actions/list-add.png"),
-            "Add..." if new == False else "Add New...",
-            parent,
-        )
+        super(AddFileButton, self).__init__(QIcon(str(_ICON_PATH)), "Add New..." if new else "Add...", parent)
 
         self.index = index
         # drop down menu for different add options
