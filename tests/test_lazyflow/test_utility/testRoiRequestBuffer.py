@@ -1,5 +1,8 @@
 import numpy
 import pytest
+from unittest import mock
+
+import vigra
 
 from lazyflow.operators import OpArrayPiper
 from lazyflow.utility import RoiRequestBuffer
@@ -27,29 +30,37 @@ class OpArrayPiperError(OpArrayPiper):
 @pytest.fixture
 def raising_op(graph):
     op = OpArrayPiperError(3, graph=graph)
-    data = numpy.ones((3, 2, 10, 16, 32))  # tczyx
+    data = vigra.taggedView(numpy.ones((3, 2, 10, 16, 32)), vigra.defaultAxistags("tzcyx"))
     op.Input.setValue(data)
     return op
 
 
 def test_RoiIter():
+    mockslot = mock.Mock()
     shape = (200, 42, 3, 15, 27)
-    r_iter = _RoiIter(shape)
+    mockslot.meta.shape = (200, 42, 3, 15, 27)
+    mockslot.meta.getAxisKeys.return_value = ["t", "z", "c", "y", "x"]
+    r_iter = _RoiIter(mockslot)
 
     assert len(r_iter) == numpy.prod(shape[:-2])
     assert all(x[-2:] == (0, 0) for x, _ in r_iter)
     assert all(x[0] == y + (0, 0) for x, y in zip(r_iter, numpy.ndindex(*shape[:-2])))
 
 
-def test_in_ascending_order(graph):
+def test_in_ascending_order(graph, monkeypatch):
     """Make sure iterator returns data slices in ascending order"""
     op = OpArrayPiper(graph=graph)
-    data = numpy.ones((3, 2, 10, 16, 32), dtype="uint8") * numpy.arange(32, dtype="uint8")
+    data = vigra.taggedView(
+        numpy.ones((3, 2, 10, 16, 32), dtype="uint8") * numpy.arange(32, dtype="uint8"), vigra.defaultAxistags("tzcyx")
+    )
 
     op.Input.setValue(data)
 
-    class RI(_RoiIter):
+    class RI:
         """Roi iter class that returns rois over the last dimension in descending order"""
+
+        def __init__(self, slot):
+            self._shape = slot.meta.shape
 
         def to_index(self, roi):
             return roi[0][-1]
@@ -63,7 +74,8 @@ def test_in_ascending_order(graph):
                 stop = self._shape[:-1] + (i,)
                 yield start, stop
 
-    rb = RoiRequestBuffer(op.Output, batchsize=2, roi_iter_cls=RI)
+    monkeypatch.setattr(lazyflow.utility.roiRequestBuffer, "_RoiIter", RI)
+    rb = RoiRequestBuffer(op.Output, batchsize=2)
 
     for i, item in enumerate(rb):
         assert item.shape == (3, 2, 10, 16, 1)

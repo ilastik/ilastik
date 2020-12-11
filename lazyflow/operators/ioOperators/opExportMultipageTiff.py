@@ -85,7 +85,7 @@ class OpExportMultipageTiff(Operator):
         with tifffile.TiffWriter(self.Filepath.value, byteorder="<", ome=True) as writer:
             writer.write(
                 data=page_buf,
-                shape=self._opReorderAxes.Output.meta.shape,
+                shape=self._opReorderAxes.Output,
                 dtype=dtype,
                 software="ilastik",
                 metadata={"axes": "".join(self._opReorderAxes.Output.meta.getAxisKeys())},

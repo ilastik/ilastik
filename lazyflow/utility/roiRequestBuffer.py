@@ -15,8 +15,10 @@ ROI_TUPLE = Tuple[ROI, ROI]
 class _RoiIter:
     """Iterate over rois for a given shape"""
 
-    def __init__(self, shape: SHAPE):
-        self._shape = shape
+    def __init__(self, slot: Slot):
+        if "".join(slot.meta.getAxisKeys()) != "tzcyx":
+            raise ValueError("Only axisorder tzcyx supported.")
+        self._shape = slot.meta.shape
 
     def to_index(self, roi: ROI_TUPLE) -> int:
         """Convert ROI_TUPLE to index
@@ -40,7 +42,7 @@ class _RoiIter:
 class RoiRequestBuffer:
     """Iterate over first 3 dims of a 5D slot in nd-ascending order."""
 
-    def __init__(self, slot: Slot, batchsize: int, roi_iter_cls: Type[_RoiIter] = _RoiIter):
+    def __init__(self, slot: Slot, batchsize: int):
         """
         Args:
             slot: slot to request data from
@@ -54,7 +56,7 @@ class RoiRequestBuffer:
         self._items: Dict[int, numpy.ndarray] = {}
         self._q: Queue[Tuple[ROI_TUPLE, numpy.ndarray]] = Queue()
         self._index = 0
-        self._roi_iter = roi_iter_cls(self._slot.meta.shape)
+        self._roi_iter = _RoiIter(self._slot)
         self._max = len(self._roi_iter)
 
         self._roi_request_batch = self._config_batch_request()
@@ -81,7 +83,6 @@ class RoiRequestBuffer:
 
     def __iter__(self) -> Iterator[numpy.ndarray]:
         self._roi_request_batch.execute()
-        slot_shape = self._slot.meta.shape
         while True:
             if self._index not in self._items:
                 k, v = self._q.get()
