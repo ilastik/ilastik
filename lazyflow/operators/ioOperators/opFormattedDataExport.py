@@ -166,9 +166,7 @@ class OpFormattedDataExport(Operator):
 
     def set_roi(self, roi: Slice5D):
         input_axiskeys = self.Input.meta.getAxisKeys()
-        start = roi.start.to_tuple(input_axiskeys, int)
-        stop = roi.stop.to_tuple(input_axiskeys, int)
-        self._opSubRegion.Roi.setValue((start, stop))
+        self._opSubRegion.Roi.setValue(roi.to_tuple(input_axiskeys))
 
     def setupOutputs(self):
         new_start, new_stop = self.get_new_roi()
