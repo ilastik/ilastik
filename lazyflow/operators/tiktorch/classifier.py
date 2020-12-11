@@ -271,9 +271,9 @@ class TiktorchConnectionFactory(_base.IConnectionFactory):
 
         _100_MB = 100 * 1024 * 1024
         server_config = config
-        host, port = server_config.address.split(':')
+        host, port = server_config.address.split(":")
         addr = socket.gethostbyname(host)
-        logger.debug(f"Trying to connect to tiktorch server using %s(%s):%s", host, addr, port),
+        logger.debug("Trying to connect to tiktorch server using %s(%s):%s", host, addr, port),
         self._chan = grpc.insecure_channel(
             f"{addr}:{port}",
             options=[("grpc.max_send_message_length", _100_MB), ("grpc.max_receive_message_length", _100_MB)],
