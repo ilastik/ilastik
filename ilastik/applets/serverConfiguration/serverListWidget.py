@@ -12,6 +12,7 @@ class ServerListWidget(QWidget):
     """
     Combo box widget with add/remove buttons
     """
+
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
 

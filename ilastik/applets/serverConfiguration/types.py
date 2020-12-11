@@ -25,7 +25,7 @@ class Device:
     enabled: bool = False
 
 
-@attr.s(auto_attribs=True, kw_only=True) #, frozen=True)
+@attr.s(auto_attribs=True, kw_only=True)  # , frozen=True)
 class ServerConfig:
     id: str = attr.ib(validator=_validate_id)
     address: str = attr.ib(validator=_non_empty)

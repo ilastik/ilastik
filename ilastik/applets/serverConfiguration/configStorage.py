@@ -14,60 +14,24 @@ SERVER_CONFIG_GROUP = "ServerConfig"
 SERVER_CONFIG_LIST_KEY = "Servers"
 
 
+def _from_dict(type_, data):
+    if not isinstance(data, dict):
+        raise ValueError("Expected dict")
+
+    field_names = set(attr.name for attr in attr.fields(type_))
+    return type_(**{fn: data.get(fn) for fn in field_names})
+
+
 class ServerConfigStorage:
-    def __init__(self) -> None:
-        pass
-
-    def _parse_autostart(self, entry):
-        if entry == "1":
-            return True
-        else:
-            return False
-
-    def _parse_server_section(self, section):
-        id_ = section.replace(self.PREFIX, '')
-        items = self._config.items(section)
-        data = dict(items)
-        data["autostart"] = self._parse_autostart(data.get("autostart", "0"))
-
-        try:
-            data["devices"] = self._parse_devices(data["devices"])
-        except Exception:
-            data["devices"] = []
-
-        return types.ServerConfig(**{
-            "id": id_,
-            **data,
-        })
-
-    def _parse_device(self, dev_str):
-        id_, name, *rest = dev_str.split("::")
-
-        enabled = False
-        if len(rest) == 1 and rest[0] == "enabled":
-            enabled = True
-
-        return types.Device(id=id_, name=name, enabled=enabled)
-
-    def _parse_devices(self, devices_str):
-        devs = devices_str.split('\n')
-        res = []
-        for dev in devs:
-            try:
-                res.append(self._parse_device(dev))
-            except Exception:
-                pass
-
-        return res
+    def __init__(self, preferences=preferences) -> None:
+        self.__preferences = preferences
 
     def get_servers(self):
-        servers_data = preferences.get(SERVER_CONFIG_GROUP, SERVER_CONFIG_LIST_KEY, [])
+        servers_data = self.__preferences.get(SERVER_CONFIG_GROUP, SERVER_CONFIG_LIST_KEY, [])
         result = []
         for server_dict in servers_data:
-            server_dict["devices"] = [types.Device(**d) for d in server_dict.get("devices", [])]
-            result.append(
-                types.ServerConfig(**server_dict)
-            )
+            server_dict["devices"] = [_from_dict(types.Device, d) for d in server_dict.get("devices", [])]
+            result.append(_from_dict(types.ServerConfig, server_dict))
         return result
 
     def get_server(self, id_) -> typing.Optional[types.ServerConfig]:
@@ -83,7 +47,7 @@ class ServerConfigStorage:
         for srv in servers:
             servers_data.append(attr.asdict(srv))
 
-        preferences.set(SERVER_CONFIG_GROUP, SERVER_CONFIG_LIST_KEY, servers_data)
+        self.__preferences.set(SERVER_CONFIG_GROUP, SERVER_CONFIG_LIST_KEY, servers_data)
 
 
 SERVER_CONFIG = ServerConfigStorage()
