@@ -271,23 +271,9 @@ class TiktorchConnectionFactory(_base.IConnectionFactory):
 
         _100_MB = 100 * 1024 * 1024
         server_config = config
-        addr, port = socket.gethostbyname(server_config.address), server_config.port
-        conn_conf = ConnConf(addr, port, timeout=20)
-
-        if server_config.autostart:
-            if addr == "127.0.0.1":
-                self.launcher = LocalServerLauncher(conn_conf, path=server_config.path)
-            else:
-                self.launcher = RemoteSSHServerLauncher(
-                    conn_conf,
-                    cred=SSHCred(server_config.username, key_path=server_config.ssh_key),
-                    path=server_config.path,
-                )
-        else:
-            self.launcher = _NullLauncher()
-
-        self.launcher.start()
-
+        host, port = server_config.address.split(':')
+        addr = socket.gethostbyname(host)
+        logger.debug(f"Trying to connect to tiktorch server using %s(%s):%s", host, addr, port),
         self._chan = grpc.insecure_channel(
             f"{addr}:{port}",
             options=[("grpc.max_send_message_length", _100_MB), ("grpc.max_receive_message_length", _100_MB)],
