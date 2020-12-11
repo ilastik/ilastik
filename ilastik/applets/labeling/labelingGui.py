@@ -446,6 +446,19 @@ class LabelingGui(LayerViewerGui):
                 ),
             )
 
+        if hasattr(self.labelingDrawerUi, "liveUpdateButton"):
+            mgr.register(
+                "l",
+                ActionInfo(
+                    shortcutGroupName,
+                    "Live Prediction",
+                    "Toggle Live Prediction Mode",
+                    self.labelingDrawerUi.liveUpdateButton.toggle,
+                    self.labelingDrawerUi.liveUpdateButton,
+                    self.labelingDrawerUi.liveUpdateButton,
+                ),
+            )
+
         self._labelShortcuts = []
 
     def _tweakBrushSize(self, increase):

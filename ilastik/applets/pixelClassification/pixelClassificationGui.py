@@ -607,18 +607,6 @@ class PixelClassificationGui(LabelingGui):
             ),
         )
 
-        mgr.register(
-            "l",
-            ActionInfo(
-                shortcutGroupName,
-                "Live Prediction",
-                "Toggle Live Prediction Mode",
-                self.labelingDrawerUi.liveUpdateButton.toggle,
-                self.labelingDrawerUi.liveUpdateButton,
-                self.labelingDrawerUi.liveUpdateButton,
-            ),
-        )
-
     def _setup_contexts(self, layer):
         def callback(pos, clayer=layer):
             name = clayer.name
