@@ -39,14 +39,17 @@ import ilastik.config
 
 
 class AddFileButton(QPushButton):
-    """
-    Button used for adding new files. It presents a drop down menu with
-    three options:
+    """Button used for adding new files.
 
-        - Add separate image(s)
-        - Add 3D/4D volume from sequence
-        - Add DVID volume
-        - Add precomputed chunked volume
+    It presents a drop down menu with the following options:
+
+    - Add separate image(s)
+    - Add 3D/4D volume from sequence
+    - Add DVID volume
+    - Add precomputed chunked volume
+
+    Attributes:
+        index (QModelIndex): Index of the gui dataset table cell to which this button is added
     """
 
     addFilesRequested = pyqtSignal()
@@ -68,7 +71,7 @@ class AddFileButton(QPushButton):
             parent,
         )
 
-        self._index = index
+        self.index = index
         # drop down menu for different add options
         menu = QMenu(parent=self)
         menu.addAction("Add separate Image(s)...").triggered.connect(self.addFilesRequested.emit)
@@ -83,11 +86,3 @@ class AddFileButton(QPushButton):
             menu.addAction("Add DVID Volume...").triggered.connect(self.addRemoteVolumeRequested.emit)
 
         self.setMenu(menu)
-
-    @property
-    def index(self):
-        return self._index
-
-    @index.setter
-    def index(self, index):
-        self._index = index
