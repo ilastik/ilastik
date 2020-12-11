@@ -5,7 +5,7 @@ from unittest import mock
 import vigra
 
 from lazyflow.operators import OpArrayPiper
-from lazyflow.utility import RoiRequestBuffer
+from lazyflow.utility import RoiRequestBufferIter
 from lazyflow.utility.roiRequestBuffer import _RoiIter
 import lazyflow.utility.roiRequestBuffer
 
@@ -75,7 +75,7 @@ def test_in_ascending_order(graph, monkeypatch):
                 yield start, stop
 
     monkeypatch.setattr(lazyflow.utility.roiRequestBuffer, "_RoiIter", RI)
-    rb = RoiRequestBuffer(op.Output, batchsize=2)
+    rb = RoiRequestBufferIter(op.Output, batchsize=2)
 
     for i, item in enumerate(rb):
         assert item.shape == (3, 2, 10, 16, 1)
@@ -85,7 +85,7 @@ def test_in_ascending_order(graph, monkeypatch):
 
 def test_raises(raising_op):
     """Make sure iterator does not block indefinitely if exception occurs in thread"""
-    rb = RoiRequestBuffer(raising_op.Output, batchsize=2)
+    rb = RoiRequestBufferIter(raising_op.Output, batchsize=2)
 
     with pytest.raises(ProcessingException):
         for item in rb:

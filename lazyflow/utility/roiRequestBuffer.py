@@ -39,7 +39,7 @@ class _RoiIter:
             yield start, stop
 
 
-class RoiRequestBuffer:
+class RoiRequestBufferIter:
     """Iterate over first 3 dims of a 5D slot in nd-ascending order."""
 
     def __init__(self, slot: Slot, batchsize: int):
@@ -47,32 +47,24 @@ class RoiRequestBuffer:
         Args:
             slot: slot to request data from
             batchsize: maximum number of requests to launch in parallel
-            roi_iter_cls: mainly exposed for testing, class that produces iterators\
-            given a shape
         """
         self._slot = slot
         self._batchsize = batchsize
-
-        self._items: Dict[int, numpy.ndarray] = {}
         self._q: Queue[Tuple[ROI_TUPLE, numpy.ndarray]] = Queue()
+        self._items: Dict[int, numpy.ndarray] = {}
+
         self._index = 0
         self._roi_iter = _RoiIter(self._slot)
         self._max = len(self._roi_iter)
 
-        self._roi_request_batch = self._config_batch_request()
-
-    def _config_batch_request(self) -> RoiRequestBatch:
-        self._items = {}
-        self._index = 0
-        roi_request_batch = RoiRequestBatch(
+        self._roi_request_batch = RoiRequestBatch(
             outputSlot=self._slot,
             roiIterator=iter(self._roi_iter),
             totalVolume=numpy.prod(self._slot.meta.shape),
             batchSize=self._batchsize,
             allowParallelResults=False,
         )
-        roi_request_batch.resultSignal.subscribe(self._put)
-        return roi_request_batch
+        self._roi_request_batch.resultSignal.subscribe(self._put)
 
     def _put(self, *val):
         self._q.put(val)
@@ -81,19 +73,21 @@ class RoiRequestBuffer:
     def progress_signal(self):
         return self._roi_request_batch.progressSignal
 
-    def __iter__(self) -> Iterator[numpy.ndarray]:
+    def __iter__(self):
         self._roi_request_batch.execute()
+        return self
+
+    def __next__(self):
         while True:
+            if self._index >= self._max:
+                raise StopIteration()
             if self._index not in self._items:
                 k, v = self._q.get()
                 idx = self._roi_iter.to_index(k)
                 self._items[idx] = v
                 continue
-
             i = self._index
             item = self._items.pop(i)
             self._index = i + 1
 
-            yield item
-            if self._index >= self._max:
-                return
+            return item

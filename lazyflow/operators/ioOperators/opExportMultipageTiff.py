@@ -29,7 +29,7 @@ import tifffile
 
 from lazyflow.graph import InputSlot, Operator
 from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.utility import OrderedSignal, RoiRequestBuffer
+from lazyflow.utility import OrderedSignal, RoiRequestBufferIter
 
 
 logger = logging.getLogger(__name__)
@@ -79,13 +79,13 @@ class OpExportMultipageTiff(Operator):
         if isinstance(dtype, type):
             dtype = dtype().dtype
 
-        page_buf = RoiRequestBuffer(self._opReorderAxes.Output, self._batch_size)
+        page_buf = RoiRequestBufferIter(self._opReorderAxes.Output, self._batch_size)
         page_buf.progress_signal.subscribe(self.progressSignal)
 
         with tifffile.TiffWriter(self.Filepath.value, byteorder="<", ome=True) as writer:
             writer.write(
                 data=page_buf,
-                shape=self._opReorderAxes.Output,
+                shape=self._opReorderAxes.Output.meta.shape,
                 dtype=dtype,
                 software="ilastik",
                 metadata={"axes": "".join(self._opReorderAxes.Output.meta.getAxisKeys())},
