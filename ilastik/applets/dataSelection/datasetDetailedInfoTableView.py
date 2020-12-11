@@ -158,6 +158,7 @@ class AddButtonDelegate(QItemDelegate):
                 # this is only executed on init, but not on remove, such that row and lane get out of sync
                 button = AddFileButton(parent_view, index=index)
                 button.addFilesRequested.connect(partial(parent_view.handleCellAddFilesEvent, button))
+                button.addFromPatternsRequested.connect(partial(parent_view.handleCellAddFromPatternsEvent, button))
                 button.addStackRequested.connect(partial(parent_view.handleCellAddStackEvent, button))
                 button.addPrecomputedVolumeRequested.connect(
                     partial(parent_view.handleCellAddPrecomputedVolumeEvent, button)
@@ -183,6 +184,7 @@ class DatasetDetailedInfoTableView(QTableView):
     resetRequested = pyqtSignal(object)  # Signature: (lane_index_list)
 
     addFilesRequested = pyqtSignal(int)  # Signature: (lane_index)
+    addFromPatternsRequested = pyqtSignal(int)  # Signature: (lane_index)
     addStackRequested = pyqtSignal(int)  # Signature: (lane_index)
     addPrecomputedVolumeRequested = pyqtSignal(int)  # Signature: (lane_index)
     addRemoteVolumeRequested = pyqtSignal(int)  # Signature: (lane_index)
@@ -218,6 +220,10 @@ class DatasetDetailedInfoTableView(QTableView):
     @pyqtSlot(int)
     def handleCellAddFilesEvent(self, button):
         self.addFilesRequested.emit(button.index.row())
+
+    @pyqtSlot(int)
+    def handleCellAddFromPatternsEvent(self, button):
+        self.addFromPatternsRequested.emit(button.index.row())
 
     @pyqtSlot(int)
     def handleCellAddStackEvent(self, button):
@@ -289,6 +295,7 @@ class DatasetDetailedInfoTableView(QTableView):
         layout = QHBoxLayout(widget)
         self._addButton = button = AddFileButton(widget, new=True)
         button.addFilesRequested.connect(partial(self.addFilesRequested.emit, -1))
+        button.addFromPatternsRequested.connect(partial(self.addFromPatternsRequested.emit, -1))
         button.addStackRequested.connect(partial(self.addStackRequested.emit, -1))
         button.addRemoteVolumeRequested.connect(partial(self.addRemoteVolumeRequested.emit, -1))
         button.addPrecomputedVolumeRequested.connect(partial(self.addPrecomputedVolumeRequested.emit, -1))

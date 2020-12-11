@@ -33,6 +33,7 @@ class DataLaneSummaryTableView(QTableView):
     dataLaneSelected = pyqtSignal(int)  # Signature: (laneIndex)
 
     addFilesRequested = pyqtSignal(int)  # Signature: (roleIndex)
+    addFromPatternsRequested = pyqtSignal(int)  # Signature: (roleIndex)
     addStackRequested = pyqtSignal(int)  # Signature: (roleIndex)
 
     removeLanesRequested = pyqtSignal(object)  # Signature: (laneIndexes)
@@ -59,6 +60,7 @@ class DataLaneSummaryTableView(QTableView):
         for column in range(LaneColumn.NumColumns, model.columnCount(), DatasetInfoColumn.NumColumns):
             button = AddFileButton(self, new=True)
             button.addFilesRequested.connect(partial(self.addFilesRequested.emit, roleIndex))
+            button.addFromPatternsRequested.connect(partial(self.addFromPatternsRequested.emit, roleIndex))
             button.addStackRequested.connect(partial(self.addStackRequested.emit, roleIndex))
             self.addFilesButtons[roleIndex] = button
 

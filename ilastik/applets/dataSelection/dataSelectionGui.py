@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 # PyQt
 from PyQt5 import uic
-from PyQt5.QtWidgets import QDialog, QMessageBox, QStackedWidget, QWidget
+from PyQt5.QtWidgets import QDialog, QMessageBox, QStackedWidget, QWidget, QInputDialog
 
 # lazyflow
 from lazyflow.request import Request
@@ -226,6 +226,7 @@ class DataSelectionGui(QWidget):
         self.laneSummaryTableView.setModel(DataLaneSummaryTableModel(self, self.topLevelOperator))
         self.laneSummaryTableView.dataLaneSelected.connect(self.showDataset)
         self.laneSummaryTableView.addFilesRequested.connect(self.addFiles)
+        self.laneSummaryTableView.addFromPatternsRequested.connect(self.addFromPatterns)
         self.laneSummaryTableView.addStackRequested.connect(self.addStack)
         self.laneSummaryTableView.removeLanesRequested.connect(self.handleRemoveLaneButtonClicked)
 
@@ -252,6 +253,7 @@ class DataSelectionGui(QWidget):
 
             # Button
             detailViewer.addFilesRequested.connect(partial(self.addFiles, roleIndex))
+            detailViewer.addFromPatternsRequested.connect(partial(self.addFromPatterns, roleIndex))
             detailViewer.addStackRequested.connect(partial(self.addStack, roleIndex))
             detailViewer.addPrecomputedVolumeRequested.connect(partial(self.addPrecomputedVolume, roleIndex))
             detailViewer.addRemoteVolumeRequested.connect(partial(self.addDvidVolume, roleIndex))
@@ -412,6 +414,73 @@ class DataSelectionGui(QWidget):
             except Exception as ex:
                 log_exception(logger)
                 QMessageBox.critical(self, "Error loading file", str(ex))
+
+    def addFromPatterns(self, roleIndex: int):
+        # Copied from https://docs.python.org/3/library/fnmatch.html
+        label = r"""
+        <p>Enter file and dataset patterns, one per line, using shell-style wildcards.</p>
+        <p>
+            <table>
+                <thead>
+                    <tr>
+                        <th align="left">Pattern</th>
+                        <th align="left">Meaning</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>*</code></td>
+                        <td>matches everything</td>
+                    </tr>
+                    <tr>
+                        <td><code>?</code></td>
+                        <td>matches any single character</td>
+                    </tr>
+                    <tr>
+                        <td><code>[seq]</code></td>
+                        <td>matches any character in <em>seq</em></td>
+                    </tr>
+                    <tr>
+                        <td><code>[!seq]</code></td>
+                        <td>matches any character not in <em>seq</em></td>
+                    </tr>
+                </tbody>
+
+            </table>
+        </p>
+        <p>
+            For a literal match, wrap the meta-characters in brackets.
+            For example, <code>[?]</code> matches the character <code>?</code>.
+        </p>
+        <hr>
+        <p>
+            <font color="#888">
+                Examples:
+                <dl>
+                    <dt>Datasets with the prefix <code>cells</code> in the file <code>spiderman.h5</code></dt>
+                    <dd><code>C:\\myproject\spiderman.h5/cells/*</code></dd>
+                    <dt>Datasets from files whose name end with <code>genome.h5</code></dt>
+                    <dd><code>/home/xavier/*-genome.h5/*</code></dd>
+                    <dt>Files with names from <code>stormtrooper10.tiff</code> to <code>stormtrooper59.tiff</code></dt>
+                    <dd><code>/Users/Vader/stormtrooper[1-5][0-9].tiff</code></dd>
+                </dl>
+            </font>
+        </p>
+        """
+        patterns, ok = QInputDialog.getMultiLineText(self, "Add Files from Patterns", label, "")
+
+        lines = []
+        for line in patterns.splitlines():
+            line = line.strip()
+            if line:
+                lines.append(line)
+        file_path = os.path.pathsep.join(lines)
+
+        if not (ok and file_path):
+            return
+
+        new_infos = [self.instantiate_dataset_info(url, role=roleIndex) for url in DatasetInfo.expand_path(file_path)]
+        self.addLanes(new_infos, roleIndex)
 
     def _findFirstEmptyLane(self, roleIndex):
         opTop = self.topLevelOperator

@@ -38,6 +38,7 @@ class AddFileButton(QPushButton):
     It presents a drop down menu with the following options:
 
     - Add separate image(s)
+    - Add multiple image(s)
     - Add 3D/4D volume from sequence
     - Add DVID volume
     - Add precomputed chunked volume
@@ -47,6 +48,7 @@ class AddFileButton(QPushButton):
     """
 
     addFilesRequested = pyqtSignal()
+    addFromPatternsRequested = pyqtSignal()
     addStackRequested = pyqtSignal()
     addRemoteVolumeRequested = pyqtSignal()
     addPrecomputedVolumeRequested = pyqtSignal()
@@ -65,6 +67,7 @@ class AddFileButton(QPushButton):
         # drop down menu for different add options
         menu = QMenu(parent=self)
         menu.addAction("Add separate Image(s)...").triggered.connect(self.addFilesRequested)
+        menu.addAction("Add multiple Image(s)...").triggered.connect(self.addFromPatternsRequested)
         menu.addAction("Add a single 3D/4D Volume from Sequence...").triggered.connect(self.addStackRequested)
 
         if ilastik.config.cfg.getboolean("ilastik", "hbp", fallback=False):
