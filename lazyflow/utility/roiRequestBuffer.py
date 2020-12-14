@@ -15,9 +15,11 @@ ROI_TUPLE = Tuple[ROI, ROI]
 class _RoiIter:
     """Iterate over rois for a given shape"""
 
-    def __init__(self, slot: Slot):
-        if "".join(slot.meta.getAxisKeys()) != "tzcyx":
-            raise ValueError("Only axisorder tzcyx supported.")
+    def __init__(self, slot: Slot, iterate_axes: str):
+        self._axisorder = slot.meta.getAxisKeys()
+        self._tagged_shape = slot.meta.getTaggedShape()
+        self._iterate_axes = iterate_axes
+        self._iterate_shape = tuple(self._tagged_shape[x] for x in iterate_axes)
         self._shape = slot.meta.shape
 
     def to_index(self, roi: ROI_TUPLE) -> int:
@@ -26,23 +28,32 @@ class _RoiIter:
         first ROI_TUPLE -> index = 0
         last ROI_TUPLE -> index = len(self) - 1
         """
-        return numpy.ravel_multi_index(roi[0][:-2], self._shape[:-2])
+        start = roi[0]
+        relevant_indices = tuple(start[self._axisorder.index(x)] for x in self._iterate_axes)
+        return numpy.ravel_multi_index(relevant_indices, self._iterate_shape)
 
     def __len__(self) -> int:
-        return numpy.prod(self._shape[:-2])
+        return numpy.prod(self._iterate_shape)
 
     def __iter__(self) -> Iterator[ROI_TUPLE]:
         """iterate in ascending order, according to to_index"""
-        for partial_start in numpy.ndindex(self._shape[:-2]):
-            start: ROI = partial_start + (0, 0)
-            stop: ROI = tuple(i + 1 for i in partial_start) + self._shape[-2:]
+        for partial_start in numpy.ndindex(self._iterate_shape):
+            tagged_start = {k: v for k, v in zip(self._iterate_axes, partial_start)}
+            tagged_stop = {k: v + 1 for k, v in zip(self._iterate_axes, partial_start)}
+            for k in self._tagged_shape:
+                if k not in self._iterate_axes:
+                    tagged_start[k] = 0
+                    tagged_stop[k] = self._tagged_shape[k]
+
+            start: ROI = tuple(tagged_start[x] for x in self._axisorder)
+            stop: ROI = tuple(tagged_stop[x] for x in self._axisorder)
             yield start, stop
 
 
 class RoiRequestBufferIter:
     """Iterate over first 3 dims of a 5D slot in nd-ascending order."""
 
-    def __init__(self, slot: Slot, batchsize: int):
+    def __init__(self, slot: Slot, batchsize: int, iterate_axes: str):
         """
         Args:
             slot: slot to request data from
@@ -54,7 +65,7 @@ class RoiRequestBufferIter:
         self._items: Dict[int, numpy.ndarray] = {}
 
         self._index = 0
-        self._roi_iter = _RoiIter(self._slot)
+        self._roi_iter = _RoiIter(self._slot, iterate_axes=iterate_axes)
         self._max = len(self._roi_iter)
 
         self._roi_request_batch = RoiRequestBatch(

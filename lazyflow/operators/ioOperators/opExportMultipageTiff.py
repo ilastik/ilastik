@@ -79,7 +79,7 @@ class OpExportMultipageTiff(Operator):
         if isinstance(dtype, type):
             dtype = dtype().dtype
 
-        page_buf = RoiRequestBufferIter(self._opReorderAxes.Output, self._batch_size)
+        page_buf = RoiRequestBufferIter(self._opReorderAxes.Output, self._batch_size, iterate_axes="tzc")
         page_buf.progress_signal.subscribe(self.progressSignal)
 
         with tifffile.TiffWriter(self.Filepath.value, byteorder="<", ome=True) as writer:
