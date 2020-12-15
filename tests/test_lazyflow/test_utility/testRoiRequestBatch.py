@@ -32,6 +32,8 @@ from lazyflow.operators import OpArrayPiper
 
 from lazyflow.utility import RoiRequestBatch
 
+from .conftest import ProcessingException
+
 import logging
 
 logger = logging.getLogger("tests.testRoiRequestBatch")
@@ -84,7 +86,7 @@ class TestRoiRequestBatch(object):
 
         logger.debug("FINISHED")
 
-    def testFailedProcessing(self):
+    def testFailedResultHandler(self):
         op = OpArrayPiper(graph=Graph())
         inputData = numpy.indices((100, 100)).sum(0)
         op.Input.setValue(inputData)
@@ -106,4 +108,20 @@ class TestRoiRequestBatch(object):
         # FIXME: There are multiple places where the RoiRequestBatch tool should be prepared to handle exceptions.
         #        This only tests one of them (in the notify_finished() handler)
         with pytest.raises(SpecialException):
+            batch.execute()
+
+    def testPropagatesProcessingException(self, op_raising_at_3):
+        roiList = [
+            ((0, 0, 0), (4, 4, 4)),
+            ((1, 1, 1), (4, 4, 4)),
+            ((2, 2, 2), (4, 4, 4)),
+            ((3, 3, 3), (4, 4, 4)),
+        ]
+
+        totalVolume = numpy.prod(op_raising_at_3.Output.meta.shape)
+        batch = RoiRequestBatch(
+            op_raising_at_3.Output, roiList.__iter__(), totalVolume, batchSize=1, allowParallelResults=False
+        )
+
+        with pytest.raises(ProcessingException):
             batch.execute()

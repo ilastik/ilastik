@@ -1,5 +1,4 @@
-from __future__ import print_function
-from builtins import map
+from typing import Tuple
 import numpy
 
 # Note: tifffile can also be imported from skimage.external.tifffile.tifffile_local,
@@ -66,7 +65,7 @@ class OpTiffReader(Operator):
             first_page = pages[0]
 
             dtype_code = first_page.dtype
-            if first_page.is_palette:
+            if first_page.photometric == tifffile.TIFF.PHOTOMETRIC.PALETTE:
                 # For now, we don't support colormaps.
                 # Drop the (last) channel axis
                 # (Yes, there can be more than one :-/)
@@ -81,18 +80,15 @@ class OpTiffReader(Operator):
                 dtype_code = self._dtype = tifffile.TIFF_SAMPLE_DTYPES.get(key, None)
 
             # From the tifffile.TiffPage code:
-            # -----
-            # The internal, normalized '_shape' attribute is 6 dimensional:
-            #
-            # 0. number planes  (stk)
-            # 1. planar samples_per_pixel
-            # 2. image_depth Z  (sgi)
-            # 3. image_length Y
-            # 4. image_width X
-            # 5. contig samples_per_pixel
+            # shaped : tuple of int
+            #     Normalized 5-dimensional shape of the image in IFD:
+            #     0 : separate samplesperpixel or 1.
+            #     1 : imagedepth Z or 1.
+            #     2 : imagelength Y.
+            #     3 : imagewidth X.
+            #     4 : contig samplesperpixel or 1.
 
-            (N, P, D, Y, X, S) = first_page._shape
-            assert N == 1, "Don't know how to handle any number of planes except 1 (per page)"
+            (P, D, Y, X, S) = first_page.shaped
             assert P == 1, "Don't know how to handle any number of planar samples per pixel except 1 (per page)"
             assert D == 1, "Don't know how to handle any image depth except 1"
 
@@ -125,11 +121,11 @@ class OpTiffReader(Operator):
                     )
 
             if "q" in axes:
-                # in case of unknown axes, assume default axis order TZYXC
-                if not all(elem == "q" for elem in axes):
-                    raise RuntimeError("Image has SOME unknown ('Q') axes, which is currently not supported. ")
-                logger.warning("Unknown axistags detected - assuming default axis order.")
+                old_axes = axes
                 axes = get_default_axisordering(shape)
+                logger.warning(
+                    f"Unknown axistags detected - assuming default axis order. Guessed {axes} from {old_axes}."
+                )
 
             self.Output.meta.shape = shape
             self.Output.meta.axistags = vigra.defaultAxistags(str(axes))
