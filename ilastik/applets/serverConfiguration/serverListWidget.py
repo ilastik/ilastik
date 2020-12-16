@@ -12,6 +12,7 @@ class ServerListWidget(QWidget):
     """
     Combo box widget with add/remove buttons
     """
+
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
 
@@ -118,6 +119,9 @@ class ServerListModel(QAbstractListModel):
         return True
 
     def data(self, index: QModelIndex, role: int):
+        if not index.isValid():
+            return None
+
         row = index.row()
 
         if role == Qt.DisplayRole:

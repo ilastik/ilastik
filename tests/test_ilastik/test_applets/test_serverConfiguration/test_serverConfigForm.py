@@ -32,15 +32,13 @@ class TestServerConfigForm:
         data = types.ServerConfig.default(
             **{
                 "name": "MyTestName",
-                "address": "test.com",
-                "port": "8291",
+                "address": "test.com:8291",
             }
         )
 
         fields = [
             (form.nameEdit, "name"),
             (form.addressEdit, "address"),
-            (form.portEdit, "port"),
         ]
 
         form.config = data
@@ -53,15 +51,6 @@ class TestServerConfigForm:
         form.config = data
         qtbot.keyClicks(form.nameEdit, "42")
         assert "MyTestName42" == form.config.name
-
-    def test_autoguess_server(self, qtbot, form):
-        form.typeList.setCurrentText("remote")
-
-        assert "remote" == form.typeList.currentText()
-
-        qtbot.keyClicks(form.addressEdit, "127.0.0.1")
-
-        assert "local" == form.typeList.currentText()
 
     def test_device_list(self, qtbot, form):
         qtbot.mouseClick(form.getDevicesBtn, Qt.LeftButton)

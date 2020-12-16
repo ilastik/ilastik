@@ -17,17 +17,7 @@ logger = logging.getLogger(__name__)
 class ServerConfigForm(QWidget):
     nameEdit: QLineEdit
     addressEdit: QLineEdit
-    typeList: QComboBox
-    autostartCheckBox: QCheckBox
-    portEdit: QLineEdit
     deviceList: QListWidget
-
-    # Remote server fields
-    usernameEdit: QLineEdit
-    usernameLabel: QLabel
-    sshKeyEdit: QLineEdit
-    sshKeyLabel: QLabel
-
     gotDevices = pyqtSignal()
 
     UI_FILE = "serverConfigForm.ui"
@@ -48,7 +38,6 @@ class ServerConfigForm(QWidget):
 
         self._connectionFactory = connectionFactory
         self._updating = False
-        self._setRemoteFieldsVisibility(False)
 
     @property
     def _ui_path(self):
@@ -60,42 +49,14 @@ class ServerConfigForm(QWidget):
         Load the ui file for the central widget.
         """
         uic.loadUi(self._ui_path, self)
-        self.typeList.setModel(QStringListModel(types.SERVER_TYPES))
-
         # Trigger state updates
         self.nameEdit.textChanged.connect(self._updateConfigFromFields)
-        self.pathEdit.textChanged.connect(self._updateConfigFromFields)
         self.addressEdit.textChanged.connect(self._updateConfigFromFields)
-        self.typeList.currentTextChanged.connect(self._updateConfigFromFields)
-        self.portEdit.textChanged.connect(self._updateConfigFromFields)
-        self.usernameEdit.textChanged.connect(self._updateConfigFromFields)
-        self.sshKeyEdit.textChanged.connect(self._updateConfigFromFields)
         self.deviceList.itemChanged.connect(self._updateConfigFromFields)
-        self.autostartCheckBox.stateChanged.connect(self._updateConfigFromFields)
 
         # UI updates
-        self.addressEdit.textChanged.connect(self._setServerTypeFromAddress)
-        self.typeList.currentTextChanged.connect(self._changeRemoteFieldsVisibility)
         self.getDevicesBtn.clicked.connect(self._setDevices)
         self.deviceList.itemClicked.connect(self._deviceListSetCheckboxOnClick)
-
-    def _setRemoteFieldsVisibility(self, value: bool) -> None:
-        self.sshKeyEdit.setVisible(value)
-        self.sshKeyLabel.setVisible(value)
-        self.usernameEdit.setVisible(value)
-        self.usernameLabel.setVisible(value)
-
-    def _setServerTypeFromAddress(self, address: str):
-        if address in ("localhost", "127.0.0.1"):
-            self.typeList.setCurrentText("local")
-        else:
-            self.typeList.setCurrentText("remote")
-
-    def _changeRemoteFieldsVisibility(self):
-        if self.typeList.currentText() == "local":
-            self._setRemoteFieldsVisibility(False)
-        else:
-            self._setRemoteFieldsVisibility(True)
 
     def _deviceListSetCheckboxOnClick(self, item: "DeviceListWidgetItem") -> None:
         if not item:
@@ -156,25 +117,13 @@ class ServerConfigForm(QWidget):
             return
 
         self._config.name = self.nameEdit.text()
-        self._config.path = self.pathEdit.text()
         self._config.address = self.addressEdit.text()
-        self._config.type = self.typeList.currentText()
-        self._config.port = self.portEdit.text()
-        self._config.username = self.usernameEdit.text()
-        self._config.ssh_key = self.sshKeyEdit.text()
-        self._config.autostart = self.autostartCheckBox.isChecked()
         self._config.devices = self._getDevices()
 
     def _updateFieldsFromConfig(self):
         with self._batch_update_fields():
             self.nameEdit.setText(self._config.name)
-            self.pathEdit.setText(self._config.path)
             self.addressEdit.setText(self._config.address)
-            self.typeList.setCurrentText(self._config.type)
-            self.portEdit.setText(self._config.port)
-            self.usernameEdit.setText(self._config.username)
-            self.sshKeyEdit.setText(self._config.ssh_key)
-            self.autostartCheckBox.setChecked(self._config.autostart)
             self._setDevicesFromConfig()
 
     def keyPressEvent(self, event):
@@ -247,12 +196,6 @@ class ServerFormWorkflow:
         s.assignProperty(form.saveBtn, "enabled", False)
         s.assignProperty(form.deviceList, "enabled", False)
         s.assignProperty(form.addressEdit, "enabled", True)
-        s.assignProperty(form.typeList, "enabled", True)
-        # Inputs
-        s.assignProperty(form.usernameEdit, "enabled", True)
-        s.assignProperty(form.sshKeyEdit, "enabled", True)
-        s.assignProperty(form.portEdit, "enabled", True)
-        s.assignProperty(form.autostartCheckBox, "enabled", True)
         return s
 
     def _make_dev_fetched_state(self, form) -> QState:
@@ -260,13 +203,8 @@ class ServerFormWorkflow:
         s.assignProperty(form.editBtn, "enabled", True)
         s.assignProperty(form.deviceList, "enabled", True)
         s.assignProperty(form.saveBtn, "enabled", False)
-        s.assignProperty(form.portEdit, "enabled", False)
         s.assignProperty(form.addressEdit, "enabled", False)
-        s.assignProperty(form.usernameEdit, "enabled", False)
-        s.assignProperty(form.sshKeyEdit, "enabled", False)
-        s.assignProperty(form.autostartCheckBox, "enabled", False)
 
-        s.assignProperty(form.typeList, "enabled", False)
         return s
 
     def _make_save_state(self, form):
