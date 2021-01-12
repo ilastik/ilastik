@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import vigra
-from skimage.external import tifffile
+import tifffile
 from ilastik.plugins import TrackingExportFormatPlugin
 
 import logging
@@ -108,7 +108,7 @@ class TrackingCTCExportFormatPlugin(TrackingExportFormatPlugin):
             vigra.impex.writeImage(label_image.astype("uint16"), filename)
         elif len(label_image.shape) == 3:  # 3D
             label_image = np.transpose(label_image, axes=[2, 0, 1])
-            tifffile.imsave(filename, label_image.astype("uint16"))
+            tifffile.imwrite(filename, label_image.astype("uint16"))
         else:
             raise ValueError("Image had the wrong dimensions, can only save 2 or 3D images with a single channel")
 
