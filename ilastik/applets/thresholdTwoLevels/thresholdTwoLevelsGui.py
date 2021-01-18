@@ -114,14 +114,13 @@ class ThresholdTwoLevelsGui(LayerViewerGui):
         self._showDebug = False
 
         self._updateGuiFromOperator()
-        self.topLevelOperatorView.InputChannelColors.notifyReady(bind(self._updateGuiFromOperator))
+
         self.__cleanup_fns.append(
-            partial(self.topLevelOperatorView.InputImage.unregisterUnready, bind(self._updateGuiFromOperator))
+            self.topLevelOperatorView.InputChannelColors.notifyReady(bind(self._updateGuiFromOperator))
         )
 
-        self.topLevelOperatorView.InputChannelColors.notifyMetaChanged(bind(self._updateGuiFromOperator))
         self.__cleanup_fns.append(
-            partial(self.topLevelOperatorView.InputImage.unregisterMetaChanged, bind(self._updateGuiFromOperator))
+            self.topLevelOperatorView.InputChannelColors.notifyMetaChanged(bind(self._updateGuiFromOperator))
         )
 
     def _connectCallbacks(self):
