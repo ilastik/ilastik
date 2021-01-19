@@ -54,7 +54,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class EdgeTrainingGui(LayerViewerGui):
+class EdgeTrainingMixin:
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
@@ -69,23 +69,23 @@ class EdgeTrainingGui(LayerViewerGui):
             fn()
 
         # Base class
-        super(EdgeTrainingGui, self).stopAndCleanUp()
+        super().stopAndCleanUp()
 
     ###########################################
     ###########################################
 
-    def __init__(self, parentApplet, topLevelOperatorView):
+    def __init__(self, parentApplet, topLevelOperatorView, **kwargs):
         self._currently_updating = False
         self.__cleanup_fns = []
         self.parentApplet = parentApplet
         self.topLevelOperatorView = topLevelOperatorView
-        super(EdgeTrainingGui, self).__init__(parentApplet, topLevelOperatorView, crosshair=False)
+        super().__init__(parentApplet, topLevelOperatorView, **kwargs)
 
         self._init_edge_label_colortable()
         self._init_probability_colortable()
 
     def _after_init(self):
-        super(EdgeTrainingGui, self)._after_init()
+        super()._after_init()
         self.update_probability_edges()
 
         # Initialize everything with the operator's initial values
@@ -188,8 +188,6 @@ class EdgeTrainingGui(LayerViewerGui):
         """
         Overridden from base class (LayerViewerGui)
         """
-        # Save these members for later use
-        self._drawer = self.createDrawerControls()
 
         op = self.topLevelOperatorView
         cleanup_fn = op.GroundtruthSegmentation.notifyReady(self.configure_gui_from_operator, defer=True)
@@ -528,3 +526,18 @@ class EdgeTrainingGui(LayerViewerGui):
             del layer
 
         return layers
+
+
+class EdgeTrainingGui(EdgeTrainingMixin, LayerViewerGui):
+    def appletDrawer(self):
+        return self.__drawer
+
+    def initAppletDrawerUi(self):
+        """
+        Overridden from base class (LayerViewerGui)
+        """
+        # Save these members for later use
+        self.__drawer = self.createDrawerControls()
+
+        # Initialize everything with the operator's initial values
+        self.configure_gui_from_operator()

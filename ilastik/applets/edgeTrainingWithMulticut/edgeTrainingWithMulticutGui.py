@@ -1,19 +1,18 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QSpacerItem, QSizePolicy, QCheckBox
 
-from ilastik.applets.edgeTraining.edgeTrainingGui import EdgeTrainingGui
+from ilastik.applets.edgeTraining.edgeTrainingGui import EdgeTrainingMixin
 from ilastik.applets.multicut.multicutGui import MulticutGuiMixin
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 import ilastik.utility.gui as guiutil
 
 
-class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
+class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingMixin, LayerViewerGui):
     def __init__(self, parentApplet, topLevelOperatorView):
         self.__cleanup_fns = []
-        MulticutGuiMixin.__init__(self, parentApplet, topLevelOperatorView)
-        EdgeTrainingGui.__init__(self, parentApplet, topLevelOperatorView)
+        super().__init__(parentApplet, topLevelOperatorView, crosshair=False)
 
     def _after_init(self):
-        EdgeTrainingGui._after_init(self)
-        MulticutGuiMixin._after_init(self)
+        super()._after_init()
 
     def initAppletDrawerUi(self):
 
@@ -23,7 +22,7 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
             checked=False,
         )
 
-        training_controls = EdgeTrainingGui.createDrawerControls(self)
+        training_controls = EdgeTrainingMixin.createDrawerControls(self)
         training_controls.layout().setContentsMargins(5, 0, 5, 0)
         training_layout = QVBoxLayout()
         training_layout.addWidget(training_controls)
@@ -76,12 +75,11 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
             fn()
 
         # Base classes
-        EdgeTrainingGui.stopAndCleanUp(self)
-        MulticutGuiMixin.stopAndCleanUp(self)
+        super().stopAndCleanUp()
 
     def setupLayers(self):
         layers = []
-        edgeTrainingLayers = EdgeTrainingGui.setupLayers(self)
+        edgeTrainingLayers = EdgeTrainingMixin.setupLayers(self)
 
         mc_disagreement_layer = MulticutGuiMixin.create_multicut_disagreement_layer(self)
         if mc_disagreement_layer:
@@ -99,12 +97,12 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
         return layers
 
     def configure_gui_from_operator(self, *args):
-        EdgeTrainingGui.configure_gui_from_operator(self)
+        EdgeTrainingMixin.configure_gui_from_operator(self)
         MulticutGuiMixin.configure_gui_from_operator(self)
         self.train_edge_clf_box.setChecked(self.topLevelOperatorView.TrainRandomForest.value)
 
     def configure_operator_from_gui(self):
-        EdgeTrainingGui.configure_operator_from_gui(self)
+        EdgeTrainingMixin.configure_operator_from_gui(self)
         MulticutGuiMixin.configure_operator_from_gui(self)
 
     # TODO More elegant way to make multicut compute upon pressing Update button.
