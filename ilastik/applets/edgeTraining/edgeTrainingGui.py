@@ -130,23 +130,12 @@ class EdgeTrainingGui(LayerViewerGui):
 
         self.train_from_gt_button.clicked.connect(lambda: op.FreezeClassifier.setValue(False))
 
-        def enable_live_update_on_edges_available(*args, **kwargs):
-            any_have_edges = False
-            top_level_edge_labels_dict = op.EdgeLabelsDict.top_level_slot
-            assert top_level_edge_labels_dict.level == 1
-            for subslot in op.EdgeLabelsDict.top_level_slot:
-                any_have_edges = subslot.ready() and bool(subslot.value)
-                if any_have_edges:
-                    break
-
-            self.live_update_button.setEnabled(any_have_edges)
-
-        cleanup_fn = op.EdgeLabelsDict.notifyDirty(enable_live_update_on_edges_available)
+        cleanup_fn = op.EdgeLabelsDict.notifyDirty(self.enable_live_update_on_edges_available)
         self.__cleanup_fns.append(cleanup_fn)
 
         # call once when instantiating with a saved project to make the live update button available
         # if there are annotations loaded from file.
-        enable_live_update_on_edges_available()
+        self.enable_live_update_on_edges_available()
 
         # Layout
         label_layout = QHBoxLayout()
@@ -182,6 +171,18 @@ class EdgeTrainingGui(LayerViewerGui):
         )
 
         return drawer
+
+    def enable_live_update_on_edges_available(self, *args, **kwargs):
+        any_have_edges = False
+        op = self.topLevelOperatorView
+        top_level_edge_labels_dict = op.EdgeLabelsDict.top_level_slot
+        assert top_level_edge_labels_dict.level == 1
+        for subslot in op.EdgeLabelsDict.top_level_slot:
+            any_have_edges = subslot.ready() and bool(subslot.value)
+            if any_have_edges:
+                break
+
+        self.live_update_button.setEnabled(any_have_edges)
 
     def initAppletDrawerUi(self):
         """
