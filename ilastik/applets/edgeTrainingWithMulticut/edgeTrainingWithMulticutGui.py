@@ -11,9 +11,6 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingMixin, LayerView
         self.__cleanup_fns = []
         super().__init__(parentApplet, topLevelOperatorView, crosshair=False)
 
-    def _after_init(self):
-        super()._after_init()
-
     def initAppletDrawerUi(self):
 
         self.train_edge_clf_box = QCheckBox(

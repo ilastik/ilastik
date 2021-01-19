@@ -81,9 +81,6 @@ class MulticutGuiMixin:
         self.__init_probability_colortable()
         self.__init_disagreement_label_colortable()
 
-    def _after_init(self):
-        pass
-
     def createDrawerControls(self):
         """
         This is a separate function from initAppletDrawer() so that it can be
