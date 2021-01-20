@@ -101,9 +101,9 @@ class OperatorWrapper(Operator):
         allInputSlotNames = set([s.name for s in operatorClass.inputSlots])
 
         if promotedSlotNames is not None:
-            assert broadcastingSlotNames is None, (
-                "Please specify either the promoted slots or the" " broadcasting slots, not both."
-            )
+            assert (
+                broadcastingSlotNames is None
+            ), "Please specify either the promoted slots or the broadcasting slots, not both."
             for name in promotedSlotNames:
                 assert (
                     name in allInputSlotNames
@@ -269,7 +269,7 @@ class OperatorWrapper(Operator):
         return op
 
     def handleEarlyDisconnect(self, slot):
-        assert self._cleaningUp, "You aren't allowed to disconnect the internal" " connections of an operator wrapper."
+        assert self._cleaningUp, "You aren't allowed to disconnect the internal connections of an operator wrapper."
 
     def _removeInnerOperator(self, index, length):
         if len(self.innerOperators) <= length:

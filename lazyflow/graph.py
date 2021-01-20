@@ -60,7 +60,7 @@ logger = logging.getLogger(__name__)
 import psutil
 
 if int(psutil.__version__.split(".")[0]) < 1 and int(psutil.__version__.split(".")[1]) < 3:
-    msg = "Lazyflow: Please install a psutil python module version" " of at least >= 0.3.0"
+    msg = "Lazyflow: Please install a psutil python module version of at least >= 0.3.0"
     sys.stderr.write(msg)
     logger.error(msg)
     sys.exit(1)

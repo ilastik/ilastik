@@ -206,10 +206,10 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
     def _executeOutput(self, roi, destination):
         assert len(roi.stop) == len(
             self.Output.meta.shape
-        ), "roi: {} has the wrong number of dimensions for Output shape: {}" "".format(roi, self.Output.meta.shape)
+        ), "roi: {} has the wrong number of dimensions for Output shape: {}".format(roi, self.Output.meta.shape)
         assert numpy.less_equal(
             roi.stop, self.Output.meta.shape
-        ).all(), "roi: {} is out-of-bounds for Output shape: {}" "".format(roi, self.Output.meta.shape)
+        ).all(), "roi: {} is out-of-bounds for Output shape: {}".format(roi, self.Output.meta.shape)
 
         block_starts = getIntersectingBlocks(self._blockshape, (roi.start, roi.stop))
         self._copyData(roi, destination, block_starts)

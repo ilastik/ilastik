@@ -104,7 +104,7 @@ class OpFeatureMatrixCache(Operator):
         # This constraint could be relaxed in the future if necessary
         assert (
             self.FeatureImage.meta.shape[:-1] == self.LabelImage.meta.shape[:-1]
-        ), "FeatureImage and LabelImage shapes do not match: {} vs {}" "".format(
+        ), "FeatureImage and LabelImage shapes do not match: {} vs {}".format(
             self.FeatureImage.meta.shape, self.LabelImage.meta.shape
         )
 

@@ -131,7 +131,7 @@ class OpDvidVolume(Operator):
     def execute(self, slot, subindex, roi, result):
         if numpy.prod(roi.stop - roi.start) > 1e9:
             logger.error(
-                "Requesting a very large volume from DVID: {}\n" "Is that really what you meant to do?".format(roi)
+                "Requesting a very large volume from DVID: {}\nIs that really what you meant to do?".format(roi)
             )
 
         # TODO: Modify accessor implementation to accept a pre-allocated array.

@@ -42,7 +42,7 @@ class InputDict(collections.OrderedDict):
     def __setitem__(self, key, value):
         assert isinstance(
             value, InputSlot
-        ), "ERROR: all elements of .inputs must be of type InputSlot." " You provided {}!".format(value)
+        ), "ERROR: all elements of .inputs must be of type InputSlot. You provided {}!".format(value)
         return super(InputDict, self).__setitem__(key, value)
 
     def __getitem__(self, key):
@@ -67,7 +67,7 @@ class OutputDict(collections.OrderedDict):
     def __setitem__(self, key, value):
         assert isinstance(
             value, OutputSlot
-        ), "ERROR: all elements of .outputs must be of type" " OutputSlot. You provided {}!".format(value)
+        ), "ERROR: all elements of .outputs must be of type OutputSlot. You provided {}!".format(value)
         return super().__setitem__(key, value)
 
     def __getitem__(self, key):
@@ -224,7 +224,7 @@ class Operator(metaclass=OperatorMetaClass):
         if graph is None:
             if parent is None:
                 raise Exception(
-                    "Operator.__init__() [self.name='{}']:" " parent and graph can't be both None".format(self.name)
+                    "Operator.__init__() [self.name='{}']: parent and graph can't be both None".format(self.name)
                 )
             graph = parent.graph
 
@@ -446,7 +446,7 @@ class Operator(metaclass=OperatorMetaClass):
         of the corresponding outputslots.
 
         """
-        raise NotImplementedError(".propagateDirty() of Operator {}" " is not implemented !".format(self.name))
+        raise NotImplementedError(".propagateDirty() of Operator {} is not implemented !".format(self.name))
 
     @staticmethod
     def forbidParallelExecute(func):
@@ -579,7 +579,7 @@ class Operator(metaclass=OperatorMetaClass):
             #  is no need for it to call super().setupOutputs()
             assert (
                 slot.upstream_slot is not None
-            ), "Output slot '{}' of operator '{}' has no upstream_slot, " "so you must override setupOutputs()".format(
+            ), "Output slot '{}' of operator '{}' has no upstream_slot, so you must override setupOutputs()".format(
                 slot.name, self.name
             )
 
@@ -610,11 +610,11 @@ class Operator(metaclass=OperatorMetaClass):
         input slots, run the calculation and put the results into the
         provided result argument."""
 
-        raise NotImplementedError("Operator {} does not implement" " execute()".format(self.name))
+        raise NotImplementedError("Operator {} does not implement execute()".format(self.name))
 
     def setInSlot(self, slot, subindex, roi, value):
         raise NotImplementedError(
-            "Can't use __setitem__ with Operator {}" " because it doesn't implement" " setInSlot()".format(self.name)
+            "Can't use __setitem__ with Operator {} because it doesn't implement setInSlot()".format(self.name)
         )
 
     @property

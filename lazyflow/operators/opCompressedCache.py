@@ -153,10 +153,10 @@ class OpUnmanagedCompressedCache(Operator):
     def _executeOutput(self, roi, destination):
         assert len(roi.stop) == len(
             self.Input.meta.shape
-        ), "roi: {} has the wrong number of dimensions for Input shape: {}" "".format(roi, self.Input.meta.shape)
+        ), "roi: {} has the wrong number of dimensions for Input shape: {}".format(roi, self.Input.meta.shape)
         assert numpy.less_equal(
             roi.stop, self.Input.meta.shape
-        ).all(), "roi: {} is out-of-bounds for Input shape: {}" "".format(roi, self.Input.meta.shape)
+        ).all(), "roi: {} is out-of-bounds for Input shape: {}".format(roi, self.Input.meta.shape)
 
         block_starts = getIntersectingBlocks(self._blockshape, (roi.start, roi.stop))
         block_starts = list(map(tuple, block_starts))
@@ -308,9 +308,7 @@ class OpUnmanagedCompressedCache(Operator):
                     else:
                         return tuple(ideal)
                 else:
-                    logger.warning(
-                        "{}: Encountered meta.ideal_blockshape that does " "not fit the data".format(self.name)
-                    )
+                    logger.warning("{}: Encountered meta.ideal_blockshape that does not fit the data".format(self.name))
 
         # we need to figure out an ideal chunk shape on our own
 
@@ -488,10 +486,10 @@ class OpUnmanagedCompressedCache(Operator):
         """
         assert len(roi.stop) == len(
             self.Input.meta.shape
-        ), "roi: {} has the wrong number of dimensions for Input shape: {}" "".format(roi, self.Input.meta.shape)
+        ), "roi: {} has the wrong number of dimensions for Input shape: {}".format(roi, self.Input.meta.shape)
         assert numpy.less_equal(
             roi.stop, self.Input.meta.shape
-        ).all(), "roi: {} is out-of-bounds for Input shape: {}" "".format(roi, self.Input.meta.shape)
+        ).all(), "roi: {} is out-of-bounds for Input shape: {}".format(roi, self.Input.meta.shape)
 
         block_starts = getIntersectingBlocks(self._blockshape, (roi.start, roi.stop))
         block_starts = list(map(tuple, block_starts))

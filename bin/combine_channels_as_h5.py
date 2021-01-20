@@ -8,7 +8,7 @@ import vigra
 
 if len(sys.argv) < 3:
     sys.stderr.write(
-        'Example usage: {} output_file.h5 "my_stack_channel_one_*.png" "my_stack_channel_two_*.png" ...\n'.format(
+        'Example usage: {} output_file.h5 "my_stack_channel_one_*.png my_stack_channel_two_*.png" ...\n'.format(
             sys.argv[0]
         )
     )

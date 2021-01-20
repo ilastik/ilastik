@@ -337,7 +337,7 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
             # For some reason, vigra doesn't seem to check this for us...
             assert X.shape[1] == len(
                 self._feature_names
-            ), "Feature count ({}) doesn't match the training feature count ({}).\n" "Expected features: {}".format(
+            ), "Feature count ({}) doesn't match the training feature count ({}).\nExpected features: {}".format(
                 X.shape[1], len(self._feature_names), self._feature_names
             )
 

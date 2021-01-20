@@ -8,16 +8,16 @@ parser = argparse.ArgumentParser(description="Merge ilastik carving projects.")
 parser.add_argument(
     "main_name",
     metavar="carving.ilp",
-    help="the main carving project (other carving projects' " "objects are inserted in a copy of this project)",
+    help="the main carving project (other carving projects' objects are inserted in a copy of this project)",
 )
 parser.add_argument(
     "add_names",
     metavar="ilp-files_to_be_merged",
     nargs="+",
-    help="ilastik carving projects whose objects are to be " "merged into the main carving project",
+    help="ilastik carving projects whose objects are to be merged into the main carving project",
 )
 parser.add_argument(
-    "--override", action="store_true", help="Specify to " "override existing objects. Objects are identified by " "name"
+    "--override", action="store_true", help="Specify to override existing objects. Objects are identified by name"
 )
 parser.add_argument(
     "--keep",

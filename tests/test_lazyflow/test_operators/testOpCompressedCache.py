@@ -691,7 +691,7 @@ class TestOpCompressedCache(object):
         op.Output[...].wait()
         assert op.usedMemory() <= (
             sampleData.nbytes / expected_factor
-        ), "Compression of all-zeroes should be better than factor " "{}".format(expected_factor)
+        ), "Compression of all-zeroes should be better than factor {}".format(expected_factor)
 
     def testChangeBlockshape_masked(self):
         logger.info("Generating sample data...")

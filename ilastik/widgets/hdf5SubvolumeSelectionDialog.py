@@ -43,7 +43,7 @@ class SubvolumeSelectionDlg(QDialog):
     def __init__(self, datasetNames, parent):
         super().__init__(parent)
         label = QLabel(
-            "Your HDF5/N5 File contains multiple image volumes.\n" "Please select the one you would like to open."
+            "Your HDF5/N5 File contains multiple image volumes.\nPlease select the one you would like to open."
         )
 
         self.combo = QComboBox()

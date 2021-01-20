@@ -180,7 +180,7 @@ class TestVigra:
         reqs = [op.CachedOutput[...] for i in range(4)]
         [r.submit() for r in reqs]
         [r.block() for r in reqs]
-        assert opCount.numExecutes == 1, "Parallel requests to CachedOutput resulted in recomputation " "({}/4)".format(
+        assert opCount.numExecutes == 1, "Parallel requests to CachedOutput resulted in recomputation ({}/4)".format(
             opCount.numExecutes
         )
 
@@ -190,7 +190,7 @@ class TestVigra:
         reqs = [op.Output[250 * i : 250 * (i + 1), ...] for i in range(4)]
         [r.submit() for r in reqs]
         [r.block() for r in reqs]
-        assert opCount.numExecutes == 4, "Not all requests to Output were computed on demand " "({}/4)".format(
+        assert opCount.numExecutes == 4, "Not all requests to Output were computed on demand ({}/4)".format(
             opCount.numExecutes
         )
 
@@ -367,7 +367,7 @@ class TestLazy(TestVigra):
         reqs = [op.CachedOutput[...] for i in range(4)]
         [r.submit() for r in reqs]
         [r.block() for r in reqs]
-        assert opCount.numExecutes == 1, "Parallel requests to CachedOutput resulted in recomputation " "({}/4)".format(
+        assert opCount.numExecutes == 1, "Parallel requests to CachedOutput resulted in recomputation ({}/4)".format(
             opCount.numExecutes
         )
 

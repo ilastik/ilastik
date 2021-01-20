@@ -779,7 +779,7 @@ class UfmfV3(UfmfBase):
                 if len(buf_remaining) != 0:
                     raise ValueError("bytes after expected end of file")
             except:
-                raise CorruptIndexError("the .ufmf index is corrupt. " "(Hint: Try the ufmf_reindex command.)")
+                raise CorruptIndexError("the .ufmf index is corrupt. (Hint: Try the ufmf_reindex command.)")
 
     def get_index(self):
         return self._index
@@ -1004,7 +1004,7 @@ class UfmfV4(UfmfV3):
                 if len(buf_remaining) != 0:
                     raise ValueError("bytes after expected end of file")
             except:
-                raise CorruptIndexError("the .ufmf index is corrupt. " "(Hint: Try the ufmf_reindex command.)")
+                raise CorruptIndexError("the .ufmf index is corrupt. (Hint: Try the ufmf_reindex command.)")
 
 
 class UfmfV2(UfmfV3):
@@ -1059,7 +1059,7 @@ class FlyMovieEmulator:
         self.abs_diff = abs_diff
         if self.abs_diff:
             if not (isinstance(self._ufmf, UfmfV1) and self._ufmf.use_conventional_named_mean_fmf):
-                raise NotImplementedError("abs_diff currently requires UfmfV1 " "and use_conventional_named_mean_fmf")
+                raise NotImplementedError("abs_diff currently requires UfmfV1 and use_conventional_named_mean_fmf")
         if isinstance(self._ufmf, UfmfV4) and self._ufmf._isfixedsize:
             self._isfixedsize = True
         else:
@@ -1267,7 +1267,7 @@ class FlyMovieEmulator:
             if int(os.environ.get("UFMF_FORCE_CACHE", "0")):
                 raise
             else:
-                warnings.warn(str(err) + " (set environment variable " "UFMF_FORCE_CACHE=1 to raise)")
+                warnings.warn(str(err) + " (set environment variable UFMF_FORCE_CACHE=1 to raise)")
 
     def get_height(self):
         if isinstance(self._ufmf, UfmfV1):

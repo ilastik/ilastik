@@ -76,7 +76,7 @@ def init_user_mode_excepthook():
             msg = str(exc_info[1]) + "\n"
             logfile_path = get_logfile_path()
             if logfile_path:
-                msg += "\n (Advanced information about this error may be found in the log file: {})\n" "".format(
+                msg += "\n (Advanced information about this error may be found in the log file: {})\n".format(
                     logfile_path
                 )
             if shell:

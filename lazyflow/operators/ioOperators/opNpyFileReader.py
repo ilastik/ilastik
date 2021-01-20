@@ -78,7 +78,7 @@ class OpNpyFileReader(Operator):
                     )
             else:
                 raise OpNpyFileReader.DatasetReadError(
-                    "InternalPath not given. Unable to open numpy npz dataset: " "{fileName}".format(fileName=fileName)
+                    "InternalPath not given. Unable to open numpy npz dataset: {fileName}".format(fileName=fileName)
                 )
 
         shape = rawNumpyArray.shape

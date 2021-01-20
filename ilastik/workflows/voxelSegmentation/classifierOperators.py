@@ -395,7 +395,7 @@ class OpSupervoxelwiseClassifierPredict(Operator):
 
         assert issubclass(
             type(classifier), LazyflowVectorwiseClassifierABC
-        ), "Classifier is of type {}, which does not satisfy the LazyflowVectorwiseClassifierABC interface." "".format(
+        ), "Classifier is of type {}, which does not satisfy the LazyflowVectorwiseClassifierABC interface.".format(
             type(classifier)
         )
 

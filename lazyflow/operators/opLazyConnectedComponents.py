@@ -703,9 +703,9 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
     def _executeOutputHdf5(self, roi, destination):
         logger.debug("Servicing request for hdf5 block {}".format(roi))
 
-        assert isinstance(destination, h5py.Group), (
-            "OutputHdf5 slot requires an hdf5 GROUP to copy into " "(not a numpy array)."
-        )
+        assert isinstance(
+            destination, h5py.Group
+        ), "OutputHdf5 slot requires an hdf5 GROUP to copy into (not a numpy array)."
         index = self._roiToChunkIndex(roi)[0]
         block_roi = self._chunkIndexToRoi(index)
         valid = np.all(roi.start == block_roi.start)
@@ -713,16 +713,16 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
         assert valid, "OutputHdf5 slot requires roi to be exactly one block."
 
         name = str([block_roi.start, block_roi.stop])
-        assert name not in destination, "destination hdf5 group already has a dataset " "with this block's name"
+        assert name not in destination, "destination hdf5 group already has a dataset with this block's name"
         destination.create_dataset(
             name, shape=self._chunkShape, dtype=_LABEL_TYPE, data=self._cache[block_roi.toSlice()]
         )
 
     def _setInSlotInputHdf5(self, slot, subindex, roi, value):
         logger.debug("Setting block {} from hdf5".format(roi))
-        assert isinstance(value, h5py.Dataset), (
-            "InputHdf5 slot requires an hdf5 Dataset to copy from " "(not a numpy array)."
-        )
+        assert isinstance(
+            value, h5py.Dataset
+        ), "InputHdf5 slot requires an hdf5 Dataset to copy from (not a numpy array)."
 
         indices = self._roiToChunkIndex(roi)
         for idx in indices:

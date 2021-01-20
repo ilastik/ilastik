@@ -88,7 +88,7 @@ class OpGraphCut(Operator):
         assert len(shape) == 5, "Prediction maps must be a full 5d volume (tzyxc)"
         tags = self.Prediction.meta.getAxisKeys()
         tags = "".join(tags)
-        assert tags == "tzyxc", "Prediction maps have wrong axes order" "(expected: tzyxc, got: {})".format(tags)
+        assert tags == "tzyxc", "Prediction maps have wrong axes order (expected: tzyxc, got: {})".format(tags)
 
         if self._cache is not None:
             self.CachedOutput.disconnect()

@@ -159,7 +159,7 @@ def _check_depends():
     _do_check(
         h5py.version.version_tuple,
         (2, 1, 0),
-        "h5py version {0} too old; versions of h5py before {1} are not " "threadsafe.",
+        "h5py version {0} too old; versions of h5py before {1} are not threadsafe.",
     )
 
 
