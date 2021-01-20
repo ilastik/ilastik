@@ -436,8 +436,8 @@ class PixelClassificationGui(LabelingGui):
     def __init__(self, parentApplet, topLevelOperatorView, labelingDrawerUiPath=None):
         self.parentApplet = parentApplet
         self.isInitialized = (
-            False
-        )  # need this flag in pixelClassificationApplet where initialization is terminated with label selection
+            False  # need this flag in pixelClassificationApplet where initialization is terminated with label selection
+        )
         # Tell our base class which slots to monitor
         labelSlots = LabelingGui.LabelingSlots()
         labelSlots.labelInput = topLevelOperatorView.LabelInputs
@@ -495,15 +495,17 @@ class PixelClassificationGui(LabelingGui):
                 self.render = False
 
         # listen to freezePrediction changes
-        unsub_callback = self.topLevelOperatorView.FreezePredictions.notifyDirty(lambda *args: self.setLiveUpdateEnabled())
+        unsub_callback = self.topLevelOperatorView.FreezePredictions.notifyDirty(
+            lambda *args: self.setLiveUpdateEnabled()
+        )
         self.__cleanup_fns.append(unsub_callback)
         self.setLiveUpdateEnabled()
 
     def initFeatSelDlg(self):
         if self.topLevelOperatorView.name == "OpPixelClassification":
-            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[
-                0
-            ]
+            thisOpFeatureSelection = (
+                self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
+            )
         elif self.topLevelOperatorView.name == "OpPixelClassification0":
             thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[
                 0
@@ -530,9 +532,9 @@ class PixelClassificationGui(LabelingGui):
 
     def update_features_from_dialog(self):
         if self.topLevelOperatorView.name == "OpPixelClassification":
-            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[
-                0
-            ]
+            thisOpFeatureSelection = (
+                self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
+            )
         elif self.topLevelOperatorView.name == "OpPixelClassification0":
             thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[
                 0
@@ -666,9 +668,7 @@ class PixelClassificationGui(LabelingGui):
         uncertaintySlot = self.topLevelOperatorView.UncertaintyEstimate
         if uncertaintySlot.ready():
             uncertaintySrc = createDataSource(uncertaintySlot)
-            uncertaintyLayer = AlphaModulatedLayer(
-                uncertaintySrc, tintColor=QColor(Qt.cyan), normalize=(0.0, 1.0)
-            )
+            uncertaintyLayer = AlphaModulatedLayer(uncertaintySrc, tintColor=QColor(Qt.cyan), normalize=(0.0, 1.0))
             uncertaintyLayer.name = "Uncertainty"
             uncertaintyLayer.visible = False
             uncertaintyLayer.opacity = 1.0
@@ -692,9 +692,7 @@ class PixelClassificationGui(LabelingGui):
             if segmentationSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
                 segsrc = createDataSource(segmentationSlot)
-                segLayer = AlphaModulatedLayer(
-                    segsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0)
-                )
+                segLayer = AlphaModulatedLayer(segsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0))
 
                 segLayer.opacity = 1
                 segLayer.visible = False  # self.labelingDrawerUi.liveUpdateButton.isChecked()
@@ -741,9 +739,7 @@ class PixelClassificationGui(LabelingGui):
             if predictionSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
                 predictsrc = createDataSource(predictionSlot)
-                predictLayer = AlphaModulatedLayer(
-                    predictsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0)
-                )
+                predictLayer = AlphaModulatedLayer(predictsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0))
                 predictLayer.opacity = 0.25
                 predictLayer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
                 predictLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)

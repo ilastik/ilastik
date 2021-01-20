@@ -71,7 +71,10 @@ class TestDictSerializerRegistry:
         assert registry.serialize(MyObj("val"))
 
     def test_serialization_format_contains_tag(self, registry, serializer):
-        assert {"__serializer_version": 1, "val": "myval",} == registry.serialize(MyObj("myval"))
+        assert {
+            "__serializer_version": 1,
+            "val": "myval",
+        } == registry.serialize(MyObj("myval"))
 
     def test_serialization_of_nested_objects(self, registry, nested_serializer):
         assert {

@@ -182,8 +182,8 @@ class FeatureTableWidgetHHeader(QTableWidgetItem):
 # ItemDelegate
 # ==============================================================================
 class ItemDelegate(QItemDelegate):
-    """"
-     TODO: DOKU
+    """
+    TODO: DOKU
     """
 
     def __init__(self, parent, width, height):

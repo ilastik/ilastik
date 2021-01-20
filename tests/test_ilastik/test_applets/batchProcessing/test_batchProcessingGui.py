@@ -209,8 +209,8 @@ def assert_raises(exception_type):
         (tuple(), does_not_raise),
         (("sec1",), does_not_raise),
         (("sec1", "sec2"), does_not_raise),
-        #(("sec1", "sec2", "sec3"), assert_raises(RoleMismatchException)), # needs a real DataSelectionApplet
-        #(("sec1", "sec2", "sec3", "sec4"), assert_raises(RoleMismatchException)), # needs a real DataSelectionApplet
+        # (("sec1", "sec2", "sec3"), assert_raises(RoleMismatchException)), # needs a real DataSelectionApplet
+        # (("sec1", "sec2", "sec3", "sec4"), assert_raises(RoleMismatchException)), # needs a real DataSelectionApplet
     ],
 )
 def test_BatchProcessingGui_nonmatching_raises(

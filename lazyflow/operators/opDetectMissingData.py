@@ -593,7 +593,7 @@ class SVMManager(object):
                         self.add(svm, n, overwrite=True)
             except KeyError:
                 # don't fail, just complain
-                logger.error("Detector overload format not recognized, " "no detector loaded.")
+                logger.error("Detector overload format not recognized, no detector loaded.")
 
     def __str__(self):
         return str(self._svms)

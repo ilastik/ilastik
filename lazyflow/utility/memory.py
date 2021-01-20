@@ -104,11 +104,11 @@ class Memory(object):
             logger.info("Available memory set to {}".format(Memory.format(cls._allowed_ram)))
             if cls._allowed_ram > cls._physically_available_ram:
                 logger.warning(
-                    "User specified memory exceeds memory " "physically available. Please check the" "configuration."
+                    "User specified memory exceeds memory physically available. Please check the configuration."
                 )
 
         if cls._user_limits_specified["caches"] and cls._allowed_ram_caches > cls._allowed_ram:
-            logger.warning("User specified cache memory exceeds total RAM " "available, resetting to default")
+            logger.warning("User specified cache memory exceeds total RAM available, resetting to default")
             cls._user_limits_specified["caches"] = False
 
     @classmethod
@@ -191,7 +191,7 @@ class Memory(object):
                 if Memory._magnitude_strings[d] == mag:
 
                     return int(x * 1024 ** d)
-        raise FormatError("invalid format for memory string: " "{}".format(s))
+        raise FormatError("invalid format for memory string: {}".format(s))
 
 
 class FormatError(Exception):

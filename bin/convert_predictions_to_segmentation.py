@@ -93,7 +93,7 @@ if __name__ == "__main__":
                 path_comp.internalPath = all_internal_paths[0]
                 parsed_args.prediction_image_paths[index] = path_comp.totalPath()
             elif len(all_internal_paths) == 0:
-                sys.stderr.write("Could not find any datasets in your input file:\n" "{}\n".format(input_path))
+                sys.stderr.write("Could not find any datasets in your input file:\n{}\n".format(input_path))
                 sys.exit(1)
             else:
                 sys.stderr.write(

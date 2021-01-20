@@ -104,7 +104,7 @@ def identify_ufmf_version(filename):
     if version_buf == b"ufmf":
         version_buf = fd.read(version_buflen)
         had_marker = True
-    version, = struct.unpack(VERSION_FMT, version_buf)
+    (version,) = struct.unpack(VERSION_FMT, version_buf)
     if version > 1:
         if not had_marker:
             raise ValueError("ill-formed .ufmf file")
@@ -163,7 +163,7 @@ def _read_array(fd, buf_remaining):
     n_bytes_calcsize = struct.calcsize("<L")
     x, buf_remaining = _read_min_chars(fd, n_bytes_calcsize, buf_remaining)
     n_bytes_buf = x
-    n_bytes, = struct.unpack("<L", n_bytes_buf)
+    (n_bytes,) = struct.unpack("<L", n_bytes_buf)
 
     data_buf, buf_remaining = _read_min_chars(fd, n_bytes, buf_remaining)
     larr = numpy.frombuffer(data_buf, dtype=dtype_char)
@@ -179,7 +179,7 @@ def _read_dict(fd, buf_remaining=None):
     Hsize = struct.calcsize("<H")
     for key_num in range(n_keys):
         x, buf_remaining = _read_min_chars(fd, Hsize, buf_remaining)
-        keylen, = struct.unpack("<H", x)
+        (keylen,) = struct.unpack("<H", x)
         x, buf_remaining = _read_min_chars(fd, keylen, buf_remaining)
         key = x
         x, buf_remaining = _read_min_chars(fd, 1, buf_remaining)
@@ -779,7 +779,7 @@ class UfmfV3(UfmfBase):
                 if len(buf_remaining) != 0:
                     raise ValueError("bytes after expected end of file")
             except:
-                raise CorruptIndexError("the .ufmf index is corrupt. " "(Hint: Try the ufmf_reindex command.)")
+                raise CorruptIndexError("the .ufmf index is corrupt. (Hint: Try the ufmf_reindex command.)")
 
     def get_index(self):
         return self._index
@@ -1004,7 +1004,7 @@ class UfmfV4(UfmfV3):
                 if len(buf_remaining) != 0:
                     raise ValueError("bytes after expected end of file")
             except:
-                raise CorruptIndexError("the .ufmf index is corrupt. " "(Hint: Try the ufmf_reindex command.)")
+                raise CorruptIndexError("the .ufmf index is corrupt. (Hint: Try the ufmf_reindex command.)")
 
 
 class UfmfV2(UfmfV3):
@@ -1059,7 +1059,7 @@ class FlyMovieEmulator:
         self.abs_diff = abs_diff
         if self.abs_diff:
             if not (isinstance(self._ufmf, UfmfV1) and self._ufmf.use_conventional_named_mean_fmf):
-                raise NotImplementedError("abs_diff currently requires UfmfV1 " "and use_conventional_named_mean_fmf")
+                raise NotImplementedError("abs_diff currently requires UfmfV1 and use_conventional_named_mean_fmf")
         if isinstance(self._ufmf, UfmfV4) and self._ufmf._isfixedsize:
             self._isfixedsize = True
         else:
@@ -1267,7 +1267,7 @@ class FlyMovieEmulator:
             if int(os.environ.get("UFMF_FORCE_CACHE", "0")):
                 raise
             else:
-                warnings.warn(str(err) + " (set environment variable " "UFMF_FORCE_CACHE=1 to raise)")
+                warnings.warn(str(err) + " (set environment variable UFMF_FORCE_CACHE=1 to raise)")
 
     def get_height(self):
         if isinstance(self._ufmf, UfmfV1):

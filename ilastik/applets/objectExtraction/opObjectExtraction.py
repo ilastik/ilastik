@@ -628,7 +628,7 @@ class OpRegionFeatures(Operator):
     def _extract(self, image, labels, atlas=None):
         if not (image.ndim == labels.ndim == 4):
             raise Exception(
-                "both images must be 4D. raw image shape: {}" " label image shape: {}".format(image.shape, labels.shape)
+                "both images must be 4D. raw image shape: {} label image shape: {}".format(image.shape, labels.shape)
             )
 
         # FIXME: maybe simplify? taggedShape should be easier here

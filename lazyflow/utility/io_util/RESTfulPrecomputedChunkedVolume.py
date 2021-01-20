@@ -235,7 +235,7 @@ class RESTfulPrecomputedChunkedVolume(object):
 
         if not numpy.allclose(numpy.remainder(coordinates, block_shape), 0):
             raise ValueError(
-                f"Supplied coordinates ({coordinates}) not a valid block- " "start for block shape {block_shape}."
+                f"Supplied coordinates ({coordinates}) not a valid block- start for block shape {block_shape}."
             )
 
         base_url = self.volume_url

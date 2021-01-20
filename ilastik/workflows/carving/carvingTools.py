@@ -28,8 +28,7 @@ def choose_channel(data, sigma, function, channel):
 
 
 def parallel_filter(filter_name, data, sigma, max_workers, block_shape=None, outer_scale=None, return_channel=None):
-    """ Compute fiter response parallel over blocks.
-    """
+    """Compute fiter response parallel over blocks."""
     # order values for halo calculation, also used to check valid filters
     order_values = {
         "gaussianSmoothing": 0,
@@ -107,8 +106,7 @@ def parallel_filter(filter_name, data, sigma, max_workers, block_shape=None, out
 
 # TODO it would make sense to apply an additional size filter here
 def parallel_watershed(data, block_shape=None, halo=None, max_workers=None):
-    """ Parallel watershed with hard block boundaries.
-    """
+    """Parallel watershed with hard block boundaries."""
 
     logger.info(f"blockwise watershed with {max_workers} threads.")
     shape = data.shape
@@ -178,8 +176,7 @@ def parallel_watershed(data, block_shape=None, halo=None, max_workers=None):
 
 
 def agglomerate_labels(data, labels, block_shape=None, max_workers=None, reduce_to=0.2, size_regularizer=0.5):
-    """ Agglomerate labels based on edge features.
-    """
+    """Agglomerate labels based on edge features."""
 
     logger.info("computing region adjacency graph")
     max_label = labels.max() + 1
@@ -241,8 +238,7 @@ def agglomerate_labels(data, labels, block_shape=None, max_workers=None, reduce_
 
 
 def watershed_and_agglomerate(data, block_shape=None, max_workers=None, reduce_to=0.2, size_regularizer=0.5):
-    """ Run parallel watershed and agglomerate the resulting labels.
-    """
+    """Run parallel watershed and agglomerate the resulting labels."""
 
     labels, _ = parallel_watershed(data=data, block_shape=block_shape, max_workers=max_workers)
     labels, max_id = agglomerate_labels(

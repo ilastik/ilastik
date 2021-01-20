@@ -191,9 +191,7 @@ class CountingWorkflow(Workflow):
                 self.dataExportApplet.topLevelOperator.CsvFilepath.setValue(csv_path)
 
             if self.countingApplet.topLevelOperator.classifier_cache._dirty:
-                logger.warning(
-                    "Your project file has no classifier.  " "A new classifier will be trained for this run."
-                )
+                logger.warning("Your project file has no classifier. A new classifier will be trained for this run.")
 
             logger.info("Beginning Batch Processing")
             self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)

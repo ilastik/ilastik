@@ -142,9 +142,9 @@ class FeatureSelectionSerializer(AppletSerializer):
         self._dirty = False
 
     def isDirty(self):
-        """ Return true if the current state of this item
-            (in memory) does not match the state of the HDF5 group on disk.
-            SerializableItems are responsible for tracking their own dirty/notdirty state."""
+        """Return true if the current state of this item
+        (in memory) does not match the state of the HDF5 group on disk.
+        SerializableItems are responsible for tracking their own dirty/notdirty state."""
         return self._dirty
 
     def unload(self):
@@ -233,9 +233,9 @@ class Ilastik05FeatureSelectionDeserializer(AppletSerializer):
         self.topLevelOperator.SelectionMatrix.setValue(pipeLineSelectedFeatureMatrix)
 
     def isDirty(self):
-        """ Return true if the current state of this item
-            (in memory) does not match the state of the HDF5 group on disk.
-            SerializableItems are responsible for tracking their own dirty/notdirty state."""
+        """Return true if the current state of this item
+        (in memory) does not match the state of the HDF5 group on disk.
+        SerializableItems are responsible for tracking their own dirty/notdirty state."""
         return False
 
     def unload(self):

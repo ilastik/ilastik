@@ -56,8 +56,8 @@ class TestConservationTrackingHeadless(object):
     EXPECTED_NUM_LINEAGES = 3
     EXPECTED_MERGER_NUM = 2  # Number of mergers expected in exported csv file
     EXPECTED_NUM_DIVISION_CHILDREN = (
-        2
-    )  # Number of tracks that have their "parent" set, meaning they are children of a division
+        2  # Number of tracks that have their "parent" set, meaning they are children of a division
+    )
 
     @classmethod
     def setup_class(cls):

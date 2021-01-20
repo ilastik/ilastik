@@ -161,3 +161,18 @@ But please run those tools on the code you are contributing :)
 [github-flow]: https://guides.github.com/introduction/flow/
 [google-style]: https://github.com/google/styleguide/blob/gh-pages/pyguide.md
 [black]: https://black.readthedocs.io/en/stable/
+
+
+## Further notes
+
+* The file `.git-blame-ignore-revs` holds some commits that were generated automatically and only affected code style. These commits can be ignored in `git-blame`:
+
+  ```bash
+  git blame --ignore-revs-file .git-blame-ignore-revs <some-file>
+
+  ```
+  This setting can also be made permanent for your local repo:
+
+  ```bash
+  git config blame.ignoreRevsFile .git-blame-ignore-revs
+  ```

@@ -143,7 +143,9 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
                 drange = channelSlot.meta.drange or (0.0, 1.0)
                 predictsrc = createDataSource(channelSlot)
                 predictLayer = AlphaModulatedLayer(
-                    predictsrc, tintColor=QColor.fromRgba(self._colorTable16[channel + 1]), normalize=drange,
+                    predictsrc,
+                    tintColor=QColor.fromRgba(self._colorTable16[channel + 1]),
+                    normalize=drange,
                 )
                 predictLayer.opacity = 1.0
                 predictLayer.visible = True

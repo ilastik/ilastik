@@ -92,17 +92,17 @@ import errno
 
 
 class FileLock(object):
-    """ A file locking mechanism that has context-manager support so
-        you can use it in a ``with`` statement. This should be relatively cross
-        compatible as it doesn't rely on ``msvcrt`` or ``fcntl`` for the locking.
+    """A file locking mechanism that has context-manager support so
+    you can use it in a ``with`` statement. This should be relatively cross
+    compatible as it doesn't rely on ``msvcrt`` or ``fcntl`` for the locking.
     """
 
     class FileLockException(Exception):
         pass
 
     def __init__(self, protected_file_path, timeout=None, delay=1, lock_file_contents=None):
-        """ Prepare the file locker. Specify the file to lock and optionally
-            the maximum timeout and the delay between each attempt to lock.
+        """Prepare the file locker. Specify the file to lock and optionally
+        the maximum timeout and the delay between each attempt to lock.
         """
         self.is_locked = False
         self.lockfile = protected_file_path + ".lock"
@@ -128,9 +128,9 @@ class FileLock(object):
         return not os.path.exists(self.lockfile)
 
     def acquire(self, blocking=True):
-        """ Acquire the lock, if possible. If the lock is in use, and `blocking` is False, return False.
-            Otherwise, check again every `self.delay` seconds until it either gets the lock or
-            exceeds `timeout` number of seconds, in which case it raises an exception.
+        """Acquire the lock, if possible. If the lock is in use, and `blocking` is False, return False.
+        Otherwise, check again every `self.delay` seconds until it either gets the lock or
+        exceeds `timeout` number of seconds, in which case it raises an exception.
         """
         start_time = time.time()
         while True:
@@ -154,29 +154,29 @@ class FileLock(object):
         return True
 
     def release(self):
-        """ Get rid of the lock by deleting the lockfile.
-            When working in a `with` statement, this gets automatically
-            called at the end.
+        """Get rid of the lock by deleting the lockfile.
+        When working in a `with` statement, this gets automatically
+        called at the end.
         """
         self.is_locked = False
         os.unlink(self.lockfile)
 
     def __enter__(self):
-        """ Activated when used in the with statement.
-            Should automatically acquire a lock to be used in the with block.
+        """Activated when used in the with statement.
+        Should automatically acquire a lock to be used in the with block.
         """
         self.acquire()
         return self
 
     def __exit__(self, type, value, traceback):
-        """ Activated at the end of the with statement.
-            It automatically releases the lock if it isn't locked.
+        """Activated at the end of the with statement.
+        It automatically releases the lock if it isn't locked.
         """
         self.release()
 
     def __del__(self):
-        """ Make sure this ``FileLock`` instance doesn't leave a .lock file
-            lying around.
+        """Make sure this ``FileLock`` instance doesn't leave a .lock file
+        lying around.
         """
         if self.is_locked:
             self.release()

@@ -74,8 +74,7 @@ class CropSelectionGui(CroppingGui):
         super(CropSelectionGui, self).stopAndCleanUp()
 
     def __init__(self, parentApplet, topLevelOperatorView):
-        """
-        """
+        """"""
         self.topLevelOperatorView = topLevelOperatorView
 
         # Tell our base class which slots to monitor
@@ -598,10 +597,19 @@ class CropSelectionGui(CroppingGui):
         self.topLevelOperatorView.MinValueZ.setValue(minValueZ)
         self.topLevelOperatorView.MaxValueZ.setValue(maxValueZ)
 
-    def apply_gui_settings_to_operator(self,):
-        minValueT, maxValueT, minValueX, maxValueX, minValueY, maxValueY, minValueZ, maxValueZ = (
-            self._cropControlUi.getValues()
-        )
+    def apply_gui_settings_to_operator(
+        self,
+    ):
+        (
+            minValueT,
+            maxValueT,
+            minValueX,
+            maxValueX,
+            minValueY,
+            maxValueY,
+            minValueZ,
+            maxValueZ,
+        ) = self._cropControlUi.getValues()
         self.topLevelOperatorView.MinValueT.setValue(minValueT)
         self.topLevelOperatorView.MaxValueT.setValue(maxValueT)
 
@@ -728,9 +736,16 @@ class CropSelectionGui(CroppingGui):
         return minValueT, maxValueT, minValueX, maxValueX, minValueY, maxValueY, minValueZ, maxValueZ
 
     def setDefaultValues(self, *args):
-        minValueT, maxValueT, minValueX, maxValueX, minValueY, maxValueY, minValueZ, maxValueZ = (
-            self.defaultRangeValues()
-        )
+        (
+            minValueT,
+            maxValueT,
+            minValueX,
+            maxValueX,
+            minValueY,
+            maxValueY,
+            minValueZ,
+            maxValueZ,
+        ) = self.defaultRangeValues()
         self._cropControlUi.setRange(
             minValueT, maxValueT, minValueX, maxValueX, minValueY, maxValueY, minValueZ, maxValueZ
         )

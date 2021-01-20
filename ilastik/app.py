@@ -46,9 +46,7 @@ def _argparser() -> argparse.ArgumentParser:
             "Per default projects are opened with read access in GUI mode, without read access in headless mode."
         ),
     )
-    ap.add_argument(
-        "--new_project", help="Create a new project with the specified name. Must also specify " "--workflow."
-    )
+    ap.add_argument("--new_project", help="Create a new project with the specified name. Must also specify --workflow.")
     ap.add_argument("--workflow", help="When used with --new_project, specifies the workflow to use.")
     ap.add_argument(
         "--clean_paths", help="Remove ilastik-unrelated directories from PATH and PYTHONPATH.", action="store_true"
@@ -70,7 +68,7 @@ def _ensure_compatible_args(parser: argparse.ArgumentParser, args: argparse.Name
     """If args are invalid, print an error message to stderr and exit."""
 
     if args.workflow is not None and args.new_project is None:
-        parser.error("The --workflow argument may only be used with the " "--new_project argument.")
+        parser.error("The --workflow argument may only be used with the --new_project argument.")
 
     if args.workflow is None and args.new_project is not None:
         parser.error(
@@ -79,10 +77,10 @@ def _ensure_compatible_args(parser: argparse.ArgumentParser, args: argparse.Name
         )
 
     if args.project is not None and args.new_project is not None:
-        parser.error("The --project and --new_project settings cannot be used " "together. Choose one (or neither).")
+        parser.error("The --project and --new_project settings cannot be used together. Choose one (or neither).")
 
     if args.headless and (args.fullscreen or args.exit_on_failure):
-        parser.error("Some of the command-line options you provided are not " "supported in headless mode.")
+        parser.error("Some of the command-line options you provided are not supported in headless mode.")
 
     if args.headless and not args.project and not (args.new_project and args.workflow):
         parser.error(
@@ -335,7 +333,7 @@ def _prepare_lazyflow_config(parsed_args):
                 cacheMemoryManager.setRefreshInterval(status_interval_secs)
 
             if n_threads is not None:
-                logger.info(f"Resetting lazyflow thread pool with {n_threads} " "threads.")
+                logger.info(f"Resetting lazyflow thread pool with {n_threads} threads.")
                 lazyflow.request.Request.reset_thread_pool(n_threads)
             if total_ram_mb > 0:
                 if total_ram_mb < 500:

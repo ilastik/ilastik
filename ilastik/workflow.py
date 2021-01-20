@@ -184,10 +184,10 @@ class Workflow(Operator):
 
     def menus(self):
         """
-            Returns an iterable of QMenus to be added to the GUI
+        Returns an iterable of QMenus to be added to the GUI
 
-            Returns:
-                iterable:       QMenus to be added to the GUI
+        Returns:
+            iterable:       QMenus to be added to the GUI
         """
 
         return []

@@ -707,7 +707,7 @@ class SerialClassifierSlot(SerialSlot):
         try:
             classifier = classifier_type.deserialize_hdf5(classifierGroup)
         except:
-            warnings.warn("Wasn't able to deserialize the saved classifier.  " "It will need to be retrainied")
+            warnings.warn("Wasn't able to deserialize the saved classifier. It will need to be retrainied")
             return
 
         # Now force the classifier into our classifier cache. The
@@ -790,7 +790,7 @@ class SerialCountingSlot(SerialSlot):
 
                 forests.append(SVR.load(cachePath, targetname))
         except:
-            warnings.warn("Wasn't able to deserialize the saved classifier.  " "It will need to be retrainied")
+            warnings.warn("Wasn't able to deserialize the saved classifier. It will need to be retrainied")
             return
         finally:
             os.remove(cachePath)

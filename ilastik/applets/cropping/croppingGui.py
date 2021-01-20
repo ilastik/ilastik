@@ -115,7 +115,7 @@ class CroppingGui(LayerViewerGui):
 
     def selectCrop(self, cropIndex):
         """Programmatically select the given cropIndex, which start from 0.
-           Equivalent to clicking on the (cropIndex+1)'th position in the crop widget."""
+        Equivalent to clicking on the (cropIndex+1)'th position in the crop widget."""
         self._cropControlUi.cropListModel.select(cropIndex)
 
     class CroppingSlots(object):
@@ -339,8 +339,8 @@ class CroppingGui(LayerViewerGui):
     @threadRouted
     def _changeInteractionMode(self, toolId):
         """
-         Implement the GUI's response to the user selecting a new tool.
-         """
+        Implement the GUI's response to the user selecting a new tool.
+        """
         # Uncheck all the other buttons
         if self.toolButtons != None:
             for tool, button in list(self.toolButtons.items()):

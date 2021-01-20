@@ -477,9 +477,9 @@ class Slot(object):
                 self.disconnect()
                 return
 
-            assert isinstance(upstream_slot, Slot), (
-                "Slot.connect() can only be used to connect other Slots. Did " "you mean to use Slot.setValue()?"
-            )
+            assert isinstance(
+                upstream_slot, Slot
+            ), "Slot.connect() can only be used to connect other Slots. Did you mean to use Slot.setValue()?"
             assert self.allow_mask or (not upstream_slot.meta.has_mask), (
                 'The operator, "%s", is being setup to receive a masked array as input to slot, "%s",'
                 ' from the output slot, "%s", on operator, "%s". This is currently not supported.'
@@ -808,7 +808,7 @@ class Slot(object):
                 # Something is wrong.  Are we cancelled?
                 Request.raise_if_cancelled()
 
-                msg = "Can't get data from slot {}.{} yet." " It isn't ready." "First upstream problem slot is: {}"
+                msg = "Can't get data from slot {}.{} yet. It isn't ready. First upstream problem slot is: {}"
                 problem_slot = Slot._findUpstreamProblemSlot(self)
                 problem_str = str(problem_slot)
                 if isinstance(problem_slot, Slot):
@@ -892,9 +892,9 @@ class Slot(object):
         of an numpy.ndarray
 
         """
-        assert self.operator is not None, (
-            "Slot '{}' cannot be set dirty," " slot not belonging to any" " actual operator instance".format(self.name)
-        )
+        assert (
+            self.operator is not None
+        ), "Slot '{}' cannot be set dirty, slot not belonging to any actual operator instance".format(self.name)
 
         if self.stype.isConfigured():
             if len(args) == 0 or not isinstance(args[0], rtype.Roi):
@@ -922,7 +922,7 @@ class Slot(object):
         If level>0, return the subslot corresponding to the key, which
         may be a tuple
 
-                          """
+        """
         if self.level > 0:
             if isinstance(key, tuple):
                 assert len(key) > 0
@@ -969,7 +969,7 @@ class Slot(object):
 
         """
         assert not isinstance(value, Slot), "Can't use setitem to connect slots.  Use connect()"
-        assert self.level == 0, "setitem can only be used with slots of level 0." " Did you forget to append a key?"
+        assert self.level == 0, "setitem can only be used with slots of level 0. Did you forget to append a key?"
         assert self.operator is not None, "cannot do __setitem__ on Slot '{}' -> no operator !!"
         assert slicingtools.is_bounded(key), "Can't use Slot.__setitem__ with keys that include : or ..."
         # If we do not support masked arrays, ensure that we are not being passed one.
@@ -1030,7 +1030,7 @@ class Slot(object):
             return temp[0]
         else:
             warnings.warn(
-                "FIXME: Slot.value for slot {} is {}," " which should be wrapped in an ndarray.".format(self.name, temp)
+                "FIXME: Slot.value for slot {} is {}, which should be wrapped in an ndarray.".format(self.name, temp)
             )
             return temp
 
@@ -1374,8 +1374,7 @@ class Slot(object):
             self.maybe_call_within_transaction(self.operator._setupOutputs)
 
     def _setupOutputs(self):
-        """
-        """
+        """"""
         self._changed()
 
     def _connectSubSlot(self, slot, notify=True):

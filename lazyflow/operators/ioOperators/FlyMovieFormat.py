@@ -77,7 +77,7 @@ class FlyMovie(object):
         if len(version_buf) != size(VERSION_FMT):
             raise InvalidMovieFileException("could not read data file")
 
-        version, = unpack(VERSION_FMT, version_buf)
+        (version,) = unpack(VERSION_FMT, version_buf)
         if version not in (1, 3):
             raise NotImplementedError("Can only read version 1 and 3 files")
 
@@ -94,8 +94,8 @@ class FlyMovie(object):
         except struct.error:
             raise InvalidMovieFileException("file could not be read")
 
-        self.bytes_per_chunk, = unpack(CHUNKSIZE_FMT, r(size(CHUNKSIZE_FMT)))
-        self.n_frames, = unpack(N_FRAME_FMT, r(size(N_FRAME_FMT)))
+        (self.bytes_per_chunk,) = unpack(CHUNKSIZE_FMT, r(size(CHUNKSIZE_FMT)))
+        (self.n_frames,) = unpack(N_FRAME_FMT, r(size(N_FRAME_FMT)))
         self.timestamp_len = size(TIMESTAMP_FMT)
         self.chunk_start = self.file.tell()
         self.next_frame = None
@@ -141,7 +141,7 @@ class FlyMovie(object):
         # try:
         # read the version number
         format = "<I"
-        nbytesver, = struct.unpack(format, self.file.read(struct.calcsize(format)))
+        (nbytesver,) = struct.unpack(format, self.file.read(struct.calcsize(format)))
         version = self.file.read(nbytesver)
 
         # read header parameters
@@ -222,7 +222,7 @@ class FlyMovie(object):
             if len(data) < self.bytes_per_chunk:
                 raise NoMoreFramesException("short frame")
             timestamp_buf = data[: self.timestamp_len]
-            timestamp, = struct.unpack(TIMESTAMP_FMT, timestamp_buf)
+            (timestamp,) = struct.unpack(TIMESTAMP_FMT, timestamp_buf)
 
             frame = nx.fromstring(data[self.timestamp_len :], "<B")
             frame.shape = self.framesize
@@ -251,7 +251,7 @@ class FlyMovie(object):
         self.file.seek(self.bytes_per_chunk - read_len, 1)  # seek to next frame
         if timestamp_buf == "":
             raise NoMoreFramesException("EOF")
-        timestamp, = struct.unpack(TIMESTAMP_FMT, timestamp_buf)
+        (timestamp,) = struct.unpack(TIMESTAMP_FMT, timestamp_buf)
         return timestamp
 
     def is_another_frame_available(self):
@@ -311,7 +311,7 @@ class FlyMovie(object):
                     self.file.seek(self.bytes_per_chunk - read_len, 1)  # seek to next frame
                     if timestamp_buf == "":
                         break
-                    timestamp, = struct.unpack(TIMESTAMP_FMT, timestamp_buf)
+                    (timestamp,) = struct.unpack(TIMESTAMP_FMT, timestamp_buf)
                     self._all_timestamps.append(timestamp)
             self.next_frame = None
             self._all_timestamps = nx.asarray(self._all_timestamps)

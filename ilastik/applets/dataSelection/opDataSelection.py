@@ -436,8 +436,7 @@ class PreloadedArrayDatasetInfo(DatasetInfo):
 
 
 class DummyDatasetInfo(DatasetInfo):
-    """Special DatasetInfo for datasets that can't be found in headless mode
-    """
+    """Special DatasetInfo for datasets that can't be found in headless mode"""
 
     def __init__(self, **info_kwargs):
         super().__init__(**info_kwargs)

@@ -222,7 +222,7 @@ class OpLabelingABC(with_metaclass(ABCMeta, Operator)):
         if self.Input.ready():
             dtype = self.Input.meta.dtype
             if dtype not in self.supportedDtypes:
-                msg = "{}: dtype '{}' not supported " "with method 'vigra'. Supported types: {}"
+                msg = "{}: dtype '{}' not supported with method 'vigra'. Supported types: {}"
                 msg = msg.format(self.name, dtype, self.supportedDtypes)
                 raise ValueError(msg)
 

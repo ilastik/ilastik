@@ -231,7 +231,7 @@ class OpStackLoader(Operator):
                 raise RuntimeError("not all files have the same shape")
             images_per_file = vigra.impex.numberImages(self.fileNameList[0])
             if self.slices_per_file != images_per_file:
-                raise RuntimeError("Not all files have the same number of " "slices")
+                raise RuntimeError("Not all files have the same number of slices")
 
             result[:, :, i * C : (i + 1) * C] = vigra.impex.readImage(fileName)[
                 x_start:x_stop, y_start:y_stop, :
@@ -255,7 +255,7 @@ class OpStackLoader(Operator):
                 raise RuntimeError("not all files have the same shape")
             images_per_file = vigra.impex.numberImages(self.fileNameList[0])
             if self.slices_per_file != images_per_file:
-                raise RuntimeError("Not all files have the same number of " "slices")
+                raise RuntimeError("Not all files have the same number of slices")
 
             if self.stack.meta.axistags.channelIndex == 0:
                 # czyx order -> read slice along z (here y)
@@ -341,9 +341,7 @@ class OpStackWriter(Operator):
             parallel_requests = int(available_ram // ram_usage_per_slice)
 
             if parallel_requests < 1:
-                raise MemoryError(
-                    "Not enough RAM to export to the selected format. " "Consider exporting to hdf5 (h5)."
-                )
+                raise MemoryError("Not enough RAM to export to the selected format. Consider exporting to hdf5 (h5).")
 
         streamer = BigRequestStreamer(self.Input, roiFromShape(self.Input.meta.shape), slice_shape, parallel_requests)
 

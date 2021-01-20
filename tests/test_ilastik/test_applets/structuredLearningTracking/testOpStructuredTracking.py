@@ -134,8 +134,8 @@ def test_annotation_mismatch_raises(tracklet_graph, annotations):
 def test_annotation_with_misdetection(tracklet_graph, annotations, expected):
     """add some annotations with misdetection:
 
-                     6*-> 7 -> 8*
-        * denote misdetections
+                 6*-> 7 -> 8*
+    * denote misdetections
     """
     annotations["labels"][1][6] = {-1, 5}
     annotations["labels"][2][7] = {5}

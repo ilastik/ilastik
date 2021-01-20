@@ -68,8 +68,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         labels[0].setVisible(selection > 1)
 
     def __init__(self, parentApplet, topLevelOperatorView):
-        """
-        """
+        """"""
         self._initColors()
 
         self.topLevelOperatorView = topLevelOperatorView

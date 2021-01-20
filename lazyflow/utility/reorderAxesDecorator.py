@@ -27,31 +27,31 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 def reorder_options(internal_axes_order, ignore_slots=[], output_axes_order="tczyx"):
     """
-        Adds reorder options to the specific operator class that the decorator
-        reorder accesses. This is not done by handing arguments to the reorder
-        decorator directly, because then the reorder decorator would need to be
-        wrapped, which would lead return a function (wrapper) as the operator
-        class, which conflicts with inheritance of the specific operator (as
-        the inheriting operator class appears to be a function). Therefore the
-        arguments are outsourced in this decorator.
+    Adds reorder options to the specific operator class that the decorator
+    reorder accesses. This is not done by handing arguments to the reorder
+    decorator directly, because then the reorder decorator would need to be
+    wrapped, which would lead return a function (wrapper) as the operator
+    class, which conflicts with inheritance of the specific operator (as
+    the inheriting operator class appears to be a function). Therefore the
+    arguments are outsourced in this decorator.
 
-        note: Use this function decorator only in combination with the reorder
-              decorator and as second (inner) decorator.
-              (see example usage below)
+    note: Use this function decorator only in combination with the reorder
+          decorator and as second (inner) decorator.
+          (see example usage below)
 
-        @param internal_axes_order: str Axes order the decorated operator
-                                        assumes internally.
-        @param ignore_slots: list(str) List of slot names that do not need to be
-                                       reordered.
-        @param output_axes_order: str Output Axes order for all reordered
-                                      output slots.
+    @param internal_axes_order: str Axes order the decorated operator
+                                    assumes internally.
+    @param ignore_slots: list(str) List of slot names that do not need to be
+                                   reordered.
+    @param output_axes_order: str Output Axes order for all reordered
+                                  output slots.
 
-        Example usage: (for a 'real-life example check OpGraphCut in ilastik)
+    Example usage: (for a 'real-life example check OpGraphCut in ilastik)
 
-            @reorder
-            @reorder_options('tzyxc', ['ResizedShape'])
-            class OpResize5D(Operator):
-                ...
+        @reorder
+        @reorder_options('tzyxc', ['ResizedShape'])
+        class OpResize5D(Operator):
+            ...
 
     """
     assert isinstance(internal_axes_order, str)
@@ -71,10 +71,10 @@ def reorder_options(internal_axes_order, ignore_slots=[], output_axes_order="tcz
 
 def guard_methods(cls):
     """
-        helper function for reorder
+    helper function for reorder
 
-        Flag with 'self._inner_call' when methods are called from within the class
-        as opposed to accessing a slot of the operator from the "outside"
+    Flag with 'self._inner_call' when methods are called from within the class
+    as opposed to accessing a slot of the operator from the "outside"
     """
     methods = [
         member
@@ -166,39 +166,39 @@ def guard_methods(cls):
 
 def reorder(cls):
     """
-        Decorator function to reorder all input and output channels, to preserve an inner axes order within the
-        operator.
-        Must be used in combination with reorder_options!!!
+    Decorator function to reorder all input and output channels, to preserve an inner axes order within the
+    operator.
+    Must be used in combination with reorder_options!!!
 
-        For every slot of a decorated operator, the distinction has to be made, if the slot was called by the operator
-        itself, i.e. by one of its methods, or on the operator object from the 'outside'.
+    For every slot of a decorated operator, the distinction has to be made, if the slot was called by the operator
+    itself, i.e. by one of its methods, or on the operator object from the 'outside'.
 
-        Pseudo example to clarify:
+    Pseudo example to clarify:
 
-        @reorder
-        @reorder_options(internal_axis_order='txyzc', # set in stone by original dev
-                         ignore_slots=['i_already_follow_the_new_outside_order'],
-                         output_axes_order='tczyx' # new order (e.g. the future standard)
-                         )
-            class MyOp(operator):
-            Input = InputSlot()
-            Output = OutputSlot()
+    @reorder
+    @reorder_options(internal_axis_order='txyzc', # set in stone by original dev
+                     ignore_slots=['i_already_follow_the_new_outside_order'],
+                     output_axes_order='tczyx' # new order (e.g. the future standard)
+                     )
+        class MyOp(operator):
+        Input = InputSlot()
+        Output = OutputSlot()
 
-            anarchySlot = InputSlot()
+        anarchySlot = InputSlot()
 
-            def __init__(self):
-                super().__init__()
-                self.childOp = ChildOp()
+        def __init__(self):
+            super().__init__()
+            self.childOp = ChildOp()
 
-                # direct connection of slots, not affected by reorder decorator
-                self.childOp.InputA.connect(self.anarchySlot)
+            # direct connection of slots, not affected by reorder decorator
+            self.childOp.InputA.connect(self.anarchySlot)
 
-            def setupOutputs(self):
-                # everything in here is automatically converted with respect to the inner and outer axes orders
-                # In-between childOp's slot and this operator's slot a hidden OpReorderAxes is connected, which was
-                # added by the reorder decorator
-                self.childOp.InputB.connect(self.Input)
-                self.Output.connect(self.childOp.Output)
+        def setupOutputs(self):
+            # everything in here is automatically converted with respect to the inner and outer axes orders
+            # In-between childOp's slot and this operator's slot a hidden OpReorderAxes is connected, which was
+            # added by the reorder decorator
+            self.childOp.InputB.connect(self.Input)
+            self.Output.connect(self.childOp.Output)
     """
     if "_not_reordered_slots" not in dir(cls):
         cls._not_reordered_slots = []

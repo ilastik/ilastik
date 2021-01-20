@@ -50,7 +50,7 @@ class OpExport2DImage(Operator):
         # Otherwise, they aren't supported.
         extension = os.path.splitext(self.Filepath.value)[1][1:]
         if extension not in vigra.impex.listExtensions().split():
-            msg = "Unknown export format: '{}' " "is not a recognized 2D image extension.".format(extension)
+            msg = "Unknown export format: '{}' is not a recognized 2D image extension.".format(extension)
             raise Exception(msg)
 
     # No Output slots...

@@ -100,7 +100,7 @@ class OpObjectsSegment(OpGraphCut):
         assert len(shape) == 5, "Prediction maps must be a full 5d volume (tzyxc)"
         tags = self.LabelImage.meta.getAxisKeys()
         tags = "".join(tags)
-        assert tags == "tzyxc", "Label image has wrong axes order" "(expected: tzyxc, got: {})".format(tags)
+        assert tags == "tzyxc", "Label image has wrong axes order (expected: tzyxc, got: {})".format(tags)
 
         # bounding boxes are just one element arrays of type object, but we
         # want to request boxes from a specific region, therefore BoundingBoxes

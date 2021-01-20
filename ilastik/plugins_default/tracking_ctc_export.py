@@ -50,7 +50,9 @@ class TrackingCTCExportFormatPlugin(TrackingExportFormatPlugin):
                 tracks[trackId] = [n[0]]
             if "parent" in hypothesesGraph._graph.nodes[n]:
                 assert trackId not in trackParents
-                trackParents[trackId] = hypothesesGraph._graph.nodes[hypothesesGraph._graph.nodes[n]["parent"]]["trackId"]
+                trackParents[trackId] = hypothesesGraph._graph.nodes[hypothesesGraph._graph.nodes[n]["parent"]][
+                    "trackId"
+                ]
             if "gap_parent" in hypothesesGraph._graph.nodes[n]:
                 assert trackId not in trackParents
                 gapTrackParents[trackId] = hypothesesGraph._graph.nodes[hypothesesGraph._graph.nodes[n]["gap_parent"]][

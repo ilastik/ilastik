@@ -169,7 +169,7 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
                 settingsDlg.buttonBox.button(QDialogButtonBox.Ok).setEnabled(False)
                 # Red background
                 settingsDlg.axesEdit.setStyleSheet(
-                    "QLineEdit { background: rgb(255, 128, 128);" "selection-background-color: rgb(128, 128, 255); }"
+                    "QLineEdit { background: rgb(255, 128, 128); selection-background-color: rgb(128, 128, 255); }"
                 )
 
         settingsDlg.axesEdit.editingFinished.connect(handle_updated_axes)
@@ -333,17 +333,17 @@ class LabelImportOptionsDlg(QDialog):
         if state == QValidator.Acceptable:
             # White background
             self.axesEdit.setStyleSheet(
-                "QLineEdit { background: rgb(255, 255, 255);" "selection-background-color: rgb(128, 128, 128); }"
+                "QLineEdit { background: rgb(255, 255, 255); selection-background-color: rgb(128, 128, 128); }"
             )
         elif state == QValidator.Intermediate:
             # Yellow background
             self.axesEdit.setStyleSheet(
-                "QLineEdit { background: rgb(255, 255, 0);" "selection-background-color: rgb(128, 128, 128); }"
+                "QLineEdit { background: rgb(255, 255, 0); selection-background-color: rgb(128, 128, 128); }"
             )
         else:
             # Red background
             self.axesEdit.setStyleSheet(
-                "QLineEdit { background: rgb(255, 128, 128);" "selection-background-color: rgb(128, 128, 255); }"
+                "QLineEdit { background: rgb(255, 128, 128); selection-background-color: rgb(128, 128, 255); }"
             )
 
     class _QAxesValidator(QValidator):

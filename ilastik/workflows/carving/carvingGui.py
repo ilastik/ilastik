@@ -62,8 +62,8 @@ class CarvingGui(LabelingGui):
     def __init__(self, parentApplet, topLevelOperatorView, drawerUiPath=None):
         self.topLevelOperatorView = topLevelOperatorView
         self.isInitialized = (
-            False
-        )  # Need this flag in carvingApplet where initialization is terminated with label selection
+            False  # Need this flag in carvingApplet where initialization is terminated with label selection
+        )
 
         # members
         self._doneSegmentationLayer = None

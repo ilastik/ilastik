@@ -169,12 +169,12 @@ class CropListModel(ListModel):
             brushColor = QColor(value[0])
             pmapColor = QColor(value[1])
             if brushColor.isValid() and pmapColor.isValid():
-                logger.debug("setData: brushColor = {}, pmapColor = {}" "".format(brushColor.name(), pmapColor.name()))
+                logger.debug("setData: brushColor = {}, pmapColor = {}".format(brushColor.name(), pmapColor.name()))
                 logger.debug("  self._elements[row] has type {}" "".format(type(self._elements[row])))
                 self._elements[row].setBrushColor(brushColor)
                 self._elements[row].setPmapColor(pmapColor)
-                logger.debug("  self._elements[row].brushColor = {}" "".format(self._elements[row].brushColor().name()))
-                logger.debug("  self._elements[row].pmapColor  = {}" "".format(self._elements[row].pmapColor().name()))
+                logger.debug("  self._elements[row].brushColor = {}".format(self._elements[row].brushColor().name()))
+                logger.debug("  self._elements[row].pmapColor  = {}".format(self._elements[row].pmapColor().name()))
                 self.dataChanged.emit(index, index)
                 return True
 

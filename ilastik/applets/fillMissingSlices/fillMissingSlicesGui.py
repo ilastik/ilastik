@@ -48,9 +48,7 @@ class FillMissingSlicesGui(LayerViewerGui):
     _recentExportDir = QDir.homePath()
 
     def initAppletDrawerUi(self):
-        """
-
-        """
+        """"""
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         self._drawer = PyQt5.uic.loadUi(localDir + "/drawer.ui")

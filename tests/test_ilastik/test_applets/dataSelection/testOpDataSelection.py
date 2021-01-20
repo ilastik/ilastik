@@ -100,9 +100,7 @@ class TestOpDataSelection_Basic2D(object):
                 cls.imgFileNames2D.append(tmpFileName)
             except RuntimeError as e:
                 msg = str(e).replace("\n", "")
-                print(
-                    "Couldn't write temp 2D image file using vigra with `{}` " "extension : {}".format(extension, msg)
-                )
+                print("Couldn't write temp 2D image file using vigra with `{}` extension : {}".format(extension, msg))
 
         cls.imgData2Dc = numpy.random.randint(0, 255, (100, 200, 3)).astype(numpy.uint8)
         vimgData2Dc = vigra.VigraArray(cls.imgData2Dc, axistags=vigra.defaultAxistags("yxc"), dtype=numpy.uint8)
@@ -130,9 +128,7 @@ class TestOpDataSelection_Basic2D(object):
                 cls.generatedImages2Dc.append(tmpFileName)
             except RuntimeError as e:
                 msg = str(e).replace("\n", "")
-                print(
-                    "Couldn't write temp 2D+c image file using vigra with `{}` " "extension : {}".format(extension, msg)
-                )
+                print("Couldn't write temp 2D+c image file using vigra with `{}` extension : {}".format(extension, msg))
 
         # Create a 'project' file and give it some data
         cls.projectFile = h5py.File(cls.projectFileName, "w")

@@ -102,9 +102,10 @@ class OpFeatureMatrixCache(Operator):
 
         # For now, we assume that the two input images have the same shape (except channel)
         # This constraint could be relaxed in the future if necessary
-        assert self.FeatureImage.meta.shape[:-1] == self.LabelImage.meta.shape[:-1], (
-            "FeatureImage and LabelImage shapes do not match: {} vs {}"
-            "".format(self.FeatureImage.meta.shape, self.LabelImage.meta.shape)
+        assert (
+            self.FeatureImage.meta.shape[:-1] == self.LabelImage.meta.shape[:-1]
+        ), "FeatureImage and LabelImage shapes do not match: {} vs {}".format(
+            self.FeatureImage.meta.shape, self.LabelImage.meta.shape
         )
 
         self.LabelAndFeatureMatrix.meta.shape = (1,)

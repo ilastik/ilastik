@@ -3,6 +3,7 @@ class State:
     Stores model state
     As opaque serialized tensors
     """
+
     model: bytes
     optimizer: bytes
 

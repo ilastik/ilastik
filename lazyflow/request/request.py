@@ -1384,8 +1384,7 @@ class RequestPool(object):
             self.clean()
 
     def _activate_next_request(self):
-        """
-        """
+        """"""
         with self._set_lock:
             req = self._unsubmitted_requests.pop(0)
             self._active_requests.add(req)

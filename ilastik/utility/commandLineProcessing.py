@@ -110,8 +110,7 @@ def convertStringToList(some_string):
 
 
 class ParseListFromString(argparse.Action):
-    """Little helper action in order to parse lists encoded as strings
-    """
+    """Little helper action in order to parse lists encoded as strings"""
 
     def __call__(self, parser, namespace, values, option_string=None):
         try:

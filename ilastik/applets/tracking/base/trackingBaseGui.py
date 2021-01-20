@@ -52,8 +52,7 @@ logger = logging.getLogger(__name__)
 
 
 class TrackingBaseGui(LayerViewerGui):
-    """
-    """
+    """"""
 
     withMergers = False
 
@@ -71,8 +70,7 @@ class TrackingBaseGui(LayerViewerGui):
     ###########################################
 
     def __init__(self, parentApplet, topLevelOperatorView):
-        """
-        """
+        """"""
         self._initColors()
 
         self.topLevelOperatorView = topLevelOperatorView

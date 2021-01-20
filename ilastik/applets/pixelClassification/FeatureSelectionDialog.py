@@ -140,8 +140,8 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         self._selected_feature_set_id = None
         self.selected_features_matrix = self.opFeatureSelection.SelectionMatrix.value
         self.feature_channel_names = (
-            None
-        )  # this gets initialized when the matrix is set to all features in _run_selection
+            None  # this gets initialized when the matrix is set to all features in _run_selection
+        )
 
         self._stack_dim = self.opPixelClassification.InputImages.meta.shape
         self._stack_axistags = self.opPixelClassification.InputImages.meta.axistags

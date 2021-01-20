@@ -34,9 +34,7 @@ from .opDataExport import OpDataExport
 
 
 class DataExportApplet(Applet):
-    """
-
-    """
+    """"""
 
     def __init__(self, workflow, title, isBatch=False):
         # Designed to be subclassed: If the subclass defined its own top-level operator,

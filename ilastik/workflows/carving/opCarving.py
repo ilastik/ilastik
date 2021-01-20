@@ -121,9 +121,7 @@ class OpCarving(Operator):
 
         self._hintOverlayFile = hintOverlayFile
         self._mst = None
-        self.has_seeds = (
-            False
-        )  # keeps track of whether or not there are seeds currently loaded, either drawn by the user or loaded from a saved object
+        self.has_seeds = False  # keeps track of whether or not there are seeds currently loaded, either drawn by the user or loaded from a saved object
 
         self.LabelNames.setValue(["Background", "Object"])
 

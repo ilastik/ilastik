@@ -289,8 +289,8 @@ class Ilastik05ImportDeserializer(AppletSerializer):
 
     def deserializeFromHdf5(self, hdf5File, projectFilePath, headless=False):
         """If (and only if) the given hdf5Group is the root-level group of an
-           ilastik 0.5 project, then the project is imported.  The pipeline is updated
-           with the saved parameters and datasets."""
+        ilastik 0.5 project, then the project is imported.  The pipeline is updated
+        with the saved parameters and datasets."""
         # The group we were given is the root (file).
         # Check the version
         ilastikVersion = hdf5File["ilastikVersion"][()]

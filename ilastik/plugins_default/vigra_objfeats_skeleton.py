@@ -87,9 +87,9 @@ class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
                 features[feature]["detailtext"] = "The longest path between two endpoints on the skeleton."
             if feature == "Euclidean Diameter":
                 features[feature]["displaytext"] = "Euclidean Diameter"
-                features[feature]["detailtext"] = (
-                    "The Euclidean distance between the endpoints (terminals) of the longest path " "on the skeleton"
-                )
+                features[feature][
+                    "detailtext"
+                ] = "The Euclidean distance between the endpoints (terminals) of the longest path on the skeleton"
             if feature == "Skeleton Center":
                 features[feature]["displaytext"] = "Center of the Skeleton"
                 features[feature][

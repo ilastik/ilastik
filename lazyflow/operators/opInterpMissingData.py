@@ -311,9 +311,10 @@ class OpInterpolate(Operator):
             # not integer type, no casting needed
             self._iinfo = None
 
-        assert self.InputVolume.meta.getTaggedShape() == self.Missing.meta.getTaggedShape(), (
-            "InputVolume and Missing must have the same shape "
-            + "({} vs {})".format(self.InputVolume.meta.getTaggedShape(), self.Missing.meta.getTaggedShape())
+        assert (
+            self.InputVolume.meta.getTaggedShape() == self.Missing.meta.getTaggedShape()
+        ), "InputVolume and Missing must have the same shape " + "({} vs {})".format(
+            self.InputVolume.meta.getTaggedShape(), self.Missing.meta.getTaggedShape()
         )
 
     def execute(self, slot, subindex, roi, result):
@@ -448,4 +449,4 @@ class OpInterpolate(Operator):
                     ]
             else:
                 # nothing to do for empty block
-                logger.warning(",".join(("Not enough data for interpolation" "leaving slice as is ...")))
+                logger.warning("Not enough data for interpolation leaving slice as is ...")

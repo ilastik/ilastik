@@ -62,7 +62,7 @@ def box(sl, seq=tuple):
 
     No effect on any other object.
 
-   """
+    """
     if isinstance(sl, slice):
         return seq((sl,))
     else:

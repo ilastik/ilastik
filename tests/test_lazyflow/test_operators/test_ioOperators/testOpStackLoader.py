@@ -45,10 +45,10 @@ class TestOpStackLoader(object):
 
     def _prepare_data(self, name, shape, axes, stack_axis, stack_existing_channels=False):
         """
-            Writes random data in a series of [multi-page] tiff files.
-            'stack_existing_channels' can be used to stack the first and the
-            last axis together. This is useful when testing to stack data with
-            c > 1 along c.
+        Writes random data in a series of [multi-page] tiff files.
+        'stack_existing_channels' can be used to stack the first and the
+        last axis together. This is useful when testing to stack data with
+        c > 1 along c.
         """
         if stack_axis in axes:
             assert len(shape) == len(axes)

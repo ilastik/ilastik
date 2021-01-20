@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 class RegressorGurobi(object):
     def __init__(self, C=1, epsilon=0.1, penalty="l2", regularization="l2", pos_constr=False):
         """
-            penalty : "l1" or "l2" penalty
+        penalty : "l1" or "l2" penalty
 
         """
 
@@ -261,8 +261,7 @@ class SVR(object):
         minmax=None,  # RF parameters, maxdepth=None means grows until purity
         **kwargs,
     ):
-        """
-        """
+        """"""
         self.DENSITYBOUND = True
 
         self._numRegressors = 0

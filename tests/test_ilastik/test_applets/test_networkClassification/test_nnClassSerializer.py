@@ -88,5 +88,3 @@ class TestModelSlotSerialization:
         serializer.deserializeFromHdf5(outfile, None)
 
         assert b"\x00nullbyteshere" == op.Out.value
-
-

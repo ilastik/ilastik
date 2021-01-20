@@ -316,17 +316,17 @@ class DataSelectionSerializer(AppletSerializer):
         self._projectFilePath = newdir
 
     def isDirty(self):
-        """ Return true if the current state of this item
-            (in memory) does not match the state of the HDF5 group on disk.
-            SerializableItems are responsible for tracking their own dirty/notdirty state."""
+        """Return true if the current state of this item
+        (in memory) does not match the state of the HDF5 group on disk.
+        SerializableItems are responsible for tracking their own dirty/notdirty state."""
         return self._dirty
 
     def unload(self):
-        """ Called if either
-            (1) the user closed the project or
-            (2) the project opening process needs to be aborted for some reason
-                (e.g. not all items could be deserialized properly due to a corrupted ilp)
-            This way we can avoid invalid state due to a partially loaded project. """
+        """Called if either
+        (1) the user closed the project or
+        (2) the project opening process needs to be aborted for some reason
+            (e.g. not all items could be deserialized properly due to a corrupted ilp)
+        This way we can avoid invalid state due to a partially loaded project."""
         self.topLevelOperator.DatasetGroup.resize(0)
 
     @property
@@ -412,15 +412,15 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
         assert False
 
     def isDirty(self):
-        """ Return true if the current state of this item
-            (in memory) does not match the state of the HDF5 group on disk.
-            SerializableItems are responsible for tracking their own dirty/notdirty state."""
+        """Return true if the current state of this item
+        (in memory) does not match the state of the HDF5 group on disk.
+        SerializableItems are responsible for tracking their own dirty/notdirty state."""
         return False
 
     def unload(self):
-        """ Called if either
-            (1) the user closed the project or
-            (2) the project opening process needs to be aborted for some reason
-                (e.g. not all items could be deserialized properly due to a corrupted ilp)
-            This way we can avoid invalid state due to a partially loaded project. """
+        """Called if either
+        (1) the user closed the project or
+        (2) the project opening process needs to be aborted for some reason
+            (e.g. not all items could be deserialized properly due to a corrupted ilp)
+        This way we can avoid invalid state due to a partially loaded project."""
         self.topLevelOperator.DatasetGroup.resize(0)
