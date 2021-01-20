@@ -135,6 +135,7 @@ if ilastik.config.cfg.getboolean("ilastik", "hbp", fallback=False):
 # network classification, check whether required modules are available:
 try:
     from .nnClassification import NNClassificationWorkflow
+
     WORKFLOW_CLASSES += [NNClassificationWorkflow]
 except ImportError as e:
     logger.warning("Failed to import NeuralNet workflow; check dependencies: " + str(e), exc_info=1)

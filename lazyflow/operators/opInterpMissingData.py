@@ -311,9 +311,10 @@ class OpInterpolate(Operator):
             # not integer type, no casting needed
             self._iinfo = None
 
-        assert self.InputVolume.meta.getTaggedShape() == self.Missing.meta.getTaggedShape(), (
-            "InputVolume and Missing must have the same shape "
-            + "({} vs {})".format(self.InputVolume.meta.getTaggedShape(), self.Missing.meta.getTaggedShape())
+        assert (
+            self.InputVolume.meta.getTaggedShape() == self.Missing.meta.getTaggedShape()
+        ), "InputVolume and Missing must have the same shape " + "({} vs {})".format(
+            self.InputVolume.meta.getTaggedShape(), self.Missing.meta.getTaggedShape()
         )
 
     def execute(self, slot, subindex, roi, result):

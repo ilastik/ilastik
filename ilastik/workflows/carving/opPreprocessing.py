@@ -201,11 +201,11 @@ class OpSimpleBlockwiseWatershed(Operator):
 
             if self.DoAgglo.value:
                 result[result_idx], max_id = watershed_and_agglomerate(
-                        input_,
-                        max_workers=max(1, Request.global_thread_pool.num_workers),
-                        size_regularizer=self.SizeRegularizer.value,
-                        reduce_to=self.ReduceTo.value,
-                    )
+                    input_,
+                    max_workers=max(1, Request.global_thread_pool.num_workers),
+                    size_regularizer=self.SizeRegularizer.value,
+                    reduce_to=self.ReduceTo.value,
+                )
             else:
                 result[result_idx], max_id = vigra.analysis.watershedsNew(input_)
 

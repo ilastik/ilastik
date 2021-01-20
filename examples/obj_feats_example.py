@@ -24,11 +24,11 @@ class ExampleObjFeats(ObjectFeaturesPlugin):
         return dict((f, {"margin": 0}) for f in names)
 
     def lbp(self, image, label_bboxes, axes):
-        """ This function computes local binary pattern histograms
-            for the object, the neighborhood of the object (without
-            the object itself), and both the object and the neighborhood)
+        """This function computes local binary pattern histograms
+        for the object, the neighborhood of the object (without
+        the object itself), and both the object and the neighborhood)
 
-            The LBPs are computed via the scikit.image package
+        The LBPs are computed via the scikit.image package
         """
         rawbbox = image
         mask_object, mask_both, mask_neigh = label_bboxes
@@ -63,8 +63,8 @@ class ExampleObjFeats(ObjectFeaturesPlugin):
         return result
 
     def radii_ratio(self, image, label_bboxes, axes):
-        """ This function computes the ratio of the first and last principal radii
-            of the object """
+        """This function computes the ratio of the first and last principal radii
+        of the object"""
 
         mask_object, mask_both, mask_neigh = label_bboxes
         feats = vigra.analysis.extractRegionFeatures(

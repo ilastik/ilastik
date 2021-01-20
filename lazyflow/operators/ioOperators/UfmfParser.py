@@ -104,7 +104,7 @@ def identify_ufmf_version(filename):
     if version_buf == b"ufmf":
         version_buf = fd.read(version_buflen)
         had_marker = True
-    version, = struct.unpack(VERSION_FMT, version_buf)
+    (version,) = struct.unpack(VERSION_FMT, version_buf)
     if version > 1:
         if not had_marker:
             raise ValueError("ill-formed .ufmf file")
@@ -163,7 +163,7 @@ def _read_array(fd, buf_remaining):
     n_bytes_calcsize = struct.calcsize("<L")
     x, buf_remaining = _read_min_chars(fd, n_bytes_calcsize, buf_remaining)
     n_bytes_buf = x
-    n_bytes, = struct.unpack("<L", n_bytes_buf)
+    (n_bytes,) = struct.unpack("<L", n_bytes_buf)
 
     data_buf, buf_remaining = _read_min_chars(fd, n_bytes, buf_remaining)
     larr = numpy.frombuffer(data_buf, dtype=dtype_char)
@@ -179,7 +179,7 @@ def _read_dict(fd, buf_remaining=None):
     Hsize = struct.calcsize("<H")
     for key_num in range(n_keys):
         x, buf_remaining = _read_min_chars(fd, Hsize, buf_remaining)
-        keylen, = struct.unpack("<H", x)
+        (keylen,) = struct.unpack("<H", x)
         x, buf_remaining = _read_min_chars(fd, keylen, buf_remaining)
         key = x
         x, buf_remaining = _read_min_chars(fd, 1, buf_remaining)

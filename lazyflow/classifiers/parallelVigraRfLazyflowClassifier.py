@@ -68,7 +68,7 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         variable_importance_path=None,
         label_proportion=None,
         variable_importance_enabled=False,
-        **kwargs
+        **kwargs,
     ):
         """
         num_trees_total: The number of trees to train
@@ -335,9 +335,10 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
 
         if self._feature_names is not None:
             # For some reason, vigra doesn't seem to check this for us...
-            assert X.shape[1] == len(self._feature_names), (
-                "Feature count ({}) doesn't match the training feature count ({}).\n"
-                "Expected features: {}".format(X.shape[1], len(self._feature_names), self._feature_names)
+            assert X.shape[1] == len(
+                self._feature_names
+            ), "Feature count ({}) doesn't match the training feature count ({}).\n" "Expected features: {}".format(
+                X.shape[1], len(self._feature_names), self._feature_names
             )
 
         # As each forest completes, aggregate results in a shared array.

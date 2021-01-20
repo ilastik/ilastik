@@ -45,8 +45,7 @@ class ThresholdMaskingGui(LayerViewerGui):
     ###########################################
 
     def __init__(self, parentApplet, topLevelOperatorView):
-        """
-        """
+        """"""
         self.topLevelOperatorView = topLevelOperatorView
         super(ThresholdMaskingGui, self).__init__(parentApplet, self.topLevelOperatorView)
 

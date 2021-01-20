@@ -81,9 +81,7 @@ class PredictionViewerGui(LayerViewerGui):
         for channel, channelSlot in enumerate(opSlicer.Slices):
             if channelSlot.ready() and channel < len(colors) and channel < len(names):
                 predictsrc = createDataSource(channelSlot)
-                predictLayer = AlphaModulatedLayer(
-                    predictsrc, tintColor=colors[channel], normalize=(0.0, 1.0)
-                )
+                predictLayer = AlphaModulatedLayer(predictsrc, tintColor=colors[channel], normalize=(0.0, 1.0))
                 predictLayer.opacity = 0.25
                 predictLayer.visible = True
                 predictLayer.name = names[channel]

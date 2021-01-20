@@ -61,9 +61,9 @@ def input_data():
 @pytest.fixture
 def get_result_function(input_data):
     """
-	Returns the result of the watershed algorithm directly from 
-	the core function.
-	"""
+    Returns the result of the watershed algorithm directly from
+    the core function.
+    """
 
     ws, max_id = distance_transform_watershed(
         input_data[..., 0],
@@ -82,9 +82,9 @@ def get_result_function(input_data):
 @pytest.fixture
 def get_result_operator(input_data):
     """
-	Returns the result of the wrapping operator pipeline, which gets 
-	accessed via the GUI.
-	"""
+    Returns the result of the wrapping operator pipeline, which gets
+    accessed via the GUI.
+    """
 
     input_data = vigra.VigraArray(input_data, axistags=vigra.defaultAxistags(AXIS_TAGS))
 
@@ -99,9 +99,9 @@ def get_result_operator(input_data):
 
 def test_consistency(input_data, get_result_function, get_result_operator):
     """
-	Directly compare pipeline result to core function result. The test will
-	pass if the results are exactly equal.
-	"""
+    Directly compare pipeline result to core function result. The test will
+    pass if the results are exactly equal.
+    """
 
     ws, max_id = get_result_function
     wsdt_result = np.array(get_result_operator)

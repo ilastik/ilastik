@@ -13,13 +13,18 @@ class DummyStore:
     def get_servers(self):
         return self._data
 
+
 class TestServerListWidget:
     @pytest.fixture
     def model(self):
-        return ServerListModel(conf_store=DummyStore([
-            SimpleNamespace(**{"name": "MySrv1"}),
-            SimpleNamespace(**{"name": "MySrv2", "type": "local"}),
-        ]))
+        return ServerListModel(
+            conf_store=DummyStore(
+                [
+                    SimpleNamespace(**{"name": "MySrv1"}),
+                    SimpleNamespace(**{"name": "MySrv2", "type": "local"}),
+                ]
+            )
+        )
 
     @pytest.fixture
     def widget(self, qtbot, model):

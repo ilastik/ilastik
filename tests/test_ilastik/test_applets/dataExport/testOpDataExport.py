@@ -116,22 +116,28 @@ class TestDataExportPathFormatter:
         )
         return DataExportPathFormatter(dataset_info=ds_info, working_dir="/tmp/a", result_type="mytype")
 
-    @pytest.mark.parametrize("template_str,expected_path", [
-        ("{nickname}", "test_nickname"),
-        ("{dataset_dir}/{nickname}", "/tmp/a/test_nickname"),
-        ("{dataset_dir}/{nickname}+{result_type}", "/tmp/a/test_nickname+mytype"),
-        ("{var}", "{var}"),
-        ("", ""),
-        ("mypath", "mypath"),
-    ])
+    @pytest.mark.parametrize(
+        "template_str,expected_path",
+        [
+            ("{nickname}", "test_nickname"),
+            ("{dataset_dir}/{nickname}", "/tmp/a/test_nickname"),
+            ("{dataset_dir}/{nickname}+{result_type}", "/tmp/a/test_nickname+mytype"),
+            ("{var}", "{var}"),
+            ("", ""),
+            ("mypath", "mypath"),
+        ],
+    )
     def test_format_path(self, path_formatter, template_str, expected_path):
         formatted_path = path_formatter.format_path(template_str)
         assert expected_path == formatted_path
 
-    @pytest.mark.parametrize("template_str", [
-        "{nickname",
-        "nickname}",
-    ])
+    @pytest.mark.parametrize(
+        "template_str",
+        [
+            "{nickname",
+            "nickname}",
+        ],
+    )
     def test_invalid_format_path(self, path_formatter, template_str):
         with pytest.raises(ValueError):
             path_formatter.format_path(template_str)

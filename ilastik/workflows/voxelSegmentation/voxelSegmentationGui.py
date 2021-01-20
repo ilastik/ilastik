@@ -148,9 +148,9 @@ class VoxelSegmentationGui(LabelingGui):
         self.labelingDrawerUi.bestAnnotationPlaneButton.clicked.connect(SelectBestAnnotationPlane)
 
     def initFeatSelDlg(self):
-        thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[
-            0
-        ]
+        thisOpFeatureSelection = (
+            self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
+        )
         self.featSelDlg = FeatureSelectionDialog(thisOpFeatureSelection, self, self.labelListData)
 
     def menus(self):
@@ -315,9 +315,7 @@ class VoxelSegmentationGui(LabelingGui):
         uncertaintySlot = self.topLevelOperatorView.UncertaintyEstimate
         if uncertaintySlot.ready():
             uncertaintySrc = LazyflowSource(uncertaintySlot)
-            uncertaintyLayer = AlphaModulatedLayer(
-                uncertaintySrc, tintColor=QColor(Qt.cyan), normalize=(0.0, 1.0)
-            )
+            uncertaintyLayer = AlphaModulatedLayer(uncertaintySrc, tintColor=QColor(Qt.cyan), normalize=(0.0, 1.0))
             uncertaintyLayer.name = "Uncertainty"
             uncertaintyLayer.visible = False
             uncertaintyLayer.opacity = 1.0
@@ -364,9 +362,7 @@ class VoxelSegmentationGui(LabelingGui):
             if segmentationSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
                 segsrc = LazyflowSource(segmentationSlot)
-                segLayer = AlphaModulatedLayer(
-                    segsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0)
-                )
+                segLayer = AlphaModulatedLayer(segsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0))
 
                 segLayer.opacity = 1
                 segLayer.visible = False  # self.labelingDrawerUi.liveUpdateButton.isChecked()
@@ -413,9 +409,7 @@ class VoxelSegmentationGui(LabelingGui):
             if predictionSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
                 predictsrc = LazyflowSource(predictionSlot)
-                predictLayer = AlphaModulatedLayer(
-                    predictsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0)
-                )
+                predictLayer = AlphaModulatedLayer(predictsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0))
                 predictLayer.opacity = 0.25
                 predictLayer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
                 predictLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
@@ -529,9 +523,9 @@ class VoxelSegmentationGui(LabelingGui):
 
     def update_features_from_dialog(self):
         if self.topLevelOperatorView.name == "OpPixelClassification":
-            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[
-                0
-            ]
+            thisOpFeatureSelection = (
+                self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
+            )
         elif self.topLevelOperatorView.name == "OpPixelClassification0":
             thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[
                 0

@@ -922,7 +922,7 @@ class Slot(object):
         If level>0, return the subslot corresponding to the key, which
         may be a tuple
 
-                          """
+        """
         if self.level > 0:
             if isinstance(key, tuple):
                 assert len(key) > 0
@@ -1374,8 +1374,7 @@ class Slot(object):
             self.maybe_call_within_transaction(self.operator._setupOutputs)
 
     def _setupOutputs(self):
-        """
-        """
+        """"""
         self._changed()
 
     def _connectSubSlot(self, slot, notify=True):

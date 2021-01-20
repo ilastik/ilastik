@@ -393,9 +393,10 @@ class OpSupervoxelwiseClassifierPredict(Operator):
             result[:] = 0.0
             return result
 
-        assert issubclass(type(classifier), LazyflowVectorwiseClassifierABC), (
-            "Classifier is of type {}, which does not satisfy the LazyflowVectorwiseClassifierABC interface."
-            "".format(type(classifier))
+        assert issubclass(
+            type(classifier), LazyflowVectorwiseClassifierABC
+        ), "Classifier is of type {}, which does not satisfy the LazyflowVectorwiseClassifierABC interface." "".format(
+            type(classifier)
         )
 
         key = roi.toSlice()

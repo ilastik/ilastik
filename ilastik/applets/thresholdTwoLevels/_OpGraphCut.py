@@ -158,16 +158,16 @@ class OpGraphCut(Operator):
 
 def segmentGC(pred, beta):
     """
-       This function implements a call to the standard Graph Cut segmentation
-       in the OpenGM library (http://hci.iwr.uni-heidelberg.de/opengm2/).
-       Potts model is assumed, with a 4-neighborhood for 2D data and a 6-neighborhood
-       for 3D data to define the pairwise terms.
-       Parameters:
-       -- pred - the unary terms, used directly (no Log applied, do it outside if needed)
-          This input is assumed to be 3D!
-       -- beta - the weight of the pairwise potentials, usually called lambda
-       Return:
-       -- binary volume, as produced by OpenGM
+    This function implements a call to the standard Graph Cut segmentation
+    in the OpenGM library (http://hci.iwr.uni-heidelberg.de/opengm2/).
+    Potts model is assumed, with a 4-neighborhood for 2D data and a 6-neighborhood
+    for 3D data to define the pairwise terms.
+    Parameters:
+    -- pred - the unary terms, used directly (no Log applied, do it outside if needed)
+       This input is assumed to be 3D!
+    -- beta - the weight of the pairwise potentials, usually called lambda
+    Return:
+    -- binary volume, as produced by OpenGM
 
     """
     nz, ny, nx = pred.shape

@@ -48,8 +48,7 @@ logger = logging.getLogger(__name__)
 
 
 class FileListWidget(QListWidget):
-    """QListWidget with custom drag-n-drop for file paths
-    """
+    """QListWidget with custom drag-n-drop for file paths"""
 
     def dropEvent(self, dropEvent):
         urls = dropEvent.mimeData().urls()
@@ -70,8 +69,7 @@ class FileListWidget(QListWidget):
 
 
 class BatchRoleWidget(QWidget):
-    """Container Widget for Batch File list and buttons
-    """
+    """Container Widget for Batch File list and buttons"""
 
     def __init__(self, role_name: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -128,8 +126,7 @@ class BatchRoleWidget(QWidget):
 
 
 class BatchProcessingGui(QTabWidget):
-    """
-    """
+    """"""
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###

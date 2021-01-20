@@ -577,9 +577,10 @@ class Operator(metaclass=OperatorMetaClass):
             #  you probably need to override this method.
             # If your subclass provides an implementation of this method, there
             #  is no need for it to call super().setupOutputs()
-            assert slot.upstream_slot is not None, (
-                "Output slot '{}' of operator '{}' has no upstream_slot, "
-                "so you must override setupOutputs()".format(slot.name, self.name)
+            assert (
+                slot.upstream_slot is not None
+            ), "Output slot '{}' of operator '{}' has no upstream_slot, " "so you must override setupOutputs()".format(
+                slot.name, self.name
             )
 
     def call_execute(self, slot, subindex, roi, result, **kwargs):
@@ -593,7 +594,7 @@ class Operator(metaclass=OperatorMetaClass):
             self._decrementOperatorExecutionCount()
 
     def execute(self, slot, subindex, roi, result):
-        """ This method of the operator is called when a connected
+        """This method of the operator is called when a connected
         operator or an outside user of the graph wants to retrieve the
         calculation results from the operator.
 
@@ -607,7 +608,7 @@ class Operator(metaclass=OperatorMetaClass):
         The method must retrieve all required inputs that are
         neccessary to calculate the requested output area from its
         input slots, run the calculation and put the results into the
-        provided result argument. """
+        provided result argument."""
 
         raise NotImplementedError("Operator {} does not implement" " execute()".format(self.name))
 

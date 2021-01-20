@@ -532,8 +532,8 @@ class NewAutocontextWorkflowBase(Workflow):
         distribute_action.triggered.connect(self.distribute_labels_from_current_stage)
 
         self._autocontext_menu = (
-            autocontext_menu
-        )  # Must retain here as a member or else reference disappears and the menu is deleted.
+            autocontext_menu  # Must retain here as a member or else reference disappears and the menu is deleted.
+        )
         return [self._autocontext_menu]
 
     def distribute_labels_from_current_stage(self):

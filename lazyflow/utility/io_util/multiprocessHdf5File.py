@@ -390,7 +390,7 @@ if __name__ == "__main__":
         whole_vol = mphf[datapath][:]
         assert (whole_vol == testvol).all()
 
-        print(mphf[u"mygroup"].name)
+        print(mphf["mygroup"].name)
         print(list(mphf[datapath].attrs.keys()))
         print(mphf[datapath].shape)
         print(mphf[datapath].dtype)

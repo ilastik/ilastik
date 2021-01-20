@@ -117,28 +117,26 @@ class NNClassificationResultsViewer(DataExportLayerViewerGui):
         names = opLane.LabelNames.value
 
         if predictionSlot.ready():
-            if 'c' in predictionSlot.meta.getAxisKeys():
-                num_channels = predictionSlot.meta.getTaggedShape()['c']
+            if "c" in predictionSlot.meta.getAxisKeys():
+                num_channels = predictionSlot.meta.getTaggedShape()["c"]
             else:
                 num_channels = 1
             if num_channels != len(names) or num_channels != len(colors):
-                names = ["Label {}".format(n) for n in range(1, num_channels+1)]
-                colors = num_channels * [(0, 0, 0)] # it doesn't matter, if the pmaps color is not known,
-                                                    # we are either initializing and it will be rewritten or
-                                                    # something is very wrong elsewhere
+                names = ["Label {}".format(n) for n in range(1, num_channels + 1)]
+                colors = num_channels * [(0, 0, 0)]  # it doesn't matter, if the pmaps color is not known,
+                # we are either initializing and it will be rewritten or
+                # something is very wrong elsewhere
 
         # Use a slicer to provide a separate slot for each channel layer
-        opSlicer = OpMultiArraySlicer2( parent=opLane.viewed_operator().parent )
-        opSlicer.Input.connect( predictionSlot )
-        opSlicer.AxisFlag.setValue('c')
+        opSlicer = OpMultiArraySlicer2(parent=opLane.viewed_operator().parent)
+        opSlicer.Input.connect(predictionSlot)
+        opSlicer.AxisFlag.setValue("c")
 
         for channel, channelSlot in enumerate(opSlicer.Slices):
             if channelSlot.ready() and channel < len(colors) and channel < len(names):
                 drange = channelSlot.meta.drange or (0.0, 1.0)
                 predictsrc = LazyflowSource(channelSlot)
-                predictLayer = AlphaModulatedLayer( predictsrc,
-                                                    tintColor=QColor(*colors[channel]),
-                                                    normalize=drange )
+                predictLayer = AlphaModulatedLayer(predictsrc, tintColor=QColor(*colors[channel]), normalize=drange)
                 predictLayer.opacity = 0.25
                 predictLayer.visible = True
                 predictLayer.name = names[channel]

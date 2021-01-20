@@ -27,8 +27,7 @@ from ilastik.utility import bind
 
 
 class DeviationFromMeanGui(LayerViewerGui):
-    """
-    """
+    """"""
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
@@ -43,8 +42,7 @@ class DeviationFromMeanGui(LayerViewerGui):
     ###########################################
 
     def __init__(self, parentApplet, topLevelOperatorView):
-        """
-        """
+        """"""
         self.topLevelOperatorView = topLevelOperatorView
         super(DeviationFromMeanGui, self).__init__(parentApplet, topLevelOperatorView)
 

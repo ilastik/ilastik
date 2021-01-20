@@ -560,9 +560,21 @@ class ObjectClassificationWorkflow(Workflow):
 
             for obj_id in range(len(object_sizes)):
                 fields = {}
-                fields["x_px"], fields["y_px"], fields["z_px"], = object_centers_xyz[obj_id]
-                fields["min_x_px"], fields["min_y_px"], fields["min_z_px"], = object_min_coords_xyz[obj_id]
-                fields["max_x_px"], fields["max_y_px"], fields["max_z_px"], = object_max_coords_xyz[obj_id]
+                (
+                    fields["x_px"],
+                    fields["y_px"],
+                    fields["z_px"],
+                ) = object_centers_xyz[obj_id]
+                (
+                    fields["min_x_px"],
+                    fields["min_y_px"],
+                    fields["min_z_px"],
+                ) = object_min_coords_xyz[obj_id]
+                (
+                    fields["max_x_px"],
+                    fields["max_y_px"],
+                    fields["max_z_px"],
+                ) = object_max_coords_xyz[obj_id]
                 fields["size_px"] = object_sizes[obj_id]
 
                 csv_writer.writerow(fields)
