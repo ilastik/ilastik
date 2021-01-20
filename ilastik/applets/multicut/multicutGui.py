@@ -45,7 +45,7 @@ from volumina.utility import ShortcutManager
 
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-from ilastik.applets.multicut.opMulticut import OpMulticutAgglomerator, AVAILABLE_SOLVER_NAMES, DEFAULT_SOLVER_NAME
+from ilastik.applets.multicut.opMulticut import AVAILABLE_SOLVER_NAMES, DEFAULT_SOLVER_NAME
 from ilastik.config import cfg as ilastik_config
 
 from lazyflow.request import Request
@@ -56,7 +56,7 @@ logger = logging.getLogger(__name__)
 
 # This is a mixin that can be added to any LayerViewerGui subclass
 # See MulticutGui (bottom of this file) for the standalone version.
-class MulticutGuiMixin(object):
+class MulticutGuiMixin:
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
@@ -72,17 +72,19 @@ class MulticutGuiMixin(object):
     ###########################################
     ###########################################
 
-    def __init__(self, parentApplet, topLevelOperatorView):
+    def __init_subclass__(cls, **kwargs):
+        """Make sure Mixin can only be used with LayerViewerGui"""
+        assert issubclass(cls, LayerViewerGui), "Mixin should only be used with LayerViewerGui"
+        super().__init_subclass__(**kwargs)
+
+    def __init__(self, parentApplet, topLevelOperatorView, **kwargs):
         self.__cleanup_fns = []
         self.__topLevelOperatorView = topLevelOperatorView
         self.superpixel_edge_layer = None
         self.disagreement_layer = None
-        super(MulticutGuiMixin, self).__init__(parentApplet, topLevelOperatorView)
+        super(MulticutGuiMixin, self).__init__(parentApplet, topLevelOperatorView, **kwargs)
         self.__init_probability_colortable()
         self.__init_disagreement_label_colortable()
-
-    def _after_init(self):
-        pass
 
     def createDrawerControls(self):
         """
