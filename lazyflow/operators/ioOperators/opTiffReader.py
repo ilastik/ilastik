@@ -1,23 +1,8 @@
-from typing import Tuple
 import numpy
-
-# Note: tifffile can also be imported from skimage.external.tifffile.tifffile_local,
-#       but we can't use that module because it is based on a version of tifffile that has a bug.
-#       (It doesn't properly import the tifffile.c extension module.)
-# import skimage.external.tifffile.tifffile_local as tifffile
-
 import tifffile
-
-# import tifffile._tifffile
-# if tifffile.decode_lzw != tifffile._tifffile.decode_lzw:
-#     import warnings
-#     warnings.warn("tifffile C-extension is not working, probably due to a bug in tifffile._replace_by().\n"
-#                   "TIFF decompression will be VERY SLOW.")
-
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice
-from lazyflow.request import RequestLock
 from lazyflow.utility.helpers import get_default_axisordering
 
 import logging
