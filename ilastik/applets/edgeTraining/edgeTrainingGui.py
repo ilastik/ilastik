@@ -73,6 +73,10 @@ class EdgeTrainingMixin:
 
     ###########################################
     ###########################################
+    def __init_subclass__(cls, **kwargs):
+        """Make sure Mixin can only be used with LayerViewerGui"""
+        assert issubclass(cls, LayerViewerGui), "Mixin should only be used with LayerViewerGui"
+        super().__init_subclass__(**kwargs)
 
     def __init__(self, parentApplet, topLevelOperatorView, **kwargs):
         self._currently_updating = False
