@@ -1,24 +1,3 @@
-###############################################################################
-#   ilastik: interactive learning and segmentation toolkit
-#
-#       Copyright (C) 2011-2014, the ilastik developers
-#                                <team@ilastik.org>
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or (at your option) any later version.
-#
-# In addition, as a special exception, the copyright holders of
-# ilastik give you permission to combine ilastik with applets,
-# workflows and plugins which are not covered under the GNU
-# General Public License.
-#
-# See the LICENSE file for details. License information is also available
-# on the ilastik web site at:
-# 		   http://ilastik.org/license.html
-###############################################################################
-from __future__ import division
 import argparse
 import logging
 
@@ -27,10 +6,9 @@ import numpy
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.serverConfiguration import ServerConfigApplet
-from ilastik.applets.networkClassification import NNClassApplet, NNClassificationDataExportApplet
+from ilastik.applets.neuralNetwork import NNClassApplet, NNClassificationDataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
-from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators import tiktorch
 
 from lazyflow.graph import Graph
@@ -39,13 +17,14 @@ from lazyflow.graph import Graph
 logger = logging.getLogger(__name__)
 
 
-class NNClassificationWorkflow(Workflow):
+class RemoteWorkflow(Workflow):
     """
-    Workflow for the Neural Network Classification Applet
+    This class provides workflow for a remote tiktorch server
+    It has special server configuration applets allowing user to
+    connect to remotely running tiktorch server managed by user
     """
-
-    workflowName = "Neural Network Classification (Beta)"
-    workflowDescription = "This is obviously self-explanatory."
+    workflowName = "Neural Network Classification (Remote)"
+    workflowDescription = "Allows to apply bioimage.io models on your data using remotely running tiktorch  server"
     defaultAppletIndex = 0  # show DataSelection by default
 
     DATA_ROLE_RAW = 0
@@ -54,9 +33,6 @@ class NNClassificationWorkflow(Workflow):
 
     @property
     def applets(self):
-        """
-        Return the list of applets that are owned by this workflow
-        """
         return self._applets
 
     @property
@@ -68,19 +44,15 @@ class NNClassificationWorkflow(Workflow):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
-
-        # Create a graph to be shared by all operators
         graph = Graph()
-        super(NNClassificationWorkflow, self).__init__(
-            shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs
-        )
+        super().__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
         self._applets = []
         self._workflow_cmdline_args = workflow_cmdline_args
 
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
-        parser.add_argument("--batch-size", help="choose the prefered batch size", type=int)
-        parser.add_argument("--halo-size", help="choose the prefered halo size", type=int)
+        parser.add_argument("--batch-size", help="choose the preferred batch size", type=int)
+        parser.add_argument("--halo-size", help="choose the preferred halo size", type=int)
         parser.add_argument("--model-path", help="the neural network model for prediction")
 
         # Parse the creation args: These were saved to the project file when this project was first created.
@@ -89,22 +61,9 @@ class NNClassificationWorkflow(Workflow):
         # Parse the cmdline args for the current session.
         self.parsed_args, unused_args = parser.parse_known_args(workflow_cmdline_args)
 
-        ######################
-        # Interactive workflow
-        ######################
-
-        data_instructions = (
-            "Select your input data using the 'Raw Data' tab shown on the right.\n\n"
-            "Power users: Optionally use the 'Prediction Mask' tab to supply a binary image that tells ilastik where it should avoid computations you don't need."
-        )
-
-        # Applets for training (interactive) workflow
         self.dataSelectionApplet = self.createDataSelectionApplet()
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-
-        # see role constants, above
-        opDataSelection.DatasetRoles.setValue(NNClassificationWorkflow.ROLE_NAMES)
-
+        opDataSelection.DatasetRoles.setValue(self.ROLE_NAMES)
         connFactory = tiktorch.TiktorchConnectionFactory()
 
         self.serverConfigApplet = ServerConfigApplet(self, connectionFactory=connFactory)
@@ -122,9 +81,6 @@ class NNClassificationWorkflow(Workflow):
         opDataExport.SelectionNames.setValue(self.EXPORT_NAMES)
         opDataExport.PmapColors.connect(opClassify.PmapColors)
         opDataExport.LabelNames.connect(opClassify.LabelNames)
-
-        # self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
-        # self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
 
         self.batchProcessingApplet = BatchProcessingApplet(
             self, "Batch Processing", self.dataSelectionApplet, self.dataExportApplet
@@ -146,7 +102,7 @@ class NNClassificationWorkflow(Workflow):
             self._batch_export_args = None
 
         if unused_args:
-            logger.warn("Unused command-line args: {}".format(unused_args))
+            logger.warning("Unused command-line args: {}".format(unused_args))
 
     def createDataSelectionApplet(self):
         """
@@ -155,7 +111,7 @@ class NNClassificationWorkflow(Workflow):
         """
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
         return DataSelectionApplet(
-            self, "Input Data", "Input Data", supportIlastik05Import=True, instructionText=data_instructions
+            self, "Input Data", "Input Data", instructionText=data_instructions
         )
 
     def connectLane(self, laneIndex):
@@ -175,11 +131,8 @@ class NNClassificationWorkflow(Workflow):
         opDataExport.RawData.connect(opData.ImageGroup[self.DATA_ROLE_RAW])
         opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[self.DATA_ROLE_RAW])
         opDataExport.Inputs.resize(len(self.EXPORT_NAMES))
-        # opDataExport.Inputs[0].connect(op5Pred.Output)
         opDataExport.Inputs[0].connect(opNNclassify.PredictionProbabilities)
         opDataExport.Inputs[1].connect(opNNclassify.LabelImages)
-        # for slot in opDataExport.Inputs:
-        #     assert slot.upstream_slot is not None
 
     def handleAppletStateUpdateRequested(self):
         """
@@ -215,7 +168,7 @@ class NNClassificationWorkflow(Workflow):
         self._shell.setAppletEnabled(
             self.dataExportApplet,
             serverConfig_finished and predictions_ready and not batch_processing_busy and not live_update_active,
-        )
+            )
 
         if self.batchProcessingApplet is not None:
             self._shell.setAppletEnabled(
@@ -292,34 +245,6 @@ class NNClassificationWorkflow(Workflow):
         input_shape[1:3] -= 2 * self.halo_size
 
         return input_shape
-
-    # def getBlockShape(self, model, halo_size):
-    #     """
-    #     calculates the input Block shape
-    #     """
-    #     expected_input_shape = model._tiktorch_net.expected_input_shape
-    #     input_shape = numpy.array(expected_input_shape)
-    #
-    #     if not halo_size:
-    #         if 'output_size' in model._tiktorch_net._configuration:
-    #             # if the ouputsize of the model is smaller as the expected input shape
-    #             # the halo needs to be changed
-    #             output_shape = model._tiktorch_net.get('output_size')
-    #             if output_shape != input_shape:
-    #                 self.halo_size = int((input_shape[1] - output_shape[1]) / 2)
-    #                 model.HALO_SIZE = self.halo_size
-    #                 print(self.halo_size)
-    #
-    #     if len(model._tiktorch_net.get('window_size')) == 2:
-    #         input_shape = numpy.append(input_shape, None)
-    #     else:
-    #
-    #         input_shape = input_shape[1:]
-    #         input_shape = numpy.append(input_shape, None)
-    #
-    #     input_shape[1:3] -= 2 * self.halo_size
-    #
-    #     return input_shape
 
     def cleanUp(self):
         self.nnClassificationApplet.cleanUp()
