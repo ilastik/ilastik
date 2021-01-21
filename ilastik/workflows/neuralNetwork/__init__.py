@@ -19,3 +19,4 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from ._remoteWorkflow import RemoteWorkflow
+from ._localWorkflow import LocalWorkflow

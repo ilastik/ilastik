@@ -60,6 +60,7 @@ def _argparser() -> argparse.ArgumentParser:
     ap.add_argument(
         "--exit_on_failure", help="Immediately call exit(1) if an unhandled exception occurs.", action="store_true"
     )
+    ap.add_argument("--tiktorch_executable", help="Specify path to tiktorch server executable")
     ap.add_argument("--hbp", help="Enable HBP-specific functionality.", action="store_true")
     return ap
 
@@ -249,6 +250,11 @@ def _update_hbp_mode(parsed_args):
     if parsed_args.hbp:
         ilastik_config.set("ilastik", "hbp", "true")
 
+
+def _update_tiktorch(parsed_args):
+    """enable HBP-specific functionality"""
+    if parsed_args.tiktorch_executable:
+        ilastik_config.set("ilastik", "tiktorch_executable", parsed_args.tiktorch_executable)
 
 def _init_logging(parsed_args):
     from ilastik.ilastik_logging import default_config, startUpdateInterval, DEFAULT_LOGFILE_PATH

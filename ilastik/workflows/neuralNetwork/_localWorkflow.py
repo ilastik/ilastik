@@ -3,6 +3,7 @@ import logging
 
 import numpy
 
+from ilastik.config import cfg
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.serverConfiguration import ServerConfigApplet
@@ -17,14 +18,14 @@ from lazyflow.graph import Graph
 logger = logging.getLogger(__name__)
 
 
-class RemoteWorkflow(Workflow):
+class LocalWorkflow(Workflow):
     """
     This class provides workflow for a remote tiktorch server
     It has special server configuration applets allowing user to
     connect to remotely running tiktorch server managed by user
     """
-    workflowName = "Neural Network Classification (Remote)"
-    workflowDescription = "Allows to apply bioimage.io models on your data using remotely running tiktorch server"
+    workflowName = "Neural Network Classification (Local)"
+    workflowDescription = "Allows to apply bioimage.io models on your data using bundled tiktorch"
     defaultAppletIndex = 0  # show DataSelection by default
 
     DATA_ROLE_RAW = 0
@@ -44,6 +45,7 @@ class RemoteWorkflow(Workflow):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
+        print("executable", cfg.get("ilastik", "tiktorch_executable", fallback=None))
         graph = Graph()
         super().__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
         self._applets = []
