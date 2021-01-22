@@ -529,7 +529,7 @@ class DataSelectionGui(QWidget):
             return filePath
         datasetNames = DatasetInfo.getPossibleInternalPathsFor(filePath.absolute())
         if len(datasetNames) == 0:
-            raise RuntimeError(f"File {data_path} has no image datasets")
+            raise RuntimeError(f"File {filePath} has no image datasets")
         if len(datasetNames) == 1:
             selected_dataset = datasetNames.pop()
         else:
