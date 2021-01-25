@@ -355,15 +355,17 @@ class OpValueCache(Operator, ObservableCache):
             if self.fixAtCurrent.value is False and self._dirty:
                 self.Output.setDirty()
 
-    def forceValue(self, value):
+    def forceValue(self, value, set_dirty=True):
         """
         Allows a 'back door' to force data into this cache.
-        Note: Use this function carefully.
+        Note: Use this function carefully. Even more when using set_dirty=False,
+        which could leave workflows in an inconsistent state.
         """
         with self._lock:
             self._value = value
             self._dirty = False
-        self.Output.setDirty()
+        if set_dirty:
+            self.Output.setDirty()
 
     def resetValue(self):
         """

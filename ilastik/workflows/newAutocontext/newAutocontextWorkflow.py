@@ -242,7 +242,7 @@ class NewAutocontextWorkflowBase(Workflow):
         # Restore classifier we saved in prepareForNewLane() (if any)
         if self.stored_classifers:
             for pcApplet, classifier in zip(self.pcApplets, self.stored_classifers):
-                pcApplet.topLevelOperator.classifier_cache.forceValue(classifier)
+                pcApplet.topLevelOperator.classifier_cache.forceValue(classifier, set_dirty=False)
 
             # Release references
             self.stored_classifers = []
