@@ -108,6 +108,9 @@ class DataSelectionGui(QWidget):
 
     def stopAndCleanUp(self):
         self._cleaning_up = True
+        for fn in self.__cleanup_fns:
+            fn()
+
         for editor in list(self.volumeEditors.values()):
             self.viewerStack.removeWidget(editor)
             self._viewerControlWidgetStack.removeWidget(editor.viewerControlWidget())
@@ -166,6 +169,7 @@ class DataSelectionGui(QWidget):
         """
         super(DataSelectionGui, self).__init__()
         self._cleaning_up = False
+        self.__cleanup_fns = []
         self.parentApplet = parentApplet
         self._max_lanes = max_lanes
         self.show_axis_details = show_axis_details
@@ -182,16 +186,7 @@ class DataSelectionGui(QWidget):
         self._viewerControlWidgetStack = QStackedWidget(self)
         self._default_h5n5_volumes: Dict[int, Set[str]] = {}
 
-        def handleImageRemove(multislot, index, finalLength):
-            # Remove the viewer for this dataset
-            datasetSlot = self.topLevelOperator.DatasetGroup[index]
-            if datasetSlot in list(self.volumeEditors.keys()):
-                editor = self.volumeEditors[datasetSlot]
-                self.viewerStack.removeWidget(editor)
-                self._viewerControlWidgetStack.removeWidget(editor.viewerControlWidget())
-                editor.stopAndCleanUp()
-
-        self.topLevelOperator.DatasetGroup.notifyRemove(bind(handleImageRemove))
+        self.__cleanup_fns.append(self.topLevelOperator.DatasetGroup.notifyRemove(bind(self._handleImageRemove)))
 
         opWorkflow = self.topLevelOperator.parent
         assert hasattr(
@@ -221,6 +216,35 @@ class DataSelectionGui(QWidget):
         self._drawer = uic.loadUi(localDir + "/dataSelectionDrawer.ui")
         self._drawer.instructionLabel.setText(instructionText)
 
+    @threadRouted
+    def _handleImageRemove(self, multislot, index, finalLength):
+        # Remove the viewer for this dataset
+        datasetSlot = self.topLevelOperator.DatasetGroup[index]
+        if datasetSlot in list(self.volumeEditors.keys()):
+            editor = self.volumeEditors[datasetSlot]
+            self.viewerStack.removeWidget(editor)
+            self._viewerControlWidgetStack.removeWidget(editor.viewerControlWidget())
+            editor.stopAndCleanUp()
+
+    @threadRouted
+    def _update_add_button_status(self, viewer):
+        if self._max_lanes:
+            opTop = self.topLevelOperator
+            status = len(opTop.DatasetGroup) < self._max_lanes
+            viewer.setEnabled(status)
+
+    @threadRouted
+    def _update_summary_buttons_status(self, *args):
+        if self._max_lanes:
+            opTop = self.topLevelOperator
+            status = len(opTop.DatasetGroup) < self._max_lanes
+            for button in self.laneSummaryTableView.addFilesButtons.values():
+                try:
+                    button.setEnabled(status)
+                except RuntimeError:
+                    # FIXME: Button might be deleted due to a bug (https://github.com/ilastik/ilastik/issues/2380)
+                    logger.debug("Summary button seems to be deleted, cannot execute callback")
+
     def _initTableViews(self):
         self.fileInfoTabWidget.setTabText(0, "Summary")
         self.laneSummaryTableView.setModel(DataLaneSummaryTableModel(self, self.topLevelOperator))
@@ -229,22 +253,15 @@ class DataSelectionGui(QWidget):
         self.laneSummaryTableView.addStackRequested.connect(self.addStack)
         self.laneSummaryTableView.removeLanesRequested.connect(self.handleRemoveLaneButtonClicked)
 
-        # These two helper functions enable/disable an 'add files' button for a given role
-        #  based on the the max lane index for that role and the overall permitted max_lanes
-        def _update_button_status(viewer, role_index):
-            if self._max_lanes:
-                viewer.setEnabled(self._findFirstEmptyLane(role_index) < self._max_lanes)
-
-        def _handle_lane_added(button, role_index, lane_slot, lane_index):
-            def _handle_role_slot_added(role_slot, added_slot_index, *args):
-                if added_slot_index == role_index:
-                    role_slot.notifyReady(bind(_update_button_status, button, role_index))
-                    role_slot.notifyUnready(bind(_update_button_status, button, role_index))
-
-            lane_slot[lane_index].notifyInserted(_handle_role_slot_added)
+        # Monitor Lane-changes to enable/disable add files buttons in summary table
+        self.__cleanup_fns.append(self.topLevelOperator.DatasetGroup.notifyRemoved(self._update_summary_buttons_status))
+        self.__cleanup_fns.append(
+            self.topLevelOperator.DatasetGroup.notifyInserted(self._update_summary_buttons_status)
+        )
 
         self._retained = []  # Retain menus so they don't get deleted
         self._detailViewerWidgets = []
+
         for roleIndex, role in enumerate(self.topLevelOperator.DatasetRoles.value):
             detailViewer = DatasetDetailedInfoTableView(self)
             detailViewer.setModel(DatasetDetailedInfoTableModel(self, self.topLevelOperator, roleIndex))
@@ -257,15 +274,11 @@ class DataSelectionGui(QWidget):
             detailViewer.addRemoteVolumeRequested.connect(partial(self.addDvidVolume, roleIndex))
 
             # Monitor changes to each lane so we can enable/disable the 'add lanes' button for each tab
-            self.topLevelOperator.DatasetGroup.notifyInserted(bind(_handle_lane_added, detailViewer, roleIndex))
-            self.topLevelOperator.DatasetGroup.notifyRemoved(bind(_update_button_status, detailViewer, roleIndex))
-
-            # While we're at it, do the same for the buttons in the summary table, too
-            self.topLevelOperator.DatasetGroup.notifyInserted(
-                bind(_handle_lane_added, self.laneSummaryTableView.addFilesButtons[roleIndex], roleIndex)
+            self.__cleanup_fns.append(
+                self.topLevelOperator.DatasetGroup.notifyInserted(bind(self._update_add_button_status, detailViewer))
             )
-            self.topLevelOperator.DatasetGroup.notifyRemoved(
-                bind(_update_button_status, self.laneSummaryTableView.addFilesButtons[roleIndex], roleIndex)
+            self.__cleanup_fns.append(
+                self.topLevelOperator.DatasetGroup.notifyRemoved(bind(self._update_add_button_status, detailViewer))
             )
 
             # Context menu
@@ -529,7 +542,7 @@ class DataSelectionGui(QWidget):
             return filePath
         datasetNames = DatasetInfo.getPossibleInternalPathsFor(filePath.absolute())
         if len(datasetNames) == 0:
-            raise RuntimeError(f"File {data_path} has no image datasets")
+            raise RuntimeError(f"File {filePath} has no image datasets")
         if len(datasetNames) == 1:
             selected_dataset = datasetNames.pop()
         else:
