@@ -1,0 +1,8 @@
+name: ilastik-pc-api
+channels:
+  - ilastik-forge
+  - conda-forge
+dependencies:
+  - ilastik-dependencies-no-solvers
+  - notebook
+# add additional packages to read/pre-process files here
