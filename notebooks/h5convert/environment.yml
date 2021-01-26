@@ -1,0 +1,9 @@
+name: h5convert
+channels:
+  - conda-forge
+dependencies:
+  - h5py
+  - notebook
+  - numpy
+  - vigra
+# add additional packages to read files here
