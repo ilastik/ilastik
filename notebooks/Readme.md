@@ -4,10 +4,13 @@ In this folder you can find [jupyter notebook](https://jupyter.org/) examples to
 
 The structure in each folder will follow the same scheme:
 
-* notebooks (here)
-  * `subfolder` for a certain task
-    * `environment.yml`: complete environment to use with conda, includes all packages necessary to run
-    * `task.ipynb`: Notebook that illustrate how to perform the task
+```tree
+notebooks/
+├── subfolder  # for a certain task
+│   ├── task.ipynb  # Notebook illustrating how to perform the task
+│   └── environment.yml  # conda environment definition needed to run the notebook
+├── ...
+```
 
 We use _conda_ to develop Python and recommend it for scientific Python development.
 It is assumed that you have already installed it and are familiar with using a Terminal.
