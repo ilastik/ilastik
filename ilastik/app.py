@@ -138,7 +138,11 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
 
     _init_threading_logging_monkeypatch()
 
-    _init_preferences()
+    # Do not migrate in the headless mode because volumina imports GUI packages.
+    if not parsed_args.headless:
+        import volumina.utility.preferences
+
+        volumina.utility.preferences.migrate()
 
     # Extra initialization functions.
     # These are called during app startup, but before the shell is created.
@@ -281,12 +285,6 @@ def _init_threading_logging_monkeypatch():
             thread_start_logger.debug(f"Started thread: id={self.ident:x}, name={self.name}")
 
         threading.Thread.start = logged_start
-
-
-def _init_preferences():
-    from volumina.utility.preferences import migrate
-
-    migrate()
 
 
 def _import_opengm():
