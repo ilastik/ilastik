@@ -130,9 +130,9 @@ class EdgeTrainingMixin:
             clicked=self._handle_live_update_clicked,
             enabled=False,
         )
-        configure_update_handlers(self.live_update_button.toggled, op.FreezeCache)
 
-        self.train_from_gt_button.clicked.connect(lambda: op.FreezeClassifier.setValue(False))
+        configure_update_handlers(self.live_update_button.toggled, op.FreezeClassifier)
+        configure_update_handlers(self.train_from_gt_button.toggled, op.TrainRandomForest)
 
         cleanup_fn = op.EdgeLabelsDict.notifyDirty(self.enable_live_update_on_edges_available)
         self.__cleanup_fns.append(cleanup_fn)
