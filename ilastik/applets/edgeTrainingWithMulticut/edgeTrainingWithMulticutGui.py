@@ -46,6 +46,7 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingMixin, LayerView
         def _handle_train_edge_clf_box_clicked():
             training_box.setEnabled(self.train_edge_clf_box.isChecked())
             op.TrainRandomForest.setValue(self.train_edge_clf_box.isChecked())
+            self.updateAllLayers()
 
         self.train_edge_clf_box.toggled.connect(_handle_train_edge_clf_box_clicked)
 

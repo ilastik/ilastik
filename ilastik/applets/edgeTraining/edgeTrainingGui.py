@@ -176,6 +176,7 @@ class EdgeTrainingMixin:
 
         return drawer
 
+    @threadRouted
     def enable_live_update_on_edges_available(self, *args, **kwargs):
         any_have_edges = False
         op = self.topLevelOperatorView
@@ -391,8 +392,11 @@ class EdgeTrainingMixin:
         op = self.topLevelOperatorView
         ActionInfo = ShortcutManager.ActionInfo
 
+        superpixels_ready = op.Superpixels.ready()
+        with_training = op.TrainRandomForest.value
+
         # Superpixels -- Edge Labels
-        if op.Superpixels.ready() and op.EdgeLabelsDict.ready():
+        if superpixels_ready and op.EdgeLabelsDict.ready() and with_training:
             edge_labels = op.EdgeLabelsDict.value
             layer = LabelableSegmentationEdgesLayer(
                 createDataSource(op.Superpixels), self.edge_label_pen_table, edge_labels
@@ -421,7 +425,7 @@ class EdgeTrainingMixin:
             del layer
 
         # Superpixels -- Edge Probabilities
-        if op.Superpixels.ready() and op.EdgeProbabilitiesDict.ready():
+        if superpixels_ready and op.EdgeProbabilitiesDict.ready() and with_training:
             layer = SegmentationEdgesLayer(createDataSource(op.Superpixels))
             layer.name = "Edge Probabilities"  # Name is hard-coded in multiple places: grep before changing.
             layer.visible = False
@@ -446,7 +450,7 @@ class EdgeTrainingMixin:
             del layer
 
         # Superpixels -- Edges
-        if op.Superpixels.ready():
+        if superpixels_ready:
             default_pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
             default_pen.setColor(Qt.yellow)
             layer = SegmentationEdgesLayer(createDataSource(op.Superpixels), default_pen)
