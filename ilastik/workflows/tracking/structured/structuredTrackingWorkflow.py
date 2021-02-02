@@ -189,6 +189,7 @@ class StructuredTrackingWorkflowBase(Workflow):
         self._applets.append(self.annotationsApplet)
         self._applets.append(self.trackingApplet)
         self._applets.append(self.dataExportTrackingApplet)
+        self._applets.append(self.batchProcessingApplet)
 
         if self.divisionDetectionApplet:
             opDivDetection = self.divisionDetectionApplet.topLevelOperator
