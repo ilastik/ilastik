@@ -723,7 +723,6 @@ class Request(object):
             if not complete:
                 # Call when we eventually finish
                 self._sig_execution_complete.subscribe(lambda: callback(self))
-                return
 
         if complete:
             callback(self)
