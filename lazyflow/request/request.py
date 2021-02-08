@@ -714,11 +714,16 @@ class Request(object):
         Call callback when request is finished regardless of the state
         """
         assert not self._cleaned, "This request has been cleaned() already."
+
+        # Request either still running in this case take a lock so state transition doesn't
+        # happen while we are subscribing or immidiatelly fire the callback in case it
+        # has already happened
         with self._lock:
             complete = self.execution_complete
             if not complete:
                 # Call when we eventually finish
                 self._sig_execution_complete.subscribe(lambda: callback(self))
+                return
 
         if complete:
             callback(self)
