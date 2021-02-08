@@ -708,6 +708,21 @@ class Request(object):
             if len(self.blocking_requests) == 0:
                 self._wake_up()
 
+    def add_done_callback(self, callback: Callable[["Request"], None]) -> None:
+        """
+        Mimic concurrent.Future interface
+        Call callback when request is finished regardless of the state
+        """
+        assert not self._cleaned, "This request has been cleaned() already."
+        with self._lock:
+            complete = self.execution_complete
+            if not complete:
+                # Call when we eventually finish
+                self._sig_execution_complete.subscribe(lambda: callback(self))
+
+        if complete:
+            callback(self)
+
     def notify_finished(self, fn):
         """
         Register a callback function to be called when this request is finished.
