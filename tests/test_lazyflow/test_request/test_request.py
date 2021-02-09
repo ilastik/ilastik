@@ -294,3 +294,57 @@ class TestRequestWithValue:
         assert arr.get_fill_value() == dst.get_fill_value()
         assert_array_equal(np.array([12, 10, 42]), arr.filled())
         assert_array_equal(arr.filled(), dst.filled())
+
+
+class TestRequestAddDoneCallback:
+    def test_if_request_finished_should_call_immidiatelly(self):
+        cb = mock.Mock()
+
+        def work():
+            return 42
+
+        req = Request(work)
+        req.submit()
+        req.wait()
+        req.add_done_callback(cb)
+        cb.assert_called_once_with(req)
+
+    def test_if_request_failed_callback_should_still_be_called(self):
+        cb = mock.Mock()
+
+        def work():
+            raise Exception()
+
+        req = Request(work)
+        req.add_done_callback(cb)
+        req.submit()
+
+        with pytest.raises(Exception):
+            req.wait()
+
+        cb.assert_called_once_with(req)
+
+    def test_should_be_called_after_request_finishes(self):
+        cb = mock.Mock()
+
+        req = Request(lambda: 42)
+        req.add_done_callback(cb)
+        cb.assert_not_called()
+
+        req.submit()
+        req.wait()
+
+        cb.assert_called_once_with(req)
+
+    def test_if_request_has_been_cancelled_callback_should_still_be_called(self):
+        cb = mock.Mock()
+
+        req = Request(lambda: 42)
+        req.cancel()
+        req.add_done_callback(cb)
+        req.submit()
+
+        with pytest.raises(Request.InvalidRequestException):
+            req.wait()
+
+        cb.assert_called_once_with(req)
