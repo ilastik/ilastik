@@ -79,6 +79,8 @@ jobs:
             xvfb-run --server-args="-screen 0 1024x768x24" pytest --cov-report=xml --cov=lazyflow --cov=ilastik --run-legacy-gui --junitxml=test-results/junit.xml
     - store_test_results:
         path: test-results
+    - codecov/upload:
+        file: coverage.xml
     - save_cache:
         name: store dependency cache
         key: v1.4.11-dep-{{ .Branch }}-{{ epoch }}
