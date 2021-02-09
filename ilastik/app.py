@@ -26,6 +26,7 @@ import sys
 from typing import List, Optional, Sequence, Tuple
 
 import ilastik.config
+from ilastik import __version__
 from ilastik.config import cfg as ilastik_config
 from ilastik.utility.commandLineProcessing import OptionalFlagAction
 
@@ -35,6 +36,7 @@ logger = logging.getLogger(__name__)
 def _argparser() -> argparse.ArgumentParser:
     """Create ArgumentParser for the main entry point."""
     ap = argparse.ArgumentParser(description="start an ilastik workflow")
+    ap.add_argument("--version", action="version", version=__version__)
     ap.add_argument("--headless", help="Don't start the ilastik gui.", action="store_true")
     ap.add_argument("--project", help="A project file to open on startup.")
     ap.add_argument(
