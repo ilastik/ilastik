@@ -17,8 +17,20 @@
    <item>
     <widget class="QLabel" name="instructionLabel">
      <property name="text">
-      <string/>
+      <string>
+        &lt;b&gt;Don&apos;t have a &lt;i&gt;server&lt;/i&gt; running yet?&lt;/b&gt;&lt;br&gt;
+        &lt;a href=&quot;https://www.ilastik.org/documentation/nn/nn#pre-requisites-for-running-the-workflow&quot;&gt;Follow these steps&lt;/a&gt;.
+      </string>
      </property>
+      <property name="textFormat">
+      <enum>Qt::RichText</enum>
+      </property>
+      <property name="openExternalLinks">
+      <bool>true</bool>
+      </property>
+      <property name="textInteractionFlags">
+      <set>Qt::TextBrowserInteraction</set>
+      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
      </property>
