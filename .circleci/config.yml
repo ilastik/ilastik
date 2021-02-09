@@ -1,5 +1,6 @@
 version: 2
-
+orbs:
+  codecov: codecov/codecov@1.0.2
 jobs:
   checkout_ilastik:
     working_directory: /root/ilastik/ilastik
@@ -67,7 +68,7 @@ jobs:
         command: >
             cd ${ILASTIK_ROOT}/ilastik-meta &&
             python ilastik/scripts/devenv.py create -n ${TEST_ENV_NAME}
-            -p ilastik-dependencies-no-solvers mpi4py
+            -p ilastik-dependencies-no-solvers mpi4py pytest-cov
             -c ilastik-forge conda-forge defaults
     - run:
         name: run ilastik tests
@@ -75,7 +76,7 @@ jobs:
             conda activate ${TEST_ENV_NAME} &&
             cd ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
             mkdir test-results &&
-            xvfb-run --server-args="-screen 0 1024x768x24" pytest --run-legacy-gui --junitxml=test-results/junit.xml
+            xvfb-run --server-args="-screen 0 1024x768x24" pytest --cov-report=xml --cov=lazyflow --cov=ilastik --run-legacy-gui --junitxml=test-results/junit.xml
     - store_test_results:
         path: test-results
     - save_cache:
