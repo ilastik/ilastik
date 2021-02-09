@@ -1,6 +1,4 @@
 version: 2.1
-orbs:
-  codecov: codecov/codecov@1.0.2
 jobs:
   checkout_ilastik:
     working_directory: /root/ilastik/ilastik
@@ -76,11 +74,10 @@ jobs:
             conda activate ${TEST_ENV_NAME} &&
             cd ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
             mkdir test-results &&
-            xvfb-run --server-args="-screen 0 1024x768x24" pytest --cov-report=xml --cov=lazyflow --cov=ilastik --run-legacy-gui --junitxml=test-results/junit.xml
+            xvfb-run --server-args="-screen 0 1024x768x24" pytest --cov-report=xml --cov=lazyflow --cov=ilastik --run-legacy-gui --junitxml=test-results/junit.xml &&
+            bash <(curl -s https://codecov.io/bash)
     - store_test_results:
         path: test-results
-    - codecov/upload:
-        file: coverage.xml
     - save_cache:
         name: store dependency cache
         key: v1.4.11-dep-{{ .Branch }}-{{ epoch }}
