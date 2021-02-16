@@ -7,7 +7,7 @@ import vigra
 import xarray
 from imageio import imread
 
-from ilastik.experimental.api import from_project_file
+from ilastik.experimental.api import from_project_file, xarray_roi_to_slicing
 
 from ..types import TestData, TestProjects, ApiTestDataLookup
 
@@ -133,3 +133,57 @@ class TestIlastikApi:
         project_path = test_data_lookup.find_project(proj)
         with pytest.raises(ValueError):
             from_project_file(project_path)
+
+    @pytest.mark.parametrize(
+        "input, proj, roi",
+        [
+            (TestData.DATA_1_CHANNEL, TestProjects.PIXEL_CLASS_1_CHANNEL, {"x": slice(2, -2), "y": slice(3, -3)}),
+            (
+                TestData.DATA_1_CHANNEL,
+                TestProjects.PIXEL_CLASS_1_CHANNEL_SKLEARN,
+                {"x": slice(2, -2), "y": slice(3, -3)},
+            ),
+            (TestData.DATA_3_CHANNEL, TestProjects.PIXEL_CLASS_3_CHANNEL, {"x": slice(2, -2), "y": slice(3, -3)}),
+            (
+                TestData.DATA_1_CHANNEL_3D,
+                TestProjects.PIXEL_CLASS_3D,
+                {"x": slice(2, -2), "y": slice(3, -3), "z": slice(4, -4)},
+            ),
+            (
+                TestData.DATA_1_CHANNEL_3D,
+                TestProjects.PIXEL_CLASS_3D_2D_3D_FEATURE_MIX,
+                {"x": slice(2, -2), "y": slice(3, -3), "z": slice(4, -4)},
+            ),
+        ],
+    )
+    def test_predict_pretrained_single_block(self, test_data_lookup: ApiTestDataLookup, input, proj, roi, run_headless):
+        project_path = test_data_lookup.find_project(proj)
+        input_dataset = test_data_lookup.find_dataset(input)
+
+        pipeline = from_project_file(project_path)
+
+        prediction = pipeline.predict(_load_as_xarray(input_dataset), roi)
+        expected_prediction = xarray.DataArray(
+            run_headless(project_path, input_dataset.path), dims=pipeline._predict_op.PMaps.meta.axistags.keys()
+        )
+        expected_coutout = expected_prediction[roi]
+
+        assert prediction.shape == expected_coutout.shape
+        np.testing.assert_array_almost_equal(prediction, expected_coutout)
+
+
+@pytest.mark.parametrize(
+    "roi, axisorder, expected",
+    [
+        ({}, "xyz", Ellipsis),
+        ({"x": slice(0, 10)}, "xyz", (slice(0, 10), slice(None, None), slice(None, None))),
+        ({"z": slice(0, 10)}, "xyz", (slice(None, None), slice(None, None), slice(0, 10))),
+        (
+            {"z": slice(0, 10), "c": slice(1, -1)},
+            "cxyz",
+            (slice(1, -1), slice(None, None), slice(None, None), slice(0, 10)),
+        ),
+    ],
+)
+def test_xarray_roi_to_slicing(roi, axisorder, expected):
+    assert xarray_roi_to_slicing(roi, axisorder) == expected

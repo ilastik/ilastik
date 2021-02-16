@@ -43,7 +43,7 @@ def from_project_file(path) -> Pipeline:
             self._predict_op.Image.connect(self._feature_sel_op.OutputImage)
             self._predict_op.LabelsCount.setValue(classifer.label_count)
 
-        def predict(self, data):
+        def predict(self, data, xarray_roi=dict()):
             data = convert_to_vigra(data)
             num_channels_in_data = data.channels
             if num_channels_in_data != num_channels:
@@ -59,11 +59,26 @@ def from_project_file(path) -> Pipeline:
                 )
 
             self._reorder_op.Input.setValue(data)
-
-            data = self._predict_op.PMaps.value[...]
+            roi = xarray_roi_to_slicing(xarray_roi, self._predict_op.PMaps.meta.axistags.keys())
+            data = self._predict_op.PMaps[roi].wait()
             return xarray.DataArray(data, dims=tuple(self._predict_op.PMaps.meta.axistags.keys()))
 
     return _PipelineImpl()
+
+
+def xarray_roi_to_slicing(xarray_roi, vigra_axistags):
+    if any(k not in vigra_axistags for k in xarray_roi.keys()):
+        raise ValueError(f"xarray_roi contains keys ({xarray_roi.keys()} not in axistags ({vigra_axistags})")
+    if not xarray_roi:
+        return Ellipsis
+
+    out_slicing = []
+    for axis in vigra_axistags:
+        if axis in xarray_roi:
+            out_slicing.append(xarray_roi[axis])
+        else:
+            out_slicing.append(slice(None, None, None))
+    return tuple(out_slicing)
 
 
 @singledispatch
