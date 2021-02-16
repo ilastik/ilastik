@@ -33,7 +33,8 @@ from lazyflow.operators.valueProviders import (
     OpValueCache,
     OpMetadataMerge,
     OpZeroDefault,
-    OpZeroSource,
+    OpRaisingSource,
+    MissingDataAccessError,
 )
 import pytest
 
@@ -305,11 +306,11 @@ class TestOpZeroDefault:
         {"shape": (10, 20, 30, 1, 2), "dtype": numpy.float32, "something_else": "blah", "one_more": 42},
     ],
 )
-def test_opZeroSource(graph, metadata):
+def test_OpRaisingSource(graph, metadata):
     shape = metadata.pop("shape")
     dtype = metadata.pop("dtype")
 
-    op = OpZeroSource(shape=shape, dtype=dtype, graph=graph, **metadata)
+    op = OpRaisingSource(shape=shape, dtype=dtype, graph=graph, **metadata)
     assert op.Output.ready()
     assert op.Output.meta.dtype == dtype
     assert op.Output.meta.shape == shape
@@ -317,7 +318,5 @@ def test_opZeroSource(graph, metadata):
     for k, v in metadata.items():
         assert op.Output.meta[k] == v
 
-    full_out = op.Output[:].wait()
-    assert full_out.shape == shape
-    assert full_out.dtype == dtype
-    assert full_out.sum() == 0
+    with pytest.raises(MissingDataAccessError):
+        output = op.Output[...].wait()
