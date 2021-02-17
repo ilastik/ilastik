@@ -634,6 +634,10 @@ class OpH5N5WriterBigDataset(Operator):
         if self.Image.meta.display_mode is not None:
             self.d.attrs["display_mode"] = self.Image.meta.display_mode
 
+        source_metadata = self.Image.meta.dataset_attrs or {}
+        for k, v in source_metadata.items():
+            self.d.attrs[f"source_data_{k}"] = v
+
     def execute(self, slot, subindex, rroi, result):
         self.progressSignal(0)
 

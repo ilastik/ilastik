@@ -119,6 +119,11 @@ class OpStreamingH5N5Reader(Operator):
         if chunks:
             self.OutputImage.meta.ideal_blockshape = chunks
 
+        dataset_attrs = dict(dataset.attrs)
+        dataset_attrs["file_name"] = self._h5N5File.filename
+        dataset_attrs["internal_path"] = internalPath
+        self.OutputImage.meta.dataset_attrs = dataset_attrs
+
     def execute(self, slot, subindex, roi, result):
         t = time.time()
         assert self._h5N5File is not None
