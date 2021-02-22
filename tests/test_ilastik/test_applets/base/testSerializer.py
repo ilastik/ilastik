@@ -26,6 +26,7 @@ import unittest
 import shutil
 import tempfile
 import pytest
+from pathlib import Path
 from copy import deepcopy
 from ilastik.applets.base.appletSerializer import SerialObjectFeatureNamesSlot
 from lazyflow.graph import Graph, Operator, InputSlot, Slot, OperatorWrapper
@@ -533,6 +534,51 @@ class TestSerialBlockSlot(unittest.TestCase):
 
         os.remove(h5_filepath)
         shutil.rmtree(tmp_dir)
+
+
+@pytest.fixture
+def opLabelArray():
+    raw_data = numpy.zeros((256, 256, 256, 1), dtype=numpy.uint32)
+
+    raw_data[0:15, 0:15, 0:15, 0:1] = numpy.ma.masked
+
+    opLabelArrays = OperatorWrapper(OpCompressedUserLabelArray, graph=Graph())
+    opLabelArrays.Input.resize(1)
+    opLabelArrays.Input[0].meta.has_mask = True
+    opLabelArrays.Input[0].meta.axistags = vigra.AxisTags("zyxc")
+    opLabelArrays.Input[0].setValue(raw_data)
+    opLabelArrays.shape.setValue(raw_data.shape)
+    opLabelArrays.eraser.setValue(255)
+    opLabelArrays.deleteLabel.setValue(-1)
+    opLabelArrays.blockShape.setValue((64, 64, 64, 1))
+    return opLabelArrays
+
+
+def testCompression(tmpdir, opLabelArray):
+    h5_filepath_no_compression = tmpdir / "serial_blockslot_no-compression.h5"
+    h5_filepath_compressed = tmpdir / "serial_blockslot_compressed.h5"
+
+    # Create an operator and a serializer to write the data.
+    slotSerializer_no_compression = SerialBlockSlot(opLabelArray.Output, opLabelArray.Input, opLabelArray.nonzeroBlocks)
+    slotSerializer_compressed = SerialBlockSlot(
+        opLabelArray.Output, opLabelArray.Input, opLabelArray.nonzeroBlocks, compression_level=1
+    )
+    # Give it some data.
+    opLabelArray.Input[0][0:1, 0:1, 0:1, 0:1] = 1 * numpy.ones((1, 1, 1, 1), dtype=numpy.uint8)
+
+    with h5py.File(h5_filepath_no_compression, "w") as f:
+        label_group = f.create_group("label_data")
+        slotSerializer_no_compression.serialize(label_group)
+
+    assert h5_filepath_no_compression.exists()
+
+    with h5py.File(h5_filepath_compressed, "w") as f:
+        label_group = f.create_group("label_data")
+        slotSerializer_compressed.serialize(label_group)
+
+    assert h5_filepath_compressed.exists()
+
+    assert h5_filepath_compressed.stat().size * 10 < h5_filepath_no_compression.stat().size
 
 
 class TestSerialBlockSlot2(unittest.TestCase):
