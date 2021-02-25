@@ -395,6 +395,8 @@ class StackFileSelectionWidget(QDialog):
         for f in self.selectedFiles:
             self.fileListWidget.addItem(f)
 
+        self.okButton.setEnabled(bool(files))
+
     def eventFilter(self, watched, event):
         if watched == self.patternEdit:
             return self._filterPatternEditEvent(event)
