@@ -19,7 +19,8 @@
 # This information is also available on the ilastik web site at:
 #          http://ilastik.org/license/
 ###############################################################################
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from typing import Union
+from lazyflow.graph import Operator, InputSlot, OutputSlot, Slot
 from lazyflow.operators import OpBlockedArrayCache, OpMetadataInjector, OpSubRegion
 from .opNpyFileReader import OpNpyFileReader
 from lazyflow.operators.ioOperators import (
@@ -116,6 +117,7 @@ class OpInputDataReader(Operator):
     # Other types are determined via file extension
     WorkingDirectory = InputSlot(stype="filestring", optional=True)
     FilePath = InputSlot(stype="filestring")
+    SkipDeglobbing = InputSlot()
     SequenceAxis = InputSlot(optional=True)
 
     # FIXME: Document this.
@@ -133,6 +135,7 @@ class OpInputDataReader(Operator):
         self,
         WorkingDirectory: str = None,
         FilePath: str = None,
+        SkipDeglobbing: Union[bool, Slot] = False,
         SequenceAxis: str = None,
         SubVolumeRoi: Tuple[int, int] = None,
         *args,
@@ -145,6 +148,7 @@ class OpInputDataReader(Operator):
 
         self.WorkingDirectory.setOrConnectIfAvailable(WorkingDirectory)
         self.FilePath.setOrConnectIfAvailable(FilePath)
+        self.SkipDeglobbing.setOrConnectIfAvailable(SkipDeglobbing)
         self.SequenceAxis.setOrConnectIfAvailable(SequenceAxis)
         self.SubVolumeRoi.setOrConnectIfAvailable(SubVolumeRoi)
 
@@ -206,9 +210,11 @@ class OpInputDataReader(Operator):
 
         # Try every method of opening the file until one works.
         iterFunc = openFuncs.__iter__()
+
         while not self.internalOperators:
             try:
                 openFunc = next(iterFunc)
+                print(f"=======>>>>> Trying to open {filePath} with Opener function: {openFunc.__name__}")
             except StopIteration:
                 break
             self.internalOperators, self.internalOutput = openFunc(filePath)
@@ -333,6 +339,7 @@ class OpInputDataReader(Operator):
             opReader = OpStreamingH5N5SequenceReaderM(parent=self)
 
         try:
+            opReader.SkipDeglobbing.connect(self.SkipDeglobbing)
             opReader.SequenceAxis.connect(self.SequenceAxis)
             opReader.GlobString.setValue(filePath)
             return ([opReader], opReader.OutputImage)
@@ -346,6 +353,7 @@ class OpInputDataReader(Operator):
         try:
             opReader = OpTiffSequenceReader(parent=self)
             opReader.SequenceAxis.connect(self.SequenceAxis)
+            opReader.SkipDeglobbing.connect(self.SkipDeglobbing)
             opReader.GlobString.setValue(filePath)
             return ([opReader], opReader.Output)
         except OpTiffSequenceReader.WrongFileTypeError as ex:
@@ -355,6 +363,7 @@ class OpInputDataReader(Operator):
         if "*" in filePath or os.path.pathsep in filePath:
             stackReader = OpStackLoader(parent=self)
             stackReader.SequenceAxis.connect(self.SequenceAxis)
+            stackReader.SkipDeglobbing.connect(self.SkipDeglobbing)
             stackReader.globstring.setValue(filePath)
             return ([stackReader], stackReader.stack)
         else:

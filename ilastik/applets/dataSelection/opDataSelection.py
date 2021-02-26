@@ -206,23 +206,27 @@ class DatasetInfo(ABC):
         return str(uuid.uuid1())
 
     @classmethod
-    def expand_path(cls, file_path: str, cwd: str = None) -> List[str]:
+    def expand_path(cls, file_path: str, cwd: Optional[str] = None, skip_deglobbing: bool = False) -> List[str]:
         """Expands path with globs and colons into a list of absolute paths"""
-        cwd = Path(cwd) if cwd else Path.cwd()
+        effective_cwd = Path(cwd) if cwd else Path.cwd()
         pathComponents = [PathComponents(path) for path in splitPath(file_path)]
-        expanded_paths = []
-        missing_files = []
+        expanded_paths: List[str] = []
+        missing_files: List[str] = []
         for components in pathComponents:
-            externalPath = cwd / Path(components.externalPath).expanduser()
-            unglobbed_paths = glob.glob(str(externalPath))
-            if not unglobbed_paths:
+            externalPath = effective_cwd / Path(components.externalPath).expanduser()
+            unglobbed_paths = [str(externalPath)] if skip_deglobbing else glob.glob(str(externalPath))
+            if (skip_deglobbing and not externalPath.exists()) or unglobbed_paths == []:
                 missing_files.append(components.externalPath)
                 continue
             for ext_path in unglobbed_paths:
                 if not cls.fileHasInternalPaths(ext_path) or not components.internalPath:
                     expanded_paths.append(ext_path)
                     continue
-                internal_paths = cls.globInternalPaths(ext_path, components.internalPath)
+                internal_paths = (
+                    [components.internalPath.lstrip("\\/")]
+                    if skip_deglobbing
+                    else cls.globInternalPaths(ext_path, components.internalPath)
+                )
                 expanded_paths.extend([os.path.join(ext_path, int_path) for int_path in internal_paths])
 
         if missing_files:
@@ -525,6 +529,7 @@ class FilesystemDatasetInfo(DatasetInfo):
         self,
         *,
         filePath: str,
+        skip_deglobbing: bool = False,
         project_file: h5py.File = None,
         sequence_axis: str = None,
         nickname: str = "",
@@ -537,14 +542,19 @@ class FilesystemDatasetInfo(DatasetInfo):
         self.sequence_axis = sequence_axis
         self.base_dir = str(Path(project_file.filename).absolute().parent) if project_file else os.getcwd()
         assert os.path.isabs(self.base_dir)  # FIXME: if file_project was opened as a relative path, this would break
-        self.expanded_paths = self.expand_path(filePath, cwd=self.base_dir)
+        self.expanded_paths = self.expand_path(filePath, cwd=self.base_dir, skip_deglobbing=skip_deglobbing)
+        self._skip_deglobbing = skip_deglobbing
         assert len(self.expanded_paths) == 1 or self.sequence_axis
         if len({PathComponents(ep).extension for ep in self.expanded_paths}) > 1:
             raise Exception(f"Multiple extensions unsupported as a single data source: {self.expanded_paths}")
         self.filePath = os.path.pathsep.join(self.expanded_paths)
 
         op_reader = OpInputDataReader(
-            graph=Graph(), WorkingDirectory=self.base_dir, FilePath=self.filePath, SequenceAxis=self.sequence_axis
+            graph=Graph(),
+            WorkingDirectory=self.base_dir,
+            FilePath=self.filePath,
+            SkipDeglobbing=skip_deglobbing,
+            SequenceAxis=self.sequence_axis,
         )
         meta = op_reader.Output.meta.copy()
         op_reader.cleanUp()
@@ -575,13 +585,14 @@ class FilesystemDatasetInfo(DatasetInfo):
             graph=graph,
             WorkingDirectory=self.base_dir,
             FilePath=self.filePath,
+            SkipDeglobbing=self._skip_deglobbing,  # FIXME: move all globbing to UI
             SequenceAxis=self.sequence_axis,
         )
         return op_reader.Output
 
     @classmethod
     def from_h5_group(cls, data: h5py.Group):
-        params = {"project_file": data.file, "filePath": data["filePath"][()].decode("utf-8")}
+        params = {"project_file": data.file, "filePath": data["filePath"][()].decode("utf-8"), "skip_deglobbing": True}
         return super().from_h5_group(data, params)
 
     def isHdf5(self) -> bool:

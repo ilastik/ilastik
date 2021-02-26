@@ -20,6 +20,7 @@
 #          http://ilastik.org/license/
 ###############################################################################
 import os
+from typing import List
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.generic import OpMultiArrayStacker
@@ -57,6 +58,7 @@ class OpStreamingH5N5SequenceReaderS(Operator):
     """
 
     GlobString = InputSlot()
+    SkipDeglobbing = InputSlot(value=False)
     # The project hdf5 File object (already opened)
     SequenceAxis = InputSlot(optional=True)  # The axis to stack across.
     OutputImage = OutputSlot()
@@ -124,7 +126,9 @@ class OpStreamingH5N5SequenceReaderS(Operator):
         pcs = PathComponents(self.GlobString.value.split(os.path.pathsep)[0])
         self._h5N5File = OpStreamingH5N5Reader.get_h5_n5_file(pcs.externalPath, mode="r")
         self.checkGlobString(self.GlobString.value)
-        file_paths = self.expandGlobStrings(self._h5N5File, self.GlobString.value)
+        file_paths = self.expandGlobStrings(
+            self._h5N5File, self.GlobString.value, skip_deglobbing=self.SkipDeglobbing.value
+        )
 
         num_files = len(file_paths)
         if num_files == 0:
@@ -198,7 +202,7 @@ class OpStreamingH5N5SequenceReaderS(Operator):
             self.OutputImage.setDirty(slice(None))
 
     @staticmethod
-    def expandGlobStrings(h5N5File, globStrings):
+    def expandGlobStrings(h5N5File, globStrings, skip_deglobbing: bool = False) -> List[str]:
         """Matches a list of globStrings to internal paths of files
 
         Args:
@@ -212,15 +216,14 @@ class OpStreamingH5N5SequenceReaderS(Operator):
         """
         if not isinstance(h5N5File, (h5py.File, z5py.N5File)):
             with OpStreamingH5N5Reader.get_h5_n5_file(h5N5File, mode="r") as f:
-                ret = OpStreamingH5N5SequenceReaderS.expandGlobStrings(f, globStrings)
+                ret = OpStreamingH5N5SequenceReaderS.expandGlobStrings(f, globStrings, skip_deglobbing=skip_deglobbing)
             return ret
 
         ret = []
         # Parse list into separate globstrings and combine them
         for globString in globStrings.split(os.path.pathsep):
-            s = globString.strip()
-            components = PathComponents(s)
-            ret += sorted(globH5N5(h5N5File, components.internalPath.lstrip("/")))
+            internal_path = PathComponents(globString.strip()).internalPath.lstrip("/")
+            ret += [internal_path] if skip_deglobbing else sorted(globH5N5(h5N5File, internal_path))
         return ret
 
     @staticmethod

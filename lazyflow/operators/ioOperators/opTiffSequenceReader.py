@@ -2,6 +2,7 @@ from builtins import zip
 
 import os
 import glob
+from typing import List
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.generic import OpMultiArrayStacker
@@ -39,6 +40,7 @@ class OpTiffSequenceReader(Operator):
     """
 
     GlobString = InputSlot()
+    SkipDeglobbing = InputSlot(value=False)
     SequenceAxis = InputSlot(optional=True)  # The axis to stack across.
     Output = OutputSlot()
 
@@ -67,7 +69,7 @@ class OpTiffSequenceReader(Operator):
         super(OpTiffSequenceReader, self).cleanUp()
 
     def setupOutputs(self):
-        file_paths = self.expandGlobStrings(self.GlobString.value)
+        file_paths = self.expandGlobStrings(self.GlobString.value, skip_deglobbing=self.SkipDeglobbing.value)
         for filename in file_paths:
             if os.path.splitext(filename)[1].lower() not in OpTiffReader.TIFF_EXTS:
                 raise OpTiffSequenceReader.WrongFileTypeError(filename)
@@ -128,10 +130,10 @@ class OpTiffSequenceReader(Operator):
         self.Output.setDirty()
 
     @staticmethod
-    def expandGlobStrings(globStrings):
+    def expandGlobStrings(globStrings, skip_deglobbing: bool = False) -> List[str]:
         ret = []
         # Parse list into separate globstrings and combine them
         for globString in globStrings.split(os.path.pathsep):
             s = globString.strip()
-            ret += sorted(glob.glob(s))
+            ret += [globString] if skip_deglobbing else sorted(glob.glob(s))
         return ret

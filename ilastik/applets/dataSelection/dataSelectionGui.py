@@ -571,13 +571,15 @@ class DataSelectionGui(QWidget):
         return previous_info.axistags
 
     def instantiate_dataset_info(self, url: str, role: Union[str, int], *info_args, **info_kwargs) -> DatasetInfo:
-        info = self.parentApplet.create_dataset_info(url=url, *info_args, **info_kwargs)
+        info = self.parentApplet.create_dataset_info(url=url, skip_deglobbing=True, *info_args, **info_kwargs)
         if info_kwargs.get("axistags") is not None:
             return info
         axistags = self.guess_axistags_for(role=role, info=info)
         if axistags in (info.axistags, None):
             return info
-        return self.parentApplet.create_dataset_info(url=url, *info_args, **info_kwargs, axistags=axistags)
+        return self.parentApplet.create_dataset_info(
+            url=url, skip_deglobbing=True, *info_args, **info_kwargs, axistags=axistags
+        )
 
     def _checkDataFormatWarnings(self, roleIndex, startingLaneNum, endingLane):
         warn_needed = False

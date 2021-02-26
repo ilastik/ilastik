@@ -55,6 +55,7 @@ class OpStreamingH5N5SequenceReaderM(Operator):
     """
 
     GlobString = InputSlot()
+    SkipDeglobbing = InputSlot(value=False)
     SequenceAxis = InputSlot(optional=True)  # The axis to stack across.
     OutputImage = OutputSlot()
 
@@ -127,7 +128,9 @@ class OpStreamingH5N5SequenceReaderM(Operator):
 
     def setupOutputs(self):
         self.checkGlobString(self.GlobString.value)
-        external_paths, internal_paths = self.expandGlobStrings(self.GlobString.value)
+        external_paths, internal_paths = self.expandGlobStrings(
+            self.GlobString.value, skip_deglobbing=self.SkipDeglobbing.value
+        )
 
         num_files = len(external_paths)
         if num_files == 0:
@@ -203,7 +206,7 @@ class OpStreamingH5N5SequenceReaderM(Operator):
             self.OutputImage.setDirty(slice(None))
 
     @staticmethod
-    def expandGlobStrings(globStrings):
+    def expandGlobStrings(globStrings, skip_deglobbing: bool = False):
         """Matches a list of globStrings to internal paths of files
 
         Args:
@@ -220,7 +223,7 @@ class OpStreamingH5N5SequenceReaderM(Operator):
         for globString in globStrings.split(os.path.pathsep):
             s = globString.strip()
             components = PathComponents(s)
-            tmp = sorted(glob.glob(components.externalPath))
+            tmp = [components.externalPath] if skip_deglobbing else sorted(glob.glob(components.externalPath))
             external_paths.extend(tmp)
             internal_paths.extend([components.internalPath for i in range(len(tmp))])
         return external_paths, internal_paths

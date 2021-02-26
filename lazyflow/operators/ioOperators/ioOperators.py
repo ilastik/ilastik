@@ -136,6 +136,7 @@ class OpStackLoader(Operator):
     category = "Input"
 
     globstring = InputSlot()
+    SkipDeglobbing = InputSlot(value=False)
     SequenceAxis = InputSlot(optional=True)
     stack = OutputSlot()
 
@@ -146,7 +147,7 @@ class OpStackLoader(Operator):
             super().__init__(self.msg)
 
     def setupOutputs(self):
-        self.fileNameList = self.expandGlobStrings(self.globstring.value)
+        self.fileNameList = self.expandGlobStrings(self.globstring.value, skip_deglobbing=self.SkipDeglobbing.value)
 
         num_files = len(self.fileNameList)
         if len(self.fileNameList) == 0:
@@ -286,12 +287,12 @@ class OpStackLoader(Operator):
         return result
 
     @staticmethod
-    def expandGlobStrings(globStrings):
+    def expandGlobStrings(globStrings, skip_deglobbing: bool = False):
         ret = []
         # Parse list into separate globstrings and combine them
         for globString in globStrings.split(os.path.pathsep):
             s = globString.strip()
-            ret += sorted(glob.glob(s))
+            ret += [globString] if skip_deglobbing else sorted(glob.glob(s))
         return ret
 
 
