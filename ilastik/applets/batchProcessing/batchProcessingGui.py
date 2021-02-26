@@ -315,7 +315,9 @@ class BatchProcessingGui(QTabWidget):
             return
 
         # Run the export in a separate thread
-        lane_configs = self.parentApplet.dataSelectionApplet.create_lane_configs(role_inputs=role_inputs)
+        lane_configs = self.parentApplet.dataSelectionApplet.create_lane_configs(
+            role_inputs=role_inputs, skip_deglobbing=True
+        )
 
         export_req = Request(partial(self.parentApplet.run_export, lane_configs=lane_configs))
         export_req.notify_failed(self.handle_batch_processing_failure)
