@@ -306,7 +306,7 @@ class TestOpZeroDefault:
         {"shape": (10, 20, 30, 1, 2), "dtype": numpy.float32, "something_else": "blah", "one_more": 42},
     ],
 )
-def test_OpRaisingSource(graph, metadata):
+def test_OpMissingDataSource(graph, metadata):
     shape = metadata.pop("shape")
     dtype = metadata.pop("dtype")
 
