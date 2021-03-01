@@ -20,7 +20,10 @@
 # 		   http://ilastik.org/license/
 ###############################################################################
 
-from typing import Tuple
+from functools import reduce
+from operator import mul
+from typing import Tuple, Iterable
+import numbers
 
 
 def itersubclasses(cls, _seen=None):
@@ -115,3 +118,12 @@ def get_default_axisordering(shape: Tuple[int, ...]) -> str:
         return axisorders[ndim]
     except KeyError:
         raise ValueError(f"cannot infer axis order for {ndim}-dimensional shape")
+
+
+def bigintprod(nums: Iterable[numbers.Integral]) -> int:
+    """Safe way to get the product of an iterable of integer numbers
+
+    avoids defaulting to C long (like numpy), which can result in overflows for
+    array shapes seen in practice on some operating systems (windows: long -> 32 bit).
+    """
+    return reduce(mul, map(int, nums))
