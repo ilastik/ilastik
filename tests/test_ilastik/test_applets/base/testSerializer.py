@@ -539,10 +539,8 @@ class TestSerialBlockSlot(unittest.TestCase):
 @pytest.fixture
 def opLabelArray():
     raw_data = numpy.zeros((256, 256, 256, 1), dtype=numpy.uint32)
-
     opLabelArrays = OperatorWrapper(OpCompressedUserLabelArray, graph=Graph())
     opLabelArrays.Input.resize(1)
-    opLabelArrays.Input[0].meta.has_mask = True
     opLabelArrays.Input[0].meta.axistags = vigra.AxisTags("zyxc")
     opLabelArrays.Input[0].setValue(raw_data)
     opLabelArrays.shape.setValue(raw_data.shape)
@@ -553,6 +551,11 @@ def opLabelArray():
 
 
 def testCompression(tmpdir, opLabelArray):
+    def has_uncompressed_dataset(obj_name, obj):
+        check = any(pref in obj_name for pref in ["block", "data"])
+        if check and isinstance(obj, h5py.Dataset) and not obj.compression:
+            return obj_name
+
     h5_filepath_no_compression = tmpdir / "serial_blockslot_no-compression.h5"
     h5_filepath_compressed = tmpdir / "serial_blockslot_compressed.h5"
 
@@ -567,12 +570,16 @@ def testCompression(tmpdir, opLabelArray):
     with h5py.File(h5_filepath_no_compression, "w") as f:
         label_group = f.create_group("label_data")
         slotSerializer_no_compression.serialize(label_group)
+        uncompressed = label_group.visititems(has_uncompressed_dataset)
+        assert uncompressed, f"Expected uncompressed dataset"
 
     assert h5_filepath_no_compression.exists()
 
     with h5py.File(h5_filepath_compressed, "w") as f:
         label_group = f.create_group("label_data")
         slotSerializer_compressed.serialize(label_group)
+        uncompressed = label_group.visititems(has_uncompressed_dataset)
+        assert uncompressed is None, f"Found unexpected uncompressed dataset {uncompressed}"
 
     assert h5_filepath_compressed.exists()
 
