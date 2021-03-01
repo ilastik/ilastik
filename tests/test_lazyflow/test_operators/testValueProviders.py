@@ -33,7 +33,7 @@ from lazyflow.operators.valueProviders import (
     OpValueCache,
     OpMetadataMerge,
     OpZeroDefault,
-    OpRaisingSource,
+    OpMissingDataSource,
     MissingDataAccessError,
 )
 import pytest
@@ -310,7 +310,7 @@ def test_OpRaisingSource(graph, metadata):
     shape = metadata.pop("shape")
     dtype = metadata.pop("dtype")
 
-    op = OpRaisingSource(shape=shape, dtype=dtype, graph=graph, **metadata)
+    op = OpMissingDataSource(shape=shape, dtype=dtype, graph=graph, **metadata)
     assert op.Output.ready()
     assert op.Output.meta.dtype == dtype
     assert op.Output.meta.shape == shape

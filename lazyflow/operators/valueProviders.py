@@ -501,10 +501,15 @@ class OpZeroDefault(Operator):
 
 
 class MissingDataAccessError(Exception):
-    pass
+    def __init__(self):
+        message = (
+            "Tried to access placeholder dataset. You might not have saved the project with a trained classifier. "
+            "Without access to training data, the classifier cannot be retrained."
+        )
+        super().__init__(message)
 
 
-class OpRaisingSource(Operator):
+class OpMissingDataSource(Operator):
     """Operator that raises when data is accessed
 
     Provides valid metadata, but does not allow to get any data.
@@ -529,10 +534,7 @@ class OpRaisingSource(Operator):
         pass
 
     def execute(self, slot, subindex, roi, result):
-        raise MissingDataAccessError(
-            "Tried to access placeholder dataset. You might not have saved the project with a trained classifier. "
-            "Without access to training data, the classifier cannot be retrained."
-        )
+        raise MissingDataAccessError
 
     def propagateDirty(self, *args, **kwargs):
         raise ValueError("Will never go here, no inputs...")
