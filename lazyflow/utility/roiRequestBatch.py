@@ -130,9 +130,6 @@ class RoiRequestBatch(object):
 
         # Progress bookkeeping
         self._totalVolume = totalVolume
-        if self._totalVolume is not None:
-            # Windows default long is int32; this can result in overflows in calculations
-            self._totalVolume = int(self._totalVolume)
         self._processedVolume = 0
 
     @property
@@ -250,7 +247,7 @@ class RoiRequestBatch(object):
                 # Report progress (if possible)
                 if self._totalVolume is not None:
                     self._processedVolume += numpy.prod(numpy.subtract(roi[1], roi[0]))
-                    progress = int(100 * (self._processedVolume / self._totalVolume))
+                    progress = 100 * self._processedVolume // self._totalVolume
                     self.progressSignal(progress)
 
                 logger.debug("Request completed for roi: {}".format(roi))
