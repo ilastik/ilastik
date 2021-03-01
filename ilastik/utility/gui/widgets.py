@@ -20,6 +20,7 @@
 ###############################################################################
 
 from typing import Callable, Iterable, Union
+from contextlib import contextmanager
 
 from PyQt5.QtWidgets import QWidget
 
@@ -60,3 +61,13 @@ def enable_when_ready(
             f()
 
     return cleanup
+
+
+@contextmanager
+def silent_widget(widget: QWidget) -> QWidget:
+    """Disable notifying connected callbacks/slots."""
+    blocked_status: bool = widget.blockSignals(True)
+    try:
+        yield widget
+    finally:
+        widget.blockSignals(blocked_status)

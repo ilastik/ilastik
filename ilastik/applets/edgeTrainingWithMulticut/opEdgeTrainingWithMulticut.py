@@ -60,7 +60,9 @@ class OpEdgeTrainingWithMulticut(Operator):
         self.EdgeProbabilitiesDict.connect(opEdgeTraining.EdgeProbabilitiesDict)
         self.NaiveSegmentation.connect(opEdgeTraining.NaiveSegmentation)
 
-        opMulticut = OpMultiLaneWrapper(OpMulticut, parent=self)
+        opMulticut = OpMultiLaneWrapper(
+            OpMulticut, broadcastingSlotNames=["Beta", "SolverName", "FreezeCache"], parent=self
+        )
         opMulticut.Beta.connect(self.Beta)
         opMulticut.SolverName.connect(self.SolverName)
         opMulticut.FreezeCache.connect(self.FreezeCache)

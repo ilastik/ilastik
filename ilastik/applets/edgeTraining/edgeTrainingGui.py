@@ -39,7 +39,7 @@ from PyQt5.QtWidgets import (
 
 from ilastikrag.gui import FeatureSelectionDialog
 
-from ilastik.utility.gui import threadRouted
+from ilastik.utility.gui import threadRouted, silent_widget
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
@@ -94,6 +94,9 @@ class EdgeTrainingMixin:
 
         # Initialize everything with the operator's initial values
         self.configure_gui_from_operator()
+        # need to call this callback manually, as signals a re blocked in
+        # configure_gui_from_operator()
+        self._handle_live_update_clicked(self.live_update_button.isChecked())
 
     def createDrawerControls(self):
         op = self.topLevelOperatorView
@@ -360,8 +363,10 @@ class EdgeTrainingMixin:
             return False
         with self.set_updating():
             op = self.topLevelOperatorView
-            self.train_from_gt_button.setEnabled(op.GroundtruthSegmentation.ready())
-            self.live_update_button.setChecked(not op.FreezeClassifier.value)
+            with silent_widget(self.train_from_gt_button) as w:
+                w.setEnabled(op.GroundtruthSegmentation.ready())
+            with silent_widget(self.live_update_button) as w:
+                w.setChecked(not op.FreezeClassifier.value)
             if op.FreezeClassifier.value:
                 self.live_update_button.setIcon(QIcon(ilastikIcons.Play))
             else:
