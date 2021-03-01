@@ -210,11 +210,9 @@ class OpInputDataReader(Operator):
 
         # Try every method of opening the file until one works.
         iterFunc = openFuncs.__iter__()
-
         while not self.internalOperators:
             try:
                 openFunc = next(iterFunc)
-                print(f"=======>>>>> Trying to open {filePath} with Opener function: {openFunc.__name__}")
             except StopIteration:
                 break
             self.internalOperators, self.internalOutput = openFunc(filePath)
