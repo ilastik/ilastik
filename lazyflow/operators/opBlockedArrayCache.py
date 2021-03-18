@@ -73,7 +73,6 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
         self._opCacheFixer.fixAtCurrent.connect(self.fixAtCurrent)
 
         self._opSimpleBlockedArrayCache = OpSimpleBlockedArrayCache(parent=self)
-        self._opSimpleBlockedArrayCache.Input.connect(self._opCacheFixer.Output)
         self._opSimpleBlockedArrayCache.CompressionEnabled.connect(self.CompressionEnabled)
         self._opSimpleBlockedArrayCache.Input.connect(self._opCacheFixer.Output)
         self._opSimpleBlockedArrayCache.BlockShape.connect(self.BlockShape)
