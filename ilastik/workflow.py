@@ -36,6 +36,8 @@ class Workflow(Operator):
 
     name = "Workflow (base class)"
     workflowDisplayName = None  # override in your own workflow if you need it different from name
+    #: Should workflow be automatically added to start widget
+    auto_register = True
 
     ###############################
     # Abstract methods/properties #
@@ -271,7 +273,9 @@ def getAvailableWorkflows():
             isbase = "base" in W.workflowName.lower()
         except:
             isbase = False
-        if isbase:
+
+        should_register = getattr(W, "auto_register", True)
+        if isbase and not should_register:
             continue
 
         if isinstance(W.workflowName, str):
