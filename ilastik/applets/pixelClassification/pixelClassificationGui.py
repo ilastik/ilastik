@@ -68,7 +68,7 @@ from lazyflow.operators import OpFeatureMatrixCache
 # ilastik
 from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
-from ilastik.utility.gui import threadRouted
+from ilastik.utility.gui import threadRouted, silent_widget
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, SubvolumeSelectionDlg
@@ -774,9 +774,8 @@ class PixelClassificationGui(LabelingGui):
 
     def setLiveUpdateEnabled(self, checked: Optional[bool] = None):
         checked = checked if checked is not None else self.isLiveUpdateEnabled()
-        self.labelingDrawerUi.liveUpdateButton.blockSignals(True)
-        self.labelingDrawerUi.liveUpdateButton.setChecked(checked)
-        self.labelingDrawerUi.liveUpdateButton.blockSignals(False)
+        with silent_widget(self.labelingDrawerUi.liveUpdateButton) as w:
+            w.setChecked(checked)
         if checked:
             self._viewerControlUi.checkShowPredictions.setChecked(True)
             self.handleShowPredictionsClicked()
