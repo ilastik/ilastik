@@ -289,8 +289,12 @@ class MulticutGuiMixin:
     def set_updating(self):
         assert not self._currently_updating
         self._currently_updating = True
+        self.live_multicut_button.setEnabled(False)
+        self.update_button.setEnabled(False)
         yield
         self._currently_updating = False
+        self.live_multicut_button.setEnabled(True)
+        self.update_button.setEnabled(True)
 
     def configure_gui_from_operator(self, *args):
         if self._currently_updating:
