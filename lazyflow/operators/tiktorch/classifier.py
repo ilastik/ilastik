@@ -38,7 +38,6 @@ from lazyflow.request import Request
 from lazyflow.roi import roiToSlice
 from lazyflow.futures_utils import MappableFuture, map_future
 
-from tiktorch.launcher import LocalServerLauncher, RemoteSSHServerLauncher, SSHCred, ConnConf
 from tiktorch import converters
 from tiktorch.proto import data_store_pb2, data_store_pb2_grpc, inference_pb2, inference_pb2_grpc
 
@@ -152,6 +151,7 @@ class ModelSession:
             c_was_not_in_output_axis_order = True
         else:
             c_was_not_in_output_axis_order = False
+        print("AXIS ORDER", roi, output_axis_order, "SLICE", [axistags.index(a) for a in output_axis_order])
         roi = roi[:, [axistags.index(a) for a in output_axis_order]]
 
         reordered_feature_image = reorder_axes(feature_image, from_axes_tags=axistags, to_axes_tags=self.input_axes)
@@ -160,7 +160,7 @@ class ModelSession:
             current_rq = Request._current_request()
             resp = self.tiktorchClient.Predict.future(
                 inference_pb2.PredictRequest(
-                    tensor=converters.numpy_to_pb_tensor(reordered_feature_image), modelSessionId=self.__session.id
+                    tensor=converters.numpy_to_pb_tensor(reordered_feature_image, axistags=self.input_axes), modelSessionId=self.__session.id
                 )
             )
             resp.add_done_callback(lambda o: current_rq._wake_up())
