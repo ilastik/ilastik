@@ -263,5 +263,8 @@ class OpTikTorchClassifierPredict(Operator):
         # Pad the data
         input_data = numpy.pad(input_data, padding, mode="reflect")
 
-        result[...] = session.predict(input_data, predictions_roi, axistags)
+        try:
+            result[...] = session.predict(input_data, predictions_roi, axistags)
+        except Exception as e:
+            logger.exception("Failed to predict")
         return result

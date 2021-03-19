@@ -135,7 +135,12 @@ if ilastik.config.cfg.getboolean("ilastik", "hbp", fallback=False):
 # network classification, check whether required modules are available:
 try:
     from . import neuralNetwork
-    WORKFLOW_CLASSES += [neuralNetwork.RemoteWorkflow, neuralNetwork.LocalWorkflow]
+
+    WORKFLOW_CLASSES += [neuralNetwork.RemoteWorkflow]
+    tiktorch_exe_path = ilastik.config.cfg.get("ilastik", "tiktorch_executable", fallback=None)
+    if tiktorch_exe_path:
+        WORKFLOW_CLASSES += [neuralNetwork.LocalWorkflow]
+
 except ImportError as e:
     logger.warning("Failed to import NeuralNet workflow; check dependencies: " + str(e), exc_info=1)
 

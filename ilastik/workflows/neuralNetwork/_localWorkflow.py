@@ -6,9 +6,10 @@ import numpy
 from ilastik.config import cfg
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
-from ilastik.applets.serverConfiguration import ServerConfigApplet
+from ilastik.applets.serverConfiguration.types import ServerConfig, Device
 from ilastik.applets.neuralNetwork import NNClassApplet, NNClassificationDataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
+from ._localLauncher import LocalServerLauncher
 
 from lazyflow.operators import tiktorch
 
@@ -24,6 +25,7 @@ class LocalWorkflow(Workflow):
     It has special server configuration applets allowing user to
     connect to remotely running tiktorch server managed by user
     """
+    auto_register = False
     workflowName = "Neural Network Classification (Local)"
     workflowDescription = "Allows to apply bioimage.io models on your data using bundled tiktorch"
     defaultAppletIndex = 0  # show DataSelection by default
@@ -45,9 +47,16 @@ class LocalWorkflow(Workflow):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
-        print("executable", cfg.get("ilastik", "tiktorch_executable", fallback=None))
+        tiktorch_exe_path = cfg.get("ilastik", "tiktorch_executable", fallback=None)
+        if not tiktorch_exe_path:
+            raise RuntimeError("No tiktorch-executable specified")
+
         graph = Graph()
+        self._launcher = LocalServerLauncher(tiktorch_exe_path)
+        conn_str = self._launcher.start()
+        srv_config = ServerConfig(id="auto", address=conn_str, devices=[Device(id="cpu", name="cpu", enabled=True)])
         super().__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
+
         self._applets = []
         self._workflow_cmdline_args = workflow_cmdline_args
 
@@ -68,12 +77,12 @@ class LocalWorkflow(Workflow):
         opDataSelection.DatasetRoles.setValue(self.ROLE_NAMES)
         connFactory = tiktorch.TiktorchConnectionFactory()
 
-        self.serverConfigApplet = ServerConfigApplet(self, connectionFactory=connFactory)
         self.nnClassificationApplet = NNClassApplet(
-            self, "NNClassApplet", connectionFactory=self.serverConfigApplet.connectionFactory
+            self, "NNClassApplet", connectionFactory=connFactory
         )
 
         opClassify = self.nnClassificationApplet.topLevelOperator
+        opClassify.ServerConfig.setValue(srv_config)
 
         self.dataExportApplet = NNClassificationDataExportApplet(self, "Data Export")
 
@@ -89,7 +98,6 @@ class LocalWorkflow(Workflow):
         )
 
         # Expose for shell
-        self._applets.append(self.serverConfigApplet)
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.nnClassificationApplet)
         self._applets.append(self.dataExportApplet)
@@ -121,14 +129,11 @@ class LocalWorkflow(Workflow):
         connects the operators for different lanes, each lane has a laneIndex starting at 0
         """
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
-        opServerConfig = self.serverConfigApplet.topLevelOperator.getLane(laneIndex)
         opNNclassify = self.nnClassificationApplet.topLevelOperator.getLane(laneIndex)
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
         # Input Image ->  Classification Op (for display)
         opNNclassify.InputImages.connect(opData.Image)
-        opNNclassify.ServerConfig.connect(opServerConfig.ServerConfig)
-
         # Data Export connections
         opDataExport.RawData.connect(opData.ImageGroup[self.DATA_ROLE_RAW])
         opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[self.DATA_ROLE_RAW])
@@ -146,7 +151,6 @@ class LocalWorkflow(Workflow):
         input_ready = len(opDataSelection.ImageGroup) > 0 and not self.dataSelectionApplet.busy
 
         opNNClassification = self.nnClassificationApplet.topLevelOperator
-        serverConfig_finished = self.serverConfigApplet.topLevelOperator.ServerConfig.ready()
 
         opDataExport = self.dataExportApplet.topLevelOperator
 
@@ -161,20 +165,19 @@ class LocalWorkflow(Workflow):
         # The user isn't allowed to touch anything while batch processing is running.
         batch_processing_busy = self.batchProcessingApplet.busy
 
-        self._shell.setAppletEnabled(self.serverConfigApplet, not batch_processing_busy and not live_update_active)
-        self._shell.setAppletEnabled(self.dataSelectionApplet, serverConfig_finished and not batch_processing_busy)
+        self._shell.setAppletEnabled(self.dataSelectionApplet, not batch_processing_busy)
 
         self._shell.setAppletEnabled(
-            self.nnClassificationApplet, input_ready and serverConfig_finished and not batch_processing_busy
+            self.nnClassificationApplet, input_ready and not batch_processing_busy
         )
         self._shell.setAppletEnabled(
             self.dataExportApplet,
-            serverConfig_finished and predictions_ready and not batch_processing_busy and not live_update_active,
+            predictions_ready and not batch_processing_busy and not live_update_active,
             )
 
         if self.batchProcessingApplet is not None:
             self._shell.setAppletEnabled(
-                self.batchProcessingApplet, serverConfig_finished and predictions_ready and not batch_processing_busy
+                self.batchProcessingApplet, predictions_ready and not batch_processing_busy
             )
 
         # Lastly, check for certain "busy" conditions, during which we

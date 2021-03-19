@@ -9,9 +9,9 @@ from tiktorch.proto.inference_pb2_grpc import FlightControlStub
 
 def test_local_launcher(tiktorch_executable_path):
     launcher = LocalServerLauncher(tiktorch_executable_path)
-    addr, port = launcher.start()
+    conn_str = launcher.start()
 
-    chan = grpc.insecure_channel(f"{addr}:{port}")
+    chan = grpc.insecure_channel(conn_str)
     client = FlightControlStub(chan)
 
     result = client.Ping(Empty())
