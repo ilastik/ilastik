@@ -25,6 +25,7 @@ class LocalWorkflow(Workflow):
     It has special server configuration applets allowing user to
     connect to remotely running tiktorch server managed by user
     """
+
     auto_register = False
     workflowName = "Neural Network Classification (Local)"
     workflowDescription = "Allows to apply bioimage.io models on your data using bundled tiktorch"
@@ -77,9 +78,7 @@ class LocalWorkflow(Workflow):
         opDataSelection.DatasetRoles.setValue(self.ROLE_NAMES)
         connFactory = tiktorch.TiktorchConnectionFactory()
 
-        self.nnClassificationApplet = NNClassApplet(
-            self, "NNClassApplet", connectionFactory=connFactory
-        )
+        self.nnClassificationApplet = NNClassApplet(self, "NNClassApplet", connectionFactory=connFactory)
 
         opClassify = self.nnClassificationApplet.topLevelOperator
         opClassify.ServerConfig.setValue(srv_config)
@@ -120,9 +119,7 @@ class LocalWorkflow(Workflow):
         special parameters to initialize the DataSelectionApplet.
         """
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
-        return DataSelectionApplet(
-            self, "Input Data", "Input Data", instructionText=data_instructions
-        )
+        return DataSelectionApplet(self, "Input Data", "Input Data", instructionText=data_instructions)
 
     def connectLane(self, laneIndex):
         """
@@ -167,18 +164,14 @@ class LocalWorkflow(Workflow):
 
         self._shell.setAppletEnabled(self.dataSelectionApplet, not batch_processing_busy)
 
-        self._shell.setAppletEnabled(
-            self.nnClassificationApplet, input_ready and not batch_processing_busy
-        )
+        self._shell.setAppletEnabled(self.nnClassificationApplet, input_ready and not batch_processing_busy)
         self._shell.setAppletEnabled(
             self.dataExportApplet,
             predictions_ready and not batch_processing_busy and not live_update_active,
-            )
+        )
 
         if self.batchProcessingApplet is not None:
-            self._shell.setAppletEnabled(
-                self.batchProcessingApplet, predictions_ready and not batch_processing_busy
-            )
+            self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not batch_processing_busy)
 
         # Lastly, check for certain "busy" conditions, during which we
         #  should prevent the shell from closing the project.

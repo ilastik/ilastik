@@ -9,6 +9,7 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+
 def wait(done, interval=0.1, max_wait=1):
     start = time.time()
 
@@ -22,6 +23,7 @@ def wait(done, interval=0.1, max_wait=1):
             raise RuntimeError("timeout")
         else:
             time.sleep(interval)
+
 
 class LocalServerLauncher:
     _executable_path: str

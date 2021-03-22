@@ -23,6 +23,7 @@ class RemoteWorkflow(Workflow):
     It has special server configuration applets allowing user to
     connect to remotely running tiktorch server managed by user
     """
+
     workflowName = "Neural Network Classification (Remote)"
     workflowDescription = "Allows to apply bioimage.io models on your data using remotely running tiktorch server"
     defaultAppletIndex = 0  # show DataSelection by default
@@ -110,9 +111,7 @@ class RemoteWorkflow(Workflow):
         special parameters to initialize the DataSelectionApplet.
         """
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
-        return DataSelectionApplet(
-            self, "Input Data", "Input Data", instructionText=data_instructions
-        )
+        return DataSelectionApplet(self, "Input Data", "Input Data", instructionText=data_instructions)
 
     def connectLane(self, laneIndex):
         """
@@ -168,7 +167,7 @@ class RemoteWorkflow(Workflow):
         self._shell.setAppletEnabled(
             self.dataExportApplet,
             serverConfig_finished and predictions_ready and not batch_processing_busy and not live_update_active,
-            )
+        )
 
         if self.batchProcessingApplet is not None:
             self._shell.setAppletEnabled(
