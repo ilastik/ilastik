@@ -40,6 +40,12 @@ class DataPath(ABC):
     def glob(self, smart: bool = True) -> Sequence["DataPath"]:
         pass
 
+    def __eq__(self, other: "DataPath") -> bool:
+        return self.raw_path == other.raw_path
+
+    def __repr__(self) -> str:
+        return self.raw_path
+
 
 class SimpleDataPath(DataPath):
     def __init__(self, raw_path: str):
@@ -63,11 +69,11 @@ class SimpleDataPath(DataPath):
 
 class ArchiveDataPath(DataPath):
     def __init__(self, external_path: Path, internal_path: PurePosixPath):
-        if external_path.suffix.lower() not in self.suffixes():
+        if external_path.suffix.lower()[1:] not in self.suffixes():
             raise ValueError(f"External path for {self.__class__.__name__} must end in {self.suffixes()}")
         self.external_path = external_path
         self.internal_path = PurePosixPath("/") / internal_path
-        super().__init__(str(external_path / internal_path.relative_to("/")))
+        super().__init__(str(external_path / self.internal_path.relative_to("/")))
 
     @staticmethod
     def get_suffixes() -> Sequence[str]:
@@ -79,7 +85,7 @@ class ArchiveDataPath(DataPath):
         components = re.split(archive_suffix_regex, str(path), maxsplit=1, flags=re.IGNORECASE)
         if len(components) != 3:
             raise ValueError(f"Path '{path}' does not look like an archive path")
-        external_path = Path(components[0] + components[1])
+        external_path = Path(components[0] + "." + components[1])
         internal_path = PurePosixPath("/") / components[2]
 
         if internal_path == PurePosixPath("/"):
@@ -95,7 +101,7 @@ class ArchiveDataPath(DataPath):
         raise ValueError(f"Unexpected archive suffix in '{str(external_path) + str(internal_path)}'")
 
     @abstractmethod
-    def glob_internal(self: DP, smart: bool = True) -> List[DP]:
+    def glob_internal(self: DP) -> List[DP]:
         pass
 
     @classmethod
@@ -124,11 +130,11 @@ class ArchiveDataPath(DataPath):
                 for ep in glob.glob(str(self.external_path))
             ]
             if not externally_expanded_paths:
-                raise ValueError(f"Pattern {self.external_path} expands to nothing")
+                raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(self.external_path))
 
         all_paths: List["ArchiveDataPath"] = []
         for data_path in sorted(externally_expanded_paths):
-            all_paths += [data_path] if (smart and data_path.exists()) else sorted(data_path.glob_internal(smart))
+            all_paths += [data_path] if (smart and data_path.exists()) else sorted(data_path.glob_internal())
         return all_paths
 
 
@@ -184,7 +190,7 @@ class NpzDataPath(ArchiveDataPath):
     def exists(self) -> bool:
         if not self.external_path.exists():
             return False
-        return self.internal_path.as_posix().lstrip("/") in np.load("mnist.npz", mmap_mode="r").files
+        return self.internal_path.as_posix().lstrip("/") in np.load(str(self.external_path), mmap_mode="r").files
 
 
 class DatasetPath:
