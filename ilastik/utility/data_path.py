@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import enum
 from types import ClassMethodDescriptorType
-from typing import TypeVar, Sequence, Union, List
+from typing import Tuple, TypeVar, Sequence, Union, List, Type
 from pathlib import PurePosixPath, Path
 import errno
 import glob
@@ -13,7 +13,7 @@ import z5py
 import h5py
 import z5py
 
-from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz
+from lazyflow.utility.pathHelpers import lsH5N5, splitPath, globH5N5, globNpz
 
 
 DP = TypeVar("DP", bound="DataPath")
@@ -81,38 +81,36 @@ class ArchiveDataPath(DataPath):
         super().__init__(str(external_path / self.internal_path.relative_to("/")))
 
     @staticmethod
-    def get_suffixes() -> Sequence[str]:
-        return [suffix for klass in ArchiveDataPath.__subclasses__() for suffix in klass.suffixes()]
+    def is_archive_path(path: str) -> bool:
+        try:
+            ArchiveDataPath.split_archive_path(path)
+            return True
+        except ValueError:
+            return False
 
     @staticmethod
-    def create(path: str) -> "ArchiveDataPath":
-        archive_suffix_regex = r"\.(" + "|".join(ArchiveDataPath.get_suffixes()) + ")(?:$|/)"
+    def split_archive_path(path: str) -> Tuple[Path, PurePosixPath]:
+        archive_suffix_regex = r"\.(" + "|".join(ArchiveDataPath.suffixes()) + ")(?:$|/)"
         components = re.split(archive_suffix_regex, str(path), maxsplit=1, flags=re.IGNORECASE)
         if len(components) != 3:
             raise ValueError(f"Path '{path}' does not look like an archive path")
-        external_path = Path(components[0] + "." + components[1])
-        internal_path = PurePosixPath("/") / components[2]
+        return (Path(components[0] + "." + components[1]), PurePosixPath("/") / components[2])
 
+    @staticmethod
+    def pick_archive_class_for(path: str) -> Type["ArchiveDataPath"]:
+        external_path, _ = ArchiveDataPath.split_archive_path(path)
+        external_suffix = external_path.suffix.lower()[1:]
+        for klass in ArchiveDataPath.__subclasses__():
+            if external_suffix in klass.suffixes():
+                return klass
+        raise ValueError(f"Could not find a subclass of ArchiveDataPath for path {path}")
+
+    @staticmethod
+    def create(path: str) -> "ArchiveDataPath":
+        external_path, internal_path = ArchiveDataPath.split_archive_path(path)
         if internal_path == PurePosixPath("/"):
             raise ValueError(f"Path to archive file has empty path: '{str(external_path) + str(internal_path)}'")
-        external_suffix = external_path.suffix.lower()[1:]
-        if external_suffix in H5DataPath.suffixes():
-            return H5DataPath(external_path=external_path, internal_path=internal_path)
-        if external_suffix in N5DataPath.suffixes():
-            return N5DataPath(external_path=external_path, internal_path=internal_path)
-        if external_suffix in NpzDataPath.suffixes():
-            return NpzDataPath(external_path=external_path, internal_path=internal_path)
-        # this should never happen
-        raise ValueError(f"Unexpected archive suffix in '{str(external_path) + str(internal_path)}'")
-
-    @abstractmethod
-    def glob_internal(self: DP) -> List[DP]:
-        pass
-
-    @classmethod
-    @abstractmethod
-    def suffixes(cls) -> Sequence[str]:
-        pass
+        return ArchiveDataPath.pick_archive_class_for(path)(external_path=external_path, internal_path=internal_path)
 
     def relative_to(self, other: Path) -> "DataPath":
         return self.__class__(self.external_path.relative_to(other), self.internal_path)
@@ -142,11 +140,30 @@ class ArchiveDataPath(DataPath):
             all_paths += [data_path] if (smart and data_path.exists()) else sorted(data_path.glob_internal())
         return all_paths
 
+    @classmethod
+    @abstractmethod
+    def list_internal_paths(cls, path: str) -> List[PurePosixPath]:
+        return ArchiveDataPath.pick_archive_class_for(path).list_internal_paths(path)
+
+    @abstractmethod
+    def glob_internal(self: DP) -> List[DP]:
+        pass
+
+    @classmethod
+    @abstractmethod
+    def suffixes(cls) -> Sequence[str]:
+        return [suffix for klass in ArchiveDataPath.__subclasses__() for suffix in klass.suffixes()]
+
 
 class H5DataPath(ArchiveDataPath):
     @classmethod
     def suffixes(cls) -> Sequence[str]:
         return ["h5", "hdf5", "ilp"]
+
+    @classmethod
+    def list_internal_paths(cls, path: Path) -> List[PurePosixPath]:
+        with h5py.File(path, "r") as f:
+            return sorted([PurePosixPath("/") / p["name"] for p in lsH5N5(f)])
 
     def glob_internal(self) -> Sequence["H5DataPath"]:
         with h5py.File(str(self.external_path), "r") as f:
@@ -167,6 +184,11 @@ class N5DataPath(ArchiveDataPath):
     def suffixes(cls) -> Sequence[str]:
         return ["n5"]
 
+    @classmethod
+    def list_internal_paths(cls, path: Path) -> List[PurePosixPath]:
+        with z5py.File(path, "r") as f:
+            return sorted([PurePosixPath("/") / p["name"] for p in lsH5N5(f)])
+
     def glob_internal(self) -> Sequence["N5DataPath"]:
         with z5py.N5File(str(self.external_path)) as f:
             return [
@@ -186,6 +208,10 @@ class NpzDataPath(ArchiveDataPath):
     def suffixes(cls) -> Sequence[str]:
         return ["npz"]
 
+    @classmethod
+    def list_internal_paths(cls, path: Path) -> List[PurePosixPath]:
+        return sorted([PurePosixPath("/") / p for p in np.load(path, mmap_mode="r").files])
+
     def glob_internal(self) -> Sequence["NpzDataPath"]:
         return [
             NpzDataPath(self.external_path, internal_path=PurePosixPath(p))
@@ -195,7 +221,7 @@ class NpzDataPath(ArchiveDataPath):
     def exists(self) -> bool:
         if not self.external_path.exists():
             return False
-        return self.internal_path.as_posix().lstrip("/") in np.load(str(self.external_path), mmap_mode="r").files
+        return self.internal_path in NpzDataPath.list_internal_paths(self.external_path)
 
 
 class DatasetPath:

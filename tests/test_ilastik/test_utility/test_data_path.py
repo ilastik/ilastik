@@ -6,7 +6,15 @@ import h5py
 import numpy as np
 import z5py
 
-from ilastik.utility.data_path import DataPath, H5DataPath, N5DataPath, SimpleDataPath, NpzDataPath, DatasetPath
+from ilastik.utility.data_path import (
+    ArchiveDataPath,
+    DataPath,
+    H5DataPath,
+    N5DataPath,
+    SimpleDataPath,
+    NpzDataPath,
+    DatasetPath,
+)
 
 
 @pytest.fixture
@@ -81,6 +89,9 @@ def test_globlike_simple_data_path(sample_files_dir: Path):
     ]
 
 
+########################################################
+
+
 def test_non_globlike_h5_data_path(sample_files_dir: Path):
     h5_globlike_file_path = sample_files_dir / "some_h5_file[1].h5/some/data[1]"
     h5_data_path = DataPath.create(str(h5_globlike_file_path))
@@ -122,6 +133,9 @@ def test_internally_and_externally_globlike_h5_data_path_expands_properly(sample
         H5DataPath(sample_files_dir / "some_h5_file_y.hdf5", PurePosixPath("/some/data_z")),
     ]
     assert expanded == expected
+
+
+############################################################
 
 
 def test_externally_globlike_n5_data_path_expands_properly(sample_files_dir: Path):
@@ -188,6 +202,34 @@ def test_internally_and_externally_globlike_npz_data_path_expands_properly(sampl
         NpzDataPath(sample_files_dir / "some_npz_file_y.npz", PurePosixPath("/data_x")),
     ]
     assert expanded == expected
+
+
+###############################################################
+
+
+def test_listing_archive_datasets(sample_files_dir: Path):
+    assert ArchiveDataPath.list_internal_paths(str(sample_files_dir / "some_h5_file_x.hdf5")) == [
+        PurePosixPath("/some/data[1]"),
+        PurePosixPath("/some/data_x"),
+        PurePosixPath("/some/data_y"),
+        PurePosixPath("/some/data_z"),
+    ]
+
+    assert ArchiveDataPath.list_internal_paths(str(sample_files_dir / "some_n5_file_[1].n5")) == [
+        PurePosixPath("/some/data[1]"),
+        PurePosixPath("/some/data_x"),
+        PurePosixPath("/some/data_y"),
+        PurePosixPath("/some/data_z"),
+    ]
+
+    assert ArchiveDataPath.list_internal_paths(str(sample_files_dir / "some_npz_file_x.npz")) == [
+        PurePosixPath("/data_x"),
+        PurePosixPath("/data_y"),
+        PurePosixPath("/data_z"),
+    ]
+
+
+###############################################################
 
 
 def test_dataset_path_from_string(sample_files_dir: Path):
