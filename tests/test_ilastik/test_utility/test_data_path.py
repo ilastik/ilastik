@@ -188,3 +188,39 @@ def test_internally_and_externally_globlike_npz_data_path_expands_properly(sampl
         NpzDataPath(sample_files_dir / "some_npz_file_y.npz", PurePosixPath("/data_x")),
     ]
     assert expanded == expected
+
+
+def test_dataset_path_from_string(sample_files_dir: Path):
+    simple_globlike_path = str(sample_files_dir / "some_file[1].tiff")
+    dsp = DatasetPath.from_string(simple_globlike_path)
+    assert len(dsp.data_paths) == 1 and dsp.data_paths[0] == SimpleDataPath(simple_globlike_path)
+
+    simple_glob_path = str(sample_files_dir / "some_file_[xyz].tiff")
+    dsp = DatasetPath.from_string(simple_glob_path)
+    assert dsp.data_paths == [
+        SimpleDataPath(str(sample_files_dir / "some_file_x.tiff")),
+        SimpleDataPath(str(sample_files_dir / "some_file_y.tiff")),
+        SimpleDataPath(str(sample_files_dir / "some_file_z.tiff")),
+    ]
+
+
+def test_dataset_path_split(sample_files_dir: Path):
+    paths = [
+        sample_files_dir / "some_file[1].tiff",
+        sample_files_dir / "some_h5_file_[xy].hdf5/some/data_[xyz]",
+        sample_files_dir / "some_npz_file_[xy].npz/data_[xyz]",
+    ]
+    dsp_mixed = DatasetPath.split(os.path.pathsep.join(str(p) for p in paths))
+    assert dsp_mixed.data_paths == [
+        SimpleDataPath(str(sample_files_dir / "some_file[1].tiff")),
+        H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data_x")),
+        H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data_y")),
+        H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data_z")),
+        H5DataPath(sample_files_dir / "some_h5_file_y.hdf5", PurePosixPath("/some/data_x")),
+        H5DataPath(sample_files_dir / "some_h5_file_y.hdf5", PurePosixPath("/some/data_y")),
+        H5DataPath(sample_files_dir / "some_h5_file_y.hdf5", PurePosixPath("/some/data_z")),
+        NpzDataPath(sample_files_dir / "some_npz_file_x.npz", PurePosixPath("data_x")),
+        NpzDataPath(sample_files_dir / "some_npz_file_x.npz", PurePosixPath("data_y")),
+        NpzDataPath(sample_files_dir / "some_npz_file_x.npz", PurePosixPath("data_z")),
+        NpzDataPath(sample_files_dir / "some_npz_file_y.npz", PurePosixPath("data_x")),
+    ]

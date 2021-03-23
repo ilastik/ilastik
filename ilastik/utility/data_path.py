@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+import enum
+from types import ClassMethodDescriptorType
 from typing import TypeVar, Sequence, Union, List
 from pathlib import PurePosixPath, Path
 import errno
@@ -44,6 +46,9 @@ class DataPath(ABC):
         return self.raw_path == other.raw_path
 
     def __repr__(self) -> str:
+        return self.raw_path
+
+    def __str__(self) -> str:
         return self.raw_path
 
 
@@ -194,16 +199,29 @@ class NpzDataPath(ArchiveDataPath):
 
 
 class DatasetPath:
+    """A collection of existing DataPaths"""
+
     def __init__(self, data_paths: Sequence[DataPath]):
+        if not data_paths:
+            raise ValueError(f"Empty data paths")
+        assert all(dp.exists() for dp in data_paths)
         self.data_paths = data_paths
 
     @classmethod
-    def from_string(cls, path_str: str, smart: bool = True) -> "DatasetPath":
-        if not smart or Path(path_str).exists():
-            return DatasetPath([DataPath.create(path_str)])
+    def split(cls, path: str, deglob: bool = True) -> "DatasetPath":
+        try:
+            return cls.from_string(path, deglob=deglob)
+        except FileNotFoundError:
+            dataset_paths = [DatasetPath.from_string(segment, deglob=deglob) for segment in path.split(os.path.pathsep)]
+            return DatasetPath([data_path for ds_path in dataset_paths for data_path in ds_path.data_paths])
 
-        data_paths = [DataPath.create(p) for p in path_str.split(os.path.pathsep)]
-        out: List[DataPath] = []
-        for data_path in data_paths:
-            out += [data_path] if data_path.exists() else data_path.glob(smart=smart)
-        return DatasetPath(out)
+    @classmethod
+    def from_string(cls, path: str, deglob: bool = True) -> "DatasetPath":
+        data_path = DataPath.create(path)
+        if data_path.exists():
+            return DatasetPath([data_path])
+        elif deglob:
+            expanded = data_path.glob(smart=True)
+            if expanded:
+                return DatasetPath(expanded)
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
