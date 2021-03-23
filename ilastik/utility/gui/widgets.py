@@ -23,6 +23,7 @@ from typing import Callable, Iterable, Union
 from contextlib import contextmanager
 
 from PyQt5.QtWidgets import QWidget
+from PyQt5.QtCore import QObject
 
 from lazyflow.slot import Slot
 
@@ -64,10 +65,10 @@ def enable_when_ready(
 
 
 @contextmanager
-def silent_widget(widget: QWidget) -> QWidget:
+def silent_qobject(qobject: QObject) -> QObject:
     """Disable notifying connected callbacks/slots."""
-    blocked_status: bool = widget.blockSignals(True)
+    blocked_status: bool = qobject.blockSignals(True)
     try:
-        yield widget
+        yield qobject
     finally:
-        widget.blockSignals(blocked_status)
+        qobject.blockSignals(blocked_status)
