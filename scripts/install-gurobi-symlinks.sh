@@ -21,8 +21,10 @@ fi
 GUROBI_ROOT_DIR="$1"
 if [ `uname` == "Darwin" ]; then
     ILASTIK_RELEASE_DIR="$2/Contents/ilastik-release"
+    SHLIB_EXT="dylib"
 else
     ILASTIK_RELEASE_DIR="$2"
+    SHLIB_EXT="so"
 fi
 
 #
@@ -49,7 +51,7 @@ GUROBI_LIB_DIR=$(echo $GUROBI_ROOT_DIR/lib)
 # Symlink the gurobi libraries into the lib directory
 (
     cd "${ILASTIK_RELEASE_DIR}/lib"
-    for f in $(ls "${GUROBI_LIB_DIR}"/*.so); do
+    for f in $(ls "${GUROBI_LIB_DIR}"/*.${SHLIB_EXT}); do
         echo "Installing link to: ${f}"
         ln -f -s ${f}
     done
