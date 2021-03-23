@@ -282,7 +282,7 @@ class DataSelectionApplet(Applet):
         ignore_training_axistags: bool = False,
         stack_along: str = "z",
         skip_deglobbing: bool = False,
-    ) -> List[Dict[str, DatasetInfo]]:
+    ) -> List[Dict[str, Optional[DatasetInfo]]]:
         if not input_axes or not any(input_axes):
             if ignore_training_axistags or self.num_lanes == 0:
                 input_axes = [None] * len(self.role_names)

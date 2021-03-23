@@ -268,7 +268,7 @@ class DatasetInfo(ABC):
         return PathComponents(Path(path).as_posix()).extension in [".n5"]
 
     @classmethod
-    def fileHasInternalPaths(cls, path: str) -> bool:
+    def fileHasInternalPaths(cls, path: Path) -> bool:
         return cls.pathIsHdf5(path) or cls.pathIsN5(path) or cls.pathIsNpz(path)
 
     @classmethod
