@@ -39,7 +39,7 @@ from PyQt5.QtWidgets import (
 
 from ilastikrag.gui import FeatureSelectionDialog
 
-from ilastik.utility.gui import threadRouted
+from ilastik.utility.gui import threadRouted, silent_qobject
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
@@ -94,6 +94,9 @@ class EdgeTrainingMixin:
 
         # Initialize everything with the operator's initial values
         self.configure_gui_from_operator()
+        # need to call this callback manually, as signals a re blocked in
+        # configure_gui_from_operator()
+        self._handle_live_update_clicked(self.live_update_button.isChecked())
 
     def createDrawerControls(self):
         op = self.topLevelOperatorView
@@ -130,9 +133,9 @@ class EdgeTrainingMixin:
             clicked=self._handle_live_update_clicked,
             enabled=False,
         )
-        configure_update_handlers(self.live_update_button.toggled, op.FreezeCache)
 
-        self.train_from_gt_button.clicked.connect(lambda: op.FreezeClassifier.setValue(False))
+        configure_update_handlers(self.live_update_button.toggled, op.FreezeClassifier)
+        configure_update_handlers(self.train_from_gt_button.toggled, op.TrainRandomForest)
 
         cleanup_fn = op.EdgeLabelsDict.notifyDirty(self.enable_live_update_on_edges_available)
         self.__cleanup_fns.append(cleanup_fn)
@@ -176,6 +179,7 @@ class EdgeTrainingMixin:
 
         return drawer
 
+    @threadRouted
     def enable_live_update_on_edges_available(self, *args, **kwargs):
         any_have_edges = False
         op = self.topLevelOperatorView
@@ -351,16 +355,20 @@ class EdgeTrainingMixin:
     def set_updating(self):
         assert not self._currently_updating
         self._currently_updating = True
-        yield
-        self._currently_updating = False
+        try:
+            yield
+        finally:
+            self._currently_updating = False
 
     def configure_gui_from_operator(self, *args):
         if self._currently_updating:
             return False
         with self.set_updating():
             op = self.topLevelOperatorView
-            self.train_from_gt_button.setEnabled(op.GroundtruthSegmentation.ready())
-            self.live_update_button.setChecked(not op.FreezeClassifier.value)
+            with silent_qobject(self.train_from_gt_button) as w:
+                w.setEnabled(op.GroundtruthSegmentation.ready())
+            with silent_qobject(self.live_update_button) as w:
+                w.setChecked(not op.FreezeClassifier.value)
             if op.FreezeClassifier.value:
                 self.live_update_button.setIcon(QIcon(ilastikIcons.Play))
             else:
@@ -391,8 +399,11 @@ class EdgeTrainingMixin:
         op = self.topLevelOperatorView
         ActionInfo = ShortcutManager.ActionInfo
 
+        superpixels_ready = op.Superpixels.ready()
+        with_training = op.TrainRandomForest.value
+
         # Superpixels -- Edge Labels
-        if op.Superpixels.ready() and op.EdgeLabelsDict.ready():
+        if superpixels_ready and op.EdgeLabelsDict.ready() and with_training:
             edge_labels = op.EdgeLabelsDict.value
             layer = LabelableSegmentationEdgesLayer(
                 createDataSource(op.Superpixels), self.edge_label_pen_table, edge_labels
@@ -421,7 +432,7 @@ class EdgeTrainingMixin:
             del layer
 
         # Superpixels -- Edge Probabilities
-        if op.Superpixels.ready() and op.EdgeProbabilitiesDict.ready():
+        if superpixels_ready and op.EdgeProbabilitiesDict.ready() and with_training:
             layer = SegmentationEdgesLayer(createDataSource(op.Superpixels))
             layer.name = "Edge Probabilities"  # Name is hard-coded in multiple places: grep before changing.
             layer.visible = False
@@ -446,7 +457,7 @@ class EdgeTrainingMixin:
             del layer
 
         # Superpixels -- Edges
-        if op.Superpixels.ready():
+        if superpixels_ready:
             default_pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
             default_pen.setColor(Qt.yellow)
             layer = SegmentationEdgesLayer(createDataSource(op.Superpixels), default_pen)

@@ -44,8 +44,12 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingMixin, LayerView
         self.__cleanup_fns.append(guiutil.enable_when_ready(multicut_box, multicut_required_slots))
 
         def _handle_train_edge_clf_box_clicked():
-            training_box.setEnabled(self.train_edge_clf_box.isChecked())
-            op.TrainRandomForest.setValue(self.train_edge_clf_box.isChecked())
+            checked = self.train_edge_clf_box.isChecked()
+            training_box.setEnabled(checked)
+            op.TrainRandomForest.setValue(checked)
+            if not checked:
+                op.FreezeClassifier.setValue(True)
+            self.updateAllLayers()
 
         self.train_edge_clf_box.toggled.connect(_handle_train_edge_clf_box_clicked)
 
