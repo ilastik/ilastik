@@ -411,8 +411,19 @@ class OpPredictEdgeProbabilities(Operator):
             classifier = self.EdgeClassifier.value
 
             # Classifier can be None if no labels have been selected
-            if classifier is None or len(classifier.known_classes) < 2:
+            if classifier is None or len(classifier.known_classes) == 0:
                 result[0] = np.zeros((len(edge_features_df),), dtype=np.float32)
+                return
+
+            known_classes = classifier.known_classes
+            assert set(known_classes).issubset([1, 2])
+            if len(known_classes) == 1:
+                logger.info("Returning edge probabilities for only annotated class...")
+                if known_classes[0] == 1:
+                    probabilities = np.zeros((len(edge_features_df),), dtype=np.float32)
+                else:
+                    probabilities = np.ones((len(edge_features_df),), dtype=np.float32)
+                result[0] = probabilities
                 return
 
             logger.info("Predicting edge probabilities...")
