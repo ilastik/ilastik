@@ -1,12 +1,13 @@
 from abc import ABC, abstractmethod
 import enum
 from types import ClassMethodDescriptorType
-from typing import Tuple, TypeVar, Sequence, Union, List, Type
+from typing import Tuple, TypeVar, Sequence, Optional, List, Type
 from pathlib import PurePosixPath, Path
 import errno
 import glob
 import os
 import re
+import itertools
 
 import numpy as np
 import z5py
@@ -20,15 +21,23 @@ DP = TypeVar("DP", bound="DataPath")
 
 
 class DataPath(ABC):
-    def __init__(self, raw_path: str):
-        self.raw_path = raw_path
+    def __init__(self, file_path: Path):
+        self.file_path = file_path
+        self.raw_file_path = str(file_path)
+
+    def is_under(self, path: Path):
+        try:
+            self.file_path.relative_to(path)
+            return True
+        except ValueError:
+            return False
 
     @staticmethod
     def create(path: str) -> "DataPath":
         try:
             return ArchiveDataPath.create(path)
         except ValueError:
-            return SimpleDataPath(path)
+            return SimpleDataPath(Path(path))
 
     @abstractmethod
     def exists(self) -> bool:
@@ -42,48 +51,67 @@ class DataPath(ABC):
     def glob(self, smart: bool = True) -> Sequence["DataPath"]:
         pass
 
+    def __hash__(self) -> int:
+        return hash(self.raw_file_path)
+
     def __eq__(self, other: "DataPath") -> bool:
-        return self.raw_path == other.raw_path
+        return str(self) == str(other)
 
     def __repr__(self) -> str:
-        return self.raw_path
+        return str(self)
 
     def __str__(self) -> str:
-        return self.raw_path
+        return self.raw_file_path
+
+    def __lt__(self, other: "DataPath") -> bool:
+        return str(self) < str(other)
 
 
 class SimpleDataPath(DataPath):
-    def __init__(self, raw_path: str):
-        super().__init__(raw_path=raw_path)
-        self.path = Path(raw_path)
+    def __init__(self, file_path: Path):
+        super().__init__(file_path=file_path)
 
     def exists(self) -> bool:
-        return self.path.exists()
+        return self.file_path.exists()
 
     def relative_to(self, other: Path) -> "SimpleDataPath":
-        return SimpleDataPath(str(self.path.relative_to(other)))
+        return SimpleDataPath(self.file_path.relative_to(other))
 
     def glob(self, smart: bool = True) -> Sequence["DataPath"]:
         if smart and self.exists():
             return [self]
-        expanded_paths = [DataPath.create(p) for p in glob.glob(str(self.path))]
+        expanded_paths = [DataPath.create(p) for p in glob.glob(self.raw_file_path)]
         if not expanded_paths:
-            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(self.path))
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(self.file_path))
         return expanded_paths
 
 
+ADP = TypeVar("ADP", bound="ArchiveDataPath")
+
+
 class ArchiveDataPath(DataPath):
-    def __init__(self, external_path: Path, internal_path: PurePosixPath):
-        if external_path.suffix.lower()[1:] not in self.suffixes():
+    def __init__(self, file_path: Path, internal_path: PurePosixPath):
+        if file_path.suffix.lower()[1:] not in self.suffixes():
             raise ValueError(f"External path for {self.__class__.__name__} must end in {self.suffixes()}")
-        self.external_path = external_path
+        super().__init__(file_path=file_path)
         self.internal_path = PurePosixPath("/") / internal_path
-        super().__init__(str(external_path / self.internal_path.relative_to("/")))
+
+    def __str__(self) -> str:
+        return str(self.file_path / self.internal_path.relative_to("/"))
+
+    def with_internal_path(self: ADP, internal_path: PurePosixPath) -> ADP:
+        return self.__class__(self.file_path, internal_path=internal_path)
+
+    def siblings(self: ADP) -> List[ADP]:
+        return [
+            self.__class__(self.file_path, internal_path)
+            for internal_path in self.list_internal_paths(str(self.file_path))
+        ]
 
     @staticmethod
     def is_archive_path(path: str) -> bool:
         try:
-            ArchiveDataPath.split_archive_path(path)
+            ArchiveDataPath.create(path)
             return True
         except ValueError:
             return False
@@ -98,8 +126,8 @@ class ArchiveDataPath(DataPath):
 
     @staticmethod
     def pick_archive_class_for(path: str) -> Type["ArchiveDataPath"]:
-        external_path, _ = ArchiveDataPath.split_archive_path(path)
-        external_suffix = external_path.suffix.lower()[1:]
+        file_path, _ = ArchiveDataPath.split_archive_path(path)
+        external_suffix = file_path.suffix.lower()[1:]
         for klass in ArchiveDataPath.__subclasses__():
             if external_suffix in klass.suffixes():
                 return klass
@@ -107,33 +135,24 @@ class ArchiveDataPath(DataPath):
 
     @staticmethod
     def create(path: str) -> "ArchiveDataPath":
-        external_path, internal_path = ArchiveDataPath.split_archive_path(path)
+        file_path, internal_path = ArchiveDataPath.split_archive_path(path)
         if internal_path == PurePosixPath("/"):
-            raise ValueError(f"Path to archive file has empty path: '{str(external_path) + str(internal_path)}'")
-        return ArchiveDataPath.pick_archive_class_for(path)(external_path=external_path, internal_path=internal_path)
+            raise ValueError(f"Path to archive file has empty path: '{str(file_path) + str(internal_path)}'")
+        return ArchiveDataPath.pick_archive_class_for(path)(file_path=file_path, internal_path=internal_path)
 
     def relative_to(self, other: Path) -> "DataPath":
-        return self.__class__(self.external_path.relative_to(other), self.internal_path)
-
-    def __lt__(self, other: "DataPath") -> bool:
-        if isinstance(other, ArchiveDataPath):
-            return (str(self.external_path), str(self.internal_path)) < (
-                str(other.external_path),
-                str(other.internal_path),
-            )
-        else:
-            return self.raw_path < other.raw_path
+        return self.__class__(self.file_path.relative_to(other), self.internal_path)
 
     def glob(self, smart: bool = True) -> Sequence["ArchiveDataPath"]:
-        if smart and self.external_path.exists():
+        if smart and self.file_path.exists():
             externally_expanded_paths = [self]
         else:
             externally_expanded_paths = [
-                self.__class__(external_path=Path(ep), internal_path=self.internal_path)
-                for ep in glob.glob(str(self.external_path))
+                self.__class__(file_path=Path(ep), internal_path=self.internal_path)
+                for ep in glob.glob(str(self.file_path))
             ]
             if not externally_expanded_paths:
-                raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(self.external_path))
+                raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(self.file_path))
 
         all_paths: List["ArchiveDataPath"] = []
         for data_path in sorted(externally_expanded_paths):
@@ -166,16 +185,16 @@ class H5DataPath(ArchiveDataPath):
             return sorted([PurePosixPath("/") / p["name"] for p in lsH5N5(f)])
 
     def glob_internal(self) -> Sequence["H5DataPath"]:
-        with h5py.File(str(self.external_path), "r") as f:
+        with h5py.File(str(self.file_path), "r") as f:
             return [
-                H5DataPath(self.external_path, internal_path=PurePosixPath(p))
+                H5DataPath(self.file_path, internal_path=PurePosixPath(p))
                 for p in globH5N5(f, str(self.internal_path).lstrip("/"))
             ]
 
     def exists(self) -> bool:
-        if not self.external_path.exists():
+        if not self.file_path.exists():
             return False
-        with h5py.File(str(self.external_path), "r") as f:
+        with h5py.File(str(self.file_path), "r") as f:
             return self.internal_path.as_posix() in f
 
 
@@ -190,16 +209,16 @@ class N5DataPath(ArchiveDataPath):
             return sorted([PurePosixPath("/") / p["name"] for p in lsH5N5(f)])
 
     def glob_internal(self) -> Sequence["N5DataPath"]:
-        with z5py.N5File(str(self.external_path)) as f:
+        with z5py.N5File(str(self.file_path)) as f:
             return [
-                N5DataPath(self.external_path, internal_path=PurePosixPath(p))
+                N5DataPath(self.file_path, internal_path=PurePosixPath(p))
                 for p in globH5N5(f, str(self.internal_path).lstrip("/"))
             ]
 
     def exists(self) -> bool:
-        if not self.external_path.exists():
+        if not self.file_path.exists():
             return False
-        with z5py.N5File(str(self.external_path)) as f:
+        with z5py.N5File(str(self.file_path)) as f:
             return self.internal_path.as_posix() in f
 
 
@@ -214,18 +233,18 @@ class NpzDataPath(ArchiveDataPath):
 
     def glob_internal(self) -> Sequence["NpzDataPath"]:
         return [
-            NpzDataPath(self.external_path, internal_path=PurePosixPath(p))
-            for p in globNpz(str(self.external_path), str(self.internal_path).lstrip("/"))
+            NpzDataPath(self.file_path, internal_path=PurePosixPath(p))
+            for p in globNpz(str(self.file_path), str(self.internal_path).lstrip("/"))
         ]
 
     def exists(self) -> bool:
-        if not self.external_path.exists():
+        if not self.file_path.exists():
             return False
-        return self.internal_path in NpzDataPath.list_internal_paths(self.external_path)
+        return self.internal_path in NpzDataPath.list_internal_paths(self.file_path)
 
 
 class DatasetPath:
-    """A collection of existing DataPaths"""
+    """A collection of DataPaths that are present in the filesystem"""
 
     def __init__(self, data_paths: Sequence[DataPath]):
         if not data_paths:
@@ -233,17 +252,41 @@ class DatasetPath:
         assert all(dp.exists() for dp in data_paths)
         self.data_paths = data_paths
 
+    def is_under(self, path: Path):
+        return all(dp.is_under(path) for dp in self.data_paths)
+
+    def with_internal_path(self, internal_path: PurePosixPath) -> "DatasetPath":
+        return DatasetPath(
+            [dp.with_internal_path(internal_path) if isinstance(dp, ArchiveDataPath) else dp for dp in self.data_paths]
+        )
+
+    def archive_siblings(self) -> Sequence[DataPath]:
+        out: List[DataPath] = []
+        for dp in self.data_paths:
+            if isinstance(dp, ArchiveDataPath):
+                out += dp.siblings()
+        return out
+
+    def archive_internal_paths(self) -> List[PurePosixPath]:
+        return [dp.internal_path for dp in self.data_paths if isinstance(dp, ArchiveDataPath)]
+
+    def to_strings(self) -> List[str]:
+        return [str(dp) for dp in self.data_paths]
+
     @classmethod
-    def split(cls, path: str, deglob: bool = True) -> "DatasetPath":
+    def split(cls, path: str, *, deglob: bool = True, cwd: Optional[Path] = None) -> "DatasetPath":
         try:
             return cls.from_string(path, deglob=deglob)
         except FileNotFoundError:
-            dataset_paths = [DatasetPath.from_string(segment, deglob=deglob) for segment in path.split(os.path.pathsep)]
+            dataset_paths = [
+                DatasetPath.from_string(segment, deglob=deglob, cwd=cwd) for segment in path.split(os.path.pathsep)
+            ]
             return DatasetPath([data_path for ds_path in dataset_paths for data_path in ds_path.data_paths])
 
     @classmethod
-    def from_string(cls, path: str, deglob: bool = True) -> "DatasetPath":
-        data_path = DataPath.create(path)
+    def from_string(cls, path: str, *, deglob: bool = True, cwd: Optional[Path] = None) -> "DatasetPath":
+        effective_cwd = cwd or Path.cwd()
+        data_path = DataPath.create(str(effective_cwd / path))
         if data_path.exists():
             return DatasetPath([data_path])
         elif deglob:

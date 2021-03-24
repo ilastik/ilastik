@@ -83,9 +83,9 @@ def test_non_globlike_simple_data_path(sample_files_dir: Path):
 
 
 def test_globlike_simple_data_path(sample_files_dir: Path):
-    glob_path = SimpleDataPath(str(sample_files_dir / "some_file_[xyz].tiff"))
+    glob_path = SimpleDataPath(sample_files_dir / "some_file_[xyz].tiff")
     assert glob_path.glob() == [
-        SimpleDataPath(str(sample_files_dir / p)) for p in ("some_file_x.tiff", "some_file_y.tiff", "some_file_z.tiff")
+        SimpleDataPath(sample_files_dir / p) for p in ("some_file_x.tiff", "some_file_y.tiff", "some_file_z.tiff")
     ]
 
 
@@ -233,16 +233,16 @@ def test_listing_archive_datasets(sample_files_dir: Path):
 
 
 def test_dataset_path_from_string(sample_files_dir: Path):
-    simple_globlike_path = str(sample_files_dir / "some_file[1].tiff")
-    dsp = DatasetPath.from_string(simple_globlike_path)
+    simple_globlike_path = sample_files_dir / "some_file[1].tiff"
+    dsp = DatasetPath.from_string(str(simple_globlike_path))
     assert len(dsp.data_paths) == 1 and dsp.data_paths[0] == SimpleDataPath(simple_globlike_path)
 
     simple_glob_path = str(sample_files_dir / "some_file_[xyz].tiff")
     dsp = DatasetPath.from_string(simple_glob_path)
     assert dsp.data_paths == [
-        SimpleDataPath(str(sample_files_dir / "some_file_x.tiff")),
-        SimpleDataPath(str(sample_files_dir / "some_file_y.tiff")),
-        SimpleDataPath(str(sample_files_dir / "some_file_z.tiff")),
+        SimpleDataPath(sample_files_dir / "some_file_x.tiff"),
+        SimpleDataPath(sample_files_dir / "some_file_y.tiff"),
+        SimpleDataPath(sample_files_dir / "some_file_z.tiff"),
     ]
 
 
@@ -254,7 +254,7 @@ def test_dataset_path_split(sample_files_dir: Path):
     ]
     dsp_mixed = DatasetPath.split(os.path.pathsep.join(str(p) for p in paths))
     assert dsp_mixed.data_paths == [
-        SimpleDataPath(str(sample_files_dir / "some_file[1].tiff")),
+        SimpleDataPath(sample_files_dir / "some_file[1].tiff"),
         H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data_x")),
         H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data_y")),
         H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data_z")),
@@ -266,3 +266,33 @@ def test_dataset_path_split(sample_files_dir: Path):
         NpzDataPath(sample_files_dir / "some_npz_file_x.npz", PurePosixPath("data_z")),
         NpzDataPath(sample_files_dir / "some_npz_file_y.npz", PurePosixPath("data_x")),
     ]
+
+
+def test_getting_archive_siblings(sample_files_dir: Path):
+    dsp = DatasetPath(
+        [
+            SimpleDataPath(sample_files_dir / "some_file[1].tiff"),
+            H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data_x")),
+            NpzDataPath(sample_files_dir / "some_npz_file_x.npz", PurePosixPath("/data_x")),
+        ]
+    )
+    assert dsp.archive_siblings() == [
+        H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data[1]")),
+        H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data_x")),
+        H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data_y")),
+        H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data_z")),
+        NpzDataPath(sample_files_dir / "some_npz_file_x.npz", PurePosixPath("/data_x")),
+        NpzDataPath(sample_files_dir / "some_npz_file_x.npz", PurePosixPath("/data_y")),
+        NpzDataPath(sample_files_dir / "some_npz_file_x.npz", PurePosixPath("/data_z")),
+    ]
+
+
+def test_is_under(sample_files_dir: Path):
+    dsp = DatasetPath(
+        [
+            SimpleDataPath(sample_files_dir / "some_file[1].tiff"),
+            H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data_x")),
+            NpzDataPath(sample_files_dir / "some_npz_file_x.npz", PurePosixPath("/data_x")),
+        ]
+    )
+    assert dsp.is_under(sample_files_dir)
