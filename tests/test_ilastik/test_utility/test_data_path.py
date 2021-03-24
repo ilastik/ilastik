@@ -296,3 +296,18 @@ def test_is_under(sample_files_dir: Path):
         ]
     )
     assert dsp.is_under(sample_files_dir)
+
+
+def test_is_archive(sample_files_dir: Path):
+    assert ArchiveDataPath.is_archive_path("/blas/bles.h5/some/data")
+    assert not ArchiveDataPath.is_archive_path("/blas/bles.tiff")
+
+
+def test_common_paths(sample_files_dir: Path):
+    dsp1 = DatasetPath([H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data_x"))])
+    dsp2 = DatasetPath([N5DataPath(sample_files_dir / "some_n5_file_y.n5", PurePosixPath("/some/data_x"))])
+    dsp3_no_internals = DatasetPath([SimpleDataPath(sample_files_dir / "some_file_z.tiff")])
+    assert DatasetPath.common_internal_paths([dsp1, dsp2, dsp3_no_internals]) == [
+        PurePosixPath("/some/data[1]"),
+        PurePosixPath("/some/data_x"),
+    ]

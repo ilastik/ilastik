@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 import enum
-from types import ClassMethodDescriptorType
-from typing import Tuple, TypeVar, Sequence, Optional, List, Type
+from typing import Set, Tuple, TypeVar, Sequence, Optional, List, Type, Iterable
 from pathlib import PurePosixPath, Path
 import errno
 import glob
@@ -252,20 +251,50 @@ class DatasetPath:
         assert all(dp.exists() for dp in data_paths)
         self.data_paths = data_paths
 
+    def archive_datapaths(self) -> Iterable[ArchiveDataPath]:
+        return (dp for dp in self.data_paths if isinstance(dp, ArchiveDataPath))
+
     def is_under(self, path: Path):
         return all(dp.is_under(path) for dp in self.data_paths)
 
     def with_internal_path(self, internal_path: PurePosixPath) -> "DatasetPath":
-        return DatasetPath(
-            [dp.with_internal_path(internal_path) if isinstance(dp, ArchiveDataPath) else dp for dp in self.data_paths]
-        )
+        updated_data_paths: List[DataPath] = []
+        for dp in self.data_paths:
+            if isinstance(dp, ArchiveDataPath):
+                new_dp = dp.with_internal_path(internal_path)
+                if not new_dp.exists():
+                    raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(new_dp))
+                updated_data_paths.append(new_dp)
+            else:
+                updated_data_paths.append(dp)
+        return DatasetPath(updated_data_paths)
 
-    def archive_siblings(self) -> Sequence[DataPath]:
-        out: List[DataPath] = []
+    @classmethod
+    def common_internal_paths(cls, dataset_paths: Iterable["DatasetPath"]) -> List[PurePosixPath]:
+        """Finds a list of common internal paths that exist in all ArchiveDataPaths contained within dataset_paths.
+        Any of the returned paths can be safely used with any of the dataset_paths via the with_internal_path method"""
+        out: Optional[Set[PurePosixPath]] = None
+        for dataset_path in dataset_paths:
+            for data_path in dataset_path.archive_datapaths():
+                internal_paths = set(sibling.internal_path for sibling in data_path.siblings())
+                if out is None:
+                    out = internal_paths
+                else:
+                    out &= internal_paths
+        return sorted(out or [])
+
+    def archives(self) -> List[Path]:
+        return sorted(set(dp.file_path for dp in self.data_paths if isinstance(dp, ArchiveDataPath)))
+
+    def archive_siblings(self) -> Sequence[ArchiveDataPath]:
+        out: List[ArchiveDataPath] = []
         for dp in self.data_paths:
             if isinstance(dp, ArchiveDataPath):
                 out += dp.siblings()
         return out
+
+    def uses_archive(self) -> bool:
+        return any(isinstance(dp, ArchiveDataPath) for dp in self.data_paths)
 
     def archive_internal_paths(self) -> List[PurePosixPath]:
         return [dp.internal_path for dp in self.data_paths if isinstance(dp, ArchiveDataPath)]
