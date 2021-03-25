@@ -95,6 +95,9 @@ class OpEdgeTrainingWithMulticut(Operator):
     def propagateDirty(self, slot, subindex, roi):
         pass
 
+    def clear_caches(self, lane_index):
+        self.opEdgeTraining.clear_caches(lane_index)
+
     ##
     ## MultiLaneOperatorABC
     ##
