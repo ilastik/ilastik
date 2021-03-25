@@ -26,7 +26,7 @@ import re
 import fnmatch
 import errno
 import pathlib
-from typing import List
+from typing import List, Dict, Optional
 
 import h5py
 import z5py
@@ -353,7 +353,7 @@ def mkdir_p(path):
             raise
 
 
-def lsH5N5(h5N5FileObject, minShape=2, maxShape=5):
+def lsH5N5(h5N5FileObject, minShape=2, maxShape=5) -> List[Dict[str, str]]:
     """Generates dataset list of given h5py or z5py file object
 
     Args:
@@ -380,7 +380,7 @@ def lsH5N5(h5N5FileObject, minShape=2, maxShape=5):
     return listOfDatasets
 
 
-def globH5N5(fileObject, globString):
+def globH5N5(fileObject, globString) -> Optional[List[str]]:
     """
     globs a hdf5/n5 file like a file system for datasets
 
