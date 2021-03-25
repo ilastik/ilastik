@@ -222,6 +222,11 @@ if True:
             edge_ids = rag.edge_ids
             edge_probabilities = self.EdgeProbabilities.value
 
+            if edge_probabilities is None:
+                # This can happen when the cache doesn't have data yet.
+                result[0] = {}
+                return
+
             # 0: edge is "inactive", nodes belong to the same segment
             # 1: edge is "active", nodes belong to separate segments
             edge_labels_from_nodes = (node_labels[rag.edge_ids[:, 0]] != node_labels[rag.edge_ids[:, 1]]).view(np.uint8)
