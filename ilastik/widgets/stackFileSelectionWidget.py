@@ -139,11 +139,10 @@ class StackFileSelectionWidget(QDialog):
         self.directoryEdit.setText(directory)
         try:
             globstring = self._getGlobString(directory)
-        except StackFileSelectionWidget.DetermineStackError as e:
-            QMessageBox.warning(self, "Invalid selection", str(e))
-        if globstring:
             self.patternEdit.setText(globstring)
             self._applyPattern()
+        except StackFileSelectionWidget.DetermineStackError as e:
+            QMessageBox.warning(self, "Invalid selection", str(e))
 
     def _getGlobString(self, directory):
         all_filenames = []
@@ -395,6 +394,8 @@ class StackFileSelectionWidget(QDialog):
 
         for f in self.selectedFiles:
             self.fileListWidget.addItem(f)
+
+        self.okButton.setEnabled(bool(files))
 
     def eventFilter(self, watched, event):
         if watched == self.patternEdit:
