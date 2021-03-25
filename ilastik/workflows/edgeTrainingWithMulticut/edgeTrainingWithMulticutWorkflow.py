@@ -254,6 +254,14 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         opEdgeTrainingWithMulticut.GroundtruthSegmentation.connect(opGroundtruthCache.Output)
         opEdgeTrainingWithMulticut.WatershedSelectedInput.connect(opWsdt.SelectedInput)
 
+        def _invalidate_cache_on_sp_change(*args, **kwargs):
+            op = opEdgeTrainingWithMulticut
+            print("Setting the cache dirty!", args, kwargs)
+            opEdgeTrainingWithMulticut.clear_caches(op.current_view_index())
+
+        opSuperpixelsSelect.Output.notifyDirty(_invalidate_cache_on_sp_change)
+        opSuperpixelsSelect.Output.notifyDirty(lambda *x, **xx: print("dirty"))
+
         # DataExport inputs
         opDataExport.RawData.connect(opDataSelection.ImageGroup[self.DATA_ROLE_RAW])
         opDataExport.RawDatasetInfo.connect(opDataSelection.DatasetGroup[self.DATA_ROLE_RAW])
