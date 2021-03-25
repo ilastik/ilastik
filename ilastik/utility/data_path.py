@@ -1,21 +1,18 @@
 from abc import ABC, abstractmethod
-import enum
 from typing import Set, Tuple, TypeVar, Sequence, Optional, List, Type, Iterable
 from pathlib import PurePosixPath, Path
 import errno
 import glob
 import os
 import re
-import itertools
 
 import numpy as np
 import z5py
 import h5py
-import z5py
 
-from lazyflow.utility.pathHelpers import lsH5N5, splitPath, globH5N5, globNpz
+from lazyflow.utility.pathHelpers import lsH5N5, globH5N5, globNpz
 
-
+# pyright: strict
 DP = TypeVar("DP", bound="DataPath")
 
 
@@ -103,8 +100,7 @@ class ArchiveDataPath(DataPath):
 
     def siblings(self: ADP) -> List[ADP]:
         return [
-            self.__class__(self.file_path, internal_path)
-            for internal_path in self.list_internal_paths(str(self.file_path))
+            self.__class__(self.file_path, internal_path) for internal_path in self.list_internal_paths(self.file_path)
         ]
 
     @staticmethod
@@ -160,11 +156,11 @@ class ArchiveDataPath(DataPath):
 
     @classmethod
     @abstractmethod
-    def list_internal_paths(cls, path: str) -> List[PurePosixPath]:
-        return ArchiveDataPath.pick_archive_class_for(path).list_internal_paths(path)
+    def list_internal_paths(cls, path: Path) -> List[PurePosixPath]:
+        return ArchiveDataPath.pick_archive_class_for(str(path)).list_internal_paths(path)
 
     @abstractmethod
-    def glob_internal(self: DP) -> List[DP]:
+    def glob_internal(self: DP) -> Sequence[DP]:
         pass
 
     @classmethod
@@ -187,7 +183,7 @@ class H5DataPath(ArchiveDataPath):
         with h5py.File(str(self.file_path), "r") as f:
             return [
                 H5DataPath(self.file_path, internal_path=PurePosixPath(p))
-                for p in globH5N5(f, str(self.internal_path).lstrip("/"))
+                for p in globH5N5(f, str(self.internal_path).lstrip("/")) or []
             ]
 
     def exists(self) -> bool:
@@ -211,7 +207,7 @@ class N5DataPath(ArchiveDataPath):
         with z5py.N5File(str(self.file_path)) as f:
             return [
                 N5DataPath(self.file_path, internal_path=PurePosixPath(p))
-                for p in globH5N5(f, str(self.internal_path).lstrip("/"))
+                for p in globH5N5(f, str(self.internal_path).lstrip("/")) or []
             ]
 
     def exists(self) -> bool:
@@ -251,6 +247,12 @@ class DatasetPath:
         assert all(dp.exists() for dp in data_paths)
         self.data_paths = data_paths
 
+    def __repr__(self) -> str:
+        return f"<DatasetPath {self.data_paths}>"
+
+    def file_paths(self) -> List[Path]:
+        return [dp.file_path for dp in self.data_paths]
+
     def archive_datapaths(self) -> Iterable[ArchiveDataPath]:
         return (dp for dp in self.data_paths if isinstance(dp, ArchiveDataPath))
 
@@ -258,21 +260,28 @@ class DatasetPath:
         return all(dp.is_under(path) for dp in self.data_paths)
 
     def with_internal_path(self, internal_path: PurePosixPath) -> "DatasetPath":
+        seen_files: Set[Path] = set()
         updated_data_paths: List[DataPath] = []
         for dp in self.data_paths:
-            if isinstance(dp, ArchiveDataPath):
+            if not isinstance(dp, ArchiveDataPath):
+                updated_data_paths.append(dp)
+                continue
+            else:
+                if dp.file_path in seen_files:
+                    raise ValueError(
+                        f"Switching to internal path {internal_path} would cause repeated DataPaths in {self}"
+                    )
+                seen_files.add(dp.file_path)
                 new_dp = dp.with_internal_path(internal_path)
                 if not new_dp.exists():
                     raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(new_dp))
                 updated_data_paths.append(new_dp)
-            else:
-                updated_data_paths.append(dp)
-        return DatasetPath(updated_data_paths)
+        return DatasetPath(sorted(updated_data_paths))
 
     @classmethod
     def common_internal_paths(cls, dataset_paths: Iterable["DatasetPath"]) -> List[PurePosixPath]:
         """Finds a list of common internal paths that exist in all ArchiveDataPaths contained within dataset_paths.
-        Any of the returned paths can be safely used with any of the dataset_paths via the with_internal_path method"""
+        Any of the returned paths can be used with any of the dataset_paths via the with_internal_path method"""
         out: Optional[Set[PurePosixPath]] = None
         for dataset_path in dataset_paths:
             for data_path in dataset_path.archive_datapaths():
@@ -303,17 +312,19 @@ class DatasetPath:
         return [str(dp) for dp in self.data_paths]
 
     @classmethod
-    def split(cls, path: str, *, deglob: bool = True, cwd: Optional[Path] = None) -> "DatasetPath":
+    def split(cls, path: str, *, deglob: bool, cwd: Optional[Path] = None) -> "DatasetPath":
         try:
             return cls.from_string(path, deglob=deglob)
         except FileNotFoundError:
-            dataset_paths = [
-                DatasetPath.from_string(segment, deglob=deglob, cwd=cwd) for segment in path.split(os.path.pathsep)
-            ]
-            return DatasetPath([data_path for ds_path in dataset_paths for data_path in ds_path.data_paths])
+            return DatasetPath.from_strings(path.split(os.path.pathsep), deglob=deglob, cwd=cwd)
 
     @classmethod
-    def from_string(cls, path: str, *, deglob: bool = True, cwd: Optional[Path] = None) -> "DatasetPath":
+    def from_strings(cls, paths: Iterable[str], *, deglob: bool, cwd: Optional[Path] = None) -> "DatasetPath":
+        dataset_paths = [DatasetPath.from_string(path, deglob=deglob, cwd=cwd) for path in paths]
+        return DatasetPath([data_path for ds_path in dataset_paths for data_path in ds_path.data_paths])
+
+    @classmethod
+    def from_string(cls, path: str, *, deglob: bool, cwd: Optional[Path] = None) -> "DatasetPath":
         effective_cwd = cwd or Path.cwd()
         data_path = DataPath.create(str(effective_cwd / path))
         if data_path.exists():

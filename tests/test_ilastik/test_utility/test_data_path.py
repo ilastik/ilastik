@@ -1,4 +1,4 @@
-import pytest
+import pytest  # type: ignore
 import os
 from pathlib import Path, PurePosixPath
 
@@ -17,7 +17,7 @@ from ilastik.utility.data_path import (
 )
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore
 def sample_files_dir(tmpdir) -> Path:
     samples_dir = Path(tmpdir / "samples")
     os.mkdir(samples_dir)
@@ -208,21 +208,21 @@ def test_internally_and_externally_globlike_npz_data_path_expands_properly(sampl
 
 
 def test_listing_archive_datasets(sample_files_dir: Path):
-    assert ArchiveDataPath.list_internal_paths(str(sample_files_dir / "some_h5_file_x.hdf5")) == [
+    assert ArchiveDataPath.list_internal_paths(sample_files_dir / "some_h5_file_x.hdf5") == [
         PurePosixPath("/some/data[1]"),
         PurePosixPath("/some/data_x"),
         PurePosixPath("/some/data_y"),
         PurePosixPath("/some/data_z"),
     ]
 
-    assert ArchiveDataPath.list_internal_paths(str(sample_files_dir / "some_n5_file_[1].n5")) == [
+    assert ArchiveDataPath.list_internal_paths(sample_files_dir / "some_n5_file_[1].n5") == [
         PurePosixPath("/some/data[1]"),
         PurePosixPath("/some/data_x"),
         PurePosixPath("/some/data_y"),
         PurePosixPath("/some/data_z"),
     ]
 
-    assert ArchiveDataPath.list_internal_paths(str(sample_files_dir / "some_npz_file_x.npz")) == [
+    assert ArchiveDataPath.list_internal_paths(sample_files_dir / "some_npz_file_x.npz") == [
         PurePosixPath("/data_x"),
         PurePosixPath("/data_y"),
         PurePosixPath("/data_z"),
@@ -234,11 +234,11 @@ def test_listing_archive_datasets(sample_files_dir: Path):
 
 def test_dataset_path_from_string(sample_files_dir: Path):
     simple_globlike_path = sample_files_dir / "some_file[1].tiff"
-    dsp = DatasetPath.from_string(str(simple_globlike_path))
+    dsp = DatasetPath.from_string(str(simple_globlike_path), deglob=True)
     assert len(dsp.data_paths) == 1 and dsp.data_paths[0] == SimpleDataPath(simple_globlike_path)
 
     simple_glob_path = str(sample_files_dir / "some_file_[xyz].tiff")
-    dsp = DatasetPath.from_string(simple_glob_path)
+    dsp = DatasetPath.from_string(simple_glob_path, deglob=True)
     assert dsp.data_paths == [
         SimpleDataPath(sample_files_dir / "some_file_x.tiff"),
         SimpleDataPath(sample_files_dir / "some_file_y.tiff"),
@@ -252,7 +252,7 @@ def test_dataset_path_split(sample_files_dir: Path):
         sample_files_dir / "some_h5_file_[xy].hdf5/some/data_[xyz]",
         sample_files_dir / "some_npz_file_[xy].npz/data_[xyz]",
     ]
-    dsp_mixed = DatasetPath.split(os.path.pathsep.join(str(p) for p in paths))
+    dsp_mixed = DatasetPath.split(os.path.pathsep.join(str(p) for p in paths), deglob=True)
     assert dsp_mixed.data_paths == [
         SimpleDataPath(sample_files_dir / "some_file[1].tiff"),
         H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data_x")),
