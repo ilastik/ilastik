@@ -551,10 +551,11 @@ def opLabelArray():
 
 
 def testCompression(tmpdir, opLabelArray):
-    def has_uncompressed_dataset(obj_name, obj):
-        check = any(pref in obj_name for pref in ["block", "data"])
-        if check and isinstance(obj, h5py.Dataset) and not obj.compression:
+    def uncompressed_dataset_name(obj_name, obj):
+        dataset_name_matches = obj_name == "data" or obj_name.split("/")[-1].startswith("block")
+        if isinstance(obj, h5py.Dataset) and dataset_name_matches and obj.compression is None:
             return obj_name
+        return None
 
     h5_filepath_no_compression = tmpdir / "serial_blockslot_no-compression.h5"
     h5_filepath_compressed = tmpdir / "serial_blockslot_compressed.h5"
@@ -570,7 +571,7 @@ def testCompression(tmpdir, opLabelArray):
     with h5py.File(h5_filepath_no_compression, "w") as f:
         label_group = f.create_group("label_data")
         slotSerializer_no_compression.serialize(label_group)
-        uncompressed = label_group.visititems(has_uncompressed_dataset)
+        uncompressed = label_group.visititems(uncompressed_dataset_name)
         assert uncompressed, f"Expected uncompressed dataset"
 
     assert h5_filepath_no_compression.exists()
@@ -578,12 +579,10 @@ def testCompression(tmpdir, opLabelArray):
     with h5py.File(h5_filepath_compressed, "w") as f:
         label_group = f.create_group("label_data")
         slotSerializer_compressed.serialize(label_group)
-        uncompressed = label_group.visititems(has_uncompressed_dataset)
+        uncompressed = label_group.visititems(uncompressed_dataset_name)
         assert uncompressed is None, f"Found unexpected uncompressed dataset {uncompressed}"
 
     assert h5_filepath_compressed.exists()
-
-    assert h5_filepath_compressed.stat().size < h5_filepath_no_compression.stat().size
 
 
 class TestSerialBlockSlot2(unittest.TestCase):
