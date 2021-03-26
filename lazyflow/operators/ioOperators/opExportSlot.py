@@ -27,6 +27,7 @@ from builtins import object
 import os
 import shutil
 import collections
+import contextlib
 from functools import partial
 
 import numpy
@@ -265,7 +266,7 @@ class OpExportSlot(Operator):
             with OpStreamingH5N5Reader.get_h5_n5_file(export_components.externalPath, mode="a") as h5N5File:
                 # Create a temporary operator to do the work for us
                 opH5N5Writer = OpH5N5WriterBigDataset(parent=self)
-                if export_components.internalPath in h5N5File:
+                with contextlib.suppress(KeyError):
                     del h5N5File[export_components.internalPath]
                 try:
                     opH5N5Writer.CompressionEnabled.setValue(compress)
