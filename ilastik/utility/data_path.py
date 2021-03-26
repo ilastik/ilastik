@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Set, Tuple, TypeVar, Sequence, Optional, List, Type, Iterable
+from typing import Set, Tuple, TypeVar, Sequence, Optional, List, Type, Iterable, Union
 from pathlib import PurePosixPath, Path
 import errno
 import glob
@@ -104,9 +104,9 @@ class ArchiveDataPath(DataPath):
         ]
 
     @staticmethod
-    def is_archive_path(path: str) -> bool:
+    def is_archive_path(path: Union[str, Path]) -> bool:
         try:
-            ArchiveDataPath.create(path)
+            ArchiveDataPath.create(str(path))
             return True
         except ValueError:
             return False
