@@ -13,7 +13,7 @@ from ilastik.utility.data_path import (
     N5DataPath,
     SimpleDataPath,
     NpzDataPath,
-    DatasetPath,
+    FileDataset,
 )
 
 
@@ -234,11 +234,11 @@ def test_listing_archive_datasets(sample_files_dir: Path):
 
 def test_dataset_path_from_string(sample_files_dir: Path):
     simple_globlike_path = sample_files_dir / "some_file[1].tiff"
-    dsp = DatasetPath.from_string(str(simple_globlike_path), deglob=True)
+    dsp = FileDataset.from_string(str(simple_globlike_path), deglob=True)
     assert len(dsp.data_paths) == 1 and dsp.data_paths[0] == SimpleDataPath(simple_globlike_path)
 
     simple_glob_path = str(sample_files_dir / "some_file_[xyz].tiff")
-    dsp = DatasetPath.from_string(simple_glob_path, deglob=True)
+    dsp = FileDataset.from_string(simple_glob_path, deglob=True)
     assert dsp.data_paths == [
         SimpleDataPath(sample_files_dir / "some_file_x.tiff"),
         SimpleDataPath(sample_files_dir / "some_file_y.tiff"),
@@ -252,7 +252,7 @@ def test_dataset_path_split(sample_files_dir: Path):
         sample_files_dir / "some_h5_file_[xy].hdf5/some/data_[xyz]",
         sample_files_dir / "some_npz_file_[xy].npz/data_[xyz]",
     ]
-    dsp_mixed = DatasetPath.split(os.path.pathsep.join(str(p) for p in paths), deglob=True)
+    dsp_mixed = FileDataset.split(os.path.pathsep.join(str(p) for p in paths), deglob=True)
     assert dsp_mixed.data_paths == [
         SimpleDataPath(sample_files_dir / "some_file[1].tiff"),
         H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data_x")),
@@ -269,7 +269,7 @@ def test_dataset_path_split(sample_files_dir: Path):
 
 
 def test_getting_archive_siblings(sample_files_dir: Path):
-    dsp = DatasetPath(
+    dsp = FileDataset(
         [
             SimpleDataPath(sample_files_dir / "some_file[1].tiff"),
             H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data_x")),
@@ -288,7 +288,7 @@ def test_getting_archive_siblings(sample_files_dir: Path):
 
 
 def test_is_under(sample_files_dir: Path):
-    dsp = DatasetPath(
+    dsp = FileDataset(
         [
             SimpleDataPath(sample_files_dir / "some_file[1].tiff"),
             H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data_x")),
@@ -304,10 +304,10 @@ def test_is_archive(sample_files_dir: Path):
 
 
 def test_common_paths(sample_files_dir: Path):
-    dsp1 = DatasetPath([H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data_x"))])
-    dsp2 = DatasetPath([N5DataPath(sample_files_dir / "some_n5_file_y.n5", PurePosixPath("/some/data_x"))])
-    dsp3_no_internals = DatasetPath([SimpleDataPath(sample_files_dir / "some_file_z.tiff")])
-    assert DatasetPath.common_internal_paths([dsp1, dsp2, dsp3_no_internals]) == [
+    dsp1 = FileDataset([H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data_x"))])
+    dsp2 = FileDataset([N5DataPath(sample_files_dir / "some_n5_file_y.n5", PurePosixPath("/some/data_x"))])
+    dsp3_no_internals = FileDataset([SimpleDataPath(sample_files_dir / "some_file_z.tiff")])
+    assert FileDataset.common_internal_paths([dsp1, dsp2, dsp3_no_internals]) == [
         PurePosixPath("/some/data[1]"),
         PurePosixPath("/some/data_x"),
     ]

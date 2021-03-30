@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Set, Tuple, TypeVar, Sequence, Optional, List, Type, Iterable, Union
+from typing import Mapping, Set, Tuple, TypeVar, Sequence, Optional, List, Type, Iterable, Union, cast
 from pathlib import PurePosixPath, Path
 import errno
 import glob
 import os
 import re
+from urllib.parse import urlencode, urlsplit, parse_qs
+import enum
 
 import numpy as np
 import z5py
@@ -13,13 +15,85 @@ import h5py
 from lazyflow.utility.pathHelpers import lsH5N5, globH5N5, globNpz
 
 # pyright: strict
+
+S = TypeVar("S", bound="Scheme")
+
+
+class Scheme(enum.Enum):
+    HTTP = "http"
+    HTTPS = "https"
+    FILE = "file"
+
+    @classmethod
+    def from_string(cls, value: str) -> "Scheme":
+        if value == "":
+            return Scheme.FILE
+        for item in cls:
+            if item.value == value:
+                return cast(S, item)
+        raise ValueError(f"Could not convert {value} to a valid Scheme")
+
+    @classmethod
+    def contains(cls, value: str) -> bool:
+        return value in [s.value for s in Scheme]
+
+    def __str__(self) -> str:
+        return self.value
+
+
+class DataUrl(ABC):
+    def __init__(
+        self,
+        *,
+        scheme: Scheme,
+        netloc: str,
+        path: PurePosixPath,
+        query: Optional[Mapping[str, List[str]]] = None,
+        fragment: Optional[str] = None,
+    ):
+        assert path.is_absolute()
+        self.scheme = scheme
+        self.netloc = netloc
+        self.path = path
+        self.query: Mapping[str, List[str]] = query or {}
+        self.fragment = fragment
+
+    def raw(self) -> str:
+        query_str = urlencode(self.query)
+        if query_str:
+            query_str = "?" + query_str
+        fragment_str = self.fragment or ""
+        if fragment_str:
+            fragment_str = "#" + fragment_str
+        return f"{self.scheme}://{self.netloc}{self.path}{query_str}{fragment_str}"
+
+
+class PrecomputedChunksUrl(DataUrl):
+    @classmethod
+    def create(cls, url: str) -> "PrecomputedChunksUrl":
+        url = re.sub(r"^(\w+)://(\w+)://", r"\1+\2://", url)
+        parsed = urlsplit(url)
+        scheme_components = parsed.scheme.split("+")
+        if len(scheme_components) > 2 or scheme_components[0] != "precomputed":
+            raise ValueError(f"Url scheme must be 'precomputed+<scheme>': {url}")
+        scheme = scheme_components[1]
+        if not Scheme.contains(scheme):
+            raise ValueError(f"Bad scheme in url: {url}")
+        query_dict = parse_qs(parsed.query)
+
+        return PrecomputedChunksUrl(
+            scheme=Scheme.from_string(scheme), netloc=parsed.netloc, path=PurePosixPath(parsed.path), query=query_dict
+        )
+
+
 DP = TypeVar("DP", bound="DataPath")
 
 
-class DataPath(ABC):
+class DataPath(DataUrl):
     def __init__(self, file_path: Path):
-        self.file_path = file_path
-        self.raw_file_path = str(file_path)
+        self.file_path = file_path.absolute()
+        self.raw_file_path = str(self.file_path)
+        super().__init__(scheme=Scheme.FILE, netloc="", path=PurePosixPath(file_path))
 
     def is_under(self, path: Path):
         try:
@@ -106,7 +180,7 @@ class ArchiveDataPath(DataPath):
     @staticmethod
     def is_archive_path(path: Union[str, Path]) -> bool:
         try:
-            ArchiveDataPath.create(str(path))
+            ArchiveDataPath.split_archive_path(str(path))
             return True
         except ValueError:
             return False
@@ -238,7 +312,7 @@ class NpzDataPath(ArchiveDataPath):
         return self.internal_path in NpzDataPath.list_internal_paths(self.file_path)
 
 
-class DatasetPath:
+class FileDataset:
     """A collection of DataPaths that are present in the filesystem"""
 
     def __init__(self, data_paths: Sequence[DataPath]):
@@ -248,7 +322,7 @@ class DatasetPath:
         self.data_paths = data_paths
 
     def __repr__(self) -> str:
-        return f"<DatasetPath {self.data_paths}>"
+        return f"<FileDataset {self.data_paths}>"
 
     def file_paths(self) -> List[Path]:
         return [dp.file_path for dp in self.data_paths]
@@ -259,7 +333,7 @@ class DatasetPath:
     def is_under(self, path: Path):
         return all(dp.is_under(path) for dp in self.data_paths)
 
-    def with_internal_path(self, internal_path: PurePosixPath) -> "DatasetPath":
+    def with_internal_path(self, internal_path: PurePosixPath) -> "FileDataset":
         seen_files: Set[Path] = set()
         updated_data_paths: List[DataPath] = []
         for dp in self.data_paths:
@@ -276,10 +350,10 @@ class DatasetPath:
                 if not new_dp.exists():
                     raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(new_dp))
                 updated_data_paths.append(new_dp)
-        return DatasetPath(sorted(updated_data_paths))
+        return FileDataset(sorted(updated_data_paths))
 
     @classmethod
-    def common_internal_paths(cls, dataset_paths: Iterable["DatasetPath"]) -> List[PurePosixPath]:
+    def common_internal_paths(cls, dataset_paths: Iterable["FileDataset"]) -> List[PurePosixPath]:
         """Finds a list of common internal paths that exist in all ArchiveDataPaths contained within dataset_paths.
         Any of the returned paths can be used with any of the dataset_paths via the with_internal_path method"""
         out: Optional[Set[PurePosixPath]] = None
@@ -312,25 +386,25 @@ class DatasetPath:
         return [str(dp) for dp in self.data_paths]
 
     @classmethod
-    def split(cls, path: str, *, deglob: bool, cwd: Optional[Path] = None) -> "DatasetPath":
+    def split(cls, path: str, *, deglob: bool, cwd: Optional[Path] = None) -> "FileDataset":
         try:
             return cls.from_string(path, deglob=deglob)
         except FileNotFoundError:
-            return DatasetPath.from_strings(path.split(os.path.pathsep), deglob=deglob, cwd=cwd)
+            return FileDataset.from_strings(path.split(os.path.pathsep), deglob=deglob, cwd=cwd)
 
     @classmethod
-    def from_strings(cls, paths: Iterable[str], *, deglob: bool, cwd: Optional[Path] = None) -> "DatasetPath":
-        dataset_paths = [DatasetPath.from_string(path, deglob=deglob, cwd=cwd) for path in paths]
-        return DatasetPath([data_path for ds_path in dataset_paths for data_path in ds_path.data_paths])
+    def from_strings(cls, paths: Iterable[str], *, deglob: bool, cwd: Optional[Path] = None) -> "FileDataset":
+        dataset_paths = [FileDataset.from_string(path, deglob=deglob, cwd=cwd) for path in paths]
+        return FileDataset([data_path for ds_path in dataset_paths for data_path in ds_path.data_paths])
 
     @classmethod
-    def from_string(cls, path: str, *, deglob: bool, cwd: Optional[Path] = None) -> "DatasetPath":
+    def from_string(cls, path: str, *, deglob: bool, cwd: Optional[Path] = None) -> "FileDataset":
         effective_cwd = cwd or Path.cwd()
         data_path = DataPath.create(str(effective_cwd / path))
         if data_path.exists():
-            return DatasetPath([data_path])
+            return FileDataset([data_path])
         elif deglob:
             expanded = data_path.glob(smart=True)
             if expanded:
-                return DatasetPath(expanded)
+                return FileDataset(expanded)
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
