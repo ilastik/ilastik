@@ -6,7 +6,7 @@ import h5py
 import numpy as np
 import z5py
 
-from ilastik.utility.data_path import (
+from ilastik.utility.data_url import (
     ArchiveDataPath,
     DataPath,
     H5DataPath,

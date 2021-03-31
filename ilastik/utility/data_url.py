@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Mapping, Set, Tuple, TypeVar, Sequence, Optional, List, Type, Iterable, Union, cast
+from typing import ClassVar, Dict, Mapping, Set, Tuple, TypeVar, Sequence, Optional, List, Type, Iterable, Union, cast
 from pathlib import PurePosixPath, Path
 import errno
 import glob
@@ -9,6 +9,7 @@ from urllib.parse import urlencode, urlsplit, parse_qs
 import enum
 
 import numpy as np
+from typing_extensions import final
 import z5py
 import h5py
 
@@ -90,6 +91,8 @@ DP = TypeVar("DP", bound="DataPath")
 
 
 class DataPath(DataUrl):
+    supported_extensions: ClassVar[Dict[str, Type["DataPath"]]] = {}
+
     def __init__(self, file_path: Path):
         self.file_path = file_path.absolute()
         self.raw_file_path = str(self.file_path)
@@ -121,6 +124,15 @@ class DataPath(DataUrl):
     def glob(self, smart: bool = True) -> Sequence["DataPath"]:
         pass
 
+    @classmethod
+    @final
+    def suffixes(cls) -> List[str]:
+        return [suffix for suffix, klass in cls.supported_extensions.items() if issubclass(klass, cls)]
+
+    def __init_subclass__(cls: Type["DataPath"], supported_extensions: List[str]):
+        for suffix in supported_extensions:
+            DataPath.supported_extensions[suffix] = cls
+
     def __hash__(self) -> int:
         return hash(self.raw_file_path)
 
@@ -137,7 +149,26 @@ class DataPath(DataUrl):
         return str(self) < str(other)
 
 
-class SimpleDataPath(DataPath):
+class SimpleDataPath(
+    DataPath,
+    supported_extensions=[
+        "bmp",
+        "exr",
+        "gif",
+        "hdr",
+        "jpeg",
+        "jpg",
+        "pbm",
+        "pgm",
+        "png",
+        "pnm",
+        "ppm",
+        "ras",
+        "tif",
+        "tiff",
+        "xv",
+    ],
+):
     def __init__(self, file_path: Path):
         super().__init__(file_path=file_path)
 
@@ -159,7 +190,7 @@ class SimpleDataPath(DataPath):
 ADP = TypeVar("ADP", bound="ArchiveDataPath")
 
 
-class ArchiveDataPath(DataPath):
+class ArchiveDataPath(DataPath, supported_extensions=[]):
     def __init__(self, file_path: Path, internal_path: PurePosixPath):
         if file_path.suffix.lower()[1:] not in self.suffixes():
             raise ValueError(f"External path for {self.__class__.__name__} must end in {self.suffixes()}")
@@ -237,17 +268,8 @@ class ArchiveDataPath(DataPath):
     def glob_internal(self: DP) -> Sequence[DP]:
         pass
 
-    @classmethod
-    @abstractmethod
-    def suffixes(cls) -> Sequence[str]:
-        return [suffix for klass in ArchiveDataPath.__subclasses__() for suffix in klass.suffixes()]
 
-
-class H5DataPath(ArchiveDataPath):
-    @classmethod
-    def suffixes(cls) -> Sequence[str]:
-        return ["h5", "hdf5", "ilp"]
-
+class H5DataPath(ArchiveDataPath, supported_extensions=["h5", "hdf5", "ilp"]):
     @classmethod
     def list_internal_paths(cls, path: Path) -> List[PurePosixPath]:
         with h5py.File(path, "r") as f:
@@ -267,11 +289,7 @@ class H5DataPath(ArchiveDataPath):
             return self.internal_path.as_posix() in f
 
 
-class N5DataPath(ArchiveDataPath):
-    @classmethod
-    def suffixes(cls) -> Sequence[str]:
-        return ["n5"]
-
+class N5DataPath(ArchiveDataPath, supported_extensions=["n5"]):
     @classmethod
     def list_internal_paths(cls, path: Path) -> List[PurePosixPath]:
         with z5py.File(path, "r") as f:
@@ -291,11 +309,7 @@ class N5DataPath(ArchiveDataPath):
             return self.internal_path.as_posix() in f
 
 
-class NpzDataPath(ArchiveDataPath):
-    @classmethod
-    def suffixes(cls) -> Sequence[str]:
-        return ["npz"]
-
+class NpzDataPath(ArchiveDataPath, supported_extensions=["npz"]):
     @classmethod
     def list_internal_paths(cls, path: Path) -> List[PurePosixPath]:
         return sorted([PurePosixPath("/") / p for p in np.load(path, mmap_mode="r").files])
