@@ -398,48 +398,53 @@ class OpPredictEdgeProbabilities(Operator):
     TrainRandomForest = InputSlot(value=False)
     EdgeClassifier = InputSlot()
     EdgeFeaturesDataFrame = InputSlot()
+    # historically named Edge"Probabilities" because multicut used predictions from
+    # random forest as edge weights. With neural networks, edge probabilities are often already good
+    # enough to act as weights.
     EdgeProbabilities = OutputSlot()  # A 1D array of probabilities, in same order as EdgeFeaturesDataFrame
 
     def setupOutputs(self):
         self.EdgeProbabilities.meta.shape = (1,)
         self.EdgeProbabilities.meta.dtype = object
 
+    def _edge_weights_from_random_forest_predictions(self):
+        edge_features_df = self.EdgeFeaturesDataFrame.value
+        classifier = self.EdgeClassifier.value
+
+        # Classifier can be None if no labels have been selected
+        if len(getattr(classifier, "known_classes", [])) == 0:
+            return np.zeros(len(edge_features_df), dtype=np.float32)
+
+        known_classes = classifier.known_classes
+        assert set(known_classes).issubset([1, 2])
+        if len(known_classes) == 1:
+            logger.info("Returning edge probabilities for only annotated class...")
+            if known_classes[0] == 1:
+                return np.zeros(len(edge_features_df), dtype=np.float32)
+            else:
+                return np.ones(len(edge_features_df), dtype=np.float32)
+
+        logger.info("Predicting edge probabilities...")
+        feature_matrix = edge_features_df.iloc[:, 2:].values  # Discard [sp1, sp2]
+        assert feature_matrix.dtype == np.float32, "Unexpected feature dtype: {}".format(feature_matrix.dtype)
+        probabilities = classifier.predict_probabilities(feature_matrix)[:, 1]
+        return probabilities
+
+    def _edge_weights_from_probability_map(self):
+        BEST_FEATURE = "standard_edge_mean"
+        edge_features_df = self.EdgeFeaturesDataFrame.value
+        edge_features_df = edge_features_df.iloc[:, 2:]  # Discard columns [sp1, sp2]
+        edge_weights = edge_features_df[BEST_FEATURE]
+        return edge_weights
+
     def execute(self, slot, subindex, roi, result):
         pd.set_option("display.expand_frame_repr", False)
         if self.TrainRandomForest.value:
-            edge_features_df = self.EdgeFeaturesDataFrame.value
-            classifier = self.EdgeClassifier.value
-
-            # Classifier can be None if no labels have been selected
-            if classifier is None or len(classifier.known_classes) == 0:
-                result[0] = np.zeros((len(edge_features_df),), dtype=np.float32)
-                return
-
-            known_classes = classifier.known_classes
-            assert set(known_classes).issubset([1, 2])
-            if len(known_classes) == 1:
-                logger.info("Returning edge probabilities for only annotated class...")
-                if known_classes[0] == 1:
-                    probabilities = np.zeros((len(edge_features_df),), dtype=np.float32)
-                else:
-                    probabilities = np.ones((len(edge_features_df),), dtype=np.float32)
-                result[0] = probabilities
-                return
-
-            logger.info("Predicting edge probabilities...")
-            feature_matrix = edge_features_df.iloc[:, 2:].values  # Discard [sp1, sp2]
-            assert feature_matrix.dtype == np.float32, "Unexpected feature dtype: {}".format(feature_matrix.dtype)
-            probabilities = classifier.predict_probabilities(feature_matrix)[:, 1]
-
-            assert len(probabilities) == len(edge_features_df)
-
+            edge_weights = self._edge_weights_from_random_forest_predictions()
         else:
-            BEST_FEATURE = "standard_edge_mean"
-            edge_features_df = self.EdgeFeaturesDataFrame.value
-            edge_features_df = edge_features_df.iloc[:, 2:]  # Discard columns [sp1, sp2]
-            probabilities = edge_features_df[BEST_FEATURE]
+            edge_weights = self._edge_weights_from_probability_map()
 
-        result[0] = probabilities
+        result[0] = edge_weights
 
     def propagateDirty(self, slot, subindex, roi):
         self.EdgeProbabilities.setDirty()
