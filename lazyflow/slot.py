@@ -1466,6 +1466,17 @@ class InputSlot(Slot):
         self.notifyResized(self._configureOperator)
 
 
+@contextmanager
+def valueContext(slot, value):
+    """Temporarily change value in the *with* statement context, yielding an old one."""
+    old = slot.value
+    slot.setValue(value)
+    try:
+        yield old
+    finally:
+        slot.setValue(old)
+
+
 class OutputSlot(Slot):
     """The base class for output slots, it provides methods to connect
     the OutputSlot to an InputSlot of another operator (i.e.
