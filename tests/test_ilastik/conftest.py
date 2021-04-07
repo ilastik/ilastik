@@ -15,7 +15,7 @@ def pytest_addoption(parser):
 
 @pytest.fixture
 def tiktorch_executable_path(request):
-    tiktorch_exe_path = request.config.getoption("--tiktorch_executable")
+    tiktorch_exe_path = request.config.getoption("--tiktorch_executable", None)
     if not tiktorch_exe_path:
         pytest.skip("need --tiktorch_executable option to run")
 
