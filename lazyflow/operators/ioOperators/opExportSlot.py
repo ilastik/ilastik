@@ -27,6 +27,7 @@ from builtins import object
 import os
 import shutil
 import collections
+import contextlib
 from functools import partial
 
 import numpy
@@ -262,18 +263,11 @@ class OpExportSlot(Operator):
         # Create and open the hdf5/n5 file
         export_components = PathComponents(self.ExportPath.value)
         try:
-            if os.path.isdir(export_components.externalPath):  # externalPath leads to a n5 file
-                shutil.rmtree(export_components.externalPath)  # n5 is stored as a directory structure
-            else:
-                os.remove(export_components.externalPath)
-        except OSError as ex:
-            # It's okay if the file isn't there.
-            if ex.errno != 2:
-                raise
-        try:
-            with OpStreamingH5N5Reader.get_h5_n5_file(export_components.externalPath, "w") as h5N5File:
+            with OpStreamingH5N5Reader.get_h5_n5_file(export_components.externalPath, mode="a") as h5N5File:
                 # Create a temporary operator to do the work for us
                 opH5N5Writer = OpH5N5WriterBigDataset(parent=self)
+                with contextlib.suppress(KeyError):
+                    del h5N5File[export_components.internalPath]
                 try:
                     opH5N5Writer.CompressionEnabled.setValue(compress)
                     opH5N5Writer.h5N5File.setValue(h5N5File)
