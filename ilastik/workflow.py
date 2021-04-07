@@ -275,7 +275,7 @@ def getAvailableWorkflows():
             isbase = False
 
         should_register = getattr(W, "auto_register", True)
-        if isbase and not should_register:
+        if isbase or not should_register:
             continue
 
         if isinstance(W.workflowName, str):
