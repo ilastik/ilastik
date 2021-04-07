@@ -500,8 +500,20 @@ class OpZeroDefault(Operator):
             self.Output.setDirty(roi)
 
 
-class OpZeroSource(Operator):
-    """Operator that serves zeros on it's Output
+class MissingDataAccessError(Exception):
+    def __init__(self):
+        message = (
+            "Tried to access placeholder dataset. You might not have saved the project with a trained classifier. "
+            "Without access to training data, the classifier cannot be retrained."
+        )
+        super().__init__(message)
+
+
+class OpMissingDataSource(Operator):
+    """Operator that raises when data is accessed
+
+    Provides valid metadata, but does not allow to get any data.
+    Needed to provide metadata for "missing" datasets in trained projects.
 
     This operator will never set anything dirty as it cannot be changed.
     """
@@ -522,8 +534,7 @@ class OpZeroSource(Operator):
         pass
 
     def execute(self, slot, subindex, roi, result):
-        result[...] = 0
-        return result
+        raise MissingDataAccessError
 
     def propagateDirty(self, *args, **kwargs):
         raise ValueError("Will never go here, no inputs...")

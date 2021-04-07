@@ -218,9 +218,14 @@ if True:
                 result[0] = {}
                 return
 
+            edge_probabilities = self.EdgeProbabilities.value
+            if edge_probabilities is None:
+                # This can happen when the cache doesn't have data yet.
+                result[0] = {}
+                return
+
             rag = self.Rag.value
             edge_ids = rag.edge_ids
-            edge_probabilities = self.EdgeProbabilities.value
 
             # 0: edge is "inactive", nodes belong to the same segment
             # 1: edge is "active", nodes belong to separate segments

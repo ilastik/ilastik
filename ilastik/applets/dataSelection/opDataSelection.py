@@ -48,7 +48,7 @@ from ilastik.workflow import Workflow
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents
 from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.operators import OpZeroSource
+from lazyflow.operators import OpMissingDataSource
 from lazyflow.operators.ioOperators import OpH5N5WriterBigDataset
 from lazyflow.graph import Graph, Operator
 
@@ -459,7 +459,7 @@ class DummyDatasetInfo(DatasetInfo):
     def get_non_transposed_provider_slot(
         self, parent: Optional[Operator] = None, graph: Optional[Graph] = None
     ) -> OutputSlot:
-        opZero = OpZeroSource(
+        opZero = OpMissingDataSource(
             shape=self.laneShape, dtype=self.laneDtype, axistags=self.axistags, parent=parent, graph=graph
         )
         return opZero.Output

@@ -22,4 +22,4 @@
 from .roi import roi2rect
 from .threadRouter import ThreadRouter, threadRouted, threadRoutedWithRouter
 from .thunkEvent import ThunkEvent, ThunkEventHandler
-from .widgets import enable_when_ready
+from .widgets import enable_when_ready, silent_qobject

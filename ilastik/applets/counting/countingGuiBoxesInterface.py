@@ -28,7 +28,7 @@ from typing import Iterable, TextIO, Tuple
 
 import numpy as np
 
-from ilastik.utility.gui import roi2rect
+from ilastik.utility.gui import roi2rect, silent_qobject
 from ilastik.widgets.boxListModel import BoxLabel
 from lazyflow.operators.generic import OpSubRegion
 from past.utils import old_div
@@ -816,9 +816,8 @@ class BoxController(QObject):
     def handleSelectionChange(self):
         for row, el in enumerate(self._currentBoxesList):
             if el._rectItem.isSelected():
-                self.boxListModel.blockSignals(True)
-                self.boxListModel.select(row)
-                self.boxListModel.blockSignals(False)
+                with silent_qobject(self.boxListModel) as w:
+                    w.select(row)
                 break
 
     def changeBoxesVisibility(self, bool):

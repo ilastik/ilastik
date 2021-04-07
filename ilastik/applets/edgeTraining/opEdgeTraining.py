@@ -211,6 +211,17 @@ class OpEdgeTraining(Operator):
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
 
+    def clear_caches(self, lane_index):
+        self.opClassifierCache.resetValue()
+        for cache in [
+            self.opRagCache,
+            self.opEdgeProbabilitiesCache,
+            self.opEdgeProbabilitiesDictCache,
+            self.opEdgeFeaturesCache,
+        ]:
+            c = cache.getLane(lane_index)
+            c.resetValue()
+
 
 class OpCreateRag(Operator):
     Superpixels = InputSlot()

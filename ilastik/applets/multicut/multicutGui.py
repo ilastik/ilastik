@@ -38,7 +38,7 @@ from PyQt5.QtWidgets import (
     QPushButton,
 )
 
-from ilastik.utility.gui import threadRouted
+from ilastik.utility.gui import threadRouted, silent_qobject
 from volumina.api import createDataSource
 from volumina.layer import SegmentationEdgesLayer
 from volumina.utility import ShortcutManager
@@ -289,8 +289,14 @@ class MulticutGuiMixin:
     def set_updating(self):
         assert not self._currently_updating
         self._currently_updating = True
-        yield
-        self._currently_updating = False
+        self.live_multicut_button.setEnabled(False)
+        self.update_button.setEnabled(False)
+        try:
+            yield
+        finally:
+            self._currently_updating = False
+            self.live_multicut_button.setEnabled(True)
+            self.update_button.setEnabled(True)
 
     def configure_gui_from_operator(self, *args):
         if self._currently_updating:
@@ -298,7 +304,8 @@ class MulticutGuiMixin:
         with self.set_updating():
             op = self.__topLevelOperatorView
             self.update_button.setEnabled(op.FreezeCache.value)
-            self.live_multicut_button.setChecked(not op.FreezeCache.value)
+            with silent_qobject(self.live_multicut_button) as w:
+                w.setChecked(not op.FreezeCache.value)
             self.probability_threshold_box.setValue(op.ProbabilityThreshold.value)
             if op.FreezeCache.value:
                 self.live_multicut_button.setIcon(QIcon(ilastikIcons.Play))

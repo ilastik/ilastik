@@ -517,6 +517,9 @@ class SerialBlockSlot(SerialSlot):
         logger.debug("Serializing BlockSlot: {}".format(self.name))
         mygroup = group.create_group(name)
         num = len(self.blockslot)
+        compression_options = {}
+        if self.compression_level:
+            compression_options = {"compression_opts": self.compression_level, "compression": "gzip"}
         for index in range(num):
             subname = self.subname.format(index)
             subgroup = mygroup.create_group(subname)
@@ -549,12 +552,7 @@ class SerialBlockSlot(SerialSlot):
 
                     block_group = subgroup.create_group(blockName)
 
-                    if self.compression_level:
-                        block_group.create_dataset(
-                            "data", data=block.data, compression="gzip", compression_opts=compression_level
-                        )
-                    else:
-                        block_group.create_dataset("data", data=block.data)
+                    block_group.create_dataset("data", data=block.data, **compression_options)
 
                     block_group.create_dataset("mask", data=block.mask, compression="gzip", compression_opts=2)
                     block_group.create_dataset("fill_value", data=block.fill_value)
@@ -562,7 +560,7 @@ class SerialBlockSlot(SerialSlot):
                     block_group.attrs["blockSlice"] = slicingToString(slicing)
                     block_group.attrs["axistags"] = block_tags.toJSON()
                 else:
-                    subgroup.create_dataset(blockName, data=block)
+                    subgroup.create_dataset(blockName, data=block, **compression_options)
                     subgroup[blockName].attrs["blockSlice"] = slicingToString(slicing)
                     subgroup[blockName].attrs["axistags"] = block_tags.toJSON()
 
