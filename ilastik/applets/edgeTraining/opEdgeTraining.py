@@ -398,37 +398,44 @@ class OpPredictEdgeProbabilities(Operator):
     TrainRandomForest = InputSlot(value=False)
     EdgeClassifier = InputSlot()
     EdgeFeaturesDataFrame = InputSlot()
+    # historically slot is named "EdgeProbabilities" because multicut used predictions from
+    # random forest as edge weights. With neural networks, edge probabilities are often already good
+    # enough to act as weights.
     EdgeProbabilities = OutputSlot()  # A 1D array of probabilities, in same order as EdgeFeaturesDataFrame
 
     def setupOutputs(self):
         self.EdgeProbabilities.meta.shape = (1,)
         self.EdgeProbabilities.meta.dtype = object
 
-    def execute(self, slot, subindex, roi, result):
-        pd.set_option("display.expand_frame_repr", False)
-        if self.TrainRandomForest.value:
-            edge_features_df = self.EdgeFeaturesDataFrame.value
-            classifier = self.EdgeClassifier.value
+    def _edge_weights_from_random_forest_predictions(self):
+        edge_features_df = self.EdgeFeaturesDataFrame.value
+        classifier = self.EdgeClassifier.value
 
-            # Classifier can be None if no labels have been selected
-            if classifier is None or len(classifier.known_classes) < 2:
-                result[0] = np.zeros((len(edge_features_df),), dtype=np.float32)
-                return
-
-            logger.info("Predicting edge probabilities...")
-            feature_matrix = edge_features_df.iloc[:, 2:].values  # Discard [sp1, sp2]
-            assert feature_matrix.dtype == np.float32, "Unexpected feature dtype: {}".format(feature_matrix.dtype)
-            probabilities = classifier.predict_probabilities(feature_matrix)[:, 1]
-
-            assert len(probabilities) == len(edge_features_df)
-
+        # Classifier can be None if no labels have been selected
+        known_classes = set(getattr(classifier, "known_classes", []))
+        if known_classes in [set(), {1}]:
+            return np.zeros(len(edge_features_df), dtype=np.float32)
+        elif known_classes == {2}:
+            return np.ones(len(edge_features_df), dtype=np.float32)
+        elif known_classes == {1, 2}:
+            feature_matrix = edge_features_df.drop(["sp1", "sp2"], axis=1).values
+            assert feature_matrix.dtype == np.float32, f"Unexpected feature dtype: {feature_matrix.dtype}"
+            return classifier.predict_probabilities(feature_matrix)[:, 1]
         else:
-            BEST_FEATURE = "standard_edge_mean"
-            edge_features_df = self.EdgeFeaturesDataFrame.value
-            edge_features_df = edge_features_df.iloc[:, 2:]  # Discard columns [sp1, sp2]
-            probabilities = edge_features_df[BEST_FEATURE]
+            raise ValueError(f"Found unknown edge labels {known_classes}. Only labels {{1, 2}} are allowed.")
 
-        result[0] = probabilities
+    def _edge_weights_from_probability_map(self):
+        BEST_FEATURE = "standard_edge_mean"
+        edge_features_df = self.EdgeFeaturesDataFrame.value
+        return edge_features_df[BEST_FEATURE].values
+
+    def execute(self, slot, subindex, roi, result):
+        if self.TrainRandomForest.value:
+            edge_weights = self._edge_weights_from_random_forest_predictions()
+        else:
+            edge_weights = self._edge_weights_from_probability_map()
+
+        result[0] = edge_weights
 
     def propagateDirty(self, slot, subindex, roi):
         self.EdgeProbabilities.setDirty()
