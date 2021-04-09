@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QSpacerItem, QSizePolicy, QCheckBox
 
+from lazyflow.slot import valueContext
 from ilastik.applets.edgeTraining.edgeTrainingGui import EdgeTrainingMixin
 from ilastik.applets.multicut.multicutGui import MulticutGuiMixin
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
@@ -114,6 +115,6 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingMixin, LayerView
         slots than the ones available from OpMulticut. which
         FreezeClassifier is not).
         """
-        self.topLevelOperatorView.FreezeClassifier.setValue(False)
-        super()._update_multicut_views()
-        self.topLevelOperatorView.FreezeClassifier.setValue(True)
+
+        with valueContext(self.topLevelOperatorView.FreezeClassifier, False):
+            super()._update_multicut_views()
