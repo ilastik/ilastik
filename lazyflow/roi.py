@@ -29,6 +29,8 @@ from typing import Sequence, Tuple, Union
 
 import numpy
 
+from lazyflow.utility.helpers import bigintprod
+
 import logging
 
 
@@ -638,7 +640,7 @@ def getIntersectingBlocks(blockshape, roi, asarray=False):
         return block_indices
     else:
         # Reshape into N*M matrix for easy iteration
-        num_indexes = numpy.prod(block_indices.shape[0:-1])
+        num_indexes = bigintprod(block_indices.shape[0:-1])
         axiscount = block_indices.shape[-1]
         return numpy.reshape(block_indices, (num_indexes, axiscount))
 
@@ -762,7 +764,7 @@ def determine_optimal_request_blockshape(
     atomic_blockshape = determineBlockShape(clipped_ideal_blockshape, target_block_volume_pixels)
     atomic_blockshape = numpy.asarray(atomic_blockshape)
 
-    if numpy.prod(clipped_ideal_blockshape) >= target_block_volume_pixels:
+    if bigintprod(clipped_ideal_blockshape) >= target_block_volume_pixels:
         # Target volume is too small for us to stack the atomic blockshape, anyway
         return tuple(atomic_blockshape)
 
@@ -780,7 +782,7 @@ def determine_optimal_request_blockshape(
             candidate_blockshape = blockshape.copy()
             candidate_blockshape[index] += clipped_ideal_blockshape[index]
             if (candidate_blockshape <= max_blockshape).all() and (
-                numpy.prod(candidate_blockshape) < target_block_volume_pixels
+                bigintprod(candidate_blockshape) < target_block_volume_pixels
             ):
                 candidate_blockshapes.append(candidate_blockshape)
 
@@ -790,7 +792,7 @@ def determine_optimal_request_blockshape(
         def normalized_surface_area(shape):
             pairs = numpy.array(list(combinations(shape, 2)))
             surface_area = 2 * (pairs[:, 0] * pairs[:, 1]).sum()
-            volume = numpy.prod(shape)
+            volume = bigintprod(shape)
             return surface_area / volume
 
         # Choose the best among the canidates

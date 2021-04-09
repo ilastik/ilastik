@@ -15,6 +15,7 @@ import h5py
 
 from .lazyflowClassifier import LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
 from lazyflow.utility import Timer
+from lazyflow.utility.helpers import bigintprod
 
 import logging
 
@@ -111,18 +112,18 @@ class VigraRfAdaptiveMaskPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
 
         # Allocate memory for probability volume and mask
         prob_vol = numpy.zeros((X.shape[:-1] + (len(self._known_labels),)), dtype=numpy.float32)
-        mask = numpy.ones(numpy.prod(X.shape[1:-1]), dtype=numpy.bool)
+        mask = numpy.ones(bigintprod(X.shape[1:-1]), dtype=numpy.bool)
 
         frm_cnt = 0
 
         for X_t in X:
             if frm_cnt % FRAME_SPAN == 0:
-                mask = numpy.ones(numpy.prod(X.shape[1:-1]), dtype=numpy.bool)
+                mask = numpy.ones(bigintprod(X.shape[1:-1]), dtype=numpy.bool)
 
-            prob_mat = numpy.zeros((numpy.prod(X.shape[1:-1]), len(self._known_labels)), dtype=numpy.float32)
+            prob_mat = numpy.zeros((bigintprod(X.shape[1:-1]), len(self._known_labels)), dtype=numpy.float32)
 
             # Reshape the image into a 2D feature matrix
-            mat_shape = (numpy.prod(X_t.shape[:-1]), X_t.shape[-1])
+            mat_shape = (bigintprod(X_t.shape[:-1]), X_t.shape[-1])
             feature_mat = numpy.reshape(X_t, mat_shape)
 
             # Mask the feature matrix
@@ -149,7 +150,7 @@ class VigraRfAdaptiveMaskPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
 
                 logger.debug("[PROF] Morphology took {} ".format(morpho_timer.seconds()))
 
-                mask = prob_slice_dilated.reshape(numpy.prod(prob_slice_dilated.shape))
+                mask = prob_slice_dilated.reshape(bigintprod(prob_slice_dilated.shape))
 
                 # vigra.impex.writeHDF5(prob_slice_dilated, 'mask.h5', 'data')
 

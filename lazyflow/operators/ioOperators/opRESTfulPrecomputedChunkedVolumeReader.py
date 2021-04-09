@@ -28,6 +28,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 import lazyflow.roi
+from lazyflow.utility.helpers import bigintprod
 import logging
 
 import numpy
@@ -103,7 +104,7 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
         """
         blocks = lazyflow.roi.getIntersectingBlocks(blockshape, roi, asarray=True)
 
-        num_indexes = numpy.prod(blocks.shape[0:-1])
+        num_indexes = bigintprod(blocks.shape[0:-1])
         axiscount = blocks.shape[-1]
         blocks_array = numpy.reshape(blocks, (num_indexes, axiscount))
 

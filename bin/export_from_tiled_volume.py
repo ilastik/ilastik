@@ -3,6 +3,7 @@ import numpy
 import h5py
 from lazyflow.utility import Timer
 from lazyflow.utility.io_util import TiledVolume
+from lazyflow.utility.helpers import bigintprod
 
 import logging
 
@@ -50,7 +51,7 @@ def export_from_tiled_volume(tiles_description_json_path, roi, output_hdf5_path,
                 output_axes = tiled_volume.description.output_axes
                 dset.attrs["axistags"] = vigra.defaultAxistags(output_axes).toJSON()
 
-        logger.info("Exported {:.1e} pixels in {:.1f} seconds.".format(numpy.prod(shape), timer.seconds()))
+        logger.info("Exported {:.1e} pixels in {:.1f} seconds.".format(bigintprod(shape), timer.seconds()))
 
 
 # EXAMPLE USAGE:

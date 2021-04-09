@@ -24,6 +24,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 import numpy
 import logging
 from lazyflow.utility import vigra_bincount
+from lazyflow.utility.helpers import bigintprod
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +73,7 @@ def remove_wrongly_sized_connected_components(a, min_size, max_size=None, in_pla
 
     if not in_place:
         a = a.copy()
-    if min_size == 0 and (max_size is None or max_size > numpy.prod(a.shape)):  # shortcut for efficiency
+    if min_size == 0 and (max_size is None or max_size > bigintprod(a.shape)):  # shortcut for efficiency
         if bin_out:
             numpy.place(a, a, 1)
         return a

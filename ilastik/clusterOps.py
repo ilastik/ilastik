@@ -36,6 +36,8 @@ from lazyflow.utility import BigRequestStreamer
 from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset
 from lazyflow.utility.timer import Timer
 from lazyflow.utility.pathHelpers import getPathVariants
+from lazyflow.utility.helpers import bigintprod
+
 
 from ilastik.clusterConfig import parseClusterConfigFile
 from ilastik.workflow import Workflow
@@ -162,7 +164,7 @@ class OpClusterize(Operator):
 
     def execute(self, slot, subindex, roi, result):
         dtypeBytes = self._getDtypeBytes()
-        totalBytes = dtypeBytes * numpy.prod(self.Input.meta.shape)
+        totalBytes = dtypeBytes * bigintprod(self.Input.meta.shape)
         totalMB = old_div(totalBytes, (1000 * 1000))
         logger.info(
             "Clusterizing computation of {} MB dataset, outputting according to {}".format(

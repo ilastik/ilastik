@@ -5,6 +5,7 @@ import numpy
 
 from lazyflow.graph import Slot
 from lazyflow.utility.roiRequestBatch import RoiRequestBatch
+from lazyflow.utility.helpers import bigintprod
 
 
 ROI = Tuple[int, int, int, int, int]
@@ -33,7 +34,7 @@ class _RoiIter:
         return numpy.ravel_multi_index(relevant_indices, self._iterate_shape)
 
     def __len__(self) -> int:
-        return numpy.prod(self._iterate_shape)
+        return bigintprod(self._iterate_shape)
 
     def __iter__(self) -> Iterator[ROI_TUPLE]:
         """iterate in ascending order, according to to_index"""
@@ -71,7 +72,7 @@ class RoiRequestBufferIter:
         self._roi_request_batch = RoiRequestBatch(
             outputSlot=self._slot,
             roiIterator=iter(self._roi_iter),
-            totalVolume=numpy.prod(self._slot.meta.shape),
+            totalVolume=bigintprod(self._slot.meta.shape),
             batchSize=self._batchsize,
             allowParallelResults=False,
         )

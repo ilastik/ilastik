@@ -27,6 +27,7 @@ from builtins import object
 import numpy
 from lazyflow.request import Request
 from lazyflow.utility import RoiRequestBatch
+from lazyflow.utility.helpers import bigintprod
 from lazyflow.roi import (
     getIntersectingBlocks,
     getBlockBounds,
@@ -111,7 +112,7 @@ class BigRequestStreamer(object):
         self._bigRoi = roi
         self._num_threads = max(1, Request.global_thread_pool.num_workers)
 
-        totalVolume = numpy.prod(numpy.subtract(roi[1], roi[0]))
+        totalVolume = bigintprod(numpy.subtract(roi[1], roi[0]))
 
         if batchSize is None:
             batchSize = self._num_threads
@@ -248,7 +249,7 @@ class BigRequestStreamer(object):
                 max_blockshape, ideal_blockshape, ram_usage_per_requested_pixel, self._num_threads, available_ram
             )
         # compute the RAM size of the block before adding back t anc c dimensions
-        fmt = Memory.format(ram_usage_per_requested_pixel * numpy.prod(blockshape))
+        fmt = Memory.format(ram_usage_per_requested_pixel * bigintprod(blockshape))
         # If we removed time and channel from consideration, add them back now before returning
         if "t" in outputSlot.meta.getAxisKeys():
             blockshape = blockshape[:time_index] + (blockshape_time_steps,) + blockshape[time_index:]

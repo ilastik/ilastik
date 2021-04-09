@@ -42,6 +42,8 @@ from lazyflow.classifiers import (
     LazyflowPixelwiseClassifierFactoryABC,
 )
 
+from lazyflow.utility.helpers import bigintprod
+
 from .opFeatureMatrixCache import OpFeatureMatrixCache
 from .opConcatenateFeatureMatrices import OpConcatenateFeatureMatrices
 
@@ -594,7 +596,7 @@ class OpVectorwiseClassifierPredict(OpBaseClassifierPredict):
 
         input_data = numpy.asarray(input_data, numpy.float32)
         shape = input_data.shape
-        prod = numpy.prod(shape[:-1])
+        prod = bigintprod(shape[:-1])
         features = input_data.reshape((prod, shape[-1]))
 
         with Timer() as prediction_timer:

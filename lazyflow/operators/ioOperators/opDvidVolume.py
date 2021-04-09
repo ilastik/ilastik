@@ -35,6 +35,7 @@ import numpy
 import vigra
 from lazyflow.graph import Operator, OutputSlot
 from lazyflow.roi import determineBlockShape
+from lazyflow.utility.helpers import bigintprod
 
 from libdvid import DVIDException, ErrMsg
 from libdvid.voxels import VoxelsAccessor
@@ -129,7 +130,7 @@ class OpDvidVolume(Operator):
         self.Output.meta.ram_usage_per_requested_pixel = 2 * dtype.type().nbytes * num_channels
 
     def execute(self, slot, subindex, roi, result):
-        if numpy.prod(roi.stop - roi.start) > 1e9:
+        if bigintprod(roi.stop - roi.start) > 1e9:
             logger.error(
                 "Requesting a very large volume from DVID: {}\nIs that really what you meant to do?".format(roi)
             )
@@ -139,7 +140,7 @@ class OpDvidVolume(Operator):
         # FIXME: Disabled throttling for now.  Need a better heuristic or explicit setting.
         #         # For "heavy" requests, we'll use the throttled accessor
         #         HEAVY_REQ_SIZE = 256*256*10
-        #         if numpy.prod(result.shape) > HEAVY_REQ_SIZE:
+        #         if bigintprod(result.shape) > HEAVY_REQ_SIZE:
         #             accessor = self._throttled_accessor
         #         else:
         #             accessor = self._default_accessor

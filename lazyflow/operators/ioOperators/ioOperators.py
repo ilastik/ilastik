@@ -41,6 +41,7 @@ import vigra
 from lazyflow.graph import OrderedSignal, Operator, OutputSlot, InputSlot
 from lazyflow.roi import roiToSlice, roiFromShape, determineBlockShape
 from lazyflow.utility.bigRequestStreamer import BigRequestStreamer
+from lazyflow.utility.helpers import bigintprod
 
 
 class OpImageReader(Operator):
@@ -328,7 +329,7 @@ class OpStackWriter(Operator):
         # If ram usage info is available, make a better guess about how many requests we can launch in parallel
         ram_usage_per_requested_pixel = self.Input.meta.ram_usage_per_requested_pixel
         if ram_usage_per_requested_pixel is not None:
-            pixels_per_slice = numpy.prod(slice_shape)
+            pixels_per_slice = bigintprod(slice_shape)
             if "c" in tagged_sliceshape:
                 pixels_per_slice //= tagged_sliceshape["c"]
 

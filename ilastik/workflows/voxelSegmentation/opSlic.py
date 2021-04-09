@@ -15,6 +15,7 @@ import skimage.segmentation
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedArrayCache, OpReorderAxes
 from lazyflow.roi import roiToSlice
+from lazyflow.utility.helpers import bigintprod
 
 
 import vigra
@@ -60,7 +61,7 @@ class OpSlic(Operator):
 
         if n_segments == 0:
             # If the number of supervoxels was not given, use a default proportional to the number of voxels
-            n_segments = numpy.int(numpy.prod(input_data.shape) / 2500)
+            n_segments = numpy.int(bigintprod(input_data.shape) / 2500)
 
         logger.debug(
             "calling skimage.segmentation.slic with {}".format(
