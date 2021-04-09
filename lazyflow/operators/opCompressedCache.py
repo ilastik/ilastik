@@ -42,6 +42,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import TinyVector, getIntersectingBlocks, getBlockBounds, roiToSlice, getIntersection
 from lazyflow.operators.opCache import ManagedBlockedCache
 from lazyflow.utility.chunkHelpers import chooseChunkShape
+from lazyflow.utility.helpers import bigintprod
 
 logger = logging.getLogger(__name__)
 
@@ -320,7 +321,7 @@ class OpUnmanagedCompressedCache(Operator):
 
         desiredSpace = 1024 ** 2 / float(dtypeBytes)
 
-        if numpy.prod(blockshape) <= desiredSpace:
+        if bigintprod(blockshape) <= desiredSpace:
             return blockshape
 
         # set t and c to 1
@@ -446,7 +447,7 @@ class OpUnmanagedCompressedCache(Operator):
                         block_file["fill_value"][...] = data.fill_value
 
                     if logger.isEnabledFor(logging.DEBUG):
-                        uncompressed_size = numpy.prod(data.shape) * self._getDtypeBytes(data.dtype)
+                        uncompressed_size = bigintprod(data.shape) * self._getDtypeBytes(data.dtype)
                         storage_size = block_file["data"].id.get_storage_size()
                         if "mask" in block_file:
                             storage_size += block_file["mask"].id.get_storage_size()

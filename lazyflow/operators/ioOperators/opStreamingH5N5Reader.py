@@ -32,7 +32,7 @@ import numpy as np
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import Timer
-from lazyflow.utility.helpers import get_default_axisordering
+from lazyflow.utility.helpers import get_default_axisordering, bigintprod
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +108,7 @@ class OpStreamingH5N5Reader(Operator):
         if "display_mode" in self._h5N5File[internalPath].attrs:
             self.OutputImage.meta.display_mode = str(self._h5N5File[internalPath].attrs["display_mode"])
 
-        total_volume = numpy.prod(numpy.array(self._h5N5File[internalPath].shape))
+        total_volume = bigintprod(self._h5N5File[internalPath].shape)
         chunks = self._h5N5File[internalPath].chunks
         if not chunks and total_volume > 1e8:
             self.OutputImage.meta.inefficient_format = True

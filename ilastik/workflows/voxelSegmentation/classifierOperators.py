@@ -45,6 +45,7 @@ from lazyflow.classifiers import (
 
 
 from lazyflow.operators.opFeatureMatrixCache import OpFeatureMatrixCache
+from lazyflow.utility.helpers import bigintprod
 from .utils import slic_to_mask
 
 
@@ -409,7 +410,7 @@ class OpSupervoxelwiseClassifierPredict(Operator):
         input_data = numpy.asarray(input_data, numpy.float32)
 
         shape = input_data.shape
-        prod = numpy.prod(shape[:-1])
+        prod = bigintprod(shape[:-1])
         features = input_data.reshape((prod, shape[-1]))
         features = self.SupervoxelFeatures.value
         # print("features before prediction {}".format(features))

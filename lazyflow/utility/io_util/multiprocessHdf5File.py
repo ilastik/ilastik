@@ -13,6 +13,8 @@ import warnings
 import multiprocessing
 import numpy
 
+from lazyflow.utility.helpers import bigintprod
+
 # This code uses multiprocessing to read hdf5 datasets faster
 # I'm still experimenting with implementation details,
 #  and switching between implementation variants via the METHOD setting below.
@@ -66,7 +68,7 @@ class ReaderProcess(multiprocessing.Process):
                         read_roi = slice_to_roi(slicing, h5_file[internal_path].shape)
                         read_roi = numpy.array(read_roi)
                         read_shape = read_roi[1] - read_roi[0]
-                        num_bytes = h5_file[internal_path].dtype.itemsize * numpy.prod(read_shape)
+                        num_bytes = h5_file[internal_path].dtype.itemsize * bigintprod(read_shape)
                         assert num_bytes <= self.available_bytes, "I don't yet support really big slicings"
                         read_array = numpy.frombuffer(self.transfer_buffer, dtype=numpy.uint8, count=num_bytes)
                         read_array.setflags(write=True)
@@ -107,7 +109,7 @@ class ReaderProcess(multiprocessing.Process):
             result.setflags(write=True)
 
         if METHOD == "shared-array":
-            result = numpy.frombuffer(self.transfer_buffer, dtype=dtype, count=numpy.prod(shape)).copy()
+            result = numpy.frombuffer(self.transfer_buffer, dtype=dtype, count=bigintprod(shape)).copy()
             result = result.reshape(shape)
         return result
 

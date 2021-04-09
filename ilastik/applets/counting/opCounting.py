@@ -48,6 +48,7 @@ from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
 
 from lazyflow.request import Request, RequestPool
 from lazyflow.roi import roiToSlice, sliceToRoi, determineBlockShape
+from lazyflow.utility.helpers import bigintprod
 
 from ilastik.applets.counting.countingOperators import OpTrainCounter, OpPredictCounter, OpLabelPreviewer
 
@@ -99,7 +100,7 @@ class OpVolumeOperator(Operator):
                 # split up requests into blocks
 
                 numBlocks = numpy.ceil(shape / fullBlockShape).astype("int")
-                blockCache = numpy.ndarray(shape=numpy.prod(numBlocks), dtype=self.Output.meta.dtype)
+                blockCache = numpy.ndarray(shape=bigintprod(numBlocks), dtype=self.Output.meta.dtype)
                 pool = RequestPool()
                 # blocks holds the different roi keys for each of the blocks
                 blocks = itertools.product(*[list(range(i)) for i in numBlocks])

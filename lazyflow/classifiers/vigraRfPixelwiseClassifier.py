@@ -14,6 +14,7 @@ import vigra
 import h5py
 
 from .lazyflowClassifier import LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
+from lazyflow.utility.helpers import bigintprod
 
 import logging
 
@@ -117,7 +118,7 @@ class VigraRfPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
         X = X[roi_to_slice(*roi)]
 
         # reshape the image into a 2D feature matrix
-        matrix_shape = (numpy.prod(X.shape[:-1]), X.shape[-1])
+        matrix_shape = (bigintprod(X.shape[:-1]), X.shape[-1])
         feature_matrix = numpy.reshape(X, matrix_shape)
 
         # Run classifier
