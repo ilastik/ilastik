@@ -17,8 +17,6 @@ from lazyflow.utility.pathHelpers import lsH5N5, globH5N5, globNpz
 
 # pyright: strict
 
-S = TypeVar("S", bound="Scheme")
-
 
 class Scheme(enum.Enum):
     HTTP = "http"
@@ -31,7 +29,7 @@ class Scheme(enum.Enum):
             return Scheme.FILE
         for item in cls:
             if item.value == value:
-                return cast(S, item)
+                return item
         raise ValueError(f"Could not convert {value} to a valid Scheme")
 
     @classmethod
@@ -40,6 +38,9 @@ class Scheme(enum.Enum):
 
     def __str__(self) -> str:
         return self.value
+
+
+DU = TypeVar("DU", bound="DataUrl")
 
 
 class DataUrl(ABC):
@@ -68,10 +69,15 @@ class DataUrl(ABC):
             fragment_str = "#" + fragment_str
         return f"{self.scheme}://{self.netloc}{self.path}{query_str}{fragment_str}"
 
+    @classmethod
+    @abstractmethod
+    def from_string(cls: Type[DU], url: str) -> DU:
+        raise NotImplementedError
+
 
 class PrecomputedChunksUrl(DataUrl):
     @classmethod
-    def create(cls, url: str) -> "PrecomputedChunksUrl":
+    def from_string(cls, url: str) -> "PrecomputedChunksUrl":
         url = re.sub(r"^(\w+)://(\w+)://", r"\1+\2://", url)
         parsed = urlsplit(url)
         scheme_components = parsed.scheme.split("+")
@@ -98,6 +104,10 @@ class DataPath(DataUrl):
         self.raw_file_path = str(self.file_path)
         super().__init__(scheme=Scheme.FILE, netloc="", path=PurePosixPath(file_path))
 
+    def __init_subclass__(cls: Type["DataPath"], supported_extensions: List[str]):
+        for suffix in supported_extensions:
+            DataPath.supported_extensions[suffix] = cls
+
     def is_under(self, path: Path):
         try:
             self.file_path.relative_to(path)
@@ -105,19 +115,32 @@ class DataPath(DataUrl):
         except ValueError:
             return False
 
-    @staticmethod
-    def create(path: str) -> "DataPath":
-        try:
-            return ArchiveDataPath.create(path)
-        except ValueError:
-            return SimpleDataPath(Path(path))
+    @classmethod
+    def get_handler(cls: Type[DP], extension: str) -> Type[DP]:
+        extension = extension.lstrip(".")
+        if extension not in DataPath.supported_extensions:
+            raise KeyError(f"Extension '{extension}' not supported")
+        return cast(Type[DP], DataPath.supported_extensions[extension])
+
+    @classmethod
+    @abstractmethod
+    def from_string(cls: Type[DP], url: str) -> DP:
+        path = Path(url)
+        while path != path.parent:
+            try:
+                handler = cls.get_handler(path.suffix)
+                return handler.from_string(url)
+            except KeyError:
+                pass
+            path = path.parent
+        raise ValueError(f"Could not create a DataPath for {url}")
 
     @abstractmethod
     def exists(self) -> bool:
         pass
 
     @abstractmethod
-    def relative_to(self: DP, other: Path) -> DP:
+    def relative_to(self: DU, other: Path) -> DU:
         pass
 
     @abstractmethod
@@ -129,14 +152,12 @@ class DataPath(DataUrl):
     def suffixes(cls) -> List[str]:
         return [suffix for suffix, klass in cls.supported_extensions.items() if issubclass(klass, cls)]
 
-    def __init_subclass__(cls: Type["DataPath"], supported_extensions: List[str]):
-        for suffix in supported_extensions:
-            DataPath.supported_extensions[suffix] = cls
-
     def __hash__(self) -> int:
         return hash(self.raw_file_path)
 
-    def __eq__(self, other: "DataPath") -> bool:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, self.__class__):
+            return False
         return str(self) == str(other)
 
     def __repr__(self) -> str:
@@ -145,13 +166,17 @@ class DataPath(DataUrl):
     def __str__(self) -> str:
         return self.raw_file_path
 
-    def __lt__(self, other: "DataPath") -> bool:
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, DataPath):
+            raise TypeError(
+                f"'<' not supported between instances of '{self.__class__.__name__}' and '{other.__class__.__name__}'"
+            )
         return str(self) < str(other)
 
 
 class SimpleDataPath(
     DataPath,
-    supported_extensions=[
+    supported_extensions=[  # vigra.impex.listExtensions().split()
         "bmp",
         "exr",
         "gif",
@@ -169,8 +194,9 @@ class SimpleDataPath(
         "xv",
     ],
 ):
-    def __init__(self, file_path: Path):
-        super().__init__(file_path=file_path)
+    @classmethod
+    def from_string(cls, url: str) -> "SimpleDataPath":
+        return SimpleDataPath(Path(url))
 
     def exists(self) -> bool:
         return self.file_path.exists()
@@ -181,7 +207,7 @@ class SimpleDataPath(
     def glob(self, smart: bool = True) -> Sequence["DataPath"]:
         if smart and self.exists():
             return [self]
-        expanded_paths = [DataPath.create(p) for p in glob.glob(self.raw_file_path)]
+        expanded_paths = [DataPath.from_string(p) for p in glob.glob(self.raw_file_path)]
         if not expanded_paths:
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(self.file_path))
         return expanded_paths
@@ -196,6 +222,11 @@ class ArchiveDataPath(DataPath, supported_extensions=[]):
             raise ValueError(f"External path for {self.__class__.__name__} must end in {self.suffixes()}")
         super().__init__(file_path=file_path)
         self.internal_path = PurePosixPath("/") / internal_path
+
+    @classmethod
+    @abstractmethod
+    def from_paths(cls: Type[ADP], file_path: Path, internal_path: PurePosixPath) -> ADP:
+        raise NotImplementedError
 
     def __str__(self) -> str:
         return str(self.file_path / self.internal_path.relative_to("/"))
@@ -224,23 +255,15 @@ class ArchiveDataPath(DataPath, supported_extensions=[]):
             raise ValueError(f"Path '{path}' does not look like an archive path")
         return (Path(components[0] + "." + components[1]), PurePosixPath("/") / components[2])
 
-    @staticmethod
-    def pick_archive_class_for(path: str) -> Type["ArchiveDataPath"]:
-        file_path, _ = ArchiveDataPath.split_archive_path(path)
-        external_suffix = file_path.suffix.lower()[1:]
-        for klass in ArchiveDataPath.__subclasses__():
-            if external_suffix in klass.suffixes():
-                return klass
-        raise ValueError(f"Could not find a subclass of ArchiveDataPath for path {path}")
-
-    @staticmethod
-    def create(path: str) -> "ArchiveDataPath":
-        file_path, internal_path = ArchiveDataPath.split_archive_path(path)
+    @classmethod
+    def from_string(cls: Type[ADP], url: str) -> ADP:
+        file_path, internal_path = ArchiveDataPath.split_archive_path(url)
         if internal_path == PurePosixPath("/"):
-            raise ValueError(f"Path to archive file has empty path: '{str(file_path) + str(internal_path)}'")
-        return ArchiveDataPath.pick_archive_class_for(path)(file_path=file_path, internal_path=internal_path)
+            raise ValueError(f"Path to archive file has empty path: '{url}'")
+        handler = cast(ADP, cls.get_handler(file_path.suffix.lower()))
+        return handler.from_paths(file_path=file_path, internal_path=internal_path)
 
-    def relative_to(self, other: Path) -> "DataPath":
+    def relative_to(self: ADP, other: Path) -> ADP:
         return self.__class__(self.file_path.relative_to(other), self.internal_path)
 
     def glob(self, smart: bool = True) -> Sequence["ArchiveDataPath"]:
@@ -262,14 +285,18 @@ class ArchiveDataPath(DataPath, supported_extensions=[]):
     @classmethod
     @abstractmethod
     def list_internal_paths(cls, path: Path) -> List[PurePosixPath]:
-        return ArchiveDataPath.pick_archive_class_for(str(path)).list_internal_paths(path)
+        return cls.get_handler(path.suffix).list_internal_paths(path)
 
     @abstractmethod
-    def glob_internal(self: DP) -> Sequence[DP]:
+    def glob_internal(self: DU) -> Sequence[DU]:
         pass
 
 
 class H5DataPath(ArchiveDataPath, supported_extensions=["h5", "hdf5", "ilp"]):
+    @classmethod
+    def from_paths(cls, file_path: Path, internal_path: PurePosixPath) -> "H5DataPath":
+        return H5DataPath(file_path, internal_path)
+
     @classmethod
     def list_internal_paths(cls, path: Path) -> List[PurePosixPath]:
         with h5py.File(path, "r") as f:
@@ -291,6 +318,10 @@ class H5DataPath(ArchiveDataPath, supported_extensions=["h5", "hdf5", "ilp"]):
 
 class N5DataPath(ArchiveDataPath, supported_extensions=["n5"]):
     @classmethod
+    def from_paths(cls, file_path: Path, internal_path: PurePosixPath) -> "N5DataPath":
+        return N5DataPath(file_path, internal_path)
+
+    @classmethod
     def list_internal_paths(cls, path: Path) -> List[PurePosixPath]:
         with z5py.File(path, "r") as f:
             return sorted([PurePosixPath("/") / p["name"] for p in lsH5N5(f)])
@@ -310,6 +341,10 @@ class N5DataPath(ArchiveDataPath, supported_extensions=["n5"]):
 
 
 class NpzDataPath(ArchiveDataPath, supported_extensions=["npz"]):
+    @classmethod
+    def from_paths(cls, file_path: Path, internal_path: PurePosixPath) -> "NpzDataPath":
+        return NpzDataPath(file_path, internal_path)
+
     @classmethod
     def list_internal_paths(cls, path: Path) -> List[PurePosixPath]:
         return sorted([PurePosixPath("/") / p for p in np.load(path, mmap_mode="r").files])
@@ -414,7 +449,7 @@ class FileDataset:
     @classmethod
     def from_string(cls, path: str, *, deglob: bool, cwd: Optional[Path] = None) -> "FileDataset":
         effective_cwd = cwd or Path.cwd()
-        data_path = DataPath.create(str(effective_cwd / path))
+        data_path = DataPath.from_string(str(effective_cwd / path))
         if data_path.exists():
             return FileDataset([data_path])
         elif deglob:
