@@ -53,7 +53,6 @@ class DataUrl(ABC):
         query: Optional[Mapping[str, List[str]]] = None,
         fragment: Optional[str] = None,
     ):
-        assert path.is_absolute()
         self.scheme = scheme
         self.netloc = netloc
         self.path = path
@@ -100,7 +99,7 @@ class DataPath(DataUrl):
     supported_extensions: ClassVar[Dict[str, Type["DataPath"]]] = {}
 
     def __init__(self, file_path: Path):
-        self.file_path = file_path.absolute()
+        self.file_path = file_path
         self.raw_file_path = str(self.file_path)
         super().__init__(scheme=Scheme.FILE, netloc="", path=PurePosixPath(file_path))
 
