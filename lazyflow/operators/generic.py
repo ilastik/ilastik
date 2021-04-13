@@ -113,12 +113,6 @@ class OpMultiArraySlicer2(Operator):
             if self.Input.meta.drange is not None:
                 oslot.meta.drange = self.Input.meta.drange
 
-        inputShape = self.Input.meta.shape
-        if self.inputShape != inputShape:
-            self.inputShape = inputShape
-            for oslot in self.Slices:
-                oslot.setDirty(slice(None))
-
     def getSliceIndexes(self):
         if self.SliceIndexes.ready():
             return self.SliceIndexes.value
