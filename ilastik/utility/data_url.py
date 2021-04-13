@@ -116,7 +116,7 @@ class DataPath(DataUrl):
 
     @classmethod
     def get_handler(cls: Type[DP], extension: str) -> Type[DP]:
-        extension = extension.lstrip(".")
+        extension = extension.lower().lstrip(".")
         if extension not in DataPath.supported_extensions:
             raise KeyError(f"Extension '{extension}' not supported")
         return cast(Type[DP], DataPath.supported_extensions[extension])
@@ -132,7 +132,7 @@ class DataPath(DataUrl):
             except KeyError:
                 pass
             path = path.parent
-        raise ValueError(f"Could not create a DataPath for {url}")
+        raise ValueError(f"Unsupported data format: {url}")
 
     @abstractmethod
     def exists(self) -> bool:
@@ -206,7 +206,7 @@ class SimpleDataPath(
     def glob(self, smart: bool = True) -> Sequence["DataPath"]:
         if smart and self.exists():
             return [self]
-        expanded_paths = [DataPath.from_string(p) for p in glob.glob(self.raw_file_path)]
+        expanded_paths = [DataPath.from_string(p) for p in sorted(glob.glob(self.raw_file_path))]
         if not expanded_paths:
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(self.file_path))
         return expanded_paths
@@ -225,7 +225,8 @@ class ArchiveDataPath(DataPath, supported_extensions=[]):
     @classmethod
     @abstractmethod
     def from_paths(cls: Type[ADP], file_path: Path, internal_path: PurePosixPath) -> ADP:
-        raise NotImplementedError
+        handler = cls.get_handler(file_path.suffix)
+        return handler.from_paths(file_path, internal_path)
 
     def __str__(self) -> str:
         return str(self.file_path / self.internal_path.relative_to("/"))
@@ -237,6 +238,15 @@ class ArchiveDataPath(DataPath, supported_extensions=[]):
         return [
             self.__class__(self.file_path, internal_path) for internal_path in self.list_internal_paths(self.file_path)
         ]
+
+    @classmethod
+    def common_internal_paths(cls, archives: Iterable[Path]) -> List[PurePosixPath]:
+        """Finds a list of common internal paths that exist in all of 'archives'.
+        Any of the returned paths can be used with any of archives via the with_internal_path method"""
+        if not archives:
+            return []
+        internal_path_sets = [set(ArchiveDataPath.list_internal_paths(archive)) for archive in archives]
+        return sorted(internal_path_sets[0].intersection(*internal_path_sets[1:]))
 
     @staticmethod
     def is_archive_path(path: Union[str, Path]) -> bool:
@@ -259,7 +269,7 @@ class ArchiveDataPath(DataPath, supported_extensions=[]):
         file_path, internal_path = ArchiveDataPath.split_archive_path(url)
         if internal_path == PurePosixPath("/"):
             raise ValueError(f"Path to archive file has empty path: '{url}'")
-        handler = cast(ADP, cls.get_handler(file_path.suffix.lower()))
+        handler = cast(ADP, cls.get_handler(file_path.suffix))
         return handler.from_paths(file_path=file_path, internal_path=internal_path)
 
     def relative_to(self: ADP, other: Path) -> ADP:
@@ -305,7 +315,7 @@ class H5DataPath(ArchiveDataPath, supported_extensions=["h5", "hdf5", "ilp"]):
         with h5py.File(str(self.file_path), "r") as f:
             return [
                 H5DataPath(self.file_path, internal_path=PurePosixPath(p))
-                for p in globH5N5(f, str(self.internal_path).lstrip("/")) or []
+                for p in sorted(globH5N5(f, str(self.internal_path).lstrip("/")) or [])
             ]
 
     def exists(self) -> bool:
@@ -329,7 +339,7 @@ class N5DataPath(ArchiveDataPath, supported_extensions=["n5"]):
         with z5py.N5File(str(self.file_path)) as f:
             return [
                 N5DataPath(self.file_path, internal_path=PurePosixPath(p))
-                for p in globH5N5(f, str(self.internal_path).lstrip("/")) or []
+                for p in sorted(globH5N5(f, str(self.internal_path).lstrip("/")) or [])
             ]
 
     def exists(self) -> bool:
@@ -360,7 +370,7 @@ class NpzDataPath(ArchiveDataPath, supported_extensions=["npz"]):
         return self.internal_path in NpzDataPath.list_internal_paths(self.file_path)
 
 
-class FileDataset:
+class StackPath:
     """A collection of DataPaths that are present in the filesystem"""
 
     def __init__(self, data_paths: Sequence[DataPath]):
@@ -370,7 +380,7 @@ class FileDataset:
         self.data_paths = data_paths
 
     def __repr__(self) -> str:
-        return f"<FileDataset {self.data_paths}>"
+        return f"<StackPath {self.data_paths}>"
 
     def file_paths(self) -> List[Path]:
         return [dp.file_path for dp in self.data_paths]
@@ -381,7 +391,7 @@ class FileDataset:
     def is_under(self, path: Path):
         return all(dp.is_under(path) for dp in self.data_paths)
 
-    def with_internal_path(self, internal_path: PurePosixPath) -> "FileDataset":
+    def with_internal_path(self, internal_path: PurePosixPath) -> "StackPath":
         seen_files: Set[Path] = set()
         updated_data_paths: List[DataPath] = []
         for dp in self.data_paths:
@@ -398,21 +408,14 @@ class FileDataset:
                 if not new_dp.exists():
                     raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(new_dp))
                 updated_data_paths.append(new_dp)
-        return FileDataset(sorted(updated_data_paths))
+        return StackPath(sorted(updated_data_paths))
 
     @classmethod
-    def common_internal_paths(cls, dataset_paths: Iterable["FileDataset"]) -> List[PurePosixPath]:
-        """Finds a list of common internal paths that exist in all ArchiveDataPaths contained within dataset_paths.
-        Any of the returned paths can be used with any of the dataset_paths via the with_internal_path method"""
-        out: Optional[Set[PurePosixPath]] = None
-        for dataset_path in dataset_paths:
-            for data_path in dataset_path.archive_datapaths():
-                internal_paths = set(sibling.internal_path for sibling in data_path.siblings())
-                if out is None:
-                    out = internal_paths
-                else:
-                    out &= internal_paths
-        return sorted(out or [])
+    def common_internal_paths(cls, stack_paths: Iterable["StackPath"]) -> List[PurePosixPath]:
+        """Finds a list of common internal paths that exist in all ArchiveDataPaths contained within stack_paths.
+        Any of the returned paths can be used with any of the stack_paths via the with_internal_path method"""
+        archives = [archive.file_path for stack_path in stack_paths for archive in stack_path.archive_datapaths()]
+        return ArchiveDataPath.common_internal_paths(archives)
 
     def archives(self) -> List[Path]:
         return sorted(set(dp.file_path for dp in self.data_paths if isinstance(dp, ArchiveDataPath)))
@@ -434,25 +437,30 @@ class FileDataset:
         return [str(dp) for dp in self.data_paths]
 
     @classmethod
-    def split(cls, path: str, *, deglob: bool, cwd: Optional[Path] = None) -> "FileDataset":
+    def split(cls, path: str, *, deglob: bool, cwd: Optional[Path] = None) -> "StackPath":
         try:
             return cls.from_string(path, deglob=deglob)
         except FileNotFoundError:
-            return FileDataset.from_strings(path.split(os.path.pathsep), deglob=deglob, cwd=cwd)
+            return StackPath.from_strings(path.split(os.path.pathsep), deglob=deglob, cwd=cwd)
 
     @classmethod
-    def from_strings(cls, paths: Iterable[str], *, deglob: bool, cwd: Optional[Path] = None) -> "FileDataset":
-        dataset_paths = [FileDataset.from_string(path, deglob=deglob, cwd=cwd) for path in paths]
-        return FileDataset([data_path for ds_path in dataset_paths for data_path in ds_path.data_paths])
+    def from_strings(cls, paths: Iterable[str], *, deglob: bool, cwd: Optional[Path] = None) -> "StackPath":
+        stack_paths = [StackPath.from_string(path, deglob=deglob, cwd=cwd) for path in paths]
+        return StackPath([data_path for ds_path in stack_paths for data_path in ds_path.data_paths])
 
     @classmethod
-    def from_string(cls, path: str, *, deglob: bool, cwd: Optional[Path] = None) -> "FileDataset":
+    def from_string(cls, path: str, *, deglob: bool, cwd: Optional[Path] = None) -> "StackPath":
         effective_cwd = cwd or Path.cwd()
-        data_path = DataPath.from_string(str(effective_cwd / path))
-        if data_path.exists():
-            return FileDataset([data_path])
-        elif deglob:
-            expanded = data_path.glob(smart=True)
-            if expanded:
-                return FileDataset(expanded)
+        expanded: Sequence[DataPath] = []
+        try:
+            data_path = DataPath.from_string(str(effective_cwd / path))
+            if data_path.exists():
+                return StackPath([data_path])
+            if deglob:
+                expanded = data_path.glob(smart=True)
+        except ValueError:  # not extension recognized
+            if deglob:
+                expanded = [DataPath.from_string(p) for p in glob.glob(path)]
+        if expanded:
+            return StackPath(expanded)
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
