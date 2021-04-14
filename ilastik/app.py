@@ -135,7 +135,7 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
     _import_h5py_with_utf8_encoding()
     _update_debug_mode(parsed_args)
     _update_hbp_mode(parsed_args)
-    _update_tiktorch(parsed_args, ilastik_dir)
+    _update_tiktorch_executable_location(parsed_args, ilastik_dir)
 
     # If necessary, redirect stdout BEFORE logging is initialized
     _redirect_output(parsed_args)
@@ -260,7 +260,7 @@ def _update_hbp_mode(parsed_args):
         ilastik_config.set("ilastik", "hbp", "true")
 
 
-def _update_tiktorch(parsed_args, root_path: str):
+def _update_tiktorch_executable_location(parsed_args, root_path: str):
     """enable tiktorch local workflow"""
     tiktorch_executable: Optional[Path] = None
     if parsed_args.tiktorch_executable:
