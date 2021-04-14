@@ -151,7 +151,6 @@ class ModelSession:
             c_was_not_in_output_axis_order = True
         else:
             c_was_not_in_output_axis_order = False
-        print("AXIS ORDER", roi, output_axis_order, "SLICE", [axistags.index(a) for a in output_axis_order])
         roi = roi[:, [axistags.index(a) for a in output_axis_order]]
 
         reordered_feature_image = reorder_axes(feature_image, from_axes_tags=axistags, to_axes_tags=self.input_axes)
