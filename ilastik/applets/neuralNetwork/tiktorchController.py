@@ -124,7 +124,7 @@ class TiktorchController:
             if cancelToken.cancelled:
                 return None
 
-            session = connection.create_model_session(uploadId, [d.id for d in srvConfig.devices])
+            session = connection.create_model_session(uploadId, [d.id for d in srvConfig.devices if d.enabled])
             info = ModelInfo(session.name, session.known_classes, session.has_training)
             # TODO: Move to main thread
             self._model.setState(modelBytes, info, session)
