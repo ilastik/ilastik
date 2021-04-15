@@ -262,11 +262,38 @@ def getAvailableWorkflows():
 
     from . import workflows
 
-    for W in workflows.WORKFLOW_CLASSES + all_subclasses(Workflow):
+    def _makeWorkflowTuple(workflow_cls):
+        if isinstance(workflow_cls.workflowName, str):
+            if workflow_cls.workflowDisplayName is None:
+                workflow_cls.workflowDisplayName = workflow_cls.workflowName
+            return workflow_cls, workflow_cls.workflowName, workflow_cls.workflowDisplayName
+        else:
+            originalName = workflow_cls.__name__
+            wname = originalName[0]
+            for i in originalName[1:]:
+                if i in ascii_uppercase:
+                    wname += " "
+                wname += i
+            if wname.endswith(" workflow_clsorkflow"):
+                wname = wname[:-9]
+            if workflow_cls.workflowDisplayName is None:
+                workflow_cls.workflowDisplayName = wname
+
+            return workflow_cls, wname, workflow_cls.workflowDisplayName
+
+
+    # All explicitly registered workflows should be displayed
+    for W in workflows.WORKFLOW_CLASSES:
         if W.__name__ in alreadyListed:
             continue
         alreadyListed.add(W.__name__)
 
+        yield _makeWorkflowTuple(W)
+
+    for W in all_subclasses(Workflow):
+        if W.__name__ in alreadyListed:
+            continue
+        alreadyListed.add(W.__name__)
         # this is a hack to ensure the base object workflow does not
         # appear in the list of available workflows.
         try:
@@ -278,23 +305,7 @@ def getAvailableWorkflows():
         if isbase or not should_register:
             continue
 
-        if isinstance(W.workflowName, str):
-            if W.workflowDisplayName is None:
-                W.workflowDisplayName = W.workflowName
-            yield W, W.workflowName, W.workflowDisplayName
-        else:
-            originalName = W.__name__
-            wname = originalName[0]
-            for i in originalName[1:]:
-                if i in ascii_uppercase:
-                    wname += " "
-                wname += i
-            if wname.endswith(" Workflow"):
-                wname = wname[:-9]
-            if W.workflowDisplayName is None:
-                W.workflowDisplayName = wname
-
-            yield W, wname, W.workflowDisplayName
+        yield _makeWorkflowTuple(W)
 
 
 def getWorkflowFromName(Name):
