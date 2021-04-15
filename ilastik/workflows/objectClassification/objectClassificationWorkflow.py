@@ -253,7 +253,7 @@ class ObjectClassificationWorkflow(Workflow):
         """
         if self.stored_object_classifier:
             opObjectClassification = self.objectClassificationApplet.topLevelOperator
-            opObjectClassification.classifier_cache.forceValue(self.stored_object_classifier)
+            opObjectClassification.classifier_cache.forceValue(self.stored_object_classifier, set_dirty=False)
             # Release reference
             self.stored_object_classifier = None
 
@@ -621,7 +621,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         # If we have stored classifiers, restore them into the workflow now.
         if self.stored_pixel_classifier:
             opPixelClassification = self.pcApplet.topLevelOperator
-            opPixelClassification.classifier_cache.forceValue(self.stored_pixel_classifier)
+            opPixelClassification.classifier_cache.forceValue(self.stored_pixel_classifier, set_dirty=False)
             # Release reference
             self.stored_pixel_classifier = None
         super().handleNewLanesAdded()
