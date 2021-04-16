@@ -446,14 +446,15 @@ class StackPath:
     @classmethod
     def from_string(cls, path: str, *, deglob: bool, cwd: Optional[Path] = None) -> "StackPath":
         effective_cwd = cwd or Path.cwd()
+        path = str(effective_cwd / Path(path).expanduser())
         expanded: Sequence[DataPath] = []
         try:
-            data_path = DataPath.from_string(str(effective_cwd / path))
+            data_path = DataPath.from_string(path)
             if data_path.exists():
                 return StackPath([data_path])
             if deglob:
                 expanded = data_path.glob(smart=True)
-        except ValueError:  # not extension recognized
+        except ValueError:  # no extension recognized (e.g.: /my/files/*)
             if deglob:
                 expanded = [DataPath.from_string(p) for p in glob.glob(path)]
         if expanded:
