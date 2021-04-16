@@ -386,6 +386,9 @@ class StackPath:
     def archive_datapaths(self) -> Iterable[ArchiveDataPath]:
         return (dp for dp in self.data_paths if isinstance(dp, ArchiveDataPath))
 
+    def suffixes(self) -> List[str]:
+        return [fp.suffix for fp in self.file_paths()]
+
     def is_under(self, path: Path):
         return all(dp.is_under(path) for dp in self.data_paths)
 
