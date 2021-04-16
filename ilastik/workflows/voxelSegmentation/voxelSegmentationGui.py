@@ -1,4 +1,5 @@
 from functools import partial
+from ilastik.utility.data_url import ArchiveDataPath, StackPath
 import logging
 from past.utils import old_div
 import os
@@ -148,9 +149,9 @@ class VoxelSegmentationGui(LabelingGui):
         self.labelingDrawerUi.bestAnnotationPlaneButton.clicked.connect(SelectBestAnnotationPlane)
 
     def initFeatSelDlg(self):
-        thisOpFeatureSelection = (
-            self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
-        )
+        thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[
+            0
+        ]
         self.featSelDlg = FeatureSelectionDialog(thisOpFeatureSelection, self, self.labelListData)
 
     def menus(self):
@@ -192,7 +193,7 @@ class VoxelSegmentationGui(LabelingGui):
                 return
 
             file_path = fileNames[0]
-            internal_paths = DataSelectionGui.getPossibleInternalPaths(file_path)
+            internal_paths = [str(p) for p in ArchiveDataPath.list_internal_paths(file_path)]
             if len(internal_paths) == 0:
                 QMessageBox.critical(self, "No volumes in file", "Couldn't find a suitable dataset in your hdf5 file.")
                 return
@@ -211,7 +212,7 @@ class VoxelSegmentationGui(LabelingGui):
             try:
                 top_op = self.topLevelOperatorView
                 opReader = OpInputDataReader(parent=top_op.parent)
-                opReader.FilePath.setValue(path_components.totalPath())
+                opReader.Dataset.setValue(StackPath.from_string(path_components.totalPath(), deglob=False))
 
                 # Reorder the axes
                 op5 = OpReorderAxes(parent=top_op.parent)
@@ -523,9 +524,9 @@ class VoxelSegmentationGui(LabelingGui):
 
     def update_features_from_dialog(self):
         if self.topLevelOperatorView.name == "OpPixelClassification":
-            thisOpFeatureSelection = (
-                self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
-            )
+            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[
+                0
+            ]
         elif self.topLevelOperatorView.name == "OpPixelClassification0":
             thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[
                 0

@@ -250,31 +250,44 @@ class DataSelectionSerializer(AppletSerializer):
             if headless:
                 return (DummyDatasetInfo.from_h5_group(infoGroup), True)
 
-            from PyQt5.QtWidgets import QMessageBox
+            from PyQt5.QtWidgets import QMessageBox, QDialog
             from ilastik.widgets.ImageFileDialog import ImageFileDialog
+            from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget
 
             repaired_paths = []
-            for missing_path in e.filename.split(os.path.pathsep):
-                should_repair = QMessageBox.question(
-                    None,
-                    "Missing file",
-                    (
-                        f"File {missing_path} could not be found "
-                        "(maybe you moved either that file or the .ilp project file). "
-                        "Would you like to look for it elsewhere?"
-                    ),
-                    QMessageBox.Yes | QMessageBox.No,
-                )
-                if should_repair == QMessageBox.No:
-                    raise e
-                paths = ImageFileDialog(None).getSelectedPaths()
-                if not paths:
-                    raise e
-                dirty = True
-                repaired_paths.extend([str(p) for p in paths])
 
+            should_repair = QMessageBox.question(
+                None,
+                "Missing file",
+                (
+                    f"File(s) {infoGroup['filePath']} could not be found "
+                    "(maybe you moved either that file or the .ilp project file). "
+                    "Would you like to look for it elsewhere?"
+                ),
+                QMessageBox.Yes | QMessageBox.No,
+            )
+            if should_repair == QMessageBox.No:
+                raise e
+            single_file_mode = (infoGroup["dataset"] and len(infoGroup["dataset"]) > 1) or len(
+                infoGroup["filePath"].split(os.path.pathsep)
+            ) > 1
+            stackDlg = StackFileSelectionWidget(single_file_mode)
+            stackDlg.exec_()
+            if stackDlg.result() != QDialog.Accepted:
+                raise e
+            stack = stackDlg.selectedStack
+            if stack is None:
+                raise e
+            if "dataset" in infoGroup:
+                del infoGroup["dataset"]
+            infoGroup["dataset"] = [str(dp).replace("\\", "/").encode("utf8") for dp in stack.data_paths]
             if "filePath" in infoGroup:
                 del infoGroup["filePath"]
+            infoGroup["filePath"] = os.path.pathsep.join(str(dp).replace("\\", "/") for dp in stack.data_paths).encode(
+                "utf8"
+            )
+
+            dirty = True
             infoGroup["filePath"] = os.path.pathsep.join(repaired_paths).encode("utf-8")
             datasetInfo = FilesystemDatasetInfo.from_h5_group(infoGroup)
 

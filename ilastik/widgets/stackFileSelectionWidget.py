@@ -19,9 +19,11 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import os
+from pathlib import Path, PurePosixPath
 import sys
 import glob
 from functools import partial
+from typing import Optional, List, Sequence
 
 from PyQt5 import uic
 from PyQt5.QtCore import Qt, QEvent
@@ -42,25 +44,13 @@ from lazyflow.operators.ioOperators import (
     OpInputDataReader,
 )
 from lazyflow.utility import lsH5N5, PathComponents
+from ilastik.utility.data_url import ArchiveDataPath, DataPath, SimpleDataPath, StackPath
 
 
 class StackFileSelectionWidget(QDialog):
-    class DetermineStackError(Exception):
-        """Class related to errors in determining the stack of files"""
+    def __init__(self):
+        super(StackFileSelectionWidget, self).__init__()
 
-        def __init__(self, message):
-            super(StackFileSelectionWidget.DetermineStackError, self).__init__(message)
-
-    def __init__(self, parent, files=None):
-        super(StackFileSelectionWidget, self).__init__(parent)
-
-        self._initUi()
-
-        if files is None:
-            files = []
-        self._updateFileList(files)
-
-    def _initUi(self):
         # Load the ui file into this class (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         uiFilePath = os.path.join(localDir, "stackFileSelectionWidget.ui")
@@ -76,21 +66,15 @@ class StackFileSelectionWidget(QDialog):
         self.selectFilesChooseButton.clicked.connect(self._selectFiles)
         self.directoryChooseButton.clicked.connect(self._chooseDirectory)
         self.patternApplyButton.clicked.connect(self._applyPattern)
-        self.patternEdit.installEventFilter(self)
+        self.patternEdit.returnPressed.connect(self._applyPattern)
 
         # Default to "select files" option, since it's most generic
         self.selectFilesRadioButton.setChecked(True)
         self._configureGui("files")
 
         self.stackAcrossTButton.setChecked(True)
-
-    def accept(self):
-        self.patternEdit.removeEventFilter(self)
-        super(StackFileSelectionWidget, self).accept()
-
-    def reject(self):
-        self.patternEdit.removeEventFilter(self)
-        super(StackFileSelectionWidget, self).reject()
+        self.selectedStack: Optional[StackPath] = None
+        self.okButton.setEnabled(False)
 
     @property
     def sequence_axis(self):
@@ -135,120 +119,9 @@ class StackFileSelectionWidget(QDialog):
             return
 
         preferences.set("DataSelection", "recent stack directory", directory)
-
         self.directoryEdit.setText(directory)
-        try:
-            globstring = self._getGlobString(directory)
-            self.patternEdit.setText(globstring)
-            self._applyPattern()
-        except StackFileSelectionWidget.DetermineStackError as e:
-            QMessageBox.warning(self, "Invalid selection", str(e))
-
-    def _getGlobString(self, directory):
-        all_filenames = []
-        globstrings = []
-
-        msg = ""
-        h5exts = [x.lstrip(".") for x in OpStreamingH5N5SequenceReaderM.H5EXTS]
-        n5exts = [x.lstrip(".") for x in OpStreamingH5N5SequenceReaderM.N5EXTS]
-        exts = vigra.impex.listExtensions().split()
-        exts.extend(n5exts)
-        exts.extend(h5exts)
-        for ext in exts:
-            fullGlob = directory + "/*." + ext
-            globFileNames = glob.glob(fullGlob)
-            new_filenames = [k.replace("\\", "/") for k in globFileNames]
-
-            if len(new_filenames) > 0:
-                # Be helpful: find the longest globstring we can
-                prefix = os.path.commonprefix(new_filenames)
-                globstring = prefix + "*." + ext
-                # Special handling for h5-files: Try to add internal path
-                if ext in h5exts + n5exts:
-                    # be even more helpful and try to find a common internal path
-                    internal_paths = self._h5N5FindCommonInternal(new_filenames)
-                    if len(internal_paths) == 0:
-                        msg += "Could not find a unique common internal path in"
-                        msg += directory + "\n"
-                        raise StackFileSelectionWidget.DetermineStackError(msg)
-                    elif len(internal_paths) == 1:
-                        new_filenames = ["{}/{}".format(fn, internal_paths[0]) for fn in new_filenames]
-                        globstring = "{}/{}".format(globstring, internal_paths[0])
-                    elif len(internal_paths) > 1:
-                        # Ask the user which dataset to choose
-                        dlg = SubvolumeSelectionDlg(internal_paths, self)
-                        if dlg.exec_() == QDialog.Accepted:
-                            selected_index = dlg.combo.currentIndex()
-                            selected_dataset = str(internal_paths[selected_index])
-                            new_filenames = ["{}/{}".format(fn, selected_dataset) for fn in new_filenames]
-                            globstring = "{}/{}".format(globstring, selected_dataset)
-                        else:
-                            msg = "No valid internal path selected."
-                            raise StackFileSelectionWidget.DetermineStackError(msg)
-
-                globstrings.append(globstring)
-                all_filenames += new_filenames
-
-        if len(all_filenames) == 0:
-            msg += "Cannot create stack: There were no image files in the selected directory:\n"
-            msg += directory
-            raise StackFileSelectionWidget.DetermineStackError(msg)
-
-        if len(all_filenames) == 1:
-            msg += "Cannot create stack: There is only one image file in the selected directory:\n"
-            msg += directory + "\n"
-            msg += "If your stack is contained in a single file (e.g. a multi-page tiff or "
-            msg += 'hdf5 volume), please use the "Add File" button.'
-            raise StackFileSelectionWidget.DetermineStackError(msg)
-
-        # Combine into one string, delimited with os.path.sep
-        return os.path.pathsep.join(globstrings)
-
-    @staticmethod
-    def _h5N5FindCommonInternal(h5N5Files):
-        """
-        Tries to find common internal path (containing data)
-
-        Method is used, when a directory is selected and the internal path is,
-        thus, unclear.
-
-        Args:
-            h5Files or hń5Files (list of strings): h5 or n5 files to be globbed internally
-
-        Returns:
-            list of internal paths
-        """
-        h5 = OpStreamingH5N5Reader.get_h5_n5_file(h5N5Files[0], mode="r")
-        internal_paths = set([x["name"] for x in lsH5N5(h5, minShape=2)])
-        h5.close()
-        for h5N5File in h5N5Files[1::]:
-            h5 = OpStreamingH5N5Reader.get_h5_n5_file(h5N5File, "r")
-            # get all files with with at least 2D shape
-            tmp = set([x["name"] for x in lsH5N5(h5, minShape=2)])
-            internal_paths = internal_paths.intersection(tmp)
-
-        return list(internal_paths)
-
-    @staticmethod
-    def _findInternalStacks(h5N5File):
-        """
-        Tries to find common internal path (containing data)
-
-        Method is used, when a directory is selected and the internal path is,
-        thus, unclear.
-
-        Args:
-            h5file or n5file (list of strings): h5 or n5 files to be globbed internally
-
-        Returns:
-            list of internal stacks
-        """
-        pathComponents = PathComponents(h5N5File)
-        if pathComponents.extension in (OpStreamingH5N5SequenceReaderM.H5EXTS + OpStreamingH5N5SequenceReaderM.N5EXTS):
-            # get all internal paths
-            with OpStreamingH5N5Reader.get_h5_n5_file(h5N5File, mode="r") as h5:
-                internal_paths = lsH5N5(h5, minShape=2)
-            return [x["name"] for x in internal_paths]
+        stack = self.create_stack([str(p.absolute()) for p in Path(directory).iterdir()])
+        self.select_stack(stack)
 
     def _selectFiles(self):
         # Find the directory of the most recently opened image file
@@ -262,158 +135,82 @@ class StackFileSelectionWidget(QDialog):
         if ilastik.config.cfg.getboolean("ilastik", "debug"):
             options |= QFileDialog.DontUseNativeDialog
 
-        h5exts = [x.lstrip(".") for x in OpStreamingH5N5SequenceReaderM.H5EXTS]
         # Launch the "Open File" dialog
-        extensions = vigra.impex.listExtensions().split()
-        extensions.extend(h5exts)
-        extensions.extend(OpInputDataReader.n5Selection)
-        filt = "Image files (" + " ".join("*." + x for x in extensions) + ")"
+        filt = "Image files (" + " ".join("*." + x for x in DataPath.suffixes()) + ")"
         options = QFileDialog.Options()
         if ilastik.config.cfg.getboolean("ilastik", "debug"):
             options |= QFileDialog.DontUseNativeDialog
-        fileNames, _filter = QFileDialog.getOpenFileNames(
-            self, "Select Images for Stack", defaultDirectory, filt, options=options
-        )
+        if self.single_file_mode:
+            fileName, _filter = QFileDialog.getOpenFileName(
+                self, "Select Image", defaultDirectory, filt, options=options
+            )
+            fileNames = [fileName]
+        else:
+            fileNames, _filter = QFileDialog.getOpenFileNames(
+                self, "Select Images for Stack", defaultDirectory, filt, options=options
+            )
 
         # For the n5 extension, the attributes.json file has to be selected in the file dialog.
         # However we need just the n5 directory-file.
         for i in range(len(fileNames)):
             if os.path.join("n5", "attributes.json") in fileNames[i]:
                 fileNames[i] = fileNames[i].replace(os.path.sep + "attributes.json", "")
-
-        msg = ""
-        if len(fileNames) == 0:
-            return
-
-        pathComponents = PathComponents(fileNames[0])
-
-        if (
-            (len(fileNames) == 1)
-            and pathComponents.extension
-            not in OpStreamingH5N5SequenceReaderM.H5EXTS + OpStreamingH5N5SequenceReaderM.N5EXTS
-        ):
-            msg += "Cannot create stack: You only chose a single file.  "
-            msg += "If your stack is contained in a single file (e.g. a multi-page tiff) "
-            msg += 'please use the "Add File" button.'
-            QMessageBox.warning(self, "Invalid selection", msg)
-            return None
-
-        directory = pathComponents.externalPath
-        preferences.set("DataSelection", "recent stack directory", directory)
-
-        if (
-            pathComponents.extension in OpStreamingH5N5SequenceReaderM.H5EXTS
-            or pathComponents.extension in OpStreamingH5N5SequenceReaderM.N5EXTS
-        ):
-            if len(fileNames) == 1:
-                # open the dialog for globbing:
-                file_name = fileNames[0]
-                dlg = H5N5StackingDlg(parent=self, list_of_paths=self._findInternalStacks(file_name))
-                if dlg.exec_() == QDialog.Accepted:
-                    globstring = "{}/{}".format(file_name, dlg.get_globstring())
-                    self.patternEdit.setText(globstring)
-                    self._applyPattern()
-                    return None
-                else:
-                    return None
-            else:
-                # check for internal paths
-                internal_paths = self._h5N5FindCommonInternal(fileNames)
-
-                if len(internal_paths) == 0:
-                    msg += "Could not find a unique common internal path in"
-                    msg += directory + "\n"
-                    QMessageBox.warning(self, "Invalid selection", msg)
-                    return None
-                elif len(internal_paths) == 1:
-                    fileNames = ["{}/{}".format(fn, internal_paths[0]) for fn in fileNames]
-                else:
-                    # Ask the user which dataset to choose
-                    dlg = SubvolumeSelectionDlg(internal_paths, self)
-                    if dlg.exec_() == QDialog.Accepted:
-                        selected_index = dlg.combo.currentIndex()
-                        selected_dataset = str(internal_paths[selected_index])
-                        fileNames = ["{}/{}".format(fn, selected_dataset) for fn in fileNames]
-                    else:
-                        msg = "No valid internal path selected."
-                        QMessageBox.warning(self, "Invalid selection", msg)
-                        return None
-        self._updateFileList(fileNames)
+        stack = self.create_stack(fileNames)
+        self.select_stack(stack)
 
     def _applyPattern(self):
-        globStrings = self.patternEdit.text()
-        H5EXTS = OpStreamingH5N5SequenceReaderM.H5EXTS
-        N5EXTS = OpStreamingH5N5SequenceReaderM.N5EXTS
-        filenames = []
-        # see if some glob strings include HDF5 and/or N5 files
-        globStrings = globStrings.split(os.path.pathsep)
-        pcs = [PathComponents(x) for x in globStrings]
-        is_h5_n5 = [x.extension in (H5EXTS + N5EXTS) for x in pcs]
-
-        h5GlobStrings = os.path.pathsep.join([x for x, y in zip(globStrings, is_h5_n5) if y is True])
-        globStrings = os.path.pathsep.join([x for x, y in zip(globStrings, is_h5_n5) if y is False])
-
-        filenames.extend(OpStackLoader.expandGlobStrings(globStrings))
-
+        pattern = self.patternEdit.text().strip()
+        if not pattern:
+            return
         try:
-            OpStreamingH5N5SequenceReaderS.checkGlobString(h5GlobStrings)
-            # OK, if nothing raised there is a single h5 file in h5GlobStrings:
-            pathComponents = PathComponents(h5GlobStrings.split(os.path.pathsep)[0])
-            h5file = OpStreamingH5N5Reader.get_h5_n5_file(pathComponents.externalPath, mode="r")
-            filenames.extend(
-                "{}/{}".format(pathComponents.externalPath, internal)
-                for internal in OpStreamingH5N5SequenceReaderS.expandGlobStrings(h5file, h5GlobStrings)
-            )
-        except (
-            OpStreamingH5N5SequenceReaderS.WrongFileTypeError,
-            OpStreamingH5N5SequenceReaderS.NotTheSameFileError,
-            OpStreamingH5N5SequenceReaderS.NoInternalPlaceholderError,
-            OpStreamingH5N5SequenceReaderS.ExternalPlaceholderError,
-        ):
-            pass
+            stack = StackPath.split(pattern, deglob=True)
+        except Exception as e:
+            return self.warn(str(e))
+        self.select_stack(stack)
 
-        try:
-            OpStreamingH5N5SequenceReaderM.checkGlobString(h5GlobStrings)
-            filenames.extend(
-                "{}/{}".format(external, internal)
-                for external, internal in zip(*OpStreamingH5N5SequenceReaderM.expandGlobStrings(h5GlobStrings))
-            )
-        except (
-            OpStreamingH5N5SequenceReaderM.WrongFileTypeError,
-            OpStreamingH5N5SequenceReaderM.SameFileError,
-            OpStreamingH5N5SequenceReaderM.NoExternalPlaceholderError,
-            OpStreamingH5N5SequenceReaderM.InternalPlaceholderError,
-        ):
-            pass
-        self._updateFileList(filenames)
+    def create_stack(self, raw_file_names: List[str]) -> Optional[StackPath]:
+        if not raw_file_names:
+            return self.warn(f"No selected paths")
+        simple_data_paths = [
+            DataPath.from_string(path) for path in sorted(raw_file_names) if not ArchiveDataPath.is_archive_path(path)
+        ]
 
-    def _updateFileList(self, files):
-        self.selectedFiles = files
+        raw_archive_paths = [Path(path) for path in raw_file_names if ArchiveDataPath.is_archive_path(path)]
+        archive_data_paths: List[ArchiveDataPath] = []
+        if raw_archive_paths:
+            common_internal_paths = ArchiveDataPath.common_internal_paths(raw_archive_paths)
+            if len(common_internal_paths) == 0:
+                return self.warn(
+                    "Selected files have no common internal path:\n" + "\n".join(str(p) for p in raw_archive_paths)
+                )
+            if len(common_internal_paths) == 1:
+                internal_path = common_internal_paths[0]
+            else:
+                # Ask the user which dataset to choose
+                dlg = SubvolumeSelectionDlg([str(p) for p in common_internal_paths], self)
+                if dlg.exec_() == QDialog.Rejected:
+                    return
+                selected_index = dlg.combo.currentIndex()
+                internal_path = common_internal_paths[selected_index]
+            archive_data_paths = [
+                ArchiveDataPath.from_paths(external_path, internal_path) for external_path in raw_archive_paths
+            ]
 
+        all_data_paths: Sequence[DataPath] = tuple(simple_data_paths) + tuple(archive_data_paths)
+        return StackPath(all_data_paths)
+
+    def warn(self, message: str) -> None:
+        QMessageBox.warning(self, "Stack Creation Error", message)
+
+    def select_stack(self, stack: Optional[StackPath]):
         self.fileListWidget.clear()
+        self.okButton.setEnabled(False)
+        if stack is None:
+            return
+        for data_path in stack.data_paths:
+            self.fileListWidget.addItem(str(data_path))
+        if len(set(stack.suffixes())) != 1:
+            return self.warn("Selected files have multiple different extensions")
 
-        for f in self.selectedFiles:
-            self.fileListWidget.addItem(f)
-
-        self.okButton.setEnabled(bool(files))
-
-    def eventFilter(self, watched, event):
-        if watched == self.patternEdit:
-            return self._filterPatternEditEvent(event)
-        return False
-
-    def _filterPatternEditEvent(self, event):
-        # If the user presses "enter" while editing the pattern, auto-click "Apply".
-        if event.type() == QEvent.KeyPress and (event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return):
-            self.patternApplyButton.click()
-            return True
-        return False
-
-
-if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
-
-    app = QApplication([])
-    w = StackFileSelectionWidget(None)
-    w.show()
-    app.exec_()
+        self.selectedStack = stack
+        self.okButton.setEnabled(True)

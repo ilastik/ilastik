@@ -19,6 +19,7 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
+from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
 from lazyflow.graph import Graph
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet, DatasetInfo
@@ -134,7 +135,7 @@ class ManualTrackingWorkflow(Workflow):
         ).get_table_export_settings()
         if settings:
             raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][0].value
-            if raw_dataset_info.is_in_filesystem():
+            if isinstance(raw_dataset_info, FilesystemDatasetInfo):
                 filename_suffix = raw_dataset_info.nickname
             else:
                 filename_suffix = str(lane_index)

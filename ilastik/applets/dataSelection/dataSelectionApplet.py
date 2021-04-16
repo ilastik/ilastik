@@ -21,6 +21,7 @@
 from __future__ import division
 from __future__ import absolute_import
 from builtins import range
+from ilastik.utility.data_url import StackPath, PrecomputedChunksUrl
 import os
 import sys
 import glob
@@ -251,19 +252,14 @@ class DataSelectionApplet(Applet):
         return role_name.lower().replace(" ", "_").replace("-", "_")
 
     def create_dataset_info(
-        self,
-        url: Union[Path, str],
-        skip_deglobbing: bool = False,
-        axistags: Optional[vigra.AxisTags] = None,
-        sequence_axis: str = "z",
+        self, url: Union[Path, str], deglob: bool, axistags: Optional[vigra.AxisTags] = None, sequence_axis: str = "z"
     ) -> DatasetInfo:
         url = str(url)
         if isUrl(url):
-            return UrlDatasetInfo(url=url, axistags=axistags)
+            return UrlDatasetInfo(url=PrecomputedChunksUrl.from_string(url), axistags=axistags)
         else:
-            return RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
-                filePath=url, skip_deglobbing=skip_deglobbing, axistags=axistags, sequence_axis=sequence_axis
-            )
+            dataset = StackPath.split(url, deglob=deglob)
+            return FilesystemDatasetInfo(dataset=dataset, axistags=axistags, sequence_axis=sequence_axis)
 
     def convert_info_to_h5(self, info: DatasetInfo) -> DatasetInfo:
         tmp_path = tempfile.mktemp() + ".h5"
@@ -272,16 +268,17 @@ class DataSelectionApplet(Applet):
         with h5py.File(tmp_path, mode="w") as tmp_h5:
             logger.info(f"Converting info {info.effective_path} to h5 at {full_path}")
             info.dumpToHdf5(h5_file=tmp_h5, inner_path=inner_path)
-            return self.create_dataset_info(url=full_path)
+            return self.create_dataset_info(url=full_path, deglob=False)
 
     def create_lane_configs(
         self,
+        *,
         role_inputs: Dict[str, List[str]],
         input_axes: Sequence[Optional[vigra.AxisTags]] = (),
         preconvert_stacks: bool = False,
         ignore_training_axistags: bool = False,
         stack_along: str = "z",
-        skip_deglobbing: bool = False,
+        deglob: bool,
     ) -> List[Dict[str, Optional[DatasetInfo]]]:
         if not input_axes or not any(input_axes):
             if ignore_training_axistags or self.num_lanes == 0:
@@ -297,9 +294,7 @@ class DataSelectionApplet(Applet):
         for role_name, axistags in zip(self.role_names, input_axes):
             role_urls = role_inputs.get(role_name, [])
             infos = [
-                self.create_dataset_info(
-                    url, axistags=axistags, sequence_axis=stack_along, skip_deglobbing=skip_deglobbing
-                )
+                self.create_dataset_info(url, axistags=axistags, sequence_axis=stack_along, deglob=deglob)
                 for url in role_urls
             ]
             if preconvert_stacks:
@@ -327,7 +322,7 @@ class DataSelectionApplet(Applet):
             preconvert_stacks=parsed_args.preconvert_stacks,
             ignore_training_axistags=parsed_args.ignore_training_axistags,
             stack_along=parsed_args.stack_along,
-            skip_deglobbing=parsed_args.skip_deglobbing,
+            deglob=True,
         )
 
     def pushLane(self, role_infos: Dict[str, DatasetInfo]):

@@ -21,7 +21,7 @@ from __future__ import absolute_import
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-from .ioOperators import OpImageReader, OpStackLoader, OpStackWriter, OpStackToH5Writer, OpH5N5WriterBigDataset
+from .ioOperators import OpImageReader, OpStackLoader, OpStackWriter, OpH5N5WriterBigDataset
 
 # All "Read" operators must come before OpInputDataReader, which uses them.
 from .opStreamingMmfReader import OpStreamingMmfReader

@@ -19,7 +19,15 @@
 # This information is also available on the ilastik web site at:
 #          http://ilastik.org/license/
 ###############################################################################
-from typing import Union
+from ilastik.utility.data_url import (
+    ArchiveDataPath,
+    StackPath,
+    H5DataPath,
+    N5DataPath,
+    PrecomputedChunksUrl,
+    SimpleDataPath,
+)
+from typing import Callable, Union, Optional
 from lazyflow.graph import Operator, InputSlot, OutputSlot, Slot
 from lazyflow.operators import OpBlockedArrayCache, OpMetadataInjector, OpSubRegion
 from .opNpyFileReader import OpNpyFileReader
@@ -116,8 +124,7 @@ class OpInputDataReader(Operator):
     # For stacks, provide a globstring, e.g. /mydir/input*.png
     # Other types are determined via file extension
     WorkingDirectory = InputSlot(stype="filestring", optional=True)
-    FilePath = InputSlot(stype="filestring")
-    SkipDeglobbing = InputSlot()
+    Dataset = InputSlot()  # Union[PrecomputedChunksUrl, StackPath]
     SequenceAxis = InputSlot(optional=True)
 
     # FIXME: Document this.
@@ -134,8 +141,7 @@ class OpInputDataReader(Operator):
     def __init__(
         self,
         WorkingDirectory: str = None,
-        FilePath: str = None,
-        SkipDeglobbing: Union[bool, Slot] = False,
+        Dataset: Union[StackPath, PrecomputedChunksUrl] = None,
         SequenceAxis: str = None,
         SubVolumeRoi: Tuple[int, int] = None,
         *args,
@@ -147,8 +153,7 @@ class OpInputDataReader(Operator):
         self._file = None
 
         self.WorkingDirectory.setOrConnectIfAvailable(WorkingDirectory)
-        self.FilePath.setOrConnectIfAvailable(FilePath)
-        self.SkipDeglobbing.setOrConnectIfAvailable(SkipDeglobbing)
+        self.Dataset.setOrConnectIfAvailable(Dataset)
         self.SequenceAxis.setOrConnectIfAvailable(SequenceAxis)
         self.SubVolumeRoi.setOrConnectIfAvailable(SubVolumeRoi)
 
@@ -163,18 +168,7 @@ class OpInputDataReader(Operator):
         Inspect the file name and instantiate and connect an internal operator of the appropriate type.
         TODO: Handle datasets of non-standard (non-5d) dimensions.
         """
-        path_components = splitPath(self.FilePath.value)
-
-        cwd = self.WorkingDirectory.value if self.WorkingDirectory.ready() else None
-        abs_paths = []
-        for path in path_components:
-            if isRelative(path):
-                if cwd is None:
-                    return  # FIXME: this mirrors old logic but I'm not sure if it's safe
-                abs_paths.append(os.path.normpath(os.path.join(cwd, path)).replace("\\", "/"))
-            else:
-                abs_paths.append(path)
-        filePath = os.path.pathsep.join(abs_paths)
+        dataset: Union[StackPath, PrecomputedChunksUrl] = self.Dataset.value  # type: ignore
 
         # Clean up before reconfiguring
         if self.internalOperators:
@@ -191,11 +185,7 @@ class OpInputDataReader(Operator):
             self._attemptOpenAsKlb,
             self._attemptOpenAsUfmf,
             self._attemptOpenAsMmf,
-            self._attemptOpenAsRESTfulPrecomputedChunkedVolume,
             self._attemptOpenAsDvidVolume,
-            self._attemptOpenAsH5N5Stack,
-            self._attemptOpenAsTiffStack,
-            self._attemptOpenAsStack,
             self._attemptOpenAsH5N5,
             self._attemptOpenAsNpy,
             self._attemptOpenAsRawBinary,
@@ -208,17 +198,31 @@ class OpInputDataReader(Operator):
             self._attemptOpenWithVigraImpex,
         ]
 
-        # Try every method of opening the file until one works.
-        iterFunc = openFuncs.__iter__()
-        while not self.internalOperators:
-            try:
-                openFunc = next(iterFunc)
-            except StopIteration:
-                break
-            self.internalOperators, self.internalOutput = openFunc(filePath)
+        openAsStackFuncs: List[Callable[[StackPath], Tuple[List[Operator], Optional[OutputSlot]]]] = [
+            self._attemptOpenAsH5N5Stack,
+            self._attemptOpenAsTiffStack,
+            self._attemptOpenAsStack,
+        ]
+
+        if isinstance(dataset, PrecomputedChunksUrl):
+            self.internalOperators, self.internalOutput = self._attemptOpenAsRESTfulPrecomputedChunkedVolume(
+                "precomputed://" + dataset.raw()
+            )
+        else:
+            # Try every method of opening the file until one works.
+            iterFunc = openFuncs.__iter__()
+            iterStackFunc = openAsStackFuncs.__iter__()
+            while not self.internalOperators:
+                try:
+                    if len(dataset.data_paths) > 1:
+                        self.internalOperators, self.internalOutput = next(iterStackFunc)(dataset)
+                    else:
+                        self.internalOperators, self.internalOutput = next(iterFunc)(str(dataset.data_paths[0]))
+                except StopIteration:
+                    break
 
         if self.internalOutput is None:
-            raise RuntimeError("Can't read " + filePath + " because it has an unrecognized format.")
+            raise RuntimeError(f"Can't read {dataset} because it has an unrecognized format.")
 
         # If we've got a ROI, append a subregion operator.
         if self.SubVolumeRoi.ready():
@@ -302,70 +306,42 @@ class OpInputDataReader(Operator):
             reader.BaseUrl.setValue(url)
             return [reader], reader.Output
 
-    def _attemptOpenAsH5N5Stack(self, filePath):
-        if not ("*" in filePath or os.path.pathsep in filePath):
+    def _attemptOpenAsH5N5Stack(self, dataset_path: StackPath):
+        archive_datapaths = list(dataset_path.archive_datapaths())
+        archive_types = set(adp.__class__ for adp in archive_datapaths)
+        if len(archive_types) != 1 or archive_types.pop() not in [H5DataPath, N5DataPath]:
             return ([], None)
-
-        # Now use the .checkGlobString method of the stack readers
-        isSingleFile = True
-        try:
-            OpStreamingH5N5SequenceReaderS.checkGlobString(filePath)
-        except OpStreamingH5N5SequenceReaderS.WrongFileTypeError:
-            return ([], None)
-        except (
-            OpStreamingH5N5SequenceReaderS.NoInternalPlaceholderError,
-            OpStreamingH5N5SequenceReaderS.NotTheSameFileError,
-            OpStreamingH5N5SequenceReaderS.ExternalPlaceholderError,
-        ):
-            isSingleFile = False
-
-        isMultiFile = True
-        try:
-            OpStreamingH5N5SequenceReaderM.checkGlobString(filePath)
-        except (
-            OpStreamingH5N5SequenceReaderM.NoExternalPlaceholderError,
-            OpStreamingH5N5SequenceReaderM.SameFileError,
-            OpStreamingH5N5SequenceReaderM.InternalPlaceholderError,
-        ):
-            isMultiFile = False
-
-        assert not (isMultiFile and isSingleFile)
-
-        if isSingleFile is True:
-            opReader = OpStreamingH5N5SequenceReaderS(parent=self)
-        elif isMultiFile is True:
+        if len(dataset_path.archives()) > 1:
             opReader = OpStreamingH5N5SequenceReaderM(parent=self)
-
+        else:
+            opReader = OpStreamingH5N5SequenceReaderS(parent=self)
         try:
-            opReader.SkipDeglobbing.connect(self.SkipDeglobbing)
             opReader.SequenceAxis.connect(self.SequenceAxis)
-            opReader.GlobString.setValue(filePath)
+            opReader.ArchiveDataPaths.setValue(archive_datapaths)
             return ([opReader], opReader.OutputImage)
         except (OpStreamingH5N5SequenceReaderM.WrongFileTypeError, OpStreamingH5N5SequenceReaderS.WrongFileTypeError):
             return ([], None)
 
-    def _attemptOpenAsTiffStack(self, filePath):
-        if not ("*" in filePath or os.path.pathsep in filePath):
+    def _attemptOpenAsTiffStack(self, dataset_path: StackPath):
+        if len(dataset_path.archives()) > 0:
             return ([], None)
 
         try:
             opReader = OpTiffSequenceReader(parent=self)
             opReader.SequenceAxis.connect(self.SequenceAxis)
-            opReader.SkipDeglobbing.connect(self.SkipDeglobbing)
-            opReader.GlobString.setValue(filePath)
+            opReader.DataPaths.setValue(dataset_path.data_paths)
             return ([opReader], opReader.Output)
         except OpTiffSequenceReader.WrongFileTypeError as ex:
             return ([], None)
 
-    def _attemptOpenAsStack(self, filePath):
-        if "*" in filePath or os.path.pathsep in filePath:
-            stackReader = OpStackLoader(parent=self)
-            stackReader.SequenceAxis.connect(self.SequenceAxis)
-            stackReader.SkipDeglobbing.connect(self.SkipDeglobbing)
-            stackReader.globstring.setValue(filePath)
-            return ([stackReader], stackReader.stack)
-        else:
+    def _attemptOpenAsStack(self, dataset_path: StackPath):
+        simple_data_paths = [dp for dp in dataset_path.data_paths if isinstance(dp, SimpleDataPath)]
+        if tuple(simple_data_paths) != tuple(dataset_path.data_paths):
             return ([], None)
+        stackReader = OpStackLoader(parent=self)
+        stackReader.SequenceAxis.connect(self.SequenceAxis)
+        stackReader.DataPaths.setValue(simple_data_paths)
+        return ([stackReader], stackReader.stack)
 
     def _attemptOpenAsH5N5(self, filePath):
         # Check for an hdf5 or n5 extension
