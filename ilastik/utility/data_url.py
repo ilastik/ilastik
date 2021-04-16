@@ -372,7 +372,9 @@ class StackPath:
     def __init__(self, data_paths: Sequence[DataPath]):
         if not data_paths:
             raise ValueError(f"Empty data paths")
-        assert all(dp.exists() for dp in data_paths)
+        for dp in data_paths:
+            if not dp.exists():
+                raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(dp))
         self.data_paths = data_paths
 
     def __repr__(self) -> str:
@@ -393,7 +395,6 @@ class StackPath:
         for dp in self.data_paths:
             if not isinstance(dp, ArchiveDataPath):
                 updated_data_paths.append(dp)
-                continue
             else:
                 if dp.file_path in seen_files:
                     raise ValueError(
@@ -401,8 +402,6 @@ class StackPath:
                     )
                 seen_files.add(dp.file_path)
                 new_dp = dp.with_internal_path(internal_path)
-                if not new_dp.exists():
-                    raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(new_dp))
                 updated_data_paths.append(new_dp)
         return StackPath(sorted(updated_data_paths))
 
