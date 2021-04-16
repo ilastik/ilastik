@@ -78,8 +78,7 @@ def test_non_globlike_simple_data_path(sample_files_dir: Path):
     simple_data_path = DataPath.from_string(str(single_globlike_file_path))
     assert simple_data_path.exists()
     assert simple_data_path.glob(smart=True) == [simple_data_path]
-    with pytest.raises(FileNotFoundError):  # type: ignore
-        simple_data_path.glob(smart=False)
+    simple_data_path.glob(smart=False) == []
 
 
 def test_globlike_simple_data_path(sample_files_dir: Path):
@@ -98,8 +97,7 @@ def test_non_globlike_h5_data_path(sample_files_dir: Path):
     assert isinstance(h5_data_path, H5DataPath)
     assert h5_data_path.exists()
     assert h5_data_path.glob(smart=True) == [h5_data_path]
-    with pytest.raises(FileNotFoundError):  # type: ignore
-        h5_data_path.glob(smart=False)
+    h5_data_path.glob(smart=False) == []
 
 
 def test_externally_globlike_h5_data_path_expands_properly(sample_files_dir: Path):

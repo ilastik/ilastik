@@ -207,8 +207,6 @@ class SimpleDataPath(
         if smart and self.exists():
             return [self]
         expanded_paths = [DataPath.from_string(p) for p in sorted(glob.glob(self.raw_file_path))]
-        if not expanded_paths:
-            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(self.file_path))
         return expanded_paths
 
 
@@ -283,8 +281,6 @@ class ArchiveDataPath(DataPath, supported_extensions=[]):
                 self.__class__(file_path=Path(ep), internal_path=self.internal_path)
                 for ep in glob.glob(str(self.file_path))
             ]
-            if not externally_expanded_paths:
-                raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(self.file_path))
 
         all_paths: List["ArchiveDataPath"] = []
         for data_path in sorted(externally_expanded_paths):
