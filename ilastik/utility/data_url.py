@@ -400,12 +400,12 @@ class StackPath:
         assert relative_prefix.is_absolute()
         if legacy:  # legacy filePath as a single (semi-)colon-separated-string
             filePath: str = data[()].decode("utf8").replace("\\", "/")  # type: ignore
-            raw_paths: Sequence[Path] = [Path(s) for s in filePath.split(os.path.pathsep)]
+            return StackPath.split(filePath, deglob=False)
         else:
             raw_paths: Sequence[Path] = [Path(raw_bytes.decode("utf8")) for raw_bytes in data]  # type: ignore
-        return StackPath(
-            [DataPath.from_string(relative_prefix.joinpath(raw_path).as_posix()) for raw_path in raw_paths]
-        )
+            return StackPath(
+                [DataPath.from_string(relative_prefix.joinpath(raw_path).as_posix()) for raw_path in raw_paths]
+            )
 
     def file_paths(self) -> List[Path]:
         return [dp.file_path for dp in self.data_paths]
