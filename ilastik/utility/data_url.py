@@ -107,6 +107,9 @@ class DataPath(DataUrl):
         for suffix in supported_extensions:
             DataPath.supported_extensions[suffix] = cls
 
+    def is_absolute(self) -> bool:
+        return self.file_path.is_absolute()
+
     def is_under(self, path: Path):
         try:
             self.file_path.relative_to(path)
@@ -171,6 +174,9 @@ class DataPath(DataUrl):
                 f"'<' not supported between instances of '{self.__class__.__name__}' and '{other.__class__.__name__}'"
             )
         return str(self) < str(other)
+
+    def as_posix(self) -> str:
+        return str(self).replace("\\", "/")
 
 
 class SimpleDataPath(
@@ -375,10 +381,31 @@ class StackPath:
         for dp in data_paths:
             if not dp.exists():
                 raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(dp))
+            if not dp.is_absolute():
+                raise ValueError(f"{dp} is not an absolute path")
         self.data_paths = data_paths
 
     def __repr__(self) -> str:
         return f"<StackPath {self.data_paths}>"
+
+    def to_h5_data(self, legacy: bool, relative_prefix: Optional[Path] = None) -> Union[bytes, List[bytes]]:
+        raw_paths = [(dp.relative_to(relative_prefix) if relative_prefix else dp).as_posix() for dp in self.data_paths]
+        if legacy:
+            return os.path.pathsep.join(raw_paths).encode("utf8")
+        else:
+            return [rp.encode("utf8") for rp in raw_paths]
+
+    @classmethod
+    def from_h5_data(cls, data: h5py.Dataset, legacy: bool, relative_prefix: Path) -> "StackPath":
+        assert relative_prefix.is_absolute()
+        if legacy:  # legacy filePath as a single (semi-)colon-separated-string
+            filePath: str = data[()].decode("utf8").replace("\\", "/")  # type: ignore
+            raw_paths: Sequence[Path] = [Path(s) for s in filePath.split(os.path.pathsep)]
+        else:
+            raw_paths: Sequence[Path] = [Path(raw_bytes.decode("utf8")) for raw_bytes in data]  # type: ignore
+        return StackPath(
+            [DataPath.from_string(relative_prefix.joinpath(raw_path).as_posix()) for raw_path in raw_paths]
+        )
 
     def file_paths(self) -> List[Path]:
         return [dp.file_path for dp in self.data_paths]
