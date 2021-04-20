@@ -25,7 +25,7 @@ from builtins import object
 from functools import partial
 import numpy
 import vigra
-from lazyflow.graph import Graph, OperatorWrapper
+from lazyflow.graph import Graph, OperatorWrapper, InputSlot, OutputSlot, Operator
 from lazyflow.rtype import SubRegion
 from lazyflow.operators import OpArrayPiper, OpMultiArraySlicer2
 
@@ -193,3 +193,38 @@ class TestOpMultiArraySlicer2(object):
         for i, slot in enumerate(opSlicer.Slices[1]):
             assert slot.meta.shape == (10, 10, 10, 1)
             assert (slot[...].wait() == 2 * (i + 1)).all()
+
+    def testReshapeDirtyProp(self):
+        class DirtyCountingOp(Operator):
+            Input = InputSlot()
+            Output = OutputSlot()
+
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.invalid_prob_dirty_count = 0
+                self.prob_dirty_count = 0
+
+            def setupOutputs(self):
+                self.Output.meta.assignFrom(self.Input.meta)
+
+            def execute(self, *args, **kwargs):
+                pass
+
+            def propagateDirty(self, inputSlot, subindex, in_roi):
+                self.prob_dirty_count += 1
+                # propagateDirty() roi doesn't match Input slot -
+                # connected operator and own input out of sync
+                # this was encountered when setDirty was called in setupOutputs
+                if not (len(in_roi.start) == len(in_roi.stop) == len(self.Input.meta.shape)):
+                    self.invalid_prob_dirty_count += 1
+
+        test_op = DirtyCountingOp(graph=self.graph)
+        test_op.Input.connect(self.opSlicer.Slices[0])
+        assert test_op.invalid_prob_dirty_count == 0
+        assert test_op.prob_dirty_count == 0
+
+        data = self.opProvider.Input.value
+        reshaped = data.withAxes("tzyxc")
+        self.opProvider.Input.setValue(reshaped)
+        assert test_op.invalid_prob_dirty_count == 0
+        assert test_op.prob_dirty_count == 1
