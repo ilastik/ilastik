@@ -535,19 +535,13 @@ class OpMaxChannelIndicatorOperator(Operator):
         key = roi.toSlice()
         data = self.inputs["Input"][key[:-1] + (slice(None),)].wait()
 
-        dm = numpy.max(data, axis=data.ndim - 1, keepdims=True)
+        # special case, when data is all zeros (e.g. directly from frozen cache w/o trained classifier)
+        if not numpy.any(data):
+            result[:] = 0
+            return
+
         res = numpy.zeros(data.shape, numpy.uint8)
-        numpy.equal(data, dm, out=res)
-
-        # Special case: If all channels are tied, then none of them win.
-        tied_pixels = numpy.logical_and.reduce(res, axis=-1, keepdims=True, dtype=numpy.uint8)
-
-        # We could use numpy.concatenate():
-        #  tied_pixels = numpy.concatenate((tied_pixels, tied_pixels), axis=-1)
-        # But that's not as fast as duplicating the array with a stride trick.
-        # (This only works because channel is the last axis.)
-        tied_pixels = numpy.lib.stride_tricks.as_strided(tied_pixels, shape=res.shape, strides=tied_pixels.strides)
-        res[tied_pixels] = 0
+        numpy.put_along_axis(res, numpy.expand_dims(numpy.argmax(data, axis=-1), axis=-1), 1, axis=-1)
 
         result[:] = res[..., key[-1]]
 
