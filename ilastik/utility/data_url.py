@@ -471,7 +471,7 @@ class Dataset:
         try:
             return cls.from_string(path, deglob=deglob)
         except FileNotFoundError:
-            return Dataset.from_strings(path.split(os.path.pathsep), deglob=deglob, cwd=cwd)
+            return Dataset.from_strings(path.split(separator), deglob=deglob, cwd=cwd)
 
     @classmethod
     def from_strings(cls, paths: Iterable[str], *, deglob: bool, cwd: Optional[Path] = None) -> "Dataset":

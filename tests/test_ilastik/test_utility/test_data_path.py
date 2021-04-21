@@ -250,8 +250,7 @@ def test_dataset_split(sample_files_dir: Path):
         sample_files_dir / "some_h5_file_[xy].hdf5/some/data_[xyz]",
         sample_files_dir / "some_npz_file_[xy].npz/data_[xyz]",
     ]
-    dsp_mixed = Dataset.split(os.path.pathsep.join(str(p) for p in paths), deglob=True)
-    assert dsp_mixed.data_paths == [
+    expected_datapaths = [
         SimpleDataPath(sample_files_dir / "some_file[1].tiff"),
         H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data_x")),
         H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data_y")),
@@ -264,6 +263,12 @@ def test_dataset_split(sample_files_dir: Path):
         NpzDataPath(sample_files_dir / "some_npz_file_x.npz", PurePosixPath("data_z")),
         NpzDataPath(sample_files_dir / "some_npz_file_y.npz", PurePosixPath("data_x")),
     ]
+
+    dsp_mixed = Dataset.split(os.path.pathsep.join(str(p) for p in paths), deglob=True)
+    assert dsp_mixed.data_paths == expected_datapaths
+
+    dsp_mixed = Dataset.split("@".join(str(p) for p in paths), deglob=True, separator="@")
+    assert dsp_mixed.data_paths == expected_datapaths
 
 
 def test_getting_archive_siblings(sample_files_dir: Path):
