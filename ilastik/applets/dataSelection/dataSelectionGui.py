@@ -61,7 +61,13 @@ from .opDataSelection import (
 )
 from .dataLaneSummaryTableModel import DataLaneSummaryTableModel
 from .datasetInfoEditorWidget import DatasetInfoEditorWidget
-from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, SubvolumeSelectionDlg
+from ilastik.widgets.stackFileSelectionWidget import (
+    DatasetSelectionMode,
+    DatasetSelectionWidget,
+    SubvolumeSelectionDlg,
+    select_single_file_datasets,
+    create_dataset,
+)
 from .datasetDetailedInfoTableModel import DatasetDetailedInfoTableModel
 from .datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 from .precomputedVolumeBrowser import PrecomputedVolumeBrowser
@@ -414,15 +420,28 @@ class DataSelectionGui(QWidget):
           the GUI table and the top-level operator inputs.
         """
         # Launch the "Open File" dialog
-        paths = ImageFileDialog(self).getSelectedPaths()
-        self.addFileNames(paths, startingLaneNum, roleIndex)
+        datasets = select_single_file_datasets(
+            parent=self, internal_path_hints=self._get_previously_used_inner_paths(roleIndex)
+        )
+        self.addDatasets(datasets, startingLaneNum, roleIndex)
 
-    def addFileNames(self, paths: List[Path], startingLaneNum: Optional[int], roleIndex: int):
+    def addFileNames(self, paths: List[str], startingLaneNum: Optional[int], roleIndex: int):
+        # If the user didn't cancel
+        datasets: List[Dataset] = []
+        for path in paths:
+            dataset = create_dataset(
+                parent=self, raw_file_paths=[path], internal_path_hints=self._get_previously_used_inner_paths(roleIndex)
+            )
+            if not dataset:
+                return
+            datasets.append(dataset)
+        self.addDatasets(datasets, startingLaneNum=startingLaneNum, roleIndex=roleIndex)
+
+    def addDatasets(self, datasets: Optional[List[Dataset]], startingLaneNum: Optional[int], roleIndex: int):
         # If the user didn't cancel
         axistags_hint = self.guess_axistags_for(role=roleIndex)
-        for path in paths or []:
+        for dataset in datasets or []:
             try:
-                dataset = self._create_file_dataset(path, roleIndex=roleIndex)
                 info = FilesystemDatasetInfo(dataset=dataset, axistags_hint=axistags_hint)
                 self.addLanes([info], roleIndex=roleIndex, startingLaneNum=startingLaneNum)
             except DataSelectionGui.UserCancelledError:
@@ -430,6 +449,10 @@ class DataSelectionGui(QWidget):
             except Exception as ex:
                 log_exception(logger)
                 QMessageBox.critical(self, "Error loading file", str(ex))
+        for dataset in datasets:
+            internal_paths = dataset.internal_paths()
+            if internal_paths:
+                self._add_default_internal_path(roleIndex=roleIndex, internal_path=internal_paths[0])
 
     def _findFirstEmptyLane(self, roleIndex):
         opTop = self.topLevelOperator
@@ -542,29 +565,6 @@ class DataSelectionGui(QWidget):
         previous_paths = self._default_h5n5_volumes.get(roleIndex, set())
         return previous_paths.copy()
 
-    def _create_file_dataset(self, file_path: Path, roleIndex: int) -> Dataset:
-        if not ArchiveDataPath.is_archive_path(file_path):
-            return Dataset.from_string(str(file_path), deglob=False)
-        internal_paths = ArchiveDataPath.list_internal_paths(file_path)
-        if len(internal_paths) == 0:
-            raise RuntimeError(f"File {file_path} has no image datasets")
-        if len(internal_paths) == 1:
-            selected_internal_path = internal_paths.pop()
-        else:
-            auto_internal_paths = self._get_previously_used_inner_paths(roleIndex).intersection(set(internal_paths))
-            if len(auto_internal_paths) == 1:
-                selected_internal_path = auto_internal_paths.pop()
-            else:
-                # Ask the user which dataset to choose
-                dlg = SubvolumeSelectionDlg([str(ip) for ip in internal_paths], self)
-                if dlg.exec_() != QDialog.Accepted:
-                    raise DataSelectionGui.UserCancelledError()
-                selected_index = dlg.combo.currentIndex()
-                selected_internal_path = internal_paths[selected_index]
-        self._add_default_internal_path(roleIndex=roleIndex, internal_path=selected_internal_path)
-        full_path = Path(file_path) / str(selected_internal_path).lstrip("/")
-        return Dataset.from_string(str(full_path), deglob=False)
-
     def guess_axistags_for(self, role: Union[str, int]) -> Optional[AxisTagsHint]:
         if self.parentApplet.num_lanes == 0:
             return None
@@ -591,18 +591,15 @@ class DataSelectionGui(QWidget):
                 "(For HDF5 files, be sure to enable chunking on your dataset.)",
             )
 
-    # pyright: reportUnknownMemberType=true
     def addStack(self, roleIndex: int, laneIndex):
         """
         The user clicked the "Import Stack Files" button.
         """
-        stackDlg = StackFileSelectionWidget()
+        stackDlg = DatasetSelectionWidget(selection_mode=DatasetSelectionMode.STACK)
         stackDlg.exec_()
         if stackDlg.result() != QDialog.Accepted:
             return
-        stack = stackDlg.selectedStack
-        if stack is None:
-            return
+        stack = stackDlg.selected_datasets[0]
 
         # FIXME: ask first if stack should be internalized to project file
         # also, check prefer_2d, size/volume and presence of 'z' to determine this
@@ -610,7 +607,7 @@ class DataSelectionGui(QWidget):
         stack_info = RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
             project_file=self.get_project_file(),
             dataset=stack,
-            sequence_axis=stackDlg.sequence_axis,
+            sequence_axis=stackDlg.stacking_axis,
             axistags_hint=axistags_hint,
         )
 

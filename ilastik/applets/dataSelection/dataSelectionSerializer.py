@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from ilastik.widgets.stackFileSelectionWidget import DatasetSelectionWidget, select_single_file_datasets
 
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
@@ -252,7 +253,7 @@ class DataSelectionSerializer(AppletSerializer):
 
             from PyQt5.QtWidgets import QMessageBox, QDialog
             from ilastik.widgets.ImageFileDialog import ImageFileDialog
-            from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget
+            from ilastik.widgets.stackFileSelectionWidget import DatasetSelectionWidget, DatasetSelectionMode
 
             repaired_paths = []
 
@@ -268,27 +269,24 @@ class DataSelectionSerializer(AppletSerializer):
             )
             if should_repair == QMessageBox.No:
                 raise e
-            single_file_mode = (infoGroup["dataset"] and len(infoGroup["dataset"]) > 1) or len(
-                infoGroup["filePath"].split(os.path.pathsep)
-            ) > 1
-            stackDlg = StackFileSelectionWidget(single_file_mode)
-            stackDlg.exec_()
-            if stackDlg.result() != QDialog.Accepted:
+            if len(infoGroup.get("dataset", [])) > 1 or len(infoGroup["filePath"].split(os.path.pathsep)) > 1:
+                stackDlg = DatasetSelectionWidget(selection_mode=DatasetSelectionMode.STACK)
+                stackDlg.exec_()
+                datasets = stackDlg.selected_datasets
+            else:
+                datasets = select_single_file_datasets(single_file_mode=True)
+            if not datasets:
                 raise e
-            stack = stackDlg.selectedStack
-            if stack is None:
-                raise e
+            dataset = datasets[0]
+            # FIXME: Move this repair logic into DatasetInfo
             if "dataset" in infoGroup:
                 del infoGroup["dataset"]
-            infoGroup["dataset"] = [str(dp).replace("\\", "/").encode("utf8") for dp in stack.data_paths]
+                infoGroup["dataset"] = dataset.to_h5_data(legacy=False)
             if "filePath" in infoGroup:
                 del infoGroup["filePath"]
-            infoGroup["filePath"] = os.path.pathsep.join(str(dp).replace("\\", "/") for dp in stack.data_paths).encode(
-                "utf8"
-            )
+                infoGroup["filePath"] = dataset.to_h5_data(legacy=True)
 
             dirty = True
-            infoGroup["filePath"] = os.path.pathsep.join(repaired_paths).encode("utf-8")
             datasetInfo = FilesystemDatasetInfo.from_h5_group(infoGroup)
 
         return datasetInfo, dirty
