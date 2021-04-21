@@ -497,17 +497,18 @@ class FilesystemDatasetInfo(DatasetInfo):
     @classmethod
     def from_h5_group(cls, data: h5py.Group, params: Optional[Mapping[str, Any]] = None) -> "FilesystemDatasetInfo":
         proj_file_dir = Path(data.file.filename).absolute().parent
-        if "dataset" in data:
-            dataset = Dataset.from_h5_data(data["dataset"], legacy=False, relative_prefix=proj_file_dir)
-        else:  # legacy support
-            dataset = Dataset.from_h5_data(data["filePath"], legacy=True, relative_prefix=proj_file_dir)
+        dataset = Dataset.from_h5_data(
+            data.get("dataset", data["filePath"]), legacy="dataset" not in data, relative_prefix=proj_file_dir
+        )
+        sequence_axis = data["sequence_axis"][()].decode("utf8") if "sequence_axis" in data else None
 
-        updated_params = {"dataset": dataset, **(params or {})}
+        updated_params = {"dataset": dataset, "sequence_axis": sequence_axis, **(params or {})}
         return super().from_h5_group(data, updated_params)
 
     def to_json_data(self) -> Dict[str, Any]:
         data = super().to_json_data()
         data["dataset"] = self.dataset.to_h5_data(legacy=False)
+        data["sequence_axis"] = self.sequence_axis.encode("utf8")
         return data
 
     @property

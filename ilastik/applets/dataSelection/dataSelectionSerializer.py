@@ -21,7 +21,6 @@ from ilastik.widgets.stackFileSelectionWidget import DatasetSelectionWidget, sel
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from typing import List, Tuple, Callable
 from pathlib import Path
 
 
@@ -261,7 +260,8 @@ class DataSelectionSerializer(AppletSerializer):
                 None,
                 "Missing file",
                 (
-                    f"File(s) {infoGroup['filePath']} could not be found "
+                    "Some file(s) could not be found:\n"
+                    f"{infoGroup['filePath'][()].decode('utf8')}\n"
                     "(maybe you moved either that file or the .ilp project file). "
                     "Would you like to look for it elsewhere?"
                 ),
@@ -270,9 +270,17 @@ class DataSelectionSerializer(AppletSerializer):
             if should_repair == QMessageBox.No:
                 raise e
             if len(infoGroup.get("dataset", [])) > 1 or len(infoGroup["filePath"].split(os.path.pathsep)) > 1:
-                stackDlg = DatasetSelectionWidget(selection_mode=DatasetSelectionMode.STACK)
+                if "sequence_axis" in infoGroup:
+                    stacking_axis = infoGroup["sequence_axis"][()].decode("utf8")
+                    del infoGroup["sequence_axis"]
+                else:
+                    stacking_axis = "z"
+                stackDlg = DatasetSelectionWidget(
+                    selection_mode=DatasetSelectionMode.STACK, stacking_axis=stacking_axis
+                )
                 stackDlg.exec_()
                 datasets = stackDlg.selected_datasets
+                infoGroup["sequence_axis"] = stackDlg.stacking_axis.encode("utf8")
             else:
                 datasets = select_single_file_datasets(single_file_mode=True)
             if not datasets:

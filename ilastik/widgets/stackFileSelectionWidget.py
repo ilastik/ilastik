@@ -146,10 +146,11 @@ class DatasetSelectionWidget(QDialog):
         self,
         selection_mode: DatasetSelectionMode = DatasetSelectionMode.STACK,
         show_selection_mode_controls: bool = False,
+        stacking_axis: str = "t",
     ):
         super().__init__()
         self.selected_datasets: Optional[List[Dataset]] = None
-        self.stacking_axis: str = "t"
+        self.stacking_axis: str = stacking_axis
 
         layout = QGridLayout()
         self.setLayout(layout)
@@ -213,7 +214,7 @@ class DatasetSelectionWidget(QDialog):
         self.stacking_axis_selector.addItem("z", "z")
         self.stacking_axis_selector.addItem("c", "c")
         self.stacking_axis_selector.currentTextChanged.connect(lambda _: self.update_stacking_axis())
-        self.stacking_axis_selector.setCurrentIndex(0)
+        self.stacking_axis_selector.setCurrentText(stacking_axis)
 
         layout.addWidget(QLabel("Selections:"), 7, 0)
 
