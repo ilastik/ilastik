@@ -412,6 +412,9 @@ class Dataset:
     def file_paths(self) -> List[Path]:
         return [dp.file_path for dp in self.data_paths]
 
+    def internal_paths(self) -> List[PurePosixPath]:
+        return [archive_datapath.internal_path for archive_datapath in self.archive_datapaths()]
+
     def archive_datapaths(self) -> Iterable[ArchiveDataPath]:
         return (dp for dp in self.data_paths if isinstance(dp, ArchiveDataPath))
 

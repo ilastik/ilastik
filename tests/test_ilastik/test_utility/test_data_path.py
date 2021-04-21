@@ -310,3 +310,16 @@ def test_common_paths(sample_files_dir: Path):
         PurePosixPath("/some/data[1]"),
         PurePosixPath("/some/data_x"),
     ]
+
+
+def test_dataset_internal_paths(sample_files_dir: Path):
+    dataset = Dataset(
+        [
+            H5DataPath(sample_files_dir / "some_h5_file_x.hdf5", PurePosixPath("/some/data_x")),
+            N5DataPath(sample_files_dir / "some_n5_file_y.n5", PurePosixPath("/some/data_x")),
+        ]
+    )
+    assert dataset.internal_paths() == [PurePosixPath("/some/data_x"), PurePosixPath("/some/data_x")]
+
+    dataset = Dataset([SimpleDataPath(sample_files_dir / "some_file_z.tiff")])
+    assert dataset.internal_paths() == []
