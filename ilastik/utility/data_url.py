@@ -378,6 +378,8 @@ class Dataset:
     def __init__(self, data_paths: Sequence[DataPath]):
         if not data_paths:
             raise ValueError(f"Empty data paths")
+        if len(set(data_paths)) != len(data_paths):
+            raise ValueError(f"Repeated data paths")
         for dp in data_paths:
             if not dp.exists():
                 raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(dp))
