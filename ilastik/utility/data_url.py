@@ -372,7 +372,7 @@ class NpzDataPath(ArchiveDataPath, supported_extensions=["npz"]):
         return self.internal_path in NpzDataPath.list_internal_paths(self.file_path)
 
 
-class StackPath:
+class Dataset:
     """A collection of DataPaths that are present in the filesystem"""
 
     def __init__(self, data_paths: Sequence[DataPath]):
@@ -386,7 +386,7 @@ class StackPath:
         self.data_paths = data_paths
 
     def __repr__(self) -> str:
-        return f"<StackPath {self.data_paths}>"
+        return f"<Dataset {self.data_paths}>"
 
     def to_h5_data(self, legacy: bool, relative_prefix: Optional[Path] = None) -> Union[bytes, List[bytes]]:
         raw_paths = [(dp.relative_to(relative_prefix) if relative_prefix else dp).as_posix() for dp in self.data_paths]
@@ -396,14 +396,14 @@ class StackPath:
             return [rp.encode("utf8") for rp in raw_paths]
 
     @classmethod
-    def from_h5_data(cls, data: h5py.Dataset, legacy: bool, relative_prefix: Path) -> "StackPath":
+    def from_h5_data(cls, data: h5py.Dataset, legacy: bool, relative_prefix: Path) -> "Dataset":
         assert relative_prefix.is_absolute()
         if legacy:  # legacy filePath as a single (semi-)colon-separated-string
             filePath: str = data[()].decode("utf8").replace("\\", "/")  # type: ignore
-            return StackPath.split(filePath, deglob=False)
+            return Dataset.from_string(filePath, deglob=False)
         else:
             raw_paths: Sequence[Path] = [Path(raw_bytes.decode("utf8")) for raw_bytes in data]  # type: ignore
-            return StackPath(
+            return Dataset(
                 [DataPath.from_string(relative_prefix.joinpath(raw_path).as_posix()) for raw_path in raw_paths]
             )
 
@@ -419,7 +419,7 @@ class StackPath:
     def is_under(self, path: Path):
         return all(dp.is_under(path) for dp in self.data_paths)
 
-    def with_internal_path(self, internal_path: PurePosixPath) -> "StackPath":
+    def with_internal_path(self, internal_path: PurePosixPath) -> "Dataset":
         seen_files: Set[Path] = set()
         updated_data_paths: List[DataPath] = []
         for dp in self.data_paths:
@@ -433,13 +433,13 @@ class StackPath:
                 seen_files.add(dp.file_path)
                 new_dp = dp.with_internal_path(internal_path)
                 updated_data_paths.append(new_dp)
-        return StackPath(sorted(updated_data_paths))
+        return Dataset(sorted(updated_data_paths))
 
     @classmethod
-    def common_internal_paths(cls, stack_paths: Iterable["StackPath"]) -> List[PurePosixPath]:
-        """Finds a list of common internal paths that exist in all ArchiveDataPaths contained within stack_paths.
-        Any of the returned paths can be used with any of the stack_paths via the with_internal_path method"""
-        archives = [archive.file_path for stack_path in stack_paths for archive in stack_path.archive_datapaths()]
+    def common_internal_paths(cls, datasets: Iterable["Dataset"]) -> List[PurePosixPath]:
+        """Finds a list of common internal paths that exist in all ArchiveDataPaths contained within datasets.
+        Any of the returned paths can be used with any of the datasets via the with_internal_path method"""
+        archives = [archive.file_path for dataset in datasets for archive in dataset.archive_datapaths()]
         return ArchiveDataPath.common_internal_paths(archives)
 
     def archives(self) -> List[Path]:
@@ -462,31 +462,31 @@ class StackPath:
         return [str(dp) for dp in self.data_paths]
 
     @classmethod
-    def split(cls, path: str, *, deglob: bool, cwd: Optional[Path] = None) -> "StackPath":
+    def split(cls, path: str, *, deglob: bool, cwd: Optional[Path] = None, separator: str = os.pathsep) -> "Dataset":
         try:
             return cls.from_string(path, deglob=deglob)
         except FileNotFoundError:
-            return StackPath.from_strings(path.split(os.path.pathsep), deglob=deglob, cwd=cwd)
+            return Dataset.from_strings(path.split(os.path.pathsep), deglob=deglob, cwd=cwd)
 
     @classmethod
-    def from_strings(cls, paths: Iterable[str], *, deglob: bool, cwd: Optional[Path] = None) -> "StackPath":
-        stack_paths = [StackPath.from_string(path, deglob=deglob, cwd=cwd) for path in paths]
-        return StackPath([data_path for ds_path in stack_paths for data_path in ds_path.data_paths])
+    def from_strings(cls, paths: Iterable[str], *, deglob: bool, cwd: Optional[Path] = None) -> "Dataset":
+        stack_paths = [Dataset.from_string(path, deglob=deglob, cwd=cwd) for path in paths]
+        return Dataset([data_path for ds_path in stack_paths for data_path in ds_path.data_paths])
 
     @classmethod
-    def from_string(cls, path: str, *, deglob: bool, cwd: Optional[Path] = None) -> "StackPath":
+    def from_string(cls, path: str, *, deglob: bool, cwd: Optional[Path] = None) -> "Dataset":
         effective_cwd = cwd or Path.cwd()
         path = str(effective_cwd / Path(path).expanduser())
         expanded: Sequence[DataPath] = []
         try:
             data_path = DataPath.from_string(path)
             if data_path.exists():
-                return StackPath([data_path])
+                return Dataset([data_path])
             if deglob:
                 expanded = data_path.glob(smart=True)
         except ValueError:  # no extension recognized (e.g.: /my/files/*)
             if deglob:
                 expanded = [DataPath.from_string(p) for p in glob.glob(path)]
         if expanded:
-            return StackPath(expanded)
+            return Dataset(expanded)
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)

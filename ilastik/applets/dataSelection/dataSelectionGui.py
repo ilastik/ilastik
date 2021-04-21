@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 from ilastik.utility.data_url import PrecomputedChunksUrl
-from ilastik.utility.data_url import ArchiveDataPath, StackPath
+from ilastik.utility.data_url import ArchiveDataPath, Dataset
 
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
@@ -542,9 +542,9 @@ class DataSelectionGui(QWidget):
         previous_paths = self._default_h5n5_volumes.get(roleIndex, set())
         return previous_paths.copy()
 
-    def _create_file_dataset(self, file_path: Path, roleIndex: int) -> StackPath:
+    def _create_file_dataset(self, file_path: Path, roleIndex: int) -> Dataset:
         if not ArchiveDataPath.is_archive_path(file_path):
-            return StackPath.from_string(str(file_path), deglob=False)
+            return Dataset.from_string(str(file_path), deglob=False)
         internal_paths = ArchiveDataPath.list_internal_paths(file_path)
         if len(internal_paths) == 0:
             raise RuntimeError(f"File {file_path} has no image datasets")
@@ -563,7 +563,7 @@ class DataSelectionGui(QWidget):
                 selected_internal_path = internal_paths[selected_index]
         self._add_default_internal_path(roleIndex=roleIndex, internal_path=selected_internal_path)
         full_path = Path(file_path) / str(selected_internal_path).lstrip("/")
-        return StackPath.from_string(str(full_path), deglob=False)
+        return Dataset.from_string(str(full_path), deglob=False)
 
     def guess_axistags_for(self, role: Union[str, int]) -> Optional[AxisTagsHint]:
         if self.parentApplet.num_lanes == 0:

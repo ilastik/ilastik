@@ -1,5 +1,5 @@
 from __future__ import print_function
-from ilastik.utility.data_url import StackPath
+from ilastik.utility.data_url import Dataset
 import os
 import copy
 import h5py
@@ -41,7 +41,7 @@ def convert_predictions_to_segmentation(input_paths, parsed_export_args):
     opExport.progressSignal.subscribe(print_progress)
 
     for input_path in input_paths:
-        opReader.Dataset.setValue(StackPath.from_string(input_path, deglob=False))
+        opReader.Dataset.setValue(Dataset.from_string(input_path, deglob=False))
 
         input_pathcomp = PathComponents(input_path)
         opExport.OutputFilenameFormat.setValue(str(input_pathcomp.externalPath))

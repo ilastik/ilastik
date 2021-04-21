@@ -21,7 +21,7 @@
 ###############################################################################
 from ilastik.utility.data_url import (
     ArchiveDataPath,
-    StackPath,
+    Dataset,
     H5DataPath,
     N5DataPath,
     PrecomputedChunksUrl,
@@ -124,7 +124,7 @@ class OpInputDataReader(Operator):
     # For stacks, provide a globstring, e.g. /mydir/input*.png
     # Other types are determined via file extension
     WorkingDirectory = InputSlot(stype="filestring", optional=True)
-    Dataset = InputSlot()  # Union[PrecomputedChunksUrl, StackPath]
+    Dataset = InputSlot()  # Union[PrecomputedChunksUrl, Dataset]
     SequenceAxis = InputSlot(optional=True)
 
     # FIXME: Document this.
@@ -141,7 +141,7 @@ class OpInputDataReader(Operator):
     def __init__(
         self,
         WorkingDirectory: str = None,
-        Dataset: Union[StackPath, PrecomputedChunksUrl] = None,
+        Dataset: Union[Dataset, PrecomputedChunksUrl] = None,
         SequenceAxis: str = None,
         SubVolumeRoi: Tuple[int, int] = None,
         *args,
@@ -168,7 +168,7 @@ class OpInputDataReader(Operator):
         Inspect the file name and instantiate and connect an internal operator of the appropriate type.
         TODO: Handle datasets of non-standard (non-5d) dimensions.
         """
-        dataset: Union[StackPath, PrecomputedChunksUrl] = self.Dataset.value  # type: ignore
+        dataset: Union[Dataset, PrecomputedChunksUrl] = self.Dataset.value  # type: ignore
 
         # Clean up before reconfiguring
         if self.internalOperators:
@@ -198,7 +198,7 @@ class OpInputDataReader(Operator):
             self._attemptOpenWithVigraImpex,
         ]
 
-        openAsStackFuncs: List[Callable[[StackPath], Tuple[List[Operator], Optional[OutputSlot]]]] = [
+        openAsStackFuncs: List[Callable[[Dataset], Tuple[List[Operator], Optional[OutputSlot]]]] = [
             self._attemptOpenAsH5N5Stack,
             self._attemptOpenAsTiffStack,
             self._attemptOpenAsStack,
@@ -306,7 +306,7 @@ class OpInputDataReader(Operator):
             reader.BaseUrl.setValue(url)
             return [reader], reader.Output
 
-    def _attemptOpenAsH5N5Stack(self, dataset_path: StackPath):
+    def _attemptOpenAsH5N5Stack(self, dataset_path: Dataset):
         archive_datapaths = list(dataset_path.archive_datapaths())
         archive_types = set(adp.__class__ for adp in archive_datapaths)
         if len(archive_types) != 1 or archive_types.pop() not in [H5DataPath, N5DataPath]:
@@ -322,7 +322,7 @@ class OpInputDataReader(Operator):
         except (OpStreamingH5N5SequenceReaderM.WrongFileTypeError, OpStreamingH5N5SequenceReaderS.WrongFileTypeError):
             return ([], None)
 
-    def _attemptOpenAsTiffStack(self, dataset_path: StackPath):
+    def _attemptOpenAsTiffStack(self, dataset_path: Dataset):
         if len(dataset_path.archives()) > 0:
             return ([], None)
 
@@ -334,7 +334,7 @@ class OpInputDataReader(Operator):
         except OpTiffSequenceReader.WrongFileTypeError as ex:
             return ([], None)
 
-    def _attemptOpenAsStack(self, dataset_path: StackPath):
+    def _attemptOpenAsStack(self, dataset_path: Dataset):
         simple_data_paths = [dp for dp in dataset_path.data_paths if isinstance(dp, SimpleDataPath)]
         if tuple(simple_data_paths) != tuple(dataset_path.data_paths):
             return ([], None)

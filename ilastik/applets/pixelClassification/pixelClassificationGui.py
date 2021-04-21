@@ -1,7 +1,7 @@
 from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import division
-from ilastik.utility.data_url import ArchiveDataPath, StackPath
+from ilastik.utility.data_url import ArchiveDataPath, Dataset
 
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
@@ -375,7 +375,7 @@ class PixelClassificationGui(LabelingGui):
             try:
                 top_op = self.topLevelOperatorView
                 opReader = OpInputDataReader(parent=top_op.parent)
-                opReader.Dataset.setValue(StackPath.from_string(path_components.totalPath(), deglob=False))
+                opReader.Dataset.setValue(Dataset.from_string(path_components.totalPath(), deglob=False))
 
                 # Reorder the axes
                 op5 = OpReorderAxes(parent=top_op.parent)

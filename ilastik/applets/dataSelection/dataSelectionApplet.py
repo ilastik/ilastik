@@ -21,7 +21,7 @@
 from __future__ import division
 from __future__ import absolute_import
 from builtins import range
-from ilastik.utility.data_url import StackPath, PrecomputedChunksUrl
+from ilastik.utility.data_url import Dataset, PrecomputedChunksUrl
 import os
 import sys
 import glob
@@ -258,7 +258,7 @@ class DataSelectionApplet(Applet):
         if isUrl(url):
             return UrlDatasetInfo(url=PrecomputedChunksUrl.from_string(url), axistags=axistags)
         else:
-            dataset = StackPath.split(url, deglob=deglob)
+            dataset = Dataset.split(url, deglob=deglob)
             return FilesystemDatasetInfo(dataset=dataset, axistags=axistags, sequence_axis=sequence_axis)
 
     def convert_info_to_h5(self, info: DatasetInfo) -> DatasetInfo:

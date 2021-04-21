@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-from ilastik.utility.data_url import StackPath
+from ilastik.utility.data_url import Dataset
 
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
@@ -141,7 +141,7 @@ class DatasetInfoEditorWidget(QDialog):
             self.internalDatasetNameComboBox.setVisible(False)
             self.internalDatasetNameComboBoxMessage.setVisible(False)
         else:
-            common_internal_paths = StackPath.common_internal_paths(archive_dataset_paths)
+            common_internal_paths = Dataset.common_internal_paths(archive_dataset_paths)
             common_current_internal_paths = set(archive_dataset_paths[0].archive_internal_paths()).intersection(
                 *[dsp.archive_internal_paths() for dsp in archive_dataset_paths[1:]]
             )

@@ -22,7 +22,7 @@
 # Python
 from builtins import range
 import collections
-from ilastik.utility.data_url import StackPath
+from ilastik.utility.data_url import Dataset
 import os
 import numpy
 import vigra
@@ -92,7 +92,7 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
         #   opImport --> (opCache) --> opMetadataInjector --------> opReorderAxes --(inject via setInSlot)--> labelInput
         #                             /                            /
         #     User-specified axisorder    labelInput.meta.axistags
-        opImport.Dataset.setValue(StackPath.from_string(os.path.pathsep.join(fileNames), deglob=False))
+        opImport.Dataset.setValue(Dataset.from_string(os.path.pathsep.join(fileNames), deglob=False))
         assert opImport.Output.ready()
 
         maxLabels = len(labelingSlots.labelNames.value)

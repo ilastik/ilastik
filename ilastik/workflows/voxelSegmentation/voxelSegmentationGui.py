@@ -1,5 +1,5 @@
 from functools import partial
-from ilastik.utility.data_url import ArchiveDataPath, StackPath
+from ilastik.utility.data_url import ArchiveDataPath, Dataset
 import logging
 from past.utils import old_div
 import os
@@ -212,7 +212,7 @@ class VoxelSegmentationGui(LabelingGui):
             try:
                 top_op = self.topLevelOperatorView
                 opReader = OpInputDataReader(parent=top_op.parent)
-                opReader.Dataset.setValue(StackPath.from_string(path_components.totalPath(), deglob=False))
+                opReader.Dataset.setValue(Dataset.from_string(path_components.totalPath(), deglob=False))
 
                 # Reorder the axes
                 op5 = OpReorderAxes(parent=top_op.parent)

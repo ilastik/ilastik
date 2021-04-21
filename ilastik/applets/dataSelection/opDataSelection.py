@@ -20,7 +20,7 @@
 ###############################################################################
 from abc import abstractproperty, abstractmethod, ABC
 import glob
-from ilastik.utility.data_url import ArchiveDataPath, DataPath, StackPath, PrecomputedChunksUrl
+from ilastik.utility.data_url import ArchiveDataPath, DataPath, Dataset, PrecomputedChunksUrl
 import os
 import uuid
 from typing import List, Tuple, Dict, Optional, Union, Callable, Any, Mapping
@@ -442,7 +442,7 @@ class FilesystemDatasetInfo(DatasetInfo):
     def __init__(
         self,
         *,
-        dataset: StackPath,
+        dataset: Dataset,
         sequence_axis: str = None,
         nickname: str = "",
         drange: Tuple[Number, Number] = None,
@@ -498,9 +498,9 @@ class FilesystemDatasetInfo(DatasetInfo):
     def from_h5_group(cls, data: h5py.Group, params: Optional[Mapping[str, Any]] = None) -> "FilesystemDatasetInfo":
         proj_file_dir = Path(data.file.filename).absolute().parent
         if "dataset" in data:
-            dataset = StackPath.from_h5_data(data["dataset"], legacy=False, relative_prefix=proj_file_dir)
+            dataset = Dataset.from_h5_data(data["dataset"], legacy=False, relative_prefix=proj_file_dir)
         else:  # legacy support
-            dataset = StackPath.from_h5_data(data["filePath"], legacy=True, relative_prefix=proj_file_dir)
+            dataset = Dataset.from_h5_data(data["filePath"], legacy=True, relative_prefix=proj_file_dir)
 
         updated_params = {"dataset": dataset, **(params or {})}
         return super().from_h5_group(data, updated_params)
