@@ -520,6 +520,8 @@ class OpMaxChannelIndicatorOperator(Operator):
     Produces a bool image where each value is either 0 or 1, depending on whether
     or not that channel of the input is the max value at that pixel compared
     to the other channels.
+
+    Note: it is expected that Output Rois are always single channel.
     """
 
     Input = InputSlot()
@@ -532,21 +534,20 @@ class OpMaxChannelIndicatorOperator(Operator):
         self.Output.meta.drange = (0, 1)
 
     def execute(self, slot, subindex, roi, result):
-        key = roi.toSlice()
-        n_channels_requested = key[-1].stop - key[-1].start
+        *key, c = roi.toSlice()
+
+        n_channels_requested = c.stop - c.start
         if n_channels_requested != 1:
             raise InvalidRoiException(f"This operator only accepts slices of size 1 for c! Got {n_channels_requested}.")
-        data = self.inputs["Input"][key[:-1] + (slice(None),)].wait()
+
+        data = self.Input[(*key, slice(None))].wait()
 
         # special case, when data is all zeros (e.g. directly from frozen cache w/o trained classifier)
         if not numpy.any(data):
             result[:] = 0
             return
 
-        res = numpy.zeros(data.shape, numpy.uint8)
-        numpy.put_along_axis(res, numpy.expand_dims(numpy.argmax(data, axis=-1), axis=-1), 1, axis=-1)
-
-        result[:] = res[..., key[-1]]
+        result[:] = numpy.uint8(numpy.argmax(data, axis=-1) == c.start)[..., numpy.newaxis]
 
     def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
