@@ -29,7 +29,7 @@ from pathlib import Path
 
 import ilastik.config
 from ilastik import __version__
-from ilastik.config import cfg as ilastik_config
+from ilastik.config import cfg as ilastik_config, runtime_cfg
 from ilastik.utility.commandLineProcessing import OptionalFlagAction
 
 logger = logging.getLogger(__name__)
@@ -278,7 +278,7 @@ def _update_tiktorch_executable_location(parsed_args, root_path: str):
         tiktorch_msg = "Using tiktorch executable: %s" % tiktorch_executable
         print(tiktorch_msg)
         logger.info(tiktorch_msg)
-        ilastik_config.set("ilastik", "tiktorch_executable", str(tiktorch_executable))
+        runtime_cfg.tiktorch_executable = str(tiktorch_executable)
 
 
 def _init_logging(parsed_args):

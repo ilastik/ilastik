@@ -137,8 +137,8 @@ try:
     from . import neuralNetwork
 
     WORKFLOW_CLASSES += [neuralNetwork.RemoteWorkflow]
-    tiktorch_exe_path = ilastik.config.cfg.get("ilastik", "tiktorch_executable", fallback=None)
-    if tiktorch_exe_path:
+    print(ilastik.config.runtime_cfg)
+    if ilastik.config.runtime_cfg.tiktorch_executable:
         WORKFLOW_CLASSES += [neuralNetwork.LocalWorkflow]
 
 except ImportError as e:

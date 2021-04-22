@@ -281,7 +281,6 @@ def getAvailableWorkflows():
 
             return workflow_cls, wname, workflow_cls.workflowDisplayName
 
-
     # All explicitly registered workflows should be displayed
     for W in workflows.WORKFLOW_CLASSES:
         if W.__name__ in alreadyListed:

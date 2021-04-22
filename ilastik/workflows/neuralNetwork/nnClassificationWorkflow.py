@@ -36,7 +36,6 @@ from lazyflow.operators import tiktorch
 from lazyflow.graph import Graph
 
 
-
 logger = logging.getLogger(__name__)
 
 
