@@ -25,6 +25,7 @@ from lazyflow.roi import sliceToRoi
 from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators.ioOperators import OpInputDataReader
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
+from ilastik.utility.data_url import Dataset
 import vigra
 
 import ilastik.ilastik_logging
@@ -49,7 +50,7 @@ class TestOpFeatureSelection(unittest.TestCase):
         opReader = OpInputDataReader(graph=graph)
 
         # Set input data
-        opReader.FilePath.setValue(self.filePath)
+        opReader.Dataset.setValue(Dataset.from_string(self.filePath, deglob=False))
 
         # Connect input
         opFeatures.InputImage.resize(1)

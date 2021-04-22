@@ -1,3 +1,4 @@
+from ilastik.utility.data_url import Dataset
 import os
 from typing import List, Tuple
 from numbers import Number
@@ -21,7 +22,7 @@ from lazyflow.graph import Graph
 
 @pytest.fixture(scope="function")
 def image_yxc_fs_info(png_image, empty_project_file):
-    return FilesystemDatasetInfo(filePath=str(png_image), project_file=empty_project_file)
+    return FilesystemDatasetInfo(dataset=Dataset.from_string(str(png_image), deglob=False))
 
 
 @pytest.fixture(scope="function")
@@ -95,7 +96,7 @@ def accept_widget(qtbot, widget: DatasetInfoEditorWidget) -> List[DatasetInfo]:
 
 
 def test_datasetinfo_editor_widget_shows_correct_data_on_single_info(qtbot, png_image, empty_project_file):
-    info = FilesystemDatasetInfo(filePath=str(png_image), project_file=empty_project_file)
+    info = FilesystemDatasetInfo(dataset=Dataset.from_string(str(png_image), deglob=False))
     assert info.axiskeys == "yxc"
     assert info.laneDtype == numpy.uint8
     assert info.laneShape == (100, 200, 1)
@@ -114,7 +115,7 @@ def test_datasetinfo_editor_widget_shows_correct_data_on_single_info(qtbot, png_
 
 
 def test_datasetinfo_editor_widget_modifies_single_info(qtbot, png_image, empty_project_file):
-    info = FilesystemDatasetInfo(filePath=str(png_image), project_file=empty_project_file)
+    info = FilesystemDatasetInfo(dataset=Dataset.from_string(str(png_image), deglob=False))
     widget = create_and_modify_widget(
         qtbot,
         [info],
@@ -133,14 +134,15 @@ def test_datasetinfo_editor_widget_modifies_single_info(qtbot, png_image, empty_
     assert edited_info.drange == (10, 20)
     assert edited_info.display_mode == "alpha-modulated"
     assert isinstance(edited_info, RelativeFilesystemDatasetInfo)
-    assert edited_info.filePath == Path(png_image).absolute().as_posix()
+    assert len(edited_info.dataset.data_paths) == 1
+    assert edited_info.dataset.data_paths[0].file_path == Path(png_image).absolute()
 
 
 def test_datasetinfo_editor_widget_shows_correct_data_on_multiple_info(
     qtbot, png_image, another_png_image, empty_project_file
 ):
-    info = FilesystemDatasetInfo(filePath=str(png_image), project_file=empty_project_file)
-    info_2 = FilesystemDatasetInfo(filePath=str(another_png_image), project_file=empty_project_file)
+    info = FilesystemDatasetInfo(dataset=Dataset.from_string(str(png_image), deglob=False))
+    info_2 = FilesystemDatasetInfo(dataset=Dataset.from_string(str(another_png_image), deglob=False))
 
     widget = create_and_modify_widget(qtbot=qtbot, infos=[info, info_2], project_file=empty_project_file)
 
@@ -153,8 +155,8 @@ def test_datasetinfo_editor_widget_shows_correct_data_on_multiple_info(
 def test_datasetinfo_editor_widget_shows_edits_data_on_multiple_infos_with_same_dimensionality(
     qtbot, png_image, another_png_image, empty_project_file
 ):
-    info_1 = FilesystemDatasetInfo(filePath=str(png_image), project_file=empty_project_file)
-    info_2 = FilesystemDatasetInfo(filePath=str(another_png_image), project_file=empty_project_file)
+    info_1 = FilesystemDatasetInfo(dataset=Dataset.from_string(str(png_image), deglob=False))
+    info_2 = FilesystemDatasetInfo(dataset=Dataset.from_string(str(another_png_image), deglob=False))
     project_file_dir = str(Path(png_image).parent)
 
     widget = create_and_modify_widget(
@@ -177,10 +179,8 @@ def test_datasetinfo_editor_widget_shows_edits_data_on_multiple_infos_with_same_
 def test_cannot_edit_axis_tags_on_images_of_different_dimensionality(
     qtbot, png_image, image_zyxc_stack_path, empty_project_file
 ):
-    info_1 = FilesystemDatasetInfo(filePath=str(png_image), project_file=empty_project_file)
-    info_2 = FilesystemDatasetInfo(
-        filePath=str(image_zyxc_stack_path), sequence_axis="z", project_file=empty_project_file
-    )
+    info_1 = FilesystemDatasetInfo(dataset=Dataset.from_string(str(png_image), deglob=False))
+    info_2 = FilesystemDatasetInfo(dataset=Dataset.split(str(image_zyxc_stack_path), deglob=False), sequence_axis="z")
 
     widget = create_and_modify_widget(qtbot, [info_1, info_2], project_file=empty_project_file)
     assert not widget.axesEdit.isEnabled()
@@ -190,10 +190,9 @@ def test_cannot_edit_axis_tags_on_images_of_different_dimensionality(
 
 
 def test_immediate_accept_does_not_change_values(qtbot, png_image, image_zyxc_stack_path, empty_project_file):
-    info_1 = FilesystemDatasetInfo(filePath=str(png_image), normalizeDisplay=False, project_file=empty_project_file)
+    info_1 = FilesystemDatasetInfo(dataset=Dataset.from_string(str(png_image), deglob=False), normalizeDisplay=False)
     info_2 = FilesystemDatasetInfo(
-        filePath=str(image_zyxc_stack_path),
-        project_file=empty_project_file,
+        dataset=Dataset.split(str(image_zyxc_stack_path), deglob=False),
         sequence_axis="z",
         normalizeDisplay=True,
         drange=(56, 78),
@@ -216,12 +215,12 @@ def test_too_few_axeskeys_shows_error(qtbot, image_yxc_fs_info, empty_project_fi
     assert widget.axes_error_display.text() != ""
 
 
-def test_garbled_axeskeys_shows_error(qtbot, image_yxc_fs_info):
+def test_garbled_axeskeys_shows_error(qtbot, image_yxc_fs_info, empty_project_file):
     widget = create_and_modify_widget(qtbot, [image_yxc_fs_info], empty_project_file, axiskeys="ab")
     assert widget.axes_error_display.text() != ""
 
 
-def test_repeated_axeskeys_shows_error(qtbot, image_yxc_fs_info):
+def test_repeated_axeskeys_shows_error(qtbot, image_yxc_fs_info, empty_project_file):
     widget = create_and_modify_widget(qtbot, [image_yxc_fs_info], empty_project_file, axiskeys="yy")
     assert widget.axes_error_display.text() != ""
 
@@ -262,7 +261,10 @@ def test_modify_project_internal_datasetinfo(qtbot, image_yxc_fs_info, empty_pro
 
 
 def test_modify_axistags_in_stack(qtbot, png_image, another_png_image, empty_project_file):
-    info = FilesystemDatasetInfo(filePath=str(png_image) + os.path.pathsep + str(another_png_image), sequence_axis="t")
+    info = FilesystemDatasetInfo(
+        dataset=Dataset.split(str(png_image) + os.path.pathsep + str(another_png_image), deglob=False),
+        sequence_axis="t",
+    )
     widget = create_and_modify_widget(qtbot, infos=[info], project_file=empty_project_file, axiskeys="zxyc")
     new_info = accept_widget(qtbot, widget)[0]
     assert new_info.axiskeys == "zxyc"

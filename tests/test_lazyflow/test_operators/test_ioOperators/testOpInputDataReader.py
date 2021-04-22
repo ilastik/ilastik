@@ -1,5 +1,6 @@
 from builtins import range
 from builtins import object
+from ilastik.utility.data_url import Dataset
 
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
@@ -63,7 +64,7 @@ class TestOpInputDataReader(object):
         # Now read back our test data using an OpInputDataReader operator
         npyReader = OpInputDataReader(graph=self.graph)
         try:
-            npyReader.FilePath.setValue(self.testNpyDataFileName)
+            npyReader.Dataset.setValue(Dataset.from_string(self.testNpyDataFileName, deglob=False))
             cwd = os.path.split(__file__)[0]
             npyReader.WorkingDirectory.setValue(cwd)
 
@@ -91,7 +92,9 @@ class TestOpInputDataReader(object):
 
         try:
             for internalPath, referenceArray in zip(["a", "b"], [a, b]):
-                npyReader.FilePath.setValue("{}/{}".format(self.testNpzDataFileName, internalPath))
+                npyReader.Dataset.setValue(
+                    Dataset.from_string("{}/{}".format(self.testNpzDataFileName, internalPath), deglob=False)
+                )
                 cwd = os.path.split(__file__)[0]
                 npyReader.WorkingDirectory.setValue(cwd)
 
@@ -111,7 +114,7 @@ class TestOpInputDataReader(object):
 
         # Read the entire PNG file and verify the contents
         pngReader = OpInputDataReader(graph=self.graph)
-        pngReader.FilePath.setValue(self.testImageFileName)
+        pngReader.Dataset.setValue(Dataset.from_string(self.testImageFileName, deglob=False))
         cwd = os.path.split(__file__)[0]
         pngReader.WorkingDirectory.setValue(cwd)
         pngData = pngReader.Output[:].wait()
@@ -131,7 +134,7 @@ class TestOpInputDataReader(object):
         pngReader = OpInputDataReader(graph=self.graph)
         pngReader.SequenceAxis.setValue(sequence_axis)
         globString = self.testmultiImageFileName.replace("02d}", "s}").format(index="*")
-        pngReader.FilePath.setValue(globString)
+        pngReader.Dataset.setValue(Dataset.from_string(globString, deglob=True))
         cwd = os.path.split(__file__)[0]
         pngReader.WorkingDirectory.setValue(cwd)
         pngData = pngReader.Output[:].wait().squeeze()
@@ -153,7 +156,9 @@ class TestOpInputDataReader(object):
         # Read the entire HDF5 file and verify the contents
         h5Reader = OpInputDataReader(graph=self.graph)
         try:
-            h5Reader.FilePath.setValue(self.testH5FileName + "/volume/data")  # Append internal path
+            h5Reader.Dataset.setValue(
+                Dataset.from_string(self.testH5FileName + "/volume/data", deglob=False)
+            )  # Append internal path
             cwd = os.path.split(__file__)[0]
             h5Reader.WorkingDirectory.setValue(cwd)
 
@@ -190,7 +195,7 @@ class TestOpInputDataReader(object):
         h5SequenceReader.SequenceAxis.setValue(sequence_axis)
         filenamePlusGlob = "{}/volumes/timepoint-*".format(self.testH5FileName)
         try:
-            h5SequenceReader.FilePath.setValue(filenamePlusGlob)
+            h5SequenceReader.Dataset.setValue(Dataset.from_string(filenamePlusGlob, deglob=True))
 
             h5data = h5SequenceReader.Output[:].wait()
             assert h5data.shape == data.shape, f"{h5data.shape}, {data.shape}"
@@ -220,7 +225,7 @@ class TestOpInputDataReader(object):
         globString = self.testmultiH5FileName.replace("02d}", "s}").format(index="*")
         filenamePlusGlob = "{}/volume/data".format(globString)
         try:
-            h5SequenceReader.FilePath.setValue(filenamePlusGlob)
+            h5SequenceReader.Dataset.setValue(Dataset.from_string(filenamePlusGlob, deglob=True))
             h5data = h5SequenceReader.Output[:].wait()
             assert h5data.shape == data.shape
             numpy.testing.assert_array_equal(h5data, data)
@@ -244,7 +249,7 @@ class TestOpInputDataReader(object):
         reader.SequenceAxis.setValue(sequence_axis)
         globString = self.testmultiTiffFileName.replace("02d}", "s}").format(index="*")
         try:
-            reader.FilePath.setValue(globString)
+            reader.Dataset.setValue(Dataset.from_string(globString, deglob=True))
             tiffdata = reader.Output[:].wait()
 
             assert tiffdata.shape == data.shape, f"{tiffdata.shape}, {data.shape}"
@@ -259,7 +264,7 @@ class TestOpInputDataReader(object):
         numpy.save(self.testNpyDataFileName, a)
         opReader = OpInputDataReader(graph=lazyflow.graph.Graph())
         try:
-            opReader.FilePath.setValue(self.testNpyDataFileName)
+            opReader.Dataset.setValue(Dataset.from_string(self.testNpyDataFileName, deglob=True))
             opReader.SubVolumeRoi.setValue(((10, 20, 30), (50, 70, 90)))
 
             all_data = opReader.Output[:].wait()

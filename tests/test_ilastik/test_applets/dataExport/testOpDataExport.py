@@ -31,7 +31,7 @@ from lazyflow.graph import Graph
 from lazyflow.roi import roiToSlice
 from lazyflow.operators.ioOperators import OpInputDataReader
 from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
-
+from ilastik.utility.data_url import Dataset
 from ilastik.applets.dataExport.opDataExport import OpDataExport, DataExportPathFormatter
 
 
@@ -52,7 +52,8 @@ class TestOpDataExport(object):
             opExport.WorkingDirectory.setValue(self._tmpdir)
 
             rawInfo = FilesystemDatasetInfo(
-                filePath=str(tmp_h5_single_dataset / "test_group/test_data"), nickname="test_nickname"
+                dataset=Dataset.from_string(str(tmp_h5_single_dataset / "test_group/test_data"), deglob=False),
+                nickname="test_nickname",
             )
 
             opExport.RawDatasetInfo.setValue(rawInfo)
@@ -91,7 +92,7 @@ class TestOpDataExport(object):
 
         opRead = OpInputDataReader(graph=graph)
         try:
-            opRead.FilePath.setValue(computed_path)
+            opRead.Dataset.setValue(Dataset.from_string(computed_path, deglob=False))
 
             # Compare with the correct subregion and convert dtype.
             expected_data = data.view(numpy.ndarray)[roiToSlice(*sub_roi)]
@@ -131,13 +132,7 @@ class TestDataExportPathFormatter:
         formatted_path = path_formatter.format_path(template_str)
         assert expected_path == formatted_path
 
-    @pytest.mark.parametrize(
-        "template_str",
-        [
-            "{nickname",
-            "nickname}",
-        ],
-    )
+    @pytest.mark.parametrize("template_str", ["{nickname", "nickname}"])
     def test_invalid_format_path(self, path_formatter, template_str):
         with pytest.raises(ValueError):
             path_formatter.format_path(template_str)

@@ -6,6 +6,7 @@ import numpy
 
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpTiffSequenceReader
+from ilastik.utility.data_url import Dataset
 import vigra
 
 
@@ -41,7 +42,7 @@ class TestOpTiffReader(object):
 
             op = OpTiffSequenceReader(graph=Graph())
             op.SequenceAxis.setValue("z")
-            op.GlobString.setValue(tiff_glob_path)
+            op.DataPaths.setValue(Dataset.from_string(tiff_glob_path, deglob=True).data_paths)
             assert op.Output.ready()
             assert op.Output.meta.axistags == expected_axistags
             assert (op.Output[5:10, 50:100, 100:150].wait() == data[5:10, 50:100, 100:150]).all()
@@ -70,7 +71,7 @@ class TestOpTiffReader(object):
 
             op = OpTiffSequenceReader(graph=Graph())
             op.SequenceAxis.setValue("t")
-            op.GlobString.setValue(tiff_glob_path)
+            op.DataPaths.setValue(Dataset.from_string(tiff_glob_path, deglob=True).data_paths)
             assert op.Output.ready()
             assert op.Output.meta.axistags == expected_axistags
             assert (op.Output[5:10, 50:100, 100:150].wait() == data[5:10, 50:100, 100:150]).all()

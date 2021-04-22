@@ -105,6 +105,6 @@ class OpTiffSequenceReader(Operator):
                 self._readers.append(opReader)
 
     def propagateDirty(self, slot, subindex, roi):
-        assert slot == self.SimpleDataPaths
+        assert slot == self.DataPaths
         # Any change to the globstring means our entire output is dirty.
         self.Output.setDirty()

@@ -9,6 +9,7 @@ import numpy
 
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStreamingH5N5SequenceReaderS
+from ilastik.utility.data_url import Dataset
 import vigra
 
 
@@ -58,8 +59,8 @@ class TestOpStreamingH5N5SequenceReaderS(unittest.TestCase):
             n5GlobString = f"{testDataN5FileName}/volumes/subvolume-*"
             h5_op.SequenceAxis.setValue("z")
             n5_op.SequenceAxis.setValue("z")
-            h5_op.GlobString.setValue(hdf5GlobString)
-            n5_op.GlobString.setValue(n5GlobString)
+            h5_op.ArchiveDataPaths.setValue(Dataset.from_string(hdf5GlobString, deglob=True).data_paths)
+            n5_op.ArchiveDataPaths.setValue(Dataset.from_string(n5GlobString, deglob=True).data_paths)
 
             assert h5_op.OutputImage.ready()
             assert n5_op.OutputImage.ready()
@@ -111,8 +112,8 @@ class TestOpStreamingH5N5SequenceReaderS(unittest.TestCase):
             n5GlobString = f"{testDataN5FileName}/volumes/subvolume-*"
             h5_op.SequenceAxis.setValue("t")
             n5_op.SequenceAxis.setValue("t")
-            h5_op.GlobString.setValue(hdf5GlobString)
-            n5_op.GlobString.setValue(n5GlobString)
+            h5_op.ArchiveDataPaths.setValue(Dataset.from_string(hdf5GlobString, deglob=True).data_paths)
+            n5_op.ArchiveDataPaths.setValue(Dataset.from_string(n5GlobString, deglob=True).data_paths)
 
             assert h5_op.OutputImage.ready()
             assert n5_op.OutputImage.ready()
@@ -165,8 +166,8 @@ class TestOpStreamingH5N5SequenceReaderS(unittest.TestCase):
             n5GlobString = f"{testDataN5FileName}/volumes/subvolume-*"
             h5_op.SequenceAxis.setValue("t")
             n5_op.SequenceAxis.setValue("t")
-            h5_op.GlobString.setValue(hdf5GlobString)
-            n5_op.GlobString.setValue(n5GlobString)
+            h5_op.ArchiveDataPaths.setValue(Dataset.from_string(hdf5GlobString, deglob=True).data_paths)
+            n5_op.ArchiveDataPaths.setValue(Dataset.from_string(n5GlobString, deglob=True).data_paths)
 
             assert h5_op.OutputImage.ready()
             assert n5_op.OutputImage.ready()
@@ -177,86 +178,3 @@ class TestOpStreamingH5N5SequenceReaderS(unittest.TestCase):
         finally:
             h5_op.cleanUp()
             n5_op.cleanUp()
-
-    def test_globStringValidity(self):
-        """Check whether globStrings are correctly verified"""
-        testGlobString = "/tmp/test.h5"
-        with self.assertRaises(OpStreamingH5N5SequenceReaderS.NoInternalPlaceholderError):
-            OpStreamingH5N5SequenceReaderS.checkGlobString(testGlobString)
-
-        testGlobString = "/tmp/test.n5"
-        with self.assertRaises(OpStreamingH5N5SequenceReaderS.NoInternalPlaceholderError):
-            OpStreamingH5N5SequenceReaderS.checkGlobString(testGlobString)
-
-        testGlobString = "/tmp/test.h5/a" + os.pathsep + "/tmp/test2.h5/a"
-        with self.assertRaises(OpStreamingH5N5SequenceReaderS.NotTheSameFileError):
-            OpStreamingH5N5SequenceReaderS.checkGlobString(testGlobString)
-
-        testGlobString = "/tmp/test.n5/a" + os.pathsep + "/tmp/test2.n5/a"
-        with self.assertRaises(OpStreamingH5N5SequenceReaderS.NotTheSameFileError):
-            OpStreamingH5N5SequenceReaderS.checkGlobString(testGlobString)
-
-        testGlobString = "/tmp/test*.h5/a" + os.pathsep + "/tmp/test*.h5/a"
-        with self.assertRaises(OpStreamingH5N5SequenceReaderS.ExternalPlaceholderError):
-            OpStreamingH5N5SequenceReaderS.checkGlobString(testGlobString)
-
-        testGlobString = "/tmp/test*.n5/a" + os.pathsep + "/tmp/test*.n5/a"
-        with self.assertRaises(OpStreamingH5N5SequenceReaderS.ExternalPlaceholderError):
-            OpStreamingH5N5SequenceReaderS.checkGlobString(testGlobString)
-
-        testGlobString = "/tmp/test.jpg/*"
-        with self.assertRaises(OpStreamingH5N5SequenceReaderS.WrongFileTypeError):
-            OpStreamingH5N5SequenceReaderS.checkGlobString(testGlobString)
-
-        validGlobStrings = [
-            "/tmp/test.h5/*",
-            "/tmp/test.h5/data1" + os.pathsep + "/tmp/test.h5/data2",
-            "/tmp/test.h5/data*",
-            "/tmp/test.n5/*",
-            "/tmp/test.n5/data1" + os.pathsep + "/tmp/test.n5/data2",
-            "/tmp/test.n5/data*",
-        ]
-
-        # Implicit test for validity; test fails if an exception is raised
-        for testGlobString in validGlobStrings:
-            OpStreamingH5N5SequenceReaderS.checkGlobString(testGlobString)
-
-        self.assertTrue(True)
-
-    def test_expandGlobStrings(self):
-        expected_datasets = ["g1/g2/data2", "g1/g2/data3"]
-
-        h5_file_name = f"{self.tempdir_normalized_name}/test.h5"
-        n5_file_name = f"{self.tempdir_normalized_name}/test.n5"
-        try:
-            h5_file = h5py.File(h5_file_name, mode="w")
-            n5_file = z5py.N5File(n5_file_name, mode="w")
-            h5_g1 = h5_file.create_group("g1")
-            n5_g1 = n5_file.create_group("g1")
-            h5_g2 = h5_g1.create_group("g2")
-            n5_g2 = n5_g1.create_group("g2")
-            h5_g3 = h5_file.create_group("g3")
-            n5_g3 = n5_file.create_group("g3")
-            h5_g1.create_dataset("data1", data=numpy.ones((10, 10)))
-            n5_g1.create_dataset("data1", data=numpy.ones((10, 10)))
-            h5_g2.create_dataset("data2", data=numpy.ones((10, 10)))
-            n5_g2.create_dataset("data2", data=numpy.ones((10, 10)))
-            h5_g2.create_dataset("data3", data=numpy.ones((10, 10)))
-            n5_g2.create_dataset("data3", data=numpy.ones((10, 10)))
-            h5_g3.create_dataset("data4", data=numpy.ones((10, 10)))
-            n5_g3.create_dataset("data4", data=numpy.ones((10, 10)))
-            h5_file.flush()
-
-            h5_glob_res1 = OpStreamingH5N5SequenceReaderS.expandGlobStrings(h5_file, f"{h5_file_name}/g1/g2/data*")
-            n5_glob_res1 = OpStreamingH5N5SequenceReaderS.expandGlobStrings(n5_file, f"{n5_file_name}/g1/g2/data*")
-            self.assertEqual(h5_glob_res1, expected_datasets)
-            self.assertEqual(n5_glob_res1, expected_datasets)
-
-        finally:
-            h5_file.close()
-            n5_file.close()
-
-        h5_glob_res2 = OpStreamingH5N5SequenceReaderS.expandGlobStrings(h5_file_name, f"{h5_file_name}/g1/g2/data*")
-        n5_glob_res2 = OpStreamingH5N5SequenceReaderS.expandGlobStrings(n5_file_name, f"{n5_file_name}/g1/g2/data*")
-        self.assertEqual(h5_glob_res2, expected_datasets)
-        self.assertEqual(n5_glob_res2, expected_datasets)

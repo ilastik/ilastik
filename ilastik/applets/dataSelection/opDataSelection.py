@@ -508,7 +508,8 @@ class FilesystemDatasetInfo(DatasetInfo):
     def to_json_data(self) -> Dict[str, Any]:
         data = super().to_json_data()
         data["dataset"] = self.dataset.to_h5_data(legacy=False)
-        data["sequence_axis"] = self.sequence_axis.encode("utf8")
+        if self.sequence_axis:
+            data["sequence_axis"] = self.sequence_axis.encode("utf8")
         return data
 
     @property
@@ -523,13 +524,16 @@ class FilesystemDatasetInfo(DatasetInfo):
     def internal_paths(self) -> List[str]:
         return [str(dp.internal_path) for dp in self.dataset.data_paths if isinstance(dp, ArchiveDataPath)]
 
+    def is_under(self, project_file: h5py.File) -> bool:
+        return self.dataset.is_under(Path(project_file.filename).parent)
+
 
 class RelativeFilesystemDatasetInfo(FilesystemDatasetInfo):
     def __init__(self, project_file: h5py.File, **fs_info_kwargs):
         self.project_file = project_file
         self.base_dir = Path(project_file.filename).parent
         super().__init__(**fs_info_kwargs)
-        if not self.dataset.is_under(self.base_dir):
+        if not self.is_under(project_file):
             raise CantSaveAsRelativePathsException(self.filePath, self.base_dir)
 
     def to_json_data(self) -> Dict[str, Any]:

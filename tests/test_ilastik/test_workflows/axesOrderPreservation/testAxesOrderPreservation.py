@@ -36,6 +36,7 @@ from lazyflow.operators.ioOperators import OpInputDataReader
 from lazyflow.operators.ioOperators.opFormattedDataExport import OpFormattedDataExport
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.utility.timer import timeLogged
+from ilastik.utility.data_url import Dataset
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -123,7 +124,7 @@ class TestAxesOrderPreservation(object):
         basename = os.path.basename(filepath)
         reader = OpInputDataReader(graph=Graph())
         assert os.path.exists(filepath), "{} not found".format(filepath)
-        reader.FilePath.setValue(os.path.abspath(filepath))
+        reader.Dataset.setValue(Dataset.from_string(os.path.abspath(filepath), deglob=False))
 
         writer = OpFormattedDataExport(parent=reader)
         if outmin is not None:
@@ -159,7 +160,7 @@ class TestAxesOrderPreservation(object):
                 input_axes += "c"
 
             opReaderCompare = OpInputDataReader(graph=Graph())
-            opReaderCompare.FilePath.setValue(compare_path)
+            opReaderCompare.Dataset.setValue(Dataset.from_string(compare_path, deglob=False))
             opReorderCompare = OpReorderAxes(parent=opReaderCompare)
             opReorderCompare.Input.connect(opReaderCompare.Output)
             opReorderCompare.AxisOrder.setValue(input_axes)
@@ -281,7 +282,7 @@ class TestAxesOrderPreservation(object):
         compare_path += ".h5"
 
         opReaderResult = OpInputDataReader(graph=Graph())
-        opReaderResult.FilePath.setValue(output_path)
+        opReaderResult.Dataset.setValue(Dataset.from_string(output_path, deglob=False))
 
         if "c" in input_axes:
             assert input_axes == "".join(opReaderResult.Output.meta.getAxisKeys()), "".join(
@@ -355,7 +356,7 @@ class TestAxesOrderPreservation(object):
         compare_path += ".h5"
 
         opReaderResult = OpInputDataReader(graph=Graph())
-        opReaderResult.FilePath.setValue(output_path)
+        opReaderResult.Dataset.setValue(Dataset.from_string(output_path, deglob=False))
 
         if "c" in input_axes:
             assert input_axes == "".join(opReaderResult.Output.meta.getAxisKeys()), "".join(
@@ -443,7 +444,7 @@ class TestAxesOrderPreservation(object):
         compare_path += ".h5"
 
         opReaderResult = OpInputDataReader(graph=Graph())
-        opReaderResult.FilePath.setValue(output_path)
+        opReaderResult.Dataset.setValue(Dataset.from_string(output_path, deglob=False))
 
         self.compare_results(opReaderResult, compare_path, input_axes)
 
@@ -516,7 +517,7 @@ class TestAxesOrderPreservation(object):
         compare_path += ".h5"
 
         opReaderResult = OpInputDataReader(graph=Graph())
-        opReaderResult.FilePath.setValue(output_path)
+        opReaderResult.Dataset.setValue(Dataset.from_string(output_path, deglob=False))
 
         self.compare_results(opReaderResult, compare_path, input_axes, post_process=detect_edges, max_part_uneqaul=0.02)
 
@@ -580,7 +581,7 @@ class TestAxesOrderPreservation(object):
         compare_path += ".h5"
 
         opReaderResult = OpInputDataReader(graph=Graph())
-        opReaderResult.FilePath.setValue(output_path)
+        opReaderResult.Dataset.setValue(Dataset.from_string(output_path, deglob=False))
 
         self.compare_results(opReaderResult, compare_path, input_axes, max_mse=0.001)
 
@@ -689,7 +690,7 @@ class TestAxesOrderPreservation(object):
         self.ilastik_startup.main()
 
         opReaderResult = OpInputDataReader(graph=Graph())
-        opReaderResult.FilePath.setValue(output_filename)
+        opReaderResult.Dataset.setValue(Dataset.from_string(output_filename, deglob=False))
 
         compare_name = os.path.abspath(os.path.join(self.dir, f"{dims}{variant}{input_axes}_Tracking-Result.h5"))
 

@@ -197,6 +197,7 @@ class SimpleDataPath(
         "tif",
         "tiff",
         "xv",
+        "npy",
     ],
 ):
     @classmethod
@@ -272,7 +273,11 @@ class ArchiveDataPath(DataPath, supported_extensions=[]):
     def from_string(cls: Type[ADP], url: str) -> ADP:
         file_path, internal_path = ArchiveDataPath.split_archive_path(url)
         if internal_path == PurePosixPath("/"):
-            raise ValueError(f"Path to archive file has empty path: '{url}'")
+            internal_paths = cls.list_internal_paths(file_path)
+            if len(internal_paths) == 1:
+                internal_path = internal_paths.pop()
+            else:
+                raise ValueError(f"Path to archive file has empty path: '{url}'")
         handler = cast(ADP, cls.get_handler(file_path.suffix))
         return handler.from_paths(file_path=file_path, internal_path=internal_path)
 
@@ -402,12 +407,10 @@ class Dataset:
         assert relative_prefix.is_absolute()
         if legacy:  # legacy filePath as a single (semi-)colon-separated-string
             filePath: str = data[()].decode("utf8").replace("\\", "/")  # type: ignore
-            return Dataset.from_string(filePath, deglob=False)
+            raw_paths: List[str] = [filePath]
         else:
-            raw_paths: Sequence[Path] = [Path(raw_bytes.decode("utf8")) for raw_bytes in data]  # type: ignore
-            return Dataset(
-                [DataPath.from_string(relative_prefix.joinpath(raw_path).as_posix()) for raw_path in raw_paths]
-            )
+            raw_paths: List[str] = [raw_bytes.decode("utf8") for raw_bytes in data]  # type: ignore
+        return Dataset([DataPath.from_string(relative_prefix.joinpath(raw_path).as_posix()) for raw_path in raw_paths])
 
     def file_paths(self) -> List[Path]:
         return [dp.file_path for dp in self.data_paths]

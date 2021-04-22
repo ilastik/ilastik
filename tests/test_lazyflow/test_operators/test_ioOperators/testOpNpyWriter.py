@@ -31,6 +31,7 @@ import vigra
 from lazyflow.graph import Graph
 from lazyflow.operators import OpArrayPiper
 from lazyflow.operators.ioOperators import OpInputDataReader, OpNpyWriter
+from ilastik.utility.data_url import Dataset
 
 
 class TestOpNpyWriter(object):
@@ -60,7 +61,7 @@ class TestOpNpyWriter(object):
 
         opRead = OpInputDataReader(graph=graph)
         try:
-            opRead.FilePath.setValue(opWriter.Filepath.value)
+            opRead.Dataset.setValue(Dataset.from_string(opWriter.Filepath.value, deglob=False))
             expected_data = data.view(numpy.ndarray)
             read_data = opRead.Output[:].wait()
             assert (read_data == expected_data).all(), "Read data didn't match exported data!"

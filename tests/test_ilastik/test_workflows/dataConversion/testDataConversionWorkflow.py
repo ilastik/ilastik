@@ -31,6 +31,7 @@ from lazyflow.operators.ioOperators import OpStackLoader
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 import ilastik
+from ilastik.utility.data_url import Dataset
 from lazyflow.utility.timer import timeLogged
 
 
@@ -128,7 +129,7 @@ class TestDataConversionWorkflow(object):
 
         opReader = OpStackLoader(graph=Graph())
         opReader.SequenceAxis.setValue("t")
-        opReader.globstring.setValue(globstring)
+        opReader.DataPaths.setValue(Dataset.from_string(globstring, deglob=True).data_paths)
 
         # (The OpStackLoader produces tzyxc order.)
         opReorderAxes = OpReorderAxes(graph=Graph())
