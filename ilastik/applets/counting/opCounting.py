@@ -37,10 +37,8 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import (
     OpValueCache,
     OpBlockedArrayCache,
-    OpMultiArraySlicer2,
     OpPrecomputedInput,
     OpPixelOperator,
-    OpMaxChannelIndicatorOperator,
     OpReorderAxes,
     OpCompressedUserLabelArray,
 )

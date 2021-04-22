@@ -39,7 +39,7 @@ import vigra
 # lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow import roi
-from lazyflow.roi import roiToSlice, sliceToRoi, TinyVector, getIntersection
+from lazyflow.roi import roiToSlice, sliceToRoi, TinyVector, getIntersection, InvalidRoiException
 from lazyflow.request import RequestPool
 
 
@@ -533,6 +533,9 @@ class OpMaxChannelIndicatorOperator(Operator):
 
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
+        n_channels_requested = key[-1].stop - key[-1].start
+        if n_channels_requested != 1:
+            raise InvalidRoiException(f"This operator only accepts slices of size 1 for c! Got {n_channels_requested}.")
         data = self.inputs["Input"][key[:-1] + (slice(None),)].wait()
 
         # special case, when data is all zeros (e.g. directly from frozen cache w/o trained classifier)
