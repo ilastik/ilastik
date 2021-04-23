@@ -423,6 +423,7 @@ class DataSelectionGui(QWidget):
         datasets = select_single_file_datasets(
             parent=self, internal_path_hints=self._get_previously_used_inner_paths(roleIndex)
         )
+
         self.addDatasets(datasets, startingLaneNum, roleIndex)
 
     def addFileNames(self, paths: List[str], startingLaneNum: Optional[int], roleIndex: int):
@@ -449,7 +450,7 @@ class DataSelectionGui(QWidget):
             except Exception as ex:
                 log_exception(logger)
                 QMessageBox.critical(self, "Error loading file", str(ex))
-        for dataset in datasets:
+        for dataset in datasets or []:
             internal_paths = dataset.internal_paths()
             if internal_paths:
                 self._add_default_internal_path(roleIndex=roleIndex, internal_path=internal_paths[0])

@@ -38,6 +38,7 @@ from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 import vigra
 from ilastik.applets.counting.countingApplet import CountingApplet
 from lazyflow.utility.timer import Timer, timeLogged
+from ilastik.utility.data_url import Dataset
 from PyQt5.QtWidgets import QApplication
 
 logger = logging.getLogger(__name__)
@@ -124,9 +125,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
             # Add a file
             from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, FilesystemDatasetInfo
 
-            info = FilesystemDatasetInfo(
-                filePath=self.SAMPLE_DATA, project_file=self.shell.projectManager.currentProjectFile
-            )
+            info = FilesystemDatasetInfo(dataset=Dataset.from_string(self.SAMPLE_DATA, deglob=False))
             opDataSelection = workflow.dataSelectionApplet.topLevelOperator
             opDataSelection.DatasetGroup.resize(1)
             opDataSelection.DatasetGroup[0][0].setValue(info)
