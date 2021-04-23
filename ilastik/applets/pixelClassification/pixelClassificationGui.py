@@ -504,9 +504,9 @@ class PixelClassificationGui(LabelingGui):
 
     def initFeatSelDlg(self):
         if self.topLevelOperatorView.name == "OpPixelClassification":
-            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[
-                0
-            ]
+            thisOpFeatureSelection = (
+                self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
+            )
         elif self.topLevelOperatorView.name == "OpPixelClassification0":
             thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[
                 0
@@ -533,9 +533,9 @@ class PixelClassificationGui(LabelingGui):
 
     def update_features_from_dialog(self):
         if self.topLevelOperatorView.name == "OpPixelClassification":
-            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[
-                0
-            ]
+            thisOpFeatureSelection = (
+                self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
+            )
         elif self.topLevelOperatorView.name == "OpPixelClassification0":
             thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[
                 0

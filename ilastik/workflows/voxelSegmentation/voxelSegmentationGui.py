@@ -149,9 +149,9 @@ class VoxelSegmentationGui(LabelingGui):
         self.labelingDrawerUi.bestAnnotationPlaneButton.clicked.connect(SelectBestAnnotationPlane)
 
     def initFeatSelDlg(self):
-        thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[
-            0
-        ]
+        thisOpFeatureSelection = (
+            self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
+        )
         self.featSelDlg = FeatureSelectionDialog(thisOpFeatureSelection, self, self.labelListData)
 
     def menus(self):
@@ -524,9 +524,9 @@ class VoxelSegmentationGui(LabelingGui):
 
     def update_features_from_dialog(self):
         if self.topLevelOperatorView.name == "OpPixelClassification":
-            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[
-                0
-            ]
+            thisOpFeatureSelection = (
+                self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
+            )
         elif self.topLevelOperatorView.name == "OpPixelClassification0":
             thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[
                 0
