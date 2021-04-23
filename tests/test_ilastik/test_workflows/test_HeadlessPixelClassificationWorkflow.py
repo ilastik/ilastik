@@ -100,9 +100,6 @@ def run_headless_pixel_classification(
     if ignore_training_axistags:
         subprocess_args.append("--ignore_training_axistags")
 
-    if skip_deglobbing:
-        subprocess_args.append("--skip-deglobbing")
-
     if stack_along:
         subprocess_args.append(f"--stack-along={stack_along}")
 
@@ -235,7 +232,6 @@ def test_globlike_paths(testdir, pixel_classification_ilp_2d3c: Path, tmp_path: 
         raw_data=globlike_path / "data",
         input_axes="xyc",
         stack_along="c",
-        skip_deglobbing=False,
         output_filename_format=str(output_path),
     )
 
@@ -246,6 +242,5 @@ def test_globlike_paths(testdir, pixel_classification_ilp_2d3c: Path, tmp_path: 
         testdir,
         project=pixel_classification_ilp_2d3c,
         raw_data=globlike_path / "data",
-        skip_deglobbing=True,
         output_filename_format=str(output_path),
     )

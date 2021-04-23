@@ -160,14 +160,6 @@ class DataSelectionApplet(Applet):
         )
 
         arg_parser.add_argument(
-            "--skip-deglobbing",
-            "--skip_deglobbing",
-            help="Interpret file names as is, without deglobbing characters like []*?",
-            action="store_true",
-            default=False,
-        )
-
-        arg_parser.add_argument(
             "--preconvert-stacks",
             "--preconvert_stacks",
             help="Convert image stacks to temporary hdf5 files before loading them.",
