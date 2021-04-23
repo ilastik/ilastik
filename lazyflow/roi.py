@@ -828,6 +828,10 @@ def slicing_to_string(slicing, max_shape=None):
     return "(" + ",  ".join(slice_strings) + ")"
 
 
+class InvalidRoiException(Exception):
+    pass
+
+
 if __name__ == "__main__":
     import doctest
 

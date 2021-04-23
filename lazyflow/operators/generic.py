@@ -39,7 +39,7 @@ import vigra
 # lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow import roi
-from lazyflow.roi import roiToSlice, sliceToRoi, TinyVector, getIntersection
+from lazyflow.roi import roiToSlice, sliceToRoi, TinyVector, getIntersection, InvalidRoiException
 from lazyflow.request import RequestPool
 
 
@@ -514,6 +514,8 @@ class OpMaxChannelIndicatorOperator(Operator):
     Produces a bool image where each value is either 0 or 1, depending on whether
     or not that channel of the input is the max value at that pixel compared
     to the other channels.
+
+    Note: it is expected that Output Rois are always single channel.
     """
 
     Input = InputSlot()
@@ -526,24 +528,20 @@ class OpMaxChannelIndicatorOperator(Operator):
         self.Output.meta.drange = (0, 1)
 
     def execute(self, slot, subindex, roi, result):
-        key = roi.toSlice()
-        data = self.inputs["Input"][key[:-1] + (slice(None),)].wait()
+        *key, c = roi.toSlice()
 
-        dm = numpy.max(data, axis=data.ndim - 1, keepdims=True)
-        res = numpy.zeros(data.shape, numpy.uint8)
-        numpy.equal(data, dm, out=res)
+        n_channels_requested = c.stop - c.start
+        if n_channels_requested != 1:
+            raise InvalidRoiException(f"This operator only accepts slices of size 1 for c! Got {n_channels_requested}.")
 
-        # Special case: If all channels are tied, then none of them win.
-        tied_pixels = numpy.logical_and.reduce(res, axis=-1, keepdims=True, dtype=numpy.uint8)
+        data = self.Input[(*key, slice(None))].wait()
 
-        # We could use numpy.concatenate():
-        #  tied_pixels = numpy.concatenate((tied_pixels, tied_pixels), axis=-1)
-        # But that's not as fast as duplicating the array with a stride trick.
-        # (This only works because channel is the last axis.)
-        tied_pixels = numpy.lib.stride_tricks.as_strided(tied_pixels, shape=res.shape, strides=tied_pixels.strides)
-        res[tied_pixels] = 0
+        # special case, when data is all zeros (e.g. directly from frozen cache w/o trained classifier)
+        if not numpy.any(data):
+            result[:] = 0
+            return
 
-        result[:] = res[..., key[-1]]
+        result[:] = numpy.uint8(numpy.argmax(data, axis=-1) == c.start)[..., numpy.newaxis]
 
     def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
