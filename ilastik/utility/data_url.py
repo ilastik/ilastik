@@ -263,6 +263,7 @@ class ArchiveDataPath(DataPath, supported_extensions=[]):
 
     @staticmethod
     def split_archive_path(path: str) -> Tuple[Path, PurePosixPath]:
+        path = path.replace("\\", "/")
         archive_suffix_regex = r"\.(" + "|".join(ArchiveDataPath.suffixes()) + ")(?:$|/)"
         components = re.split(archive_suffix_regex, str(path), maxsplit=1, flags=re.IGNORECASE)
         if len(components) != 3:
