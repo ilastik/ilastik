@@ -205,7 +205,10 @@ class SimpleDataPath(
         return SimpleDataPath(Path(url))
 
     def exists(self) -> bool:
-        return self.file_path.exists()
+        try:
+            return self.file_path.exists()
+        except OSError:  # FIXME: remove this after python 3.8
+            return False
 
     def relative_to(self, other: Path) -> "SimpleDataPath":
         return SimpleDataPath(self.file_path.relative_to(other))
@@ -286,7 +289,11 @@ class ArchiveDataPath(DataPath, supported_extensions=[]):
         return self.__class__(self.file_path.relative_to(other), self.internal_path)
 
     def glob(self, smart: bool = True) -> Sequence["ArchiveDataPath"]:
-        if smart and self.file_path.exists():
+        try:
+            external_path_exists = self.file_path.exists()
+        except OSError:
+            external_path_exists = False
+        if smart and external_path_exists:
             externally_expanded_paths = [self]
         else:
             externally_expanded_paths = [
@@ -327,7 +334,10 @@ class H5DataPath(ArchiveDataPath, supported_extensions=["h5", "hdf5", "ilp"]):
             ]
 
     def exists(self) -> bool:
-        if not self.file_path.exists():
+        try:
+            if not self.file_path.exists():
+                return False
+        except OSError:  # FIXME: remove this after python 3.8
             return False
         with h5py.File(str(self.file_path), "r") as f:
             return self.internal_path.as_posix() in f
@@ -351,10 +361,18 @@ class N5DataPath(ArchiveDataPath, supported_extensions=["n5"]):
             ]
 
     def exists(self) -> bool:
-        if not self.file_path.exists():
+        try:
+            if not self.file_path.exists():
+                return False
+        except OSError:  # FIXME: remove this after python 3.8
             return False
         with z5py.N5File(str(self.file_path)) as f:
-            return self.internal_path.as_posix() in f
+            try:
+                return str(self.internal_path) in f
+            except OSError:  # FIXME: remove this after python 3.8
+                return False
+            except RuntimeError:  # Funny chars in internal_path will raise this in z5py
+                return False
 
 
 class NpzDataPath(ArchiveDataPath, supported_extensions=["npz"]):
@@ -373,7 +391,10 @@ class NpzDataPath(ArchiveDataPath, supported_extensions=["npz"]):
         ]
 
     def exists(self) -> bool:
-        if not self.file_path.exists():
+        try:
+            if not self.file_path.exists():
+                return False
+        except OSError:  # FIXME: remove this after python 3.8
             return False
         return self.internal_path in NpzDataPath.list_internal_paths(self.file_path)
 
