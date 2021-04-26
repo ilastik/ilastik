@@ -26,6 +26,7 @@ import vigra
 from lazyflow.graph import Graph
 from ilastik.applets.dataSelection.opDataSelection import OpDataSelectionGroup, DatasetInfo
 from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
+from ilastik.utility.data_url import Dataset
 
 
 class TestOpDataSelectionGroup(object):
@@ -48,8 +49,8 @@ class TestOpDataSelectionGroup(object):
         """
         Make sure that the dataset roles work the way we expect them to.
         """
-        infoA = FilesystemDatasetInfo(filePath=self.group1Data[0][0])
-        infoC = FilesystemDatasetInfo(filePath=self.group1Data[1][0])
+        infoA = FilesystemDatasetInfo(dataset=Dataset.from_string(self.group1Data[0][0], deglob=False))
+        infoC = FilesystemDatasetInfo(dataset=Dataset.from_string(self.group1Data[1][0], deglob=False))
 
         op = OpDataSelectionGroup(graph=Graph())
         op.WorkingDirectory.setValue(self.workingDir)
@@ -92,7 +93,9 @@ class TestOpDataSelectionGroup(object):
         expected_data = numpy.random.random((3, 100, 100))
         numpy.save(weirdAxisFilename, expected_data)
 
-        info = FilesystemDatasetInfo(filePath=weirdAxisFilename, axistags=vigra.defaultAxistags("cxy"))
+        info = FilesystemDatasetInfo(
+            dataset=Dataset.from_string(weirdAxisFilename, deglob=False), axistags=vigra.defaultAxistags("cxy")
+        )
 
         op = OpDataSelectionGroup(graph=Graph(), forceAxisOrder=False)
         op.WorkingDirectory.setValue(self.workingDir)
@@ -125,7 +128,9 @@ class TestOpDataSelectionGroup(object):
         noChannelData = numpy.random.random((100, 100))
         numpy.save(noChannelFilename, noChannelData)
 
-        info = FilesystemDatasetInfo(filePath=noChannelFilename, axistags=vigra.defaultAxistags("xy"))
+        info = FilesystemDatasetInfo(
+            dataset=Dataset.from_string(noChannelFilename, deglob=False), axistags=vigra.defaultAxistags("xy")
+        )
 
         op = OpDataSelectionGroup(graph=Graph())
         op.WorkingDirectory.setValue(self.workingDir)

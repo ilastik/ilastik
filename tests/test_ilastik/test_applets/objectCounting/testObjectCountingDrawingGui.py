@@ -23,6 +23,7 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtCore import QEvent, Qt
 from ilastik.workflows.counting import CountingWorkflow
+from ilastik.utility.data_url import Dataset
 from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 import os
@@ -101,9 +102,7 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
             opDataSelection = workflow.dataSelectionApplet.topLevelOperator
             for i, dataFile in enumerate(self.SAMPLE_DATA):
                 # Add a file
-                info = FilesystemDatasetInfo(
-                    filePath=dataFile, project_file=self.shell.projectManager.currentProjectFile
-                )
+                info = FilesystemDatasetInfo(dataset=Dataset.from_string(dataFile, deglob=False))
 
                 opDataSelection.DatasetGroup.resize(i + 1)
                 opDataSelection.DatasetGroup[i][0].setValue(info)

@@ -8,6 +8,7 @@ import numpy
 
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStreamingH5N5SequenceReaderM
+from ilastik.utility.data_url import Dataset
 import vigra
 
 
@@ -53,8 +54,8 @@ class TestOpStreamingH5N5SequenceReaderM(unittest.TestCase):
             n5GlobString = f"{tempdir.name}/test-*.n5/volume/subvolume"
             h5_op.SequenceAxis.setValue("z")
             n5_op.SequenceAxis.setValue("z")
-            h5_op.GlobString.setValue(hdf5GlobString)
-            n5_op.GlobString.setValue(n5GlobString)
+            h5_op.ArchiveDataPaths.setValue(Dataset.from_string(hdf5GlobString, deglob=True).data_paths)
+            n5_op.ArchiveDataPaths.setValue(Dataset.from_string(n5GlobString, deglob=True).data_paths)
 
             assert h5_op.OutputImage.ready()
             assert n5_op.OutputImage.ready()
@@ -108,8 +109,8 @@ class TestOpStreamingH5N5SequenceReaderM(unittest.TestCase):
             n5GlobString = f"{tempdir.name}/test-*.n5/volume/subvolume"
             h5_op.SequenceAxis.setValue("t")
             n5_op.SequenceAxis.setValue("t")
-            h5_op.GlobString.setValue(hdf5GlobString)
-            n5_op.GlobString.setValue(n5GlobString)
+            h5_op.ArchiveDataPaths.setValue(Dataset.from_string(hdf5GlobString, deglob=True).data_paths)
+            n5_op.ArchiveDataPaths.setValue(Dataset.from_string(n5GlobString, deglob=True).data_paths)
 
             assert h5_op.OutputImage.ready()
             assert n5_op.OutputImage.ready()
@@ -160,8 +161,8 @@ class TestOpStreamingH5N5SequenceReaderM(unittest.TestCase):
             n5GlobString = f"{tempdir.name}/test-*.n5/volume/subvolume"
             h5_op.SequenceAxis.setValue("t")
             n5_op.SequenceAxis.setValue("t")
-            h5_op.GlobString.setValue(hdf5GlobString)
-            n5_op.GlobString.setValue(n5GlobString)
+            h5_op.ArchiveDataPaths.setValue(Dataset.from_string(hdf5GlobString, deglob=True).data_paths)
+            n5_op.ArchiveDataPaths.setValue(Dataset.from_string(n5GlobString, deglob=True).data_paths)
 
             assert h5_op.OutputImage.ready()
             assert n5_op.OutputImage.ready()
@@ -172,53 +173,3 @@ class TestOpStreamingH5N5SequenceReaderM(unittest.TestCase):
         finally:
             h5_op.cleanUp()
             n5_op.cleanUp()
-
-    def test_globStringValidity(self):
-        """Check whether globStrings are correctly verified"""
-        testGlobString = "/tmp/test.h5/somedata"
-        with self.assertRaises(OpStreamingH5N5SequenceReaderM.NoExternalPlaceholderError):
-            OpStreamingH5N5SequenceReaderM.checkGlobString(testGlobString)
-
-        testGlobString = "/tmp/test.n5/somedata"
-        with self.assertRaises(OpStreamingH5N5SequenceReaderM.NoExternalPlaceholderError):
-            OpStreamingH5N5SequenceReaderM.checkGlobString(testGlobString)
-
-        testGlobString = "/tmp/test.jpg/*"
-        with self.assertRaises(OpStreamingH5N5SequenceReaderM.WrongFileTypeError):
-            OpStreamingH5N5SequenceReaderM.checkGlobString(testGlobString)
-
-        testGlobString = "/tmp/test.h5/data" + os.pathsep + "/tmp/test.h5/data2"
-        with self.assertRaises(OpStreamingH5N5SequenceReaderM.SameFileError):
-            OpStreamingH5N5SequenceReaderM.checkGlobString(testGlobString)
-
-        testGlobString = "/tmp/test.n5/data" + os.pathsep + "/tmp/test.n5/data2"
-        with self.assertRaises(OpStreamingH5N5SequenceReaderM.SameFileError):
-            OpStreamingH5N5SequenceReaderM.checkGlobString(testGlobString)
-
-        testGlobString = "/tmp/test-*.h5/data*"
-        with self.assertRaises(OpStreamingH5N5SequenceReaderM.InternalPlaceholderError):
-            OpStreamingH5N5SequenceReaderM.checkGlobString(testGlobString)
-
-        testGlobString = "/tmp/test-*.n5/data*"
-        with self.assertRaises(OpStreamingH5N5SequenceReaderM.InternalPlaceholderError):
-            OpStreamingH5N5SequenceReaderM.checkGlobString(testGlobString)
-
-        testGlobString = "/tmp/test-0.h5/data" + os.pathsep + "/tmp/test-1.h5/data*"
-        with self.assertRaises(OpStreamingH5N5SequenceReaderM.InternalPlaceholderError):
-            OpStreamingH5N5SequenceReaderM.checkGlobString(testGlobString)
-
-        testGlobString = "/tmp/test-0.n5/data" + os.pathsep + "/tmp/test-1.n5/data*"
-        with self.assertRaises(OpStreamingH5N5SequenceReaderM.InternalPlaceholderError):
-            OpStreamingH5N5SequenceReaderM.checkGlobString(testGlobString)
-
-        validGlobStrings = [
-            "/tmp/test-*.h5/data",
-            "/tmp/test-1.h5/data1" + os.pathsep + "/tmp/test-2.h5/data1",
-            "/tmp/test-*.n5/data",
-            "/tmp/test-1.n5/data1" + os.pathsep + "/tmp/test-2.n5/data1",
-        ]
-
-        for testGlobString in validGlobStrings:
-            OpStreamingH5N5SequenceReaderM.checkGlobString(testGlobString)
-        # Implicit test for validity; test fails if an exception is raised
-        self.assertTrue(True)

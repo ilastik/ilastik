@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from ilastik.utility.data_url import Dataset
 
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
@@ -69,8 +70,11 @@ class DatasetInfoEditorWidget(QDialog):
         """
         super(DatasetInfoEditorWidget, self).__init__(parent)
         self.current_infos = infos
+        self.fs_infos = [info for info in infos if isinstance(info, FilesystemDatasetInfo)]
         self.serializer = serializer
         self.edited_infos = []
+        self.project_file = self.serializer.topLevelOperator.ProjectFile.value
+        self.project_file_path = Path(self.project_file.filename)
 
         # Load the ui file into this class (find it in our own directory)
         localDir = os.path.split(__file__)[0]
@@ -130,25 +134,24 @@ class DatasetInfoEditorWidget(QDialog):
         selected_normalize_index = self.normalizeDisplayComboBox.findData(normalize)
         self.normalizeDisplayComboBox.setCurrentIndex(selected_normalize_index)
 
-        hierarchical_infos = [info for info in infos if info.is_hierarchical()]
+        archive_dataset_paths = [info.dataset for info in self.fs_infos if info.dataset.uses_archive()]
         self.internalDatasetNameComboBox.setEnabled(False)
-        if not hierarchical_infos:
+        if not archive_dataset_paths:
             self.internalDatasetNameLabel.setVisible(False)
             self.internalDatasetNameComboBox.setVisible(False)
             self.internalDatasetNameComboBoxMessage.setVisible(False)
         else:
-            common_internal_paths = set(hierarchical_infos[0].getPossibleInternalPaths())
-            current_internal_paths = set(hierarchical_infos[0].internal_paths)
-            for info in hierarchical_infos[1:]:
-                common_internal_paths &= set(info.getPossibleInternalPaths())
-                current_internal_paths &= set(info.internal_paths)
+            common_internal_paths = Dataset.common_internal_paths(archive_dataset_paths)
+            common_current_internal_paths = set(archive_dataset_paths[0].archive_internal_paths()).intersection(
+                *[dsp.archive_internal_paths() for dsp in archive_dataset_paths[1:]]
+            )
 
             for path in sorted(common_internal_paths):
-                self.internalDatasetNameComboBox.addItem(path)
+                self.internalDatasetNameComboBox.addItem(str(path))
                 self.internalDatasetNameComboBox.setEnabled(True)
 
-            if len(current_internal_paths) == 1:
-                self.internalDatasetNameComboBox.setCurrentText(current_internal_paths.pop())
+            if len(common_current_internal_paths) == 1:
+                self.internalDatasetNameComboBox.setCurrentText(str(common_current_internal_paths.pop()))
             else:
                 self.internalDatasetNameComboBox.setCurrentIndex(-1)
         self.internalDatasetNameComboBox.currentTextChanged.connect(self._handle_inner_path_change)
@@ -167,9 +170,9 @@ class DatasetInfoEditorWidget(QDialog):
             self.displayModeComboBox.setCurrentIndex(-1)
 
         self.storageComboBox.addItem("Copy into project file", userData=ProjectInternalDatasetInfo)
-        if all(info.is_in_filesystem() for info in infos):
+        if self.fs_infos == infos:
             self.storageComboBox.addItem("Store absolute path", userData=FilesystemDatasetInfo)
-            if all(info.is_under_project_file() for info in infos):
+            if all(info.dataset.is_under(self.project_file_path.parent) for info in self.fs_infos):
                 self.storageComboBox.addItem("Store relative path", userData=RelativeFilesystemDatasetInfo)
 
         current_locations = {info.__class__ for info in infos}
@@ -181,7 +184,7 @@ class DatasetInfoEditorWidget(QDialog):
 
     def _handle_inner_path_change(self, new_internal_path: str):
         msg = ""
-        for info in self.current_infos:
+        for info in self.fs_infos:
             if new_internal_path and {new_internal_path} != set(info.internal_paths):
                 msg = "Note: Changing internal dataset path will reset the other fields to defaults"
                 break
@@ -242,25 +245,26 @@ class DatasetInfoEditorWidget(QDialog):
                     ProjectInternalDatasetInfo, inner_path=project_inner_path, project_file=project_file
                 )
             elif new_info_class == UrlDatasetInfo:
+                assert isinstance(info, UrlDatasetInfo)
                 info_constructor = partial(UrlDatasetInfo, url=info.url)
             else:
+                assert isinstance(info, FilesystemDatasetInfo)
                 new_internal_path = self.internalDatasetNameComboBox.currentText()
                 if new_internal_path:
-                    new_full_paths = [Path(ep) / new_internal_path.lstrip("/") for ep in info.external_paths]
-                    filePath = os.path.pathsep.join(str(p) for p in new_full_paths)
+                    new_dataset = info.dataset.with_internal_path(new_internal_path)
                 else:
-                    filePath = info.effective_path
-
-                if new_internal_path and {new_internal_path} != set(info.internal_paths):
-                    edited_info = RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
-                        filePath=filePath, project_file=self.serializer.topLevelOperator.ProjectFile.value
+                    new_dataset = info.dataset
+                if new_info_class == RelativeFilesystemDatasetInfo:
+                    info_constructor = partial(
+                        RelativeFilesystemDatasetInfo,
+                        dataset=new_dataset,
+                        project_file=project_file,
+                        sequence_axis=info.sequence_axis,
                     )
-                    self.edited_infos.append(edited_info)
-                    continue
-
-                info_constructor = partial(
-                    new_info_class, filePath=filePath, sequence_axis=info.sequence_axis, project_file=project_file
-                )
+                else:  # new_info_class == FilesystemDatasetInfo
+                    info_constructor = partial(
+                        FilesystemDatasetInfo, dataset=new_dataset, sequence_axis=info.sequence_axis
+                    )
             edited_info = info_constructor(
                 nickname=self.nicknameEdit.text() if self.nicknameEdit.isEnabled() else info.nickname,
                 axistags=self.get_new_axes_tags() or info.axistags,

@@ -36,6 +36,7 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtCore import QEvent, Qt
 from ilastik.workflows.counting import CountingWorkflow
+from ilastik.utility.data_url import Dataset
 from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 
@@ -118,9 +119,7 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
             for i, dataFile in enumerate(self.SAMPLE_DATA):
                 # Add a file
                 info = FilesystemDatasetInfo(
-                    filePath=dataFile,
-                    axistags=vigra.defaultAxistags("xyc"),
-                    project_file=self.shell.projectManager.currentProjectFile,
+                    dataset=Dataset.from_string(dataFile, deglob=False), axistags=vigra.defaultAxistags("xyc")
                 )
 
                 opDataSelection.DatasetGroup.resize(i + 1)

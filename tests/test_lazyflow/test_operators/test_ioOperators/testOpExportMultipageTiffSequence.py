@@ -35,6 +35,7 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.ioOperators import OpExportMultipageTiffSequence, OpStackLoader
 from lazyflow.operators.ioOperators.opTiffSequenceReader import OpTiffSequenceReader
+from ilastik.utility.data_url import Dataset
 
 import sys
 import logging
@@ -79,7 +80,7 @@ class TestOpExportMultipageTiffSequence(object):
 
         opReader = OpTiffSequenceReader(graph=self.graph)
         try:
-            opReader.GlobString.setValue(globstring)
+            opReader.DataPaths.setValue(Dataset.from_string(globstring, deglob=True).data_paths)
 
             # (The OpStackLoader might produce different order.)
             opReorderAxes = OpReorderAxes(graph=self.graph)

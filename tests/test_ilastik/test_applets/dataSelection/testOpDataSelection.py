@@ -39,6 +39,7 @@ from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo,
 from ilastik.applets.dataSelection.opDataSelection import PreloadedArrayDatasetInfo
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.utility.data_url import Dataset
 
 import tempfile
 import pytest
@@ -161,7 +162,7 @@ class TestOpDataSelection_Basic2D(object):
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
 
-            info = FilesystemDatasetInfo(filePath=fileName)
+            info = FilesystemDatasetInfo(dataset=Dataset.from_string(fileName, deglob=False))
 
             reader.Dataset.setValues([info])
 
@@ -187,7 +188,7 @@ class TestOpDataSelection_Basic2D(object):
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
 
-            info = FilesystemDatasetInfo(filePath=fileName)
+            info = FilesystemDatasetInfo(dataset=Dataset.from_string(fileName, deglob=False))
 
             reader.Dataset.setValues([info])
 
@@ -209,7 +210,7 @@ class TestOpDataSelection_Basic2D(object):
             # For some reason vigra saves 2D+c data compressed in gifs, so skip!
             if Path(fileName).suffix in self.compressedExtensions + [".gif"]:
                 continue
-            filesystem_info = FilesystemDatasetInfo(filePath=fileName)
+            filesystem_info = FilesystemDatasetInfo(dataset=Dataset.from_string(fileName, deglob=False))
 
             # From project
             inner_path = filesystem_info.importAsLocalDataset(project_file=empty_project_file)
@@ -312,7 +313,7 @@ class TestOpDataSelection_Basic_native_3D(object):
             reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
-            reader.Dataset.setValues([FilesystemDatasetInfo(filePath=fileName)])
+            reader.Dataset.setValues([FilesystemDatasetInfo(dataset=Dataset.from_string(fileName, deglob=False))])
 
             # Read the test files using the data selection operator and verify the contents
             imgData3D = reader.Image[0][...].wait()
@@ -333,7 +334,9 @@ class TestOpDataSelection_Basic_native_3D(object):
             reader.WorkingDirectory.setValue(os.getcwd())
             reader.ProjectDataGroup.setValue("DataSelection/local_data")
 
-            info = FilesystemDatasetInfo(filePath=fileName, axistags=vigra.defaultAxistags("tzyc"))
+            info = FilesystemDatasetInfo(
+                dataset=Dataset.from_string(fileName, deglob=False), axistags=vigra.defaultAxistags("tzyc")
+            )
 
             try:
                 reader.Dataset.setValues([info])
@@ -353,7 +356,7 @@ class TestOpDataSelection_Basic_native_3D(object):
             reader.WorkingDirectory.setValue(os.getcwd())
             reader.ProjectDataGroup.setValue("DataSelection/local_data")
 
-            reader.Dataset.setValues([FilesystemDatasetInfo(filePath=fileName)])
+            reader.Dataset.setValues([FilesystemDatasetInfo(dataset=Dataset.from_string(fileName, deglob=False))])
 
             # Read the test files using the data selection operator and verify the contents
             imgData3Dc = reader.Image[0][...].wait()
@@ -378,7 +381,7 @@ class TestOpDataSelection_Basic_native_3D(object):
         assert (projectInternalData == self.imgData3Dc).all()
 
         for fileName in self.generatedImages3Dc:
-            filesystem_info = FilesystemDatasetInfo(filePath=fileName)
+            filesystem_info = FilesystemDatasetInfo(dataset=Dataset.from_string(fileName, deglob=False))
             inner_path = filesystem_info.importAsLocalDataset(project_file=empty_project_file)
             info = ProjectInternalDatasetInfo(project_file=empty_project_file, inner_path=inner_path)
 
@@ -527,7 +530,9 @@ class TestOpDataSelection_3DStacks(object):
         reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={"forceAxisOrder": False})
         reader.WorkingDirectory.setValue(str(Path(empty_project_file.filename).parent))
         for fileName, nickname in zip(self.imgFileNameGlobs2D, self.imgFileNameGlobs2DNicknames):
-            reader.Dataset.setValues([FilesystemDatasetInfo(filePath=fileName, sequence_axis="z")])
+            reader.Dataset.setValues(
+                [FilesystemDatasetInfo(dataset=Dataset.from_string(fileName, deglob=True), sequence_axis="z")]
+            )
 
             # Read the test files using the data selection operator and verify the contents
             imgData3D = reader.Image[0][...].wait()
@@ -548,7 +553,9 @@ class TestOpDataSelection_3DStacks(object):
             reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={"forceAxisOrder": False})
             reader.WorkingDirectory.setValue(str(Path(empty_project_file.filename).parent))
 
-            reader.Dataset.setValues([FilesystemDatasetInfo(filePath=fileNameString, sequence_axis="z")])
+            reader.Dataset.setValues(
+                [FilesystemDatasetInfo(dataset=Dataset.split(fileNameString, deglob=False), sequence_axis="z")]
+            )
 
             # Read the test files using the data selection operator and verify the contents
             imgData3D = reader.Image[0][...].wait()
@@ -568,7 +575,9 @@ class TestOpDataSelection_3DStacks(object):
             reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={"forceAxisOrder": False})
             reader.WorkingDirectory.setValue(str(Path(empty_project_file.filename).parent))
 
-            reader.Dataset.setValues([FilesystemDatasetInfo(filePath=fileName, sequence_axis="z")])
+            reader.Dataset.setValues(
+                [FilesystemDatasetInfo(dataset=Dataset.from_string(fileName, deglob=True), sequence_axis="z")]
+            )
 
             # Read the test files using the data selection operator and verify the contents
             imgData3Dc = reader.Image[0][...].wait()
@@ -627,7 +636,9 @@ class TestOpDataSelection_SingleFileH5Stacks:
         reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={"forceAxisOrder": False})
         reader.WorkingDirectory.setValue(os.getcwd())
 
-        reader.Dataset.setValues([FilesystemDatasetInfo(filePath=self.glob_string, sequence_axis="t")])
+        reader.Dataset.setValues(
+            [FilesystemDatasetInfo(dataset=Dataset.from_string(self.glob_string, deglob=True), sequence_axis="t")]
+        )
 
         # Read the test files using the data selection operator and verify the contents
         imgData = reader.Image[0][...].wait()
@@ -642,7 +653,7 @@ class TestOpDataSelection_SingleFileH5Stacks:
         reader.WorkingDirectory.setValue(os.getcwd())
 
         fileNameString = os.path.pathsep.join(self.file_names)
-        info = FilesystemDatasetInfo(filePath=fileNameString, sequence_axis="t")
+        info = FilesystemDatasetInfo(dataset=Dataset.split(fileNameString, deglob=False), sequence_axis="t")
 
         reader.Dataset.setValues([info])
 
@@ -693,7 +704,9 @@ class TestOpDataSelection_FakeDataReader:
         reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={"forceAxisOrder": False})
         reader.WorkingDirectory.setValue(os.getcwd())
 
-        reader.Dataset.setValues([FilesystemDatasetInfo(filePath=self.testRawDataFileName)])
+        reader.Dataset.setValues(
+            [FilesystemDatasetInfo(dataset=Dataset.from_string(self.testRawDataFileName, deglob=False))]
+        )
 
         # Read the test file using the data selection operator and verify the contents
         imgData = reader.Image[0][...].wait()
@@ -817,7 +830,9 @@ class TestOpDataSelection_stack_along_parameter:
         fileName = os.path.join(self.tmpdir, f"{name}{extension}")
         reader = OpDataSelection(graph=Graph(), forceAxisOrder=False)
         reader.WorkingDirectory.setValue(os.getcwd())
-        reader.Dataset.setValue(FilesystemDatasetInfo(filePath=fileName, sequence_axis=sequence_axis))
+        reader.Dataset.setValue(
+            FilesystemDatasetInfo(dataset=Dataset.from_string(fileName, deglob=True), sequence_axis=sequence_axis)
+        )
         read = reader.Image[...].wait()
 
         assert numpy.allclose(read, expected), f"{name}: {read.shape}, {expected.shape}"

@@ -31,6 +31,7 @@ Note: This script does not make any attempt to be efficient with RAM usage.
 """
 from __future__ import print_function
 from builtins import range
+from ilastik.utility.data_url import Dataset
 import os
 
 
@@ -190,7 +191,7 @@ def generate_trained_project_file(
         opReader = OpInputDataReader(graph=graph)
         try:
             opReader.WorkingDirectory.setValue(cwd)
-            opReader.FilePath.setValue(label_data_path)
+            opReader.Dataset.setValue(Dataset.from_string(label_data_path, deglob=False))
 
             print("Reading label volume: {}".format(label_data_path))
             label_volume = opReader.Output[:].wait()

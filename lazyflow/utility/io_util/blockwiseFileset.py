@@ -369,9 +369,9 @@ class BlockwiseFileset(object):
         """
         datasetFilename = self._getBlockFileName(block_start)
         datasetDir = self.getDatasetDirectory(block_start)
-        datasetPath = os.path.join(datasetDir, datasetFilename)
+        FileDataset = os.path.join(datasetDir, datasetFilename)
 
-        return PathComponents(datasetPath)
+        return PathComponents(FileDataset)
 
     BLOCK_NOT_AVAILABLE = 0
     BLOCK_AVAILABLE = 1
@@ -677,8 +677,8 @@ class BlockwiseFileset(object):
 
         # Always name the file according to the absolute roi
         roiString = "{}".format((list(abs_roi[0]), list(abs_roi[1])))
-        datasetPath = self._description.block_file_name_format.format(roiString=roiString)
-        fullDatasetPath = os.path.join(exportDirectory, datasetPath)
+        FileDataset = self._description.block_file_name_format.format(roiString=roiString)
+        fullDatasetPath = os.path.join(exportDirectory, FileDataset)
         path_parts = PathComponents(fullDatasetPath)
 
         with h5py.File(path_parts.externalPath, "w") as f:

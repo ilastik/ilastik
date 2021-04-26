@@ -35,6 +35,7 @@ import numpy
 from ilastik.workflows import ObjectClassificationWorkflowPrediction
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, FilesystemDatasetInfo
 from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog, FILE_TYPES
+from ilastik.utility.data_url import Dataset
 
 
 from lazyflow.utility.timer import Timer
@@ -144,11 +145,9 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             # Add our input files:
             opDataSelection = workflow.dataSelectionApplet.topLevelOperator
             opDataSelection.DatasetGroup.resize(1)
-            info_raw = FilesystemDatasetInfo(
-                filePath=self.sample_data_raw, project_file=self.shell.projectManager.currentProjectFile
-            )
+            info_raw = FilesystemDatasetInfo(dataset=Dataset.from_string(self.sample_data_raw, deglob=False))
             opDataSelection.DatasetGroup[0][0].setValue(info_raw)
-            info_prob = FilesystemDatasetInfo(filePath=self.sample_data_prob)
+            info_prob = FilesystemDatasetInfo(dataset=Dataset.from_string(self.sample_data_prob, deglob=False))
             info_raw.nickname = "test_data"
             opDataSelection.DatasetGroup[0][1].setValue(info_prob)
 

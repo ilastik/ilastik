@@ -40,6 +40,8 @@ from ilastik.utility.slicingtools import sl, slicing2shape
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.shell.headless.headlessShell import HeadlessShell
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
+from ilastik.utility.data_url import Dataset
+
 
 import logging
 
@@ -115,7 +117,7 @@ class TestPixelClassificationHeadless(object):
         # Add a file
         from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
 
-        info = FilesystemDatasetInfo(filePath=dataset_path)
+        info = FilesystemDatasetInfo(dataset=Dataset.from_string(dataset_path, deglob=False))
         opDataSelection = workflow.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetGroup.resize(1)
         opDataSelection.DatasetGroup[0][0].setValue(info)
@@ -281,7 +283,7 @@ class TestPixelClassificationHeadless(object):
         globstring = globstring.replace("999", "*")
 
         opReader = OpStackLoader(graph=Graph())
-        opReader.globstring.setValue(globstring)
+        opReader.DataPaths.setValue(Dataset.from_string(globstring, deglob=True).data_paths)
 
         # (The OpStackLoader produces txyzc order.)
         opReorderAxes = OpReorderAxes(graph=Graph())

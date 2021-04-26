@@ -20,9 +20,10 @@
 ###############################################################################
 from abc import abstractproperty, abstractmethod, ABC
 import glob
+from ilastik.utility.data_url import ArchiveDataPath, DataPath, Dataset, PrecomputedChunksUrl
 import os
 import uuid
-from typing import List, Tuple, Dict, Optional, Union, Callable
+from typing import List, Tuple, Dict, Optional, Union, Callable, Any, Mapping
 from numbers import Number
 import re
 from pathlib import Path
@@ -59,13 +60,23 @@ def getTypeRange(numpy_type):
 
 
 class CantSaveAsRelativePathsException(Exception):
-    def __init__(self, file_path: str, base_dir: str):
+    def __init__(self, file_path: str, base_dir: Path):
         super().__init__(f"Can't represent {file_path} relative to {base_dir}")
 
 
 class UnsuitedAxistagsException(Exception):
     def __init__(self, axistags, shape):
         super().__init__(f"Axistags {axistags} don't fit data shape {shape}")
+
+
+class AxisTagsHint:
+    def __init__(self, *, axistags: AxisTags, num_channels: int):
+        self.axistags = axistags
+        self.num_channels = num_channels
+
+    def is_compatible_with(self, default_tags: AxisTags, laneShape: Tuple[int, ...]) -> bool:
+        default_shape = Shape5D(**dict(zip(default_tags.keys(), laneShape)))
+        return len(self.axistags) == len(default_tags) and self.num_channels == default_shape.c
 
 
 class DatasetInfo(ABC):
@@ -78,6 +89,7 @@ class DatasetInfo(ABC):
         allowLabels: bool = True,
         subvolume_roi: Tuple = None,
         axistags: AxisTags = None,
+        axistags_hint: Optional[AxisTagsHint] = None,  # axistags to use if they fit
         display_mode: str = "default",
         nickname: str = "",
         normalizeDisplay: bool = None,
@@ -89,22 +101,27 @@ class DatasetInfo(ABC):
             self.laneDtype = numpy.typeDict[self.laneDtype.name]
         self.allowLabels = allowLabels
         self.subvolume_roi = subvolume_roi
-        self.axistags = axistags
         self.drange = drange
         self.display_mode = display_mode  # choices: default, grayscale, rgba, random-colortable, binary-mask.
         self.nickname = nickname
         self.normalizeDisplay = (self.drange is not None) if normalizeDisplay is None else normalizeDisplay
         self.default_tags = default_tags
-        self.axistags = axistags or default_tags
+        if axistags:
+            self.axistags = axistags
+        elif axistags_hint and axistags_hint.is_compatible_with(default_tags=default_tags, laneShape=laneShape):
+            self.axistags = axistags_hint.axistags
+        else:
+            self.axistags = default_tags
         if len(self.axistags) != len(self.laneShape):
             raise UnsuitedAxistagsException(self.axistags, self.laneShape)
-        self.legacy_datasetId = self.generate_id()
+        self.legacy_datasetId = str(uuid.uuid1())
 
     @property
     def shape5d(self) -> Shape5D:
         return Shape5D(**dict(zip(self.axiskeys, self.laneShape)))
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def legacy_location(self) -> str:
         pass
 
@@ -173,116 +190,19 @@ class DatasetInfo(ABC):
             params["display_mode"] = data["display_mode"][()].decode("utf-8")
         return cls(**params)
 
-    def is_in_filesystem(self) -> bool:
-        return False
-
-    def is_hierarchical(self):
-        return False
-
-    @abstractproperty
+    @property
+    @abstractmethod
     def display_string(self) -> str:
+        pass
+
+    @property
+    @abstractmethod
+    def effective_path(self) -> str:
         pass
 
     @property
     def default_output_dir(self) -> Path:
         return Path.home()
-
-    @classmethod
-    def create_nickname(cls, expanded_paths: List[str]):
-        components = [PathComponents(ep) for ep in expanded_paths]
-        external_nickname = os.path.commonprefix(
-            [re.sub(comp.extension + "$", "", comp.externalPath) for comp in components]
-        )
-        if external_nickname:
-            external_nickname = Path(external_nickname).name
-        else:
-            external_nickname = "stack_at-" + components[0].filenameBase
-        internal_nickname = os.path.commonprefix([comp.internalPath or "" for comp in components]).lstrip("/")
-        nickname = external_nickname + ("-" + internal_nickname.replace("/", "-") if internal_nickname else "")
-        return nickname
-
-    @classmethod
-    def generate_id(cls) -> str:
-        return str(uuid.uuid1())
-
-    @classmethod
-    def expand_path(cls, file_path: str, cwd: str = None) -> List[str]:
-        """Expands path with globs and colons into a list of absolute paths"""
-        cwd = Path(cwd) if cwd else Path.cwd()
-        pathComponents = [PathComponents(path) for path in splitPath(file_path)]
-        expanded_paths = []
-        missing_files = []
-        for components in pathComponents:
-            externalPath = cwd / Path(components.externalPath).expanduser()
-            unglobbed_paths = glob.glob(str(externalPath))
-            if not unglobbed_paths:
-                missing_files.append(components.externalPath)
-                continue
-            for ext_path in unglobbed_paths:
-                if not cls.fileHasInternalPaths(ext_path) or not components.internalPath:
-                    expanded_paths.append(ext_path)
-                    continue
-                internal_paths = cls.globInternalPaths(ext_path, components.internalPath)
-                expanded_paths.extend([os.path.join(ext_path, int_path) for int_path in internal_paths])
-
-        if missing_files:
-            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), os.path.pathsep.join(missing_files))
-        return sorted(p.replace("\\", "/") for p in expanded_paths)
-
-    @classmethod
-    def globInternalPaths(cls, file_path: str, glob_str: str, cwd: str = None) -> List[str]:
-        glob_str = glob_str.lstrip("/")
-        internal_paths = set()
-        for path in cls.expand_path(file_path, cwd=cwd):
-            f = None
-            try:
-                if cls.pathIsNpz(path):
-                    internal_paths |= set(globNpz(path, glob_str))
-                    continue
-                elif cls.pathIsHdf5(path):
-                    f = h5py.File(path, "r")
-                elif cls.pathIsN5(path):
-                    f = z5py.N5File(path)  # FIXME
-                else:
-                    raise Exception(f"{path} is not an 'n5' or 'h5' file")
-                internal_paths |= set(globH5N5(f, glob_str))
-            finally:
-                if f is not None:
-                    f.close()
-        return sorted(internal_paths)
-
-    @classmethod
-    def pathIsHdf5(cls, path: Path) -> bool:
-        return PathComponents(Path(path).as_posix()).extension in [".ilp", ".h5", ".hdf5"]
-
-    @classmethod
-    def pathIsNpz(cls, path: Path) -> bool:
-        return PathComponents(Path(path).as_posix()).extension in [".npz"]
-
-    @classmethod
-    def pathIsN5(cls, path: Path) -> bool:
-        return PathComponents(Path(path).as_posix()).extension in [".n5"]
-
-    @classmethod
-    def fileHasInternalPaths(cls, path: str) -> bool:
-        return cls.pathIsHdf5(path) or cls.pathIsN5(path) or cls.pathIsNpz(path)
-
-    @classmethod
-    def getPossibleInternalPathsFor(cls, file_path: Path, min_ndim=2, max_ndim=5) -> List[str]:
-        datasetNames = []
-
-        def accumulateInternalPaths(name, val):
-            if isinstance(val, (h5py.Dataset, z5py.dataset.Dataset)) and min_ndim <= len(val.shape) <= max_ndim:
-                datasetNames.append("/" + name)
-
-        if cls.pathIsHdf5(file_path):
-            with h5py.File(file_path, "r") as f:
-                f.visititems(accumulateInternalPaths)
-        elif cls.pathIsN5(file_path):
-            with z5py.N5File(file_path, mode="r+") as f:
-                f.visititems(accumulateInternalPaths)
-
-        return datasetNames
 
     @property
     def axiskeys(self):
@@ -389,10 +309,6 @@ class ProjectInternalDatasetInfo(DatasetInfo):
         return opReader.OutputImage
 
     @property
-    def internal_paths(self) -> List[str]:
-        return []
-
-    @property
     def default_output_dir(self) -> Path:
         return Path(self.project_file.filename).parent
 
@@ -480,13 +396,13 @@ class DummyDatasetInfo(DatasetInfo):
 
 
 class UrlDatasetInfo(DatasetInfo):
-    def __init__(self, *, url: str, nickname: str = "", **info_kwargs):
+    def __init__(self, *, url: PrecomputedChunksUrl, nickname: str = "", **info_kwargs):
         self.url = url
-        op_reader = OpInputDataReader(graph=Graph(), FilePath=self.url)
+        op_reader = OpInputDataReader(graph=Graph(), Dataset=self.url)
         meta = op_reader.Output.meta.copy()
         super().__init__(
             default_tags=meta.axistags,
-            nickname=nickname or self.url.rstrip("/").split("/")[-1],
+            nickname=nickname or self.url.path.name,
             laneShape=meta.shape,
             laneDtype=meta.dtype,
             **info_kwargs,
@@ -498,17 +414,17 @@ class UrlDatasetInfo(DatasetInfo):
 
     @property
     def effective_path(self) -> str:
-        return self.url
+        return self.url.raw()
 
     def get_non_transposed_provider_slot(
         self, parent: Optional[Operator] = None, graph: Optional[Graph] = None
     ) -> OutputSlot:
-        op_reader = OpInputDataReader(parent=parent, graph=graph, FilePath=self.url)
+        op_reader = OpInputDataReader(parent=parent, graph=graph, Dataset=self.url)
         return op_reader.Output
 
     @property
     def display_string(self):
-        return "Remote: " + self.url
+        return "Remote: " + self.url.raw()
 
     def to_json_data(self) -> Dict:
         out = super().to_json_data()
@@ -517,15 +433,16 @@ class UrlDatasetInfo(DatasetInfo):
 
     @classmethod
     def from_h5_group(cls, group: h5py.Group):
-        return super().from_h5_group(group, {"url": group["filePath"][()].decode("utf-8")})
+        url_str = group["filePath"][()].decode("utf-8")
+        url = PrecomputedChunksUrl.create(url_str)
+        return super().from_h5_group(group, {"url": url})
 
 
 class FilesystemDatasetInfo(DatasetInfo):
     def __init__(
         self,
         *,
-        filePath: str,
-        project_file: h5py.File = None,
+        dataset: Dataset,
         sequence_axis: str = None,
         nickname: str = "",
         drange: Tuple[Number, Number] = None,
@@ -535,23 +452,28 @@ class FilesystemDatasetInfo(DatasetInfo):
         sequence_axis: Axis along which to stack (only applicable for stacks).
         """
         self.sequence_axis = sequence_axis
-        self.base_dir = str(Path(project_file.filename).absolute().parent) if project_file else os.getcwd()
-        assert os.path.isabs(self.base_dir)  # FIXME: if file_project was opened as a relative path, this would break
-        self.expanded_paths = self.expand_path(filePath, cwd=self.base_dir)
+        self.dataset = dataset
+        self.expanded_paths = dataset.to_strings()
         assert len(self.expanded_paths) == 1 or self.sequence_axis
         if len({PathComponents(ep).extension for ep in self.expanded_paths}) > 1:
             raise Exception(f"Multiple extensions unsupported as a single data source: {self.expanded_paths}")
         self.filePath = os.path.pathsep.join(self.expanded_paths)
 
-        op_reader = OpInputDataReader(
-            graph=Graph(), WorkingDirectory=self.base_dir, FilePath=self.filePath, SequenceAxis=self.sequence_axis
-        )
+        op_reader = OpInputDataReader(graph=Graph(), Dataset=dataset, SequenceAxis=self.sequence_axis)
         meta = op_reader.Output.meta.copy()
         op_reader.cleanUp()
 
+        external_nickname = os.path.commonprefix([dp.file_path.stem for dp in dataset.data_paths])
+        external_nickname = external_nickname or "stack_at-" + dataset.data_paths[0].file_path.name
+        internal_nickname = os.path.commonprefix([dp.internal_path for dp in dataset.archive_datapaths()]).lstrip("/")
+        if internal_nickname:
+            generated_nickname = external_nickname + "-" + internal_nickname.replace("/", "-")
+        else:
+            generated_nickname = external_nickname
+
         super().__init__(
             default_tags=meta.axistags,
-            nickname=nickname or self.create_nickname(self.expanded_paths),
+            nickname=nickname or generated_nickname,
             laneShape=meta.shape,
             laneDtype=meta.dtype,
             drange=drange or meta.get("drange"),
@@ -564,40 +486,31 @@ class FilesystemDatasetInfo(DatasetInfo):
 
     @property
     def default_output_dir(self) -> Path:
-        first_external_path = PathComponents(self.filePath.split(os.path.pathsep)[0]).externalPath
-        return Path(first_external_path).parent
+        return self.dataset.data_paths[0].file_path.parent
 
     def get_non_transposed_provider_slot(
         self, parent: Optional[Operator] = None, graph: Optional[Graph] = None
     ) -> OutputSlot:
-        op_reader = OpInputDataReader(
-            parent=parent,
-            graph=graph,
-            WorkingDirectory=self.base_dir,
-            FilePath=self.filePath,
-            SequenceAxis=self.sequence_axis,
-        )
+        op_reader = OpInputDataReader(parent=parent, graph=graph, Dataset=self.dataset, SequenceAxis=self.sequence_axis)
         return op_reader.Output
 
     @classmethod
-    def from_h5_group(cls, data: h5py.Group):
-        params = {"project_file": data.file, "filePath": data["filePath"][()].decode("utf-8")}
-        return super().from_h5_group(data, params)
+    def from_h5_group(cls, data: h5py.Group, params: Optional[Mapping[str, Any]] = None) -> "FilesystemDatasetInfo":
+        proj_file_dir = Path(data.file.filename).absolute().parent
+        dataset = Dataset.from_h5_data(
+            data.get("dataset", data["filePath"]), legacy="dataset" not in data, relative_prefix=proj_file_dir
+        )
+        sequence_axis = data["sequence_axis"][()].decode("utf8") if "sequence_axis" in data else None
 
-    def isHdf5(self) -> bool:
-        return any(self.pathIsHdf5(ep) for ep in self.external_paths)
+        updated_params = {"dataset": dataset, "sequence_axis": sequence_axis, **(params or {})}
+        return super().from_h5_group(data, updated_params)
 
-    def isNpz(self) -> bool:
-        return any(self.pathIsNpz(ep) for ep in self.external_paths)
-
-    def isN5(self) -> bool:
-        return any(self.pathIsN5(ep) for ep in self.external_paths)
-
-    def is_hierarchical(self):
-        return self.isHdf5() or self.isNpz() or self.isN5()
-
-    def is_in_filesystem(self) -> bool:
-        return True
+    def to_json_data(self) -> Dict[str, Any]:
+        data = super().to_json_data()
+        data["dataset"] = self.dataset.to_h5_data(legacy=False)
+        if self.sequence_axis:
+            data["sequence_axis"] = self.sequence_axis.encode("utf8")
+        return data
 
     @property
     def display_string(self):
@@ -605,47 +518,34 @@ class FilesystemDatasetInfo(DatasetInfo):
 
     @property
     def effective_path(self) -> str:
-        return os.path.pathsep.join(self.expanded_paths)
-
-    def is_under_project_file(self) -> bool:
-        try:
-            self.get_relative_paths()
-            return True
-        except CantSaveAsRelativePathsException:
-            return False
-
-    def get_relative_paths(self) -> List[str]:
-        external_paths = [Path(PathComponents(path).externalPath) for path in self.expanded_paths]
-        try:
-            return sorted([str(ep.absolute().relative_to(self.base_dir)) for ep in external_paths])
-        except ValueError:
-            raise CantSaveAsRelativePathsException(self.filePath, self.base_dir)
-
-    @property
-    def external_paths(self) -> List[str]:
-        return [PathComponents(ep).externalPath for ep in self.expanded_paths]
+        return os.path.pathsep.join(self.dataset.to_strings())
 
     @property
     def internal_paths(self) -> List[str]:
-        return [PathComponents(ep).internalPath for ep in self.expanded_paths]
+        return [str(dp.internal_path) for dp in self.dataset.data_paths if isinstance(dp, ArchiveDataPath)]
 
-    @property
-    def file_extensions(self) -> List[str]:
-        return [PathComponents(ep).extension for ep in self.expanded_paths]
-
-    def getPossibleInternalPaths(self):
-        possible_internal_paths = set()
-        for expanded_path in self.expanded_paths:
-            external_path = PathComponents(expanded_path).externalPath
-            possible_internal_paths |= set(self.getPossibleInternalPathsFor(external_path))
-        return possible_internal_paths
+    def is_under(self, project_file: h5py.File) -> bool:
+        return self.dataset.is_under(Path(project_file.filename).parent)
 
 
 class RelativeFilesystemDatasetInfo(FilesystemDatasetInfo):
-    def __init__(self, **fs_info_kwargs):
+    def __init__(self, project_file: h5py.File, **fs_info_kwargs):
+        self.project_file = project_file
+        self.base_dir = Path(project_file.filename).parent
         super().__init__(**fs_info_kwargs)
-        if not self.is_under_project_file():
+        if not self.is_under(project_file):
             raise CantSaveAsRelativePathsException(self.filePath, self.base_dir)
+
+    def to_json_data(self) -> Dict[str, Any]:
+        data = super().to_json_data()
+        proj_file_dir = Path(self.project_file.filename).parent
+        data["dataset"] = self.dataset.to_h5_data(legacy=False, relative_prefix=proj_file_dir)
+        return data
+
+    @classmethod
+    def from_h5_group(cls, data: h5py.Group) -> "FilesystemDatasetInfo":
+        params = {"project_file": data.file}
+        return super().from_h5_group(data, params)
 
     @classmethod
     def create_or_fallback_to_absolute(cls, *args, **kwargs):
@@ -660,7 +560,7 @@ class RelativeFilesystemDatasetInfo(FilesystemDatasetInfo):
 
     @property
     def effective_path(self) -> str:
-        return os.path.pathsep.join(str(Path(p).relative_to(self.base_dir)) for p in self.expanded_paths)
+        return os.path.pathsep.join(str(dp.relative_to(self.base_dir)) for dp in self.dataset.data_paths)
 
 
 class OpDataSelection(Operator):
@@ -802,10 +702,6 @@ class OpDataSelection(Operator):
     def propagateDirty(self, slot, subindex, roi):
         # Output slots are directly connected to internal operators
         pass
-
-    @classmethod
-    def getInternalDatasets(cls, filePath):
-        return OpInputDataReader.getInternalDatasets(filePath)
 
 
 class OpDataSelectionGroup(Operator):

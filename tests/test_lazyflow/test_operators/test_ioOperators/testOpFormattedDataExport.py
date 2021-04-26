@@ -31,6 +31,7 @@ import vigra
 from lazyflow.graph import Graph
 from lazyflow.roi import roiToSlice
 from lazyflow.operators.ioOperators import OpInputDataReader, OpFormattedDataExport
+from ilastik.utility.data_url import Dataset
 
 
 class TestOpFormattedDataExport(object):
@@ -77,7 +78,7 @@ class TestOpFormattedDataExport(object):
 
         opRead = OpInputDataReader(graph=graph)
         try:
-            opRead.FilePath.setValue(opExport.ExportPath.value)
+            opRead.Dataset.setValue(Dataset.from_string(opExport.ExportPath.value, deglob=False))
 
             # Compare with the correct subregion and convert dtype.
             sub_roi[1] = (100, 80)  # Replace 'None' with full extent

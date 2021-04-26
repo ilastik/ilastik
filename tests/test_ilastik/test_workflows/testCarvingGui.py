@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import QApplication
 
 from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
 from ilastik.workflows.carving import CarvingWorkflow
+from ilastik.utility.data_url import Dataset
 from lazyflow.utility.timer import Timer
 
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -118,9 +119,7 @@ class TestCarvingGui(ShellGuiTestCaseBase):
             # Add our input files:
             opDataSelection = workflow.dataSelectionApplet.topLevelOperator
             opDataSelection.DatasetGroup.resize(1)
-            info_raw = FilesystemDatasetInfo(
-                filePath=self.sample_data_raw, project_file=self.shell.projectManager.currentProjectFile
-            )
+            info_raw = FilesystemDatasetInfo(dataset=Dataset.from_string(self.sample_data_raw, deglob=False))
             opDataSelection.DatasetGroup[0][0].setValue(info_raw)
 
             # Save
@@ -221,7 +220,9 @@ class TestCarvingGui(ShellGuiTestCaseBase):
             op5 = OpReorderAxes(parent=op_carving.parent)
             opReader = OpInputDataReader(parent=op_carving.parent)
             try:
-                opReader.FilePath.setValue(f"{self.reference_files['carving_label_file']}/exported_data")
+                opReader.Dataset.setValue(
+                    Dataset.from_string(f"{self.reference_files['carving_label_file']}/exported_data", deglob=False)
+                )
                 op5.AxisOrder.setValue(op_carving.WriteSeeds.meta.getAxisKeys())
                 op5.Input.connect(opReader.Output)
                 label_data = op5.Output[:].wait()

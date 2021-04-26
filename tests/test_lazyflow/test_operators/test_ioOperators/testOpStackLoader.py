@@ -31,6 +31,7 @@ import vigra
 
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStackLoader
+from ilastik.utility.data_url import Dataset
 
 # from lazyflow.operators.ioOperators import OpInputDataReader
 import h5py
@@ -90,7 +91,7 @@ class TestOpStackLoader(object):
 
         graph = Graph()
         op = OpStackLoader(graph=graph)
-        op.globstring.setValue(globstring)
+        op.DataPaths.setValue(Dataset.from_string(globstring, deglob=True).data_paths)
 
         assert len(op.stack.meta.axistags) == 4
         assert op.stack.meta.getAxisKeys() == list("zyxc")
@@ -109,7 +110,7 @@ class TestOpStackLoader(object):
         graph = Graph()
         op = OpStackLoader(graph=graph)
         op.SequenceAxis.setValue("c")
-        op.globstring.setValue(globstring)
+        op.DataPaths.setValue(Dataset.from_string(globstring, deglob=True).data_paths)
 
         assert len(op.stack.meta.axistags) == 4
         assert op.stack.meta.getAxisKeys() == list("czyx")
@@ -126,7 +127,7 @@ class TestOpStackLoader(object):
 
         graph = Graph()
         op = OpStackLoader(graph=graph)
-        op.globstring.setValue(globstring)
+        op.DataPaths.setValue(Dataset.from_string(globstring, deglob=True).data_paths)
 
         assert len(op.stack.meta.axistags) == 4
         assert op.stack.meta.getAxisKeys() == list("zyxc")
@@ -151,7 +152,7 @@ class TestOpStackLoader(object):
         graph = Graph()
         op = OpStackLoader(graph=graph)
         op.SequenceAxis.setValue("c")
-        op.globstring.setValue(globstring)
+        op.DataPaths.setValue(Dataset.from_string(globstring, deglob=True).data_paths)
 
         assert len(op.stack.meta.axistags) == 4
         assert op.stack.meta.getAxisKeys() == list("czyx")
@@ -167,7 +168,7 @@ class TestOpStackLoader(object):
 
         graph = Graph()
         op = OpStackLoader(graph=graph)
-        op.globstring.setValue(globstring)
+        op.DataPaths.setValue(Dataset.from_string(globstring, deglob=True).data_paths)
 
         assert len(op.stack.meta.axistags) == 5
         assert op.stack.meta.getAxisKeys() == list("tzyxc")
@@ -184,7 +185,7 @@ class TestOpStackLoader(object):
 
         graph = Graph()
         op = OpStackLoader(graph=graph)
-        op.globstring.setValue(globstring)
+        op.DataPaths.setValue(Dataset.from_string(globstring, deglob=True).data_paths)
 
         assert len(op.stack.meta.axistags) == 5
         assert op.stack.meta.getAxisKeys() == list("tzyxc")
@@ -203,7 +204,7 @@ class TestOpStackLoader(object):
         op.SequenceAxis.setValue("c")
 
         globstring = os.path.join(inputdata_dir, "3c[0-2].png")
-        op.globstring.setValue(globstring)
+        op.DataPaths.setValue(Dataset.from_string(globstring, deglob=True).data_paths)
 
         assert len(op.stack.meta.axistags) == 3
         assert op.stack.meta.getAxisKeys() == list("xyc")

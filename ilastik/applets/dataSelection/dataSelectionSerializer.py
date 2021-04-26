@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from ilastik.widgets.stackFileSelectionWidget import DatasetSelectionWidget, select_single_file_datasets
 
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
@@ -20,7 +21,6 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from typing import List, Tuple, Callable
 from pathlib import Path
 
 
@@ -250,32 +250,51 @@ class DataSelectionSerializer(AppletSerializer):
             if headless:
                 return (DummyDatasetInfo.from_h5_group(infoGroup), True)
 
-            from PyQt5.QtWidgets import QMessageBox
+            from PyQt5.QtWidgets import QMessageBox, QDialog
             from ilastik.widgets.ImageFileDialog import ImageFileDialog
+            from ilastik.widgets.stackFileSelectionWidget import DatasetSelectionWidget, DatasetSelectionMode
 
             repaired_paths = []
-            for missing_path in e.filename.split(os.path.pathsep):
-                should_repair = QMessageBox.question(
-                    None,
-                    "Missing file",
-                    (
-                        f"File {missing_path} could not be found "
-                        "(maybe you moved either that file or the .ilp project file). "
-                        "Would you like to look for it elsewhere?"
-                    ),
-                    QMessageBox.Yes | QMessageBox.No,
-                )
-                if should_repair == QMessageBox.No:
-                    raise e
-                paths = ImageFileDialog(None).getSelectedPaths()
-                if not paths:
-                    raise e
-                dirty = True
-                repaired_paths.extend([str(p) for p in paths])
 
+            should_repair = QMessageBox.question(
+                None,
+                "Missing file",
+                (
+                    "Some file(s) could not be found:\n"
+                    f"{infoGroup['filePath'][()].decode('utf8')}\n"
+                    "(maybe you moved either that file or the .ilp project file). "
+                    "Would you like to look for it elsewhere?"
+                ),
+                QMessageBox.Yes | QMessageBox.No,
+            )
+            if should_repair == QMessageBox.No:
+                raise e
+            if len(infoGroup.get("dataset", [])) > 1 or len(infoGroup["filePath"].split(os.path.pathsep)) > 1:
+                if "sequence_axis" in infoGroup:
+                    stacking_axis = infoGroup["sequence_axis"][()].decode("utf8")
+                    del infoGroup["sequence_axis"]
+                else:
+                    stacking_axis = "z"
+                stackDlg = DatasetSelectionWidget(
+                    selection_mode=DatasetSelectionMode.STACK, stacking_axis=stacking_axis
+                )
+                stackDlg.exec_()
+                datasets = stackDlg.selected_datasets
+                infoGroup["sequence_axis"] = stackDlg.stacking_axis.encode("utf8")
+            else:
+                datasets = select_single_file_datasets(single_file_mode=True)
+            if not datasets:
+                raise e
+            dataset = datasets[0]
+            # FIXME: Move this repair logic into DatasetInfo
+            if "dataset" in infoGroup:
+                del infoGroup["dataset"]
+                infoGroup["dataset"] = dataset.to_h5_data(legacy=False)
             if "filePath" in infoGroup:
                 del infoGroup["filePath"]
-            infoGroup["filePath"] = os.path.pathsep.join(repaired_paths).encode("utf-8")
+                infoGroup["filePath"] = dataset.to_h5_data(legacy=True)
+
+            dirty = True
             datasetInfo = FilesystemDatasetInfo.from_h5_group(infoGroup)
 
         return datasetInfo, dirty

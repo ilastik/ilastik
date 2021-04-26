@@ -33,6 +33,7 @@ from lazyflow.operators import OpPixelFeaturesPresmoothed
 from ilastik.widgets.stackFileSelectionWidget import SubvolumeSelectionDlg
 
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
+from ilastik.utility.data_url import Dataset
 from lazyflow.utility.timer import Timer, timeLogged
 
 from tests.test_ilastik.helpers import ShellGuiTestCaseBase
@@ -198,7 +199,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         file_dialog.selectFile(path.as_posix())
         lineEdit = file_dialog.focusWidget()
         lineEdit.setText(str(path))
-        file_dialog.accept()
+        self.qtbot.keyPress(file_dialog, Qt.Key_Enter, delay=500)
 
     def select_inner_path(self, inner_path: str):
         wait_until(lambda: isinstance(QApplication.instance().activeModalWidget(), SubvolumeSelectionDlg))
@@ -254,9 +255,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Add a file
             from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, FilesystemDatasetInfo
 
-            info = FilesystemDatasetInfo(
-                filePath=self.SAMPLE_DATA, project_file=self.shell.projectManager.currentProjectFile
-            )
+            info = FilesystemDatasetInfo(dataset=Dataset.from_string(self.SAMPLE_DATA, deglob=False))
+
             opDataSelection.DatasetGroup.resize(1)
             opDataSelection.DatasetGroup[0][0].setValue(info)
 

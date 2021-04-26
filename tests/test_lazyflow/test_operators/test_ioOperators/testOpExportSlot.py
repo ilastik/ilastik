@@ -37,6 +37,7 @@ from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.ioOperators import OpInputDataReader, OpExportSlot, OpStackLoader
 from lazyflow.operators.ioOperators.opTiffSequenceReader import OpTiffSequenceReader
+from ilastik.utility.data_url import Dataset
 
 
 class TestOpExportSlot(object):
@@ -71,7 +72,7 @@ class TestOpExportSlot(object):
 
         opRead = OpInputDataReader(graph=graph)
         try:
-            opRead.FilePath.setValue(opExport.ExportPath.value)
+            opRead.Dataset.setValue(Dataset.from_string(opExport.ExportPath.value, deglob=False))
             expected_data = data.view(numpy.ndarray)
             read_data = opRead.Output[:].wait()
             assert (read_data == expected_data).all(), "Read data didn't match exported data!"
@@ -99,7 +100,7 @@ class TestOpExportSlot(object):
 
         opRead = OpInputDataReader(graph=graph)
         try:
-            opRead.FilePath.setValue(opExport.ExportPath.value)
+            opRead.Dataset.setValue(Dataset.from_string(opExport.ExportPath.value, deglob=False))
             expected_data = data.view(numpy.ndarray)
             read_data = opRead.Output[:].wait()
             assert (read_data == expected_data).all(), "Read data didn't match exported data!"
@@ -132,7 +133,7 @@ class TestOpExportSlot(object):
 
         opRead = OpInputDataReader(graph=graph)
         try:
-            opRead.FilePath.setValue(opExport.ExportPath.value)
+            opRead.Dataset.setValue(Dataset.from_string(opExport.ExportPath.value, deglob=False))
             expected_data = data.view(numpy.ndarray)
             read_data = opRead.Output[:].wait()
 
@@ -168,7 +169,7 @@ class TestOpExportSlot(object):
 
         opReader = OpStackLoader(graph=graph)
         try:
-            opReader.globstring.setValue(globstring)
+            opReader.DataPaths.setValue(Dataset.from_string(globstring, deglob=True).data_paths)
 
             assert opReader.stack.meta.shape == data.shape, "Exported files were of the wrong shape or number."
             assert (opReader.stack[:].wait() == data.view(numpy.ndarray)).all(), "Exported data was not correct"
@@ -204,7 +205,7 @@ class TestOpExportSlot(object):
         opReorderAxes = OpReorderAxes(graph=graph)
 
         try:
-            opReader.GlobString.setValue(globstring)
+            opReader.DataPaths.setValue(Dataset.from_string(globstring, deglob=True).data_paths)
 
             # (The OpStackLoader produces txyzc order.)
             opReorderAxes.AxisOrder.setValue("tzyxc")

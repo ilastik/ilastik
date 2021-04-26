@@ -1,4 +1,5 @@
 from __future__ import print_function
+from ilastik.utility.data_url import Dataset
 import os
 import copy
 import h5py
@@ -20,7 +21,7 @@ def convert_predictions_to_uncertainties(input_path, parsed_export_args):
     graph = Graph()
     opReader = OpInputDataReader(graph=graph)
     opReader.WorkingDirectory.setValue(os.getcwd())
-    opReader.FilePath.setValue(input_path)
+    opReader.Dataset.setValue(Dataset.from_string(input_path, deglob=False))
 
     opUncertainty = OpEnsembleMargin(graph=graph)
     opUncertainty.Input.connect(opReader.Output)

@@ -48,14 +48,18 @@ def pixel_classification_ilp_2d3c(sample_projects_dir: Path) -> Path:
     return sample_projects_dir / "PixelClassification2d3c.ilp"
 
 
-def create_h5(data: numpy.ndarray, axiskeys: str) -> Path:
-    assert len(axiskeys) == len(data.shape)
-    path = tempfile.mkstemp()[1] + ".h5"
+def create_h5_at(path: Path, data: numpy.ndarray, axiskeys: str):
+    dataset_name = "data"
     with h5py.File(path, "w") as f:
-        ds = f.create_dataset("data", data=data)
+        ds = f.create_dataset(dataset_name, data=data)
         ds.attrs["axistags"] = vigra.defaultAxistags(axiskeys).toJSON()
+    return Path(path) / dataset_name
 
-    return Path(path) / "data"
+
+def create_h5(data: numpy.ndarray, axiskeys: str, suffix: Optional[str] = None) -> Path:
+    assert len(axiskeys) == len(data.shape)
+    path = Path(tempfile.mkstemp(suffix=suffix)[1] + ".h5")
+    return create_h5_at(path, data=data, axiskeys=axiskeys)
 
 
 class FailedHeadlessExecutionException(Exception):
@@ -74,6 +78,8 @@ def run_headless_pixel_classification(
     input_axes: str = "",
     output_format: str = "hdf5",
     ignore_training_axistags: bool = False,
+    skip_deglobbing: bool = False,
+    stack_along: Optional[str] = None,
 ):
     assert project.exists()
     assert raw_data.parent.exists()
@@ -93,6 +99,9 @@ def run_headless_pixel_classification(
 
     if ignore_training_axistags:
         subprocess_args.append("--ignore_training_axistags")
+
+    if stack_along:
+        subprocess_args.append(f"--stack-along={stack_along}")
 
     if num_distributed_workers:
         os.environ["OMPI_ALLOW_RUN_AS_ROOT"] = "1"
@@ -204,3 +213,34 @@ def test_distributed_results_are_identical_to_single_process_results(
         distributed_50x50block_data = dataset[()]
 
     assert (single_process_out_data == distributed_50x50block_data).all()
+
+
+def test_globlike_paths(testdir, pixel_classification_ilp_2d3c: Path, tmp_path: Path):
+    globlike_path: Path = tmp_path / "raw_100x100y_[123].h5"
+    create_h5_at(globlike_path, data=numpy.random.rand(100, 100, 3), axiskeys="yxc")
+
+    create_h5_at(tmp_path / "raw_100x100y_1.h5", numpy.random.rand(100, 100, 1), axiskeys="yxc")
+    create_h5_at(tmp_path / "raw_100x100y_2.h5", numpy.random.rand(100, 100, 1), axiskeys="yxc")
+    create_h5_at(tmp_path / "raw_100x100y_3.h5", numpy.random.rand(100, 100, 1), axiskeys="yxc")
+
+    output_path = tmp_path / "out.h5"
+
+    # Globlike filename expands to raw_100x100y3c_1 and raw_100x100y3c_2 with skip_deglobbing=False
+    run_headless_pixel_classification(
+        testdir,
+        project=pixel_classification_ilp_2d3c,
+        raw_data=globlike_path / "data",
+        input_axes="xyc",
+        stack_along="c",
+        output_filename_format=str(output_path),
+    )
+
+    # Globlike pattern expands to
+    # raw_100x100y3c_1.h5,  raw_100x100y3c_2.h5 and raw_100x100y3c_2.h3
+    # whith skip_deglobbing=False
+    run_headless_pixel_classification(
+        testdir,
+        project=pixel_classification_ilp_2d3c,
+        raw_data=globlike_path / "data",
+        output_filename_format=str(output_path),
+    )

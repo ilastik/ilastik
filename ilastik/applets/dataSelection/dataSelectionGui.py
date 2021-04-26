@@ -1,4 +1,6 @@
 from __future__ import absolute_import
+from ilastik.utility.data_url import PrecomputedChunksUrl
+from ilastik.utility.data_url import ArchiveDataPath, Dataset
 
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
@@ -22,7 +24,7 @@ from __future__ import absolute_import
 ###############################################################################
 # Python
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Dict, List, Set, Union, Optional
 from vigra import AxisTags
 import threading
@@ -46,9 +48,11 @@ from volumina.utility import preferences
 from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.applets.dataSelection.dataSelectionApplet import DataSelectionApplet
 from ilastik.applets.base.applet import DatasetConstraintError
 
 from .opDataSelection import (
+    AxisTagsHint,
     DatasetInfo,
     RelativeFilesystemDatasetInfo,
     FilesystemDatasetInfo,
@@ -57,7 +61,13 @@ from .opDataSelection import (
 )
 from .dataLaneSummaryTableModel import DataLaneSummaryTableModel
 from .datasetInfoEditorWidget import DatasetInfoEditorWidget
-from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, SubvolumeSelectionDlg
+from ilastik.widgets.stackFileSelectionWidget import (
+    DatasetSelectionMode,
+    DatasetSelectionWidget,
+    SubvolumeSelectionDlg,
+    select_single_file_datasets,
+    create_dataset,
+)
 from .datasetDetailedInfoTableModel import DatasetDetailedInfoTableModel
 from .datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 from .precomputedVolumeBrowser import PrecomputedVolumeBrowser
@@ -150,7 +160,7 @@ class DataSelectionGui(QWidget):
 
     def __init__(
         self,
-        parentApplet,
+        parentApplet: DataSelectionApplet,
         dataSelectionOperator,
         serializer,
         instructionText,
@@ -184,7 +194,7 @@ class DataSelectionGui(QWidget):
         self._initAppletDrawerUic(instructionText)
 
         self._viewerControlWidgetStack = QStackedWidget(self)
-        self._default_h5n5_volumes: Dict[int, Set[str]] = {}
+        self._default_h5n5_volumes: Dict[int, Set[PurePosixPath]] = {}
 
         self.__cleanup_fns.append(self.topLevelOperator.DatasetGroup.notifyRemove(bind(self._handleImageRemove)))
 
@@ -410,21 +420,40 @@ class DataSelectionGui(QWidget):
           the GUI table and the top-level operator inputs.
         """
         # Launch the "Open File" dialog
-        paths = ImageFileDialog(self).getSelectedPaths()
-        self.addFileNames(paths, startingLaneNum, roleIndex)
+        datasets = select_single_file_datasets(
+            parent=self, internal_path_hints=self._get_previously_used_inner_paths(roleIndex)
+        )
 
-    def addFileNames(self, paths: List[Path], startingLaneNum: int, roleIndex: int):
+        self.addDatasets(datasets, startingLaneNum, roleIndex)
+
+    def addFileNames(self, paths: List[str], startingLaneNum: Optional[int], roleIndex: int):
         # If the user didn't cancel
-        for path in paths or []:
+        datasets: List[Dataset] = []
+        for path in paths:
+            dataset = create_dataset(
+                parent=self, raw_file_paths=[path], internal_path_hints=self._get_previously_used_inner_paths(roleIndex)
+            )
+            if not dataset:
+                return
+            datasets.append(dataset)
+        self.addDatasets(datasets, startingLaneNum=startingLaneNum, roleIndex=roleIndex)
+
+    def addDatasets(self, datasets: Optional[List[Dataset]], startingLaneNum: Optional[int], roleIndex: int):
+        # If the user didn't cancel
+        axistags_hint = self.guess_axistags_for(role=roleIndex)
+        for dataset in datasets or []:
             try:
-                full_path = self._get_dataset_full_path(path, roleIndex=roleIndex)
-                info = self.instantiate_dataset_info(url=str(full_path), role=roleIndex)
+                info = FilesystemDatasetInfo(dataset=dataset, axistags_hint=axistags_hint)
                 self.addLanes([info], roleIndex=roleIndex, startingLaneNum=startingLaneNum)
             except DataSelectionGui.UserCancelledError:
                 pass
             except Exception as ex:
                 log_exception(logger)
                 QMessageBox.critical(self, "Error loading file", str(ex))
+        for dataset in datasets or []:
+            internal_paths = dataset.internal_paths()
+            if internal_paths:
+                self._add_default_internal_path(roleIndex=roleIndex, internal_path=internal_paths[0])
 
     def _findFirstEmptyLane(self, roleIndex):
         opTop = self.topLevelOperator
@@ -528,56 +557,23 @@ class DataSelectionGui(QWidget):
 
         return (startingLaneNum, endingLane)
 
-    def _add_default_inner_path(self, roleIndex: int, inner_path: str):
+    def _add_default_internal_path(self, roleIndex: int, internal_path: PurePosixPath):
         paths = self._default_h5n5_volumes.get(roleIndex, set())
-        paths.add(inner_path)
+        paths.add(internal_path)
         self._default_h5n5_volumes[roleIndex] = paths
 
-    def _get_previously_used_inner_paths(self, roleIndex: int) -> Set[str]:
+    def _get_previously_used_inner_paths(self, roleIndex: int) -> Set[PurePosixPath]:
         previous_paths = self._default_h5n5_volumes.get(roleIndex, set())
         return previous_paths.copy()
 
-    def _get_dataset_full_path(self, filePath: Path, roleIndex: int) -> Path:
-        if not DatasetInfo.fileHasInternalPaths(filePath):
-            return filePath
-        datasetNames = DatasetInfo.getPossibleInternalPathsFor(filePath.absolute())
-        if len(datasetNames) == 0:
-            raise RuntimeError(f"File {filePath} has no image datasets")
-        if len(datasetNames) == 1:
-            selected_dataset = datasetNames.pop()
-        else:
-            auto_inner_paths = self._get_previously_used_inner_paths(roleIndex).intersection(set(datasetNames))
-            if len(auto_inner_paths) == 1:
-                selected_dataset = auto_inner_paths.pop()
-            else:
-                # Ask the user which dataset to choose
-                dlg = SubvolumeSelectionDlg(datasetNames, self)
-                if dlg.exec_() != QDialog.Accepted:
-                    raise DataSelectionGui.UserCancelledError()
-                selected_index = dlg.combo.currentIndex()
-                selected_dataset = str(datasetNames[selected_index])
-        self._add_default_inner_path(roleIndex=roleIndex, inner_path=selected_dataset)
-        return filePath / selected_dataset.lstrip("/")
-
-    def guess_axistags_for(self, role: Union[str, int], info: DatasetInfo) -> Optional[AxisTags]:
+    def guess_axistags_for(self, role: Union[str, int]) -> Optional[AxisTagsHint]:
         if self.parentApplet.num_lanes == 0:
-            return info.axistags
+            return None
         lane = self.parentApplet.get_lane(-1)
         previous_info = lane.get_dataset_info(role)
         if previous_info is None or previous_info.default_tags == previous_info.axistags:
-            return info.axistags
-        if len(previous_info.axistags) != len(info.axistags) or previous_info.shape5d.c != info.shape5d.c:
-            return info.axistags
-        return previous_info.axistags
-
-    def instantiate_dataset_info(self, url: str, role: Union[str, int], *info_args, **info_kwargs) -> DatasetInfo:
-        info = self.parentApplet.create_dataset_info(url=url, *info_args, **info_kwargs)
-        if info_kwargs.get("axistags") is not None:
-            return info
-        axistags = self.guess_axistags_for(role=role, info=info)
-        if axistags in (info.axistags, None):
-            return info
-        return self.parentApplet.create_dataset_info(url=url, *info_args, **info_kwargs, axistags=axistags)
+            return None
+        return AxisTagsHint(axistags=previous_info.axistags, num_channels=int(previous_info.shape5d.c))
 
     def _checkDataFormatWarnings(self, roleIndex, startingLaneNum, endingLane):
         warn_needed = False
@@ -596,19 +592,25 @@ class DataSelectionGui(QWidget):
                 "(For HDF5 files, be sure to enable chunking on your dataset.)",
             )
 
-    def addStack(self, roleIndex, laneIndex):
+    def addStack(self, roleIndex: int, laneIndex):
         """
         The user clicked the "Import Stack Files" button.
         """
-        stackDlg = StackFileSelectionWidget(self)
+        stackDlg = DatasetSelectionWidget(selection_mode=DatasetSelectionMode.STACK)
         stackDlg.exec_()
-        if stackDlg.result() != QDialog.Accepted or not stackDlg.selectedFiles:
+        if stackDlg.result() != QDialog.Accepted:
             return
+        stack = stackDlg.selected_datasets[0]
 
         # FIXME: ask first if stack should be internalized to project file
         # also, check prefer_2d, size/volume and presence of 'z' to determine this
-        url = os.path.pathsep.join(stackDlg.selectedFiles)
-        stack_info = self.instantiate_dataset_info(url=url, role=roleIndex, sequence_axis=stackDlg.sequence_axis)
+        axistags_hint = self.guess_axistags_for(role=roleIndex)
+        stack_info = RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
+            project_file=self.get_project_file(),
+            dataset=stack,
+            sequence_axis=stackDlg.stacking_axis,
+            axistags_hint=axistags_hint,
+        )
 
         try:
             # FIXME: do this inside a Request
@@ -645,15 +647,19 @@ class DataSelectionGui(QWidget):
         if editorDlg.exec_() == QDialog.Accepted:
             self.applyDatasetInfos(editorDlg.edited_infos, selected_info_slots)
 
-    def addPrecomputedVolume(self, roleIndex, laneIndex):
+    def addPrecomputedVolume(self, roleIndex: int, laneIndex):
         # add history...
         history = []
         browser = PrecomputedVolumeBrowser(history=history, parent=self)
 
         if browser.exec_() == PrecomputedVolumeBrowser.Rejected:
             return
-
-        info = self.instantiate_dataset_info(url=browser.selected_url, role=roleIndex)
+        selected_url = browser.selected_url
+        if selected_url is None:
+            return
+        precomputed_url = PrecomputedChunksUrl.create(selected_url)
+        axistags_hint = self.guess_axistags_for(role=roleIndex)
+        info = UrlDatasetInfo(url=precomputed_url, axistags_hint=axistags_hint)
         self.addLanes([info], roleIndex=roleIndex, startingLaneNum=laneIndex)
 
     def addDvidVolume(self, roleIndex, laneIndex):
