@@ -351,7 +351,7 @@ class N5DataPath(ArchiveDataPath, supported_extensions=["n5"]):
     @classmethod
     def list_internal_paths(cls, path: Path) -> List[PurePosixPath]:
         with z5py.File(path, "r") as f:
-            return sorted([PurePosixPath("/") / p["name"] for p in lsH5N5(f)])
+            return sorted([PurePosixPath("/") / p["name"].replace("\\", "/") for p in lsH5N5(f)])
 
     def glob_internal(self) -> Sequence["N5DataPath"]:
         with z5py.N5File(str(self.file_path)) as f:
