@@ -250,7 +250,10 @@ class DataSelectionApplet(Applet):
             return UrlDatasetInfo(url=url, axistags=axistags)
         else:
             return RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
-                filePath=url, axistags=axistags, sequence_axis=sequence_axis
+                filePath=str(Path(url).absolute()),
+                axistags=axistags,
+                sequence_axis=sequence_axis,
+                project_file=self.project_file,
             )
 
     def convert_info_to_h5(self, info: DatasetInfo) -> DatasetInfo:
