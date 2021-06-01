@@ -81,8 +81,8 @@ class _NNWorkflowBase(Workflow):
         self.parsed_args, unused_args = parser.parse_known_args(workflow_cmdline_args)
 
         # Functions are supposed to expose applets to shell (add to self._applets)
-        self.createInputAndConfigApplets()
-        self.createClassifierApplet()
+        self._createInputAndConfigApplets()
+        self._createClassifierApplet()
 
         self.dataExportApplet = NNClassificationDataExportApplet(self, "Data Export")
 
@@ -114,23 +114,18 @@ class _NNWorkflowBase(Workflow):
         if unused_args:
             logger.warning("Unused command-line args: {}".format(unused_args))
 
-    def createClassifierApplet(self):
+    def _createClassifierApplet(self):
         # Override in child class
         raise NotImplemented
 
-    def createInputAndConfigApplets(self):
-        self.dataSelectionApplet = self.createDataSelectionApplet()
+    def _createInputAndConfigApplets(self):
+        data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
+        self.dataSelectionApplet = DataSelectionApplet(
+            self, "Input Data", "Input Data", instructionText=data_instructions
+        )
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue(self.ROLE_NAMES)
         self._applets.append(self.dataSelectionApplet)
-
-    def createDataSelectionApplet(self):
-        """
-        Can be overridden by subclasses, if they want to use
-        special parameters to initialize the DataSelectionApplet.
-        """
-        data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
-        return DataSelectionApplet(self, "Input Data", "Input Data", instructionText=data_instructions)
 
     def connectLane(self, laneIndex):
         """

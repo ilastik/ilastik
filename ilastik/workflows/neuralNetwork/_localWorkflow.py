@@ -52,7 +52,7 @@ class LocalWorkflow(_NNWorkflowBase):
         self._launcher = LocalServerLauncher(tiktorch_exe_path)
         super().__init__(shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs)
 
-    def createClassifierApplet(self):
+    def _createClassifierApplet(self):
         conn_str = self._launcher.start()
         srv_config = ServerConfig(id="auto", address=conn_str, devices=[Device(id="cpu", name="cpu", enabled=True)])
         connFactory = tiktorch.TiktorchConnectionFactory()

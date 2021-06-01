@@ -47,17 +47,17 @@ class RemoteWorkflow(_NNWorkflowBase):
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
         super().__init__(shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs)
 
-    def createClassifierApplet(self):
+    def _createClassifierApplet(self):
         self.nnClassificationApplet = NNClassApplet(
             self, "NNClassApplet", connectionFactory=self.serverConfigApplet.connectionFactory
         )
         self._applets.append(self.nnClassificationApplet)
 
-    def createInputAndConfigApplets(self):
+    def _createInputAndConfigApplets(self):
         connFactory = tiktorch.TiktorchConnectionFactory()
         self.serverConfigApplet = ServerConfigApplet(self, connectionFactory=connFactory)
         self._applets.append(self.serverConfigApplet)
-        super().createInputAndConfigApplets()
+        super()._createInputAndConfigApplets()
 
     def connectLane(self, laneIndex):
         """
