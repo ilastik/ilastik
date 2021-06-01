@@ -129,7 +129,7 @@ class _NNWorkflowBase(Workflow):
         opDataExport.Inputs[0].connect(opNNclassify.PredictionProbabilities)
         opDataExport.Inputs[1].connect(opNNclassify.LabelImages)
 
-    def handleAppletStateUpdateRequested(self):
+    def handleAppletStateUpdateRequested(self, upstream_ready=True):
         """
         Overridden from Workflow base class
         Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
@@ -143,8 +143,6 @@ class _NNWorkflowBase(Workflow):
         opDataExport = self.dataExportApplet.topLevelOperator
 
         predictions_ready = input_ready and len(opDataExport.Inputs) > 0
-        # opDataExport.Inputs[0][0].ready()
-        # (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
 
         # Problems can occur if the features or input data are changed during live update mode.
         # Don't let the user do that.
@@ -153,16 +151,20 @@ class _NNWorkflowBase(Workflow):
         # The user isn't allowed to touch anything while batch processing is running.
         batch_processing_busy = self.batchProcessingApplet.busy
 
-        self._shell.setAppletEnabled(self.dataSelectionApplet, not batch_processing_busy)
+        self._shell.setAppletEnabled(self.dataSelectionApplet, not batch_processing_busy and upstream_ready)
 
-        self._shell.setAppletEnabled(self.nnClassificationApplet, input_ready and not batch_processing_busy)
+        self._shell.setAppletEnabled(
+            self.nnClassificationApplet, input_ready and not batch_processing_busy and upstream_ready
+        )
         self._shell.setAppletEnabled(
             self.dataExportApplet,
-            predictions_ready and not batch_processing_busy and not live_update_active,
+            predictions_ready and not batch_processing_busy and not live_update_active and upstream_ready,
         )
 
         if self.batchProcessingApplet is not None:
-            self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not batch_processing_busy)
+            self._shell.setAppletEnabled(
+                self.batchProcessingApplet, predictions_ready and not batch_processing_busy and upstream_ready
+            )
 
         # Lastly, check for certain "busy" conditions, during which we
         #  should prevent the shell from closing the project.

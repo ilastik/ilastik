@@ -137,7 +137,7 @@ try:
     from . import neuralNetwork
 
     WORKFLOW_CLASSES += [neuralNetwork.RemoteWorkflow]
-    print(ilastik.config.runtime_cfg)
+    logger.debug(ilastik.config.runtime_cfg)
     if ilastik.config.runtime_cfg.tiktorch_executable:
         WORKFLOW_CLASSES += [neuralNetwork.LocalWorkflow]
 
