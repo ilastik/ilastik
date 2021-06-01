@@ -274,7 +274,7 @@ def getAvailableWorkflows():
                 if i in ascii_uppercase:
                     wname += " "
                 wname += i
-            if wname.endswith(" workflow_clsorkflow"):
+            if wname.endswith(" Workflow"):
                 wname = wname[:-9]
             if workflow_cls.workflowDisplayName is None:
                 workflow_cls.workflowDisplayName = wname
