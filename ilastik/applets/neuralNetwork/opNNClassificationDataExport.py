@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2021, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-# 		   http://ilastik.org/license.html
+#          http://ilastik.org/license.html
 ###############################################################################
 from lazyflow.graph import InputSlot
 from ilastik.applets.dataExport.opDataExport import OpDataExport
