@@ -71,7 +71,6 @@ class _NNWorkflowBase(Workflow):
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
         parser.add_argument("--batch-size", help="choose the preferred batch size", type=int)
-        parser.add_argument("--halo-size", help="choose the preferred halo size", type=int)
         parser.add_argument("--model-path", help="the neural network model for prediction")
 
         # Parse the creation args: These were saved to the project file when this project was first created.
