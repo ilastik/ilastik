@@ -26,6 +26,8 @@ from string import ascii_uppercase
 from ilastik.shell.shellAbc import ShellABC
 import logging
 
+from typing import Tuple
+
 logger = logging.getLogger(__name__)
 
 
@@ -252,11 +254,20 @@ def all_subclasses(cls):
     return cls.__subclasses__() + [g for s in cls.__subclasses__() for g in all_subclasses(s)]
 
 
-def getAvailableWorkflows():
+def getAvailableWorkflows() -> Tuple[Workflow, str, str]:
     """
     This function used to iterate over all workflows that have been imported so far,
     but now we rely on the explicit list in workflows/__init__.py,
     and add any extra auto-discovered workflows at the end.
+
+    Yields:
+        tuple of workflow_class, workflow_name, workflow_display_name
+        where
+        * workflow_class can be used by the shell to instantiate a new workflow/project,
+        * workflow_name is a string representation (that should not change) that is also
+          saved in projects and used to identify the workflow,
+        * workflow_display_name is a human readable version of the workflow string to be presented
+          to the user.
     """
     alreadyListed = set()
 

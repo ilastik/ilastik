@@ -1374,7 +1374,7 @@ class Slot(object):
             self.maybe_call_within_transaction(self.operator._setupOutputs)
 
     def _setupOutputs(self):
-        """ """
+        """"""
         self._changed()
 
     def _connectSubSlot(self, slot, notify=True):
