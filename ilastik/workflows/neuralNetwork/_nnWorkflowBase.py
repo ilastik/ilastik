@@ -250,6 +250,3 @@ class _NNWorkflowBase(Workflow):
         input_shape[1:3] -= 2 * self.halo_size
 
         return input_shape
-
-    def cleanUp(self):
-        self.nnClassificationApplet.cleanUp()

@@ -60,3 +60,7 @@ class LocalWorkflow(_NNWorkflowBase):
         opClassify = self.nnClassificationApplet.topLevelOperator
         opClassify.ServerConfig.setValue(srv_config)
         self._applets.append(self.nnClassificationApplet)
+
+    def cleanUp(self):
+        self._launcher.stop()
+        super().cleanUp()
