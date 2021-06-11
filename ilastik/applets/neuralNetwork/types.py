@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2021, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -16,23 +16,32 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-# 		   http://ilastik.org/license.html
+#          http://ilastik.org/license.html
 ###############################################################################
-from lazyflow.graph import InputSlot
-from ilastik.applets.dataExport.opDataExport import OpDataExport
-
-
-class OpNNClassificationDataExport(OpDataExport):
+class State:
     """
-    Subclass placeholder
+    Stores model state
+    As opaque serialized tensors
     """
 
-    PmapColors = InputSlot()
-    LabelNames = InputSlot()
+    model: bytes
+    optimizer: bytes
 
-    def __init__(self, *args, **kwargs):
-        super(OpNNClassificationDataExport, self).__init__(*args, **kwargs)
+    def __init__(self, *, model: bytes, optimizer: bytes) -> None:
+        self.model = model
+        self.optimizer = optimizer
 
-    def propagateDirty(self, slot, subindex, roi):
-        if slot is not self.PmapColors and slot is not self.LabelNames:
-            super(OpNNClassificationDataExport, self).propagateDirty(slot, subindex, roi)
+
+class Model:
+    code: bytes
+    config: dict
+
+    def __init__(self, *, code: bytes, config: dict) -> None:
+        self.code = code
+        self.config = config
+
+    def __bool__(self) -> bool:
+        return bool(self.code)
+
+
+Model.Empty = Model(b"", {})

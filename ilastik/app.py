@@ -21,13 +21,15 @@
 import argparse
 import faulthandler
 import logging
+import platform
 import os
 import sys
 from typing import List, Optional, Sequence, Tuple
+from pathlib import Path
 
 import ilastik.config
 from ilastik import __version__
-from ilastik.config import cfg as ilastik_config
+from ilastik.config import cfg as ilastik_config, runtime_cfg
 from ilastik.utility.commandLineProcessing import OptionalFlagAction
 
 logger = logging.getLogger(__name__)
@@ -63,6 +65,7 @@ def _argparser() -> argparse.ArgumentParser:
         "--exit_on_failure", help="Immediately call exit(1) if an unhandled exception occurs.", action="store_true"
     )
     ap.add_argument("--hbp", help="Enable HBP-specific functionality.", action="store_true")
+    ap.add_argument("--tiktorch_executable", help="Specify path to tiktorch server executable", default=None)
     return ap
 
 
@@ -124,17 +127,18 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
     init_logging: Skip logging config initialization by setting this to False.
                   (Useful when opening multiple projects in a Python script.)
     """
+    if init_logging:
+        _init_logging(parsed_args)  # Initialize logging before anything else
+
     this_path = os.path.dirname(__file__)
     ilastik_dir = os.path.abspath(os.path.join(this_path, "..%s.." % os.path.sep))
     _import_h5py_with_utf8_encoding()
     _update_debug_mode(parsed_args)
     _update_hbp_mode(parsed_args)
+    _update_tiktorch_executable_location(parsed_args, ilastik_dir)
 
     # If necessary, redirect stdout BEFORE logging is initialized
     _redirect_output(parsed_args)
-
-    if init_logging:
-        _init_logging(parsed_args)  # Initialize logging before anything else
 
     _init_configfile(parsed_args)
 
@@ -254,6 +258,27 @@ def _update_hbp_mode(parsed_args):
     """enable HBP-specific functionality"""
     if parsed_args.hbp:
         ilastik_config.set("ilastik", "hbp", "true")
+
+
+def _update_tiktorch_executable_location(parsed_args, root_path: str):
+    """enable tiktorch local workflow"""
+    tiktorch_executable: Optional[Path] = None
+    if parsed_args.tiktorch_executable:
+        tiktorch_executable = Path(parsed_args.tiktorch_executable)
+    else:
+        # Maybe tiktorch is bundled
+        root_path = Path(root_path)
+        tiktorch_script = "run_tiktorch.sh" if platform.system() != "Windows" else "run_tiktorch.bat"
+        bundled_tiktorch_executable = root_path / "tiktorch" / tiktorch_script
+
+        if bundled_tiktorch_executable.exists():
+            tiktorch_executable = bundled_tiktorch_executable
+
+    if tiktorch_executable and tiktorch_executable.exists():
+        tiktorch_msg = "Using tiktorch executable: %s" % tiktorch_executable
+        print(tiktorch_msg)
+        logger.info(tiktorch_msg)
+        runtime_cfg.tiktorch_executable = str(tiktorch_executable)
 
 
 def _init_logging(parsed_args):

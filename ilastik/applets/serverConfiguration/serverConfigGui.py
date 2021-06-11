@@ -108,7 +108,7 @@ class ServerConfigGui(QWidget):
     def imageLaneAdded(self, laneIndex):
         pass
 
-    def imageLaneRemoved(self, laneIndex):
+    def imageLaneRemoved(self, laneIndex, finalLength):
         pass
 
     def allowLaneSelectionChange(self):

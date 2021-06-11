@@ -26,6 +26,8 @@ from string import ascii_uppercase
 from ilastik.shell.shellAbc import ShellABC
 import logging
 
+from typing import Tuple
+
 logger = logging.getLogger(__name__)
 
 
@@ -36,6 +38,8 @@ class Workflow(Operator):
 
     name = "Workflow (base class)"
     workflowDisplayName = None  # override in your own workflow if you need it different from name
+    #: Should workflow be automatically added to start widget
+    auto_register = True
 
     ###############################
     # Abstract methods/properties #
@@ -250,36 +254,32 @@ def all_subclasses(cls):
     return cls.__subclasses__() + [g for s in cls.__subclasses__() for g in all_subclasses(s)]
 
 
-def getAvailableWorkflows():
+def getAvailableWorkflows() -> Tuple[Workflow, str, str]:
     """
     This function used to iterate over all workflows that have been imported so far,
     but now we rely on the explicit list in workflows/__init__.py,
     and add any extra auto-discovered workflows at the end.
+
+    Yields:
+        tuple of workflow_class, workflow_name, workflow_display_name
+        where
+        * workflow_class can be used by the shell to instantiate a new workflow/project,
+        * workflow_name is a string representation (that should not change) that is also
+          saved in projects and used to identify the workflow,
+        * workflow_display_name is a human readable version of the workflow string to be presented
+          to the user.
     """
     alreadyListed = set()
 
     from . import workflows
 
-    for W in workflows.WORKFLOW_CLASSES + all_subclasses(Workflow):
-        if W.__name__ in alreadyListed:
-            continue
-        alreadyListed.add(W.__name__)
-
-        # this is a hack to ensure the base object workflow does not
-        # appear in the list of available workflows.
-        try:
-            isbase = "base" in W.workflowName.lower()
-        except:
-            isbase = False
-        if isbase:
-            continue
-
-        if isinstance(W.workflowName, str):
-            if W.workflowDisplayName is None:
-                W.workflowDisplayName = W.workflowName
-            yield W, W.workflowName, W.workflowDisplayName
+    def _makeWorkflowTuple(workflow_cls):
+        if isinstance(workflow_cls.workflowName, str):
+            if workflow_cls.workflowDisplayName is None:
+                workflow_cls.workflowDisplayName = workflow_cls.workflowName
+            return workflow_cls, workflow_cls.workflowName, workflow_cls.workflowDisplayName
         else:
-            originalName = W.__name__
+            originalName = workflow_cls.__name__
             wname = originalName[0]
             for i in originalName[1:]:
                 if i in ascii_uppercase:
@@ -287,10 +287,35 @@ def getAvailableWorkflows():
                 wname += i
             if wname.endswith(" Workflow"):
                 wname = wname[:-9]
-            if W.workflowDisplayName is None:
-                W.workflowDisplayName = wname
+            if workflow_cls.workflowDisplayName is None:
+                workflow_cls.workflowDisplayName = wname
 
-            yield W, wname, W.workflowDisplayName
+            return workflow_cls, wname, workflow_cls.workflowDisplayName
+
+    # All explicitly registered workflows should be displayed
+    for W in workflows.WORKFLOW_CLASSES:
+        if W.__name__ in alreadyListed:
+            continue
+        alreadyListed.add(W.__name__)
+
+        yield _makeWorkflowTuple(W)
+
+    for W in all_subclasses(Workflow):
+        if W.__name__ in alreadyListed:
+            continue
+        alreadyListed.add(W.__name__)
+        # this is a hack to ensure the base object workflow does not
+        # appear in the list of available workflows.
+        try:
+            isbase = "base" in W.workflowName.lower()
+        except:
+            isbase = False
+
+        should_register = getattr(W, "auto_register", True)
+        if isbase or not should_register:
+            continue
+
+        yield _makeWorkflowTuple(W)
 
 
 def getWorkflowFromName(Name):

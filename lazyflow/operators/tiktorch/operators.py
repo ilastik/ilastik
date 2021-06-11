@@ -6,7 +6,7 @@ from builtins import range
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2021, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -22,7 +22,7 @@ from builtins import range
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-# 		   http://ilastik.org/license/
+#          http://ilastik.org/license/
 ###############################################################################
 # Python
 import copy
@@ -263,5 +263,8 @@ class OpTikTorchClassifierPredict(Operator):
         # Pad the data
         input_data = numpy.pad(input_data, padding, mode="reflect")
 
-        result[...] = session.predict(input_data, predictions_roi, axistags)
+        try:
+            result[...] = session.predict(input_data, predictions_roi, axistags)
+        except Exception as e:
+            logger.exception("Failed to predict")
         return result

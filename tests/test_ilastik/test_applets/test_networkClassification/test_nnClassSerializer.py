@@ -4,7 +4,7 @@ pytest.importorskip("lazyflow.operators.tiktorch")
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, Graph
 from lazyflow import stype
-from ilastik.applets.networkClassification.nnClassSerializer import BinarySlot
+from ilastik.applets.neuralNetwork.nnClassSerializer import BinarySlot
 from ilastik.applets.base.appletSerializer import AppletSerializer
 from tiktorch.types import Model, ModelState
 from tiktorch.rpc import RPCFuture

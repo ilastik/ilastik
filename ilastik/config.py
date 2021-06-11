@@ -22,6 +22,7 @@
 import configparser
 import os
 import warnings
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Union
 
@@ -79,8 +80,14 @@ filename: in
 """
 
 
+@dataclass
+class RuntimeCfg:
+    tiktorch_executable: Optional[str] = None
+
+
 cfg: configparser.ConfigParser = configparser.ConfigParser()
 cfg_path: Optional[Path] = None
+runtime_cfg: RuntimeCfg = RuntimeCfg()
 
 
 def _init(path: Union[None, str, bytes, os.PathLike]) -> None:
