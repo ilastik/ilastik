@@ -44,7 +44,7 @@ class NNClassApplet(StandardApplet):
 
         self._topLevelOperator.classifier_cache.Output.notifyDirty(on_classifier_changed)
 
-        super(NNClassApplet, self).__init__("NN Training", workflow=workflow)
+        super(NNClassApplet, self).__init__("NN Prediction", workflow=workflow)
 
         self._serializableItems = [NNClassificationSerializer(self.topLevelOperator, projectFileGroupName)]
         self._gui = None
