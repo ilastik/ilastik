@@ -74,6 +74,43 @@ class ModelSession:
         return self.__session.outputAxes
 
     @property
+    def offset(self):
+        return self.__session.offset
+
+    @property
+    def scale(self):
+        return self.__session.scale
+
+    @property
+    def output_shapes(self):
+        return self.__session.validShapes
+
+    @property
+    def output_shape(self):
+        """
+        shape = shape(input_tensor) * scale + 2 * offset
+        """
+        offset_by_name = {d.name: d.size for d in self.offset}
+        scale_by_name = {d.name: d.size for d in self.scale}
+
+        result = []
+        for shape in self.__session.validShapes:
+            dim_size_by_name = {d.name: d.size for d in shape.dims}
+            valid_shape = {}
+            for dim in dim_size_by_name:
+                if dim in "xyz":
+                    multiplier = 2
+                else:
+                    multiplier = 1
+                size = dim_size_by_name.get(dim, 1) * scale_by_name.get(dim, 1.0) + multiplier * offset_by_name.get(
+                    dim, 0
+                )
+                valid_shape[dim] = size
+
+            result.append(valid_shape)
+        return result[0]
+
+    @property
     def has_training(self):
         return self.__session.hasTraining
 
@@ -101,7 +138,8 @@ class ModelSession:
 
     @property
     def known_classes(self):
-        return [1, 2]
+        output_shape = self.output_shape
+        return list(range(1, int(output_shape["c"]) + 1))
 
     @property
     def num_classes(self):
