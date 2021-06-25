@@ -263,8 +263,24 @@ def _update_hbp_mode(parsed_args):
 def _update_tiktorch_executable_location(parsed_args, root_path: str):
     """enable tiktorch local workflow"""
     tiktorch_executable: Optional[Path] = None
+
+    tiktorch_in = False
+    executable_valid = False
+    try:
+        # todo: do something more reliable here - this also works for tiktorch-client package
+        from tiktorch import server
+
+        tiktorch_in = True
+    except ImportError:
+        pass
+
     if parsed_args.tiktorch_executable:
-        tiktorch_executable = Path(parsed_args.tiktorch_executable)
+        tiktorch_executable = [str(Path(parsed_args.tiktorch_executable))]
+        executable_valid = parsed_args.tiktorch_executable.exists()
+    elif tiktorch_in:
+        python_exe = str(Path(sys.executable).resolve())
+        executable_valid = True
+        tiktorch_executable = [python_exe, "-m", "tiktorch.server"]
     else:
         # Maybe tiktorch is bundled
         root_path = Path(root_path)
@@ -272,13 +288,14 @@ def _update_tiktorch_executable_location(parsed_args, root_path: str):
         bundled_tiktorch_executable = root_path / "tiktorch" / tiktorch_script
 
         if bundled_tiktorch_executable.exists():
-            tiktorch_executable = bundled_tiktorch_executable
+            tiktorch_executable = [bundled_tiktorch_executable]
+            executable_valid = bundled_tiktorch_executable.exists()
 
-    if tiktorch_executable and tiktorch_executable.exists():
+    if tiktorch_executable and executable_valid:
         tiktorch_msg = "Using tiktorch executable: %s" % tiktorch_executable
         print(tiktorch_msg)
         logger.info(tiktorch_msg)
-        runtime_cfg.tiktorch_executable = str(tiktorch_executable)
+        runtime_cfg.tiktorch_executable = tiktorch_executable
 
 
 def _init_logging(parsed_args):

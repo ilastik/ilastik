@@ -25,7 +25,7 @@ import time
 import os
 import subprocess
 import tempfile
-from typing import Optional
+from typing import Optional, List
 
 logger = logging.getLogger(__name__)
 
@@ -46,10 +46,10 @@ def wait(done, interval=0.1, max_wait=1):
 
 
 class LocalServerLauncher:
-    _executable_path: str
+    _executable_path: List[str]
     _process: Optional[subprocess.Popen]
 
-    def __init__(self, executable_path: str) -> None:
+    def __init__(self, executable_path: List[str]) -> None:
         self._executable_path = executable_path
         self._process = None
 
@@ -61,10 +61,13 @@ class LocalServerLauncher:
 
         with tempfile.TemporaryDirectory(prefix="tiktorch_connection") as conn_dir:
             conn_param_path = os.path.join(conn_dir, "conn.json")
-            cmd = [self._executable_path, "--port", "0", "--addr", "127.0.0.1", "--connection-file", conn_param_path]
+            cmd = self._executable_path + ["--port", "0", "--addr", "127.0.0.1", "--connection-file", conn_param_path]
 
             self._process = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr)
-            wait(lambda: os.path.exists(conn_param_path), max_wait=5)
+            try:
+                wait(lambda: os.path.exists(conn_param_path), max_wait=20)
+            except RuntimeError:
+                self.stop()
 
             with open(conn_param_path, "r") as conn_file:
                 conn_data = json.load(conn_file)
