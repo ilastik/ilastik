@@ -29,6 +29,11 @@ from lazyflow.operators.tiktorch import IConnectionFactory
 logger = logging.getLogger(__name__)
 
 
+# When implementing training, check code that accesses this flag -
+# used to hide "unused" gui elements
+ALLOW_TRAINING = False
+
+
 @dataclasses.dataclass
 class ModelInfo:
     name: str
