@@ -60,7 +60,7 @@ from PyQt5.QtWidgets import (
     QComboBox,
 )
 
-from ilastik.applets.labeling.labelingGui import LabelingGui
+from ilastik.applets.labeling.labelingGui import LabelingGui, Tool
 from ilastik.utility.gui import threadRouted
 from ilastik.utility import bind
 from ilastik.shell.gui.iconMgr import ilastikIcons
@@ -408,6 +408,21 @@ class NNClassGui(LabelingGui):
 
         return menus
 
+    @threadRouted
+    def enableLabellingUI(self, enabled: bool = False):
+        self._changeInteractionMode(Tool.Navigation)
+        drawer = self.labelingDrawerUi
+        for widget in [
+            drawer.eraserToolButton,
+            drawer.AddLabelButton,
+            drawer.paintToolButton,
+            drawer.labelListView,
+            drawer.brushSizeCaption,
+            drawer.brushSizeComboBox,
+        ]:
+            widget.setEnabled(enabled)
+            widget.setVisible(enabled)
+
     def _get_model_state(self):
         factory = self.topLevelOperatorView.ClassifierFactory[:].wait()[0]
         return factory.get_model_state()
@@ -487,7 +502,7 @@ class NNClassGui(LabelingGui):
         )
         self.__cleanup_fns.append(self.topLevelOperatorView.cleanUp)
 
-        self.forceAtLeastTwoLabels(True)
+        self.enableLabellingUI(False)
 
         self.invalidatePredictionsTimer = QTimer()
         self.invalidatePredictionsTimer.timeout.connect(self.updatePredictions)
