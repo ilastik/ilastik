@@ -56,6 +56,14 @@ class LocalWorkflow(_NNWorkflowBase):
         conn_str = self._launcher.start()
         srv_config = ServerConfig(id="auto", address=conn_str, devices=[Device(id="cpu", name="cpu", enabled=True)])
         connFactory = tiktorch.TiktorchConnectionFactory()
+        conn = connFactory.ensure_connection(srv_config)
+        devices = conn.get_devices()
+        non_cpu = tuple(dev for dev in devices if "cpu" not in dev[0])
+        if non_cpu:
+            print("using GPU", non_cpu[-1])
+            srv_config = srv_config.evolve(devices=[Device(id=non_cpu[-1][0], name=non_cpu[-1][1], enabled=True)])
+        else:
+            print("Using CPU")
         self.nnClassificationApplet = NNClassApplet(self, "NNClassApplet", connectionFactory=connFactory)
         opClassify = self.nnClassificationApplet.topLevelOperator
         opClassify.ServerConfig.setValue(srv_config)
