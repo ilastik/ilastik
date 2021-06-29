@@ -587,7 +587,7 @@ class NNClassGui(LabelingGui):
                 predictsrc = LazyflowSource(predictionSlot)
                 predictionLayer = AlphaModulatedLayer(predictsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0))
                 predictionLayer.visible = self.labelingDrawerUi.livePrediction.isChecked()
-                predictionLayer.opacity = 0.25
+                predictionLayer.opacity = 0.5
                 predictionLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
 
                 def setLayerColor(c, predictLayer_=predictionLayer, initializing=False):
@@ -779,7 +779,7 @@ class NNClassGui(LabelingGui):
 
     def _uploadModel(self, modelBytes):
         cancelSrc = CancellationTokenSource()
-        dialog = PercentProgressDialog(self, title="Uploading model")
+        dialog = PercentProgressDialog(self, title="Initializing model")
         dialog.rejected.connect(cancelSrc.cancel)
         dialog.open()
 
