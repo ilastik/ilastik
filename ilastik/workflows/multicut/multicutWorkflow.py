@@ -90,7 +90,7 @@ class MulticutWorkflow(Workflow):
         #
         self.edgeTrainingApplet = EdgeTrainingApplet(self, "Edge Training", "Edge Training")
         opEdgeTraining = self.edgeTrainingApplet.topLevelOperator
-        DEFAULT_FEATURES = {self.ROLE_NAMES[self.DATA_ROLE_RAW]: ["standard_edge_mean"]}
+        DEFAULT_FEATURES = {self.ROLE_NAMES[self.DATA_ROLE_PROBABILITIES]: ["standard_edge_mean"]}
         opEdgeTraining.FeatureNames.setValue(DEFAULT_FEATURES)
 
         # -- Multicut applet
