@@ -363,6 +363,11 @@ class NNClassGui(LabelingGui):
         """
         The gui should stop updating all data views and should clean up any resources it created
         """
+        try:
+            logger.info("Closing session.")
+            self.tiktorchController.closeSession()
+        except:
+            pass
         for fn in self.__cleanup_fns:
             fn()
 

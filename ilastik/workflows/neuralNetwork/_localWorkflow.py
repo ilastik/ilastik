@@ -70,5 +70,5 @@ class LocalWorkflow(_NNWorkflowBase):
         self._applets.append(self.nnClassificationApplet)
 
     def cleanUp(self):
-        self._launcher.stop()
         super().cleanUp()
+        self._launcher.stop()
