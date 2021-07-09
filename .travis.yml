@@ -36,9 +36,9 @@ install:
   # - conda info -a
 
   - conda env remove -n ${TEST_ENV}
-  # install current master
+  # install current main
   - git clone http://github.com/ilastik/ilastik-meta ${ILASTIK_ROOT}/ilastik-meta
-  - cd ${ILASTIK_ROOT}/ilastik-meta && git submodule init && git submodule update --recursive && git submodule foreach "git checkout master"
+  - cd ${ILASTIK_ROOT}/ilastik-meta && git submodule init && git submodule update --recursive && git submodule foreach "git checkout main"
   - rm -rf ${ILASTIK_ROOT}/ilastik-meta/lazyflow
   - ln -s $TRAVIS_BUILD_DIR ${ILASTIK_ROOT}/ilastik-meta/lazyflow
   - conda activate base
@@ -55,4 +55,4 @@ script:
   - cd ${ILASTIK_ROOT}/ilastik-meta/lazyflow
   - pytest --capture=no --cov=lazyflow
   - coveralls || echo "Failed to submit coveralls"
-  - cd $TRAVIS_BUILD_DIR && git diff --name-only --diff-filter=AM master.. | grep ".*\.py" | xargs black --check --line-length=120
+  - cd $TRAVIS_BUILD_DIR && git diff --name-only --diff-filter=AM main.. | grep ".*\.py" | xargs black --check --line-length=120

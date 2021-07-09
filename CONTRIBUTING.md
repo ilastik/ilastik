@@ -79,17 +79,17 @@ We use [GitHub Flow][github-flow] workflow without the _Deploy_ step.
 The whole ilastik project is split into 2 repositories: [ilastik][ilastik] and [volumina][volumina].
 Therefore, *for some changes you need to repeat the instructions twice in the corresponding directories*.
 
-1. Make sure that your local and remote _master_ branches are synced with the upstream.
+1. Make sure that your local and remote _main_ branches are synced with the upstream.
 
    ```
-   git pull --ff-only upstream master:master
-   git push origin master
+   git pull --ff-only upstream main:main
+   git push origin main
    ```
 
-1. Create a new branch from *master*:
+1. Create a new branch from *main*:
 
    ```
-   git switch --create your-branch-name-here master
+   git switch --create your-branch-name-here main
    ```
 
 1. Write some code, and, if possible, add tests for your changes.
