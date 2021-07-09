@@ -17,7 +17,7 @@ jobs:
             cd ${ILASTIK_ROOT}/ilastik-meta &&
             git submodule init &&
             git submodule update --recursive &&
-            git submodule foreach "git checkout master" &&
+            git submodule foreach "git checkout main" &&
             rm -rf ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
             ln -s ${ILASTIK_ROOT}/ilastik ${ILASTIK_ROOT}/ilastik-meta/ilastik
     - save_cache:
@@ -44,7 +44,7 @@ jobs:
         # This branch if available
         - v1.4.11-dep-{{ .Branch }}-{{ epoch }}
         # Default branch if not
-        - v1.4.11-dep-master-
+        - v1.4.11-dep-main-
         # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
         - v1.4.11-dep-
     - restore_cache:
@@ -98,7 +98,7 @@ jobs:
         name: restore dependency cache
         keys:
         - v1.4.11-dep-{{ .Branch }}-{{ epoch }}
-        - v1.4.11-dep-master-
+        - v1.4.11-dep-main-
         - v1.4.11-dep-
     - run:
         name: update conda
@@ -113,7 +113,7 @@ jobs:
         name: black check
         command: >
             conda activate black &&
-            git diff --name-only --diff-filter=AM origin/master.. |
+            git diff --name-only --diff-filter=AM origin/main.. |
                 grep ".*\.py" |
                 xargs black --check --line-length=120
 

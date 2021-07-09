@@ -55,12 +55,12 @@ For more complex changes, see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 [GPL](LICENSE)
 
-[circleci-img]: https://img.shields.io/circleci/build/github/ilastik/ilastik/master?logo=circleci
-[circleci-url]: https://app.circleci.com/pipelines/github/ilastik/ilastik?branch=master
-[appveyor-img]: https://img.shields.io/appveyor/build/ilastik/ilastik/master?logo=appveyor
-[appveyor-url]: https://ci.appveyor.com/project/ilastik/ilastik/branch/master
-[codecov-img]: https://img.shields.io/codecov/c/github/ilastik/ilastik/master
-[codecov-url]: https://codecov.io/gh/ilastik/ilastik/branch/master
+[circleci-img]: https://img.shields.io/circleci/build/github/ilastik/ilastik/main?logo=circleci
+[circleci-url]: https://app.circleci.com/pipelines/github/ilastik/ilastik?branch=main
+[appveyor-img]: https://img.shields.io/appveyor/build/ilastik/ilastik/main?logo=appveyor
+[appveyor-url]: https://ci.appveyor.com/project/ilastik/ilastik/branch/main
+[codecov-img]: https://img.shields.io/codecov/c/github/ilastik/ilastik/main
+[codecov-url]: https://codecov.io/gh/ilastik/ilastik/branch/main
 [imagesc-img]: https://img.shields.io/badge/dynamic/json?color=informational&label=forum.image.sc&query=%24.topic_list.tags%5B0%5D.id&suffix=%20topics&url=https%3A%2F%2Fforum.image.sc%2Ftag%2Filastik.json
 [imagesc-url]: https://forum.image.sc/tags/ilastik
 [black-img]: https://img.shields.io/badge/code%20style-black-black

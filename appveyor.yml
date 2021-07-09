@@ -19,11 +19,11 @@ install:
   - cmd: conda config --set always_yes yes --set changeps1 no --set channel_priority strict
   - cmd: conda update -q conda
   - cmd: conda install -c conda-forge conda-build
-  # Get the current master of all submodules
+  # Get the current main of all submodules
   - cmd: git clone https://github.com/ilastik/ilastik-meta %IlASTIK_ROOT%\ilastik-meta
   - cmd: cd %IlASTIK_ROOT%\ilastik-meta
   - cmd: git submodule update --init --recursive
-  - cmd: git submodule foreach "git checkout master"
+  - cmd: git submodule foreach "git checkout main"
   - ps: rm -Force -Recurse $env:IlASTIK_ROOT\ilastik-meta\ilastik\
   # replace with whatever version of ilastik triggered the appveyor
   - ps: cp -recurse C:\projects\ilastik $env:IlASTIK_ROOT\ilastik-meta\ilastik
@@ -41,4 +41,4 @@ test_script:
   - cmd: pytest --run-legacy-gui
 
 # on_finish:
-#  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+#  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/main/scripts/enable-rdp.ps1'))
