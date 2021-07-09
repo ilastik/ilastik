@@ -71,6 +71,7 @@ class LocalServerLauncher:
                 return f"{conn_data['addr']}:{conn_data['port']}"
 
     def stop(self):
+        logger.info("stopping local tiktorch instance")
         if not self._process:
             raise RuntimeError(f"Local server is not running")
 
