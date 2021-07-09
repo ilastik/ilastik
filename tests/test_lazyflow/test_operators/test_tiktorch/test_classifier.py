@@ -10,9 +10,9 @@ from tiktorch.proto import inference_pb2
 def pb_session():
     return inference_pb2.ModelSession(
         halo=[
-            inference_pb2.TensorDim(name="x", size=256),
-            inference_pb2.TensorDim(name="y", size=128),
-            inference_pb2.TensorDim(name="c", size=1),
+            inference_pb2.NamedInt(name="x", size=256),
+            inference_pb2.NamedInt(name="y", size=128),
+            inference_pb2.NamedInt(name="c", size=1),
         ]
     )
 
