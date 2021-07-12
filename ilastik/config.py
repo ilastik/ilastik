@@ -83,6 +83,7 @@ filename: in
 @dataclass
 class RuntimeCfg:
     tiktorch_executable: Optional[str] = None
+    preferred_cuda_device_id: Optional[str] = None
 
 
 cfg: configparser.ConfigParser = configparser.ConfigParser()

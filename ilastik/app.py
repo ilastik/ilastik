@@ -66,6 +66,9 @@ def _argparser() -> argparse.ArgumentParser:
     )
     ap.add_argument("--hbp", help="Enable HBP-specific functionality.", action="store_true")
     ap.add_argument("--tiktorch_executable", help="Specify path to tiktorch server executable", default=None)
+    ap.add_argument(
+        "--nn_device", help="Local device to run Neural Networks on. Examples: 'cpu', 'gpu:0'.", default=None
+    )
     return ap
 
 
@@ -136,6 +139,7 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
     _update_debug_mode(parsed_args)
     _update_hbp_mode(parsed_args)
     _update_tiktorch_executable_location(parsed_args)
+    runtime_cfg.preferred_cuda_device_id = parsed_args.nn_device
 
     # If necessary, redirect stdout BEFORE logging is initialized
     _redirect_output(parsed_args)
