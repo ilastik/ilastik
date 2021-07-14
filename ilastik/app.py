@@ -67,7 +67,7 @@ def _argparser() -> argparse.ArgumentParser:
     ap.add_argument("--hbp", help="Enable HBP-specific functionality.", action="store_true")
     ap.add_argument("--tiktorch_executable", help="Specify path to tiktorch server executable", default=None)
     ap.add_argument(
-        "--nn_device", help="Local device to run Neural Networks on. Examples: 'cpu', 'gpu:0'.", default=None
+        "--nn_device", help="Local device to run Neural Networks on. Examples: 'cpu', 'cuda:0'.", default=None
     )
     return ap
 
