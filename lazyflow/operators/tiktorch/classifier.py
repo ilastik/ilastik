@@ -21,11 +21,8 @@
 ###############################################################################
 import logging
 import socket
-import threading
 import numpy
 import warnings
-import numpy as np
-from concurrent.futures import CancelledError
 from typing import Iterable, List, Callable
 
 import vigra
@@ -90,6 +87,9 @@ class ModelSession:
         scale_by_name = {d.name: d.size for d in self.scale}
 
         result = []
+        # FIXME: currently we don't make use of having potentially multiple valid
+        # output shapes. It can make sense, to choose it dynamically, e.g.
+        # a smaller one for "live" prediction, a larger one for batch
         for shape in self.__session.validShapes:
             dim_size_by_name = {d.name: d.size for d in shape.dims}
             valid_shape = {}
@@ -124,7 +124,7 @@ class ModelSession:
 
     @property
     def training_shape(self):
-        logger.warning("HARDCODED training shape, this might not do what you want")
+        warnings.warn("HARDCODED training shape, this might not do what you want.")
         return [0, 0, 0, 128, 128]
 
     @property
