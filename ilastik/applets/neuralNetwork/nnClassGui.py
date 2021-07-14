@@ -60,11 +60,11 @@ from PyQt5.QtWidgets import (
     QComboBox,
 )
 
-from ilastik.applets.labeling.labelingGui import LabelingGui
+from ilastik.applets.labeling.labelingGui import LabelingGui, Tool
 from ilastik.utility.gui import threadRouted
 from ilastik.utility import bind
 from ilastik.shell.gui.iconMgr import ilastikIcons
-from .tiktorchController import TiktorchController, TiktorchOperatorModel
+from .tiktorchController import TiktorchController, TiktorchOperatorModel, ALLOW_TRAINING
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.utility import preferences
@@ -413,6 +413,21 @@ class NNClassGui(LabelingGui):
 
         return menus
 
+    @threadRouted
+    def setLabelingUIEnabled(self, enabled: bool = False):
+        self._changeInteractionMode(Tool.Navigation)
+        drawer = self.labelingDrawerUi
+        for widget in [
+            drawer.eraserToolButton,
+            drawer.AddLabelButton,
+            drawer.paintToolButton,
+            drawer.labelListView,
+            drawer.brushSizeCaption,
+            drawer.brushSizeComboBox,
+        ]:
+            widget.setEnabled(enabled)
+            widget.setVisible(enabled)
+
     def _get_model_state(self):
         factory = self.topLevelOperatorView.ClassifierFactory[:].wait()[0]
         return factory.get_model_state()
@@ -492,7 +507,7 @@ class NNClassGui(LabelingGui):
         )
         self.__cleanup_fns.append(self.topLevelOperatorView.cleanUp)
 
-        self.forceAtLeastTwoLabels(True)
+        self.setLabelingUIEnabled(ALLOW_TRAINING)
 
         self.invalidatePredictionsTimer = QTimer()
         self.invalidatePredictionsTimer.timeout.connect(self.updatePredictions)
@@ -577,7 +592,7 @@ class NNClassGui(LabelingGui):
                 predictsrc = LazyflowSource(predictionSlot)
                 predictionLayer = AlphaModulatedLayer(predictsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0))
                 predictionLayer.visible = self.labelingDrawerUi.livePrediction.isChecked()
-                predictionLayer.opacity = 0.25
+                predictionLayer.opacity = 0.5
                 predictionLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
 
                 def setLayerColor(c, predictLayer_=predictionLayer, initializing=False):
@@ -769,7 +784,7 @@ class NNClassGui(LabelingGui):
 
     def _uploadModel(self, modelBytes):
         cancelSrc = CancellationTokenSource()
-        dialog = PercentProgressDialog(self, title="Uploading model")
+        dialog = PercentProgressDialog(self, title="Initializing model")
         dialog.rejected.connect(cancelSrc.cancel)
         dialog.open()
 

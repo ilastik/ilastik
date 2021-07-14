@@ -21,7 +21,7 @@
 from ilastik.applets.base.standardApplet import StandardApplet
 from .opNNclass import OpNNClassification
 from .nnClassSerializer import NNClassificationSerializer
-from .tiktorchController import TiktorchController, TiktorchOperatorModel
+from .tiktorchController import TiktorchController, TiktorchOperatorModel, ALLOW_TRAINING
 
 
 class NNClassApplet(StandardApplet):
@@ -44,7 +44,9 @@ class NNClassApplet(StandardApplet):
 
         self._topLevelOperator.classifier_cache.Output.notifyDirty(on_classifier_changed)
 
-        super(NNClassApplet, self).__init__("NN Training", workflow=workflow)
+        applet_name = "NN Training" if ALLOW_TRAINING else "NN Prediction"
+
+        super().__init__(applet_name, workflow=workflow)
 
         self._serializableItems = [NNClassificationSerializer(self.topLevelOperator, projectFileGroupName)]
         self._gui = None

@@ -63,16 +63,10 @@ class NNClassificationResultsViewer(DataExportLayerViewerGui):
         if selection.startswith("Probabilities"):
             exportedLayers = self._initPredictionLayers(opLane.ImageToExport)
             for layer in exportedLayers:
-                layer.visible = True
+                layer.visible = False
                 layer.name = layer.name + "- Exported"
             layers += exportedLayers
         elif selection.startswith("Labels"):
-            exportedLayer = self._initColortablelayer(opLane.ImageOnDisk)
-            if exportedLayer:
-                exportedLayer.visible = True
-                exportedLayer.name = selection + " - Exported"
-                layers.append(exportedLayer)
-
             previewLayer = self._initColortablelayer(opLane.ImageToExport)
             if previewLayer:
                 previewLayer.visible = False
