@@ -82,10 +82,6 @@ class ModelSession:
         return self.__session.scale
 
     @property
-    def output_shapes(self):
-        return self.__session.validShapes
-
-    @property
     def output_shape(self):
         """
         shape = shape(input_tensor) * scale + 2 * offset
@@ -98,14 +94,7 @@ class ModelSession:
             dim_size_by_name = {d.name: d.size for d in shape.dims}
             valid_shape = {}
             for dim in dim_size_by_name:
-                # HACK: Check if models are updated to make this unnecessary
-                if dim in "xyz":
-                    multiplier = 2
-                else:
-                    multiplier = 1
-                size = dim_size_by_name.get(dim, 1) * scale_by_name.get(dim, 1.0) + multiplier * offset_by_name.get(
-                    dim, 0
-                )
+                size = int(dim_size_by_name.get(dim, 1) * scale_by_name.get(dim, 1.0) + 2 * offset_by_name.get(dim, 0))
                 valid_shape[dim] = size
 
             result.append(valid_shape)
