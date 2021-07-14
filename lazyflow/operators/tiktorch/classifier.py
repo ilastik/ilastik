@@ -23,6 +23,7 @@ import logging
 import socket
 import numpy
 import warnings
+from collections import defaultdict
 from typing import Iterable, List, Callable
 
 import vigra
@@ -83,8 +84,8 @@ class ModelSession:
         """
         shape = shape(input_tensor) * scale + 2 * offset
         """
-        offset_by_name = {d.name: d.size for d in self.offset}
-        scale_by_name = {d.name: d.size for d in self.scale}
+        offsets = defaultdict(lambda: 0, {d.name: d.size for d in self.offset})
+        scales = defaultdict(lambda: 1.0, {d.name: d.size for d in self.scale})
 
         result = []
         # FIXME: currently we don't make use of having potentially multiple valid
@@ -94,8 +95,7 @@ class ModelSession:
             dim_size_by_name = {d.name: d.size for d in shape.dims}
             valid_shape = {}
             for dim in dim_size_by_name:
-                size = int(dim_size_by_name.get(dim, 1) * scale_by_name.get(dim, 1.0) + 2 * offset_by_name.get(dim, 0))
-                valid_shape[dim] = size
+                valid_shape[dim] = int(dim_size_by_name[dim] * scales[dim] + 2 * offsets[dim])
 
             result.append(valid_shape)
         return result[0]
