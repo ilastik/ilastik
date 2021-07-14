@@ -79,8 +79,7 @@ class ModelSession:
     def scale(self):
         return self.__session.scale
 
-    @property
-    def output_shape(self):
+    def get_output_shape(self):
         """
         shape = shape(input_tensor) * scale + 2 * offset
         """
@@ -129,7 +128,7 @@ class ModelSession:
 
     @property
     def known_classes(self):
-        output_shape = self.output_shape
+        output_shape = self.get_output_shape()
         return list(range(1, int(output_shape["c"]) + 1))
 
     @property
