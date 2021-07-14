@@ -414,7 +414,7 @@ class NNClassGui(LabelingGui):
         return menus
 
     @threadRouted
-    def enableLabellingUI(self, enabled: bool = False):
+    def setLabelingUIEnabled(self, enabled: bool = False):
         self._changeInteractionMode(Tool.Navigation)
         drawer = self.labelingDrawerUi
         for widget in [
@@ -507,7 +507,7 @@ class NNClassGui(LabelingGui):
         )
         self.__cleanup_fns.append(self.topLevelOperatorView.cleanUp)
 
-        self.enableLabellingUI(ALLOW_TRAINING)
+        self.setLabelingUIEnabled(ALLOW_TRAINING)
 
         self.invalidatePredictionsTimer = QTimer()
         self.invalidatePredictionsTimer.timeout.connect(self.updatePredictions)
