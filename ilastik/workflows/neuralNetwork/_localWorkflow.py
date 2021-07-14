@@ -61,13 +61,13 @@ class LocalWorkflow(_NNWorkflowBase):
         devices = conn.get_devices()
         preferred_cuda_device_id = runtime_cfg.preferred_cuda_device_id
         device_ids = [dev[0] for dev in devices]
-        gpus = tuple(d for d in device_ids if d.startswith("gpu"))
+        cuda_devices = tuple(d for d in device_ids if d.startswith("cuda"))
 
         if preferred_cuda_device_id not in device_ids:
             if preferred_cuda_device_id:
                 logger.warning(f"Could nor find preferred cuda device {preferred_cuda_device_id}")
             try:
-                preferred_cuda_device_id = gpus[0]
+                preferred_cuda_device_id = cuda_devices[0]
             except IndexError:
                 preferred_cuda_device_id = "cpu"
 
