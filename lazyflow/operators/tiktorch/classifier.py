@@ -21,11 +21,9 @@
 ###############################################################################
 import logging
 import socket
-import threading
 import numpy
 import warnings
-import numpy as np
-from concurrent.futures import CancelledError
+from collections import defaultdict
 from typing import Iterable, List, Callable
 
 import vigra
@@ -74,6 +72,34 @@ class ModelSession:
         return self.__session.outputAxes
 
     @property
+    def offset(self):
+        return self.__session.offset
+
+    @property
+    def scale(self):
+        return self.__session.scale
+
+    def get_output_shape(self):
+        """
+        shape = shape(input_tensor) * scale + 2 * offset
+        """
+        offsets = defaultdict(lambda: 0, {d.name: d.size for d in self.offset})
+        scales = defaultdict(lambda: 1.0, {d.name: d.size for d in self.scale})
+
+        result = []
+        # FIXME: currently we don't make use of having potentially multiple valid
+        # output shapes. It can make sense, to choose it dynamically, e.g.
+        # a smaller one for "live" prediction, a larger one for batch
+        for shape in self.__session.validShapes:
+            dim_size_by_name = {d.name: d.size for d in shape.dims}
+            valid_shape = {}
+            for dim in dim_size_by_name:
+                valid_shape[dim] = int(dim_size_by_name[dim] * scales[dim] + 2 * offsets[dim])
+
+            result.append(valid_shape)
+        return result[0]
+
+    @property
     def has_training(self):
         return self.__session.hasTraining
 
@@ -97,11 +123,13 @@ class ModelSession:
 
     @property
     def training_shape(self):
+        warnings.warn("HARDCODED training shape, this might not do what you want.")
         return [0, 0, 0, 128, 128]
 
     @property
     def known_classes(self):
-        return [1, 2]
+        output_shape = self.get_output_shape()
+        return list(range(1, int(output_shape["c"]) + 1))
 
     @property
     def num_classes(self):
