@@ -56,6 +56,29 @@ class LocalWorkflow(_NNWorkflowBase):
         conn_str = self._launcher.start()
         srv_config = ServerConfig(id="auto", address=conn_str, devices=[Device(id="cpu", name="cpu", enabled=True)])
         connFactory = tiktorch.TiktorchConnectionFactory()
+        conn = connFactory.ensure_connection(srv_config)
+
+        devices = conn.get_devices()
+        preferred_cuda_device_id = runtime_cfg.preferred_cuda_device_id
+        device_ids = [dev[0] for dev in devices]
+        cuda_devices = tuple(d for d in device_ids if d.startswith("cuda"))
+
+        if preferred_cuda_device_id not in device_ids:
+            if preferred_cuda_device_id:
+                logger.warning(f"Could nor find preferred cuda device {preferred_cuda_device_id}")
+            try:
+                preferred_cuda_device_id = cuda_devices[0]
+            except IndexError:
+                preferred_cuda_device_id = "cpu"
+
+            logger.info(f"Using default device for Neural Network Workflow {preferred_cuda_device_id}")
+        else:
+            logger.info(f"Using specified device for Neural Netowrk Workflow {preferred_cuda_device_id}")
+
+        device_name = devices[device_ids.index(preferred_cuda_device_id)][1]
+
+        srv_config = srv_config.evolve(devices=[Device(id=preferred_cuda_device_id, name=device_name, enabled=True)])
+
         self.nnClassificationApplet = NNClassApplet(self, "NNClassApplet", connectionFactory=connFactory)
         opClassify = self.nnClassificationApplet.topLevelOperator
         opClassify.ServerConfig.setValue(srv_config)
