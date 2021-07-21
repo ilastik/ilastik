@@ -29,10 +29,16 @@ The following text equips you with knowledge that makes contributing to ilastik 
    gh repo clone ilastik
    ```
 
+1. Configure conda to use [strict channel priority](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-channels.html#strict-channel-priority):
+
+   ```
+   conda config --set channel_priority strict
+   ```
+
 1. Install [conda-build][conda-build] in order to access the [conda develop][conda-develop] command:
 
    ```
-   conda install --name base conda-build
+   conda install --name base -c conda-forge conda-build
    ```
 
 1. Create a new environment and install dependencies:

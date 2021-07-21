@@ -1,9 +1,4 @@
-### Prerequisites:
+Short notebook to demonstrate the ilastik pixel classification api with with a pre-trained project.
 
-In addition to creating the conda environment, you have to add the ilastik folder in development mode.
-This requires `conda-build` installed in your base environment (`conda install -n base -c conda-forge conda-build`).
+See [our notebook README](../Readme.md) for setup instructions.
 
-```bash
-# in .../ilastik-meta/ilastik
-conda develop .
-``` 
