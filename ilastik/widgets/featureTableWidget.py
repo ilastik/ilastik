@@ -19,8 +19,16 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 from past.utils import old_div
-from PyQt5.QtGui import QBrush, QColor, QFont, QIcon, QImage, QPainter, QPen, QPixmap, QPolygon
-from PyQt5.QtWidgets import QAbstractItemView, QHeaderView, QItemDelegate, QStyle, QTableWidget, QTableWidgetItem
+from PyQt5.QtGui import QBrush, QColor, QFont, QIcon, QImage, QPainter, QPen, QPixmap, QPolygon, QKeyEvent
+from PyQt5.QtWidgets import (
+    QAbstractItemView,
+    QHeaderView,
+    QItemDelegate,
+    QStyle,
+    QTableWidget,
+    QTableWidgetItem,
+    QTableWidgetSelectionRange,
+)
 from PyQt5.QtCore import QPoint, QRect, QSize, Qt
 
 
@@ -541,6 +549,22 @@ class FeatureTableWidget(QTableWidget):
     def mouseReleaseEvent(self, e):
         super().mouseReleaseEvent(e)
         self._resetSelection()
+
+    def _selectAllFeatures(self):
+        """
+        Selects all features without modifying the 2d/3d switches
+        """
+        # top (1st row 2d/3d, 2nd row sigma value), left, bottom, right
+        selection_range = QTableWidgetSelectionRange(2, 0, self.rowCount() - 1, self.columnCount() - 2)
+        self.setRangeSelected(selection_range, True)
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        # Overrides default select all shortcut to avoid toggling 2d/3d state
+        is_select_all_shortcut = event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_A
+        if is_select_all_shortcut:
+            self._selectAllFeatures()
+        else:
+            super().keyPressEvent(event)
 
     def keyReleaseEvent(self, e):
         super().keyReleaseEvent(e)
