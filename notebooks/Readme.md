@@ -12,7 +12,7 @@ notebooks/
 ├── ...
 ```
 
-We use _conda_ to develop Python and recommend it for scientific Python development.
+We use _conda_ for Python-based projects and recommend it for scientific Python development.
 It is assumed that you have already installed _conda_ and are familiar with using a Terminal.
 
 In order to run the notebook type the following in a Terminal/Command Line:
