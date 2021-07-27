@@ -12,12 +12,18 @@ notebooks/
 ├── ...
 ```
 
-We use _conda_ to develop Python and recommend it for scientific Python development.
-It is assumed that you have already installed it and are familiar with using a Terminal.
+We use _conda_ for Python-based projects and recommend it for scientific Python development.
+It is assumed that you have already installed _conda_ and are familiar with using a Terminal.
 
 In order to run the notebook type the following in a Terminal/Command Line:
 
+Note: conda has to be configured with [_strict channel priority_](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-channels.html#strict-channel-priority) in order to produce consistent environments.
+
+
 ```bash
+# make sure to use strict channel priority - this setting is global but in general a good idea
+conda config --set channel_priority strict
+
 $ conda env create -f environment.yml
 # this will produce a lot of output
 
