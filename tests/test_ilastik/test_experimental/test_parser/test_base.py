@@ -15,7 +15,7 @@ class TestIlastikParser:
     @pytest.mark.parametrize(
         "proj, expected_num_channels",
         [
-            (TestProjects.PIXEL_CLASS_1_CHANNEL, 1),
+            (TestProjects.PIXEL_CLASS_1_CHANNEL_XYC, 1),
             (TestProjects.PIXEL_CLASS_3_CHANNEL, 3),
         ],
     )
@@ -28,7 +28,7 @@ class TestIlastikParser:
         "proj, expected_factory, expected_classifier",
         [
             (
-                TestProjects.PIXEL_CLASS_1_CHANNEL,
+                TestProjects.PIXEL_CLASS_1_CHANNEL_XYC,
                 ParallelVigraRfLazyflowClassifierFactory,
                 ParallelVigraRfLazyflowClassifier,
             ),
@@ -44,7 +44,7 @@ class TestIlastikParser:
 
     tests = [
         (
-            TestProjects.PIXEL_CLASS_1_CHANNEL,
+            TestProjects.PIXEL_CLASS_1_CHANNEL_XYC,
             np.array(
                 [
                     [True, False, True, False, True, False, True],

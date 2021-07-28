@@ -12,6 +12,12 @@ from ilastik.experimental import parser
 from .types import Pipeline
 
 
+def _ensure_channel_axis(axis_order):
+    if "c" not in axis_order:
+        return axis_order + "c"
+    return axis_order
+
+
 def from_project_file(path) -> Pipeline:
     project: parser.PixelClassificationProject
 
@@ -28,7 +34,7 @@ def from_project_file(path) -> Pipeline:
     class _PipelineImpl(Pipeline):
         def __init__(self):
             graph = Graph()
-            self._reorder_op = OpReorderAxes(graph=graph, AxisOrder=axis_order)
+            self._reorder_op = OpReorderAxes(graph=graph, AxisOrder=_ensure_channel_axis(axis_order))
 
             self._feature_sel_op = OpFeatureSelection(graph=graph)
             self._feature_sel_op.InputImage.connect(self._reorder_op.Output)
