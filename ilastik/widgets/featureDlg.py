@@ -71,9 +71,6 @@ class FeatureDlg(QDialog):
         if image is not None:
             self.preView.setPreviewImage(qimage2ndarray.array2qimage(image))
 
-    def setIconsToTableWidget(self, checked=None, partiallyChecked=None, unchecked=None, icon2d=None, icon3d=None):
-        self.featureTableWidget.itemDelegate.setCheckBoxIcons(checked, partiallyChecked, unchecked, icon2d, icon3d)
-
     def updateOKButton(self):
         num_features = numpy.sum(self.featureTableWidget.featureMatrix)
         self.ok.setEnabled(num_features > 0)
