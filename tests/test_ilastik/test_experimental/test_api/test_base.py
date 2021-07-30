@@ -31,7 +31,9 @@ class TestIlastikApi:
                 "--headless",
                 "--project",
                 proj,
-                input,
+                input.path,
+                "--input_axes",
+                input.data_axes,
                 "--output_format",
                 "numpy",
                 "--output_filename_format",
@@ -45,7 +47,8 @@ class TestIlastikApi:
     @pytest.mark.parametrize(
         "input, proj",
         [
-            (TestData.DATA_1_CHANNEL, TestProjects.PIXEL_CLASS_1_CHANNEL),
+            (TestData.DATA_1_CHANNEL, TestProjects.PIXEL_CLASS_1_CHANNEL_XY),
+            (TestData.DATA_1_CHANNEL, TestProjects.PIXEL_CLASS_1_CHANNEL_XYC),
             (TestData.DATA_1_CHANNEL, TestProjects.PIXEL_CLASS_1_CHANNEL_SKLEARN),
             (TestData.DATA_3_CHANNEL, TestProjects.PIXEL_CLASS_3_CHANNEL),
             (TestData.DATA_1_CHANNEL_3D, TestProjects.PIXEL_CLASS_3D),
@@ -56,7 +59,7 @@ class TestIlastikApi:
         project_path = test_data_lookup.find_project(proj)
         input_dataset = test_data_lookup.find_dataset(input)
 
-        expected_prediction = run_headless(project_path, input_dataset.path)
+        expected_prediction = run_headless(project_path, input_dataset)
         pipeline = from_project_file(project_path)
 
         prediction = pipeline.predict(_load_as_xarray(input_dataset))
@@ -66,7 +69,7 @@ class TestIlastikApi:
     @pytest.mark.parametrize(
         "input, proj",
         [
-            (TestData.DATA_1_CHANNEL, TestProjects.PIXEL_CLASS_1_CHANNEL),
+            (TestData.DATA_1_CHANNEL, TestProjects.PIXEL_CLASS_1_CHANNEL_XYC),
         ],
     )
     def test_predict_pretrained_with_axes_reordering(
@@ -80,7 +83,7 @@ class TestIlastikApi:
         input_dataset = test_data_lookup.find_dataset(input)
 
         pipeline = from_project_file(project_path)
-        expected_prediction = run_headless(project_path, input_dataset.path)
+        expected_prediction = run_headless(project_path, input_dataset)
 
         input_data = _load_as_xarray(input_dataset)
         input_numpy = input_data.data
@@ -93,7 +96,7 @@ class TestIlastikApi:
     @pytest.mark.parametrize(
         "input, proj",
         [
-            (TestData.DATA_3_CHANNEL, TestProjects.PIXEL_CLASS_1_CHANNEL),
+            (TestData.DATA_3_CHANNEL, TestProjects.PIXEL_CLASS_1_CHANNEL_XYC),
             (TestData.DATA_1_CHANNEL, TestProjects.PIXEL_CLASS_3_CHANNEL),
         ],
     )
@@ -109,7 +112,7 @@ class TestIlastikApi:
     @pytest.mark.parametrize(
         "input, proj",
         [
-            (TestData.DATA_1_CHANNEL_3D, TestProjects.PIXEL_CLASS_1_CHANNEL),
+            (TestData.DATA_1_CHANNEL_3D, TestProjects.PIXEL_CLASS_1_CHANNEL_XYC),
             (TestData.DATA_1_CHANNEL, TestProjects.PIXEL_CLASS_3D),
         ],
     )
