@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+import enum
 from past.utils import old_div
 from PyQt5.QtGui import QBrush, QColor, QFont, QIcon, QImage, QPainter, QPen, QPixmap, QPolygon, QKeyEvent
 from PyQt5.QtWidgets import (
@@ -191,130 +192,126 @@ class FeatureTableWidgetHHeader(QTableWidgetItem):
 # ==============================================================================
 class ItemDelegate(QItemDelegate):
     """
-    TODO: DOKU
+    This class responsible for drawing checkboxes and 2d / 3d toggle
     """
 
-    def __init__(self, parent, width, height):
+    @enum.unique
+    class Role(enum.Enum):
+        CHECKED = "checked"
+        UNCHECKED = "unchecked"
+        PARTIAL = "partial"
+        DISABLED = "disabled"
+        MODE_2D = "2d"
+        MODE_3D = "3d"
+
+    def __init__(self, parent):
         QItemDelegate.__init__(self, parent)
+        self._pixmapCache = {}
 
-        self.itemWidth = width
-        self.itemHeight = height
-        self.icon2d = None
-        self.icon3d = None
-        self.checkedIcon = None
-        self.partiallyCheckedIcon = None
-        self.uncheckedIcon = None
-        self.pixmap2d = QPixmap(self.itemWidth, self.itemHeight)
-        self.drawPixmapFor2d()
-        self.pixmap3d = QPixmap(self.itemWidth, self.itemHeight)
-        self.drawPixmapFor3d()
-        self.pixmapUnckecked = QPixmap(self.itemWidth, self.itemHeight)
-        self.drawPixmapForUnckecked()
-        self.pixmapCkecked = QPixmap(self.itemWidth, self.itemHeight)
-        self.drawPixmapForCkecked()
-        self.pixmapPartiallyChecked = QPixmap(self.itemWidth, self.itemHeight)
-        self.drawPixmapForPartiallyChecked()
-        self.drawPixmapForDisabled()
+    def getPixmap(self, role: Role, size: QSize) -> QPixmap:
+        key = role, size.width(), size.height()
+        if key not in self._pixmapCache:
+            pixmap = self._drawPixmap(role, size)
+            self._pixmapCache[key] = pixmap
 
-        # self.itemEditorFactory().setDefaultFactory(QDoubleSpinBox)
+        return self._pixmapCache[key]
 
-    def drawPixmapForDisabled(self):
-        self.pixmapDisabled = QPixmap(self.itemWidth, self.itemHeight)
-        self.pixmapDisabled.fill(Qt.white)
-
-    def drawPixmapFor2d(self):
-        self.pixmap2d = QPixmap(self.itemWidth, self.itemHeight)
-        self.pixmap2d.fill(Qt.transparent)
+    def _drawPixmap(self, role: Role, size: QSize) -> None:
+        pixmap = QPixmap(size)
+        width, height = pixmap.width(), pixmap.height()
+        pixmap.fill(Qt.transparent)
         painter = QPainter()
-        painter.begin(self.pixmap2d)
+        painter.begin(pixmap)
         painter.setRenderHint(QPainter.Antialiasing)
-        pen = QPen()
-        pen.setWidth(2)
-        painter.setPen(pen)
-        painter.drawRect(QRect(5, 5, self.itemWidth - 10, self.itemHeight - 10))
-        painter.fillRect(QRect(5, 5, self.itemWidth - 10, self.itemHeight - 10), QColor(0, 250, 154))
 
-        painter.drawText(QRect(5, 5, self.itemWidth - 10, self.itemHeight - 10), Qt.AlignCenter, "2D")
+        if role == self.Role.CHECKED:
+            self.drawPixmapForChecked(painter, width, height)
+        elif role == self.Role.UNCHECKED:
+            self.drawPixmapForUnchecked(painter, width, height)
+        elif role == self.Role.PARTIAL:
+            self.drawPixmapForPartiallyChecked(painter, width, height)
+        elif role == self.Role.MODE_3D:
+            self.drawPixmapFor3d(painter, width, height)
+        elif role == self.Role.MODE_2D:
+            self.drawPixmapFor2d(painter, width, height)
+        elif role == self.Role.DISABLED:
+            pixmap.fill(Qt.white)
+        else:
+            raise NotImplementedError(f"{role}")
+
+        return pixmap
+
+    def drawPixmapFor2d(self, painter: QPainter, width: int, height: int) -> None:
+        pen = QPen()
+        pen.setWidth(4)
+        painter.setPen(pen)
+        font = QFont()
+        font.setPixelSize(height - 10)
+        painter.setFont(font)
+        painter.drawRect(QRect(5, 5, width - 15, height - 10))
+        painter.fillRect(QRect(5, 5, width - 15, height - 10), QColor(0, 250, 154))
+
+        painter.drawText(QRect(5, 4, width - 15, height - 10), Qt.AlignCenter, "2D")
         painter.end()
 
-    def drawPixmapFor3d(self):
-        self.pixmap3d = QPixmap(self.itemWidth, self.itemHeight)
-        self.pixmap3d.fill(Qt.transparent)
-        painter = QPainter()
-        painter.begin(self.pixmap3d)
-        painter.setRenderHint(QPainter.Antialiasing)
+    def drawPixmapFor3d(self, painter: QPainter, width: int, height: int) -> None:
+        font = QFont()
+        font.setPixelSize(height - 10)
         pen = QPen()
         pen.setWidth(2)
         painter.setPen(pen)
         painter.setBrush(QBrush(QColor(220, 220, 220)))
         top = [
-            QPoint(5, 10),
-            QPoint(self.itemWidth - 10, 10),
-            QPoint(self.itemWidth - 5, 5),
-            QPoint(10, 5),
-            QPoint(5, 10),
+            QPoint(5, 5),
+            QPoint(width - 10, 5),
+            QPoint(width - 5, 0),
+            QPoint(10, 0),
+            QPoint(5, 5),
         ]
         painter.drawConvexPolygon(*top)
         left = [
-            QPoint(self.itemWidth - 10, 10),
-            QPoint(self.itemWidth - 10, self.itemHeight - 5),
-            QPoint(self.itemWidth - 5, self.itemHeight - 10),
-            QPoint(self.itemWidth - 5, 5),
-            QPoint(self.itemWidth - 10, 10),
+            QPoint(width - 10, 5),
+            QPoint(width - 10, height - 5),
+            QPoint(width - 5, height - 10),
+            QPoint(width - 5, 0),
+            QPoint(width - 10, 5),
         ]
         painter.drawConvexPolygon(*left)
         painter.setBrush(QBrush())
-        painter.drawRect(QRect(5, 10, self.itemWidth - 15, self.itemHeight - 15))
-        painter.drawText(QRect(5, 10, self.itemWidth - 15, self.itemHeight - 15), Qt.AlignCenter, "3D")
+        painter.setFont(font)
+        painter.drawRect(QRect(5, 5, width - 15, height - 10))
+        painter.drawText(QRect(5, 4, width - 15, height - 10), Qt.AlignCenter, "3D")
         painter.end()
 
-    def drawPixmapForUnckecked(self):
-        self.pixmapUnckecked = QPixmap(self.itemWidth, self.itemHeight)
-        self.pixmapUnckecked.fill(Qt.transparent)
-        painter = QPainter()
-        painter.begin(self.pixmapUnckecked)
-        painter.setRenderHint(QPainter.Antialiasing)
+    def drawPixmapForUnchecked(self, painter: QPainter, width: int, height: int) -> None:
         pen = QPen()
         pen.setWidth(2)
         painter.setPen(pen)
-        painter.drawRect(QRect(5, 5, self.itemWidth - 10, self.itemHeight - 10))
+        painter.drawRect(QRect(5, 5, width - 10, height - 10))
         painter.end()
 
-    def drawPixmapForCkecked(self):
-        self.pixmapCkecked = QPixmap(self.itemWidth, self.itemHeight)
-        self.pixmapCkecked.fill(Qt.transparent)
-        painter = QPainter()
-        painter.begin(self.pixmapCkecked)
-        painter.setRenderHint(QPainter.Antialiasing)
+    def drawPixmapForChecked(self, painter: QPainter, width: int, height: int) -> None:
         pen = QPen()
         pen.setWidth(2)
         painter.setPen(pen)
-        painter.drawRect(QRect(5, 5, self.itemWidth - 10, self.itemHeight - 10))
+        painter.drawRect(QRect(5, 5, width - 10, height - 10))
         pen.setWidth(4)
         painter.setPen(pen)
-        painter.drawLine(
-            old_div(self.itemWidth, 2) - 5, old_div(self.itemHeight, 2), old_div(self.itemWidth, 2), self.itemHeight - 9
-        )
-        painter.drawLine(old_div(self.itemWidth, 2), self.itemHeight - 9, old_div(self.itemWidth, 2) + 10, 2)
+        painter.drawLine(width / 2 - 5, height / 2, width / 2, height - 10)
+        painter.drawLine(width / 2, height - 10, width / 2 + 10, 2)
         painter.end()
 
-    def drawPixmapForPartiallyChecked(self):
-        self.pixmapPartiallyChecked = QPixmap(self.itemWidth, self.itemHeight)
-        self.pixmapPartiallyChecked.fill(Qt.transparent)
-        painter = QPainter()
-        painter.begin(self.pixmapPartiallyChecked)
+    def drawPixmapForPartiallyChecked(self, painter: QPainter, width: int, height: int) -> None:
         painter.setRenderHint(QPainter.Antialiasing)
         pen = QPen()
         pen.setWidth(2)
         painter.setPen(pen)
-        painter.drawRect(QRect(5, 5, self.itemWidth - 10, self.itemHeight - 10))
+        painter.drawRect(QRect(5, 5, width - 10, height - 10))
         pen.setWidth(4)
         pen.setColor(QColor(139, 137, 137))
         painter.setPen(pen)
-        painter.drawLine(
-            old_div(self.itemWidth, 2) - 5, old_div(self.itemHeight, 2), old_div(self.itemWidth, 2), self.itemHeight - 9
-        )
-        painter.drawLine(old_div(self.itemWidth, 2), self.itemHeight - 9, old_div(self.itemWidth, 2) + 10, 2)
+        painter.drawLine(width / 2 - 5, height / 2, width / 2, height - 10)
+        painter.drawLine(width / 2, height - 10, width / 2 + 10, 2)
         painter.end()
 
     def paint(self, painter, option, index):
@@ -334,55 +331,25 @@ class ItemDelegate(QItemDelegate):
             # paint 'compute in 2d' row
             flags = tableWidgetCell.flags()
             if not (flags & Qt.ItemIsEnabled):
-                painter.drawPixmap(option.rect, self.pixmapDisabled)
+                painter.drawPixmap(option.rect, self.getPixmap(self.Role.DISABLED, option.rect.size()))
             elif tableWidgetCell.featureState == Qt.Unchecked:
-                if self.icon3d is not None:
-                    painter.drawImage(self.adjustRectForImage(option), self.icon3d)
-                else:
-                    painter.drawPixmap(option.rect, self.pixmap3d)
-                    option.state = QStyle.State_Off
+                painter.drawPixmap(option.rect, self.getPixmap(self.Role.MODE_3D, option.rect.size()))
+                option.state = QStyle.State_Off
             else:
-                if self.icon2d is not None:
-                    painter.drawImage(self.adjustRectForImage(option), self.icon2d)
-                else:
-                    painter.drawPixmap(option.rect, self.pixmap2d)
+                painter.drawPixmap(option.rect, self.getPixmap(self.Role.MODE_2D, option.rect.size()))
         else:
             flags = tableWidgetCell.flags()
             if not (flags & Qt.ItemIsEnabled):
-                painter.drawPixmap(option.rect, self.pixmapDisabled)
+                painter.drawPixmap(option.rect, self.getPixmap(self.Role.DISABLED, option.rect.size()))
             elif tableWidgetCell.featureState == Qt.Unchecked:
-                if self.uncheckedIcon is not None:
-                    painter.drawImage(self.adjustRectForImage(option), self.uncheckedIcon)
-                else:
-                    painter.drawPixmap(option.rect, self.pixmapUnckecked)
-                    option.state = QStyle.State_Off
+                painter.drawPixmap(option.rect, self.getPixmap(self.Role.UNCHECKED, option.rect.size()))
+                option.state = QStyle.State_Off
             elif tableWidgetCell.featureState == Qt.PartiallyChecked:
-                if self.partiallyCheckedIcon is not None:
-                    painter.drawImage(self.adjustRectForImage(option), self.partiallyCheckedIcon)
-                else:
-                    painter.fillRect(option.rect.adjusted(3, 3, -3, -3), QColor(220, 220, 220))
-                    painter.drawPixmap(option.rect, self.pixmapPartiallyChecked)
+                painter.fillRect(option.rect.adjusted(5, 5, -5, -5), QColor(220, 220, 220))
+                painter.drawPixmap(option.rect, self.getPixmap(self.Role.PARTIAL, option.rect.size()))
             else:
-                if self.checkedIcon is not None:
-                    painter.drawImage(self.adjustRectForImage(option), self.checkedIcon)
-                else:
-                    painter.fillRect(option.rect.adjusted(3, 3, -3, -3), QColor(0, 250, 154))
-                    painter.drawPixmap(option.rect, self.pixmapCkecked)
-
-            # Be careful with this! It may call itself recursively.
-            # self.parent().update()
-
-    def setCheckBoxIcons(self, checked=None, partiallyChecked=None, unchecked=None, icon2d=None, icon3d=None):
-        if checked is not None:
-            self.checkedIcon = QImage(checked)
-        if partiallyChecked is not None:
-            self.partiallyCheckedIcon = QImage(partiallyChecked)
-        if unchecked is not None:
-            self.uncheckedIcon = QImage(unchecked)
-        if icon2d is not None:
-            self.icon2d = QImage(icon2d)
-        if icon3d is not None:
-            self.icon3d = QImage(icon3d)
+                painter.fillRect(option.rect.adjusted(5, 5, -5, -5), QColor(0, 250, 154))
+                painter.drawPixmap(option.rect, self.getPixmap(self.Role.CHECKED, option.rect.size()))
 
     def adjustRectForImage(self, option):
         if self.itemWidth > self.itemHeight:
@@ -537,9 +504,7 @@ class FeatureTableWidget(QTableWidget):
         self.setFeatureGroups(featureGroups)
         self._setFixedSizeToHeaders()
         self._setSizeHintToTableWidgetItems()
-        self.itemDelegate = ItemDelegate(
-            self, self.horizontalHeader().sizeHint().width(), self.verticalHeader().sizeHint().height()
-        )
+        self.itemDelegate = ItemDelegate(self)
         self.setItemDelegate(self.itemDelegate)
         self._updateRootItems()
 
@@ -684,7 +649,7 @@ class FeatureTableWidget(QTableWidget):
         width = self.horizontalHeader().sizeHint().width()
         height = self.verticalHeader().sizeHint().height()
         for r, c in self._tableEntries():
-            self.item(r, c).setSizeHint(QSize(width, height))
+            self.item(r, c).setSizeHint(QSize(width + 5, height + 5))
 
     def _setFixedSizeToHeaders(self):
         hHeaderSize = self.horizontalHeader().sizeHint()
@@ -718,6 +683,7 @@ class FeatureTableWidget(QTableWidget):
             self.setItem(row, column, FeatureTableWidgetItem(enabled=False))
 
         self.focusCell(2, 0)
+        self._setSizeHintToTableWidgetItems()
 
     def _expandOrCollapseVHeader(self, row):
         self._resetSelection()
