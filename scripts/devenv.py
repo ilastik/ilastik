@@ -73,12 +73,11 @@ def main():
 
 
 def cmd_create(args, rest):
-    if not rest:
-        rest = list(DEFAULT_CREATE_ARGS)
-
     chan_args = ["--override-channels", "--strict-channel-priority"]
-    run(["conda", "install", "--yes", "--name", "base"] + chan_args + ["--channel", "conda-forge", "conda-build"])
-    run(["conda", "create", "--yes", "--name", args.name] + chan_args + rest)
+    create_args = list(rest if rest else DEFAULT_CREATE_ARGS)
+
+    run(["conda", "create", "--yes", "--name", args.name] + chan_args + create_args)
+    run(["conda", "install", "--yes", "--name", args.name] + chan_args + ["--channel", "conda-forge", "conda-build"])
 
     for repo in REPOSITORIES:
         run(["conda", "develop", "--name", args.name, repo])
