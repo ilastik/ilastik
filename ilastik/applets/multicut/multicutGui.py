@@ -155,20 +155,6 @@ class MulticutGuiMixin:
 
         button_layout = QHBoxLayout()
 
-        # Live Multicut Button
-        live_multicut_button = QPushButton(text="Live Multicut", checkable=True, icon=QIcon(ilastikIcons.Play))
-        configure_update_handlers(live_multicut_button.toggled, op.FreezeCache)
-
-        # Extra: Auto-show the multicut edges if necessary.
-        def auto_show_multicut_layer(checked):
-            if checked:
-                self.getLayerByName("Multicut Edges").visible = True
-
-        live_multicut_button.toggled.connect(auto_show_multicut_layer)
-
-        button_layout.addWidget(live_multicut_button)
-        self.live_multicut_button = live_multicut_button
-
         # Update Button
         update_button = QPushButton(
             text="Update Now", icon=QIcon(ilastikIcons.Play), clicked=self._handle_multicut_update_clicked
@@ -289,13 +275,11 @@ class MulticutGuiMixin:
     def set_updating(self):
         assert not self._currently_updating
         self._currently_updating = True
-        self.live_multicut_button.setEnabled(False)
         self.update_button.setEnabled(False)
         try:
             yield
         finally:
             self._currently_updating = False
-            self.live_multicut_button.setEnabled(True)
             self.update_button.setEnabled(True)
 
     def configure_gui_from_operator(self, *args):
@@ -304,13 +288,7 @@ class MulticutGuiMixin:
         with self.set_updating():
             op = self.__topLevelOperatorView
             self.update_button.setEnabled(op.FreezeCache.value)
-            with silent_qobject(self.live_multicut_button) as w:
-                w.setChecked(not op.FreezeCache.value)
             self.probability_threshold_box.setValue(op.ProbabilityThreshold.value)
-            if op.FreezeCache.value:
-                self.live_multicut_button.setIcon(QIcon(ilastikIcons.Play))
-            else:
-                self.live_multicut_button.setIcon(QIcon(ilastikIcons.Pause))
             self.beta_box.setValue(op.Beta.value)
 
             solver_name = op.SolverName.value
@@ -333,7 +311,6 @@ class MulticutGuiMixin:
             op.Beta.setValue(self.beta_box.value())
             op.ProbabilityThreshold.setValue(self.probability_threshold_box.value())
             op.SolverName.setValue(str(self.solver_name_combo.currentText()))
-            op.FreezeCache.setValue(not self.live_multicut_button.isChecked())
 
         # The GUI may need to respond to some changes in the operator outputs
         # (e.g. the FreezeCache setting).
@@ -354,8 +331,6 @@ class MulticutGuiMixin:
 
     def _update_multicut_views(self):
         self.topLevelOperatorView.FreezeCache.setValue(False)
-        self.update_button.setEnabled(False)
-        self.live_multicut_button.setEnabled(False)
 
         # This is hacky, but for now it's the only way to do it.
         # We need to make sure the rendering thread has actually seen that the cache
@@ -369,8 +344,6 @@ class MulticutGuiMixin:
             if imgView.isVisible():
                 imgView.scene().joinRenderingAllTiles()
         self.topLevelOperatorView.FreezeCache.setValue(True)
-        self.update_button.setEnabled(True)
-        self.live_multicut_button.setEnabled(True)
 
     def create_multicut_disagreement_layer(self):
         ActionInfo = ShortcutManager.ActionInfo
