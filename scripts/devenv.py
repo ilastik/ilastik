@@ -15,28 +15,26 @@ import time
 
 EXECUTABLES = ("conda", "git")
 REPOSITORIES = ("ilastik", "volumina")
-DEFAULT_CREATE_ARGS = (
+DEFAULT_CREATE_ARGS = [
     "--channel",
     "ilastik-forge",
     "--channel",
     "conda-forge",
     "ilastik-dependencies-no-solvers",
     "pre-commit",
-)
+]
 
 logging.basicConfig(format="%(asctime)s %(filename)s %(levelname)-10s %(message)s", level=logging.INFO)
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    ap.add_argument("-n", "--name", metavar="ENV", help="environment name", default="ilastik")
-
     ap_sub = ap.add_subparsers(required=True, dest="cmd", metavar="cmd")
 
     ap_create = ap_sub.add_parser(
         "create",
         help="create a new environment",
-        usage="%(prog)s [-h] [arguments ...]",
+        usage="%(prog)s [-h] [-n ENV] [arguments...]",
         epilog=(
             "All arguments will be added to the 'conda create' command.\n\n"
             "default arguments:\n  " + " ".join(DEFAULT_CREATE_ARGS)
@@ -44,9 +42,11 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     ap_create.set_defaults(func=cmd_create)
+    ap_create.add_argument("-n", "--name", metavar="ENV", help="environment name", default="ilastik")
 
     ap_remove = ap_sub.add_parser("remove", help="remove an existing environment")
     ap_remove.set_defaults(func=cmd_remove)
+    ap_remove.add_argument("-n", "--name", metavar="ENV", help="environment name", default="ilastik")
 
     args, rest = ap.parse_known_args()
 
@@ -74,9 +74,7 @@ def main():
 
 def cmd_create(args, rest):
     chan_args = ["--override-channels", "--strict-channel-priority"]
-    create_args = list(rest if rest else DEFAULT_CREATE_ARGS)
-
-    run(["conda", "create", "--yes", "--name", args.name] + chan_args + create_args)
+    run(["conda", "create", "--yes", "--name", args.name] + chan_args + (rest or DEFAULT_CREATE_ARGS))
     run(["conda", "install", "--yes", "--name", args.name] + chan_args + ["--channel", "conda-forge", "conda-build"])
 
     for repo in REPOSITORIES:
