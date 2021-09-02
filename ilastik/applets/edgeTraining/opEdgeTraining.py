@@ -28,11 +28,11 @@ class OpEdgeTraining(Operator):
     FeatureNames = InputSlot(value=DEFAULT_FEATURES)
     FreezeClassifier = InputSlot(value=True)
     TrainRandomForest = InputSlot(value=False)
-    WatershedSelectedInput = InputSlot()
 
     # Lane-wise
+    WatershedSelectedInput = InputSlot(level=1)
     EdgeLabelsDict = InputSlot(level=1, value={})
-    VoxelData = InputSlot(level=1)
+    VoxelData = InputSlot(level=1)  # stacked input with edge probabilities
     Superpixels = InputSlot(level=1)
     GroundtruthSegmentation = InputSlot(level=1, optional=True)
     RawData = InputSlot(level=1, optional=True)  # Used by the GUI for display only
