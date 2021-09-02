@@ -61,7 +61,7 @@ class OpEdgeTrainingWithMulticut(Operator):
         self.NaiveSegmentation.connect(opEdgeTraining.NaiveSegmentation)
 
         opMulticut = OpMultiLaneWrapper(
-            OpMulticut, broadcastingSlotNames=["Beta", "SolverName", "FreezeCache"], parent=self
+            OpMulticut, broadcastingSlotNames=["Beta", "SolverName", "FreezeCache", "ProbabilityThreshold"], parent=self
         )
         opMulticut.Beta.connect(self.Beta)
         opMulticut.SolverName.connect(self.SolverName)

@@ -53,7 +53,7 @@ class OpEdgeTraining(Operator):
         self.opRagCache.name = "opRagCache"
 
         self.opComputeEdgeFeatures = OpMultiLaneWrapper(
-            OpComputeEdgeFeatures, parent=self, broadcastingSlotNames=["FeatureNames"]
+            OpComputeEdgeFeatures, parent=self, broadcastingSlotNames=["FeatureNames", "TrainRandomForest"]
         )
         self.opComputeEdgeFeatures.FeatureNames.connect(self.FeatureNames)
         self.opComputeEdgeFeatures.VoxelData.connect(self.VoxelData)
@@ -76,7 +76,7 @@ class OpEdgeTraining(Operator):
         self.opClassifierCache.name = "opClassifierCache"
 
         self.opPredictEdgeProbabilities = OpMultiLaneWrapper(
-            OpPredictEdgeProbabilities, parent=self, broadcastingSlotNames=["EdgeClassifier"]
+            OpPredictEdgeProbabilities, parent=self, broadcastingSlotNames=["EdgeClassifier", "TrainRandomForest"]
         )
         self.opPredictEdgeProbabilities.EdgeClassifier.connect(self.opClassifierCache.Output)
         self.opPredictEdgeProbabilities.EdgeFeaturesDataFrame.connect(self.opEdgeFeaturesCache.Output)
