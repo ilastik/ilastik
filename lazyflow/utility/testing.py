@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -21,12 +19,15 @@ from __future__ import print_function
 # This information is also available on the ilastik web site at:
 #          http://ilastik.org/license/
 ###############################################################################
-
 import threading
+from dataclasses import dataclass
+from typing import Any, Mapping, Tuple
 
 import numpy as np
-from lazyflow.operator import Operator, InputSlot, OutputSlot
+import vigra
 
+from lazyflow.graph import Graph, MetaDict
+from lazyflow.operator import InputSlot, Operator, OutputSlot
 
 # Some tools to aid automated testing
 
@@ -139,3 +140,76 @@ class OpCallWhenDirty(Operator):
             raise
         finally:
             self.Output.setDirty(roi)
+
+
+@dataclass
+class SlotDescription:
+    dtype: np.dtype = None
+    shape: Tuple[int] = (1,)
+    axistags: vigra.AxisTags = None
+    level: int = 0
+    data: Any = None
+
+
+SLOT_DATA = Mapping[str, SlotDescription]
+
+
+def build_multi_output_mock_op(slot_data: SLOT_DATA, graph: Graph, n_lanes: int = None):
+    """Returns an operator that has outputs as specifier in slot_data
+
+    This is especially useful when testing toplevelOperators, as these usually
+    need a lot of diverse inputs, which can be tedious using e.g.
+    `OpArrayPiper`. This function can be used to generate an operator that mocks
+    all needed output slots, an operator may take as inputs.
+
+    Note: no consistency checking is done with the data provided from SlotDescription
+
+    Currently, data access is not yet supported.
+
+    Args:
+      slot_data: Slot metadata will be the same for level 1 slots. If
+         slot_data.data is given, it has to be the a sequence of same the same
+         length as n_lanes.
+      n_lanes: number of lanes - level 1 slots are resized to that number.
+
+    """
+
+    class _OP(Operator):
+        def __init__(self, slot_data, *args, **kwargs):
+            self._data = slot_data
+            self._n_lanes = n_lanes
+            super().__init__(*args, **kwargs)
+            for name, val in self._data.items():
+                meta_dict = MetaDict(dtype=val.dtype, shape=val.shape, axistags=val.axistags)
+                if self.outputs[name].level == 0:
+                    self.outputs[name].meta.assignFrom(meta_dict)
+                elif self.outputs[name].level == 1 and self._n_lanes:
+                    if self._data[name].data is not None and not (len(self._data[name].data) == self._n_lanes):
+                        raise ValueError(f"Data for slot {name} did not match number of lanes {self._n_lanes}")
+                    self.outputs[name].resize(self._n_lanes)
+                    for ss in self.outputs[name]:
+                        ss.meta.assignFrom(meta_dict)
+
+        def setupOutputs(self):
+            pass
+
+        def execute(self, slot, subindex, roi, result):
+            raise NotImplementedError("Data access for this mock operator not implemented yet.")
+            if self._data[slot.name].data is None:
+                raise RuntimeError(f"Slot {slot.name} should not be accessed")
+            key = roi.toSlice()
+            if slot.level == 0:
+                result[...] = self._data[slot.name].data[key]
+            elif slot.level == 1:
+                result[...] = self._data[slot.name].data[subindex][key]
+
+    assert all(slot_descr.level in [0, 1] for slot_descr in slot_data.values())
+
+    MultiOutputMockOp = type(
+        "MultiOutputMockOp",
+        (_OP,),
+        {slot_name: OutputSlot(level=slot_descr.level) for slot_name, slot_descr in slot_data.items()},
+    )
+    op = MultiOutputMockOp(slot_data, graph=graph)
+
+    return op
