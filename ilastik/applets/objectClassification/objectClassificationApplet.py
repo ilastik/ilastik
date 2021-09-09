@@ -54,9 +54,10 @@ class ObjectClassificationApplet(StandardApplet):
 
         multi_lane_gui = super(ObjectClassificationApplet, self).getMultiLaneGui()
         guis = multi_lane_gui.getGuis()
-        if len(guis) > 0 and isinstance(guis[0], ObjectClassificationGui) and not guis[0].isInitialized:
-            guis[0].selectLabel(0)
-            guis[0].isInitialized = True
+        for gui in guis:
+            if isinstance(gui, ObjectClassificationGui) and not gui.isInitialized:
+                gui.selectLabel(0)
+                gui.isInitialized = True
         return multi_lane_gui
 
     @property
