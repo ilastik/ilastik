@@ -91,7 +91,7 @@ class SerialEdgeLabelsDictSlot(SerialSlot):
         for lane_index, (_dict_groupname, dict_group) in enumerate(sorted(multislot_group.items())):
             sp_ids = dict_group["sp_ids"][:, :]
             labels = dict_group["labels"][:]
-            edge_labels_dict = dict(list(zip(list(map(tuple, sp_ids)), labels)))
+            edge_labels_dict = dict(zip(map(tuple, sp_ids), labels))
             slot[lane_index].setValue(edge_labels_dict)
 
 

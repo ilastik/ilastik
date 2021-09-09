@@ -194,14 +194,14 @@ def build_multi_output_mock_op(slot_data: SLOT_DATA, graph: Graph, n_lanes: int 
             pass
 
         def execute(self, slot, subindex, roi, result):
-            raise NotImplementedError("Data access for this mock operator not implemented yet.")
             if self._data[slot.name].data is None:
                 raise RuntimeError(f"Slot {slot.name} should not be accessed")
             key = roi.toSlice()
             if slot.level == 0:
                 result[...] = self._data[slot.name].data[key]
             elif slot.level == 1:
-                result[...] = self._data[slot.name].data[subindex][key]
+                assert len(subindex) == 1
+                result[...] = self._data[slot.name].data[subindex[0]][key]
 
     assert all(slot_descr.level in [0, 1] for slot_descr in slot_data.values())
 
