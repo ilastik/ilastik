@@ -74,8 +74,7 @@ def test_all_meta_w_lanes(graph):
     assert all(subslot.meta.getAxisKeys() == ["x", "y", "z"] for subslot in op.Lvl1)
 
 
-@pytest.mark.xfail
 def test_data_access_lvl0(graph):
     op = build_multi_output_mock_op({"Output": SlotDescription(data=numpy.array([42]))}, graph)
 
-    assert op.Output.value
+    assert op.Output.value == 42

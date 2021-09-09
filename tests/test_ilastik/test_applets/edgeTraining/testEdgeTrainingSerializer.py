@@ -102,3 +102,33 @@ def test_serializer_roundtrip(graph, inputs, empty_project_file, superpixels, ra
     assert op_load_lane0.EdgeLabelsDict.value == edge_labels_reference
 
     loaded_rag = op_load_lane0.opRagCache.Output.value
+
+
+@pytest.mark.parametrize(
+    "serializer_version,train_rf,expect_cached_features",
+    [("0.1", False, False), ("0.2", False, True), ("0.1", True, True), ("0.2", True, True)],
+)
+def test_serializer_01_02(graph, inputs, empty_project_file, serializer_version, train_rf, expect_cached_features):
+    op = OpEdgeTraining(graph=graph)
+    op.VoxelData.connect(inputs.VoxelData)
+    op.Superpixels.connect(inputs.Superpixels)
+    op.WatershedSelectedInput.connect(inputs.WatershedSelectedInput)
+    op.TrainRandomForest.setValue(train_rf)
+
+    laneop = op.getLane(0)
+    edge_features_reference = pandas.DataFrame({"col1": [1, 2], "col2": [3, 4]})
+    laneop.opEdgeFeaturesCache.forceValue(edge_features_reference, set_dirty=False)
+
+    serializer = EdgeTrainingSerializer(op, "EdgeTraining")
+    serializer.version = serializer_version
+    serializer.serializeToHdf5(empty_project_file, empty_project_file.name)
+
+    op_load = OpEdgeTraining(graph=graph)
+    op_load.VoxelData.connect(inputs.VoxelData)
+    op_load.Superpixels.connect(inputs.Superpixels)
+    op_load.WatershedSelectedInput.connect(inputs.WatershedSelectedInput)
+    deserializer = EdgeTrainingSerializer(op_load, "EdgeTraining")
+    deserializer.deserializeFromHdf5(empty_project_file, empty_project_file.name)
+
+    op_load_lane0 = op_load.getLane(0)
+    assert (op_load_lane0.opEdgeFeaturesCache._value is not None) == expect_cached_features
