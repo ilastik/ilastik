@@ -2,17 +2,17 @@ import h5py
 import numpy
 import pandas
 import pytest
-
-from ilastikrag import Rag
-from ilastik.applets.edgeTraining import OpEdgeTraining
-from lazyflow.utility.testing import build_multi_output_mock_op, SlotDescription
-from ilastik.applets.edgeTraining.edgeTrainingSerializer import EdgeTrainingSerializer
 import vigra
+from ilastikrag import Rag
+
+from ilastik.applets.edgeTraining import OpEdgeTraining
+from ilastik.applets.edgeTraining.edgeTrainingSerializer import EdgeTrainingSerializer
+from lazyflow.utility.testing import SlotDesc, build_multi_output_mock_op
 
 
 @pytest.fixture
 def empty_project_file():
-    with h5py.File("test_project1", mode="a", driver="core", backing_store=False) as test_project:
+    with h5py.File("test_project1.ilp", mode="a", driver="core", backing_store=False) as test_project:
         test_project.create_dataset("ilastikVersion", data=b"1.0.0")
         yield test_project
 
@@ -34,17 +34,13 @@ def rag(superpixels):
 @pytest.fixture
 def inputs(graph, superpixels):
     slot_data = {
-        "WatershedSelectedInput": SlotDescription(
-            level=1, dtype=numpy.float32, shape=(5, 6, 1), axistags=vigra.defaultAxistags("yxc")
-        ),
-        "VoxelData": SlotDescription(
-            level=1, dtype=numpy.float32, shape=(5, 6, 1), axistags=vigra.defaultAxistags("yxc")
-        ),
-        "Superpixels": SlotDescription(
+        "WatershedSelectedInput": SlotDesc(level=1, dtype=numpy.float32, shape=(5, 6, 1), axistags="yxc"),
+        "VoxelData": SlotDesc(level=1, dtype=numpy.float32, shape=(5, 6, 1), axistags="yxc"),
+        "Superpixels": SlotDesc(
             level=1,
             dtype=numpy.uint32,
             shape=(5, 6, 1),
-            axistags=vigra.defaultAxistags("yxc"),
+            axistags="yxc",
             data=[superpixels, superpixels],
         ),
     }

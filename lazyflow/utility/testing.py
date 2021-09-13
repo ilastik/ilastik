@@ -21,7 +21,7 @@
 ###############################################################################
 import threading
 from dataclasses import dataclass
-from typing import Any, Mapping, Tuple
+from typing import Any, Mapping, Optional, Tuple
 
 import numpy as np
 import vigra
@@ -142,19 +142,63 @@ class OpCallWhenDirty(Operator):
             self.Output.setDirty(roi)
 
 
+_missing = object()
+
+
 @dataclass
-class SlotDescription:
-    dtype: np.dtype = None
-    shape: Tuple[int] = (1,)
-    axistags: vigra.AxisTags = None
+class SlotDesc:
+    dtype: Optional[np.dtype] = None
+    shape: Tuple[int, ...] = (1,)
+    axistags: Optional[str] = None
     level: int = 0
-    data: Any = None
+    data: Any = _missing
+
+    def __post_init__(self):
+        if self.level not in [0, 1]:
+            raise ValueError(f"Slot level must be either 0 or 1. Got {self.level}")
+
+    @property
+    def meta_dict(self) -> MetaDict:
+        return MetaDict(
+            dtype=self.dtype if self.dtype else None,
+            shape=self.shape,
+            axistags=vigra.defaultAxistags(self.axistags) if self.axistags else None,
+        )
 
 
-SLOT_DATA = Mapping[str, SlotDescription]
+SlotData = Mapping[str, SlotDesc]
 
 
-def build_multi_output_mock_op(slot_data: SLOT_DATA, graph: Graph, n_lanes: int = None):
+class MutliOutputMockOpBase(Operator):
+    def __init__(self, slot_data: SlotData, n_lanes: int, *args, **kwargs):
+        self._data = slot_data
+        super().__init__(*args, **kwargs)
+        for name, val in self._data.items():
+            output = self.outputs[name]
+            if output.level == 0:
+                output.meta.assignFrom(val.meta_dict)
+            elif output.level == 1 and n_lanes > 0:
+                if val.data is not _missing and not (len(val.data) == n_lanes):
+                    raise ValueError(f"Data for slot {name} did not match number of lanes {n_lanes}")
+                output.resize(n_lanes)
+                for ss in output:
+                    ss.meta.assignFrom(val.meta_dict)
+
+    def setupOutputs(self):
+        pass
+
+    def execute(self, slot, subindex, roi, result):
+        if self._data[slot.name].data == _missing:
+            raise RuntimeError(f"Slot {slot.name} should not be accessed")
+        key = roi.toSlice()
+        if slot.level == 0:
+            result[...] = self._data[slot.name].data[key]
+        elif slot.level == 1:
+            assert len(subindex) == 1
+            result[...] = self._data[slot.name].data[subindex[0]][key]
+
+
+def build_multi_output_mock_op(slot_data: SlotData, graph: Graph, n_lanes: int = 0) -> MutliOutputMockOpBase:
     """Returns an operator that has outputs as specifier in slot_data
 
     This is especially useful when testing toplevelOperators, as these usually
@@ -162,7 +206,7 @@ def build_multi_output_mock_op(slot_data: SLOT_DATA, graph: Graph, n_lanes: int 
     `OpArrayPiper`. This function can be used to generate an operator that mocks
     all needed output slots, an operator may take as inputs.
 
-    Note: no consistency checking is done with the data provided from SlotDescription
+    Note: no consistency checking is done with the data provided from SlotDesc
 
     Currently, data access is not yet supported.
 
@@ -173,43 +217,11 @@ def build_multi_output_mock_op(slot_data: SLOT_DATA, graph: Graph, n_lanes: int 
       n_lanes: number of lanes - level 1 slots are resized to that number.
 
     """
-
-    class _OP(Operator):
-        def __init__(self, slot_data, *args, **kwargs):
-            self._data = slot_data
-            self._n_lanes = n_lanes
-            super().__init__(*args, **kwargs)
-            for name, val in self._data.items():
-                meta_dict = MetaDict(dtype=val.dtype, shape=val.shape, axistags=val.axistags)
-                if self.outputs[name].level == 0:
-                    self.outputs[name].meta.assignFrom(meta_dict)
-                elif self.outputs[name].level == 1 and self._n_lanes:
-                    if self._data[name].data is not None and not (len(self._data[name].data) == self._n_lanes):
-                        raise ValueError(f"Data for slot {name} did not match number of lanes {self._n_lanes}")
-                    self.outputs[name].resize(self._n_lanes)
-                    for ss in self.outputs[name]:
-                        ss.meta.assignFrom(meta_dict)
-
-        def setupOutputs(self):
-            pass
-
-        def execute(self, slot, subindex, roi, result):
-            if self._data[slot.name].data is None:
-                raise RuntimeError(f"Slot {slot.name} should not be accessed")
-            key = roi.toSlice()
-            if slot.level == 0:
-                result[...] = self._data[slot.name].data[key]
-            elif slot.level == 1:
-                assert len(subindex) == 1
-                result[...] = self._data[slot.name].data[subindex[0]][key]
-
-    assert all(slot_descr.level in [0, 1] for slot_descr in slot_data.values())
-
     MultiOutputMockOp = type(
         "MultiOutputMockOp",
-        (_OP,),
+        (MutliOutputMockOpBase,),
         {slot_name: OutputSlot(level=slot_descr.level) for slot_name, slot_descr in slot_data.items()},
     )
-    op = MultiOutputMockOp(slot_data, graph=graph)
+    op = MultiOutputMockOp(slot_data, n_lanes, graph=graph)
 
     return op

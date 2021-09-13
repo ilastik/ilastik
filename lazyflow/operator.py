@@ -186,6 +186,9 @@ class Operator(metaclass=OperatorMetaClass):
     description = ""
     category = "lazyflow"
 
+    inputs: InputDict
+    outputs: OutputDict
+
     @property
     def transaction(self):
         """

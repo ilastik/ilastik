@@ -1,8 +1,6 @@
-from lazyflow.utility.testing import build_multi_output_mock_op, SlotDescription
+from lazyflow.utility.testing import build_multi_output_mock_op, SlotDesc
 from lazyflow.graph import Operator, OutputSlot
 import numpy
-import pytest
-import vigra
 
 
 def test_empty(graph):
@@ -14,7 +12,7 @@ def test_empty(graph):
 
 
 def test_single_default_slot(graph):
-    op = build_multi_output_mock_op({"Output": SlotDescription()}, graph)
+    op = build_multi_output_mock_op({"Output": SlotDesc()}, graph)
 
     assert len(op.inputs) == 0
     assert len(op.outputs) == 1
@@ -24,7 +22,7 @@ def test_single_default_slot(graph):
 
 
 def test_multiple_default_slots(graph):
-    op = build_multi_output_mock_op({"Output0": SlotDescription(), "Output1": SlotDescription()}, graph)
+    op = build_multi_output_mock_op({"Output0": SlotDesc(), "Output1": SlotDesc()}, graph)
 
     assert len(op.inputs) == 0
     assert len(op.outputs) == 2
@@ -36,13 +34,13 @@ def test_multiple_default_slots(graph):
 
 
 def test_multi_lane_slot(graph):
-    op = build_multi_output_mock_op({"Output": SlotDescription(level=1)}, graph)
+    op = build_multi_output_mock_op({"Output": SlotDesc(level=1)}, graph)
 
     assert op.Output.level == 1
 
 
 def test_multi_lane_slot_w_lanes(graph):
-    op = build_multi_output_mock_op({"Output": SlotDescription(level=1)}, graph, n_lanes=42)
+    op = build_multi_output_mock_op({"Output": SlotDesc(level=1)}, graph, n_lanes=42)
 
     assert op.Output.level == 1
     assert len(op.Output) == 42
@@ -52,10 +50,8 @@ def test_multi_lane_slot_w_lanes(graph):
 def test_all_meta_w_lanes(graph):
     op = build_multi_output_mock_op(
         {
-            "Lvl0": SlotDescription(level=0, shape=(10, 42), axistags=vigra.defaultAxistags("xy"), dtype=numpy.uint8),
-            "Lvl1": SlotDescription(
-                level=1, shape=(10, 42, 100), axistags=vigra.defaultAxistags("xyz"), dtype=numpy.float32
-            ),
+            "Lvl0": SlotDesc(level=0, shape=(10, 42), axistags="xy", dtype=numpy.uint8),
+            "Lvl1": SlotDesc(level=1, shape=(10, 42, 100), axistags="xyz", dtype=numpy.float32),
         },
         graph,
         n_lanes=12,
@@ -75,6 +71,6 @@ def test_all_meta_w_lanes(graph):
 
 
 def test_data_access_lvl0(graph):
-    op = build_multi_output_mock_op({"Output": SlotDescription(data=numpy.array([42]))}, graph)
+    op = build_multi_output_mock_op({"Output": SlotDesc(data=numpy.array([42]))}, graph)
 
     assert op.Output.value == 42
