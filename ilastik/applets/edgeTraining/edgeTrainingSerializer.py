@@ -24,6 +24,10 @@ from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, 
 from ilastikrag import Rag
 from ilastikrag.util import dataframe_from_hdf5, dataframe_to_hdf5
 
+import logging
+
+logger = logging.getLogger(__file__)
+
 
 class SerialRagSlot(SerialSlot):
     def __init__(self, slot, cache, labels_slot):
@@ -91,7 +95,7 @@ class SerialEdgeLabelsDictSlot(SerialSlot):
         for lane_index, (_dict_groupname, dict_group) in enumerate(sorted(multislot_group.items())):
             sp_ids = dict_group["sp_ids"][:, :]
             labels = dict_group["labels"][:]
-            edge_labels_dict = dict(list(zip(list(map(tuple, sp_ids)), labels)))
+            edge_labels_dict = dict(zip(map(tuple, sp_ids), labels))
             slot[lane_index].setValue(edge_labels_dict)
 
 
@@ -158,6 +162,8 @@ class SerialCachedDataFrameSlot(SerialSlot):
 
 
 class EdgeTrainingSerializer(AppletSerializer):
+    version = "0.2"
+
     def __init__(self, operator, projectFileGroupName):
         slots = [
             SerialDictSlot(operator.FeatureNames),
@@ -169,4 +175,47 @@ class EdgeTrainingSerializer(AppletSerializer):
             SerialClassifierSlot(operator.opClassifierCache.Output, operator.opClassifierCache),
             SerialSlot(operator.TrainRandomForest),
         ]
-        super(EdgeTrainingSerializer, self).__init__(projectFileGroupName, slots=slots)
+        super().__init__(projectFileGroupName, slots=slots)
+
+    def _postprocess_0_1_import(self):
+        """
+        Due to a faulty slot connection from the watershed to the edgetraining applet
+        we have to set the edgeFeatureCache dirty so that it gets recomputed
+        if
+          * run in gui mode - in headless this is irrelevant, because:
+            * if a classifier was trained, the connections are correct,
+            * if there was no classifier involved (multicut on edge probabilties)
+              then previous lanes are not accessed
+          * serialized with version 0.1, and multiple lanes present
+        """
+        # Check if classifier was _not_ trained
+        try:
+            train_rf_serializer = self.serialSlots[
+                [isinstance(ss, SerialSlot) and ss.name == "TrainRandomForest" for ss in self.serialSlots].index(True)
+            ]
+            cached_dataframe_serializer = self.serialSlots[
+                [
+                    isinstance(ss, SerialCachedDataFrameSlot) and ss.name == "EdgeFeatures" for ss in self.serialSlots
+                ].index(True)
+            ]
+        except ValueError:
+            return
+
+        train_rf = train_rf_serializer.inslot.value
+
+        if train_rf:
+            return
+
+        if len(cached_dataframe_serializer.cache) < 2:
+            return
+
+        logger.info("Old project file detected. Clearing edge feature caches.")
+
+        for i in range(len(cached_dataframe_serializer.cache)):
+            cacheop = cached_dataframe_serializer.cache.getLane(i)
+            cacheop.resetValue()
+
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath, headless=False):
+        """Post-process slot deserialization"""
+        if groupVersion == "0.1" and not headless:
+            self._postprocess_0_1_import()

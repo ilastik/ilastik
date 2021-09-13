@@ -17,7 +17,7 @@ class OpEdgeTrainingWithMulticut(Operator):
     Beta = InputSlot(value=0.5)
     SolverName = InputSlot(value=DEFAULT_SOLVER_NAME)  # See opMulticut.py for list of solvers
     FreezeCache = InputSlot(value=True)
-    WatershedSelectedInput = InputSlot()
+    WatershedSelectedInput = InputSlot(level=1)
 
     # Lane-wise input slots
     RawData = InputSlot(level=1, optional=True)  # Used by the GUI for display only
@@ -61,7 +61,7 @@ class OpEdgeTrainingWithMulticut(Operator):
         self.NaiveSegmentation.connect(opEdgeTraining.NaiveSegmentation)
 
         opMulticut = OpMultiLaneWrapper(
-            OpMulticut, broadcastingSlotNames=["Beta", "SolverName", "FreezeCache"], parent=self
+            OpMulticut, broadcastingSlotNames=["Beta", "SolverName", "FreezeCache", "ProbabilityThreshold"], parent=self
         )
         opMulticut.Beta.connect(self.Beta)
         opMulticut.SolverName.connect(self.SolverName)

@@ -28,11 +28,11 @@ class OpEdgeTraining(Operator):
     FeatureNames = InputSlot(value=DEFAULT_FEATURES)
     FreezeClassifier = InputSlot(value=True)
     TrainRandomForest = InputSlot(value=False)
-    WatershedSelectedInput = InputSlot()
 
     # Lane-wise
+    WatershedSelectedInput = InputSlot(level=1)
     EdgeLabelsDict = InputSlot(level=1, value={})
-    VoxelData = InputSlot(level=1)
+    VoxelData = InputSlot(level=1)  # stacked input with edge probabilities
     Superpixels = InputSlot(level=1)
     GroundtruthSegmentation = InputSlot(level=1, optional=True)
     RawData = InputSlot(level=1, optional=True)  # Used by the GUI for display only
@@ -53,7 +53,7 @@ class OpEdgeTraining(Operator):
         self.opRagCache.name = "opRagCache"
 
         self.opComputeEdgeFeatures = OpMultiLaneWrapper(
-            OpComputeEdgeFeatures, parent=self, broadcastingSlotNames=["FeatureNames"]
+            OpComputeEdgeFeatures, parent=self, broadcastingSlotNames=["FeatureNames", "TrainRandomForest"]
         )
         self.opComputeEdgeFeatures.FeatureNames.connect(self.FeatureNames)
         self.opComputeEdgeFeatures.VoxelData.connect(self.VoxelData)
@@ -76,7 +76,7 @@ class OpEdgeTraining(Operator):
         self.opClassifierCache.name = "opClassifierCache"
 
         self.opPredictEdgeProbabilities = OpMultiLaneWrapper(
-            OpPredictEdgeProbabilities, parent=self, broadcastingSlotNames=["EdgeClassifier"]
+            OpPredictEdgeProbabilities, parent=self, broadcastingSlotNames=["EdgeClassifier", "TrainRandomForest"]
         )
         self.opPredictEdgeProbabilities.EdgeClassifier.connect(self.opClassifierCache.Output)
         self.opPredictEdgeProbabilities.EdgeFeaturesDataFrame.connect(self.opEdgeFeaturesCache.Output)
