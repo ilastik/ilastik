@@ -47,7 +47,8 @@ def inputs(graph, superpixels):
     return build_multi_output_mock_op(slot_data, graph, n_lanes=2)
 
 
-def test_serializer_roundtrip(graph, inputs, empty_project_file, superpixels, rag):
+@pytest.mark.parametrize("content_lane,empty_lane", [(0, 1), (1, 0)])
+def test_serializer_roundtrip(graph, inputs, empty_project_file, superpixels, rag, content_lane, empty_lane):
     op = OpEdgeTraining(graph=graph)
     op.VoxelData.connect(inputs.VoxelData)
     op.Superpixels.connect(inputs.Superpixels)
@@ -58,7 +59,7 @@ def test_serializer_roundtrip(graph, inputs, empty_project_file, superpixels, ra
     op.FeatureNames.setValue({"test0": [b"test_feature_0", b"test_feature_1"]})
 
     # set level1 slots
-    laneop = op.getLane(0)
+    laneop = op.getLane(content_lane)
     edge_features_reference = pandas.DataFrame({"col1": [1, 2], "col2": [3, 4]})
     laneop.opEdgeFeaturesCache.forceValue(edge_features_reference, set_dirty=False)
 
@@ -81,23 +82,24 @@ def test_serializer_roundtrip(graph, inputs, empty_project_file, superpixels, ra
     deserializer.deserializeFromHdf5(empty_project_file, empty_project_file.name)
 
     # check level0 slots
-    assert op_load.TrainRandomForest.value == False
+    assert not op_load.TrainRandomForest.value
     assert all(a == b for a, b in zip(op_load.FeatureNames.value["test0"], [b"test_feature_0", b"test_feature_1"]))
 
     # check level1 slots
     # empty lane
-    op_load_lane1 = op_load.getLane(1)
-    assert op_load_lane1.EdgeLabelsDict.value == {}
-    assert op_load_lane1.opEdgeFeaturesCache._value is None
+    op_load_empty_lane = op_load.getLane(empty_lane)
+    assert op_load_empty_lane.opRagCache._value is None
+    assert op_load_empty_lane.EdgeLabelsDict.value == {}
+    assert op_load_empty_lane.opEdgeFeaturesCache._value is None
 
     # lane w content
-    op_load_lane0 = op_load.getLane(0)
-    edge_features_loaded = op_load_lane0.opEdgeFeaturesCache.Output.value
+    op_load_content_lane = op_load.getLane(content_lane)
+    edge_features_loaded = op_load_content_lane.opEdgeFeaturesCache.Output.value
     assert edge_features_loaded.equals(edge_features_reference)
 
-    assert op_load_lane0.EdgeLabelsDict.value == edge_labels_reference
+    assert op_load_content_lane.EdgeLabelsDict.value == edge_labels_reference
 
-    loaded_rag = op_load_lane0.opRagCache.Output.value
+    assert op_load_content_lane.opRagCache._value is not None
 
 
 @pytest.mark.parametrize(
