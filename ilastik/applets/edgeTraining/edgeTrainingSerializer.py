@@ -31,7 +31,7 @@ logger = logging.getLogger(__file__)
 
 class SerialRagSlot(SerialSlot):
     def __init__(self, slot, cache, labels_slot):
-        super(SerialRagSlot, self).__init__(slot, name="Rags")
+        super().__init__(slot, name="Rags", subname="Rag_{:04}")
         self.cache = cache
         self.labels_slot = labels_slot
 
@@ -55,7 +55,7 @@ class SerialRagSlot(SerialSlot):
             if rag is None:
                 continue
 
-            rag_group = rags_group.create_group("Rag_{:04}".format(lane_index))
+            rag_group = rags_group.create_group(self.subname.format(lane_index))
             rag.serialize_hdf5(rag_group, store_labels=False)
 
     def deserialize(self, rags_group):
@@ -66,7 +66,18 @@ class SerialRagSlot(SerialSlot):
         self.dirty = False
 
     def _deserialize(self, rags_group, slot):
-        for lane_index, (_rag_groupname, rag_group) in enumerate(sorted(rags_group.items())):
+        assert slot.level == 1
+        # Pair stored indexes with their keys,
+        # e.g. [("Rag_0000", 0), ("RAG_0002", 2), ("RAG_0003", 3)]
+        keys_to_indexes = {k: int(k[4::]) for k in list(rags_group.keys())}
+        # Ensure the slot is at least big enough to deserialize into.
+        max_index = max([0] + list(keys_to_indexes.values()))
+
+        if len(slot) < max_index + 1:
+            slot.resize(max_index + 1)
+
+        for rag_groupname, rag_group in rags_group.items():
+            lane_index = keys_to_indexes[rag_groupname]
             label_img = self.labels_slot[lane_index][:].wait()
             label_img = vigra.taggedView(label_img, self.labels_slot.meta.axistags)
             label_img = label_img.dropChannelAxis()
@@ -76,6 +87,9 @@ class SerialRagSlot(SerialSlot):
 
 
 class SerialEdgeLabelsDictSlot(SerialSlot):
+    def __init__(self, slot):
+        super().__init__(slot, subname="EdgeLabels{:04}")
+
     def _serialize(self, parent_group, name, multislot):
         multislot_group = parent_group.create_group(name)
         for lane_index, slot in enumerate(multislot):
@@ -87,12 +101,23 @@ class SerialEdgeLabelsDictSlot(SerialSlot):
                 sp_ids = np.ndarray((0, 2), dtype=np.uint32)
                 labels = np.ndarray((0,), dtype=np.uint8)
 
-            dict_group = multislot_group.create_group("EdgeLabels{:04}".format(lane_index))
+            dict_group = multislot_group.create_group(self.subname.format(lane_index))
             dict_group.create_dataset("sp_ids", data=sp_ids)
             dict_group.create_dataset("labels", data=labels)
 
     def _deserialize(self, multislot_group, slot):
-        for lane_index, (_dict_groupname, dict_group) in enumerate(sorted(multislot_group.items())):
+        assert slot.level == 1
+        # Pair stored indexes with their keys,
+        # e.g. [("EdgeLabels0000", 0), ("EdgeLabels0002", 2), ("EdgeLabels0003", 3)]
+        keys_to_indexes = {k: int(k[10::]) for k in list(multislot_group.keys())}
+        # Ensure the slot is at least big enough to deserialize into.
+        max_index = max([0] + list(keys_to_indexes.values()))
+
+        if len(slot) < max_index + 1:
+            slot.resize(max_index + 1)
+
+        for dict_groupname, dict_group in multislot_group.items():
+            lane_index = keys_to_indexes[dict_groupname]
             sp_ids = dict_group["sp_ids"][:, :]
             labels = dict_group["labels"][:]
             edge_labels_dict = dict(zip(map(tuple, sp_ids), labels))
@@ -101,7 +126,7 @@ class SerialEdgeLabelsDictSlot(SerialSlot):
 
 class SerialCachedDataFrameSlot(SerialSlot):
     def __init__(self, slot, cache, inslot=None, name=None, default=None, depends=None, selfdepends=True):
-        super(SerialCachedDataFrameSlot, self).__init__(slot, inslot, name, None, default, depends, selfdepends)
+        super().__init__(slot, inslot, name, None, default, depends, selfdepends)
         self.cache = cache
         if self.name is None:
             self.name = slot.name
