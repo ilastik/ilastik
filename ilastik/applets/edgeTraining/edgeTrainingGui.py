@@ -404,6 +404,31 @@ class EdgeTrainingMixin:
         superpixels_ready = op.Superpixels.ready()
         with_training = op.TrainRandomForest.value
 
+        # Superpixels -- Edge Probabilities
+        if superpixels_ready and op.EdgeProbabilitiesDict.ready() and with_training:
+            layer = SegmentationEdgesLayer(createDataSource(op.Superpixels), isHoverable=True)
+            layer.name = "Edge Probabilities"  # Name is hard-coded in multiple places: grep before changing.
+            layer.visible = False
+            layer.opacity = 1.0
+            self.update_probability_edges()  # Initialize
+
+            layer.contexts.append(self.create_prefetch_menu("Edge Probabilities"))
+
+            layer.shortcutRegistration = (
+                "p",
+                ActionInfo(
+                    "Edge Training Layers",
+                    "EdgePredictionsVisibility",
+                    "Show/Hide Edge Predictions",
+                    layer.toggleVisible,
+                    self.viewerControlWidget(),
+                    layer,
+                ),
+            )
+
+            layers.append(layer)
+            del layer
+
         # Superpixels -- Edge Labels
         if superpixels_ready and op.EdgeLabelsDict.ready() and with_training:
             edge_labels = op.EdgeLabelsDict.value
@@ -433,34 +458,11 @@ class EdgeTrainingMixin:
             layers.append(layer)
             del layer
 
-        # Superpixels -- Edge Probabilities
-        if superpixels_ready and op.EdgeProbabilitiesDict.ready() and with_training:
-            layer = SegmentationEdgesLayer(createDataSource(op.Superpixels))
-            layer.name = "Edge Probabilities"  # Name is hard-coded in multiple places: grep before changing.
-            layer.visible = False
-            layer.opacity = 1.0
-            self.update_probability_edges()  # Initialize
-
-            layer.contexts.append(self.create_prefetch_menu("Edge Probabilities"))
-
-            layer.shortcutRegistration = (
-                "p",
-                ActionInfo(
-                    "Edge Training Layers",
-                    "EdgePredictionsVisibility",
-                    "Show/Hide Edge Predictions",
-                    layer.toggleVisible,
-                    self.viewerControlWidget(),
-                    layer,
-                ),
-            )
-
-            layers.append(layer)
-            del layer
-
         # Superpixels -- Edges
         if superpixels_ready:
-            layer = SegmentationEdgesLayer(createDataSource(op.Superpixels), default_pen=self.DEFAULT_PEN)
+            layer = SegmentationEdgesLayer(
+                createDataSource(op.Superpixels), default_pen=self.DEFAULT_PEN, isHoverable=True
+            )
             layer.name = "Superpixel Edges"
             layer.visible = True
             layer.opacity = 1.0
