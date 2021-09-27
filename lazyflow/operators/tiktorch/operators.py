@@ -202,6 +202,8 @@ class OpTikTorchClassifierPredict(Operator):
             result[:] = 0.0
             return result
 
+        # make sure to only request channels we actually have in raw!
+        # roi in execute is wrt output
         axiskeys = self.Image.meta.getAxisKeys()
         roistart = list(roi.start)
         prediction_channel_start = roistart[-1]
@@ -212,19 +214,20 @@ class OpTikTorchClassifierPredict(Operator):
         roistop[-1] = raw_channels
         upstream_roi = (roistart, roistop)
 
-        halo = numpy.array(session.get_halo(axiskeys))
+        halo = numpy.array(session.get_halos(axiskeys)[0])
 
         assert len(halo) == len(upstream_roi[0])
         assert axiskeys[-1] == "c"
         assert halo[-1] == 0, "Didn't expect a non-zero halo for channel dimension."
 
+        # simply add halo to requested roi
         upstream_roi = numpy.array(upstream_roi)
         upstream_roi[0] -= halo
         upstream_roi[1] += halo
 
         # Extend block further to reach a valid shape
         min_shape = upstream_roi[1] - upstream_roi[0]
-        for vs in session.get_valid_shapes(axiskeys):
+        for vs in session.get_input_shapes(axiskeys)[0]:
             if all(m <= v for m, v in zip(min_shape, vs)):
                 valid_shape = numpy.array(vs)
                 if any(m < v for m, v in zip(min_shape, vs)):
@@ -236,7 +239,7 @@ class OpTikTorchClassifierPredict(Operator):
         else:
             raise ValueError(
                 f"The requested roi {roi} with halo {halo} is too large for the "
-                f"session's valid shapes: {session.get_valid_shapes(axiskeys)}"
+                f"session's valid shapes: {session.get_input_shapes(axiskeys)}"
             )
 
         # Determine how to extract the data from the result (without halo, padding)
@@ -267,4 +270,5 @@ class OpTikTorchClassifierPredict(Operator):
             result[...] = session.predict(input_data, predictions_roi, axistags)
         except Exception as e:
             logger.exception("Failed to predict")
+
         return result
