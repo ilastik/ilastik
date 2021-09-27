@@ -212,7 +212,7 @@ class OpTikTorchClassifierPredict(Operator):
         roistop[-1] = raw_channels
         upstream_roi = (roistart, roistop)
 
-        halo = numpy.array(session.get_halo(axiskeys))
+        halo = numpy.array(session.get_halos(axiskeys)[0])
 
         assert len(halo) == len(upstream_roi[0])
         assert axiskeys[-1] == "c"
@@ -224,7 +224,7 @@ class OpTikTorchClassifierPredict(Operator):
 
         # Extend block further to reach a valid shape
         min_shape = upstream_roi[1] - upstream_roi[0]
-        for vs in session.get_valid_shapes(axiskeys):
+        for vs in session.get_input_shapes(axiskeys)[0]:
             if all(m <= v for m, v in zip(min_shape, vs)):
                 valid_shape = numpy.array(vs)
                 if any(m < v for m, v in zip(min_shape, vs)):
@@ -236,7 +236,7 @@ class OpTikTorchClassifierPredict(Operator):
         else:
             raise ValueError(
                 f"The requested roi {roi} with halo {halo} is too large for the "
-                f"session's valid shapes: {session.get_valid_shapes(axiskeys)}"
+                f"session's valid shapes: {session.get_input_shapes(axiskeys)}"
             )
 
         # Determine how to extract the data from the result (without halo, padding)
