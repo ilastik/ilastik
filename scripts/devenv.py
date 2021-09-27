@@ -74,8 +74,7 @@ def main():
 
 def cmd_create(args, rest):
     chan_args = ["--override-channels", "--strict-channel-priority"]
-    run(["conda", "create", "--yes", "--name", args.name] + chan_args + (rest or DEFAULT_CREATE_ARGS))
-    run(["conda", "install", "--yes", "--name", args.name] + chan_args + ["--channel", "conda-forge", "conda-build"])
+    run(["conda", "create", "--yes", "--name", args.name] + chan_args + (rest or DEFAULT_CREATE_ARGS) + ["conda-build"])
 
     for repo in REPOSITORIES:
         run(["conda", "develop", "--name", args.name, repo])
