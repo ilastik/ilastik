@@ -24,8 +24,9 @@ import socket
 import numpy
 import warnings
 from collections import defaultdict
-from typing import Iterable, List, Callable
+from typing import Iterable, List, Callable, Tuple, Dict
 
+import xarray
 import vigra
 import grpc
 
@@ -38,6 +39,11 @@ from lazyflow.futures_utils import MappableFuture, map_future
 
 from tiktorch import converters
 from tiktorch.proto import data_store_pb2, data_store_pb2_grpc, inference_pb2, inference_pb2_grpc
+
+# HACK: prediction_pipeline uses this heuristic to guess a sensible shape
+# we need to do the same on the ilastik side, as the correct model info is sent
+# over.
+from bioimageio.core.prediction_pipeline._prediction_pipeline import enforce_min_shape
 
 from vigra import AxisTags
 
@@ -60,79 +66,118 @@ class ModelSession:
         return self
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.__session.name
 
     @property
-    def input_axes(self):
+    def input_axes(self) -> List[str]:
         return self.__session.inputAxes
 
     @property
-    def output_axes(self):
+    def output_axes(self) -> List[str]:
         return self.__session.outputAxes
 
-    @property
-    def offset(self):
-        return self.__session.offset
-
-    @property
-    def scale(self):
-        return self.__session.scale
-
-    def get_output_shape(self):
+    def get_output_shapes(self) -> List[List[Dict[str, int]]]:
+        """Get output shapes for all model output
+        shape = shape(reference_input_tensor) * scale + 2 * offset
         """
-        shape = shape(input_tensor) * scale + 2 * offset
-        """
-        offsets = defaultdict(lambda: 0, {d.name: d.size for d in self.offset})
-        scales = defaultdict(lambda: 1.0, {d.name: d.size for d in self.scale})
-
+        # FIXME: we don't really send over reference tensor ids yet.
+        # so for now,
+        output_axes = self.output_axes[0]
+        input_shapes = self.get_input_shapes(axes="".join(output_axes))
+        assert (
+            len(input_shapes) == 1
+        ), "Currently referencing input tensors by name not supported. Fail if more than one input"
+        input_shape = input_shapes[0][0]
+        input_shape_by_name = {name: size for name, size in zip(output_axes, input_shape)}
         result = []
-        # FIXME: currently we don't make use of having potentially multiple valid
-        # output shapes. It can make sense, to choose it dynamically, e.g.
-        # a smaller one for "live" prediction, a larger one for batch
-        for shape in self.__session.validShapes:
-            dim_size_by_name = {d.name: d.size for d in shape.dims}
-            valid_shape = {}
-            for dim in dim_size_by_name:
-                valid_shape[dim] = int(dim_size_by_name[dim] * scales[dim] + 2 * offsets[dim])
+        for shape in self.__session.outputShapes:
+            if shape.shapeType == 0:
+                # explicit shape
+                output_shape_by_name = {d.name: d.size for d in shape.shape.dims}
+                result.append([output_shape_by_name])
+            elif shape.shapeType == 1:
+                # parametrized shape
+                # HACK: need to determine min shape same way as prediction_pipeline
+                # HACK: assume input tensor at index 0 of input shapes
+                offset_size_by_name = defaultdict(lambda: 0, {d.name: d.size for d in shape.offset.dims})
+                scale_size_by_name = defaultdict(lambda: 1.0, {d.name: d.size for d in shape.scale.scales})
+                output_shape_by_name = {}
+                for dim in input_shape_by_name:
+                    output_shape_by_name[dim] = int(
+                        input_shape_by_name[dim] * scale_size_by_name[dim] + 2 * offset_size_by_name[dim]
+                    )
 
-            result.append(valid_shape)
-        return result[0]
-
-    @property
-    def has_training(self):
-        return self.__session.hasTraining
-
-    def get_halo(self, axes: str = "zyx"):
-        dim_size_by_name = {d.name: d.size for d in self.__session.halo}
-        return [dim_size_by_name.get(axis, 0) for axis in axes]
-
-    def get_valid_shapes(self, axes: str = "zyx"):
-        result = []
-        for shape in self.__session.validShapes:
-            dim_size_by_name = {d.name: d.size for d in shape.dims}
-
-            valid_shape = []
-            for axis in axes:
-                size = dim_size_by_name.get(axis, 1)
-                valid_shape.append(size)
-
-            result.append(valid_shape)
+                result.append([output_shape_by_name])
+            else:
+                raise ValueError(f"Cannot work with shapes of shapeType {shape.shapeType}")
 
         return result
 
     @property
-    def training_shape(self):
-        warnings.warn("HARDCODED training shape, this might not do what you want.")
-        return [0, 0, 0, 128, 128]
+    def has_training(self) -> bool:
+        return self.__session.hasTraining
+
+    def get_halos(self, axes: str = "zyx") -> List[Tuple[int]]:
+        if isinstance(axes, AxisTags):
+            axes = "".join(axes.keys())
+        halos = []
+        for output_shape in self.__session.outputShapes:
+            halo_size_by_name = {d.name: d.size for d in output_shape.halo.dims}
+            halos.append(tuple([halo_size_by_name.get(axis, 0) for axis in axes]))
+
+        return halos
+
+    def get_input_shapes(self, axes: str = "zyx") -> List[List[Tuple[int]]]:
+        """Get input shapes for all model inputs
+
+        Returns:
+          models can take multiple images as inputs. For each such input, a list
+            of shapes is returned.
+        """
+        if isinstance(axes, AxisTags):
+            axes = "".join(axes.keys())
+        result = []
+        for shape in self.__session.inputShapes:
+            if shape.shapeType == 0:
+                # explicit shape
+                dim_size_by_name = defaultdict(lambda: 1, {d.name: d.size for d in shape.shape.dims})
+                result.append([tuple([dim_size_by_name[axis] for axis in axes])])
+            elif shape.shapeType == 1:
+                # parametrized shape
+                # HACK: need to determine min shape same way as prediction_pipeline
+                dim_size_by_name = defaultdict(lambda: 1, {d.name: d.size for d in shape.shape.dims})
+                dim_step_by_name = defaultdict(lambda: 0, {d.name: d.size for d in shape.stepShape.dims})
+                shape_dims = "".join(d.name for d in shape.shape.dims)
+                min_shape = enforce_min_shape(
+                    [dim_size_by_name[x] for x in shape_dims], [dim_step_by_name[x] for x in shape_dims], shape_dims
+                )
+                min_shape_by_name = defaultdict(lambda: 1, {name: size for name, size in zip(shape_dims, min_shape)})
+                result.append([tuple(min_shape_by_name[axis] for axis in axes)])
+            else:
+                raise ValueError(f"Cannot work with shapes of shapeType {shape.shapeType}")
+
+        return result
 
     @property
-    def known_classes(self):
-        output_shape = self.get_output_shape()
+    def training_shape(self) -> Tuple[int]:
+        warnings.warn("HARDCODED training shape, this might not do what you want.")
+        return (0, 0, 0, 128, 128)
+
+    @property
+    def known_classes(self) -> List[int]:
+        """
+        FIXME: assumes a single output!
+        """
+        output_shapes = self.get_output_shapes()
+        assert len(output_shapes) == 1, "Currenlty only a single output is supported"
+        # there could be multiple output shapes per output in the future (with implicit output shapes)
+        output_shape = output_shapes[0][0]
+        assert "c" in output_shape, "Channel Axis needed in output shape"
         return list(range(1, int(output_shape["c"]) + 1))
 
     @property
-    def num_classes(self):
+    def num_classes(self) -> int:
         return len(self.known_classes)
 
     def update(self, feature_images: Iterable, label_images: Iterable, axistags, image_ids: Iterable):
@@ -173,28 +218,34 @@ class ModelSession:
 
         # translate roi axes todo: remove with tczyx standard
         # output_axis_order = self._model_conf.output_axis_order
-        output_axis_order = self.output_axes
+        output_axes = self.output_axes
+        assert len(output_axes) == 1
+        output_axis_order = output_axes[0]
+        # need to handle batch dimension :/
         if "c" not in output_axis_order:
             output_axis_order = "c" + output_axis_order
             c_was_not_in_output_axis_order = True
         else:
             c_was_not_in_output_axis_order = False
-        roi = roi[:, [axistags.index(a) for a in output_axis_order]]
+        roi = roi[:, [axistags.index(a) for a in output_axis_order if a != "b"]]
 
-        reordered_feature_image = reorder_axes(feature_image, from_axes_tags=axistags, to_axes_tags=self.input_axes)
-
+        input_axes = self.input_axes
+        assert len(input_axes) == 1
+        input_axis_order = input_axes[0]
+        reordered_feature_image = reorder_axes(feature_image, from_axes_tags=axistags, to_axes_tags=input_axis_order)
         try:
             current_rq = Request._current_request()
             resp = self.tiktorchClient.Predict.future(
                 inference_pb2.PredictRequest(
-                    tensor=converters.numpy_to_pb_tensor(reordered_feature_image, axistags=self.input_axes),
+                    tensors=[converters.numpy_to_pb_tensor(reordered_feature_image, axistags=input_axis_order)],
                     modelSessionId=self.__session.id,
                 )
             )
             resp.add_done_callback(lambda o: current_rq._wake_up())
             current_rq._suspend()
             resp = resp.result()
-            result = converters.pb_tensor_to_numpy(resp.tensor)
+            assert len(resp.tensors) == 1
+            result = converters.pb_tensor_to_numpy(resp.tensors[0])
         except Exception:
             logger.exception("Predict call failed")
             return 0
@@ -210,29 +261,46 @@ class ModelSession:
             logger.debug(f"Changed shape of predicted block to {result.shape} by adding '1-p' channel")
 
         shape_wo_halo = result.shape
-        result = result[roiToSlice(*roi)]
-        logger.debug(
-            f"Selected roi (start: {roi[0]}, stop: {roi[1]}) from result without halo {shape_wo_halo}. Now"
-            f" result has shape: ({result.shape})."
-        )
+        halos = self.get_halos(axes=axistags)
+        assert len(halos) == 1
 
-        return reorder_axes(result, from_axes_tags=output_axis_order, to_axes_tags=axistags)
+        halo = halos[0]
+        result = reorder_axes(result, from_axes_tags=output_axis_order, to_axes_tags=axistags)
+        result = remove_halo(result, halo, axistags)
+
+        logger.debug(f"result without halo {shape_wo_halo}. Now" f" result has shape: ({result.shape}).")
+        return result
 
 
-def reorder_axes(input_arr: numpy.ndarray, *, from_axes_tags: str, to_axes_tags: str):
+def remove_halo(input_arr: numpy.ndarray, halo: Tuple[int], axistags: str) -> numpy.ndarray:
+    """Remove halo from input_array
+
+    Will remove halo from "both" sides of axis
+    """
+    if isinstance(axistags, AxisTags):
+        axistags = "".join(axistags.keys())
+    assert len(halo) == len(axistags)
+    tagged_result = xarray.DataArray(input_arr, dims=tuple(axistags))
+    halo = {name: dim for name, dim in zip(axistags, halo)}
+    result = tagged_result[{k: slice(v, -v) if v != 0 else slice(None) for k, v in halo.items()}].data
+    return result
+
+
+def reorder_axes(input_arr: numpy.ndarray, *, from_axes_tags: str, to_axes_tags: str) -> numpy.ndarray:
     if isinstance(from_axes_tags, AxisTags):
         from_axes_tags = "".join(from_axes_tags.keys())
 
     if isinstance(to_axes_tags, AxisTags):
         to_axes_tags = "".join(to_axes_tags.keys())
 
-    op = OpReorderAxes(graph=Graph())
+    tagged_input = xarray.DataArray(input_arr, dims=tuple(from_axes_tags))
 
-    tagged_arr = vigra.VigraArray(input_arr, axistags=vigra.defaultAxistags(from_axes_tags))
-    op.Input.setValue(tagged_arr)
-    op.AxisOrder.setValue(to_axes_tags)
+    axes_removed = set(from_axes_tags).difference(to_axes_tags)
+    axes_added = set(to_axes_tags).difference(from_axes_tags)
 
-    return op.Output([]).wait()
+    output = tagged_input.squeeze(tuple(axes_removed)).expand_dims(tuple(axes_added)).transpose(*tuple(to_axes_tags))
+    assert len(output.shape) == len(to_axes_tags)
+    return output.data
 
 
 class _NullLauncher:
