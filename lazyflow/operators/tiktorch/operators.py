@@ -202,6 +202,8 @@ class OpTikTorchClassifierPredict(Operator):
             result[:] = 0.0
             return result
 
+        # make sure to only request channels we actually have in raw!
+        # roi in execute is wrt output
         axiskeys = self.Image.meta.getAxisKeys()
         roistart = list(roi.start)
         prediction_channel_start = roistart[-1]
@@ -218,6 +220,7 @@ class OpTikTorchClassifierPredict(Operator):
         assert axiskeys[-1] == "c"
         assert halo[-1] == 0, "Didn't expect a non-zero halo for channel dimension."
 
+        # simply add halo to requested roi
         upstream_roi = numpy.array(upstream_roi)
         upstream_roi[0] -= halo
         upstream_roi[1] += halo
@@ -267,4 +270,5 @@ class OpTikTorchClassifierPredict(Operator):
             result[...] = session.predict(input_data, predictions_roi, axistags)
         except Exception as e:
             logger.exception("Failed to predict")
+
         return result

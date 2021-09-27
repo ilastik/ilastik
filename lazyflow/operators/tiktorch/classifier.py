@@ -227,7 +227,6 @@ class ModelSession:
             c_was_not_in_output_axis_order = True
         else:
             c_was_not_in_output_axis_order = False
-        roi = roi[:, [axistags.index(a) for a in output_axis_order if a != "b"]]
 
         input_axes = self.input_axes
         assert len(input_axes) == 1
@@ -264,26 +263,11 @@ class ModelSession:
         halos = self.get_halos(axes=axistags)
         assert len(halos) == 1
 
-        halo = halos[0]
         result = reorder_axes(result, from_axes_tags=output_axis_order, to_axes_tags=axistags)
-        result = remove_halo(result, halo, axistags)
+        result = result[roiToSlice(*roi)]
 
         logger.debug(f"result without halo {shape_wo_halo}. Now" f" result has shape: ({result.shape}).")
         return result
-
-
-def remove_halo(input_arr: numpy.ndarray, halo: Tuple[int], axistags: str) -> numpy.ndarray:
-    """Remove halo from input_array
-
-    Will remove halo from "both" sides of axis
-    """
-    if isinstance(axistags, AxisTags):
-        axistags = "".join(axistags.keys())
-    assert len(halo) == len(axistags)
-    tagged_result = xarray.DataArray(input_arr, dims=tuple(axistags))
-    halo = {name: dim for name, dim in zip(axistags, halo)}
-    result = tagged_result[{k: slice(v, -v) if v != 0 else slice(None) for k, v in halo.items()}].data
-    return result
 
 
 def reorder_axes(input_arr: numpy.ndarray, *, from_axes_tags: str, to_axes_tags: str) -> numpy.ndarray:
