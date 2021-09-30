@@ -66,7 +66,7 @@ from lazyflow.slot import Slot
 
 
 class LocationOptions(object):
-    """ Enum for location menu options """
+    """Enum for location menu options"""
 
     Project = 0
     AbsolutePath = 1
@@ -415,11 +415,17 @@ class DataSelectionGui(QWidget):
 
     def addFileNames(self, paths: List[Path], startingLaneNum: int, roleIndex: int):
         # If the user didn't cancel
-        for path in paths or []:
+        # we iterate through every path and add it. now bulk addition.
+        for index, path in enumerate(paths or []):
             try:
+                # startlingLaneNum = -1 if dragged onto the empty table
+                if startingLaneNum is not None and startingLaneNum >= 0:
+                    lane_index = startingLaneNum + index
+                else:
+                    lane_index = startingLaneNum
                 full_path = self._get_dataset_full_path(path, roleIndex=roleIndex)
                 info = self.instantiate_dataset_info(url=str(full_path), role=roleIndex)
-                self.addLanes([info], roleIndex=roleIndex, startingLaneNum=startingLaneNum)
+                self.addLanes([info], roleIndex=roleIndex, startingLaneNum=lane_index)
             except DataSelectionGui.UserCancelledError:
                 pass
             except Exception as ex:
