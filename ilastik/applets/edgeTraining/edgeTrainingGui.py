@@ -461,7 +461,7 @@ class EdgeTrainingMixin:
         # Superpixels -- Edges
         if superpixels_ready:
             layer = SegmentationEdgesLayer(
-                createDataSource(op.Superpixels), default_pen=self.DEFAULT_PEN, isHoverable=True
+                createDataSource(op.Superpixels), default_pen=self.DEFAULT_PEN, isHoverable=with_training
             )
             layer.name = "Superpixel Edges"
             layer.visible = True
