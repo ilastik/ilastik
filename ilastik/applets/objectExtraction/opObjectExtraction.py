@@ -350,9 +350,9 @@ class OpObjectExtraction(Operator):
 
     # Schematic:
     #
-    # BackgroundLabels              LabelImage
-    #                 \            /
-    # BinaryImage ---> opLabelImage ---> opRegFeats ---> opRegFeatsAdaptOutput ---> RegionFeatures
+    # BackgroundLabels               LabelImage
+    #                 \             /
+    # BinaryImage ---> OpLabelVolume ---> opRegFeats ---> opRegFeatsAdaptOutput ---> RegionFeatures
     #                                   /                                     \
     # RawImage--------------------------                      BinaryImage ---> opObjectCenterImage --> opCenterCache --> ObjectCenterImage
 
