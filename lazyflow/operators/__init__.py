@@ -74,7 +74,6 @@ from .opSimpleBlockedArrayCache import OpSimpleBlockedArrayCache
 from .opSimpleStacker import OpSimpleStacker
 from .opSlicedBlockedArrayCache import OpSlicedBlockedArrayCache
 from .opUnblockedArrayCache import OpUnblockedArrayCache
-from .opVigraLabelVolume import OpVigraLabelVolume
 from .opVigraWatershed import OpVigraWatershed
 from .valueProviders import (
     ListToMultiOperator,
