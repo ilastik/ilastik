@@ -39,7 +39,7 @@ class ConservationTrackingWorkflowBase(Workflow):
 
         data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'
         if self.fromBinary:
-            data_instructions += 'Use the "Binary Image" tab to load your segmentation image(s).'
+            data_instructions += 'Use the "Segmentation Image" tab to load your segmentation image(s).'
         else:
             data_instructions += 'Use the "Prediction Maps" tab to load your pixel-wise probability image(s).'
 
@@ -469,7 +469,7 @@ class ConservationTrackingWorkflowBase(Workflow):
 
 class ConservationTrackingWorkflowFromBinary(ConservationTrackingWorkflowBase):
     workflowName = "Automatic Tracking Workflow (Conservation Tracking) from binary image"
-    workflowDisplayName = "Tracking [Inputs: Raw Data, Binary Image]"
+    workflowDisplayName = "Tracking [Inputs: Raw Data, Segmentation Image]"
 
     withOptTrans = False
     fromBinary = True

@@ -93,7 +93,7 @@ class StructuredTrackingWorkflowBase(Workflow):
 
         data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'
         if self.fromBinary:
-            data_instructions += 'Use the "Binary Image" tab to load your segmentation image(s).'
+            data_instructions += 'Use the "Segmentation Image" tab to load your segmentation image(s).'
         else:
             data_instructions += 'Use the "Prediction Maps" tab to load your pixel-wise probability image(s).'
 
@@ -587,7 +587,7 @@ class StructuredTrackingWorkflowBase(Workflow):
 
 class StructuredTrackingWorkflowFromBinary(StructuredTrackingWorkflowBase):
     workflowName = "Structured Learning Tracking Workflow from binary image"
-    workflowDisplayName = "Tracking with Learning [Inputs: Raw Data, Binary Image]"
+    workflowDisplayName = "Tracking with Learning [Inputs: Raw Data, Segmentation Image]"
     workflowDescription = "Structured learning tracking of objects, based on binary images."
 
     fromBinary = True
