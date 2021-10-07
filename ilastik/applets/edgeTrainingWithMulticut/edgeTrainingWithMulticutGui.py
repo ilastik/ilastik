@@ -29,6 +29,7 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingMixin, LayerView
         training_box.setLayout(training_layout)
         training_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         training_box.setEnabled(self.train_edge_clf_box.isChecked())
+        self._training_box = training_box
 
         multicut_controls = MulticutGuiMixin.createDrawerControls(self)
         multicut_controls.layout().setContentsMargins(5, 0, 5, 0)
@@ -44,15 +45,7 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingMixin, LayerView
         multicut_required_slots = (op.Superpixels, op.Rag, op.EdgeProbabilities, op.EdgeProbabilitiesDict)
         self.__cleanup_fns.append(guiutil.enable_when_ready(multicut_box, multicut_required_slots))
 
-        def _handle_train_edge_clf_box_clicked():
-            checked = self.train_edge_clf_box.isChecked()
-            training_box.setEnabled(checked)
-            op.TrainRandomForest.setValue(checked)
-            if not checked:
-                op.FreezeClassifier.setValue(True)
-            self.updateAllLayers()
-
-        self.train_edge_clf_box.toggled.connect(_handle_train_edge_clf_box_clicked)
+        self.train_edge_clf_box.toggled.connect(self._handle_train_edge_clf_box_clicked)
 
         drawer_layout = QVBoxLayout()
         drawer_layout.addWidget(self.train_edge_clf_box)
@@ -70,6 +63,15 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingMixin, LayerView
 
     def appletDrawer(self):
         return self._drawer
+
+    @guiutil.threadRouted
+    def _handle_train_edge_clf_box_clicked(self, checked):
+        self._training_box.setEnabled(checked)
+        op = self.topLevelOperatorView
+        op.TrainRandomForest.setValue(checked)
+        if not checked:
+            op.FreezeClassifier.setValue(True)
+        self.updateAllLayers()
 
     def stopAndCleanUp(self):
         # Unsubscribe to all signals

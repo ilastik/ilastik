@@ -28,6 +28,7 @@ from vigra import AxisTags
 import threading
 import h5py
 from functools import partial
+import itertools
 import logging
 
 logger = logging.getLogger(__name__)
@@ -66,7 +67,7 @@ from lazyflow.slot import Slot
 
 
 class LocationOptions(object):
-    """ Enum for location menu options """
+    """Enum for location menu options"""
 
     Project = 0
     AbsolutePath = 1
@@ -413,13 +414,21 @@ class DataSelectionGui(QWidget):
         paths = ImageFileDialog(self).getSelectedPaths()
         self.addFileNames(paths, startingLaneNum, roleIndex)
 
-    def addFileNames(self, paths: List[Path], startingLaneNum: int, roleIndex: int):
-        # If the user didn't cancel
-        for path in paths or []:
+    def addFileNames(self, paths: Optional[List[Path]], startingLaneNum: Optional[int], roleIndex: int):
+        if paths is None:
+            paths = []
+
+        # startlingLaneNum == -1 if dragged onto the empty table.
+        if startingLaneNum is not None and startingLaneNum >= 0:
+            lane_indices = itertools.count(startingLaneNum)
+        else:
+            lane_indices = itertools.repeat(startingLaneNum)
+
+        for path, lane_index in zip(paths, lane_indices):
             try:
                 full_path = self._get_dataset_full_path(path, roleIndex=roleIndex)
                 info = self.instantiate_dataset_info(url=str(full_path), role=roleIndex)
-                self.addLanes([info], roleIndex=roleIndex, startingLaneNum=startingLaneNum)
+                self.addLanes([info], roleIndex=roleIndex, startingLaneNum=lane_index)
             except DataSelectionGui.UserCancelledError:
                 pass
             except Exception as ex:

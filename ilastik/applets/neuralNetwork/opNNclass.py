@@ -350,7 +350,10 @@ class OpBlockShape(Operator):
     def setup_train(self):
         tikmodel = self.ModelSession.value
         training_shape = tikmodel.training_shape
-        halo = tikmodel.get_halo(axes="tczyx")
+        # FIXME: learn how to deal with multiple inputs
+        halos = tikmodel.get_halos(axes="tczyx")
+        assert len(halos) == 1
+        halo = halos[0]
         # total halo = 2 * halo per axis
         total_halo = 2 * numpy.array(halo)
         training_shape_wo_halo = numpy.array(training_shape) - total_halo
@@ -365,14 +368,18 @@ class OpBlockShape(Operator):
 
     def setup_inference(self):
         tikmodel = self.ModelSession.value
-        valid_tczyx_shapes = tikmodel.get_valid_shapes(axes="tczyx")
-        halo = tikmodel.get_halo(axes="tczyx")  # total halo = 2 * halo per axis
+        # FIXME: learn how to deal with multiple inputs
+        valid_tczyx_shapes = tikmodel.get_input_shapes(axes="tczyx")[0]
+        halos = tikmodel.get_halos(axes="tczyx")
+        assert len(halos) == 1
+        halo = halos[0]
+        # total halo = 2 * halo per axis
         total_halo = 2 * numpy.array(halo)
         valid_tczyx_shapes_wo_halo = [numpy.array(shape) - total_halo for shape in valid_tczyx_shapes]
         largest_valid_shape = valid_tczyx_shapes_wo_halo[-1]
 
         blockDims = dict(zip("tczyx", largest_valid_shape))
-        blockDims["c"] = 9999  # always request all channels
+        blockDims["c"] = tikmodel.num_classes  # always request all channels
         axisOrder = self.RawImage.meta.getAxisKeys()
         ret = tuple(blockDims[a] for a in axisOrder)
         logger.debug(

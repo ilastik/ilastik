@@ -38,6 +38,7 @@ from PyQt5.QtWidgets import (
 )
 
 from ilastikrag.gui import FeatureSelectionDialog
+from lazyflow.utility.orderedSignal import OrderedSignal
 
 from ilastik.utility.gui import threadRouted, silent_qobject
 from ilastik.shell.gui.iconMgr import ilastikIcons
@@ -57,6 +58,9 @@ logger = logging.getLogger(__name__)
 class EdgeTrainingMixin:
     DEFAULT_PEN = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
     DEFAULT_PEN.setColor(Qt.yellow)
+
+    # signal used to synchronize live update button enable status across lanes
+    labels_updated = OrderedSignal()
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
@@ -139,12 +143,14 @@ class EdgeTrainingMixin:
         configure_update_handlers(self.live_update_button.toggled, op.FreezeClassifier)
         configure_update_handlers(self.train_from_gt_button.toggled, op.TrainRandomForest)
 
-        cleanup_fn = op.EdgeLabelsDict.notifyDirty(self.enable_live_update_on_edges_available)
+        cleanup_fn = op.EdgeLabelsDict.notifyDirty(self.any_edge_annotations_available)
         self.__cleanup_fns.append(cleanup_fn)
 
         # call once when instantiating with a saved project to make the live update button available
         # if there are annotations loaded from file.
-        self.enable_live_update_on_edges_available()
+        self.labels_updated.subscribe(self.enable_live_update_button)
+        self.__cleanup_fns.append(partial(self.labels_updated.unsubscribe, self.enable_live_update_button))
+        self.any_edge_annotations_available()
 
         # Layout
         label_layout = QHBoxLayout()
@@ -181,8 +187,7 @@ class EdgeTrainingMixin:
 
         return drawer
 
-    @threadRouted
-    def enable_live_update_on_edges_available(self, *args, **kwargs):
+    def any_edge_annotations_available(self, *args, **kwargs):
         any_have_edges = False
         op = self.topLevelOperatorView
         top_level_edge_labels_dict = op.EdgeLabelsDict.top_level_slot
@@ -192,7 +197,11 @@ class EdgeTrainingMixin:
             if any_have_edges:
                 break
 
-        self.live_update_button.setEnabled(any_have_edges)
+        self.labels_updated(any_have_edges)
+
+    @threadRouted
+    def enable_live_update_button(self, enable):
+        self.live_update_button.setEnabled(enable)
 
     def initAppletDrawerUi(self):
         """
@@ -302,6 +311,7 @@ class EdgeTrainingMixin:
         if response == QMessageBox.Ok:
             op = self.topLevelOperatorView
             op.EdgeLabelsDict.setValue({})
+            op.FreezeClassifier.setValue(True)
 
     def _handle_live_update_clicked(self, checked):
         if checked:

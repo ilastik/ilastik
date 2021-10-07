@@ -20,11 +20,10 @@
 ###############################################################################
 import os
 import logging
-import threading
+import traceback
 
 from functools import partial
 from collections import OrderedDict
-from concurrent.futures import wait
 
 import numpy
 import yaml
@@ -37,10 +36,8 @@ from PyQt5.QtCore import (
     pyqtSignal,
     QTimer,
     QStringListModel,
-    QObject,
     QModelIndex,
     QPersistentModelIndex,
-    QEventLoop,
 )
 from PyQt5.QtGui import QColor, QIcon
 from PyQt5.QtWidgets import (
@@ -64,12 +61,11 @@ from ilastik.applets.labeling.labelingGui import LabelingGui, Tool
 from ilastik.utility.gui import threadRouted
 from ilastik.utility import bind
 from ilastik.shell.gui.iconMgr import ilastikIcons
-from .tiktorchController import TiktorchController, TiktorchOperatorModel, ALLOW_TRAINING
+from .tiktorchController import TiktorchOperatorModel, ALLOW_TRAINING
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.utility import preferences
 
-from lazyflow.operators import tiktorch
 from lazyflow.cancel_token import CancellationTokenSource
 from tiktorch.types import ModelState
 from tiktorch.configkeys import TRAINING, NUM_ITERATIONS_DONE, NUM_ITERATIONS_MAX
@@ -778,7 +774,8 @@ class NNClassGui(LabelingGui):
 
     @threadRouted
     def _showErrorMessage(self, exc):
-        QMessageBox.critical(self, "Model Server Error", f"Failed to upload model:\n {exc}")
+        logger.error("".join(traceback.format_exception(etype=type(exc), value=exc, tb=exc.__traceback__)))
+        QMessageBox.critical(self, "Model Server Error", f"Failed to upload model:\n {type(exc)} {exc}")
 
     uploadDone = pyqtSignal()
 
@@ -804,7 +801,7 @@ class NNClassGui(LabelingGui):
             if fut.cancelled():
                 return
 
-            if fut.exception() and dialog.result() == QDialog.Accepted:
+            if fut.exception():
                 self._showErrorMessage(fut.exception())
 
         modelInfo.add_done_callback(_onDone)
