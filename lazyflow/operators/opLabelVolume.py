@@ -1,13 +1,29 @@
-from __future__ import absolute_import
-
-from builtins import range
-from builtins import object
+###############################################################################
+#   lazyflow: data flow based lazy parallel computation framework
+#
+#       Copyright (C) 2011-2021, the ilastik developers
+#                                <team@ilastik.org>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the Lesser GNU General Public License
+# as published by the Free Software Foundation; either version 2.1
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Lesser General Public License for more details.
+#
+# See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
+# GNU Lesser General Public License version 2.1 and 3 respectively.
+# This information is also available on the ilastik web site at:
+#          http://ilastik.org/license/
+###############################################################################
 import sys
 
 if sys.version_info.major >= 3:
     unicode = str
 
-from threading import Lock as ThreadLock
 from functools import partial
 from abc import ABCMeta, abstractmethod, abstractproperty
 import logging
@@ -18,11 +34,11 @@ import vigra
 from lazyflow.operator import Operator
 from lazyflow.slot import InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
-from lazyflow.metaDict import MetaDict
 from lazyflow.request import Request, RequestPool
 from .opReorderAxes import OpReorderAxes
 from .opBlockedArrayCache import OpBlockedArrayCache
 from .opLazyConnectedComponents import OpLazyConnectedComponents
+from .generic import OpPixelOperator
 from future.utils import with_metaclass
 
 logger = logging.getLogger(__name__)
@@ -95,6 +111,7 @@ class OpLabelVolume(Operator):
         op5.Input.connect(self.Input)
         op5.AxisOrder.setValue("txyzc")
         self._op5 = op5
+        self._opDtypeConvert = OpPixelOperator(parent=self, Input=self._op5.Output, Function=lambda x: x)
 
         self._opLabel = None
 
@@ -110,6 +127,8 @@ class OpLabelVolume(Operator):
 
     def setupOutputs(self):
         method = self.Method.value
+        input_dtype = self.Input.meta.dtype
+
         if not isinstance(method, (str, unicode)):
             method = method[0]
 
@@ -122,9 +141,15 @@ class OpLabelVolume(Operator):
 
         if self._opLabel is None:
             self._opLabel = self._labelOps[method](parent=self)
-            self._opLabel.Input.connect(self._op5.Output)
             if method is "vigra":
                 self._opLabel.BypassModeEnabled.connect(self.BypassModeEnabled)
+
+        if input_dtype == np.uint16:
+            self._opDtypeConvert.Function.setValue(lambda x: x.astype("uint32"))
+        else:
+            self._opDtypeConvert.Function.setValue(lambda x: x)
+
+        self._opLabel.Input.connect(self._opDtypeConvert.Output)
 
         # connect reordering operators
         self._op5_2.Input.connect(self._opLabel.Output)

@@ -615,7 +615,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
     def setupOutputs(self):
         input_dtype = self.InputImage.meta.dtype
 
-        fun_convert = DtypeConvertFunction(input_dtype, rescale=True)
+        fun_convert = DtypeConvertFunction(input_dtype)
 
         self.opConvertPMapsToInputPixelType.Function.setValue(fun_convert)
         # Set the blockshapes for each input image separately, depending on which axistags it has.
