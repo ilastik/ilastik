@@ -65,7 +65,6 @@ from .opConcatenateFeatureMatrices import OpConcatenateFeatureMatrices
 from .opFeatureMatrixCache import OpFeatureMatrixCache
 from .opFilterLabels import OpFilterLabels
 from .opInterpMissingData import OpInterpMissingData
-from .opLabelImage import OpLabelImage
 from .opLabelVolume import OpLabelVolume
 from .opObjectFeatures import OpObjectFeatures
 from .opPixelFeaturesPresmoothed import OpPixelFeaturesPresmoothed
@@ -75,7 +74,6 @@ from .opSimpleBlockedArrayCache import OpSimpleBlockedArrayCache
 from .opSimpleStacker import OpSimpleStacker
 from .opSlicedBlockedArrayCache import OpSlicedBlockedArrayCache
 from .opUnblockedArrayCache import OpUnblockedArrayCache
-from .opVigraLabelVolume import OpVigraLabelVolume
 from .opVigraWatershed import OpVigraWatershed
 from .valueProviders import (
     ListToMultiOperator,
