@@ -1,9 +1,13 @@
-<!-- Pull request summary in 1-2 sentences. -->
+<!-- Thank you very much for opening a PR!
+
+     Please summarize your your pull request in 1-2 sentences. -->
 
 ## Checklist
 
-<!-- Checking off an item means that either an action has been completed
-     or there was a concious decision to skip the action. -->
+<!-- Checking off an item means that an action has been successfully completed.
+     Some items might not be applicable - you can remove those if you decide
+     that this is the case.
+-->
 
 - [ ] Format code and imports.
 - [ ] Add docstrings and comments.
