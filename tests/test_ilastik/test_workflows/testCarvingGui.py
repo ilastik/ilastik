@@ -230,6 +230,7 @@ class TestCarvingGui(ShellGuiTestCaseBase):
                 opReader.cleanUp()
             slicing = roi.fullSlicing(label_data.shape)
             op_carving.WriteSeeds[slicing] = label_data
+            QApplication.processEvents()
 
             gui.currentGui().labelingDrawerUi.segment.click()
             QApplication.processEvents()
