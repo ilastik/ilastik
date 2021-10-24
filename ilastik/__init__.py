@@ -41,7 +41,7 @@ def _format_version(t):
     return ".".join(str(i) for i in t)
 
 
-__version_info__ = (1, 4, "0b19")
+__version_info__ = (1, 4, "0b20")
 
 __version__ = _format_version(__version_info__)
 
