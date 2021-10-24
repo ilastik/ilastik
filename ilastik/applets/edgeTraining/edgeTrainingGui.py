@@ -56,6 +56,8 @@ logger = logging.getLogger(__name__)
 
 
 class EdgeTrainingMixin:
+    DEFAULT_PEN = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
+    DEFAULT_PEN.setColor(Qt.yellow)
 
     # signal used to synchronize live update button enable status across lanes
     labels_updated = OrderedSignal()
@@ -241,18 +243,18 @@ class EdgeTrainingMixin:
     # Configure the handler for updated edge label maps
     def _init_edge_label_colortable(self):
         self.edge_label_colortable = [
-            QColor(0, 0, 0, 0),  # transparent
             QColor(0, 255, 0, 255),  # green
             QColor(255, 0, 0, 255),
         ]  # red
 
-        self.edge_label_pen_table = []
+        self.edge_label_pen_table = [
+            self.DEFAULT_PEN,
+        ]
         for color in self.edge_label_colortable:
             pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
             pen.setColor(color)
             pen.setWidth(5)
             self.edge_label_pen_table.append(pen)
-
         # When the edge labels are dirty, update the edge label layer pens
         op = self.topLevelOperatorView
         cleanup_fn = op.EdgeLabelsDict.notifyDirty(self.update_labeled_edges, defer=True)
@@ -412,6 +414,31 @@ class EdgeTrainingMixin:
         superpixels_ready = op.Superpixels.ready()
         with_training = op.TrainRandomForest.value
 
+        # Superpixels -- Edge Probabilities
+        if superpixels_ready and op.EdgeProbabilitiesDict.ready() and with_training:
+            layer = SegmentationEdgesLayer(createDataSource(op.Superpixels), isHoverable=True)
+            layer.name = "Edge Probabilities"  # Name is hard-coded in multiple places: grep before changing.
+            layer.visible = False
+            layer.opacity = 1.0
+            self.update_probability_edges()  # Initialize
+
+            layer.contexts.append(self.create_prefetch_menu("Edge Probabilities"))
+
+            layer.shortcutRegistration = (
+                "p",
+                ActionInfo(
+                    "Edge Training Layers",
+                    "EdgePredictionsVisibility",
+                    "Show/Hide Edge Predictions",
+                    layer.toggleVisible,
+                    self.viewerControlWidget(),
+                    layer,
+                ),
+            )
+
+            layers.append(layer)
+            del layer
+
         # Superpixels -- Edge Labels
         if superpixels_ready and op.EdgeLabelsDict.ready() and with_training:
             edge_labels = op.EdgeLabelsDict.value
@@ -441,36 +468,11 @@ class EdgeTrainingMixin:
             layers.append(layer)
             del layer
 
-        # Superpixels -- Edge Probabilities
-        if superpixels_ready and op.EdgeProbabilitiesDict.ready() and with_training:
-            layer = SegmentationEdgesLayer(createDataSource(op.Superpixels))
-            layer.name = "Edge Probabilities"  # Name is hard-coded in multiple places: grep before changing.
-            layer.visible = False
-            layer.opacity = 1.0
-            self.update_probability_edges()  # Initialize
-
-            layer.contexts.append(self.create_prefetch_menu("Edge Probabilities"))
-
-            layer.shortcutRegistration = (
-                "p",
-                ActionInfo(
-                    "Edge Training Layers",
-                    "EdgePredictionsVisibility",
-                    "Show/Hide Edge Predictions",
-                    layer.toggleVisible,
-                    self.viewerControlWidget(),
-                    layer,
-                ),
-            )
-
-            layers.append(layer)
-            del layer
-
         # Superpixels -- Edges
         if superpixels_ready:
-            default_pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
-            default_pen.setColor(Qt.yellow)
-            layer = SegmentationEdgesLayer(createDataSource(op.Superpixels), default_pen)
+            layer = SegmentationEdgesLayer(
+                createDataSource(op.Superpixels), default_pen=self.DEFAULT_PEN, isHoverable=with_training
+            )
             layer.name = "Superpixel Edges"
             layer.visible = True
             layer.opacity = 1.0
