@@ -557,6 +557,11 @@ class OpPixelOperator(Operator):
     Function = InputSlot()
     Output = OutputSlot()
 
+    def __init__(self, graph=None, parent=None, Input=None, Function=None):
+        super().__init__(graph=graph, parent=parent)
+        self.Input.setOrConnectIfAvailable(Input)
+        self.Function.setOrConnectIfAvailable(Function)
+
     def setupOutputs(self):
         self.function = self.inputs["Function"].value
 

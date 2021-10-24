@@ -40,7 +40,7 @@ class AnimalConservationTrackingWorkflowBase(ConservationTrackingWorkflowBase):
 
 class AnimalConservationTrackingWorkflowFromBinary(AnimalConservationTrackingWorkflowBase):
     workflowName = "Animal Conservation Tracking Workflow from Binary Image"
-    workflowDisplayName = "Animal Tracking [Inputs: Raw Data, Binary Image]"
+    workflowDisplayName = "Animal Tracking [Inputs: Raw Data, Segmentation Image]"
 
     withOptTrans = False
     fromBinary = True

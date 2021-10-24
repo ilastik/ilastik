@@ -104,6 +104,31 @@ class TestVigra:
             for t in range(out.shape[4]):
                 assertEquivalentLabeling(blocks[..., c, t], out[..., c, t])
 
+    def testDtypeUint16(self):
+        vol = np.zeros((82, 70, 75, 5, 5), dtype=np.uint16)
+        vol = vigra.taggedView(vol, axistags="xyzct")
+
+        blocks = np.zeros(vol.shape, dtype=np.uint8)
+        blocks[30:50, 40:60, 50:70, 2:4, 3:5] = 1
+        blocks[30:50, 40:60, 50:70, 2:4, 0:2] = 2
+        blocks[60:70, 30:40, 10:33, :, :] = 3
+
+        vol[blocks == 1] = 255
+        vol[blocks == 2] = 255
+        vol[blocks == 3] = 255
+
+        op = OpLabelVolume(graph=Graph())
+        op.Method.setValue(self.method)
+        op.Input.setValue(vol)
+
+        out = op.Output[...].wait()
+        tags = op.Output.meta.getTaggedShape()
+        out = vigra.taggedView(out, axistags="".join([s for s in tags]))
+
+        for c in range(out.shape[3]):
+            for t in range(out.shape[4]):
+                assertEquivalentLabeling(blocks[..., c, t], out[..., c, t])
+
     def testConsistency(self):
         vol = np.zeros((1000, 100, 10))
         vol = vol.astype(np.uint8)
