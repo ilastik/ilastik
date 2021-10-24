@@ -27,6 +27,8 @@ class DtypeConvertFunction:
 
     Simple callable class that converts between dtypes.
 
+    Assumption for floats (as inputs): range [0.0 .. 1.0]
+
     This class was needed in order to be able to check functions for equality.
     When using this function as an input for OpPixelOperator.Function, changing
     the input value to the same conversion function will not result in
