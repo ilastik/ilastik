@@ -31,6 +31,10 @@ import time
 from typing import Optional, Iterable, List
 from pkg_resources import parse_version
 
+try:
+    from ._version import version_tuple
+except ImportError:
+    version_tuple = (1, 4, "0b20")
 ##################
 # # Version info ##
 ##################
@@ -41,7 +45,7 @@ def _format_version(t):
     return ".".join(str(i) for i in t)
 
 
-__version_info__ = (1, 4, "0b20")
+__version_info__ = version_tuple
 
 __version__ = _format_version(__version_info__)
 

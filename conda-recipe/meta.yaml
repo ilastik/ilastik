@@ -1,0 +1,77 @@
+{% set setup_py_data = load_setup_py_data(setup_file='../setup.py', from_recipe_dir=True) %}
+
+package:
+  name: ilastik-core
+  version: {{ setup_py_data.version }}
+
+source:
+  path: ..
+
+requirements:
+  host:
+    - python >=3.7,<3.10
+    - pip
+    - setuptools >=40.0
+    - setuptools_scm
+  run:
+    - python >=3.7,<3.10
+    # pin for numpy necessary because of vigra issue
+    # https://github.com/conda-forge/vigra-feedstock/pull/80#issuecomment-965105882
+    - numpy <1.20
+    - appdirs
+    - cachetools
+    - dpct
+    - fastfilters
+    - future
+    - greenlet
+    - grpcio
+    - h5py
+    - hytra
+    - ilastik-feature-selection
+    - ilastikrag
+    - ilastiktools
+    - jsonschema
+    - mamutexport
+    - marching_cubes
+    - ndstructs
+    - nifty
+    - psutil
+    - pyopengl
+    - pyqt >=5.6
+    - python-elf
+    - pytiff
+    - scikit-image
+    - scikit-learn <=0.21
+    - vigra
+    - wsdt
+    - xarray
+    - z5py
+
+
+build:
+  number: 0
+  noarch: python
+  script:
+    - export SETUPTOOLS_SCM_PRETEND_VERSION={{ setup_py_data.version }}
+    - {{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv
+
+
+test:
+  imports:
+    - ilastik
+    - ilastik.experimental
+    - ilastik.config
+    - ilastik.applets
+    - ilastik.workflows
+    - lazyflow
+
+  source_files:
+    - tests
+    - pytest.ini
+
+  requires:
+    - pytest >=3,<4
+    - pytest-qt
+
+  commands:
+    - pytest tests/test_ilastik/test_experimental
