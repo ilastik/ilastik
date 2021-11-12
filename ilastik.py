@@ -109,9 +109,11 @@ def main():
     path_setup()
 
     # https://bugreports.qt.io/browse/QTBUG-87014
-    if platform.mac_ver()[0] == "10.16":
-        os.environ["QT_MAC_WANTS_LAYER"] = "1"
-        os.environ["VOLUMINA_SHOW_3D_WIDGET"] = "0"
+    if platform.system().lower() == "darwin":
+        mac_ver = tuple(map(int, platform.mac_ver()[0].split(".")))
+        if mac_ver >= (10, 6):
+            os.environ["QT_MAC_WANTS_LAYER"] = "1"
+            os.environ["VOLUMINA_SHOW_3D_WIDGET"] = "0"
 
     from ilastik.__main__ import main
 
