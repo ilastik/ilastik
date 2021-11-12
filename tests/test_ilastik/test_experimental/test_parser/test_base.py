@@ -8,7 +8,6 @@ from lazyflow.classifiers.parallelVigraRfLazyflowClassifier import (
     ParallelVigraRfLazyflowClassifierFactory,
     ParallelVigraRfLazyflowClassifier,
 )
-from lazyflow.classifiers.sklearnLazyflowClassifier import SklearnLazyflowClassifierFactory, SklearnLazyflowClassifier
 
 
 class TestIlastikParser:
@@ -32,7 +31,6 @@ class TestIlastikParser:
                 ParallelVigraRfLazyflowClassifierFactory,
                 ParallelVigraRfLazyflowClassifier,
             ),
-            (TestProjects.PIXEL_CLASS_1_CHANNEL_SKLEARN, SklearnLazyflowClassifierFactory, SklearnLazyflowClassifier),
         ],
     )
     def test_parse_project_classifier(self, test_data_lookup, proj, expected_factory, expected_classifier):

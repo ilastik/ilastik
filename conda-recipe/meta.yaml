@@ -41,7 +41,7 @@ requirements:
     - python-elf
     - pytiff
     - scikit-image
-    - scikit-learn <=0.21
+    - scikit-learn
     - vigra
     - wsdt
     - xarray
@@ -72,6 +72,8 @@ test:
   requires:
     - pytest >=3,<4
     - pytest-qt
+    - volumina
+    - tiktorch
 
   commands:
-    - pytest tests/test_ilastik/test_experimental
+    - pytest -v .
