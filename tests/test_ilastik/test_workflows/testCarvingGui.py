@@ -29,7 +29,15 @@ import platform
 import pytest
 
 
-@pytest.mark.skipif(platform.mac_ver()[0] == "10.16", reason="CPython cannot find OpenGL system shared lib on macOS 11")
+# https://bugreports.qt.io/browse/QTBUG-87014
+is_darwin_bigsur = False
+if platform.system().lower() == "darwin":
+    mac_ver = tuple(map(int, platform.mac_ver()[0].split(".")))
+    if mac_ver >= (10, 6):
+        is_darwin_bigsur = True
+
+
+@pytest.mark.skipif(is_darwin_bigsur, reason="CPython cannot find OpenGL system shared lib on macOS 11")
 class TestCarvingGui(ShellGuiTestCaseBase):
     """Run a set of GUI-based tests on the carving workflow.
 
