@@ -42,7 +42,6 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
         self._channel_selector = channel_selector
 
     def onChannelSelectionClicked(self, *args):
-        print("Channel Selection Clicked", args, dir(self._channel_selector))
         channel_selections = []
         for ch in range(len(self.channel_actions)):
             if self.channel_actions[ch].isChecked():

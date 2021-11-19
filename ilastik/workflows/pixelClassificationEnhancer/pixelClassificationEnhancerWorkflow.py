@@ -4,6 +4,17 @@ from ilastik.applets.pixelClassificationEnhancer import PixelClassificationEnhan
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 from lazyflow.graph import Graph
 
+from ilastik.config import runtime_cfg
+from ilastik.applets.serverConfiguration.types import ServerConfig, Device
+
+from ilastik.workflows.neuralNetwork._localLauncher import LocalServerLauncher
+from lazyflow.operators import tiktorch as tiktorch_lf
+
+
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class PixelClassificationEnhancerWorkflow(PixelClassificationWorkflow):
     workflowName = "Pixel Classification Enhancer"
@@ -28,6 +39,12 @@ class PixelClassificationEnhancerWorkflow(PixelClassificationWorkflow):
         )
 
         self.featureSelectionApplet = self.createFeatureSelectionApplet()
+
+        tiktorch_exe_path = runtime_cfg.tiktorch_executable
+        if not tiktorch_exe_path:
+            raise RuntimeError("No tiktorch-executable specified")
+
+        self._launcher = LocalServerLauncher(tiktorch_exe_path)
 
         self.pcApplet = self.createPixelClassificationEnhancerApplet()
         opClassify = self.pcApplet.topLevelOperator
@@ -65,4 +82,41 @@ class PixelClassificationEnhancerWorkflow(PixelClassificationWorkflow):
         self._batch_input_args = False
 
     def createPixelClassificationEnhancerApplet(self):
-        return PixelClassificationEnhancerApplet(self, "PixelClassificationEnhancer")
+
+        server_config, connection_factory = self._start_local_server()
+
+        pce_appplet = PixelClassificationEnhancerApplet(
+            self, "PixelClassificationEnhancer", connectionFactory=connection_factory
+        )
+        opClassify = pce_appplet.topLevelOperator
+        opClassify.ServerConfig.setValue(server_config)
+        return pce_appplet
+
+    def _start_local_server(self):
+        conn_str = self._launcher.start()
+        srv_config = ServerConfig(id="auto", address=conn_str, devices=[Device(id="cpu", name="cpu", enabled=True)])
+        connFactory = tiktorch_lf.TiktorchConnectionFactory()
+        conn = connFactory.ensure_connection(srv_config)
+
+        devices = conn.get_devices()
+        preferred_cuda_device_id = runtime_cfg.preferred_cuda_device_id
+        device_ids = [dev[0] for dev in devices]
+        cuda_devices = tuple(d for d in device_ids if d.startswith("cuda"))
+
+        if preferred_cuda_device_id not in device_ids:
+            if preferred_cuda_device_id:
+                logger.warning(f"Could nor find preferred cuda device {preferred_cuda_device_id}")
+            try:
+                preferred_cuda_device_id = cuda_devices[0]
+            except IndexError:
+                preferred_cuda_device_id = "cpu"
+
+            logger.info(f"Using default device for Neural Network Workflow {preferred_cuda_device_id}")
+        else:
+            logger.info(f"Using specified device for Neural Netowrk Workflow {preferred_cuda_device_id}")
+
+        device_name = devices[device_ids.index(preferred_cuda_device_id)][1]
+
+        srv_config = srv_config.evolve(devices=[Device(id=preferred_cuda_device_id, name=device_name, enabled=True)])
+
+        return srv_config, connFactory
