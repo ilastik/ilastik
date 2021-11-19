@@ -45,3 +45,11 @@ class PixelClassificationEnhancerApplet(PixelClassificationApplet):
         # If we start reporting progress for multiple tasks that might occur simulatneously,
         #  we'll need to aggregate the progress updates.
         self._topLevelOperator.opTrain.progressSignal.subscribe(self.progressSignal)
+
+    @property
+    def singleLaneGuiClass(self):
+        from .pixelClassificationEnhancerGui import (
+            PixelClassificationEnhancerGui,
+        )  # prevent imports of QT classes in headless mode
+
+        return PixelClassificationEnhancerGui

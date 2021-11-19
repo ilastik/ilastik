@@ -862,3 +862,52 @@ class OpSelectSubslot(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         pass
+
+
+class OpMultiChannelSelector(Operator):
+    Input = InputSlot()
+    SelectedChannels = InputSlot(value=[0])
+
+    Output = OutputSlot()
+
+    def setupOutputs(self):
+        if len(self.SelectedChannels.value) == 0:
+            self.Output.meta.NOTREADY = True
+            return
+
+        self.Output.meta.assignFrom(self.Input.meta)
+        self.Output.meta.shape = self.Input.meta.shape[:-1] + (len(self.SelectedChannels.value),)
+
+    def execute(self, slot, subindex, roi, result):
+        channel_indexes = sorted(self.SelectedChannels.value)
+
+        input_roi = roi.copy()
+        input_roi.start[-1] = channel_indexes[0]
+        input_roi.stop[-1] = channel_indexes[-1] + 1
+
+        if len(channel_indexes) == 1:
+            # Fetch in-place
+            self.Input(input_roi.start, input_roi.stop).writeInto(result).wait()
+
+        else:
+            fetched_data = self.Input(input_roi.start, input_roi.stop).wait()
+            channel_indexes = channel_indexes - channel_indexes[0]
+            result[...] = fetched_data[..., tuple(channel_indexes)]
+
+    def propagateDirty(self, slot, subindex, roi):
+        if slot == self.SelectedChannels:
+            # Everything is dirty
+            self.Output.setDirty()
+        elif slot == self.Input:
+            selected_channels = self.SelectedChannels.value
+            if len(selected_channels) == 0:
+                return
+            # If any of the channels we care about became dirty, our output is dirty.
+            channel_indexes = sorted(selected_channels)
+            first_channel = channel_indexes[0]
+            last_channel = channel_indexes[-1]
+            if roi.start[-1] > last_channel or roi.stop[-1] <= first_channel:
+                return
+            self.Output.setDirty(roi.start, roi.stop)
+        else:
+            assert False, "Unhandled input slot: {}".format(slot.name)
