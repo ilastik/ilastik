@@ -10,7 +10,11 @@ from PyQt5.QtWidgets import QComboBox, QLabel, QHBoxLayout, QPushButton, QMenu, 
 class PixelClassificationEnhancerGui(PixelClassificationGui):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.liveNNPrediction = False
         self.__cleanup_fns = []
+        self._init_channel_selector_ui()
+
+    def _init_channel_selector_ui(self):
         drawer = self._labelControlUi
 
         channel_selector = QPushButton()
