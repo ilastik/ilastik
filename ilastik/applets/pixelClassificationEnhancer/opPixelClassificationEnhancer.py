@@ -24,6 +24,12 @@ class OpPixelClassificationEnhancer(OpPixelClassification):
     NNClassifier = OutputSlot()
     EnhancerInput = OutputSlot(level=1)
 
+    NNPredictionProbabilities = OutputSlot(
+        level=1
+    )  # Classification predictions (via feature cache for interactive speed)
+    NNPredictionProbabilityChannels = OutputSlot(level=2)  # Classification predictions, enumerated by channel
+    CachedNNPredictionProbabilities = OutputSlot(level=1)
+
     def __init__(self, *args, connectionFactory, **kwargs):
         super().__init__(*args, **kwargs)
         self._connectionFactory = connectionFactory
@@ -47,6 +53,10 @@ class OpPixelClassificationEnhancer(OpPixelClassification):
         self.opNNPredictionPipeline.Classifier.connect(self.ModelSession)
         self.opNNPredictionPipeline.NumClasses.connect(self.NumNNClasses)
         self.opNNPredictionPipeline.FreezePredictions.connect(self.FreezeNNPredictions)
+
+        self.NNPredictionProbabilities.connect(self.opNNPredictionPipeline.PredictionProbabilities)
+        self.CachedNNPredictionProbabilities.connect(self.opNNPredictionPipeline.CachedPredictionProbabilities)
+        self.NNPredictionProbabilityChannels.connect(self.opNNPredictionPipeline.PredictionProbabilityChannels)
 
     def setupOutputs(self):
         if self.opNNBlockShape.BlockShapeInference.ready():
