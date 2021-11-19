@@ -32,6 +32,10 @@ from .pixelClassification import PixelClassificationWorkflow
 
 WORKFLOW_CLASSES += [PixelClassificationWorkflow]
 
+from .pixelClassificationEnhancer import PixelClassificationEnhancerWorkflow
+
+WORKFLOW_CLASSES += [PixelClassificationEnhancerWorkflow]
+
 from .newAutocontext.newAutocontextWorkflow import AutocontextTwoStage
 
 WORKFLOW_CLASSES += [AutocontextTwoStage]
