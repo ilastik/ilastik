@@ -4,18 +4,39 @@ from ..pixelClassification.FeatureSelectionDialog import FeatureSelectionDialog
 from functools import partial
 
 import sip
-from PyQt5.QtWidgets import QComboBox, QLabel, QHBoxLayout, QPushButton, QMenu, QAction
+from PyQt5.QtWidgets import (
+    QFileDialog,
+    QCheckBox,
+    QComboBox,
+    QLabel,
+    QHBoxLayout,
+    QPushButton,
+    QMenu,
+    QAction,
+    QToolButton,
+)
+from PyQt5.QtCore import Qt, pyqtSignal
+from ilastik.shell.gui.iconMgr import ilastikIcons
+from PyQt5.QtGui import QColor, QIcon
+from ilastik.widgets.progressDialog import PercentProgressDialog
+from volumina.utility import preferences
+
+
+from lazyflow.cancel_token import CancellationTokenSource
+from tiktorch.types import ModelState
 
 
 class PixelClassificationEnhancerGui(PixelClassificationGui):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._drawer = self._labelControlUi
         self.liveNNPrediction = False
         self.__cleanup_fns = []
         self._init_channel_selector_ui()
+        self._init_nn_prediction_ui()
 
     def _init_channel_selector_ui(self):
-        drawer = self._labelControlUi
+        drawer = self._drawer
 
         channel_selector = QPushButton()
         self.channel_menu = QMenu(self)  # Must retain menus (in self) or else they get deleted.
@@ -44,6 +65,73 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
         channel_selection_layout.addWidget(channel_selector)
         drawer.verticalLayout.addLayout(channel_selection_layout)
         self._channel_selector = channel_selector
+
+    @classmethod
+    def getModelToOpen(cls, parent_window, defaultDirectory):
+        """
+        opens a QFileDialog for importing files
+        """
+        return QFileDialog.getOpenFileName(parent_window, "Select Model", defaultDirectory, "Models (*.tmodel *.zip)")[
+            0
+        ]
+
+    def _init_nn_prediction_ui(self):
+        drawer = self._drawer
+        nn_pred_layout = QHBoxLayout()
+        self.liveNNPredictionBtn = QToolButton()
+        self.liveNNPredictionBtn.setText("Enhance Probabilities")
+        self.liveNNPredictionBtn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.set_live_predict_icon(self.liveNNPredictionBtn)
+        self.liveNNPredictionBtn.toggled.connect(self.toggleLiveNNPrediction)
+        self.checkShowNNPredictions = QCheckBox()
+        self.checkShowNNPredictions.setText("Show enhance Predictions")
+        nn_pred_layout.addWidget(self.checkShowNNPredictions)
+
+        nn_pred_layout.addWidget(self.liveNNPredictionBtn)
+
+        nn_ctrl_layout = QHBoxLayout()
+        self.addModel = QPushButton()
+        self.addModel.clicked.connect(self.addModelClicked)
+        self.closeModel = QToolButton()
+        self.closeModel.setIcon(QIcon(ilastikIcons.ProcessStop))
+        self.closeModel.clicked.connect(self.closeModelClicked)
+
+        nn_ctrl_layout.addWidget(self.addModel)
+        nn_ctrl_layout.addWidget(self.closeModel)
+
+        drawer.verticalLayout.addLayout(nn_ctrl_layout)
+        drawer.verticalLayout.addLayout(nn_pred_layout)
+
+    def updatePredictions(self):
+        logger.info("Invalidating predictions")
+        self.topLevelOperatorView.FreezePredictions.setValue(False)
+        self.topLevelOperatorView.classifier_cache.Output.setDirty()
+
+    def toggleLiveNNPrediction(self):
+        logger.debug("toggle live prediction mode to %r", checked)
+        self.liveNNPrediction.setEnabled(False)
+
+        # If we're changing modes, enable/disable our controls and other applets accordingly
+        if self.livePrediction != checked:
+            if checked:
+                self.updatePredictions()
+
+            self.livePrediction = checked
+            self.labelingDrawerUi.livePrediction.setChecked(checked)
+            self.set_live_predict_icon(checked)
+
+        self.topLevelOperatorView.FreezeNNPredictions.setValue(not checked)
+
+        # Auto-set the "show predictions" state according to what the user just clicked.
+        if checked:
+            self.checkShowNNPredictions.setChecked(True)
+            self.handleShowPredictionsClicked()
+
+        # Notify the workflow that some applets may have changed state now.
+        # (For example, the downstream pixel classification applet can
+        #  be used now that there are features selected)
+        self.parentApplet.appletStateUpdateRequested()
+        self.liveNNPrediction.setEnabled(True)
 
     def onChannelSelectionClicked(self, *args):
         channel_selections = []
@@ -78,3 +166,73 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
         )
 
         self.featSelDlg = FeatureSelectionDialog(thisOpFeatureSelection, self, self.labelListData)
+
+    @property
+    def tiktorchController(self):
+        return self.parentApplet.tiktorchController
+
+    @property
+    def tiktorchModel(self):
+        return self.parentApplet.tiktorchOpModel
+
+    def set_live_predict_icon(self, active: bool):
+        if active:
+            self.liveNNPredictionBtn.setIcon(QIcon(ilastikIcons.Pause))
+        else:
+            self.liveNNPredictionBtn.setIcon(QIcon(ilastikIcons.Play))
+
+    def addModelClicked(self):
+        """
+        When AddModel button is clicked.
+        """
+        # open dialog in recent model folder if possible
+        folder = preferences.get("DataSelection", "recent model")
+        if folder is None:
+            folder = os.path.expanduser("~")
+
+        # get folder from user
+        filename = self.getModelToOpen(self, folder)
+
+        if filename:
+            with open(filename, "rb") as modelFile:
+                modelBytes = modelFile.read()
+
+            self._uploadModel(modelBytes)
+
+            preferences.set("DataSelection", "recent model", filename)
+            self.parentApplet.appletStateUpdateRequested()
+
+    def closeModelClicked(self):
+        self.tiktorchController.closeSession()
+
+    def cc(self, *args, **kwargs):
+        self.cancel_src.cancel()
+
+    uploadDone = pyqtSignal()
+
+    def _uploadModel(self, modelBytes):
+        cancelSrc = CancellationTokenSource()
+        dialog = PercentProgressDialog(self, title="Initializing model")
+        dialog.rejected.connect(cancelSrc.cancel)
+        dialog.open()
+
+        modelInfo = self.tiktorchController.uploadModel(
+            modelBytes=modelBytes, progressCallback=dialog.updateProgress, cancelToken=cancelSrc.token
+        )
+
+        def _onUploadDone():
+            self.uploadDone.disconnect()
+            dialog.accept()
+
+        self.uploadDone.connect(_onUploadDone)
+
+        def _onDone(fut):
+            self.uploadDone.emit()
+
+            if fut.cancelled():
+                return
+
+            if fut.exception():
+                self._showErrorMessage(fut.exception())
+
+        modelInfo.add_done_callback(_onDone)
