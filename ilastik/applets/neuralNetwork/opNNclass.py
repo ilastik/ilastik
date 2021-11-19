@@ -53,6 +53,7 @@ class OpNNClassification(Operator):
 
     # Graph inputs
     InputImages = InputSlot(level=1)
+    OverlayImages = InputSlot(level=1, optional=True)
     ServerConfig = InputSlot(stype=stype.Opaque, nonlane=True)
     Checkpoints = InputSlot()
 

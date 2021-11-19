@@ -615,6 +615,16 @@ class NNClassGui(LabelingGui):
                 ref_label.nameChanged.connect(setPredLayerName)
                 layers.append(predictionLayer)
 
+        # Add the overlay second to last
+        overlaySlot = self.topLevelOperatorView.OverlayImages
+        if overlaySlot.ready():
+            overlayLayer = self.createStandardLayerFromSlot(overlaySlot)
+            overlayLayer.name = "Overlay"
+            overlayLayer.visible = True
+            overlayLayer.opacity = 1.0
+
+            layers.append(overlayLayer)
+
         # Add the raw data last (on the bottom)
         inputDataSlot = self.topLevelOperatorView.InputImages
         if inputDataSlot.ready():
