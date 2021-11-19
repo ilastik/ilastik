@@ -1,0 +1,5 @@
+from ilastik.applets.pixelClassification.pixelClassificationSerializer import PixelClassificationSerializer
+
+
+class PixelClassificationEnhancerSerializer(PixelClassificationSerializer):
+    pass
