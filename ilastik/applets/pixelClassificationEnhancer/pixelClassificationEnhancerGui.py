@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import (
     QAction,
     QToolButton,
 )
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from PyQt5.QtGui import QColor, QIcon
 from ilastik.widgets.progressDialog import PercentProgressDialog
@@ -24,6 +24,13 @@ from volumina.utility import preferences
 
 from lazyflow.cancel_token import CancellationTokenSource
 from tiktorch.types import ModelState
+
+from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
+from volumina.colortables import default16_new
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class PixelClassificationEnhancerGui(PixelClassificationGui):
@@ -102,22 +109,22 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
         drawer.verticalLayout.addLayout(nn_ctrl_layout)
         drawer.verticalLayout.addLayout(nn_pred_layout)
 
-    def updatePredictions(self):
+    def updateNNPredictions(self):
         logger.info("Invalidating predictions")
         self.topLevelOperatorView.FreezePredictions.setValue(False)
         self.topLevelOperatorView.classifier_cache.Output.setDirty()
 
     def toggleLiveNNPrediction(self):
         logger.debug("toggle live prediction mode to %r", checked)
-        self.liveNNPrediction.setEnabled(False)
+        self.liveNNPredictionBtn.setEnabled(False)
 
         # If we're changing modes, enable/disable our controls and other applets accordingly
-        if self.livePrediction != checked:
+        if self.liveNNPrediction != checked:
             if checked:
-                self.updatePredictions()
+                self.updateNNPredictions()
 
-            self.livePrediction = checked
-            self.labelingDrawerUi.livePrediction.setChecked(checked)
+            self.liveNNPrediction = checked
+            self.liveNNPrediction.setChecked(checked)
             self.set_live_predict_icon(checked)
 
         self.topLevelOperatorView.FreezeNNPredictions.setValue(not checked)
@@ -125,7 +132,7 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
         # Auto-set the "show predictions" state according to what the user just clicked.
         if checked:
             self.checkShowNNPredictions.setChecked(True)
-            self.handleShowPredictionsClicked()
+            self.handleShowNNPredictionsClicked()
 
         # Notify the workflow that some applets may have changed state now.
         # (For example, the downstream pixel classification applet can
@@ -151,8 +158,25 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
     def setupLayers(self):
 
         layers = []
-        # EnhancerInput
         enhancer_slot = self.topLevelOperatorView.EnhancerInput
+
+        # NeuralNetwork Predictions
+        if enhancer_slot is not None and enhancer_slot.ready():
+            for channel, predictionSlot in enumerate(self.topLevelOperatorView.NNPredictionProbabilityChannels):
+                logger.info(f"prediction_slot: {predictionSlot}")
+                if predictionSlot.ready():
+                    predictsrc = LazyflowSource(predictionSlot)
+                    predictionLayer = AlphaModulatedLayer(
+                        predictsrc, tintColor=default16_new[channel + 1], normalize=(0.0, 1.0)
+                    )
+                    predictionLayer.visible = self.checkShowNNPredictions.isChecked()
+                    predictionLayer.opacity = 0.5
+                    predictionLayer.visibleChanged.connect(self.updateShowNNPredictionCheckbox)
+
+                    predictionLayer.name = f"NN prediction Channel {channel}"
+                    layers.append(predictionLayer)
+
+        # EnhancerInput
         if enhancer_slot is not None and enhancer_slot.ready():
             layer = self.createStandardLayerFromSlot(enhancer_slot, name="EnhancerInput")
             layers.append(layer)
@@ -236,3 +260,33 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
                 self._showErrorMessage(fut.exception())
 
         modelInfo.add_done_callback(_onDone)
+
+    @pyqtSlot()
+    def handleShowNNPredictionsClicked(self):
+        """
+        sets the layer visibility when showPredicition is clicked
+        """
+        checked = self.checkShowNNPredictions.isChecked()
+        for layer in self.layerstack:
+            if "NN prediction" in layer.name:
+                layer.visible = checked
+
+    @pyqtSlot()
+    def updateShowNNPredictionCheckbox(self):
+        """
+        updates the showPrediction Checkbox when Predictions were added to the layers
+        """
+        predictLayerCount = 0
+        visibleCount = 0
+        for layer in self.layerstack:
+            if "NN prediction" in layer.name:
+                predictLayerCount += 1
+                if layer.visible:
+                    visibleCount += 1
+
+        if visibleCount == 0:
+            self.checkShowNNPredictions.setCheckState(Qt.Unchecked)
+        elif predictLayerCount == visibleCount:
+            self.checkShowNNPredictions.setCheckState(Qt.Checked)
+        else:
+            self.checkShowNNPredictions.setCheckState(Qt.PartiallyChecked)
