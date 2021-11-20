@@ -14,6 +14,7 @@ from PyQt5.QtWidgets import (
     QMenu,
     QAction,
     QToolButton,
+    QColorDialog,
 )
 from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QTimer
 from ilastik.shell.gui.iconMgr import ilastikIcons
@@ -208,6 +209,16 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
                     predictionLayer.visibleChanged.connect(self.updateShowNNPredictionCheckbox)
 
                     predictionLayer.name = f"NN prediction Channel {channel}"
+
+                    def setLayerColor(c, predictLayer_=predictionLayer):
+                        new_color = QColorDialog.getColor()
+                        if new_color:
+                            predictLayer_.tintColor = new_color
+
+                    action = QAction("Change prediction color")
+                    action.triggered.connect(setLayerColor)
+                    predictionLayer.contexts.append(action)
+
                     layers.append(predictionLayer)
 
         # EnhancerInput
