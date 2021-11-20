@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import (
     QAction,
     QToolButton,
 )
-from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QTimer
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from PyQt5.QtGui import QColor, QIcon
 from ilastik.widgets.progressDialog import PercentProgressDialog
@@ -24,6 +24,7 @@ from volumina.utility import preferences
 
 from lazyflow.cancel_token import CancellationTokenSource
 from tiktorch.types import ModelState
+from ..neuralNetwork.tiktorchController import TiktorchOperatorModel
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.colortables import default16_new
@@ -41,6 +42,10 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
         self.__cleanup_fns = []
         self._init_channel_selector_ui()
         self._init_nn_prediction_ui()
+
+        self.invalidatePredictionsTimer = QTimer()
+        self.invalidatePredictionsTimer.timeout.connect(self.updateNNPredictions)
+        self.tiktorchModel.registerListener(self._onModelStateChanged)
 
     def _init_channel_selector_ui(self):
         drawer = self._drawer
@@ -86,9 +91,10 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
         drawer = self._drawer
         nn_pred_layout = QHBoxLayout()
         self.liveNNPredictionBtn = QToolButton()
-        self.liveNNPredictionBtn.setText("Enhance Probabilities")
+        self.liveNNPredictionBtn.setText("Enhance!")
+        self.liveNNPredictionBtn.setCheckable(True)
         self.liveNNPredictionBtn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        self.set_live_predict_icon(self.liveNNPredictionBtn)
+        self.set_nn_live_predict_icon(self.liveNNPredictionBtn)
         self.liveNNPredictionBtn.toggled.connect(self.toggleLiveNNPrediction)
         self.checkShowNNPredictions = QCheckBox()
         self.checkShowNNPredictions.setText("Show enhance Predictions")
@@ -109,12 +115,40 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
         drawer.verticalLayout.addLayout(nn_ctrl_layout)
         drawer.verticalLayout.addLayout(nn_pred_layout)
 
+    def _onModelStateChanged(self, state):
+
+        if state is TiktorchOperatorModel.State.Empty:
+            self.addModel.setText("Load model")
+            self.addModel.setEnabled(True)
+            self.closeModel.setEnabled(False)
+            self.liveNNPredictionBtn.setEnabled(False)
+            self.updateAllLayers()
+
+        elif state is TiktorchOperatorModel.State.ReadFromProjectFile:
+            info = self.tiktorchModel.modelInfo
+
+            self.addModel.setText(f"{info.name}")
+            self.addModel.setEnabled(True)
+            self.closeModel.setEnabled(True)
+            self.liveNNPredictionBtn.setEnabled(False)
+
+            self.updateAllLayers()
+
+        elif state is TiktorchOperatorModel.State.Ready:
+            info = self.tiktorchModel.modelInfo
+            self.addModel.setText(f"{info.name}")
+            self.addModel.setEnabled(True)
+            self.closeModel.setEnabled(True)
+            self.liveNNPredictionBtn.setEnabled(True)
+            self.updateAllLayers()
+
     def updateNNPredictions(self):
         logger.info("Invalidating predictions")
         self.topLevelOperatorView.FreezePredictions.setValue(False)
         self.topLevelOperatorView.classifier_cache.Output.setDirty()
 
-    def toggleLiveNNPrediction(self):
+    def toggleLiveNNPrediction(self, checked):
+
         logger.debug("toggle live prediction mode to %r", checked)
         self.liveNNPredictionBtn.setEnabled(False)
 
@@ -124,8 +158,8 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
                 self.updateNNPredictions()
 
             self.liveNNPrediction = checked
-            self.liveNNPrediction.setChecked(checked)
-            self.set_live_predict_icon(checked)
+            self.liveNNPredictionBtn.setChecked(checked)
+            self.set_nn_live_predict_icon(checked)
 
         self.topLevelOperatorView.FreezeNNPredictions.setValue(not checked)
 
@@ -138,7 +172,7 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
         # (For example, the downstream pixel classification applet can
         #  be used now that there are features selected)
         self.parentApplet.appletStateUpdateRequested()
-        self.liveNNPrediction.setEnabled(True)
+        self.liveNNPredictionBtn.setEnabled(True)
 
     def onChannelSelectionClicked(self, *args):
         channel_selections = []
@@ -167,7 +201,7 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
                 if predictionSlot.ready():
                     predictsrc = LazyflowSource(predictionSlot)
                     predictionLayer = AlphaModulatedLayer(
-                        predictsrc, tintColor=default16_new[channel + 1], normalize=(0.0, 1.0)
+                        predictsrc, tintColor=QColor(default16_new[channel + 1]), normalize=(0.0, 1.0)
                     )
                     predictionLayer.visible = self.checkShowNNPredictions.isChecked()
                     predictionLayer.opacity = 0.5
@@ -199,7 +233,7 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
     def tiktorchModel(self):
         return self.parentApplet.tiktorchOpModel
 
-    def set_live_predict_icon(self, active: bool):
+    def set_nn_live_predict_icon(self, active: bool):
         if active:
             self.liveNNPredictionBtn.setIcon(QIcon(ilastikIcons.Pause))
         else:
