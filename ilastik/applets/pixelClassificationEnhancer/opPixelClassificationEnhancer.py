@@ -6,6 +6,11 @@ from lazyflow.graph import InputSlot, OutputSlot
 from ilastik.utility import OpMultiLaneWrapper
 from lazyflow.operators.generic import OpMultiChannelSelector
 from lazyflow import stype
+from functools import partial
+import logging
+from ilastik.utility.operatorSubView import OperatorSubView
+
+logger = logging.getLogger(__name__)
 
 
 class OpPixelClassificationEnhancer(OpPixelClassification):
@@ -59,6 +64,7 @@ class OpPixelClassificationEnhancer(OpPixelClassification):
         self.NNPredictionProbabilityChannels.connect(self.opNNPredictionPipeline.PredictionProbabilityChannels)
 
     def setupOutputs(self):
+        super().setupOutputs()
         if self.opNNBlockShape.BlockShapeInference.ready():
             self.opNNPredictionPipeline.BlockShape.connect(self.opNNBlockShape.BlockShapeInference)
 
@@ -67,6 +73,8 @@ class OpPixelClassificationEnhancer(OpPixelClassification):
             self.ModelSession.value.close()
         except Exception as e:
             logger.warning(e)
+
+        super().cleanUp()
 
     def set_model(self, model_content: bytes) -> bool:
         self.ModelBinary.disconnect()
@@ -85,3 +93,9 @@ class OpPixelClassificationEnhancer(OpPixelClassification):
         else:
             classifierFactory = self.ClassifierFactory[:].wait()[0]
             classifierFactory.update_config(partial_config)
+
+    def propagateDirty(self, slot, subindex, roi):
+        # Nothing to do here: All outputs are directly connected to
+        #  internal operators that handle their own dirty propagation.
+        self.PredictionProbabilityChannels.setDirty(slice(None))
+        super().propagateDirty(slot, subindex, roi)
