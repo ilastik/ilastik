@@ -40,7 +40,6 @@ class OpEdgeTraining(Operator):
     Rag = OutputSlot(level=1)
     EdgeProbabilities = OutputSlot(level=1)
     EdgeProbabilitiesDict = OutputSlot(level=1)  # A dict of id_pair -> probabilities
-    NaiveSegmentation = OutputSlot(level=1)
 
     def __init__(self, *args, **kwargs):
         super(OpEdgeTraining, self).__init__(*args, **kwargs)
@@ -99,24 +98,9 @@ class OpEdgeTraining(Operator):
         self.opEdgeProbabilitiesDictCache.Input.connect(self.opEdgeProbabilitiesDict.EdgeProbabilitiesDict)
         self.opEdgeProbabilitiesDictCache.name = "opEdgeProbabilitiesDictCache"
 
-        self.opNaiveSegmentation = OpMultiLaneWrapper(OpNaiveSegmentation, parent=self)
-        self.opNaiveSegmentation.Superpixels.connect(self.Superpixels)
-        self.opNaiveSegmentation.Rag.connect(self.opRagCache.Output)
-        self.opNaiveSegmentation.EdgeProbabilities.connect(self.opEdgeProbabilitiesCache.Output)
-
-        self.opNaiveSegmentationCache = OpMultiLaneWrapper(
-            OpBlockedArrayCache,
-            parent=self,
-            broadcastingSlotNames=["CompressionEnabled", "fixAtCurrent", "BypassModeEnabled"],
-        )
-        self.opNaiveSegmentationCache.CompressionEnabled.setValue(True)
-        self.opNaiveSegmentationCache.Input.connect(self.opNaiveSegmentation.Output)
-        self.opNaiveSegmentationCache.name = "opNaiveSegmentationCache"
-
         self.Rag.connect(self.opRagCache.Output)
         self.EdgeProbabilities.connect(self.opEdgeProbabilitiesCache.Output)
         self.EdgeProbabilitiesDict.connect(self.opEdgeProbabilitiesDictCache.Output)
-        self.NaiveSegmentation.connect(self.opNaiveSegmentationCache.Output)
 
         # All input multi-slots should be kept in sync
         # Output multi-slots will auto-sync via the graph
@@ -166,10 +150,7 @@ class OpEdgeTraining(Operator):
             self.EdgeLabelsDict[lane_index].setValue({})
 
     def setupOutputs(self):
-        for sp_slot, seg_cache_blockshape_slot in zip(self.Superpixels, self.opNaiveSegmentationCache.BlockShape):
-            assert sp_slot.meta.dtype == np.uint32
-            assert sp_slot.meta.getAxisKeys()[-1] == "c"
-            seg_cache_blockshape_slot.setValue(sp_slot.meta.shape)
+        pass
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here, but requesting slot: {}".format(slot)
@@ -472,28 +453,3 @@ class OpEdgeProbabilitiesDict(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         self.EdgeProbabilitiesDict.setDirty()
-
-
-class OpNaiveSegmentation(Operator):
-    Superpixels = InputSlot()  # Just needed for slot metadata; our superpixels are taken from rag.
-    Rag = InputSlot()
-    EdgeProbabilities = InputSlot()
-    Output = OutputSlot()
-
-    def setupOutputs(self):
-        self.Output.meta.assignFrom(self.Superpixels.meta)
-        self.Output.meta.display_mode = "random-colortable"
-
-    def execute(self, slot, subindex, roi, result):
-        assert slot is self.Output
-        edge_predictions = self.EdgeProbabilities.value
-        rag = self.Rag.value
-        sp_vol = rag.label_img[..., None][roiToSlice(roi.start, roi.stop)]
-        sp_vol = vigra.taggedView(sp_vol, self.Superpixels.meta.axistags)
-        edge_decisions = edge_predictions > 0.5
-
-        result = vigra.taggedView(result, self.Output.meta.axistags)
-        rag.naive_segmentation_from_edge_decisions(edge_decisions, out=result[..., 0])
-
-    def propagateDirty(self, slot, subindex, roi):
-        self.Output.setDirty()

@@ -479,28 +479,6 @@ class EdgeTrainingMixin:
             layers.append(layer)
             del layer
 
-        # Naive Segmentation
-        if op.NaiveSegmentation.ready():
-            layer = self.createStandardLayerFromSlot(op.NaiveSegmentation)
-            layer.name = "Naive Segmentation"
-            layer.visible = False
-            layer.opacity = 0.5
-
-            layer.shortcutRegistration = (
-                "n",
-                ActionInfo(
-                    "Edge Training Layers",
-                    "NaiveSegmentationVisibility",
-                    "Show/Hide Naive Segmentation (shows output if classifier output is respected verbatim)",
-                    layer.toggleVisible,
-                    self.viewerControlWidget(),
-                    layer,
-                ),
-            )
-
-            layers.append(layer)
-            del layer
-
         # Groundtruth
         if op.GroundtruthSegmentation.ready():
             layer = self.createStandardLayerFromSlot(op.GroundtruthSegmentation)

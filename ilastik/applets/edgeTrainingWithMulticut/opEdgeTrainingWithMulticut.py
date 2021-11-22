@@ -30,7 +30,6 @@ class OpEdgeTrainingWithMulticut(Operator):
     Rag = OutputSlot(level=1)
     EdgeProbabilities = OutputSlot(level=1)
     EdgeProbabilitiesDict = OutputSlot(level=1)  # A dict of id_pair -> probabilities
-    NaiveSegmentation = OutputSlot(level=1)
 
     # Multicut Output
     Output = OutputSlot(level=1)  # Pixelwise output (not RAG, etc.)
@@ -58,7 +57,6 @@ class OpEdgeTrainingWithMulticut(Operator):
         self.Rag.connect(opEdgeTraining.Rag)
         self.EdgeProbabilities.connect(opEdgeTraining.EdgeProbabilities)
         self.EdgeProbabilitiesDict.connect(opEdgeTraining.EdgeProbabilitiesDict)
-        self.NaiveSegmentation.connect(opEdgeTraining.NaiveSegmentation)
 
         opMulticut = OpMultiLaneWrapper(
             OpMulticut, broadcastingSlotNames=["Beta", "SolverName", "FreezeCache", "ProbabilityThreshold"], parent=self

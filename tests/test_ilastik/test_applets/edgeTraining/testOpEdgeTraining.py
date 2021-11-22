@@ -46,7 +46,6 @@ class TestOpEdgeTraining(object):
 
         assert op_view.EdgeProbabilities.ready()
         assert op_view.EdgeProbabilitiesDict.ready()
-        assert op_view.NaiveSegmentation.ready()
 
         edge_prob_dict = op_view.EdgeProbabilitiesDict.value
 
