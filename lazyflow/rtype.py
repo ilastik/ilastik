@@ -30,7 +30,7 @@ from builtins import object
 ###############################################################################
 import numpy, copy
 import pickle as pickle
-import collections
+from collections.abc import Iterable
 import sys
 
 from lazyflow.roi import TinyVector, sliceToRoi, roiToSlice, roiFromShape
@@ -235,7 +235,7 @@ class SubRegion(Roi):
         if tIndex is not None:
             tStart = self.start[tIndex]
             tStop = self.stop[tIndex]
-        if isinstance(shape, collections.Iterable):
+        if isinstance(shape, Iterable):
             # add a dummy number for the channel dimension
             shape = shape + (1,)
         else:

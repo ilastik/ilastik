@@ -1,4 +1,4 @@
-import collections
+from collections.abc import Iterable
 import numpy as np
 import numpy.lib.recfunctions as nlr
 import h5py
@@ -208,7 +208,7 @@ def prepare_list(list_, names, dtypes=None):
         return np.array(())
     # make sure inner items are iterables
     first_row = list_[0]
-    if isinstance(first_row, str) or not isinstance(first_row, collections.Iterable):
+    if isinstance(first_row, str) or not isinstance(first_row, Iterable):
         list_ = [(x,) for x in list_]
         first_row = list_[0]
 
@@ -223,7 +223,7 @@ def prepare_list(list_, names, dtypes=None):
                 col_dtype = (col_name, item_dtype, maxlen)
             dtypes.append(col_dtype)
 
-    assert isinstance(dtypes, collections.Iterable)
+    assert isinstance(dtypes, Iterable)
     assert len(first_row) == len(dtypes)
     array = np.zeros((n_items,), dtype=dtypes)
     array[:] = list_
