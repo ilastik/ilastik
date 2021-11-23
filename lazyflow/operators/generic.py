@@ -865,25 +865,39 @@ class OpSelectSubslot(Operator):
 
 
 class OpMultiChannelSelector(Operator):
+    """Select a subset of channels from a multichannel image
+
+    Channels are stacked in the same order as provided in SelectedChannels
+    input slot.
+    """
+
     Input = InputSlot()
     SelectedChannels = InputSlot(value=[0])
 
     Output = OutputSlot()
 
     def setupOutputs(self):
+        if self.Input.meta.getAxisKeys()[-1] != "c":
+            raise ValueError("Channel axis must be last for the input")
+
         if len(self.SelectedChannels.value) == 0:
             self.Output.meta.NOTREADY = True
             return
+
+        max_channel = self.Input.meta.getTaggedShape()["c"]
+        if any(x >= max_channel for x in self.SelectedChannels.value):
+            raise ValueError(f"Input has only {max_channel} channels, channel-selector {self.SelectedChannels.value}")
 
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.shape = self.Input.meta.shape[:-1] + (len(self.SelectedChannels.value),)
 
     def execute(self, slot, subindex, roi, result):
-        channel_indexes = sorted(self.SelectedChannels.value)
+        channel_indexes = self.SelectedChannels.value
 
+        # make sure to request the minimum (consecutive) channels
         input_roi = roi.copy()
-        input_roi.start[-1] = channel_indexes[0]
-        input_roi.stop[-1] = channel_indexes[-1] + 1
+        input_roi.start[-1] = min(channel_indexes)
+        input_roi.stop[-1] = max(channel_indexes) + 1
 
         if len(channel_indexes) == 1:
             # Fetch in-place
@@ -891,7 +905,7 @@ class OpMultiChannelSelector(Operator):
 
         else:
             fetched_data = self.Input(input_roi.start, input_roi.stop).wait()
-            channel_indexes = channel_indexes - channel_indexes[0]
+            channel_indexes = [x - channel_indexes[0] for x in channel_indexes]
             result[...] = fetched_data[..., tuple(channel_indexes)]
 
     def propagateDirty(self, slot, subindex, roi):
