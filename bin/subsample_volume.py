@@ -15,7 +15,7 @@ def subsample_h5(input_filepath, dset_name, output_filepath, sample_stride):
     Merely picks existing pixel values -- does not do any averaging.
     """
     logger.info("Opening files...")
-    with h5py.File(input_filepath, "r") as input_file, h5py.File(output_filepath) as output_file:
+    with h5py.File(input_filepath, "r") as input_file, h5py.File(output_filepath, "a") as output_file:
 
         input_dset = input_file[dset_name]
 

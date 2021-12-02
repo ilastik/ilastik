@@ -147,7 +147,7 @@ class _Dataset(object):
             return object.__getattribute__(self, name)
         except:
             # Briefly open the file and read the attribute directly from h5py
-            with h5py.File(self.mp_file._filepath) as f:
+            with h5py.File(self.mp_file._filepath, "r") as f:
                 val = getattr(f[self._internal_path], name)
                 assert not callable(val), "MultiprocessingHdf5File Datasets cannot provide access to callable items."
 
@@ -230,7 +230,7 @@ class _Group(object):
             return object.__getattribute__(self, name)
         except:
             # Briefly open the file and read the attribute directly from h5py
-            with h5py.File(self.mp_file._filepath) as f:
+            with h5py.File(self.mp_file._filepath, "r") as f:
                 val = getattr(f[self._internal_path], name)
                 assert not callable(val), "MultiprocessingHdf5File Groups cannot provide access to callable items."
                 return copy.copy(val)

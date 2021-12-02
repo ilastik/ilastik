@@ -138,7 +138,7 @@ class TestSerializer(unittest.TestCase):
         self.serializer = OpMockSerializer(self.operator, "TestApplet")
         self.tmpDir = tempfile.mkdtemp()
         self.projectFilePath = os.path.join(self.tmpDir, "tmp_project.ilp")
-        self.projectFile = h5py.File(self.projectFilePath)
+        self.projectFile = h5py.File(self.projectFilePath, "w")
         self.projectFile.create_dataset("ilastikVersion", data=b"1.0.0")
 
     def tearDown(self):
@@ -295,7 +295,7 @@ class TestSerialDictSlot(unittest.TestCase):
         self.serializer = self.SerializerForOpWithDictSlot(self.operator, "TestApplet")
         self.tmpDir = tempfile.mkdtemp()
         self.projectFilePath = os.path.join(self.tmpDir, "tmp_project.ilp")
-        self.projectFile = h5py.File(self.projectFilePath)
+        self.projectFile = h5py.File(self.projectFilePath, "w")
         self.projectFile.create_dataset("ilastikVersion", data=b"0.6")
 
     def tearDown(self):

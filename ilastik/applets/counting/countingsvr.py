@@ -502,7 +502,7 @@ class SVR(object):
 
     def writeHDF5(self, cachePath, targetname):
         data = (np.void(pickle.dumps(self)),)
-        with h5py.File(cachePath) as f:
+        with h5py.File(cachePath, "w") as f:
             f.create_dataset(targetname, data=data)
 
     def get_params(self):

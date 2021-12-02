@@ -259,7 +259,7 @@ class BatchProcessingGui(QTabWidget):
         workflow.shell.projectManager.saveProject()
 
         with io.BytesIO() as buf:
-            with h5py.File(buf) as dest:
+            with h5py.File(buf, "w") as dest:
 
                 def partial_copy(name, obj):
                     if isinstance(obj, h5py.Group):

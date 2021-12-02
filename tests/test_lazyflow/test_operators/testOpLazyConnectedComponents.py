@@ -441,7 +441,7 @@ class TestOpLazyCC(unittest.TestCase):
         assert len(blocks) == 20
 
         # prepare hdf5 file
-        f = h5py.File("temp.h5", driver="core", backing_store=False)
+        f = h5py.File("temp.h5", driver="core", backing_store=False, mode="a")
 
         for block in blocks:
             req = op.OutputHdf5(start=block[0], stop=block[1])
