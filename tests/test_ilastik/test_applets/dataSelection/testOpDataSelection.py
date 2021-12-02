@@ -325,7 +325,7 @@ class TestOpDataSelection_Basic_native_3D(object):
             numpy.testing.assert_array_equal(imgData3D, self.imgData3D)
 
     def testBasic3DWrongAxes(self):
-        """Test if 3D file with intentionally wrong axes is rejected """
+        """Test if 3D file with intentionally wrong axes is rejected"""
         for fileName in self.imgFileNames3D:
             graph = lazyflow.graph.Graph()
             reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
