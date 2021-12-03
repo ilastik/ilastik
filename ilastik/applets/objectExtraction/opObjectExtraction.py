@@ -23,6 +23,7 @@ from __future__ import division
 from builtins import range
 from copy import copy, deepcopy
 import collections
+from collections.abc import Iterable
 from functools import partial
 
 # SciPy
@@ -76,7 +77,7 @@ def max_margin(d, default=(0, 0, 0)):
         for params in features.values():
             try:
                 pmargin = params["margin"]
-                if not isinstance(pmargin, collections.Iterable):
+                if not isinstance(pmargin, Iterable):
                     pmargin = len(default) * [pmargin]
                 margin = [max(x) for x in zip(margin, pmargin)]
             except (ValueError, KeyError):
