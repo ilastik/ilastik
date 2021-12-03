@@ -26,10 +26,9 @@ from lazyflow.graph import Graph
 
 import numpy as np
 import vigra
-from lazyflow.operators.opInterpMissingData import OpInterpMissingData, OpInterpolate, OpDetectMissing, havesklearn
+from lazyflow.operators.opInterpMissingData import OpInterpMissingData, OpInterpolate, OpDetectMissing
 
 import unittest
-import pytest
 from numpy.testing import assert_array_almost_equal, assert_array_equal
 
 try:
@@ -39,8 +38,6 @@ try:
 except ImportError:
     haveScipy = False
 
-
-skip_if_no_sklearn = pytest.mark.skipif(not havesklearn, reason="Skipping no sklearn")
 
 _testDescriptions = [
     "large block empty",
@@ -146,16 +143,6 @@ def _singleMissingLayer(layer=30, nx=64, ny=64, nz=100, method="linear"):
     return (volume, missing, expected_output)
 
 
-class TestBasics(unittest.TestCase):
-    def testVersionDetection(self):
-        from lazyflow.operators.opDetectMissingData import extractVersion
-
-        assert extractVersion("0.11") == 11
-        assert extractVersion("0.14.1") == 14
-        assert extractVersion("haiku_os-0.9") == 9
-        assert extractVersion("0.21-git") == 21
-
-
 class TestDetection(unittest.TestCase):
     def setup_method(self, method):
         v = _volume()
@@ -166,7 +153,6 @@ class TestDetection(unittest.TestCase):
         self.op.DetectionMethod.setValue("svm")
         self.op.train(force=True)
 
-    @skip_if_no_sklearn
     def testDetectorOmnipresence(self):
         assert self.op.has(self.op.NHistogramBins.value, method="svm"), "Detector is untrained after call to train()"
         assert not self.op.has(self.op.NHistogramBins.value + 2, method="svm"), "Wrong bin size trained."
@@ -178,7 +164,6 @@ class TestDetection(unittest.TestCase):
         assert not self.op.has(self.op.NHistogramBins.value, method="svm"), "Detector not reset."
         assert not op2.has(self.op.NHistogramBins.value, method="svm"), "Detector not reset globally."
 
-    @skip_if_no_sklearn
     def testDetectorPropagation(self):
         s = self.op.Detector[:].wait()
         self.op.reset()
@@ -199,7 +184,6 @@ class TestDetection(unittest.TestCase):
             err_msg="input with single black layer",
         )
 
-    @skip_if_no_sklearn
     def testSVMDetection(self):
         self.op.DetectionMethod.setValue("svm")
         self.op.PatchSize.setValue(1)
@@ -213,7 +197,6 @@ class TestDetection(unittest.TestCase):
             err_msg="input with single black layer",
         )
 
-    @skip_if_no_sklearn
     def testSVMDetectionWithHalo(self):
         nBlack = 15
         self.op.DetectionMethod.setValue("svm")
@@ -228,7 +211,6 @@ class TestDetection(unittest.TestCase):
             err_msg="input with single black layer",
         )
 
-    @skip_if_no_sklearn
     def testSVMWithHalo(self):
         self.op.DetectionMethod.setValue("svm")
         self.op.PatchSize.setValue(2)
@@ -485,7 +467,6 @@ class TestInterpMissingData(unittest.TestCase):
         assert op.detector.has(op.detector.NHistogramBins.value, method="svm"), "Detector not trained."
         self.op = op
 
-    @skip_if_no_sklearn
     def testDetectorPropagation(self):
         method = "svm"
         self.op.DetectionMethod.setValue(method)

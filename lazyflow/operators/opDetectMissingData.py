@@ -1,4 +1,3 @@
-from __future__ import print_function
 from __future__ import division
 from future import standard_library
 
@@ -44,47 +43,11 @@ from lazyflow.request import Request, RequestPool
 from lazyflow.roi import roiToSlice
 
 import numpy as np
-
+from sklearn.svm import SVC
 import vigra
 
 
 logger = logging.getLogger(__name__)
-
-
-class VersionError(Exception):
-    pass
-
-
-def extractVersion(s):
-    # assuming a string with a decimal number inside
-    # e.g. "0.11-ubuntu", "haiku_os-sklearn-0.9"
-    reInt = re.compile("\d+")
-    m = reInt.findall(s)
-    if m is None or len(m) < 1:
-        raise VersionError("Cannot determine sklearn version")
-    else:
-        return int(m[1])
-
-
-try:
-    from sklearn import __version__ as sklearnVersion
-
-    svcTakesScaleC = extractVersion(sklearnVersion) < 11
-except ImportError as VersionError:
-    logger.warning("Could not import dependency 'sklearn' for SVMs")
-    havesklearn = False
-else:
-    havesklearn = True
-
-
-def SVC(*args, **kwargs):
-    from sklearn.svm import SVC as _SVC
-
-    # old scikit-learn versions take scale_C as a parameter
-    # new ones don't and default to True
-    if not svcTakesScaleC and "scale_C" in kwargs:
-        del kwargs["scale_C"]
-    return _SVC(*args, **kwargs)
 
 
 _defaultBinSize = 30
@@ -251,13 +214,9 @@ class OpDetectMissing(Operator):
         if not force and not OpDetectMissing._needsTraining and OpDetectMissing._manager.has(self.NHistogramBins.value):
             return
 
-        # return if we don't have svms
-        if not havesklearn:
-            return
-
         logger.debug("Training for {} histogram bins ...".format(self.NHistogramBins.value))
 
-        if self.DetectionMethod.value == "classic" or not havesklearn:
+        if self.DetectionMethod.value == "classic":
             # no need to train this
             return
 
@@ -411,7 +370,7 @@ class OpDetectMissing(Operator):
         if cls._manager is None:
             cls._manager = SVMManager()
 
-        if method == "classic" or not havesklearn:
+        if method == "classic":
             return
 
         assert len(negative.shape) == 2, "Negative training set must have shape (nSamples, nHistogramBins)."
@@ -425,7 +384,7 @@ class OpDetectMissing(Operator):
         labels = [0] * len(negative) + [1] * len(positive)
         samples = np.vstack((negative, positive))
 
-        svm = SVC(C=1000, kernel=_histogramIntersectionKernel, scale_C=True)
+        svm = SVC(C=1000, kernel=_histogramIntersectionKernel)
 
         svm.fit(samples, labels)
         cls._manager.add(svm, nBins, overwrite=True)
@@ -444,7 +403,7 @@ class OpDetectMissing(Operator):
 
         nBins = X.shape[1]
 
-        if method == "classic" or not havesklearn:
+        if method == "classic":
             svm = PseudoSVC()
         else:
             try:
@@ -483,7 +442,7 @@ class OpDetectMissing(Operator):
             cls._manager = SVMManager()
         logger.debug(str(cls._manager))
 
-        if method == "classic" or not havesklearn:
+        if method == "classic":
             return True
         return cls._manager.has(n)
 
