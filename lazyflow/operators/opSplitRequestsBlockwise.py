@@ -1,5 +1,3 @@
-from builtins import zip
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,13 +20,13 @@ from builtins import zip
 #          http://ilastik.org/license/
 ###############################################################################
 
-import sys
 import numpy
 from functools import partial
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import getIntersectingRois, roiToSlice
 from lazyflow.request import RequestPool
+from lazyflow.utility.helpers import get_ram_per_element
 
 
 class OpSplitRequestsBlockwise(Operator):
@@ -65,11 +63,7 @@ class OpSplitRequestsBlockwise(Operator):
         self.Output.meta.ideal_blockshape = tuple(numpy.minimum(self.BlockShape.value, self.Input.meta.shape))
 
         # Estimate ram usage per requested pixel
-        ram_per_pixel = 0
-        if self.Input.meta.dtype == object or self.Input.meta.dtype == numpy.object_:
-            ram_per_pixel = sys.getsizeof(None)
-        elif numpy.issubdtype(self.Input.meta.dtype, numpy.dtype):
-            ram_per_pixel = self.Input.meta.dtype().nbytes
+        ram_per_pixel = get_ram_per_element(self.Input.meta.dtype)
 
         # One 'pixel' includes all channels
         tagged_shape = self.Input.meta.getTaggedShape()

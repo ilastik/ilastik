@@ -23,7 +23,8 @@ from builtins import zip
 ###############################################################################
 # Python
 import copy
-import numpy
+import warnings
+
 from collections import OrderedDict, defaultdict
 from ndstructs import Shape5D
 
@@ -190,12 +191,13 @@ class MetaDict(defaultdict):
         """
         For numpy dtypes only, return the size of the dtype in bytes.
         """
-        dtype = self.dtype
-        if isinstance(dtype, numpy.dtype):
-            # Make sure we're dealing with a type (e.g. numpy.float64),
-            #  not a numpy.dtype
-            dtype = dtype.type
-        return dtype().nbytes
+        warnings.warn(
+            "getDtypeBytes was deprecated, please use lazyflow.utility.helpers.get_ram_per_element instead",
+            DeprecationWarning,
+        )
+        from lazyflow.utility.helpers import get_ram_per_element
+
+        return get_ram_per_element(self.dtype)
 
     def __str__(self):
         """

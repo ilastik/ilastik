@@ -8,6 +8,7 @@ from .opUnblockedArrayCache import OpUnblockedArrayCache
 from lazyflow.request import Request, RequestPool
 from lazyflow.roi import getIntersectingRois, roiToSlice
 from lazyflow.rtype import SubRegion
+from lazyflow.utility.helpers import get_ram_per_element
 
 
 class OpSimpleBlockedArrayCache(OpUnblockedArrayCache):
@@ -37,11 +38,7 @@ class OpSimpleBlockedArrayCache(OpUnblockedArrayCache):
         self.Output.meta.ideal_blockshape = tuple(numpy.minimum(self._blockshape, self.Input.meta.shape))
 
         # Estimate ram usage per requested pixel
-        ram_per_pixel = 0
-        if self.Input.meta.dtype == object or self.Input.meta.dtype == numpy.object_:
-            ram_per_pixel = sys.getsizeof(None)
-        elif numpy.issubdtype(self.Input.meta.dtype, numpy.dtype):
-            ram_per_pixel = self.Input.meta.dtype().nbytes
+        ram_per_pixel = get_ram_per_element(self.Input.meta.dtype)
 
         # One 'pixel' includes all channels
         tagged_shape = self.Input.meta.getTaggedShape()
