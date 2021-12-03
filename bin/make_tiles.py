@@ -25,6 +25,6 @@ if __name__ == "__main__":
     parsed_args = parser.parse_args(sys.argv[1:])
 
     path_comp = PathComponents(parsed_args.hdf5_dataset_path)
-    with h5py.File(path_comp.externalPath) as input_file:
+    with h5py.File(path_comp.externalPath, "r") as input_file:
         vol_dset = input_file[path_comp.internalPath]
         export_to_tiles(vol_dset, parsed_args.tile_size, parsed_args.output_dir)
