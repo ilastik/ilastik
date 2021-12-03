@@ -227,7 +227,7 @@ def run_gui_tests(tstcls, gui_test_bag):
 
 
 def is_gui_test(item) -> bool:
-    return bool(item.get_marker("guitest"))
+    return bool(item.get_closest_marker("guitest"))
 
 
 def split_guitests(items):
