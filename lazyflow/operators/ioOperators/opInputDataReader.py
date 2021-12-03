@@ -227,11 +227,11 @@ class OpInputDataReader(Operator):
         self.opInjector.Input.connect(self.internalOutput)
 
         # Add metadata for estimated RAM usage if the internal operator didn't already provide it.
-        if self.internalOutput.meta.ram_per_pixelram_usage_per_requested_pixel is None:
+        if self.internalOutput.meta.ram_usage_per_requested_pixel is None:
             ram_per_pixel = self.internalOutput.meta.dtype().nbytes
             if "c" in self.internalOutput.meta.getTaggedShape():
                 ram_per_pixel *= self.internalOutput.meta.getTaggedShape()["c"]
-            self.opInjector.Metadata.setValue({"ram_per_pixelram_usage_per_requested_pixel": ram_per_pixel})
+            self.opInjector.Metadata.setValue({"ram_usage_per_requested_pixel": ram_per_pixel})
         else:
             # Nothing to add
             self.opInjector.Metadata.setValue({})
