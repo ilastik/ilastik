@@ -22,8 +22,10 @@
 
 from functools import reduce
 from operator import mul
-from typing import Tuple, Iterable
+from typing import Iterable, Tuple, Type, Union
+import sys
 import numbers
+import numpy
 
 
 def itersubclasses(cls, _seen=None):
@@ -127,3 +129,37 @@ def bigintprod(nums: Iterable[numbers.Integral]) -> int:
     array shapes seen in practice on some operating systems (windows: long -> 32 bit).
     """
     return reduce(mul, map(int, nums))
+
+
+def get_ram_per_element(dtype: Union[Type[object], numpy.dtype]) -> int:
+    """Get number of bytes for a certain data type
+
+    Note:
+        In principle it would be enough to return `numpy.dtype(dtype).itemsize`.
+        However, old code would treat `object` and `numpy.object_` differently:
+        where `numpy.dtype(object).itemsize` will return 8, the code paths found in
+        ilastik would return `sys.getsizeof(None)`, which is 16.
+        This behavior is kept for now.
+
+    Examples:
+        >>> get_ram_per_element(object)
+        16
+        >>> get_ram_per_element(numpy.float64)
+        8
+        >>> get_ram_per_element(numpy.float64())
+        8
+        >>> get_ram_per_element(numpy.uint8)
+        1
+        >>> get_ram_per_element(numpy.bool)
+        1
+        >>> get_ram_per_element(int)
+        8
+    """
+    dtype = numpy.dtype(dtype)
+
+    if numpy.issubdtype(dtype, numpy.number):
+        return dtype.itemsize
+    elif numpy.issubdtype(dtype, numpy.bool_):
+        return dtype.itemsize
+    else:
+        return sys.getsizeof(None)

@@ -248,7 +248,6 @@ class TestCacheMemoryManager:
         split = OpSplitRequestsBlockwise(True, graph=g)
         split.BlockShape.setValue(blockshape)
         split.Input.connect(op.Output)
-
         streamer = BigRequestStreamer(split.Output, [(0,) * len(shape), shape])
         streamer.execute()
 

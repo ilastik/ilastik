@@ -35,6 +35,7 @@ from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.roi import sliceToRoi
 from lazyflow.operators.opCache import MemInfoNode
 from lazyflow.operators.opCache import ObservableCache
+from lazyflow.utility.helpers import get_ram_per_element
 
 
 class OpSlicedBlockedArrayCache(Operator, ObservableCache):
@@ -135,11 +136,7 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
         self.Output.meta.assignFrom(self.Input.meta)
 
         # Estimate ram usage
-        ram_per_pixel = 0
-        if self.Output.meta.dtype == object or self.Output.meta.dtype == numpy.object_:
-            ram_per_pixel = sys.getsizeof(None)
-        elif numpy.issubdtype(self.Output.meta.dtype, numpy.dtype):
-            ram_per_pixel = self.Output.meta.dtype().nbytes
+        ram_per_pixel = get_ram_per_element(self.Output.meta.dtype)
 
         tagged_shape = self.Output.meta.getTaggedShape()
         if "c" in tagged_shape:
