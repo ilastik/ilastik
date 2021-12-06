@@ -23,12 +23,17 @@ jobs:
           auto-update-conda: true
           auto-activate-base: true
           activate-environment: ""
+      - name: install xvfb/deps
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -yy libgl1-mesa-dev xvfb curl
       - name: linux conda build test
         if: matrix.os == 'ubuntu-latest'
         shell: bash -l {0}
         run: |
           conda install -n base -c conda-forge conda-build setuptools_scm -y
-          conda build -c ilastik-forge/label/freepy -c conda-forge conda-recipe
+          xvfb-run conda build -c ilastik-forge/label/freepy -c conda-forge conda-recipe
       - name: osx conda build test
         if: matrix.os == 'macos-latest'
         shell: bash -l {0}
