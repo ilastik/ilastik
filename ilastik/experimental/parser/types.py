@@ -4,6 +4,8 @@ from typing import Any, List, Optional
 
 import numpy
 
+_registry = {}
+
 
 @dataclass(frozen=True)
 class FeatureMatrix:
@@ -38,7 +40,28 @@ class ProjectDataInfo:
     axis_order: str
 
 
-class PixelClassificationProject(abc.ABC):
+class IlastikProject(abc.ABC):
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if isinstance(cls.workflowname, bytes):
+            _registry[cls.workflowname] = cls
+        elif isinstance(cls.workflowname, property):
+            # ignore abstract subclasses
+            pass
+        else:
+            raise TypeError(f"workflowname must by `bytes` not `{type(cls.workflowname)}`")
+
+    @property
+    @abc.abstractclassmethod
+    def workflowname(cls) -> str:
+        ...
+
+    @abc.abstractproperty
+    def data_info(self) -> Optional[ProjectDataInfo]:
+        ...
+
+
+class PixelClassificationProject(IlastikProject):
     @abc.abstractproperty
     def feature_matrix(self) -> Optional[FeatureMatrix]:
         ...
@@ -47,6 +70,5 @@ class PixelClassificationProject(abc.ABC):
     def classifier(self) -> Optional[Classifier]:
         pass
 
-    @abc.abstractproperty
-    def data_info(self) -> Optional[ProjectDataInfo]:
-        ...
+
+registry = _registry

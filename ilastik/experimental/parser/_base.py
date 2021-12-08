@@ -7,8 +7,6 @@ import numpy
 
 from . import types
 
-PIXEL_CLASSIFICATION = b"Pixel Classification"
-
 
 class IlastikProject:
     def __init__(self, path: str, mode: str = "r") -> None:
@@ -33,10 +31,10 @@ WORKFLOW_KEY = "workflowName"
 
 def _create_project_wrap(hdf5_file):
     type_ = hdf5_file[WORKFLOW_KEY][()]
-    if type_ == PIXEL_CLASSIFICATION:
-        return _PixelClassProjectImpl(hdf5_file)
-
-    raise NotImplementedError("Unknown project type {type_}")
+    try:
+        return types.registry[type_](hdf5_file)
+    except KeyError:
+        raise NotImplementedError(f"Unknown project type {type_}")
 
 
 class _Keys:
@@ -60,6 +58,7 @@ class _Keys:
 
 class _PixelClassProjectImpl(types.PixelClassificationProject):
     _SENTINEL = object()
+    workflowname = b"Pixel Classification"
 
     def __init__(self, hdf5_file: h5py.File) -> None:
         self.__file = hdf5_file

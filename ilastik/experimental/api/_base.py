@@ -23,7 +23,7 @@ def from_project_file(path) -> Pipeline:
 
     with parser.IlastikProject(path, "r") as project:
         if not all([project.data_info, project.feature_matrix, project.classifier]):
-            raise ValueError("not sufficient data in project file for predition")
+            raise ValueError("not sufficient data in project file for prediction")
 
         feature_matrix = project.feature_matrix
         classifer = project.classifier
