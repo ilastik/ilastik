@@ -65,6 +65,10 @@ class _PixelClassProjectImpl(types.PixelClassificationProject):
         self.__project_data_info = self._SENTINEL
 
     @property
+    def ready_for_prediction(self):
+        return all([self.data_info, self.feature_matrix, self.classifier])
+
+    @property
     def data_info(self) -> Optional[types.ProjectDataInfo]:
         if self.__project_data_info is self._SENTINEL:
             no_data = False

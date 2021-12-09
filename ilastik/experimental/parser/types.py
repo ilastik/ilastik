@@ -60,6 +60,11 @@ class IlastikProject(abc.ABC):
     def data_info(self) -> Optional[ProjectDataInfo]:
         ...
 
+    @abc.abstractproperty
+    def ready_for_prediction(self) -> bool:
+        """Loaded project contains all necessary data for prediction"""
+        ...
+
 
 class PixelClassificationProject(IlastikProject):
     @abc.abstractproperty
