@@ -1,6 +1,7 @@
 import abc
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any, List, Mapping, Optional
+from typing_extensions import Literal
 
 import numpy
 
@@ -40,6 +41,36 @@ class ProjectDataInfo:
     axis_order: str
 
 
+@dataclass
+class ObjectFeatures:
+    """
+    Interface compatible with OpRegionFeatures
+
+    Attributes:
+        selected_features: Dictionary of the form
+            [plugin_name][feature_name][parameter_name] = value
+
+    """
+
+    selected_features: Mapping[str, Mapping[str, Any]]
+
+
+@dataclass
+class ThresholdingSettings:
+    """
+    Interface for OpThresholdTwoLevels
+    """
+
+    method: Literal["simple", "hysteresis"]
+    min_size: int
+    max_size: int
+    low_threshold: float
+    high_threshold: float
+    smoother_sigmas: Mapping[Literal["z", "y", "x"], int]
+    channel: int
+    core_channel: Optional[int]
+
+
 class IlastikProject(abc.ABC):
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -73,6 +104,22 @@ class PixelClassificationProject(IlastikProject):
 
     @abc.abstractproperty
     def classifier(self) -> Optional[Classifier]:
+        pass
+
+
+class ObjectClassificationProjectBase(IlastikProject):
+    @abc.abstractproperty
+    def selected_object_features(self) -> Optional[ObjectFeatures]:
+        pass
+
+    @abc.abstractproperty
+    def classifier(self) -> Optional[Classifier]:
+        pass
+
+
+class ObjectClassificationFromPredictionProject(ObjectClassificationProjectBase):
+    @abc.abstractproperty
+    def thresholding_settings(self) -> Optional[ThresholdingSettings]:
         pass
 
 
