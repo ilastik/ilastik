@@ -143,3 +143,112 @@ class _PixelClassProjectImpl(types.PixelClassificationProject):
 
         else:
             return types.Classifier(classifier, classifier_factory, label_count)
+
+
+class _ObjectFeatureKeys:
+    ROOT = "ObjectExtraction"
+    FEATURES = "Features"
+
+
+class _ObjectClassificationKeys:
+    ROOT = "ObjectClassification"
+    TYPE = "pickled_type"
+    FACTORY = "ClassifierFactory"
+    FORESTS = "ClassifierForests"
+    LABEL_NAMES = "LabelNames"
+
+
+class ObjectClassificationClassProjImpl(types.ObjectClassificationProjectBase):
+    _SENTINEL = object()
+    workflowname = b"Object Classification (from binary image)"
+
+    def __init__(self, hdf5_file: h5py.File) -> None:
+        self.__file = hdf5_file
+        self.__project_data_info = self._SENTINEL
+
+    @property
+    def ready_for_prediction(self):
+        return all([self.data_info, self.selected_object_features, self.classifier])
+
+    @property
+    def data_info(self) -> Optional[types.ProjectDataInfo]:
+        if self.__project_data_info is self._SENTINEL:
+            no_data = False
+            try:
+                infos_group = self.__file[_InputDataKeys.ROOT][_InputDataKeys.INFOS]
+            except KeyError:
+                no_data = True
+
+            if no_data or not len(infos_group):
+                self.__project_data_info = None
+                return self.__project_data_info
+
+            info = next(iter(infos_group.values()))
+
+            json_bytes = info[_InputDataKeys.RAW][_InputDataKeys.AXIS_TAGS][()]
+            tags_dict = json.loads(json_bytes.decode("ascii"))
+            shape = info[_InputDataKeys.RAW][_InputDataKeys.SHAPE][()]
+
+            if len(shape) != len(tags_dict["axes"]):
+                raise ValueError(f"Shape {shape} and axistags {tags_dict} mismatch")
+
+            res = []
+            spatial_axes = ""
+            axis_order = ""
+            num_channels = 1
+            for size, dim in zip(shape, tags_dict["axes"]):
+                if dim["key"] in "xyz":
+                    spatial_axes += dim["key"]
+                elif dim["key"] == "c":
+                    num_channels = size
+
+                axis_order += dim["key"]
+
+            self.__project_data_info = types.ProjectDataInfo(spatial_axes, num_channels, axis_order)
+
+        return self.__project_data_info
+
+    @property
+    def selected_object_features(self) -> Optional[types.ObjectFeatures]:
+        try:
+            features_root = self.__file[_ObjectFeatureKeys.ROOT][_ObjectFeatureKeys.FEATURES]
+        except KeyError:
+            return None
+
+        else:
+            selected_features = {}
+            for feature_group_name, feature_group in features_root.items():
+                assert isinstance(feature_group, h5py.Group)
+                group_dict = {}
+                for feature_name, feature_g in feature_group.items():
+                    assert isinstance(feature_g, h5py.Group)
+                    assert all(isinstance(v, h5py.Dataset) for v in feature_g.values())
+                    group_dict[feature_name] = {k: v[()] for k, v in feature_g.items()}
+                selected_features[feature_group_name] = group_dict
+            return types.ObjectFeatures(selected_features=selected_features)
+
+    @property
+    def classifier(self):
+        try:
+            object_class_group = self.__file[_ObjectClassificationKeys.ROOT]
+            classfier_group = object_class_group[_ObjectClassificationKeys.FORESTS]
+            classifier_type = pickle.loads(classfier_group[_ObjectClassificationKeys.TYPE][()])
+            # Note, we don't save the classifierfactory in object classification.
+            # There has been no way to change it for the user up to 1.4.0b20 (at least)
+            # so here we assume it's `ParallelVigraRfLazyflowClassifier`
+            from lazyflow.classifiers.parallelVigraRfLazyflowClassifier import (
+                ParallelVigraRfLazyflowClassifier,
+                ParallelVigraRfLazyflowClassifierFactory,
+            )
+
+            assert classifier_type == ParallelVigraRfLazyflowClassifier
+            classifier = classifier_type.deserialize_hdf5(classfier_group)
+            # add hard-coded factory, see note above.
+            classifier_factory = ParallelVigraRfLazyflowClassifierFactory
+            label_count = len(object_class_group[_ObjectClassificationKeys.LABEL_NAMES])
+        except KeyError:
+            # Project has no trained classifier
+            return None
+
+        else:
+            return types.Classifier(classifier, classifier_factory, label_count)
