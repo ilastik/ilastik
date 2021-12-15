@@ -1,5 +1,6 @@
 import vigra
 import numpy
+import warnings
 import xarray
 
 from functools import singledispatch
@@ -9,7 +10,7 @@ from lazyflow.operators.classifierOperators import OpClassifierPredict
 from lazyflow.operators import OpReorderAxes
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
 from ilastik.experimental import parser
-from .types import Pipeline
+from .types import PixelClassificationPipeline
 
 
 def _ensure_channel_axis(axis_order):
@@ -18,23 +19,19 @@ def _ensure_channel_axis(axis_order):
     return axis_order
 
 
-def from_project_file(path) -> Pipeline:
+def from_project_file(path):
     project: parser.PixelClassificationProject
 
-    with parser.IlastikProject(path, "r") as project:
-        if not project.ready_for_prediction:
-            raise ValueError("not sufficient data in project file for prediction")
+    class _PixelClassificationPipelineImpl(PixelClassificationPipeline):
+        def __init__(self, project: parser.PixelClassificationProject):
+            feature_matrix = project.feature_matrix
+            classifer = project.classifier
+            self._num_channels = project.data_info.num_channels
+            self._axis_order = project.data_info.axis_order
+            self._num_spatial_dims = len(project.data_info.spatial_axes)
 
-        feature_matrix = project.feature_matrix
-        classifer = project.classifier
-        num_channels = project.data_info.num_channels
-        axis_order = project.data_info.axis_order
-        num_spatial_dims = len(project.data_info.spatial_axes)
-
-    class _PipelineImpl(Pipeline):
-        def __init__(self):
             graph = Graph()
-            self._reorder_op = OpReorderAxes(graph=graph, AxisOrder=_ensure_channel_axis(axis_order))
+            self._reorder_op = OpReorderAxes(graph=graph, AxisOrder=_ensure_channel_axis(self._axis_order))
 
             self._feature_sel_op = OpFeatureSelection(graph=graph)
             self._feature_sel_op.InputImage.connect(self._reorder_op.Output)
@@ -50,26 +47,43 @@ def from_project_file(path) -> Pipeline:
             self._predict_op.LabelsCount.setValue(classifer.label_count)
 
         def predict(self, data):
+            warnings.warn(
+                "The predict method will disappear in future versions, please use get_probabilities()",
+                DeprecationWarning,
+            )
+            return self.get_probabilities(raw_data=data)
+
+        def _check_data(self, data):
             data = convert_to_vigra(data)
             num_channels_in_data = data.channels
-            if num_channels_in_data != num_channels:
+            if num_channels_in_data != self._num_channels:
                 raise ValueError(
-                    f"Number of channels mismatch. Classifier trained for {num_channels} but input has {num_channels_in_data}"
+                    f"Number of channels mismatch. Classifier trained for {self._num_channels} but input has {num_channels_in_data}"
                 )
 
             num_spatial_in_data = sum(a.isSpatial() for a in data.axistags)
-            if num_spatial_in_data != num_spatial_dims:
+            if num_spatial_in_data != self._num_spatial_dims:
                 raise ValueError(
                     "Number of spatial dims doesn't match. "
-                    f"Classifier trained for {num_spatial_dims} but input has {num_spatial_in_data}"
+                    f"Classifier trained for {self._num_spatial_dims} but input has {num_spatial_in_data}"
                 )
 
-            self._reorder_op.Input.setValue(data)
+        def get_probabilities(self, raw_data):
+            return self._process(raw_data, output_slot=self._predict_op.PMaps)
 
-            data = self._predict_op.PMaps.value[...]
-            return xarray.DataArray(data, dims=tuple(self._predict_op.PMaps.meta.axistags.keys()))
+        def _process(self, raw_data, output_slot):
+            self._check_data(raw_data)
+            self._reorder_op.Input.setValue(raw_data)
+            processed_data = output_slot.value[...]
+            return xarray.DataArray(processed_data, dims=tuple(output_slot.meta.axistags.keys()))
 
-    return _PipelineImpl()
+    with parser.IlastikProject(path, "r") as project:
+        if not project.ready_for_prediction:
+            raise ValueError("not sufficient data in project file for prediction")
+
+        pipeline = _PixelClassificationPipelineImpl(project=project)
+
+    return pipeline
 
 
 @singledispatch
