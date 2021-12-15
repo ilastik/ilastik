@@ -2,7 +2,7 @@ import numpy
 import abc
 
 
-class Pipeline(abc.ABC):
+class PixelClassificationPipeline(abc.ABC):
     @abc.abstractmethod
-    def predict(self, data: numpy.ndarray) -> numpy.ndarray:
+    def get_probabilities(self, raw_data: numpy.ndarray) -> numpy.ndarray:
         ...
