@@ -61,24 +61,20 @@ class _PixelClassificationKeys:
     LABEL_NAMES = "LabelNames"
 
 
-class _PixelClassProjectImpl(types.PixelClassificationProject):
+class _PipelineBaseMixin:
     _SENTINEL = object()
-    workflowname = b"Pixel Classification"
 
     def __init__(self, hdf5_file: h5py.File) -> None:
-        self.__file = hdf5_file
+        self._file = hdf5_file
         self.__project_data_info = self._SENTINEL
-
-    @property
-    def ready_for_prediction(self):
-        return all([self.data_info, self.feature_matrix, self.classifier])
+        super().__init__()
 
     @property
     def data_info(self) -> Optional[types.ProjectDataInfo]:
         if self.__project_data_info is self._SENTINEL:
             no_data = False
             try:
-                infos_group = self.__file[_InputDataKeys.ROOT][_InputDataKeys.INFOS]
+                infos_group = self._file[_InputDataKeys.ROOT][_InputDataKeys.INFOS]
             except KeyError:
                 no_data = True
 
@@ -95,7 +91,6 @@ class _PixelClassProjectImpl(types.PixelClassificationProject):
             if len(shape) != len(tags_dict["axes"]):
                 raise ValueError(f"Shape {shape} and axistags {tags_dict} mismatch")
 
-            res = []
             spatial_axes = ""
             axis_order = ""
             num_channels = 1
@@ -111,10 +106,18 @@ class _PixelClassProjectImpl(types.PixelClassificationProject):
 
         return self.__project_data_info
 
+
+class _PixelClassProjectImpl(_PipelineBaseMixin, types.PixelClassificationProject):
+    workflowname = b"Pixel Classification"
+
+    @property
+    def ready_for_prediction(self):
+        return all([self.data_info, self.feature_matrix, self.classifier])
+
     @property
     def feature_matrix(self) -> Optional[types.FeatureMatrix]:
         try:
-            features_group = self.__file[_PixelFeatureKeys.ROOT]
+            features_group = self._file[_PixelFeatureKeys.ROOT]
             feature_names = [name.decode("ascii") for name in features_group[_PixelFeatureKeys.IDS][()]]
             scales = features_group[_PixelFeatureKeys.SCALES][()]
             sel_matrix = features_group[_PixelFeatureKeys.SELECTION_MATRIX][()]
@@ -129,7 +132,7 @@ class _PixelClassProjectImpl(types.PixelClassificationProject):
     @property
     def classifier(self):
         try:
-            pixel_class_group = self.__file[_PixelClassificationKeys.ROOT]
+            pixel_class_group = self._file[_PixelClassificationKeys.ROOT]
 
             classfier_group = pixel_class_group[_PixelClassificationKeys.FORESTS]
             classifier_type = pickle.loads(classfier_group[_PixelClassificationKeys.TYPE][()])
@@ -158,60 +161,17 @@ class _ObjectClassificationKeys:
     LABEL_NAMES = "LabelNames"
 
 
-class ObjectClassificationClassProjImpl(types.ObjectClassificationProjectBase):
-    _SENTINEL = object()
+class ObjectClassificationClassProjImpl(_PipelineBaseMixin, types.ObjectClassificationProjectBase):
     workflowname = b"Object Classification (from binary image)"
-
-    def __init__(self, hdf5_file: h5py.File) -> None:
-        self.__file = hdf5_file
-        self.__project_data_info = self._SENTINEL
 
     @property
     def ready_for_prediction(self):
         return all([self.data_info, self.selected_object_features, self.classifier])
 
     @property
-    def data_info(self) -> Optional[types.ProjectDataInfo]:
-        if self.__project_data_info is self._SENTINEL:
-            no_data = False
-            try:
-                infos_group = self.__file[_InputDataKeys.ROOT][_InputDataKeys.INFOS]
-            except KeyError:
-                no_data = True
-
-            if no_data or not len(infos_group):
-                self.__project_data_info = None
-                return self.__project_data_info
-
-            info = next(iter(infos_group.values()))
-
-            json_bytes = info[_InputDataKeys.RAW][_InputDataKeys.AXIS_TAGS][()]
-            tags_dict = json.loads(json_bytes.decode("ascii"))
-            shape = info[_InputDataKeys.RAW][_InputDataKeys.SHAPE][()]
-
-            if len(shape) != len(tags_dict["axes"]):
-                raise ValueError(f"Shape {shape} and axistags {tags_dict} mismatch")
-
-            res = []
-            spatial_axes = ""
-            axis_order = ""
-            num_channels = 1
-            for size, dim in zip(shape, tags_dict["axes"]):
-                if dim["key"] in "xyz":
-                    spatial_axes += dim["key"]
-                elif dim["key"] == "c":
-                    num_channels = size
-
-                axis_order += dim["key"]
-
-            self.__project_data_info = types.ProjectDataInfo(spatial_axes, num_channels, axis_order)
-
-        return self.__project_data_info
-
-    @property
     def selected_object_features(self) -> Optional[types.ObjectFeatures]:
         try:
-            features_root = self.__file[_ObjectFeatureKeys.ROOT][_ObjectFeatureKeys.FEATURES]
+            features_root = self._file[_ObjectFeatureKeys.ROOT][_ObjectFeatureKeys.FEATURES]
         except KeyError:
             return None
 
@@ -230,7 +190,7 @@ class ObjectClassificationClassProjImpl(types.ObjectClassificationProjectBase):
     @property
     def classifier(self):
         try:
-            object_class_group = self.__file[_ObjectClassificationKeys.ROOT]
+            object_class_group = self._file[_ObjectClassificationKeys.ROOT]
             classfier_group = object_class_group[_ObjectClassificationKeys.FORESTS]
             classifier_type = pickle.loads(classfier_group[_ObjectClassificationKeys.TYPE][()])
             # Note, we don't save the classifierfactory in object classification.
