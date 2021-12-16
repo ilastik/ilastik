@@ -95,6 +95,24 @@ class TestIlastikParser:
             np.testing.assert_array_equal(matrix.selections, expected_sel_matrix)
             np.testing.assert_array_equal(matrix.compute_in_2d, expected_compute_in_2d)
 
+    def test_parse_project_object_threshold_settings(self, test_data_lookup):
+        project_path = test_data_lookup.find_project(TestProjects.OBJ_CLASS_PRED_1_CHANNEL)
+        expected_threshold_settings = {
+            "method": 0,
+            "min_size": 42,
+            "max_size": 4242,
+            "low_threshold": 0.42,
+            "high_threshold": 0.8,
+            "smoother_sigmas": {"x": 1.4000000000000004, "y": 0.9, "z": 1.0},
+            "channel": 1,
+            "core_channel": 0,
+        }
+
+        with IlastikProject(project_path) as proj:
+            threshold_settings = proj.thresholding_settings
+            for k, v in expected_threshold_settings.items():
+                assert getattr(threshold_settings, k) == v
+
     def test_parse_project_object_features(self, test_data_lookup):
         project_path = test_data_lookup.find_project(TestProjects.OBJ_CLASS_SEG_1_CHANNEL)
 
@@ -149,9 +167,14 @@ class TestIlastikParser:
                 ParallelVigraRfLazyflowClassifierFactory,
                 ParallelVigraRfLazyflowClassifier,
             ),
+            (
+                TestProjects.OBJ_CLASS_PRED_1_CHANNEL,
+                ParallelVigraRfLazyflowClassifierFactory,
+                ParallelVigraRfLazyflowClassifier,
+            ),
         ],
     )
-    def test_parse_project_classifier(self, test_data_lookup, proj, expected_factory, expected_classifier):
+    def test_parse_project_object_classifier(self, test_data_lookup, proj, expected_factory, expected_classifier):
         project_path = test_data_lookup.find_project(proj)
 
         with IlastikProject(project_path) as proj:
