@@ -89,6 +89,9 @@ class TestIlastikApi:
 
         reshaped_numpy = input_numpy.reshape(1, *input_numpy.shape)
         prediction = pipeline.predict(xarray.DataArray(reshaped_numpy, dims=(("c",) + input_data.dims)))
+        assert prediction.dims == ("c",) + input_data.dims
+        # reorder to match headless (with channel last)
+        prediction = prediction.transpose(*input_data.dims, "c")
         assert prediction.shape == expected_prediction.shape
         np.testing.assert_array_almost_equal(prediction, expected_prediction, decimal=1)
 

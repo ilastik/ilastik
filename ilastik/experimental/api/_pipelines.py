@@ -4,6 +4,8 @@ import vigra
 import numpy
 import xarray
 
+import numpy
+import vigra
 import xarray
 
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
@@ -15,10 +17,21 @@ from lazyflow.operators.classifierOperators import OpClassifierPredict
 from .types import PixelClassificationPipeline
 
 
-def _ensure_channel_axis(axis_order):
-    if "c" not in axis_order:
-        return axis_order + "c"
-    return axis_order
+def _reorder_output(output: numpy.ndarray, output_axisorder: vigra.AxisTags, input_axisorder: str):
+    assert len(output.shape) == len(output_axisorder)
+    if "c" in output_axisorder and "c" not in input_axisorder:
+        # if input data was supplied without channel axes, put channel last
+        # output per default
+        input_axisorder = input_axisorder + "c"
+
+    drop_axes = []
+    for axis, size in zip(output_axisorder, output.shape):
+        if axis not in input_axisorder:
+            assert size == 1
+            drop_axes.append(axis)
+
+    output_array = xarray.DataArray(output, dims=tuple(output_axisorder))
+    return output_array.squeeze(drop_axes).transpose(*tuple(input_axisorder))
 
 
 @singledispatch
@@ -51,7 +64,7 @@ class _PixelClassificationPipelineImpl(PixelClassificationPipeline):
         self._num_spatial_dims = len(project.data_info.spatial_axes)
 
         graph = Graph()
-        self._reorder_op = OpReorderAxes(graph=graph, AxisOrder=_ensure_channel_axis(self._axis_order))
+        self._reorder_op = OpReorderAxes(graph=graph, AxisOrder="tzyxc")
 
         self._feature_sel_op = OpFeatureSelection(graph=graph)
         self._feature_sel_op.InputImage.connect(self._reorder_op.Output)
@@ -92,10 +105,11 @@ class _PixelClassificationPipelineImpl(PixelClassificationPipeline):
 
     def _process(self, raw_data, output_slot):
         raw_data = convert_to_vigra(raw_data)
+        input_axistags = "".join(ax.key for ax in raw_data.axistags)
         self._check_data(raw_data)
         self._reorder_op.Input.setValue(raw_data)
         processed_data = output_slot.value[...]
-        return xarray.DataArray(processed_data, dims=tuple(output_slot.meta.axistags.keys()))
+        return _reorder_output(processed_data, "".join(output_slot.meta.axistags.keys()), input_axistags)
 
 
 @singledispatch
