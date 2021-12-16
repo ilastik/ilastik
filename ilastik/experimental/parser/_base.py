@@ -61,7 +61,7 @@ class _PixelClassificationKeys:
     LABEL_NAMES = "LabelNames"
 
 
-class _PipelineBaseMixin:
+class _ProjectBase:
     _SENTINEL = object()
 
     def __init__(self, hdf5_file: h5py.File) -> None:
@@ -107,7 +107,7 @@ class _PipelineBaseMixin:
         return self.__project_data_info
 
 
-class _PixelClassProjectImpl(_PipelineBaseMixin, types.PixelClassificationProject):
+class _PixelClassProjectImpl(_ProjectBase, types.PixelClassificationProject):
     workflowname = b"Pixel Classification"
 
     @property
@@ -161,7 +161,21 @@ class _ObjectClassificationKeys:
     LABEL_NAMES = "LabelNames"
 
 
-class ObjectClassificationClassProjImpl(_PipelineBaseMixin, types.ObjectClassificationProjectBase):
+class _ThresholdingTwoLevelsKeys:
+    ROOT = "ThresholdTwoLevels"
+    CHANNEL = "Channel"
+    CORE_CHANNEL = "CoreChannel"
+    HIGH_THRESHOLD = "HighThreshold"
+    THRESHOLD_OPERATOR_IDX = "CurOperator"
+    LOW_THRESHOLD = "LowThreshold"
+    MAX_SIZE = "MaxSize"
+    MIN_SIZE = "MinSize"
+    SIGMA_X = "SmootherSigma/x"
+    SIGMA_Y = "SmootherSigma/y"
+    SIGMA_Z = "SmootherSigma/z"
+
+
+class ObjectClassificationClassFromSegmentationProjImpl(_ProjectBase, types.ObjectClassificationProjectBase):
     workflowname = b"Object Classification (from binary image)"
 
     @property
@@ -212,3 +226,31 @@ class ObjectClassificationClassProjImpl(_PipelineBaseMixin, types.ObjectClassifi
 
         else:
             return types.Classifier(classifier, classifier_factory, label_count)
+
+
+class ObjectClassificationClassFromPredictionProjImpl(ObjectClassificationClassFromSegmentationProjImpl):
+    workflowname = b"Object Classification (from prediction image)"
+
+    @property
+    def thresholding_settings(self) -> Optional[types.ThresholdingSettings]:
+        try:
+            thresholding_root = self._file[_ThresholdingTwoLevelsKeys.ROOT]
+            method = thresholding_root[_ThresholdingTwoLevelsKeys.THRESHOLD_OPERATOR_IDX][()]
+            low_threshold = thresholding_root[_ThresholdingTwoLevelsKeys.LOW_THRESHOLD][()]
+            high_threshold = thresholding_root[_ThresholdingTwoLevelsKeys.HIGH_THRESHOLD][()]
+            core_channel = thresholding_root[_ThresholdingTwoLevelsKeys.CORE_CHANNEL][()]
+            channel = thresholding_root[_ThresholdingTwoLevelsKeys.CHANNEL][()]
+            smoother_sigmas = {
+                "x": thresholding_root[_ThresholdingTwoLevelsKeys.SIGMA_X][()],
+                "y": thresholding_root[_ThresholdingTwoLevelsKeys.SIGMA_Y][()],
+                "z": thresholding_root[_ThresholdingTwoLevelsKeys.SIGMA_Z][()],
+            }
+            min_size = thresholding_root[_ThresholdingTwoLevelsKeys.MIN_SIZE][()]
+            max_size = thresholding_root[_ThresholdingTwoLevelsKeys.MAX_SIZE][()]
+        except KeyError:
+            return None
+
+        else:
+            return types.ThresholdingSettings(
+                method, min_size, max_size, low_threshold, high_threshold, smoother_sigmas, channel, core_channel
+            )

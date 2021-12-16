@@ -60,12 +60,12 @@ class ThresholdingSettings:
     Interface for OpThresholdTwoLevels
     """
 
-    method: Literal["simple", "hysteresis"]
+    method: int
     min_size: int
     max_size: int
     low_threshold: float
     high_threshold: float
-    smoother_sigmas: Mapping[Literal["z", "y", "x"], int]
+    smoother_sigmas: Mapping[Literal["z", "y", "x"], float]
     channel: int
     core_channel: Optional[int]
 

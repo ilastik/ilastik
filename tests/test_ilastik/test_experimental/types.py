@@ -10,7 +10,7 @@ class TestData(str, enum.Enum):
     DATA_1_CHANNEL_3D: str = ("Data_3D.npy", "zyxc", "zyxc")
 
     DATA_1_CHANNEL_SEG: str = ("Data_1channel_Segmentation.png", "yx", "yxc")
-    DATA_1_CHANNEL_PROB: str = ("Data_1channel_Probabilities.png", "yx", "yxc")
+    DATA_1_CHANNEL_PRED: str = ("Data_1channel_Probabilities.png", "yxc", "yxc")
 
     def __new__(cls, value, axes, headless_axes):
         obj = str.__new__(cls, value)
@@ -32,6 +32,7 @@ class TestProjects(enum.Enum):
     PIXEL_CLASS_3D_2D_3D_FEATURE_MIX: str = "PixelClass3D_2D_3D_feature_mix.ilp"
 
     OBJ_CLASS_SEG_1_CHANNEL: str = "ObjectClassSeg.ilp"
+    OBJ_CLASS_PRED_1_CHANNEL: str = "ObjectClassPred.ilp"
 
 
 @dataclasses.dataclass
