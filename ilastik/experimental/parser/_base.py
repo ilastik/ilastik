@@ -228,7 +228,9 @@ class ObjectClassificationClassFromSegmentationProjImpl(_ProjectBase, types.Obje
             return types.Classifier(classifier, classifier_factory, label_count)
 
 
-class ObjectClassificationClassFromPredictionProjImpl(ObjectClassificationClassFromSegmentationProjImpl):
+class ObjectClassificationClassFromPredictionProjImpl(
+    ObjectClassificationClassFromSegmentationProjImpl, types.ObjectClassificationFromPredictionProject
+):
     workflowname = b"Object Classification (from prediction image)"
 
     @property

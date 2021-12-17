@@ -1,4 +1,3 @@
-from functools import singledispatch
 from ilastik.experimental import parser
 from ._pipelines import get_pipeline_for_project
 

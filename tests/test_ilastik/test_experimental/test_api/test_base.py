@@ -6,7 +6,11 @@ import numpy as np
 import xarray
 from imageio import imread
 
-from ilastik.experimental.api import from_project_file
+from ilastik.experimental.api import (
+    from_project_file,
+    ObjectClassificationFromSegmentationPipeline,
+    ObjectClassificationFromPredictionPipeline,
+)
 
 from ..types import TestData, TestProjects, ApiTestDataLookup
 
@@ -19,7 +23,113 @@ def _load_as_xarray(dataset: TestData):
     return xarray.DataArray(data, dims=tuple(dataset.axes))
 
 
-class TestIlastikApi:
+class TestObjectClassificationFromSegmentationAPI:
+    @pytest.fixture
+    def run_headless(self, tmpdir):
+        def _run_headless(proj, raw_data, segmentation_image):
+            out_path = str(tmpdir / "out.npy")
+            args = [
+                sys.executable,
+                "-m",
+                "ilastik",
+                "--headless",
+                "--project",
+                proj,
+                "--raw_data",
+                raw_data.path,
+                "--input_axes",
+                raw_data.data_axes,
+                "--segmentation_image",
+                segmentation_image.path,
+                "--output_format",
+                "numpy",
+                "--output_filename_format",
+                out_path,
+                "--export_source",
+                "Object Probabilities",
+            ]
+            subprocess.check_call(args)
+            return np.load(out_path)
+
+        return _run_headless
+
+    @pytest.mark.parametrize(
+        "raw_data, segmentation_image, proj",
+        [
+            (TestData.DATA_1_CHANNEL, TestData.DATA_1_CHANNEL_SEG, TestProjects.OBJ_CLASS_SEG_1_CHANNEL),
+        ],
+    )
+    def test_predict_pretrained(
+        self, test_data_lookup: ApiTestDataLookup, raw_data, segmentation_image, proj, run_headless
+    ):
+        project_path = test_data_lookup.find_project(proj)
+        raw_data_path = test_data_lookup.find_dataset(raw_data)
+        segmentation_path = test_data_lookup.find_dataset(segmentation_image)
+
+        expected_object_probabilities = run_headless(project_path, raw_data_path, segmentation_path)
+        pipeline = from_project_file(project_path)
+        assert isinstance(pipeline, ObjectClassificationFromSegmentationPipeline)
+
+        object_probabilities = pipeline.get_object_probabilities(
+            _load_as_xarray(raw_data_path), _load_as_xarray(segmentation_path)
+        )
+        assert object_probabilities.shape == expected_object_probabilities.shape
+        np.testing.assert_array_almost_equal(object_probabilities, expected_object_probabilities)
+
+
+class TestObjectClassificationFromPredictionAPI:
+    @pytest.fixture
+    def run_headless(self, tmpdir):
+        def _run_headless(proj, raw_data, prediction_maps):
+            out_path = str(tmpdir / "out.npy")
+            args = [
+                sys.executable,
+                "-m",
+                "ilastik",
+                "--headless",
+                "--project",
+                proj,
+                "--raw_data",
+                raw_data.path,
+                "--input_axes",
+                raw_data.data_axes,
+                "--prediction_maps",
+                prediction_maps.path,
+                "--output_format",
+                "numpy",
+                "--output_filename_format",
+                out_path,
+                "--export_source",
+                "Object Probabilities",
+            ]
+            subprocess.check_call(args)
+            return np.load(out_path)
+
+        return _run_headless
+
+    @pytest.mark.parametrize(
+        "raw_data, prediction_maps, proj",
+        [
+            (TestData.DATA_1_CHANNEL, TestData.DATA_1_CHANNEL_PRED, TestProjects.OBJ_CLASS_PRED_1_CHANNEL),
+        ],
+    )
+    def test_predict_pretrained(
+        self, test_data_lookup: ApiTestDataLookup, raw_data, prediction_maps, proj, run_headless
+    ):
+        project_path = test_data_lookup.find_project(proj)
+        raw_data_path = test_data_lookup.find_dataset(raw_data)
+        predictions_path = test_data_lookup.find_dataset(prediction_maps)
+        expected_object_probabilities = run_headless(project_path, raw_data_path, predictions_path)
+        pipeline = from_project_file(project_path)
+        assert isinstance(pipeline, ObjectClassificationFromPredictionPipeline)
+        object_probabilities = pipeline.get_object_probabilities(
+            _load_as_xarray(raw_data_path), _load_as_xarray(predictions_path)
+        )
+        assert object_probabilities.shape == expected_object_probabilities.shape
+        np.testing.assert_array_almost_equal(object_probabilities, expected_object_probabilities)
+
+
+class TestIlastikPixelClassificationAPI:
     @pytest.fixture
     def run_headless(self, tmpdir):
         def _run_headless(proj, input):
