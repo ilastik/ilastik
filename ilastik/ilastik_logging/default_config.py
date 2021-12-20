@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -218,7 +216,15 @@ def get_default_config(
     return default_log_config
 
 
+_LOGGING_CONFIGURED = False
+
+
 def init(format_prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, logfile_path=DEFAULT_LOGFILE_PATH):
+    global _LOGGING_CONFIGURED
+    if _LOGGING_CONFIGURED:
+        warnings.warn("logging has been already initialized; skipping further initialization calls", RuntimeWarning)
+        return
+
     if logfile_path == "/dev/null":
         assert output_mode != OutputMode.LOGFILE, "Must enable a logging mode."
         output_mode = OutputMode.CONSOLE
@@ -262,3 +268,5 @@ def init(format_prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, l
         return filename + "(" + str(lineno) + "): " + category.__name__ + ": " + message.args[0]
 
     warnings.formatwarning = simple_warning_format
+
+    _LOGGING_CONFIGURED = True

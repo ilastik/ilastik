@@ -42,11 +42,11 @@ jobs:
         name: restoring dependency cache
         keys:
         # This branch if available
-        - v1.4.11-dep-{{ .Branch }}-{{ epoch }}
+        - v1.4.12-dep-{{ .Branch }}-{{ epoch }}
         # Default branch if not
-        - v1.4.11-dep-main-
+        - v1.4.12-dep-main-
         # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
-        - v1.4.11-dep-
+        - v1.4.12-dep-
     - restore_cache:
         name: restore ilastik-repo cache
         key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
@@ -54,8 +54,8 @@ jobs:
         name: update conda
         command: >
             conda config --set always_yes yes --set changeps1 no --set channel_priority strict &&
-            conda update -q conda -c conda-forge -c defaults &&
-            conda install -n base -c conda-forge -c defaults conda-build
+            conda update -q conda -c conda-forge &&
+            conda install -n base -c conda-forge conda-build
     - run:
         name: install apt dependencies
         command: >
@@ -81,7 +81,7 @@ jobs:
         path: test-results
     - save_cache:
         name: store dependency cache
-        key: v1.4.11-dep-{{ .Branch }}-{{ epoch }}
+        key: v1.4.12-dep-{{ .Branch }}-{{ epoch }}
         paths:
         - /opt/conda/pkgs
 
@@ -98,18 +98,18 @@ jobs:
     - restore_cache:
         name: restore dependency cache
         keys:
-        - v1.4.11-dep-{{ .Branch }}-{{ epoch }}
-        - v1.4.11-dep-main-
-        - v1.4.11-dep-
+        - v1.4.12-dep-{{ .Branch }}-{{ epoch }}
+        - v1.4.12-dep-main-
+        - v1.4.12-dep-
     - run:
         name: update conda
         command: >
             conda config --set always_yes yes --set changeps1 no --set channel_priority strict &&
-            conda update -q conda -c conda-forge -c defaults
+            conda update -q conda -c conda-forge
     - run:
         name: create conda environment
         command: >
-            conda create -y -n black -c conda-forge -c base black
+            conda create -y -n black -c conda-forge black
     - run:
         name: black check
         command: >
