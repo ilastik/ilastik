@@ -211,7 +211,7 @@ class SerialBoxSlot(SerialSlot):
             subgroup = group[datasetName]
             subslot = subgroup[slot.name]
             if "isEmpty" in subslot.attrs and not subslot.attrs["isEmpty"]:
-                slot[imageIndex].setValue(group[datasetName][slot.name].value.tolist())
+                slot[imageIndex].setValue(group[datasetName][slot.name][()].tolist())
         # self.op.opTrain.BoxConstraints[i].setValue(res[i])
 
 
