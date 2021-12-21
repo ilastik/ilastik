@@ -62,11 +62,6 @@ class TestPixelClassificationHeadless(object):
     @classmethod
     def setup_class(cls):
         print("looking for ilastik.py...")
-        # Load the ilastik startup script as a module.
-        # Do it here in setupClass to ensure that it isn't loaded more than once.
-        ilastik_entry_file_path = os.path.join(os.path.split(os.path.realpath(ilastik.__file__))[0], "../ilastik.py")
-        if not os.path.exists(ilastik_entry_file_path):
-            raise RuntimeError("Couldn't find ilastik.py startup script: {}".format(ilastik_entry_file_path))
 
         print("starting setup...")
         cls.original_cwd = os.getcwd()
@@ -78,8 +73,9 @@ class TestPixelClassificationHeadless(object):
 
         cls.create_new_project(cls.PROJECT_FILE, cls.SAMPLE_DATA)
         cls.create_new_project(cls.PROJECT_FILE_RAW_DATA, cls.RAW_DATA)
+        import ilastik.__main__
 
-        cls.ilastik_startup = imp.load_source("ilastik_startup", ilastik_entry_file_path)
+        cls.ilastik_startup = ilastik.__main__
 
     @classmethod
     def teardown_class(cls):

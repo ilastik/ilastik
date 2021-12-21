@@ -78,10 +78,10 @@ def run_headless_pixel_classification(
     assert project.exists()
     assert raw_data.parent.exists()
 
-    ilastik_dot_py = Path(__file__).parent.parent.parent.parent / "ilastik.py"
     subprocess_args = [
         "python",
-        str(ilastik_dot_py),
+        "-m",
+        "ilastik",
         "--headless",
         "--project=" + str(project),
         "--output_filename_format=" + str(output_filename_format),

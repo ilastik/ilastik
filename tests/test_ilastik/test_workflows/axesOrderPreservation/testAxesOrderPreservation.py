@@ -72,16 +72,10 @@ class TestAxesOrderPreservation(object):
         cls.untested_projects = list(cls.unzipped_project_files)
         print("unzipped projects: " + ", ".join(cls.unzipped_project_files))
         print("looking for ilastik.py...")
-        # Load the ilastik startup script as a module.
-        # Do it here in setupClass to ensure that it isn't loaded more than
-        # once.
-        cls.ilastik_entry_file_path = os.path.join(
-            os.path.split(os.path.realpath(ilastik.__file__))[0], "../ilastik.py"
-        )
-        if not os.path.exists(cls.ilastik_entry_file_path):
-            raise RuntimeError("Couldn't find ilastik.py startup script: {}".format(cls.ilastik_entry_file_path))
 
-        cls.ilastik_startup = imp.load_source("ilastik_startup", cls.ilastik_entry_file_path)
+        import ilastik.__main__
+
+        cls.ilastik_startup = ilastik.__main__
 
         cls.created_data = []
 

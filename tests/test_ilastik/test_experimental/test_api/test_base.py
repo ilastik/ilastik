@@ -3,7 +3,6 @@ import subprocess
 
 import pytest
 import numpy as np
-import vigra
 import xarray
 from imageio import imread
 
@@ -22,12 +21,13 @@ def _load_as_xarray(dataset: TestData):
 
 class TestIlastikApi:
     @pytest.fixture
-    def run_headless(self, tmpdir, ilastik_py):
+    def run_headless(self, tmpdir):
         def _run_headless(proj, input):
             out_path = str(tmpdir / "out.npy")
             args = [
                 sys.executable,
-                ilastik_py,
+                "-m",
+                "ilastik",
                 "--headless",
                 "--project",
                 proj,

@@ -21,9 +21,7 @@ def test_headless_launch():
     print("looking for ilastik.py...")
     # Load the ilastik startup script as a module.
     # Do it here in setupClass to ensure that it isn't loaded more than once.
-    ilastik_entry_file_path = os.path.join(os.path.split(os.path.realpath(ilastik.__file__))[0], "../ilastik.py")
-    if not os.path.exists(ilastik_entry_file_path):
-        raise RuntimeError("Couldn't find ilastik.py startup script: {}".format(ilastik_entry_file_path))
+    import ilastik.__main__
 
     with ilastik.utility.autocleaned_tempdir() as tmpdir:
         sys.argv.append("--headless")
@@ -31,8 +29,7 @@ def test_headless_launch():
         sys.argv.append("--workflow")
         sys.argv.append("Pixel Classification")
 
-        ilastik_startup = imp.load_source("ilastik_startup", ilastik_entry_file_path)
-        ilastik_startup.main()
+        ilastik.__main__.main()
 
 
 if __name__ == "__main__":
