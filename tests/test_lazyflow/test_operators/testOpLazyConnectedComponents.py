@@ -334,7 +334,6 @@ class TestOpLazyCC(unittest.TestCase):
         out1 = np.zeros(op.Output.meta.shape, dtype=op.Output.meta.dtype)
         for z in reversed(list(range(500))):
             out1[..., z : z + 1] = op.Output[..., z : z + 1].wait()
-        vigra.writeHDF5(out1, "/tmp/data.h5", "data")
         out2 = vigra.analysis.labelVolumeWithBackground(vol)
         assertEquivalentLabeling(out1.view(np.ndarray), out2.view(np.ndarray))
 

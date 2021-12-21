@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -24,6 +22,7 @@ import os
 import shutil
 import itertools
 from collections import defaultdict
+import h5py
 import numpy
 import vigra
 import lazyflow
@@ -58,6 +57,11 @@ def serializer(empty_project_file, graph):
     return serializer
 
 
+def save_to_hdf5(dataset_name, data, filename):
+    with h5py.File(filename, "a") as f:
+        f.create_dataset(name=dataset_name, data=data)
+
+
 class TestOpDataSelection_Basic2D(object):
     @classmethod
     def setup_class(cls):
@@ -88,7 +92,8 @@ class TestOpDataSelection_Basic2D(object):
         cls.imgFileNames2D.append(testNpzFileName)
 
         testH5FileName = os.path.join(cls.tmpdir, "testimage2D.h5")
-        vigra.impex.writeHDF5(data=cls.imgData2D, filenameOrGroup=testH5FileName, pathInFile="test/data")
+
+        save_to_hdf5(dataset_name="test/data", data=cls.imgData2D, filename=testH5FileName)
         testH5FileName = "{}/test/data".format(testH5FileName)
         cls.imgFileNames2D.append(testH5FileName)
 
@@ -115,7 +120,7 @@ class TestOpDataSelection_Basic2D(object):
         cls.imgFileNames2Dc.append(testNpzFileName)
 
         testH5FileName = os.path.join(cls.tmpdir, "testimage2Dc.h5")
-        vigra.impex.writeHDF5(data=cls.imgData2Dc, filenameOrGroup=testH5FileName, pathInFile="test/data")
+        save_to_hdf5(dataset_name="test/data", data=cls.imgData2Dc, filename=testH5FileName)
         testH5FileName = "{}/test/data".format(testH5FileName)
         cls.imgFileNames2Dc.append(testH5FileName)
 
@@ -261,7 +266,7 @@ class TestOpDataSelection_Basic_native_3D(object):
         cls.imgFileNames3DNicknames.append("testimage3D-data")
 
         testH5FileName = os.path.join(cls.tmpdir, "testimage3D.h5")
-        vigra.impex.writeHDF5(data=cls.imgData3D, filenameOrGroup=testH5FileName, pathInFile="test/data")
+        save_to_hdf5(dataset_name="test/data", data=cls.imgData3D, filename=testH5FileName)
         testH5FileName = "{}/test/data".format(testH5FileName)
         cls.imgFileNames3D.append(testH5FileName)
         cls.imgFileNames3DNicknames.append("testimage3D-test-data")
@@ -283,7 +288,7 @@ class TestOpDataSelection_Basic_native_3D(object):
         cls.generatedImages3Dc.append(testNpzFileName)
 
         testH5FileName = os.path.join(cls.tmpdir, "testimage3Dc.h5")
-        vigra.impex.writeHDF5(data=cls.imgData3Dc, filenameOrGroup=testH5FileName, pathInFile="test/data")
+        save_to_hdf5(dataset_name="test/data", data=cls.imgData3Dc, filename=testH5FileName)
         testH5FileName = "{}/test/data".format(testH5FileName)
         cls.imgFileNames3Dc.append(testH5FileName)
         cls.imgFileNames3DcNicknames.append("testimage3Dc-test-data")
@@ -428,7 +433,7 @@ class TestOpDataSelection_3DStacks(object):
             testNpzFileName = "{}/data".format(testNpzFileName)
 
             testH5FileName = os.path.join(cls.tmpdir, "testimage2D_{:02d}.h5".format(slice_index))
-            vigra.impex.writeHDF5(data=slice2D, filenameOrGroup=testH5FileName, pathInFile="test/data")
+            save_to_hdf5(dataset_name="test/data", data=slice2D, filename=testH5FileName)
 
             cls.imgFileLists2D["h5"].append("{}/test/data".format(testH5FileName))
 
@@ -476,7 +481,7 @@ class TestOpDataSelection_3DStacks(object):
             testNpzFileName = "{}/data".format(testNpzFileName)
 
             testH5FileName = os.path.join(cls.tmpdir, "testimage2Dc_{:02d}.h5".format(slice_index))
-            vigra.impex.writeHDF5(data=slice2Dc, filenameOrGroup=testH5FileName, pathInFile="test/data")
+            save_to_hdf5(dataset_name="test/data", data=slice2Dc, filename=testH5FileName)
 
             for extension in cls.vigraExtensions:
                 if extension in cls.removedExtensions:
@@ -791,7 +796,7 @@ class TestOpDataSelection_stack_along_parameter:
             data = eval("cls." + name)
 
             # save as h5
-            vigra.impex.writeHDF5(data=data, filenameOrGroup=os.path.join(cls.tmpdir, f"{name}.h5"), pathInFile="data")
+            save_to_hdf5(dataset_name="data", data=data, filename=os.path.join(cls.tmpdir, f"{name}.h5"))
 
             # save as png and tiff, if possible
             if c == "0c":
