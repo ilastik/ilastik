@@ -29,6 +29,10 @@ import platform
 import pytest
 
 
+if os.environ.get("ON_CIRCLE_CI", False):
+    pytest.skip("These tests are too flaky on circleCI", allow_module_level=True)
+
+
 # https://bugreports.qt.io/browse/QTBUG-87014
 is_darwin_bigsur = False
 if platform.system().lower() == "darwin":
