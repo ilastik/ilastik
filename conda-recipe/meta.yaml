@@ -9,15 +9,13 @@ source:
 
 requirements:
   host:
-    - python >=3.7,<3.10
+    - python >=3.7
     - pip
     - setuptools >=40.0
     - setuptools_scm
   run:
-    - python >=3.7,<3.10
-    # pin for numpy necessary because of vigra issue
-    # https://github.com/conda-forge/vigra-feedstock/pull/80#issuecomment-965105882
-    - numpy <1.20
+    - python >=3.7
+    - numpy >1.12
     - appdirs
     - cachetools
     - dpct
@@ -42,6 +40,7 @@ requirements:
     - pytiff
     - scikit-image
     - scikit-learn
+    # ideally a conda-forge build >=1.11.1=*_1028
     - vigra
     - wsdt
     - xarray
