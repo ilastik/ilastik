@@ -13,7 +13,7 @@ import shutil
 import subprocess
 import time
 
-EXECUTABLES = ("conda", "git")
+EXECUTABLES = ("mamba", "git")
 REPOSITORIES = ("ilastik", "volumina")
 DEFAULT_CREATE_ARGS = [
     "--channel",
@@ -74,7 +74,7 @@ def main():
 
 def cmd_create(args, rest):
     chan_args = ["--override-channels", "--strict-channel-priority"]
-    run(["conda", "create", "--yes", "--name", args.name] + chan_args + (rest or DEFAULT_CREATE_ARGS) + ["conda-build"])
+    run(["mamba", "create", "--yes", "--name", args.name] + chan_args + (rest or DEFAULT_CREATE_ARGS) + ["boa"])
 
     for repo in REPOSITORIES:
         run(["conda", "develop", "--name", args.name, repo])
@@ -82,7 +82,7 @@ def cmd_create(args, rest):
 
 
 def cmd_remove(args, _rest):
-    run(["conda", "env", "remove", "--yes", "--name", args.name])
+    run(["mamba", "env", "remove", "--yes", "--name", args.name])
 
 
 def run(cmd, cwd=None):
