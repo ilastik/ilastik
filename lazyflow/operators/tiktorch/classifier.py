@@ -94,14 +94,14 @@ class ModelSession:
         for shape in self.__session.outputShapes:
             if shape.shapeType == 0:
                 # explicit shape
-                output_shape_by_name = {d.name: d.size for d in shape.shape.dims}
+                output_shape_by_name = {d.name: d.size for d in shape.shape.namedInts}
                 result.append([output_shape_by_name])
             elif shape.shapeType == 1:
                 # parametrized shape
                 # HACK: need to determine min shape same way as prediction_pipeline
                 # HACK: assume input tensor at index 0 of input shapes
-                offset_size_by_name = defaultdict(lambda: 0, {d.name: d.size for d in shape.offset.dims})
-                scale_size_by_name = defaultdict(lambda: 1.0, {d.name: d.size for d in shape.scale.scales})
+                offset_size_by_name = defaultdict(lambda: 0, {d.name: d.size for d in shape.offset.namedFloats})
+                scale_size_by_name = defaultdict(lambda: 1.0, {d.name: d.size for d in shape.scale.namedFloats})
                 output_shape_by_name = {}
                 for dim in input_shape_by_name:
                     output_shape_by_name[dim] = int(
@@ -123,7 +123,7 @@ class ModelSession:
             axes = "".join(axes.keys())
         halos = []
         for output_shape in self.__session.outputShapes:
-            halo_size_by_name = {d.name: d.size for d in output_shape.halo.dims}
+            halo_size_by_name = {d.name: d.size for d in output_shape.halo.namedInts}
             halos.append(tuple([halo_size_by_name.get(axis, 0) for axis in axes]))
 
         return halos
@@ -141,14 +141,14 @@ class ModelSession:
         for shape in self.__session.inputShapes:
             if shape.shapeType == 0:
                 # explicit shape
-                dim_size_by_name = defaultdict(lambda: 1, {d.name: d.size for d in shape.shape.dims})
+                dim_size_by_name = defaultdict(lambda: 1, {d.name: d.size for d in shape.shape.namedInts})
                 result.append([tuple([dim_size_by_name[axis] for axis in axes])])
             elif shape.shapeType == 1:
                 # parametrized shape
                 # HACK: need to determine min shape same way as prediction_pipeline
-                dim_size_by_name = defaultdict(lambda: 1, {d.name: d.size for d in shape.shape.dims})
-                dim_step_by_name = defaultdict(lambda: 0, {d.name: d.size for d in shape.stepShape.dims})
-                shape_dims = "".join(d.name for d in shape.shape.dims)
+                dim_size_by_name = defaultdict(lambda: 1, {d.name: d.size for d in shape.shape.namedInts})
+                dim_step_by_name = defaultdict(lambda: 0, {d.name: d.size for d in shape.stepShape.namedInts})
+                shape_dims = "".join(d.name for d in shape.shape.namedInts)
                 min_shape = enforce_min_shape(
                     [dim_size_by_name[x] for x in shape_dims], [dim_step_by_name[x] for x in shape_dims], shape_dims
                 )
