@@ -4,7 +4,6 @@ from lazyflow.operators.tiktorch.classifier import ModelSession
 
 import pytest
 from tiktorch.proto import inference_pb2
-from tiktorch import converters
 
 
 @pytest.fixture
@@ -16,8 +15,8 @@ def pb_session():
         inputShapes=[
             inference_pb2.InputShape(
                 shapeType=0,
-                shape=inference_pb2.Shape(
-                    dims=[
+                shape=inference_pb2.NamedInts(
+                    namedInts=[
                         inference_pb2.NamedInt(name="x", size=1024),
                         inference_pb2.NamedInt(name="y", size=512),
                         inference_pb2.NamedInt(name="c", size=1),
@@ -28,22 +27,22 @@ def pb_session():
         outputShapes=[
             inference_pb2.OutputShape(
                 shapeType=1,
-                offset=inference_pb2.Shape(
-                    dims=[
-                        inference_pb2.NamedInt(name="x", size=16),
-                        inference_pb2.NamedInt(name="y", size=32),
-                        inference_pb2.NamedInt(name="c", size=3),
+                offset=inference_pb2.NamedFloats(
+                    namedFloats=[
+                        inference_pb2.NamedFloat(name="x", size=16),
+                        inference_pb2.NamedFloat(name="y", size=32),
+                        inference_pb2.NamedFloat(name="c", size=3),
                     ]
                 ),
-                scale=inference_pb2.Scale(
-                    scales=[
+                scale=inference_pb2.NamedFloats(
+                    namedFloats=[
                         inference_pb2.NamedFloat(name="x", size=1),
                         inference_pb2.NamedFloat(name="y", size=0.5),
                         inference_pb2.NamedFloat(name="c", size=2),
                     ]
                 ),
-                halo=inference_pb2.Shape(
-                    dims=[
+                halo=inference_pb2.NamedInts(
+                    namedInts=[
                         inference_pb2.NamedInt(name="x", size=256),
                         inference_pb2.NamedInt(name="y", size=128),
                         inference_pb2.NamedInt(name="c", size=1),
