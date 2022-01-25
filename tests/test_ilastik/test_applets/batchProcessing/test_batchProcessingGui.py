@@ -1,3 +1,4 @@
+import platform
 from unittest import mock
 from contextlib import contextmanager, nullcontext
 
@@ -50,15 +51,16 @@ def batch_processing_gui(qtbot, parent_applet):
 
 @pytest.fixture
 def filenames():
-    return ["file1", "file2"]
+    if platform.system() == "Windows":
+        return ["C:/some/path/file.x", "C:/some/other/path/file2.x"]
+    else:
+        return ["/some/path/file.x", "/some/other/path/file2.x"]
 
 
 @pytest.fixture
 def drag_n_drop_event(filenames):
     dndevent = mock.Mock()
-    urls = [QUrl(x) for x in filenames]
-    for url in urls:
-        url.isLocalFile = mock.Mock(return_value=True)
+    urls = [QUrl.fromLocalFile(x) for x in filenames]
     dndevent.mimeData.return_value.has_urls.return_value = True
     dndevent.mimeData.return_value.urls.return_value = urls
     return dndevent

@@ -53,7 +53,7 @@ class FileListWidget(QListWidget):
     def dropEvent(self, dropEvent):
         urls = dropEvent.mimeData().urls()
         self.clear()
-        self.addItems(qurl.path() for qurl in urls)
+        self.addItems(qurl.toLocalFile() for qurl in urls)
 
     def dragEnterEvent(self, event):
         # Only accept drag-and-drop events that consist of urls to local files.
