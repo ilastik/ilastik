@@ -95,12 +95,12 @@ class TestAxesOrderPreservation(object):
     @classmethod
     def create_simple_input(cls, name, data):
         """
-        Creates a file named '{name}_{input_axes}' from 'data' with axis order 'input_axes'
+        Creates a file named ``{name}_{input_axes}`` from ``data`` with axis order ``input_axes``
 
 
         Args:
-            name (str): first part of the name for created h5 file (without '.h5')
-            data (numpy.ndarray, Vigra.VigraArray): data (for numpy axis order is 'tczyx')
+            name (str): first part of the name for created h5 file (without ".h5")
+            data (numpy.ndarray, Vigra.VigraArray): data (for numpy axis order is "tczyx")
             input_axes (str): desired axis order. Is added to the name.
         """
         write_at = os.path.join(cls.PROJECT_FILE_BASE, "inputdata", name + "_" + "simple.h5")
@@ -116,7 +116,7 @@ class TestAxesOrderPreservation(object):
 
     @classmethod
     def create_input(cls, filepath, input_axes, outmin=None, outmax=None, dtype=None):
-        """Creates a file from the data at 'filepath' that has 'input_axes'"""
+        """Creates a file from the data at ``filepath`` that has ``input_axes``"""
         basename = os.path.basename(filepath)
         reader = OpInputDataReader(graph=Graph())
         assert os.path.exists(filepath), "{} not found".format(filepath)

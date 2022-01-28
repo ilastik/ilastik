@@ -29,7 +29,7 @@ import platform
 import pytest
 
 
-if os.environ.get("ON_CIRCLE_CI", False):
+if os.environ.get("ON_CIRCLE_CI"):
     pytest.skip("These tests are too flaky on circleCI", allow_module_level=True)
 
 
