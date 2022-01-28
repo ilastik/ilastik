@@ -35,13 +35,14 @@ requirements:
     - nifty
     - psutil
     - pyopengl
-    - pyqt >=5.6
+    - pyqt >=5.12
     - python-elf
     - pytiff
     - scikit-image
     - scikit-learn
-    # ideally a conda-forge build >=1.11.1=*_1028
-    - vigra
+    # build 1.11.1=*_1028 on cf is the first to be compatible with numpy>1.19
+    # need to bump this manually until there is a true version bump in vigra
+    - vigra 1.11.1=*_1028
     - wsdt
     - xarray
     - z5py
