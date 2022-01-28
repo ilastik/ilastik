@@ -20,7 +20,6 @@ class TestData(str, enum.Enum):
 class TestProjects(enum.Enum):
     PIXEL_CLASS_1_CHANNEL_XYC: str = "PixelClass.ilp"
     PIXEL_CLASS_1_CHANNEL_XY: str = "2464_PixelClassification_xy_input.ilp"
-    PIXEL_CLASS_1_CHANNEL_SKLEARN: str = "PixelClassWithSklearn.ilp"
     PIXEL_CLASS_3_CHANNEL: str = "PixelClass3Channel.ilp"
     PIXEL_CLASS_3D: str = "PixelClass3D.ilp"
     PIXEL_CLASS_NO_CLASSIFIER: str = "PixelClassNoClassifier.ilp"

@@ -68,7 +68,7 @@ jobs:
             python ilastik/scripts/devenv.py create --name ${TEST_ENV_NAME}
             --channel pytorch
             --channel ilastik-forge --channel conda-forge
-            ilastik-dependencies-no-solvers pytorch cpuonly pre-commit mpi4py pytest-cov
+            ilastik-deps-dev pytorch cpuonly pre-commit mpi4py pytest-cov
     - run:
         name: run ilastik tests
         command: >

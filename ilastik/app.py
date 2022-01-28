@@ -266,7 +266,7 @@ def _update_hbp_mode(parsed_args):
 
 def _update_tiktorch_executable_location(parsed_args):
     """enable tiktorch local workflow"""
-    TIKTORCH_MODULES = ("tiktorch.server", "torch")
+    TIKTORCH_MODULES = ("tiktorch", "tiktorch.server", "torch")
 
     if parsed_args.tiktorch_executable and Path(parsed_args.tiktorch_executable).exists():
         tiktorch_executable = [parsed_args.tiktorch_executable]

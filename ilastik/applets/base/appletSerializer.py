@@ -1136,6 +1136,8 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
         try:
             topGroup = hdf5File[self.topGroupName]
             groupVersion = topGroup["StorageVersion"][()]
+            if isinstance(groupVersion, bytes):
+                groupVersion = groupVersion.decode("utf-8")
         except KeyError:
             topGroup = None
             groupVersion = None

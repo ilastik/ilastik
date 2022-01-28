@@ -31,7 +31,7 @@ install:
   - >
     python ilastik/scripts/devenv.py create --name %ENV_NAME%
     --channel pytorch --channel ilastik-forge --channel conda-forge
-    ilastik-dependencies-no-solvers pytorch cpuonly pre-commit
+    ilastik-deps-dev pytorch cpuonly pre-commit
   - conda clean -p
 
 build: off

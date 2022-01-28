@@ -105,7 +105,8 @@ class FillMissingSlicesGui(LayerViewerGui):
             h5path = "volume/data"
 
             # no try-catch because we want to propagate errors to the GUI
-            histos = vigra.impex.readHDF5(str(fname), h5path)
+            with h5py.File(fname, "r") as f:
+                histos = f[h5path][()]
 
             self.topLevelOperatorView.setPrecomputedHistograms(histos)
             logger.debug("Loaded histograms from file '{}' (shape: {})".format(fname, histos.shape))

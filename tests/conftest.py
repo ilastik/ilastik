@@ -227,7 +227,7 @@ def run_gui_tests(tstcls, gui_test_bag):
 
 
 def is_gui_test(item) -> bool:
-    return bool(item.get_marker("guitest"))
+    return bool(item.get_closest_marker("guitest"))
 
 
 def split_guitests(items):
@@ -325,16 +325,6 @@ def empty_project_file(tmp_path) -> h5py.File:
     project_path = tmp_path / tempfile.mkstemp(suffix=".ilp")[1]
     with h5py.File(project_path, "r+") as f:
         yield f
-
-
-@pytest.fixture(scope="session")
-def ilastik_py():
-    import ilastik
-
-    ilastik_py = Path(ilastik.__file__).parent.parent / "ilastik.py"
-    if not ilastik_py.exists():
-        pytest.fail("Could not find ilastik.py file")
-    return str(ilastik_py)
 
 
 @pytest.fixture

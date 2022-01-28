@@ -42,6 +42,7 @@ from lazyflow.rtype import SubRegion
 from lazyflow.request import Request, RequestPool
 from lazyflow.roi import roiToSlice
 
+import h5py
 import numpy as np
 from sklearn.svm import SVC
 import vigra
@@ -770,15 +771,6 @@ def extractHistograms(volume, labels, patchSize=64, haloSize=0, nBins=30, intRan
 ############################
 
 
-def toH5(data, pathOrGroup, pathInFile, compression=None):
-    try:
-        return vigra.impex.writeHDF5(data, pathOrGroup, pathInFile, compression)
-    except TypeError:
-        # old vigra does not support compression
-        logger.debug("'compression' argument not yet supported by vigra.")
-        return vigra.impex.writeHDF5(data, pathOrGroup, pathInFile)
-
-
 if __name__ == "__main__":
 
     import argparse
@@ -964,7 +956,10 @@ if __name__ == "__main__":
 
                     for l in locs:
                         try:
-                            volume = vigra.impex.readHDF5(args.file[0], l).withAxes(*"zyx")
+                            with h5py.File(args.file[0], "r") as f:
+                                volume = vigra.taggedView(
+                                    f[l][()], axistags=vigra.AxisTags.fromJSON(f[l].attrs["axistags"])
+                                ).withAxes(*"zyx")
                             break
                         except KeyError:
                             pass
@@ -975,7 +970,10 @@ if __name__ == "__main__":
 
                     for l in locs:
                         try:
-                            labels = vigra.impex.readHDF5(args.file[1], "/volume/data").withAxes(*"zyx")
+                            with h5py.File(args.file[1], "r") as f:
+                                labels = vigra.taggedView(
+                                    f[l][()], axistags=vigra.AxisTags.fromJSON(f[l].attrs["axistags"])
+                                ).withAxes(*"zyx")
                             break
                         except KeyError:
                             pass
@@ -1019,18 +1017,20 @@ if __name__ == "__main__":
                     else:
                         testHistograms = np.zeros((0, trainHistograms.shape[1]))
 
-                    vigra.impex.writeHDF5(trainHistograms, histfile, "/volume/train")
-                    if len(testHistograms) > 0:
-                        vigra.impex.writeHDF5(testHistograms, histfile, "/volume/test")
+                    with h5py.File(histfile, "a") as f:
+                        f.create_dataset(name="volume/train", data=trainHistograms)
+                        if len(testHistograms) > 0:
+                            f.create_dataset(name="volume/test", data=testHistograms)
                     logger.info("Dumped histograms to '{}'.".format(histfile))
 
                 else:
                     logger.info("Gathering histograms from file...")
-                    trainHistograms = vigra.impex.readHDF5(histfile, "/volume/train")
-                    try:
-                        testHistograms = vigra.impex.readHDF5(histfile, "/volume/test")
-                    except KeyError:
-                        testHistograms = np.zeros((0, trainHistograms.shape[1]))
+                    with h5py.File(histfile, "r") as f:
+                        trainHistograms = f["volume/train"][()]
+                        try:
+                            testHistograms = f["volume/test"][()]
+                        except KeyError:
+                            testHistograms = np.zeros((0, trainHistograms.shape[1]))
                     logger.info("Loaded histograms from '{}'.".format(histfile))
 
                     assert trainHistograms.shape[1] == binSize + 4
@@ -1120,7 +1120,9 @@ if __name__ == "__main__":
                 for i, p in enumerate(pred):
                     predVol[testrange[zyxPos[i][0]], zyxPos[i][1], zyxPos[i][2]] = p
 
-                toH5(predVol, predfile, "/volume/data", compression="GZIP")
+                with h5py.File(predfile, "a") as f:
+                    ds = f.create_dataset(name="volume/data", data=predVol, compression="gzip")
+                    ds.attrs["axistags"] = predVol.toJSON()
 
     logger.info("Finished training script ({})".format(time.strftime("%Y-%m-%d %H:%M")))
 

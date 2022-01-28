@@ -152,8 +152,6 @@ class VigraRfAdaptiveMaskPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
 
                 mask = prob_slice_dilated.reshape(bigintprod(prob_slice_dilated.shape))
 
-                # vigra.impex.writeHDF5(prob_slice_dilated, 'mask.h5', 'data')
-
             prob_vol[frm_cnt, :, :, :] = prob_img
 
             frm_cnt = frm_cnt + 1

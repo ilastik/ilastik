@@ -78,18 +78,18 @@ def run_headless_pixel_classification(
     assert project.exists()
     assert raw_data.parent.exists()
 
-    ilastik_dot_py = Path(__file__).parent.parent.parent.parent / "ilastik.py"
     subprocess_args = [
         "python",
-        str(ilastik_dot_py),
+        "-m",
+        "ilastik",
         "--headless",
-        "--project=" + str(project),
-        "--output_filename_format=" + str(output_filename_format),
-        "--output_format=" + output_format,
+        f"--project={project}",
+        f"--output_filename_format={output_filename_format}",
+        f"--output_format={output_format}",
     ]
 
     if input_axes:
-        subprocess_args.append("--input-axes=" + input_axes)
+        subprocess_args.append(f"--input-axes={input_axes}")
 
     if ignore_training_axistags:
         subprocess_args.append("--ignore_training_axistags")
@@ -102,7 +102,7 @@ def run_headless_pixel_classification(
             subprocess_args += ["--distributed-block-roi", str(distributed_block_roi)]
 
     raw_data_arg_prefix = "" if use_raw_data_as_positional_argument else "--raw-data="
-    subprocess_args.append(raw_data_arg_prefix + str(raw_data))
+    subprocess_args.append(f"{raw_data_arg_prefix}{raw_data}")
 
     result = testdir.run(*subprocess_args)
     if result.ret != 0:

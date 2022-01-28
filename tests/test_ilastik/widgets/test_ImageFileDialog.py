@@ -1,6 +1,7 @@
 import json
 import pathlib
 from pathlib import Path
+import platform
 
 import pytest
 from ilastik.widgets.ImageFileDialog import ImageFileDialog
@@ -30,6 +31,7 @@ def test_default_image_directory_is_home_with_blank_preferences_file():
     assert dialog.directory().absolutePath() == Path.home().as_posix()
 
 
+@pytest.mark.skipif(platform.system() == "Darwin", reason="This test hangs on osx.")
 def test_picking_file_updates_default_image_directory_to_previously_used(image: Path, tmp_preferences):
     dialog = ImageFileDialog(None)
     dialog.selectFile(image.as_posix())
@@ -47,6 +49,7 @@ def test_picking_file_updates_default_image_directory_to_previously_used(image: 
         assert json.load(f) == {"DataSelection": {"recent image": image.as_posix()}}
 
 
+@pytest.mark.skipif(platform.system() == "Darwin", reason="This test hangs on osx.")
 def test_picking_n5_json_file_returns_directory_path(tmp_n5_file: Path):
     dialog = ImageFileDialog(None)
     dialog.setDirectory(str(tmp_n5_file))

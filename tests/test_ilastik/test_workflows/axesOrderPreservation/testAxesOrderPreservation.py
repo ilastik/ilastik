@@ -19,6 +19,7 @@
 #           http://ilastik.org/license.html
 ###############################################################################
 
+import h5py
 import ilastik
 import imp
 import itertools
@@ -71,16 +72,10 @@ class TestAxesOrderPreservation(object):
         cls.untested_projects = list(cls.unzipped_project_files)
         print("unzipped projects: " + ", ".join(cls.unzipped_project_files))
         print("looking for ilastik.py...")
-        # Load the ilastik startup script as a module.
-        # Do it here in setupClass to ensure that it isn't loaded more than
-        # once.
-        cls.ilastik_entry_file_path = os.path.join(
-            os.path.split(os.path.realpath(ilastik.__file__))[0], "../ilastik.py"
-        )
-        if not os.path.exists(cls.ilastik_entry_file_path):
-            raise RuntimeError("Couldn't find ilastik.py startup script: {}".format(cls.ilastik_entry_file_path))
 
-        cls.ilastik_startup = imp.load_source("ilastik_startup", cls.ilastik_entry_file_path)
+        import ilastik.__main__
+
+        cls.ilastik_startup = ilastik.__main__
 
         cls.created_data = []
 
@@ -100,26 +95,28 @@ class TestAxesOrderPreservation(object):
     @classmethod
     def create_simple_input(cls, name, data):
         """
-        Creates a file named '{name}_{input_axes}' from 'data' with axis order 'input_axes'
+        Creates a file named ``{name}_{input_axes}`` from ``data`` with axis order ``input_axes``
 
 
         Args:
-            name (str): first part of the name for created h5 file (without '.h5')
-            data (numpy.ndarray, Vigra.VigraArray): data (for numpy axis order is 'tczyx')
+            name (str): first part of the name for created h5 file (without ".h5")
+            data (numpy.ndarray, Vigra.VigraArray): data (for numpy axis order is "tczyx")
             input_axes (str): desired axis order. Is added to the name.
         """
         write_at = os.path.join(cls.PROJECT_FILE_BASE, "inputdata", name + "_" + "simple.h5")
         if not os.path.exists(write_at):
             assert isinstance(data, vigra.VigraArray)
-
-            vigra.writeHDF5(data, write_at, "simple")
+            data = data.transposeToNumpyOrder()
+            with h5py.File(write_at, "w") as f:
+                ds = f.create_dataset(name="simple", data=data)
+                ds.attrs["axistags"] = data.axistags.toJSON()
             cls.created_data.append(write_at)
 
         return write_at
 
     @classmethod
     def create_input(cls, filepath, input_axes, outmin=None, outmax=None, dtype=None):
-        """ Creates a file from the data at 'filepath' that has 'input_axes' """
+        """Creates a file from the data at ``filepath`` that has ``input_axes``"""
         basename = os.path.basename(filepath)
         reader = OpInputDataReader(graph=Graph())
         assert os.path.exists(filepath), "{} not found".format(filepath)
