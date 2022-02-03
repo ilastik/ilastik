@@ -11,7 +11,7 @@ The following text equips you with knowledge that makes contributing to ilastik 
 
 ## Development Environment
 
-1. Download and install [Git][git], [GitHub CLI][github-cli], and _the latest 64-bit_ [miniconda][miniconda].
+1. Download and install [Git][git], [GitHub CLI][github-cli], and _the latest 64-bit_ [Mambaforge][mambaforge].
    - Windows: all following commands should be executed in the _Anaconda Prompt_ from the Start Menu.
    - Linux: Git might be already preinstalled, GitHub CLI might be available in your system package manager.
    - macOS: Git is already preinstalled, GitHub CLI is available in [Homebrew][homebrew].
@@ -29,24 +29,26 @@ The following text equips you with knowledge that makes contributing to ilastik 
    gh repo clone ilastik
    ```
 
-1. Configure conda to use [strict channel priority](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-channels.html#strict-channel-priority):
+1. If you have an existing [Miniconda][miniconda] installation, you can use it for ilastik development, but install [Mamba][mamba] and configure conda to use [strict channel priority][strict-channel-priority]:
 
    ```
    conda config --set channel_priority strict
+   conda install --name base -c conda-forge mamba
    ```
 
 1. Install [conda-build][conda-build] in order to access the [conda develop][conda-develop] command:
 
    ```
-   conda install --name base -c conda-forge conda-build
+   mamba install --name base -c conda-forge conda-build
    ```
+
 
 1. Create a new environment and install dependencies:
 
    ```
-   conda deactivate
-   conda env remove --name ilastik
-   conda create --name ilastik --channel ilastik-forge --channel conda-forge ilastik-dependencies-no-solvers pre-commit
+   mamba deactivate
+   mamba env remove --name ilastik
+   mamba create --name ilastik --channel pytorch --channel ilastik-forge --channel conda-forge ilastik-dependencies-no-solvers pre-commit
    ```
 
 1. Install repositories as packages in development mode:
@@ -73,7 +75,7 @@ The following text equips you with knowledge that makes contributing to ilastik 
 1. Launch ilastik:
 
    ```
-   conda activate ilastik
+   mamba activate ilastik
    cd ilastik
    python ilastik.py
    ```
@@ -159,14 +161,17 @@ But please run those tools on the code you are contributing :)
 [git]: https://git-scm.com/
 [github-cli]: https://cli.github.com/
 [miniconda]: https://docs.conda.io/en/latest/miniconda.html
+[mambaforge]: https://github.com/conda-forge/miniforge#mambaforge
 [homebrew]: https://brew.sh/
 [conda-build]: https://docs.conda.io/projects/conda-build/en/latest/
 [conda-develop]: https://docs.conda.io/projects/conda-build/en/latest/resources/commands/conda-develop.html
+[mamba]: https://mamba.readthedocs.io/en/latest/
 [ilastik]: https://github.com/ilastik/ilastik
 [volumina]: https://github.com/ilastik/volumina
 [github-flow]: https://guides.github.com/introduction/flow/
 [google-style]: https://github.com/google/styleguide/blob/gh-pages/pyguide.md
 [black]: https://black.readthedocs.io/en/stable/
+[strict-channel-priority]: https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-channels.html#strict-channel-priority
 
 
 ## Further notes
