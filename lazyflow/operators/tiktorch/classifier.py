@@ -40,16 +40,41 @@ from lazyflow.futures_utils import MappableFuture, map_future
 from tiktorch import converters
 from tiktorch.proto import data_store_pb2, data_store_pb2_grpc, inference_pb2, inference_pb2_grpc
 
-# HACK: prediction_pipeline uses this heuristic to guess a sensible shape
-# we need to do the same on the ilastik side, as the correct model info is sent
-# over.
-from bioimageio.core.prediction_pipeline._prediction_pipeline import enforce_min_shape
-
 from vigra import AxisTags
 
 from . import _base
 
 logger = logging.getLogger(__name__)
+
+
+def enforce_min_shape(min_shape, step, axes):
+    """Hack: pick a bigger shape than min shape
+
+    Some models come with super tiny minimal shapes, that make the processing
+    too slow. While dryrun is not implemented, we'll "guess" a sensible shape
+    and hope it will fit into memory.
+    """
+    MIN_SIZE_2D = 512
+    MIN_SIZE_3D = 64
+
+    assert len(min_shape) == len(step) == len(axes)
+
+    spacial_increments = sum(i != 0 for i, a in zip(step, axes) if a in "xyz")
+    if spacial_increments > 2:
+        target_size = MIN_SIZE_3D
+    else:
+        target_size = MIN_SIZE_2D
+
+    factors = [
+        int(numpy.ceil((target_size - s) / i)) for s, i, a in zip(min_shape, step, axes) if (a in "xyz") and (i != 0)
+    ]
+    # we assume shape is "large" enough if one of the axes is larger than min_size
+    if any(f <= 0 for f in factors):
+        return min_shape
+
+    # choose the smallest increment to make at least one size >= target_size
+    m = min([x for x in factors])
+    return tuple([s + i * m for s, i in zip(min_shape, step)])
 
 
 class ModelSession:
@@ -91,6 +116,8 @@ class ModelSession:
         input_shape = input_shapes[0][0]
         input_shape_by_name = {name: size for name, size in zip(output_axes, input_shape)}
         result = []
+        output_shapes = self.__session.outputShapes
+        assert len(output_shapes) == 1, "Currently only single output shapes are supported"
         for shape in self.__session.outputShapes:
             if shape.shapeType == 0:
                 # explicit shape
@@ -107,10 +134,20 @@ class ModelSession:
                     output_shape_by_name[dim] = int(
                         input_shape_by_name[dim] * scale_size_by_name[dim] + 2 * offset_size_by_name[dim]
                     )
-
                 result.append([output_shape_by_name])
             else:
                 raise ValueError(f"Cannot work with shapes of shapeType {shape.shapeType}")
+
+        # sanity check:
+        assert len(result) == 1
+        res = result[0][0]
+        axes = "".join(res.keys())
+        halo = self.get_halos(axes=axes)
+        assert len(halo) == 1
+        halo = halo[0]
+        shape_after_halo = [res[axkey] - 2 * axhalo for axkey, axhalo in zip(axes, halo)]
+        if not all(x > 0 for x in shape_after_halo):
+            logger.warning(f"Network configuration problem detected - output shape - 2*halo invalid:{shape_after_halo}")
 
         return result
 
