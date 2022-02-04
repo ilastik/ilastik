@@ -46,7 +46,8 @@ requirements:
     - wsdt
     - xarray
     - z5py
-
+  run_constrained:
+    - tiktorch >=22.2.0
 
 build:
   number: 0

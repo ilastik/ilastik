@@ -40,16 +40,41 @@ from lazyflow.futures_utils import MappableFuture, map_future
 from tiktorch import converters
 from tiktorch.proto import data_store_pb2, data_store_pb2_grpc, inference_pb2, inference_pb2_grpc
 
-# HACK: prediction_pipeline uses this heuristic to guess a sensible shape
-# we need to do the same on the ilastik side, as the correct model info is sent
-# over.
-from bioimageio.core.prediction_pipeline._prediction_pipeline import enforce_min_shape
-
 from vigra import AxisTags
 
 from . import _base
 
 logger = logging.getLogger(__name__)
+
+
+def enforce_min_shape(min_shape, step, axes):
+    """Hack: pick a bigger shape than min shape
+
+    Some models come with super tiny minimal shapes, that make the processing
+    too slow. While dryrun is not implemented, we'll "guess" a sensible shape
+    and hope it will fit into memory.
+    """
+    MIN_SIZE_2D = 512
+    MIN_SIZE_3D = 64
+
+    assert len(min_shape) == len(step) == len(axes)
+
+    spacial_increments = sum(i != 0 for i, a in zip(step, axes) if a in "xyz")
+    if spacial_increments > 2:
+        target_size = MIN_SIZE_3D
+    else:
+        target_size = MIN_SIZE_2D
+
+    factors = [
+        int(numpy.ceil((target_size - s) / i)) for s, i, a in zip(min_shape, step, axes) if (a in "xyz") and (i != 0)
+    ]
+    # we assume shape is "large" enough if one of the axes is larger than min_size
+    if any(f <= 0 for f in factors):
+        return min_shape
+
+    # choose the smallest increment to make at least one size >= target_size
+    m = min([x for x in factors])
+    return tuple([s + i * m for s, i in zip(min_shape, step)])
 
 
 class ModelSession:
@@ -91,26 +116,38 @@ class ModelSession:
         input_shape = input_shapes[0][0]
         input_shape_by_name = {name: size for name, size in zip(output_axes, input_shape)}
         result = []
+        output_shapes = self.__session.outputShapes
+        assert len(output_shapes) == 1, "Currently only single output shapes are supported"
         for shape in self.__session.outputShapes:
             if shape.shapeType == 0:
                 # explicit shape
-                output_shape_by_name = {d.name: d.size for d in shape.shape.dims}
+                output_shape_by_name = {d.name: d.size for d in shape.shape.namedInts}
                 result.append([output_shape_by_name])
             elif shape.shapeType == 1:
                 # parametrized shape
                 # HACK: need to determine min shape same way as prediction_pipeline
                 # HACK: assume input tensor at index 0 of input shapes
-                offset_size_by_name = defaultdict(lambda: 0, {d.name: d.size for d in shape.offset.dims})
-                scale_size_by_name = defaultdict(lambda: 1.0, {d.name: d.size for d in shape.scale.scales})
+                offset_size_by_name = defaultdict(lambda: 0, {d.name: d.size for d in shape.offset.namedFloats})
+                scale_size_by_name = defaultdict(lambda: 1.0, {d.name: d.size for d in shape.scale.namedFloats})
                 output_shape_by_name = {}
                 for dim in input_shape_by_name:
                     output_shape_by_name[dim] = int(
                         input_shape_by_name[dim] * scale_size_by_name[dim] + 2 * offset_size_by_name[dim]
                     )
-
                 result.append([output_shape_by_name])
             else:
                 raise ValueError(f"Cannot work with shapes of shapeType {shape.shapeType}")
+
+        # sanity check:
+        assert len(result) == 1
+        res = result[0][0]
+        axes = "".join(res.keys())
+        halo = self.get_halos(axes=axes)
+        assert len(halo) == 1
+        halo = halo[0]
+        shape_after_halo = [res[axkey] - 2 * axhalo for axkey, axhalo in zip(axes, halo)]
+        if not all(x > 0 for x in shape_after_halo):
+            logger.warning(f"Network configuration problem detected - output shape - 2*halo invalid:{shape_after_halo}")
 
         return result
 
@@ -123,7 +160,7 @@ class ModelSession:
             axes = "".join(axes.keys())
         halos = []
         for output_shape in self.__session.outputShapes:
-            halo_size_by_name = {d.name: d.size for d in output_shape.halo.dims}
+            halo_size_by_name = {d.name: d.size for d in output_shape.halo.namedInts}
             halos.append(tuple([halo_size_by_name.get(axis, 0) for axis in axes]))
 
         return halos
@@ -141,14 +178,14 @@ class ModelSession:
         for shape in self.__session.inputShapes:
             if shape.shapeType == 0:
                 # explicit shape
-                dim_size_by_name = defaultdict(lambda: 1, {d.name: d.size for d in shape.shape.dims})
+                dim_size_by_name = defaultdict(lambda: 1, {d.name: d.size for d in shape.shape.namedInts})
                 result.append([tuple([dim_size_by_name[axis] for axis in axes])])
             elif shape.shapeType == 1:
                 # parametrized shape
                 # HACK: need to determine min shape same way as prediction_pipeline
-                dim_size_by_name = defaultdict(lambda: 1, {d.name: d.size for d in shape.shape.dims})
-                dim_step_by_name = defaultdict(lambda: 0, {d.name: d.size for d in shape.stepShape.dims})
-                shape_dims = "".join(d.name for d in shape.shape.dims)
+                dim_size_by_name = defaultdict(lambda: 1, {d.name: d.size for d in shape.shape.namedInts})
+                dim_step_by_name = defaultdict(lambda: 0, {d.name: d.size for d in shape.stepShape.namedInts})
+                shape_dims = "".join(d.name for d in shape.shape.namedInts)
                 min_shape = enforce_min_shape(
                     [dim_size_by_name[x] for x in shape_dims], [dim_step_by_name[x] for x in shape_dims], shape_dims
                 )

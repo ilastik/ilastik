@@ -31,13 +31,13 @@ jobs:
       - name: linux conda build test
         if: matrix.os == 'ubuntu-latest'
         shell: bash -l {0}
-        run: xvfb-run mamba build -c ilastik-forge/label/freepy -c conda-forge conda-recipe
+        run: xvfb-run mamba build -c ilastik-forge -c conda-forge conda-recipe
       - name: osx conda build test
         if: matrix.os == 'macos-latest'
         shell: bash -l {0}
-        run: mamba build -c ilastik-forge/label/freepy -c conda-forge conda-recipe
+        run: mamba build -c ilastik-forge -c conda-forge conda-recipe
       - name: windows conda-build test
         if: matrix.os == 'windows-latest'
         shell: cmd /C CALL {0}
         # auto activation of env does not seem to work on win
-        run: mamba build -c ilastik-forge/label/freepy -c conda-forge conda-recipe
+        run: mamba build -c ilastik-forge -c conda-forge conda-recipe
