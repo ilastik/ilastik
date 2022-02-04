@@ -1,0 +1,61 @@
+{% set setup_py_data = load_setup_py_data(setup_file='../setup.py', from_recipe_dir=True) %}
+{% set release_variant = environ.get('ILASTIK_RELEASE_VARIANT', '') %}
+
+package:
+  name: ilastik-release
+  version: {{ setup_py_data.version }}
+
+source:
+  path: ..
+
+name: ilastik{{ release_variant }}
+build:
+  noarch: python
+  entry_points:
+    - ilastik = ilastik.__main__:main
+requirements:
+  run:
+    - python 3.7.*
+    - ilastik-core {{ setup_py_data.version }}
+    - volumina
+
+    - pytorch 1.10.*
+    - tensorflow 1.14.*
+    - tiktorch 22.2.0*
+
+{% if release_variant == '' %}
+    - cpuonly
+    - torchvision=*=*cpu
+{% elif release_variant == "-gpu" %}
+    - cudatoolkit >=10.2
+{% endif %}
+
+test:
+  source_files:
+    - tests
+    - pytest.ini
+
+  requires:
+    - pytest >=3,<4
+    - pytest-qt
+
+  imports:
+    - ilastik
+    - ilastik.experimental
+    - ilastik.config
+    - ilastik.applets
+    - ilastik.workflows
+    - lazyflow
+    - tiktorch
+
+  commands:
+    - ilastik --help
+    - pytest -v --run-legacy-gui .
+
+
+about:
+  home: https://github.com/ilastik/ilastik
+  license: LGPL-2.1-or-later
+  summary: >
+    ilastik is a simple, user-friendly tool for interactive image classification,
+    segmentation and analysis.
