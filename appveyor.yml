@@ -28,11 +28,11 @@ install:
   # replace with whatever version of ilastik triggered the appveyor
   - ps: cp -recurse C:\projects\ilastik $env:IlASTIK_ROOT\ilastik-meta\ilastik
   # Point to the current ilastik-meta
-  - >
-    python ilastik/scripts/devenv.py create --name %ENV_NAME%
-    --channel pytorch --channel ilastik-forge --channel conda-forge
-    ilastik-deps-dev pytorch cpuonly pre-commit
-  - conda clean -p
+  - |
+    mamba env create --name %ENV_NAME% --file %IlASTIK_ROOT%\ilastik-meta\ilastik\dev\environment-dev.yml
+    mamba install --name %ENV_NAME% -c ilastik-forge -c conda-forge volumina
+    mamba develop --name %ENV_NAME% %IlASTIK_ROOT%\ilastik-meta\ilastik
+  - mamba clean -p
 
 build: off
 

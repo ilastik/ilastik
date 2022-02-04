@@ -46,9 +46,10 @@ The following text equips you with knowledge that makes contributing to ilastik 
 1. Create a new environment and install dependencies:
 
    ```
+   # from within the ilastik folder
    mamba deactivate
    mamba env remove --name ilastik
-   mamba create --name ilastik --channel pytorch --channel ilastik-forge --channel conda-forge ilastik-dependencies-no-solvers pre-commit
+   mamba env create --name ilastik --file dev/environment-dev.yml
    ```
 
 1. Install repositories as packages in development mode:
