@@ -36,7 +36,7 @@ def _create_project_wrap(hdf5_file):
     if type_ == PIXEL_CLASSIFICATION:
         return _PixelClassProjectImpl(hdf5_file)
 
-    raise NotImplementedError("Unknown project type {type_}")
+    raise NotImplementedError(f"Unknown project type {type_}")
 
 
 class _Keys:
