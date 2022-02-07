@@ -1,0 +1,40 @@
+name: test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  run-conda-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          auto-activate-base: true
+          activate-environment: ""
+          miniforge-variant: Mambaforge
+          use-mamba: true
+      - name: install conda dependencies
+        run: mamba install -n base -c conda-forge boa setuptools_scm -y
+      - name: create output folder
+        run: mkdir ~/ilastik-pkg
+      - uses: actions/cache@v2
+        with:
+          path: ~/ilastik-pkg
+          key: pkg-${{ github.sha }}
+      - name: save pkg name
+        shell: bash -l {0}
+        run: basename -- `mamba render --output conda-recipe/` > ~/ilastik-pkg/ilastik-version.txt
+      - name: linux conda build
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash -l {0}
+        run: |
+          conda mambabuild -c ilastik-forge -c conda-forge conda-recipe
+              --no-test
+              --output-dir ~/ilastik-pkg

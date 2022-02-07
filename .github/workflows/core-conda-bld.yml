@@ -1,10 +1,9 @@
-name: test
+name: test-test
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_run:
+    workflows: [test]
+    types: [completed]
 
 jobs:
   test-w-conda-recipe:
@@ -21,6 +20,10 @@ jobs:
           auto-update-conda: true
           auto-activate-base: true
           activate-environment: ""
+      - uses: actions/cache@v2
+        with:
+          path: ~/ilastik-pkg
+          key: pkg-${{ github.sha }}
       - name: install xvfb/deps
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -31,13 +34,19 @@ jobs:
       - name: linux conda build test
         if: matrix.os == 'ubuntu-latest'
         shell: bash -l {0}
-        run: xvfb-run mamba build -c ilastik-forge -c conda-forge conda-recipe
+        run: |
+          LASTIK_PKG=`<~/ilastik-pkg/ilastik-version.txt`
+          xvfb-run conda condabuild -c ilastik-forge -c conda-forge conda-recipe --test ~/ilastik-pkg/${ILASTIK_PKG}
       - name: osx conda build test
         if: matrix.os == 'macos-latest'
         shell: bash -l {0}
-        run: mamba build -c ilastik-forge -c conda-forge conda-recipe
+        run: |
+          ILASTIK_PKG=`<~/ilastik-pkg/ilastik-version.txt`
+          conda mambabuild -c ilastik-forge -c conda-forge conda-recipe --test ~/ilastik-pkg/${ILASTIK_PKG}
       - name: windows conda-build test
         if: matrix.os == 'windows-latest'
         shell: cmd /C CALL {0}
         # auto activation of env does not seem to work on win
-        run: mamba build -c ilastik-forge -c conda-forge conda-recipe
+        run: |
+          set /p ILASTIK_PKG<%HOME%\ilastik-pkg\ilastik-version.txt
+          conda mambabuild -c ilastik-forge -c conda-forge conda-recipe --test < %HOME%\ilastik-pkg\%ILASTIK_PKG
