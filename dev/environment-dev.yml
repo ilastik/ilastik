@@ -1,0 +1,55 @@
+channels:
+  - ilastik-forge
+  - pytorch
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python 3.7.*
+  - numpy 1.19.*
+  - appdirs
+  - cachetools
+  - dpct
+  - fastfilters
+  - future
+  - greenlet
+  - grpcio
+  - h5py
+  - hytra
+  - ilastik-feature-selection
+  - ilastikrag
+  - ilastiktools
+  - jsonschema
+  - mamutexport
+  - marching_cubes
+  - ndstructs
+  - nifty
+  - psutil
+  - pyopengl
+  - pyqt 5.12.*
+  - pyqtgraph
+  - python-elf
+  - pytiff
+  - qimage2ndarray
+  - scikit-image
+  - scikit-learn
+  # build 1.11.1=*_1028 on cf is the first to be compatible with numpy>1.19
+  # need to bump this manually until there is a true version bump in vigra
+  - vigra 1.11.1=*_1028
+  - wsdt
+  - xarray
+  - z5py
+
+  # Neural Network Workflow dependencies
+  # can be changed to request gpu versions
+  - cpuonly
+  - pytorch 1.10.*
+  - tensorflow 1.14.*
+  - tiktorch
+  - torchvision=*=*cpu
+
+  # dev-only dependencies
+  - conda-build
+  - mypy
+  - pre-commit
+  - pytest >=3,<4
+  - pytest-qt
