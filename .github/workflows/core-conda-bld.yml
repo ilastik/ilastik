@@ -21,13 +21,15 @@ jobs:
           auto-update-conda: true
           auto-activate-base: true
           activate-environment: ""
+          miniforge-variant: Mambaforge
+          use-mamba: true
       - name: install xvfb/deps
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -yy libgl1-mesa-dev xvfb curl
       - name: install common conda dependencies
-        run: conda install -n base -c conda-forge mamba boa setuptools_scm -y
+        run: mamba install -n base -c conda-forge boa setuptools_scm -y
       - name: linux conda build test
         if: matrix.os == 'ubuntu-latest'
         shell: bash -l {0}

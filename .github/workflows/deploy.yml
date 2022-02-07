@@ -1,0 +1,34 @@
+name: deploy
+
+on:
+  # run only once all the tests have passed
+  workflow_run:
+    branches:
+      - main
+    workflows: test
+    types: completed
+
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    environment: conda-deploy
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          auto-activate-base: true
+          activate-environment: ""
+          miniforge-variant: Mambaforge
+          use-mamba: true
+      - name: linux conda build and upload
+        shell: bash -l {0}
+        env:
+          ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
+        run: |
+          mamba install -n base -c conda-forge boa setuptools_scm anaconda-client -y
+          mamba config --set anaconda_upload yes
+          xvfb-run conda mambabuild -c ilastik-forge -c conda-forge --user ilastik-forge conda-recipe
