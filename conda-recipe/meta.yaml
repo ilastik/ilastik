@@ -14,9 +14,10 @@ outputs:
     build:
       number: 0
       noarch: python
+      script_env:
+        - SETUPTOOLS_SCM_PRETEND_VERSION={{ setup_py_data.version }}
       script:
-        - export SETUPTOOLS_SCM_PRETEND_VERSION={{ setup_py_data.version }}
-        - {{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv
+        - python -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv
     requirements:
       host:
         - python >=3.7
@@ -80,3 +81,111 @@ outputs:
 
       commands:
         - pytest -v .
+
+    about:
+      home: https://github.com/ilastik/ilastik
+      license: LGPL-2.1-or-later
+      summary: >
+        ilastik-core package enables ilastik-api usage to mix into environments.
+        ilastik is a simple, user-friendly tool for interactive image classification,
+        segmentation and analysis.
+        
+
+  - name: ilastik
+    build:
+      noarch: python
+      entry_points:
+        - ilastik = ilastik.__main__:main
+    requirements:
+      run:
+        - python 3.7.*
+        - ilastik-core {{ setup_py_data.version }}
+        - volumina
+        - pytorch 1.10.*
+        - tensorflow 1.14.*
+        - tiktorch 22.2.0*
+        - cpuonly
+        - inferno
+        - torchvision=*=*cpu
+    test:
+      source_files:
+        - tests
+        - pytest.ini
+
+      requires:
+        - pytest >=3,<4
+        - pytest-qt
+
+      imports:
+        - ilastik
+        - ilastik.experimental
+        - ilastik.config
+        - ilastik.applets
+        - ilastik.workflows
+        - lazyflow
+        - tiktorch
+
+      commands:
+        - ilastik --help
+        - pytest -v .
+
+    about:
+      home: https://github.com/ilastik/ilastik
+      license: LGPL-2.1-or-later
+      summary: >
+        ilastik conda package to create ilastik gui environments.
+        ilastik is a simple, user-friendly tool for interactive image classification,
+        segmentation and analysis.
+
+
+  - name: ilastik-gpu
+    build:
+      noarch: python
+      entry_points:
+        - ilastik = ilastik.__main__:main
+    requirements:
+      run:
+        - python 3.7.*
+        - ilastik-core {{ setup_py_data.version }}
+        - volumina
+        - pytorch >=1.6
+        - tensorflow 1.14.*
+        - tiktorch 22.2.0*
+        - inferno
+        - torchvision
+        - cudatoolkit >=10.2
+
+    test:
+      source_files:
+        - tests
+        - pytest.ini
+
+      requires:
+        - pytest >=3,<4
+        - pytest-qt
+        - pytorch 1.10.*
+        - cudatoolkit 11.1.*
+
+      imports:
+        - ilastik
+        - ilastik.experimental
+        - ilastik.config
+        - ilastik.applets
+        - ilastik.workflows
+        - lazyflow
+        - tiktorch
+        - torch
+        - vigra
+        - tensorflow
+
+      commands:
+        - ilastik --help
+        - pytest -v .
+
+    about:
+      home: https://github.com/ilastik/ilastik
+      license: LGPL-2.1-or-later
+      summary: >
+        ilastik conda package to create ilastik gpu-enabled gui environments.
+        ilastik is a simple, user-friendly tool for interactive image classification,
+        segmentation and analysis.
