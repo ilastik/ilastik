@@ -1,80 +1,191 @@
 {% set setup_py_data = load_setup_py_data(setup_file='../setup.py', from_recipe_dir=True) %}
 
 package:
-  name: ilastik-core
+  name: ilastik-package-meta-recipe
   version: {{ setup_py_data.version }}
 
 source:
   path: ..
 
-requirements:
-  host:
-    - python >=3.7
-    - pip
-    - setuptools >=40.0
-    - setuptools_scm
-  run:
-    - python >=3.7
-    - numpy >1.12
-    - appdirs
-    - cachetools
-    - dpct
-    - fastfilters
-    - future
-    - greenlet
-    - grpcio
-    - h5py
-    - hytra
-    - ilastik-feature-selection
-    - ilastikrag
-    - ilastiktools
-    - jsonschema
-    - mamutexport
-    - marching_cubes
-    - ndstructs
-    - nifty
-    - psutil
-    - pyopengl
-    - pyqt >=5.12
-    - python-elf
-    - pytiff
-    - scikit-image
-    - scikit-learn
-    # build 1.11.1=*_1028 on cf is the first to be compatible with numpy>1.19
-    # need to bump this manually until there is a true version bump in vigra
-    - vigra 1.11.1=*_1028
-    - wsdt
-    - xarray
-    - z5py
-  run_constrained:
-    - tiktorch >=22.2.0
 
-build:
-  number: 0
-  noarch: python
-  script:
-    - export SETUPTOOLS_SCM_PRETEND_VERSION={{ setup_py_data.version }}
-    - {{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv
+outputs:
+  - name: ilastik-core
+
+    build:
+      number: 0
+      noarch: python
+      script_env:
+        - SETUPTOOLS_SCM_PRETEND_VERSION={{ setup_py_data.version }}
+      script:
+        - python -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv
+    requirements:
+      host:
+        - python >=3.7
+        - pip
+        - setuptools >=40.0
+        - setuptools_scm
+      run:
+        - python >=3.7
+        - numpy >1.12
+        - appdirs
+        - cachetools
+        - dpct
+        - fastfilters
+        - future
+        - greenlet
+        - grpcio
+        - h5py
+        - hytra
+        - ilastik-feature-selection
+        - ilastikrag
+        - ilastiktools
+        - jsonschema
+        - mamutexport
+        - marching_cubes
+        - ndstructs
+        - nifty
+        - psutil
+        - pyopengl
+        - pyqt >=5.12
+        - python-elf
+        - pytiff
+        - scikit-image
+        - scikit-learn
+        # build 1.11.1=*_1028 on cf is the first to be compatible with numpy>1.19
+        # need to bump this manually until there is a true version bump in vigra
+        - vigra 1.11.1=*_1028
+        - wsdt
+        - xarray
+        - z5py
+      run_constrained:
+        - tiktorch >=22.2.0
+
+    test:
+      imports:
+        - ilastik
+        - ilastik.experimental
+        - ilastik.config
+        - ilastik.applets
+        - ilastik.workflows
+        - lazyflow
+
+      source_files:
+        - tests
+        - pytest.ini
+
+      requires:
+        - pytest >=3,<4
+        - pytest-qt
+        - volumina
+        - tiktorch
+
+      commands:
+        - pytest -v .
+
+    about:
+      home: https://github.com/ilastik/ilastik
+      license: LGPL-2.1-or-later
+      summary: >
+        ilastik-core package enables ilastik-api usage to mix into environments.
+        ilastik is a simple, user-friendly tool for interactive image classification,
+        segmentation and analysis.
+        
+
+  - name: ilastik
+    build:
+      noarch: python
+      entry_points:
+        - ilastik = ilastik.__main__:main
+    requirements:
+      run:
+        - python 3.7.*
+        - ilastik-core {{ setup_py_data.version }}
+        - volumina
+        - pytorch 1.10.*
+        - tensorflow 1.14.*
+        - tiktorch 22.2.0*
+        - cpuonly
+        - inferno
+        - torchvision=*=*cpu
+    test:
+      source_files:
+        - tests
+        - pytest.ini
+
+      requires:
+        - pytest >=3,<4
+        - pytest-qt
+
+      imports:
+        - ilastik
+        - ilastik.experimental
+        - ilastik.config
+        - ilastik.applets
+        - ilastik.workflows
+        - lazyflow
+        - tiktorch
+
+      commands:
+        - ilastik --help
+        - pytest -v .
+
+    about:
+      home: https://github.com/ilastik/ilastik
+      license: LGPL-2.1-or-later
+      summary: >
+        ilastik conda package to create ilastik gui environments.
+        ilastik is a simple, user-friendly tool for interactive image classification,
+        segmentation and analysis.
 
 
-test:
-  imports:
-    - ilastik
-    - ilastik.experimental
-    - ilastik.config
-    - ilastik.applets
-    - ilastik.workflows
-    - lazyflow
+  - name: ilastik-gpu
+    build:
+      noarch: python
+      entry_points:
+        - ilastik = ilastik.__main__:main
+    requirements:
+      run:
+        - python 3.7.*
+        - ilastik-core {{ setup_py_data.version }}
+        - volumina
+        - pytorch >=1.6
+        - tensorflow 1.14.*
+        - tiktorch 22.2.0*
+        - inferno
+        - torchvision
+        - cudatoolkit >=10.2
 
-  source_files:
-    - tests
-    - pytest.ini
+    test:
+      source_files:
+        - tests
+        - pytest.ini
 
-  requires:
-    - pytest >=3,<4
-    - pytest-qt
-    - volumina
-    - tiktorch
+      requires:
+        - pytest >=3,<4
+        - pytest-qt
+        - pytorch 1.10.*
+        - cudatoolkit 11.1.*
 
-  commands:
-    - pytest -v .
+      imports:
+        - ilastik
+        - ilastik.experimental
+        - ilastik.config
+        - ilastik.applets
+        - ilastik.workflows
+        - lazyflow
+        - tiktorch
+        - torch
+        - vigra
+        - tensorflow
+
+      commands:
+        - ilastik --help
+        - pytest -v .
+
+    about:
+      home: https://github.com/ilastik/ilastik
+      license: LGPL-2.1-or-later
+      summary: >
+        ilastik conda package to create ilastik gpu-enabled gui environments.
+        ilastik is a simple, user-friendly tool for interactive image classification,
+        segmentation and analysis.

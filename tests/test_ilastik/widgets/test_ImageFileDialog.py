@@ -23,7 +23,7 @@ def tmp_preferences(tmp_path) -> pathlib.Path:
 def image(tmp_path) -> Path:
     image_path = Path(tmp_path) / "some_picture.png"
     image_path.touch()
-    return image_path
+    return image_path.resolve()
 
 
 def test_default_image_directory_is_home_with_blank_preferences_file():
