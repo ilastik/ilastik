@@ -1,4 +1,4 @@
-name: test
+name: conda-package
 
 on:
   push:
@@ -7,11 +7,10 @@ on:
     branches: [ main ]
 
 jobs:
-  test-w-conda-recipe:
-    strategy:
-      matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+  conda-noarch-build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v2
         with:
@@ -21,23 +20,100 @@ jobs:
           auto-update-conda: true
           auto-activate-base: true
           activate-environment: ""
+          channel-priority: strict
+          miniforge-variant: Mambaforge
+          use-mamba: true
       - name: install xvfb/deps
-        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -yy libgl1-mesa-dev xvfb curl
       - name: install common conda dependencies
-        run: conda install -n base -c conda-forge mamba boa setuptools_scm -y
+        run: mamba install -n base -c conda-forge mamba boa setuptools_scm -y
+      - uses: actions/cache@v2
+        with:
+          path: |
+            pkgs/noarch
+            pkgs/channeldata.json
+          key: ${{ github.sha }}-packages
+      - id: version
+        shell: bash -l {0}
+        run: |
+          vers=$( python setup.py --version )
+          echo "::set-output name=version::${vers}"
       - name: linux conda build test
+        shell: bash -l {0}
+        run: |
+          mkdir -p ./pkgs/noarch
+          conda mambabuild -c conda-forge conda-recipe --no-test --output-folder ./pkgs
+
+  test-conda-packages:
+    needs: [conda-noarch-build]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+        ilastik_variant: ["ilastik-core", "ilastik", "ilastik-gpu"]
+        exclude:
+          - os: macos-latest
+            ilastik_variant: "ilastik-gpu"
+          - os: windows-latest
+            ilastik_variant: "ilastik-gpu"
+        include:
+          - ilastik_variant: "ilastik-core"
+            build_prefix: "py_"
+    runs-on: ${{ matrix.os }}
+    env:
+      ILASTIK_PACKAGE_NAME: ${{ matrix.ilastik_variant }}-${{ needs.conda-noarch-build.outputs.version }}-${{ matrix.build_prefix }}0.tar.bz2
+    steps:
+      # necessary on windows: https://github.com/actions/cache/issues/591#issuecomment-845132253
+      - name: "Use GNU tar instead BSD tar"
+        if: matrix.os == 'windows-latest'
+        shell: cmd
+        run: echo C:\Program Files\Git\usr\bin>>"%GITHUB_PATH%"
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          auto-activate-base: true
+          activate-environment: ""
+          channel-priority: strict
+          miniforge-variant: Mambaforge
+          use-mamba: true
+      - name: install xvfb/deps
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -yy mesa-utils libgl1-mesa-dev xvfb curl
+      - name: install common conda dependencies
+        run: mamba install -n base -c conda-forge boa setuptools_scm -y
+      - uses: actions/cache@v2
+        with:
+          path: |
+            pkgs/noarch
+            pkgs/channeldata.json
+          key: ${{ github.sha }}-packages
+      - name: linux test
         if: matrix.os == 'ubuntu-latest'
         shell: bash -l {0}
-        run: xvfb-run mamba build -c ilastik-forge -c conda-forge conda-recipe
-      - name: osx conda build test
+        run: |
+          xvfb-run --server-args="-screen 0 1024x768x24" conda mambabuild --test --override-channels \
+            -c ./pkgs -c pytorch -c ilastik-forge -c conda-forge \
+            ./pkgs/noarch/${ILASTIK_PACKAGE_NAME}
+      - name: osx test
         if: matrix.os == 'macos-latest'
         shell: bash -l {0}
-        run: mamba build -c ilastik-forge -c conda-forge conda-recipe
-      - name: windows conda-build test
+        run: |
+          VOLUMINA_SHOW_3D_WIDGET=0 conda mambabuild --test --override-channels \
+            -c ./pkgs -c pytorch -c ilastik-forge -c conda-forge \
+            ./pkgs/noarch/${ILASTIK_PACKAGE_NAME}
+      - name: windows test
         if: matrix.os == 'windows-latest'
         shell: cmd /C CALL {0}
-        # auto activation of env does not seem to work on win
-        run: mamba build -c ilastik-forge -c conda-forge conda-recipe
+        run: |
+          set VOLUMINA_SHOW_3D_WIDGET=0
+          conda mambabuild --test --override-channels ^
+            -c .\pkgs -c pytorch -c ilastik-forge -c conda-forge ^
+            .\pkgs\noarch\%ILASTIK_PACKAGE_NAME%
+
