@@ -56,8 +56,6 @@ jobs:
         exclude:
           - os: macos-latest
             ilastik_variant: "ilastik-gpu"
-          - os: windows-latest
-            ilastik_variant: "ilastik-gpu"
         include:
           - ilastik_variant: "ilastik-core"
             build_prefix: "py_"
