@@ -101,12 +101,12 @@ outputs:
         - python 3.7.*
         - ilastik-core {{ setup_py_data.version }}
         - volumina
-        - pytorch 1.10.*
+        - pytorch >=1.6,<1.10
         - tensorflow 1.14.*
         - tiktorch 22.2.0*
         - cpuonly
         - inferno
-        - torchvision=*=*cpu
+        - torchvision
     test:
       source_files:
         - tests
@@ -115,6 +115,9 @@ outputs:
       requires:
         - pytest >=3,<4
         - pytest-qt
+        # need to help mamba here a bit
+        - pytorch 1.9.* *cpu*  # [not osx]
+        - pytorch 1.9.*  # [osx]
 
       imports:
         - ilastik
@@ -148,7 +151,7 @@ outputs:
         - python 3.7.*
         - ilastik-core {{ setup_py_data.version }}
         - volumina
-        - pytorch >=1.6
+        - pytorch >=1.6,<1.10
         - tensorflow 1.14.*
         - tiktorch 22.2.0*
         - inferno
@@ -163,7 +166,7 @@ outputs:
       requires:
         - pytest >=3,<4
         - pytest-qt
-        - pytorch 1.10.*
+        - pytorch 1.9.*
         - cudatoolkit 11.1.*
 
       imports:
