@@ -5,7 +5,7 @@ channels:
   - nodefaults
 dependencies:
   - python 3.7.*
-  - numpy 1.19.*
+  - numpy 1.21.*
   - appdirs
   - cachetools
   - dpct
@@ -42,10 +42,10 @@ dependencies:
   # Neural Network Workflow dependencies
   # can be changed to request gpu versions
   - cpuonly
-  - pytorch 1.10.*
+  - ilastik-pytorch-version-helper-cpu
+  - pytorch 1.9.*
   - tensorflow 1.14.*
   - tiktorch
-  - torchvision=*=*cpu
 
   # dev-only dependencies
   - conda-build
