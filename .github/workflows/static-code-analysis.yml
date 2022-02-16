@@ -1,0 +1,21 @@
+name: static-code-analysis
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: '0'
+      - uses: akaihola/darker@1.4.0
+        with:
+          options: "--check --diff --revision=origin/main..."
+          src: "."
+          version: "1.4.0"
