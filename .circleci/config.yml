@@ -85,39 +85,6 @@ jobs:
         paths:
         - /opt/conda/pkgs
 
-  black:
-    working_directory: /root/ilastik/ilastik
-    parallelism: 1
-    shell: /bin/bash --login
-    docker:
-    - image: continuumio/miniconda3
-    steps:
-    - restore_cache:
-        name: restore ilastik-repo cache
-        key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
-    - restore_cache:
-        name: restore dependency cache
-        keys:
-        - v1.4.12-dep-{{ .Branch }}-{{ epoch }}
-        - v1.4.12-dep-main-
-        - v1.4.12-dep-
-    - run:
-        name: update conda
-        command: >
-            conda config --set always_yes yes --set changeps1 no --set channel_priority strict &&
-            conda update -q conda -c conda-forge
-    - run:
-        name: create conda environment
-        command: >
-            conda create -y -n black -c conda-forge black
-    - run:
-        name: black check
-        command: >
-            conda activate black &&
-            git diff --name-only --diff-filter=AM origin/main.. |
-                grep ".*\.py" |
-                xargs black --check --line-length=120
-
 
 workflows:
   version: 2
@@ -127,7 +94,3 @@ workflows:
       - test:
           requires:
             - checkout_ilastik
-      - black:
-          requires:
-            - checkout_ilastik
-
