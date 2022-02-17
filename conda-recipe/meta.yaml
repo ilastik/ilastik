@@ -100,7 +100,7 @@ outputs:
       run:
         - python 3.7.*
         - ilastik-core {{ setup_py_data.version }}
-        - volumina
+        - volumina >=1.3.3
         - pytorch >=1.6,<1.10
         - tensorflow 1.14.*
         - tiktorch 22.2.0*
@@ -116,8 +116,7 @@ outputs:
         - pytest >=3,<4
         - pytest-qt
         # need to help mamba here a bit
-        - pytorch 1.9.* *cpu*  # [not osx]
-        - pytorch 1.9.*  # [osx]
+        - ilastik-pytorch-version-helper-cpu
 
       imports:
         - ilastik
@@ -150,7 +149,7 @@ outputs:
       run:
         - python 3.7.*
         - ilastik-core {{ setup_py_data.version }}
-        - volumina
+        - volumina >=1.3.3
         - pytorch >=1.6,<1.10
         - tensorflow 1.14.*
         - tiktorch 22.2.0*
