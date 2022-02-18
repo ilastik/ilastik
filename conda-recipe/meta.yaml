@@ -94,8 +94,6 @@ outputs:
   - name: ilastik
     build:
       noarch: python
-      entry_points:
-        - ilastik = ilastik.__main__:main
     requirements:
       run:
         - python 3.7.*
@@ -143,8 +141,6 @@ outputs:
   - name: ilastik-gpu
     build:
       noarch: python
-      entry_points:
-        - ilastik = ilastik.__main__:main
     requirements:
       run:
         - python 3.7.*
