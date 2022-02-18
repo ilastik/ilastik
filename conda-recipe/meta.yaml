@@ -126,7 +126,7 @@ outputs:
         - tiktorch
 
       commands:
-        - ilastik --help
+        - ilastik-app --help
         - pytest -v .
 
     about:
@@ -177,7 +177,7 @@ outputs:
         - tensorflow
 
       commands:
-        - ilastik --help
+        - ilastik-app --help
         - pytest -v .
 
     about:
