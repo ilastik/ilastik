@@ -35,3 +35,20 @@ jobs:
           conda mambabuild -c pytorch -c ilastik-forge -c conda-forge \
           --user ilastik-forge \
           conda-recipe
+
+  trigger-release:
+    needs: [package]
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - name: trigger
+        run: |
+          echo "Triggering release pipeline!"
+          curl \
+            --silent \
+            -X POST \
+            -F token=${GL_TOKEN} \
+            -F "ref=master" \
+            -F "variables[ILASTIK_VERSION]=${GITHUB_REF##*/}" \
+            --output /dev/null \
+            ${GL_URL}
