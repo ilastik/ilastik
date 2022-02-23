@@ -1,1 +1,7 @@
+include ilastik/*.png
 include ilastik/ilastik_logging/logging_config.json
+include ilastik/plugins_default/*.yapsi-plugin
+include ilastik/shell/gui/ilastik-logo-*
+include ilastik/shell/gui/ilastik-style.qss
+recursive-include ilastik *.ui
+recursive-include ilastik *icons/*.png
