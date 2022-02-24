@@ -39,11 +39,11 @@ jobs:
   trigger-release:
     # needs: [package]
     runs-on: ubuntu-latest
+    env:
+      GL_URL: {{ secrets.GL_URL }}
+      GL_TOKEN: {{ secrets.GL_TOKEN }}
     steps:
       - name: trigger
-        env:
-          GL_URL: {{ secrets.GL_URL }}
-          GL_TOKEN: {{ secrets.GL_TOKEN }}
         run: |
           echo "Triggering release pipeline!"
           curl \
