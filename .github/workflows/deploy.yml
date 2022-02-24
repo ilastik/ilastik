@@ -39,7 +39,6 @@ jobs:
   trigger-release:
     # needs: [package]
     runs-on: ubuntu-latest
-    environment: release
     steps:
       - name: trigger
         run: |
