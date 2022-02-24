@@ -2,8 +2,9 @@ name: deploy
 
 on:  
   push:
-    tags:
-      - '1.*'
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   package:
@@ -30,9 +31,8 @@ jobs:
           ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
         run: |
           mamba install -n base -c conda-forge boa setuptools_scm anaconda-client -y
-          mamba config --set anaconda_upload yes
           xvfb-run --server-args="-screen 0 1024x768x24" \
-          conda mambabuild -c pytorch -c ilastik-forge -c conda-forge \
+          conda mambabuild --no-test -c pytorch -c ilastik-forge -c conda-forge \
           --user ilastik-forge \
           conda-recipe
 
@@ -49,6 +49,6 @@ jobs:
             -X POST \
             -F token={{ secrets.GL_TOKEN }} \
             -F "ref=main" \
-            -F "variables[ILASTIK_VERSION]=${GITHUB_REF##*/}" \
+            -F "variables[ILASTIK_VERSION]=1.4.0btestest" \
             --output /dev/null \
             {{ secrets.GL_URL }}
