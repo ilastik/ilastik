@@ -42,16 +42,13 @@ jobs:
     environment: release
     steps:
       - name: trigger
-        env:
-          GL_URL: {{ secrets.GL_URL }}
-          GL_TOKEN: {{ secrets.GL_TOKEN }}
         run: |
           echo "Triggering release pipeline!"
           curl \
             --silent \
             -X POST \
-            -F "token=${GL_TOKEN}" \
+            -F token={{ secrets.GL_TOKEN }} \
             -F "ref=main" \
             -F "variables[ILASTIK_VERSION]=1.4.0btestest" \
             --output /dev/null \
-            ${GL_URL}
+            {{ secrets.GL_URL }}
