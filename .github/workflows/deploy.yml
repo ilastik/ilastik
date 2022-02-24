@@ -39,7 +39,6 @@ jobs:
   trigger-release:
     needs: [package]
     runs-on: ubuntu-latest
-    environment: release
     steps:
       - name: trigger
         run: |
@@ -47,8 +46,8 @@ jobs:
           curl \
             --silent \
             -X POST \
-            -F token={{ secrets.GL_TOKEN }} \
-            -F "ref=master" \
+            -F token=${{ secrets.GL_TOKEN }} \
+            -F "ref=main" \
             -F "variables[ILASTIK_VERSION]=${GITHUB_REF##*/}" \
             --output /dev/null \
-            {{ secrets.GL_URL }}
+            ${{ secrets.GL_URL }}
