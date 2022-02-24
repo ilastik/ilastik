@@ -6,42 +6,40 @@ on:
   pull_request:
     branches: [ main ]
 
-jobs:
-  # package:
-  #   runs-on: ubuntu-latest
-  #   environment: conda-deploy
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #       with:
-  #         fetch-depth: 0
-  #     - uses: conda-incubator/setup-miniconda@v2
-  #       with:
-  #         auto-update-conda: true
-  #         auto-activate-base: true
-  #         activate-environment: ""
-  #         miniforge-variant: Mambaforge
-  #         use-mamba: true
-  #     - name: install build dependencies
-  #       run: |
-  #         mamba install -n base -c conda-forge boa setuptools_scm anaconda-client -y
-  #         mamba config --set anaconda_upload yes
-  #     - name: linux conda build and upload
-  #       shell: bash -l {0}
-  #       env:
-  #         ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
-  #       run: |
-  #         mamba install -n base -c conda-forge boa setuptools_scm anaconda-client -y
-  #         xvfb-run --server-args="-screen 0 1024x768x24" \
-  #         conda mambabuild --no-test -c pytorch -c ilastik-forge -c conda-forge \
-  #         --user ilastik-forge \
-  #         conda-recipe
+# jobs:
+#   package:
+#     runs-on: ubuntu-latest
+#     environment: conda-deploy
+#     steps:
+#       - uses: actions/checkout@v2
+#         with:
+#           fetch-depth: 0
+#       - uses: conda-incubator/setup-miniconda@v2
+#         with:
+#           auto-update-conda: true
+#           auto-activate-base: true
+#           activate-environment: ""
+#           miniforge-variant: Mambaforge
+#           use-mamba: true
+#       - name: install build dependencies
+#         run: |
+#           mamba install -n base -c conda-forge boa setuptools_scm anaconda-client -y
+#           mamba config --set anaconda_upload yes
+#       - name: linux conda build and upload
+#         shell: bash -l {0}
+#         env:
+#           ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
+#         run: |
+#           mamba install -n base -c conda-forge boa setuptools_scm anaconda-client -y
+#           xvfb-run --server-args="-screen 0 1024x768x24" \
+#           conda mambabuild --no-test -c pytorch -c ilastik-forge -c conda-forge \
+#           --user ilastik-forge \
+#           conda-recipe
 
-  trigger-release:
-    # needs: [package]
+jobs:
+  build:
+    name: trigger-release
     runs-on: ubuntu-latest
-    env:
-      GL_URL: {{ secrets.GL_URL }}
-      GL_TOKEN: {{ secrets.GL_TOKEN }}
     steps:
       - name: trigger
         run: |
@@ -49,8 +47,8 @@ jobs:
           curl \
             --silent \
             -X POST \
-            -F token=${GL_TOKEN} \
+            -F token=${{ secrets.GL_TOKEN }} \
             -F "ref=main" \
-            -F "variables[ILASTIK_VERSION]=1.4.0btestest24" \
+            -F "variables[ILASTIK_VERSION]=1.4.0btest700ß" \
             --output /dev/null \
-            ${GL_URL}
+            ${{ secrets.GL_URL }}
