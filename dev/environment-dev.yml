@@ -53,3 +53,7 @@ dependencies:
   - pre-commit
   - pytest >=3,<4
   - pytest-qt
+
+  # ensure working environment on apple M1 via rosetta
+  # remove once native builds are available
+  - mkl 2021.*  # [osx]
