@@ -1,3 +1,4 @@
+import ctypes.util
 import os
 import pathlib
 import platform
@@ -105,15 +106,32 @@ def path_setup():
     os.environ.update(env_vars)
 
 
-def main():
-    path_setup()
+def fix_macos() -> None:
+    if platform.system() != "Darwin":
+        return
+    mac_ver = tuple(map(int, platform.mac_ver()[0].split(".")))
+    if mac_ver < (10, 16):
+        return
 
     # https://bugreports.qt.io/browse/QTBUG-87014
-    if platform.system().lower() == "darwin":
-        mac_ver = tuple(map(int, platform.mac_ver()[0].split(".")))
-        if mac_ver >= (10, 6):
-            os.environ["QT_MAC_WANTS_LAYER"] = "1"
-            os.environ["VOLUMINA_SHOW_3D_WIDGET"] = "0"
+    os.environ["QT_MAC_WANTS_LAYER"] = "1"
+    os.environ["VOLUMINA_SHOW_3D_WIDGET"] = "0"
+
+    # https://github.com/PixarAnimationStudios/USD/issues/1372#issuecomment-823226088
+
+    real_find_library = ctypes.util.find_library
+
+    def find_library(name):
+        if name in ("OpenGL", "GLUT"):
+            return f"/System/Library/Frameworks/{name}.framework/{name}"
+        return real_find_library(name)
+
+    ctypes.util.find_library = find_library
+
+
+def main():
+    path_setup()
+    fix_macos()
 
     from ilastik.__main__ import main
 
