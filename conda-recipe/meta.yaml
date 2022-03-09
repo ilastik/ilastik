@@ -58,7 +58,7 @@ outputs:
         - xarray
         - z5py
       run_constrained:
-        - tiktorch >=22.2.0
+        - tiktorch >=22.3.1
 
     test:
       imports:
@@ -103,7 +103,7 @@ outputs:
         - volumina >=1.3.3
         - pytorch >=1.6,<1.10
         - tensorflow 1.14.*
-        - tiktorch 22.2.0*
+        - tiktorch 22.3.1*
         - cpuonly
         - inferno
         - torchvision
@@ -152,7 +152,7 @@ outputs:
         - volumina >=1.3.3
         - pytorch >=1.6,<1.10
         - tensorflow 1.14.*
-        - tiktorch 22.2.0*
+        - tiktorch 22.3.1*
         - inferno
         - torchvision
         - cudatoolkit >=10.2
