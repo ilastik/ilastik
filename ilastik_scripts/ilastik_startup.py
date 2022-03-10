@@ -4,6 +4,7 @@ import pathlib
 import platform
 import shlex
 import sys
+import warnings
 from typing import Iterable, Mapping, Sequence, Tuple, Union
 
 
@@ -93,9 +94,16 @@ def _parse_internal_config(path: Union[str, os.PathLike]) -> Tuple[Sequence[str]
 
 def path_setup():
     if "--clean_paths" in sys.argv:
-        script_dir = pathlib.Path(__file__).parent
-        ilastik_root = script_dir.parent.parent
-        _clean_paths(ilastik_root)
+        # this is only used in the windows binary - there python.exe is
+        # directly in ilastik_root
+        if platform.system() == "Windows":
+            ilastik_root = pathlib.Path(sys.executable).parent
+            assert (ilastik_root / "ilastik.exe").exists()
+            _clean_paths(ilastik_root)
+        else:
+            warnings.warn(
+                f"--clean_paths argument only supported on windows and should only be used in the binary distribution. Skipping path cleanup."
+            )
 
     # Allow to start-up by double-clicking a project file.
     if len(sys.argv) == 2 and sys.argv[1].endswith(".ilp"):
