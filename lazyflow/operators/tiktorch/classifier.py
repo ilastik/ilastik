@@ -27,12 +27,8 @@ from collections import defaultdict
 from typing import Iterable, List, Callable, Tuple, Dict
 
 import xarray
-import vigra
 import grpc
 
-
-from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.graph import Graph
 from lazyflow.request import Request
 from lazyflow.roi import roiToSlice
 from lazyflow.futures_utils import MappableFuture, map_future
@@ -47,7 +43,7 @@ from . import _base
 logger = logging.getLogger(__name__)
 
 
-def enforce_min_shape(min_shape, step, axes):
+def enforce_min_shape(min_shape, step, axes) -> Tuple[int, ...]:
     """Hack: pick a bigger shape than min shape
 
     Some models come with super tiny minimal shapes, that make the processing
@@ -74,7 +70,7 @@ def enforce_min_shape(min_shape, step, axes):
 
     # choose the smallest increment to make at least one size >= target_size
     m = min([x for x in factors])
-    return tuple([s + i * m for s, i in zip(min_shape, step)])
+    return tuple([int(s + i * m) for s, i in zip(min_shape, step)])
 
 
 class ModelSession:
@@ -197,7 +193,7 @@ class ModelSession:
         return result
 
     @property
-    def training_shape(self) -> Tuple[int]:
+    def training_shape(self) -> Tuple[int, ...]:
         warnings.warn("HARDCODED training shape, this might not do what you want.")
         return (0, 0, 0, 128, 128)
 
@@ -269,6 +265,8 @@ class ModelSession:
         assert len(input_axes) == 1
         input_axis_order = input_axes[0]
         reordered_feature_image = reorder_axes(feature_image, from_axes_tags=axistags, to_axes_tags=input_axis_order)
+        if not reordered_feature_image.dtype == "float32":
+            reordered_feature_image = reordered_feature_image.astype("float32")
         try:
             current_rq = Request._current_request()
             resp = self.tiktorchClient.Predict.future(
