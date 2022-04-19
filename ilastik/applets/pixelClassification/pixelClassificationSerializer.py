@@ -19,7 +19,7 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-from pkg_resources import parse_version
+from packaging.version import parse
 import numpy
 import vigra
 from ilastik import Project
@@ -59,16 +59,16 @@ class BackwardsCompatibleLabelSerialBlockSlot(SerialBlockSlot):
 
     def labels_were_saved_in_forced_canonical_order(self, project: Project) -> bool:
         pixel_plus_object_workflow_name = "Object Classification (from pixel classification)"
-        v1_3_3 = parse_version("1.3.3")
-        v1_3_3post2 = parse_version("1.3.3post2")
+        v1_3_3 = parse("1.3.3")
+        v1_3_3post2 = parse("1.3.3post2")
 
         return (
             v1_3_3 <= project.ilastikVersion < v1_3_3post2 and project.workflowName == pixel_plus_object_workflow_name
         )
 
     def labels_were_saved_in_slot_original_order(self, project: Project):
-        v1_3_3post2 = parse_version("1.3.3post2")
-        v1_4_0b7 = parse_version("1.4.0b7")
+        v1_3_3post2 = parse("1.3.3post2")
+        v1_4_0b7 = parse("1.4.0b7")
 
         return v1_3_3post2 <= project.ilastikVersion <= v1_4_0b7
 

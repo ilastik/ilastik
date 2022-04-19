@@ -27,7 +27,7 @@ import re
 ################################
 import h5py
 from typing import Optional, List
-from pkg_resources import parse_version
+from packaging.version import parse
 
 try:
     from ._version import version
@@ -95,7 +95,7 @@ class Project:
     @property
     def ilastikVersion(self) -> Optional["Version"]:
         version_string = self._getString(self.ILASTIK_VERSION)
-        return version_string if version_string is None else parse_version(version_string)
+        return version_string if version_string is None else parse(version_string)
 
     @property
     def workflowName(self) -> Optional[str]:
