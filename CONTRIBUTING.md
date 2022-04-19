@@ -36,13 +36,6 @@ The following text equips you with knowledge that makes contributing to ilastik 
    conda install --name base -c conda-forge mamba
    ```
 
-1. Install [conda-build][conda-build] in order to access the [conda develop][conda-develop] command:
-
-   ```
-   mamba install --name base -c conda-forge conda-build
-   ```
-
-
 1. Create a new environment and install dependencies:
 
    ```
@@ -55,8 +48,10 @@ The following text equips you with knowledge that makes contributing to ilastik 
 1. Install repositories as packages in development mode:
 
    ```
-   conda develop --name ilastik volumina
-   conda develop --name ilastik ilastik
+   conda activate ilastik
+   # from the folder containing ilastik and volumina
+   pip install -e ilastik
+   pip install -e volumina
    ```
 
 1. Install pre-commit hooks:
@@ -78,7 +73,7 @@ The following text equips you with knowledge that makes contributing to ilastik 
    ```
    mamba activate ilastik
    cd ilastik
-   python ilastik.py
+   python ilastik_scripts/ilastik_startup.py
    ```
 
 ## Workflow
