@@ -25,29 +25,29 @@ import re
 ################################
 # # Add Submodules to sys.path ##
 ################################
-import os
 import h5py
-import time
-from typing import Optional, Iterable, List
+from typing import Optional, List
 from pkg_resources import parse_version
 
 try:
-    from ._version import version_tuple
-except ImportError:
-    version_tuple = (1, 4, "0b20")
+    from ._version import version
+except ModuleNotFoundError:
+    raise RuntimeError(
+        "Couldn't determine ilastik version - if you are developing ilastik please "
+        "make sure to use an editable install (`pip install -e .`). "
+        "Otherwise, please report this issue to the ilastik development team: team@ilastik.org"
+    )
+
 ##################
 # # Version info ##
 ##################
+
+__version__ = version
 
 
 def _format_version(t):
     """converts a tuple to a string"""
     return ".".join(str(i) for i in t)
-
-
-__version_info__ = version_tuple
-
-__version__ = _format_version(__version_info__)
 
 
 class Project:
@@ -134,8 +134,7 @@ def isVersionCompatible(version):
 
     # Only consider major and minor rev
     v1 = convertVersion(version)[0:2]
-    v2 = __version_info__[0:2]
-
+    v2 = convertVersion(__version__)[0:2]
     # Version 1.0 is compatible in all respects with version 0.6
     compatible_set = [(0, 6), (1, 0), (1, 1), (1, 2), (1, 3), (1, 4)]
     if v1 in compatible_set and v2 in compatible_set:

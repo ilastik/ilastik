@@ -22,7 +22,7 @@ tests/images
 
 build/
 dist/
-ilastik.egg-info/
+ilastik_core.egg-info/
 lazyflow.egg-info/
 
 .settings
@@ -80,3 +80,6 @@ docs/**/_build
 *.jpg
 *.swp
 coverage.xml
+
+# setuptools_scm version
+ilastik/_version.py
