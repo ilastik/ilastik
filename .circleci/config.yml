@@ -67,7 +67,7 @@ jobs:
             cd ${ILASTIK_ROOT}/ilastik-meta &&
             mamba env create --name ${TEST_ENV_NAME} --file ilastik/dev/environment-dev.yml &&
             mamba install --name ${TEST_ENV_NAME} --freeze-installed -c ilastik-forge -c conda-forge mpi4py pytest-cov volumina &&
-            mamba develop --name ${TEST_ENV_NAME} ilastik
+            conda run -n ${TEST_ENV_NAME} pip install -e ilastik
 
     - run:
         name: run ilastik tests
