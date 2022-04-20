@@ -28,9 +28,24 @@ See [ilastik.org](https://ilastik.org) for more info.
 
 ## Installation
 
+### Binary installation
+
 Go to the [download page][download-page], get the latest _non-beta_ version for your operating system, and follow the [installation instructions][how-to-install].
 If you are new to ilastik, we suggest to start from the [pixel classification workflow][pixel-classification].
 If you don't have a dataset to work with, download one of the example projects to get started.
+
+### Conda installation (experimental)
+
+ilastik is also available as a conda package on our `ilastik-forge` conda channel.
+We recommend using [mamba][mamba] instead of conda, for faster installation:
+
+```bash
+mamba create -n ilastik --override-channels -c pytorch -c ilastik-forge -c conda-forge ilastik
+
+# activate ilastik environment and start ilastik
+conda activate ilastik
+ilastik-app
+````
 
 ## Usage
 
@@ -77,3 +92,4 @@ For more complex changes, see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 [imagesc-search]: https://forum.image.sc/search
 [issues]: https://github.com/ilastik/ilastik/issues
 [edit-files-on-github]: https://docs.github.com/en/free-pro-team@latest/github/managing-files-in-a-repository/editing-files-in-another-users-repository
+[mamba]: https://github.com/mamba-org/mamba
