@@ -155,6 +155,8 @@ class OpEdgeTraining(Operator):
         Discards the labels for a given lane.
         NOTE: In addition to callers in this file, this function is also called from multicutWorkflow.py
         """
+        if self._cleaningUp:
+            return
         # Determine which lane triggered this and delete it's labels
         lane_index = self.Superpixels.index(subslot)
         old_labels = self.EdgeLabelsDict[lane_index].value
