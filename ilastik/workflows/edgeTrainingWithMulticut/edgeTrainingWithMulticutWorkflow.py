@@ -20,6 +20,7 @@
 ###############################################################################
 import argparse
 import numpy as np
+import sys
 
 from ilastik.workflow import Workflow
 

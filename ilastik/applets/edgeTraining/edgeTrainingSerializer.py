@@ -197,8 +197,8 @@ class EdgeTrainingSerializer(AppletSerializer):
             SerialCachedDataFrameSlot(
                 operator.opEdgeFeaturesCache.Output, operator.opEdgeFeaturesCache, name="EdgeFeatures"
             ),
-            SerialClassifierSlot(operator.opClassifierCache.Output, operator.opClassifierCache),
             SerialSlot(operator.TrainRandomForest),
+            SerialClassifierSlot(operator.opClassifierCache.Output, operator.opClassifierCache),
         ]
         super().__init__(projectFileGroupName, slots=slots)
 
