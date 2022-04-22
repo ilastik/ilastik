@@ -18,19 +18,6 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_SOLVER_NAME = None
 
-##
-# Check for OpenGM
-##
-try:
-    import opengm_with_cplex as opengm
-
-    OPENGM_SOLVER_NAMES = ["Opengm_IntersectionBased", "Opengm_Cgc", "Opengm_Exact"]
-    DEFAULT_SOLVER_NAME = "Opengm_Exact"
-except ImportError:
-    # Are there any multicut solvers in OpenGM that work without CPLEX?
-    # If not, there's no point in importing it at all.
-    # import opengm
-    OPENGM_SOLVER_NAMES = []
 
 ##
 # Select Nifty implementation (if any)
@@ -93,7 +80,7 @@ if not NIFTY_SOLVER_NAMES:
         # Nifty isn't available at all
         NIFTY_SOLVER_NAMES = []
 
-AVAILABLE_SOLVER_NAMES = NIFTY_SOLVER_NAMES + OPENGM_SOLVER_NAMES
+AVAILABLE_SOLVER_NAMES = NIFTY_SOLVER_NAMES
 
 if not AVAILABLE_SOLVER_NAMES:
     raise ImportError("Can't import OpMulticut: No solver libraries detected!")
@@ -175,31 +162,6 @@ class OpProjectNodeLabeling(Operator):
             self.Output.setDirty(roi.start, roi.stop)
         else:
             self.Output.setDirty()
-
-
-# class OpNodeLabelingToEdgeDecisionsDict(Operator):
-#     Rag = InputSlot()
-#     NodeLabels = InputSlot()
-#
-#     EdgeDecisionsDict = OutputSlot()
-#
-#     def setupOutputs(self):
-#         self.EdgeLabelsDict.meta.shape = (1,)
-#         self.EdgeLabelsDict.meta.dtype = object
-#
-#     def execute(self, slot, subindex, roi, result):
-#         node_labels = self.NodeLabels.value
-#         rag = self.Rag.value
-#
-#         # 0: edge is "inactive", nodes belong to the same segment
-#         # 1: edge is "active", nodes belong to separate segments
-#         edge_labels = (node_labels[rag.edge_ids[:,0]] != node_labels[rag.edge_ids[:,1]]).view(np.uint8)
-#
-#         edge_labels_dict = dict(izip(imap(tuple, rag.edge_ids), edge_labels))
-#         result[0] = edge_labels_dict
-#
-#     def propagateDirty(self, slot, subindex, roi):
-#         self.EdgeLabelsDict.setDirty()
 
 
 class OpEdgeLabelDisagreementDict(Operator):
@@ -291,7 +253,7 @@ class OpMulticutAgglomerator(Operator):
 
         beta: The multicut 'beta' parameter (0.0 < beta < 1.0)
 
-        solver_name: The multicut solver used. Format: library_solver (e.g. opengm_Exact, nifty_Exact)
+        solver_name: The multicut solver used. Format: library_solver (e.g. nifty_Exact)
 
         Returns: An index array [0,1,...,N] indicating the new labels for the N nodes of the RAG.
         """
@@ -301,15 +263,7 @@ class OpMulticutAgglomerator(Operator):
         assert rag.edge_ids.shape == (rag.num_edges, 2)
         assert solver_name in AVAILABLE_SOLVER_NAMES, "'{}' is not a valid solver name.".format(solver_name)
 
-        # The Rag is allowed to contain non-consecutive superpixel labels,
-        # but for OpenGM, we require node_count > max_id
-        # Therefore, use max_sp, not num_sp
         node_count = rag.max_sp + 1
-        if rag.num_sp != rag.max_sp + 1:
-            warnings.warn(
-                "Superpixel IDs are not consecutive. GM will contain excess variables to fill the gaps."
-                " (num_sp = {}, max_sp = {})".format(rag.num_sp, rag.max_sp)
-            )
         #
         # Solve
         #
@@ -319,8 +273,6 @@ class OpMulticutAgglomerator(Operator):
         solver_library, solver_method = solver_name.split("_")
         if solver_library == "Nifty":
             mapping_index_array = solve_with_nifty(rag.edge_ids, edge_weights, node_count, solver_method)
-        elif solver_library == "Opengm":
-            mapping_index_array = solve_with_opengm(rag.edge_ids, edge_weights, node_count, solver_method)
         else:
             raise RuntimeError("Unknown solver library: '{}'".format(solver_library))
 
@@ -453,74 +405,3 @@ def solve_with_nifty(edge_ids, edge_weights, node_count, solver_method):
 
     mapping_index_array = ret.astype(np.uint32)
     return mapping_index_array
-
-
-def solve_with_opengm(edge_ids, edge_weights, node_count, solver_method):
-    """
-    Solve the given multicut problem with OpenGM and return an
-    index array that maps node IDs to segment IDs.
-
-    edge_ids: The list of edges in the graph. shape=(N, 2)
-
-    edge_weights: Edge energies. shape=(N,)
-
-    node_count: Number of nodes in the model.
-                Note: Must be greater than the max ID found in edge_ids.
-                      If your superpixel IDs are not consecutive, node_count should be max_sp_id+1
-
-    solver_method: One of 'Exact', 'IntersectionBased', or 'Cgc'.
-    """
-    gm = opengm.gm(np.ones(node_count) * node_count)
-    pf = opengm.pottsFunctions([node_count, node_count], np.array([0]), edge_weights)
-    fids = gm.addFunctions(pf)
-    gm.addFactors(fids, edge_ids)
-
-    if solver_method == "Exact":
-        inf = opengm.inference.Multicut(gm)
-    elif solver_method == "IntersectionBased":
-        inf = opengm.inference.IntersectionBased(gm)
-    elif solver_method == "Cgc":
-        inf = opengm.inference.Cgc(gm, parameter=opengm.InfParam(planar=False))
-    else:
-        assert False, "Unknown solver method: {}".format(solver_method)
-
-    ret = inf.infer(inf.verboseVisitor())
-    if ret.name != "NORMAL":
-        raise RuntimeError("OpenGM inference failed with status: {}".format(ret.name))
-
-    mapping_index_array = inf.arg().astype(np.uint32)
-    return mapping_index_array
-
-
-if __name__ == "__main__":
-    import vigra
-
-    from lazyflow.utility import blockwise_view
-
-    # Superpixels are just (20,20,20) blocks, each with a unique value, 1-125
-    superpixels = np.zeros((100, 100, 100), dtype=np.uint32)
-    superpixel_block_view = blockwise_view(superpixels, (20, 20, 20))
-    assert superpixel_block_view.shape == (5, 5, 5, 20, 20, 20)
-    superpixel_block_view[:] = np.arange(1, 126).reshape((5, 5, 5))[..., None, None, None]
-
-    superpixels = superpixels[..., None]
-    assert superpixels.min() == 1
-    assert superpixels.max() == 125
-
-    # Make 3 random probability classes
-    probabilities = np.random.random(superpixels.shape[:-1] + (3,)).astype(np.float32)
-    probabilities = vigra.taggedView(probabilities, "zyxc")
-
-    superpixels = vigra.taggedView(superpixels, "zyxc")
-
-    from lazyflow.graph import Graph
-
-    op = OpMulticut(graph=Graph())
-    op.VoxelData.setValue(probabilities)
-    op.InputSuperpixels.setValue(superpixels)
-    assert op.Output.ready()
-    seg = op.Output[:].wait()
-
-    assert seg.min() == 0
-
-    print("DONE.")
