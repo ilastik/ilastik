@@ -1,89 +1,24 @@
-from __future__ import print_function
-from __future__ import division
-from past.utils import old_div
 import warnings
 
-
 import numpy as np
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedArrayCache, OpValueCache
 from lazyflow.utility import Timer
 
-import sys
-import subprocess
+import nifty
+from elf.segmentation.multicut import get_multicut_solver, get_available_solver_names
+
+from .multicutLegacy import LEGACY_SOLVER_NAMES, legacy_nifty_fm_greedy_solver
+
 
 import logging
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_SOLVER_NAME = None
+DEFAULT_SOLVER_NAME = "kernighan-lin"
 
-
-##
-# Select Nifty implementation (if any)
-##
-
-# Nifty first choice: With-CPLEX
-try:
-    # On windows nifty_with_cplex/gurobi gets imported partially eventhough
-    # cplex/gurobi is not available. This leads to errors like:
-    #   generic_type: type "LogLevel" is already registered!
-    # Therefore we start a subprocess to test the import.
-    if sys.platform.startswith("win"):
-        subprocess.run(
-            [sys.executable, "-c", "import nifty_with_cplex"],
-            check=True,
-            stderr=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-        )
-
-    import nifty_with_cplex as nifty
-
-    assert nifty.Configuration.WITH_CPLEX
-    MulticutObjectiveUndirectedGraph = nifty.graph.multicut.MulticutObjectiveUndirectedGraph
-    NIFTY_SOLVER_NAMES = ["Nifty_FmGreedy", "Nifty_FmCplex", "Nifty_ExactCplex"]
-    DEFAULT_SOLVER_NAME = "Nifty_ExactCplex"
-except (ImportError, subprocess.CalledProcessError):
-    NIFTY_SOLVER_NAMES = []
-
-# Nifty second choice: With-Gurobi
-if not NIFTY_SOLVER_NAMES:
-    try:
-        # see comment at nifty_with_cplex
-        if sys.platform.startswith("win"):
-            subprocess.run(
-                [sys.executable, "-c", "import nifty_with_gurobi"],
-                check=True,
-                stderr=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-            )
-
-        import nifty_with_gurobi as nifty
-
-        assert nifty.Configuration.WITH_GUROBI
-        MulticutObjectiveUndirectedGraph = nifty.graph.multicut.MulticutObjectiveUndirectedGraph
-        NIFTY_SOLVER_NAMES = ["Nifty_FmGreedy", "Nifty_FmGurobi", "Nifty_ExactGurobi"]
-        DEFAULT_SOLVER_NAME = "Nifty_ExactGurobi"
-    except (ImportError, subprocess.CalledProcessError):
-        NIFTY_SOLVER_NAMES = []
-
-# Nifty third choice: No exact optimizer
-if not NIFTY_SOLVER_NAMES:
-    try:
-        import nifty
-
-        MulticutObjectiveUndirectedGraph = nifty.graph.multicut.MulticutObjectiveUndirectedGraph
-        NIFTY_SOLVER_NAMES = ["Nifty_FmGreedy"]
-        DEFAULT_SOLVER_NAME = "Nifty_FmGreedy"
-    except ImportError as e:
-        print(e)
-        # Nifty isn't available at all
-        NIFTY_SOLVER_NAMES = []
-
-AVAILABLE_SOLVER_NAMES = NIFTY_SOLVER_NAMES
-
-if not AVAILABLE_SOLVER_NAMES:
-    raise ImportError("Can't import OpMulticut: No solver libraries detected!")
+AVAILABLE_SOLVER_NAMES = list(get_available_solver_names()) + [DEFAULT_SOLVER_NAME]
 
 
 class OpMulticut(Operator):
@@ -261,8 +196,6 @@ class OpMulticutAgglomerator(Operator):
         # Check parameters
         #
         assert rag.edge_ids.shape == (rag.num_edges, 2)
-        assert solver_name in AVAILABLE_SOLVER_NAMES, "'{}' is not a valid solver name.".format(solver_name)
-
         node_count = rag.max_sp + 1
         #
         # Solve
@@ -270,11 +203,7 @@ class OpMulticutAgglomerator(Operator):
         edge_weights = compute_edge_weights(rag.edge_ids, edge_probabilities, beta, threshold)
         assert edge_weights.shape == (rag.num_edges,)
 
-        solver_library, solver_method = solver_name.split("_")
-        if solver_library == "Nifty":
-            mapping_index_array = solve_with_nifty(rag.edge_ids, edge_weights, node_count, solver_method)
-        else:
-            raise RuntimeError("Unknown solver library: '{}'".format(solver_library))
+        mapping_index_array = solve(rag.edge_ids, edge_weights, node_count, solver_name)
 
         return mapping_index_array
 
@@ -325,7 +254,7 @@ def compute_edge_weights(edge_ids, edge_probabilities, beta, threshold):
     p1 = rescale(p1, threshold)
     p0 = 1.0 - p1  # P(Edge=NOT CUT)
 
-    edge_weights = np.log(old_div(p0, p1)) + np.log(old_div((1 - beta), (beta)))
+    edge_weights = np.log(p0 / p1) + np.log((1 - beta) / beta)
 
     # See note special behavior, above
     edges_touching_zero = edge_ids[:, 0] == 0
@@ -337,7 +266,7 @@ def compute_edge_weights(edge_ids, edge_probabilities, beta, threshold):
     return edge_weights
 
 
-def solve_with_nifty(edge_ids, edge_weights, node_count, solver_method):
+def solve(edge_ids, edge_weights, node_count, solver_method):
     """
     Solve the given multicut problem with the 'Nifty' library and return an
     index array that maps node IDs to segment IDs.
@@ -350,58 +279,28 @@ def solve_with_nifty(edge_ids, edge_weights, node_count, solver_method):
                 Note: Must be greater than the max ID found in edge_ids.
                       If your superpixel IDs are not consecutive, node_count should be max_sp_id+1
 
-    solver_method: One of 'ExactCplex', 'FmGreedy', etc.
+    solver_method: see elf.segmentation.multicut.get_available_solver_names, also still supporting
+                   NIFTY_FmGreedy, the previous default solver.
     """
-    # TODO: I don't know if this handles non-consecutive sp-ids properly
+    logging.debug(f"Using multicut solver {solver_method}")
+    if solver_method in get_available_solver_names():
+        solver = get_multicut_solver(solver_method)
+    elif solver_method == "Nifty_FmGreedy":
+        # for backwards compatibility:
+        warnings.warn(
+            f"Using legacy multicut {solver_method}. This is only expected in debug mode or with old project files."
+        )
+        solver = legacy_nifty_fm_greedy_solver
+    elif solver_method in LEGACY_SOLVER_NAMES:
+        ValueError(
+            f"Multicut solver method {solver_method} not supported anymore. Please run the project in ilastik 1.3.3post3, or change the solver method in debug mode."
+        )
+    else:
+        raise ValueError(f"Unsupported multicut solver method {solver_method}")
+
     g = nifty.graph.UndirectedGraph(int(node_count))
     g.insertEdges(edge_ids)
 
-    obj = nifty.graph.multicut.multicutObjective(g, edge_weights)
-
-    def getIlpFac(ilpSolver):
-        return obj.multicutIlpFactory(
-            ilpSolver=ilpSolver, addThreeCyclesConstraints=True, addOnlyViolatedThreeCyclesConstraints=True
-        )
-
-    def getFmFac(subFac):
-        return obj.ccFusionMoveBasedFactory(
-            fusionMove=obj.fusionMoveSettings(mcFactory=subFac),
-            proposalGenerator=obj.watershedCcProposals(sigma=1, numberOfSeeds=0.01),
-            numberOfIterations=500,
-            numberOfThreads=8,
-            stopIfNoImprovement=20,
-        )
-
-    # TODO finetune parameters
-    ret = None
-    if solver_method == "ExactCplex":
-        inf = getIlpFac("cplex").create(obj)
-
-    elif solver_method == "ExactGurobi":
-        inf = getIlpFac("gurobi").create(obj)
-
-    elif solver_method == "FmCplex":
-        greedy = obj.greedyAdditiveFactory().create(obj)
-        ret = greedy.optimize()
-        inf = getFmFac(getIlpFac("cplex")).create(obj)
-
-    elif solver_method == "FmGurobi":
-        greedy = obj.greedyAdditiveFactory().create(obj)
-        ret = greedy.optimize()
-        inf = getFmFac(getIlpFac("gurobi")).create(obj)
-
-    elif solver_method == "FmGreedy":
-        greedy = obj.greedyAdditiveFactory().create(obj)
-        ret = greedy.optimize()
-        inf = getFmFac(obj.greedyAdditiveFactory()).create(obj)
-
-    else:
-        assert False, "Unknown solver method: {}".format(solver_method)
-
-    if ret is None:
-        ret = inf.optimize(visitor=obj.verboseVisitor())
-    else:
-        ret = inf.optimize(visitor=obj.verboseVisitor(), nodeLabels=ret)
-
+    ret = solver(g, edge_weights)
     mapping_index_array = ret.astype(np.uint32)
     return mapping_index_array

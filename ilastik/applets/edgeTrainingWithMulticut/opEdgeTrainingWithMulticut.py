@@ -11,10 +11,10 @@ class OpEdgeTrainingWithMulticut(Operator):
     FeatureNames = InputSlot(value=OpEdgeTraining.DEFAULT_FEATURES)
     FreezeClassifier = InputSlot(value=True)
     TrainRandomForest = InputSlot(value=False)
-    ProbabilityThreshold = InputSlot(value=0.5)
 
     # Multicut parameters
     Beta = InputSlot(value=0.5)
+    ProbabilityThreshold = InputSlot(value=0.5)
     SolverName = InputSlot(value=DEFAULT_SOLVER_NAME)  # See opMulticut.py for list of solvers
     FreezeCache = InputSlot(value=True)
     WatershedSelectedInput = InputSlot(level=1)
