@@ -56,7 +56,7 @@ outputs:
         - tifffile <=2021.11.2
         # build 1.11.1=*_1028 on cf is the first to be compatible with numpy>1.19
         # need to bump this manually until there is a true version bump in vigra
-        - vigra 1.11.1=*_1029
+        - vigra 1.11.1=*_1032
         - wsdt
         - xarray
         - z5py
@@ -105,10 +105,9 @@ outputs:
         - python 3.7.*
         - ilastik-core {{ setup_py_data.version }}
         - volumina >=1.3.3
-        - pytorch >=1.6,<1.10
+        - pytorch-cpu >=1.6,<1.10
         - tensorflow 1.14.*
         - tiktorch 22.3.2*
-        - cpuonly
         - inferno
         - torchvision
     test:
@@ -155,6 +154,7 @@ outputs:
         - ilastik-core {{ setup_py_data.version }}
         - volumina >=1.3.3
         - pytorch >=1.6,<1.10
+        - pytorch =*=*cu*
         - tensorflow 1.14.*
         - tiktorch 22.3.2*
         - inferno

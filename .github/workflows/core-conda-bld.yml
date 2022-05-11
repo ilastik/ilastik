@@ -97,14 +97,14 @@ jobs:
         shell: bash -l {0}
         run: |
           xvfb-run --server-args="-screen 0 1024x768x24" conda mambabuild --test --override-channels \
-            -c ./pkgs -c pytorch -c ilastik-forge -c conda-forge \
+            -c ./pkgs -c ilastik-forge -c conda-forge \
             ./pkgs/noarch/${ILASTIK_PACKAGE_NAME}
       - name: osx test
         if: matrix.os == 'macos-latest'
         shell: bash -l {0}
         run: |
           VOLUMINA_SHOW_3D_WIDGET=0 conda mambabuild --test --override-channels \
-            -c ./pkgs -c pytorch -c ilastik-forge -c conda-forge \
+            -c ./pkgs -c ilastik-forge -c conda-forge \
             ./pkgs/noarch/${ILASTIK_PACKAGE_NAME}
       - name: windows test
         if: matrix.os == 'windows-latest'

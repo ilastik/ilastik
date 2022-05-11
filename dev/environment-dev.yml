@@ -1,6 +1,5 @@
 channels:
   - ilastik-forge
-  - pytorch
   - conda-forge
   - nodefaults
 dependencies:
@@ -36,16 +35,18 @@ dependencies:
   - tifffile 2021.11.2
   # build 1.11.1=*_1028 on cf is the first to be compatible with numpy>1.19
   # need to bump this manually until there is a true version bump in vigra
-  - vigra 1.11.1=*_1029
+  - vigra 1.11.1=*_1032
   - wsdt
   - xarray
   - z5py
 
   # Neural Network Workflow dependencies
   # can be changed to request gpu versions
-  - cpuonly
-  - ilastik-pytorch-version-helper-cpu
-  - pytorch 1.9.*
+  # Note that if you want packages from pytorch channel, it should be `pytorch` and `cpuonly`
+  # for the gpu build, on windows the pytorch channel is required
+  - pytorch-cpu 1.9.*
+  # - pytorch 1.9.*=*cu*
+  # - cudatoolkit 11.1.*
   - tensorflow 1.14.*
   - tiktorch
 
