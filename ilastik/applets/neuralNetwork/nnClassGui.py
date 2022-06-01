@@ -20,25 +20,20 @@
 ###############################################################################
 import os
 import logging
+import pathlib
 import traceback
 
+from io import BytesIO
 from functools import partial
 from collections import OrderedDict
 
 import numpy
 import yaml
+from bioimageio.core import export_resource_package, load_resource_description
 
 from ilastik.widgets.progressDialog import PercentProgressDialog
 from PyQt5 import uic
-from PyQt5.QtCore import (
-    Qt,
-    pyqtSlot,
-    pyqtSignal,
-    QTimer,
-    QStringListModel,
-    QModelIndex,
-    QPersistentModelIndex,
-)
+from PyQt5.QtCore import Qt, pyqtSlot, pyqtSignal, QTimer, QStringListModel, QModelIndex, QPersistentModelIndex
 from PyQt5.QtGui import QColor, QIcon
 from PyQt5.QtWidgets import (
     QMessageBox,
@@ -55,6 +50,7 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QDesktopWidget,
     QComboBox,
+    QPlainTextEdit,
 )
 
 from ilastik.applets.labeling.labelingGui import LabelingGui, Tool
@@ -78,6 +74,16 @@ def _listReplace(old, new):
         return new + old[len(new) :]
     else:
         return new
+
+
+class ModelUriEdit(QPlainTextEdit):
+    def keyPressEvent(self, event):
+        print(event.key())
+        if event.key() in [Qt.Key_Enter, Qt.Key_Return]:
+            event.accept()
+            return
+
+        super().keyPressEvent(event)
 
 
 class ParameterDlg(QDialog):
@@ -482,12 +488,6 @@ class NNClassGui(LabelingGui):
         self.set_live_predict_icon(self.livePrediction)
         self.labelingDrawerUi.livePrediction.toggled.connect(self.toggleLivePrediction)
 
-        self.labelingDrawerUi.addModel.clicked.connect(self.addModelClicked)
-        self.labelingDrawerUi.closeModel.setIcon(QIcon(ilastikIcons.ProcessStop))
-        self.labelingDrawerUi.closeModel.clicked.connect(self.closeModelClicked)
-        self.labelingDrawerUi.uploadModel.setIcon(QIcon(ilastikIcons.Upload))
-        self.labelingDrawerUi.uploadModel.clicked.connect(self.uploadModelClicked)
-
         self.initViewerControls()
         self.initViewerControlUi()
 
@@ -756,32 +756,6 @@ class NNClassGui(LabelingGui):
     def cc(self, *args, **kwargs):
         self.cancel_src.cancel()
 
-    def addModelClicked(self):
-        """
-        When AddModel button is clicked.
-        """
-        # open dialog in recent model folder if possible
-        folder = preferences.get("DataSelection", "recent model")
-        if folder is None:
-            folder = os.path.expanduser("~")
-
-        # get folder from user
-        filename = self.getModelToOpen(self, folder)
-
-        if filename:
-            projectManager = self.parentApplet._StandardApplet__workflow._shell.projectManager
-            # save whole project (specifically important here: the labels)
-            if not projectManager.currentProjectIsReadOnly:
-                projectManager.saveProject()
-
-            with open(filename, "rb") as modelFile:
-                modelBytes = modelFile.read()
-
-            self._uploadModel(modelBytes)
-
-            preferences.set("DataSelection", "recent model", filename)
-            self.parentApplet.appletStateUpdateRequested()
-
     @threadRouted
     def _showErrorMessage(self, exc):
         logger.error("".join(traceback.format_exception(etype=type(exc), value=exc, tb=exc.__traceback__)))
@@ -796,7 +770,9 @@ class NNClassGui(LabelingGui):
         dialog.open()
 
         modelInfo = self.tiktorchController.uploadModel(
-            modelBytes=modelBytes, progressCallback=dialog.updateProgress, cancelToken=cancelSrc.token
+            modelBytes=modelBytes,
+            progressCallback=dialog.updateProgress,
+            cancelToken=cancelSrc.token,
         )
 
         def _onUploadDone():
@@ -816,6 +792,29 @@ class NNClassGui(LabelingGui):
 
         modelInfo.add_done_callback(_onDone)
 
+    def onModelInfoRequested(self):
+        model_uri = self.labelingDrawerUi.modelUri.toPlainText().strip()
+        model_info = load_resource_description(model_uri)
+
+        # check model compatible shapes
+
+        # check model has compatible weights
+
+        model_bytes = self.resolveModel(model_uri)
+
+        try:
+            self._uploadModel(model_bytes)
+        except Exception as e:
+            self._showErrorMessage(e)
+
+    @classmethod
+    def resolveModel(cls, model_uri):
+        with BytesIO() as f:
+            _ = export_resource_package(model_uri, output_path=f)
+            model_bytes = f.getvalue()
+
+        return model_bytes
+
     def uploadModelClicked(self):
         try:
             self._uploadModel(self.tiktorchModel.modelBytes)
@@ -826,21 +825,27 @@ class NNClassGui(LabelingGui):
         self.labelingDrawerUi.liveTraining.setVisible(False)
         self.labelingDrawerUi.checkpoints.setVisible(False)
 
+        try:
+            self.labelingDrawerUi.controlModel.clicked.disconnect()
+        except:
+            pass
+
         if state is TiktorchOperatorModel.State.Empty:
-            self.labelingDrawerUi.addModel.setText("Load model")
-            self.labelingDrawerUi.addModel.setEnabled(True)
-            self.labelingDrawerUi.closeModel.setEnabled(False)
-            self.labelingDrawerUi.uploadModel.setEnabled(False)
+            self.labelingDrawerUi.modelUri.setEnabled(True)
+            self.labelingDrawerUi.controlModel.setIcon(QIcon(ilastikIcons.AddSel))
+            self.labelingDrawerUi.controlModel.setToolTip("Check and activate the model")
+            self.labelingDrawerUi.controlModel.setEnabled(True)
+            self.labelingDrawerUi.controlModel.clicked.connect(self.onModelInfoRequested)
             self.labelingDrawerUi.livePrediction.setEnabled(False)
             self.updateAllLayers()
 
-        elif state is TiktorchOperatorModel.State.ReadFromProjectFile:
+        elif state is TiktorchOperatorModel.State.ModelBinaryAvailable:
             info = self.tiktorchModel.modelInfo
-
-            self.labelingDrawerUi.addModel.setText(f"{info.name}")
-            self.labelingDrawerUi.addModel.setEnabled(True)
-            self.labelingDrawerUi.closeModel.setEnabled(True)
-            self.labelingDrawerUi.uploadModel.setEnabled(True)
+            self.labelingDrawerUi.modelUri.setEnabled(False)
+            self.labelingDrawerUi.controlModel.clicked.connect(self.uploadModelClicked)
+            self.labelingDrawerUi.controlModel.setIcon(QIcon(ilastikIcons.Upload))
+            self.labelingDrawerUi.controlModel.setToolTip("Activate the model")
+            self.labelingDrawerUi.controlModel.setEnabled(True)
             self.labelingDrawerUi.livePrediction.setEnabled(False)
 
             self.minLabelNumber = info.numClasses
@@ -851,10 +856,11 @@ class NNClassGui(LabelingGui):
         elif state is TiktorchOperatorModel.State.Ready:
             info = self.tiktorchModel.modelInfo
 
-            self.labelingDrawerUi.addModel.setText(f"{info.name}")
-            self.labelingDrawerUi.addModel.setEnabled(True)
-            self.labelingDrawerUi.closeModel.setEnabled(True)
-            self.labelingDrawerUi.uploadModel.setEnabled(False)
+            self.labelingDrawerUi.controlModel.setIcon(QIcon(ilastikIcons.ProcessStop))
+            self.labelingDrawerUi.controlModel.setToolTip("Stop and unload the model")
+            self.labelingDrawerUi.controlModel.clicked.connect(self.closeModelClicked)
+            self.labelingDrawerUi.controlModel.setEnabled(True)
+            self.labelingDrawerUi.modelUri.setEnabled(False)
             self.labelingDrawerUi.livePrediction.setEnabled(True)
 
             self.minLabelNumber = info.numClasses
