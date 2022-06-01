@@ -44,7 +44,7 @@ mamba create -n ilastik --override-channels -c pytorch -c ilastik-forge -c conda
 
 # activate ilastik environment and start ilastik
 conda activate ilastik
-ilastik-app
+ilastik
 ````
 
 ## Usage

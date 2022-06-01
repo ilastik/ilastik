@@ -99,7 +99,7 @@ outputs:
     build:
       noarch: python
       entry_points:
-        - ilastik-app = ilastik_scripts.ilastik_startup:main
+        - ilastik = ilastik_scripts.ilastik_startup:main
     requirements:
       run:
         - python 3.7.*
@@ -132,7 +132,7 @@ outputs:
         - tiktorch
 
       commands:
-        - ilastik-app --help
+        - ilastik --help
         - pytest -v .
 
     about:
@@ -148,7 +148,7 @@ outputs:
     build:
       noarch: python
       entry_points:
-        - ilastik-app = ilastik_scripts.ilastik_startup:main
+        - ilastik = ilastik_scripts.ilastik_startup:main
     requirements:
       run:
         - python 3.7.*
@@ -185,7 +185,7 @@ outputs:
         - tensorflow
 
       commands:
-        - ilastik-app --help
+        - ilastik --help
         - pytest -v .
 
     about:
