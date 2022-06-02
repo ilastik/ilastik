@@ -85,6 +85,19 @@ class ModelUriEdit(QPlainTextEdit):
 
         super().keyPressEvent(event)
 
+    def dropEvent(self, dropEvent):
+        urls = dropEvent.mimeData().urls()
+        self.clear()
+        self.setPlainText(urls[0].toLocalFile())
+
+    def dragEnterEvent(self, event):
+        # Only accept drag-and-drop events that consist of a single local file.
+        if not event.mimeData().hasUrls():
+            return
+        urls = event.mimeData().urls()
+        if len(urls) == 1 and all(url.isLocalFile() for url in urls):
+            event.acceptProposedAction()
+
 
 class ParameterDlg(QDialog):
     """
