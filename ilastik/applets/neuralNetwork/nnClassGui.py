@@ -30,6 +30,7 @@ from collections import OrderedDict
 import numpy
 import yaml
 from bioimageio.core import export_resource_package, load_resource_description
+from bioimageio.spec.shared.raw_nodes import ParametrizedInputShape
 
 from ilastik.widgets.progressDialog import PercentProgressDialog
 from PyQt5 import uic
@@ -67,6 +68,10 @@ from tiktorch.types import ModelState
 from tiktorch.configkeys import TRAINING, NUM_ITERATIONS_DONE, NUM_ITERATIONS_MAX
 
 logger = logging.getLogger(__name__)
+
+
+class ModelIncompatible(Exception):
+    pass
 
 
 def _listReplace(old, new):
@@ -772,7 +777,9 @@ class NNClassGui(LabelingGui):
     @threadRouted
     def _showErrorMessage(self, exc):
         logger.error("".join(traceback.format_exception(etype=type(exc), value=exc, tb=exc.__traceback__)))
-        QMessageBox.critical(self, "Model Server Error", f"Failed to upload model:\n {type(exc)} {exc}")
+        QMessageBox.critical(
+            self, "ilastik detected a problem with your model", f"Failed to initialize model:\n {type(exc)} {exc}"
+        )
 
     uploadDone = pyqtSignal()
 
@@ -805,13 +812,70 @@ class NNClassGui(LabelingGui):
 
         modelInfo.add_done_callback(_onDone)
 
+    @staticmethod
+    def _check_model_compatible(model_info):
+        """General checks whether ilastik will be able to show results of the network"""
+
+        # currently we only support a single input:
+        if len(model_info.inputs) != 1:
+            raise ModelIncompatible("ilastik supports only models with one input tensor.")
+
+        if len(model_info.outputs) != 1:
+            raise ModelIncompatible("ilastik supports only models with one output tensor.")
+
+        output_spec = model_info.outputs[0]
+        # we need at least twp spacial axes, and a channel axes in the output
+        if "c" not in output_spec.axes:
+            raise ModelIncompatible(
+                "ilastik only supports models with a channel axis in the outputs. No channel axis found in output."
+            )
+
+        spacial_axes_in_output = [ax for ax in output_spec.axes if ax in "xyz"]
+        if len(spacial_axes_in_output) < 2:
+            raise ModelIncompatible("ilastik needs at least two spacial axes in the output to show an image.")
+
+    def _check_input_spec_compatible(self, model_info):
+        def _minimum_tagged_shape(input_spec):
+            axes = input_spec.axes
+            input_shape = input_spec.shape
+            if isinstance(input_shape, list):
+                assert len(input_shape) == len(axes)
+                return {k: v for k, v in zip(axes, input_shape)}
+            elif isinstance(input_shape, ParametrizedInputShape):
+                assert len(input_shape.min) == len(input_shape.step) == len(axes)
+                return {k: v for k, v in zip(axes, input_shape.min)}
+            else:
+                raise ValueError(f"Unexpected input shape of type {type(input_shape)}")
+
+        input_spec = model_info.inputs[0]
+
+        # should probably do all input images?
+        input_data_shape = self.topLevelOperatorView.InputImages.meta.getTaggedShape()
+        input_model_shape = _minimum_tagged_shape(input_spec)
+
+        incompatible_shapes = {}
+        for dim, shape in input_model_shape.items():
+            # we are fine with singletons
+            if shape > 1 and input_data_shape.get(dim, 0) < shape:
+                incompatible_shapes[dim] = shape
+
+        if incompatible_shapes:
+            raise ModelIncompatible(
+                f"Input data doesn'tModel expects data to have a minimum size along the following axes {incompatible_shapes}"
+            )
+
     def onModelInfoRequested(self):
         model_uri = self.labelingDrawerUi.modelUri.toPlainText().strip()
         model_info = load_resource_description(model_uri)
 
-        # check model compatible shapes
-
-        # check model has compatible weights
+        # check model is broadly compatible with ilastik
+        try:
+            self._check_model_compatible(model_info)
+            # check model compatible shapes
+            self._check_input_spec_compatible(model_info)
+        except ModelIncompatible as e:
+            self._showErrorMessage(e)
+            return
 
         model_bytes = self.resolveModel(model_uri)
 

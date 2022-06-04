@@ -48,7 +48,7 @@ class ModelInfo:
 class TiktorchOperatorModel:
     @enum.unique
     class State(enum.Enum):
-        ReadFromProjectFile = "READ_FROM_PROJECT"
+        ModelBinaryAvailable = "MODEL_BINARY_AVAILABLE"
         Ready = "READY"
         Empty = "EMPTY"
 
@@ -85,10 +85,13 @@ class TiktorchOperatorModel:
         self._operator.ModelInfo.setValue(None)
         self._operator.NumClasses.setValue(None)
 
-    def setState(self, content, info, session):
+    def clearSession(self):
+        self._operator.ModelSession.setValue(None)
+
+    def setState(self, modelBytes, info, session):
         self._operator.NumClasses.disconnect()
 
-        self._operator.ModelBinary.setValue(content)
+        self._operator.ModelBinary.setValue(modelBytes)
         self._operator.ModelSession.setValue(session)
         self._operator.ModelInfo.setValue(info)
         self._operator.NumClasses.setValue(info.numClasses)
@@ -99,7 +102,7 @@ class TiktorchOperatorModel:
             and self._operator.ModelBinary.ready()
             and not self._operator.ModelSession.ready()
         ):
-            self._state = self.State.ReadFromProjectFile
+            self._state = self.State.ModelBinaryAvailable
         elif (
             self._operator.ModelInfo.ready()
             and self._operator.ModelBinary.ready()
@@ -134,12 +137,6 @@ class TiktorchController:
         self.connectionFactory = connectionFactory
         self._model = model
 
-    def loadModel(self, modelPath: str, *, progressCallback=None, cancelToken=None) -> None:
-        with open(modelPath, "rb") as modelFile:
-            modelBytes = modelFile.read()
-
-        return self.uploadModel(modelBytes=modelBytes, progressCallback=progressCallback, cancelToken=cancelToken)
-
     def uploadModel(self, *, modelBytes=None, progressCallback=None, cancelToken=None):
         srvConfig = self._model.serverConfig
 
@@ -160,6 +157,6 @@ class TiktorchController:
 
     def closeSession(self):
         session = self._model.session
-        self._model.clear()
+        self._model.clearSession()
         if session:
             session.close()
