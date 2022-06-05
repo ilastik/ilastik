@@ -82,8 +82,9 @@ def _listReplace(old, new):
 
 
 class ModelUriEdit(QPlainTextEdit):
+    modelDeleted = pyqtSignal()
+
     def keyPressEvent(self, event):
-        print(event.key())
         if event.key() in [Qt.Key_Enter, Qt.Key_Return]:
             event.accept()
             return
@@ -102,6 +103,16 @@ class ModelUriEdit(QPlainTextEdit):
         urls = event.mimeData().urls()
         if len(urls) == 1 and all(url.isLocalFile() for url in urls):
             event.acceptProposedAction()
+
+    def mouseDoubleClickEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            if (
+                QMessageBox.question(self, "Remove model", "Do you want to remove the model from the project file?")
+                == QMessageBox.Yes
+            ):
+                self.setPlainText("")
+                event.accept()
+                self.modelDeleted.emit()
 
 
 class ParameterDlg(QDialog):
@@ -506,6 +517,7 @@ class NNClassGui(LabelingGui):
         self.set_live_predict_icon(self.livePrediction)
         self.labelingDrawerUi.livePrediction.toggled.connect(self.toggleLivePrediction)
 
+        self.labelingDrawerUi.modelUri.modelDeleted.connect(self.tiktorchModel.clear)
         self.initViewerControls()
         self.initViewerControlUi()
 
@@ -877,9 +889,8 @@ class NNClassGui(LabelingGui):
             self._showErrorMessage(e)
             return
 
-        model_bytes = self.resolveModel(model_uri)
-
         try:
+            model_bytes = self.resolveModel(model_uri)
             self._uploadModel(model_bytes)
         except Exception as e:
             self._showErrorMessage(e)
