@@ -1,11 +1,11 @@
-image: Visual Studio 2017
+image: Visual Studio 2019
 
 clone_folder: c:\projects\ilastik
 
 environment:
   ENV_NAME: test-env
   # set miniconda version explicitly
-  MINICONDA: C:\Miniconda37-x64
+  MINICONDA: C:\Miniconda38-x64
   IlASTIK_ROOT: C:\ilastik
   VOLUMINA_SHOW_3D_WIDGET: 0
   APPVEYOR_CACHE_ENTRY_ZIP_ARGS: -xr!*/ -ir-!*.tar.bz2 -ir-!*.conda  # Exclude directories only cache downloaded tars
@@ -17,8 +17,10 @@ install:
   - cmd: set "PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
   - cmd: where conda
   - cmd: conda config --set always_yes yes --set changeps1 no --set channel_priority strict
-  - cmd: conda update -q conda
-  - cmd: conda install -c conda-forge conda-build mamba
+  # due to an incompatibility of mamba with conda 4.13, one currently cannot update conda first
+  - cmd: conda install -n base -c conda-forge mamba
+  - cmd: mamba update -n base -c conda-forge conda
+  - cmd: mamba install -n base -c conda-forge conda-build boa
   # Get the current main of all submodules
   - cmd: git clone https://github.com/ilastik/ilastik-meta %IlASTIK_ROOT%\ilastik-meta
   - cmd: cd %IlASTIK_ROOT%\ilastik-meta
@@ -31,7 +33,7 @@ install:
   - |
     mamba env create --name %ENV_NAME% --file %IlASTIK_ROOT%\ilastik-meta\ilastik\dev\environment-dev.yml
     mamba install --name %ENV_NAME% -c ilastik-forge -c conda-forge volumina
-    conda run -n %ENV_NAME% pip install -e %IlASTIK_ROOT%\ilastik-meta\ilastik
+    mamba run -n %ENV_NAME% pip install -e %IlASTIK_ROOT%\ilastik-meta\ilastik
   - mamba clean -p
 
 build: off
