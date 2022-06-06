@@ -18,54 +18,54 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-import os
 import logging
+import os
 import pathlib
 import traceback
-
-from io import BytesIO
-from functools import partial
 from collections import OrderedDict
+from functools import partial
+from io import BytesIO
 
 import numpy
 import yaml
 from bioimageio.core import export_resource_package, load_resource_description
 from bioimageio.spec.shared.raw_nodes import ParametrizedInputShape
-
-from ilastik.widgets.progressDialog import PercentProgressDialog
 from PyQt5 import uic
-from PyQt5.QtCore import Qt, pyqtSlot, pyqtSignal, QTimer, QStringListModel, QModelIndex, QPersistentModelIndex
-from PyQt5.QtGui import QColor, QIcon
+from PyQt5.QtCore import QEvent, QModelIndex, QPersistentModelIndex, QStringListModel, Qt, QTimer, pyqtSignal, pyqtSlot
+from PyQt5.QtGui import QColor, QIcon, QPalette, QRegion
 from PyQt5.QtWidgets import (
-    QMessageBox,
-    QWidget,
-    QStackedWidget,
-    QFileDialog,
-    QMenu,
-    QLineEdit,
-    QVBoxLayout,
-    QDialog,
-    QGridLayout,
-    QLabel,
-    QPushButton,
-    QHBoxLayout,
-    QDesktopWidget,
     QComboBox,
-    QPlainTextEdit,
+    QDesktopWidget,
+    QDialog,
+    QFileDialog,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMenu,
+    QMessageBox,
+    QPushButton,
+    QSizePolicy,
+    QSpacerItem,
+    QStackedWidget,
+    QTextEdit,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
 )
-
-from ilastik.applets.labeling.labelingGui import LabelingGui, Tool
-from ilastik.utility.gui import threadRouted
-from ilastik.utility import bind
-from ilastik.shell.gui.iconMgr import ilastikIcons
-from .tiktorchController import TiktorchOperatorModel, ALLOW_TRAINING
-
-from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
+from tiktorch.configkeys import NUM_ITERATIONS_DONE, NUM_ITERATIONS_MAX, TRAINING
+from tiktorch.types import ModelState
+from volumina.api import AlphaModulatedLayer, GrayscaleLayer, LazyflowSource
 from volumina.utility import preferences
 
+from ilastik.applets.labeling.labelingGui import LabelingGui, Tool
+from ilastik.shell.gui.iconMgr import ilastikIcons
+from ilastik.utility import bind
+from ilastik.utility.gui import threadRouted
+from ilastik.widgets.progressDialog import PercentProgressDialog
 from lazyflow.cancel_token import CancellationTokenSource
-from tiktorch.types import ModelState
-from tiktorch.configkeys import TRAINING, NUM_ITERATIONS_DONE, NUM_ITERATIONS_MAX
+
+from .tiktorchController import ALLOW_TRAINING, TiktorchOperatorModel
 
 logger = logging.getLogger(__name__)
 
@@ -81,8 +81,50 @@ def _listReplace(old, new):
         return new
 
 
-class ModelUriEdit(QPlainTextEdit):
+class ModelControlButtons(QWidget):
+    remove = pyqtSignal()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.btnlayout = QHBoxLayout()
+        self.btn_remove = QToolButton()
+        self.btn_remove.clicked.connect(self.remove)
+        self.btn_remove.setToolTip("Clear and remove model")
+        self.btn_remove.setIcon(QIcon(ilastikIcons.ProcessStop))
+        self.btn_remove.setCheckable(False)
+
+        self.btnlayout.addSpacerItem(QSpacerItem(0, 0, hPolicy=QSizePolicy.Expanding))
+        self.btnlayout.addWidget(self.btn_remove)
+        v = QVBoxLayout()
+        self.setLayout(v)
+        v.addLayout(self.btnlayout)
+        self.setVisible(False)
+        self.setMinimumHeight(50)
+        self.setMaximumHeight(50)
+        self.setMinimumWidth(50)
+        self.setMaximumWidth(50)
+        self.setMouseTracking(True)
+
+
+class ModelUriEdit(QTextEdit):
     modelDeleted = pyqtSignal()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.btn_container = ModelControlButtons(self)
+        self.btn_container.remove.connect(self.askClear)
+
+        self.setPlaceholderText(
+            "Copy-paste a bioimage.io model doi or nickname, or drag and drop a model.zip file here. Then press on the '+' button below."
+        )
+
+    def resizeEvent(self, evt):
+        own_size = self.size()
+        self.btn_container.move(own_size.width() - self.btn_container.size().width(), 0)
+        self.btn_container.resize(own_size.width(), self.btn_container.size().height())
+
+        super().resizeEvent(evt)
 
     def keyPressEvent(self, event):
         if event.key() in [Qt.Key_Enter, Qt.Key_Return]:
@@ -90,6 +132,15 @@ class ModelUriEdit(QPlainTextEdit):
             return
 
         super().keyPressEvent(event)
+
+    def enterEvent(self, ev):
+        if self.toPlainText():
+            self.btn_container.setVisible(True)
+        super().enterEvent(ev)
+
+    def leaveEvent(self, ev):
+        self.btn_container.setVisible(False)
+        super().leaveEvent(ev)
 
     def dropEvent(self, dropEvent):
         urls = dropEvent.mimeData().urls()
@@ -104,15 +155,13 @@ class ModelUriEdit(QPlainTextEdit):
         if len(urls) == 1 and all(url.isLocalFile() for url in urls):
             event.acceptProposedAction()
 
-    def mouseDoubleClickEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            if (
-                QMessageBox.question(self, "Remove model", "Do you want to remove the model from the project file?")
-                == QMessageBox.Yes
-            ):
-                self.setPlainText("")
-                event.accept()
-                self.modelDeleted.emit()
+    def askClear(self):
+        if (
+            QMessageBox.question(self, "Remove model", "Do you want to remove the model from the project file?")
+            == QMessageBox.Yes
+        ):
+            self.clear()
+            self.modelDeleted.emit()
 
 
 class ParameterDlg(QDialog):
