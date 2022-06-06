@@ -25,11 +25,13 @@ import traceback
 from collections import OrderedDict
 from functools import partial
 from io import BytesIO
+from textwrap import dedent
 
 import numpy
 import yaml
 from bioimageio.core import export_resource_package, load_resource_description
 from bioimageio.spec.shared.raw_nodes import ParametrizedInputShape
+from jinja2 import Template
 from PyQt5 import uic
 from PyQt5.QtCore import QEvent, QModelIndex, QPersistentModelIndex, QStringListModel, Qt, QTimer, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QColor, QIcon, QPalette, QRegion
@@ -119,6 +121,16 @@ class ModelUriEdit(QTextEdit):
             "Copy-paste a bioimage.io model doi or nickname, or drag and drop a model.zip file here. Then press on the '+' button below."
         )
 
+        self.display_template = Template(
+            dedent(
+                """<b>{{ model_name }}</b><br>
+        <i>{{ model_description }}</i><br>
+        <b>source:</b> {{ model_source }}<br>
+        <b>exp. input axes:</b> {{ fmt_input_shape }}<br>
+        <b>output axes:</b> {{ fmt_output_shape }}<br>"""
+            )
+        )
+
     def resizeEvent(self, evt):
         own_size = self.size()
         self.btn_container.move(own_size.width() - self.btn_container.size().width(), 0)
@@ -142,6 +154,18 @@ class ModelUriEdit(QTextEdit):
         self.btn_container.setVisible(False)
         super().leaveEvent(ev)
 
+    def setModelInfo(self, model_info):
+        model_source = self.toPlainText()
+        self.setHtml(
+            self.display_template.render(
+                model_source=model_source,
+                model_name=getattr(model_info, "name", "n/a"),
+                model_description=getattr(model_info, "description", "n/a"),
+                fmt_input_shape="".join(model_info.inputs[0].axes),
+                fmt_output_shape="".join(model_info.outputs[0].axes),
+            )
+        )
+
     def dropEvent(self, dropEvent):
         urls = dropEvent.mimeData().urls()
         self.clear()
@@ -162,6 +186,23 @@ class ModelUriEdit(QTextEdit):
         ):
             self.clear()
             self.modelDeleted.emit()
+
+    def setUiState(self, state: TiktorchOperatorModel.State):
+        if state is TiktorchOperatorModel.State.Empty:
+            self.setEnabled(True)
+            self.setTextInteractionFlags(Qt.TextEditorInteraction)
+            self.setToolTip(
+                "Copy/Paste a bioimage.io model doi or nickname, or\ndrag-and-drop a downloaded bioimage.io model.zip file."
+            )
+
+        elif state is TiktorchOperatorModel.State.ModelBinaryAvailable:
+            self.setEnabled(True)
+            self.setTextInteractionFlags(Qt.NoTextInteraction)
+            self.setToolTip("Remove the model by clicking the 'x' in the upper right corner.")
+
+        elif state is TiktorchOperatorModel.State.Ready:
+            self.setEnabled(False)
+            self.setToolTip("Stop the model to make changes.")
 
 
 class ParameterDlg(QDialog):
@@ -932,6 +973,7 @@ class NNClassGui(LabelingGui):
         # check model is broadly compatible with ilastik
         try:
             self._check_model_compatible(model_info)
+            self.labelingDrawerUi.modelUri.setModelInfo(model_info)
             # check model compatible shapes
             self._check_input_spec_compatible(model_info)
         except ModelIncompatible as e:
@@ -967,8 +1009,9 @@ class NNClassGui(LabelingGui):
         except:
             pass
 
+        self.labelingDrawerUi.modelUri.setUiState(state)
+
         if state is TiktorchOperatorModel.State.Empty:
-            self.labelingDrawerUi.modelUri.setEnabled(True)
             self.labelingDrawerUi.controlModel.setIcon(QIcon(ilastikIcons.AddSel))
             self.labelingDrawerUi.controlModel.setToolTip("Check and activate the model")
             self.labelingDrawerUi.controlModel.setEnabled(True)
@@ -978,7 +1021,6 @@ class NNClassGui(LabelingGui):
 
         elif state is TiktorchOperatorModel.State.ModelBinaryAvailable:
             info = self.tiktorchModel.modelInfo
-            self.labelingDrawerUi.modelUri.setEnabled(False)
             self.labelingDrawerUi.controlModel.clicked.connect(self.uploadModelClicked)
             self.labelingDrawerUi.controlModel.setIcon(QIcon(ilastikIcons.Upload))
             self.labelingDrawerUi.controlModel.setToolTip("Activate the model")
@@ -997,7 +1039,6 @@ class NNClassGui(LabelingGui):
             self.labelingDrawerUi.controlModel.setToolTip("Stop and unload the model")
             self.labelingDrawerUi.controlModel.clicked.connect(self.closeModelClicked)
             self.labelingDrawerUi.controlModel.setEnabled(True)
-            self.labelingDrawerUi.modelUri.setEnabled(False)
             self.labelingDrawerUi.livePrediction.setEnabled(True)
 
             self.minLabelNumber = info.numClasses
