@@ -42,20 +42,22 @@ jobs:
         name: restoring dependency cache
         keys:
         # This branch if available
-        - v1.4.12-dep-{{ .Branch }}-{{ epoch }}
+        - v1.4.13-dep-{{ .Branch }}-{{ epoch }}
         # Default branch if not
-        - v1.4.12-dep-main-
+        - v1.4.13-dep-main-
         # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
-        - v1.4.12-dep-
+        - v1.4.13-dep-
     - restore_cache:
         name: restore ilastik-repo cache
         key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
     - run:
-        name: update conda
+        name: configure base environment
+        # due to an incompatibility of mamba with conda 4.13, one currently cannot update conda first
         command: >
             conda config --set always_yes yes --set changeps1 no --set channel_priority strict &&
-            conda update -q conda -c conda-forge &&
-            conda install -n base -c conda-forge conda-build mamba
+            conda install -n base -c conda-forge mamba &&
+            mamba update -q conda -c conda-forge &&
+            mamba install -n base -c conda-forge conda-build boa
     - run:
         name: install apt dependencies
         command: >
@@ -67,7 +69,7 @@ jobs:
             cd ${ILASTIK_ROOT}/ilastik-meta &&
             mamba env create --name ${TEST_ENV_NAME} --file ilastik/dev/environment-dev.yml &&
             mamba install --name ${TEST_ENV_NAME} --freeze-installed -c ilastik-forge -c conda-forge mpi4py pytest-cov volumina &&
-            conda run -n ${TEST_ENV_NAME} pip install -e ilastik
+            mamba run -n ${TEST_ENV_NAME} pip install -e ilastik
 
     - run:
         name: run ilastik tests
@@ -81,7 +83,7 @@ jobs:
         path: test-results
     - save_cache:
         name: store dependency cache
-        key: v1.4.12-dep-{{ .Branch }}-{{ epoch }}
+        key: v1.4.13-dep-{{ .Branch }}-{{ epoch }}
         paths:
         - /opt/conda/pkgs
 
