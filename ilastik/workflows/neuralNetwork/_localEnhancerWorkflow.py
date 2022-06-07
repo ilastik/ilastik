@@ -24,14 +24,14 @@ from ilastik.config import runtime_cfg
 from ilastik.applets.serverConfiguration.types import ServerConfig, Device
 from ._nnWorkflowBase import _NNWorkflowBase
 from ._localLauncher import LocalServerLauncher
-from ilastik.applets.neuralNetwork import NNClassApplet
+from ilastik.applets.pixelClassificationEnhancer import PixelClassificationEnhancerApplet
 from lazyflow.operators import tiktorch
-
+from ilastik.applets.featureSelection import FeatureSelectionApplet
 
 logger = logging.getLogger(__name__)
 
 
-class LocalWorkflow(_NNWorkflowBase):
+class LocalEnhancerWorkflow(_NNWorkflowBase):
     """
     This class provides workflow for a local tiktorch executable.
     It can be specified via "--tiktorch_executable" command line parameter.
@@ -41,7 +41,7 @@ class LocalWorkflow(_NNWorkflowBase):
     """
 
     auto_register = True
-    workflowName = "Neural Network Classification (Local)"
+    workflowName = "Pixel Classification Enhancer (Local)"
     workflowDescription = "Allows to apply bioimage.io models on your data using bundled tiktorch"
 
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
@@ -52,7 +52,12 @@ class LocalWorkflow(_NNWorkflowBase):
         self._launcher = LocalServerLauncher(tiktorch_exe_path)
         super().__init__(shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs)
 
+    def _createFeatureSelectionApplet(self):
+        return FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections")
+
     def _createClassifierApplet(self):
+        self.featureSelectionApplet = self._createFeatureSelectionApplet()
+        self.applets.append(self.featureSelectionApplet)
         conn_str = self._launcher.start()
         srv_config = ServerConfig(id="auto", address=conn_str, devices=[Device(id="cpu", name="cpu", enabled=True)])
         connFactory = tiktorch.TiktorchConnectionFactory()
@@ -79,12 +84,38 @@ class LocalWorkflow(_NNWorkflowBase):
 
         srv_config = srv_config.evolve(devices=[Device(id=preferred_cuda_device_id, name=device_name, enabled=True)])
 
-        self.nnClassificationApplet = NNClassApplet(self, "NNClassApplet", connectionFactory=connFactory)
-        opClassify = self.nnClassificationApplet.topLevelOperator
-        opClassify.ServerConfig.setValue(srv_config)
+        pce_appplet = PixelClassificationEnhancerApplet(
+            self, "PixelClassificationEnhancer", connectionFactory=connFactory
+        )
+        opNNclassify = pce_appplet.topLevelOperator
+        opNNclassify.ServerConfig.setValue(srv_config)
+
+        self.nnClassificationApplet = pce_appplet
         self._applets.append(self.nnClassificationApplet)
+
+    def connectLane(self, laneIndex):
+        """
+        connects the operators for different lanes, each lane has a laneIndex starting at 0
+        """
+        opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opNNclassify = self.nnClassificationApplet.topLevelOperator.getLane(laneIndex)
+        opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
+        opFeatures = self.featureSelectionApplet.topLevelOperator.getLane(laneIndex)
+
+        opFeatures.InputImage.connect(opData.Image)
+        # Feature Images -> Classification Op (for training, prediction)
+        opNNclassify.FeatureImages.connect(opFeatures.OutputImage)
+        opNNclassify.CachedFeatureImages.connect(opFeatures.CachedOutputImage)
+        # Input Image ->  Classification Op (for display)
+        opNNclassify.InputImages.connect(opData.Image)
+        opNNclassify.OverlayImages.connect(opData.ImageGroup[self.DATA_ROLE_OVERLAY])
+        # Data Export connections
+        opDataExport.RawData.connect(opData.ImageGroup[self.DATA_ROLE_RAW])
+        opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[self.DATA_ROLE_RAW])
+        opDataExport.Inputs.resize(len(self.EXPORT_NAMES))
+        opDataExport.Inputs[0].connect(opNNclassify.PredictionProbabilities)
+        opDataExport.Inputs[1].connect(opNNclassify.LabelImages)
 
     def cleanUp(self):
         super().cleanUp()
-        self.nnClassificationApplet.tiktorchController.closeSession()
         self._launcher.stop()

@@ -17,6 +17,7 @@ class OpPixelClassificationEnhancer(OpPixelClassification):
     name = "OpPixelClassificationEnhancer"
     category = "Top-level"
     SelectedChannels = InputSlot(value=[])
+    OverlayImages = InputSlot(level=1, optional=True)
     ModelBinary = InputSlot(stype=stype.Opaque, nonlane=True)
     # Contains cached model info
     ModelInfo = InputSlot(stype=stype.Opaque, nonlane=True, optional=True)
