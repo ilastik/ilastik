@@ -46,7 +46,8 @@ class _NNWorkflowBase(Workflow):
     workflowDescription = "Base class for NN Classification workflows"
 
     DATA_ROLE_RAW = 0
-    ROLE_NAMES = ["Raw Data"]
+    DATA_ROLE_OVERLAY = 1
+    ROLE_NAMES = ["Raw Data", "Overlay"]
     EXPORT_NAMES = ["Probabilities", "Labels"]
 
     @property
@@ -136,6 +137,7 @@ class _NNWorkflowBase(Workflow):
 
         # Input Image ->  Classification Op (for display)
         opNNclassify.InputImages.connect(opData.Image)
+        opNNclassify.OverlayImages.connect(opData.ImageGroup[self.DATA_ROLE_OVERLAY])
         # Data Export connections
         opDataExport.RawData.connect(opData.ImageGroup[self.DATA_ROLE_RAW])
         opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[self.DATA_ROLE_RAW])
