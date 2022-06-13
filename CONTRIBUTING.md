@@ -33,7 +33,7 @@ The following text equips you with knowledge that makes contributing to ilastik 
 
    ```
    conda config --set channel_priority strict
-   conda install --name base -c conda-forge mamba
+   conda install --name base --channel conda-forge mamba
    ```
 
 1. Create a new environment and install dependencies:
@@ -50,8 +50,8 @@ The following text equips you with knowledge that makes contributing to ilastik 
    ```
    conda activate ilastik
    # from the folder containing ilastik and volumina
-   pip install -e ilastik
-   pip install -e volumina
+   pip install --editable ilastik
+   pip install --editable volumina
    ```
 
 1. Install pre-commit hooks:
