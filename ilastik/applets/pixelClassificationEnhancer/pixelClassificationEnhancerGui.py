@@ -210,20 +210,21 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
 
                     predictionLayer.name = f"NN prediction Channel {channel}"
 
-                    def setLayerColor(c, predictLayer_=predictionLayer):
-                        new_color = QColorDialog.getColor()
-                        if new_color:
-                            predictLayer_.tintColor = new_color
+                    # def setLayerColor(c, predictLayer_=predictionLayer):
+                    #     new_color = QColorDialog.getColor()
+                    #     if new_color:
+                    #         predictLayer_.tintColor = new_color
 
-                    action = QAction("Change prediction color")
-                    action.triggered.connect(setLayerColor)
-                    predictionLayer.contexts.append(action)
+                    # action = QAction("Change prediction color")
+                    # action.triggered.connect(setLayerColor)
+                    # predictionLayer.contexts.append(action)
 
                     layers.append(predictionLayer)
 
         # EnhancerInput
         if enhancer_slot is not None and enhancer_slot.ready():
             layer = self.createStandardLayerFromSlot(enhancer_slot, name="EnhancerInput")
+            layer.visible = False
             layers.append(layer)
 
         layers.extend(super().setupLayers())
