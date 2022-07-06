@@ -18,17 +18,21 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+import json
+
 import numpy as np
 
 from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
-    SerialSlot,
-    SerialListSlot,
-    SerialBlockSlot,
     JSONSerialSlot,
+    SerialBlockSlot,
+    SerialListSlot,
+    SerialSlot,
     jsonSerializerRegistry,
 )
-from .tiktorchController import ModelInfo
+
+from .tiktorchController import BIOModelData, ModelInfo
+from bioimageio.spec import serialize_raw_resource_description_to_dict, load_raw_resource_description
 
 
 @jsonSerializerRegistry.register_serializer(ModelInfo)
@@ -67,6 +71,31 @@ class BinarySlot(SerialSlot):
         slot.setValue(val.tobytes())
 
 
+class BioimageIOModelSlot(SerialSlot):
+    """ """
+
+    @staticmethod
+    def _saveValue(group, name, value):
+        assert isinstance(value, BIOModelData)
+        if value:
+            ds = group.create_dataset(name, data=np.void(value.binary))
+            ds.attrs["name"] = value.name
+            ds.attrs["modelUri"] = value.modelUri
+            ds.attrs["rawDescription"] = json.dumps(serialize_raw_resource_description_to_dict(value.rawDescription))
+            ds.attrs["hashVal"] = value.hashVal
+
+    @staticmethod
+    def _getValue(subgroup, slot):
+        model = BIOModelData(
+            name=subgroup.attrs["name"],
+            modelUri=subgroup.attrs["modelUri"],
+            binary=subgroup[()].tobytes(),
+            rawDescription=load_raw_resource_description(json.loads(subgroup.attrs["rawDescription"])),
+            hashVal=subgroup.attrs["hashVal"],
+        )
+        slot.setValue(model)
+
+
 class NNClassificationSerializer(AppletSerializer):
     def __init__(self, topLevelOperator, projectFileGroupName):
         self.VERSION = 1
@@ -75,7 +104,6 @@ class NNClassificationSerializer(AppletSerializer):
             SerialListSlot(topLevelOperator.LabelNames),
             SerialListSlot(topLevelOperator.LabelColors, transform=lambda x: tuple(x.flat)),
             SerialListSlot(topLevelOperator.PmapColors, transform=lambda x: tuple(x.flat)),
-            JSONSerialSlot(topLevelOperator.ModelInfo, obj_class=ModelInfo),
             SerialBlockSlot(
                 topLevelOperator.LabelImages,
                 topLevelOperator.LabelInputs,
@@ -85,7 +113,7 @@ class NNClassificationSerializer(AppletSerializer):
                 selfdepends=False,
                 shrink_to_bb=True,
             ),
-            BinarySlot(topLevelOperator.ModelBinary),
+            BioimageIOModelSlot(topLevelOperator.BIOModel),
         ]
 
         super().__init__(projectFileGroupName, slots)
