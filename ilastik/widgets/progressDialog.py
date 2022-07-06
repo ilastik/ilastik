@@ -1,8 +1,10 @@
 import os
 from PyQt5 import uic
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal, Qt
 from PyQt5.QtWidgets import QDialog, QMessageBox
 from os.path import split as split_path
+import platform
+from enum import IntEnum, auto
 
 
 class ProgressDialog(QDialog):
@@ -83,14 +85,23 @@ class ProgressDialog(QDialog):
         self.trigger_popup.emit(level, title, description, args, False)
 
 
+class BarId(IntEnum):
+    bar0 = auto()
+    bar1 = auto()
+
+
 class PercentProgressDialog(QDialog):
     class _ProgressEmitter(QObject):
-        progress = pyqtSignal(int)
+        progress0 = pyqtSignal(int)
+        progress1 = pyqtSignal(int)
 
-        def __call__(self, val):
-            self.progress.emit(val)
+        def __call__(self, val, bar: BarId = BarId.bar0):
+            if bar == BarId.bar0:
+                self.progress0.emit(val)
+            elif bar == BarId.bar1:
+                self.progress1.emit(val)
 
-    def __init__(self, parent=None, *, title=None):
+    def __init__(self, parent=None, *, title=None, secondary_bar=False):
         super().__init__(parent)
         localDir = os.path.split(__file__)[0]
         form, _ = uic.loadUiType(os.path.join(localDir, "percentProgressDialog.ui"))
@@ -98,18 +109,49 @@ class PercentProgressDialog(QDialog):
         self._ui.setupUi(self)
         self._ui.cancel.clicked.connect(self.reject)
         self._emitter = self._ProgressEmitter(parent=self)
-        self._emitter.progress.connect(self._ui.progress.setValue)
+        self._emitter.progress0.connect(self._ui.progress0.setValue)
+        self._emitter.progress1.connect(self._ui.progress1.setValue)
 
         if title:
             self.setWindowTitle(title)
-            self._ui.progress.setFormat(f"{title}: %p%")
+            self._ui.progress0.setFormat(f"{title}: %p%")
 
-    def updateProgress(self, progress: int):
+            # did not manage to show a titlebar on OSX, or progress text on the progress bar
+            # added additional label to UI to handle information display on OSX
+            if platform.system() == "Darwin":
+                self._ui.osxLabel0.setText(title)
+                self._ui.osxLabel0.setVisible(True)
+                self._emitter.progress0.connect(lambda val: self._ui.osxLabel0.setText(f"{title} {val}%"))
+
+        if secondary_bar:
+            self.getBar(BarId.bar1).setVisible(True)
+            if platform.system() == "Darwin":
+                self._ui.osxLabel1.setVisible(True)
+
+    def updateProgress(self, progress: int, bar: BarId = BarId.bar0):
         # Using emitter to avoid updating UI from non-main thread
-        self._emitter(progress)
+        self._emitter(progress, bar)
 
-    def setBusy(self):
-        self._ui.progress.setMaximum(0)
+    def setBusy(self, bar: BarId = BarId.bar0):
+        self.getBar(bar).setMaximum(0)
+
+    def getBar(self, bar: BarId):
+        if bar == BarId.bar0:
+            return self._ui.progress0
+        elif bar == BarId.bar1:
+            return self._ui.progress1
+
+    def updateBarFormat(self, title: str, bar: BarId = BarId.bar0):
+        self.getBar(bar).setFormat(f"{title}: %p%")
+        if platform.system() == "Darwin":
+            if bar == BarId.bar0:
+                self._emitter.progress0.disconnect()
+                self._emitter.progress0.connect(lambda val: self._ui.osxLabel0.setText(f"{title} {val}%"))
+                self._emitter.progress0.connect(self._ui.progress0.setValue)
+            if bar == BarId.bar1:
+                self._emitter.progress1.disconnect()
+                self._emitter.progress1.connect(lambda val: self._ui.osxLabel1.setText(f"{title} {val}%"))
+                self._emitter.progress1.connect(self._ui.progress1.setValue)
 
 
 if __name__ == "__main__":

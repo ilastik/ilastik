@@ -20,21 +20,24 @@
 ###############################################################################
 import logging
 import os
-import pathlib
 import traceback
 from collections import OrderedDict
 from functools import partial
-from io import BytesIO
-from textwrap import dedent
 
 import numpy
 import yaml
-from bioimageio.core import export_resource_package, load_resource_description
 from bioimageio.spec.shared.raw_nodes import ParametrizedInputShape
-from jinja2 import Template
 from PyQt5 import uic
-from PyQt5.QtCore import QEvent, QModelIndex, QPersistentModelIndex, QStringListModel, Qt, QTimer, pyqtSignal, pyqtSlot
-from PyQt5.QtGui import QColor, QIcon, QPalette, QRegion
+from PyQt5.QtCore import (
+    QModelIndex,
+    QPersistentModelIndex,
+    QStringListModel,
+    Qt,
+    QTimer,
+    pyqtSignal,
+    pyqtSlot,
+)
+from PyQt5.QtGui import QColor, QIcon
 from PyQt5.QtWidgets import (
     QComboBox,
     QDesktopWidget,
@@ -47,11 +50,7 @@ from PyQt5.QtWidgets import (
     QMenu,
     QMessageBox,
     QPushButton,
-    QSizePolicy,
-    QSpacerItem,
     QStackedWidget,
-    QTextEdit,
-    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -64,16 +63,10 @@ from ilastik.applets.labeling.labelingGui import LabelingGui, Tool
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
-from ilastik.widgets.progressDialog import PercentProgressDialog
-from lazyflow.cancel_token import CancellationTokenSource
 
 from .tiktorchController import ALLOW_TRAINING, TiktorchOperatorModel
 
 logger = logging.getLogger(__name__)
-
-
-class ModelIncompatible(Exception):
-    pass
 
 
 def _listReplace(old, new):
@@ -81,128 +74,6 @@ def _listReplace(old, new):
         return new + old[len(new) :]
     else:
         return new
-
-
-class ModelControlButtons(QWidget):
-    remove = pyqtSignal()
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.btnlayout = QHBoxLayout()
-        self.btn_remove = QToolButton()
-        self.btn_remove.clicked.connect(self.remove)
-        self.btn_remove.setToolTip("Clear and remove model")
-        self.btn_remove.setIcon(QIcon(ilastikIcons.ProcessStop))
-        self.btn_remove.setCheckable(False)
-
-        self.btnlayout.addSpacerItem(QSpacerItem(0, 0, hPolicy=QSizePolicy.Expanding))
-        self.btnlayout.addWidget(self.btn_remove)
-        v = QVBoxLayout()
-        self.setLayout(v)
-        v.addLayout(self.btnlayout)
-        self.setVisible(False)
-        self.setMinimumHeight(50)
-        self.setMaximumHeight(50)
-        self.setMinimumWidth(50)
-        self.setMaximumWidth(50)
-        self.setMouseTracking(True)
-
-
-class ModelUriEdit(QTextEdit):
-    modelDeleted = pyqtSignal()
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.btn_container = ModelControlButtons(self)
-        self.btn_container.remove.connect(self.askClear)
-
-        self.setPlaceholderText(
-            "Copy-paste a bioimage.io model doi or nickname, or drag and drop a model.zip file here. Then press on the '+' button below."
-        )
-
-        self.display_template = Template(
-            dedent(
-                """<b>{{ model_name }}</b><br>
-        <i>{{ model_description }}</i><br>
-        <b>source:</b> {{ model_source }}<br>
-        <b>exp. input axes:</b> {{ fmt_input_shape }}<br>
-        <b>output axes:</b> {{ fmt_output_shape }}<br>"""
-            )
-        )
-
-    def resizeEvent(self, evt):
-        own_size = self.size()
-        self.btn_container.move(own_size.width() - self.btn_container.size().width(), 0)
-        self.btn_container.resize(own_size.width(), self.btn_container.size().height())
-
-        super().resizeEvent(evt)
-
-    def keyPressEvent(self, event):
-        if event.key() in [Qt.Key_Enter, Qt.Key_Return]:
-            event.accept()
-            return
-
-        super().keyPressEvent(event)
-
-    def enterEvent(self, ev):
-        if self.toPlainText():
-            self.btn_container.setVisible(True)
-        super().enterEvent(ev)
-
-    def leaveEvent(self, ev):
-        self.btn_container.setVisible(False)
-        super().leaveEvent(ev)
-
-    def setModelInfo(self, model_info):
-        model_source = self.toPlainText()
-        self.setHtml(
-            self.display_template.render(
-                model_source=model_source,
-                model_name=getattr(model_info, "name", "n/a"),
-                model_description=getattr(model_info, "description", "n/a"),
-                fmt_input_shape="".join(model_info.inputs[0].axes),
-                fmt_output_shape="".join(model_info.outputs[0].axes),
-            )
-        )
-
-    def dropEvent(self, dropEvent):
-        urls = dropEvent.mimeData().urls()
-        self.clear()
-        self.setPlainText(urls[0].toLocalFile())
-
-    def dragEnterEvent(self, event):
-        # Only accept drag-and-drop events that consist of a single local file.
-        if not event.mimeData().hasUrls():
-            return
-        urls = event.mimeData().urls()
-        if len(urls) == 1 and all(url.isLocalFile() for url in urls):
-            event.acceptProposedAction()
-
-    def askClear(self):
-        if (
-            QMessageBox.question(self, "Remove model", "Do you want to remove the model from the project file?")
-            == QMessageBox.Yes
-        ):
-            self.clear()
-            self.modelDeleted.emit()
-
-    def setUiState(self, state: TiktorchOperatorModel.State):
-        if state is TiktorchOperatorModel.State.Empty:
-            self.setEnabled(True)
-            self.setTextInteractionFlags(Qt.TextEditorInteraction)
-            self.setToolTip(
-                "Copy/Paste a bioimage.io model doi or nickname, or\ndrag-and-drop a downloaded bioimage.io model.zip file."
-            )
-
-        elif state is TiktorchOperatorModel.State.ModelBinaryAvailable:
-            self.setEnabled(True)
-            self.setTextInteractionFlags(Qt.NoTextInteraction)
-            self.setToolTip("Remove the model by clicking the 'x' in the upper right corner.")
-
-        elif state is TiktorchOperatorModel.State.Ready:
-            self.setEnabled(False)
-            self.setToolTip("Stop the model to make changes.")
 
 
 class ParameterDlg(QDialog):
@@ -607,7 +478,10 @@ class NNClassGui(LabelingGui):
         self.set_live_predict_icon(self.livePrediction)
         self.labelingDrawerUi.livePrediction.toggled.connect(self.toggleLivePrediction)
 
-        self.labelingDrawerUi.modelUri.modelDeleted.connect(self.tiktorchModel.clear)
+        self.labelingDrawerUi.modelStateControl.setTiktorchController(self.tiktorchController)
+        self.labelingDrawerUi.modelStateControl.setTiktorchModel(self.tiktorchModel)
+        self.labelingDrawerUi.modelStateControl.addCheck(self._check_input_spec_compatible)
+
         self.initViewerControls()
         self.initViewerControlUi()
 
@@ -688,6 +562,13 @@ class NNClassGui(LabelingGui):
 
         model = self.editor.layerStack
         self._viewerControlUi.viewerControls.setupConnections(model)
+
+    @threadRouted
+    def _changeInteractionMode(self, toolId):
+        if not ALLOW_TRAINING and toolId == Tool.Paint:
+            return
+        else:
+            super()._changeInteractionMode(toolId)
 
     def setupLayers(self):
         """
@@ -870,9 +751,6 @@ class NNClassGui(LabelingGui):
         else:
             self._viewerControlUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
 
-    def closeModelClicked(self):
-        self.tiktorchController.closeSession()
-
     def cc(self, *args, **kwargs):
         self.cancel_src.cancel()
 
@@ -883,60 +761,9 @@ class NNClassGui(LabelingGui):
             self, "ilastik detected a problem with your model", f"Failed to initialize model:\n {type(exc)} {exc}"
         )
 
-    uploadDone = pyqtSignal()
-
-    def _uploadModel(self, modelBytes):
-        cancelSrc = CancellationTokenSource()
-        dialog = PercentProgressDialog(self, title="Initializing model")
-        dialog.rejected.connect(cancelSrc.cancel)
-        dialog.open()
-
-        modelInfo = self.tiktorchController.uploadModel(
-            modelBytes=modelBytes,
-            progressCallback=dialog.updateProgress,
-            cancelToken=cancelSrc.token,
-        )
-
-        def _onUploadDone():
-            self.uploadDone.disconnect()
-            dialog.accept()
-
-        self.uploadDone.connect(_onUploadDone)
-
-        def _onDone(fut):
-            self.uploadDone.emit()
-
-            if fut.cancelled():
-                return
-
-            if fut.exception():
-                self._showErrorMessage(fut.exception())
-
-        modelInfo.add_done_callback(_onDone)
-
-    @staticmethod
-    def _check_model_compatible(model_info):
-        """General checks whether ilastik will be able to show results of the network"""
-
-        # currently we only support a single input:
-        if len(model_info.inputs) != 1:
-            raise ModelIncompatible("ilastik supports only models with one input tensor.")
-
-        if len(model_info.outputs) != 1:
-            raise ModelIncompatible("ilastik supports only models with one output tensor.")
-
-        output_spec = model_info.outputs[0]
-        # we need at least twp spacial axes, and a channel axes in the output
-        if "c" not in output_spec.axes:
-            raise ModelIncompatible(
-                "ilastik only supports models with a channel axis in the outputs. No channel axis found in output."
-            )
-
-        spacial_axes_in_output = [ax for ax in output_spec.axes if ax in "xyz"]
-        if len(spacial_axes_in_output) < 2:
-            raise ModelIncompatible("ilastik needs at least two spacial axes in the output to show an image.")
-
     def _check_input_spec_compatible(self, model_info):
+        """Check if spec is compatible with project data"""
+
         def _minimum_tagged_shape(input_spec):
             axes = input_spec.axes
             input_shape = input_spec.shape
@@ -962,100 +789,52 @@ class NNClassGui(LabelingGui):
                 incompatible_shapes[dim] = shape
 
         if incompatible_shapes:
-            raise ModelIncompatible(
-                f"Input data doesn'tModel expects data to have a minimum size along the following axes {incompatible_shapes}"
-            )
-
-    def onModelInfoRequested(self):
-        model_uri = self.labelingDrawerUi.modelUri.toPlainText().strip()
-        model_info = load_resource_description(model_uri)
-
-        # check model is broadly compatible with ilastik
-        try:
-            self._check_model_compatible(model_info)
-            self.labelingDrawerUi.modelUri.setModelInfo(model_info)
-            # check model compatible shapes
-            self._check_input_spec_compatible(model_info)
-        except ModelIncompatible as e:
-            self._showErrorMessage(e)
-            return
-
-        try:
-            model_bytes = self.resolveModel(model_uri)
-            self._uploadModel(model_bytes)
-        except Exception as e:
-            self._showErrorMessage(e)
-
-    @classmethod
-    def resolveModel(cls, model_uri):
-        with BytesIO() as f:
-            _ = export_resource_package(model_uri, output_path=f)
-            model_bytes = f.getvalue()
-
-        return model_bytes
-
-    def uploadModelClicked(self):
-        try:
-            self._uploadModel(self.tiktorchModel.modelBytes)
-        except Exception as e:
-            self._showErrorMessage(e)
+            return [
+                {"reason": f"Model expects data to have a minimum size along the following axes {incompatible_shapes}"}
+            ]
+        else:
+            return []
 
     def _onModelStateChanged(self, state):
         self.labelingDrawerUi.liveTraining.setVisible(False)
         self.labelingDrawerUi.checkpoints.setVisible(False)
 
-        try:
-            self.labelingDrawerUi.controlModel.clicked.disconnect()
-        except:
-            pass
-
-        self.labelingDrawerUi.modelUri.setUiState(state)
-
         if state is TiktorchOperatorModel.State.Empty:
-            self.labelingDrawerUi.controlModel.setIcon(QIcon(ilastikIcons.AddSel))
-            self.labelingDrawerUi.controlModel.setToolTip("Check and activate the model")
-            self.labelingDrawerUi.controlModel.setEnabled(True)
-            self.labelingDrawerUi.controlModel.clicked.connect(self.onModelInfoRequested)
             self.labelingDrawerUi.livePrediction.setEnabled(False)
             self.updateAllLayers()
 
-        elif state is TiktorchOperatorModel.State.ModelBinaryAvailable:
-            info = self.tiktorchModel.modelInfo
-            self.labelingDrawerUi.controlModel.clicked.connect(self.uploadModelClicked)
-            self.labelingDrawerUi.controlModel.setIcon(QIcon(ilastikIcons.Upload))
-            self.labelingDrawerUi.controlModel.setToolTip("Activate the model")
-            self.labelingDrawerUi.controlModel.setEnabled(True)
+        elif state is TiktorchOperatorModel.State.ModelDataAvailable:
+            num_classes = self.tiktorchModel.modelData.numClasses
             self.labelingDrawerUi.livePrediction.setEnabled(False)
 
-            self.minLabelNumber = info.numClasses
-            self.maxLabelNumber = info.numClasses
+            self.minLabelNumber = num_classes
+            self.maxLabelNumber = num_classes
 
             self.updateAllLayers()
 
         elif state is TiktorchOperatorModel.State.Ready:
-            info = self.tiktorchModel.modelInfo
-
-            self.labelingDrawerUi.controlModel.setIcon(QIcon(ilastikIcons.ProcessStop))
-            self.labelingDrawerUi.controlModel.setToolTip("Stop and unload the model")
-            self.labelingDrawerUi.controlModel.clicked.connect(self.closeModelClicked)
-            self.labelingDrawerUi.controlModel.setEnabled(True)
+            num_classes = self.tiktorchModel.modelData.numClasses
             self.labelingDrawerUi.livePrediction.setEnabled(True)
 
-            self.minLabelNumber = info.numClasses
-            self.maxLabelNumber = info.numClasses
+            self.minLabelNumber = num_classes
+            self.maxLabelNumber = num_classes
             self.updateAllLayers()
 
     def _load_checkpoint(self, model_state: ModelState):
         self.topLevelOperatorView.set_model_state(model_state)
 
     @classmethod
-    def getModelToOpen(cls, parent_window, defaultDirectory):
+    def getModelToOpen(cls, parent_window):
         """
         opens a QFileDialog for importing files
         """
-        return QFileDialog.getOpenFileName(parent_window, "Select Model", defaultDirectory, "Models (*.tmodel *.zip)")[
-            0
-        ]
+        # open dialog in recent model folder if possible
+        folder = preferences.get("DataSelection", "recent model")
+        if folder is None:
+            folder = os.path.expanduser("~")
+
+        # get folder from user
+        return QFileDialog.getOpenFileName(parent_window, "Select Model", folder, "Models (*.tmodel *.zip)")[0]
 
     @pyqtSlot()
     @threadRouted
