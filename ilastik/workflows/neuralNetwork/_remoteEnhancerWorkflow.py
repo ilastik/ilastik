@@ -42,8 +42,8 @@ class RemoteEnhancerWorkflow(_NNWorkflowBase):
     supplied. If it cannot be found, workflow is not available.
     """
 
-    auto_register = True
-    workflowName = "Pixel Classification Enhancer (Remote)"
+    auto_register = False
+    workflowName = "Pixel Classification Enhancer (Remote) (beta)"
     workflowDescription = "Allows to apply bioimage.io models on your data using bundled tiktorch"
 
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
