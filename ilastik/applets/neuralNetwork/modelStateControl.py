@@ -289,7 +289,11 @@ class ModelStateControl(QWidget):
             self._showErrorMessage(e)
 
     def onModelInfoRequested(self):
-        model_uri = self.modelInfoWidget.getModelSource().strip()
+        model_uri = self.modelInfoWidget.getModelSource()
+        if model_uri is None:
+            logger.debug("No model uri provided")
+            return
+        model_uri = model_uri.strip()
         if not model_uri:
             # try select file from file chooser
             model_uri = self.getModelToOpen(self)
@@ -421,14 +425,17 @@ class ModelStateControl(QWidget):
 
 class BioImageModelCombo(QComboBox):
     collections_url = "https://raw.githubusercontent.com/bioimage-io/collection-bioimage-io/gh-pages/collection.json"
-    _SELECT_FILE = object
+    _SELECT_FILE = object()
+    _REMOVE_FILE = object()
 
     modelDeleted = pyqtSignal()
+    modelOpenFromFile = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setEditable(False)
         self.refresh()
+        self.currentIndexChanged.connect(self.onIndexChange)
 
     def getModelSource(self):
         idx = self.currentIndex()
@@ -456,6 +463,15 @@ class BioImageModelCombo(QComboBox):
             )
         )
 
+    def onIndexChange(self, idx):
+        item_data = self.itemData(idx)
+        if item_data == BioImageModelCombo._REMOVE_FILE:
+            logger.debug("model remove requested")
+            self.modelDeleted.emit()
+        elif item_data == BioImageModelCombo._SELECT_FILE:
+            logger.debug("open model from file")
+            self.modelOpenFromFile.emit()
+
     def setModelDataAvailableState(self, model_source, model_info):
         idx = self.findText(model_info.name)
         if idx == -1:
@@ -463,6 +479,8 @@ class BioImageModelCombo(QComboBox):
             self.insertItem(1, model_source, model_info)
         else:
             self.setCurrentText(self.itemText(idx))
+        self.setItemText(0, "remove model")
+        self.setItemData(0, BioImageModelCombo._REMOVE_FILE)
 
     def setReadyState(self, model_source, model_info):
         self.setModelDataAvailableState(model_source, model_info)
@@ -492,6 +510,8 @@ class EnhancerModelStateControl(ModelStateControl):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        self.modelInfoWidget.modelOpenFromFile.connect(self.onModelInfoRequested)
 
     def _setup_ui(self):
         self.threadRouter = ThreadRouter(self)
