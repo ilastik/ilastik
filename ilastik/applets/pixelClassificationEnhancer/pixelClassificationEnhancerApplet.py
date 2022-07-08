@@ -3,22 +3,11 @@ from ilastik.applets.pixelClassificationEnhancer.opPixelClassificationEnhancer i
 from ilastik.applets.pixelClassificationEnhancer.pixelClassificationEnhancerSerializer import (
     PixelClassificationEnhancerSerializer,
 )
-from ilastik.applets.neuralNetwork.tiktorchController import TiktorchController, TiktorchOperatorModel
-
-
-class TiktorchOperatorModelHack(TiktorchOperatorModel):
-    def clear(self):
-        self._state = self.State.Empty
-        self._operator.ModelBinary.setValue(None)
-        self._operator.ModelSession.setValue(None)
-        self._operator.ModelInfo.setValue(None)
-        self._operator.NumNNClasses.setValue(None)
-
-    def setState(self, content, info, session):
-        self._operator.ModelBinary.setValue(content)
-        self._operator.ModelSession.setValue(session)
-        self._operator.ModelInfo.setValue(info)
-        self._operator.NumNNClasses.setValue(info.numClasses)
+from ilastik.applets.neuralNetwork.tiktorchController import (
+    TiktorchController,
+    TiktorchOperatorModel,
+    EnchancerTiktorchOperatorModel,
+)
 
 
 class PixelClassificationEnhancerApplet(PixelClassificationApplet):
@@ -62,7 +51,7 @@ class PixelClassificationEnhancerApplet(PixelClassificationApplet):
         #  we'll need to aggregate the progress updates.
         self._topLevelOperator.opTrain.progressSignal.subscribe(self.progressSignal)
 
-        self.tiktorchOpModel = TiktorchOperatorModelHack(self.topLevelOperator)
+        self.tiktorchOpModel = EnchancerTiktorchOperatorModel(self.topLevelOperator)
         self.tiktorchController = TiktorchController(self.tiktorchOpModel, connectionFactory)
 
     @property

@@ -6,10 +6,12 @@ from functools import partial
 from textwrap import dedent
 from typing import Callable, List
 
+import requests
 from bioimageio.core import load_raw_resource_description
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
+    QComboBox,
     QFileDialog,
     QHBoxLayout,
     QLabel,
@@ -400,3 +402,99 @@ class ModelStateControl(QWidget):
 
         # get folder from user
         return QFileDialog.getOpenFileName(parent_window, "Select Model", folder, "Models (*.tmodel *.zip)")[0]
+
+
+class BioImageModelCombo(QComboBox):
+    collections_url = "https://raw.githubusercontent.com/bioimage-io/collection-bioimage-io/gh-pages/collection.json"
+    _SELECT_FILE = object
+
+    modelDeleted = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setEditable(False)
+        self.refresh()
+
+    def getModelSource(self):
+        idx = self.currentIndex()
+        data = self.itemData(idx)
+        if data == BioImageModelCombo._SELECT_FILE:
+            return ""
+        if data:
+            return data["id"]
+
+    def clear(self):
+        super().clear()
+        self.setToolTip("")
+
+    def setEmptyState(self):
+        self.refresh()
+
+    def setModelInfo(self, model_source, model_info, template=Template(display_template)):
+        self.setToolTip(
+            template.render(
+                model_source=model_source,
+                model_name=getattr(model_info, "name", "n/a"),
+                model_description=getattr(model_info, "description", "n/a"),
+                fmt_input_shape="".join(model_info.inputs[0].axes),
+                fmt_output_shape="".join(model_info.outputs[0].axes),
+            )
+        )
+
+    def setModelDataAvailableState(self, model_source, model_info):
+        idx = self.findText(model_info.name)
+        if idx == -1:
+            # from file
+            self.insertItem(1, model_source, model_info)
+        else:
+            self.setCurrentText(self.itemText(idx))
+
+    def setReadyState(self, model_source, model_info):
+        self.setModelDataAvailableState(model_source, model_info)
+
+    def refresh(self):
+        # do this in the background, indicate busyness
+        self.clear()
+        resp = requests.get(BioImageModelCombo.collections_url)
+        if resp.status_code != 200:
+            logger.error(f"Error fetching models - status code: {resp.status_code}")
+            return
+
+        js = resp.json()
+
+        enhancer_models = [
+            m for m in js["collection"] if "enhancer" in m["name"].lower() or "shallow2deep" in m["tags"]
+        ]
+
+        self.addItem("choose model..", {})
+        for m in enhancer_models:
+            self.addItem(m["name"], m)
+        self.addItem("select file", BioImageModelCombo._SELECT_FILE)
+
+
+class EnhancerModelStateControl(ModelStateControl):
+    uploadDone = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    def _setup_ui(self):
+        self.threadRouter = ThreadRouter(self)
+        self._preDownloadChecks = set()
+
+        layout = QVBoxLayout()
+
+        self.modelInfoWidget = BioImageModelCombo(self)
+        self.statusLabel = QLabel(self)
+        self.statusLabel.setText("status...")
+        self.modelControlButton = QToolButton(self)
+        self.modelControlButton.setText("...")
+        self.modelControlButton.setToolTip("Click here to check model details, initialize, or un-initialize the model")
+
+        bottom_layout = QHBoxLayout()
+        bottom_layout.addWidget(self.statusLabel)
+        bottom_layout.addStretch()
+        bottom_layout.addWidget(self.modelControlButton)
+        layout.addWidget(self.modelInfoWidget)
+        layout.addLayout(bottom_layout)
+        self.setLayout(layout)

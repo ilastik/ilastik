@@ -1,36 +1,18 @@
-from ilastik.applets.pixelClassification.pixelClassificationGui import PixelClassificationGui
-from ..pixelClassification.FeatureSelectionDialog import FeatureSelectionDialog
-
-from functools import partial
+import logging
 
 import sip
-from PyQt5.QtWidgets import (
-    QFileDialog,
-    QCheckBox,
-    QComboBox,
-    QLabel,
-    QHBoxLayout,
-    QPushButton,
-    QMenu,
-    QAction,
-    QToolButton,
-    QColorDialog,
-)
-from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QTimer
-from ilastik.shell.gui.iconMgr import ilastikIcons
+from PyQt5.QtCore import Qt, QTimer, pyqtSlot
 from PyQt5.QtGui import QColor, QIcon
-from ilastik.widgets.progressDialog import PercentProgressDialog
-from volumina.utility import preferences
-
-
-from lazyflow.cancel_token import CancellationTokenSource
-from tiktorch.types import ModelState
-from ..neuralNetwork.tiktorchController import TiktorchOperatorModel
-
-from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
+from PyQt5.QtWidgets import QAction, QCheckBox, QFileDialog, QHBoxLayout, QLabel, QMenu, QPushButton, QToolButton
+from volumina.api import AlphaModulatedLayer, LazyflowSource
 from volumina.colortables import default16_new
 
-import logging
+from ilastik.applets.pixelClassification.pixelClassificationGui import PixelClassificationGui
+from ilastik.shell.gui.iconMgr import ilastikIcons
+
+from ..neuralNetwork.modelStateControl import EnhancerModelStateControl
+from ..neuralNetwork.tiktorchController import TiktorchOperatorModel
+from ..pixelClassification.FeatureSelectionDialog import FeatureSelectionDialog
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +71,7 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
         ]
 
     def _init_nn_prediction_ui(self):
+        # add new stuff here
         drawer = self._drawer
         nn_pred_layout = QHBoxLayout()
         self.liveNNPredictionBtn = QToolButton()
@@ -104,14 +87,12 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
         nn_pred_layout.addWidget(self.liveNNPredictionBtn)
 
         nn_ctrl_layout = QHBoxLayout()
-        self.addModel = QPushButton()
-        self.addModel.clicked.connect(self.addModelClicked)
-        self.closeModel = QToolButton()
-        self.closeModel.setIcon(QIcon(ilastikIcons.ProcessStop))
-        self.closeModel.clicked.connect(self.closeModelClicked)
+        self.addModel = EnhancerModelStateControl()
+
+        self.addModel.setTiktorchController(self.tiktorchController)
+        self.addModel.setTiktorchModel(self.tiktorchModel)
 
         nn_ctrl_layout.addWidget(self.addModel)
-        nn_ctrl_layout.addWidget(self.closeModel)
 
         drawer.verticalLayout.addLayout(nn_ctrl_layout)
         drawer.verticalLayout.addLayout(nn_pred_layout)
@@ -119,27 +100,14 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
     def _onModelStateChanged(self, state):
 
         if state is TiktorchOperatorModel.State.Empty:
-            self.addModel.setText("Load model")
-            self.addModel.setEnabled(True)
-            self.closeModel.setEnabled(False)
             self.liveNNPredictionBtn.setEnabled(False)
             self.updateAllLayers()
 
-        elif state is TiktorchOperatorModel.State.ReadFromProjectFile:
-            info = self.tiktorchModel.modelInfo
-
-            self.addModel.setText(f"{info.name}")
-            self.addModel.setEnabled(True)
-            self.closeModel.setEnabled(True)
+        elif state is TiktorchOperatorModel.State.ModelDataAvailable:
             self.liveNNPredictionBtn.setEnabled(False)
-
             self.updateAllLayers()
 
         elif state is TiktorchOperatorModel.State.Ready:
-            info = self.tiktorchModel.modelInfo
-            self.addModel.setText(f"{info.name}")
-            self.addModel.setEnabled(True)
-            self.closeModel.setEnabled(True)
             self.liveNNPredictionBtn.setEnabled(True)
             self.updateAllLayers()
 
@@ -251,61 +219,8 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
         else:
             self.liveNNPredictionBtn.setIcon(QIcon(ilastikIcons.Play))
 
-    def addModelClicked(self):
-        """
-        When AddModel button is clicked.
-        """
-        # open dialog in recent model folder if possible
-        folder = preferences.get("DataSelection", "recent model")
-        if folder is None:
-            folder = os.path.expanduser("~")
-
-        # get folder from user
-        filename = self.getModelToOpen(self, folder)
-
-        if filename:
-            with open(filename, "rb") as modelFile:
-                modelBytes = modelFile.read()
-
-            self._uploadModel(modelBytes)
-
-            preferences.set("DataSelection", "recent model", filename)
-            self.parentApplet.appletStateUpdateRequested()
-
-    def closeModelClicked(self):
-        self.tiktorchController.closeSession()
-
     def cc(self, *args, **kwargs):
         self.cancel_src.cancel()
-
-    uploadDone = pyqtSignal()
-
-    def _uploadModel(self, modelBytes):
-        cancelSrc = CancellationTokenSource()
-        dialog = PercentProgressDialog(self, title="Initializing model")
-        dialog.rejected.connect(cancelSrc.cancel)
-        dialog.open()
-
-        modelInfo = self.tiktorchController.uploadModel(
-            modelBytes=modelBytes, progressCallback=dialog.updateProgress, cancelToken=cancelSrc.token
-        )
-
-        def _onUploadDone():
-            self.uploadDone.disconnect()
-            dialog.accept()
-
-        self.uploadDone.connect(_onUploadDone)
-
-        def _onDone(fut):
-            self.uploadDone.emit()
-
-            if fut.cancelled():
-                return
-
-            if fut.exception():
-                self._showErrorMessage(fut.exception())
-
-        modelInfo.add_done_callback(_onDone)
 
     @pyqtSlot()
     def handleShowNNPredictionsClicked(self):
