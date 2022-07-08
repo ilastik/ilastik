@@ -1,4 +1,4 @@
-from ilastik.applets.pixelClassification import PixelClassificationApplet
+from ilastik.applets.pixelClassification import PixelClassificationApplet, PixelClassificationSerializer
 from ilastik.applets.pixelClassificationEnhancer.opPixelClassificationEnhancer import OpPixelClassificationEnhancer
 from ilastik.applets.pixelClassificationEnhancer.pixelClassificationEnhancerSerializer import (
     PixelClassificationEnhancerSerializer,
@@ -35,6 +35,9 @@ class PixelClassificationEnhancerApplet(PixelClassificationApplet):
         # We provide two independent serializing objects:
         #  one for the current scheme and one for importing old projects.
         self._serializableItems = [
+            PixelClassificationSerializer(
+                self._topLevelOperator, projectFileGroupName
+            ),  # Default serializer for new projects
             PixelClassificationEnhancerSerializer(
                 self._topLevelOperator, projectFileGroupName
             ),  # Default serializer for new projects
