@@ -206,6 +206,13 @@ class TiktorchOperatorModel:
             self._callListener(fn)
 
 
+class EnchancerTiktorchOperatorModel(TiktorchOperatorModel):
+    def setSession(self, session):
+        self._operator.NumClasses.disconnect()
+        self._operator.ModelSession.setValue(session)
+        self._operator.NumNNClasses.setValue(self.modelData.numClasses)
+
+
 class TiktorchController:
     def __init__(self, model: TiktorchOperatorModel, connectionFactory: IConnectionFactory) -> None:
         self.connectionFactory = connectionFactory
