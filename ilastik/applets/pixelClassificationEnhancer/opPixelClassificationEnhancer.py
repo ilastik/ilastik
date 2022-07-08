@@ -18,9 +18,8 @@ class OpPixelClassificationEnhancer(OpPixelClassification):
     category = "Top-level"
     SelectedChannels = InputSlot(value=[])
     OverlayImages = InputSlot(level=1, optional=True)
-    ModelBinary = InputSlot(stype=stype.Opaque, nonlane=True)
+    BIOModel = InputSlot(stype=stype.Opaque, nonlane=True)
     # Contains cached model info
-    ModelInfo = InputSlot(stype=stype.Opaque, nonlane=True, optional=True)
     ModelSession = InputSlot()
     ServerConfig = InputSlot(stype=stype.Opaque, nonlane=True)
 
@@ -76,11 +75,6 @@ class OpPixelClassificationEnhancer(OpPixelClassification):
             logger.warning(e)
 
         super().cleanUp()
-
-    def set_model(self, model_content: bytes) -> bool:
-        self.ModelBinary.disconnect()
-        self.ModelBinary.setValue(model_content)
-        return self.opModel.TiktorchModel.ready()
 
     def update_config(self, partial_config: dict):
         self.ClassifierFactory.meta.hparams = partial_config
