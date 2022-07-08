@@ -169,6 +169,7 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
         layers = []
         enhancer_slot = self.topLevelOperatorView.EnhancerInput
 
+        n_layers = len(self.labelListData)
         # NeuralNetwork Predictions
         if enhancer_slot is not None and enhancer_slot.ready():
             for channel, predictionSlot in enumerate(self.topLevelOperatorView.NNPredictionProbabilityChannels):
@@ -176,7 +177,7 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
                 if predictionSlot.ready():
                     predictsrc = LazyflowSource(predictionSlot)
                     predictionLayer = AlphaModulatedLayer(
-                        predictsrc, tintColor=QColor(default16_new[channel + 1]), normalize=(0.0, 1.0)
+                        predictsrc, tintColor=QColor(default16_new[n_layers + channel + 1]), normalize=(0.0, 1.0)
                     )
                     predictionLayer.visible = self.checkShowNNPredictions.isChecked()
                     predictionLayer.opacity = 0.5
