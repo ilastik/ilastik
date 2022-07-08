@@ -510,6 +510,7 @@ class EnhancerModelStateControl(ModelStateControl):
         self.modelControlButton = QToolButton(self)
         self.modelControlButton.setText("...")
         self.modelControlButton.setToolTip("Click here to check model details, initialize, or un-initialize the model")
+        self.statusLabel.setVisible(False)
 
         bottom_layout = QHBoxLayout()
         bottom_layout.addWidget(self.statusLabel)
