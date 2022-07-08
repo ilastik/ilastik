@@ -1,4 +1,5 @@
 channels:
+  - ilastik-forge/label/v141b
   - ilastik-forge
   - pytorch
   - conda-forge
