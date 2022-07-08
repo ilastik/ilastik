@@ -66,6 +66,7 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
             self._channel_selector.setText(selected_channels)
 
         self.__cleanup_fns.append(self.topLevelOperatorView.SelectedChannels.notifyDirty(_update_channel_selector_txt))
+        _update_channel_selector_txt(self.topLevelOperatorView.SelectedChannels, ())
 
     @classmethod
     def getModelToOpen(cls, parent_window, defaultDirectory):
