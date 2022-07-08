@@ -436,6 +436,7 @@ class BioImageModelCombo(QComboBox):
 
     def setEmptyState(self):
         self.refresh()
+        self.setEnabled(True)
 
     def setModelInfo(self, model_source, model_info, template=Template(display_template)):
         self.setToolTip(
@@ -466,9 +467,11 @@ class BioImageModelCombo(QComboBox):
             self.setCurrentText(self.itemText(idx))
         self.setItemText(0, "remove model")
         self.setItemData(0, BioImageModelCombo._REMOVE_FILE)
+        self.setEnabled(True)
 
     def setReadyState(self, model_source, model_info):
         self.setModelDataAvailableState(model_source, model_info)
+        self.setEnabled(False)
 
     def refresh(self):
         # do this in the background, indicate busyness
