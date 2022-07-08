@@ -182,12 +182,15 @@ class ModelStateControl(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._setup_ui()
+
+    def _setup_ui(self):
         self.threadRouter = ThreadRouter(self)
         self._preDownloadChecks = set()
 
         layout = QVBoxLayout()
 
-        self.modelSourceEdit = ModelSourceEdit(self)
+        self.modelInfoWidget = ModelSourceEdit(self)
         self.statusLabel = QLabel(self)
         self.modelControlButton = QToolButton(self)
         self.modelControlButton.setText("...")
@@ -197,7 +200,7 @@ class ModelStateControl(QWidget):
         bottom_layout.addWidget(self.statusLabel)
         bottom_layout.addStretch()
         bottom_layout.addWidget(self.modelControlButton)
-        layout.addWidget(self.modelSourceEdit)
+        layout.addWidget(self.modelInfoWidget)
         layout.addLayout(bottom_layout)
         self.setLayout(layout)
 
@@ -207,7 +210,7 @@ class ModelStateControl(QWidget):
     def setTiktorchModel(self, tiktorchModel):
         self._tiktorchModel = tiktorchModel
         self._tiktorchModel.registerListener(self._onTiktorchStateChange)
-        self.modelSourceEdit.modelDeleted.connect(self._tiktorchModel.clear)
+        self.modelInfoWidget.modelDeleted.connect(self._tiktorchModel.clear)
 
     @threadRouted
     def _onTiktorchStateChange(self, state: TiktorchOperatorModel.State):
@@ -222,7 +225,7 @@ class ModelStateControl(QWidget):
             self.modelControlButton.setToolTip("Check and activate the model")
             self.modelControlButton.setEnabled(True)
             self.modelControlButton.clicked.connect(self.onModelInfoRequested)
-            self.modelSourceEdit.setEmptyState()
+            self.modelInfoWidget.setEmptyState()
 
         elif state is TiktorchOperatorModel.State.ModelDataAvailable:
             self.modelControlButton.clicked.connect(self.uploadModelClicked)
@@ -230,7 +233,7 @@ class ModelStateControl(QWidget):
             self.modelControlButton.setToolTip("Activate the model")
             self.modelControlButton.setEnabled(True)
             modelData = self._tiktorchModel.modelData
-            self.modelSourceEdit.setModelDataAvailableState(modelData.modelUri, modelData.rawDescription)
+            self.modelInfoWidget.setModelDataAvailableState(modelData.modelUri, modelData.rawDescription)
 
         elif state is TiktorchOperatorModel.State.Ready:
             self.modelControlButton.setIcon(QIcon(ilastikIcons.ProcessStop))
@@ -238,7 +241,7 @@ class ModelStateControl(QWidget):
             self.modelControlButton.clicked.connect(self.closeModelClicked)
             self.modelControlButton.setEnabled(True)
             modelData = self._tiktorchModel.modelData
-            self.modelSourceEdit.setReadyState(modelData.modelUri, modelData.rawDescription)
+            self.modelInfoWidget.setReadyState(modelData.modelUri, modelData.rawDescription)
 
     def closeModelClicked(self):
         self._tiktorchController.closeSession()
@@ -284,7 +287,7 @@ class ModelStateControl(QWidget):
             self._showErrorMessage(e)
 
     def onModelInfoRequested(self):
-        model_uri = self.modelSourceEdit.getModelSource().strip()
+        model_uri = self.modelInfoWidget.getModelSource().strip()
         if not model_uri:
             # try select file from file chooser
             model_uri = self.getModelToOpen(self)
@@ -293,7 +296,7 @@ class ModelStateControl(QWidget):
 
         model_info = load_raw_resource_description(model_uri)
 
-        self.modelSourceEdit.setModelInfo(model_uri, model_info)
+        self.modelInfoWidget.setModelInfo(model_uri, model_info)
         # check model is broadly compatible with ilastik
         try:
             compatibility_checks = self.checkModelCompatibility(model_info)
@@ -307,7 +310,7 @@ class ModelStateControl(QWidget):
                 )
                 reasons_log = " - ".join(r["reason"] for r in compatibility_checks)
                 logger.debug(f"Incompatible model from {model_uri}. Reasons: {reasons_log}")
-                self.modelSourceEdit.setModelIncompatibleState(model_uri, model_info, reasons)
+                self.modelInfoWidget.setModelIncompatibleState(model_uri, model_info, reasons)
                 return
         except Exception as e:
             self._showErrorMessage(e)
