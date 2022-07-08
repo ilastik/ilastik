@@ -61,6 +61,12 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
         drawer.verticalLayout.addLayout(channel_selection_layout)
         self._channel_selector = channel_selector
 
+        def _update_channel_selector_txt(slot, roi):
+            selected_channels = ", ".join(map(str, slot.value))
+            self._channel_selector.setText(selected_channels)
+
+        self.__cleanup_fns.append(self.topLevelOperatorView.SelectedChannels.notifyDirty(_update_channel_selector_txt))
+
     @classmethod
     def getModelToOpen(cls, parent_window, defaultDirectory):
         """
