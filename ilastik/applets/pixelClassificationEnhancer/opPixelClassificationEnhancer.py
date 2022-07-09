@@ -44,7 +44,7 @@ class OpPixelClassificationEnhancer(OpPixelClassification):
             OpMultiChannelSelector, parent=self, broadcastingSlotNames=["SelectedChannels"]
         )
         self.opSelectProbs.SelectedChannels.connect(self.SelectedChannels)
-        self.opSelectProbs.Input.connect(self.opPredictionPipeline.PredictionProbabilities)
+        self.opSelectProbs.Input.connect(self.opPredictionPipeline.CachedPredictionProbabilities)
         self.EnhancerInput.connect(self.opSelectProbs.Output)
 
         ## NN stuff

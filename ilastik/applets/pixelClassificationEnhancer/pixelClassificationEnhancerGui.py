@@ -30,6 +30,8 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
         self.invalidatePredictionsTimer.timeout.connect(self.updateNNPredictions)
         self.tiktorchModel.registerListener(self._onModelStateChanged)
 
+        self.labelingDrawerUi.liveUpdateButton.toggled.connect(self.toggleLiveNNPrediction)
+
     def _init_channel_selector_ui(self):
         drawer = self._drawer
 
@@ -80,18 +82,6 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
     def _init_nn_prediction_ui(self):
         # add new stuff here
         drawer = self._drawer
-        nn_pred_layout = QHBoxLayout()
-        self.liveNNPredictionBtn = QToolButton()
-        self.liveNNPredictionBtn.setText("Enhance!")
-        self.liveNNPredictionBtn.setCheckable(True)
-        self.liveNNPredictionBtn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        self.set_nn_live_predict_icon(self.liveNNPredictionBtn)
-        self.liveNNPredictionBtn.toggled.connect(self.toggleLiveNNPrediction)
-        self.checkShowNNPredictions = QCheckBox()
-        self.checkShowNNPredictions.setText("Show enhance Predictions")
-        nn_pred_layout.addWidget(self.checkShowNNPredictions)
-
-        nn_pred_layout.addWidget(self.liveNNPredictionBtn)
 
         nn_ctrl_layout = QHBoxLayout()
         self.addModel = EnhancerModelStateControl()
@@ -102,21 +92,9 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
         nn_ctrl_layout.addWidget(self.addModel)
 
         drawer.verticalLayout.addLayout(nn_ctrl_layout)
-        drawer.verticalLayout.addLayout(nn_pred_layout)
 
     def _onModelStateChanged(self, state):
-
-        if state is TiktorchOperatorModel.State.Empty:
-            self.liveNNPredictionBtn.setEnabled(False)
-            self.updateAllLayers()
-
-        elif state is TiktorchOperatorModel.State.ModelDataAvailable:
-            self.liveNNPredictionBtn.setEnabled(False)
-            self.updateAllLayers()
-
-        elif state is TiktorchOperatorModel.State.Ready:
-            self.liveNNPredictionBtn.setEnabled(True)
-            self.updateAllLayers()
+        self.updateAllLayers()
 
     def updateNNPredictions(self):
         logger.info("Invalidating predictions")
@@ -124,31 +102,22 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
         self.topLevelOperatorView.classifier_cache.Output.setDirty()
 
     def toggleLiveNNPrediction(self, checked):
-
         logger.debug("toggle live prediction mode to %r", checked)
-        self.liveNNPredictionBtn.setEnabled(False)
-
+        checked = checked if checked is not None else self.isLiveUpdateEnabled()
         # If we're changing modes, enable/disable our controls and other applets accordingly
-        if self.liveNNPrediction != checked:
-            if checked:
-                self.updateNNPredictions()
-
-            self.liveNNPrediction = checked
-            self.liveNNPredictionBtn.setChecked(checked)
-            self.set_nn_live_predict_icon(checked)
+        if checked:
+            self.updateNNPredictions()
 
         self.topLevelOperatorView.FreezeNNPredictions.setValue(not checked)
 
         # Auto-set the "show predictions" state according to what the user just clicked.
         if checked:
-            self.checkShowNNPredictions.setChecked(True)
             self.handleShowNNPredictionsClicked()
 
         # Notify the workflow that some applets may have changed state now.
         # (For example, the downstream pixel classification applet can
         #  be used now that there are features selected)
         self.parentApplet.appletStateUpdateRequested()
-        self.liveNNPredictionBtn.setEnabled(True)
 
     def onChannelSelectionClicked(self, *args):
         channel_selections = []
@@ -180,9 +149,9 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
                     predictionLayer = AlphaModulatedLayer(
                         predictsrc, tintColor=QColor(default16_new[n_layers + channel + 1]), normalize=(0.0, 1.0)
                     )
-                    predictionLayer.visible = self.checkShowNNPredictions.isChecked()
+                    predictionLayer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
                     predictionLayer.opacity = 0.5
-                    predictionLayer.visibleChanged.connect(self.updateShowNNPredictionCheckbox)
+                    predictionLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
 
                     predictionLayer.name = f"NN prediction Channel {channel}"
 
@@ -221,24 +190,8 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
     def tiktorchModel(self):
         return self.parentApplet.tiktorchOpModel
 
-    def set_nn_live_predict_icon(self, active: bool):
-        if active:
-            self.liveNNPredictionBtn.setIcon(QIcon(ilastikIcons.Pause))
-        else:
-            self.liveNNPredictionBtn.setIcon(QIcon(ilastikIcons.Play))
-
     def cc(self, *args, **kwargs):
         self.cancel_src.cancel()
-
-    @pyqtSlot()
-    def handleShowNNPredictionsClicked(self):
-        """
-        sets the layer visibility when showPredicition is clicked
-        """
-        checked = self.checkShowNNPredictions.isChecked()
-        for layer in self.layerstack:
-            if "NN prediction" in layer.name:
-                layer.visible = checked
 
     @pyqtSlot()
     def updateShowNNPredictionCheckbox(self):
@@ -252,10 +205,23 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
                 predictLayerCount += 1
                 if layer.visible:
                     visibleCount += 1
+            elif "Prediction" in layer.name:
+                predictLayerCount += 1
+                if layer.visible:
+                    visibleCount += 1
 
         if visibleCount == 0:
-            self.checkShowNNPredictions.setCheckState(Qt.Unchecked)
+            self.checkShowPredictions.setCheckState(Qt.Unchecked)
         elif predictLayerCount == visibleCount:
-            self.checkShowNNPredictions.setCheckState(Qt.Checked)
+            self.checkShowPredictions.setCheckState(Qt.Checked)
         else:
-            self.checkShowNNPredictions.setCheckState(Qt.PartiallyChecked)
+            self.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
+
+    @pyqtSlot()
+    def handleShowNNPredictionsClicked(self):
+        checked = self._viewerControlUi.checkShowPredictions.isChecked()
+        for layer in self.layerstack:
+            if "NN prediction" in layer.name:
+                layer.visible = checked
+            elif "Prediction" in layer.name:
+                layer.visible = checked
