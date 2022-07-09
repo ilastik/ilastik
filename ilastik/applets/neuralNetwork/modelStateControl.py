@@ -193,7 +193,7 @@ class ModelStateControl(QWidget):
 
         bottom_layout = QHBoxLayout()
         bottom_layout.addWidget(self.statusLabel)
-        bottom_layout.addStretch()
+        bottom_layout.addStretch(1)
         bottom_layout.addWidget(self.modelControlButton)
         layout.addWidget(self.modelInfoWidget)
         layout.addLayout(bottom_layout)
@@ -483,9 +483,7 @@ class BioImageModelCombo(QComboBox):
 
         js = resp.json()
 
-        enhancer_models = [
-            m for m in js["collection"] if "enhancer" in m["name"].lower() or "shallow2deep" in m["tags"]
-        ]
+        enhancer_models = [m for m in js["collection"] if "shallow2deep" in m["tags"]]
 
         self.addItem("choose model..", {})
         for m in enhancer_models:
@@ -515,10 +513,14 @@ class EnhancerModelStateControl(ModelStateControl):
         self.modelControlButton.setToolTip("Click here to check model details, initialize, or un-initialize the model")
         self.statusLabel.setVisible(False)
 
+        top_layout = QHBoxLayout()
+        top_layout.addWidget(self.modelInfoWidget)
+        top_layout.addWidget(self.modelControlButton)
+
         bottom_layout = QHBoxLayout()
         bottom_layout.addWidget(self.statusLabel)
         bottom_layout.addStretch()
-        bottom_layout.addWidget(self.modelControlButton)
-        layout.addWidget(self.modelInfoWidget)
+
+        layout.addLayout(top_layout)
         layout.addLayout(bottom_layout)
         self.setLayout(layout)
