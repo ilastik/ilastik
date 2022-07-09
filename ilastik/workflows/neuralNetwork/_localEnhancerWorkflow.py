@@ -118,4 +118,5 @@ class LocalEnhancerWorkflow(_NNWorkflowBase):
 
     def cleanUp(self):
         super().cleanUp()
+        self.nnClassificationApplet.tiktorchController.closeSession()
         self._launcher.stop()
