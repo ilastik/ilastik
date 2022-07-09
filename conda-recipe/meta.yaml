@@ -114,6 +114,7 @@ outputs:
         - cpuonly
         - inferno
         - torchvision
+        - jinja2
     test:
       source_files:
         - tests
@@ -163,6 +164,7 @@ outputs:
         - inferno
         - torchvision
         - cudatoolkit >=10.2
+        - jinja2
 
     test:
       source_files:
