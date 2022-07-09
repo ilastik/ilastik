@@ -20,13 +20,17 @@
 ###############################################################################
 import logging
 
-from ilastik.config import runtime_cfg
-from ilastik.applets.serverConfiguration.types import ServerConfig, Device
-from ._nnWorkflowBase import _NNWorkflowBase
-from ._localLauncher import LocalServerLauncher
-from ilastik.applets.pixelClassificationEnhancer import PixelClassificationEnhancerApplet
-from lazyflow.operators import tiktorch
 from ilastik.applets.featureSelection import FeatureSelectionApplet
+from ilastik.applets.pixelClassificationEnhancer import PixelClassificationEnhancerApplet
+from ilastik.applets.serverConfiguration.types import Device, ServerConfig
+from ilastik.config import runtime_cfg
+from lazyflow.operators import tiktorch
+
+# TODO (k-dominik): check if tinyvector is of any benefit here
+from lazyflow.roi import TinyVector
+
+from ._localLauncher import LocalServerLauncher
+from ._nnWorkflowBase import _NNWorkflowBase
 
 logger = logging.getLogger(__name__)
 
@@ -120,3 +124,65 @@ class LocalEnhancerWorkflow(_NNWorkflowBase):
         super().cleanUp()
         self.nnClassificationApplet.tiktorchController.closeSession()
         self._launcher.stop()
+
+    def handleAppletStateUpdateRequested(self, upstream_ready=True):
+        """
+        Overridden from NN Workflow base class
+        Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
+        """
+        # If no data, nothing else is ready.
+        opDataSelection = self.dataSelectionApplet.topLevelOperator
+        input_ready = len(opDataSelection.ImageGroup) > 0 and not self.dataSelectionApplet.busy
+
+        opFeatureSelection = self.featureSelectionApplet.topLevelOperator
+        featureOutput = opFeatureSelection.OutputImage
+        features_ready = (
+            input_ready
+            and len(featureOutput) > 0
+            and featureOutput[0].ready()
+            and (TinyVector(featureOutput[0].meta.shape) > 0).all()
+        )
+        opNNClassification = self.nnClassificationApplet.topLevelOperator
+
+        opDataExport = self.dataExportApplet.topLevelOperator
+
+        predictions_ready = input_ready and len(opDataExport.Inputs) > 0
+
+        # Problems can occur if the features or input data are changed during live update mode.
+        # Don't let the user do that.
+        live_update_active = not opNNClassification.FreezePredictions.value
+
+        # The user isn't allowed to touch anything while batch processing is running.
+        batch_processing_busy = self.batchProcessingApplet.busy
+
+        self._shell.setAppletEnabled(
+            self.dataSelectionApplet, not (batch_processing_busy or live_update_active) and upstream_ready
+        )
+        self._shell.setAppletEnabled(
+            self.featureSelectionApplet, not (batch_processing_busy or live_update_active) and upstream_ready
+        )
+
+        self._shell.setAppletEnabled(
+            self.nnClassificationApplet,
+            (input_ready and features_ready) and not batch_processing_busy and upstream_ready,
+        )
+
+        # TODO (k-dominik): Batch and Export rely on the model being loaded!
+        self._shell.setAppletEnabled(
+            self.dataExportApplet,
+            predictions_ready and not batch_processing_busy and not live_update_active and upstream_ready,
+        )
+        if self.batchProcessingApplet is not None:
+            self._shell.setAppletEnabled(
+                self.batchProcessingApplet, predictions_ready and not batch_processing_busy and upstream_ready
+            )
+
+        # Lastly, check for certain "busy" conditions, during which we
+        #  should prevent the shell from closing the project.
+        busy = False
+        busy |= self.dataSelectionApplet.busy
+        busy |= self.featureSelectionApplet.busy
+        busy |= self.nnClassificationApplet.busy
+        busy |= self.dataExportApplet.busy
+        busy |= self.batchProcessingApplet.busy
+        self._shell.enableProjectChanges(not busy)

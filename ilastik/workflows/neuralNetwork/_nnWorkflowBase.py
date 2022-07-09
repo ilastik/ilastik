@@ -178,7 +178,9 @@ class _NNWorkflowBase(Workflow):
         # The user isn't allowed to touch anything while batch processing is running.
         batch_processing_busy = self.batchProcessingApplet.busy
 
-        self._shell.setAppletEnabled(self.dataSelectionApplet, not batch_processing_busy and upstream_ready)
+        self._shell.setAppletEnabled(
+            self.dataSelectionApplet, not (batch_processing_busy or live_update_active) and upstream_ready
+        )
 
         self._shell.setAppletEnabled(
             self.nnClassificationApplet, input_ready and not batch_processing_busy and upstream_ready
