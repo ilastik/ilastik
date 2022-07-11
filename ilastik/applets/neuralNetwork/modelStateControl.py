@@ -26,7 +26,7 @@ from PyQt5.QtWidgets import (
 from volumina.utility import preferences
 
 from ilastik.shell.gui.iconMgr import ilastikIcons
-from ilastik.utility.gui import ThreadRouter, threadRouted
+from ilastik.utility.gui import ThreadRouter, silent_qobject, threadRouted
 from ilastik.widgets.progressDialog import BarId, PercentProgressDialog
 from lazyflow.cancel_token import CancellationTokenSource
 
@@ -454,15 +454,8 @@ class BioImageModelCombo(QComboBox):
         self.setEnabled(True)
 
     def setModelInfo(self, model_source, model_info, template=Template(display_template)):
-        self.setToolTip(
-            template.render(
-                model_source=model_source,
-                model_name=getattr(model_info, "name", "n/a"),
-                model_description=getattr(model_info, "description", "n/a"),
-                fmt_input_shape="".join(model_info.inputs[0].axes),
-                fmt_output_shape="".join(model_info.outputs[0].axes),
-            )
-        )
+        # TODO (k-dominik)
+        pass
 
     def onIndexChange(self, idx):
         item_data = self.itemData(idx)
@@ -477,11 +470,13 @@ class BioImageModelCombo(QComboBox):
         idx = self.findText(model_info.name)
         if idx == -1:
             # from file
-            self.insertItem(1, model_source, model_info)
+            with silent_qobject(self) as silent_self:
+                silent_self.insertItem(1, model_info.name, model_info)
         else:
             self.setCurrentText(self.itemText(idx))
         self.setItemText(0, "remove model")
         self.setItemData(0, BioImageModelCombo._REMOVE_FILE)
+
         self.setEnabled(True)
 
     def setReadyState(self, model_source, model_info):
