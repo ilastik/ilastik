@@ -45,8 +45,8 @@ class LocalEnhancerWorkflow(_NNWorkflowBase):
     """
 
     auto_register = True
-    workflowName = "Pixel Classification Enhancer (Local) (beta)"
-    workflowDescription = "Allows to apply bioimage.io models on your data using bundled tiktorch"
+    workflowName = "Trainable Domain Adaptation (Local) (beta)"
+    workflowDescription = "Allows to apply bioimage.io shallow2deep models on your data using bundled tiktorch"
 
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
         tiktorch_exe_path = runtime_cfg.tiktorch_executable
