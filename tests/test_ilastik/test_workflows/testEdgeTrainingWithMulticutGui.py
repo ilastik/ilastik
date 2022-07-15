@@ -8,6 +8,7 @@ import threading
 import time
 import zipfile
 from pathlib import Path
+from typing import Optional
 
 import h5py
 import numpy
@@ -26,19 +27,13 @@ logger.addHandler(logging.StreamHandler(sys.stdout))
 logger.setLevel(logging.DEBUG)
 
 
-def waitProcessEvents(timeout=1, event: threading.Event = None):
+def waitProcessEvents(timeout: float = 1.0, event: Optional[threading.Event] = None):
     # this is ugly, especially used without an event
     # there is no guarantee that the state is as expected.
     # but for now, don't know how else to let gui and all requests settle
     # for some actions
-    def cond():
-        if event:
-            return event.is_set()
-        else:
-            return False
-
     start = time.time()
-    while not cond():
+    while not (event and event.is_set()):
         QApplication.processEvents()
         if time.time() - start > timeout:
             return
@@ -95,7 +90,7 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
         cls.unzipped_reference_files = [cls.reference_path / fp for fp in zip_file.namelist()]
 
         for file_name in cls.reference_files.values():
-            assert file_name.exists(), file_name
+            assert file_name.exists(), f"file {file_name} does not exist"
 
         # Start the timer
         cls.timer = Timer()
@@ -181,11 +176,13 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
 
             threshold = 0.6
             gui.threshold_box.setValue(threshold)
+
             min_size = 7
             gui.min_size_box.setValue(min_size)
-            sigma = 1.1
 
+            sigma = 1.1
             gui.sigma_box.setValue(sigma)
+
             alpha = 0.4
             gui.alpha_box.setValue(alpha)
 
@@ -200,12 +197,7 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
 
             # in order to wait until the preprocessing is finished
             finished = threading.Event()
-
-            def processing_finished():
-                nonlocal finished
-                finished.set()
-
-            gui.layersUpdated.connect(processing_finished)
+            gui.layersUpdated.connect(finished.set)
 
             # trigger the preprocessing and wait
             gui.update_ws_button.click()
