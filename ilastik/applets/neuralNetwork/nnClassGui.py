@@ -565,9 +565,7 @@ class NNClassGui(LabelingGui):
 
     @threadRouted
     def _changeInteractionMode(self, toolId):
-        if not ALLOW_TRAINING and toolId == Tool.Paint:
-            return
-        else:
+        if ALLOW_TRAINING or toolId != Tool.Paint:
             super()._changeInteractionMode(toolId)
 
     def setupLayers(self):
@@ -789,11 +787,11 @@ class NNClassGui(LabelingGui):
                 incompatible_shapes[dim] = shape
 
         if incompatible_shapes:
-            return [
-                {"reason": f"Model expects data to have a minimum size along the following axes {incompatible_shapes}"}
-            ]
+            return {
+                "reason": f"Model expects data to have a minimum size along the following axes {incompatible_shapes}"
+            }
         else:
-            return []
+            return {}
 
     def _onModelStateChanged(self, state):
         self.labelingDrawerUi.liveTraining.setVisible(False)
@@ -822,19 +820,6 @@ class NNClassGui(LabelingGui):
 
     def _load_checkpoint(self, model_state: ModelState):
         self.topLevelOperatorView.set_model_state(model_state)
-
-    @classmethod
-    def getModelToOpen(cls, parent_window):
-        """
-        opens a QFileDialog for importing files
-        """
-        # open dialog in recent model folder if possible
-        folder = preferences.get("DataSelection", "recent model")
-        if folder is None:
-            folder = os.path.expanduser("~")
-
-        # get folder from user
-        return QFileDialog.getOpenFileName(parent_window, "Select Model", folder, "Models (*.tmodel *.zip)")[0]
 
     @pyqtSlot()
     @threadRouted

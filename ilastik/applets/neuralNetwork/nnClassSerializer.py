@@ -19,6 +19,7 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 import json
+import logging
 
 import numpy as np
 
@@ -33,6 +34,9 @@ from ilastik.applets.base.appletSerializer import (
 
 from .tiktorchController import BIOModelData, ModelInfo
 from bioimageio.spec import serialize_raw_resource_description_to_dict, load_raw_resource_description
+
+
+logger = logging.getLogger(__name__)
 
 
 @jsonSerializerRegistry.register_serializer(ModelInfo)
@@ -81,18 +85,22 @@ class BioimageIOModelSlot(SerialSlot):
             ds = group.create_dataset(name, data=np.void(value.binary))
             ds.attrs["name"] = value.name
             ds.attrs["modelUri"] = value.modelUri
-            ds.attrs["rawDescription"] = json.dumps(serialize_raw_resource_description_to_dict(value.rawDescription))
+            ds.attrs["rawDescription"] = BIOModelData.raw_model_description_to_string(value.rawDescription)
             ds.attrs["hashVal"] = value.hashVal
 
     @staticmethod
     def _getValue(subgroup, slot):
-        model = BIOModelData(
-            name=subgroup.attrs["name"],
-            modelUri=subgroup.attrs["modelUri"],
-            binary=subgroup[()].tobytes(),
-            rawDescription=load_raw_resource_description(json.loads(subgroup.attrs["rawDescription"])),
-            hashVal=subgroup.attrs["hashVal"],
-        )
+        try:
+            model = BIOModelData(
+                modelUri=subgroup.attrs["modelUri"],
+                binary=subgroup[()].tobytes(),
+                rawDescription=load_raw_resource_description(json.loads(subgroup.attrs["rawDescription"])),
+                hashVal=subgroup.attrs["hashVal"],
+            )
+        except KeyError as e:
+            logger.debug(f"Could not deserialize model {e}")
+            return
+
         slot.setValue(model)
 
 

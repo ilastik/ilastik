@@ -22,11 +22,8 @@ import dataclasses
 import enum
 import json
 import logging
-import operator as stdop
-from collections.abc import Mapping
 from hashlib import blake2b
-from numbers import Number
-from typing import List
+from typing import Dict, List, Sequence, Union
 
 from bioimageio.spec import serialize_raw_resource_description_to_dict
 from bioimageio.spec.shared.raw_nodes import ImplicitOutputShape, ParametrizedInputShape
@@ -41,54 +38,26 @@ logger = logging.getLogger(__name__)
 ALLOW_TRAINING = False
 
 
-def _tagged_op(op, a, b):
-    if isinstance(a, Number) and isinstance(b, Mapping):
-        return _tagged_op(op, {k: a for k in b}, b)
-    elif isinstance(a, Mapping) and isinstance(b, Number):
-        return _tagged_op(op, a, {k: b for k in a})
-    elif isinstance(a, Mapping) and isinstance(b, Mapping):
-        return {k: op(a[k], b[k]) for k in a}
-    else:
-        raise ValueError(f"Need to supply at least one Dict-like object, got types (a: {type(a)} and b: {type(b)})")
+def tagged_input_shapes(raw_spec: RawResourceDescription) -> Dict[str, Dict[str, int]]:
+    def min_shape(shape):
+        return shape.min if isinstance(shape, ParametrizedInputShape) else shape
+
+    return {inp.name: dict(zip(inp.axes, min_shape(inp.shape))) for inp in raw_spec.inputs}
 
 
-def _tagged_multiplication(a, b):
-    return _tagged_op(stdop.mul, a, b)
+def explicit_tagged_shape(axes: Sequence[str], shape: ImplicitOutputShape, *, ref: Dict[str, int]) -> Dict[str, int]:
+    return {axis: int(ref[axis] * scale + 2 * offset) for axis, scale, offset in zip(axes, shape.scale, shape.offset)}
 
 
-def _tagged_sum(a, b):
-    return _tagged_op(stdop.add, a, b)
-
-
-def tagged_input_shapes(raw_spec):
-    tagged_shapes = {}
-    for input_ in raw_spec.inputs:
-        if isinstance(input_.shape, ParametrizedInputShape):
-            shape = input_.shape.min
-        else:
-            shape = input_.shape
-        tagged_shapes[input_.name] = {ax: sz for ax, sz in zip(input_.axes, shape)}
-    return tagged_shapes
-
-
-def tagged_output_shapes(raw_spec):
-    tagged_shapes = {}
+def tagged_output_shapes(raw_spec: RawResourceDescription) -> Dict[str, Dict[str, int]]:
     inputs = tagged_input_shapes(raw_spec)
-
-    for output in raw_spec.outputs:
-        if isinstance(output.shape, ImplicitOutputShape):
-            assert output.shape.reference_tensor in inputs
-            tagged_scale = {k: v for k, v in zip(output.axes, output.shape.scale)}
-            tagged_offset = {k: v for k, v in zip(output.axes, output.shape.offset)}
-            tagged_shape = _tagged_sum(
-                _tagged_multiplication(inputs[output.shape.reference_tensor], tagged_scale),
-                _tagged_multiplication(2, tagged_offset),
-            )
-            tagged_shapes[output.name] = {k: int(v) for k, v in tagged_shape.items()}
+    outputs = {}
+    for out in raw_spec.outputs:
+        if isinstance(out.shape, ImplicitOutputShape):
+            outputs[out.name] = explicit_tagged_shape(out.axes, out.shape, ref=inputs[out.shape.reference_tensor])
         else:
-            tagged_shapes[output.name] = {k: v for k, v in zip(output.axes, output.shape)}
-
-    return tagged_shapes
+            outputs[out.name] = dict(zip(out.axes, out.shape))
+    return outputs
 
 
 @dataclasses.dataclass
@@ -102,9 +71,8 @@ class ModelInfo:
         return len(self.knownClasses)
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class BIOModelData:
-    name: str
     # doi, nickname, or path
     modelUri: str
     # model zip
@@ -112,12 +80,32 @@ class BIOModelData:
     # rdf raw description as a dict
     rawDescription: RawResourceDescription
     # hash of the raw description
-    hashVal: str
+    hashVal: str = ""
+
+    def __post_init__(self):
+        if not getattr(self.rawDescription, "name"):
+            raise ValueError("rawDescription must contain the 'name' attribute.")
+        if len(self.rawDescription.outputs) != 1:
+            raise ValueError("Cannot deal with models that have multiple outputs at the moment")
+        if not self.hashVal:
+            hash_val = blake2b(
+                BIOModelData.raw_model_description_to_string(self.rawDescription).encode("utf8")
+            ).hexdigest()
+            object.__setattr__(self, "hashVal", f"$blake2b${hash_val}")
+
+    @staticmethod
+    def raw_model_description_to_string(rawModelDescription):
+        return json.dumps(
+            serialize_raw_resource_description_to_dict(rawModelDescription), separators=(",", ":"), sort_keys=True
+        )
 
     @property
     def numClasses(self):
-        assert len(self.rawDescription.outputs) == 1, "Cannot deal with models that have multiple outputs at the moment"
         return list(tagged_output_shapes(self.rawDescription).values())[0]["c"]
+
+    @property
+    def name(self):
+        return self.rawDescription.name
 
 
 class TiktorchOperatorModel:
@@ -179,11 +167,12 @@ class TiktorchOperatorModel:
         self._operator.NumClasses.setValue(self.modelData.numClasses)
 
     def _handleOperatorStateChange(self, *args, **kwargs):
-        if self._operator.BIOModel.ready() and not self._operator.ModelSession.ready():
-            self._state = self.State.ModelDataAvailable
-        elif self._operator.BIOModel.ready() and self._operator.ModelSession.ready():
-            self._state = self.State.Ready
-        elif not self._operator.BIOModel.ready():
+        if self._operator.BIOModel.ready():
+            if self._operator.ModelSession.ready():
+                self._state = self.State.Ready
+            else:
+                self._state = self.State.ModelDataAvailable
+        else:
             self._state = self.State.Empty
 
         self._notifyStateChanged()
@@ -214,11 +203,9 @@ class TiktorchController:
     def setModelData(self, modelUri, rawDescription, modelBinary):
         self._model.clear()
         modelData = BIOModelData(
-            name=rawDescription.name,
             modelUri=modelUri,
             binary=modelBinary,
             rawDescription=rawDescription,
-            hashVal=TiktorchController.computeModelHash(rawDescription),
         )
         self._model.setModel(bioModelData=modelData)
 
@@ -248,14 +235,3 @@ class TiktorchController:
         self._model.clearSession()
         if session:
             session.close()
-
-    @staticmethod
-    def computeModelHash(rawModelDescription) -> str:
-        has_val = blake2b(
-            TiktorchController.raw_model_description_to_string(rawModelDescription).encode("utf8")
-        ).hexdigest()
-        return f"$blake2b${has_val}"
-
-    @staticmethod
-    def raw_model_description_to_string(rawModelDescription):
-        return json.dumps(serialize_raw_resource_description_to_dict(rawModelDescription))

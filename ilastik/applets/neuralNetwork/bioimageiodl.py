@@ -5,14 +5,11 @@ from zipfile import ZIP_DEFLATED
 from bioimageio.core import load_raw_resource_description
 from bioimageio.core.resource_io.io_ import make_zip
 from bioimageio.spec import get_resource_package_content
-from bioimageio.spec.shared import resolve_source, raw_nodes
+from bioimageio.spec.shared import resolve_source, raw_nodes, DownloadCancelled
 from PyQt5.QtCore import QThread, pyqtSignal
 from tqdm.auto import tqdm as std_tqdm
 
 from functools import partial
-
-from asyncio import CancelledError
-
 import logging
 
 logger = logging.getLogger(__file__)
@@ -27,14 +24,12 @@ class TqdmExt(std_tqdm):
         self._cancellation_token = cancellation_token
 
     def update(self, n=1):
-        if self._cancellation_token:
-            if self._cancellation_token.cancelled:
-                raise CancelledError()
+        if self._cancellation_token and self._cancellation_token.cancelled:
+            raise DownloadCancelled()
 
-        displayed = super(TqdmExt, self).update(n)
-        if displayed:
-            if self._cb:
-                self._cb(**self.format_dict)
+        displayed = super().update(n)
+        if displayed and self._cb:
+            self._cb(**self.format_dict)
         return displayed
 
 
@@ -45,7 +40,7 @@ class BioImageDownloader(QThread):
     progress1 = pyqtSignal(int)
     dataAvailable = pyqtSignal(bytes)
 
-    def __init__(self, parent, model_uri, cancellation_token, *args, **kwargs):
+    def __init__(self, model_uri, cancellation_token, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
         self._model_uri = model_uri
         self._exception = None
@@ -85,7 +80,7 @@ class BioImageDownloader(QThread):
                 model_bytes = package_file.getvalue()
 
             self.dataAvailable.emit(model_bytes)
-        except CancelledError:
+        except DownloadCancelled:
             return
         except Exception as e:
             self.error.emit(e)

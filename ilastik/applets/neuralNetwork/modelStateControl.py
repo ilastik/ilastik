@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import os
 import traceback
@@ -6,7 +7,6 @@ from textwrap import dedent
 from typing import Callable, List
 
 from bioimageio.core import load_raw_resource_description
-from jinja2 import Template
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
@@ -64,11 +64,11 @@ class ModelControlButtons(QWidget):
 
 
 display_template = dedent(
-    """<b>{{ model_name }}</b><br>
-    <i>{{ model_description }}</i><br>
-    <b>source:</b> {{ model_source }}<br>
-    <b>input axes:</b> {{ fmt_input_shape }}<br>
-    <b>output axes:</b> {{ fmt_output_shape }}<br>"""
+    """<b>{model_name}</b><br>
+    <i>{model_description}</i><br>
+    <b>source:</b> {model_source}<br>
+    <b>input axes:</b> {fmt_input_shape}<br>
+    <b>output axes:</b> {fmt_output_shape}<br>"""
 )
 
 
@@ -85,11 +85,10 @@ class ModelSourceEdit(QTextEdit):
             "Copy-paste a bioimage.io model doi or nickname, or drag and drop a model.zip file here. Then press on the '+' button below."
         )
 
-        self._initialized = False
         self._model_source = None
 
     def getModelSource(self) -> str:
-        return self._model_source if self._initialized else self.toPlainText()
+        return self._model_source or self.toPlainText()
 
     def resizeEvent(self, evt):
         own_size = self.size()
@@ -114,9 +113,9 @@ class ModelSourceEdit(QTextEdit):
         self.btn_container.setVisible(False)
         super().leaveEvent(ev)
 
-    def setModelInfo(self, model_source, model_info, template=Template(display_template)):
+    def setModelInfo(self, model_source, model_info, template=display_template):
         self.setHtml(
-            template.render(
+            template.format(
                 model_source=model_source,
                 model_name=getattr(model_info, "name", "n/a"),
                 model_description=getattr(model_info, "description", "n/a"),
@@ -124,7 +123,6 @@ class ModelSourceEdit(QTextEdit):
                 fmt_output_shape="".join(model_info.outputs[0].axes),
             )
         )
-        self._initialized = True
         self._model_source = model_source
 
     def dropEvent(self, dropEvent):
@@ -134,8 +132,6 @@ class ModelSourceEdit(QTextEdit):
 
     def dragEnterEvent(self, event):
         # Only accept drag-and-drop events that consist of a single local file.
-        if not event.mimeData().hasUrls():
-            return
         urls = event.mimeData().urls()
         if len(urls) == 1 and all(url.isLocalFile() for url in urls):
             event.acceptProposedAction()
@@ -148,7 +144,6 @@ class ModelSourceEdit(QTextEdit):
             "Copy/Paste a bioimage.io model doi or nickname, or\ndrag-and-drop a downloaded bioimage.io model.zip file."
         )
         self._model_source = None
-        self._initialized = False
 
     def askClear(self):
         if (
@@ -160,7 +155,7 @@ class ModelSourceEdit(QTextEdit):
 
     def setModelIncompatibleState(self, model_source, model_info, error_message):
         self.setToolTip(f"Model not compatible with data:\n\n{error_message}")
-        self.setModelInfo(model_source, model_info, template=Template(f"<red>{display_template}</red>"))
+        self.setModelInfo(model_source, model_info, template=f"<red>{display_template}</red>")
 
     def setEmptyState(self):
         self.clear()
@@ -190,8 +185,6 @@ class ModelStateControl(QWidget):
         self.modelSourceEdit = ModelSourceEdit(self)
         self.statusLabel = QLabel(self)
         self.modelControlButton = QToolButton(self)
-        self.modelControlButton.setText("...")
-        self.modelControlButton.setToolTip("Click here to check model details, initialize, or un-initialize the model")
 
         bottom_layout = QHBoxLayout()
         bottom_layout.addWidget(self.statusLabel)
@@ -212,10 +205,8 @@ class ModelStateControl(QWidget):
     @threadRouted
     def _onTiktorchStateChange(self, state: TiktorchOperatorModel.State):
 
-        try:
+        with contextlib.suppress(Exception):
             self.modelControlButton.clicked.disconnect()
-        except:
-            pass
 
         if state is TiktorchOperatorModel.State.Empty:
             self.modelControlButton.setIcon(QIcon(ilastikIcons.GoNext))
@@ -235,13 +226,10 @@ class ModelStateControl(QWidget):
         elif state is TiktorchOperatorModel.State.Ready:
             self.modelControlButton.setIcon(QIcon(ilastikIcons.ProcessStop))
             self.modelControlButton.setToolTip("Stop and unload the model")
-            self.modelControlButton.clicked.connect(self.closeModelClicked)
+            self.modelControlButton.clicked.connect(self._tiktorchController.closeSession)
             self.modelControlButton.setEnabled(True)
             modelData = self._tiktorchModel.modelData
             self.modelSourceEdit.setReadyState(modelData.modelUri, modelData.rawDescription)
-
-    def closeModelClicked(self):
-        self._tiktorchController.closeSession()
 
     def _setAndUploadModel(self, modelUri, rawDescription, modelBinary):
         self._setModel(modelUri, rawDescription, modelBinary)
@@ -298,14 +286,14 @@ class ModelStateControl(QWidget):
         try:
             compatibility_checks = self.checkModelCompatibility(model_info)
 
-            if compatibility_checks:
-                reasons = "\n".join(r["reason"] for r in compatibility_checks)
+            if any(compatibility_checks):
+                reasons = "\n".join(r["reason"] for r in compatibility_checks if r)
                 QMessageBox.information(
                     self,
                     "Model incompatible",
                     f"Model incompatible, reasons:\n\n{reasons}.\nPlease select a different model.",
                 )
-                reasons_log = " - ".join(r["reason"] for r in compatibility_checks)
+                reasons_log = " - ".join(r["reason"] for r in compatibility_checks if r)
                 logger.debug(f"Incompatible model from {model_uri}. Reasons: {reasons_log}")
                 self.modelSourceEdit.setModelIncompatibleState(model_uri, model_info, reasons)
                 return
@@ -321,7 +309,7 @@ class ModelStateControl(QWidget):
     def resolveModel(self, model_uri, model_info) -> BioImageDownloader:
         """Initiate model download"""
         cancelSrc = CancellationTokenSource()
-        downloader = BioImageDownloader(self, model_uri, cancelSrc.token)
+        downloader = BioImageDownloader(model_uri, cancelSrc.token, self)
         dialog = PercentProgressDialog(self, title="Downloading model", secondary_bar=True)
         dialog.rejected.connect(cancelSrc.cancel)
         dialog.show()
@@ -387,18 +375,17 @@ class ModelStateControl(QWidget):
 
         Args:
             fn: callable that takes a single arg: model_info and performs
-              compatibility checks. Must return [] if it's all good.
-              Must return a list of dicts with at least [{"reason": "why it failed"}]
+              compatibility checks. Must return {} if it's all good.
+              Must return a dict with at least {"reason": "why it failed"}
               See `ModelStateControl._check_model_compatible` for an example.
         """
         self._preDownloadChecks.add(fn)
 
     def checkModelCompatibility(self, model_info):
         # first check is for _general_ compatibility with ilastik
-        results = self._check_model_compatible(model_info)
-        for fn in self._preDownloadChecks:
-            results.extend(fn(model_info))
-        return results
+        return self._check_model_compatible(model_info) + [
+            pre_check(model_info) for pre_check in self._preDownloadChecks
+        ]
 
     @classmethod
     def getModelToOpen(cls, parent_window):
@@ -406,9 +393,7 @@ class ModelStateControl(QWidget):
         opens a QFileDialog for importing files
         """
         # open dialog in recent model folder if possible
-        folder = preferences.get("DataSelection", "recent model")
-        if folder is None:
-            folder = os.path.expanduser("~")
+        folder = preferences.get("DataSelection", "recent model", os.path.expanduser("~"))
 
         # get folder from user
         return QFileDialog.getOpenFileName(parent_window, "Select Model", folder, "Models (*.tmodel *.zip)")[0]
