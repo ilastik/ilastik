@@ -55,6 +55,7 @@ from .generic import (
     OpSubRegion,
     OpTransposeSlots,
     OpWrapSlot,
+    OpSelectInput,
 )
 from .opArrayPiper import OpArrayPiper
 from .opBlockedArrayCache import OpBlockedArrayCache

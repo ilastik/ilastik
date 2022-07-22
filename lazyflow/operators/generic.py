@@ -862,3 +862,43 @@ class OpSelectSubslot(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         pass
+
+
+class OpSelectInput(Operator):
+    """
+    Behaves like pass-through op for one of two inputs, depending on UseSecondInput slot
+    """
+
+    Input1 = InputSlot()
+    Input2 = InputSlot()
+
+    UseSecondInput = InputSlot(stype="bool", value=False)
+
+    Output = OutputSlot()
+
+    def setupOutputs(self):
+        self.Input1.meta.shape = self.Input2.meta.shape
+        assert self.Input1.meta.shape == self.Input2.meta.shape
+        assert self.Input1.meta.dtype == self.Input2.meta.dtype
+
+        self.Output.meta.shape = self.Input1.meta.shape
+        self.Output.meta.dtype = self.Input1.meta.dtype
+
+    def execute(self, slot, subindex, roi, result):
+        if self.UseSecondInput.value:
+            result[...] = self.Input2.get(roi).wait()
+        else:
+            result[...] = self.Input1.get(roi).wait()
+
+        return result
+
+    def propagateDirty(self, slot, subindex, roi):
+        if slot == self.UseSecondInput:
+            self.Output.setDirty(())
+        elif slot == self.Input2 and self.UseSecondInput.value:
+            self.Output.setDirty(())
+        elif slot == self.Input1 and not self.UseSecondInput.value:
+            self.Output.setDirty(())
+        else:
+            # ignore dirtiness if dirty input is not selected
+            return

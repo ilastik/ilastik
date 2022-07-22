@@ -10,7 +10,7 @@ import ilastikrag
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice
-from lazyflow.operators import OpValueCache, OpBlockedArrayCache
+from lazyflow.operators import OpValueCache, OpBlockedArrayCache, OpSelectInput
 from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
 
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -53,12 +53,11 @@ class OpEdgeTraining(Operator):
         self.opRagCache.name = "opRagCache"
 
         self.opComputeEdgeFeatures = OpMultiLaneWrapper(
-            OpComputeEdgeFeatures, parent=self, broadcastingSlotNames=["FeatureNames", "TrainRandomForest"]
+            OpComputeEdgeFeatures, parent=self, broadcastingSlotNames=["FeatureNames"]
         )
         self.opComputeEdgeFeatures.FeatureNames.connect(self.FeatureNames)
         self.opComputeEdgeFeatures.VoxelData.connect(self.VoxelData)
         self.opComputeEdgeFeatures.Rag.connect(self.opRagCache.Output)
-        self.opComputeEdgeFeatures.TrainRandomForest.connect(self.TrainRandomForest)
         self.opComputeEdgeFeatures.WatershedSelectedInput.connect(self.WatershedSelectedInput)
 
         self.opEdgeFeaturesCache = OpMultiLaneWrapper(OpValueCache, parent=self, broadcastingSlotNames=["fixAtCurrent"])
@@ -76,11 +75,10 @@ class OpEdgeTraining(Operator):
         self.opClassifierCache.name = "opClassifierCache"
 
         self.opPredictEdgeProbabilities = OpMultiLaneWrapper(
-            OpPredictEdgeProbabilities, parent=self, broadcastingSlotNames=["EdgeClassifier", "TrainRandomForest"]
+            OpPredictEdgeProbabilities, parent=self, broadcastingSlotNames=["EdgeClassifier"]
         )
         self.opPredictEdgeProbabilities.EdgeClassifier.connect(self.opClassifierCache.Output)
         self.opPredictEdgeProbabilities.EdgeFeaturesDataFrame.connect(self.opEdgeFeaturesCache.Output)
-        self.opPredictEdgeProbabilities.TrainRandomForest.connect(self.TrainRandomForest)
 
         self.opEdgeProbabilitiesCache = OpMultiLaneWrapper(
             OpValueCache, parent=self, broadcastingSlotNames=["fixAtCurrent"]
@@ -89,9 +87,27 @@ class OpEdgeTraining(Operator):
         self.opEdgeProbabilitiesCache.name = "opEdgeProbabilitiesCache"
         self.opEdgeProbabilitiesCache.fixAtCurrent.connect(self.FreezeClassifier)
 
+        self.opBoundaryEvidence = OpMultiLaneWrapper(OpBoundaryEvidence, parent=self)
+        self.opBoundaryEvidence.VoxelData.connect(self.VoxelData)
+        self.opBoundaryEvidence.Rag.connect(self.opRagCache.Output)
+        self.opBoundaryEvidence.WatershedSelectedInput.connect(self.WatershedSelectedInput)
+
+        self.opDefaultEdgeFeaturesCache = OpMultiLaneWrapper(
+            OpValueCache, parent=self, broadcastingSlotNames=["fixAtCurrent"]
+        )
+        self.opDefaultEdgeFeaturesCache.Input.connect(self.opBoundaryEvidence.EdgeFeaturesDataFrame)
+        self.opDefaultEdgeFeaturesCache.name = "opDefaultEdgeFeaturesCache"
+
+        self.opBoundaryEvidenceSelector = OpMultiLaneWrapper(
+            OpSelectInput, parent=self, broadcastingSlotNames=["UseSecondInput"]
+        )
+        self.opBoundaryEvidenceSelector.UseSecondInput.connect(self.TrainRandomForest)
+        self.opBoundaryEvidenceSelector.Input2.connect(self.opEdgeProbabilitiesCache.Output)
+        self.opBoundaryEvidenceSelector.Input1.connect(self.opDefaultEdgeFeaturesCache.Output)
+
         self.opEdgeProbabilitiesDict = OpMultiLaneWrapper(OpEdgeProbabilitiesDict, parent=self)
         self.opEdgeProbabilitiesDict.Rag.connect(self.opRagCache.Output)
-        self.opEdgeProbabilitiesDict.EdgeProbabilities.connect(self.opEdgeProbabilitiesCache.Output)
+        self.opEdgeProbabilitiesDict.EdgeProbabilities.connect(self.opBoundaryEvidenceSelector.Output)
 
         self.opEdgeProbabilitiesDictCache = OpMultiLaneWrapper(
             OpValueCache, parent=self, broadcastingSlotNames=["fixAtCurrent"]
@@ -114,7 +130,7 @@ class OpEdgeTraining(Operator):
         self.opNaiveSegmentationCache.name = "opNaiveSegmentationCache"
 
         self.Rag.connect(self.opRagCache.Output)
-        self.EdgeProbabilities.connect(self.opEdgeProbabilitiesCache.Output)
+        self.EdgeProbabilities.connect(self.opBoundaryEvidenceSelector.Output)
         self.EdgeProbabilitiesDict.connect(self.opEdgeProbabilitiesDictCache.Output)
         self.NaiveSegmentation.connect(self.opNaiveSegmentationCache.Output)
 
@@ -220,6 +236,7 @@ class OpEdgeTraining(Operator):
             self.opEdgeProbabilitiesCache,
             self.opEdgeProbabilitiesDictCache,
             self.opEdgeFeaturesCache,
+            self.opDefaultEdgeFeaturesCache,
         ]:
             c = cache.getLane(lane_index)
             c.resetValue()
@@ -256,7 +273,6 @@ def decodeToStringIfBytes(s):
 
 class OpComputeEdgeFeatures(Operator):
     WatershedSelectedInput = InputSlot()
-    TrainRandomForest = InputSlot(value=False)
     FeatureNames = InputSlot()
     VoxelData = InputSlot()
     Rag = InputSlot()
@@ -268,66 +284,79 @@ class OpComputeEdgeFeatures(Operator):
         self.EdgeFeaturesDataFrame.meta.dtype = object
 
     def execute(self, slot, subindex, roi, result):
-        if self.TrainRandomForest.value:
-            rag = self.Rag.value
-            channel_feature_names = self.FeatureNames.value
+        rag = self.Rag.value
+        channel_feature_names = self.FeatureNames.value
 
-            edge_feature_dfs = []
+        edge_feature_dfs = []
 
-            for c in range(self.VoxelData.meta.shape[-1]):
-                channel_name = self.VoxelData.meta.channel_names[c]
-                if channel_name not in channel_feature_names:
-                    continue
+        for c in range(self.VoxelData.meta.shape[-1]):
+            channel_name = self.VoxelData.meta.channel_names[c]
+            if channel_name not in channel_feature_names:
+                continue
 
-                feature_names = [decodeToStringIfBytes(f) for f in channel_feature_names[channel_name]]
-                if not feature_names:
-                    # No features selected for this channel
-                    continue
+            feature_names = [decodeToStringIfBytes(f) for f in channel_feature_names[channel_name]]
+            if not feature_names:
+                # No features selected for this channel
+                continue
 
-                voxel_data = self.VoxelData[..., c : c + 1].wait()
-                voxel_data = vigra.taggedView(voxel_data, self.VoxelData.meta.axistags)
-                voxel_data = voxel_data[..., 0]  # drop channel
-                edge_features_df = rag.compute_features(voxel_data, feature_names)
+            voxel_data = self.VoxelData[..., c : c + 1].wait()
+            voxel_data = vigra.taggedView(voxel_data, self.VoxelData.meta.axistags)
+            voxel_data = voxel_data[..., 0]  # drop channel
+            edge_features_df = rag.compute_features(voxel_data, feature_names)
 
-                # if np.isnan(edge_features_df.values).any():
-                #    raise RuntimeError("Whoa, why are there NaN values in the feature matrix?")
+            # if np.isnan(edge_features_df.values).any():
+            #    raise RuntimeError("Whoa, why are there NaN values in the feature matrix?")
 
-                edge_features_df = edge_features_df.iloc[:, 2:]  # Discard columns [sp1, sp2]
+            edge_features_df = edge_features_df.iloc[:, 2:]  # Discard columns [sp1, sp2]
 
-                # Prefix all column names with the channel name, to guarantee uniqueness
-                # (Generally a nice feature, but also required for serialization.)
-                edge_features_df.columns = [
-                    channel_name + " " + feature_name for feature_name in edge_features_df.columns.values
-                ]
-                edge_feature_dfs.append(edge_features_df)
+            # Prefix all column names with the channel name, to guarantee uniqueness
+            # (Generally a nice feature, but also required for serialization.)
+            edge_features_df.columns = [
+                channel_name + " " + feature_name for feature_name in edge_features_df.columns.values
+            ]
+            edge_feature_dfs.append(edge_features_df)
 
             # Could use join() or merge() here, but we know the rows are already in the right order, and concat() should be faster.
             all_edge_features_df = pd.DataFrame(rag.edge_ids, columns=["sp1", "sp2"])
             all_edge_features_df = pd.concat([all_edge_features_df] + edge_feature_dfs, axis=1, copy=False)
             result[0] = all_edge_features_df
 
-        else:
+    def propagateDirty(self, slot, subindex, roi):
+        self.EdgeFeaturesDataFrame.setDirty()
 
-            def normalize1(series):
-                series = series - np.min(series)
-                series = series / np.max(series)
-                return series
 
-            BEST_FEATURE = "standard_edge_mean"
+class OpBoundaryEvidence(Operator):
+    WatershedSelectedInput = InputSlot()
+    VoxelData = InputSlot()
+    Rag = InputSlot()
+    EdgeFeaturesDataFrame = OutputSlot()  # Includes columns 'sp1' and 'sp2'
 
-            logger.info("Edge probabilities from feature {}...".format(BEST_FEATURE))
-            # The probabilities data is the data which the
-            # user has selected to run watershed on. The data source
-            # cannot be hard coded, because there might be
-            # many channels.
-            voxel_data = self.WatershedSelectedInput[..., 0].wait()
-            voxel_data = vigra.taggedView(voxel_data, self.VoxelData.meta.axistags)
-            voxel_data = voxel_data[..., 0]  # drop channel
-            rag = self.Rag.value
-            edge_features_df = rag.compute_features(voxel_data, [BEST_FEATURE])
-            edge_features_df[BEST_FEATURE] = normalize1(edge_features_df[BEST_FEATURE])
+    def setupOutputs(self):
+        assert self.VoxelData.meta.getAxisKeys()[-1] == "c"
+        self.EdgeFeaturesDataFrame.meta.shape = (1,)
+        self.EdgeFeaturesDataFrame.meta.dtype = object
 
-            result[0] = edge_features_df
+    def execute(self, slot, subindex, roi, result):
+        def normalize1(series):
+            series = series - np.min(series)
+            series = series / np.max(series)
+            return series
+
+        BEST_FEATURE = "standard_edge_mean"
+
+        logger.info("Edge probabilities from feature {}...".format(BEST_FEATURE))
+        # The probabilities data is the data which the
+        # user has selected to run watershed on. The data source
+        # cannot be hard coded, because there might be
+        # many channels.
+        voxel_data = self.WatershedSelectedInput[..., 0].wait()
+        voxel_data = vigra.taggedView(voxel_data, self.VoxelData.meta.axistags)
+        voxel_data = voxel_data[..., 0]  # drop channel
+        rag = self.Rag.value
+        edge_features_df = rag.compute_features(voxel_data, [BEST_FEATURE])
+        edge_features_df[BEST_FEATURE] = normalize1(edge_features_df[BEST_FEATURE])
+
+        result[0] = edge_features_df[BEST_FEATURE].values
 
     def propagateDirty(self, slot, subindex, roi):
         self.EdgeFeaturesDataFrame.setDirty()
@@ -397,7 +426,6 @@ class OpTrainEdgeClassifier(Operator):
 
 
 class OpPredictEdgeProbabilities(Operator):
-    TrainRandomForest = InputSlot(value=False)
     EdgeClassifier = InputSlot()
     EdgeFeaturesDataFrame = InputSlot()
     # historically slot is named "EdgeProbabilities" because multicut used predictions from
@@ -426,18 +454,8 @@ class OpPredictEdgeProbabilities(Operator):
         else:
             raise ValueError(f"Found unknown edge labels {known_classes}. Only labels {{1, 2}} are allowed.")
 
-    def _edge_weights_from_probability_map(self):
-        BEST_FEATURE = "standard_edge_mean"
-        edge_features_df = self.EdgeFeaturesDataFrame.value
-        return edge_features_df[BEST_FEATURE].values
-
     def execute(self, slot, subindex, roi, result):
-        if self.TrainRandomForest.value:
-            edge_weights = self._edge_weights_from_random_forest_predictions()
-        else:
-            edge_weights = self._edge_weights_from_probability_map()
-
-        result[0] = edge_weights
+        result[0] = self._edge_weights_from_random_forest_predictions()
 
     def propagateDirty(self, slot, subindex, roi):
         self.EdgeProbabilities.setDirty()
