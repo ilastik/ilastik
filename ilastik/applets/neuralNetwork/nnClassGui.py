@@ -18,57 +18,53 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-import os
 import logging
+import os
 import traceback
-
-from functools import partial
 from collections import OrderedDict
+from functools import partial
 
 import numpy
 import yaml
-
-from ilastik.widgets.progressDialog import PercentProgressDialog
+from bioimageio.spec.shared.raw_nodes import ParametrizedInputShape
 from PyQt5 import uic
 from PyQt5.QtCore import (
-    Qt,
-    pyqtSlot,
-    pyqtSignal,
-    QTimer,
-    QStringListModel,
     QModelIndex,
     QPersistentModelIndex,
+    QStringListModel,
+    Qt,
+    QTimer,
+    pyqtSignal,
+    pyqtSlot,
 )
 from PyQt5.QtGui import QColor, QIcon
 from PyQt5.QtWidgets import (
-    QMessageBox,
-    QWidget,
-    QStackedWidget,
-    QFileDialog,
-    QMenu,
-    QLineEdit,
-    QVBoxLayout,
-    QDialog,
-    QGridLayout,
-    QLabel,
-    QPushButton,
-    QHBoxLayout,
-    QDesktopWidget,
     QComboBox,
+    QDesktopWidget,
+    QDialog,
+    QFileDialog,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMenu,
+    QMessageBox,
+    QPushButton,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
 )
-
-from ilastik.applets.labeling.labelingGui import LabelingGui, Tool
-from ilastik.utility.gui import threadRouted
-from ilastik.utility import bind
-from ilastik.shell.gui.iconMgr import ilastikIcons
-from .tiktorchController import TiktorchOperatorModel, ALLOW_TRAINING
-
-from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
+from tiktorch.configkeys import NUM_ITERATIONS_DONE, NUM_ITERATIONS_MAX, TRAINING
+from tiktorch.types import ModelState
+from volumina.api import AlphaModulatedLayer, GrayscaleLayer, LazyflowSource
 from volumina.utility import preferences
 
-from lazyflow.cancel_token import CancellationTokenSource
-from tiktorch.types import ModelState
-from tiktorch.configkeys import TRAINING, NUM_ITERATIONS_DONE, NUM_ITERATIONS_MAX
+from ilastik.applets.labeling.labelingGui import LabelingGui, Tool
+from ilastik.shell.gui.iconMgr import ilastikIcons
+from ilastik.utility import bind
+from ilastik.utility.gui import threadRouted
+
+from .tiktorchController import ALLOW_TRAINING, TiktorchOperatorModel
 
 logger = logging.getLogger(__name__)
 
@@ -482,11 +478,9 @@ class NNClassGui(LabelingGui):
         self.set_live_predict_icon(self.livePrediction)
         self.labelingDrawerUi.livePrediction.toggled.connect(self.toggleLivePrediction)
 
-        self.labelingDrawerUi.addModel.clicked.connect(self.addModelClicked)
-        self.labelingDrawerUi.closeModel.setIcon(QIcon(ilastikIcons.ProcessStop))
-        self.labelingDrawerUi.closeModel.clicked.connect(self.closeModelClicked)
-        self.labelingDrawerUi.uploadModel.setIcon(QIcon(ilastikIcons.Upload))
-        self.labelingDrawerUi.uploadModel.clicked.connect(self.uploadModelClicked)
+        self.labelingDrawerUi.modelStateControl.setTiktorchController(self.tiktorchController)
+        self.labelingDrawerUi.modelStateControl.setTiktorchModel(self.tiktorchModel)
+        self.labelingDrawerUi.modelStateControl.addCheck(self._check_input_spec_compatible)
 
         self.initViewerControls()
         self.initViewerControlUi()
@@ -568,6 +562,11 @@ class NNClassGui(LabelingGui):
 
         model = self.editor.layerStack
         self._viewerControlUi.viewerControls.setupConnections(model)
+
+    @threadRouted
+    def _changeInteractionMode(self, toolId):
+        if ALLOW_TRAINING or toolId != Tool.Paint:
+            super()._changeInteractionMode(toolId)
 
     def setupLayers(self):
         """
@@ -750,128 +749,77 @@ class NNClassGui(LabelingGui):
         else:
             self._viewerControlUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
 
-    def closeModelClicked(self):
-        self.tiktorchController.closeSession()
-
     def cc(self, *args, **kwargs):
         self.cancel_src.cancel()
-
-    def addModelClicked(self):
-        """
-        When AddModel button is clicked.
-        """
-        # open dialog in recent model folder if possible
-        folder = preferences.get("DataSelection", "recent model")
-        if folder is None:
-            folder = os.path.expanduser("~")
-
-        # get folder from user
-        filename = self.getModelToOpen(self, folder)
-
-        if filename:
-            projectManager = self.parentApplet._StandardApplet__workflow._shell.projectManager
-            # save whole project (specifically important here: the labels)
-            if not projectManager.currentProjectIsReadOnly:
-                projectManager.saveProject()
-
-            with open(filename, "rb") as modelFile:
-                modelBytes = modelFile.read()
-
-            self._uploadModel(modelBytes)
-
-            preferences.set("DataSelection", "recent model", filename)
-            self.parentApplet.appletStateUpdateRequested()
 
     @threadRouted
     def _showErrorMessage(self, exc):
         logger.error("".join(traceback.format_exception(etype=type(exc), value=exc, tb=exc.__traceback__)))
-        QMessageBox.critical(self, "Model Server Error", f"Failed to upload model:\n {type(exc)} {exc}")
-
-    uploadDone = pyqtSignal()
-
-    def _uploadModel(self, modelBytes):
-        cancelSrc = CancellationTokenSource()
-        dialog = PercentProgressDialog(self, title="Initializing model")
-        dialog.rejected.connect(cancelSrc.cancel)
-        dialog.open()
-
-        modelInfo = self.tiktorchController.uploadModel(
-            modelBytes=modelBytes, progressCallback=dialog.updateProgress, cancelToken=cancelSrc.token
+        QMessageBox.critical(
+            self, "ilastik detected a problem with your model", f"Failed to initialize model:\n {type(exc)} {exc}"
         )
 
-        def _onUploadDone():
-            self.uploadDone.disconnect()
-            dialog.accept()
+    def _check_input_spec_compatible(self, model_info):
+        """Check if spec is compatible with project data"""
 
-        self.uploadDone.connect(_onUploadDone)
+        def _minimum_tagged_shape(input_spec):
+            axes = input_spec.axes
+            input_shape = input_spec.shape
+            if isinstance(input_shape, list):
+                assert len(input_shape) == len(axes)
+                return {k: v for k, v in zip(axes, input_shape)}
+            elif isinstance(input_shape, ParametrizedInputShape):
+                assert len(input_shape.min) == len(input_shape.step) == len(axes)
+                return {k: v for k, v in zip(axes, input_shape.min)}
+            else:
+                raise ValueError(f"Unexpected input shape of type {type(input_shape)}")
 
-        def _onDone(fut):
-            self.uploadDone.emit()
+        input_spec = model_info.inputs[0]
 
-            if fut.cancelled():
-                return
+        # should probably do all input images?
+        input_data_shape = self.topLevelOperatorView.InputImages.meta.getTaggedShape()
+        input_model_shape = _minimum_tagged_shape(input_spec)
 
-            if fut.exception():
-                self._showErrorMessage(fut.exception())
+        incompatible_shapes = {}
+        for dim, shape in input_model_shape.items():
+            # we are fine with singletons
+            if shape > 1 and input_data_shape.get(dim, 0) < shape:
+                incompatible_shapes[dim] = shape
 
-        modelInfo.add_done_callback(_onDone)
-
-    def uploadModelClicked(self):
-        try:
-            self._uploadModel(self.tiktorchModel.modelBytes)
-        except Exception as e:
-            self._showErrorMessage(e)
+        if incompatible_shapes:
+            return {
+                "reason": f"Model expects data to have a minimum size along the following axes {incompatible_shapes}"
+            }
+        else:
+            return {}
 
     def _onModelStateChanged(self, state):
         self.labelingDrawerUi.liveTraining.setVisible(False)
         self.labelingDrawerUi.checkpoints.setVisible(False)
 
         if state is TiktorchOperatorModel.State.Empty:
-            self.labelingDrawerUi.addModel.setText("Load model")
-            self.labelingDrawerUi.addModel.setEnabled(True)
-            self.labelingDrawerUi.closeModel.setEnabled(False)
-            self.labelingDrawerUi.uploadModel.setEnabled(False)
             self.labelingDrawerUi.livePrediction.setEnabled(False)
             self.updateAllLayers()
 
-        elif state is TiktorchOperatorModel.State.ReadFromProjectFile:
-            info = self.tiktorchModel.modelInfo
-
-            self.labelingDrawerUi.addModel.setText(f"{info.name}")
-            self.labelingDrawerUi.addModel.setEnabled(True)
-            self.labelingDrawerUi.closeModel.setEnabled(True)
-            self.labelingDrawerUi.uploadModel.setEnabled(True)
+        elif state is TiktorchOperatorModel.State.ModelDataAvailable:
+            num_classes = self.tiktorchModel.modelData.numClasses
             self.labelingDrawerUi.livePrediction.setEnabled(False)
 
-            self.minLabelNumber = info.numClasses
-            self.maxLabelNumber = info.numClasses
+            self.minLabelNumber = num_classes
+            self.maxLabelNumber = num_classes
 
             self.updateAllLayers()
 
         elif state is TiktorchOperatorModel.State.Ready:
-            info = self.tiktorchModel.modelInfo
-
-            self.labelingDrawerUi.addModel.setText(f"{info.name}")
-            self.labelingDrawerUi.addModel.setEnabled(True)
-            self.labelingDrawerUi.closeModel.setEnabled(True)
-            self.labelingDrawerUi.uploadModel.setEnabled(False)
+            num_classes = self.tiktorchModel.modelData.numClasses
             self.labelingDrawerUi.livePrediction.setEnabled(True)
 
-            self.minLabelNumber = info.numClasses
-            self.maxLabelNumber = info.numClasses
+            self.minLabelNumber = num_classes
+            self.maxLabelNumber = num_classes
             self.updateAllLayers()
 
     def _load_checkpoint(self, model_state: ModelState):
         self.topLevelOperatorView.set_model_state(model_state)
-
-    @classmethod
-    def getModelToOpen(cls, parent_window, defaultDirectory):
-        """
-        opens a QFileDialog for importing files
-        """
-        return QFileDialog.getOpenFileName(parent_window, "Select Model", defaultDirectory, "Models (*.tmodel *.zip)")[
-            0
-        ]
 
     @pyqtSlot()
     @threadRouted

@@ -60,15 +60,11 @@ class OpNNClassification(Operator):
     NumClasses = InputSlot()
     LabelInputs = InputSlot(optional=True, level=1)
     FreezePredictions = InputSlot(stype="bool", value=False, nonlane=True)
-    ModelBinary = InputSlot(stype=stype.Opaque, nonlane=True)
-    # Contains cached model info
-    ModelInfo = InputSlot(stype=stype.Opaque, nonlane=True, optional=True)
+    BIOModel = InputSlot(stype=stype.Opaque, nonlane=True)
     ModelSession = InputSlot()
 
     Classifier = OutputSlot()
-    PredictionProbabilities = OutputSlot(
-        level=1
-    )  # Classification predictions (via feature cache for interactive speed)
+    PredictionProbabilities = OutputSlot(level=1)
     PredictionProbabilityChannels = OutputSlot(level=2)  # Classification predictions, enumerated by channel
     CachedPredictionProbabilities = OutputSlot(level=1)
     LabelImages = OutputSlot(level=1)
