@@ -877,9 +877,14 @@ class OpSelectInput(Operator):
     Output = OutputSlot()
 
     def setupOutputs(self):
-        self.Input1.meta.shape = self.Input2.meta.shape
-        assert self.Input1.meta.shape == self.Input2.meta.shape
-        assert self.Input1.meta.dtype == self.Input2.meta.dtype
+        if self.Input1.meta.shape != self.Input2.meta.shape:
+            raise ValueError(
+                f"Shape mismatch between inputs - Input1: {self.Input1.meta.shape} != Input2 {self.Input2.meta.shape}"
+            )
+        if self.Input1.meta.dtype != self.Input2.meta.dtype:
+            raise ValueError(
+                f"Dtype mismatch between inputs - Input1: {self.Input1.meta.dtype} != Input2 {self.Input2.meta.dtype}"
+            )
 
         self.Output.meta.shape = self.Input1.meta.shape
         self.Output.meta.dtype = self.Input1.meta.dtype
