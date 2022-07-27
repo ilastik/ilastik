@@ -43,6 +43,7 @@ from lazyflow.utility.orderedSignal import OrderedSignal
 from ilastik.utility.gui import threadRouted, silent_qobject
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.config import cfg as ilastik_config
 
 from volumina.api import createDataSource
 from volumina.layer import SegmentationEdgesLayer, LabelableSegmentationEdgesLayer
@@ -479,27 +480,28 @@ class EdgeTrainingMixin:
             layers.append(layer)
             del layer
 
-        # Naive Segmentation
-        if op.NaiveSegmentation.ready():
-            layer = self.createStandardLayerFromSlot(op.NaiveSegmentation)
-            layer.name = "Naive Segmentation"
-            layer.visible = False
-            layer.opacity = 0.5
+        if ilastik_config.getboolean("ilastik", "debug"):
+            # Naive Segmentation
+            if op.NaiveSegmentation.ready():
+                layer = self.createStandardLayerFromSlot(op.NaiveSegmentation)
+                layer.name = "Naive Segmentation"
+                layer.visible = False
+                layer.opacity = 0.5
 
-            layer.shortcutRegistration = (
-                "n",
-                ActionInfo(
-                    "Edge Training Layers",
-                    "NaiveSegmentationVisibility",
-                    "Show/Hide Naive Segmentation (shows output if classifier output is respected verbatim)",
-                    layer.toggleVisible,
-                    self.viewerControlWidget(),
-                    layer,
-                ),
-            )
+                layer.shortcutRegistration = (
+                    "n",
+                    ActionInfo(
+                        "Edge Training Layers",
+                        "NaiveSegmentationVisibility",
+                        "Show/Hide Naive Segmentation (shows output if classifier output is respected verbatim)",
+                        layer.toggleVisible,
+                        self.viewerControlWidget(),
+                        layer,
+                    ),
+                )
 
-            layers.append(layer)
-            del layer
+                layers.append(layer)
+                del layer
 
         # Groundtruth
         if op.GroundtruthSegmentation.ready():
@@ -523,14 +525,15 @@ class EdgeTrainingMixin:
             layers.append(layer)
             del layer
 
-        # Voxel data
-        if op.VoxelData.ready():
-            layer = self._create_grayscale_layer_from_slot(op.VoxelData, op.VoxelData.meta.getTaggedShape()["c"])
-            layer.name = "Voxel Data"
-            layer.visible = False
-            layer.opacity = 1.0
-            layers.append(layer)
-            del layer
+        if ilastik_config.getboolean("ilastik", "debug"):
+            # Voxel data
+            if op.VoxelData.ready():
+                layer = self._create_grayscale_layer_from_slot(op.VoxelData, op.VoxelData.meta.getTaggedShape()["c"])
+                layer.name = "Voxel Data"
+                layer.visible = False
+                layer.opacity = 1.0
+                layers.append(layer)
+                del layer
 
         # Raw Data (grayscale)
         if op.RawData.ready():

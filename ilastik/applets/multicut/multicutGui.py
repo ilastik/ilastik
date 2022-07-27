@@ -346,6 +346,9 @@ class MulticutGuiMixin:
         self.topLevelOperatorView.FreezeCache.setValue(True)
 
     def create_multicut_disagreement_layer(self):
+        if not ilastik_config.getboolean("ilastik", "debug"):
+            return None
+
         ActionInfo = ShortcutManager.ActionInfo
         op = self.__topLevelOperatorView
         if not op.Output.ready():
