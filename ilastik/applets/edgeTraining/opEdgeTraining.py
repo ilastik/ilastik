@@ -440,6 +440,10 @@ class OpPredictEdgeProbabilities(Operator):
         result[0] = edge_weights
 
     def propagateDirty(self, slot, subindex, roi):
+        if slot == self.EdgeClassifier and not self.TrainRandomForest.value:
+            # ignore classifier dirtiness if RF is not trained
+            return
+
         self.EdgeProbabilities.setDirty()
 
 
