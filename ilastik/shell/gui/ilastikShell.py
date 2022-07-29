@@ -306,6 +306,7 @@ class IlastikShell(QMainWindow):
         # self.setFixedSize(1680,1050) #ilastik manuscript resolution
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
+        self.threadRouter = ThreadRouter(self)  # Enable @threadRouted
 
         # Server/client for inter process communication for receiving remote commands (e.g. from KNIME)
         # For now, this is a developer-only feature, activated by a debug menu item.
@@ -422,8 +423,6 @@ class IlastikShell(QMainWindow):
 
         self.setupOpenFileButtons()
         self.updateShellProjectDisplay()
-
-        self.threadRouter = ThreadRouter(self)  # Enable @threadRouted
 
         self.errorMessageFilter = ErrorMessageFilter(self)
 
@@ -1010,10 +1009,12 @@ class IlastikShell(QMainWindow):
         totalSplitterHeight = sum(self.sideSplitter.sizes())
         self.sideSplitter.setSizes([totalSplitterHeight / 2, totalSplitterHeight / 2])
 
+    @threadRouted
     def updateShellProjectDisplay(self):
         """
         Update the title bar and allowable shell actions based on the state of the currently loaded project.
         """
+        assert threading.current_thread().name == "MainThread"
         windowTitle = "ilastik - "
         if self.projectManager is None or self.projectManager.closed:
             windowTitle += "No Project Loaded"
