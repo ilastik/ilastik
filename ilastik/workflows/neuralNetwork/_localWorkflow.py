@@ -20,13 +20,13 @@
 ###############################################################################
 import logging
 
-from ilastik.config import runtime_cfg
-from ilastik.applets.serverConfiguration.types import ServerConfig, Device
-from ._nnWorkflowBase import _NNWorkflowBase
-from ._localLauncher import LocalServerLauncher
 from ilastik.applets.neuralNetwork import NNClassApplet
+from ilastik.applets.serverConfiguration.types import Device, ServerConfig
+from ilastik.config import runtime_cfg
 from lazyflow.operators import tiktorch
 
+from ._localLauncher import LocalServerLauncher
+from ._nnWorkflowBase import _NNWorkflowBase
 
 logger = logging.getLogger(__name__)
 
@@ -52,31 +52,19 @@ class LocalWorkflow(_NNWorkflowBase):
         self._launcher = LocalServerLauncher(tiktorch_exe_path)
         super().__init__(shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs)
 
-    def _createClassifierApplet(self):
+    def _create_local_connection(self):
         conn_str = self._launcher.start()
+        return conn_str
+
+    def _createClassifierApplet(self, headless=False, conn_str=None):
+        connFactory = tiktorch.TiktorchConnectionFactory()
+        if not headless or not conn_str:
+            conn_str = self._create_local_connection()
+
         srv_config = ServerConfig(id="auto", address=conn_str, devices=[Device(id="cpu", name="cpu", enabled=True)])
         connFactory = tiktorch.TiktorchConnectionFactory()
         conn = connFactory.ensure_connection(srv_config)
-
-        devices = conn.get_devices()
-        preferred_cuda_device_id = runtime_cfg.preferred_cuda_device_id
-        device_ids = [dev[0] for dev in devices]
-        cuda_devices = tuple(d for d in device_ids if d.startswith("cuda"))
-
-        if preferred_cuda_device_id not in device_ids:
-            if preferred_cuda_device_id:
-                logger.warning(f"Could nor find preferred cuda device {preferred_cuda_device_id}")
-            try:
-                preferred_cuda_device_id = cuda_devices[0]
-            except IndexError:
-                preferred_cuda_device_id = "cpu"
-
-            logger.info(f"Using default device for Neural Network Workflow {preferred_cuda_device_id}")
-        else:
-            logger.info(f"Using specified device for Neural Netowrk Workflow {preferred_cuda_device_id}")
-
-        device_name = devices[device_ids.index(preferred_cuda_device_id)][1]
-
+        preferred_cuda_device_id, device_name = super()._configure_device(conn)
         srv_config = srv_config.evolve(devices=[Device(id=preferred_cuda_device_id, name=device_name, enabled=True)])
 
         self.nnClassificationApplet = NNClassApplet(self, "NNClassApplet", connectionFactory=connFactory)
@@ -85,6 +73,12 @@ class LocalWorkflow(_NNWorkflowBase):
         self._applets.append(self.nnClassificationApplet)
 
     def cleanUp(self):
-        super().cleanUp()
         self.nnClassificationApplet.tiktorchController.closeSession()
-        self._launcher.stop()
+        if self._launcher._process:
+            self._launcher.stop()
+
+        super().cleanUp()
+
+    def _setup_classifier_op_for_batch(self):
+        # nothing to do for local workflow
+        pass

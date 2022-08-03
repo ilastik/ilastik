@@ -22,14 +22,15 @@ import argparse
 import logging
 
 import numpy
+import tqdm
 
-from ilastik.workflow import Workflow
+from ilastik.applets.batchProcessing import BatchProcessingApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.neuralNetwork import NNClassificationDataExportApplet
-from ilastik.applets.batchProcessing import BatchProcessingApplet
-
+from ilastik.config import runtime_cfg
+from ilastik.workflow import Workflow
+from lazyflow.cancel_token import CancellationTokenSource
 from lazyflow.graph import Graph
-
 
 logger = logging.getLogger(__name__)
 
@@ -71,8 +72,11 @@ class _NNWorkflowBase(Workflow):
 
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
-        parser.add_argument("--batch-size", help="choose the preferred batch size", type=int)
-        parser.add_argument("--model-path", help="the neural network model for prediction")
+        parser.add_argument(
+            "--connection_string",
+            help="Connection string in the form <ip>:<port>, e.g. 127.0.0.1:6789 that is used for batch processing.",
+            type=str,
+        )
 
         # Parse the creation args: These were saved to the project file when this project was first created.
         parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
@@ -82,7 +86,8 @@ class _NNWorkflowBase(Workflow):
 
         # Functions are supposed to expose applets to shell (add to self._applets)
         self._createInputAndConfigApplets()
-        self._createClassifierApplet()
+        connection_string = None or self.parsed_args.connection_string
+        self._createClassifierApplet(headless=self._headless, conn_str=connection_string)
 
         self.dataExportApplet = NNClassificationDataExportApplet(self, "Data Export")
 
@@ -191,40 +196,6 @@ class _NNWorkflowBase(Workflow):
         busy |= self.batchProcessingApplet.busy
         self._shell.enableProjectChanges(not busy)
 
-    def onProjectLoaded(self, projectManager):
-        """
-        Overridden from Workflow base class.  Called by the Project Manager.
-
-        If the user provided command-line arguments, use them to configure
-        the workflow for batch mode and export all results.
-        (This workflow's headless mode supports only batch mode for now.)
-        """
-        # Headless batch mode.
-        if self._headless and self._batch_input_args and self._batch_export_args:
-            raise NotImplementedError("headless networkclassification not implemented yet!")
-            self.dataExportApplet.configure_operator_with_parsed_args(self._batch_export_args)
-
-            batch_size = self.parsed_args.batch_size
-            halo_size = self.parsed_args.halo_size
-            model_path = self.parsed_args.model_path
-
-            if batch_size and model_path:
-
-                model = TikTorchLazyflowClassifier(None, model_path, halo_size, batch_size)
-
-                input_shape = self.getBlockShape(model, halo_size)
-
-                self.nnClassificationApplet.topLevelOperator.BlockShape.setValue(input_shape)
-                self.nnClassificationApplet.topLevelOperator.NumClasses.setValue(
-                    model._tiktorch_net.get("num_output_channels")
-                )
-
-                self.nnClassificationApplet.topLevelOperator.Classifier.setValue(model)
-
-            logger.info("Beginning Batch Processing")
-            self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
-            logger.info("Completed Batch Processing")
-
     def getBlockShape(self, model, halo_size):
         """
         calculates the input Block shape
@@ -252,3 +223,64 @@ class _NNWorkflowBase(Workflow):
         input_shape[1:3] -= 2 * self.halo_size
 
         return input_shape
+
+    def _configure_device(self, conn, saved_device=None):
+        """get the preferred device from tiktorch to run the NN predictions
+
+        Rules for device selection are the following, with fallback to the next lower one should
+        any not be available:
+
+        priority is the following:
+        1) runtime_cfg.preferred_cuda_device_id (will be updated with command line arg)
+        2) saved_device, from the optional argument
+        3) "first" in the list of cuda devices from the server
+        4) cpu
+        """
+        devices = conn.get_devices()
+        preferred_cuda_device_id = runtime_cfg.preferred_cuda_device_id or saved_device
+        device_ids = [dev[0] for dev in devices]
+        cuda_devices = tuple(d for d in device_ids if d.startswith("cuda"))
+
+        if preferred_cuda_device_id not in device_ids:
+            if preferred_cuda_device_id:
+                logger.warning(f"Could nor find preferred cuda device {preferred_cuda_device_id}")
+            try:
+                preferred_cuda_device_id = cuda_devices[0]
+            except IndexError:
+                preferred_cuda_device_id = "cpu"
+
+            logger.info(f"Using default device for Neural Network Workflow {preferred_cuda_device_id}")
+        else:
+            logger.info(f"Using specified device for Neural Network Workflow {preferred_cuda_device_id}")
+
+        device_name = devices[device_ids.index(preferred_cuda_device_id)][1]
+
+        return preferred_cuda_device_id, device_name
+
+    def _setup_classifier_op_for_batch(self):
+        raise NotImplemented
+
+    def onProjectLoaded(self, projectManager):
+        """
+        Overridden from Workflow base class.  Called by the Project Manager.
+
+        If the user provided command-line arguments, use them to configure
+        the workflow for batch mode and export all results.
+        (This workflow's headless mode supports only batch mode for now.)
+        """
+        # Headless batch mode.
+        if self._headless and self._batch_input_args and self._batch_export_args:
+            self.dataExportApplet.configure_operator_with_parsed_args(self._batch_export_args)
+
+            self._setup_classifier_op_for_batch()
+
+            logger.info("Initializing saved model")
+            cancelSrc = CancellationTokenSource()
+            with tqdm.tqdm(total=100) as prog:
+                _ = self.nnClassificationApplet.tiktorchController.uploadModel(
+                    progressCallback=prog.update, cancelToken=cancelSrc.token
+                ).result()
+
+            logger.info("Beginning Batch Processing")
+            self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
+            logger.info("Completed Batch Processing")
