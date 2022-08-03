@@ -18,14 +18,19 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-import logging
-import sys
 import json
-import time
+import logging
 import os
 import subprocess
+import sys
 import tempfile
-from typing import Optional, List
+import time
+from typing import List, Optional
+
+import grpc
+import psutil
+from tiktorch.proto.inference_pb2 import Empty
+from tiktorch.proto.inference_pb2_grpc import FlightControlStub
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +57,7 @@ class LocalServerLauncher:
     def __init__(self, executable_path: List[str]) -> None:
         self._executable_path = executable_path
         self._process = None
+        self._conn_data = None
 
     def start(self):
         if self._process:
@@ -70,12 +76,39 @@ class LocalServerLauncher:
                 self.stop()
 
             with open(conn_param_path, "r") as conn_file:
-                conn_data = json.load(conn_file)
-                return f"{conn_data['addr']}:{conn_data['port']}"
+                self._conn_data = json.load(conn_file)
+
+                return f"{self._conn_data['addr']}:{self._conn_data['port']}"
 
     def stop(self):
         logger.info("stopping local tiktorch instance")
         if not self._process:
             raise RuntimeError(f"Local server is not running")
 
-        self._process.terminate()
+        chan = grpc.insecure_channel(f"{self._conn_data['addr']}:{self._conn_data['port']}")
+        client = FlightControlStub(chan)
+        client.Shutdown(Empty())
+
+        if self._process:
+            try:
+                pid = self._process.pid
+                self._process.wait(timeout=2)
+            except Exception as e:
+                print(e)
+            finally:
+                # cleanup leaking child processes
+                def on_terminate(proc):
+                    print("process {} terminated with exit code {}".format(proc, proc.returncode))
+
+                try:
+                    process = psutil.Process(pid)
+                except psutil.NoSuchProcess:
+                    # process can terminate anytime
+                    return
+                procs = process.children(recursive=True)
+                for p in procs:
+                    p.terminate()
+                gone, alive = psutil.wait_procs(procs, timeout=3, callback=on_terminate)
+                for p in alive:
+                    p.kill()
+                process.kill()
