@@ -16,7 +16,6 @@ def test_local_launcher(tiktorch_executable_path):
 
     result = client.Ping(Empty())
     assert isinstance(result, Empty)
-    client.Shutdown(Empty())
 
     launcher.stop()
 
