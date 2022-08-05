@@ -1,4 +1,5 @@
 import grpc
+import platform
 import pytest
 
 from ilastik.workflows.neuralNetwork._localLauncher import LocalServerLauncher
@@ -22,4 +23,8 @@ def test_local_launcher(tiktorch_executable_path):
     with pytest.raises(grpc.RpcError) as error:
         client.Ping(Empty())
 
-    assert error.value.code() is grpc.StatusCode.UNAVAILABLE
+    # :( osx/linux - win inconsistency https://github.com/grpc/grpc/issues/24206
+    if platform.system() == "Windows":
+        assert error.value.code() in [grpc.StatusCode.UNKNOWN, grpc.StatusCode.UNAVAILABLE]
+    else:
+        assert error.value.code() is grpc.StatusCode.UNAVAILABLE
