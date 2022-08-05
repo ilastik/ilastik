@@ -19,6 +19,7 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 import argparse
+import itertools
 import logging
 
 import numpy
@@ -125,8 +126,13 @@ class _NNWorkflowBase(Workflow):
 
     def _createInputAndConfigApplets(self):
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
+        c_at_end = ["yxc", "xyc"]
+        for perm in itertools.permutations("tzyx", 3):
+            c_at_end.append("".join(perm) + "c")
+        for perm in itertools.permutations("tzyx", 4):
+            c_at_end.append("".join(perm) + "c")
         self.dataSelectionApplet = DataSelectionApplet(
-            self, "Input Data", "Input Data", instructionText=data_instructions
+            self, "Input Data", "Input Data", instructionText=data_instructions, forceAxisOrder=c_at_end
         )
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue(self.ROLE_NAMES)
