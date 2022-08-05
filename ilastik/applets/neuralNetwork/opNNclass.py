@@ -93,7 +93,8 @@ class OpNNClassification(Operator):
 
     def cleanUp(self):
         try:
-            self.ModelSession.value.close()
+            if self.ModelSession.ready():
+                self.ModelSession.value.close()
         except Exception as e:
             logger.warning(e)
 

@@ -18,17 +18,14 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-import argparse
 import logging
 
-from ._nnWorkflowBase import _NNWorkflowBase
+from ilastik.applets.neuralNetwork import NNClassApplet
 from ilastik.applets.serverConfiguration import ServerConfigApplet
-from ilastik.applets.neuralNetwork import NNClassApplet, NNClassificationDataExportApplet
-
+from ilastik.applets.serverConfiguration.types import Device, ServerConfig
 from lazyflow.operators import tiktorch
 
-from lazyflow.graph import Graph
-
+from ._nnWorkflowBase import _NNWorkflowBase
 
 logger = logging.getLogger(__name__)
 
@@ -47,10 +44,12 @@ class RemoteWorkflow(_NNWorkflowBase):
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
         super().__init__(shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs)
 
-    def _createClassifierApplet(self):
+    def _createClassifierApplet(self, headless=False, conn_str=None):
+        # "Normal operation" - see also `connectLane`. Server applet is connected.
         self.nnClassificationApplet = NNClassApplet(
             self, "NNClassApplet", connectionFactory=self.serverConfigApplet.connectionFactory
         )
+
         self._applets.append(self.nnClassificationApplet)
 
     def _createInputAndConfigApplets(self):
@@ -64,9 +63,12 @@ class RemoteWorkflow(_NNWorkflowBase):
         connects the operators for different lanes, each lane has a laneIndex starting at 0
         """
         super().connectLane(laneIndex)
-        opServerConfig = self.serverConfigApplet.topLevelOperator.getLane(laneIndex)
-        opNNclassify = self.nnClassificationApplet.topLevelOperator.getLane(laneIndex)
-        opNNclassify.ServerConfig.connect(opServerConfig.ServerConfig)
+
+        if not self._headless:
+            # "Normal operation", connect server applet.
+            opServerConfig = self.serverConfigApplet.topLevelOperator.getLane(laneIndex)
+            opNNclassify = self.nnClassificationApplet.topLevelOperator.getLane(laneIndex)
+            opNNclassify.ServerConfig.connect(opServerConfig.ServerConfig)
 
     def handleAppletStateUpdateRequested(self):
         """
@@ -76,3 +78,29 @@ class RemoteWorkflow(_NNWorkflowBase):
         # If no data, nothing else is ready.
         serverConfig_finished = self.serverConfigApplet.topLevelOperator.ServerConfig.ready()
         super().handleAppletStateUpdateRequested(upstream_ready=serverConfig_finished)
+
+    def _setup_classifier_op_for_batch(self):
+        # relevant cmd args
+        conn_str = self.parsed_args.connection_string
+
+        # gather data from ServerConfig Op:
+        saved_server_config = self.serverConfigApplet.topLevelOperator.ServerConfig.value
+
+        device = None
+        if not conn_str:
+            conn_str = saved_server_config.address
+            _devices = [d for d in saved_server_config.devices if d.enabled]
+            assert len(_devices) == 1, "For now there is no support for mutlti-GPU anything from our side."
+            device = _devices[0].id
+
+        srv_config = ServerConfig(id="auto", address=conn_str, devices=[Device(id="cpu", name="cpu", enabled=True)])
+        connFactory = tiktorch.TiktorchConnectionFactory()
+        conn = connFactory.ensure_connection(srv_config)
+        preferred_cuda_device_id, device_name = super()._configure_device(conn, saved_device=device)
+        srv_config = srv_config.evolve(devices=[Device(id=preferred_cuda_device_id, name=device_name, enabled=True)])
+        opClassify = self.nnClassificationApplet.topLevelOperator
+        opClassify.ServerConfig.setValue(srv_config)
+
+    def cleanUp(self):
+        self.nnClassificationApplet.tiktorchController.closeSession()
+        super().cleanUp()

@@ -60,7 +60,7 @@ class BioImageDownloader(QThread):
                 cancellation_token=self._cancellation_token,
             ):
                 if isinstance(v, raw_nodes.URI):
-                    self.currentUri.emit(str(v.path))
+                    self.currentUri.emit(str(v.path.split("/")[-1]))
                     v = resolve_source(
                         v,
                         raw_rd.root_path,
