@@ -1,9 +1,7 @@
-name: ilastik-pc-api
 channels:
   - ilastik-forge
   - conda-forge
 dependencies:
-  - ilastik-dependencies-no-solvers
-  - ilastik-meta >=1.4.0b14
+  - ilastik-core
   - notebook
 # add additional packages to read/pre-process files here
