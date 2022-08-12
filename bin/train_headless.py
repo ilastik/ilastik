@@ -32,7 +32,7 @@ Note: This script does not make any attempt to be efficient with RAM usage.
 from __future__ import print_function
 from builtins import range
 import os
-
+import numpy as np
 
 def main():
     # Cmd-line args to this script.
@@ -154,7 +154,7 @@ def generate_trained_project_file(
     data_selection_applet = shell.workflow.dataSelectionApplet
 
     # To configure data selection, start with empty cmdline args and manually fill them in
-    data_selection_args, _ = data_selection_applet.parse_known_cmdline_args([], PixelClassificationWorkflow.ROLE_NAMES)
+    data_selection_args, _ = data_selection_applet.parse_known_cmdline_args([], data_selection_applet.role_names)
     data_selection_args.raw_data = raw_data_paths
     data_selection_args.preconvert_stacks = True
 
@@ -184,7 +184,7 @@ def generate_trained_project_file(
 
     # Read each label volume and inject the label data into the appropriate training slot
     cwd = os.getcwd()
-    max_label_class = 0
+    label_classes = set()
     for lane, label_data_path in enumerate(label_data_paths):
         graph = Graph()
         opReader = OpInputDataReader(graph=graph)
@@ -204,14 +204,14 @@ def generate_trained_project_file(
             label_volume = label_volume[..., None]
 
         # Auto-calculate the max label value
-        max_label_class = max(max_label_class, label_volume.max())
+        label_classes.update(np.unique(label_volume))
 
         print("Applying label volume to lane #{}".format(lane))
         entire_volume_slicing = roiToSlice(*roiFromShape(label_volume.shape))
         opPixelClassification.LabelInputs[lane][entire_volume_slicing] = label_volume
 
-    assert max_label_class > 1, "Not enough label classes were found in your label data."
-    label_names = list(map(str, list(range(max_label_class))))
+    assert len(label_classes) > 1, "Not enough label classes were found in your label data."
+    label_names = [str(label_class) for label_class in sorted(label_classes) if label_class != 0]
     opPixelClassification.LabelNames.setValue(label_names)
 
     ##
