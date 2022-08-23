@@ -55,7 +55,7 @@ try:
 
     _supports_dvid = True
 except ImportError as ex:
-    if "OpDvidVolume" not in ex.args[0] and "OpDvidRoi" not in ex.args[0]:
+    if not any(x in ex.args[0] for x in ["OpDvidVolume", "OpDvidRoi", "libdvid"]):
         raise
     _supports_dvid = False
 
