@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2021, the ilastik developers
+#       Copyright (C) 2011-2022, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -18,3 +18,13 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+import logging
+
+import lazyflow
+
+logger = logging.getLogger(__file__)
+
+# set worker count to 0 to enable external multi-threading/multi processing
+# see https://github.com/ilastik/ilastik/issues/2517
+logger.info("Resetting n_workers to 0.")
+lazyflow.request.Request.reset_thread_pool(0)
