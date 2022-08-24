@@ -1,0 +1,7 @@
+channels:
+  - ilastik-forge
+  - conda-forge
+dependencies:
+  - ilastik-core
+  - notebook
+# add additional packages to read/pre-process files here
