@@ -70,7 +70,7 @@ jobs:
         run: echo C:\Program Files\Git\usr\bin>>"%GITHUB_PATH%"
       - uses: al-cheb/configure-pagefile-action@v1.2
         with:
-          minimum-size: 8GB
+          minimum-size: 12GB
         if: |
           matrix.os == 'windows-latest' &&
           matrix.ilastik_variant == 'ilastik-gpu'
