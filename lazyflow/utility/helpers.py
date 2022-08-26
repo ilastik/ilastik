@@ -152,7 +152,7 @@ def get_ram_per_element(dtype: Union[Type[object], numpy.dtype]) -> int:
         1
         >>> get_ram_per_element(numpy.bool)
         1
-        >>> get_ram_per_element(int)
+        >>> get_ram_per_element("int64")
         8
     """
     dtype = numpy.dtype(dtype)
