@@ -2,6 +2,8 @@ from zipfile import ZipFile
 
 import pytest
 
+import lazyflow
+
 from . import types
 
 
@@ -50,6 +52,10 @@ def restore_lazyflow_thread_pool():
     # further reference:
     # see https://github.com/ilastik/ilastik/issues/2517
     yield
-    import lazyflow
 
+    lazyflow.request.Request.reset_thread_pool()
+
+
+def pytest_collection_finish(session):
+    # threadpool has to be also resetted after collection
     lazyflow.request.Request.reset_thread_pool()
