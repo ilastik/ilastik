@@ -6,7 +6,7 @@ from elf.segmentation.watershed import distance_transform_watershed
 from lazyflow.utility import OrderedSignal
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice, sliceToRoi
-from lazyflow.operators import OpBlockedArrayCache, OpValueCache
+from lazyflow.operators import OpBlockedArrayCache, OpValueCache, OpMetadataInjector
 from lazyflow.operators.generic import OpPixelOperator, OpSingleChannelSelector
 
 
@@ -148,7 +148,13 @@ class OpCachedWsdt(Operator):
         self._opSelectedInput.ChannelSelections.connect(self.ChannelSelections)
         self._opSelectedInput.Input.connect(self.Input)
         self._opSelectedInput.InvertPixelProbabilities.connect(self.InvertPixelProbabilities)
-        self.SelectedInput.connect(self._opSelectedInput.Output)
+
+        # rename output channel name
+        self._opMetaInjector = OpMetadataInjector(parent=self)
+        self._opMetaInjector.Input.connect(self._opSelectedInput.Output)
+        self._opMetaInjector.Metadata.setValue({"channel_names": ["wsdt boundary channel"]})
+
+        self.SelectedInput.connect(self._opMetaInjector.Output)
 
         self._opThreshold = OpPixelOperator(parent=self)
         self._opThreshold.Input.connect(self._opSelectedInput.Output)

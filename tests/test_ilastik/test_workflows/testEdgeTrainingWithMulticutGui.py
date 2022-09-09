@@ -239,6 +239,8 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
             QApplication.processEvents()
             self.waitForViews(gui.editor.imageViews)
 
+            gui.train_edge_clf_box.setChecked(False)
+            QApplication.processEvents()
             assert not gui.train_edge_clf_box.isChecked()
 
             threshold = 0.5

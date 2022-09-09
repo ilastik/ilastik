@@ -94,8 +94,6 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
             self, "Training and Multicut", "Training and Multicut"
         )
         opEdgeTrainingWithMulticut = self.edgeTrainingWithMulticutApplet.topLevelOperator
-        DEFAULT_FEATURES = {self.ROLE_NAMES[self.DATA_ROLE_RAW]: ["standard_edge_mean"]}
-        opEdgeTrainingWithMulticut.FeatureNames.setValue(DEFAULT_FEATURES)
 
         # -- DataExport applet
         #
@@ -225,11 +223,17 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         opWsdt.RawData.connect(opDataSelection.ImageGroup[self.DATA_ROLE_RAW])
         opWsdt.Input.connect(opNormalizeProbabilities.Output)
 
+        # SELECTED WS INPUT: Convert to float32
+        opConvertSelectedWsInput = OpConvertDtype(parent=self)
+        opConvertSelectedWsInput.ConversionDtype.setValue(np.float32)
+        opConvertSelectedWsInput.Input.connect(opWsdt.SelectedInput)
+
         # Actual computation is done with both RawData and Probabilities
         opStackRawAndVoxels = OpSimpleStacker(parent=self)
-        opStackRawAndVoxels.Images.resize(2)
+        opStackRawAndVoxels.Images.resize(3)
         opStackRawAndVoxels.Images[0].connect(opConvertRaw.Output)
         opStackRawAndVoxels.Images[1].connect(opNormalizeProbabilities.Output)
+        opStackRawAndVoxels.Images[2].connect(opConvertSelectedWsInput.Output)
         opStackRawAndVoxels.AxisFlag.setValue("c")
 
         # If superpixels are available from a file, use it.
