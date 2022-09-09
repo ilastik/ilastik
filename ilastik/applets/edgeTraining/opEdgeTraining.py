@@ -27,7 +27,7 @@ class OpEdgeTraining(Operator):
     DEFAULT_FEATURES = {"Grayscale": ["standard_edge_mean"]}
     FeatureNames = InputSlot(value=DEFAULT_FEATURES)
     FreezeClassifier = InputSlot(value=True)
-    TrainRandomForest = InputSlot(value=False)
+    TrainRandomForest = InputSlot(value=True)
 
     # Lane-wise
     WatershedSelectedInput = InputSlot(level=1)

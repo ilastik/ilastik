@@ -10,7 +10,7 @@ class OpEdgeTrainingWithMulticut(Operator):
     # Edge Training parameters
     FeatureNames = InputSlot(value=OpEdgeTraining.DEFAULT_FEATURES)
     FreezeClassifier = InputSlot(value=True)
-    TrainRandomForest = InputSlot(value=False)
+    TrainRandomForest = InputSlot(value=True)
 
     # Multicut parameters
     Beta = InputSlot(value=0.5)
