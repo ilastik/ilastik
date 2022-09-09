@@ -95,6 +95,10 @@ class EdgeTrainingMixin:
         self._init_edge_label_colortable()
         self._init_probability_colortable()
 
+        # init features
+        if not self.topLevelOperatorView.FeatureNames.ready():
+            self.topLevelOperatorView.FeatureNames.setValue(self._get_default_feature_selection())
+
     def _after_init(self):
         super()._after_init()
         self.update_probability_edges()
