@@ -55,8 +55,8 @@ def test_serializer_roundtrip(graph, inputs, empty_project_file, superpixels, ra
     op.WatershedSelectedInput.connect(inputs.WatershedSelectedInput)
 
     # set level0 slots
-    op.TrainRandomForest.setValue(False)
     op.FeatureNames.setValue({"test0": [b"test_feature_0", b"test_feature_1"]})
+    op.TrainRandomForest.setValue(True)
 
     # set level1 slots
     laneop = op.getLane(content_lane)
@@ -82,7 +82,7 @@ def test_serializer_roundtrip(graph, inputs, empty_project_file, superpixels, ra
     deserializer.deserializeFromHdf5(empty_project_file, empty_project_file.name)
 
     # check level0 slots
-    assert not op_load.TrainRandomForest.value
+    assert op_load.TrainRandomForest.value
     assert all(a == b for a, b in zip(op_load.FeatureNames.value["test0"], [b"test_feature_0", b"test_feature_1"]))
 
     # check level1 slots
@@ -111,6 +111,9 @@ def test_serializer_01_02(graph, inputs, empty_project_file, serializer_version,
     op.VoxelData.connect(inputs.VoxelData)
     op.Superpixels.connect(inputs.Superpixels)
     op.WatershedSelectedInput.connect(inputs.WatershedSelectedInput)
+    # need to set _something_ to make operator "ready"
+    # this is necessary since the removal of the default value here
+    op.FeatureNames.setValue({"test0": [b"test_feature_0", b"test_feature_1"]})
     op.TrainRandomForest.setValue(train_rf)
 
     laneop = op.getLane(0)
