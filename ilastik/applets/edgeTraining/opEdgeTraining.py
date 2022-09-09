@@ -24,8 +24,7 @@ logger = logging.getLogger(__name__)
 
 class OpEdgeTraining(Operator):
     # Shared across lanes
-    DEFAULT_FEATURES = {"Grayscale": ["standard_edge_mean"]}
-    FeatureNames = InputSlot(value=DEFAULT_FEATURES)
+    FeatureNames = InputSlot()
     FreezeClassifier = InputSlot(value=True)
     TrainRandomForest = InputSlot(value=True)
 

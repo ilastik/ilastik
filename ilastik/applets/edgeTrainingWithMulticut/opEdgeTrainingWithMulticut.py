@@ -8,7 +8,7 @@ from ilastik.utility import OpMultiLaneWrapper, OperatorSubView
 class OpEdgeTrainingWithMulticut(Operator):
 
     # Edge Training parameters
-    FeatureNames = InputSlot(value=OpEdgeTraining.DEFAULT_FEATURES)
+    FeatureNames = InputSlot()
     FreezeClassifier = InputSlot(value=True)
     TrainRandomForest = InputSlot(value=True)
 
