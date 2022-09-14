@@ -41,6 +41,15 @@ from ilastik.utility.gui.widgets import silent_qobject
 from ilastik.widgets.collapsibleWidget import CollapsibleWidget
 
 
+@enum.unique
+class FeatureGroup(enum.Enum):
+    shape = "shape"
+    boundary_edge = "boundary channel along edges"
+    boundary_sp = "boundary channel on superpixels"
+    raw_edge = "raw data along edges"
+    raw_sp = "raw data on superpixels"
+
+
 class SimpleEdgeFeatureSelection(QDialog):
     """Simplified Edge feature selection dialog
 
@@ -62,14 +71,6 @@ class SimpleEdgeFeatureSelection(QDialog):
       data_is_3d: default feature set depends on dimensionality (2d vs 3d data)
       parent: parent widget - dialog is modal and will block the parent
     """
-
-    @enum.unique
-    class FeatureGroup(enum.Enum):
-        shape = "shape"
-        boundary_edge = "boundary channel along edges"
-        boundary_sp = "boundary channel on superpixels"
-        raw_edge = "raw data along edges"
-        raw_sp = "raw data on superpixels"
 
     def __init__(
         self,
@@ -106,7 +107,7 @@ class SimpleEdgeFeatureSelection(QDialog):
 
         shapeGroupBox = QGroupBox("Shape")
         shapeLayout = QVBoxLayout()
-        self.checkboxes[self.FeatureGroup.shape] = make_checkbox(self.FeatureGroup.shape)
+        self.checkboxes[FeatureGroup.shape] = make_checkbox(FeatureGroup.shape)
         shapeLabel = QLabel(
             "Shape features take into account the shape of the superpixels. "
             "These include the length/area, as well as an estimate of radii of an "
@@ -114,7 +115,7 @@ class SimpleEdgeFeatureSelection(QDialog):
         )
         shapeLabel.setWordWrap(True)
 
-        shapeLayout.addWidget(self.checkboxes[self.FeatureGroup.shape])
+        shapeLayout.addWidget(self.checkboxes[FeatureGroup.shape])
         shapeLayout.addWidget(CollapsibleWidget(shapeLabel))
         shapeGroupBox.setLayout(shapeLayout)
         self.shapeGroupBox = shapeGroupBox
@@ -123,15 +124,15 @@ class SimpleEdgeFeatureSelection(QDialog):
 
         intensityGroupBox = QGroupBox("Intensity statistics")
         intensityLayout = QVBoxLayout()
-        self.checkboxes[self.FeatureGroup.boundary_edge] = make_checkbox(self.FeatureGroup.boundary_edge)
-        self.checkboxes[self.FeatureGroup.boundary_sp] = make_checkbox(self.FeatureGroup.boundary_sp)
-        intensityLayout.addWidget(self.checkboxes[self.FeatureGroup.boundary_edge])
-        intensityLayout.addWidget(self.checkboxes[self.FeatureGroup.boundary_sp])
+        self.checkboxes[FeatureGroup.boundary_edge] = make_checkbox(FeatureGroup.boundary_edge)
+        self.checkboxes[FeatureGroup.boundary_sp] = make_checkbox(FeatureGroup.boundary_sp)
+        intensityLayout.addWidget(self.checkboxes[FeatureGroup.boundary_edge])
+        intensityLayout.addWidget(self.checkboxes[FeatureGroup.boundary_sp])
 
-        self.checkboxes[self.FeatureGroup.raw_edge] = make_checkbox(self.FeatureGroup.raw_edge)
-        self.checkboxes[self.FeatureGroup.raw_sp] = make_checkbox(self.FeatureGroup.raw_sp)
-        intensityLayout.addWidget(self.checkboxes[self.FeatureGroup.raw_edge])
-        intensityLayout.addWidget(self.checkboxes[self.FeatureGroup.raw_sp])
+        self.checkboxes[FeatureGroup.raw_edge] = make_checkbox(FeatureGroup.raw_edge)
+        self.checkboxes[FeatureGroup.raw_sp] = make_checkbox(FeatureGroup.raw_sp)
+        intensityLayout.addWidget(self.checkboxes[FeatureGroup.raw_edge])
+        intensityLayout.addWidget(self.checkboxes[FeatureGroup.raw_sp])
         intensityLabel = QLabel(
             "Intensity statistics are computed along either edges or superpixel area/volume. "
             "Quantities computed include 10th and 90th quantile, and mean intensity. "
@@ -157,6 +158,7 @@ class SimpleEdgeFeatureSelection(QDialog):
         resetButton.setToolTip("Reset selection to default.")
         resetButton.clicked.connect(self._resetToDefault)
         buttonbox.addButton(resetButton, QDialogButtonBox.ResetRole)
+        self._resetButton = resetButton
         layout.addWidget(buttonbox)
 
         self.setLayout(layout)
@@ -220,9 +222,13 @@ class SimpleEdgeFeatureSelection(QDialog):
                 if overlap_sum not in [0, len(features)]:
                     return False
             # now check that there are no features not in the default_feauture_set
-            feats_flat = SimpleEdgeFeatureSelection.default_features(
+            deafault_state_dict = SimpleEdgeFeatureSelection._defaultFeaturesStateDict(
                 self.raw_channels, self.boundary_channels, self.data_is_3d
             )
+            for g in deafault_state_dict:
+                deafault_state_dict[g]["state"] = True
+
+            feats_flat = SimpleEdgeFeatureSelection._to_feature_dict(deafault_state_dict)
             for chan, feats in selection.items():
                 if feats and (chan not in feats_flat):
                     return False
@@ -276,7 +282,7 @@ class SimpleEdgeFeatureSelection(QDialog):
         return self._current_selection
 
     @classmethod
-    def _defaultFeaturesStateDict(cls, raw_channels, edge_channels, data_is_3d=False):
+    def _defaultFeaturesStateDict(cls, raw_channels, boundary_channels, data_is_3d=False):
         default_sp_features = [
             "standard_sp_mean",
             "standard_sp_quantiles_10",
@@ -300,31 +306,31 @@ class SimpleEdgeFeatureSelection(QDialog):
         for channel in raw_channels:
             selected_features[channel] = default_sp_features
 
-        for channel in edge_channels:
+        for channel in boundary_channels:
             selected_features[channel] = default_boundary_features
 
         default_dialog_features = {
-            cls.FeatureGroup.shape: {
-                "features": {edge_channels[0]: default_shape_feautures},
+            FeatureGroup.shape: {
+                "features": {boundary_channels[0]: default_shape_feautures},
                 "state": True,
                 "description": "Radii of the superpixel edges as estimated by eigenvalues of the PCA.",
             },
-            cls.FeatureGroup.boundary_edge: {
+            FeatureGroup.boundary_edge: {
                 "description": "Intensity statistics (mean, Q10, Q90) computed on the boundary channel along the edges.",
-                "features": {channel: default_boundary_features for channel in edge_channels},
+                "features": {channel: default_boundary_features for channel in boundary_channels},
                 "state": True,
             },
-            cls.FeatureGroup.raw_edge: {
+            FeatureGroup.raw_edge: {
                 "description": "Intensity statistics (mean, Q10, Q90) computed on the raw data along the edges.",
                 "features": {channel: default_boundary_features for channel in raw_channels},
                 "state": False,
             },
-            cls.FeatureGroup.boundary_sp: {
+            FeatureGroup.boundary_sp: {
                 "description": "Intensity statistics (mean, Q10, Q90) computed on the boundary channel on superpixels.",
-                "features": {channel: default_sp_features for channel in edge_channels},
+                "features": {channel: default_sp_features for channel in boundary_channels},
                 "state": False,
             },
-            cls.FeatureGroup.raw_sp: {
+            FeatureGroup.raw_sp: {
                 "description": "Intensity statistics (mean, Q10, Q90) computed on the raw data on superpixels.",
                 "features": {channel: default_sp_features for channel in raw_channels},
                 "state": True,
@@ -344,7 +350,7 @@ class SimpleEdgeFeatureSelection(QDialog):
                         selected_features[channel] = set()
                     selected_features[channel] |= set(features)
 
-        return {k: list(v) for k, v in selected_features.items() if v}
+        return {k: sorted(v) for k, v in selected_features.items() if v}
 
     @classmethod
     def default_features(cls, raw_channels, boundary_channels, data_is_3d):
