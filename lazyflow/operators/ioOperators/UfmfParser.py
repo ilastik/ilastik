@@ -134,7 +134,7 @@ def _write_dict(fd, save_dict):
             dtype_char = bytes(larr.dtype.char, "utf-8")
             bytes_per_element = larr.dtype.itemsize
             b = b"a" + dtype_char + struct.pack("<L", len(larr) * bytes_per_element)
-            b += larr.tostring()
+            b += larr.tobytes()
             fd.write(b)
             continue
         raise ValueError("don't know how to save value %s" % (value,))
@@ -1322,7 +1322,7 @@ class UfmfSaverV1(UfmfSaverBase):
         self.file.write(
             struct.pack(FMT[1].HEADER, self.version, self.image_radius, self.timestamp0, self.width, self.height)
         )
-        bg_data = bg_frame.tostring()
+        bg_data = bg_frame.tobytes()
         assert len(bg_data) == self.height * self.width
         self.file.write(bg_data)
         self.last_timestamp = self.timestamp0
@@ -1358,7 +1358,7 @@ class UfmfSaverV1(UfmfSaverBase):
             assert xmax - xmin == (2 * self.image_radius)
 
             roi = origframe[ymin:ymax, xmin:xmax]
-            this_str_buf = roi.tostring()
+            this_str_buf = roi.tobytes()
             this_str_head = struct.pack(FMT[1].SUBHEADER, xmin, ymin)
 
             str_buf.append(this_str_head + this_str_buf)
@@ -1466,7 +1466,7 @@ class UfmfSaverV3(UfmfSaverBase):
         for region in regions:
             xmin, ymin, roi = region
             h, w = roi.shape
-            this_str_buf = roi.tostring()
+            this_str_buf = roi.tobytes()
             assert len(this_str_buf) == w * h
             this_str_head = struct.pack(FMT[self.version].POINTS2, xmin, ymin, w, h)
             str_buf.append(this_str_head + this_str_buf)
