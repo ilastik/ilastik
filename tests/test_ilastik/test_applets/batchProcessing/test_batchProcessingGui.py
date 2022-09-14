@@ -16,7 +16,7 @@ from PyQt5.QtCore import Qt, QUrl
 def prepare_widget(qtbot, widget):
     qtbot.addWidget(widget)
     widget.show()
-    qtbot.waitForWindowShown(widget)
+    qtbot.waitExposed(widget)
     return widget
 
 
@@ -66,7 +66,7 @@ def drag_n_drop_event(filenames):
     return dndevent
 
 
-def test_FileListWidget_drag_n_drop(file_list_widget, drag_n_drop_event, filenames):
+def test_FileListWidget_drag_n_drop(qtbot, file_list_widget, drag_n_drop_event, filenames):
     assert file_list_widget.count() == 0
 
     file_list_widget.dragEnterEvent(drag_n_drop_event)

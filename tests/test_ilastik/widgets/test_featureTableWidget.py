@@ -20,7 +20,7 @@ def widget(qtbot):
     qtbot.addWidget(w)
     w.show()
 
-    qtbot.waitForWindowShown(w)
+    qtbot.waitExposed(w)
 
     return w
 

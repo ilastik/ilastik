@@ -7,10 +7,11 @@ from pytest import fixture
 from ilastik.shell.gui.licenseDialog import LicenseDialog
 
 
+@fixture
 def get_dlg(qtbot):
     dlg = LicenseDialog()
     qtbot.addWidget(dlg)
-    qtbot.waitForWindowShown(dlg)
+    qtbot.waitExposed(dlg)
     return dlg
 
 
