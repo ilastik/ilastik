@@ -1,7 +1,7 @@
 import pytest
 from PyQt5.QtCore import Qt
 
-from ilastik.applets.edgeTraining.simpleEdgeFeatSelection import FeatureGroup, SimpleEdgeFeatureSelection
+from ilastik.applets.edgeTraining.simpleEdgeFeatureSelection import FeatureGroup, SimpleEdgeFeatureSelection
 
 
 def test_to_feature_dict():
