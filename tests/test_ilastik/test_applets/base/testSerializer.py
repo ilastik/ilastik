@@ -82,7 +82,7 @@ class TestHDF5HelperFunctions(unittest.TestCase):
         self.tmpDir = tempfile.mkdtemp()
         self.tmpFile = h5py.File(os.path.join(self.tmpDir, "test.h5"), "a")
         self.tmpFile.create_group("a")
-        self.tmpFile.create_dataset("c", (2, 2), dtype=numpy.int)
+        self.tmpFile.create_dataset("c", (2, 2), dtype=numpy.int64)
 
     def test_getOrCreateGroup_1(self):
         self.assertTrue("a" in self.tmpFile)

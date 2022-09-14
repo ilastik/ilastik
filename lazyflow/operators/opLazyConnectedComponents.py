@@ -610,7 +610,7 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
     # generate a list of adjacent chunks
     def _generateNeighbours(self, chunkIndex):
         n = []
-        idx = np.asarray(chunkIndex, dtype=np.int)
+        idx = np.asarray(chunkIndex, dtype=np.int64)
         # only spatial neighbours are considered
         for i in range(1, 4):
             if idx[i] > 0:
@@ -637,7 +637,7 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
         chunkShape = np.minimum(shape, chunkShape)
         f = lambda i: shape[i] // chunkShape[i] + (1 if shape[i] % chunkShape[i] else 0)
         self._chunkArrayShape = tuple(map(f, list(range(len(shape)))))
-        self._chunkShape = np.asarray(chunkShape, dtype=np.int)
+        self._chunkShape = np.asarray(chunkShape, dtype=np.int64)
         self._shape = shape
 
         # determine the background values

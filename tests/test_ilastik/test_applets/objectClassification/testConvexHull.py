@@ -36,7 +36,7 @@ feats_3D = {
 
 def segImage2D():
 
-    img = np.zeros((2, 50, 50, 1, 1), dtype=np.int)
+    img = np.zeros((2, 50, 50, 1, 1), dtype=np.int64)
     img[0, 0:10, 0:10, 0, 0] = 1
     img[0, 20:25, 20:25, 0, 0] = 2
     img[1, 0:10, 0:10, 0, 0] = 1
@@ -50,7 +50,7 @@ def segImage2D():
 
 def segImage3D():
 
-    img = np.zeros((2, 50, 50, 50, 1), dtype=np.int)
+    img = np.zeros((2, 50, 50, 50, 1), dtype=np.int64)
     img[0, 0:10, 0:10, 0:10, 0] = 1
     img[0, 20:25, 20:25, 20:25, 0] = 2
     img[1, 0:10, 0:10, 0:10, 0] = 1

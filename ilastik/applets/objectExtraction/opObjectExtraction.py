@@ -298,7 +298,7 @@ class OpObjectCenterImage(Operator):
                 a = b
                 T += 1
             time_index = self.BinaryImage.meta.axistags.index("t")
-            stop = numpy.asarray(self.BinaryImage.meta.shape, dtype=numpy.int)
+            stop = numpy.asarray(self.BinaryImage.meta.shape, dtype=numpy.int64)
             start = numpy.zeros_like(stop)
             stop[time_index] = T
             start[time_index] = t

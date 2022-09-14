@@ -58,7 +58,7 @@ from ilastik.applets.counting.countingOperators import OpTrainCounter, OpPredict
 #     #  * t=1: 1 object 5x5x5, 2 objects 10x10x10
 #     '''
 #
-#     img = np.zeros((2, 50, 50, 50, 1), dtype=np.int)
+#     img = np.zeros((2, 50, 50, 50, 1), dtype=np.int64)
 #     img[0,  0:10,  0:10,  0:10, 0] = 1
 #     img[0, 20:25, 20:25, 20:25, 0] = 2
 #     img[1,  0:10,  0:10,  0:10, 0] = 1
@@ -73,7 +73,7 @@ def emptyImage():
     """
     an empty 5D image
     """
-    img = np.zeros((2, 50, 50, 50, 0), dtype=np.int)
+    img = np.zeros((2, 50, 50, 50, 0), dtype=np.int64)
     img = img.view(vigra.VigraArray)
     img.axistags = vigra.defaultAxistags("txyzc")
     return img
