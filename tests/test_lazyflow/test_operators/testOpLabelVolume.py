@@ -22,7 +22,7 @@ from lazyflow.operators.opLabelVolume import haveBlocked
 @pytest.mark.usefixtures("cacheMemoryManager")
 class TestVigra:
     def setup_method(self, method):
-        self.method = np.asarray(["vigra"], dtype=np.object)
+        self.method = np.asarray(["vigra"], dtype=object)
 
     def testSimpleUsage(self):
         vol = np.random.randint(255, size=(100, 30, 4))
@@ -342,7 +342,7 @@ if haveBlocked():
 
     class TestBlocked(TestVigra):
         def setup_method(self, method):
-            self.method = np.asarray(["blocked"], dtype=np.object)
+            self.method = np.asarray(["blocked"], dtype=object)
 
         # @unittest.skip("Not implemented yet")
         # def testUnsupported(self):
@@ -356,7 +356,7 @@ if haveBlocked():
 
 class TestLazy(TestVigra):
     def setup_method(self, method):
-        self.method = np.asarray(["lazy"], dtype=np.object)
+        self.method = np.asarray(["lazy"], dtype=object)
 
     @unittest.skip("This test does not make sense with lazy connected components")
     def testCorrectBlocking(self):

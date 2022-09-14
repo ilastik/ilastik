@@ -288,7 +288,7 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
 
         self.OutputHdf5.meta.assignFrom(self.Input.meta)
         self.CleanBlocks.meta.shape = (1,)
-        self.CleanBlocks.meta.dtype = np.object
+        self.CleanBlocks.meta.dtype = object
 
         self._setDefaultInternals()
 
