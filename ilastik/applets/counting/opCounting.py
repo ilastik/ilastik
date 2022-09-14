@@ -286,7 +286,7 @@ class OpCounting(Operator):
         # Set background-labels (annotations) to zero...
         def conv(arr):
             numpy.place(arr, arr == 2, 0)
-            return arr.astype(numpy.float)
+            return arr.astype(numpy.float32)
 
         self.opExtractForegroundLabels.Function.setValue(conv)
         self.opExtractForegroundLabels.Input.connect(self.opLabelPipeline.Output)
