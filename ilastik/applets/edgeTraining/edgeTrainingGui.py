@@ -37,7 +37,7 @@ from PyQt5.QtWidgets import (
     QMenu,
 )
 
-from .simpleEdgeFeatSelection import SimpleEdgeFeatureSelection
+from .simpleEdgeFeatureSelection import SimpleEdgeFeatureSelection
 from lazyflow.utility.orderedSignal import OrderedSignal
 
 from ilastik.utility.gui import threadRouted, silent_qobject
