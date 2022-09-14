@@ -110,10 +110,10 @@ def make_bboxes(binary_bbox, margin):
         dt = dt.reshape(dt.shape + (1,))
 
     assert dt.ndim == 3
-    passed = numpy.asarray(dt < max_margin).astype(numpy.bool)
+    passed = numpy.asarray(dt < max_margin).astype(bool)
 
     # context only
-    context = numpy.asarray(passed) ^ numpy.asarray(binary_bbox).astype(numpy.bool)
+    context = numpy.asarray(passed) ^ numpy.asarray(binary_bbox).astype(bool)
     return passed, context
 
 
@@ -713,7 +713,7 @@ class OpRegionFeatures(Operator):
                 extent = self.compute_extent(i, image, mincoords, maxcoords, axes, margin)
                 rawbbox = self.compute_rawbbox(image, extent, axes)
                 # it's i+1 here, because the background has label 0
-                binary_bbox = numpy.where(labels[tuple(extent)] == i + 1, 1, 0).astype(numpy.bool)
+                binary_bbox = numpy.where(labels[tuple(extent)] == i + 1, 1, 0).astype(bool)
                 for plugin_name, feature_dict in feature_names.items():
                     if not has_local_features[plugin_name]:
                         continue

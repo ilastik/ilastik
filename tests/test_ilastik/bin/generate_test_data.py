@@ -59,7 +59,7 @@ def cubes(dimblock, dimcube, cubedist, cubeoffset):
     indices = numpy.indices(dimblock)
     indices = numpy.rollaxis(indices, 0, len(dimblock) + 1)
 
-    out = numpy.ones(dimblock, dtype=numpy.bool)
+    out = numpy.ones(dimblock, dtype=bool)
 
     for i in range(len(dimblock)):
         out = numpy.bitwise_and(out, (indices[..., i] + cubeoffset[i]) % cubedist[i] < dimcube[i])

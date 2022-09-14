@@ -150,7 +150,7 @@ def get_ram_per_element(dtype: Union[Type[object], numpy.dtype]) -> int:
         8
         >>> get_ram_per_element(numpy.uint8)
         1
-        >>> get_ram_per_element(numpy.bool)
+        >>> get_ram_per_element(bool)
         1
         >>> get_ram_per_element(int)
         8

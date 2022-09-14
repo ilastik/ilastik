@@ -574,7 +574,7 @@ class TestThresholdTwoLevels(Generator2):
             else:
                 new_labels[icomp] = 1
 
-        cc_high_filtered = numpy.asarray(new_labels[cc_high]).astype(numpy.bool)
+        cc_high_filtered = numpy.asarray(new_labels[cc_high]).astype(bool)
 
         prod = cc_high_filtered.astype(numpy.uint8) * numpy.asarray(cc_low)
 

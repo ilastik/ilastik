@@ -680,7 +680,7 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
         gen = partial(InfiniteLabelIterator, 1, dtype=_LABEL_TYPE)
         self._labelIterators = defaultdict(gen)
         self._globalToFinal = defaultdict(dict)
-        self._isFinal = np.zeros(self._chunkArrayShape, dtype=np.bool)
+        self._isFinal = np.zeros(self._chunkArrayShape, dtype=bool)
 
         ### algorithmic ###
 
