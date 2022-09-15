@@ -86,7 +86,7 @@ class DatasetInfo(ABC):
         self.laneShape = laneShape
         self.laneDtype = laneDtype
         if isinstance(self.laneDtype, numpy.dtype):
-            self.laneDtype = numpy.typeDict[self.laneDtype.name]
+            self.laneDtype = numpy.sctypeDict[self.laneDtype.name]
         self.allowLabels = allowLabels
         self.subvolume_roi = subvolume_roi
         self.axistags = axistags

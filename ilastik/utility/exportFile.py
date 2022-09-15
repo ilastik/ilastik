@@ -218,7 +218,7 @@ def prepare_list(list_, names, dtypes=None):
         for col, (item, col_name) in enumerate(zip(first_row, names)):
             item_dtype = np.dtype(type(item))
             col_dtype = (col_name, item_dtype)
-            if item_dtype == np.str:
+            if item_dtype == str:
                 maxlen = max(len(row_data[col]) for row_data in list_)
                 col_dtype = (col_name, item_dtype, maxlen)
             dtypes.append(col_dtype)

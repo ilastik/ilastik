@@ -14,7 +14,7 @@ def widget(qtbot):
     qtbot.addWidget(w)
     w.show()
 
-    qtbot.waitForWindowShown(w)
+    qtbot.waitExposed(w)
 
     return w
 
@@ -99,7 +99,7 @@ def test_applet_manager_adds_widget(qtbot, widget, widget_mngr):
     provider = applet_provider(applet, name)
 
     widget.show()
-    qtbot.waitForWindowShown(widget)
+    qtbot.waitExposed(widget)
 
     assert not applet.isVisible()
     widget_mngr.addApplet(100, provider)
@@ -115,7 +115,7 @@ def test_applet_manager_not_interactive(qtbot, widget, widget_mngr):
 
     widget_mngr.addApplet(100, prov)
     widget.show()
-    qtbot.waitForWindowShown(widget)
+    qtbot.waitExposed(widget)
 
     assert widget.currentWidget() is None
     assert not applet.isVisible()
@@ -132,7 +132,7 @@ def test_applet_manager_change_focus_displays_corresponding_applets(qtbot, widge
     widget_mngr.addApplet(200, prov2)
 
     widget.show()
-    qtbot.waitForWindowShown(widget)
+    qtbot.waitExposed(widget)
 
     assert applet.isVisible()
     assert not applet2.isVisible()

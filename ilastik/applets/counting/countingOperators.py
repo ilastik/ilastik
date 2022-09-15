@@ -380,7 +380,7 @@ class OpTrainCounter(Operator):
             constraintindices.append(offset)
 
             constraintvalues = np.array(constraintvalues, np.float64)
-            constraintindices = np.array(constraintindices, np.int)
+            constraintindices = np.array(constraintindices, np.int64)
 
             boxConstraints = {
                 "boxFeatures": constraintmatrix,

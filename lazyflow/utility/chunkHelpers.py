@@ -39,7 +39,7 @@ def chooseChunkShape(outerShape, desiredChunkSize):
     @return the 'optimal' chunk shape as tuple of ints
     """
 
-    x = np.array(outerShape, dtype=np.int)
+    x = np.array(outerShape, dtype=np.int64)
     assert np.all(x > 0)
     size = np.prod(x)
     n = len(x)
@@ -56,5 +56,5 @@ def chooseChunkShape(outerShape, desiredChunkSize):
     f = np.power((size / float(desiredChunkSize)), (1.0 / float(n)))
 
     y = np.floor(x / f)
-    y = np.maximum(y, 1).astype(np.int)
+    y = np.maximum(y, 1).astype(np.int64)
     return tuple(y)

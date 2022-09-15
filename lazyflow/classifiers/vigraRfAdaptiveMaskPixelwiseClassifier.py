@@ -112,13 +112,13 @@ class VigraRfAdaptiveMaskPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
 
         # Allocate memory for probability volume and mask
         prob_vol = numpy.zeros((X.shape[:-1] + (len(self._known_labels),)), dtype=numpy.float32)
-        mask = numpy.ones(bigintprod(X.shape[1:-1]), dtype=numpy.bool)
+        mask = numpy.ones(bigintprod(X.shape[1:-1]), dtype=bool)
 
         frm_cnt = 0
 
         for X_t in X:
             if frm_cnt % FRAME_SPAN == 0:
-                mask = numpy.ones(bigintprod(X.shape[1:-1]), dtype=numpy.bool)
+                mask = numpy.ones(bigintprod(X.shape[1:-1]), dtype=bool)
 
             prob_mat = numpy.zeros((bigintprod(X.shape[1:-1]), len(self._known_labels)), dtype=numpy.float32)
 
@@ -140,7 +140,7 @@ class VigraRfAdaptiveMaskPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
             # Recalculate the mask every 20 frames
             if frm_cnt % FRAME_SPAN == 0:
                 predicted_labels = numpy.argmax(prob_img[0], axis=-1) + 1
-                prob_slice = (predicted_labels != BACKGROUND_LABEL).astype(numpy.bool)
+                prob_slice = (predicted_labels != BACKGROUND_LABEL).astype(bool)
 
                 kernel = numpy.ones((DILATION_RADIUS * 2 + 1), dtype=bool)
 

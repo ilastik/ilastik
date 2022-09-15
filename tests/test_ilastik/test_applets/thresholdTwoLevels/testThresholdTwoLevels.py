@@ -574,7 +574,7 @@ class TestThresholdTwoLevels(Generator2):
             else:
                 new_labels[icomp] = 1
 
-        cc_high_filtered = numpy.asarray(new_labels[cc_high]).astype(numpy.bool)
+        cc_high_filtered = numpy.asarray(new_labels[cc_high]).astype(bool)
 
         prod = cc_high_filtered.astype(numpy.uint8) * numpy.asarray(cc_low)
 
@@ -738,7 +738,7 @@ class TestTTLUseCase(unittest.TestCase):
         # plus are around .9, predictions for background are around .1. The
         # axis order is a bit strange.
 
-        shift = np.asarray((5, 4, 3), dtype=np.int)
+        shift = np.asarray((5, 4, 3), dtype=np.int64)
         vol = np.ones((70, 60, 50)) * 0.1
         vol[11:13, 12:14, 5:15] = 0.9  # bar in z direction
         vol[11:13, 8:18, 9:11] = 0.9  # bar in y direction

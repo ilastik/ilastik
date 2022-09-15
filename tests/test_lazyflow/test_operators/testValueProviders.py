@@ -301,7 +301,7 @@ class TestOpZeroDefault:
 @pytest.mark.parametrize(
     "metadata",
     [
-        {"shape": (15, 1, 2), "dtype": numpy.bool},
+        {"shape": (15, 1, 2), "dtype": bool},
         {"shape": (200, 100, 42), "dtype": numpy.uint8, "axistags": vigra.defaultAxistags("xyz")},
         {"shape": (10, 20, 30, 1, 2), "dtype": numpy.float32, "something_else": "blah", "one_more": 42},
     ],

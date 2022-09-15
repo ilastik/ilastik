@@ -252,7 +252,7 @@ class OpLabelingABC(with_metaclass(ABCMeta, Operator)):
                 raise ValueError(msg)
 
         # set cache chunk shape to the whole spatial volume
-        shape = np.asarray(self.Input.meta.shape, dtype=np.int)
+        shape = np.asarray(self.Input.meta.shape, dtype=np.int64)
         shape[0] = 1
         shape[4] = 1
         self._cache.BlockShape.setValue(tuple(shape))
@@ -303,8 +303,8 @@ class OpLabelingABC(with_metaclass(ABCMeta, Operator)):
         # do labeling in parallel over channels and time slices
         pool = RequestPool()
 
-        start = np.asarray(roi.start, dtype=np.int)
-        stop = np.asarray(roi.stop, dtype=np.int)
+        start = np.asarray(roi.start, dtype=np.int64)
+        stop = np.asarray(roi.stop, dtype=np.int64)
         for ti, t in enumerate(range(roi.start[0], roi.stop[0])):
             start[0], stop[0] = t, t + 1
             for ci, c in enumerate(range(roi.start[4], roi.stop[4])):

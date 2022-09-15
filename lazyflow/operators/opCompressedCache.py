@@ -297,7 +297,7 @@ class OpUnmanagedCompressedCache(Operator):
             ideal = self.Input.meta.ideal_blockshape
             if ideal is not None:
                 if len(ideal) == len(blockshape):
-                    ideal = numpy.asarray(ideal, dtype=numpy.int)
+                    ideal = numpy.asarray(ideal, dtype=numpy.int64)
                     for i, d in enumerate(ideal):
                         if d == 0:
                             ideal[i] = blockshape[i]

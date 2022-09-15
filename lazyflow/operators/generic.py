@@ -351,13 +351,13 @@ class OpSingleChannelSelector(Operator):
 
         ideal = self.Output.meta.ideal_blockshape
         if ideal is not None and len(ideal) == len(inshape):
-            ideal = numpy.asarray(ideal, dtype=numpy.int)
+            ideal = numpy.asarray(ideal, dtype=numpy.int64)
             ideal[channelAxis] = 1
             self.Output.meta.ideal_blockshape = tuple(ideal)
 
         max_blockshape = self.Output.meta.max_blockshape
         if max_blockshape is not None and len(max_blockshape) == len(inshape):
-            max_blockshape = numpy.asarray(max_blockshape, dtype=numpy.int)
+            max_blockshape = numpy.asarray(max_blockshape, dtype=numpy.int64)
             max_blockshape[channelAxis] = 1
             self.Output.meta.max_blockshape = tuple(max_blockshape)
 

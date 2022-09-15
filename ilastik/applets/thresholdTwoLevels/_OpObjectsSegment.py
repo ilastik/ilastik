@@ -107,7 +107,7 @@ class OpObjectsSegment(OpGraphCut):
         # needs a shape
         shape = self.Prediction.meta.shape
         self.BoundingBoxes.meta.shape = shape
-        self.BoundingBoxes.meta.dtype = np.object
+        self.BoundingBoxes.meta.dtype = object
         self.BoundingBoxes.meta.axistags = vigra.defaultAxistags("tzyxc")
 
     def execute(self, slot, subindex, roi, result):
