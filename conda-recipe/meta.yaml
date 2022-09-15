@@ -56,7 +56,7 @@ outputs:
         - tifffile >2020.9.22,<=2021.11.2
         # build 1.11.1=*_1028 on cf is the first to be compatible with numpy>1.19
         # need to bump this manually until there is a true version bump in vigra
-        - vigra 1.11.1=*_1033
+        - vigra 1.11.1=*_1032
         - wsdt
         - xarray
         - z5py
