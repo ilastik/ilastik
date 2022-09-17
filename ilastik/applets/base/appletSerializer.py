@@ -93,7 +93,7 @@ def slicingToString(slicing):
 
 def stringToSlicing(strSlicing):
     """Parse a string of the form '[0:1,2:3,4:5]' into a slicing (i.e.
-    list of slices)
+    tuple of slices)
 
     """
     if isinstance(strSlicing, bytes):
@@ -108,7 +108,7 @@ def stringToSlicing(strSlicing):
         stop = int(ends[1])
         slicing.append(slice(start, stop))
 
-    return slicing
+    return tuple(slicing)
 
 
 class SerialSlot(object):

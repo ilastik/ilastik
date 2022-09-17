@@ -617,7 +617,9 @@ class OpPixelFeaturesPresmoothed(Operator):
 
                 for channel in range(vol.channels):
                     chSlice[chInd] = slice(channel, channel + 1)
-                    result[chSlice] = fastfilters.gaussianSmoothing(vol[chSlice], sigma, window_size=self.WINDOW_SIZE)
+                    result[tuple(chSlice)] = fastfilters.gaussianSmoothing(
+                        vol[tuple(chSlice)], sigma, window_size=self.WINDOW_SIZE
+                    )
             else:
                 result = fastfilters.gaussianSmoothing(vol, sigma, window_size=self.WINDOW_SIZE)
 
@@ -923,7 +925,7 @@ class OpBaseFilter(Operator):
 
 # difference of Gaussians
 def differenceOfGausssians(image, sigma0, sigma1, window_size, roi, out=None):
-    """ difference of gaussian function"""
+    """difference of gaussian function"""
     return vigra.filters.gaussianSmoothing(
         image, sigma0, window_size=window_size, roi=roi
     ) - vigra.filters.gaussianSmoothing(image, sigma1, window_size=window_size, roi=roi)
