@@ -65,8 +65,6 @@ class TestOpCompressedUserLabelArray(object):
         Verify that the label array has all of the data it was given.
         """
         op = self.op
-        slicing = self.slicing
-        inData = self.inData
         data = self.data
 
         # Output
@@ -95,9 +93,6 @@ class TestOpCompressedUserLabelArray(object):
         Check behavior after deleting an entire label class from the sparse array.
         """
         op = self.op
-        slicing = self.slicing
-        inData = self.inData
-        data = self.data
 
         op.deleteLabel.setValue(1)
         outputData = op.Output[...].wait()
@@ -118,8 +113,6 @@ class TestOpCompressedUserLabelArray(object):
         This one ensures that different blocks have different max label values before the delete occurs.
         """
         op = self.op
-        slicing = self.slicing
-        data = self.data
 
         # assert op.maxLabel.value == 2
 
@@ -163,7 +156,6 @@ class TestOpCompressedUserLabelArray(object):
         """
         op = self.op
         slicing = self.slicing
-        inData = self.inData
         data = self.data
 
         # assert op.maxLabel.value == 2
@@ -233,8 +225,6 @@ class TestOpCompressedUserLabelArray(object):
         it should be removed from the CleanBlocks slot.
         """
         op = self.op
-        slicing = self.slicing
-        inData = self.inData
         data = self.data
 
         # BEFORE (convert to tuple)
@@ -266,8 +256,6 @@ class TestOpCompressedUserLabelArray(object):
         then reconfigure it with a different input shape and dimensionality?
         """
         op = self.op
-        slicing = self.slicing
-        inData = self.inData
         data = self.data
 
         # Output
@@ -353,8 +341,6 @@ class TestOpCompressedUserLabelArray_masked(object):
         Verify that the label array has all of the data it was given.
         """
         op = self.op
-        slicing = self.slicing
-        inData = self.inData
         data = self.data
 
         # Output
@@ -386,9 +372,6 @@ class TestOpCompressedUserLabelArray_masked(object):
         Check behavior after deleting an entire label class from the sparse array.
         """
         op = self.op
-        slicing = self.slicing
-        inData = self.inData
-        data = self.data
 
         op.deleteLabel.setValue(1)
         outputData = op.Output[...].wait()
@@ -415,8 +398,6 @@ class TestOpCompressedUserLabelArray_masked(object):
         This one ensures that different blocks have different max label values before the delete occurs.
         """
         op = self.op
-        slicing = self.slicing
-        data = self.data
 
         # assert op.maxLabel.value == 2
 
@@ -466,7 +447,6 @@ class TestOpCompressedUserLabelArray_masked(object):
         """
         op = self.op
         slicing = self.slicing
-        inData = self.inData
         data = self.data
 
         # assert op.maxLabel.value == 2
@@ -541,8 +521,6 @@ class TestOpCompressedUserLabelArray_masked(object):
         What happens if we configure the operator, use it a bit, then reconfigure it with a different input shape and dimensionality?
         """
         op = self.op
-        slicing = self.slicing
-        inData = self.inData
         data = self.data
 
         # Output
