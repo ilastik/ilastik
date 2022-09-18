@@ -47,7 +47,7 @@ from functools import reduce
 
 class KeyMaker(object):
     def __getitem__(self, *args):
-        return list(*args)
+        return tuple(*args)
 
 
 make_key = KeyMaker()

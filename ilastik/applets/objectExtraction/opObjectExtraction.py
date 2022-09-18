@@ -643,6 +643,7 @@ class OpRegionFeatures(Operator):
 
         slc3d = [slice(None)] * 4  # FIXME: do not hardcode
         slc3d[axes.c] = 0
+        slc3d = tuple(slc3d)
 
         labels = labels[slc3d]
 

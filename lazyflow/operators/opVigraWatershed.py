@@ -102,7 +102,7 @@ class OpVigraWatershed(Operator):
             o = slice(s.start - p.start, s.stop - p.start)
             outputSlices += [o]
 
-        return paddedSlices, outputSlices
+        return tuple(paddedSlices), tuple(outputSlices)
 
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output

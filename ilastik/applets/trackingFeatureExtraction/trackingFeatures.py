@@ -186,7 +186,7 @@ class FeatureManager(object):
         self.squared_distance_default = squared_distance_default
 
     def _getBestSquaredDistances(self, com_cur, coms_next, size_filter=None, sizes_next=[], default_value=9999):
-        """ returns the squared distances to the objects in the neighborhood of com_curr, optionally with size filter """
+        """returns the squared distances to the objects in the neighborhood of com_curr, optionally with size filter"""
         squaredDistances = []
 
         for label_next in list(coms_next.keys()):
@@ -258,7 +258,7 @@ class FeatureManager(object):
                     roi.append(slice(int(start), int(stop)))
 
                 # find all coms in the neighborhood of com_cur
-                subimg_next = img_next[roi]
+                subimg_next = img_next[tuple(roi)]
                 labels_next = np.sort(vigra.analysis.unique(subimg_next)).tolist()
 
                 for l in labels_next:

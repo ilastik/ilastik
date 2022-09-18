@@ -140,8 +140,8 @@ class OpMockPixelClassifier(Operator):
             slicing = [slice(0, maximum) for maximum in self.dataShape]
             for i in range(10):
                 slicing[2] = slice(i * 10, (i + 1) * 10)
-                if not (self._data[index][slicing] == 0).all():
-                    blocks.append(list(slicing))
+                if not (self._data[index][tuple(slicing)] == 0).all():
+                    blocks.append(tuple(slicing))
 
             result[0] = blocks
         if slot.name == "LabelImages":

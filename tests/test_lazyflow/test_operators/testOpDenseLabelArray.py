@@ -168,6 +168,7 @@ class TestOpDenseLabelArray(object):
 
         erasedSlicing = list(slicing)
         erasedSlicing[1] = slice(1, 2)
+        erasedSlicing = tuple(erasedSlicing)
 
         outputWithEraser = data
         outputWithEraser[erasedSlicing] = 100
@@ -196,6 +197,7 @@ class TestOpDenseLabelArray(object):
 
         newSlicing = list(slicing)
         newSlicing[1] = slice(1, 2)
+        newSlicing = tuple(newSlicing)
 
         # Add some new labels for a class that hasn't been seen yet (3)
         threeData = numpy.ndarray(slicing2shape(newSlicing), dtype=numpy.uint8)
