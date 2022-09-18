@@ -83,3 +83,5 @@ coverage.xml
 
 # setuptools_scm version
 ilastik/_version.py
+
+*/.ipynb_checkpoints

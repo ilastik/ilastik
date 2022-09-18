@@ -2,6 +2,8 @@ from zipfile import ZipFile
 
 import pytest
 
+import lazyflow
+
 from . import types
 
 
@@ -40,3 +42,20 @@ def test_data_lookup(data_path, tmpdir_factory) -> types.ApiTestDataLookup:
             pytest.fail(fail_msg)
 
         return types.ApiTestDataLookup(path_by_name)
+
+
+@pytest.fixture(scope="module", autouse=True)
+def restore_lazyflow_thread_pool():
+    # any import from experimental will reset the threadpool to 0
+    # in order to have all other tests run normally, we reset it after
+    # each test module for the experimental tests
+    # further reference:
+    # see https://github.com/ilastik/ilastik/issues/2517
+    yield
+
+    lazyflow.request.Request.reset_thread_pool()
+
+
+def pytest_collection_finish(session):
+    # threadpool has to be also resetted after collection
+    lazyflow.request.Request.reset_thread_pool()
