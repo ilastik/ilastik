@@ -23,6 +23,8 @@ import collections
 import numpy
 from ndstructs import Slice5D
 
+from ilastik.config import cfg
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import PathComponents, getPathVariants, format_known_keys
 from lazyflow.operators.ioOperators import OpFormattedDataExport
@@ -88,7 +90,7 @@ class OpDataExport(Operator):
 
     # File settings
     OutputFilenameFormat = InputSlot(
-        value="{dataset_dir}/{nickname}_{result_type}"
+        value=cfg["ilastik"]["output_filename_format"]
     )  # A format string allowing {dataset_dir} {nickname}, {roi}, {x_start}, {x_stop}, etc.
     OutputInternalPath = InputSlot(value="exported_data")
     OutputFormat = InputSlot(value="hdf5")
