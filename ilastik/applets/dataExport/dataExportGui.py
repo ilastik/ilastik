@@ -42,6 +42,8 @@ from PyQt5.QtGui import QIcon
 
 from lazyflow.graph import Slot
 
+from ilastik.config import cfg
+
 from ilastik.utility import bind, log_exception
 from lazyflow.utility import PathComponents
 from ilastik.utility.gui import ThreadRouter, threadRouted, ThunkEvent, ThunkEventHandler, threadRoutedWithRouter
@@ -57,7 +59,7 @@ logger = logging.getLogger(__name__)
 
 
 class Column(object):
-    """ Enum for table column positions """
+    """Enum for table column positions"""
 
     Dataset = 0
     ExportLocation = 1
@@ -248,7 +250,8 @@ class DataExportGui(QWidget):
             )
             return
 
-        settingsDlg = DataExportOptionsDlg(self, opExportModelOp)
+        settingsDlg = DataExportOptionsDlg(self, opExportModelOp, cfg["ilastik"]["output_filename_format"])
+
         if settingsDlg.exec_() == DataExportOptionsDlg.Accepted:
             # Copy the settings from our 'model op' into the real op
             setting_slots = [

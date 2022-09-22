@@ -62,7 +62,7 @@ outputs:
         - z5py
       run_constrained:
         - tiktorch >=22.7.1
-        - volumina >=1.3.4
+        - volumina >=1.3.5
 
     test:
       imports:

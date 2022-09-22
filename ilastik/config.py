@@ -43,6 +43,7 @@ default_config = """
 [ilastik]
 debug: false
 plugin_directories: ~/.ilastik/plugins,
+output_filename_format: {dataset_dir}/{nickname}_{result_type}
 
 [lazyflow]
 threads: -1
