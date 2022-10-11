@@ -89,14 +89,15 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
             "Blockwise Object Predictions",
             "Blockwise Object Probabilities",
             "Object Identities",
-            "Pixel Probabilities",
+            "Pixel Probabilities",  # for Pixel + Object Classification Workflow
+            "Simple Segmentation",  # for Pixel + Object Classification Workflow
         ]
 
-        if selection in ("Object Predictions", "Blockwise Object Predictions"):
+        if selection in ("Object Predictions", "Blockwise Object Predictions", "Simple Segmentation"):
             previewSlot = self.topLevelOperatorView.ImageToExport
             if previewSlot.ready():
                 previewLayer = ColortableLayer(createDataSource(previewSlot), colorTable=self._colorTable16)
-                previewLayer.name = "Prediction - Preview"
+                previewLayer.name = selection + "- Preview"
                 previewLayer.visible = False
                 layers.append(previewLayer)
 
