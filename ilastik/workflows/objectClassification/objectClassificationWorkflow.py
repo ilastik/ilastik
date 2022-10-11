@@ -24,6 +24,7 @@ import os
 import enum
 import argparse
 import csv
+import warnings
 
 import numpy
 import h5py
@@ -591,6 +592,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
     def ExportNames(self):
         class ExtraExportNames(SlotNameEnum):
             PIXEL_PROBABILITIES = super(self.__class__, self).ExportNames.getNext()
+            SIMPLE_SEGMENTATION = super(self.__class__, self).ExportNames.getNext() + 1
 
         return super().ExportNames.extendedWithEnum(ExtraExportNames)
 
@@ -641,8 +643,10 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         # Pull from this slot since the data has already been through the Op5 operator
         # (All data in the export operator must have matching spatial dimensions.)
         opThreshold = self.thresholdingApplet.topLevelOperator.getLane(laneIndex)
+        opClassify = self.pcApplet.topLevelOperator.getLane(laneIndex)
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
         opDataExport.Inputs[self.ExportNames.PIXEL_PROBABILITIES].connect(opThreshold.InputImage)
+        opDataExport.Inputs[self.ExportNames.SIMPLE_SEGMENTATION].connect(opClassify.SimpleSegmentation)
 
     def createInputApplets(self):
         super().createInputApplets()
