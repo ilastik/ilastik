@@ -81,7 +81,7 @@ outputs:
         - pytest >=3,<4
         - pytest-qt
         - volumina
-        - tiktorch 22.7.0*
+        - tiktorch 22.7.1*
         - inferno
         - torchvision
         - cudatoolkit >=10.2
