@@ -59,10 +59,16 @@ class LocalEnhancerWorkflow(_NNWorkflowBase):
     def _createFeatureSelectionApplet(self):
         return FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections")
 
-    def _createClassifierApplet(self):
+    def _create_local_connection(self):
+        conn_str = self._launcher.start()
+        return conn_str
+
+    def _createClassifierApplet(self, headless=False, conn_str=None):
+        if not headless or not conn_str:
+            conn_str = self._create_local_connection()
+
         self.featureSelectionApplet = self._createFeatureSelectionApplet()
         self.applets.append(self.featureSelectionApplet)
-        conn_str = self._launcher.start()
         srv_config = ServerConfig(id="auto", address=conn_str, devices=[Device(id="cpu", name="cpu", enabled=True)])
         connFactory = tiktorch.TiktorchConnectionFactory()
         conn = connFactory.ensure_connection(srv_config)

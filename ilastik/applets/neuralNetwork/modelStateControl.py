@@ -438,7 +438,7 @@ class BioImageModelCombo(QComboBox):
         self.refresh()
         self.setEnabled(True)
 
-    def setModelInfo(self, model_source, model_info, template=Template(display_template)):
+    def setModelInfo(self, model_source, model_info, template=display_template):
         # TODO (k-dominik)
         pass
 
