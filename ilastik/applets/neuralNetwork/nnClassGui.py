@@ -798,11 +798,13 @@ class NNClassGui(LabelingGui):
         self.labelingDrawerUi.checkpoints.setVisible(False)
 
         if state is TiktorchOperatorModel.State.Empty:
+            self.toggleLivePrediction(False)
             self.labelingDrawerUi.livePrediction.setEnabled(False)
             self.updateAllLayers()
 
         elif state is TiktorchOperatorModel.State.ModelDataAvailable:
             num_classes = self.tiktorchModel.modelData.numClasses
+            self.toggleLivePrediction(False)
             self.labelingDrawerUi.livePrediction.setEnabled(False)
 
             self.minLabelNumber = num_classes
