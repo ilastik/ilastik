@@ -126,6 +126,7 @@ class ModelSourceEdit(QTextEdit):
             )
         )
         self._model_source = model_source
+        self.setTextInteractionFlags(Qt.NoTextInteraction)
 
     def dropEvent(self, dropEvent):
         urls = dropEvent.mimeData().urls()
@@ -158,6 +159,7 @@ class ModelSourceEdit(QTextEdit):
     def setModelIncompatibleState(self, model_source, model_info, error_message):
         self.setToolTip(f"Model not compatible with data:\n\n{error_message}")
         self.setModelInfo(model_source, model_info, template=f"<red>{display_template}</red>")
+        self.setHtml(f"{self.toHtml()}\n<b><red>{error_message}</red></b>")
 
     def setEmptyState(self):
         self.clear()
@@ -166,7 +168,6 @@ class ModelSourceEdit(QTextEdit):
         self.btn_container.setEnabled(True)
         self.setTextInteractionFlags(Qt.NoTextInteraction)
         self.setToolTip("Remove the model by clicking the 'x' in the upper right corner.")
-        self.setModelInfo(model_source, model_info)
 
     def setReadyState(self, model_source, model_info):
         self.btn_container.setEnabled(False)
@@ -321,7 +322,7 @@ class ModelStateControl(QWidget):
         downloader = BioImageDownloader(model_uri, cancelSrc.token, self)
         dialog = PercentProgressDialog(self, title="Downloading model", secondary_bar=True)
         dialog.rejected.connect(cancelSrc.cancel)
-        dialog.show()
+        dialog.open()
         downloader.finished.connect(dialog.accept)
         downloader.error.connect(self._showErrorMessage)
         downloader.progress0.connect(dialog.updateProgress)
