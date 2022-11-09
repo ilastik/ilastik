@@ -188,9 +188,9 @@ class PluginExportOptionsDlg(QDialog):
 
     def showEvent(self, event):
         super(PluginExportOptionsDlg, self).showEvent(event)
-        self.updateFromSlot()
+        self.updateFromSlots()
 
-    def updateFromSlot(self):
+    def updateFromSlots(self):
         if self._filepathSlot.ready():
             file_path = self._filepathSlot.value
             file_path = os.path.splitext(file_path)[0]
