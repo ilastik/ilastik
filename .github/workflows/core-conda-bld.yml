@@ -39,7 +39,7 @@ jobs:
         shell: bash -l {0}
         run: |
           vers=$( python setup.py --version )
-          echo "::set-output name=version::${vers}"
+          echo "version=${vers}" >> $GITHUB_OUTPUT
       - name: linux conda build test
         shell: bash -l {0}
         run: |
