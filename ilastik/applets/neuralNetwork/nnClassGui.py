@@ -656,6 +656,11 @@ class NNClassGui(LabelingGui):
 
         self.handleLabelSelectionChange()
 
+        # remove the labels layer in case there is not training,
+        # There is no use for this layer and all other controls are hidden as well
+        if not ALLOW_TRAINING:
+            layers = [x for x in layers if x.name != "Labels"]
+
         return layers
 
     def toggleLivePrediction(self, checked):
