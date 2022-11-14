@@ -164,8 +164,8 @@ class ModelSourceEdit(QTextEdit):
 
     def setModelDataAvailableState(self, model_source, model_info):
         self.btn_container.setEnabled(True)
-        self.setTextInteractionFlags(Qt.NoTextInteraction)
         self.setToolTip("Remove the model by clicking the 'x' in the upper right corner.")
+        self.setModelInfo(model_source, model_info)
 
     def setReadyState(self, model_source, model_info):
         self.btn_container.setEnabled(False)
