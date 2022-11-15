@@ -324,7 +324,7 @@ class ThresholdTwoLevelsGui(LayerViewerGui):
 
         numChannels = op.InputImage.meta.getTaggedShape()["c"]
         for channel in range(numChannels):
-            channelProvider = OpSingleChannelSelector(parent=op.InputImage.getRealOperator().parent)
+            channelProvider = OpSingleChannelSelector(parent=op.InputImage.operator.parent)
             channelProvider.Input.connect(op.InputImage)
             channelProvider.Index.setValue(channel)
             self._channelProviders.append(channelProvider)

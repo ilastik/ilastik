@@ -140,7 +140,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         super(StructuredTrackingGui, self).initAppletDrawerUi()
 
-        self.realOperator = self.topLevelOperatorView.Labels.getRealOperator()
+        self.realOperator = self.topLevelOperatorView.Labels.operator
         for i, op in enumerate(self.realOperator.innerOperators):
             self.operator = op
 
