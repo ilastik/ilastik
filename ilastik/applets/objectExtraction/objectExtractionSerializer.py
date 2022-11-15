@@ -55,7 +55,7 @@ class SerialObjectFeaturesSlot(SerialSlot):
             return
         deleteIfPresent(group, self.name)
         group = getOrCreateGroup(group, self.name)
-        mainOperator = self.slot.getRealOperator()
+        mainOperator = self.slot.operator
 
         for i in range(len(mainOperator)):
             subgroup = getOrCreateGroup(group, "{:04}".format(i))

@@ -938,7 +938,7 @@ class Slot(object):
                 Request.raise_if_cancelled()
                 if not self.ready():
                     # msg = "This slot ({}.{}) isn't ready yet, which means " \
-                    #      "you can't ask for its data.  Is it connected?".format(self.getRealOperator() and self.getRealOperator().name, self.name)
+                    #      "you can't ask for its data.  Is it connected?".format(self.operator and self.operator.name, self.name)
                     # self.logger.error(msg)
                     problem_slot = Slot._findUpstreamProblemSlot(self)
                     problem_str = str(problem_slot)
