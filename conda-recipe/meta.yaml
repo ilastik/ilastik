@@ -77,7 +77,7 @@ outputs:
         - pytest.ini
 
       requires:
-        - pytest >=3,<4
+        - pytest >4
         - pytest-qt
         - volumina
         - tiktorch
@@ -115,7 +115,7 @@ outputs:
         - pytest.ini
 
       requires:
-        - pytest >=3,<4
+        - pytest >4
         - pytest-qt
         # need to help mamba here a bit
         - ilastik-pytorch-version-helper-cpu
@@ -166,7 +166,7 @@ outputs:
         - pytest.ini
 
       requires:
-        - pytest >=3,<4
+        - pytest >4
         - pytest-qt
         - pytorch 1.12.*
         - cudatoolkit 11.*
