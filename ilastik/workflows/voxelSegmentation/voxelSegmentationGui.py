@@ -151,7 +151,7 @@ class VoxelSegmentationGui(LabelingGui):
         thisOpFeatureSelection = (
             self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
         )
-        self.featSelDlg = SuggestFeaturesDialog(thisOpFeatureSelection, self, self.labelListData)
+        self.featSelDlg = SuggestFeaturesDialog(thisOpFeatureSelection, self, self.labelListData, self)
 
     def menus(self):
         menus = super().menus()

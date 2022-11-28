@@ -525,7 +525,7 @@ class PixelClassificationGui(LabelingGui):
         else:
             raise NotImplementedError
 
-        self.featSelDlg = SuggestFeaturesDialog(thisOpFeatureSelection, self, self.labelListData)
+        self.featSelDlg = SuggestFeaturesDialog(thisOpFeatureSelection, self, self.labelListData, self)
 
     def show_feature_selection_dialog(self):
         self.featSelDlg.open()

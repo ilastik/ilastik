@@ -86,13 +86,13 @@ class SuggestFeaturesResult(object):
 
 
 class SuggestFeaturesDialog(QtWidgets.QDialog):
-    def __init__(self, current_opFeatureSelection, current_pixelClassificationApplet, labels_list_data):
+    def __init__(self, current_opFeatureSelection, current_pixelClassificationApplet, labels_list_data, parent=None):
         """
 
         :param current_opFeatureSelection: opFeatureSelection from ilastik
         :param current_opPixelClassification: opPixelClassification form Ilastik
         """
-        super().__init__()
+        super().__init__(parent)
 
         self.pixelClassificationApplet = current_pixelClassificationApplet
         self.opPixelClassification = current_pixelClassificationApplet.topLevelOperatorView
@@ -415,7 +415,7 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
             self._gui_initialized = True
 
     def _show_feature_name_dialog(self):
-        dialog = QtWidgets.QDialog()
+        dialog = QtWidgets.QDialog(self)
         dialog.resize(350, 650)
 
         ok_button = QtWidgets.QPushButton("ok")
