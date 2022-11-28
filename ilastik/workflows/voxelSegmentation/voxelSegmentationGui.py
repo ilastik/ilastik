@@ -20,7 +20,7 @@ from lazyflow.operators.ioOperators import OpInputDataReader
 
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.pixelClassification import pixelClassificationGui
-from ilastik.applets.pixelClassification.FeatureSelectionDialog import FeatureSelectionDialog
+from ilastik.applets.pixelClassification.suggestFeaturesDialog import SuggestFeaturesDialog
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import bind
 
@@ -151,7 +151,7 @@ class VoxelSegmentationGui(LabelingGui):
         thisOpFeatureSelection = (
             self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
         )
-        self.featSelDlg = FeatureSelectionDialog(thisOpFeatureSelection, self, self.labelListData)
+        self.featSelDlg = SuggestFeaturesDialog(thisOpFeatureSelection, self, self.labelListData)
 
     def menus(self):
         menus = super().menus()

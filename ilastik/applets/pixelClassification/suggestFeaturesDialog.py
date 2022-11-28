@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
-from builtins import range
-
 __author__ = "fabian"
 
 import numpy
@@ -9,25 +6,20 @@ import numpy
 # import scipy
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtGui import QCursor
-from PyQt5.QtCore import pyqtRemoveInputHook, pyqtRestoreInputHook
 
 from volumina.widgets import layerwidget
 from volumina import volumeEditorWidget
 from volumina.layer import ColortableLayer, GrayscaleLayer, RGBALayer
-from volumina import colortables
 from volumina.api import createDataSource
 
 from ilastik.applets.pixelClassification import opPixelClassification
-from lazyflow.operators import OpFeatureMatrixCache
-from ilastik.utility import OpMultiLaneWrapper
 from lazyflow import graph
 
 import time
-import re
 
 
 # just a container class, nothing fancy here
-class FeatureSelectionResult(object):
+class SuggestFeaturesResult(object):
     def __init__(
         self,
         feature_matrix,
@@ -93,14 +85,14 @@ class FeatureSelectionResult(object):
         self.long_name = name
 
 
-class FeatureSelectionDialog(QtWidgets.QDialog):
+class SuggestFeaturesDialog(QtWidgets.QDialog):
     def __init__(self, current_opFeatureSelection, current_pixelClassificationApplet, labels_list_data):
         """
 
         :param current_opFeatureSelection: opFeatureSelection from ilastik
         :param current_opPixelClassification: opPixelClassification form Ilastik
         """
-        super(FeatureSelectionDialog, self).__init__()
+        super().__init__()
 
         self.pixelClassificationApplet = current_pixelClassificationApplet
         self.opPixelClassification = current_pixelClassificationApplet.topLevelOperatorView
@@ -122,7 +114,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         # and labels matrix required by the feature selection operators
         self.opFeatureMatrixCaches = self.opPixelClassification.opFeatureMatrixCaches
 
-        """FIXME / FixMe: the FeatureSelectionDialog will only display one slice of the dataset. This is for RAM saving
+        """FIXME / FixMe: the SuggestFeaturesDialog will only display one slice of the dataset. This is for RAM saving
         reasons. By using only one slice, we can simple predict the segmentation of that slice for each feature set and
         store it in RAM. If we allowed to show the whole dataset, then we would have to copy the opFeatureSelection and
         opPixelClassification once for each feature set. This would result in too much feature computation time as
@@ -246,7 +238,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
             self._add_grayscale_layer(self.raw_xy_slice, "raw_data", True)
 
         # now launch the dialog
-        super(FeatureSelectionDialog, self).exec_()
+        super().exec_()
 
     def reset_me(self):
         """
@@ -501,7 +493,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
     def _add_feature_set_to_results(self, feature_set_result):
         """
         After feature selection, the feature set (and the segmentation achieved with it) will be added to the results
-        :param feature_set_result: FeatureSelectionResult instance
+        :param feature_set_result: SuggestFeaturesResult instance
         """
         self._feature_selection_results.insert(0, feature_set_result)
         self._add_segmentation_layer(feature_set_result.segmentation, name=feature_set_result.name)
@@ -788,7 +780,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
 
         """
         Here we retrieve the labels and feature matrix of all features. This is done only once each time the
-        FeatureSelectionDialog is opened.
+        SuggestFeaturesDialog is opened.
 
         Reason for not connecting the feature selection operators to the ilastik lazyflow graph:
         Whenever we are retrieving a new segmentation layer of a new feature set we are overriding the SelectionMatrix
@@ -797,7 +789,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         however, resulting in the featureLabelMatrix to be dirty. Therefore it would have to be recalculated whenever we
         are requesting a new feature set. The way this is prevented here is by simply retrieving the FeatureLabelMatrix
         once each time the dialog is opened and manually writing it into the inputSlot of the feature selection
-        operators. This is possible because the FeatureLabelMatrix cannot change from within the FeatureSelectionDialog
+        operators. This is possible because the FeatureLabelMatrix cannot change from within the SuggestFeaturesDialog
         (it contians feature values and the corresponding labels of all labeled voxels and all features. The labels
         cannot be modified from within this dialog)
         """
@@ -821,7 +813,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
             if numpy.sum(all_features_active_matrix != user_defined_matrix) != 0:
                 segmentation_all_features, oob_all, time_all = self.retrieve_segmentation(all_features_active_matrix)
                 selected_ids = self._convert_featureMatrix_to_featureIDs(all_features_active_matrix)
-                all_features_result = FeatureSelectionResult(
+                all_features_result = SuggestFeaturesResult(
                     all_features_active_matrix,
                     selected_ids,
                     segmentation_all_features,
@@ -873,7 +865,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         # maybe also write down feature computation time and oob error
         new_matrix = self._convert_featureIDs_to_featureMatrix(selected_feature_ids)
         new_segmentation, new_oob, new_time = self.retrieve_segmentation(new_matrix)
-        new_feature_selection_result = FeatureSelectionResult(
+        new_feature_selection_result = SuggestFeaturesResult(
             new_matrix,
             selected_feature_ids,
             new_segmentation,
@@ -889,7 +881,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
             self.opFeatureSelection.setupOutputs()  # deletes cache for realistic feature computation time
             segmentation_current_features, oob_user, time_user = self.retrieve_segmentation(user_defined_matrix)
             selected_ids = self._convert_featureMatrix_to_featureIDs(user_defined_matrix)
-            current_features_result = FeatureSelectionResult(
+            current_features_result = SuggestFeaturesResult(
                 user_defined_matrix,
                 selected_ids,
                 segmentation_current_features,
@@ -917,7 +909,7 @@ if __name__ == "__main__":
     win = QtWidgets.QMainWindow()
     win.resize(800, 800)
 
-    feat_dial = FeatureSelectionDialog()
+    feat_dial = SuggestFeaturesDialog()
     button = QtWidgets.QPushButton("open feature selection dialog")
     button.clicked.connect(feat_dial.show)
 

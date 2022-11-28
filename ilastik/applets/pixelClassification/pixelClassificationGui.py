@@ -77,7 +77,7 @@ from ilastik.shell.gui.variableImportanceDialog import VariableImportanceDialog
 from ilastik.applets.dataSelection import DatasetInfo
 
 # import IPython
-from .FeatureSelectionDialog import FeatureSelectionDialog
+from .suggestFeaturesDialog import SuggestFeaturesDialog
 
 try:
     from volumina.view3d.volumeRendering import RenderingManager
@@ -525,7 +525,7 @@ class PixelClassificationGui(LabelingGui):
         else:
             raise NotImplementedError
 
-        self.featSelDlg = FeatureSelectionDialog(thisOpFeatureSelection, self, self.labelListData)
+        self.featSelDlg = SuggestFeaturesDialog(thisOpFeatureSelection, self, self.labelListData)
 
     def show_feature_selection_dialog(self):
         self.featSelDlg.exec_()
