@@ -170,7 +170,7 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
 
         self.resize(1366, 768)
 
-    def exec_(self):
+    def open(self):
         """
         as explained in the __init__, we only display one slice of the datastack. Here we find out which slice is
 
@@ -238,7 +238,7 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
             self._add_grayscale_layer(self.raw_xy_slice, "raw_data", True)
 
         # now launch the dialog
-        super().exec_()
+        super().open()
 
     def reset_me(self):
         """
@@ -446,7 +446,7 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
             text += "</html>"
             text_edit.setText(text)
 
-        dialog.exec_()
+        dialog.open()
 
     def _add_color_layer(self, data, name=None, visible=False):
         """
@@ -904,7 +904,7 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
 if __name__ == "__main__":
     # import sys
     # if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
-    #    QtWidgets.QApplication.instance().exec_()
+    #    QtWidgets.QApplication.instance().open()
     app = QtWidgets.QApplication([])
     win = QtWidgets.QMainWindow()
     win.resize(800, 800)
@@ -921,4 +921,4 @@ if __name__ == "__main__":
     win.setCentralWidget(central_widget)
 
     win.show()
-    QtWidgets.QApplication.instance().exec_()
+    QtWidgets.QApplication.instance().open()

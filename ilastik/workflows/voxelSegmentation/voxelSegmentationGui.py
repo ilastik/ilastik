@@ -519,7 +519,7 @@ class VoxelSegmentationGui(LabelingGui):
     ###########################################
 
     def show_feature_selection_dialog(self):
-        self.featSelDlg.exec_()
+        self.featSelDlg.open()
 
     def update_features_from_dialog(self):
         if self.topLevelOperatorView.name == "OpPixelClassification":
