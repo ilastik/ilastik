@@ -759,145 +759,148 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
         return n_select_opt
 
     def _run_selection(self):
-        QtWidgets.QApplication.instance().setOverrideCursor(QCursor(QtCore.Qt.WaitCursor))
         """
         runs the feature selection based on the selected parameters and selection method. Adds a segmentation layer
         showing the segmentation result achieved with the selected set
         """
         # self.retrieve_segmentation_new(None)
-
+        QtWidgets.QApplication.instance().setOverrideCursor(QCursor(QtCore.Qt.WaitCursor))
         user_defined_matrix = self.opFeatureSelection.SelectionMatrix.value
 
-        all_features_active_matrix = numpy.zeros(user_defined_matrix.shape, "bool")
-        all_features_active_matrix[:, 1:] = True
-        all_features_active_matrix[0, 0] = True
-        all_features_active_matrix[1:, 0] = False  # do not use any other feature than gauss smooth on sigma=0.3
-        self.opFeatureSelection.SelectionMatrix.setValue(all_features_active_matrix)
-        self.opFeatureSelection.SelectionMatrix.setDirty()  # this does not do anything!?!?
-        self.opFeatureSelection.setupOutputs()
-        # self.opFeatureSelection.change_feature_cache_size()
-        self.feature_channel_names = self.opPixelClassification.FeatureImages.meta["channel_names"]
+        try:
+            all_features_active_matrix = numpy.zeros(user_defined_matrix.shape, "bool")
+            all_features_active_matrix[:, 1:] = True
+            all_features_active_matrix[0, 0] = True
+            all_features_active_matrix[1:, 0] = False  # do not use any other feature than gauss smooth on sigma=0.3
+            self.opFeatureSelection.SelectionMatrix.setValue(all_features_active_matrix)
+            self.opFeatureSelection.SelectionMatrix.setDirty()  # this does not do anything!?!?
+            self.opFeatureSelection.setupOutputs()
+            # self.opFeatureSelection.change_feature_cache_size()
+            self.feature_channel_names = self.opPixelClassification.FeatureImages.meta["channel_names"]
 
-        """
-        Here we retrieve the labels and feature matrix of all features. This is done only once each time the
-        SuggestFeaturesDialog is opened.
+            """
+            Here we retrieve the labels and feature matrix of all features. This is done only once each time the
+            SuggestFeaturesDialog is opened.
 
-        Reason for not connecting the feature selection operators to the ilastik lazyflow graph:
-        Whenever we are retrieving a new segmentation layer of a new feature set we are overriding the SelectionMatrix
-        of the opFeatureSelection. If we then wanted to find another feature set, the feature selection operators would
-        request the features and label matrix again. In the meantime, the feature set has been changed and changed back,
-        however, resulting in the featureLabelMatrix to be dirty. Therefore it would have to be recalculated whenever we
-        are requesting a new feature set. The way this is prevented here is by simply retrieving the FeatureLabelMatrix
-        once each time the dialog is opened and manually writing it into the inputSlot of the feature selection
-        operators. This is possible because the FeatureLabelMatrix cannot change from within the SuggestFeaturesDialog
-        (it contians feature values and the corresponding labels of all labeled voxels and all features. The labels
-        cannot be modified from within this dialog)
-        """
-        if not self._initialized_feature_matrix:
-            self.featureLabelMatrix_all_features = (
-                self.opFeatureMatrixCaches.LabelAndFeatureMatrix.value
-            )  # FIXME: why is this initialized?
-            self.opFilterFeatureSelection.FeatureLabelMatrix.setValue(self.featureLabelMatrix_all_features)
-            self.opFilterFeatureSelection.FeatureLabelMatrix.resize(1)
-            self.opFilterFeatureSelection.setupOutputs()
-            self.opWrapperFeatureSelection.FeatureLabelMatrix.setValue(self.featureLabelMatrix_all_features)
-            self.opWrapperFeatureSelection.FeatureLabelMatrix.resize(1)
-            self.opWrapperFeatureSelection.setupOutputs()
-            self.opGiniFeatureSelection.FeatureLabelMatrix.setValue(self.featureLabelMatrix_all_features)
-            self.opGiniFeatureSelection.FeatureLabelMatrix.resize(1)
-            self.opGiniFeatureSelection.setupOutputs()
-            self._initialized_feature_matrix = True
-            self.n_features = self.featureLabelMatrix_all_features.shape[1] - 1
+            Reason for not connecting the feature selection operators to the ilastik lazyflow graph:
+            Whenever we are retrieving a new segmentation layer of a new feature set we are overriding the SelectionMatrix
+            of the opFeatureSelection. If we then wanted to find another feature set, the feature selection operators would
+            request the features and label matrix again. In the meantime, the feature set has been changed and changed back,
+            however, resulting in the featureLabelMatrix to be dirty. Therefore it would have to be recalculated whenever we
+            are requesting a new feature set. The way this is prevented here is by simply retrieving the FeatureLabelMatrix
+            once each time the dialog is opened and manually writing it into the inputSlot of the feature selection
+            operators. This is possible because the FeatureLabelMatrix cannot change from within the SuggestFeaturesDialog
+            (it contians feature values and the corresponding labels of all labeled voxels and all features. The labels
+            cannot be modified from within this dialog)
+            """
+            if not self._initialized_feature_matrix:
+                self.featureLabelMatrix_all_features = (
+                    self.opFeatureMatrixCaches.LabelAndFeatureMatrix.value
+                )  # FIXME: why is this initialized?
+                self.opFilterFeatureSelection.FeatureLabelMatrix.setValue(self.featureLabelMatrix_all_features)
+                self.opFilterFeatureSelection.FeatureLabelMatrix.resize(1)
+                self.opFilterFeatureSelection.setupOutputs()
+                self.opWrapperFeatureSelection.FeatureLabelMatrix.setValue(self.featureLabelMatrix_all_features)
+                self.opWrapperFeatureSelection.FeatureLabelMatrix.resize(1)
+                self.opWrapperFeatureSelection.setupOutputs()
+                self.opGiniFeatureSelection.FeatureLabelMatrix.setValue(self.featureLabelMatrix_all_features)
+                self.opGiniFeatureSelection.FeatureLabelMatrix.resize(1)
+                self.opGiniFeatureSelection.setupOutputs()
+                self._initialized_feature_matrix = True
+                self.n_features = self.featureLabelMatrix_all_features.shape[1] - 1
 
-        if not self._initialized_all_features_segmentation_layer:
-            if numpy.sum(all_features_active_matrix != user_defined_matrix) != 0:
-                segmentation_all_features, oob_all, time_all = self.retrieve_segmentation(all_features_active_matrix)
-                selected_ids = self._convert_featureMatrix_to_featureIDs(all_features_active_matrix)
-                all_features_result = SuggestFeaturesResult(
-                    all_features_active_matrix,
-                    selected_ids,
-                    segmentation_all_features,
-                    {"num_of_feat": "all", "c": "None"},
-                    "all features",
-                    oob_all,
-                    time_all,
-                )
-                self._add_feature_set_to_results(all_features_result)
-            self._initialized_all_features_segmentation_layer = True
+            if not self._initialized_all_features_segmentation_layer:
+                if numpy.sum(all_features_active_matrix != user_defined_matrix) != 0:
+                    segmentation_all_features, oob_all, time_all = self.retrieve_segmentation(
+                        all_features_active_matrix
+                    )
+                    selected_ids = self._convert_featureMatrix_to_featureIDs(all_features_active_matrix)
+                    all_features_result = SuggestFeaturesResult(
+                        all_features_active_matrix,
+                        selected_ids,
+                        segmentation_all_features,
+                        {"num_of_feat": "all", "c": "None"},
+                        "all features",
+                        oob_all,
+                        time_all,
+                    )
+                    self._add_feature_set_to_results(all_features_result)
+                self._initialized_all_features_segmentation_layer = True
 
-        # run feature selection using the chosen parameters
-        if self._selection_method == "gini":
-            if self._selection_params["num_of_feat"] == 0:
-                self.opGiniFeatureSelection.NumberOfSelectedFeatures.setValue(self.n_features)
-                selected_feature_ids = self.opGiniFeatureSelection.SelectedFeatureIDs.value
+            # run feature selection using the chosen parameters
+            if self._selection_method == "gini":
+                if self._selection_params["num_of_feat"] == 0:
+                    self.opGiniFeatureSelection.NumberOfSelectedFeatures.setValue(self.n_features)
+                    selected_feature_ids = self.opGiniFeatureSelection.SelectedFeatureIDs.value
 
-                # now decide how many features you would like to use
-                # features are ordered by their gini importance
-                n_selected = self._auto_select_num_features(selected_feature_ids)
-                selected_feature_ids = selected_feature_ids[:n_selected]
+                    # now decide how many features you would like to use
+                    # features are ordered by their gini importance
+                    n_selected = self._auto_select_num_features(selected_feature_ids)
+                    selected_feature_ids = selected_feature_ids[:n_selected]
+                else:
+                    # make sure no more than n_features are requested
+                    self.opGiniFeatureSelection.NumberOfSelectedFeatures.setValue(
+                        numpy.min([self._selection_params["num_of_feat"], self.n_features])
+                    )
+                    selected_feature_ids = self.opGiniFeatureSelection.SelectedFeatureIDs.value
+            elif self._selection_method == "filter":
+                if self._selection_params["num_of_feat"] == 0:
+                    self.opFilterFeatureSelection.NumberOfSelectedFeatures.setValue(self.n_features)
+                    selected_feature_ids = self.opFilterFeatureSelection.SelectedFeatureIDs.value
+
+                    # now decide how many features you would like to use
+                    # features are ordered
+                    n_selected = self._auto_select_num_features(selected_feature_ids)
+                    selected_feature_ids = selected_feature_ids[:n_selected]
+                else:
+                    # make sure no more than n_features are requested
+                    self.opFilterFeatureSelection.NumberOfSelectedFeatures.setValue(
+                        numpy.min([self._selection_params["num_of_feat"], self.n_features])
+                    )
+                    selected_feature_ids = self.opFilterFeatureSelection.SelectedFeatureIDs.value
             else:
-                # make sure no more than n_features are requested
-                self.opGiniFeatureSelection.NumberOfSelectedFeatures.setValue(
-                    numpy.min([self._selection_params["num_of_feat"], self.n_features])
-                )
-                selected_feature_ids = self.opGiniFeatureSelection.SelectedFeatureIDs.value
-        elif self._selection_method == "filter":
-            if self._selection_params["num_of_feat"] == 0:
-                self.opFilterFeatureSelection.NumberOfSelectedFeatures.setValue(self.n_features)
-                selected_feature_ids = self.opFilterFeatureSelection.SelectedFeatureIDs.value
+                self.opWrapperFeatureSelection.ComplexityPenalty.setValue(self._selection_params["c"])
+                selected_feature_ids = self.opWrapperFeatureSelection.SelectedFeatureIDs.value
 
-                # now decide how many features you would like to use
-                # features are ordered
-                n_selected = self._auto_select_num_features(selected_feature_ids)
-                selected_feature_ids = selected_feature_ids[:n_selected]
-            else:
-                # make sure no more than n_features are requested
-                self.opFilterFeatureSelection.NumberOfSelectedFeatures.setValue(
-                    numpy.min([self._selection_params["num_of_feat"], self.n_features])
-                )
-                selected_feature_ids = self.opFilterFeatureSelection.SelectedFeatureIDs.value
-        else:
-            self.opWrapperFeatureSelection.ComplexityPenalty.setValue(self._selection_params["c"])
-            selected_feature_ids = self.opWrapperFeatureSelection.SelectedFeatureIDs.value
-
-        # create a new layer for display in the volumina viewer
-        # make sure to save the feature matrix used to obtain it
-        # maybe also write down feature computation time and oob error
-        new_matrix = self._convert_featureIDs_to_featureMatrix(selected_feature_ids)
-        new_segmentation, new_oob, new_time = self.retrieve_segmentation(new_matrix)
-        new_feature_selection_result = SuggestFeaturesResult(
-            new_matrix,
-            selected_feature_ids,
-            new_segmentation,
-            self._selection_params,
-            self._selection_method,
-            oob_err=new_oob,
-            feature_calc_time=new_time,
-        )
-        self._add_feature_set_to_results(new_feature_selection_result)
-
-        if not self._initialized_current_features_segmentation_layer:
-            # FIXME: this should probably be moved somewhere else
-            self.opFeatureSelection.setupOutputs()  # deletes cache for realistic feature computation time
-            segmentation_current_features, oob_user, time_user = self.retrieve_segmentation(user_defined_matrix)
-            selected_ids = self._convert_featureMatrix_to_featureIDs(user_defined_matrix)
-            current_features_result = SuggestFeaturesResult(
-                user_defined_matrix,
-                selected_ids,
-                segmentation_current_features,
-                {"num_of_feat": "user", "c": "None"},
-                "user features",
-                oob_user,
-                time_user,
+            # create a new layer for display in the volumina viewer
+            # make sure to save the feature matrix used to obtain it
+            # maybe also write down feature computation time and oob error
+            new_matrix = self._convert_featureIDs_to_featureMatrix(selected_feature_ids)
+            new_segmentation, new_oob, new_time = self.retrieve_segmentation(new_matrix)
+            new_feature_selection_result = SuggestFeaturesResult(
+                new_matrix,
+                selected_feature_ids,
+                new_segmentation,
+                self._selection_params,
+                self._selection_method,
+                oob_err=new_oob,
+                feature_calc_time=new_time,
             )
-            self._add_feature_set_to_results(current_features_result)
-            self._initialized_current_features_segmentation_layer = True
+            self._add_feature_set_to_results(new_feature_selection_result)
 
-        # revert changes to matrix
-        self.opFeatureSelection.SelectionMatrix.setValue(user_defined_matrix)
-        self.opFeatureSelection.SelectionMatrix.setDirty()  # this does not do anything!?!?
-        self.opFeatureSelection.setupOutputs()
-        QtWidgets.QApplication.instance().restoreOverrideCursor()
+            if not self._initialized_current_features_segmentation_layer:
+                # FIXME: this should probably be moved somewhere else
+                self.opFeatureSelection.setupOutputs()  # deletes cache for realistic feature computation time
+                segmentation_current_features, oob_user, time_user = self.retrieve_segmentation(user_defined_matrix)
+                selected_ids = self._convert_featureMatrix_to_featureIDs(user_defined_matrix)
+                current_features_result = SuggestFeaturesResult(
+                    user_defined_matrix,
+                    selected_ids,
+                    segmentation_current_features,
+                    {"num_of_feat": "user", "c": "None"},
+                    "user features",
+                    oob_user,
+                    time_user,
+                )
+                self._add_feature_set_to_results(current_features_result)
+                self._initialized_current_features_segmentation_layer = True
+
+        finally:
+            # revert changes to matrix
+            self.opFeatureSelection.SelectionMatrix.setValue(user_defined_matrix)
+            self.opFeatureSelection.SelectionMatrix.setDirty()  # this does not do anything!?!?
+            self.opFeatureSelection.setupOutputs()
+            QtWidgets.QApplication.instance().restoreOverrideCursor()
 
 
 ## Start Qt event loop unless running in interactive mode.
