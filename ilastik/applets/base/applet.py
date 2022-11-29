@@ -115,16 +115,21 @@ class Applet(with_metaclass(ABCMeta, object)):
 
 
 class DatasetConstraintError(Exception):
-    def __init__(self, appletName, message, unfixable=False, fixing_dialogs=[]):
-        """
+    def __init__(self, appletName, message):
+        """Error to indicate unfitting data for operation
+
+        Exception to be raised in the context of some applet usage, so either
+        associated operators or GUIs.
+
+        Example: dimensionality not suitable (too many/not enough channels)
+
         Args:
-            fixing_dialogs: list of functions to show dialogs which can alleviate the dataset constraint.
+          appletName: applet where the exception is happening
+          message: description of error and possible mitigation measures
         """
         super().__init__()
         self.appletName = appletName
         self.message = message
-        self.unfixable = unfixable
-        self.fixing_dialogs = fixing_dialogs
 
     def __str__(self):
         return "Constraint of '{}' applet was violated: {}".format(self.appletName, self.message)
