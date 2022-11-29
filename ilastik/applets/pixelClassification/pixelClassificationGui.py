@@ -554,9 +554,8 @@ class PixelClassificationGui(LabelingGui):
         else:
             raise NotImplementedError
 
+        thisOpFeatureSelection.ComputeIn2d.setValue(self.featSelDlg.compute_in_2d_compat)
         thisOpFeatureSelection.SelectionMatrix.setValue(self.featSelDlg.selected_features_matrix)
-        thisOpFeatureSelection.SelectionMatrix.setDirty()
-        thisOpFeatureSelection.setupOutputs()
 
     def initViewerControlUi(self):
         localDir = os.path.split(__file__)[0]

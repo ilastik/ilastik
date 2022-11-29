@@ -5,6 +5,7 @@ import numpy
 
 # import scipy
 from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtGui import QCursor
 
 from volumina.widgets import layerwidget
@@ -13,9 +14,14 @@ from volumina.layer import ColortableLayer, GrayscaleLayer, RGBALayer
 from volumina.api import createDataSource
 
 from ilastik.applets.pixelClassification import opPixelClassification
+from ilastik.applets.featureSelection import FeatureSelectionConstraintError
 from lazyflow import graph
 
 import time
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # just a container class, nothing fancy here
@@ -130,6 +136,7 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
         self._initialized_feature_matrix = False
 
         self._selected_feature_set_id = None
+        self.compute_in_2d_compat = self.opFeatureSelection.ComputeIn2d.value
         self.selected_features_matrix = self.opFeatureSelection.SelectionMatrix.value
         self.feature_channel_names = (
             None  # this gets initialized when the matrix is set to all features in _run_selection
@@ -766,15 +773,37 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
         # self.retrieve_segmentation_new(None)
         QtWidgets.QApplication.instance().setOverrideCursor(QCursor(QtCore.Qt.WaitCursor))
         user_defined_matrix = self.opFeatureSelection.SelectionMatrix.value
+        user_compute_in_2d = self.opFeatureSelection.ComputeIn2d.value
+        scales = self.opFeatureSelection.Scales.value
 
         try:
             all_features_active_matrix = numpy.zeros(user_defined_matrix.shape, "bool")
             all_features_active_matrix[:, 1:] = True
             all_features_active_matrix[0, 0] = True
             all_features_active_matrix[1:, 0] = False  # do not use any other feature than gauss smooth on sigma=0.3
-            self.opFeatureSelection.SelectionMatrix.setValue(all_features_active_matrix)
-            self.opFeatureSelection.SelectionMatrix.setDirty()  # this does not do anything!?!?
-            self.opFeatureSelection.setupOutputs()
+            try:
+                self.opFeatureSelection.SelectionMatrix.setValue(all_features_active_matrix)
+            except FeatureSelectionConstraintError as err:
+                # Data dimensions too small along some of the axes, we fix it
+                msg = (
+                    "Some features cannot be used in automatic feature suggestion due to insufficient data dimensions.\n"
+                    "Automatic feature suggestion will continue, however:\n\n"
+                )
+                # x-y: deselect scales completely where filters cannot be computed at all
+                if err.invalid_scales:
+                    all_features_active_matrix[:, numpy.isin(scales, err.invalid_scales)] = False
+                    msg += f"Features with sigmas {err.invalid_scales} will not be taken into account due to insufficient data dimensions in x-y.\n"
+                # z: calculate features in 2D for features that don't fit along z
+                if err.invalid_z_scales:
+                    compute_in_2d = numpy.copy(user_compute_in_2d)
+                    compute_in_2d[numpy.isin(scales, err.invalid_z_scales)] = True
+                    self.opFeatureSelection.ComputeIn2d.setValue(compute_in_2d.tolist())
+                    self.compute_in_2d_compat = compute_in_2d.tolist()
+                    msg += f"Calculating features at sigmas {err.invalid_z_scales} in 2D only."
+
+                logger.info(msg)
+                QMessageBox.information(self, "Not all features are compatible with your data!", msg)
+
             # self.opFeatureSelection.change_feature_cache_size()
             self.feature_channel_names = self.opPixelClassification.FeatureImages.meta["channel_names"]
 
@@ -897,9 +926,8 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
 
         finally:
             # revert changes to matrix
+            self.opFeatureSelection.ComputeIn2d.setValue(user_compute_in_2d)
             self.opFeatureSelection.SelectionMatrix.setValue(user_defined_matrix)
-            self.opFeatureSelection.SelectionMatrix.setDirty()  # this does not do anything!?!?
-            self.opFeatureSelection.setupOutputs()
             QtWidgets.QApplication.instance().restoreOverrideCursor()
 
 
