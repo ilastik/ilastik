@@ -20,9 +20,9 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import os
 import functools
 import platform
+from pathlib import Path
 
 # make the program quit on Ctrl+C
 import signal
@@ -74,15 +74,25 @@ def _applyStyleSheet(app):
     """
     Apply application-wide style-sheet rules.
     """
-    styleSheetPath = os.path.join(os.path.split(__file__)[0], "ilastik-style.qss")
-    with open(styleSheetPath, "r") as f:
-        styleSheetText = f.read()
-        app.setStyleSheet(styleSheetText)
+    styleSheetPath = Path(__file__).parent / "ilastik-style.qss"
+    styleSheetText = styleSheetPath.read_text()
+
+    # Adding style sheet for QSlider fixes an osx-specific issue: updating the
+    # handle programmatically via slider.setValue is not reflected in the UI once
+    # the slider has been moved manually.
+    # This behavior is gone after setting the style sheet.
+    # link to Qt issue: https://bugreports.qt.io/browse/QTBUG-96522
+    # ilastik issue: https://github.com/ilastik/ilastik/issues/2623
+    if platform.system() == "Darwin":
+        stylesheetPathOSX = Path(__file__).parent / "ilastik-style-osx.qss"
+        styleSheetText += stylesheetPathOSX.read_text()
+
+    app.setStyleSheet(styleSheetText)
 
 
 def getSplashScreen():
-    splash_path = os.path.join(os.path.dirname(ilastik.__file__), "ilastik-splash.png")
-    splashImage = QPixmap(splash_path)
+    splash_path = Path(ilastik.__file__).parent / "ilastik-splash.png"
+    splashImage = QPixmap(str(splash_path))
     splashScreen = QSplashScreen(splashImage)
     return splashScreen
 
