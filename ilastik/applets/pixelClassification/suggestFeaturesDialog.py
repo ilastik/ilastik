@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 __author__ = "fabian"
 
+import os
+
 import numpy
 
 # import scipy
@@ -499,7 +501,6 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
         If the user selects a specific feature set in the comboBox in the bottom row then the segmentation of this
         feature set will be displayed in the viewer
         """
-
         id = self.all_feature_sets_combo_box.currentIndex()
         for i, layer in enumerate(self.layerstack):
             layer.visible = i == id
@@ -812,7 +813,10 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
                     msg += f"Calculating features at sigmas {err.invalid_z_scales} in 2D only."
 
                 logger.info(msg)
-                QMessageBox.information(self, "Not all features are compatible with your data!", msg)
+
+                # suppress the popup in pytest:
+                if "PYTEST_CURRENT_TEST" not in os.environ:
+                    QMessageBox.information(self, "Not all features are compatible with your data!", msg)
 
             # self.opFeatureSelection.change_feature_cache_size()
             self.feature_channel_names = self.opPixelClassification.FeatureImages.meta["channel_names"]
@@ -940,6 +944,7 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
             self.opFeatureSelection.ComputeIn2d.setValue(user_compute_in_2d)
             self.opFeatureSelection.SelectionMatrix.setValue(user_defined_matrix)
             QtWidgets.QApplication.instance().restoreOverrideCursor()
+            self._runComplete.emit()
 
 
 ## Start Qt event loop unless running in interactive mode.
