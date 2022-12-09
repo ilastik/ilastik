@@ -92,6 +92,12 @@ class SuggestFeaturesResult(object):
 
 
 class SuggestFeaturesDialog(QtWidgets.QDialog):
+
+    # publish the new feature_matrix, and compute_in_2d list
+    resultSelected = QtCore.pyqtSignal(numpy.ndarray, list)
+    # for testing purposes
+    _runComplete = QtCore.pyqtSignal()
+
     def __init__(self, current_opFeatureSelection, current_pixelClassificationApplet, labels_list_data, parent=None):
         """
 
@@ -175,7 +181,11 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
         self._handle_selected_method_changed()
         self._update_parameters()
 
+        self.accepted.connect(self._emitResults)
         self.resize(1366, 768)
+
+    def _emitResults(self):
+        self.resultSelected.emit(self.selected_features_matrix, self.compute_in_2d_compat)
 
     def open(self):
         """
@@ -926,6 +936,7 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
 
         finally:
             # revert changes to matrix
+            self.opFeatureSelection.SelectionMatrix.setValue(None)
             self.opFeatureSelection.ComputeIn2d.setValue(user_compute_in_2d)
             self.opFeatureSelection.SelectionMatrix.setValue(user_defined_matrix)
             QtWidgets.QApplication.instance().restoreOverrideCursor()
