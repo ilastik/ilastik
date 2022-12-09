@@ -465,9 +465,7 @@ class PixelClassificationGui(LabelingGui):
 
         self.labelingDrawerUi.liveUpdateButton.toggled.connect(self.setLiveUpdateEnabled)
 
-        self.initFeatSelDlg()
-        self.labelingDrawerUi.suggestFeaturesButton.clicked.connect(self.show_feature_selection_dialog)
-        self.featSelDlg.accepted.connect(self.update_features_from_dialog)
+        self.labelingDrawerUi.suggestFeaturesButton.clicked.connect(self.show_suggest_features_dialog)
         self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
 
         # Always force at least two labels because it makes no sense to have less here
@@ -501,7 +499,7 @@ class PixelClassificationGui(LabelingGui):
         self.__cleanup_fns.append(unsub_callback)
         self.setLiveUpdateEnabled()
 
-    def initFeatSelDlg(self):
+    def initSuggestFeaturesDialog(self):
         if self.topLevelOperatorView.name == "OpPixelClassification":
             thisOpFeatureSelection = (
                 self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
@@ -525,12 +523,14 @@ class PixelClassificationGui(LabelingGui):
         else:
             raise NotImplementedError
 
-        self.featSelDlg = SuggestFeaturesDialog(thisOpFeatureSelection, self, self.labelListData, self)
+        return SuggestFeaturesDialog(thisOpFeatureSelection, self, self.labelListData, self)
 
-    def show_feature_selection_dialog(self):
-        self.featSelDlg.open()
+    def show_suggest_features_dialog(self):
+        suggestFeaturesDialog = self.initSuggestFeaturesDialog()
+        suggestFeaturesDialog.resultSelected.connect(self.update_features_from_dialog)
+        suggestFeaturesDialog.open()
 
-    def update_features_from_dialog(self):
+    def update_features_from_dialog(self, feature_matrix, compute_in_2d):
         if self.topLevelOperatorView.name == "OpPixelClassification":
             thisOpFeatureSelection = (
                 self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
@@ -554,8 +554,9 @@ class PixelClassificationGui(LabelingGui):
         else:
             raise NotImplementedError
 
-        thisOpFeatureSelection.ComputeIn2d.setValue(self.featSelDlg.compute_in_2d_compat)
-        thisOpFeatureSelection.SelectionMatrix.setValue(self.featSelDlg.selected_features_matrix)
+        thisOpFeatureSelection.SelectionMatrix.setValue(None)
+        thisOpFeatureSelection.ComputeIn2d.setValue(compute_in_2d)
+        thisOpFeatureSelection.SelectionMatrix.setValue(feature_matrix)
 
     def initViewerControlUi(self):
         localDir = os.path.split(__file__)[0]
