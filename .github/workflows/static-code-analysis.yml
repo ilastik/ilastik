@@ -14,8 +14,11 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: '0'
-      - uses: akaihola/darker@1.4.0
+      - uses: akaihola/darker@1.5.1
         with:
           options: "--check --diff --revision=origin/main..."
           src: "."
-          version: "1.4.0"
+          # due to incompatibility of black with the current release of the
+          # darker github action, we need to use a non-release version
+          # ref: https://github.com/ilastik/ilastik/issues/2640
+          version: "@3c675b009d747cadd6e8048d2c57a5b1cd54fb3e"
