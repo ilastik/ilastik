@@ -545,7 +545,6 @@ class VoxelSegmentationGui(LabelingGui):
         else:
             raise NotImplementedError
 
-        thisOpFeatureSelection.SelectionMatrix.setValue(None)
         thisOpFeatureSelection.ComputeIn2d.setValue(compute_in_2d)
         thisOpFeatureSelection.SelectionMatrix.setValue(self.featSelDlg.selected_features_matrix)
 

@@ -266,14 +266,14 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
             selections = numpy.array(
                 [
-                    [True, False, False, False, False, False, False],
-                    [False, True, False, False, False, False, False],
-                    [False, True, False, False, False, False, False],
-                    [False, False, False, False, False, False, False],
-                    [False, False, False, False, False, False, False],
-                    [False, False, False, False, False, False, False],
+                    [1, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 0, 0, 0, 0, 0],
+                    [0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0],
                 ]
-            )
+            ).astype(bool)
 
             opFeatures.SelectionMatrix.setValue(selections)
 
@@ -715,18 +715,18 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             scales = [0.3, 0.7, 15.0]
             selections = numpy.array(
                 [
-                    [True, False, False],
-                    [False, True, False],
-                    [False, True, False],
-                    [False, False, False],
-                    [False, False, False],
-                    [False, False, False],
+                    [1, 0, 0],
+                    [0, 1, 0],
+                    [0, 1, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0]
                 ]
-            )
+            ).astype(bool)  # fmt: skip
 
             opFeatures.SelectionMatrix.setValue(None)
             opFeatures.Scales.setValue(scales)
-            opFeatures.ComputeIn2d.setValue([False for _ in scales])
+            opFeatures.ComputeIn2d.setValue([False] * len(scales))
             opFeatures.SelectionMatrix.setValue(selections)
 
             gui.currentGui()._labelControlUi.suggestFeaturesButton.click()

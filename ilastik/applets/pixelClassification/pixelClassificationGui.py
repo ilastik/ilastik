@@ -554,7 +554,6 @@ class PixelClassificationGui(LabelingGui):
         else:
             raise NotImplementedError
 
-        thisOpFeatureSelection.SelectionMatrix.setValue(None)
         thisOpFeatureSelection.ComputeIn2d.setValue(compute_in_2d)
         thisOpFeatureSelection.SelectionMatrix.setValue(feature_matrix)
 

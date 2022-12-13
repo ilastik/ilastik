@@ -18,11 +18,11 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from typing import Callable, Iterable, Union
+from typing import Callable, Iterable, Sequence, Union
 
 from ilastik.applets.base.applet import DatasetConstraintError
 
-_SCALES = Iterable[Union[int, float]]
+_SCALES = Sequence[Union[int, float]]
 
 
 class FeatureSelectionConstraintError(DatasetConstraintError):
@@ -30,8 +30,8 @@ class FeatureSelectionConstraintError(DatasetConstraintError):
         self,
         appletName: str,
         invalid_scales: _SCALES,
-        invalid_z_scales: _SCALES,
-        fixing_dialogs=Iterable[Callable],
+        invalid_z_scales: _SCALES = (),
+        fixing_dialogs: Iterable[Callable] = (),
     ):
         """
         Args:
@@ -55,7 +55,7 @@ class FeatureSelectionConstraintError(DatasetConstraintError):
         self.invalid_z_scales = invalid_z_scales
 
     def __str__(self):
-        return f"Constraint of '{self.appletName}' applet was violated: {self.message}"
+        return f"Constraint of {self.appletName!r} applet was violated: {self.message}"
 
 
 from .featureSelectionApplet import FeatureSelectionApplet

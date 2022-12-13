@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 __author__ = "fabian"
 
+from contextlib import ExitStack
 import os
 
 import numpy
 
 # import scipy
 from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QMessageBox, QApplication
 from PyQt5.QtGui import QCursor
 
 from volumina.widgets import layerwidget
@@ -27,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 # just a container class, nothing fancy here
-class SuggestFeaturesResult(object):
+class SuggestFeaturesResult:
     def __init__(
         self,
         feature_matrix,
@@ -782,12 +783,18 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
         showing the segmentation result achieved with the selected set
         """
         # self.retrieve_segmentation_new(None)
-        QtWidgets.QApplication.instance().setOverrideCursor(QCursor(QtCore.Qt.WaitCursor))
         user_defined_matrix = self.opFeatureSelection.SelectionMatrix.value
         user_compute_in_2d = self.opFeatureSelection.ComputeIn2d.value
         scales = self.opFeatureSelection.Scales.value
 
-        try:
+        QApplication.instance().setOverrideCursor(QCursor(QtCore.Qt.WaitCursor))
+
+        with ExitStack() as stack:
+            stack.callback(self._runComplete.emit)
+            stack.callback(QApplication.instance().restoreOverrideCursor)
+            stack.callback(self.opFeatureSelection.ComputeIn2d.setValue, user_compute_in_2d)
+            stack.callback(self.opFeatureSelection.SelectionMatrix.setValue, user_defined_matrix)
+
             all_features_active_matrix = numpy.zeros(user_defined_matrix.shape, "bool")
             all_features_active_matrix[:, 1:] = True
             all_features_active_matrix[0, 0] = True
@@ -937,14 +944,6 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
                 )
                 self._add_feature_set_to_results(current_features_result)
                 self._initialized_current_features_segmentation_layer = True
-
-        finally:
-            # revert changes to matrix
-            self.opFeatureSelection.SelectionMatrix.setValue(None)
-            self.opFeatureSelection.ComputeIn2d.setValue(user_compute_in_2d)
-            self.opFeatureSelection.SelectionMatrix.setValue(user_defined_matrix)
-            QtWidgets.QApplication.instance().restoreOverrideCursor()
-            self._runComplete.emit()
 
 
 ## Start Qt event loop unless running in interactive mode.
