@@ -571,29 +571,19 @@ class NNClassGui(LabelingGui):
             super()._changeInteractionMode(toolId)
 
     def _createPredLayer(self, predictionSlot, ref_label):
-        predictsrc = LazyflowSource(predictionSlot)
-        predictionLayer = AlphaModulatedLayer(predictsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0))
+        predictionSource = LazyflowSource(predictionSlot)
+        predictionLayer = AlphaModulatedLayer(predictionSource, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0))
         predictionLayer.visible = self.labelingDrawerUi.livePrediction.isChecked()
         predictionLayer.opacity = 0.5
         predictionLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
 
-        def setLayerColor(c, predictLayer_=predictionLayer, initializing=False):
-            if not initializing and predictLayer_ not in self.layerstack:
-                # This layer has been removed from the layerstack already.
-                # Don't touch it.
-                return
-            predictLayer_.tintColor = c
+        def setLayerColor(color, layer=predictionLayer, initializing=False):
+            if initializing or layer in self.layerstack:
+                layer.tintColor = color
 
-        def setPredLayerName(n, predictLayer_=predictionLayer, initializing=False):
-            """
-            function for setting the names for every Channel
-            """
-            if not initializing and predictLayer_ not in self.layerstack:
-                # This layer has been removed from the layerstack already.
-                # Don't touch it.
-                return
-            newName = "Prediction for %s" % n
-            predictLayer_.name = newName
+        def setPredLayerName(name, layer=predictionLayer, initializing=False):
+            if initializing or layer in self.layerstack:
+                layer.name = f"Prediction for {name}"
 
         def changePredLayerColor(ref_label_, _checked):
             new_color = QColorDialog.getColor(ref_label_.pmapColor(), self, "Select Layer Color")
