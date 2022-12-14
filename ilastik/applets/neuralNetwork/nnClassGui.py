@@ -39,6 +39,8 @@ from PyQt5.QtCore import (
 )
 from PyQt5.QtGui import QColor, QIcon
 from PyQt5.QtWidgets import (
+    QAction,
+    QColorDialog,
     QComboBox,
     QDesktopWidget,
     QDialog,
@@ -568,6 +570,36 @@ class NNClassGui(LabelingGui):
         if ALLOW_TRAINING or toolId != Tool.Paint:
             super()._changeInteractionMode(toolId)
 
+    def _createPredLayer(self, predictionSlot, ref_label):
+        predictionSource = LazyflowSource(predictionSlot)
+        predictionLayer = AlphaModulatedLayer(predictionSource, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0))
+        predictionLayer.visible = self.labelingDrawerUi.livePrediction.isChecked()
+        predictionLayer.opacity = 0.5
+        predictionLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
+
+        def setLayerColor(color, layer=predictionLayer, initializing=False):
+            if initializing or layer in self.layerstack:
+                layer.tintColor = color
+
+        def setPredLayerName(name, layer=predictionLayer, initializing=False):
+            if initializing or layer in self.layerstack:
+                layer.name = f"Prediction for {name}"
+
+        def changePredLayerColor(ref_label_, _checked):
+            new_color = QColorDialog.getColor(ref_label_.pmapColor(), self, "Select Layer Color")
+            if new_color.isValid():
+                ref_label_.setPmapColor(new_color)
+
+        setPredLayerName(ref_label.name, initializing=True)
+        ref_label.pmapColorChanged.connect(setLayerColor)
+        ref_label.nameChanged.connect(setPredLayerName)
+
+        predictionLayer.contexts.append(
+            QAction("Change color", None, triggered=partial(changePredLayerColor, ref_label))
+        )
+
+        return predictionLayer
+
     def setupLayers(self):
         """
         which layers will be shown in the layerviewergui.
@@ -584,35 +616,7 @@ class NNClassGui(LabelingGui):
             logger.info(f"prediction_slot: {predictionSlot}")
             if predictionSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
-                predictsrc = LazyflowSource(predictionSlot)
-                predictionLayer = AlphaModulatedLayer(predictsrc, tintColor=ref_label.pmapColor(), normalize=(0.0, 1.0))
-                predictionLayer.visible = self.labelingDrawerUi.livePrediction.isChecked()
-                predictionLayer.opacity = 0.5
-                predictionLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
-
-                def setLayerColor(c, predictLayer_=predictionLayer, initializing=False):
-                    if not initializing and predictLayer_ not in self.layerstack:
-                        # This layer has been removed from the layerstack already.
-                        # Don't touch it.
-                        return
-                    predictLayer_.tintColor = c
-
-                def setPredLayerName(n, predictLayer_=predictionLayer, initializing=False):
-                    """
-                    function for setting the names for every Channel
-                    """
-                    if not initializing and predictLayer_ not in self.layerstack:
-                        # This layer has been removed from the layerstack already.
-                        # Don't touch it.
-                        return
-                    newName = "Prediction for %s" % n
-                    predictLayer_.name = newName
-
-                setPredLayerName(channel, initializing=True)
-                setPredLayerName(ref_label.name, initializing=True)
-                ref_label.pmapColorChanged.connect(setLayerColor)
-                ref_label.nameChanged.connect(setPredLayerName)
-                layers.append(predictionLayer)
+                layers.append(self._createPredLayer(predictionSlot, ref_label))
 
         # Add the overlay second to last
         overlaySlot = self.topLevelOperatorView.OverlayImages
@@ -655,6 +659,11 @@ class NNClassGui(LabelingGui):
                 self.labelingDrawerUi.thresToolButton.hide()
 
         self.handleLabelSelectionChange()
+
+        # remove the labels layer in case there is not training,
+        # There is no use for this layer and all other controls are hidden as well
+        if not ALLOW_TRAINING:
+            layers = [x for x in layers if x.name != "Labels"]
 
         return layers
 
