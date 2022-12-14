@@ -10,23 +10,23 @@
 QSlider::add-page:horizontal {
     background: #e0e0e0;
     border: 1px solid #dadada;
-    border-radius: 2px
+    border-radius: 2px;
 }
 
-QSlider{
-    margin: 2px 2px;
+QSlider {
+    margin: 2px;
 }
 
 QSlider::sub-page:horizontal {
     background: #0a82ff;
     border: 1px solid #097ef8;
-    border-radius: 2px
+    border-radius: 2px;
 }
 
 QSlider::groove:horizontal {
     border: 1px solid #000000;
     height: 2px;
-    border-radius: 2px
+    border-radius: 2px;
 }
 
 QSlider::handle:horizontal {
