@@ -38,6 +38,7 @@ from lazyflow.utility.timer import Timer, timeLogged
 from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 
 from ilastik.applets.pixelClassification.pixelClassificationApplet import PixelClassificationApplet
+from ilastik.applets.pixelClassification.suggestFeaturesDialog import SuggestFeaturesDialog
 
 DATA_SELECTION_INDEX = 0
 PIXEL_CLASSIFICATION_INDEX = 2
@@ -152,7 +153,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         else:
             cls.using_random_data = True
             cls.SAMPLE_DATA = os.path.split(__file__)[0] + "/random_data.npy"
-            data = numpy.random.random((1, 200, 200, 50, 1))
+            data = numpy.random.random((1, 50, 200, 200, 1))
             data *= 256
             numpy.save(cls.SAMPLE_DATA, data.astype(numpy.uint8))
 
@@ -265,14 +266,14 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
             selections = numpy.array(
                 [
-                    [True, False, False, False, False, False, False],
-                    [True, False, False, False, False, False, False],
-                    [True, False, False, False, False, False, False],
-                    [False, False, False, False, False, False, False],
-                    [False, False, False, False, False, False, False],
-                    [False, False, False, False, False, False, False],
+                    [1, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 0, 0, 0, 0, 0],
+                    [0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0],
                 ]
-            )
+            ).astype(bool)
 
             opFeatures.SelectionMatrix.setValue(selections)
 
@@ -675,6 +676,79 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             gui.currentGui()._labelControlUi.liveUpdateButton.click()
 
             self.waitForViews(gui.currentGui().editor.imageViews)
+
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
+
+    def test_91_suggestFeaturesDlg_close_no_change(self):
+        """
+        Click the "interactive mode" checkbox and see if any errors occur.
+        """
+
+        def impl():
+            workflow = self.shell.projectManager.workflow
+            pixClassApplet = workflow.pcApplet
+            gui = pixClassApplet.getMultiLaneGui()
+
+            gui.currentGui()._labelControlUi.suggestFeaturesButton.click()
+            wait_until(lambda: isinstance(QApplication.instance().activeModalWidget(), SuggestFeaturesDialog))
+            dlg = QApplication.instance().activeModalWidget()
+            dlg.accept()
+
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
+
+    def test_92_suggestFeaturesDlg_run(self):
+        """
+        Click the "interactive mode" checkbox and see if any errors occur.
+        """
+
+        def impl():
+            workflow = self.shell.projectManager.workflow
+            pixClassApplet = workflow.pcApplet
+            gui = pixClassApplet.getMultiLaneGui()
+            opFeatures = workflow.featureSelectionApplet.topLevelOperator
+
+            # this time we want to trigger the message box that informs us,
+            # that some sigmas can only be computed in 2D
+            # so we add a sigma that doesn't fit into size of 50 along z:
+            scales = [0.3, 0.7, 15.0]
+            selections = numpy.array(
+                [
+                    [1, 0, 0],
+                    [0, 1, 0],
+                    [0, 1, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0]
+                ]
+            ).astype(bool)  # fmt: skip
+
+            opFeatures.SelectionMatrix.setValue(None)
+            opFeatures.Scales.setValue(scales)
+            opFeatures.ComputeIn2d.setValue([False] * len(scales))
+            opFeatures.SelectionMatrix.setValue(selections)
+
+            gui.currentGui()._labelControlUi.suggestFeaturesButton.click()
+            wait_until(lambda: isinstance(QApplication.instance().activeModalWidget(), SuggestFeaturesDialog))
+            dlg = QApplication.instance().activeModalWidget()
+            dlg.number_of_feat_box.setValue(2)
+
+            with wait_signal(dlg._runComplete, timeout=10000):
+                dlg.run_button.click()
+
+            # select the filtered feature set in the dialog and accept
+            idx = dlg.all_feature_sets_combo_box.findText("2 features, filter selection", Qt.MatchContains)
+            dlg.all_feature_sets_combo_box.setCurrentIndex(idx)
+            QApplication.processEvents()
+            dlg.accept()
+            QApplication.processEvents()
+
+            features_dlg = dlg.selected_features_matrix
+            features_after = opFeatures.SelectionMatrix.value
+
+            numpy.testing.assert_array_equal(features_dlg, features_after)
+            numpy.testing.assert_array_equal(opFeatures.ComputeIn2d.value, [False, False, True])
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)

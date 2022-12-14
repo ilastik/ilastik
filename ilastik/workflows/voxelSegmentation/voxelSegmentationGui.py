@@ -20,7 +20,7 @@ from lazyflow.operators.ioOperators import OpInputDataReader
 
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.pixelClassification import pixelClassificationGui
-from ilastik.applets.pixelClassification.FeatureSelectionDialog import FeatureSelectionDialog
+from ilastik.applets.pixelClassification.suggestFeaturesDialog import SuggestFeaturesDialog
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import bind
 
@@ -77,9 +77,7 @@ class VoxelSegmentationGui(LabelingGui):
         self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.liveUpdateButton.toggled.connect(self.toggleInteractive)
 
-        self.initFeatSelDlg()
-        self.labelingDrawerUi.suggestFeaturesButton.clicked.connect(self.show_feature_selection_dialog)
-        self.featSelDlg.accepted.connect(self.update_features_from_dialog)
+        self.labelingDrawerUi.suggestFeaturesButton.clicked.connect(self.show_suggest_features_dialog)
         self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
 
         # Always force at least two labels because it makes no sense to have less here
@@ -147,11 +145,11 @@ class VoxelSegmentationGui(LabelingGui):
         self.topLevelOperatorView.LabelImages.notifyDirty(bind(resetBestPlanes))
         self.labelingDrawerUi.bestAnnotationPlaneButton.clicked.connect(SelectBestAnnotationPlane)
 
-    def initFeatSelDlg(self):
+    def initSuggestFeaturesDialog(self):
         thisOpFeatureSelection = (
             self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
         )
-        self.featSelDlg = FeatureSelectionDialog(thisOpFeatureSelection, self, self.labelListData)
+        return SuggestFeaturesDialog(thisOpFeatureSelection, self, self.labelListData, self)
 
     def menus(self):
         menus = super().menus()
@@ -518,10 +516,12 @@ class VoxelSegmentationGui(LabelingGui):
     ###########################################
     ###########################################
 
-    def show_feature_selection_dialog(self):
-        self.featSelDlg.exec_()
+    def show_suggest_features_dialog(self):
+        suggestFeaturesDialog = self.initSuggestFeaturesDialog()
+        suggestFeaturesDialog.resultSelected.connect(self.update_features_from_dialog)
+        suggestFeaturesDialog.open()
 
-    def update_features_from_dialog(self):
+    def update_features_from_dialog(self, feature_matrix, compute_in_2d):
         if self.topLevelOperatorView.name == "OpPixelClassification":
             thisOpFeatureSelection = (
                 self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
@@ -545,9 +545,8 @@ class VoxelSegmentationGui(LabelingGui):
         else:
             raise NotImplementedError
 
+        thisOpFeatureSelection.ComputeIn2d.setValue(compute_in_2d)
         thisOpFeatureSelection.SelectionMatrix.setValue(self.featSelDlg.selected_features_matrix)
-        thisOpFeatureSelection.SelectionMatrix.setDirty()
-        thisOpFeatureSelection.setupOutputs()
 
     def initViewerControlUi(self):
         localDir = os.path.split(__file__)[0]
