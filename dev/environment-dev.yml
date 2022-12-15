@@ -49,7 +49,7 @@ dependencies:
   # - pytorch 1.9.*=*cu*
   # - cudatoolkit 11.1.*
   - tensorflow 1.14.*
-  - tiktorch >=22.7.1
+  - tiktorch >=22.12.0
 
   # dev-only dependencies
   - conda-build
