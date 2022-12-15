@@ -362,6 +362,7 @@ class ModelStateControl(QWidget):
 
         return checks
 
+    @threadRouted
     def _showErrorMessage(self, exc):
         logger.error("".join(traceback.format_exception(etype=type(exc), value=exc, tb=exc.__traceback__)))
         QMessageBox.critical(
