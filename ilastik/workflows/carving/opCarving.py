@@ -257,9 +257,6 @@ class OpCarving(Operator):
 
         self.AllObjectNames.meta.dtype = object
 
-    def connectToPreprocessingApplet(self, applet):
-        self.PreprocessingApplet = applet
-
     def hasCurrentObject(self):
         """
         Returns current object name. None if it is not set.

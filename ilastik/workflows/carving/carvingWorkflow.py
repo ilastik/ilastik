@@ -126,8 +126,6 @@ class CarvingWorkflow(Workflow):
         opPreprocessing = self.preprocessingApplet.topLevelOperator.getLane(laneIndex)
         opCarvingLane = self.carvingApplet.topLevelOperator.getLane(laneIndex)
 
-        opCarvingLane.connectToPreprocessingApplet(self.preprocessingApplet)
-
         op5Raw = OpReorderAxes(parent=self)
         op5Raw.AxisOrder.setValue("txyzc")
         op5Raw.Input.connect(opData.ImageGroup[DATA_ROLE_RAW_DATA])
