@@ -47,6 +47,7 @@ from PyQt5.QtWidgets import (
 from ilastik.utility.gui import threadRouted
 from volumina.api import createDataSource, ArraySource
 from volumina.layer import GrayscaleLayer, ColortableLayer, generateRandomColors
+from volumina.utility import ShortcutManager
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 from lazyflow.request import Request
@@ -360,6 +361,25 @@ class WsdtGui(LayerViewerGui):
             layer.visible = True
             layer.opacity = 1.0
             layers.append(layer)
-            del layer
+
+            def toggleTopToBottom():
+                index = self.layerstack.layerIndex(layer)
+                self.layerstack.selectRow(index)
+                if index == 0:
+                    self.layerstack.moveSelectedToBottom()
+                else:
+                    self.layerstack.moveSelectedToTop()
+
+            layer.shortcutRegistration = (
+                "i",
+                ShortcutManager.ActionInfo(
+                    "Watershed Layers",
+                    "Bring Input To Top/Bottom",
+                    "Bring Input To Top/Bottom",
+                    toggleTopToBottom,
+                    self.viewerControlWidget(),
+                    layer,
+                ),
+            )
 
         return layers

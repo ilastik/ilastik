@@ -25,6 +25,7 @@ from PyQt5.QtGui import QColor
 
 from volumina.api import createDataSource
 from volumina.layer import ColortableLayer
+from volumina.utility import ShortcutManager
 
 # ilastik
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
@@ -54,16 +55,6 @@ class PreprocessingViewerGui(LayerViewerGui):
 
             layers.append(watershedLayer)
 
-        """ FIXME: disabled for 0.6 release
-        wsSourceSlot = opLane.WatershedSourceImage
-        if wsSourceSlot.ready():
-            wsSourceLayer = self.createStandardLayerFromSlot( wsSourceSlot )
-            wsSourceLayer.name = "Watershed Source"
-            wsSourceLayer.visible = False
-            wsSourceLayer.opacity = 1.0
-            layers.append( wsSourceLayer )
-        """
-
         filteredSlot = opLane.FilteredImage
         if filteredSlot.ready():
             filteredLayer = self.createStandardLayerFromSlot(filteredSlot)
@@ -87,5 +78,25 @@ class PreprocessingViewerGui(LayerViewerGui):
             inputLayer.visible = True
             inputLayer.opacity = 1.0
             layers.append(inputLayer)
+
+            def toggleTopToBottom():
+                index = self.layerstack.layerIndex(inputLayer)
+                self.layerstack.selectRow(index)
+                if index == 0:
+                    self.layerstack.moveSelectedToBottom()
+                else:
+                    self.layerstack.moveSelectedToTop()
+
+            inputLayer.shortcutRegistration = (
+                "i",
+                ShortcutManager.ActionInfo(
+                    "Preprocessing Layers",
+                    "Bring Input To Top/Bottom",
+                    "Bring Input To Top/Bottom",
+                    toggleTopToBottom,
+                    self.viewerControlWidget(),
+                    inputLayer,
+                ),
+            )
 
         return layers
