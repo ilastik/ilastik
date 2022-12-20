@@ -1,13 +1,142 @@
 from collections import OrderedDict
 import numpy as np
+from typing import Optional, Sequence
 
 from elf.segmentation.watershed import distance_transform_watershed
+from elf.parallel.common import get_blocking
+
+import vigra
 
 from lazyflow.utility import OrderedSignal
+from lazyflow.request import Request
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice, sliceToRoi
-from lazyflow.operators import OpBlockedArrayCache, OpValueCache, OpMetadataInjector
-from lazyflow.operators.generic import OpPixelOperator, OpSingleChannelSelector
+from lazyflow.operators import OpBlockedArrayCache, OpMetadataInjector
+from lazyflow.operators.generic import OpPixelOperator
+from lazyflow.utility.timer import Timer
+
+from concurrent.futures import ThreadPoolExecutor
+import concurrent.futures
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def parallel_watershed(
+    data: np.ndarray,
+    threshold: float,
+    sigma_seeds: float,
+    sigma_weights: float,
+    minsize: int,
+    alpha: float,
+    pixel_pitch: Sequence[float],
+    non_max_suppression: bool,
+    block_shape: Optional[Sequence[int]] = None,
+    halo: Optional[Sequence[int]] = None,
+    max_workers: Optional[int] = None,
+):
+    """Parallel dt watershed with hard block boundaries.
+
+    parallel wrapper around elf.segmentation.watershed.distance_transform_watershed
+
+    Args:
+      data: data to run watershed on, ndarray with either 2 or 3 dims
+      threshold: data will be thresholded at this value, distance transform will be calculated from
+        the remaining mask
+      sigma_seeds: smoothing factor that is applied to the watershed seed map
+      sigma_weights: smoothing factor that is applied to the watershed weight map
+      minsize: minimal boundary size in pixels
+      alpha: how to blend data and distance transform
+      pixel_pitch: anisotropy factor: pixel distance along the three axes
+      non_max_suppression: flag to enable apply non-maxmimum suppression to filter out seeds
+      block_shape: size of blocks to process, defaults to 128 for 3D, 512 for 2D in each spacial dimension
+      halo: portion of each block to discard after processing for smoother boundary regions
+        if not specified: 10 voxels around the block in each direction
+      max_workers: if not specified or None, will use number of workers in the global Requests threadpool
+
+    """
+
+    logger.info(f"blockwise watershed with {max_workers} threads.")
+    shape = data.shape
+    ndim = len(shape)
+
+    assert ndim in [2, 3], "Watershed segmentor will only work on 2D and 3D data"
+
+    base_block = 512 if ndim == 2 else 128
+    # check for None arguments and set to default values
+    block_shape = (base_block,) * ndim if block_shape is None else block_shape
+    # nifty requires the halo shape to be of type list
+    halo = [10] * ndim if halo is None else halo
+    blocking = get_blocking(data, block_shape, roi=None)
+
+    if max_workers is None:
+        max_workers = max(1, Request.global_thread_pool.num_workers)
+
+    n_blocks = blocking.numberOfBlocks
+
+    labels = np.zeros_like(data, dtype=np.uint32)
+
+    # watershed for a single block
+    def ws_block(block_index):
+        nonlocal labels
+
+        # get the block with halo and the slicings corresponding to
+        # the block with halo, the block without halo and the
+        # block without halo in loocal coordinates
+        block = blocking.getBlockWithHalo(blockIndex=block_index, halo=halo)
+        inner_slicing = roiToSlice(block.innerBlock.begin, block.innerBlock.end)
+        outer_slicing = roiToSlice(block.outerBlock.begin, block.outerBlock.end)
+        inner_local_slicing = roiToSlice(block.innerBlockLocal.begin, block.innerBlockLocal.end)
+
+        with Timer() as btimer:
+            # write watershed result to the label array
+            ws_outer, _ = distance_transform_watershed(
+                data[outer_slicing],
+                threshold,
+                sigma_seeds,
+                sigma_weights,
+                minsize,
+                alpha,
+                pixel_pitch,
+                non_max_suppression,
+            )
+
+        logger.debug(
+            f"processing block {block_index} {block.outerBlock.begin}-{block.outerBlock.end} took {btimer.seconds()}"
+        )
+
+        ws_inner = vigra.analysis.labelMultiArray(ws_outer[inner_local_slicing])
+
+        labels[inner_slicing] = ws_inner
+        # return the max-id for this block, that will be used as offset
+        return ws_inner.max()
+
+    with Timer() as wstimer:
+        # run the watershed blocks in parallel
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            offsets = np.fromiter(executor.map(ws_block, range(n_blocks)), dtype=np.int64)
+
+    logger.info(f"parallel ws took {wstimer.seconds()} s")
+    # compute the block offsets and the max id
+    last_max_id = offsets[-1]
+    offsets = np.roll(offsets, 1)
+    # In order to (in future) use this function in carving, labels have to start at 1
+    offsets[0] = 1
+    offsets = np.cumsum(offsets)
+    # the max_id is the offset of the last block + the max id in the last block
+    max_id = last_max_id + offsets[-1]
+
+    # add the offset to blocks to make ids unique
+    def add_offset_block(block_index):
+        block = blocking.getBlock(block_index)
+        block = roiToSlice(block.begin, block.end)
+        labels[block] += offsets[block_index]
+
+    # add offsets in parallel
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        concurrent.futures.wait([executor.submit(add_offset_block, block_index) for block_index in range(n_blocks)])
+
+    return labels, max_id
 
 
 class OpWsdt(Operator):
@@ -31,7 +160,7 @@ class OpWsdt(Operator):
     Superpixels = OutputSlot()
 
     def __init__(self, *args, **kwargs):
-        super(OpWsdt, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.debug_results = None
         self.watershed_completed = OrderedSignal()
 
@@ -69,7 +198,9 @@ class OpWsdt(Operator):
         else:
             pixel_pitch_to_pass = self.PixelPitch.value
 
-        ws, max_id = distance_transform_watershed(
+        max_workers = max(1, Request.global_thread_pool.num_workers)
+
+        ws, max_id = parallel_watershed(
             pmap[..., 0],
             self.Threshold.value,
             self.Sigma.value,
@@ -78,8 +209,10 @@ class OpWsdt(Operator):
             self.Alpha.value,
             pixel_pitch_to_pass,
             self.ApplyNonmaxSuppression.value,
+            block_shape=None,
+            halo=None,
+            max_workers=max_workers,
         )
-
         result[..., 0] = ws
 
         self.watershed_completed()
@@ -118,7 +251,7 @@ class OpCachedWsdt(Operator):
     ThresholdedInput = OutputSlot()
 
     def __init__(self, *args, **kwargs):
-        super(OpCachedWsdt, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         my_slot_names = set([slot.name for slot in self.inputSlots + self.outputSlots])
         wsdt_slot_names = set([slot.name for slot in OpWsdt.inputSlots + OpWsdt.outputSlots])
         assert wsdt_slot_names.issubset(my_slot_names), (
