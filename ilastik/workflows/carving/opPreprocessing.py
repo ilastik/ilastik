@@ -349,8 +349,6 @@ class OpPreprocessing(Operator):
 
         self._opWatershedSourceCache = OpBlockedArrayCache(parent=self)
 
-        # self.PreprocessedData.connect( self._opMstProvider.MST )
-
         # Display slots
         self.FilteredImage.connect(self._opFilterCache.Output)
         self.WatershedImage.connect(self._opWatershedCache.Output)
@@ -418,9 +416,8 @@ class OpPreprocessing(Operator):
         self._dirty = False
         self.enableDownstream(True)
 
-        # copy over seeds, and saved objects
+        # copy over saved objects
         if self._prepData[0] is not None:
-            # mst.seeds[:] = self._prepData[0].seeds[:]
             mst.object_lut = self._prepData[0].object_lut
             mst.object_names = self._prepData[0].object_names
             mst.object_seeds_bg_voxels = self._prepData[0].object_seeds_bg_voxels
@@ -430,13 +427,6 @@ class OpPreprocessing(Operator):
 
         # Cache result
         self._prepData = result
-
-        # Wonder why this is set?
-        # The preprocess is only called by the run button.
-        # By setting the output dirty, this event is propagated to the
-        # carving-Operator, who copies the result just calculated.
-        # This is to gain control over when the preprocess is executed.
-        # self.PreprocessedData.setDirty()
 
         result[0] = mst
         return result

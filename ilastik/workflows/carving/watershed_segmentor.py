@@ -1,6 +1,5 @@
 import ilastiktools
 import h5py
-import numpy
 
 
 class WatershedSegmentor(object):

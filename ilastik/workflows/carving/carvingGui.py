@@ -68,7 +68,6 @@ class CarvingGui(LabelingGui):
         # members
         self._doneSegmentationLayer = None
         self._showSegmentationIn3D = False
-        # self._showUncertaintyLayer = False
         # end: members
 
         labelingSlots = LabelingGui.LabelingSlots()
@@ -136,46 +135,6 @@ class CarvingGui(LabelingGui):
 
         self.topLevelOperatorView.Segmentation.notifyDirty(bind(self._segmentation_dirty))
         self.topLevelOperatorView.HasSegmentation.notifyValueChanged(bind(self._updateGui))
-
-        ## uncertainty
-
-        # self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(False)
-        # self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(False)
-
-        # def onUncertaintyFGButton():
-        #    logger.debug( "uncertFG button clicked" )
-        #    pos = self.topLevelOperatorView.getMaxUncertaintyPos(label=2)
-        #    self.editor.posModel.slicingPos = (pos[0], pos[1], pos[2])
-        # self.labelingDrawerUi.pushButtonUncertaintyFG.clicked.connect(onUncertaintyFGButton)
-
-        # def onUncertaintyBGButton():
-        #    logger.debug( "uncertBG button clicked" )
-        #    pos = self.topLevelOperatorView.getMaxUncertaintyPos(label=1)
-        #    self.editor.posModel.slicingPos = (pos[0], pos[1], pos[2])
-        # self.labelingDrawerUi.pushButtonUncertaintyBG.clicked.connect(onUncertaintyBGButton)
-
-        # def onUncertaintyCombo(value):
-        #    if value == 0:
-        #        value = "none"
-        #        self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(False)
-        #        self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(False)
-        #        self._showUncertaintyLayer = False
-        #    else:
-        #        if value == 1:
-        #            value = "localMargin"
-        #        elif value == 2:
-        #            value = "exchangeCount"
-        #        elif value == 3:
-        #            value = "gabow"
-        #        else:
-        #            raise RuntimeError("unhandled case '%r'" % value)
-        #        self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(True)
-        #        self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(True)
-        #        self._showUncertaintyLayer = True
-        #        logger.debug( "uncertainty changed to %r" % value )
-        #    self.topLevelOperatorView.UncertaintyType.setValue(value)
-        #    self.updateAllLayers() #make sure that an added/deleted uncertainty layer is recognized
-        # self.labelingDrawerUi.uncertaintyCombo.currentIndexChanged.connect(onUncertaintyCombo)
 
         self.labelingDrawerUi.objPrefix.setText(self.objectPrefix)
         self.labelingDrawerUi.objPrefix.textChanged.connect(self.setObjectPrefix)

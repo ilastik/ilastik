@@ -79,7 +79,6 @@ class OpCarving(Operator):
     # below the number, no background bias will be applied to the edge weights
     NoBiasBelow = InputSlot(value=64)
 
-    # uncertainty type
     UncertaintyType = InputSlot()
 
     # O u t p u t s #
@@ -99,13 +98,10 @@ class OpCarving(Operator):
 
     AllObjectNames = OutputSlot(rtype=List, stype=Opaque)
 
-    # current object has an actual segmentation
     HasSegmentation = OutputSlot(stype="bool")
 
-    # Hint Overlay
     HintOverlay = OutputSlot()
 
-    # Pmap Overlay
     PmapOverlay = OutputSlot()
 
     MstOut = OutputSlot()
@@ -116,7 +112,6 @@ class OpCarving(Operator):
     def __init__(self, graph=None, hintOverlayFile=None, pmapOverlayFile=None, parent=None):
         super(OpCarving, self).__init__(graph=graph, parent=parent)
         self.opLabelArray = OpDenseLabelArray(parent=self)
-        # self.opLabelArray.EraserLabelValue.setValue( 100 )
         self.opLabelArray.MetaInput.connect(self.InputData)
 
         self._hintOverlayFile = hintOverlayFile
@@ -265,15 +260,6 @@ class OpCarving(Operator):
     def connectToPreprocessingApplet(self, applet):
         self.PreprocessingApplet = applet
 
-    #     def updatePreprocessing(self):
-    #         if self.PreprocessingApplet is None or self._mst is None:
-    #             return
-    # FIXME: why were the following lines needed ?
-    # if len(self._mst.object_names)==0:
-    #     self.PreprocessingApplet.enableWriteprotect(True)
-    # else:
-    #     self.PreprocessingApplet.enableWriteprotect(False)
-
     def hasCurrentObject(self):
         """
         Returns current object name. None if it is not set.
@@ -328,11 +314,6 @@ class OpCarving(Operator):
         """
         self._clearLabels()
         self._mst.gridSegmentor.clearSeeds()
-        # lut_segmentation = self._mst.segmentation.lut[:]
-        # lut_segmentation[:] = 0
-        # lut_seeds = self._mst.seeds.lut[:]
-        # lut_seeds[:] = 0
-        # self.HasSegmentation.setValue(False)
 
         self.Trigger.setDirty(slice(None))
 
@@ -350,12 +331,6 @@ class OpCarving(Operator):
         assert name in self._mst.bg_priority
         assert name in self._mst.no_bias_below
 
-        # lut_segmentation = self._mst.segmentation.lut[:]
-        # lut_objects = self._mst.objects.lut[:]
-        # lut_seeds = self._mst.seeds.lut[:]
-        ## clean seeds
-        # lut_seeds[:] = 0
-
         # set foreground and background seeds
         fgVoxelsSeedPos = self._mst.object_seeds_fg_voxels[name]
         bgVoxelsSeedPos = self._mst.object_seeds_bg_voxels[name]
@@ -368,10 +343,6 @@ class OpCarving(Operator):
         fgNodes = self._mst.object_lut[name]
 
         self._mst.setResulFgObj(fgNodes[0])
-
-        # newSegmentation = numpy.ones(len(lut_objects), dtype=numpy.int32)
-        # newSegmentation[ self._mst.object_lut[name] ] = 2
-        # lut_segmentation[:] = newSegmentation
 
         self._setCurrObjectName(name)
         self.HasSegmentation.setValue(True)
@@ -441,7 +412,6 @@ class OpCarving(Operator):
         self.BackgroundPriority.setValue(mst.bg_priority[name])
         self.NoBiasBelow.setValue(mst.no_bias_below[name])
 
-        # self.updatePreprocessing()
         # The entire segmentation layer needs to be refreshed now.
         self.Segmentation.setDirty()
 
@@ -452,9 +422,6 @@ class OpCarving(Operator):
         """
         Deletes an object called name.
         """
-        # lut_seeds = self._mst.seeds.lut[:]
-        # clean seeds
-        # lut_seeds[:] = 0
 
         del self._mst.object_lut[name]
         del self._mst.object_seeds_fg_voxels[name]
@@ -471,7 +438,6 @@ class OpCarving(Operator):
 
         # now that 'name' has been deleted, rebuild the done overlay
         self._buildDone()
-        # self.updatePreprocessing()
 
     def deleteObject(self, name):
         logger.info("want to delete object with name = %s" % name)
@@ -480,7 +446,6 @@ class OpCarving(Operator):
             return False
 
         self.deleteObject_impl(name)
-        # clear the user labels
         self._clearLabels()
         # trigger a re-computation
         self.Trigger.setDirty(slice(None))
@@ -540,14 +505,7 @@ class OpCarving(Operator):
         self.AllObjectNames.meta.shape = (len(objects),)
 
         # now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
-
         self._buildDone()
-        # self._clearLabels()
-        # self._mst.clearSegmentation()
-        # self.clearCurrentLabeling()
-        # self._mst.gridSegmentor.clearSeeds()
-        # self.Trigger.setDirty(slice(None))
-        # self.updatePreprocessing()
 
     def get_label_voxels(self):
         # the voxel coordinates of fg and bg labels
@@ -580,9 +538,7 @@ class OpCarving(Operator):
         return (coors2, coors1)
 
     def saveObjectAs(self, name):
-        # first, save the object under "name"
         self.saveCurrentObjectAs(name)
-        # Sparse label array automatically shifts label values down 1
 
         sVseed = self._mst.getSuperVoxelSeeds()
         # fgVoxels = numpy.where(sVseed==2)
@@ -718,7 +674,6 @@ class OpCarving(Operator):
             self.Segmentation.setDirty(slice(None))
             self.DoneSegmentation.setDirty(slice(None))
             hasSeg = numpy.any(self._mst.hasSeg)
-            # hasSeg = numpy.any(self._mst.segmentation.lut > 0 )
             self.HasSegmentation.setValue(hasSeg)
 
         elif slot == self.MST:
