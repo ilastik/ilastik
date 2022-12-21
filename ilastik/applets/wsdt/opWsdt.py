@@ -157,6 +157,8 @@ class OpWsdt(Operator):
 
     EnableDebugOutputs = InputSlot(value=False)
 
+    BlockwiseWatershed = InputSlot(value=True)
+
     Superpixels = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -200,19 +202,34 @@ class OpWsdt(Operator):
 
         max_workers = max(1, Request.global_thread_pool.num_workers)
 
-        ws, max_id = parallel_watershed(
-            pmap[..., 0],
-            self.Threshold.value,
-            self.Sigma.value,
-            self.Sigma.value,
-            self.MinSize.value,
-            self.Alpha.value,
-            pixel_pitch_to_pass,
-            self.ApplyNonmaxSuppression.value,
-            block_shape=None,
-            halo=None,
-            max_workers=max_workers,
-        )
+        if self.BlockwiseWatershed.value:
+            ws, max_id = parallel_watershed(
+                pmap[..., 0],
+                self.Threshold.value,
+                self.Sigma.value,
+                self.Sigma.value,
+                self.MinSize.value,
+                self.Alpha.value,
+                pixel_pitch_to_pass,
+                self.ApplyNonmaxSuppression.value,
+                block_shape=None,
+                halo=None,
+                max_workers=max_workers,
+            )
+        else:
+            # "compatibility" mode with older projects, where watershed was not
+            # computed block-wise.
+            ws, max_id = distance_transform_watershed(
+                pmap[..., 0],
+                self.Threshold.value,
+                self.Sigma.value,
+                self.Sigma.value,
+                self.MinSize.value,
+                self.Alpha.value,
+                pixel_pitch_to_pass,
+                self.ApplyNonmaxSuppression.value,
+            )
+
         result[..., 0] = ws
 
         self.watershed_completed()
@@ -238,6 +255,8 @@ class OpCachedWsdt(Operator):
     InvertPixelProbabilities = InputSlot(value=False)
 
     EnableDebugOutputs = InputSlot(value=False)
+
+    BlockwiseWatershed = InputSlot(value=True)
 
     Superpixels = OutputSlot()
 
@@ -270,6 +289,7 @@ class OpCachedWsdt(Operator):
         self._opWsdt.ApplyNonmaxSuppression.connect(self.ApplyNonmaxSuppression)
         self._opWsdt.InvertPixelProbabilities.connect(self.InvertPixelProbabilities)
         self._opWsdt.EnableDebugOutputs.connect(self.EnableDebugOutputs)
+        self._opWsdt.BlockwiseWatershed.connect(self.BlockwiseWatershed)
 
         self._opCache = OpBlockedArrayCache(parent=self)
         self._opCache.fixAtCurrent.connect(self.FreezeCache)
