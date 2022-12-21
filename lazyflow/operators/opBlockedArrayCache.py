@@ -58,7 +58,7 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
 
         # SCHEMATIC WHEN BypassModeEnabled == False:
         #
-        # Input ---------> opCacheFixer -> opSimpleBlockedArrayCache -> (indirectly via execute) -> Output
+        # Input ---------> opCacheFixer -> opSimpleBlockedArrayCache -> Output
         #                 /               /
         # fixAtCurrent --                /
         #                               /
@@ -80,23 +80,12 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
         self.CleanBlocks.connect(self._opSimpleBlockedArrayCache.CleanBlocks)
         self.Output.connect(self._opSimpleBlockedArrayCache.Output)
 
-        # Instead of connecting our Output directly to our internal pipeline,
-        # We manually forward the data via the execute() function,
-        #  which allows us to implement a bypass for the internal pipeline if Enabled
-        # self.Output.connect( self._opSimpleBlockedArrayCache.Output )
-
-        # Since we didn't directly connect the pipeline to our output, explicitly forward dirty notifications
-        self._opSimpleBlockedArrayCache.Output.notifyDirty(lambda slot, roi: self.Output.setDirty(roi.start, roi.stop))
-
         # This member is used by tests that check RAM usage.
         self.setup_ram_context = RamMeasurementContext()
         self.registerWithMemoryManager()
 
     def setupOutputs(self):
-        if not self.BlockShape.connected() and not self.BlockShape.ready():
-            self.BlockShape.setValue(self.Input.meta.shape)
-        # Copy metadata from the internal pipeline to the output
-        self.Output.meta.assignFrom(self._opSimpleBlockedArrayCache.Output.meta)
+        pass
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here"
