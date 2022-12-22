@@ -328,6 +328,13 @@ def empty_project_file(tmp_path) -> h5py.File:
 
 
 @pytest.fixture
+def empty_in_memory_project_file():
+    with h5py.File("test_project1.ilp", mode="a", driver="core", backing_store=False) as test_project:
+        test_project.create_dataset("ilastikVersion", data=b"1.0.0")
+        yield test_project
+
+
+@pytest.fixture
 def graph():
     return Graph()
 
