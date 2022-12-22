@@ -462,7 +462,9 @@ class NNClassGui(LabelingGui):
             localDir = os.path.split(__file__)[0]
             labelingDrawerUiPath = os.path.join(localDir, "nnClass.ui")
 
-        super(NNClassGui, self).__init__(parentApplet, labelSlots, topLevelOperatorView, labelingDrawerUiPath)
+        super(NNClassGui, self).__init__(
+            parentApplet, labelSlots, topLevelOperatorView, labelingDrawerUiPath, topLevelOperatorView.InputImages
+        )
 
         self._initCheckpointActions()
 
@@ -606,7 +608,7 @@ class NNClassGui(LabelingGui):
         Triggers the prediction by setting the layer on visible
         """
 
-        layers = super(NNClassGui, self).setupLayers()
+        layers = super().setupLayers()
 
         labels = self.labelListData
 
@@ -627,36 +629,6 @@ class NNClassGui(LabelingGui):
             overlayLayer.opacity = 1.0
 
             layers.append(overlayLayer)
-
-        # Add the raw data last (on the bottom)
-        inputDataSlot = self.topLevelOperatorView.InputImages
-        if inputDataSlot.ready():
-            inputLayer = self.createStandardLayerFromSlot(inputDataSlot)
-            inputLayer.name = "Input Data"
-            inputLayer.visible = True
-            inputLayer.opacity = 1.0
-            # the flag window_leveling is used to determine if the contrast
-            # of the layer is adjustable
-            if isinstance(inputLayer, GrayscaleLayer):
-                inputLayer.window_leveling = True
-            else:
-                inputLayer.window_leveling = False
-
-            def toggleTopToBottom():
-                index = self.layerstack.layerIndex(inputLayer)
-                self.layerstack.selectRow(index)
-                if index == 0:
-                    self.layerstack.moveSelectedToBottom()
-                else:
-                    self.layerstack.moveSelectedToTop()
-
-            layers.append(inputLayer)
-
-            # The thresholding button can only be used if the data is displayed as grayscale.
-            if inputLayer.window_leveling:
-                self.labelingDrawerUi.thresToolButton.show()
-            else:
-                self.labelingDrawerUi.thresToolButton.hide()
 
         self.handleLabelSelectionChange()
 

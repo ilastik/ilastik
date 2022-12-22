@@ -446,21 +446,13 @@ class VoxelSegmentationGui(LabelingGui):
             else:
                 inputLayer.window_leveling = False
 
-            def toggleTopToBottom():
-                index = self.layerstack.layerIndex(inputLayer)
-                self.layerstack.selectRow(index)
-                if index == 0:
-                    self.layerstack.moveSelectedToBottom()
-                else:
-                    self.layerstack.moveSelectedToTop()
-
             inputLayer.shortcutRegistration = (
                 "i",
                 ActionInfo(
                     "Prediction Layers",
                     "Bring Input To Top/Bottom",
                     "Bring Input To Top/Bottom",
-                    toggleTopToBottom,
+                    partial(self.layerstack.toggleTopToBottom, inputLayer),
                     self.viewerControlWidget(),
                     inputLayer,
                 ),

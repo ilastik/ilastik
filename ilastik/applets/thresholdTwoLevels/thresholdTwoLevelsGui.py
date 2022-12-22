@@ -38,6 +38,7 @@ from PyQt5.QtWidgets import QMessageBox
 from volumina.api import createDataSource, AlphaModulatedLayer, ColortableLayer
 from volumina import colortables
 from volumina.colortables import create_default_16bit
+from volumina.utility import ShortcutManager
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
@@ -430,5 +431,17 @@ class ThresholdTwoLevelsGui(LayerViewerGui):
             rawLayer.visible = True
             rawLayer.opacity = 1.0
             layers.append(rawLayer)
+
+            rawLayer.shortcutRegistration = (
+                "i",
+                ShortcutManager.ActionInfo(
+                    "Thresholding Layers",
+                    "Bring Input To Top/Bottom",
+                    "Bring Input To Top/Bottom",
+                    partial(self.layerstack.toggleTopToBottom, rawLayer),
+                    self.viewerControlWidget(),
+                    rawLayer,
+                ),
+            )
 
         return layers

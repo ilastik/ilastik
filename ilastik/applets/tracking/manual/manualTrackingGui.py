@@ -20,6 +20,7 @@
 ###############################################################################
 from __future__ import division
 from builtins import range
+from functools import partial
 from PyQt5 import uic, QtWidgets, QtCore
 from PyQt5.QtGui import QColor, QTextCursor
 
@@ -278,6 +279,18 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
             self.rawsrc = createDataSource(self.mainOperator.RawImage)
             rawLayer = GrayscaleLayer(self.rawsrc)
             rawLayer.name = "Raw"
+            rawLayer.shortcutRegistration = (
+                "i",
+                ShortcutManager.ActionInfo(
+                    "Prediction Layers",
+                    "Bring Input To Top/Bottom",
+                    "Bring Input To Top/Bottom",
+                    partial(self.layerstack.toggleTopToBottom, rawLayer),
+                    self.viewerControlWidget(),
+                    rawLayer,
+                ),
+            )
+
             layers.insert(len(layers), rawLayer)
 
         self.topLevelOperatorView.RawImage.notifyReady(self._onReady)
