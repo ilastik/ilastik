@@ -1,6 +1,8 @@
 from __future__ import absolute_import
 from __future__ import division
 
+import warnings
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -434,6 +436,10 @@ class OpPreprocessing(Operator):
     def AreSettingsInitial(self):
         """analyse settings for sigma and filter
         return True if they are equal to those of last preprocess"""
+        warnings.warn(
+            "OpPreprocessing.AreSettingsInitial() is deprecated and will soon be removed. Please contact the ilastik dev team if you need it.",
+            DeprecationWarning,
+        )
         if self.initialFilter is None:
             return False
         if self.Filter.value != self.initialFilter:
