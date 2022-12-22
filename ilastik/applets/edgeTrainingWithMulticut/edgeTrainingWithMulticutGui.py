@@ -81,7 +81,8 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingMixin, LayerView
         # -> Show segmentation edges layer only when no RF is trained as it will
         # have the perfectly overlapping edgelabels layer.
         segmentation_edges_layer = self.getLayerByName("Superpixel Edges")
-        segmentation_edges_layer.visible = not checked
+        if segmentation_edges_layer:
+            segmentation_edges_layer.visible = not checked
 
     def stopAndCleanUp(self):
         # Unsubscribe to all signals
