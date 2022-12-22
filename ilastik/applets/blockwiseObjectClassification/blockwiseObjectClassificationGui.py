@@ -31,6 +31,7 @@ from PyQt5.QtGui import QColor
 from ilastik.utility.gui import threadRouted
 from volumina.api import createDataSource, ColortableLayer
 from volumina import colortables
+from volumina.utility import ShortcutManager
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 logger = logging.getLogger(__name__)
@@ -110,6 +111,18 @@ class BlockwiseObjectClassificationGui(LayerViewerGui):
             rawLayer = self.createStandardLayerFromSlot(rawSlot)
             rawLayer.name = "Raw data"
             layers.append(rawLayer)
+
+            rawLayer.shortcutRegistration = (
+                "i",
+                ShortcutManager.ActionInfo(
+                    "Prediction Layers",
+                    "Bring Input To Top/Bottom",
+                    "Bring Input To Top/Bottom",
+                    partial(self.layerstack.toggleTopToBottom, rawLayer),
+                    self.viewerControlWidget(),
+                    rawLayer,
+                ),
+            )
 
         return layers
 

@@ -432,21 +432,13 @@ class ThresholdTwoLevelsGui(LayerViewerGui):
             rawLayer.opacity = 1.0
             layers.append(rawLayer)
 
-            def toggleTopToBottom():
-                index = self.layerstack.layerIndex(rawLayer)
-                self.layerstack.selectRow(index)
-                if index == 0:
-                    self.layerstack.moveSelectedToBottom()
-                else:
-                    self.layerstack.moveSelectedToTop()
-
             rawLayer.shortcutRegistration = (
                 "i",
                 ShortcutManager.ActionInfo(
                     "Thresholding Layers",
                     "Bring Input To Top/Bottom",
                     "Bring Input To Top/Bottom",
-                    toggleTopToBottom,
+                    partial(self.layerstack.toggleTopToBottom, rawLayer),
                     self.viewerControlWidget(),
                     rawLayer,
                 ),

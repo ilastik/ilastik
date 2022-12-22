@@ -362,21 +362,13 @@ class WsdtGui(LayerViewerGui):
             layer.opacity = 1.0
             layers.append(layer)
 
-            def toggleTopToBottom():
-                index = self.layerstack.layerIndex(layer)
-                self.layerstack.selectRow(index)
-                if index == 0:
-                    self.layerstack.moveSelectedToBottom()
-                else:
-                    self.layerstack.moveSelectedToTop()
-
             layer.shortcutRegistration = (
                 "i",
                 ShortcutManager.ActionInfo(
                     "Watershed Layers",
                     "Bring Input To Top/Bottom",
                     "Bring Input To Top/Bottom",
-                    toggleTopToBottom,
+                    partial(self.layerstack.toggleTopToBottom, layer),
                     self.viewerControlWidget(),
                     layer,
                 ),

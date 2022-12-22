@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
+from functools import partial
 import numpy
 
 from PyQt5.QtGui import QColor
@@ -79,21 +79,13 @@ class PreprocessingViewerGui(LayerViewerGui):
             inputLayer.opacity = 1.0
             layers.append(inputLayer)
 
-            def toggleTopToBottom():
-                index = self.layerstack.layerIndex(inputLayer)
-                self.layerstack.selectRow(index)
-                if index == 0:
-                    self.layerstack.moveSelectedToBottom()
-                else:
-                    self.layerstack.moveSelectedToTop()
-
             inputLayer.shortcutRegistration = (
                 "i",
                 ShortcutManager.ActionInfo(
                     "Preprocessing Layers",
                     "Bring Input To Top/Bottom",
                     "Bring Input To Top/Bottom",
-                    toggleTopToBottom,
+                    partial(self.layerstack.toggleTopToBottom, inputLayer),
                     self.viewerControlWidget(),
                     inputLayer,
                 ),
