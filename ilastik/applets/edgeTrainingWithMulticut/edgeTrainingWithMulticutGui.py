@@ -76,6 +76,13 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingMixin, LayerView
         if not checked:
             op.FreezeClassifier.setValue(True)
         self.updateAllLayers()
+        # optimize rendering - showing multiple perfectly overlaying superpixel
+        # edge layers, noticeably slows down rendering.
+        # -> Show segmentation edges layer only when no RF is trained as it will
+        # have the perfectly overlapping edgelabels layer.
+        segmentation_edges_layer = self.getLayerByName("Superpixel Edges")
+        if segmentation_edges_layer:
+            segmentation_edges_layer.visible = not checked
 
     def stopAndCleanUp(self):
         # Unsubscribe to all signals
