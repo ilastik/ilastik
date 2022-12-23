@@ -236,7 +236,7 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
             # activate the carving applet
             shell.setSelectedAppletDrawer(2)
             # let the gui catch up
-            QApplication.processEvents()
+            waitProcessEvents(timeout=0.1)
             self.waitForViews(gui.editor.imageViews)
 
             gui.train_edge_clf_box.setChecked(False)
@@ -313,15 +313,16 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
             opMulticut.FeatureNames.setValue(features)
 
             labeldict = {
-                (1, 7): 1,
-                (1, 15): 1,
-                (1, 11): 2,
-                (12, 18): 1,
+                (3, 15): 1,
+                (9, 17): 1,
+                (3, 11): 2,
+                (9, 11): 2,
+                (11, 17): 2,
+                (1, 4): 2,
+                (4, 16): 1,
+                (16, 17): 1,
                 (10, 11): 1,
-                (6, 9): 1,
-                (9, 16): 1,
-                (10, 17): 2,
-                (6, 8): 2,
+                (7, 10): 2,
             }
 
             opMulticut.EdgeLabelsDict.setValue(labeldict)
