@@ -27,6 +27,7 @@ import weakref
 import logging
 import platform
 import threading
+import warnings
 
 # SciPy
 import numpy
@@ -59,6 +60,7 @@ from PyQt5.QtWidgets import (
 # lazyflow
 from ilastik.widgets.ipcserver.tcpServerInfoWidget import TCPServerInfoWidget
 from ilastik.widgets.ipcserver.zmqPubSubInfoWidget import ZMQPublisherInfoWidget
+from ilastik.widgets.collapsibleWidget import CollapsibleWidget
 from lazyflow.roi import TinyVector
 from lazyflow.graph import Operator
 import lazyflow.tools.schematic
@@ -107,12 +109,13 @@ ILASTIKFont = QFont("Helvetica", 12, QFont.Bold)
 
 logger = logging.getLogger(__name__)
 
+
 # ===----------------------------------------------------------------------------------------------------------------===
 # === ShellActions                                                                                                   ===
 # ===----------------------------------------------------------------------------------------------------------------===
 
 
-class ShellActions(object):
+class ShellActions:
     """
     The shell provides the applet constructors with access to his GUI actions.
     They are provided in this class.
@@ -632,14 +635,92 @@ class IlastikShell(QMainWindow):
         styleStartScreenButton(self.startscreen.browseFilesButton, ilastikIcons.OpenFolder)
         self.startscreen.browseFilesButton.clicked.connect(self.onOpenProjectActionTriggered)
 
-        pos = 1
-        for workflow, _name, displayName in getAvailableWorkflows():
-            b = QToolButton(self.startscreen, objectName="NewProjectButton_" + workflow.__name__)
-            styleStartScreenButton(b, ilastikIcons.GoNext)
-            b.setText(displayName)
-            b.clicked.connect(partial(self.loadWorkflow, workflow))
-            self.startscreen.VL1.insertWidget(pos, b)
-            pos += 1
+        self._populateWorkflows()
+
+    def _populateWorkflows(self):
+        wf_startup_menu_order = {
+            "Segmentation Workflows": {
+                "workflows": [
+                    "Pixel Classification",
+                    "AutocontextTwoStage",
+                    "Neural Network Classification (Local)",
+                    "Neural Network Classification (Remote)",
+                    "Carving",
+                    "Edge Training With Multicut",
+                ],
+                "expanded": True,
+            },
+            "Object Classification Workflows": {
+                "workflows": [
+                    "Object Classification (from prediction image)",
+                    "Object Classification (from binary image)",
+                ],
+                "expanded": True,
+            },
+            "Tracking Workflows": {
+                "workflows": [
+                    "Manual Tracking Workflow",
+                    "Automatic Tracking Workflow (Conservation Tracking) from binary image",
+                    "Automatic Tracking Workflow (Conservation Tracking) from prediction image",
+                    "Animal Conservation Tracking Workflow from Binary Image",
+                    "Animal Conservation Tracking Workflow from Prediction Image",
+                    "Structured Learning Tracking Workflow from binary image",
+                    "Structured Learning Tracking Workflow from prediction image",
+                ],
+                "expanded": False,
+            },
+        }
+
+        wfs = {
+            wf_name: (wf_class, wf_name, wf_display_name)
+            for wf_class, wf_name, wf_display_name in getAvailableWorkflows()
+        }
+        explicit_wf_names = {
+            wf_name
+            for wf_dict in wf_startup_menu_order.values()
+            for wf_name in wf_dict["workflows"]
+        }  # fmt: skip
+        wf_startup_menu_order["Other Workflows"] = {
+            "workflows": [
+                wf_name
+                for wf_name in wfs
+                if wf_name not in explicit_wf_names
+            ],
+            "expanded": False,
+        }  # fmt: skip
+
+        wfs_layout = QVBoxLayout()
+        for group, wf_dict in wf_startup_menu_order.items():
+            buttons = []
+
+            for wf_name in wf_dict["workflows"]:
+                if wf_name not in wfs:
+                    warnings.warn(f"Workflow startup menu: Could not find {wf_name}")
+                    continue
+
+                wf_class, wf_name, wf_display_name = wfs[wf_name]
+                button = QToolButton(
+                    self.startscreen,
+                    objectName=f"NewProjectButton_{wf_class.__name__}",
+                    text=wf_display_name,
+                    clicked=partial(self.loadWorkflow, wf_class),
+                )
+                styleStartScreenButton(button, ilastikIcons.GoNext)
+                buttons.append(button)
+
+            if not buttons:
+                continue
+
+            group_layout = QVBoxLayout()
+            for button in buttons:
+                group_layout.addWidget(button)
+
+            group_widget = QWidget()
+            group_widget.setLayout(group_layout)
+
+            wfs_layout.addWidget(CollapsibleWidget(group_widget, f" {group}", expanded=wf_dict["expanded"]))
+
+        self.startscreen.VL1.insertLayout(1, wfs_layout)
 
     def openFileAndCloseStartscreen(self, path):
         if self.projectManager is not None:
