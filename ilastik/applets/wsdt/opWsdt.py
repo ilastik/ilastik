@@ -117,26 +117,19 @@ def parallel_watershed(
             offsets = np.fromiter(executor.map(ws_block, range(n_blocks)), dtype=np.int64)
 
     logger.info(f"parallel ws took {wstimer.seconds()} s")
-    # compute the block offsets and the max id
-    last_max_id = offsets[-1]
-    offsets = np.roll(offsets, 1)
-    # In order to (in future) use this function in carving, labels have to start at 1
-    offsets[0] = 1
     offsets = np.cumsum(offsets)
-    # the max_id is the offset of the last block + the max id in the last block
-    max_id = last_max_id + offsets[-1]
 
     # add the offset to blocks to make ids unique
     def add_offset_block(block_index):
         block = blocking.getBlock(block_index)
         block = roiToSlice(block.begin, block.end)
-        labels[block] += offsets[block_index]
+        labels[block] += offsets[block_index - 1]
 
     # add offsets in parallel
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        concurrent.futures.wait([executor.submit(add_offset_block, block_index) for block_index in range(n_blocks)])
+        concurrent.futures.wait([executor.submit(add_offset_block, block_index) for block_index in range(1, n_blocks)])
 
-    return labels, max_id
+    return labels, offsets[-1]
 
 
 class OpWsdt(Operator):
