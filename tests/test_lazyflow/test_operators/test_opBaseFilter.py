@@ -8,59 +8,36 @@ from lazyflow.graph import InputSlot
 from lazyflow.rtype import SubRegion
 
 
-@pytest.fixture
-def dummy_filter_op(graph):
+class OpPassthroughFilter(OpBaseFilter):
     """OpBaseFilter that passes through input"""
 
-    def _filter_func(source, **filter_kwargs):
+    _scale = InputSlot(value=0.5)
+    minimum_scale = 0.3
+    supports_window = True
+    name = "OpPassthroughFilter"
+
+    @staticmethod
+    def filter_fn(source, **kwargs):
         return source
 
-    class OpPassthroughFilter(OpBaseFilter):
-        _scale = InputSlot(value=0.5)
-        minimum_scale = 0.3
-
-        supports_window = True
-
-        name = "OpPassthroughFilter"
-        filter_fn = staticmethod(_filter_func)
-
-        def resultingChannels(self):
-            return 1
-
-    op = OpPassthroughFilter(graph=graph)
-    return op
+    def resultingChannels(self):
+        return 1
 
 
+ref_slicing = numpy.s_[0:1, 0:1, 0:10, 0:20, 0:30]  # fmt: skip
 @pytest.mark.parametrize(
-    "slice1,computeIn2d",
+    "slice1",
     [
-        (numpy.s_[0:1, 0:1, 0:1, 0:20, 0:30], True),
-        (numpy.s_[0:1, 0:1, 1:2, 0:20, 0:30], True),  # previous failure case
-        (numpy.s_[0:1, 0:1, 2:3, 0:20, 0:30], True),  # previous failure case
-        (numpy.s_[0:1, 0:1, 3:4, 0:20, 0:30], True),  # previous failure case
-        (numpy.s_[0:1, 0:1, 0:10, 0:1, 0:30], True),
-        (numpy.s_[0:1, 0:1, 0:10, 1:2, 0:30], True),
-        (numpy.s_[0:1, 0:1, 0:10, 2:3, 0:30], True),
-        (numpy.s_[0:1, 0:1, 0:10, 3:4, 0:30], True),
-        (numpy.s_[0:1, 0:1, 0:10, 0:20, 0:1], True),
-        (numpy.s_[0:1, 0:1, 0:10, 0:20, 1:2], True),
-        (numpy.s_[0:1, 0:1, 0:10, 0:20, 2:3], True),
-        (numpy.s_[0:1, 0:1, 0:10, 0:20, 3:4], True),
-        (numpy.s_[0:1, 0:1, 0:1, 0:20, 0:30], False),
-        (numpy.s_[0:1, 0:1, 1:2, 0:20, 0:30], False),
-        (numpy.s_[0:1, 0:1, 2:3, 0:20, 0:30], False),
-        (numpy.s_[0:1, 0:1, 0:10, 0:1, 0:30], False),
-        (numpy.s_[0:1, 0:1, 0:10, 1:2, 0:30], False),
-        (numpy.s_[0:1, 0:1, 0:10, 2:3, 0:30], False),
-        (numpy.s_[0:1, 0:1, 0:10, 3:4, 0:30], False),
-        (numpy.s_[0:1, 0:1, 0:10, 0:20, 0:1], False),
-        (numpy.s_[0:1, 0:1, 0:10, 0:20, 1:2], False),
-        (numpy.s_[0:1, 0:1, 0:10, 0:20, 2:3], False),
-        (numpy.s_[0:1, 0:1, 0:10, 0:20, 3:4], False),
+        (*ref_slicing[:dim], slice(i, i + 1), *ref_slicing[dim + 1:])
+        for dim in (2, 3, 4)
+        for i in (0, 1, 2, 3)
     ],
-)
-def test_single_slice_requests_first_slices(dummy_filter_op, slice1, computeIn2d):
-    data_ref = numpy.arange(10 * 20 * 30).astype(numpy.float32).reshape((1, 1, 10, 20, 30))
+)  # fmt: skip
+@pytest.mark.parametrize("computeIn2d", [True, False])
+def test_single_slice_requests_first_slices(graph, slice1, computeIn2d):
+    dummy_filter_op = OpPassthroughFilter(graph=graph)
+    shape = tuple(s.stop for s in ref_slicing)
+    data_ref = numpy.arange(numpy.prod(shape)).astype(numpy.float32).reshape(shape)
     data = vigra.taggedView(data_ref.copy(), "tczyx")
     dummy_filter_op.Input.setValue(data)
     dummy_filter_op.ComputeIn2d.setValue(computeIn2d)
