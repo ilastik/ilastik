@@ -803,6 +803,8 @@ class NNClassGui(LabelingGui):
             self.maxLabelNumber = num_classes
             self.updateAllLayers()
 
+        self.parentApplet.appletStateUpdateRequested()
+
     def _load_checkpoint(self, model_state: ModelState):
         self.topLevelOperatorView.set_model_state(model_state)
 

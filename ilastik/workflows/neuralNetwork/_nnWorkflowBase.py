@@ -166,14 +166,11 @@ class _NNWorkflowBase(Workflow):
         input_ready = len(opDataSelection.ImageGroup) > 0 and not self.dataSelectionApplet.busy
 
         opNNClassification = self.nnClassificationApplet.topLevelOperator
+        nn_ready = input_ready and opNNClassification.ModelSession.ready()
 
         opDataExport = self.dataExportApplet.topLevelOperator
 
-        predictions_ready = input_ready and len(opDataExport.Inputs) > 0
-
-        # Problems can occur if the features or input data are changed during live update mode.
-        # Don't let the user do that.
-        live_update_active = not opNNClassification.FreezePredictions.value
+        predictions_ready = nn_ready and len(opDataExport.Inputs) > 0
 
         # The user isn't allowed to touch anything while batch processing is running.
         batch_processing_busy = self.batchProcessingApplet.busy
@@ -185,7 +182,7 @@ class _NNWorkflowBase(Workflow):
         )
         self._shell.setAppletEnabled(
             self.dataExportApplet,
-            predictions_ready and not batch_processing_busy and not live_update_active and upstream_ready,
+            predictions_ready and not batch_processing_busy and upstream_ready,
         )
 
         if self.batchProcessingApplet is not None:
