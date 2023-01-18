@@ -676,6 +676,14 @@ class OpCarving(Operator):
         elif slot == self.MST:
             self._opMstCache.Input.disconnect()
             self._mst = self.MST.value
+
+            if self.has_seeds:
+                fgVoxels, bgVoxels = self.get_label_voxels()
+                fgArraySeedPos = numpy.array(fgVoxels)
+                bgArraySeedPos = numpy.array(bgVoxels)
+                self._mst.setSeeds(
+                    fgArraySeedPos, bgArraySeedPos
+                )  # TODO gh2627: the voxels are not in the correct format here (ValueError: vertex or face count are zero: terminating marching cubes; on line 62, in volumina/meshgenerator.py#labeling_to_mesh)
             self._opMstCache.Input.setValue(self._mst)
         elif (
             slot == self.OverlayData
