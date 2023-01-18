@@ -26,7 +26,6 @@ from functools import partial
 
 import numpy
 import yaml
-from bioimageio.spec.shared.raw_nodes import ParametrizedInputShape
 from PyQt5 import uic
 from PyQt5.QtCore import (
     QModelIndex,
@@ -742,6 +741,9 @@ class NNClassGui(LabelingGui):
 
     def _check_input_spec_compatible(self, model_info):
         """Check if spec is compatible with project data"""
+        # Note: bioimageio imports are delayed as to prevent https request to
+        # github and bioimage.io on ilastik startup
+        from bioimageio.spec.shared.raw_nodes import ParametrizedInputShape
 
         def _minimum_tagged_shape(input_spec):
             axes = input_spec.axes
