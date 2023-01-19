@@ -277,11 +277,10 @@ class CarvingGui(LabelingGui):
 
     def onSaveButton(self):
         logger.info("save object as?")
-        prevName = self.topLevelOperatorView.currentObjectName()
         if self.topLevelOperatorView.dataIsStorable():
             prevName = ""
             if self.topLevelOperatorView.hasCurrentObject():
-                prevName = self.topLevelOperatorView.currentObjectName()
+                prevName = self.topLevelOperatorView.getCurrentObjectName()
             if prevName == "<not saved yet>":
                 prevName = ""
             name = self.saveAsDialog(name=prevName)

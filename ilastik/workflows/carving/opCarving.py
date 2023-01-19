@@ -265,7 +265,7 @@ class OpCarving(Operator):
         # a name is not the same thing.
         return self._currObjectName
 
-    def currentObjectName(self):
+    def getCurrentObjectName(self):
         """
         Returns current object name. Return "" if no current object
         """
@@ -314,7 +314,7 @@ class OpCarving(Operator):
 
         self.Trigger.setDirty(slice(None))
 
-    def loadObject_impl(self, name):
+    def restore_and_get_labels_for_object(self, name):
         """
         Loads a single object called name to be the currently edited object. Its
         not part of the done segmentation anymore.
@@ -358,8 +358,31 @@ class OpCarving(Operator):
             self.saveCurrentObject()
         self._clearLabels()
 
-        fgVoxels, bgVoxels = self.loadObject_impl(name)
+        fgVoxels, bgVoxels = self.restore_and_get_labels_for_object(name)
 
+        self.set_labels_into_WriteSeeds_input(fgVoxels, bgVoxels)
+
+        # restore the correct parameter values
+        mst = self._mst
+
+        assert name in mst.object_lut
+        assert name in mst.object_seeds_fg_voxels
+        assert name in mst.object_seeds_bg_voxels
+        assert name in mst.bg_priority
+        assert name in mst.no_bias_below
+
+        assert name in mst.bg_priority
+        assert name in mst.no_bias_below
+
+        self.BackgroundPriority.setValue(mst.bg_priority[name])
+        self.NoBiasBelow.setValue(mst.no_bias_below[name])
+
+        # The entire segmentation layer needs to be refreshed now.
+        self.Segmentation.setDirty()
+
+        return True
+
+    def set_labels_into_WriteSeeds_input(self, fgVoxels, bgVoxels):
         fg_bounding_box_start = numpy.array(list(map(numpy.min, fgVoxels)))
         fg_bounding_box_stop = 1 + numpy.array(list(map(numpy.max, fgVoxels)))
 
@@ -370,8 +393,8 @@ class OpCarving(Operator):
         bounding_box_stop = numpy.maximum(fg_bounding_box_stop, bg_bounding_box_stop)
 
         bounding_box_slicing = roiToSlice(bounding_box_start, bounding_box_stop)
-
         bounding_box_shape = tuple(bounding_box_stop - bounding_box_start)
+
         dtype = self.opLabelArray.Output.meta.dtype
 
         # Convert coordinates to be relative to bounding box
@@ -393,26 +416,6 @@ class OpCarving(Operator):
                 numpy.newaxis, :, :, :, numpy.newaxis
             ]
         logger.info("Loading seeds took a total of {} seconds".format(timer.seconds()))
-
-        # restore the correct parameter values
-        mst = self._mst
-
-        assert name in mst.object_lut
-        assert name in mst.object_seeds_fg_voxels
-        assert name in mst.object_seeds_bg_voxels
-        assert name in mst.bg_priority
-        assert name in mst.no_bias_below
-
-        assert name in mst.bg_priority
-        assert name in mst.no_bias_below
-
-        self.BackgroundPriority.setValue(mst.bg_priority[name])
-        self.NoBiasBelow.setValue(mst.no_bias_below[name])
-
-        # The entire segmentation layer needs to be refreshed now.
-        self.Segmentation.setDirty()
-
-        return True
 
     @Operator.forbidParallelExecute
     def deleteObject_impl(self, name):
@@ -511,28 +514,28 @@ class OpCarving(Operator):
 
         nonzeroSlicings = self.opLabelArray.NonzeroBlocks[:].wait()[0]
 
-        coors1 = [[], [], []]
-        coors2 = [[], [], []]
+        bg = [[], [], []]
+        fg = [[], [], []]
         for sl in nonzeroSlicings:
-            a = self.opLabelArray.Output[sl].wait()
-            w1 = numpy.where(a == 1)
-            w2 = numpy.where(a == 2)
-            w1 = [w1[i] + sl[i].start for i in range(1, 4)]
-            w2 = [w2[i] + sl[i].start for i in range(1, 4)]
+            label = self.opLabelArray.Output[sl].wait()
+            labels_fg = numpy.where(label == 1)
+            labels_bg = numpy.where(label == 2)
+            labels_fg = [labels_fg[i] + sl[i].start for i in range(1, 4)]
+            labels_bg = [labels_bg[i] + sl[i].start for i in range(1, 4)]
             for i in range(3):
-                coors1[i].append(w1[i])
-                coors2[i].append(w2[i])
+                bg[i].append(labels_fg[i])
+                fg[i].append(labels_bg[i])
 
         for i in range(3):
-            if len(coors1[i]) > 0:
-                coors1[i] = numpy.concatenate(coors1[i], 0)
+            if len(bg[i]) > 0:
+                bg[i] = numpy.concatenate(bg[i], 0)
             else:
-                coors1[i] = numpy.ndarray((0,), numpy.int32)
-            if len(coors2[i]) > 0:
-                coors2[i] = numpy.concatenate(coors2[i], 0)
+                bg[i] = numpy.ndarray((0,), numpy.int32)
+            if len(fg[i]) > 0:
+                fg[i] = numpy.concatenate(fg[i], 0)
             else:
-                coors2[i] = numpy.ndarray((0,), numpy.int32)
-        return (coors2, coors1)
+                fg[i] = numpy.ndarray((0,), numpy.int32)
+        return (fg, bg)
 
     def saveObjectAs(self, name):
         self.saveCurrentObjectAs(name)
