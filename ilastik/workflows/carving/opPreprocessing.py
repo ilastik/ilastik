@@ -413,7 +413,6 @@ class OpPreprocessing(Operator):
         self.initalReduceTo = self.ReduceTo.value
         self.initalSizeRegularizer = self.SizeRegularizer.value
 
-        self.enableReset(False)
         self._unsavedData = True
         self._dirty = False
         self.enableDownstream(True)
@@ -433,27 +432,6 @@ class OpPreprocessing(Operator):
         result[0] = mst
         return result
 
-    def AreSettingsInitial(self):
-        """analyse settings for sigma and filter
-        return True if they are equal to those of last preprocess"""
-        warnings.warn(
-            "OpPreprocessing.AreSettingsInitial() is deprecated and will soon be removed. Please contact the ilastik dev team if you need it.",
-            DeprecationWarning,
-        )
-        if self.initialFilter is None:
-            return False
-        if self.Filter.value != self.initialFilter:
-            return False
-        if self.DoAgglo.value != self.initialDoAgglo:
-            return False
-        if abs(self.Sigma.value - self.initialSigma) > 0.005:
-            return False
-        if abs(self.ReduceTo.value - self.initialReduceTo) > 0.005:
-            return False
-        if abs(self.SizeRegularizer.value - self.initalSizeRegularizer) > 0.005:
-            return False
-        return True
-
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.InputData:
             # complete restart
@@ -467,19 +445,8 @@ class OpPreprocessing(Operator):
 
         self._dirty = True
         self.enableDownstream(False)
-        if self._prepData[0] is not None:
-            self.enableReset(True)
         self.PreprocessedData.setDirty(slice(None))
-
-    def enableReset(self, er):
-        """set enabled of resetButton to er"""
-        self.applet.enableReset(er)
 
     def enableDownstream(self, ed):
         """set enable of carving applet to ed"""
         self.applet.enableDownstream(ed)
-
-    def reset(self):
-        """reset sigma and filter to values of last preprocess"""
-        self.applet._gui.setSigma(self.initialSigma)
-        self.applet._gui.setFilter(self.initialFilter)
