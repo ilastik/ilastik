@@ -401,7 +401,7 @@ class OpPreprocessing(Operator):
 
     def execute(self, slot, subindex, roi, result):
         assert slot == self.PreprocessedData, "Invalid output slot"
-        if self._prepData[0] is not None and not self._dirty:
+        if not self._dirty and self._prepData[0] is not None:
             return self._prepData
 
         mst = self._opMstProvider.MST.value

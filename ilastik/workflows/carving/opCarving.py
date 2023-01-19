@@ -540,10 +540,6 @@ class OpCarving(Operator):
     def saveObjectAs(self, name):
         self.saveCurrentObjectAs(name)
 
-        sVseed = self._mst.getSuperVoxelSeeds()
-        # fgVoxels = numpy.where(sVseed==2)
-        # bgVoxels = numpy.where(sVseed==1)
-
         fgVoxels, bgVoxels = self.get_label_voxels()
 
         self.attachVoxelLabelsToObject(name, fgVoxels=fgVoxels, bgVoxels=bgVoxels)
@@ -625,18 +621,13 @@ class OpCarving(Operator):
                 logger.info("Writing seeds to label array took {} seconds".format(timer.seconds()))
 
             assert self._mst is not None
+            assert hasattr(key, "__len__")
 
             # Important: mst.seeds will requires erased values to be 255 (a.k.a -1)
-            # value[:] = numpy.where(value == 100, 255, value)
-            seedVal = value.max()
             with Timer() as timer:
                 logger.info("Writing seeds to MST")
-                if hasattr(key, "__len__"):
-                    self._mst.addSeeds(roi=roi, brushStroke=value.squeeze())
-                else:
-                    raise RuntimeError("when is this part of the code called")
-                    self._mst.seeds[key] = value
-            logger.info("Writing seeds to MST took {} seconds".format(timer.seconds()))
+                self._mst.addSeeds(roi=roi, brushStroke=value.squeeze())
+                logger.info("Writing seeds to MST took {} seconds".format(timer.seconds()))
 
             self.has_seeds = True
         else:
