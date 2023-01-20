@@ -518,13 +518,13 @@ class OpCarving(Operator):
         fg = [[], [], []]
         for sl in nonzeroSlicings:
             label = self.opLabelArray.Output[sl].wait()
-            labels_fg = numpy.where(label == 1)
-            labels_bg = numpy.where(label == 2)
-            labels_fg = [labels_fg[i] + sl[i].start for i in range(1, 4)]
+            labels_bg = numpy.where(label == 1)
+            labels_fg = numpy.where(label == 2)
             labels_bg = [labels_bg[i] + sl[i].start for i in range(1, 4)]
+            labels_fg = [labels_fg[i] + sl[i].start for i in range(1, 4)]
             for i in range(3):
-                bg[i].append(labels_fg[i])
-                fg[i].append(labels_bg[i])
+                bg[i].append(labels_bg[i])
+                fg[i].append(labels_fg[i])
 
         for i in range(3):
             if len(bg[i]) > 0:
