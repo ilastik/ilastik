@@ -20,6 +20,7 @@
 ###############################################################################
 # Python
 from builtins import range
+from enum import IntEnum
 import time
 import numpy, h5py
 import copy
@@ -36,13 +37,15 @@ from lazyflow.operators.valueProviders import OpValueCache
 from lazyflow.utility.timer import Timer
 from ilastik.applets.base.applet import DatasetConstraintError
 
-
 import logging
 
 logger = logging.getLogger(__name__)
 
-# ===----------------------------------------------------------------------------------------------------------------===
 DEFAULT_LABEL_PREFIX = "Object "
+
+
+class Labels(IntEnum):
+    BACKGROUND, FOREGROUND = [1, 2]  # values must be same as in ilastiktools/carving.hxx#setSeeds
 
 
 class OpCarving(Operator):
@@ -226,8 +229,8 @@ class OpCarving(Operator):
         if self._mst is None:
             return False
         nodeSeeds = self._mst.gridSegmentor.getNodeSeeds()
-        fg_seedNum = len(numpy.where(nodeSeeds == 2)[0])
-        bg_seedNum = len(numpy.where(nodeSeeds == 1)[0])
+        fg_seedNum = len(numpy.where(nodeSeeds == Labels.FOREGROUND)[0])
+        bg_seedNum = len(numpy.where(nodeSeeds == Labels.BACKGROUND)[0])
         if not (fg_seedNum > 0 and bg_seedNum > 0):
             return False
         else:
@@ -410,8 +413,8 @@ class OpCarving(Operator):
             logger.info("Loading seeds....")
             z = numpy.zeros(bounding_box_shape, dtype=dtype)
             logger.info("Allocating seed array took {} seconds".format(timer.seconds()))
-            z[fgVoxels] = 2
-            z[bgVoxels] = 1
+            z[fgVoxels] = Labels.FOREGROUND
+            z[bgVoxels] = Labels.BACKGROUND
             self.WriteSeeds[(slice(0, 1),) + bounding_box_slicing + (slice(0, 1),)] = z[
                 numpy.newaxis, :, :, :, numpy.newaxis
             ]
@@ -518,8 +521,8 @@ class OpCarving(Operator):
         fg = [[], [], []]
         for sl in nonzeroSlicings:
             label = self.opLabelArray.Output[sl].wait()
-            labels_bg = numpy.where(label == 1)
-            labels_fg = numpy.where(label == 2)
+            labels_bg = numpy.where(label == Labels.BACKGROUND)
+            labels_fg = numpy.where(label == Labels.FOREGROUND)
             labels_bg = [labels_bg[i] + sl[i].start for i in range(1, 4)]
             labels_fg = [labels_fg[i] + sl[i].start for i in range(1, 4)]
             for i in range(3):
