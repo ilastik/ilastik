@@ -621,13 +621,12 @@ class OpCarving(Operator):
                 logger.info("Writing seeds to label array took {} seconds".format(timer.seconds()))
 
             assert self._mst is not None
-            assert hasattr(key, "__len__")
 
             # Important: mst.seeds will requires erased values to be 255 (a.k.a -1)
             with Timer() as timer:
                 logger.info("Writing seeds to MST")
                 self._mst.addSeeds(roi=roi, brushStroke=value.squeeze())
-                logger.info("Writing seeds to MST took {} seconds".format(timer.seconds()))
+                logger.info(f"Writing seeds to MST took {timer.seconds()} seconds")
 
             self.has_seeds = True
         else:
