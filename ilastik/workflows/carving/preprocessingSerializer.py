@@ -111,10 +111,7 @@ class PreprocessingSerializer(AppletSerializer):
             opPre.enableDownstream(True)
 
     def isDirty(self):
-        for opPre in self._o.innerOperators:
-            if opPre.hasUnsavedData:
-                return True
-        return False
+        return any(op.hasUnsavedData for op in self._o.innerOperators)
 
     # this is present only for the serializer AppletInterface
     def unload(self):
