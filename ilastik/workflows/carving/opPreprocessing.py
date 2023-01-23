@@ -409,9 +409,9 @@ class OpPreprocessing(Operator):
         # save settings for reloading them if asked by user
         self.initialSigma = self.Sigma.value
         self.initialFilter = self.Filter.value
-        self.initalDoAgglo = self.DoAgglo.value
-        self.initalReduceTo = self.ReduceTo.value
-        self.initalSizeRegularizer = self.SizeRegularizer.value
+        self.initialDoAgglo = self.DoAgglo.value
+        self.initialSizeRegularizer = self.SizeRegularizer.value
+        self.initialReduceTo = self.ReduceTo.value
 
         self._unsavedData = True
         self._dirty = False

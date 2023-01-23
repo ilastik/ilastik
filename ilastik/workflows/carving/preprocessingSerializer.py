@@ -47,10 +47,16 @@ class PreprocessingSerializer(AppletSerializer):
 
                 deleteIfPresent(preproc, "sigma")
                 deleteIfPresent(preproc, "filter")
+                deleteIfPresent(preproc, "do_agglomeration")
+                deleteIfPresent(preproc, "size_regularizer")
+                deleteIfPresent(preproc, "reduce_to")
                 deleteIfPresent(preproc, "graph")
 
                 preproc.create_dataset("sigma", data=opPre.initialSigma)
                 preproc.create_dataset("filter", data=opPre.initialFilter)
+                preproc.create_dataset("do_agglomeration", data=opPre.initialDoAgglo)
+                preproc.create_dataset("size_regularizer", data=opPre.initialSizeRegularizer)
+                preproc.create_dataset("reduce_to", data=opPre.initialReduceTo)
 
                 preprocgraph = getOrCreateGroup(preproc, "graph")
                 mst.saveH5G(preprocgraph)
@@ -64,6 +70,11 @@ class PreprocessingSerializer(AppletSerializer):
 
         sigma = topGroup["sigma"][()]
         sfilter = topGroup["filter"][()]
+
+        # Pre-1.4.0rc9 project files do not contain doAgglo, sizeRegularizer and reduceTo - use defaults
+        doAgglo = topGroup["do_agglomeration"][()] if "do_agglomeration" in list(topGroup.keys()) else 1
+        sizeRegularizer = topGroup["size_regularizer"][()] if "size_regularizer" in list(topGroup.keys()) else 0.5
+        reduceTo = topGroup["reduce_to"][()] if "reduce_to" in list(topGroup.keys()) else 0.2
 
         if "graph" in list(topGroup.keys()):
             graphgroup = topGroup["graph"]
@@ -80,9 +91,16 @@ class PreprocessingSerializer(AppletSerializer):
         for opPre in self._o.innerOperators:
 
             opPre.initialSigma = sigma
-            opPre.Sigma.setValue(sigma)
             opPre.initialFilter = sfilter
+            opPre.initialDoAgglo = doAgglo
+            opPre.initialSizeRegularizer = sizeRegularizer
+            opPre.initialReduceTo = reduceTo
+
+            opPre.Sigma.setValue(sigma)
             opPre.Filter.setValue(sfilter)
+            opPre.DoAgglo.setValue(doAgglo)
+            opPre.SizeRegularizer.setValue(sizeRegularizer)
+            opPre.ReduceTo.setValue(reduceTo)
 
             mst = WatershedSegmentor(h5file=graphgroup)
             opPre._prepData = numpy.array([mst])
