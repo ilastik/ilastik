@@ -37,13 +37,12 @@ class PreprocessingSerializer(AppletSerializer):
         preproc = topGroup
 
         for opPre in self._o.innerOperators:
-            mst = opPre._prepData[0]
+            mst = opPre.cachedResult[0]
 
             if mst is not None:
 
-                # The values to be saved for sigma and filter are the
-                # values of the last valid preprocess
-                #!These may differ from the current settings!
+                # These are the values of the last valid preprocess.
+                # They may differ from the current settings!
 
                 deleteIfPresent(preproc, "sigma")
                 deleteIfPresent(preproc, "filter")
@@ -52,16 +51,16 @@ class PreprocessingSerializer(AppletSerializer):
                 deleteIfPresent(preproc, "reduce_to")
                 deleteIfPresent(preproc, "graph")
 
-                preproc.create_dataset("sigma", data=opPre.initialSigma)
-                preproc.create_dataset("filter", data=opPre.initialFilter)
-                preproc.create_dataset("do_agglomeration", data=opPre.initialDoAgglo)
-                preproc.create_dataset("size_regularizer", data=opPre.initialSizeRegularizer)
-                preproc.create_dataset("reduce_to", data=opPre.initialReduceTo)
+                preproc.create_dataset("sigma", data=opPre.cachedSigma)
+                preproc.create_dataset("filter", data=opPre.cachedFilter)
+                preproc.create_dataset("do_agglomeration", data=opPre.cachedDoAgglo)
+                preproc.create_dataset("size_regularizer", data=opPre.cachedSizeRegularizer)
+                preproc.create_dataset("reduce_to", data=opPre.cachedReduceTo)
 
                 preprocgraph = getOrCreateGroup(preproc, "graph")
                 mst.saveH5G(preprocgraph)
 
-            opPre._unsavedData = False
+            opPre.hasUnsavedData = False
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath, headless=False):
 
@@ -90,11 +89,11 @@ class PreprocessingSerializer(AppletSerializer):
 
         for opPre in self._o.innerOperators:
 
-            opPre.initialSigma = sigma
-            opPre.initialFilter = sfilter
-            opPre.initialDoAgglo = doAgglo
-            opPre.initialSizeRegularizer = sizeRegularizer
-            opPre.initialReduceTo = reduceTo
+            opPre.cachedSigma = sigma
+            opPre.cachedFilter = sfilter
+            opPre.cachedDoAgglo = doAgglo
+            opPre.cachedSizeRegularizer = sizeRegularizer
+            opPre.cachedReduceTo = reduceTo
 
             opPre.Sigma.setValue(sigma)
             opPre.Filter.setValue(sfilter)
@@ -103,7 +102,7 @@ class PreprocessingSerializer(AppletSerializer):
             opPre.ReduceTo.setValue(reduceTo)
 
             mst = WatershedSegmentor(h5file=graphgroup)
-            opPre._prepData = numpy.array([mst])
+            opPre.cachedResult = numpy.array([mst])
 
             opPre._dirty = False
             opPre.applet.writeprotected = True
@@ -113,7 +112,7 @@ class PreprocessingSerializer(AppletSerializer):
 
     def isDirty(self):
         for opPre in self._o.innerOperators:
-            if opPre._unsavedData:
+            if opPre.hasUnsavedData:
                 return True
         return False
 
