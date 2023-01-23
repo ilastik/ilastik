@@ -20,7 +20,7 @@
 ###############################################################################
 # Python
 from builtins import range
-from enum import IntEnum
+from enum import IntEnum, unique
 import time
 import numpy, h5py
 import copy
@@ -44,8 +44,14 @@ logger = logging.getLogger(__name__)
 DEFAULT_LABEL_PREFIX = "Object "
 
 
+@unique
 class Labels(IntEnum):
-    BACKGROUND, FOREGROUND = [1, 2]  # values must be same as in ilastiktools/carving.hxx#setSeeds
+    """Label values for carving.
+    Values must be same as in ilastiktools/carving.hxx#setSeeds.
+    """
+
+    BACKGROUND = 1
+    FOREGROUND = 2
 
 
 class OpCarving(Operator):
@@ -229,10 +235,7 @@ class OpCarving(Operator):
         if self._mst is None:
             return False
         nodeSeeds = self._mst.gridSegmentor.getNodeSeeds()
-        fg_seedNum = len(numpy.where(nodeSeeds == Labels.FOREGROUND)[0])
-        bg_seedNum = len(numpy.where(nodeSeeds == Labels.BACKGROUND)[0])
-        has_bg_and_fg_seeds = fg_seedNum > 0 and bg_seedNum > 0
-        return has_bg_and_fg_seeds
+        return numpy.all(numpy.isin(nodeSeeds, [l.value for l in Labels]))
 
     def setupOutputs(self):
         self.Segmentation.meta.assignFrom(self.InputData.meta)
@@ -517,8 +520,8 @@ class OpCarving(Operator):
         fg = [[], [], []]
         for slicing in self.opLabelArray.NonzeroBlocks[:].wait()[0]:
             label = self.opLabelArray.Output[slicing].wait()
-            labels_bg = numpy.where(label == Labels.BACKGROUND)
-            labels_fg = numpy.where(label == Labels.FOREGROUND)
+            labels_bg = numpy.nonzero(label == Labels.BACKGROUND)
+            labels_fg = numpy.nonzero(label == Labels.FOREGROUND)
             labels_bg = [labels_bg[d] + slicing[d].start for d in [1, 2, 3]]
             labels_fg = [labels_fg[d] + slicing[d].start for d in [1, 2, 3]]
             for i in range(3):
@@ -526,8 +529,8 @@ class OpCarving(Operator):
                 fg[i].append(labels_fg[i])
 
         for i in range(3):
-            bg[i] = numpy.concatenate(bg[i], 0) if len(bg[i]) > 0 else numpy.ndarray((0,), numpy.int32)
-            fg[i] = numpy.concatenate(fg[i], 0) if len(fg[i]) > 0 else numpy.ndarray((0,), numpy.int32)
+            bg[i] = numpy.concatenate(bg[i], axis=0) if len(bg[i]) > 0 else numpy.array((), dtype=numpy.int32)
+            fg[i] = numpy.concatenate(fg[i], axis=0) if len(fg[i]) > 0 else numpy.array((), dtype=numpy.int32)
         return fg, bg
 
     def saveObjectAs(self, name):
