@@ -1,6 +1,8 @@
 from __future__ import absolute_import
 from __future__ import division
 
+import warnings
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -349,8 +351,6 @@ class OpPreprocessing(Operator):
 
         self._opWatershedSourceCache = OpBlockedArrayCache(parent=self)
 
-        # self.PreprocessedData.connect( self._opMstProvider.MST )
-
         # Display slots
         self.FilteredImage.connect(self._opFilterCache.Output)
         self.WatershedImage.connect(self._opWatershedCache.Output)
@@ -401,7 +401,7 @@ class OpPreprocessing(Operator):
 
     def execute(self, slot, subindex, roi, result):
         assert slot == self.PreprocessedData, "Invalid output slot"
-        if self._prepData[0] is not None and not self._dirty:
+        if not self._dirty and self._prepData[0] is not None:
             return self._prepData
 
         mst = self._opMstProvider.MST.value
@@ -418,9 +418,8 @@ class OpPreprocessing(Operator):
         self._dirty = False
         self.enableDownstream(True)
 
-        # copy over seeds, and saved objects
+        # copy over saved objects
         if self._prepData[0] is not None:
-            # mst.seeds[:] = self._prepData[0].seeds[:]
             mst.object_lut = self._prepData[0].object_lut
             mst.object_names = self._prepData[0].object_names
             mst.object_seeds_bg_voxels = self._prepData[0].object_seeds_bg_voxels
@@ -431,19 +430,16 @@ class OpPreprocessing(Operator):
         # Cache result
         self._prepData = result
 
-        # Wonder why this is set?
-        # The preprocess is only called by the run button.
-        # By setting the output dirty, this event is propagated to the
-        # carving-Operator, who copies the result just calculated.
-        # This is to gain control over when the preprocess is executed.
-        # self.PreprocessedData.setDirty()
-
         result[0] = mst
         return result
 
     def AreSettingsInitial(self):
         """analyse settings for sigma and filter
         return True if they are equal to those of last preprocess"""
+        warnings.warn(
+            "OpPreprocessing.AreSettingsInitial() is deprecated and will soon be removed. Please contact the ilastik dev team if you need it.",
+            DeprecationWarning,
+        )
         if self.initialFilter is None:
             return False
         if self.Filter.value != self.initialFilter:
@@ -473,6 +469,7 @@ class OpPreprocessing(Operator):
         self.enableDownstream(False)
         if self._prepData[0] is not None:
             self.enableReset(True)
+        self.PreprocessedData.setDirty(slice(None))
 
     def enableReset(self, er):
         """set enabled of resetButton to er"""

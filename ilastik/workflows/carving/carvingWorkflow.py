@@ -114,8 +114,6 @@ class CarvingWorkflow(Workflow):
             pmapOverlayFile=pmapoverlayFile,
         )
 
-        # self.carvingApplet.topLevelOperator.MST.connect(self.preprocessingApplet.topLevelOperator.PreprocessedData)
-
         # Expose to shell
         self._applets = []
         self._applets.append(self.dataSelectionApplet)
@@ -127,8 +125,6 @@ class CarvingWorkflow(Workflow):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opPreprocessing = self.preprocessingApplet.topLevelOperator.getLane(laneIndex)
         opCarvingLane = self.carvingApplet.topLevelOperator.getLane(laneIndex)
-
-        opCarvingLane.connectToPreprocessingApplet(self.preprocessingApplet)
 
         op5Raw = OpReorderAxes(parent=self)
         op5Raw.AxisOrder.setValue("txyzc")

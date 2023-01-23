@@ -24,7 +24,6 @@ import functools
 import logging
 import threading
 import sys
-import inspect
 
 from abc import ABCMeta
 from contextlib import contextmanager
