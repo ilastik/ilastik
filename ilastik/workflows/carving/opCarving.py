@@ -231,10 +231,8 @@ class OpCarving(Operator):
         nodeSeeds = self._mst.gridSegmentor.getNodeSeeds()
         fg_seedNum = len(numpy.where(nodeSeeds == Labels.FOREGROUND)[0])
         bg_seedNum = len(numpy.where(nodeSeeds == Labels.BACKGROUND)[0])
-        if not (fg_seedNum > 0 and bg_seedNum > 0):
-            return False
-        else:
-            return True
+        has_bg_and_fg_seeds = fg_seedNum > 0 and bg_seedNum > 0
+        return has_bg_and_fg_seeds
 
     def setupOutputs(self):
         self.Segmentation.meta.assignFrom(self.InputData.meta)
@@ -513,32 +511,24 @@ class OpCarving(Operator):
     def get_label_voxels(self):
         # the voxel coordinates of fg and bg labels
         if not self.opLabelArray.NonzeroBlocks.ready():
-            return (None, None)
-
-        nonzeroSlicings = self.opLabelArray.NonzeroBlocks[:].wait()[0]
+            return None, None
 
         bg = [[], [], []]
         fg = [[], [], []]
-        for sl in nonzeroSlicings:
-            label = self.opLabelArray.Output[sl].wait()
+        for slicing in self.opLabelArray.NonzeroBlocks[:].wait()[0]:
+            label = self.opLabelArray.Output[slicing].wait()
             labels_bg = numpy.where(label == Labels.BACKGROUND)
             labels_fg = numpy.where(label == Labels.FOREGROUND)
-            labels_bg = [labels_bg[i] + sl[i].start for i in range(1, 4)]
-            labels_fg = [labels_fg[i] + sl[i].start for i in range(1, 4)]
+            labels_bg = [labels_bg[d] + slicing[d].start for d in [1, 2, 3]]
+            labels_fg = [labels_fg[d] + slicing[d].start for d in [1, 2, 3]]
             for i in range(3):
                 bg[i].append(labels_bg[i])
                 fg[i].append(labels_fg[i])
 
         for i in range(3):
-            if len(bg[i]) > 0:
-                bg[i] = numpy.concatenate(bg[i], 0)
-            else:
-                bg[i] = numpy.ndarray((0,), numpy.int32)
-            if len(fg[i]) > 0:
-                fg[i] = numpy.concatenate(fg[i], 0)
-            else:
-                fg[i] = numpy.ndarray((0,), numpy.int32)
-        return (fg, bg)
+            bg[i] = numpy.concatenate(bg[i], 0) if len(bg[i]) > 0 else numpy.ndarray((0,), numpy.int32)
+            fg[i] = numpy.concatenate(fg[i], 0) if len(fg[i]) > 0 else numpy.ndarray((0,), numpy.int32)
+        return fg, bg
 
     def saveObjectAs(self, name):
         self.saveCurrentObjectAs(name)
