@@ -275,36 +275,41 @@ class CarvingGui(LabelingGui):
 
     def onSaveButton(self):
         logger.info("save object as?")
-        if self.topLevelOperatorView.dataIsStorable():
-            prevName = self.topLevelOperatorView.getCurrentObjectName()
-            if prevName == DEFAULT_OBJECT_NAME:
-                prevName = ""
-            name = self.saveAsDialog(name=prevName)
-            if name is None:
-                return
-            namesInUse = self.getObjectNames()
-            if name in namesInUse and name != prevName:
-                QMessageBox.critical(
-                    self,
-                    "Save Object As",
-                    "An object with name '%s' already exists.\nPlease choose a different name." % name,
-                )
-                return
-            self.topLevelOperatorView.saveObjectAs(name)
-            logger.info("save object as %s" % name)
-            if prevName != name and prevName != "":
-                self.topLevelOperatorView.deleteObject(prevName)
-            elif prevName == name:
-                self._renderMgr.removeObject(prevName)
-                self._renderMgr.invalidateObject(prevName)
-                self._shownObjects3D.pop(prevName, None)
-        else:
+        if not self.topLevelOperatorView.dataIsStorable():
             msgBox = QMessageBox(self)
             msgBox.setText("The data does not seem fit to be stored.")
             msgBox.setWindowTitle("Problem with Data")
             msgBox.setIcon(2)
             msgBox.exec_()
             logger.error("object not saved due to faulty data.")
+            return
+
+        old_name = self.topLevelOperatorView.getCurrentObjectName()
+        saved_object_names = self.getObjectNames()
+        was_object_previously_saved = old_name in saved_object_names
+
+        new_name = self.saveAsDialog(name=(old_name if was_object_previously_saved else ""))
+        if new_name is None:
+            return
+
+        is_name_changed = new_name != old_name
+        if is_name_changed and new_name in saved_object_names:
+            QMessageBox.critical(
+                self,
+                "Save Object As",
+                f"An object with name '{new_name}' already exists.\nPlease choose a different name.",
+            )
+            return
+
+        self.topLevelOperatorView.saveObjectAs(new_name)
+
+        if was_object_previously_saved:
+            if is_name_changed:
+                self.topLevelOperatorView.deleteObject(old_name)
+            else:
+                self._renderMgr.removeObject(old_name)
+                self._renderMgr.invalidateObject(old_name)
+                self._shownObjects3D.pop(old_name, None)
 
     def onShowObjectNames(self):
         """show object names and allow user to load/delete them"""
