@@ -28,7 +28,6 @@ import numpy
 
 # PyQt
 from PyQt5 import uic
-from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMenu, QMessageBox, QFileDialog
 
@@ -40,14 +39,13 @@ from volumina.api import createDataSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager, preferences
 
-from ilastik.widgets.labelListModel import LabelListModel
-
 from volumina.view3d.meshgenerator import MeshGeneratorDialog, mesh_to_obj, labeling_to_mesh
 from volumina.view3d.volumeRendering import RenderingManager
 
 # ilastik
 from ilastik.utility import bind
 from ilastik.applets.labeling.labelingGui import LabelingGui
+from ilastik.workflows.carving.opCarving import DEFAULT_OBJECT_NAME
 
 
 import logging
@@ -93,7 +91,7 @@ class CarvingGui(LabelingGui):
         )
 
         self.parentApplet = parentApplet
-        self.labelingDrawerUi.currentObjectLabel.setText("<not saved yet>")
+        self.labelingDrawerUi.currentObjectLabel.setText(DEFAULT_OBJECT_NAME)
 
         # Init special base class members
         self.minLabelNumber = 2
@@ -278,10 +276,8 @@ class CarvingGui(LabelingGui):
     def onSaveButton(self):
         logger.info("save object as?")
         if self.topLevelOperatorView.dataIsStorable():
-            prevName = ""
-            if self.topLevelOperatorView.hasCurrentObject():
-                prevName = self.topLevelOperatorView.getCurrentObjectName()
-            if prevName == "<not saved yet>":
+            prevName = self.topLevelOperatorView.getCurrentObjectName()
+            if prevName == DEFAULT_OBJECT_NAME:
                 prevName = ""
             name = self.saveAsDialog(name=prevName)
             if name is None:

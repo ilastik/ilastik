@@ -23,7 +23,6 @@ from builtins import range
 from enum import IntEnum, unique
 import time
 import numpy, h5py
-import copy
 
 # Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -42,6 +41,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 DEFAULT_LABEL_PREFIX = "Object "
+DEFAULT_OBJECT_NAME = "<not saved yet>"
 
 
 @unique
@@ -148,7 +148,7 @@ class OpCarving(Operator):
                 raise RuntimeError("Could not open pmap overlay '%s'" % pmapOverlayFile)
             self._pmap = f["/data"][numpy.newaxis, :, :, :, numpy.newaxis]
 
-        self._setCurrObjectName("<not saved yet>")
+        self._setCurrObjectName(DEFAULT_OBJECT_NAME)
         self.HasSegmentation.setValue(False)
 
         # keep track of a set of object names that have changed since
@@ -224,10 +224,9 @@ class OpCarving(Operator):
             for name, objectSupervoxels in self._mst.object_lut.items():
                 if name == self._currObjectName:
                     continue
-                assert name in self._mst.object_names, "%s not in self._mst.object_names, keys are %r" % (
-                    name,
-                    list(self._mst.object_names.keys()),
-                )
+                assert (
+                    name in self._mst.object_names
+                ), f"{name} not in self._mst.object_names, keys are {list(self._mst.object_names.keys())!r}"
                 self._done_seg_lut[objectSupervoxels] = self._mst.object_names[name]
         logger.info("building the 'done' luts took {} seconds".format(timer.seconds()))
 
@@ -263,28 +262,11 @@ class OpCarving(Operator):
 
         self.AllObjectNames.meta.dtype = object
 
-    def hasCurrentObject(self):
-        """
-        Returns current object name. None if it is not set.
-        """
-        # FIXME: This is misleading. Having a current object and that object having
-        # a name is not the same thing.
-        return self._currObjectName
-
     def getCurrentObjectName(self):
+        f"""
+        Returns current object name, which is {DEFAULT_OBJECT_NAME} until an object is loaded.
         """
-        Returns current object name. Return "" if no current object
-        """
-        assert (
-            self._currObjectName is not None
-        ), "FIXME: This function should either return '' or None.  Why does it sometimes return one and then the other?"
         return self._currObjectName
-
-    def hasObjectWithName(self, name):
-        """
-        Returns True if object with name is existent. False otherwise.
-        """
-        return name in self._mst.object_lut
 
     def doneObjectNamesForPosition(self, position3d):
         """
@@ -355,13 +337,12 @@ class OpCarving(Operator):
         return (fgVoxelsSeedPos, bgVoxelsSeedPos)
 
     def loadObject(self, name):
-        logger.info("want to load object with name = %s" % name)
-        if not self.hasObjectWithName(name):
-            logger.info("  --> no such object '%s'" % name)
-            return False
+        logger.info(f"want to load object with name = {name}")
+        if name not in self._mst.object_lut:
+            logger.info("  --> no object with this name")
+            return
 
-        if self.hasCurrentObject():
-            self.saveCurrentObject()
+        self.saveCurrentObject()
         self._clearLabels()
 
         fgVoxels, bgVoxels = self.restore_and_get_labels_for_object(name)
@@ -385,8 +366,6 @@ class OpCarving(Operator):
 
         # The entire segmentation layer needs to be refreshed now.
         self.Segmentation.setDirty()
-
-        return True
 
     def set_labels_into_WriteSeeds_input(self, fgVoxels, bgVoxels):
         fg_bounding_box_start = numpy.array(list(map(numpy.min, fgVoxels)))
@@ -440,16 +419,16 @@ class OpCarving(Operator):
         if name in self._mst.object_names:
             del self._mst.object_names[name]
 
-        self._setCurrObjectName("<not saved yet>")
+        self._setCurrObjectName(DEFAULT_OBJECT_NAME)
 
         # now that 'name' has been deleted, rebuild the done overlay
         self._buildDone()
 
     def deleteObject(self, name):
-        logger.info("want to delete object with name = %s" % name)
-        if not self.hasObjectWithName(name):
-            logger.info("  --> no such object '%s'" % name)
-            return False
+        logger.info(f"want to delete object with name = {name}")
+        if name not in self._mst.object_lut:
+            logger.info("  --> no object with this name")
+            return
 
         self.deleteObject_impl(name)
         self._clearLabels()
@@ -463,23 +442,13 @@ class OpCarving(Operator):
 
         self.HasSegmentation.setValue(False)
 
-        return True
-
     @Operator.forbidParallelExecute
     def saveCurrentObject(self):
-        """
-        Saves the objects which is currently edited.
-        """
-        if self._currObjectName:
-            name = copy.copy(self._currObjectName)
-            logger.info("saving object %s" % self._currObjectName)
-            self.saveCurrentObjectAs(self._currObjectName)
-            self.HasSegmentation.setValue(False)
-            return name
-        return ""
+        logger.info(f"saving object {self._currObjectName}")
+        self.save_object(self._currObjectName)
 
     @Operator.forbidParallelExecute
-    def saveCurrentObjectAs(self, name):
+    def save_object(self, name):
         """
         Saves current object as name.
         """
@@ -504,7 +473,7 @@ class OpCarving(Operator):
 
         self._mst.object_lut[name] = numpy.where(sVseg == 2)
 
-        self._setCurrObjectName("<not saved yet>")
+        self._setCurrObjectName(DEFAULT_OBJECT_NAME)
         self.HasSegmentation.setValue(False)
 
         objects = list(self._mst.object_names.keys())
@@ -536,7 +505,7 @@ class OpCarving(Operator):
         return fg, bg
 
     def saveObjectAs(self, name):
-        self.saveCurrentObjectAs(name)
+        self.save_object(name)
 
         fgVoxels, bgVoxels = self.get_label_voxels()
 
