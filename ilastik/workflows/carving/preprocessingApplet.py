@@ -40,23 +40,11 @@ class PreprocessingApplet(StandardApplet):
         self.writeprotected = False
         self._enabledWriteprotect = True
         self._enabledDS = True
-        self._enabledReset = False
 
     def enableWriteprotect(self, value):
         if self._enabledWriteprotect != value:
             self._enabledWriteprotect = value
             self._gui.enableWriteprotect(value)
-
-    def enableReset(self, er):
-        if self._workflow._headless:
-            return
-        from .preprocessingGui import PreprocessingGui
-
-        if self._enabledReset != er:
-            self._enabledReset = er
-            # if GUI is not set up, _gui is an Adapter
-            if type(self._gui) == PreprocessingGui:
-                self._gui.enableReset(er)
 
     def enableDownstream(self, ed):
         if self._workflow._headless:
@@ -82,7 +70,6 @@ class PreprocessingApplet(StandardApplet):
             self._gui.setWriteprotect()
 
         self.enableDownstream(self._enabledDS)
-        self._gui.enableReset(self._enabledReset)
 
         return self._gui
 

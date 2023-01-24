@@ -83,9 +83,6 @@ class PreprocessingGui(QMainWindow):
 
         self.parentApplet.appletStateUpdateRequested.subscribe(self.processingFinished)
 
-        # FIXME: for release 0.6, disable this (the reset button made the gui even more complicated)
-        # self.drawer.resetButton.clicked.connect(self.topLevelOperatorView.reset)
-
         # Slot change handlers (in case the operator is somehow changed *outside* the gui, such as by the workflow.
         self.topLevelOperatorView.Filter.notifyDirty(self.updateFilterFromOperator)
         self.topLevelOperatorView.Sigma.notifyDirty(self.updateSigmaFromOperator)
@@ -164,11 +161,6 @@ class PreprocessingGui(QMainWindow):
 
     def setSigma(self, sigma):
         self.drawer.sigmaSpin.setValue(sigma)
-
-    def enableReset(self, er):
-        pass
-        # TODO: re-enable this after the 0.6 release
-        # self.drawer.resetButton.setEnabled(er)
 
     def centralWidget(self):
         return self.centralGui
