@@ -6,7 +6,6 @@ from functools import partial
 from textwrap import dedent
 from typing import Callable, List
 
-from bioimageio.core import load_raw_resource_description
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
@@ -273,6 +272,10 @@ class ModelStateControl(QWidget):
             self._showErrorMessage(e)
 
     def onModelInfoRequested(self):
+        # Note: bioimageio imports are delayed as to prevent https request to
+        # github and bioimage.io on ilastik startup
+        from bioimageio.core import load_raw_resource_description
+
         model_uri = self.modelSourceEdit.getModelSource().strip()
         if not model_uri:
             # try select file from file chooser

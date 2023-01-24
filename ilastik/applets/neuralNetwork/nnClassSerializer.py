@@ -23,6 +23,9 @@ import logging
 
 import numpy as np
 
+# Note: bioimageio imports are delayed as to prevent https request to
+# github and bioimage.io on ilastik startup
+
 from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
     JSONSerialSlot,
@@ -33,8 +36,6 @@ from ilastik.applets.base.appletSerializer import (
 )
 
 from .tiktorchController import BIOModelData, ModelInfo
-from bioimageio.spec import serialize_raw_resource_description_to_dict, load_raw_resource_description
-
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +91,8 @@ class BioimageIOModelSlot(SerialSlot):
 
     @staticmethod
     def _getValue(subgroup, slot):
+        from bioimageio.spec import load_raw_resource_description
+
         try:
             model = BIOModelData(
                 modelUri=subgroup.attrs["modelUri"],
