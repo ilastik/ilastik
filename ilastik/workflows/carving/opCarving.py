@@ -235,7 +235,9 @@ class OpCarving(Operator):
         if self._mst is None:
             return False
         nodeSeeds = self._mst.gridSegmentor.getNodeSeeds()
-        return numpy.all(numpy.isin(nodeSeeds, [l.value for l in Labels]))
+        has_bg_seeds = numpy.any(nodeSeeds == Labels.BACKGROUND)
+        has_fg_seeds = numpy.any(nodeSeeds == Labels.FOREGROUND)
+        return has_bg_seeds and has_fg_seeds
 
     def setupOutputs(self):
         self.Segmentation.meta.assignFrom(self.InputData.meta)
