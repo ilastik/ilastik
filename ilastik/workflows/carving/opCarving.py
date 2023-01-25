@@ -342,7 +342,7 @@ class OpCarving(Operator):
             logger.info("  --> no object with this name")
             return
 
-        self.saveCurrentObject()
+        self.save_object(self._currObjectName)
         self._clearLabels()
 
         fgVoxels, bgVoxels = self.restore_and_get_labels_for_object(name)
@@ -443,17 +443,11 @@ class OpCarving(Operator):
         self.HasSegmentation.setValue(False)
 
     @Operator.forbidParallelExecute
-    def saveCurrentObject(self):
-        logger.info(f"saving object {self._currObjectName}")
-        self.save_object(self._currObjectName)
-
-    @Operator.forbidParallelExecute
     def save_object(self, name):
         """
         Saves current object as name.
         """
-        seed = 2
-        logger.info("   --> Saving object %r from seed %r" % (name, seed))
+        logger.info(f"   --> Saving object {name!r}")
         if name in self._mst.object_names:
             objNr = self._mst.object_names[name]
         else:
@@ -464,7 +458,6 @@ class OpCarving(Operator):
                 objNr = 1
 
         sVseg = self._mst.getSuperVoxelSeg()
-        sVseed = self._mst.getSuperVoxelSeeds()
 
         self._mst.object_names[name] = objNr
 
