@@ -132,7 +132,7 @@ class CarvingGui(LabelingGui):
         self.labelingDrawerUi.segment.setEnabled(True)
 
         self.topLevelOperatorView.Segmentation.notifyDirty(bind(self._segmentation_dirty))
-        self.topLevelOperatorView.HasSegmentation.notifyValueChanged(bind(self._updateGui))
+        self.topLevelOperatorView.CanObjectBeSaved.notifyValueChanged(bind(self._updateGui))
 
         self.labelingDrawerUi.objPrefix.setText(self.objectPrefix)
         self.labelingDrawerUi.objPrefix.textChanged.connect(self.setObjectPrefix)
@@ -637,13 +637,13 @@ class CarvingGui(LabelingGui):
 
         def onButtonsEnabled(slot, roi):
             currObj = self.topLevelOperatorView.CurrentObjectName.value
-            hasSeg = self.topLevelOperatorView.HasSegmentation.value
+            canSave = self.topLevelOperatorView.CanObjectBeSaved.value
 
             self.labelingDrawerUi.currentObjectLabel.setText(currObj)
-            self.labelingDrawerUi.save.setEnabled(hasSeg)
+            self.labelingDrawerUi.save.setEnabled(canSave)
 
         self.topLevelOperatorView.CurrentObjectName.notifyDirty(onButtonsEnabled)
-        self.topLevelOperatorView.HasSegmentation.notifyDirty(onButtonsEnabled)
+        self.topLevelOperatorView.CanObjectBeSaved.notifyDirty(onButtonsEnabled)
         self.topLevelOperatorView.opLabelArray.NonzeroBlocks.notifyDirty(onButtonsEnabled)
 
         # Labels

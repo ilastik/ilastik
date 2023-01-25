@@ -107,7 +107,7 @@ class OpCarving(Operator):
 
     AllObjectNames = OutputSlot(rtype=List, stype=Opaque)
 
-    HasSegmentation = OutputSlot(stype="bool")
+    CanObjectBeSaved = OutputSlot(stype="bool")
 
     HintOverlay = OutputSlot()
 
@@ -149,7 +149,7 @@ class OpCarving(Operator):
             self._pmap = f["/data"][numpy.newaxis, :, :, :, numpy.newaxis]
 
         self._setCurrObjectName(DEFAULT_OBJECT_NAME)
-        self.HasSegmentation.setValue(False)
+        self.CanObjectBeSaved.setValue(False)
 
         # keep track of a set of object names that have changed since
         # the last serialization of this object to disk
@@ -330,7 +330,7 @@ class OpCarving(Operator):
         self._mst.setResulFgObj(fgNodes[0])
 
         self._setCurrObjectName(name)
-        self.HasSegmentation.setValue(True)
+        self.CanObjectBeSaved.setValue(True)
 
         # now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
         self._buildDone()
@@ -440,7 +440,7 @@ class OpCarving(Operator):
         logger.info("save: len = {}".format(len(objects)))
         self.AllObjectNames.meta.shape = (len(objects),)
 
-        self.HasSegmentation.setValue(False)
+        self.CanObjectBeSaved.setValue(False)
 
     @Operator.forbidParallelExecute
     def save_object(self, name):
@@ -467,7 +467,7 @@ class OpCarving(Operator):
         self._mst.object_lut[name] = numpy.where(sVseg == 2)
 
         self._setCurrObjectName(DEFAULT_OBJECT_NAME)
-        self.HasSegmentation.setValue(False)
+        self.CanObjectBeSaved.setValue(False)
 
         objects = list(self._mst.object_names.keys())
         self.AllObjectNames.meta.shape = (len(objects),)
@@ -623,8 +623,8 @@ class OpCarving(Operator):
 
             self.Segmentation.setDirty(slice(None))
             self.DoneSegmentation.setDirty(slice(None))
-            hasSeg = numpy.any(self._mst.hasSeg)
-            self.HasSegmentation.setValue(hasSeg)
+            has_segmentation = numpy.any(self._mst.hasSeg)
+            self.CanObjectBeSaved.setValue(has_segmentation)
 
         elif slot == self.MST:
             self._opMstCache.Input.disconnect()
