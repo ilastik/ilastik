@@ -219,14 +219,14 @@ class ConservationTrackingWorkflowBase(Workflow):
         # If we have stored division and cell classifiers, restore them into the workflow now.
         if self.stored_division_classifier:
             opDivisionClassification = self.divisionDetectionApplet.topLevelOperator
-            opDivisionClassification.classifier_cache.forceValue(self.stored_division_classifier)
+            opDivisionClassification.classifier_cache.forceValue(self.stored_division_classifier, set_dirty=False)
             # Release reference
             self.stored_division_classifier = None
 
         # If we have stored division and cell classifiers, restore them into the workflow now.
         if self.stored_cell_classifier:
             opCellClassification = self.cellClassificationApplet.topLevelOperator
-            opCellClassification.classifier_cache.forceValue(self.stored_cell_classifier)
+            opCellClassification.classifier_cache.forceValue(self.stored_cell_classifier, set_dirty=False)
             # Release reference
             self.stored_cell_classifier = None
 
@@ -299,9 +299,6 @@ class ConservationTrackingWorkflowBase(Workflow):
         opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[0])
 
     def prepare_lane_for_export(self, lane_index):
-        # Bypass cache on headless mode and batch processing mode
-        self.objectExtractionApplet.topLevelOperator[lane_index].BypassModeEnabled.setValue(True)
-
         if not self.fromBinary:
             self.thresholdTwoLevelsApplet.topLevelOperator[lane_index].opCache.BypassModeEnabled.setValue(True)
             self.thresholdTwoLevelsApplet.topLevelOperator[lane_index].opSmootherCache.BypassModeEnabled.setValue(True)
