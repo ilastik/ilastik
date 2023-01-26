@@ -29,10 +29,8 @@ logger = logging.getLogger(__name__)
 # PyQt
 from PyQt5 import uic
 from PyQt5.QtWidgets import QMainWindow, QMessageBox
-from PyQt5.QtGui import QIcon
 
 # ilastik
-from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from .preprocessingViewerGui import PreprocessingViewerGui
@@ -126,6 +124,24 @@ class PreprocessingGui(QMainWindow):
         QMessageBox.critical(self, "error", str(exception))
 
     def handleRunButtonClicked(self):
+        if (
+            self.topLevelOperatorView.cachedResult[0] is not None
+            and self.topLevelOperatorView.cachedResult[0].object_names
+        ):
+            buttons = QMessageBox.Yes | QMessageBox.Cancel
+            n = len(self.topLevelOperatorView.cachedResult[0].object_names)
+            response = QMessageBox.warning(
+                self,
+                "Confirm Deleting Saved Objects",
+                f"This project already contains {n} saved segmented objects. The existing segmentations "
+                "become invalid if you change preprocessing settings, and will be deleted.\n\n"
+                "Please consider creating a copy of the project file for the different preprocessing instead.\n\n"
+                "Run preprocessing and delete all saved objects?",
+                buttons,
+                defaultButton=QMessageBox.Cancel,
+            )
+            if response == QMessageBox.Cancel:
+                return
         self.setWriteprotect()
         self.topLevelOperatorView.Filter.setValue(self.filterChoice)
         self.topLevelOperatorView.SizeRegularizer.setValue(self.drawer.sizeRegularizerSpin.value())

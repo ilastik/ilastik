@@ -413,15 +413,6 @@ class OpPreprocessing(Operator):
         self._dirty = False
         self.enableDownstream(True)
 
-        # copy over saved objects
-        if self.cachedResult[0] is not None:
-            mst.object_lut = self.cachedResult[0].object_lut
-            mst.object_names = self.cachedResult[0].object_names
-            mst.object_seeds_bg_voxels = self.cachedResult[0].object_seeds_bg_voxels
-            mst.object_seeds_fg_voxels = self.cachedResult[0].object_seeds_fg_voxels
-            mst.bg_priority = self.cachedResult[0].bg_priority
-            mst.no_bias_below = self.cachedResult[0].no_bias_below
-
         self.cachedResult = result
 
         result[0] = mst
