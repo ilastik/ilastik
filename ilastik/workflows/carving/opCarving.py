@@ -458,6 +458,9 @@ class OpCarving(Operator):
                 objNr = 1
 
         sVseg = self._mst.getSuperVoxelSeg()
+        if not any(sVseg > 0):
+            logger.info(f"   --> not saving due to missing segmentation")
+            return
 
         self._mst.object_names[name] = objNr
 
