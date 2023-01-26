@@ -214,7 +214,7 @@ class CarvingGui(LabelingGui):
             self._toggleSegmentation3D()
 
     def _updateGui(self):
-        self.labelingDrawerUi.save.setEnabled(self.topLevelOperatorView.dataIsStorable())
+        self.labelingDrawerUi.save.setEnabled(self.topLevelOperatorView.CanObjectBeSaved.value)
 
     def onSegmentButton(self):
         logger.debug("segment button clicked")
@@ -275,7 +275,7 @@ class CarvingGui(LabelingGui):
 
     def onSaveButton(self):
         logger.info("save object as?")
-        if not self.topLevelOperatorView.dataIsStorable():
+        if not self.topLevelOperatorView.CanObjectBeSaved.value:
             msgBox = QMessageBox(self)
             msgBox.setText("The data does not seem fit to be stored.")
             msgBox.setWindowTitle("Problem with Data")
@@ -411,7 +411,7 @@ class CarvingGui(LabelingGui):
             showSeg3DAction.setChecked(self._showSegmentationIn3D)
             showSeg3DAction.triggered.connect(self._toggleSegmentation3D)
 
-        if op.dataIsStorable():
+        if op.CanObjectBeSaved.value:
             menu.addAction("Save object").triggered.connect(self.onSaveButton)
         menu.addAction("Browse objects").triggered.connect(self.onShowObjectNames)
         menu.addAction("Segment").triggered.connect(self.onSegmentButton)

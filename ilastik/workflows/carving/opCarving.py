@@ -149,7 +149,7 @@ class OpCarving(Operator):
             self._pmap = f["/data"][numpy.newaxis, :, :, :, numpy.newaxis]
 
         self._setCurrObjectName(DEFAULT_OBJECT_NAME)
-        self.CanObjectBeSaved.setValue(False)
+        self._updateCanObjectBeSaved()
 
         # keep track of a set of object names that have changed since
         # the last serialization of this object to disk
@@ -230,13 +230,22 @@ class OpCarving(Operator):
                 self._done_seg_lut[objectSupervoxels] = self._mst.object_names[name]
         logger.info("building the 'done' luts took {} seconds".format(timer.seconds()))
 
-    def dataIsStorable(self):
+    def _updateCanObjectBeSaved(self):
         if self._mst is None:
-            return False
+            self.CanObjectBeSaved.setValue(False)
+            return
+
+        has_segmentation = numpy.any(self._mst.hasSeg)
+        if has_segmentation:
+            # Segmentation existing implies that both types of seeds exist.
+            # Avoid the array calculations below.
+            self.CanObjectBeSaved.setValue(True)
+            return
+
         nodeSeeds = self._mst.gridSegmentor.getNodeSeeds()
         has_bg_seeds = numpy.any(nodeSeeds == Labels.BACKGROUND)
         has_fg_seeds = numpy.any(nodeSeeds == Labels.FOREGROUND)
-        return has_bg_seeds and has_fg_seeds
+        self.CanObjectBeSaved.setValue(has_bg_seeds and has_fg_seeds)
 
     def setupOutputs(self):
         self.Segmentation.meta.assignFrom(self.InputData.meta)
@@ -330,7 +339,7 @@ class OpCarving(Operator):
         self._mst.setResulFgObj(fgNodes[0])
 
         self._setCurrObjectName(name)
-        self.CanObjectBeSaved.setValue(True)
+        self._updateCanObjectBeSaved()
 
         # now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
         self._buildDone()
@@ -342,7 +351,9 @@ class OpCarving(Operator):
             logger.info("  --> no object with this name")
             return
 
-        self.save_object(self._currObjectName)
+        if self.CanObjectBeSaved.value:
+            # The user was probably ready to save, so let's just do it
+            self.save_object(self._currObjectName)
         self._clearLabels()
 
         fgVoxels, bgVoxels = self.restore_and_get_labels_for_object(name)
@@ -440,7 +451,7 @@ class OpCarving(Operator):
         logger.info("save: len = {}".format(len(objects)))
         self.AllObjectNames.meta.shape = (len(objects),)
 
-        self.CanObjectBeSaved.setValue(False)
+        self._updateCanObjectBeSaved()
 
     @Operator.forbidParallelExecute
     def save_object(self, name):
@@ -470,7 +481,7 @@ class OpCarving(Operator):
         self._mst.object_lut[name] = numpy.where(sVseg == 2)
 
         self._setCurrObjectName(DEFAULT_OBJECT_NAME)
-        self.CanObjectBeSaved.setValue(False)
+        self._updateCanObjectBeSaved()
 
         objects = list(self._mst.object_names.keys())
         self.AllObjectNames.meta.shape = (len(objects),)
@@ -626,8 +637,7 @@ class OpCarving(Operator):
 
             self.Segmentation.setDirty(slice(None))
             self.DoneSegmentation.setDirty(slice(None))
-            has_segmentation = numpy.any(self._mst.hasSeg)
-            self.CanObjectBeSaved.setValue(has_segmentation)
+            self._updateCanObjectBeSaved()
 
         elif slot == self.MST:
             self._opMstCache.Input.disconnect()
