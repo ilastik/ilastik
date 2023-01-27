@@ -235,17 +235,11 @@ class OpCarving(Operator):
             self.CanObjectBeSaved.setValue(False)
             return
 
-        has_segmentation = numpy.any(self._mst.hasSeg)
-        if has_segmentation:
-            # Segmentation existing implies that both types of seeds exist.
-            # Avoid the array calculations below.
-            self.CanObjectBeSaved.setValue(True)
-            return
-
         nodeSeeds = self._mst.gridSegmentor.getNodeSeeds()
         has_bg_seeds = numpy.any(nodeSeeds == Labels.BACKGROUND)
         has_fg_seeds = numpy.any(nodeSeeds == Labels.FOREGROUND)
-        self.CanObjectBeSaved.setValue(has_bg_seeds and has_fg_seeds)
+        has_segmentation = numpy.any(self._mst.hasSeg)
+        self.CanObjectBeSaved.setValue(has_bg_seeds and has_fg_seeds and has_segmentation)
 
     def setupOutputs(self):
         self.Segmentation.meta.assignFrom(self.InputData.meta)
