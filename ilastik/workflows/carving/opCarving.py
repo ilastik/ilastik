@@ -506,9 +506,12 @@ class OpCarving(Operator):
         return fg, bg
 
     def saveObjectAs(self, name):
-        self.save_object(name)
-
         fgVoxels, bgVoxels = self.get_label_voxels()
+        if len(fgVoxels[0]) == 0 or len(bgVoxels[0]) == 0:
+            logger.info(f"Either foreground or background labels missing. Cannot save object {name}.")
+            return
+
+        self.save_object(name)
 
         self.attachVoxelLabelsToObject(name, fgVoxels=fgVoxels, bgVoxels=bgVoxels)
 
