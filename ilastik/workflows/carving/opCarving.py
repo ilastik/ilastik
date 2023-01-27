@@ -194,6 +194,7 @@ class OpCarving(Operator):
         if self._mst is not None:
             self._mst.clearSeed(label_value)
         self.opLabelArray.DeleteLabel.setValue(-1)
+        self._updateCanObjectBeSaved()
 
     def _clearLabels(self):
         # clear the labels
@@ -302,6 +303,7 @@ class OpCarving(Operator):
         """
         self._clearLabels()
         self._mst.gridSegmentor.clearSeeds()
+        self._updateCanObjectBeSaved()
 
         self.Trigger.setDirty(slice(None))
 
@@ -371,6 +373,7 @@ class OpCarving(Operator):
 
         # The entire segmentation layer needs to be refreshed now.
         self.Segmentation.setDirty()
+        self._updateCanObjectBeSaved()
 
     def set_labels_into_WriteSeeds_input(self, fgVoxels, bgVoxels):
         fg_bounding_box_start = numpy.array(list(map(numpy.min, fgVoxels)))
@@ -488,7 +491,7 @@ class OpCarving(Operator):
         if not self.opLabelArray.NonzeroBlocks.ready():
             return None, None
 
-        bg = [[], [], []]
+        bg = [[], [], []]  # [[x], [y], [z]] with len([x])=len([y])=len([z]) = count(labelled pixels)
         fg = [[], [], []]
         for slicing in self.opLabelArray.NonzeroBlocks[:].wait()[0]:
             label = self.opLabelArray.Output[slicing].wait()
@@ -584,24 +587,23 @@ class OpCarving(Operator):
         return temp  # avoid copying data
 
     def setInSlot(self, slot, subindex, roi, value):
-        key = roi.toSlice()
-        if slot == self.WriteSeeds:
-            with Timer() as timer:
-                logger.info("Writing seeds to label array")
-                self.opLabelArray.LabelSinkInput[roi.toSlice()] = value
-                logger.info("Writing seeds to label array took {} seconds".format(timer.seconds()))
+        assert slot == self.WriteSeeds, f"Invalid input slot: {slot.name}"
 
-            assert self._mst is not None
+        with Timer() as timer:
+            logger.info("Writing seeds to label array")
+            self.opLabelArray.LabelSinkInput[roi.toSlice()] = value
+            logger.info("Writing seeds to label array took {} seconds".format(timer.seconds()))
 
-            # Important: mst.seeds will requires erased values to be 255 (a.k.a -1)
-            with Timer() as timer:
-                logger.info("Writing seeds to MST")
-                self._mst.addSeeds(roi=roi, brushStroke=value.squeeze())
-                logger.info(f"Writing seeds to MST took {timer.seconds()} seconds")
+        assert self._mst is not None
 
-            self.has_seeds = True
-        else:
-            raise RuntimeError("unknown slots")
+        # Important: mst.seeds will requires erased values to be 255 (a.k.a -1)
+        with Timer() as timer:
+            logger.info("Writing seeds to MST")
+            self._mst.addSeeds(roi=roi, brushStroke=value.squeeze())
+            logger.info(f"Writing seeds to MST took {timer.seconds()} seconds")
+
+        self.has_seeds = True
+        self._updateCanObjectBeSaved()
 
     def propagateDirty(self, slot, subindex, roi):
         if (
