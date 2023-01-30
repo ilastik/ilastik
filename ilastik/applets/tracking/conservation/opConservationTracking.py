@@ -59,6 +59,9 @@ except ImportError:
         logger.warning("Could not find any ILP solver")
 
 
+RANDOM_SEED_MERGER = 42
+
+
 class OpConservationTracking(Operator):
     LabelImage = InputSlot()
     ObjectFeatures = InputSlot(stype=Opaque, rtype=List)
@@ -309,7 +312,7 @@ class OpConservationTracking(Operator):
         )
         return hypothesesGraph
 
-    def _resolveMergers(self, hypothesesGraph, model):
+    def _resolveMergers(self, hypothesesGraph, model, randomSeedMerger):
         """
         run merger resolution on the hypotheses graph which contains the current solution
         """
@@ -328,7 +331,11 @@ class OpConservationTracking(Operator):
             withFullGraph = True
             logger.info("Computing full graph on merger resolver (Only enabled on animal tracking workflow)")
 
-        mergerResolver = IlastikMergerResolver(originalGraph, pluginPaths=self.pluginPaths, withFullGraph=withFullGraph)
+        # supply random_state for reproducible merger resolving
+        # random_state will be used in gmm-based merger resolving
+        mergerResolver = IlastikMergerResolver(
+            originalGraph, pluginPaths=self.pluginPaths, withFullGraph=withFullGraph, random_state=randomSeedMerger
+        )
 
         # Check if graph contains mergers, otherwise skip merger resolving
         if not mergerResolver.mergerNum:
@@ -433,6 +440,7 @@ class OpConservationTracking(Operator):
         solverName="Flow-based",
         progressWindow=None,
         progressVisitor=CommandLineProgressVisitor(),
+        randomSeedMerger=RANDOM_SEED_MERGER,
     ):
         """
         Main conservation tracking function. Runs tracking solver, generates hypotheses graph, and resolves mergers.
@@ -561,7 +569,7 @@ class OpConservationTracking(Operator):
         if withMergerResolution:
             stepStr = "Merger resolution"
             self.progressVisitor.showState(stepStr)
-            resolvedMergersDict = self._resolveMergers(hypothesesGraph, model)
+            resolvedMergersDict = self._resolveMergers(hypothesesGraph, model, randomSeedMerger=randomSeedMerger)
 
         # Set value of resolved mergers slot (Should be empty if mergers are disabled)
         self.ResolvedMergers.setValue(resolvedMergersDict, check_changed=False)

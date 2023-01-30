@@ -35,7 +35,7 @@ outputs:
         - greenlet
         - grpcio
         - h5py
-        - hytra
+        - hytra >=1.1.5
         - ilastik-feature-selection
         - ilastikrag
         - ilastiktools
