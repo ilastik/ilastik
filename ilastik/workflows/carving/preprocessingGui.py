@@ -124,24 +124,24 @@ class PreprocessingGui(QMainWindow):
         QMessageBox.critical(self, "error", str(exception))
 
     def handleRunButtonClicked(self):
-        if (
-            self.topLevelOperatorView.cachedResult[0] is not None
-            and self.topLevelOperatorView.cachedResult[0].object_names
-        ):
-            buttons = QMessageBox.Yes | QMessageBox.Cancel
-            n = len(self.topLevelOperatorView.cachedResult[0].object_names)
+        cached_result = self.topLevelOperatorView.cachedResult[0]
+        n_saved = len(cached_result.object_names) if cached_result is not None else 0
+        if n_saved:
             response = QMessageBox.warning(
                 self,
                 "Confirm Deleting Saved Objects",
-                f"This project already contains {n} saved segmented objects. The existing segmentations "
-                "become invalid if you change preprocessing settings, and will be deleted.\n\n"
-                "Please consider creating a copy of the project file for the different preprocessing instead.\n\n"
-                "Run preprocessing and delete all saved objects?",
-                buttons,
+                (
+                    f"<p>This project already contains {n_saved} saved segmented objects. The existing segmentations "
+                    "become invalid if you change preprocessing settings, and will be deleted.</p>"
+                    "<p>Please consider creating a copy of the project file for the different preprocessing instead.</p>"
+                    "<p>Run preprocessing and delete all saved objects?</p>"
+                ),
+                buttons=QMessageBox.Yes | QMessageBox.Cancel,
                 defaultButton=QMessageBox.Cancel,
             )
             if response == QMessageBox.Cancel:
                 return
+
         self.setWriteprotect()
         self.topLevelOperatorView.Filter.setValue(self.filterChoice)
         self.topLevelOperatorView.SizeRegularizer.setValue(self.drawer.sizeRegularizerSpin.value())

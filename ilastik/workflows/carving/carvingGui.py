@@ -276,11 +276,7 @@ class CarvingGui(LabelingGui):
     def onSaveButton(self):
         logger.info("save object as?")
         if not self.topLevelOperatorView.CanObjectBeSaved.value:
-            msgBox = QMessageBox(self)
-            msgBox.setText("The data does not seem fit to be stored.")
-            msgBox.setWindowTitle("Problem with Data")
-            msgBox.setIcon(2)
-            msgBox.exec_()
+            QMessageBox.warning(self, "Problem with Data", "The data does not seem fit to be stored.")
             logger.error("object not saved due to faulty data.")
             return
 
@@ -296,8 +292,8 @@ class CarvingGui(LabelingGui):
         if is_name_changed and new_name in saved_object_names:
             QMessageBox.critical(
                 self,
-                "Save Object As",
-                f"An object with name '{new_name}' already exists.\nPlease choose a different name.",
+                "Unable to Save Object",
+                f"<p>An object with name {new_name!r} already exists.</p><p>Please choose a different name.</p>",
             )
             return
 
@@ -371,7 +367,7 @@ class CarvingGui(LabelingGui):
                 if self.render and self._renderMgr.ready:
                     self._update_rendering()
 
-            delAction = submenu.addAction("Delete %s" % name)
+            delAction = submenu.addAction(f"Delete {name}")
             delAction.triggered.connect(partial(onDelAction, name))
 
             if self.render:

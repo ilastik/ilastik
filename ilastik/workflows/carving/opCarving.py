@@ -227,9 +227,9 @@ class OpCarving(Operator):
                     continue
                 assert (
                     name in self._mst.object_names
-                ), f"{name} not in self._mst.object_names, keys are {list(self._mst.object_names.keys())!r}"
+                ), f"{name} not in self._mst.object_names, keys are {list(self._mst.object_names)!r}"
                 self._done_seg_lut[objectSupervoxels] = self._mst.object_names[name]
-        logger.info("building the 'done' luts took {} seconds".format(timer.seconds()))
+        logger.info(f"building the 'done' luts took {timer.seconds()} seconds")
 
     def _updateCanObjectBeSaved(self):
         if self._mst is None:
@@ -267,8 +267,8 @@ class OpCarving(Operator):
         self.AllObjectNames.meta.dtype = object
 
     def getCurrentObjectName(self):
-        f"""
-        Returns current object name, which is {DEFAULT_OBJECT_NAME} until an object is loaded.
+        """
+        Returns current object name, which is DEFAULT_OBJECT_NAME until an object is loaded.
         """
         return self._currObjectName
 
@@ -592,7 +592,7 @@ class OpCarving(Operator):
         with Timer() as timer:
             logger.info("Writing seeds to label array")
             self.opLabelArray.LabelSinkInput[roi.toSlice()] = value
-            logger.info("Writing seeds to label array took {} seconds".format(timer.seconds()))
+            logger.info(f"Writing seeds to label array took {timer.seconds()} seconds")
 
         assert self._mst is not None
 
