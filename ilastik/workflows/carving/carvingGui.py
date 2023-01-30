@@ -314,10 +314,13 @@ class CarvingGui(LabelingGui):
         dialog.objectNames.addItems(sorted(names, key=_humansort_key))
 
         def loadSelection():
-            selected = [str(name.text()) for name in dialog.objectNames.selectedItems()]
-            dialog.close()
-            for objectname in selected:
-                self.topLevelOperatorView.loadObject(objectname)
+            selected = dialog.objectNames.selectedItems()
+            if len(selected) != 1:
+                return
+            name = selected[0].text()
+            if self.confirmLoadObject():
+                dialog.close()
+                self.topLevelOperatorView.loadObject(name)
 
         def deleteSelection():
             items = dialog.objectNames.selectedItems()
@@ -330,6 +333,20 @@ class CarvingGui(LabelingGui):
         dialog.deleteButton.clicked.connect(deleteSelection)
         dialog.cancelButton.clicked.connect(dialog.close)
         dialog.exec_()
+
+    def confirmLoadObject(self) -> bool:
+        if self.topLevelOperatorView.has_seeds:
+            response = QMessageBox.warning(
+                self,
+                "Discard Unsaved Data?",
+                "Loading an object will discard unsaved work. Proceed?",
+                buttons=QMessageBox.Yes | QMessageBox.Cancel,
+                defaultButton=QMessageBox.Yes,
+            )
+            if response == QMessageBox.Cancel:
+                return False
+
+        return True
 
     def confirmAndDelete(self, namelist):
         logger.info("confirmAndDelete: {}".format(namelist))
@@ -358,8 +375,12 @@ class CarvingGui(LabelingGui):
             submenu = QMenu(name, menu)
 
             # Load
-            loadAction = submenu.addAction("Load %s" % name)
-            loadAction.triggered.connect(partial(op.loadObject, name))
+            def onLoadAction(_name):
+                if self.confirmLoadObject():
+                    op.loadObject(_name)
+
+            loadAction = submenu.addAction(f"Load {name}")
+            loadAction.triggered.connect(partial(onLoadAction, name))
 
             # Delete
             def onDelAction(_name):

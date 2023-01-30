@@ -347,9 +347,6 @@ class OpCarving(Operator):
             logger.info("  --> no object with this name")
             return
 
-        if self.CanObjectBeSaved.value:
-            # The user was probably ready to save, so let's just do it
-            self.save_object(self._currObjectName)
         self._clearLabels()
 
         fgVoxels, bgVoxels = self.restore_and_get_labels_for_object(name)
