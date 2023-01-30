@@ -793,23 +793,23 @@ class CarvingGui(LabelingGui):
         return layers
 
 
-def _str_to_int(data_str: str) -> Union[str, int]:
-    """
-    Convert string to int when possible
-    """
-    if data_str.isdigit():
-        return int(data_str)
-    return data_str
-
-
 def _humansort_key(elem: str):
     """
-    Key for human sort
-    >>> lst = ['a 1', 'b 2', 'a 10', 'a 9']
+    If there is a trailing number, sort it numerically and not alphabetically
+    >>> lst = ['3', 'c', 'a 1', 'b 2', 'a 10', 'a 9']
+    >>> sorted(lst)
+    ['3','a 1', 'a 10', 'a 9', 'b 2', 'c']
     >>> sorted(lst, key=_humansort_key)
-    ['a 1', 'a 9', 'a 10', 'b 2']
+    ['3','a 1', 'a 9', 'a 10', 'b 2', 'c']
     """
     if not (elem and isinstance(elem, str)):
         return tuple()
+    split = [token for token in re.split(r"(\d+)$", elem) if token]
+    if len(split) == 2:
+        prefix = split[0]
+        suffix = int(split[1])
+    else:
+        prefix = elem if not elem.isdigit() else ""
+        suffix = int(elem) if elem.isdigit() else 0
 
-    return tuple(_str_to_int(token) for token in re.split("(\d+)", elem) if token)
+    return prefix, suffix
