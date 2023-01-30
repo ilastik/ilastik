@@ -41,7 +41,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 DEFAULT_LABEL_PREFIX = "Object "
-DEFAULT_OBJECT_NAME = "<not saved yet>"
 
 
 @unique
@@ -148,7 +147,7 @@ class OpCarving(Operator):
                 raise RuntimeError("Could not open pmap overlay '%s'" % pmapOverlayFile)
             self._pmap = f["/data"][numpy.newaxis, :, :, :, numpy.newaxis]
 
-        self._setCurrObjectName(DEFAULT_OBJECT_NAME)
+        self._setCurrObjectName("")
         self._updateCanObjectBeSaved()
 
         # keep track of a set of object names that have changed since
@@ -265,12 +264,6 @@ class OpCarving(Operator):
             self.AllObjectNames.meta.shape = (0,)
 
         self.AllObjectNames.meta.dtype = object
-
-    def getCurrentObjectName(self):
-        """
-        Returns current object name, which is DEFAULT_OBJECT_NAME until an object is loaded.
-        """
-        return self._currObjectName
 
     def doneObjectNamesForPosition(self, position3d):
         """
@@ -424,7 +417,7 @@ class OpCarving(Operator):
         if name in self._mst.object_names:
             del self._mst.object_names[name]
 
-        self._setCurrObjectName(DEFAULT_OBJECT_NAME)
+        self._setCurrObjectName("")
 
         # now that 'name' has been deleted, rebuild the done overlay
         self._buildDone()
@@ -474,7 +467,7 @@ class OpCarving(Operator):
 
         self._mst.object_lut[name] = numpy.where(sVseg == 2)
 
-        self._setCurrObjectName(DEFAULT_OBJECT_NAME)
+        self._setCurrObjectName("")
         self._updateCanObjectBeSaved()
 
         objects = list(self._mst.object_names.keys())

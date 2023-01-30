@@ -45,7 +45,6 @@ from volumina.view3d.volumeRendering import RenderingManager
 # ilastik
 from ilastik.utility import bind
 from ilastik.applets.labeling.labelingGui import LabelingGui
-from ilastik.workflows.carving.opCarving import DEFAULT_OBJECT_NAME
 
 
 import logging
@@ -53,6 +52,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 CURRENT_SEGMENTATION_NAME = "__current_segmentation__"
+DEFAULT_OBJECT_NAME = "<not saved yet>"
 # ===----------------------------------------------------------------------------------------------------------------===
 
 
@@ -280,7 +280,7 @@ class CarvingGui(LabelingGui):
             logger.error("object not saved due to faulty data.")
             return
 
-        old_name = self.topLevelOperatorView.getCurrentObjectName()
+        old_name = self.topLevelOperatorView.CurrentObjectName.value
         saved_object_names = self.getObjectNames()
         was_object_previously_saved = old_name in saved_object_names
 
@@ -655,8 +655,9 @@ class CarvingGui(LabelingGui):
         def onButtonsEnabled(slot, roi):
             currObj = self.topLevelOperatorView.CurrentObjectName.value
             canSave = self.topLevelOperatorView.CanObjectBeSaved.value
+            label = currObj if currObj else DEFAULT_OBJECT_NAME
 
-            self.labelingDrawerUi.currentObjectLabel.setText(currObj)
+            self.labelingDrawerUi.currentObjectLabel.setText(label)
             self.labelingDrawerUi.save.setEnabled(canSave)
 
         self.topLevelOperatorView.CurrentObjectName.notifyDirty(onButtonsEnabled)
