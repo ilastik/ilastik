@@ -316,8 +316,8 @@ class CarvingGui(LabelingGui):
             if len(selected) != 1:
                 return
             name = selected[0].text()
+            dialog.close()
             if self.confirmLoadObject():
-                dialog.close()
                 self.topLevelOperatorView.loadObject(name)
 
         def deleteSelection():
