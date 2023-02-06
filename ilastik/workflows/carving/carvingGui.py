@@ -240,17 +240,14 @@ class CarvingGui(LabelingGui):
 
         return last + 1
 
-    def saveAsDialog(self, name=""):
-        """special functionality: reject names given to other objects"""
-        namesInUse = self.getObjectNames()
-
+    def saveAsDialog(self, name_input_default: str, existing_names: List[str]):
         def generateObjectName():
             return f"{self.objectPrefix}{self.findNextPrefixNumber()}"
 
-        name = name or generateObjectName()
+        name_input_default = name_input_default or generateObjectName()
 
         dialog = uic.loadUi(self.dialogdirSAD)
-        dialog.lineEdit.setText(name)
+        dialog.lineEdit.setText(name_input_default)
         dialog.lineEdit.selectAll()
         dialog.warning.setVisible(False)
         dialog.Ok.clicked.connect(dialog.accept)
@@ -259,7 +256,7 @@ class CarvingGui(LabelingGui):
 
         def validate():
             name = dialog.lineEdit.text()
-            if name in namesInUse:
+            if name in existing_names:
                 dialog.Ok.setEnabled(False)
                 dialog.warning.setVisible(True)
                 dialog.isDisabled = True
@@ -268,6 +265,7 @@ class CarvingGui(LabelingGui):
                 dialog.warning.setVisible(False)
                 dialog.isDisabled = False
 
+        validate()
         dialog.lineEdit.textChanged.connect(validate)
         result = dialog.exec_()
         if result:
@@ -284,7 +282,7 @@ class CarvingGui(LabelingGui):
         saved_object_names = self.getObjectNames()
         was_object_previously_saved = old_name in saved_object_names
 
-        new_name = self.saveAsDialog(name=(old_name if was_object_previously_saved else ""))
+        new_name = self.saveAsDialog(old_name, saved_object_names)
         if new_name is None:
             return
 
