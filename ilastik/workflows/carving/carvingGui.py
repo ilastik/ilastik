@@ -21,9 +21,10 @@
 # Python
 import os
 import re
+import string
 from functools import partial
 from collections import defaultdict
-from typing import List, Union
+from typing import List
 import numpy
 
 # PyQt
@@ -314,7 +315,7 @@ class CarvingGui(LabelingGui):
         """show object names and allow user to load/delete them"""
         dialog = uic.loadUi(self.dialogdirCOM)
         names = self.getObjectNames()
-        dialog.objectNames.addItems(sorted(names, key=_humansort_key))
+        dialog.objectNames.addItems(human_sorted(names))
 
         def loadSelection():
             selected = [str(name.text()) for name in dialog.objectNames.selectedItems()]
@@ -793,23 +794,19 @@ class CarvingGui(LabelingGui):
         return layers
 
 
-def _humansort_key(elem: str):
+def human_sorted(items):
     """
-    If there is a trailing number, sort it numerically and not alphabetically
-    >>> lst = ['3', 'c', 'a 1', 'b 2', 'a 10', 'a 9']
+    If there is a trailing number, sort it numerically and not alphabetically.
+    Sort those without trailing number ("c") before those with ("c0").
+    >>> lst = ['3', 'c0', 'c', 'a 1', 'b 2', 'a 10', 'a 9']
     >>> sorted(lst)
-    ['3','a 1', 'a 10', 'a 9', 'b 2', 'c']
-    >>> sorted(lst, key=_humansort_key)
-    ['3','a 1', 'a 9', 'a 10', 'b 2', 'c']
+    ['3', 'a 1', 'a 10', 'a 9', 'b 2', 'c', 'c0']
+    >>> human_sorted(lst)
+    ['3', 'a 1', 'a 9', 'a 10', 'b 2', 'c', 'c0']
     """
-    if not (elem and isinstance(elem, str)):
-        return tuple()
-    split = [token for token in re.split(r"(\d+)$", elem) if token]
-    if len(split) == 2:
-        prefix = split[0]
-        suffix = int(split[1])
-    else:
-        prefix = elem if not elem.isdigit() else ""
-        suffix = int(elem) if elem.isdigit() else 0
-
-    return prefix, suffix
+    keys = {}
+    for item in items:
+        prefix = item.rstrip(string.digits)
+        trailing_digits = item[len(prefix) :]
+        keys[item] = prefix, len(trailing_digits), trailing_digits
+    return sorted(items, key=keys.__getitem__)
