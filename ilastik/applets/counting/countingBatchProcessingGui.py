@@ -37,6 +37,7 @@ class CountingBatchProcessingGui(BatchProcessingGui):
         """
         Overridden from base class.
         """
+        super().handle_batch_processing_complete()
         if self.csv_export_file:
             self.csv_export_file.close()
             self.csv_export_file = None

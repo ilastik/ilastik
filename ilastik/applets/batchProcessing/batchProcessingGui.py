@@ -331,15 +331,20 @@ class BatchProcessingGui(QTabWidget):
         self.cancel_button.setVisible(True)
         self.run_button.setEnabled(False)
 
+        # Disable dirty tracking during batch - lanes will be added and removed.
+        # This would set the project dirty/changed, without reason.
+        self.parentApplet.shellRequestSignal(ShellRequest.RequestDisableDirtyTracking)
         # Start the export
         export_req.submit()
 
     def handle_batch_processing_complete(self):
         """
         Called after batch processing completes, no matter how it finished (failed, cancelled, whatever).
-        Can be overridden in subclasses.
+
+        Re-enables dirty tracking.
+        Subclasses must call super().handle_batch_processing_complete()
         """
-        pass
+        self.parentApplet.shellRequestSignal(ShellRequest.RequestEnableDirtyTracking)
 
     def cancel_batch_processing(self):
         assert self.export_req, "No export is running, how were you able to press 'cancel'?"
