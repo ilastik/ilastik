@@ -434,7 +434,7 @@ class OpConservationTracking(Operator):
         disappearance_cost=500,
         motionModelWeight=10.0,
         force_build_hypotheses_graph=False,
-        max_nearest_neighbors=1,
+        max_nearest_neighbors=3,
         numFramesPerSplit=0,
         withBatchProcessing=False,
         solverName="Flow-based",
