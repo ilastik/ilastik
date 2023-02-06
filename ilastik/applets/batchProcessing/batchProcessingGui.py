@@ -43,6 +43,7 @@ from ilastik.utility import log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.widgets.ImageFileDialog import ImageFileDialog
 from lazyflow.request import Request
+from ilastik.applets.base.applet import ShellRequest
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +189,8 @@ class BatchProcessingGui(QTabWidget):
             "using the controls on the right.\n"
             "The results will be exported according "
             "to the same settings you chose in the "
-            "interactive export page above."
+            "interactive export page above.\n\n"
+            "Note: the project will be saved prior to running batch processing."
         )
         instructions_label.setWordWrap(True)
         instructions_label.setAlignment(Qt.AlignCenter)
@@ -313,6 +315,7 @@ class BatchProcessingGui(QTabWidget):
         role_inputs = {role_name: self._data_role_widgets[role_name].filepaths for role_name in role_names}
         if all(len(role_inp) == 0 for role_inp in role_inputs.values()):
             return
+        self.parentApplet.shellRequestSignal(ShellRequest.RequestSave)
 
         # Run the export in a separate thread
         lane_configs = self.parentApplet.dataSelectionApplet.create_lane_configs(role_inputs=role_inputs)
