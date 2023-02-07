@@ -20,18 +20,18 @@ class FilePathButton(QToolButton):
         # Determine the shortest possible text we could display,
         #  and use it to set our minimum width
         drive = os.path.splitdrive(self._filepath)[0]
-        self.setText(drive + "/.../" + os.path.split(self._filepath)[1] + self._suffix)
+        self._setPathText(drive + "/.../" + os.path.split(self._filepath)[1])
         self.setMinimumWidth(self.minimumSizeHint().width())
         self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
 
         # By default, show the full path
-        self.setText(self._filepath + self._suffix)
+        self._setPathText(self._filepath)
         self.setToolTip(self.text())
 
     def resizeEvent(self, event):
         # Start with the full path
         short_filepath = self._filepath
-        self.setText(self._filepath + self._suffix)
+        self._setPathText(self._filepath)
         ideal_width = self.minimumSizeHint().width()
 
         # Keep removing intermediate directories until the text fits inside the new width
@@ -51,8 +51,13 @@ class FilePathButton(QToolButton):
 
             # Always include drive
             short_filepath = drive + os.path.join(dirpath, filename)
-            self.setText(short_filepath + self._suffix)
+            self._setPathText(short_filepath)
             ideal_width = self.minimumSizeHint().width()
+
+    def _setPathText(self, path: str) -> None:
+        # Buttons don't support HTML markup.
+        # U+2937: Arrow Pointing Downwards Then Curving Rightwards.
+        self.setText(f"{path}\n\u2937{self._suffix}" if self._suffix else path)
 
 
 if __name__ == "__main__":

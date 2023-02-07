@@ -575,7 +575,7 @@ class IlastikShell(QMainWindow):
             for path, workflow in projects:
                 if not os.path.exists(path):
                     continue
-                b = FilePathButton(path, " ({})".format(workflow), parent=self.startscreen)
+                b = FilePathButton(path, workflow, parent=self.startscreen)
                 styleStartScreenButton(b, ilastikIcons.Open)
 
                 b.clicked.connect(partial(self.openFileAndCloseStartscreen, path))
