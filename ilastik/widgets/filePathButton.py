@@ -26,7 +26,7 @@ class FilePathButton(QToolButton):
 
         # By default, show the full path
         self._setPathText(self._filepath)
-        self.setToolTip(self.text())
+        self.setToolTip(self._filepath)
 
     def resizeEvent(self, event):
         # Start with the full path
@@ -56,8 +56,8 @@ class FilePathButton(QToolButton):
 
     def _setPathText(self, path: str) -> None:
         # Buttons don't support HTML markup.
-        # U+2937: Arrow Pointing Downwards Then Curving Rightwards.
-        self.setText(f"{path}\n\u2937{self._suffix}" if self._suffix else path)
+        # Add an "Em Quad" space character to visually separate path and suffix.
+        self.setText(f"{path}\n\u2001{self._suffix}" if self._suffix else path)
 
 
 if __name__ == "__main__":
