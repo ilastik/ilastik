@@ -1696,16 +1696,6 @@ class IlastikShell(QMainWindow):
         assert threading.current_thread().name == "MainThread"
         if self.projectManager is not None:
 
-            projectFile = self.projectManager.currentProjectFile
-            if (
-                not self.projectManager.closed
-                and projectFile is not None
-                and not self.projectManager.currentProjectIsReadOnly
-            ):
-                if "currentApplet" in list(projectFile.keys()):
-                    del projectFile["currentApplet"]
-                self.projectManager.currentProjectFile.create_dataset("currentApplet", data=self.currentAppletIndex)
-
             self.removeAllAppletWidgets()
             for f in self.cleanupFunctions:
                 f()
@@ -1755,6 +1745,17 @@ class IlastikShell(QMainWindow):
 
         return closeProject
 
+    def _save_current_applet(self):
+        pm = self.projectManager
+        if pm.closed or pm.currentProjectIsReadOnly or pm.currentProjectFile is None:
+            return
+
+        projectFile = pm.currentProjectFile
+
+        if "currentApplet" in projectFile.keys():
+            del projectFile["currentApplet"]
+        projectFile.create_dataset("currentApplet", data=self.currentAppletIndex)
+
     def onSaveProjectActionTriggered(self):
         logger.debug("Save Project action triggered")
 
@@ -1764,13 +1765,15 @@ class IlastikShell(QMainWindow):
                 self.projectManager.saveProject()
             except ProjectManager.SaveError as err:
                 self.thunkEventHandler.post(partial(QMessageBox.warning, self, "Error Attempting Save", str(err)))
-
-            # First, re-enable all applets
-            # (If the workflow doesn't provide a handleAppletStateUpdateRequested implementation,
-            #  then everything is re-enabled.)
-            self.setAllAppletsEnabled(True)
-            # Next, tell the workflow to re-disable any applets that aren't really ready.
-            self.workflow.handleAppletStateUpdateRequested()
+            else:
+                self._save_current_applet()
+            finally:
+                # First, re-enable all applets
+                # (If the workflow doesn't provide a handleAppletStateUpdateRequested implementation,
+                #  then everything is re-enabled.)
+                self.setAllAppletsEnabled(True)
+                # Next, tell the workflow to re-disable any applets that aren't really ready.
+                self.workflow.handleAppletStateUpdateRequested()
 
         saveThread = threading.Thread(target=save)
         saveThread.start()
