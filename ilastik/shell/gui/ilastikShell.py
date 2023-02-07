@@ -105,8 +105,6 @@ try:
 except:
     _has_dvid_support = False
 
-ILASTIKFont = QFont("Helvetica", 12, QFont.Bold)
-
 logger = logging.getLogger(__name__)
 
 
@@ -625,10 +623,7 @@ class IlastikShell(QMainWindow):
         self.startscreen.CreateList.setWidget(self.startscreen.VL1.widget())
         self.startscreen.CreateList.setWidgetResizable(True)
 
-        self.startscreen.openRecentProject.setFont(ILASTIKFont)
-        self.startscreen.openProject.setFont(ILASTIKFont)
         self._replaceLogo(localDir)
-        self.startscreen.createNewProject.setFont(ILASTIKFont)
 
         self.openFileButtons = []
 

@@ -240,7 +240,7 @@
                         </sizepolicy>
                        </property>
                        <property name="text">
-                        <string>Create New Project</string>
+                        <string>&lt;h3&gt;Create New Project&lt;/h3&gt;</string>
                        </property>
                       </widget>
                      </item>
@@ -264,7 +264,7 @@
                      <item>
                       <widget class="QLabel" name="openProject">
                        <property name="text">
-                        <string>Open Project ...</string>
+                        <string>&lt;h3&gt;Open Project&lt;/h3&gt;</string>
                        </property>
                       </widget>
                      </item>
@@ -306,7 +306,7 @@
                         </sizepolicy>
                        </property>
                        <property name="text">
-                        <string>Open Recent Project</string>
+                        <string>&lt;h3&gt;Open Recent Project&lt;/h3&gt;</string>
                        </property>
                       </widget>
                      </item>
