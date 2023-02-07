@@ -584,8 +584,8 @@ class IlastikShell(QMainWindow):
 
                 # Insert the new button after all the other controls,
                 #  but before the vertical spacer at the end of the list.
-                insertion_index = self.startscreen.VL1.count() - 1
-                self.startscreen.VL1.insertWidget(insertion_index, b)
+                insertion_index = self.startscreen.VL2.count() - 1
+                self.startscreen.VL2.insertWidget(insertion_index, b)
                 self.openFileButtons.append(b)
 
     def _replaceLogo(self, localDir):
