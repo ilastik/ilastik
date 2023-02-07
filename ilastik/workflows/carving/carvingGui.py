@@ -39,7 +39,7 @@ from volumina.api import createDataSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager, preferences
 
-from volumina.view3d.meshgenerator import MeshGeneratorDialog, mesh_to_obj, labeling_to_mesh
+from volumina.view3d.meshgenerator import mesh_to_obj, labeling_to_mesh
 from volumina.view3d.volumeRendering import RenderingManager
 
 # ilastik
@@ -227,49 +227,43 @@ class CarvingGui(LabelingGui):
     def getObjectNames(self):
         return self.topLevelOperatorView.AllObjectNames[:].wait()
 
-    def findNextPrefixNumber(self):
+    def generateObjectName(self):
         names = self.getObjectNames()
-        last = 0
+        highest_existing_suffix = 0
 
         for n in names:
             match = re.match(f"^{self.objectPrefix}(?P<suffix>\d+)", n)
             if match:
                 val = int(match.group("suffix"))
-                if val > last:
-                    last = val
+                if val > highest_existing_suffix:
+                    highest_existing_suffix = val
 
-        return last + 1
+        return f"{self.objectPrefix}{highest_existing_suffix + 1}"
 
     def saveAsDialog(self, name_input_default: str, existing_names: List[str]):
-        def generateObjectName():
-            return f"{self.objectPrefix}{self.findNextPrefixNumber()}"
-
-        name_input_default = name_input_default or generateObjectName()
-
         dialog = uic.loadUi(self.dialogdirSAD)
         dialog.lineEdit.setText(name_input_default)
         dialog.lineEdit.selectAll()
         dialog.warning.setVisible(False)
         dialog.Ok.clicked.connect(dialog.accept)
         dialog.Cancel.clicked.connect(dialog.reject)
-        dialog.isDisabled = False
 
         def validate():
-            name = dialog.lineEdit.text()
-            if name in existing_names:
+            name = dialog.lineEdit.text().strip()
+            if name in existing_names and name != name_input_default:
                 dialog.Ok.setEnabled(False)
                 dialog.warning.setVisible(True)
-                dialog.isDisabled = True
-            elif dialog.isDisabled:
+            elif name:
                 dialog.Ok.setEnabled(True)
                 dialog.warning.setVisible(False)
-                dialog.isDisabled = False
+            else:
+                dialog.Ok.setEnabled(False)
 
         validate()
         dialog.lineEdit.textChanged.connect(validate)
         result = dialog.exec_()
         if result:
-            return str(dialog.lineEdit.text())
+            return str(dialog.lineEdit.text().strip())
 
     def onSaveButton(self):
         logger.info("save object as?")
@@ -282,7 +276,7 @@ class CarvingGui(LabelingGui):
         saved_object_names = self.getObjectNames()
         was_object_previously_saved = old_name in saved_object_names
 
-        new_name = self.saveAsDialog(old_name, saved_object_names)
+        new_name = self.saveAsDialog(old_name or self.generateObjectName(), saved_object_names)
         if new_name is None:
             return
 
