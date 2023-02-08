@@ -3,10 +3,12 @@ from pathlib import PurePath
 from typing import Optional, Union
 
 from PyQt5.QtGui import QResizeEvent
-from PyQt5.QtWidgets import QToolButton, QWidget
+from PyQt5.QtWidgets import QPushButton, QWidget
+
+HORIZONTAL_ELLIPSIS = "\u2026"
 
 
-class FilePathButton(QToolButton):
+class FilePathButton(QPushButton):
     """Button that displays a possibly abbreviated filepath."""
 
     def __init__(self, path: Union[str, os.PathLike], other: str = "", parent: Optional[QWidget] = None):
@@ -17,26 +19,25 @@ class FilePathButton(QToolButton):
         The other text, if not empty, is displayed below the path.
         """
         super().__init__(parent)
-
-        path = PurePath(path)
         self._suffix = f"\n{other}" if other else ""
 
-        # Stop table contains widths of abbreviated paths and paths themselves, in decreasing order.
-        self._stops = [(self.fontMetrics().horizontalAdvance(str(path)), str(path))]
-        for i in range(2, len(path.parts)):
-            # U+2026: Horizontal Ellipsis.
-            abbrev = str(PurePath(path.parts[0], "\u2026", *path.parts[i:]))
-            self._stops.append((self.fontMetrics().horizontalAdvance(abbrev), abbrev))
+        path = PurePath(path)
+        self._abbrevs = [
+            str(path),
+            *[str(PurePath(path.parts[0], HORIZONTAL_ELLIPSIS, *path.parts[i:])) for i in range(2, len(path.parts))],
+        ]
 
-        self.setMinimumWidth(self._stops[-1][0])
-        self.setToolTip(str(path))
-        self._update(self.width())
+        self._updateText(self._abbrevs[-1])
+        self.setMinimumWidth(self.sizeHint().width())
+
+        self._updateText(self._abbrevs[0])
+        self.setToolTip(self._abbrevs[0])
 
     def resizeEvent(self, event: QResizeEvent) -> None:
-        self._update(event.size().width())
-
-    def _update(self, width: int) -> None:
-        for stop, path in self._stops:
-            if stop <= width:
-                self.setText(f"{path}{self._suffix}")
+        for abbrev in self._abbrevs:
+            self._updateText(abbrev)
+            if self.sizeHint().width() <= event.size().width():
                 break
+
+    def _updateText(self, text: str) -> None:
+        self.setText(f"{text}{self._suffix}")

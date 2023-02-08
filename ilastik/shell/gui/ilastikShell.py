@@ -41,7 +41,7 @@ from PyQt5.QtWidgets import (
     QWidget,
     QMenu,
     QApplication,
-    QStackedWidget,
+    QPushButton,
     qApp,
     QFileDialog,
     QMessageBox,
@@ -286,12 +286,26 @@ class ProgressDisplayManager(QObject):
 # ===----------------------------------------------------------------------------------------------------------------===
 
 
-def styleStartScreenButton(button, icon):
-    assert isinstance(button, QToolButton)
-    button.setAutoRaise(True)
-    button.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
-    button.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+def styleStartScreenButton(button: QPushButton, icon: str) -> None:
     button.setIcon(QIcon(icon))
+    button.setFlat(True)
+    button.setStyleSheet(
+        r"""
+        * {
+            background-color: palette(window);
+            border: none;
+            border-radius: 1em;
+            padding: 0.5em 1em;
+            text-align: left;
+        }
+        *:hover {
+            background-color: palette(light);
+        }
+        *:pressed {
+            background-color: palette(dark);
+        }
+    """
+    )
 
 
 @ShellABC.register
@@ -581,10 +595,7 @@ class IlastikShell(QMainWindow):
 
                 b.clicked.connect(partial(self.openFileAndCloseStartscreen, path))
 
-                # Insert the new button after all the other controls,
-                #  but before the vertical spacer at the end of the list.
-                insertion_index = self.startscreen.VL2.count() - 1
-                self.startscreen.VL2.insertWidget(insertion_index, b)
+                self.startscreen.recentProjectsContainerLayout.addWidget(b)
                 self.openFileButtons.append(b)
 
     def _replaceLogo(self, localDir):
@@ -695,7 +706,7 @@ class IlastikShell(QMainWindow):
                     continue
 
                 wf_class, wf_name, wf_display_name = wfs[wf_name]
-                button = QToolButton(
+                button = QPushButton(
                     self.startscreen,
                     objectName=f"NewProjectButton_{wf_class.__name__}",
                     text=wf_display_name,
@@ -709,7 +720,7 @@ class IlastikShell(QMainWindow):
 
             group_layout = QVBoxLayout()
             for button in buttons:
-                group_layout.addWidget(button)
+                group_layout.addWidget(button, stretch=0, alignment=Qt.AlignLeft)
 
             group_widget = QWidget()
             group_widget.setLayout(group_layout)

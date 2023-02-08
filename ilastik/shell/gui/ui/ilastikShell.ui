@@ -174,10 +174,13 @@
                  <property name="orientation">
                   <enum>Qt::Vertical</enum>
                  </property>
+                 <property name="sizeType">
+                  <enum>QSizePolicy::Fixed</enum>
+                 </property>
                  <property name="sizeHint" stdset="0">
                   <size>
                    <width>0</width>
-                   <height>0</height>
+                   <height>32</height>
                   </size>
                  </property>
                 </spacer>
@@ -229,13 +232,10 @@
                  <property name="orientation">
                   <enum>Qt::Vertical</enum>
                  </property>
-                 <property name="sizeType">
-                  <enum>QSizePolicy::Fixed</enum>
-                 </property>
                  <property name="sizeHint" stdset="0">
                   <size>
-                   <width>20</width>
-                   <height>16</height>
+                   <width>0</width>
+                   <height>0</height>
                   </size>
                  </property>
                 </spacer>
@@ -313,14 +313,8 @@
                        </property>
                       </widget>
                      </item>
-                     <item>
-                      <widget class="QToolButton" name="browseFilesButton">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Minimum">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
+                     <item alignment="Qt::AlignLeft">
+                      <widget class="QPushButton" name="browseFilesButton">
                        <property name="text">
                         <string>Browse Files</string>
                        </property>
@@ -344,16 +338,13 @@
                      </item>
                      <item>
                       <widget class="QLabel" name="openRecentProject">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Minimum">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
                        <property name="text">
                         <string>&lt;h3&gt;Open Recent Project&lt;/h3&gt;</string>
                        </property>
                       </widget>
+                     </item>
+                     <item>
+                      <layout class="QVBoxLayout" name="recentProjectsContainerLayout"/>
                      </item>
                      <item>
                       <spacer name="verticalSpacer_6">
