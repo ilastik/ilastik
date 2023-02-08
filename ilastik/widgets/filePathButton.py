@@ -1,96 +1,42 @@
 import os
-from PyQt5.QtWidgets import QToolButton, QSizePolicy
+from pathlib import PurePath
+from typing import Optional, Union
+
+from PyQt5.QtGui import QResizeEvent
+from PyQt5.QtWidgets import QToolButton, QWidget
 
 
 class FilePathButton(QToolButton):
-    """
-    A QToolButton for displaying a filepath (with a suffix).
-    If the button is resized and the text is too long to fit, the path is automatically abbreviated by replacing intermediate paths with '...'
-    """
+    """Button that displays a possibly abbreviated filepath."""
 
-    def __init__(self, filepath, suffix, parent=None):
+    def __init__(self, path: Union[str, os.PathLike], other: str = "", parent: Optional[QWidget] = None):
+        """Create a new button with the specified path and (possibly) other text.
+
+        If path is too long, intermediate directories will be replaced by a placeholder.
+
+        The other text, if not empty, is displayed below the path.
         """
-        filepath: The path to show.  Will be abbreviated if necessary to fit within the button.
-        suffix: Always appended to the button text. Never abbreviated.
-        """
-        super(FilePathButton, self).__init__(parent)
-        self._filepath = filepath
-        self._suffix = suffix
+        super().__init__(parent)
 
-        # Determine the shortest possible text we could display,
-        #  and use it to set our minimum width
-        drive = os.path.splitdrive(self._filepath)[0]
-        self._setPathText(drive + "/.../" + os.path.split(self._filepath)[1])
-        self.setMinimumWidth(self.minimumSizeHint().width())
-        self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
+        path = PurePath(path)
+        self._suffix = f"\n{other}" if other else ""
 
-        # By default, show the full path
-        self._setPathText(self._filepath)
-        self.setToolTip(self._filepath)
+        # Stop table contains widths of abbreviated paths and paths themselves, in decreasing order.
+        self._stops = [(self.fontMetrics().horizontalAdvance(str(path)), str(path))]
+        for i in range(2, len(path.parts)):
+            # U+2026: Horizontal Ellipsis.
+            abbrev = str(PurePath(path.parts[0], "\u2026", *path.parts[i:]))
+            self._stops.append((self.fontMetrics().horizontalAdvance(abbrev), abbrev))
 
-    def resizeEvent(self, event):
-        # Start with the full path
-        short_filepath = self._filepath
-        self._setPathText(self._filepath)
-        ideal_width = self.minimumSizeHint().width()
+        self.setMinimumWidth(self._stops[-1][0])
+        self.setToolTip(str(path))
+        self._update(self.width())
 
-        # Keep removing intermediate directories until the text fits inside the new width
-        while event.size().width() < ideal_width:
-            drive, short_filepath = os.path.splitdrive(short_filepath)
-            dirpath, filename = os.path.split(short_filepath)
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        self._update(event.size().width())
 
-            dir_names = dirpath.split(os.sep)[1:]
-            if len(dir_names) == 0 or (len(dir_names) == 1 and dir_names[0] == "..."):
-                # This path is already as short as possible.  Give up.
-                return
-
-            if dir_names and dir_names[0] == "...":
-                dir_names = dir_names[1:]
-            dir_names = [""] + ["..."] + dir_names[1:]
-            dirpath = os.sep.join(dir_names)
-
-            # Always include drive
-            short_filepath = drive + os.path.join(dirpath, filename)
-            self._setPathText(short_filepath)
-            ideal_width = self.minimumSizeHint().width()
-
-    def _setPathText(self, path: str) -> None:
-        # Buttons don't support HTML markup.
-        # Add an "Em Quad" space character to visually separate path and suffix.
-        self.setText(f"{path}\n\u2001{self._suffix}" if self._suffix else path)
-
-
-if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout
-
-    app = QApplication([])
-
-    SIMULATE_WINDOWS = True
-    if SIMULATE_WINDOWS:
-        import ntpath
-
-        os.sep = ntpath.sep
-        os.path = ntpath
-
-        buttons = []
-        buttons.append(FilePathButton(r"c:\some\long\path\to\the\file.txt", " (Don't abbreviate this suffix)"))
-        buttons.append(FilePathButton(r"file.txt", " (some suffix)"))
-        buttons.append(FilePathButton("\\some\\long\\path\\to\\the\\", " (some suffix)"))
-    else:
-        buttons = []
-        buttons.append(FilePathButton("/some/long/path/to/the/file.txt", " (Don't abbreviate this suffix)"))
-        buttons.append(FilePathButton("file.txt", " (some suffix)"))
-        buttons.append(FilePathButton("/some/long/path/to/the/", " (some suffix)"))
-
-    layout = QVBoxLayout()
-    for button in buttons:
-        # Typically, the button chooses a minimum size that is appropriate for its shortest possible text
-        # But for this little test we force an even smaller minimum size so we can test multiple paths at once...
-        button.setMinimumWidth(10)
-        layout.addWidget(button)
-
-    widget = QWidget()
-    widget.setLayout(layout)
-    widget.show()
-
-    app.exec_()
+    def _update(self, width: int) -> None:
+        for stop, path in self._stops:
+            if stop <= width:
+                self.setText(f"{path}{self._suffix}")
+                break
