@@ -23,7 +23,6 @@ from builtins import range
 from enum import IntEnum, unique
 import time
 import numpy, h5py
-import copy
 
 # Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -107,7 +106,7 @@ class OpCarving(Operator):
 
     AllObjectNames = OutputSlot(rtype=List, stype=Opaque)
 
-    HasSegmentation = OutputSlot(stype="bool")
+    CanObjectBeSaved = OutputSlot(stype="bool")
 
     HintOverlay = OutputSlot()
 
@@ -148,8 +147,8 @@ class OpCarving(Operator):
                 raise RuntimeError("Could not open pmap overlay '%s'" % pmapOverlayFile)
             self._pmap = f["/data"][numpy.newaxis, :, :, :, numpy.newaxis]
 
-        self._setCurrObjectName("<not saved yet>")
-        self.HasSegmentation.setValue(False)
+        self._setCurrObjectName("")
+        self._updateCanObjectBeSaved()
 
         # keep track of a set of object names that have changed since
         # the last serialization of this object to disk
@@ -194,6 +193,7 @@ class OpCarving(Operator):
         if self._mst is not None:
             self._mst.clearSeed(label_value)
         self.opLabelArray.DeleteLabel.setValue(-1)
+        self._updateCanObjectBeSaved()
 
     def _clearLabels(self):
         # clear the labels
@@ -224,20 +224,22 @@ class OpCarving(Operator):
             for name, objectSupervoxels in self._mst.object_lut.items():
                 if name == self._currObjectName:
                     continue
-                assert name in self._mst.object_names, "%s not in self._mst.object_names, keys are %r" % (
-                    name,
-                    list(self._mst.object_names.keys()),
-                )
+                assert (
+                    name in self._mst.object_names
+                ), f"{name} not in self._mst.object_names, keys are {list(self._mst.object_names)!r}"
                 self._done_seg_lut[objectSupervoxels] = self._mst.object_names[name]
-        logger.info("building the 'done' luts took {} seconds".format(timer.seconds()))
+        logger.info(f"building the 'done' luts took {timer.seconds()} seconds")
 
-    def dataIsStorable(self):
+    def _updateCanObjectBeSaved(self):
         if self._mst is None:
-            return False
+            self.CanObjectBeSaved.setValue(False)
+            return
+
         nodeSeeds = self._mst.gridSegmentor.getNodeSeeds()
         has_bg_seeds = numpy.any(nodeSeeds == Labels.BACKGROUND)
         has_fg_seeds = numpy.any(nodeSeeds == Labels.FOREGROUND)
-        return has_bg_seeds and has_fg_seeds
+        has_segmentation = numpy.any(self._mst.hasSeg)
+        self.CanObjectBeSaved.setValue(has_bg_seeds and has_fg_seeds and has_segmentation)
 
     def setupOutputs(self):
         self.Segmentation.meta.assignFrom(self.InputData.meta)
@@ -262,29 +264,6 @@ class OpCarving(Operator):
             self.AllObjectNames.meta.shape = (0,)
 
         self.AllObjectNames.meta.dtype = object
-
-    def hasCurrentObject(self):
-        """
-        Returns current object name. None if it is not set.
-        """
-        # FIXME: This is misleading. Having a current object and that object having
-        # a name is not the same thing.
-        return self._currObjectName
-
-    def getCurrentObjectName(self):
-        """
-        Returns current object name. Return "" if no current object
-        """
-        assert (
-            self._currObjectName is not None
-        ), "FIXME: This function should either return '' or None.  Why does it sometimes return one and then the other?"
-        return self._currObjectName
-
-    def hasObjectWithName(self, name):
-        """
-        Returns True if object with name is existent. False otherwise.
-        """
-        return name in self._mst.object_lut
 
     def doneObjectNamesForPosition(self, position3d):
         """
@@ -317,6 +296,7 @@ class OpCarving(Operator):
         """
         self._clearLabels()
         self._mst.gridSegmentor.clearSeeds()
+        self._updateCanObjectBeSaved()
 
         self.Trigger.setDirty(slice(None))
 
@@ -348,20 +328,18 @@ class OpCarving(Operator):
         self._mst.setResulFgObj(fgNodes[0])
 
         self._setCurrObjectName(name)
-        self.HasSegmentation.setValue(True)
+        self._updateCanObjectBeSaved()
 
         # now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
         self._buildDone()
         return (fgVoxelsSeedPos, bgVoxelsSeedPos)
 
     def loadObject(self, name):
-        logger.info("want to load object with name = %s" % name)
-        if not self.hasObjectWithName(name):
-            logger.info("  --> no such object '%s'" % name)
-            return False
+        logger.info(f"want to load object with name = {name}")
+        if name not in self._mst.object_lut:
+            logger.info("  --> no object with this name")
+            return
 
-        if self.hasCurrentObject():
-            self.saveCurrentObject()
         self._clearLabels()
 
         fgVoxels, bgVoxels = self.restore_and_get_labels_for_object(name)
@@ -385,8 +363,7 @@ class OpCarving(Operator):
 
         # The entire segmentation layer needs to be refreshed now.
         self.Segmentation.setDirty()
-
-        return True
+        self._updateCanObjectBeSaved()
 
     def set_labels_into_WriteSeeds_input(self, fgVoxels, bgVoxels):
         fg_bounding_box_start = numpy.array(list(map(numpy.min, fgVoxels)))
@@ -440,16 +417,16 @@ class OpCarving(Operator):
         if name in self._mst.object_names:
             del self._mst.object_names[name]
 
-        self._setCurrObjectName("<not saved yet>")
+        self._setCurrObjectName("")
 
         # now that 'name' has been deleted, rebuild the done overlay
         self._buildDone()
 
     def deleteObject(self, name):
-        logger.info("want to delete object with name = %s" % name)
-        if not self.hasObjectWithName(name):
-            logger.info("  --> no such object '%s'" % name)
-            return False
+        logger.info(f"want to delete object with name = {name}")
+        if name not in self._mst.object_lut:
+            logger.info("  --> no object with this name")
+            return
 
         self.deleteObject_impl(name)
         self._clearLabels()
@@ -461,30 +438,14 @@ class OpCarving(Operator):
         logger.info("save: len = {}".format(len(objects)))
         self.AllObjectNames.meta.shape = (len(objects),)
 
-        self.HasSegmentation.setValue(False)
-
-        return True
+        self._updateCanObjectBeSaved()
 
     @Operator.forbidParallelExecute
-    def saveCurrentObject(self):
-        """
-        Saves the objects which is currently edited.
-        """
-        if self._currObjectName:
-            name = copy.copy(self._currObjectName)
-            logger.info("saving object %s" % self._currObjectName)
-            self.saveCurrentObjectAs(self._currObjectName)
-            self.HasSegmentation.setValue(False)
-            return name
-        return ""
-
-    @Operator.forbidParallelExecute
-    def saveCurrentObjectAs(self, name):
+    def save_object(self, name):
         """
         Saves current object as name.
         """
-        seed = 2
-        logger.info("   --> Saving object %r from seed %r" % (name, seed))
+        logger.info(f"   --> Saving object {name!r}")
         if name in self._mst.object_names:
             objNr = self._mst.object_names[name]
         else:
@@ -495,7 +456,9 @@ class OpCarving(Operator):
                 objNr = 1
 
         sVseg = self._mst.getSuperVoxelSeg()
-        sVseed = self._mst.getSuperVoxelSeeds()
+        if not any(sVseg > 0):
+            logger.info(f"   --> not saving due to missing segmentation")
+            return
 
         self._mst.object_names[name] = objNr
 
@@ -504,8 +467,8 @@ class OpCarving(Operator):
 
         self._mst.object_lut[name] = numpy.where(sVseg == 2)
 
-        self._setCurrObjectName("<not saved yet>")
-        self.HasSegmentation.setValue(False)
+        self._setCurrObjectName("")
+        self._updateCanObjectBeSaved()
 
         objects = list(self._mst.object_names.keys())
         self.AllObjectNames.meta.shape = (len(objects),)
@@ -518,7 +481,7 @@ class OpCarving(Operator):
         if not self.opLabelArray.NonzeroBlocks.ready():
             return None, None
 
-        bg = [[], [], []]
+        bg = [[], [], []]  # [[x], [y], [z]] with len([x])=len([y])=len([z]) = count(labelled pixels)
         fg = [[], [], []]
         for slicing in self.opLabelArray.NonzeroBlocks[:].wait()[0]:
             label = self.opLabelArray.Output[slicing].wait()
@@ -536,9 +499,12 @@ class OpCarving(Operator):
         return fg, bg
 
     def saveObjectAs(self, name):
-        self.saveCurrentObjectAs(name)
-
         fgVoxels, bgVoxels = self.get_label_voxels()
+        if len(fgVoxels[0]) == 0 or len(bgVoxels[0]) == 0:
+            logger.info(f"Either foreground or background labels missing. Cannot save object {name}.")
+            return
+
+        self.save_object(name)
 
         self.attachVoxelLabelsToObject(name, fgVoxels=fgVoxels, bgVoxels=bgVoxels)
 
@@ -611,24 +577,23 @@ class OpCarving(Operator):
         return temp  # avoid copying data
 
     def setInSlot(self, slot, subindex, roi, value):
-        key = roi.toSlice()
-        if slot == self.WriteSeeds:
-            with Timer() as timer:
-                logger.info("Writing seeds to label array")
-                self.opLabelArray.LabelSinkInput[roi.toSlice()] = value
-                logger.info("Writing seeds to label array took {} seconds".format(timer.seconds()))
+        assert slot == self.WriteSeeds, f"Invalid input slot: {slot.name}"
 
-            assert self._mst is not None
+        with Timer() as timer:
+            logger.info("Writing seeds to label array")
+            self.opLabelArray.LabelSinkInput[roi.toSlice()] = value
+            logger.info(f"Writing seeds to label array took {timer.seconds()} seconds")
 
-            # Important: mst.seeds will requires erased values to be 255 (a.k.a -1)
-            with Timer() as timer:
-                logger.info("Writing seeds to MST")
-                self._mst.addSeeds(roi=roi, brushStroke=value.squeeze())
-                logger.info(f"Writing seeds to MST took {timer.seconds()} seconds")
+        assert self._mst is not None
 
-            self.has_seeds = True
-        else:
-            raise RuntimeError("unknown slots")
+        # Important: mst.seeds will requires erased values to be 255 (a.k.a -1)
+        with Timer() as timer:
+            logger.info("Writing seeds to MST")
+            self._mst.addSeeds(roi=roi, brushStroke=value.squeeze())
+            logger.info(f"Writing seeds to MST took {timer.seconds()} seconds")
+
+        self.has_seeds = True
+        self._updateCanObjectBeSaved()
 
     def propagateDirty(self, slot, subindex, roi):
         if (
@@ -661,8 +626,7 @@ class OpCarving(Operator):
 
             self.Segmentation.setDirty(slice(None))
             self.DoneSegmentation.setDirty(slice(None))
-            hasSeg = numpy.any(self._mst.hasSeg)
-            self.HasSegmentation.setValue(hasSeg)
+            self._updateCanObjectBeSaved()
 
         elif slot == self.MST:
             self._opMstCache.Input.disconnect()
