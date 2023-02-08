@@ -719,6 +719,7 @@ class IlastikShell(QMainWindow):
                 continue
 
             group_layout = QVBoxLayout()
+            group_layout.setSpacing(4)
             for button in buttons:
                 group_layout.addWidget(button)
 
@@ -727,7 +728,7 @@ class IlastikShell(QMainWindow):
 
             wfs_layout.addWidget(CollapsibleWidget(group_widget, f" {group}", expanded=wf_dict["expanded"]))
 
-        self.startscreen.VL1.insertLayout(1, wfs_layout)
+        self.startscreen.workflowsContainerLayout.addLayout(wfs_layout)
 
     def openFileAndCloseStartscreen(self, path):
         if self.projectManager is not None:

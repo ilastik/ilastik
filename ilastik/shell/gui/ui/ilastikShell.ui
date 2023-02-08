@@ -290,6 +290,29 @@
                       </widget>
                      </item>
                      <item>
+                      <spacer name="verticalSpacer_11">
+                       <property name="orientation">
+                        <enum>Qt::Vertical</enum>
+                       </property>
+                       <property name="sizeType">
+                        <enum>QSizePolicy::Fixed</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>0</width>
+                         <height>16</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                     <item>
+                      <layout class="QVBoxLayout" name="workflowsContainerLayout">
+                       <property name="spacing">
+                        <number>4</number>
+                       </property>
+                      </layout>
+                     </item>
+                     <item>
                       <spacer name="verticalSpacer_3">
                        <property name="orientation">
                         <enum>Qt::Vertical</enum>
@@ -344,7 +367,11 @@
                       </widget>
                      </item>
                      <item>
-                      <layout class="QVBoxLayout" name="recentProjectsContainerLayout"/>
+                      <layout class="QVBoxLayout" name="recentProjectsContainerLayout">
+                       <property name="spacing">
+                        <number>4</number>
+                       </property>
+                      </layout>
                      </item>
                      <item>
                       <spacer name="verticalSpacer_6">
