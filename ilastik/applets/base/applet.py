@@ -139,7 +139,6 @@ class DatasetConstraintError(Exception):
 class ShellRequest(Enum):
     """
     This class enumerates the actions that applets can ask the shell to perform via :py:attr:`Applet.shellRequestSignal`.
-    At the moment, there is only one supported action.
     """
 
     #: Request that the shell perform a "save project" action.
