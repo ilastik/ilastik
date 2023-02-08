@@ -21,9 +21,10 @@
 # Python
 import os
 import re
+import string
 from functools import partial
 from collections import defaultdict
-from typing import List, Union
+from typing import List
 import numpy
 
 # PyQt
@@ -303,7 +304,7 @@ class CarvingGui(LabelingGui):
         """show object names and allow user to load/delete them"""
         dialog = uic.loadUi(self.dialogdirCOM)
         names = self.getObjectNames()
-        dialog.objectNames.addItems(sorted(names, key=_humansort_key))
+        dialog.objectNames.addItems(human_sorted(names))
 
         def loadSelection():
             selected = dialog.objectNames.selectedItems()
@@ -804,23 +805,19 @@ class CarvingGui(LabelingGui):
         return layers
 
 
-def _str_to_int(data_str: str) -> Union[str, int]:
+def human_sorted(items):
     """
-    Convert string to int when possible
+    If there is a trailing number, sort it numerically and not alphabetically.
+    Sort those without trailing number ("c") before those with ("c0").
+    >>> lst = ['3', 'c0', 'c', 'a 1', 'b 2', 'a 10', 'a 9']
+    >>> sorted(lst)
+    ['3', 'a 1', 'a 10', 'a 9', 'b 2', 'c', 'c0']
+    >>> human_sorted(lst)
+    ['3', 'a 1', 'a 9', 'a 10', 'b 2', 'c', 'c0']
     """
-    if data_str.isdigit():
-        return int(data_str)
-    return data_str
-
-
-def _humansort_key(elem: str):
-    """
-    Key for human sort
-    >>> lst = ['a 1', 'b 2', 'a 10', 'a 9']
-    >>> sorted(lst, key=_humansort_key)
-    ['a 1', 'a 9', 'a 10', 'b 2']
-    """
-    if not (elem and isinstance(elem, str)):
-        return tuple()
-
-    return tuple(_str_to_int(token) for token in re.split("(\d+)", elem) if token)
+    keys = {}
+    for item in items:
+        prefix = item.rstrip(string.digits)
+        trailing_digits = item[len(prefix) :]
+        keys[item] = prefix, len(trailing_digits), trailing_digits
+    return sorted(items, key=keys.__getitem__)
