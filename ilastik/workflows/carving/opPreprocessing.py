@@ -416,6 +416,11 @@ class OpPreprocessing(Operator):
         self.cachedResult = result
 
         result[0] = mst
+
+        # Signal downstream that a new MST has been created.
+        # Otherwise opCarving.propagateDirty does not get called to carry
+        # over existing user labels into the new MST.
+        self.PreprocessedData.setDirty(slice(None))
         return result
 
     def propagateDirty(self, slot, subindex, roi):
@@ -431,7 +436,6 @@ class OpPreprocessing(Operator):
 
         self._dirty = True
         self.enableDownstream(False)
-        self.PreprocessedData.setDirty(slice(None))
 
     def enableDownstream(self, ed):
         """set enable of carving applet to ed"""
