@@ -720,7 +720,7 @@ class IlastikShell(QMainWindow):
 
             group_layout = QVBoxLayout()
             for button in buttons:
-                group_layout.addWidget(button, stretch=0, alignment=Qt.AlignLeft)
+                group_layout.addWidget(button)
 
             group_widget = QWidget()
             group_widget.setLayout(group_layout)
