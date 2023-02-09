@@ -484,8 +484,6 @@ class OpCarving(Operator):
         objects = list(self._mst.object_names.keys())
         self.AllObjectNames.meta.shape = (len(objects),)
 
-        self._updateDoneSegmentation()
-
         self._dirtyObjects.add(name)
 
         self._mst.clearSegmentation()
