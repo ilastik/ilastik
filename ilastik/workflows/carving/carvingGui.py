@@ -219,6 +219,13 @@ class CarvingGui(LabelingGui):
 
     def onSegmentButton(self):
         logger.debug("segment button clicked")
+        if not self.topLevelOperatorView.CanRunSegmentation.value:
+            QMessageBox.critical(
+                self,
+                "Unable to Run Segmentation",
+                "Both foreground and background labels are required to run segmentation.",
+            )
+            return
         bkPriorityValue = self.labelingDrawerUi.backgroundPrioritySpin.value()
         self.topLevelOperatorView.BackgroundPriority.setValue(bkPriorityValue)
         biasValue = self.labelingDrawerUi.noBiasBelowSpin.value()

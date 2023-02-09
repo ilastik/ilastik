@@ -107,6 +107,7 @@ class OpCarving(Operator):
     AllObjectNames = OutputSlot(rtype=List, stype=Opaque)
 
     CanObjectBeSaved = OutputSlot(stype="bool")
+    CanRunSegmentation = OutputSlot(stype="bool")
 
     HintOverlay = OutputSlot()
 
@@ -235,11 +236,19 @@ class OpCarving(Operator):
             self.CanObjectBeSaved.setValue(False)
             return
 
+        self._updateCanRunSegmentation()
+        has_segmentation = numpy.any(self._mst.hasSeg)
+        self.CanObjectBeSaved.setValue(has_segmentation and self.CanRunSegmentation.value)
+
+    def _updateCanRunSegmentation(self):
+        if self._mst is None:
+            self.CanRunSegmentation.setValue(False)
+            return
+
         nodeSeeds = self._mst.gridSegmentor.getNodeSeeds()
         has_bg_seeds = numpy.any(nodeSeeds == Labels.BACKGROUND)
         has_fg_seeds = numpy.any(nodeSeeds == Labels.FOREGROUND)
-        has_segmentation = numpy.any(self._mst.hasSeg)
-        self.CanObjectBeSaved.setValue(has_bg_seeds and has_fg_seeds and has_segmentation)
+        self.CanRunSegmentation.setValue(has_bg_seeds and has_fg_seeds)
 
     def setupOutputs(self):
         self.Segmentation.meta.assignFrom(self.InputData.meta)
