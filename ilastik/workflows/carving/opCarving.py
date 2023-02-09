@@ -295,8 +295,8 @@ class OpCarving(Operator):
 
     def restore_and_get_labels_for_object(self, name):
         """
-        Loads a single object called name to be the currently edited object. Its
-        not part of the done segmentation anymore.
+        Loads a single object called name to be the currently edited object.
+        _updateDoneSegmentation takes care to exclude the loaded object from the DoneSegmentation view.
         """
         assert self._mst is not None
         logger.info("[OpCarving] load object %s (opCarving=%d, mst=%d)" % (name, id(self), id(self._mst)))
@@ -355,6 +355,7 @@ class OpCarving(Operator):
 
         # The entire segmentation layer needs to be refreshed now.
         self.Segmentation.setDirty()
+        self.DoneSegmentation.setDirty()
         self._updateCanObjectBeSaved()
 
     def set_labels_into_WriteSeeds_input(self, fgVoxels, bgVoxels):
