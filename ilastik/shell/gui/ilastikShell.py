@@ -285,27 +285,22 @@ class ProgressDisplayManager(QObject):
 # === IlastikShell                                                                                                   ===
 # ===----------------------------------------------------------------------------------------------------------------===
 
-
-def styleStartScreenButton(button: QPushButton, icon: str) -> None:
-    button.setIcon(QIcon(icon))
-    button.setFlat(True)
-    button.setStyleSheet(
-        r"""
-        * {
-            background-color: palette(window);
-            border: none;
-            border-radius: 1em;
-            padding: 0.5em 1em;
-            text-align: left;
-        }
-        *:hover {
-            background-color: palette(light);
-        }
-        *:pressed {
-            background-color: palette(dark);
-        }
-    """
-    )
+# Style for flat buttons with no borders that are highlighted when hovered or pressed.
+FLAT_BUTTON_STYLE = r"""
+    QAbstractButton {
+        background-color: palette(window);
+        border: none;
+        border-radius: 1em;
+        padding: 0.5em 1em;
+        text-align: left;
+    }
+    QAbstractButton:hover {
+        background-color: palette(light);
+    }
+    QAbstractButton:pressed {
+        background-color: palette(dark);
+    }
+"""
 
 
 @ShellABC.register
@@ -590,12 +585,13 @@ class IlastikShell(QMainWindow):
                 if not os.path.exists(path):
                     continue
                 # Add "Em Quad" space character to visually separate path from workflow name.
-                b = FilePathButton(path, f"\u2001{workflow}", parent=self.startscreen)
-                styleStartScreenButton(b, ilastikIcons.Open)
-
+                b = FilePathButton(
+                    path, subtext=f"\u2001{workflow}", icon=QIcon(ilastikIcons.Open), parent=self.startscreen
+                )
+                b.setStyleSheet(FLAT_BUTTON_STYLE)
                 b.clicked.connect(partial(self.openFileAndCloseStartscreen, path))
 
-                self.startscreen.recentProjectsContainerLayout.addWidget(b)
+                self.startscreen.recentProjectsContainerLayout.addWidget(b, stretch=1, alignment=Qt.AlignLeft)
                 self.openFileButtons.append(b)
 
     def _replaceLogo(self, localDir):
@@ -639,7 +635,8 @@ class IlastikShell(QMainWindow):
 
         self.openFileButtons = []
 
-        styleStartScreenButton(self.startscreen.browseFilesButton, ilastikIcons.OpenFolder)
+        self.startscreen.browseFilesButton.setIcon(QIcon(ilastikIcons.OpenFolder))
+        self.startscreen.browseFilesButton.setStyleSheet(FLAT_BUTTON_STYLE)
         self.startscreen.browseFilesButton.clicked.connect(self.onOpenProjectActionTriggered)
 
         self._populateWorkflows()
@@ -712,7 +709,8 @@ class IlastikShell(QMainWindow):
                     text=wf_display_name,
                     clicked=partial(self.loadWorkflow, wf_class),
                 )
-                styleStartScreenButton(button, ilastikIcons.GoNext)
+                button.setIcon(QIcon(ilastikIcons.GoNext))
+                button.setStyleSheet(FLAT_BUTTON_STYLE)
                 buttons.append(button)
 
             if not buttons:

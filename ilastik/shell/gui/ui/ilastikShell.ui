@@ -365,7 +365,7 @@
                        </property>
                       </widget>
                      </item>
-                     <item>
+                     <item alignment="Qt::AlignLeft">
                       <widget class="QPushButton" name="browseFilesButton">
                        <property name="text">
                         <string>Browse Files</string>
