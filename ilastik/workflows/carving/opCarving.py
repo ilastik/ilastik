@@ -287,8 +287,9 @@ class OpCarving(Operator):
         Clear labels currently drawn and loaded object if there is one
         """
         self._clearLabels()
-        self._setCurrObjectName("")
         self.Trigger.setDirty(slice(None))
+        self._setCurrObjectName("")
+        self._buildDone()
         self._updateCanObjectBeSaved()
 
     def restore_and_get_labels_for_object(self, name):
