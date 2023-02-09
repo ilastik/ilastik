@@ -469,11 +469,8 @@ class OpCarving(Operator):
         if name in self._mst.object_names:
             objNr = self._mst.object_names[name]
         else:
-            # find free objNr
-            if len(list(self._mst.object_names.values())) > 0:
-                objNr = numpy.max(numpy.array(list(self._mst.object_names.values()))) + 1
-            else:
-                objNr = 1
+            # Find next free object number.
+            objNr = max(self._mst.object_names.values(), default=0) + 1
 
         self._mst.object_names[name] = objNr
         self._mst.bg_priority[name] = self.BackgroundPriority.value
