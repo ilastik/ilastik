@@ -246,7 +246,7 @@
                <item>
                 <widget class="QLabel" name="forumLinkLabel">
                  <property name="text">
-                  <string>&lt;a href=&quot;https://forum.image.sc/tags/ilastik&quot;&gt;forum.sc&lt;/a&gt;</string>
+                  <string>&lt;a href=&quot;https://forum.image.sc/tags/ilastik&quot;&gt;Get in Touch&lt;/a&gt;</string>
                  </property>
                  <property name="alignment">
                   <set>Qt::AlignCenter</set>
