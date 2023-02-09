@@ -290,15 +290,14 @@ class OpCarving(Operator):
         self._mst.object_seeds_bg_voxels[name] = bgVoxels
 
     @Operator.forbidParallelExecute
-    def clearCurrentLabeling(self, trigger_recompute=True):
+    def clearCurrentLabelsAndObject(self):
         """
-        Clears the current labeling.
+        Clear labels currently drawn and loaded object if there is one
         """
         self._clearLabels()
-        self._mst.gridSegmentor.clearSeeds()
-        self._updateCanObjectBeSaved()
-
+        self._setCurrObjectName("")
         self.Trigger.setDirty(slice(None))
+        self._updateCanObjectBeSaved()
 
     def restore_and_get_labels_for_object(self, name):
         """
@@ -518,7 +517,10 @@ class OpCarving(Operator):
         self._mst.gridSegmentor.clearSeeds()
 
         self._mst.clearSegmentation()
-        self.clearCurrentLabeling()
+        self._clearLabels()
+        self._updateCanObjectBeSaved()
+
+        self.Trigger.setDirty(slice(None))
 
     def getMaxUncertaintyPos(self, label):
         # FIXME: currently working on

@@ -430,10 +430,10 @@ class CarvingGui(LabelingGui):
 
     def _onClearAction(self):
         confirm = QMessageBox.warning(
-            self, "Really Clear?", "Clear all brushtrokes?", QMessageBox.Ok | QMessageBox.Cancel
+            self, "Really Clear?", "Clear all brushtrokes and start new object?", QMessageBox.Ok | QMessageBox.Cancel
         )
         if confirm == QMessageBox.Ok:
-            self.topLevelOperatorView.clearCurrentLabeling()
+            self.topLevelOperatorView.clearCurrentLabelsAndObject()
 
     def _clearLabelListGui(self):
         # Remove rows until we have the right number
