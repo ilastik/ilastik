@@ -1358,6 +1358,10 @@ class IlastikShell(QMainWindow):
         if requestAction == ShellRequest.RequestSave:
             # Call the handler directly to ensure this is a synchronous call (not queued to the GUI thread)
             self.projectManager.saveProject()
+        elif requestAction == ShellRequest.RequestDisableDirtyTracking:
+            self.projectManager.ignoreDirty(True)
+        elif requestAction == ShellRequest.RequestEnableDirtyTracking:
+            self.projectManager.ignoreDirty(False)
 
     def __len__(self):
         return len(self._applets)
