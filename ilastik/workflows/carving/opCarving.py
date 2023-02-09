@@ -460,6 +460,11 @@ class OpCarving(Operator):
             logger.info(f"Either foreground or background labels missing. Cannot save object {name}.")
             return
 
+        supervoxel_segmentation = self._mst.getSuperVoxelSeg()
+        if not any(supervoxel_segmentation > 0):
+            logger.info(f"Segmentation missing. Cannot save object {name}.")
+            return
+
         logger.info(f"   --> Saving object {name!r}")
         if name in self._mst.object_names:
             objNr = self._mst.object_names[name]
@@ -470,20 +475,12 @@ class OpCarving(Operator):
             else:
                 objNr = 1
 
-        sVseg = self._mst.getSuperVoxelSeg()
-        if not any(sVseg > 0):
-            logger.info(f"   --> not saving due to missing segmentation")
-            return
-
         self._mst.object_names[name] = objNr
-
         self._mst.bg_priority[name] = self.BackgroundPriority.value
         self._mst.no_bias_below[name] = self.NoBiasBelow.value
-
-        self._mst.object_lut[name] = numpy.where(sVseg == 2)
-
-        self._setCurrObjectName("")
-        self._updateCanObjectBeSaved()
+        self._mst.object_lut[name] = numpy.where(supervoxel_segmentation == 2)
+        self._mst.object_seeds_fg_voxels[name] = fgVoxels
+        self._mst.object_seeds_bg_voxels[name] = bgVoxels
 
         objects = list(self._mst.object_names.keys())
         self.AllObjectNames.meta.shape = (len(objects),)
@@ -491,23 +488,10 @@ class OpCarving(Operator):
         # now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
         self._buildDone()
 
-        self._mst.object_seeds_fg_voxels[name] = fgVoxels
-        self._mst.object_seeds_bg_voxels[name] = bgVoxels
-
-        self._clearLabels()
-
-        # trigger a re-computation
-        self.Trigger.setDirty(slice(None))
-
         self._dirtyObjects.add(name)
 
-        self._mst.gridSegmentor.clearSeeds()
-
         self._mst.clearSegmentation()
-        self._clearLabels()
-        self._updateCanObjectBeSaved()
-
-        self.Trigger.setDirty(slice(None))
+        self.clearCurrentLabelsAndObject()
 
     def getMaxUncertaintyPos(self, label):
         # FIXME: currently working on
