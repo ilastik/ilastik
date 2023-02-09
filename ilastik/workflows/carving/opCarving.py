@@ -282,14 +282,6 @@ class OpCarving(Operator):
         return names
 
     @Operator.forbidParallelExecute
-    def attachVoxelLabelsToObject(self, name, fgVoxels, bgVoxels):
-        """
-        Attaches Voxellabes to an object called name.
-        """
-        self._mst.object_seeds_fg_voxels[name] = fgVoxels
-        self._mst.object_seeds_bg_voxels[name] = bgVoxels
-
-    @Operator.forbidParallelExecute
     def clearCurrentLabelsAndObject(self):
         """
         Clear labels currently drawn and loaded object if there is one
@@ -439,11 +431,35 @@ class OpCarving(Operator):
 
         self._updateCanObjectBeSaved()
 
+    def get_label_voxels(self):
+        # the voxel coordinates of fg and bg labels
+        if not self.opLabelArray.NonzeroBlocks.ready():
+            return None, None
+
+        bg = [[], [], []]  # [[x], [y], [z]] with len([x])=len([y])=len([z]) = count(labelled pixels)
+        fg = [[], [], []]
+        for slicing in self.opLabelArray.NonzeroBlocks[:].wait()[0]:
+            label = self.opLabelArray.Output[slicing].wait()
+            labels_bg = numpy.nonzero(label == Labels.BACKGROUND)
+            labels_fg = numpy.nonzero(label == Labels.FOREGROUND)
+            labels_bg = [labels_bg[d] + slicing[d].start for d in [1, 2, 3]]
+            labels_fg = [labels_fg[d] + slicing[d].start for d in [1, 2, 3]]
+            for i in range(3):
+                bg[i].append(labels_bg[i])
+                fg[i].append(labels_fg[i])
+
+        for i in range(3):
+            bg[i] = numpy.concatenate(bg[i], axis=0) if len(bg[i]) > 0 else numpy.array((), dtype=numpy.int32)
+            fg[i] = numpy.concatenate(fg[i], axis=0) if len(fg[i]) > 0 else numpy.array((), dtype=numpy.int32)
+        return fg, bg
+
     @Operator.forbidParallelExecute
-    def save_object(self, name):
-        """
-        Saves current object as name.
-        """
+    def saveObjectAs(self, name):
+        fgVoxels, bgVoxels = self.get_label_voxels()
+        if len(fgVoxels[0]) == 0 or len(bgVoxels[0]) == 0:
+            logger.info(f"Either foreground or background labels missing. Cannot save object {name}.")
+            return
+
         logger.info(f"   --> Saving object {name!r}")
         if name in self._mst.object_names:
             objNr = self._mst.object_names[name]
@@ -475,37 +491,8 @@ class OpCarving(Operator):
         # now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
         self._buildDone()
 
-    def get_label_voxels(self):
-        # the voxel coordinates of fg and bg labels
-        if not self.opLabelArray.NonzeroBlocks.ready():
-            return None, None
-
-        bg = [[], [], []]  # [[x], [y], [z]] with len([x])=len([y])=len([z]) = count(labelled pixels)
-        fg = [[], [], []]
-        for slicing in self.opLabelArray.NonzeroBlocks[:].wait()[0]:
-            label = self.opLabelArray.Output[slicing].wait()
-            labels_bg = numpy.nonzero(label == Labels.BACKGROUND)
-            labels_fg = numpy.nonzero(label == Labels.FOREGROUND)
-            labels_bg = [labels_bg[d] + slicing[d].start for d in [1, 2, 3]]
-            labels_fg = [labels_fg[d] + slicing[d].start for d in [1, 2, 3]]
-            for i in range(3):
-                bg[i].append(labels_bg[i])
-                fg[i].append(labels_fg[i])
-
-        for i in range(3):
-            bg[i] = numpy.concatenate(bg[i], axis=0) if len(bg[i]) > 0 else numpy.array((), dtype=numpy.int32)
-            fg[i] = numpy.concatenate(fg[i], axis=0) if len(fg[i]) > 0 else numpy.array((), dtype=numpy.int32)
-        return fg, bg
-
-    def saveObjectAs(self, name):
-        fgVoxels, bgVoxels = self.get_label_voxels()
-        if len(fgVoxels[0]) == 0 or len(bgVoxels[0]) == 0:
-            logger.info(f"Either foreground or background labels missing. Cannot save object {name}.")
-            return
-
-        self.save_object(name)
-
-        self.attachVoxelLabelsToObject(name, fgVoxels=fgVoxels, bgVoxels=bgVoxels)
+        self._mst.object_seeds_fg_voxels[name] = fgVoxels
+        self._mst.object_seeds_bg_voxels[name] = bgVoxels
 
         self._clearLabels()
 
