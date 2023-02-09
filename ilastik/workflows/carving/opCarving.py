@@ -211,10 +211,11 @@ class OpCarving(Operator):
         self._currObjectName = n
         self.CurrentObjectName.setValue(n)
 
-    def _buildDone(self):
+    def _updateDoneSegmentation(self):
         """
         Builds the done segmentation anew, for example after saving an object or
         deleting an object.
+        Excludes the current object if one is loaded.
         """
         if self._mst is None:
             return
@@ -289,7 +290,7 @@ class OpCarving(Operator):
         self._clearLabels()
         self.Trigger.setDirty(slice(None))
         self._setCurrObjectName("")
-        self._buildDone()
+        self._updateDoneSegmentation()
         self._updateCanObjectBeSaved()
 
     def restore_and_get_labels_for_object(self, name):
@@ -322,8 +323,7 @@ class OpCarving(Operator):
         self._setCurrObjectName(name)
         self._updateCanObjectBeSaved()
 
-        # now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
-        self._buildDone()
+        self._updateDoneSegmentation()
         return (fgVoxelsSeedPos, bgVoxelsSeedPos)
 
     def loadObject(self, name):
@@ -410,9 +410,7 @@ class OpCarving(Operator):
             del self._mst.object_names[name]
 
         self._setCurrObjectName("")
-
-        # now that 'name' has been deleted, rebuild the done overlay
-        self._buildDone()
+        self._updateDoneSegmentation()
 
     def deleteObject(self, name):
         logger.info(f"want to delete object with name = {name}")
@@ -486,8 +484,7 @@ class OpCarving(Operator):
         objects = list(self._mst.object_names.keys())
         self.AllObjectNames.meta.shape = (len(objects),)
 
-        # now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
-        self._buildDone()
+        self._updateDoneSegmentation()
 
         self._dirtyObjects.add(name)
 
