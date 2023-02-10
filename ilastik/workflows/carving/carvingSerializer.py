@@ -197,7 +197,7 @@ class CarvingSerializer(AppletSerializer):
                 ]
                 logger.info("restored seeds")
 
-            opCarving._buildDone()
+            opCarving._updateDoneSegmentation()
 
     def isDirty(self):
         for index, innerOp in enumerate(self._o.innerOperators):

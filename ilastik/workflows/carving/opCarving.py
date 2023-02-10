@@ -211,10 +211,11 @@ class OpCarving(Operator):
         self._currObjectName = n
         self.CurrentObjectName.setValue(n)
 
-    def _buildDone(self):
+    def _updateDoneSegmentation(self):
         """
         Builds the done segmentation anew, for example after saving an object or
         deleting an object.
+        Excludes the current object if one is loaded.
         """
         if self._mst is None:
             return
@@ -282,28 +283,20 @@ class OpCarving(Operator):
         return names
 
     @Operator.forbidParallelExecute
-    def attachVoxelLabelsToObject(self, name, fgVoxels, bgVoxels):
+    def clearCurrentLabelsAndObject(self):
         """
-        Attaches Voxellabes to an object called name.
-        """
-        self._mst.object_seeds_fg_voxels[name] = fgVoxels
-        self._mst.object_seeds_bg_voxels[name] = bgVoxels
-
-    @Operator.forbidParallelExecute
-    def clearCurrentLabeling(self, trigger_recompute=True):
-        """
-        Clears the current labeling.
+        Clear labels currently drawn and loaded object if there is one
         """
         self._clearLabels()
-        self._mst.gridSegmentor.clearSeeds()
-        self._updateCanObjectBeSaved()
-
         self.Trigger.setDirty(slice(None))
+        self._setCurrObjectName("")
+        self._updateDoneSegmentation()
+        self._updateCanObjectBeSaved()
 
     def restore_and_get_labels_for_object(self, name):
         """
-        Loads a single object called name to be the currently edited object. Its
-        not part of the done segmentation anymore.
+        Loads a single object called name to be the currently edited object.
+        _updateDoneSegmentation takes care to exclude the loaded object from the DoneSegmentation view.
         """
         assert self._mst is not None
         logger.info("[OpCarving] load object %s (opCarving=%d, mst=%d)" % (name, id(self), id(self._mst)))
@@ -330,8 +323,7 @@ class OpCarving(Operator):
         self._setCurrObjectName(name)
         self._updateCanObjectBeSaved()
 
-        # now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
-        self._buildDone()
+        self._updateDoneSegmentation()
         return (fgVoxelsSeedPos, bgVoxelsSeedPos)
 
     def loadObject(self, name):
@@ -363,6 +355,7 @@ class OpCarving(Operator):
 
         # The entire segmentation layer needs to be refreshed now.
         self.Segmentation.setDirty()
+        self.DoneSegmentation.setDirty()
         self._updateCanObjectBeSaved()
 
     def set_labels_into_WriteSeeds_input(self, fgVoxels, bgVoxels):
@@ -418,9 +411,7 @@ class OpCarving(Operator):
             del self._mst.object_names[name]
 
         self._setCurrObjectName("")
-
-        # now that 'name' has been deleted, rebuild the done overlay
-        self._buildDone()
+        self._updateDoneSegmentation()
 
     def deleteObject(self, name):
         logger.info(f"want to delete object with name = {name}")
@@ -439,42 +430,6 @@ class OpCarving(Operator):
         self.AllObjectNames.meta.shape = (len(objects),)
 
         self._updateCanObjectBeSaved()
-
-    @Operator.forbidParallelExecute
-    def save_object(self, name):
-        """
-        Saves current object as name.
-        """
-        logger.info(f"   --> Saving object {name!r}")
-        if name in self._mst.object_names:
-            objNr = self._mst.object_names[name]
-        else:
-            # find free objNr
-            if len(list(self._mst.object_names.values())) > 0:
-                objNr = numpy.max(numpy.array(list(self._mst.object_names.values()))) + 1
-            else:
-                objNr = 1
-
-        sVseg = self._mst.getSuperVoxelSeg()
-        if not any(sVseg > 0):
-            logger.info(f"   --> not saving due to missing segmentation")
-            return
-
-        self._mst.object_names[name] = objNr
-
-        self._mst.bg_priority[name] = self.BackgroundPriority.value
-        self._mst.no_bias_below[name] = self.NoBiasBelow.value
-
-        self._mst.object_lut[name] = numpy.where(sVseg == 2)
-
-        self._setCurrObjectName("")
-        self._updateCanObjectBeSaved()
-
-        objects = list(self._mst.object_names.keys())
-        self.AllObjectNames.meta.shape = (len(objects),)
-
-        # now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
-        self._buildDone()
 
     def get_label_voxels(self):
         # the voxel coordinates of fg and bg labels
@@ -498,27 +453,39 @@ class OpCarving(Operator):
             fg[i] = numpy.concatenate(fg[i], axis=0) if len(fg[i]) > 0 else numpy.array((), dtype=numpy.int32)
         return fg, bg
 
+    @Operator.forbidParallelExecute
     def saveObjectAs(self, name):
         fgVoxels, bgVoxels = self.get_label_voxels()
         if len(fgVoxels[0]) == 0 or len(bgVoxels[0]) == 0:
             logger.info(f"Either foreground or background labels missing. Cannot save object {name}.")
             return
 
-        self.save_object(name)
+        supervoxel_segmentation = self._mst.getSuperVoxelSeg()
+        if not any(supervoxel_segmentation > 0):
+            logger.info(f"Segmentation missing. Cannot save object {name}.")
+            return
 
-        self.attachVoxelLabelsToObject(name, fgVoxels=fgVoxels, bgVoxels=bgVoxels)
+        logger.info(f"   --> Saving object {name!r}")
+        if name in self._mst.object_names:
+            objNr = self._mst.object_names[name]
+        else:
+            # Find next free object number.
+            objNr = max(self._mst.object_names.values(), default=0) + 1
 
-        self._clearLabels()
+        self._mst.object_names[name] = objNr
+        self._mst.bg_priority[name] = self.BackgroundPriority.value
+        self._mst.no_bias_below[name] = self.NoBiasBelow.value
+        self._mst.object_lut[name] = numpy.where(supervoxel_segmentation == 2)
+        self._mst.object_seeds_fg_voxels[name] = fgVoxels
+        self._mst.object_seeds_bg_voxels[name] = bgVoxels
 
-        # trigger a re-computation
-        self.Trigger.setDirty(slice(None))
+        objects = list(self._mst.object_names.keys())
+        self.AllObjectNames.meta.shape = (len(objects),)
 
         self._dirtyObjects.add(name)
 
-        self._mst.gridSegmentor.clearSeeds()
-
         self._mst.clearSegmentation()
-        self.clearCurrentLabeling()
+        self.clearCurrentLabelsAndObject()
 
     def getMaxUncertaintyPos(self, label):
         # FIXME: currently working on
