@@ -41,7 +41,7 @@ from PyQt5.QtWidgets import (
     QWidget,
     QMenu,
     QApplication,
-    QStackedWidget,
+    QPushButton,
     qApp,
     QFileDialog,
     QMessageBox,
@@ -104,8 +104,6 @@ try:
     _has_dvid_support = True
 except:
     _has_dvid_support = False
-
-ILASTIKFont = QFont("Helvetica", 12, QFont.Bold)
 
 logger = logging.getLogger(__name__)
 
@@ -287,13 +285,22 @@ class ProgressDisplayManager(QObject):
 # === IlastikShell                                                                                                   ===
 # ===----------------------------------------------------------------------------------------------------------------===
 
-
-def styleStartScreenButton(button, icon):
-    assert isinstance(button, QToolButton)
-    button.setAutoRaise(True)
-    button.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
-    button.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-    button.setIcon(QIcon(icon))
+# Style for flat buttons with no borders that are highlighted when hovered or pressed.
+FLAT_BUTTON_STYLE = r"""
+    QAbstractButton {
+        background-color: palette(window);
+        border: none;
+        border-radius: 1em;
+        padding: 0.5em 1em;
+        text-align: left;
+    }
+    QAbstractButton:hover {
+        background-color: palette(light);
+    }
+    QAbstractButton:pressed {
+        background-color: palette(dark);
+    }
+"""
 
 
 @ShellABC.register
@@ -577,15 +584,14 @@ class IlastikShell(QMainWindow):
             for path, workflow in projects:
                 if not os.path.exists(path):
                     continue
-                b = FilePathButton(path, " ({})".format(workflow), parent=self.startscreen)
-                styleStartScreenButton(b, ilastikIcons.Open)
-
+                # Add "Em Quad" space character to visually separate path from workflow name.
+                b = FilePathButton(
+                    path, subtext=f"\u2001{workflow}", icon=QIcon(ilastikIcons.Open), parent=self.startscreen
+                )
+                b.setStyleSheet(FLAT_BUTTON_STYLE)
                 b.clicked.connect(partial(self.openFileAndCloseStartscreen, path))
 
-                # Insert the new button after all the other controls,
-                #  but before the vertical spacer at the end of the list.
-                insertion_index = self.startscreen.VL1.count() - 1
-                self.startscreen.VL1.insertWidget(insertion_index, b)
+                self.startscreen.recentProjectsContainerLayout.addWidget(b, stretch=1, alignment=Qt.AlignLeft)
                 self.openFileButtons.append(b)
 
     def _replaceLogo(self, localDir):
@@ -625,14 +631,12 @@ class IlastikShell(QMainWindow):
         self.startscreen.CreateList.setWidget(self.startscreen.VL1.widget())
         self.startscreen.CreateList.setWidgetResizable(True)
 
-        self.startscreen.openRecentProject.setFont(ILASTIKFont)
-        self.startscreen.openProject.setFont(ILASTIKFont)
         self._replaceLogo(localDir)
-        self.startscreen.createNewProject.setFont(ILASTIKFont)
 
         self.openFileButtons = []
 
-        styleStartScreenButton(self.startscreen.browseFilesButton, ilastikIcons.OpenFolder)
+        self.startscreen.browseFilesButton.setIcon(QIcon(ilastikIcons.OpenFolder))
+        self.startscreen.browseFilesButton.setStyleSheet(FLAT_BUTTON_STYLE)
         self.startscreen.browseFilesButton.clicked.connect(self.onOpenProjectActionTriggered)
 
         self._populateWorkflows()
@@ -699,19 +703,21 @@ class IlastikShell(QMainWindow):
                     continue
 
                 wf_class, wf_name, wf_display_name = wfs[wf_name]
-                button = QToolButton(
+                button = QPushButton(
                     self.startscreen,
                     objectName=f"NewProjectButton_{wf_class.__name__}",
                     text=wf_display_name,
                     clicked=partial(self.loadWorkflow, wf_class),
                 )
-                styleStartScreenButton(button, ilastikIcons.GoNext)
+                button.setIcon(QIcon(ilastikIcons.GoNext))
+                button.setStyleSheet(FLAT_BUTTON_STYLE)
                 buttons.append(button)
 
             if not buttons:
                 continue
 
             group_layout = QVBoxLayout()
+            group_layout.setSpacing(4)
             for button in buttons:
                 group_layout.addWidget(button)
 
@@ -720,7 +726,7 @@ class IlastikShell(QMainWindow):
 
             wfs_layout.addWidget(CollapsibleWidget(group_widget, f" {group}", expanded=wf_dict["expanded"]))
 
-        self.startscreen.VL1.insertLayout(1, wfs_layout)
+        self.startscreen.workflowsContainerLayout.addLayout(wfs_layout)
 
     def openFileAndCloseStartscreen(self, path):
         if self.projectManager is not None:
