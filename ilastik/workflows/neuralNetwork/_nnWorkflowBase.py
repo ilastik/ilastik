@@ -27,7 +27,7 @@ import tqdm
 
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
-from ilastik.applets.neuralNetwork import NNClassificationDataExportApplet
+from ilastik.applets.neuralNetwork import NNClassificationDataExportApplet, tiktorchController
 from ilastik.config import runtime_cfg
 from ilastik.workflow import Workflow
 from lazyflow.cancel_token import CancellationTokenSource
@@ -50,7 +50,7 @@ class _NNWorkflowBase(Workflow):
     DATA_ROLE_RAW = 0
     DATA_ROLE_OVERLAY = 1
     ROLE_NAMES = ["Raw Data", "Overlay"]
-    EXPORT_NAMES = ["Probabilities", "Labels"]
+    EXPORT_NAMES = ["Probabilities", "Labels"] if tiktorchController.ALLOW_TRAINING else ["Probabilities"]
 
     @property
     def applets(self):
@@ -99,6 +99,7 @@ class _NNWorkflowBase(Workflow):
         opDataExport.WorkingDirectory.connect(opDataSelection.WorkingDirectory)
         opDataExport.SelectionNames.setValue(self.EXPORT_NAMES)
         opDataExport.PmapColors.connect(opClassify.PmapColors)
+
         opDataExport.LabelNames.connect(opClassify.LabelNames)
 
         self.batchProcessingApplet = BatchProcessingApplet(
@@ -154,7 +155,9 @@ class _NNWorkflowBase(Workflow):
         opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[self.DATA_ROLE_RAW])
         opDataExport.Inputs.resize(len(self.EXPORT_NAMES))
         opDataExport.Inputs[0].connect(opNNclassify.PredictionProbabilities)
-        opDataExport.Inputs[1].connect(opNNclassify.LabelImages)
+
+        if tiktorchController.ALLOW_TRAINING:
+            opDataExport.Inputs[1].connect(opNNclassify.LabelImages)
 
     def handleAppletStateUpdateRequested(self, upstream_ready=True):
         """
