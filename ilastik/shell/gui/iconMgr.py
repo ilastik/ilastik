@@ -1,9 +1,7 @@
-#!/usr/bin/env python
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2023, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -49,7 +47,12 @@
 #    or implied, of their employers.
 
 import os
-import ilastik
+import pathlib
+import re
+
+from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import QSize
+
 
 # *******************************************************************************
 # i l a s t i k I c o n s                                                      *
@@ -58,9 +61,9 @@ import ilastik
 
 class ilastikIcons(object):
     # get the absolute path of the 'ilastik' module
-    ilastikPath = os.path.dirname(__file__)
+    iconBasePath = os.path.dirname(__file__)
 
-    iconPath = ilastikPath + "/icons/32x32/"
+    iconPath = iconBasePath + "/icons/32x32/"
 
     Brush = iconPath + "actions/edit-clear.png"
     Clear = iconPath + "actions/edit-clear.png"
@@ -90,7 +93,7 @@ class ilastikIcons(object):
     Edit2 = iconPath + "actions/edit-find-replace.png"
     AddSel = iconPath + "actions/list-add.png"
     RemSel = iconPath + "actions/list-remove.png"
-    Python = iconPath + ilastikPath + "/gui/pyc.ico"
+    Python = iconPath + iconBasePath + "/gui/pyc.ico"
     Help = iconPath + "status/weather-storm.png"
     ZoomIn = iconPath + "actions/zoom-in.png"
     ZoomOut = iconPath + "actions/zoom-out.png"
@@ -101,20 +104,30 @@ class ilastikIcons(object):
     ChevronDown = iconPath + "chevron-down.png"
     Upload = iconPath + "actions/go-up.png"
 
-    Ilastik = iconPath + "ilastik-icon.png"
-
     # 22x22
-    iconPath = ilastikPath + "/gui/icons/22x22/"
+    iconPath = iconBasePath + "/gui/icons/22x22/"
     AddSelx22 = iconPath + "actions/list-add.png"
     RemSelx22 = iconPath + "actions/list-remove.png"
 
     # 16x16
-    iconPath = ilastikPath + "/gui/icons/16x16/"
+    iconPath = iconBasePath + "/gui/icons/16x16/"
     AddSelx16 = iconPath + "actions/list-add.png"
     RemSelx16 = iconPath + "actions/list-remove.png"
 
     # 10x10
-    iconPath = ilastikPath + "/gui/icons/10x10/"
+    iconPath = iconBasePath + "/gui/icons/10x10/"
     ArrowUpx10 = iconPath + "actions/arrow_up.png"
     ArrowDownx10 = iconPath + "actions/arrow_down.png"
     Maximizex10 = iconPath + "actions/maximize.png"
+
+    @classmethod
+    def Ilastik(cls) -> QIcon:
+        base = pathlib.Path(cls.iconBasePath) / "icons"
+        qicon = QIcon()
+        for icon_path in base.glob("*/ilastik-icon.png"):
+            r = icon_path.relative_to(base)
+            m = re.match(r"^(?P<width>\d{1,3})x(?P<height>\d{1,3})$", str(list(r.parents)[-2]))
+            if m:
+                width, height = int(m.groupdict()["width"]), int(m.groupdict()["height"])
+                qicon.addFile(str(icon_path), QSize(width, height))
+        return qicon
