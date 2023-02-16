@@ -26,7 +26,8 @@ import tempfile
 import unittest
 
 import numpy
-import pytiff
+
+# import pytiff
 import vigra
 
 from lazyflow.graph import Graph

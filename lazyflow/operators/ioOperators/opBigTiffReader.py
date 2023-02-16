@@ -1,6 +1,7 @@
 from __future__ import print_function
 import numpy as np
-import pytiff
+
+# import pytiff
 import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
