@@ -377,7 +377,7 @@ class IlastikShell(QMainWindow):
         self._appletBarMgr = AppletBarManager(self.appletBar)
 
         # show a nice window icon
-        self.setWindowIcon(QIcon(ilastikIcons.Ilastik))
+        self.setWindowIcon(ilastikIcons.Ilastik())
 
         self.progressDisplayManager = ProgressDisplayManager(self.statusBar)
 
