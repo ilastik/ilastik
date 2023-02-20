@@ -17,6 +17,7 @@ class FilePathButton(QPushButton):
         path: Union[str, os.PathLike],
         subtext: str = "",
         icon: Optional[QIcon] = None,
+        styleSheet: str = "",
         parent: Optional[QWidget] = None,
     ):
         """Create a new button with the specified path, subtext, and icon.
@@ -26,6 +27,10 @@ class FilePathButton(QPushButton):
         The subtext, if not empty, is displayed below the path.
         """
         super().__init__(parent)
+        # Setting stylesheet early is necessary for correct size calculation on all platforms
+        # platforms (linux and windows would otherwise result in sizes which were too small).
+        if styleSheet:
+            self.setStyleSheet(styleSheet)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         self._path = PurePath(path)
         self._subtext = subtext
