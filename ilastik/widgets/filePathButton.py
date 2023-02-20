@@ -1,5 +1,6 @@
 import os
 from pathlib import PurePath
+import platform
 from typing import Iterable, Optional, Union
 
 from PyQt5.QtCore import QSize
@@ -7,6 +8,10 @@ from PyQt5.QtGui import QIcon, QResizeEvent
 from PyQt5.QtWidgets import QPushButton, QSizePolicy, QWidget
 
 HORIZONTAL_ELLIPSIS = "\u2026"
+
+# Extra width for buttons on linux - not sure why it doesn't work out of the box
+# there, but adding 25px seems to do the trick.
+EXTRA_WIDTH = 25 if platform.system() == "Linux" else 0
 
 
 class FilePathButton(QPushButton):
@@ -72,7 +77,7 @@ class FilePathButton(QPushButton):
                 # super().sizeHint() computes the proper size of the button
                 # for this abbreviation.
                 self._set_path(abbrev)
-                self._abbrevs.append((abbrev, super().sizeHint().width()))
+                self._abbrevs.append((abbrev, super().sizeHint().width() + EXTRA_WIDTH))
         self._set_path(next((p for p, w in self._abbrevs if w <= self.width()), self._abbrevs[-1][0]))
 
     def _set_path(self, path: PurePath) -> None:
