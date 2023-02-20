@@ -27,8 +27,8 @@ class FilePathButton(QPushButton):
         The subtext, if not empty, is displayed below the path.
         """
         super().__init__(parent)
-        # Setting stylesheet early is necessary for correct size calculation
-        # on all platforms
+        # Setting stylesheet early is necessary for correct size calculation on all
+        # platforms (linux would otherwise result in sizes which were too small).
         if styleSheet:
             self.setStyleSheet(styleSheet)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
