@@ -586,9 +586,12 @@ class IlastikShell(QMainWindow):
                     continue
                 # Add "Em Quad" space character to visually separate path from workflow name.
                 b = FilePathButton(
-                    path, subtext=f"\u2001{workflow}", icon=QIcon(ilastikIcons.Open), parent=self.startscreen
+                    path,
+                    subtext=f"\u2001{workflow}",
+                    icon=QIcon(ilastikIcons.Open),
+                    styleSheet=FLAT_BUTTON_STYLE,
+                    parent=self.startscreen,
                 )
-                b.setStyleSheet(FLAT_BUTTON_STYLE)
                 b.clicked.connect(partial(self.openFileAndCloseStartscreen, path))
 
                 self.startscreen.recentProjectsContainerLayout.addWidget(b, stretch=1, alignment=Qt.AlignLeft)
