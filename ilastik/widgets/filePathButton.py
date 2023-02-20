@@ -17,7 +17,7 @@ class FilePathButton(QPushButton):
         path: Union[str, os.PathLike],
         subtext: str = "",
         icon: Optional[QIcon] = None,
-        styleSheet: Optional[str] = None,
+        styleSheet: str = "",
         parent: Optional[QWidget] = None,
     ):
         """Create a new button with the specified path, subtext, and icon.
