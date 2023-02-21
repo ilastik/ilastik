@@ -176,7 +176,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
                     continue
                 # To be monitored and updated correctly by this GUI, slots must have level=1, but this slot is of level 0.
                 # Pass it through a trivial "up-leveling" operator so it will have level 1 for our purposes.
-                opPromoteInput = OpWrapSlot(parent=slot.getRealOperator().parent)
+                opPromoteInput = OpWrapSlot(parent=slot.operator.parent)
                 opPromoteInput.Input.connect(slot)
                 slot = opPromoteInput.Output
                 self._orphanOperators.append(opPromoteInput)
@@ -241,9 +241,9 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
                     layer = self.createStandardLayerFromSlot(slot)
 
                     # Name the layer after the slot name.
-                    if isinstance(multiLayerSlot.getRealOperator(), OpWrapSlot):
+                    if isinstance(multiLayerSlot.operator, OpWrapSlot):
                         # We attached an 'upleveling' operator, so look upstream for the real slot.
-                        layer.name = multiLayerSlot.getRealOperator().Input.upstream_slot.name
+                        layer.name = multiLayerSlot.operator.Input.upstream_slot.name
                     else:
                         layer.name = multiLayerSlot.name + " " + str(j)
                     layers.append(layer)
@@ -385,7 +385,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
 
         redSource = None
         if rindex is not None:
-            redProvider = OpSingleChannelSelector(parent=slot.getRealOperator().parent)
+            redProvider = OpSingleChannelSelector(parent=slot.operator.parent)
             redProvider.Input.connect(slot)
             redProvider.Index.setValue(rindex)
             redSource = createDataSource(redProvider.Output)
@@ -393,7 +393,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
 
         greenSource = None
         if gindex is not None:
-            greenProvider = OpSingleChannelSelector(parent=slot.getRealOperator().parent)
+            greenProvider = OpSingleChannelSelector(parent=slot.operator.parent)
             greenProvider.Input.connect(slot)
             greenProvider.Index.setValue(gindex)
             greenSource = createDataSource(greenProvider.Output)
@@ -401,7 +401,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
 
         blueSource = None
         if bindex is not None:
-            blueProvider = OpSingleChannelSelector(parent=slot.getRealOperator().parent)
+            blueProvider = OpSingleChannelSelector(parent=slot.operator.parent)
             blueProvider.Input.connect(slot)
             blueProvider.Index.setValue(bindex)
             blueSource = createDataSource(blueProvider.Output)
@@ -409,7 +409,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
 
         alphaSource = None
         if aindex is not None:
-            alphaProvider = OpSingleChannelSelector(parent=slot.getRealOperator().parent)
+            alphaProvider = OpSingleChannelSelector(parent=slot.operator.parent)
             alphaProvider.Input.connect(slot)
             alphaProvider.Index.setValue(aindex)
             alphaSource = createDataSource(alphaProvider.Output)
@@ -592,7 +592,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         shape = None
         if slot.ready() and slot.meta.axistags is not None:
             # Use an OpReorderAxes adapter to transpose the shape for us.
-            op5 = OpReorderAxes(parent=slot.getRealOperator().parent)
+            op5 = OpReorderAxes(parent=slot.operator.parent)
             op5.Input.connect(slot)
             op5.AxisOrder.setValue("txyzc")
             shape = op5.Output.meta.shape

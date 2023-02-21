@@ -23,12 +23,12 @@ def test_state_change(qtbot, widget):
 
         # expand
         qtbot.mouseClick(w._toggleButton, Qt.MouseButton.LeftButton)
-        qtbot.wait(50)  # wait for change to settle, since we're querying gui state
+        qtbot.wait(150)  # wait for change to settle, since we're querying gui state
 
         assert not widget.visibleRegion().isEmpty()
 
         # collapse again
         qtbot.mouseClick(w._toggleButton, Qt.MouseButton.LeftButton)
-        qtbot.wait(50)  # wait for change to settle, since we're querying gui state
+        qtbot.wait(150)  # wait for change to settle, since we're querying gui state
 
         assert widget.visibleRegion().isEmpty()

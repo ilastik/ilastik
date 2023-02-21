@@ -1,6 +1,5 @@
 import ilastiktools
 import h5py
-import numpy
 
 
 class WatershedSegmentor(object):
@@ -73,6 +72,7 @@ class WatershedSegmentor(object):
 
     def clearSegmentation(self):
         self.gridSegmentor.clearSegmentation()
+        self.hasSeg = False
 
     def addSeeds(self, roi, brushStroke):
         if isinstance(self.gridSegmentor, ilastiktools.GridSegmentor_3D_UInt32):
@@ -101,6 +101,7 @@ class WatershedSegmentor(object):
 
     def clearSeeds(self) -> None:
         self.gridSegmentor.clearSeeds()
+        self.hasSeg = False
 
     def setSeeds(self, fgSeeds, bgSeeds):
         self.gridSegmentor.setSeeds(fgSeeds, bgSeeds)
@@ -137,3 +138,4 @@ class WatershedSegmentor(object):
 
     def setResulFgObj(self, fgNodes):
         self.gridSegmentor.setResulFgObj(fgNodes)
+        self.hasSeg = True

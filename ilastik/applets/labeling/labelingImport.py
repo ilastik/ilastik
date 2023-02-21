@@ -68,7 +68,7 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
     """
     writeSeeds = labelingSlots.labelInput
     assert isinstance(writeSeeds, lazyflow.graph.Slot), "slot is of type %r" % (type(writeSeeds))
-    opLabels = writeSeeds.getRealOperator()
+    opLabels = writeSeeds.operator
     assert isinstance(opLabels, lazyflow.graph.Operator), "slot's operator is of type %r" % (type(opLabels))
 
     fileNames = ImageFileDialog(

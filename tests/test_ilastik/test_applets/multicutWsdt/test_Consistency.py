@@ -30,7 +30,7 @@ from lazyflow.graph import Graph
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.utility import Pipeline
 
-from ilastik.applets.wsdt.opWsdt import OpCachedWsdt
+from ilastik.applets.wsdt.opWsdt import OpCachedWsdt, parallel_watershed
 
 from elf.segmentation.watershed import distance_transform_watershed
 
@@ -65,7 +65,7 @@ def get_result_function(input_data):
     the core function.
     """
 
-    ws, max_id = distance_transform_watershed(
+    ws, max_id = parallel_watershed(
         input_data[..., 0],
         WS_PARAMS["threshold"],
         WS_PARAMS["sigma"],

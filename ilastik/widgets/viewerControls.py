@@ -61,6 +61,6 @@ class ViewerControls(QWidget):
 
         assert isinstance(dataSource.dataSlot, lazyflow.graph.Slot), f"slot is of type {type(dataSource.dataSlot)!r}"
         assert isinstance(
-            dataSource.dataSlot.getRealOperator(), lazyflow.graph.Operator
-        ), f"slot's operator is of type {type(dataSource.dataSlot.getRealOperator())!r}"
+            dataSource.dataSlot.operator, lazyflow.graph.Operator
+        ), f"slot's operator is of type {type(dataSource.dataSlot.operator)!r}"
         prompt_export_settings_and_export_layer(layer, self)

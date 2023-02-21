@@ -38,6 +38,7 @@ import h5py
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.tracking.base.trackingUtilities import relabel, write_events
 from volumina.layer import GrayscaleLayer
+from volumina.utility import ShortcutManager
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 from ilastik.config import cfg as ilastik_config
@@ -157,6 +158,18 @@ class TrackingBaseGui(LayerViewerGui):
         if self.mainOperator.RawImage.ready():
             rawLayer = self.createStandardLayerFromSlot(self.mainOperator.RawImage)
             rawLayer.name = "Raw"
+            rawLayer.shortcutRegistration = (
+                "i",
+                ShortcutManager.ActionInfo(
+                    "Prediction Layers",
+                    "Bring Input To Top/Bottom",
+                    "Bring Input To Top/Bottom",
+                    partial(self.layerstack.toggleTopToBottom, rawLayer),
+                    self.viewerControlWidget(),
+                    rawLayer,
+                ),
+            )
+
             layers.insert(len(layers), rawLayer)
 
         if self.topLevelOperatorView.LabelImage.meta.shape:

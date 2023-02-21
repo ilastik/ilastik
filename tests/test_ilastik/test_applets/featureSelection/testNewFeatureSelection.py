@@ -105,7 +105,7 @@ class TestCompareOpFeatureSelectionToOld:
         ]:
             result = output[roi].wait()
             resultOld = outputOld[roi].wait()
-            yield self.compare, result, resultOld
+            self.compare(result, resultOld)
 
     def test_output(self):
         self.opFeatures.InputImage[0].disconnect()
@@ -225,7 +225,7 @@ class TestCompareOpFeatureSelectionToOld:
                     pass
                 plt.show()
 
-            yield self.compare, result, resultOld
+            self.compare(result, resultOld)
 
     def test_features(self):
         # Configure selection matrix
@@ -321,7 +321,7 @@ class TestCompareOpFeatureSelectionToOld:
                     pass
                 plt.show()
 
-            yield self.compare, result, resultOld
+            self.compare(result, resultOld)
 
     def test_ComputeIn2d(self):
         # tests ComputIn2d flag on smoothing of a 3d block (smoothing across all three, or only 2 dimensions)

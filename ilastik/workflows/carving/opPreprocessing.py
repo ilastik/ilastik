@@ -24,7 +24,6 @@ from __future__ import division
 # Python
 from builtins import range
 from past.utils import old_div
-import sys
 
 # SciPy
 import numpy
@@ -313,17 +312,17 @@ class OpPreprocessing(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpPreprocessing, self).__init__(*args, **kwargs)
-        self._prepData = [None]
+        self.cachedResult = [None]
         self.applet = self.parent.parent.preprocessingApplet
 
-        self._unsavedData = False  # set to True if data is not yet saved
-        self._dirty = False  # set to True if any Input is dirty
+        self.hasUnsavedData = False  # read by preprocessingSerializer
+        self._dirty = False  # to avoid generating new MST unless user has changed settings
 
-        self.initialSigma = None  # save settings of last preprocess
-        self.initialFilter = None  # applied to gui by pressing reset
-        self.initialDoAgglo = None
-        self.initialSizeRegularizer = None
-        self.initialReduceTo = None
+        self.cachedSigma = None  # keep settings of last preprocess execute
+        self.cachedFilter = None  # for saving in project file
+        self.cachedDoAgglo = None
+        self.cachedSizeRegularizer = None
+        self.cachedReduceTo = None
 
         self._opFilter = OpFilter(parent=self)
         self._opFilter.Input.connect(self.InputData)
@@ -348,8 +347,6 @@ class OpPreprocessing(Operator):
         self._opMstProvider.LabelImage.connect(self._opWatershedCache.Output)
 
         self._opWatershedSourceCache = OpBlockedArrayCache(parent=self)
-
-        # self.PreprocessedData.connect( self._opMstProvider.MST )
 
         # Display slots
         self.FilteredImage.connect(self._opFilterCache.Output)
@@ -401,88 +398,45 @@ class OpPreprocessing(Operator):
 
     def execute(self, slot, subindex, roi, result):
         assert slot == self.PreprocessedData, "Invalid output slot"
-        if self._prepData[0] is not None and not self._dirty:
-            return self._prepData
+        if not self._dirty and self.cachedResult[0] is not None:
+            return self.cachedResult
 
         mst = self._opMstProvider.MST.value
 
-        # save settings for reloading them if asked by user
-        self.initialSigma = self.Sigma.value
-        self.initialFilter = self.Filter.value
-        self.initalDoAgglo = self.DoAgglo.value
-        self.initalReduceTo = self.ReduceTo.value
-        self.initalSizeRegularizer = self.SizeRegularizer.value
+        self.cachedSigma = self.Sigma.value
+        self.cachedFilter = self.Filter.value
+        self.cachedDoAgglo = self.DoAgglo.value
+        self.cachedSizeRegularizer = self.SizeRegularizer.value
+        self.cachedReduceTo = self.ReduceTo.value
 
-        self.enableReset(False)
-        self._unsavedData = True
+        self.hasUnsavedData = True
         self._dirty = False
         self.enableDownstream(True)
 
-        # copy over seeds, and saved objects
-        if self._prepData[0] is not None:
-            # mst.seeds[:] = self._prepData[0].seeds[:]
-            mst.object_lut = self._prepData[0].object_lut
-            mst.object_names = self._prepData[0].object_names
-            mst.object_seeds_bg_voxels = self._prepData[0].object_seeds_bg_voxels
-            mst.object_seeds_fg_voxels = self._prepData[0].object_seeds_fg_voxels
-            mst.bg_priority = self._prepData[0].bg_priority
-            mst.no_bias_below = self._prepData[0].no_bias_below
-
-        # Cache result
-        self._prepData = result
-
-        # Wonder why this is set?
-        # The preprocess is only called by the run button.
-        # By setting the output dirty, this event is propagated to the
-        # carving-Operator, who copies the result just calculated.
-        # This is to gain control over when the preprocess is executed.
-        # self.PreprocessedData.setDirty()
+        self.cachedResult = result
 
         result[0] = mst
-        return result
 
-    def AreSettingsInitial(self):
-        """analyse settings for sigma and filter
-        return True if they are equal to those of last preprocess"""
-        if self.initialFilter is None:
-            return False
-        if self.Filter.value != self.initialFilter:
-            return False
-        if self.DoAgglo.value != self.initialDoAgglo:
-            return False
-        if abs(self.Sigma.value - self.initialSigma) > 0.005:
-            return False
-        if abs(self.ReduceTo.value - self.initialReduceTo) > 0.005:
-            return False
-        if abs(self.SizeRegularizer.value - self.initalSizeRegularizer) > 0.005:
-            return False
-        return True
+        # Signal downstream that a new MST has been created.
+        # Otherwise opCarving.propagateDirty does not get called to carry
+        # over existing user labels into the new MST.
+        self.PreprocessedData.setDirty(slice(None))
+        return result
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.InputData:
             # complete restart
             # No values will be reused any more
-            self.initialSigma = None
-            self.initialFilter = None
-            self.initialDoAgglo = None
-            self.initialSizeRegularizer = None
-            self.initialReduceTo = None
-            self._prepData = [None]
+            self.cachedSigma = None
+            self.cachedFilter = None
+            self.cachedDoAgglo = None
+            self.cachedSizeRegularizer = None
+            self.cachedReduceTo = None
+            self.cachedResult = [None]
 
         self._dirty = True
         self.enableDownstream(False)
-        if self._prepData[0] is not None:
-            self.enableReset(True)
-
-    def enableReset(self, er):
-        """set enabled of resetButton to er"""
-        self.applet.enableReset(er)
 
     def enableDownstream(self, ed):
         """set enable of carving applet to ed"""
         self.applet.enableDownstream(ed)
-
-    def reset(self):
-        """reset sigma and filter to values of last preprocess"""
-        self.applet._gui.setSigma(self.initialSigma)
-        self.applet._gui.setFilter(self.initialFilter)

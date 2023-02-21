@@ -44,6 +44,7 @@ from ilastik.utility import log_exception
 from ilastik.config import cfg as ilastik_config
 
 from volumina.api import createDataSource, GrayscaleLayer, ColortableLayer
+from volumina.utility import ShortcutManager
 import volumina.colortables as colortables
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
@@ -470,6 +471,19 @@ class ObjectExtractionGui(LayerViewerGui):
         self.rawsrc.setObjectName("Raw Lazyflow Src")
         layerraw = GrayscaleLayer(self.rawsrc)
         layerraw.name = "Raw data"
+
+        layerraw.shortcutRegistration = (
+            "i",
+            ShortcutManager.ActionInfo(
+                "Prediction Layers",
+                "Bring Input To Top/Bottom",
+                "Bring Input To Top/Bottom",
+                partial(self.layerstack.toggleTopToBottom, layerraw),
+                self.viewerControlWidget(),
+                layerraw,
+            ),
+        )
+
         layers.insert(len(layers), layerraw)
 
         mainOperator.RawImage.notifyReady(self._onReady)

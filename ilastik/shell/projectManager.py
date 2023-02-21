@@ -249,6 +249,11 @@ class ProjectManager(object):
             log_exception(logger)
             raise e
 
+    def ignoreDirty(self, ignore: bool):
+        for applet in self._applets:
+            for serializer in applet.dataSerializers:
+                serializer.ignoreDirty = ignore
+
     def getDirtyAppletNames(self):
         """
         Check the serializers for every applet in the workflow.

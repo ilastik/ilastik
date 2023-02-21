@@ -31,6 +31,7 @@ class CollapsibleWidget(QWidget):
         widget: QWidget,
         header: str = "Details",
         animation_duration: int = 100,
+        expanded=False,
         parent=None,
     ):
         """
@@ -40,7 +41,8 @@ class CollapsibleWidget(QWidget):
             should be configured fully when passing it (to ensure correct sizing).
             No resizing is taken into account.
           header: Text displayed next to the arrow toolbutton
-          start_collapsed: Control initial state. Set to False to have widget expanded
+          animation_duration: duration of collapse/expand animation in ms
+          expanded: Control initial state. Set to False to have widget expanded
             visible upon construction.
         """
 
@@ -52,7 +54,7 @@ class CollapsibleWidget(QWidget):
         toggleButton.setArrowType(Qt.ArrowType.RightArrow)
         toggleButton.setText(header)
         toggleButton.setCheckable(True)
-        toggleButton.setChecked(False)
+        toggleButton.setChecked(expanded)
 
         # for testing:
         self._toggleButton = toggleButton
@@ -93,11 +95,15 @@ class CollapsibleWidget(QWidget):
 
         for i in range(animation.animationCount() - 1):
             anim = animation.animationAt(i)
-            anim.setDuration(animation_duration)
             anim.setStartValue(collapsedHeight)
             anim.setEndValue(collapsedHeight + contentHeight)
 
         anim = animation.animationAt(animation.animationCount() - 1)
-        anim.setDuration(animation_duration)
         anim.setStartValue(0)
         anim.setEndValue(contentHeight)
+
+        updateState(expanded)
+
+        # set animation duration after widget is in correct state
+        for i in range(animation.animationCount()):
+            animation.animationAt(i).setDuration(animation_duration)

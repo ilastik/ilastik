@@ -31,7 +31,7 @@ from lazyflow.operators import OpPixelFeaturesPresmoothed
 from lazyflow.operators import OpReorderAxes
 from lazyflow.operatorWrapper import OperatorWrapper
 
-from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.applets.featureSelection import FeatureSelectionConstraintError
 
 logger = logging.getLogger(__name__)
 
@@ -168,14 +168,7 @@ class OpFeatureSelectionNoCache(Operator):
             invalid_scales, invalid_z_scales = self.opPixelFeatures.getInvalidScales()
             if invalid_scales or invalid_z_scales:
                 invalid_z_scales = [s for s in invalid_z_scales if s not in invalid_scales]  # 'do not complain twice'
-                msg = "Some of your selected feature scales are too large for your dataset.\n"
-                if invalid_scales:
-                    msg += f"Reduce or remove these scales:\n{invalid_scales}\n\n"
 
-                if invalid_z_scales:
-                    msg += f"Reduce, remove or switch to 2D computation for these scales:\n{invalid_z_scales}\n\n"
-
-                msg += "Alternatively use another dataset."
                 if self.parent.parent.featureSelectionApplet._gui is None:
                     # headless
                     fix_dlgs = []
@@ -186,7 +179,12 @@ class OpFeatureSelectionNoCache(Operator):
                         ).onFeatureButtonClicked
                     ]
 
-                raise DatasetConstraintError("Feature Selection", msg, fixing_dialogs=fix_dlgs)
+                raise FeatureSelectionConstraintError(
+                    "Feature Selection",
+                    invalid_scales=invalid_scales,
+                    invalid_z_scales=invalid_z_scales,
+                    fixing_dialogs=fix_dlgs,
+                )
 
             # Connect our external outputs to our internal operators
             self.OutputImage.connect(self.opReorderOut.Output)

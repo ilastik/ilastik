@@ -262,6 +262,10 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         def _invalidate_cache_on_sp_change(*args, **kwargs):
             op = opEdgeTrainingWithMulticut
             opEdgeTrainingWithMulticut.clear_caches(op.current_view_index())
+            # allow for dirty propagation to the volumina layers
+            if op.FreezeCache.value:
+                op.FreezeCache.setValue(False)
+                op.FreezeCache.setValue(True)
 
         opSuperpixelsSelect.Output.notifyDirty(_invalidate_cache_on_sp_change)
 

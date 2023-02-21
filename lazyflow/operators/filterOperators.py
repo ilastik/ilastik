@@ -194,7 +194,7 @@ class OpBaseFilter(Operator):
                 if process_in_2d:
                     # eliminate singleton z dimension
                     assert isinstance(target_z_slice, int)
-                    source = source[:, target_z_slice]  # in 2d z is shared between source and target (like time)
+                    source = source[:, full_input_slice[2]]  # in 2d z is shared between source and target (like time)
 
             source = numpy.require(source, dtype=self.input_dtype)
             source = source.view(vigra.VigraArray)

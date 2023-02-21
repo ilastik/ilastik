@@ -50,6 +50,7 @@ class WsdtApplet(StandardApplet):
             "Alpha",
             "PixelPitch",
             "ApplyNonmaxSuppression",
+            "BlockwiseWatershed",
         ]
 
     @property

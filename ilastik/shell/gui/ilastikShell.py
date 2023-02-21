@@ -27,6 +27,7 @@ import weakref
 import logging
 import platform
 import threading
+import warnings
 
 # SciPy
 import numpy
@@ -40,7 +41,7 @@ from PyQt5.QtWidgets import (
     QWidget,
     QMenu,
     QApplication,
-    QStackedWidget,
+    QPushButton,
     qApp,
     QFileDialog,
     QMessageBox,
@@ -59,6 +60,7 @@ from PyQt5.QtWidgets import (
 # lazyflow
 from ilastik.widgets.ipcserver.tcpServerInfoWidget import TCPServerInfoWidget
 from ilastik.widgets.ipcserver.zmqPubSubInfoWidget import ZMQPublisherInfoWidget
+from ilastik.widgets.collapsibleWidget import CollapsibleWidget
 from lazyflow.roi import TinyVector
 from lazyflow.graph import Operator
 import lazyflow.tools.schematic
@@ -103,16 +105,15 @@ try:
 except:
     _has_dvid_support = False
 
-ILASTIKFont = QFont("Helvetica", 12, QFont.Bold)
-
 logger = logging.getLogger(__name__)
+
 
 # ===----------------------------------------------------------------------------------------------------------------===
 # === ShellActions                                                                                                   ===
 # ===----------------------------------------------------------------------------------------------------------------===
 
 
-class ShellActions(object):
+class ShellActions:
     """
     The shell provides the applet constructors with access to his GUI actions.
     They are provided in this class.
@@ -284,13 +285,22 @@ class ProgressDisplayManager(QObject):
 # === IlastikShell                                                                                                   ===
 # ===----------------------------------------------------------------------------------------------------------------===
 
-
-def styleStartScreenButton(button, icon):
-    assert isinstance(button, QToolButton)
-    button.setAutoRaise(True)
-    button.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
-    button.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-    button.setIcon(QIcon(icon))
+# Style for flat buttons with no borders that are highlighted when hovered or pressed.
+FLAT_BUTTON_STYLE = r"""
+    QAbstractButton {
+        background-color: palette(window);
+        border: none;
+        border-radius: 1em;
+        padding: 0.5em 1em;
+        text-align: left;
+    }
+    QAbstractButton:hover {
+        background-color: palette(light);
+    }
+    QAbstractButton:pressed {
+        background-color: palette(dark);
+    }
+"""
 
 
 @ShellABC.register
@@ -367,7 +377,7 @@ class IlastikShell(QMainWindow):
         self._appletBarMgr = AppletBarManager(self.appletBar)
 
         # show a nice window icon
-        self.setWindowIcon(QIcon(ilastikIcons.Ilastik))
+        self.setWindowIcon(ilastikIcons.Ilastik())
 
         self.progressDisplayManager = ProgressDisplayManager(self.statusBar)
 
@@ -574,15 +584,17 @@ class IlastikShell(QMainWindow):
             for path, workflow in projects:
                 if not os.path.exists(path):
                     continue
-                b = FilePathButton(path, " ({})".format(workflow), parent=self.startscreen)
-                styleStartScreenButton(b, ilastikIcons.Open)
-
+                # Add "Em Quad" space character to visually separate path from workflow name.
+                b = FilePathButton(
+                    path,
+                    subtext=f"\u2001{workflow}",
+                    icon=QIcon(ilastikIcons.Open),
+                    styleSheet=FLAT_BUTTON_STYLE,
+                    parent=self.startscreen,
+                )
                 b.clicked.connect(partial(self.openFileAndCloseStartscreen, path))
 
-                # Insert the new button after all the other controls,
-                #  but before the vertical spacer at the end of the list.
-                insertion_index = self.startscreen.VL1.count() - 1
-                self.startscreen.VL1.insertWidget(insertion_index, b)
+                self.startscreen.recentProjectsContainerLayout.addWidget(b, stretch=1, alignment=Qt.AlignLeft)
                 self.openFileButtons.append(b)
 
     def _replaceLogo(self, localDir):
@@ -622,24 +634,102 @@ class IlastikShell(QMainWindow):
         self.startscreen.CreateList.setWidget(self.startscreen.VL1.widget())
         self.startscreen.CreateList.setWidgetResizable(True)
 
-        self.startscreen.openRecentProject.setFont(ILASTIKFont)
-        self.startscreen.openProject.setFont(ILASTIKFont)
         self._replaceLogo(localDir)
-        self.startscreen.createNewProject.setFont(ILASTIKFont)
 
         self.openFileButtons = []
 
-        styleStartScreenButton(self.startscreen.browseFilesButton, ilastikIcons.OpenFolder)
+        self.startscreen.browseFilesButton.setIcon(QIcon(ilastikIcons.OpenFolder))
+        self.startscreen.browseFilesButton.setStyleSheet(FLAT_BUTTON_STYLE)
         self.startscreen.browseFilesButton.clicked.connect(self.onOpenProjectActionTriggered)
 
-        pos = 1
-        for workflow, _name, displayName in getAvailableWorkflows():
-            b = QToolButton(self.startscreen, objectName="NewProjectButton_" + workflow.__name__)
-            styleStartScreenButton(b, ilastikIcons.GoNext)
-            b.setText(displayName)
-            b.clicked.connect(partial(self.loadWorkflow, workflow))
-            self.startscreen.VL1.insertWidget(pos, b)
-            pos += 1
+        self._populateWorkflows()
+
+    def _populateWorkflows(self):
+        wf_startup_menu_order = {
+            "Segmentation Workflows": {
+                "workflows": [
+                    "Pixel Classification",
+                    "AutocontextTwoStage",
+                    "Neural Network Classification (Local)",
+                    "Neural Network Classification (Remote)",
+                    "Carving",
+                    "Edge Training With Multicut",
+                ],
+                "expanded": True,
+            },
+            "Object Classification Workflows": {
+                "workflows": [
+                    "Object Classification (from prediction image)",
+                    "Object Classification (from binary image)",
+                ],
+                "expanded": True,
+            },
+            "Tracking Workflows": {
+                "workflows": [
+                    "Manual Tracking Workflow",
+                    "Automatic Tracking Workflow (Conservation Tracking) from binary image",
+                    "Automatic Tracking Workflow (Conservation Tracking) from prediction image",
+                    "Animal Conservation Tracking Workflow from Binary Image",
+                    "Animal Conservation Tracking Workflow from Prediction Image",
+                    "Structured Learning Tracking Workflow from binary image",
+                    "Structured Learning Tracking Workflow from prediction image",
+                ],
+                "expanded": False,
+            },
+        }
+
+        wfs = {
+            wf_name: (wf_class, wf_name, wf_display_name)
+            for wf_class, wf_name, wf_display_name in getAvailableWorkflows()
+        }
+        explicit_wf_names = {
+            wf_name
+            for wf_dict in wf_startup_menu_order.values()
+            for wf_name in wf_dict["workflows"]
+        }  # fmt: skip
+        wf_startup_menu_order["Other Workflows"] = {
+            "workflows": [
+                wf_name
+                for wf_name in wfs
+                if wf_name not in explicit_wf_names
+            ],
+            "expanded": False,
+        }  # fmt: skip
+
+        wfs_layout = QVBoxLayout()
+        for group, wf_dict in wf_startup_menu_order.items():
+            buttons = []
+
+            for wf_name in wf_dict["workflows"]:
+                if wf_name not in wfs:
+                    warnings.warn(f"Workflow startup menu: Could not find {wf_name}")
+                    continue
+
+                wf_class, wf_name, wf_display_name = wfs[wf_name]
+                button = QPushButton(
+                    self.startscreen,
+                    objectName=f"NewProjectButton_{wf_class.__name__}",
+                    text=wf_display_name,
+                    clicked=partial(self.loadWorkflow, wf_class),
+                )
+                button.setIcon(QIcon(ilastikIcons.GoNext))
+                button.setStyleSheet(FLAT_BUTTON_STYLE)
+                buttons.append(button)
+
+            if not buttons:
+                continue
+
+            group_layout = QVBoxLayout()
+            group_layout.setSpacing(4)
+            for button in buttons:
+                group_layout.addWidget(button)
+
+            group_widget = QWidget()
+            group_widget.setLayout(group_layout)
+
+            wfs_layout.addWidget(CollapsibleWidget(group_widget, f" {group}", expanded=wf_dict["expanded"]))
+
+        self.startscreen.workflowsContainerLayout.addLayout(wfs_layout)
 
     def openFileAndCloseStartscreen(self, path):
         if self.projectManager is not None:
@@ -1277,6 +1367,10 @@ class IlastikShell(QMainWindow):
         if requestAction == ShellRequest.RequestSave:
             # Call the handler directly to ensure this is a synchronous call (not queued to the GUI thread)
             self.projectManager.saveProject()
+        elif requestAction == ShellRequest.RequestDisableDirtyTracking:
+            self.projectManager.ignoreDirty(True)
+        elif requestAction == ShellRequest.RequestEnableDirtyTracking:
+            self.projectManager.ignoreDirty(False)
 
     def __len__(self):
         return len(self._applets)
@@ -1615,16 +1709,6 @@ class IlastikShell(QMainWindow):
         assert threading.current_thread().name == "MainThread"
         if self.projectManager is not None:
 
-            projectFile = self.projectManager.currentProjectFile
-            if (
-                not self.projectManager.closed
-                and projectFile is not None
-                and not self.projectManager.currentProjectIsReadOnly
-            ):
-                if "currentApplet" in list(projectFile.keys()):
-                    del projectFile["currentApplet"]
-                self.projectManager.currentProjectFile.create_dataset("currentApplet", data=self.currentAppletIndex)
-
             self.removeAllAppletWidgets()
             for f in self.cleanupFunctions:
                 f()
@@ -1674,6 +1758,17 @@ class IlastikShell(QMainWindow):
 
         return closeProject
 
+    def _save_current_applet(self):
+        pm = self.projectManager
+        if pm.closed or pm.currentProjectIsReadOnly or pm.currentProjectFile is None:
+            return
+
+        projectFile = pm.currentProjectFile
+
+        if "currentApplet" in projectFile.keys():
+            del projectFile["currentApplet"]
+        projectFile.create_dataset("currentApplet", data=self.currentAppletIndex)
+
     def onSaveProjectActionTriggered(self):
         logger.debug("Save Project action triggered")
 
@@ -1683,13 +1778,15 @@ class IlastikShell(QMainWindow):
                 self.projectManager.saveProject()
             except ProjectManager.SaveError as err:
                 self.thunkEventHandler.post(partial(QMessageBox.warning, self, "Error Attempting Save", str(err)))
-
-            # First, re-enable all applets
-            # (If the workflow doesn't provide a handleAppletStateUpdateRequested implementation,
-            #  then everything is re-enabled.)
-            self.setAllAppletsEnabled(True)
-            # Next, tell the workflow to re-disable any applets that aren't really ready.
-            self.workflow.handleAppletStateUpdateRequested()
+            else:
+                self._save_current_applet()
+            finally:
+                # First, re-enable all applets
+                # (If the workflow doesn't provide a handleAppletStateUpdateRequested implementation,
+                #  then everything is re-enabled.)
+                self.setAllAppletsEnabled(True)
+                # Next, tell the workflow to re-disable any applets that aren't really ready.
+                self.workflow.handleAppletStateUpdateRequested()
 
         saveThread = threading.Thread(target=save)
         saveThread.start()

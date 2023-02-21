@@ -23,11 +23,11 @@ import enum
 import json
 import logging
 from hashlib import blake2b
-from typing import Dict, List, Sequence, Union
+from typing import Dict, List, Sequence, Union, TYPE_CHECKING
 
-from bioimageio.spec import serialize_raw_resource_description_to_dict
-from bioimageio.spec.shared.raw_nodes import ImplicitOutputShape, ParametrizedInputShape
-from bioimageio.spec.shared.raw_nodes import ResourceDescription as RawResourceDescription
+if TYPE_CHECKING:
+    from bioimageio.spec.shared.raw_nodes import ImplicitOutputShape
+    from bioimageio.spec.shared.raw_nodes import ResourceDescription as RawResourceDescription
 
 from lazyflow.operators.tiktorch import IConnectionFactory
 
@@ -38,18 +38,26 @@ logger = logging.getLogger(__name__)
 ALLOW_TRAINING = False
 
 
-def tagged_input_shapes(raw_spec: RawResourceDescription) -> Dict[str, Dict[str, int]]:
+def tagged_input_shapes(raw_spec: "RawResourceDescription") -> Dict[str, Dict[str, int]]:
+    # Note: bioimageio imports are delayed as to prevent https request to
+    # github and bioimage.io on ilastik startup
+    from bioimageio.spec.shared.raw_nodes import ParametrizedInputShape
+
     def min_shape(shape):
         return shape.min if isinstance(shape, ParametrizedInputShape) else shape
 
     return {inp.name: dict(zip(inp.axes, min_shape(inp.shape))) for inp in raw_spec.inputs}
 
 
-def explicit_tagged_shape(axes: Sequence[str], shape: ImplicitOutputShape, *, ref: Dict[str, int]) -> Dict[str, int]:
+def explicit_tagged_shape(axes: Sequence[str], shape: "ImplicitOutputShape", *, ref: Dict[str, int]) -> Dict[str, int]:
     return {axis: int(ref[axis] * scale + 2 * offset) for axis, scale, offset in zip(axes, shape.scale, shape.offset)}
 
 
-def tagged_output_shapes(raw_spec: RawResourceDescription) -> Dict[str, Dict[str, int]]:
+def tagged_output_shapes(raw_spec: "RawResourceDescription") -> Dict[str, Dict[str, int]]:
+    # Note: bioimageio imports are delayed as to prevent https request to
+    # github and bioimage.io on ilastik startup
+    from bioimageio.spec.shared.raw_nodes import ImplicitOutputShape
+
     inputs = tagged_input_shapes(raw_spec)
     outputs = {}
     for out in raw_spec.outputs:
@@ -78,7 +86,7 @@ class BIOModelData:
     # model zip
     binary: bytes
     # rdf raw description as a dict
-    rawDescription: RawResourceDescription
+    rawDescription: "RawResourceDescription"
     # hash of the raw description
     hashVal: str = ""
 
@@ -95,6 +103,10 @@ class BIOModelData:
 
     @staticmethod
     def raw_model_description_to_string(rawModelDescription):
+        # Note: bioimageio imports are delayed as to prevent https request to
+        # github and bioimage.io on ilastik startup
+        from bioimageio.spec import serialize_raw_resource_description_to_dict
+
         return json.dumps(
             serialize_raw_resource_description_to_dict(rawModelDescription), separators=(",", ":"), sort_keys=True
         )

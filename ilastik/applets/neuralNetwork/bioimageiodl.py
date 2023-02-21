@@ -2,10 +2,6 @@ import pathlib
 from io import BytesIO
 from zipfile import ZIP_DEFLATED
 
-from bioimageio.core import load_raw_resource_description
-from bioimageio.core.resource_io.io_ import make_zip
-from bioimageio.spec import get_resource_package_content
-from bioimageio.spec.shared import resolve_source, raw_nodes, DownloadCancelled
 from PyQt5.QtCore import QThread, pyqtSignal
 from tqdm.auto import tqdm as std_tqdm
 
@@ -25,6 +21,10 @@ class TqdmExt(std_tqdm):
 
     def update(self, n=1):
         if self._cancellation_token and self._cancellation_token.cancelled:
+            # Note: bioimageio imports are delayed as to prevent https request to
+            # github and bioimage.io on ilastik startup
+            from bioimageio.spec.shared import DownloadCancelled
+
             raise DownloadCancelled()
 
         displayed = super().update(n)
@@ -49,6 +49,13 @@ class BioImageDownloader(QThread):
 
     def run(self):
         try:
+            # Note: bioimageio imports are delayed as to prevent https request to
+            # github and bioimage.io on ilastik startup
+            from bioimageio.core import load_raw_resource_description
+            from bioimageio.core.resource_io.io_ import make_zip
+            from bioimageio.spec import get_resource_package_content
+            from bioimageio.spec.shared import resolve_source, raw_nodes, DownloadCancelled
+
             logger.debug(f"Downloading model from {self._model_uri}")
             raw_rd = load_raw_resource_description(self._model_uri)
             package_content = get_resource_package_content(raw_rd, weights_priority_order=BIOIMAGEIO_WEIGHTS_PRIORITY)

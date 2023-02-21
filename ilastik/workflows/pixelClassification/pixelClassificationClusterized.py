@@ -184,7 +184,7 @@ def runWorkflow(cluster_args):
 
 def prepare_node_cluster_operator(config, cluster_args, finalOutputSlot):
     # We're doing node work
-    opClusterTaskWorker = OperatorWrapper(OpTaskWorker, parent=finalOutputSlot.getRealOperator().parent)
+    opClusterTaskWorker = OperatorWrapper(OpTaskWorker, parent=finalOutputSlot.operator.parent)
 
     # TODO: Raise an error if finalOutputSlot has len=0.  That means the user didn't load a batch dataset into the project.
 
@@ -217,7 +217,7 @@ def prepare_node_cluster_operator(config, cluster_args, finalOutputSlot):
 
 def prepare_master_cluster_operator(cluster_args, finalOutputSlot):
     # We're the master
-    opClusterizeMaster = OperatorWrapper(OpClusterize, parent=finalOutputSlot.getRealOperator().parent)
+    opClusterizeMaster = OperatorWrapper(OpClusterize, parent=finalOutputSlot.operator.parent)
 
     # TODO: Raise an error if finalOutputSlot has len=0.  That means the user didn't load a batch dataset into the project.
 

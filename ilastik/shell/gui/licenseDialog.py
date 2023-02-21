@@ -80,13 +80,13 @@ class LicenseDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
 
-        ilastik_path = Path(ilastik.__file__).parent.parent
+        ilastik_path = Path(ilastik.__file__).parent
 
-        # environment variable set in release binary
-        license_path = Path(os.environ.get("ILASTIK_LICENSE_PATH", ilastik_path / "LICENSE"))
-        license_3rd_party_path = Path(os.environ.get("ILASTIK_LICENSE_3RD_PARTY_PATH", "NOTFOUND"))
+        # files copied during release process
+        license_path = ilastik_path / "LICENSE.txt"
+        license_3rd_party_path = ilastik_path / "THIRDPARTY_LICENSES.txt"
 
-        logo_path = ilastik_path / "ilastik" / "ilastik-fist.png"
+        logo_path = ilastik_path / "ilastik-fist.png"
 
         logo_image = QPixmap(str(logo_path)).scaled(125, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         logo = QLabel()

@@ -18,9 +18,10 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from lazyflow.utility.orderedSignal import OrderedSignal
 from abc import ABCMeta, abstractproperty, abstractmethod
+from enum import Enum, auto
 from future.utils import with_metaclass
+from lazyflow.utility.orderedSignal import OrderedSignal
 
 
 class Applet(with_metaclass(ABCMeta, object)):
@@ -115,26 +116,36 @@ class Applet(with_metaclass(ABCMeta, object)):
 
 
 class DatasetConstraintError(Exception):
-    def __init__(self, appletName, message, unfixable=False, fixing_dialogs=[]):
-        """
+    def __init__(self, appletName, message):
+        """Error to indicate unfitting data for operation
+
+        Exception to be raised in the context of some applet usage, so either
+        associated operators or GUIs.
+
+        Example: dimensionality not suitable (too many/not enough channels)
+
         Args:
-            fixing_dialogs: list of functions to show dialogs which can alleviate the dataset constraint.
+          appletName: applet where the exception is happening
+          message: description of error and possible mitigation measures
         """
         super().__init__()
         self.appletName = appletName
         self.message = message
-        self.unfixable = unfixable
-        self.fixing_dialogs = fixing_dialogs
 
     def __str__(self):
         return "Constraint of '{}' applet was violated: {}".format(self.appletName, self.message)
 
 
-class ShellRequest(object):
+class ShellRequest(Enum):
     """
     This class enumerates the actions that applets can ask the shell to perform via :py:attr:`Applet.shellRequestSignal`.
-    At the moment, there is only one supported action.
     """
 
     #: Request that the shell perform a "save project" action.
-    RequestSave = 0
+    RequestSave = auto()
+    # Requests for dirty tracking mainly useful in the context of batch processing
+    # where we don't want to persist graph changes
+    # Set all applets to ignore dirty changes
+    RequestDisableDirtyTracking = auto()
+    # Set all applets to track dirty tracking
+    RequestEnableDirtyTracking = auto()

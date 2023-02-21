@@ -33,7 +33,7 @@ class SerialDivisionsSlot(SerialSlot):
             return
         deleteIfPresent(group, self.name)
         group = getOrCreateGroup(group, self.name)
-        mainOperator = self.slot.getRealOperator()
+        mainOperator = self.slot.operator
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
             dset = []
@@ -47,7 +47,7 @@ class SerialDivisionsSlot(SerialSlot):
     def deserialize(self, group):
         if not self.name in group:
             return
-        mainOperator = self.slot.getRealOperator()
+        mainOperator = self.slot.operator
         innerops = mainOperator.innerOperators
         opgroup = group[self.name]
         for inner in list(opgroup.keys()):
@@ -66,7 +66,7 @@ class SerialLabelsSlot(SerialSlot):
             return
         deleteIfPresent(group, self.name)
         group = getOrCreateGroup(group, self.name)
-        mainOperator = self.slot.getRealOperator()
+        mainOperator = self.slot.operator
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
             gr = getOrCreateGroup(group, str(i))
@@ -82,7 +82,7 @@ class SerialLabelsSlot(SerialSlot):
     def deserialize(self, group):
         if not self.name in group:
             return
-        mainOperator = self.slot.getRealOperator()
+        mainOperator = self.slot.operator
         innerops = mainOperator.innerOperators
         opgroup = group[self.name]
         for inner in list(opgroup.keys()):

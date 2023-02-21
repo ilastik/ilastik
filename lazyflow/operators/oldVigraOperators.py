@@ -1178,7 +1178,7 @@ from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2
 from lazyflow.operators import OpReorderAxes
 from lazyflow.operatorWrapper import OperatorWrapper
 
-from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.applets.featureSelection import FeatureSelectionConstraintError
 
 
 # Constants
@@ -1320,12 +1320,9 @@ class OpFeatureSelectionNoCache(Operator):
             self.opPixelFeatures.Matrix.setValue(selections)
             invalid_scales = self.opPixelFeatures.getInvalidScales()
             if invalid_scales:
-                msg = (
-                    "Some of your selected feature scales are too large for your dataset.\n"
-                    "Choose smaller scales (sigma) or use a larger dataset.\n"
-                    "The invalid scales are: {}".format(invalid_scales)
+                raise FeatureSelectionConstraintError(
+                    "Feature Selection (oldVigraOperators)", invalid_scales=invalid_scales, invalid_z_scales=[]
                 )
-                raise DatasetConstraintError("Feature Selection", msg)
 
             # Connect our external outputs to our internal operators
             self.OutputImage.connect(self.opReorderOut.Output)

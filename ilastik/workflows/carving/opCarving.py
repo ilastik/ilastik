@@ -20,9 +20,9 @@
 ###############################################################################
 # Python
 from builtins import range
+from enum import IntEnum, unique
 import time
 import numpy, h5py
-import copy
 
 # Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -36,13 +36,21 @@ from lazyflow.operators.valueProviders import OpValueCache
 from lazyflow.utility.timer import Timer
 from ilastik.applets.base.applet import DatasetConstraintError
 
-
 import logging
 
 logger = logging.getLogger(__name__)
 
-# ===----------------------------------------------------------------------------------------------------------------===
 DEFAULT_LABEL_PREFIX = "Object "
+
+
+@unique
+class Labels(IntEnum):
+    """Label values for carving.
+    Values must be same as in ilastiktools/carving.hxx#setSeeds.
+    """
+
+    BACKGROUND = 1
+    FOREGROUND = 2
 
 
 class OpCarving(Operator):
@@ -79,7 +87,6 @@ class OpCarving(Operator):
     # below the number, no background bias will be applied to the edge weights
     NoBiasBelow = InputSlot(value=64)
 
-    # uncertainty type
     UncertaintyType = InputSlot()
 
     # O u t p u t s #
@@ -99,13 +106,11 @@ class OpCarving(Operator):
 
     AllObjectNames = OutputSlot(rtype=List, stype=Opaque)
 
-    # current object has an actual segmentation
-    HasSegmentation = OutputSlot(stype="bool")
+    CanObjectBeSaved = OutputSlot(stype="bool")
+    CanRunSegmentation = OutputSlot(stype="bool")
 
-    # Hint Overlay
     HintOverlay = OutputSlot()
 
-    # Pmap Overlay
     PmapOverlay = OutputSlot()
 
     MstOut = OutputSlot()
@@ -116,7 +121,6 @@ class OpCarving(Operator):
     def __init__(self, graph=None, hintOverlayFile=None, pmapOverlayFile=None, parent=None):
         super(OpCarving, self).__init__(graph=graph, parent=parent)
         self.opLabelArray = OpDenseLabelArray(parent=self)
-        # self.opLabelArray.EraserLabelValue.setValue( 100 )
         self.opLabelArray.MetaInput.connect(self.InputData)
 
         self._hintOverlayFile = hintOverlayFile
@@ -144,8 +148,8 @@ class OpCarving(Operator):
                 raise RuntimeError("Could not open pmap overlay '%s'" % pmapOverlayFile)
             self._pmap = f["/data"][numpy.newaxis, :, :, :, numpy.newaxis]
 
-        self._setCurrObjectName("<not saved yet>")
-        self.HasSegmentation.setValue(False)
+        self._setCurrObjectName("")
+        self._updateCanObjectBeSaved()
 
         # keep track of a set of object names that have changed since
         # the last serialization of this object to disk
@@ -190,6 +194,7 @@ class OpCarving(Operator):
         if self._mst is not None:
             self._mst.clearSeed(label_value)
         self.opLabelArray.DeleteLabel.setValue(-1)
+        self._updateCanObjectBeSaved()
 
     def _clearLabels(self):
         # clear the labels
@@ -207,10 +212,11 @@ class OpCarving(Operator):
         self._currObjectName = n
         self.CurrentObjectName.setValue(n)
 
-    def _buildDone(self):
+    def _updateDoneSegmentation(self):
         """
         Builds the done segmentation anew, for example after saving an object or
         deleting an object.
+        Excludes the current object if one is loaded.
         """
         if self._mst is None:
             return
@@ -220,23 +226,30 @@ class OpCarving(Operator):
             for name, objectSupervoxels in self._mst.object_lut.items():
                 if name == self._currObjectName:
                     continue
-                assert name in self._mst.object_names, "%s not in self._mst.object_names, keys are %r" % (
-                    name,
-                    list(self._mst.object_names.keys()),
-                )
+                assert (
+                    name in self._mst.object_names
+                ), f"{name} not in self._mst.object_names, keys are {list(self._mst.object_names)!r}"
                 self._done_seg_lut[objectSupervoxels] = self._mst.object_names[name]
-        logger.info("building the 'done' luts took {} seconds".format(timer.seconds()))
+        logger.info(f"building the 'done' luts took {timer.seconds()} seconds")
 
-    def dataIsStorable(self):
+    def _updateCanObjectBeSaved(self):
         if self._mst is None:
-            return False
+            self.CanObjectBeSaved.setValue(False)
+            return
+
+        self._updateCanRunSegmentation()
+        has_segmentation = numpy.any(self._mst.hasSeg)
+        self.CanObjectBeSaved.setValue(has_segmentation and self.CanRunSegmentation.value)
+
+    def _updateCanRunSegmentation(self):
+        if self._mst is None:
+            self.CanRunSegmentation.setValue(False)
+            return
+
         nodeSeeds = self._mst.gridSegmentor.getNodeSeeds()
-        fg_seedNum = len(numpy.where(nodeSeeds == 2)[0])
-        bg_seedNum = len(numpy.where(nodeSeeds == 1)[0])
-        if not (fg_seedNum > 0 and bg_seedNum > 0):
-            return False
-        else:
-            return True
+        has_bg_seeds = numpy.any(nodeSeeds == Labels.BACKGROUND)
+        has_fg_seeds = numpy.any(nodeSeeds == Labels.FOREGROUND)
+        self.CanRunSegmentation.setValue(has_bg_seeds and has_fg_seeds)
 
     def setupOutputs(self):
         self.Segmentation.meta.assignFrom(self.InputData.meta)
@@ -262,41 +275,6 @@ class OpCarving(Operator):
 
         self.AllObjectNames.meta.dtype = object
 
-    def connectToPreprocessingApplet(self, applet):
-        self.PreprocessingApplet = applet
-
-    #     def updatePreprocessing(self):
-    #         if self.PreprocessingApplet is None or self._mst is None:
-    #             return
-    # FIXME: why were the following lines needed ?
-    # if len(self._mst.object_names)==0:
-    #     self.PreprocessingApplet.enableWriteprotect(True)
-    # else:
-    #     self.PreprocessingApplet.enableWriteprotect(False)
-
-    def hasCurrentObject(self):
-        """
-        Returns current object name. None if it is not set.
-        """
-        # FIXME: This is misleading. Having a current object and that object having
-        # a name is not the same thing.
-        return self._currObjectName
-
-    def currentObjectName(self):
-        """
-        Returns current object name. Return "" if no current object
-        """
-        assert (
-            self._currObjectName is not None
-        ), "FIXME: This function should either return '' or None.  Why does it sometimes return one and then the other?"
-        return self._currObjectName
-
-    def hasObjectWithName(self, name):
-        """
-        Returns True if object with name is existent. False otherwise.
-        """
-        return name in self._mst.object_lut
-
     def doneObjectNamesForPosition(self, position3d):
         """
         Returns a list of names of objects which occupy a specific 3D position.
@@ -314,32 +292,20 @@ class OpCarving(Operator):
         return names
 
     @Operator.forbidParallelExecute
-    def attachVoxelLabelsToObject(self, name, fgVoxels, bgVoxels):
+    def clearCurrentLabelsAndObject(self):
         """
-        Attaches Voxellabes to an object called name.
-        """
-        self._mst.object_seeds_fg_voxels[name] = fgVoxels
-        self._mst.object_seeds_bg_voxels[name] = bgVoxels
-
-    @Operator.forbidParallelExecute
-    def clearCurrentLabeling(self, trigger_recompute=True):
-        """
-        Clears the current labeling.
+        Clear labels currently drawn and loaded object if there is one
         """
         self._clearLabels()
-        self._mst.gridSegmentor.clearSeeds()
-        # lut_segmentation = self._mst.segmentation.lut[:]
-        # lut_segmentation[:] = 0
-        # lut_seeds = self._mst.seeds.lut[:]
-        # lut_seeds[:] = 0
-        # self.HasSegmentation.setValue(False)
-
         self.Trigger.setDirty(slice(None))
+        self._setCurrObjectName("")
+        self._updateDoneSegmentation()
+        self._updateCanObjectBeSaved()
 
-    def loadObject_impl(self, name):
+    def restore_and_get_labels_for_object(self, name):
         """
-        Loads a single object called name to be the currently edited object. Its
-        not part of the done segmentation anymore.
+        Loads a single object called name to be the currently edited object.
+        _updateDoneSegmentation takes care to exclude the loaded object from the DoneSegmentation view.
         """
         assert self._mst is not None
         logger.info("[OpCarving] load object %s (opCarving=%d, mst=%d)" % (name, id(self), id(self._mst)))
@@ -349,12 +315,6 @@ class OpCarving(Operator):
         assert name in self._mst.object_seeds_bg_voxels
         assert name in self._mst.bg_priority
         assert name in self._mst.no_bias_below
-
-        # lut_segmentation = self._mst.segmentation.lut[:]
-        # lut_objects = self._mst.objects.lut[:]
-        # lut_seeds = self._mst.seeds.lut[:]
-        ## clean seeds
-        # lut_seeds[:] = 0
 
         # set foreground and background seeds
         fgVoxelsSeedPos = self._mst.object_seeds_fg_voxels[name]
@@ -369,62 +329,23 @@ class OpCarving(Operator):
 
         self._mst.setResulFgObj(fgNodes[0])
 
-        # newSegmentation = numpy.ones(len(lut_objects), dtype=numpy.int32)
-        # newSegmentation[ self._mst.object_lut[name] ] = 2
-        # lut_segmentation[:] = newSegmentation
-
         self._setCurrObjectName(name)
-        self.HasSegmentation.setValue(True)
+        self._updateCanObjectBeSaved()
 
-        # now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
-        self._buildDone()
+        self._updateDoneSegmentation()
         return (fgVoxelsSeedPos, bgVoxelsSeedPos)
 
     def loadObject(self, name):
-        logger.info("want to load object with name = %s" % name)
-        if not self.hasObjectWithName(name):
-            logger.info("  --> no such object '%s'" % name)
-            return False
+        logger.info(f"want to load object with name = {name}")
+        if name not in self._mst.object_lut:
+            logger.info("  --> no object with this name")
+            return
 
-        if self.hasCurrentObject():
-            self.saveCurrentObject()
         self._clearLabels()
 
-        fgVoxels, bgVoxels = self.loadObject_impl(name)
+        fgVoxels, bgVoxels = self.restore_and_get_labels_for_object(name)
 
-        fg_bounding_box_start = numpy.array(list(map(numpy.min, fgVoxels)))
-        fg_bounding_box_stop = 1 + numpy.array(list(map(numpy.max, fgVoxels)))
-
-        bg_bounding_box_start = numpy.array(list(map(numpy.min, bgVoxels)))
-        bg_bounding_box_stop = 1 + numpy.array(list(map(numpy.max, bgVoxels)))
-
-        bounding_box_start = numpy.minimum(fg_bounding_box_start, bg_bounding_box_start)
-        bounding_box_stop = numpy.maximum(fg_bounding_box_stop, bg_bounding_box_stop)
-
-        bounding_box_slicing = roiToSlice(bounding_box_start, bounding_box_stop)
-
-        bounding_box_shape = tuple(bounding_box_stop - bounding_box_start)
-        dtype = self.opLabelArray.Output.meta.dtype
-
-        # Convert coordinates to be relative to bounding box
-        fgVoxels = numpy.array(fgVoxels)
-        fgVoxels = fgVoxels - numpy.array([bounding_box_start]).transpose()
-        fgVoxels = list(fgVoxels)
-
-        bgVoxels = numpy.array(bgVoxels)
-        bgVoxels = bgVoxels - numpy.array([bounding_box_start]).transpose()
-        bgVoxels = list(bgVoxels)
-
-        with Timer() as timer:
-            logger.info("Loading seeds....")
-            z = numpy.zeros(bounding_box_shape, dtype=dtype)
-            logger.info("Allocating seed array took {} seconds".format(timer.seconds()))
-            z[fgVoxels] = 2
-            z[bgVoxels] = 1
-            self.WriteSeeds[(slice(0, 1),) + bounding_box_slicing + (slice(0, 1),)] = z[
-                numpy.newaxis, :, :, :, numpy.newaxis
-            ]
-        logger.info("Loading seeds took a total of {} seconds".format(timer.seconds()))
+        self.set_labels_into_WriteSeeds_input(fgVoxels, bgVoxels)
 
         # restore the correct parameter values
         mst = self._mst
@@ -441,20 +362,51 @@ class OpCarving(Operator):
         self.BackgroundPriority.setValue(mst.bg_priority[name])
         self.NoBiasBelow.setValue(mst.no_bias_below[name])
 
-        # self.updatePreprocessing()
         # The entire segmentation layer needs to be refreshed now.
         self.Segmentation.setDirty()
+        self.DoneSegmentation.setDirty()
+        self._updateCanObjectBeSaved()
 
-        return True
+    def set_labels_into_WriteSeeds_input(self, fgVoxels, bgVoxels):
+        fg_bounding_box_start = numpy.array(list(map(numpy.min, fgVoxels)))
+        fg_bounding_box_stop = 1 + numpy.array(list(map(numpy.max, fgVoxels)))
+
+        bg_bounding_box_start = numpy.array(list(map(numpy.min, bgVoxels)))
+        bg_bounding_box_stop = 1 + numpy.array(list(map(numpy.max, bgVoxels)))
+
+        bounding_box_start = numpy.minimum(fg_bounding_box_start, bg_bounding_box_start)
+        bounding_box_stop = numpy.maximum(fg_bounding_box_stop, bg_bounding_box_stop)
+
+        bounding_box_slicing = roiToSlice(bounding_box_start, bounding_box_stop)
+        bounding_box_shape = tuple(bounding_box_stop - bounding_box_start)
+
+        dtype = self.opLabelArray.Output.meta.dtype
+
+        # Convert coordinates to be relative to bounding box
+        fgVoxels = numpy.array(fgVoxels)
+        fgVoxels = fgVoxels - numpy.array([bounding_box_start]).transpose()
+        fgVoxels = list(fgVoxels)
+
+        bgVoxels = numpy.array(bgVoxels)
+        bgVoxels = bgVoxels - numpy.array([bounding_box_start]).transpose()
+        bgVoxels = list(bgVoxels)
+
+        with Timer() as timer:
+            logger.info("Loading seeds....")
+            z = numpy.zeros(bounding_box_shape, dtype=dtype)
+            logger.info("Allocating seed array took {} seconds".format(timer.seconds()))
+            z[fgVoxels] = Labels.FOREGROUND
+            z[bgVoxels] = Labels.BACKGROUND
+            self.WriteSeeds[(slice(0, 1),) + bounding_box_slicing + (slice(0, 1),)] = z[
+                numpy.newaxis, :, :, :, numpy.newaxis
+            ]
+        logger.info("Loading seeds took a total of {} seconds".format(timer.seconds()))
 
     @Operator.forbidParallelExecute
     def deleteObject_impl(self, name):
         """
         Deletes an object called name.
         """
-        # lut_seeds = self._mst.seeds.lut[:]
-        # clean seeds
-        # lut_seeds[:] = 0
 
         del self._mst.object_lut[name]
         del self._mst.object_seeds_fg_voxels[name]
@@ -467,20 +419,16 @@ class OpCarving(Operator):
         if name in self._mst.object_names:
             del self._mst.object_names[name]
 
-        self._setCurrObjectName("<not saved yet>")
-
-        # now that 'name' has been deleted, rebuild the done overlay
-        self._buildDone()
-        # self.updatePreprocessing()
+        self._setCurrObjectName("")
+        self._updateDoneSegmentation()
 
     def deleteObject(self, name):
-        logger.info("want to delete object with name = %s" % name)
-        if not self.hasObjectWithName(name):
-            logger.info("  --> no such object '%s'" % name)
-            return False
+        logger.info(f"want to delete object with name = {name}")
+        if name not in self._mst.object_lut:
+            logger.info("  --> no object with this name")
+            return
 
         self.deleteObject_impl(name)
-        # clear the user labels
         self._clearLabels()
         # trigger a re-computation
         self.Trigger.setDirty(slice(None))
@@ -490,119 +438,63 @@ class OpCarving(Operator):
         logger.info("save: len = {}".format(len(objects)))
         self.AllObjectNames.meta.shape = (len(objects),)
 
-        self.HasSegmentation.setValue(False)
-
-        return True
-
-    @Operator.forbidParallelExecute
-    def saveCurrentObject(self):
-        """
-        Saves the objects which is currently edited.
-        """
-        if self._currObjectName:
-            name = copy.copy(self._currObjectName)
-            logger.info("saving object %s" % self._currObjectName)
-            self.saveCurrentObjectAs(self._currObjectName)
-            self.HasSegmentation.setValue(False)
-            return name
-        return ""
-
-    @Operator.forbidParallelExecute
-    def saveCurrentObjectAs(self, name):
-        """
-        Saves current object as name.
-        """
-        seed = 2
-        logger.info("   --> Saving object %r from seed %r" % (name, seed))
-        if name in self._mst.object_names:
-            objNr = self._mst.object_names[name]
-        else:
-            # find free objNr
-            if len(list(self._mst.object_names.values())) > 0:
-                objNr = numpy.max(numpy.array(list(self._mst.object_names.values()))) + 1
-            else:
-                objNr = 1
-
-        sVseg = self._mst.getSuperVoxelSeg()
-        sVseed = self._mst.getSuperVoxelSeeds()
-
-        self._mst.object_names[name] = objNr
-
-        self._mst.bg_priority[name] = self.BackgroundPriority.value
-        self._mst.no_bias_below[name] = self.NoBiasBelow.value
-
-        self._mst.object_lut[name] = numpy.where(sVseg == 2)
-
-        self._setCurrObjectName("<not saved yet>")
-        self.HasSegmentation.setValue(False)
-
-        objects = list(self._mst.object_names.keys())
-        self.AllObjectNames.meta.shape = (len(objects),)
-
-        # now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
-
-        self._buildDone()
-        # self._clearLabels()
-        # self._mst.clearSegmentation()
-        # self.clearCurrentLabeling()
-        # self._mst.gridSegmentor.clearSeeds()
-        # self.Trigger.setDirty(slice(None))
-        # self.updatePreprocessing()
+        self._updateCanObjectBeSaved()
 
     def get_label_voxels(self):
         # the voxel coordinates of fg and bg labels
         if not self.opLabelArray.NonzeroBlocks.ready():
-            return (None, None)
+            return None, None
 
-        nonzeroSlicings = self.opLabelArray.NonzeroBlocks[:].wait()[0]
-
-        coors1 = [[], [], []]
-        coors2 = [[], [], []]
-        for sl in nonzeroSlicings:
-            a = self.opLabelArray.Output[sl].wait()
-            w1 = numpy.where(a == 1)
-            w2 = numpy.where(a == 2)
-            w1 = [w1[i] + sl[i].start for i in range(1, 4)]
-            w2 = [w2[i] + sl[i].start for i in range(1, 4)]
+        bg = [[], [], []]  # [[x], [y], [z]] with len([x])=len([y])=len([z]) = count(labelled pixels)
+        fg = [[], [], []]
+        for slicing in self.opLabelArray.NonzeroBlocks[:].wait()[0]:
+            label = self.opLabelArray.Output[slicing].wait()
+            labels_bg = numpy.nonzero(label == Labels.BACKGROUND)
+            labels_fg = numpy.nonzero(label == Labels.FOREGROUND)
+            labels_bg = [labels_bg[d] + slicing[d].start for d in [1, 2, 3]]
+            labels_fg = [labels_fg[d] + slicing[d].start for d in [1, 2, 3]]
             for i in range(3):
-                coors1[i].append(w1[i])
-                coors2[i].append(w2[i])
+                bg[i].append(labels_bg[i])
+                fg[i].append(labels_fg[i])
 
         for i in range(3):
-            if len(coors1[i]) > 0:
-                coors1[i] = numpy.concatenate(coors1[i], 0)
-            else:
-                coors1[i] = numpy.ndarray((0,), numpy.int32)
-            if len(coors2[i]) > 0:
-                coors2[i] = numpy.concatenate(coors2[i], 0)
-            else:
-                coors2[i] = numpy.ndarray((0,), numpy.int32)
-        return (coors2, coors1)
+            bg[i] = numpy.concatenate(bg[i], axis=0) if len(bg[i]) > 0 else numpy.array((), dtype=numpy.int32)
+            fg[i] = numpy.concatenate(fg[i], axis=0) if len(fg[i]) > 0 else numpy.array((), dtype=numpy.int32)
+        return fg, bg
 
+    @Operator.forbidParallelExecute
     def saveObjectAs(self, name):
-        # first, save the object under "name"
-        self.saveCurrentObjectAs(name)
-        # Sparse label array automatically shifts label values down 1
-
-        sVseed = self._mst.getSuperVoxelSeeds()
-        # fgVoxels = numpy.where(sVseed==2)
-        # bgVoxels = numpy.where(sVseed==1)
-
         fgVoxels, bgVoxels = self.get_label_voxels()
+        if len(fgVoxels[0]) == 0 or len(bgVoxels[0]) == 0:
+            logger.info(f"Either foreground or background labels missing. Cannot save object {name}.")
+            return
 
-        self.attachVoxelLabelsToObject(name, fgVoxels=fgVoxels, bgVoxels=bgVoxels)
+        supervoxel_segmentation = self._mst.getSuperVoxelSeg()
+        if not any(supervoxel_segmentation > 0):
+            logger.info(f"Segmentation missing. Cannot save object {name}.")
+            return
 
-        self._clearLabels()
+        logger.info(f"   --> Saving object {name!r}")
+        if name in self._mst.object_names:
+            objNr = self._mst.object_names[name]
+        else:
+            # Find next free object number.
+            objNr = max(self._mst.object_names.values(), default=0) + 1
 
-        # trigger a re-computation
-        self.Trigger.setDirty(slice(None))
+        self._mst.object_names[name] = objNr
+        self._mst.bg_priority[name] = self.BackgroundPriority.value
+        self._mst.no_bias_below[name] = self.NoBiasBelow.value
+        self._mst.object_lut[name] = numpy.where(supervoxel_segmentation == 2)
+        self._mst.object_seeds_fg_voxels[name] = fgVoxels
+        self._mst.object_seeds_bg_voxels[name] = bgVoxels
+
+        objects = list(self._mst.object_names.keys())
+        self.AllObjectNames.meta.shape = (len(objects),)
 
         self._dirtyObjects.add(name)
 
-        self._mst.gridSegmentor.clearSeeds()
-
         self._mst.clearSegmentation()
-        self.clearCurrentLabeling()
+        self.clearCurrentLabelsAndObject()
 
     def getMaxUncertaintyPos(self, label):
         # FIXME: currently working on
@@ -661,30 +553,23 @@ class OpCarving(Operator):
         return temp  # avoid copying data
 
     def setInSlot(self, slot, subindex, roi, value):
-        key = roi.toSlice()
-        if slot == self.WriteSeeds:
-            with Timer() as timer:
-                logger.info("Writing seeds to label array")
-                self.opLabelArray.LabelSinkInput[roi.toSlice()] = value
-                logger.info("Writing seeds to label array took {} seconds".format(timer.seconds()))
+        assert slot == self.WriteSeeds, f"Invalid input slot: {slot.name}"
 
-            assert self._mst is not None
+        with Timer() as timer:
+            logger.info("Writing seeds to label array")
+            self.opLabelArray.LabelSinkInput[roi.toSlice()] = value
+            logger.info(f"Writing seeds to label array took {timer.seconds()} seconds")
 
-            # Important: mst.seeds will requires erased values to be 255 (a.k.a -1)
-            # value[:] = numpy.where(value == 100, 255, value)
-            seedVal = value.max()
-            with Timer() as timer:
-                logger.info("Writing seeds to MST")
-                if hasattr(key, "__len__"):
-                    self._mst.addSeeds(roi=roi, brushStroke=value.squeeze())
-                else:
-                    raise RuntimeError("when is this part of the code called")
-                    self._mst.seeds[key] = value
-            logger.info("Writing seeds to MST took {} seconds".format(timer.seconds()))
+        assert self._mst is not None
 
-            self.has_seeds = True
-        else:
-            raise RuntimeError("unknown slots")
+        # Important: mst.seeds will requires erased values to be 255 (a.k.a -1)
+        with Timer() as timer:
+            logger.info("Writing seeds to MST")
+            self._mst.addSeeds(roi=roi, brushStroke=value.squeeze())
+            logger.info(f"Writing seeds to MST took {timer.seconds()} seconds")
+
+        self.has_seeds = True
+        self._updateCanObjectBeSaved()
 
     def propagateDirty(self, slot, subindex, roi):
         if (
@@ -717,14 +602,16 @@ class OpCarving(Operator):
 
             self.Segmentation.setDirty(slice(None))
             self.DoneSegmentation.setDirty(slice(None))
-            hasSeg = numpy.any(self._mst.hasSeg)
-            # hasSeg = numpy.any(self._mst.segmentation.lut > 0 )
-            self.HasSegmentation.setValue(hasSeg)
+            self._updateCanObjectBeSaved()
 
         elif slot == self.MST:
             self._opMstCache.Input.disconnect()
             self._mst = self.MST.value
             self._opMstCache.Input.setValue(self._mst)
+
+            if self.has_seeds:
+                fgVoxels, bgVoxels = self.get_label_voxels()
+                self.set_labels_into_WriteSeeds_input(fgVoxels, bgVoxels)
         elif (
             slot == self.OverlayData
             or slot == self.InputData

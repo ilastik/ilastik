@@ -11,13 +11,6 @@ from lazyflow.utility.testing import SlotDesc, build_multi_output_mock_op
 
 
 @pytest.fixture
-def empty_project_file():
-    with h5py.File("test_project1.ilp", mode="a", driver="core", backing_store=False) as test_project:
-        test_project.create_dataset("ilastikVersion", data=b"1.0.0")
-        yield test_project
-
-
-@pytest.fixture
 def superpixels():
     # superpixels needed for creation and deserialization of the rag
     data = numpy.zeros((5, 6, 1), dtype="uint32")
@@ -48,7 +41,7 @@ def inputs(graph, superpixels):
 
 
 @pytest.mark.parametrize("content_lane,empty_lane", [(0, 1), (1, 0)])
-def test_serializer_roundtrip(graph, inputs, empty_project_file, superpixels, rag, content_lane, empty_lane):
+def test_serializer_roundtrip(graph, inputs, empty_in_memory_project_file, superpixels, rag, content_lane, empty_lane):
     op = OpEdgeTraining(graph=graph)
     op.VoxelData.connect(inputs.VoxelData)
     op.Superpixels.connect(inputs.Superpixels)
@@ -69,7 +62,7 @@ def test_serializer_roundtrip(graph, inputs, empty_project_file, superpixels, ra
     laneop.opRagCache.forceValue(rag, set_dirty=False)
 
     serializer = EdgeTrainingSerializer(op, "EdgeTraining")
-    serializer.serializeToHdf5(empty_project_file, empty_project_file.name)
+    serializer.serializeToHdf5(empty_in_memory_project_file, empty_in_memory_project_file.name)
 
     # round trip
     op_load = OpEdgeTraining(graph=graph)
@@ -79,7 +72,7 @@ def test_serializer_roundtrip(graph, inputs, empty_project_file, superpixels, ra
     op_load.WatershedSelectedInput.connect(inputs.WatershedSelectedInput)
 
     deserializer = EdgeTrainingSerializer(op_load, "EdgeTraining")
-    deserializer.deserializeFromHdf5(empty_project_file, empty_project_file.name)
+    deserializer.deserializeFromHdf5(empty_in_memory_project_file, empty_in_memory_project_file.name)
 
     # check level0 slots
     assert op_load.TrainRandomForest.value
@@ -106,7 +99,9 @@ def test_serializer_roundtrip(graph, inputs, empty_project_file, superpixels, ra
     "serializer_version,train_rf,expect_cached_features",
     [("0.1", False, False), ("0.2", False, True), ("0.1", True, True), ("0.2", True, True)],
 )
-def test_serializer_01_02(graph, inputs, empty_project_file, serializer_version, train_rf, expect_cached_features):
+def test_serializer_01_02(
+    graph, inputs, empty_in_memory_project_file, serializer_version, train_rf, expect_cached_features
+):
     op = OpEdgeTraining(graph=graph)
     op.VoxelData.connect(inputs.VoxelData)
     op.Superpixels.connect(inputs.Superpixels)
@@ -122,14 +117,14 @@ def test_serializer_01_02(graph, inputs, empty_project_file, serializer_version,
 
     serializer = EdgeTrainingSerializer(op, "EdgeTraining")
     serializer.version = serializer_version
-    serializer.serializeToHdf5(empty_project_file, empty_project_file.name)
+    serializer.serializeToHdf5(empty_in_memory_project_file, empty_in_memory_project_file.name)
 
     op_load = OpEdgeTraining(graph=graph)
     op_load.VoxelData.connect(inputs.VoxelData)
     op_load.Superpixels.connect(inputs.Superpixels)
     op_load.WatershedSelectedInput.connect(inputs.WatershedSelectedInput)
     deserializer = EdgeTrainingSerializer(op_load, "EdgeTraining")
-    deserializer.deserializeFromHdf5(empty_project_file, empty_project_file.name)
+    deserializer.deserializeFromHdf5(empty_in_memory_project_file, empty_in_memory_project_file.name)
 
     op_load_lane0 = op_load.getLane(0)
     assert (op_load_lane0.opEdgeFeaturesCache._value is not None) == expect_cached_features

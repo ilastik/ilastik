@@ -21,14 +21,14 @@
 # Python
 import os
 import re
+import string
 from functools import partial
 from collections import defaultdict
-from typing import List, Union
+from typing import List
 import numpy
 
 # PyQt
 from PyQt5 import uic
-from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMenu, QMessageBox, QFileDialog
 
@@ -40,9 +40,7 @@ from volumina.api import createDataSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager, preferences
 
-from ilastik.widgets.labelListModel import LabelListModel
-
-from volumina.view3d.meshgenerator import MeshGeneratorDialog, mesh_to_obj, labeling_to_mesh
+from volumina.view3d.meshgenerator import mesh_to_obj, labeling_to_mesh
 from volumina.view3d.volumeRendering import RenderingManager
 
 # ilastik
@@ -55,6 +53,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 CURRENT_SEGMENTATION_NAME = "__current_segmentation__"
+DEFAULT_OBJECT_NAME = "<not saved yet>"
 # ===----------------------------------------------------------------------------------------------------------------===
 
 
@@ -68,7 +67,6 @@ class CarvingGui(LabelingGui):
         # members
         self._doneSegmentationLayer = None
         self._showSegmentationIn3D = False
-        # self._showUncertaintyLayer = False
         # end: members
 
         labelingSlots = LabelingGui.LabelingSlots()
@@ -94,7 +92,7 @@ class CarvingGui(LabelingGui):
         )
 
         self.parentApplet = parentApplet
-        self.labelingDrawerUi.currentObjectLabel.setText("<not saved yet>")
+        self.labelingDrawerUi.currentObjectLabel.setText(DEFAULT_OBJECT_NAME)
 
         # Init special base class members
         self.minLabelNumber = 2
@@ -135,47 +133,7 @@ class CarvingGui(LabelingGui):
         self.labelingDrawerUi.segment.setEnabled(True)
 
         self.topLevelOperatorView.Segmentation.notifyDirty(bind(self._segmentation_dirty))
-        self.topLevelOperatorView.HasSegmentation.notifyValueChanged(bind(self._updateGui))
-
-        ## uncertainty
-
-        # self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(False)
-        # self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(False)
-
-        # def onUncertaintyFGButton():
-        #    logger.debug( "uncertFG button clicked" )
-        #    pos = self.topLevelOperatorView.getMaxUncertaintyPos(label=2)
-        #    self.editor.posModel.slicingPos = (pos[0], pos[1], pos[2])
-        # self.labelingDrawerUi.pushButtonUncertaintyFG.clicked.connect(onUncertaintyFGButton)
-
-        # def onUncertaintyBGButton():
-        #    logger.debug( "uncertBG button clicked" )
-        #    pos = self.topLevelOperatorView.getMaxUncertaintyPos(label=1)
-        #    self.editor.posModel.slicingPos = (pos[0], pos[1], pos[2])
-        # self.labelingDrawerUi.pushButtonUncertaintyBG.clicked.connect(onUncertaintyBGButton)
-
-        # def onUncertaintyCombo(value):
-        #    if value == 0:
-        #        value = "none"
-        #        self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(False)
-        #        self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(False)
-        #        self._showUncertaintyLayer = False
-        #    else:
-        #        if value == 1:
-        #            value = "localMargin"
-        #        elif value == 2:
-        #            value = "exchangeCount"
-        #        elif value == 3:
-        #            value = "gabow"
-        #        else:
-        #            raise RuntimeError("unhandled case '%r'" % value)
-        #        self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(True)
-        #        self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(True)
-        #        self._showUncertaintyLayer = True
-        #        logger.debug( "uncertainty changed to %r" % value )
-        #    self.topLevelOperatorView.UncertaintyType.setValue(value)
-        #    self.updateAllLayers() #make sure that an added/deleted uncertainty layer is recognized
-        # self.labelingDrawerUi.uncertaintyCombo.currentIndexChanged.connect(onUncertaintyCombo)
+        self.topLevelOperatorView.CanObjectBeSaved.notifyValueChanged(bind(self._updateGui))
 
         self.labelingDrawerUi.objPrefix.setText(self.objectPrefix)
         self.labelingDrawerUi.objPrefix.textChanged.connect(self.setObjectPrefix)
@@ -257,10 +215,17 @@ class CarvingGui(LabelingGui):
             self._toggleSegmentation3D()
 
     def _updateGui(self):
-        self.labelingDrawerUi.save.setEnabled(self.topLevelOperatorView.dataIsStorable())
+        self.labelingDrawerUi.save.setEnabled(self.topLevelOperatorView.CanObjectBeSaved.value)
 
     def onSegmentButton(self):
         logger.debug("segment button clicked")
+        if not self.topLevelOperatorView.CanRunSegmentation.value:
+            QMessageBox.critical(
+                self,
+                "Unable to Run Segmentation",
+                "Both foreground and background labels are required to run segmentation.",
+            )
+            return
         bkPriorityValue = self.labelingDrawerUi.backgroundPrioritySpin.value()
         self.topLevelOperatorView.BackgroundPriority.setValue(bkPriorityValue)
         biasValue = self.labelingDrawerUi.noBiasBelowSpin.value()
@@ -270,99 +235,92 @@ class CarvingGui(LabelingGui):
     def getObjectNames(self):
         return self.topLevelOperatorView.AllObjectNames[:].wait()
 
-    def findNextPrefixNumber(self):
+    def generateObjectName(self):
         names = self.getObjectNames()
-        last = 0
+        highest_existing_suffix = 0
 
         for n in names:
             match = re.match(f"^{self.objectPrefix}(?P<suffix>\d+)", n)
             if match:
                 val = int(match.group("suffix"))
-                if val > last:
-                    last = val
+                if val > highest_existing_suffix:
+                    highest_existing_suffix = val
 
-        return last + 1
+        return f"{self.objectPrefix}{highest_existing_suffix + 1}"
 
-    def saveAsDialog(self, name=""):
-        """special functionality: reject names given to other objects"""
-        namesInUse = self.getObjectNames()
-
-        def generateObjectName():
-            return f"{self.objectPrefix}{self.findNextPrefixNumber()}"
-
-        name = name or generateObjectName()
-
+    def saveAsDialog(self, name_input_default: str, existing_names: List[str]):
         dialog = uic.loadUi(self.dialogdirSAD)
-        dialog.lineEdit.setText(name)
+        dialog.lineEdit.setText(name_input_default)
         dialog.lineEdit.selectAll()
         dialog.warning.setVisible(False)
         dialog.Ok.clicked.connect(dialog.accept)
         dialog.Cancel.clicked.connect(dialog.reject)
-        dialog.isDisabled = False
 
         def validate():
-            name = dialog.lineEdit.text()
-            if name in namesInUse:
+            name = dialog.lineEdit.text().strip()
+            if name in existing_names and name != name_input_default:
                 dialog.Ok.setEnabled(False)
                 dialog.warning.setVisible(True)
-                dialog.isDisabled = True
-            elif dialog.isDisabled:
+            elif name:
                 dialog.Ok.setEnabled(True)
                 dialog.warning.setVisible(False)
-                dialog.isDisabled = False
+            else:
+                dialog.Ok.setEnabled(False)
 
+        validate()
         dialog.lineEdit.textChanged.connect(validate)
         result = dialog.exec_()
         if result:
-            return str(dialog.lineEdit.text())
+            return str(dialog.lineEdit.text().strip())
 
     def onSaveButton(self):
         logger.info("save object as?")
-        prevName = self.topLevelOperatorView.currentObjectName()
-        if self.topLevelOperatorView.dataIsStorable():
-            prevName = ""
-            if self.topLevelOperatorView.hasCurrentObject():
-                prevName = self.topLevelOperatorView.currentObjectName()
-            if prevName == "<not saved yet>":
-                prevName = ""
-            name = self.saveAsDialog(name=prevName)
-            if name is None:
-                return
-            namesInUse = self.getObjectNames()
-            if name in namesInUse and name != prevName:
-                QMessageBox.critical(
-                    self,
-                    "Save Object As",
-                    "An object with name '%s' already exists.\nPlease choose a different name." % name,
-                )
-                return
-            self.topLevelOperatorView.saveObjectAs(name)
-            logger.info("save object as %s" % name)
-            if prevName != name and prevName != "":
-                self.topLevelOperatorView.deleteObject(prevName)
-            elif prevName == name:
-                self._renderMgr.removeObject(prevName)
-                self._renderMgr.invalidateObject(prevName)
-                self._shownObjects3D.pop(prevName, None)
-        else:
-            msgBox = QMessageBox(self)
-            msgBox.setText("The data does not seem fit to be stored.")
-            msgBox.setWindowTitle("Problem with Data")
-            msgBox.setIcon(2)
-            msgBox.exec_()
+        if not self.topLevelOperatorView.CanObjectBeSaved.value:
+            QMessageBox.warning(self, "Problem with Data", "The data does not seem fit to be stored.")
             logger.error("object not saved due to faulty data.")
+            return
+
+        old_name = self.topLevelOperatorView.CurrentObjectName.value
+        saved_object_names = self.getObjectNames()
+        was_object_previously_saved = old_name in saved_object_names
+
+        new_name = self.saveAsDialog(old_name or self.generateObjectName(), saved_object_names)
+        if new_name is None:
+            return
+
+        is_name_changed = new_name != old_name
+        if is_name_changed and new_name in saved_object_names:
+            QMessageBox.critical(
+                self,
+                "Unable to Save Object",
+                f"<p>An object with name {new_name!r} already exists.</p><p>Please choose a different name.</p>",
+            )
+            return
+
+        self.topLevelOperatorView.saveObjectAs(new_name)
+
+        if was_object_previously_saved:
+            if is_name_changed:
+                self.topLevelOperatorView.deleteObject(old_name)
+            else:
+                self._renderMgr.removeObject(old_name)
+                self._renderMgr.invalidateObject(old_name)
+                self._shownObjects3D.pop(old_name, None)
 
     def onShowObjectNames(self):
         """show object names and allow user to load/delete them"""
         dialog = uic.loadUi(self.dialogdirCOM)
         names = self.getObjectNames()
-        dialog.objectNames.addItems(sorted(names, key=_humansort_key))
+        dialog.objectNames.addItems(human_sorted(names))
 
         def loadSelection():
-            selected = [str(name.text()) for name in dialog.objectNames.selectedItems()]
+            selected = dialog.objectNames.selectedItems()
+            if len(selected) != 1:
+                return
+            name = selected[0].text()
             dialog.close()
-            for objectname in selected:
-                self.topLevelOperatorView.loadObject(objectname)
+            if self.confirmLoadObject():
+                self.topLevelOperatorView.loadObject(name)
 
         def deleteSelection():
             items = dialog.objectNames.selectedItems()
@@ -375,6 +333,20 @@ class CarvingGui(LabelingGui):
         dialog.deleteButton.clicked.connect(deleteSelection)
         dialog.cancelButton.clicked.connect(dialog.close)
         dialog.exec_()
+
+    def confirmLoadObject(self) -> bool:
+        if self.topLevelOperatorView.has_seeds:
+            response = QMessageBox.warning(
+                self,
+                "Discard Unsaved Data?",
+                "Loading an object will discard unsaved work. Proceed?",
+                buttons=QMessageBox.Yes | QMessageBox.Cancel,
+                defaultButton=QMessageBox.Yes,
+            )
+            if response == QMessageBox.Cancel:
+                return False
+
+        return True
 
     def confirmAndDelete(self, namelist):
         logger.info("confirmAndDelete: {}".format(namelist))
@@ -403,8 +375,12 @@ class CarvingGui(LabelingGui):
             submenu = QMenu(name, menu)
 
             # Load
-            loadAction = submenu.addAction("Load %s" % name)
-            loadAction.triggered.connect(partial(op.loadObject, name))
+            def onLoadAction(_name):
+                if self.confirmLoadObject():
+                    op.loadObject(_name)
+
+            loadAction = submenu.addAction(f"Load {name}")
+            loadAction.triggered.connect(partial(onLoadAction, name))
 
             # Delete
             def onDelAction(_name):
@@ -412,7 +388,7 @@ class CarvingGui(LabelingGui):
                 if self.render and self._renderMgr.ready:
                     self._update_rendering()
 
-            delAction = submenu.addAction("Delete %s" % name)
+            delAction = submenu.addAction(f"Delete {name}")
             delAction.triggered.connect(partial(onDelAction, name))
 
             if self.render:
@@ -452,7 +428,7 @@ class CarvingGui(LabelingGui):
             showSeg3DAction.setChecked(self._showSegmentationIn3D)
             showSeg3DAction.triggered.connect(self._toggleSegmentation3D)
 
-        if op.dataIsStorable():
+        if op.CanObjectBeSaved.value:
             menu.addAction("Save object").triggered.connect(self.onSaveButton)
         menu.addAction("Browse objects").triggered.connect(self.onShowObjectNames)
         menu.addAction("Segment").triggered.connect(self.onSegmentButton)
@@ -461,10 +437,10 @@ class CarvingGui(LabelingGui):
 
     def _onClearAction(self):
         confirm = QMessageBox.warning(
-            self, "Really Clear?", "Clear all brushtrokes?", QMessageBox.Ok | QMessageBox.Cancel
+            self, "Really Clear?", "Clear all brushtrokes and start new object?", QMessageBox.Ok | QMessageBox.Cancel
         )
         if confirm == QMessageBox.Ok:
-            self.topLevelOperatorView.clearCurrentLabeling()
+            self.topLevelOperatorView.clearCurrentLabelsAndObject()
 
     def _clearLabelListGui(self):
         # Remove rows until we have the right number
@@ -678,13 +654,14 @@ class CarvingGui(LabelingGui):
 
         def onButtonsEnabled(slot, roi):
             currObj = self.topLevelOperatorView.CurrentObjectName.value
-            hasSeg = self.topLevelOperatorView.HasSegmentation.value
+            canSave = self.topLevelOperatorView.CanObjectBeSaved.value
+            label = currObj if currObj else DEFAULT_OBJECT_NAME
 
-            self.labelingDrawerUi.currentObjectLabel.setText(currObj)
-            self.labelingDrawerUi.save.setEnabled(hasSeg)
+            self.labelingDrawerUi.currentObjectLabel.setText(label)
+            self.labelingDrawerUi.save.setEnabled(canSave)
 
         self.topLevelOperatorView.CurrentObjectName.notifyDirty(onButtonsEnabled)
-        self.topLevelOperatorView.HasSegmentation.notifyDirty(onButtonsEnabled)
+        self.topLevelOperatorView.CanObjectBeSaved.notifyDirty(onButtonsEnabled)
         self.topLevelOperatorView.opLabelArray.NonzeroBlocks.notifyDirty(onButtonsEnabled)
 
         # Labels
@@ -835,23 +812,19 @@ class CarvingGui(LabelingGui):
         return layers
 
 
-def _str_to_int(data_str: str) -> Union[str, int]:
+def human_sorted(items):
     """
-    Convert string to int when possible
+    If there is a trailing number, sort it numerically and not alphabetically.
+    Sort those without trailing number ("c") before those with ("c0").
+    >>> lst = ['3', 'c0', 'c', 'a 1', 'b 2', 'a 10', 'a 9']
+    >>> sorted(lst)
+    ['3', 'a 1', 'a 10', 'a 9', 'b 2', 'c', 'c0']
+    >>> human_sorted(lst)
+    ['3', 'a 1', 'a 9', 'a 10', 'b 2', 'c', 'c0']
     """
-    if data_str.isdigit():
-        return int(data_str)
-    return data_str
-
-
-def _humansort_key(elem: str):
-    """
-    Key for human sort
-    >>> lst = ['a 1', 'b 2', 'a 10', 'a 9']
-    >>> sorted(lst, key=_humansort_key)
-    ['a 1', 'a 9', 'a 10', 'b 2']
-    """
-    if not (elem and isinstance(elem, str)):
-        return tuple()
-
-    return tuple(_str_to_int(token) for token in re.split("(\d+)", elem) if token)
+    keys = {}
+    for item in items:
+        prefix = item.rstrip(string.digits)
+        trailing_digits = item[len(prefix) :]
+        keys[item] = prefix, len(trailing_digits), trailing_digits
+    return sorted(items, key=keys.__getitem__)
