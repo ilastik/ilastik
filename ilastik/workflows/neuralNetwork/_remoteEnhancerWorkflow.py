@@ -29,7 +29,7 @@ from ilastik.applets.pixelClassificationEnhancer import PixelClassificationEnhan
 from lazyflow.operators import tiktorch
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.serverConfiguration import ServerConfigApplet
-
+from ilastik.utility import SlotNameEnum
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +46,15 @@ class RemoteEnhancerWorkflow(_NNWorkflowBase):
     auto_register = False
     workflowName = "Pixel Classification Enhancer (Remote) (beta)"
     workflowDescription = "Allows to apply bioimage.io models on your data using bundled tiktorch"
+
+    @property
+    def ExportNames(self):
+        @enum.unique
+        class ExportNames(SlotNameEnum):
+            PROBABILITIES = enum.auto()
+            LABELS = enum.auto()
+
+        return ExportNames
 
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
         tiktorch_exe_path = runtime_cfg.tiktorch_executable
@@ -92,9 +101,9 @@ class RemoteEnhancerWorkflow(_NNWorkflowBase):
         # Data Export connections
         opDataExport.RawData.connect(opData.ImageGroup[self.DATA_ROLE_RAW])
         opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[self.DATA_ROLE_RAW])
-        opDataExport.Inputs.resize(len(self.EXPORT_NAMES))
-        opDataExport.Inputs[0].connect(opNNclassify.PredictionProbabilities)
-        opDataExport.Inputs[1].connect(opNNclassify.LabelImages)
+        opDataExport.Inputs.resize(len(self.ExportNames))
+        opDataExport.Inputs[self.ExportNames.PROBABILITIES].connect(opNNclassify.PredictionProbabilities)
+        opDataExport.Inputs[self.ExportNames.LABELS].connect(opNNclassify.LabelImages)
 
         opServerConfig = self.serverConfigApplet.topLevelOperator.getLane(laneIndex)
         # TODO (k-dominik): this is probably a bug (also in the remote workflow)
