@@ -19,6 +19,7 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 import argparse
+import enum
 import itertools
 import logging
 
@@ -32,6 +33,7 @@ from ilastik.config import runtime_cfg
 from ilastik.workflow import Workflow
 from lazyflow.cancel_token import CancellationTokenSource
 from lazyflow.graph import Graph
+from ilastik.utility import SlotNameEnum
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +52,16 @@ class _NNWorkflowBase(Workflow):
     DATA_ROLE_RAW = 0
     DATA_ROLE_OVERLAY = 1
     ROLE_NAMES = ["Raw Data", "Overlay"]
-    EXPORT_NAMES = ["Probabilities", "Labels"] if tiktorchController.ALLOW_TRAINING else ["Probabilities"]
+
+    @property
+    def ExportNames(self):
+        @enum.unique
+        class ExportNames(SlotNameEnum):
+            PROBABILITIES = enum.auto()
+            if tiktorchController.ALLOW_TRAINING:
+                LABELS = enum.auto()
+
+        return ExportNames
 
     @property
     def applets(self):
@@ -97,7 +108,7 @@ class _NNWorkflowBase(Workflow):
         opClassify = self.nnClassificationApplet.topLevelOperator
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.WorkingDirectory.connect(opDataSelection.WorkingDirectory)
-        opDataExport.SelectionNames.setValue(self.EXPORT_NAMES)
+        opDataExport.SelectionNames.setValue(self.ExportNames.asDisplayNameList())
         opDataExport.PmapColors.connect(opClassify.PmapColors)
 
         opDataExport.LabelNames.connect(opClassify.LabelNames)
@@ -153,11 +164,11 @@ class _NNWorkflowBase(Workflow):
         # Data Export connections
         opDataExport.RawData.connect(opData.ImageGroup[self.DATA_ROLE_RAW])
         opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[self.DATA_ROLE_RAW])
-        opDataExport.Inputs.resize(len(self.EXPORT_NAMES))
-        opDataExport.Inputs[0].connect(opNNclassify.PredictionProbabilities)
+        opDataExport.Inputs.resize(len(self.ExportNames))
+        opDataExport.Inputs[self.ExportNames.PROBABILITIES].connect(opNNclassify.PredictionProbabilities)
 
         if tiktorchController.ALLOW_TRAINING:
-            opDataExport.Inputs[1].connect(opNNclassify.LabelImages)
+            opDataExport.Inputs[self.ExportNames.LABELS].connect(opNNclassify.LabelImages)
 
     def handleAppletStateUpdateRequested(self, upstream_ready=True):
         """

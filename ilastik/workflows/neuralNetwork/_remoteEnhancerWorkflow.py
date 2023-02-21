@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+import enum
 import logging
 
 from ilastik.config import runtime_cfg

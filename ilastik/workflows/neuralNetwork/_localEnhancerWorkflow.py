@@ -18,19 +18,23 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+import enum
 import logging
 
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.pixelClassificationEnhancer import PixelClassificationEnhancerApplet
+from ilastik.applets.neuralNetwork import tiktorchController
 from ilastik.applets.serverConfiguration.types import Device, ServerConfig
 from ilastik.config import runtime_cfg
 from lazyflow.operators import tiktorch
+from ilastik.utility import SlotNameEnum
 
 # TODO (k-dominik): check if tinyvector is of any benefit here
 from lazyflow.roi import TinyVector
 
 from ._localLauncher import LocalServerLauncher
 from ._nnWorkflowBase import _NNWorkflowBase
+
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +51,16 @@ class LocalEnhancerWorkflow(_NNWorkflowBase):
     auto_register = True
     workflowName = "Trainable Domain Adaptation (Local) (beta)"
     workflowDescription = "Allows to apply bioimage.io shallow2deep models on your data using bundled tiktorch"
+
+    @property
+    def ExportNames(self):
+        @enum.unique
+        class ExportNames(SlotNameEnum):
+            PROBABILITIES = enum.auto()
+            LABELS = enum.auto()
+            # TODOS: add NN output, too
+
+        return ExportNames
 
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
         tiktorch_exe_path = runtime_cfg.tiktorch_executable
@@ -122,9 +136,10 @@ class LocalEnhancerWorkflow(_NNWorkflowBase):
         # Data Export connections
         opDataExport.RawData.connect(opData.ImageGroup[self.DATA_ROLE_RAW])
         opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[self.DATA_ROLE_RAW])
-        opDataExport.Inputs.resize(len(self.EXPORT_NAMES))
-        opDataExport.Inputs[0].connect(opNNclassify.PredictionProbabilities)
-        opDataExport.Inputs[1].connect(opNNclassify.LabelImages)
+        opDataExport.Inputs.resize(len(self.ExportNames))
+        opDataExport.Inputs[self.ExportNames.PROBABILITIES].connect(opNNclassify.PredictionProbabilities)
+        opDataExport.Inputs[self.ExportNames.LABELS].connect(opNNclassify.LabelImages)
+        # TODO: add NN output, too
 
     def cleanUp(self):
         super().cleanUp()
