@@ -182,6 +182,10 @@ class ModelStateControl(QWidget):
         self.threadRouter = ThreadRouter(self)
         self._preDownloadChecks = set()
 
+        self._setup_ui()
+
+    def _setup_ui(self):
+        """factored out in order to allow subclasses to override"""
         layout = QVBoxLayout()
 
         self.modelSourceEdit = ModelSourceEdit(self)
@@ -490,7 +494,7 @@ class EnhancerModelStateControl(ModelStateControl):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.modelInfoWidget.modelOpenFromFile.connect(self.onModelInfoRequested)
+        self.modelSourceEdit.modelOpenFromFile.connect(self.onModelInfoRequested)
 
     def _setup_ui(self):
         self.threadRouter = ThreadRouter(self)
@@ -498,7 +502,7 @@ class EnhancerModelStateControl(ModelStateControl):
 
         layout = QVBoxLayout()
 
-        self.modelInfoWidget = BioImageModelCombo(self)
+        self.modelSourceEdit = BioImageModelCombo(self)
         self.statusLabel = QLabel(self)
         self.statusLabel.setText("status...")
         self.modelControlButton = QToolButton(self)
@@ -507,7 +511,7 @@ class EnhancerModelStateControl(ModelStateControl):
         self.statusLabel.setVisible(False)
 
         top_layout = QHBoxLayout()
-        top_layout.addWidget(self.modelInfoWidget)
+        top_layout.addWidget(self.modelSourceEdit)
         top_layout.addWidget(self.modelControlButton)
 
         bottom_layout = QHBoxLayout()
