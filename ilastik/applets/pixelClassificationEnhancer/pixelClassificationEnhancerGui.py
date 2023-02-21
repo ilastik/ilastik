@@ -12,7 +12,7 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 
 from ..neuralNetwork.modelStateControl import EnhancerModelStateControl
 from ..neuralNetwork.tiktorchController import TiktorchOperatorModel
-from ..pixelClassification.FeatureSelectionDialog import FeatureSelectionDialog
+from ..pixelClassification.SuggestFeaturesDialog import SuggestFeaturesDialog
 
 logger = logging.getLogger(__name__)
 
@@ -178,12 +178,12 @@ class PixelClassificationEnhancerGui(PixelClassificationGui):
         layers.extend(super().setupLayers())
         return layers
 
-    def initFeatSelDlg(self):
+    def initSuggestFeaturesDialog(self):
         thisOpFeatureSelection = (
             self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
         )
 
-        self.featSelDlg = FeatureSelectionDialog(thisOpFeatureSelection, self, self.labelListData)
+        return SuggestFeaturesDialog(thisOpFeatureSelection, self, self.labelListData, self)
 
     @property
     def tiktorchController(self):
