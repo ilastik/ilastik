@@ -40,7 +40,7 @@ class LocalWorkflow(_NNWorkflowBase):
     supplied. If it cannot be found, workflow is not available.
     """
 
-    auto_register = True
+    auto_register = False
     workflowName = "Neural Network Classification (Local)"
     workflowDescription = "Allows to apply bioimage.io models on your data using bundled tiktorch"
 
