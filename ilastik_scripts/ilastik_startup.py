@@ -125,6 +125,9 @@ def fix_macos() -> None:
     os.environ["QT_MAC_WANTS_LAYER"] = "1"
     os.environ["VOLUMINA_SHOW_3D_WIDGET"] = "0"
 
+    if sys.version_info >= (3, 8):
+        return
+
     # https://github.com/PixarAnimationStudios/USD/issues/1372#issuecomment-823226088
 
     real_find_library = ctypes.util.find_library

@@ -90,7 +90,7 @@ class LocalEnhancerWorkflow(_NNWorkflowBase):
         devices = conn.get_devices()
         preferred_cuda_device_id = runtime_cfg.preferred_cuda_device_id
         device_ids = [dev[0] for dev in devices]
-        cuda_devices = tuple(d for d in device_ids if d.startswith("cuda"))
+        cuda_devices = tuple(d for d in device_ids if d.startswith("cuda") or d.startswith("mps"))
 
         if preferred_cuda_device_id not in device_ids:
             if preferred_cuda_device_id:
