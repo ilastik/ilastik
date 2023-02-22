@@ -1,6 +1,5 @@
 channels:
-  - ilastik-forge/label/experimental
-  - local
+  - ilastik-forge/label/silicon
   - ilastik-forge
   - pytorch
   - conda-forge
@@ -47,13 +46,13 @@ dependencies:
   # Neural Network Workflow dependencies
   # can be changed to request gpu versions
   # - pytorch 1.9.* *cpu*
-  - pytorch 1.13.*
+  - pytorch 1.13.1*
 
   # - cpuonly
   # - pytorch 1.9.*=*cu*
   # - cudatoolkit 11.1.*
   # - tensorflow 1.14.*
-  - tiktorch >=22.7.1*
+  - tiktorch 23.2.1
 
   # dev-only dependencies
   - conda-build
