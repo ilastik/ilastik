@@ -5,8 +5,6 @@
     "loggers": {
         "py.warnings": {  "level":"WARN" },
 
-        "wsdt": { "level": "DEBUG" },
-
         "__main__":                                                 { "level":"DEBUG" },
         "ilastik_main":                                             { "level":"INFO" },
         "thread_start":                                             { "level":"INFO" },
