@@ -105,6 +105,8 @@ def parallel_watershed(
             f"processing block {block_index} {block.outerBlock.begin}-{block.outerBlock.end} took {btimer.seconds()}"
         )
 
+        # elf started returning uint64 in 0.46. Casting is (still) fine, as vigra is still used to produce the watershed.
+        ws_outer = ws_outer.astype("uint32")
         ws_inner = vigra.analysis.labelMultiArray(ws_outer[inner_local_slicing])
 
         labels[inner_slicing] = ws_inner
@@ -223,7 +225,7 @@ class OpWsdt(Operator):
                 self.ApplyNonmaxSuppression.value,
             )
 
-        result[..., 0] = ws
+        result[..., 0] = ws.astype("uint32")
 
         self.watershed_completed()
 
