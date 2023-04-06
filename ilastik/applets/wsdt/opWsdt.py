@@ -10,7 +10,7 @@ import vigra
 from lazyflow.utility import OrderedSignal
 from lazyflow.request import Request
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import roiToSlice, sliceToRoi
+from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpBlockedArrayCache, OpMetadataInjector
 from lazyflow.operators.generic import OpPixelOperator
 from lazyflow.utility.timer import Timer
@@ -105,7 +105,8 @@ def parallel_watershed(
             f"processing block {block_index} {block.outerBlock.begin}-{block.outerBlock.end} took {btimer.seconds()}"
         )
 
-        # elf started returning uint64 in 0.46. Casting is (still) fine, as vigra is still used to produce the watershed.
+        # elf started returning uint64 in 0.46. Casting here is not dangerous.
+        # Up to now vigra is still used to produce the watershed in elf internally.
         ws_outer = ws_outer.astype("uint32")
         ws_inner = vigra.analysis.labelMultiArray(ws_outer[inner_local_slicing])
 
@@ -225,6 +226,8 @@ class OpWsdt(Operator):
                 self.ApplyNonmaxSuppression.value,
             )
 
+        # elf started returning uint64 in 0.46. Casting here is not dangerous.
+        # Up to now vigra is still used to produce the watershed in elf internally.
         result[..., 0] = ws.astype("uint32")
 
         self.watershed_completed()
