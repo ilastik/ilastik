@@ -32,8 +32,6 @@ from lazyflow.utility import Pipeline
 
 from ilastik.applets.wsdt.opWsdt import OpCachedWsdt, parallel_watershed
 
-from elf.segmentation.watershed import distance_transform_watershed
-
 
 DATA_PATH = os.path.join(os.path.split(__file__)[0], "../../data/inputdata/3d2c_Probabilities.h5")
 DATASET_NAME = "exported_data"
