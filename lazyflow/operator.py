@@ -255,6 +255,13 @@ class Operator(metaclass=OperatorMetaClass):
         self._debug_text = None
         self._setup_count = 0
 
+        # keeps track of any setDirty calls on inputs slots
+        self._last_dirty = -1
+        # temporary variable during dirty notification to buffer the previous
+        # value. Used in `setAllDirty` in order to ignore multiple dirty
+        # notifications cause by the same upstream source
+        self._previous_dirty = -1
+
     @property
     def children(self):
         return list(self._children.keys())
@@ -623,6 +630,17 @@ class Operator(metaclass=OperatorMetaClass):
     def debug_text(self):
         # return self._debug_text
         return "setups: {}".format(self._setup_count)
+
+    def setAllDirty(self):
+        """set all outputs dirty and ignore subsequent dirty prop from same source
+
+        should never be called outside `propagateDirty`.
+        """
+        if self._last_dirty <= self._previous_dirty:
+            return
+
+        for slot in self.outputs.values():
+            slot.setDirty(())
 
 
 #    @debug_text.setter

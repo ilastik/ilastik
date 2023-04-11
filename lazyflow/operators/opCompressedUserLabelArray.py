@@ -31,6 +31,8 @@ import collections
 import numpy
 import vigra
 
+import time
+
 # Lazyflow
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.roi import (
@@ -191,7 +193,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
 
         for block_roi in changed_block_rois:
             # FIXME: Shouldn't this dirty notification be handled in OpUnmanagedCompressedCache?
-            self.Output.setDirty(*block_roi)
+            self.Output.setDirty(*block_roi, reset_modtime=True)
 
     def execute(self, slot, subindex, roi, destination):
         if slot == self.Output:
@@ -450,7 +452,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
             max_label = max(max_label, cleaned_block_data.max())
 
             # We could wait to send out one big dirty notification (instead of one per block),
-            # But that might result in a lot of unecessarily dirty pixels in cases when the
+            # But that might result in a lot of unnecessarily dirty pixels in cases when the
             # new_pixels were mostly empty (such as when importing labels from disk).
             # That's bad for downstream operators like OpFeatureMatrixCache
             # So instead, we only send notifications for the blocks that were touched.
@@ -458,7 +460,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
             # During project import, this is slightly worse.
             # But during label import from disk, this is very important.a
             # FIXME: Shouldn't this notification be triggered from within OpUnmanagedCompressedCache?
-            self.Output.setDirty(*block_roi)
+            self.Output.setDirty(*block_roi, reset_modtime=True)
 
         return max_label  # Internal use: Return max label
 
