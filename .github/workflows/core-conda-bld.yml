@@ -68,7 +68,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: cmd
         run: echo C:\Program Files\Git\usr\bin>>"%GITHUB_PATH%"
-      - uses: al-cheb/configure-pagefile-action@v1.2
+      - uses: al-cheb/configure-pagefile-action@v1.3
         with:
           minimum-size: 12GB
         if: |
@@ -103,14 +103,14 @@ jobs:
         shell: bash -l {0}
         run: |
           xvfb-run --server-args="-screen 0 1024x768x24" conda mambabuild --test --override-channels \
-            -c ./pkgs -c pytorch -c ilastik-forge -c conda-forge \
+            -c ./pkgs -c conda-forge -c ilastik-forge \
             ./pkgs/noarch/${ILASTIK_PACKAGE_NAME}
       - name: osx test
         if: matrix.os == 'macos-latest'
         shell: bash -l {0}
         run: |
           VOLUMINA_SHOW_3D_WIDGET=0 conda mambabuild --test --override-channels \
-            -c ./pkgs -c pytorch -c ilastik-forge -c conda-forge \
+            -c ./pkgs -c conda-forge -c ilastik-forge \
             ./pkgs/noarch/${ILASTIK_PACKAGE_NAME}
       - name: windows test
         if: matrix.os == 'windows-latest'
@@ -118,6 +118,6 @@ jobs:
         run: |
           set VOLUMINA_SHOW_3D_WIDGET=0
           conda mambabuild --test --override-channels ^
-            -c .\pkgs -c pytorch -c ilastik-forge -c conda-forge ^
+            -c .\pkgs -c pytorch -c conda-forge -c ilastik-forge ^
             .\pkgs\noarch\%ILASTIK_PACKAGE_NAME%
 

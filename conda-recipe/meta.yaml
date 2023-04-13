@@ -108,7 +108,6 @@ outputs:
         - pytorch >=1.6
         - tensorflow 1.14.*
         - tiktorch 23.2.0*
-        - cpuonly
         - inferno
         - torchvision
     test:
@@ -121,6 +120,7 @@ outputs:
         - pytest-qt
         # need to help mamba here a bit
         - ilastik-pytorch-version-helper-cpu
+        - pytorch 1.12.*
 
       imports:
         - ilastik
@@ -169,8 +169,8 @@ outputs:
       requires:
         - pytest >=3,<4
         - pytest-qt
-        - pytorch 1.9.*
-        - cudatoolkit 11.1.*
+        - pytorch 1.12.*
+        - cudatoolkit 11.*
 
       imports:
         - ilastik
