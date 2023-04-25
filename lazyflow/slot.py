@@ -932,7 +932,9 @@ class Slot(object):
                 try:
                     self.operator.propagateDirty(self.top_level_slot, self.subindex, roi)
                 finally:
-                    self.operator._previous_dirty_mod_time_buffer = self.operator._pending_dirty_mod_time
+                    self.operator._previous_dirty_mod_time_buffer = max(
+                        self.operator._previous_dirty_mod_time_buffer, self.operator._pending_dirty_mod_time
+                    )
                     self.operator._pending_dirty_mod_time = -1
 
     def __iter__(self):

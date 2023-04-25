@@ -30,6 +30,21 @@ def test_op_mod_time(graph):
         assert op._pending_dirty_mod_time == -1
 
 
+def test_op_lower_mod_time_does_not_modify(graph):
+    """setDirty _mod_time modifies parent op correctly"""
+    op = MockOp(graph=graph)
+
+    assert op._pending_dirty_mod_time == -1
+
+    op.Input.setDirty((), _mod_time=42)
+    assert op._previous_dirty_mod_time_buffer == 42
+    assert op._pending_dirty_mod_time == -1
+
+    op.Input.setDirty((), _mod_time=41)
+    assert op._previous_dirty_mod_time_buffer == 42
+    assert op._pending_dirty_mod_time == -1
+
+
 def test_op_mod_time_chain(graph):
     """mod_time is propagated to all ops in the chain"""
     op1 = MockOp(graph=graph)
