@@ -256,11 +256,11 @@ class Operator(metaclass=OperatorMetaClass):
         self._setup_count = 0
 
         # keeps track of any setDirty calls on inputs slots
-        self._last_dirty = -1
+        self._previous_dirty_mod_time_buffer = -1
         # temporary variable during dirty notification to buffer the previous
         # value. Used in `setAllDirty` in order to ignore multiple dirty
         # notifications cause by the same upstream source
-        self._previous_dirty = -1
+        self._pending_dirty_mod_time = -1
 
     @property
     def children(self):
@@ -636,11 +636,11 @@ class Operator(metaclass=OperatorMetaClass):
 
         should never be called outside `propagateDirty`.
         """
-        if self._last_dirty <= self._previous_dirty:
+        if self._pending_dirty_mod_time <= self._previous_dirty_mod_time_buffer:
             return
 
         for slot in self.outputs.values():
-            slot.setDirty(())
+            slot.setDirty((), _mod_time=self._pending_dirty_mod_time)
 
 
 #    @debug_text.setter

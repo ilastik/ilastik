@@ -885,7 +885,7 @@ class Slot(object):
             return destination
 
     @is_setup_fn
-    def setDirty(self, *args, reset_modtime: bool = False, _mod_time: int = None, **kwargs):
+    def setDirty(self, *args, _mod_time: int = None, **kwargs):
         """This method is called by a partnering OutputSlot when its
         content changes.
 
@@ -895,7 +895,6 @@ class Slot(object):
         Args:
           * if args[0] is not a Roi instance, it is expected that a roi can be
             constructed via self.rtype(self, *args, **kwargs)
-          * reset_modtime: if True _mod_time will be reset
           * _mod_time: modification time, used to track changes from a single
             source, that might propagate through the graph. Allows ignoring
             recurrent notifications.
@@ -905,12 +904,14 @@ class Slot(object):
             self.operator is not None
         ), "Slot '{}' cannot be set dirty, slot not belonging to any actual operator instance".format(self.name)
 
-        if reset_modtime:
-            _mod_time = time.perf_counter_ns()
-
         if _mod_time is None:
             if self._type == "output":
-                _mod_time = self.operator._last_dirty
+                # if setDirty called outside of dirty propagation
+                # generate a new dirty time.
+                if self.operator._pending_dirty_mod_time == -1:
+                    _mod_time = time.perf_counter_ns()
+                else:
+                    _mod_time = self.operator._pending_dirty_mod_time
             elif self._type == "input":
                 _mod_time = time.perf_counter_ns()
 
@@ -927,12 +928,12 @@ class Slot(object):
             self._sig_dirty(self, roi)
 
             if self._type == "input" and self.operator.configured():
-                self.operator._previous_dirty = self.operator._last_dirty
-                self.operator._last_dirty = _mod_time
+                self.operator._pending_dirty_mod_time = _mod_time
                 try:
                     self.operator.propagateDirty(self.top_level_slot, self.subindex, roi)
                 finally:
-                    self.operator._previous_dirty = -1
+                    self.operator._previous_dirty_mod_time_buffer = self.operator._pending_dirty_mod_time
+                    self.operator._pending_dirty_mod_time = -1
 
     def __iter__(self):
         assert self.level >= 1
@@ -1167,9 +1168,9 @@ class Slot(object):
 
                 # Propagate dirtyness
                 if self.rtype == rtype.List:
-                    self.setDirty((), reset_modtime=True)
+                    self.setDirty(())
                 else:
-                    self.setDirty(slice(None), reset_modtime=True)
+                    self.setDirty(slice(None))
         except:
             try:
                 raise

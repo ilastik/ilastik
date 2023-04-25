@@ -193,7 +193,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
 
         for block_roi in changed_block_rois:
             # FIXME: Shouldn't this dirty notification be handled in OpUnmanagedCompressedCache?
-            self.Output.setDirty(*block_roi, reset_modtime=True)
+            self.Output.setDirty(*block_roi)
 
     def execute(self, slot, subindex, roi, destination):
         if slot == self.Output:
@@ -460,7 +460,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
             # During project import, this is slightly worse.
             # But during label import from disk, this is very important.a
             # FIXME: Shouldn't this notification be triggered from within OpUnmanagedCompressedCache?
-            self.Output.setDirty(*block_roi, reset_modtime=True)
+            self.Output.setDirty(*block_roi)
 
         return max_label  # Internal use: Return max label
 
