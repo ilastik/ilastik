@@ -31,8 +31,6 @@ import collections
 import numpy
 import vigra
 
-import time
-
 # Lazyflow
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.roi import (
