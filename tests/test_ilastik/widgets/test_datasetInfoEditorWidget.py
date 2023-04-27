@@ -29,11 +29,6 @@ def image_zyxc_stack_path(png_image, another_png_image):
     return str(png_image) + os.path.pathsep + str(another_png_image)
 
 
-@pytest.fixture
-def empty_project_file() -> h5py.File:
-    return h5py.File(tempfile.mkstemp()[1], "r+")
-
-
 DONT_SET_NORMALIZE = object()
 TOP_GROUP_NAME = "my_group"
 
@@ -216,12 +211,12 @@ def test_too_few_axeskeys_shows_error(qtbot, image_yxc_fs_info, empty_project_fi
     assert widget.axes_error_display.text() != ""
 
 
-def test_garbled_axeskeys_shows_error(qtbot, image_yxc_fs_info):
+def test_garbled_axeskeys_shows_error(qtbot, image_yxc_fs_info, empty_project_file):
     widget = create_and_modify_widget(qtbot, [image_yxc_fs_info], empty_project_file, axiskeys="ab")
     assert widget.axes_error_display.text() != ""
 
 
-def test_repeated_axeskeys_shows_error(qtbot, image_yxc_fs_info):
+def test_repeated_axeskeys_shows_error(qtbot, image_yxc_fs_info, empty_project_file):
     widget = create_and_modify_widget(qtbot, [image_yxc_fs_info], empty_project_file, axiskeys="yy")
     assert widget.axes_error_display.text() != ""
 
