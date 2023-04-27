@@ -113,14 +113,14 @@ class AllDirtyOp(Operator):
         self.Output.meta.assignFrom(self.Input1.meta)
 
     def propagateDirty(self, slot, subindex, roi):
-        self.setAllDirty()
+        self.propagateDirtyIfNewModTime()
 
     def execute(self, slot, subindex, roi):
         pass
 
 
 def test_op_all_dirty(graph):
-    """using setAllDirty prevents subsequent dirty-prop with same mod_time"""
+    """using propagateDirtyIfNewModTime prevents subsequent dirty-prop with same mod_time"""
     op_source = SourceOp(graph=graph)
 
     op_all_dirty = AllDirtyOp(graph=graph)

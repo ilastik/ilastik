@@ -311,7 +311,7 @@ class OpMultiArrayStacker(Operator):
             # Any upstream change will cause the whole output to be set dirty
             # Often enough this would happen eventually (e.g. stacking the output
             # of different Filter operators, all connected to the same input).
-            self.setAllDirty()
+            self.propagateDirtyIfNewModTime()
 
         else:
             assert False, "Unknown input slot."

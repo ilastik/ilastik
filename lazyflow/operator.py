@@ -258,7 +258,7 @@ class Operator(metaclass=OperatorMetaClass):
         # keeps track of any setDirty calls on inputs slots
         self._previous_dirty_mod_time_buffer = -1
         # temporary variable during dirty notification to buffer the previous
-        # value. Used in `setAllDirty` in order to ignore multiple dirty
+        # value. Used in `propagateDirtyIfNewModTime` in order to ignore multiple dirty
         # notifications cause by the same upstream source
         self._pending_dirty_mod_time = -1
 
