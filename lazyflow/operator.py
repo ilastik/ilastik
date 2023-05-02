@@ -256,7 +256,7 @@ class Operator(metaclass=OperatorMetaClass):
         self._setup_count = 0
 
         # keeps track of any setDirty calls on inputs slots
-        self._previous_dirty_mod_time_buffer = -1
+        self._previous_dirty_mod_time = -1
         # temporary variable during dirty notification to buffer the previous
         # value. Used in `propagateDirtyIfNewModTime` in order to ignore multiple dirty
         # notifications cause by the same upstream source
@@ -640,7 +640,7 @@ class Operator(metaclass=OperatorMetaClass):
         See https://github.com/ilastik/ilastik/pull/2694
         """
         assert self._pending_dirty_mod_time != -1
-        if self._pending_dirty_mod_time <= self._previous_dirty_mod_time_buffer:
+        if self._pending_dirty_mod_time <= self._previous_dirty_mod_time:
             return
 
         for slot in self.outputs.values():
