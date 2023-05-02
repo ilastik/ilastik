@@ -307,24 +307,11 @@ class OpMultiArrayStacker(Operator):
         if not self.Output.ready():
             # If we aren't even fully configured, there's no need to notify downstream slots about dirtiness
             return
-        if inputSlot == self.AxisFlag or inputSlot == self.AxisIndex:
-            self.Output.setDirty(slice(None))
-
-        elif inputSlot == self.Images:
-            imageIndex = subindex[0]
-            axisflag = self.AxisFlag.value
-            axisIndex = self.Output.meta.axistags.index(axisflag)
-
-            if len(roi.start) == len(self.Output.meta.shape):
-                # axis is already in the input
-                roi.start[axisIndex] += self.intervals[imageIndex][0]
-                roi.stop[axisIndex] += self.intervals[imageIndex][0]
-                self.Output.setDirty(roi)
-            else:
-                # insert axis into roi
-                newroi = copy.copy(roi)
-                newroi = newroi.insertDim(axisIndex, self.intervals[imageIndex][0], self.intervals[imageIndex][0] + 1)
-                self.Output.setDirty(newroi)
+        if inputSlot in (self.AxisFlag, self.AxisIndex, self.Images):
+            # Any upstream change will cause the whole output to be set dirty
+            # Often enough this would happen eventually (e.g. stacking the output
+            # of different Filter operators, all connected to the same input).
+            self.propagateDirtyIfNewModTime()
 
         else:
             assert False, "Unknown input slot."

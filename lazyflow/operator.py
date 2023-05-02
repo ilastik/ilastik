@@ -255,6 +255,13 @@ class Operator(metaclass=OperatorMetaClass):
         self._debug_text = None
         self._setup_count = 0
 
+        # keeps track of any setDirty calls on inputs slots
+        self._previous_dirty_mod_time = -1
+        # temporary variable during dirty notification to buffer the previous
+        # value. Used in `propagateDirtyIfNewModTime` in order to ignore multiple dirty
+        # notifications cause by the same upstream source
+        self._pending_dirty_mod_time = -1
+
     @property
     def children(self):
         return list(self._children.keys())
@@ -624,10 +631,20 @@ class Operator(metaclass=OperatorMetaClass):
         # return self._debug_text
         return "setups: {}".format(self._setup_count)
 
+    def propagateDirtyIfNewModTime(self):
+        """set all outputs dirty and ignore if _pending_dirty_mod_time is new
 
-#    @debug_text.setter
-#    def debug_text(self, text):
-#        self._debug_text = text
+        This ignores subsequent dirty prop from same source (=same _pending_dirty_mod_time)
+
+        Should only be called within `Operator.propagateDirty`.
+        See https://github.com/ilastik/ilastik/pull/2694
+        """
+        assert self._pending_dirty_mod_time != -1
+        if self._pending_dirty_mod_time <= self._previous_dirty_mod_time:
+            return
+
+        for slot in self.outputs.values():
+            slot.setDirty((), _mod_time=self._pending_dirty_mod_time)
 
 
 def format_operator_stack(tb):

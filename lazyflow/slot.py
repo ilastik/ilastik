@@ -37,6 +37,7 @@ import threading
 from functools import partial, wraps
 from contextlib import contextmanager
 import warnings
+import time
 
 # SciPy
 import numpy
@@ -884,17 +885,35 @@ class Slot(object):
             return destination
 
     @is_setup_fn
-    def setDirty(self, *args, **kwargs):
+    def setDirty(self, *args, _mod_time: int = None, **kwargs):
         """This method is called by a partnering OutputSlot when its
         content changes.
 
         The 'key' parameter identifies the changed region
         of an numpy.ndarray
 
+        Args:
+          * if args[0] is not a Roi instance, it is expected that a roi can be
+            constructed via self.rtype(self, *args, **kwargs)
+          * _mod_time: modification time, used to track changes from a single
+            source, that might propagate through the graph. Allows ignoring
+            recurrent notifications.
+
         """
         assert (
             self.operator is not None
         ), "Slot '{}' cannot be set dirty, slot not belonging to any actual operator instance".format(self.name)
+
+        if _mod_time is None:
+            if self._type == "output":
+                # if setDirty called outside of dirty propagation
+                # generate a new dirty time.
+                if self.operator._pending_dirty_mod_time == -1:
+                    _mod_time = time.perf_counter_ns()
+                else:
+                    _mod_time = self.operator._pending_dirty_mod_time
+            elif self._type == "input":
+                _mod_time = time.perf_counter_ns()
 
         if self.stype.isConfigured():
             if len(args) == 0 or not isinstance(args[0], rtype.Roi):
@@ -903,13 +922,20 @@ class Slot(object):
                 roi = args[0]
 
             for c in self.downstream_slots:
-                c.setDirty(roi)
+                c.setDirty(roi, _mod_time=_mod_time)
 
             # call callbacks
             self._sig_dirty(self, roi)
 
             if self._type == "input" and self.operator.configured():
-                self.operator.propagateDirty(self.top_level_slot, self.subindex, roi)
+                self.operator._pending_dirty_mod_time = _mod_time
+                try:
+                    self.operator.propagateDirty(self.top_level_slot, self.subindex, roi)
+                finally:
+                    self.operator._previous_dirty_mod_time = max(
+                        self.operator._previous_dirty_mod_time, self.operator._pending_dirty_mod_time
+                    )
+                    self.operator._pending_dirty_mod_time = -1
 
     def __iter__(self):
         assert self.level >= 1

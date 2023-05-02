@@ -240,7 +240,7 @@ class OpTrainPixelwiseClassifierBlocked(Operator):
                 )
 
     def propagateDirty(self, slot, subindex, roi):
-        self.Classifier.setDirty()
+        self.propagateDirtyIfNewModTime()
 
 
 class OpTrainVectorwiseClassifierBlocked(Operator):

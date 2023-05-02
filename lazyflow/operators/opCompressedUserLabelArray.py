@@ -450,7 +450,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
             max_label = max(max_label, cleaned_block_data.max())
 
             # We could wait to send out one big dirty notification (instead of one per block),
-            # But that might result in a lot of unecessarily dirty pixels in cases when the
+            # But that might result in a lot of unnecessarily dirty pixels in cases when the
             # new_pixels were mostly empty (such as when importing labels from disk).
             # That's bad for downstream operators like OpFeatureMatrixCache
             # So instead, we only send notifications for the blocks that were touched.
