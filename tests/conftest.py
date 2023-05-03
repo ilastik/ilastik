@@ -322,8 +322,8 @@ def another_png_image(tmp_path) -> Path:
 
 @pytest.fixture
 def empty_project_file(tmp_path) -> h5py.File:
-    project_path = tmp_path / tempfile.mkstemp(suffix=".ilp")[1]
-    with h5py.File(project_path, "r+") as f:
+    project_path = tmp_path / "project_file.ilp"
+    with h5py.File(project_path, "a") as f:
         yield f
 
 

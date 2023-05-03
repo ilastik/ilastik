@@ -119,12 +119,16 @@ def test_headless_2d3c_with_same_raw_data_axis(testdir, pixel_classification_ilp
     )
 
 
-def test_headless_2d3c_with_permuted_raw_data_axis(testdir, pixel_classification_ilp_2d3c: Path, tmp_path: Path):
+def test_headless_2d3c_with_permuted_raw_data_axis_from_training_data_raises(
+    testdir, pixel_classification_ilp_2d3c: Path, tmp_path: Path
+):
+    """
+    default behavior is to try to apply training axistags to the batch data,
+    and therefore fail because raw data' axis (cyx) are not in the expected order (yxc)
+    """
     raw_3c100x100y: Path = create_h5(numpy.random.rand(3, 100, 100), axiskeys="cyx")
     output_path = tmp_path / "out_3c100x100y.h5"
 
-    # default behavior is to try to apply training axistags to the batch data, and therefore fail because raw data's
-    # axis (cyx) are not in the expected order (yxc)
     with pytest.raises(FailedHeadlessExecutionException):
         run_headless_pixel_classification(
             testdir,
@@ -133,7 +137,14 @@ def test_headless_2d3c_with_permuted_raw_data_axis(testdir, pixel_classification
             output_filename_format=str(output_path),
         )
 
-    # forcing correct input axes should pass
+
+def test_headless_2d3c_with_permuted_raw_data_axis_explicit_axes(
+    testdir, pixel_classification_ilp_2d3c: Path, tmp_path: Path
+):
+    """forcing correct input axes should pass"""
+    raw_3c100x100y: Path = create_h5(numpy.random.rand(3, 100, 100), axiskeys="cyx")
+    output_path = tmp_path / "out_3c100x100y.h5"
+
     run_headless_pixel_classification(
         testdir,
         project=pixel_classification_ilp_2d3c,
@@ -142,8 +153,17 @@ def test_headless_2d3c_with_permuted_raw_data_axis(testdir, pixel_classification
         input_axes="cyx",
     )
 
-    # alternatively, since the generated h5 data has the axistags property, we can ignore training data and use that
-    # instead, by using the '--ignore_training_axistags' flag
+
+def test_headless_2d3c_with_permuted_raw_data_axis_use_h5_tags(
+    testdir, pixel_classification_ilp_2d3c: Path, tmp_path: Path
+):
+    """
+    alternatively, since the generated h5 data has the axistags property, we can ignore training data and use that
+    instead, by using the '--ignore_training_axistags' flag
+    """
+    raw_3c100x100y: Path = create_h5(numpy.random.rand(3, 100, 100), axiskeys="cyx")
+    output_path = tmp_path / "out_3c100x100y.h5"
+
     run_headless_pixel_classification(
         testdir,
         project=pixel_classification_ilp_2d3c,

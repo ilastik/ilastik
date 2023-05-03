@@ -14,12 +14,19 @@ from ilastik.applets.dataSelection import DatasetInfo, FilesystemDatasetInfo
 
 
 @pytest.fixture
-def png_stack_dir(tmp_path) -> Path:
+def stack_path(tmp_path) -> Path:
+    p = tmp_path / "stacksubpath"
+    p.mkdir()
+    return p
+
+
+@pytest.fixture
+def png_stack_dir(stack_path) -> Path:
     for i in range(3):
         pil_image = PilImage.fromarray((numpy.random.rand(520, 697, 3) * 255).astype(numpy.uint8))
-        with open(tmp_path / f"c_cells_{i}.png", "wb") as png_file:
+        with open(stack_path / f"c_cells_{i}.png", "wb") as png_file:
             pil_image.save(png_file, "png")
-    return tmp_path
+    return stack_path
 
 
 @pytest.fixture
@@ -32,13 +39,13 @@ def h5_1_100_200_1_1(tmp_path):
 
 
 @pytest.fixture
-def h5_stack_dir(tmp_path):
+def h5_stack_dir(stack_path):
     for i in range(3):
         raw = (numpy.random.rand(1, 100, 200, 1, 1) * 255).astype(numpy.uint8)
-        with h5py.File(tmp_path / f"2d_apoptotic_binary_{i}.h5", "w") as f:
+        with h5py.File(stack_path / f"2d_apoptotic_binary_{i}.h5", "w") as f:
             f.create_group("volume")
             f["volume/data"] = raw
-    return tmp_path
+    return stack_path
 
 
 def dir_to_colon_glob(dir_path: str):
@@ -79,11 +86,6 @@ def h5_colon_path_stack_with_inner_paths(h5_colon_path_stack) -> str:
 @pytest.fixture
 def h5_star_stack(h5_stack_dir) -> str:
     return dir_to_star_glob(h5_stack_dir)
-
-
-@pytest.fixture
-def empty_project_file() -> h5py.File:
-    return h5py.File(tempfile.mkstemp()[1], "r+")
 
 
 def test_create_nickname(h5_colon_path_stack):
