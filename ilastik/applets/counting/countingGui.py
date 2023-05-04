@@ -927,14 +927,7 @@ class CountingGui(LabelingGui):
         self._labelControlUi.arrowToolButton.setChecked(True)
 
     def _gui_setBrushing(self):
-        #         self._labelControlUi.brushSizeComboBox.setEnabled(False)
-        #         self._labelControlUi.brushSizeCaption.setEnabled(False)
-        # Make sure the paint button is pressed
         self._labelControlUi.paintToolButton.setChecked(True)
-        # Show the brush size control and set its caption
-        self._labelControlUi.brushSizeCaption.setText("Size:")
-        # Make sure the GUI reflects the correct size
-        # self._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
 
     def _gui_setBox(self):
         self._labelControlUi.brushSizeComboBox.setEnabled(False)

@@ -625,23 +625,17 @@ class LabelingGui(LayerViewerGui):
         self._labelControlUi.brushSizeComboBox.setEnabled(True)
         self._labelControlUi.brushSizeCaption.setEnabled(True)
         self._labelControlUi.eraserToolButton.setChecked(True)
-        self._labelControlUi.brushSizeCaption.setText("Size:")
         self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.eraserSizeIndex)
 
     def _gui_setNavigation(self):
         self._labelControlUi.brushSizeComboBox.setEnabled(False)
         self._labelControlUi.brushSizeCaption.setEnabled(False)
         self._labelControlUi.arrowToolButton.setChecked(True)
-        # self._labelControlUi.arrowToolButton.setChecked(True) # why twice?
 
     def _gui_setBrushing(self):
         self._labelControlUi.brushSizeComboBox.setEnabled(True)
         self._labelControlUi.brushSizeCaption.setEnabled(True)
-        # Make sure the paint button is pressed
         self._labelControlUi.paintToolButton.setChecked(True)
-        # Show the brush size control and set its caption
-        self._labelControlUi.brushSizeCaption.setText("Size:")
-        # Make sure the GUI reflects the correct size
         self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.paintBrushSizeIndex)
 
     def _gui_enableLabeling(self, enable):
