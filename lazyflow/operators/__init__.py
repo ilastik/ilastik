@@ -48,6 +48,7 @@ from .generic import (
     OpMultiArrayMerger,
     OpMultiArraySlicer2,
     OpMultiArrayStacker,
+    OpMultiChannelSelector,
     OpMultiInputConcatenater,
     OpPixelOperator,
     OpSelectSubslot,
