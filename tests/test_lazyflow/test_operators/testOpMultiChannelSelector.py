@@ -53,7 +53,6 @@ def test_trivial_operation(graph):
     ],
 )
 def test_get_single_channel(graph, selected_channel, random_data_5c):
-
     op = OpMultiChannelSelector(graph=graph)
     op.Input.setValue(random_data_5c)
     op.SelectedChannels.setValue([selected_channel])
