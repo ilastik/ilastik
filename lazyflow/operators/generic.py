@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from builtins import zip
 from builtins import map
 from builtins import range
@@ -876,7 +874,7 @@ class OpMultiChannelSelector(Operator):
             raise ValueError(f"Input has only {max_channel} channels, channel-selector {self.SelectedChannels.value}")
 
         self.Output.meta.assignFrom(self.Input.meta)
-        self.Output.meta.shape = self.Input.meta.shape[:-1] + (len(self.SelectedChannels.value),)
+        self.Output.meta.shape = (*self.Input.meta.shape[:-1], len(self.SelectedChannels.value))
 
     def execute(self, slot, subindex, roi, result):
         channel_indexes = self.SelectedChannels.value
@@ -892,8 +890,8 @@ class OpMultiChannelSelector(Operator):
 
         else:
             fetched_data = self.Input(input_roi.start, input_roi.stop).wait()
-            channel_indexes = [x - channel_indexes[0] for x in channel_indexes]
-            result[...] = fetched_data[..., tuple(channel_indexes)]
+            channel_indexes = tuple(x - channel_indexes[0] for x in channel_indexes)
+            result[...] = fetched_data[..., channel_indexes]
 
     def propagateDirty(self, slot, subindex, roi):
         self.propagateDirtyIfNewModTime()

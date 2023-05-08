@@ -44,8 +44,7 @@ class TrainableDomainAdaptationGui(PixelClassificationGui):
                 return
             self.channel_menu.clear()
             self.channel_actions = []
-            label_names = self.topLevelOperatorView.LabelNames.value
-            for i, label_name in enumerate(label_names):
+            for label_name in self.topLevelOperatorView.LabelNames.value:
                 action = QAction(label_name, self.channel_menu)
                 action.setCheckable(True)
                 self.channel_menu.addAction(action)
@@ -77,9 +76,8 @@ class TrainableDomainAdaptationGui(PixelClassificationGui):
         """
         opens a QFileDialog for importing files
         """
-        return QFileDialog.getOpenFileName(parent_window, "Select Model", defaultDirectory, "Models (*.tmodel *.zip)")[
-            0
-        ]
+        files = QFileDialog.getOpenFileName(parent_window, "Select Model", defaultDirectory, "Models (*.tmodel *.zip)")
+        return files[0]
 
     def _init_nn_prediction_ui(self):
         # add new stuff here
@@ -114,7 +112,7 @@ class TrainableDomainAdaptationGui(PixelClassificationGui):
 
         # Auto-set the "show predictions" state according to what the user just clicked.
         if checked:
-            self.handleShowNNPredictionsClicked()
+            self.handleShowPredictionsClicked()
 
         # Notify the workflow that some applets may have changed state now.
         # (For example, the downstream pixel classification applet can
@@ -122,11 +120,7 @@ class TrainableDomainAdaptationGui(PixelClassificationGui):
         self.parentApplet.appletStateUpdateRequested()
 
     def onChannelSelectionClicked(self, *args):
-        channel_selections = []
-        for ch in range(len(self.channel_actions)):
-            if self.channel_actions[ch].isChecked():
-                channel_selections.append(ch)
-
+        channel_selections = [i for i, ch in enumerate(self.channel_actions) if ch.isChecked()]
         self.topLevelOperatorView.SelectedChannels.setValue(channel_selections)
 
     def stopAndCleanUp(self):
@@ -166,8 +160,7 @@ class TrainableDomainAdaptationGui(PixelClassificationGui):
 
                     layers.append(predictionLayer)
 
-        # EnhancerInput
-        if enhancer_slot is not None and enhancer_slot.ready():
+            # EnhancerInput
             layer = self.createStandardLayerFromSlot(enhancer_slot, name="EnhancerInput")
             layer.visible = False
             layers.append(layer)
@@ -190,38 +183,26 @@ class TrainableDomainAdaptationGui(PixelClassificationGui):
     def tiktorchModel(self):
         return self.parentApplet.tiktorchOpModel
 
-    def cc(self, *args, **kwargs):
+    def cancel(self, *args, **kwargs):
         self.cancel_src.cancel()
 
     @pyqtSlot()
-    def updateShowNNPredictionCheckbox(self):
+    def updateShowPredictionCheckbox(self):
         """
         updates the showPrediction Checkbox when Predictions were added to the layers
         """
-        predictLayerCount = 0
-        visibleCount = 0
+        state = Qt.Unchecked
         for layer in self.layerstack:
-            if "NN prediction" in layer.name:
-                predictLayerCount += 1
-                if layer.visible:
-                    visibleCount += 1
-            elif "Prediction" in layer.name:
-                predictLayerCount += 1
-                if layer.visible:
-                    visibleCount += 1
-
-        if visibleCount == 0:
-            self.checkShowPredictions.setCheckState(Qt.Unchecked)
-        elif predictLayerCount == visibleCount:
-            self.checkShowPredictions.setCheckState(Qt.Checked)
-        else:
-            self.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
+            if any(layer.name.lower().startswith(x) for x in ["nn prediction", "prediction"]):
+                state = Qt.Checked
+                if not layer.visible:
+                    state = Qt.PartiallyChecked
+                    break
+        self._viewerControlUi.checkShowPredictions.setCheckState(state)
 
     @pyqtSlot()
-    def handleShowNNPredictionsClicked(self):
+    def handleShowPredictionsClicked(self):
         checked = self._viewerControlUi.checkShowPredictions.isChecked()
         for layer in self.layerstack:
-            if "NN prediction" in layer.name:
-                layer.visible = checked
-            elif "Prediction" in layer.name:
+            if any(layer.name.lower().startswith(x) for x in ["nn prediction", "prediction"]):
                 layer.visible = checked

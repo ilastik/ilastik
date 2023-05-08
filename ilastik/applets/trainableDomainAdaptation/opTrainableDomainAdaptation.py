@@ -28,9 +28,8 @@ class OpTrainableDomainAdaptation(OpPixelClassification):
     NNClassifier = OutputSlot()
     EnhancerNetworkInput = OutputSlot(level=1)
 
-    NNPredictionProbabilities = OutputSlot(
-        level=1
-    )  # Classification predictions (via feature cache for interactive speed)
+    # Classification predictions (via feature cache for interactive speed)
+    NNPredictionProbabilities = OutputSlot(level=1)
     NNPredictionProbabilityChannels = OutputSlot(level=2)  # Classification predictions, enumerated by channel
     CachedNNPredictionProbabilities = OutputSlot(level=1)
 
@@ -77,15 +76,14 @@ class OpTrainableDomainAdaptation(OpPixelClassification):
     def update_config(self, partial_config: dict):
         self.ClassifierFactory.meta.hparams = partial_config
 
-        def _send_hparams(slot):
+        def _send_hparams(*_args):
             classifierFactory = self.ClassifierFactory[:].wait()[0]
             classifierFactory.update_config(self.ClassifierFactory.meta.hparams)
 
-        if not self.ClassifierFactory.ready():
-            self.ClassifierFactory.notifyReady(_send_hparams)
+        if self.ClassifierFactory.ready():
+            _send_hparams()
         else:
-            classifierFactory = self.ClassifierFactory[:].wait()[0]
-            classifierFactory.update_config(partial_config)
+            self.ClassifierFactory.notifyReady(_send_hparams)
 
     def propagateDirty(self, slot, subindex, roi):
         # Nothing to do here: All outputs are directly connected to

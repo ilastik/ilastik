@@ -52,17 +52,12 @@ class _NNWorkflowBase(Workflow):
     DATA_ROLE_RAW = 0
     DATA_ROLE_OVERLAY = 1
     ROLE_NAMES = ["Raw Data", "Overlay"]
-    ROLE_NAMES = ["Raw Data", "Overlay"]
 
-    @property
-    def ExportNames(self):
-        @enum.unique
-        class ExportNames(SlotNameEnum):
-            PROBABILITIES = enum.auto()
-            if tiktorchController.ALLOW_TRAINING:
-                LABELS = enum.auto()
-
-        return ExportNames
+    @enum.unique
+    class ExportNames(SlotNameEnum):
+        PROBABILITIES = enum.auto()
+        if tiktorchController.ALLOW_TRAINING:
+            LABELS = enum.auto()
 
     @property
     def applets(self):

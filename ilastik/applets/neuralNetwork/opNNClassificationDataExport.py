@@ -23,10 +23,6 @@ from ilastik.applets.dataExport.opDataExport import OpDataExport
 
 
 class OpNNClassificationDataExport(OpDataExport):
-    """
-    Subclass placeholder
-    """
-
     PmapColors = InputSlot()
     LabelNames = InputSlot()
 

@@ -79,11 +79,14 @@ class BioImageModelCombo(QComboBox):
             logger.error(f"Error fetching models from bioimage.io: {BIOIMAGEIO_COLLECTION_ERROR}")
             return
 
-        enhancer_models = [m for m in BIOIMAGEIO_COLLECTION["collection"] if "shallow2deep" in m["tags"]]
-
         self.addItem("choose model..", {})
-        for m in enhancer_models:
-            self.addItem(m["name"], m)
+        self.insertSeparator(1)
+
+        for model in BIOIMAGEIO_COLLECTION["collection"]:
+            if "shallow2deep" in model["tags"]:
+                self.addItem(model["name"], model)
+
+        self.insertSeparator(self.count())
         self.addItem("select file", BioImageModelCombo._SELECT_FILE)
 
 

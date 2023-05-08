@@ -729,7 +729,7 @@ class NNClassGui(LabelingGui):
         else:
             self._viewerControlUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
 
-    def cc(self, *args, **kwargs):
+    def cancel(self, *args, **kwargs):
         self.cancel_src.cancel()
 
     @threadRouted

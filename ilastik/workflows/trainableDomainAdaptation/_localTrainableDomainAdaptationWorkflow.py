@@ -34,6 +34,10 @@ from lazyflow.operators import tiktorch
 from lazyflow.roi import TinyVector
 
 logger = logging.getLogger(__name__)
+print(logger, __name__)
+
+
+KNOWN_NN_DEVICES = ("cuda", "mps")
 
 
 class LocalTrainableDomainAdaptationWorkflow(_NNWorkflowBase):
@@ -49,15 +53,11 @@ class LocalTrainableDomainAdaptationWorkflow(_NNWorkflowBase):
     workflowName = "Trainable Domain Adaptation (Local) (beta)"
     workflowDescription = "Allows to apply bioimage.io shallow2deep models on your data using bundled tiktorch"
 
-    @property
-    def ExportNames(self):
-        @enum.unique
-        class ExportNames(SlotNameEnum):
-            PROBABILITIES = enum.auto()
-            LABELS = enum.auto()
-            # TODOS: add NN output, too
-
-        return ExportNames
+    @enum.unique
+    class ExportNames(SlotNameEnum):
+        PROBABILITIES = enum.auto()
+        LABELS = enum.auto()
+        NN_PROBABILITIES = enum.auto()
 
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
         tiktorch_exe_path = runtime_cfg.tiktorch_executable
@@ -84,26 +84,26 @@ class LocalTrainableDomainAdaptationWorkflow(_NNWorkflowBase):
         connFactory = tiktorch.TiktorchConnectionFactory()
         conn = connFactory.ensure_connection(srv_config)
 
-        devices = conn.get_devices()
-        preferred_cuda_device_id = runtime_cfg.preferred_cuda_device_id
-        device_ids = [dev[0] for dev in devices]
-        cuda_devices = tuple(d for d in device_ids if d.startswith("cuda"))
+        devices = {d[0]: d[1] for d in conn.get_devices()}
+        device_id = runtime_cfg.preferred_cuda_device_id
 
-        if preferred_cuda_device_id not in device_ids:
-            if preferred_cuda_device_id:
-                logger.warning(f"Could nor find preferred cuda device {preferred_cuda_device_id}")
-            try:
-                preferred_cuda_device_id = cuda_devices[0]
-            except IndexError:
-                preferred_cuda_device_id = "cpu"
-
-            logger.info(f"Using default device for Neural Network Workflow {preferred_cuda_device_id}")
+        if device_id in devices:
+            logger.info(f"Trainable Domain Adaptation Workflow: using preferred device {device_id}")
         else:
-            logger.info(f"Using specified device for Neural Network Workflow {preferred_cuda_device_id}")
+            if device_id:
+                logger.warning(f"Neural Network Workflow: preferred device {device_id} not found")
 
-        device_name = devices[device_ids.index(preferred_cuda_device_id)][1]
+            for device in devices:
+                if any(device.startswith(known) for known in KNOWN_NN_DEVICES):
+                    device_id = device
+                    break
 
-        srv_config = srv_config.evolve(devices=[Device(id=preferred_cuda_device_id, name=device_name, enabled=True)])
+            if not device:
+                device = "cpu"
+
+            logger.info(f"Neural Network Workflow: using default device {device_id}")
+
+        srv_config = srv_config.evolve(devices=[Device(id=device_id, name=devices[device_id], enabled=True)])
 
         tda_appplet = TrainableDomainAdaptationApplet(self, "TrainableDomainAdaptation", connectionFactory=connFactory)
         opNNclassify = tda_appplet.topLevelOperator
@@ -133,8 +133,8 @@ class LocalTrainableDomainAdaptationWorkflow(_NNWorkflowBase):
         opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[self.DATA_ROLE_RAW])
         opDataExport.Inputs.resize(len(self.ExportNames))
         opDataExport.Inputs[self.ExportNames.PROBABILITIES].connect(opNNclassify.PredictionProbabilities)
+        opDataExport.Inputs[self.ExportNames.NN_PROBABILITIES].connect(opNNclassify.NNPredictionProbabilities)
         opDataExport.Inputs[self.ExportNames.LABELS].connect(opNNclassify.LabelImages)
-        # TODO: add NN output, too
 
     def cleanUp(self):
         super().cleanUp()
@@ -162,7 +162,25 @@ class LocalTrainableDomainAdaptationWorkflow(_NNWorkflowBase):
 
         opDataExport = self.dataExportApplet.topLevelOperator
 
-        predictions_ready = input_ready and len(opDataExport.Inputs) > 0
+        invalid_classifier = (
+            opNNClassification.classifier_cache.fixAtCurrent.value
+            and opNNClassification.classifier_cache.Output.ready()
+            and opNNClassification.classifier_cache.Output.value is None
+        )
+
+        predictions_ready = (
+            features_ready
+            and not invalid_classifier
+            and len(opDataExport.Inputs) > 0
+            and opDataExport.Inputs[0][self.ExportNames.PROBABILITIES].ready()
+            and (TinyVector(opDataExport.Inputs[0][self.ExportNames.PROBABILITIES].meta.shape) > 0).all()
+        )
+
+        nn_predictions_ready = (
+            predictions_ready
+            and opDataExport.Inputs[0][self.ExportNames.NN_PROBABILITIES].ready()
+            and (TinyVector(opDataExport.Inputs[0][self.ExportNames.NN_PROBABILITIES].meta.shape) > 0).all()
+        )
 
         # Problems can occur if the features or input data are changed during live update mode.
         # Don't let the user do that.
@@ -172,26 +190,30 @@ class LocalTrainableDomainAdaptationWorkflow(_NNWorkflowBase):
         batch_processing_busy = self.batchProcessingApplet.busy
 
         self._shell.setAppletEnabled(
-            self.dataSelectionApplet, not (batch_processing_busy or live_update_active) and upstream_ready
+            self.dataSelectionApplet, not batch_processing_busy and not live_update_active and upstream_ready
         )
         self._shell.setAppletEnabled(
             self.featureSelectionApplet,
-            not (batch_processing_busy or live_update_active) and input_ready and upstream_ready,
+            not batch_processing_busy and not live_update_active and input_ready and upstream_ready,
         )
 
         self._shell.setAppletEnabled(
             self.nnClassificationApplet,
-            (input_ready and features_ready) and not batch_processing_busy and upstream_ready,
+            input_ready and features_ready and not batch_processing_busy and upstream_ready,
         )
 
-        # TODO (k-dominik): Batch and Export rely on the model being loaded!
         self._shell.setAppletEnabled(
             self.dataExportApplet,
-            predictions_ready and not batch_processing_busy and not live_update_active and upstream_ready,
+            predictions_ready
+            and nn_predictions_ready
+            and not batch_processing_busy
+            and not live_update_active
+            and upstream_ready,
         )
         if self.batchProcessingApplet is not None:
             self._shell.setAppletEnabled(
-                self.batchProcessingApplet, predictions_ready and not batch_processing_busy and upstream_ready
+                self.batchProcessingApplet,
+                predictions_ready and nn_predictions_ready and not batch_processing_busy and upstream_ready,
             )
 
         # Lastly, check for certain "busy" conditions, during which we

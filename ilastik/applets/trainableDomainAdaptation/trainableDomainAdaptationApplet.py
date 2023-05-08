@@ -51,8 +51,7 @@ class TrainableDomainAdaptationApplet(PixelClassificationApplet):
 
     @property
     def singleLaneGuiClass(self):
-        from .trainableDomainAdaptationGui import (  # prevent imports of QT classes in headless mode
-            TrainableDomainAdaptationGui,
-        )
+        # prevent imports of QT classes in headless mode
+        from .trainableDomainAdaptationGui import TrainableDomainAdaptationGui
 
         return TrainableDomainAdaptationGui
