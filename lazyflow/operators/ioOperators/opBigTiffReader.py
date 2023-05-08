@@ -1,6 +1,24 @@
-from __future__ import print_function
-import numpy as np
-import pytiff
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2023, the ilastik developers
+#                                <team@ilastik.org>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
+#
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#          http://ilastik.org/license.html
+###############################################################################
+import tifffile
 import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -17,72 +35,61 @@ class OpBigTiffReader(Operator):
 
     TIFF_EXTS = [".tif", ".tiff"]
 
-    class NotBigTiffError(Exception):
+    class BigTiffError(Exception):
+        pass
+
+    class NotBigTiffError(BigTiffError):
         """Raised if the file you're attempting to open isn't a BigTiff file."""
+
+    class UnsupportedBigTiffError(BigTiffError):
+        """File is recognized as bigtiff, but we don't know how to handle it."""
 
     def __init__(self, *args, **kwargs):
         super(OpBigTiffReader, self).__init__(*args, **kwargs)
         self._bigtiff = None
 
     def cleanUp(self):
-        if self._bigtiff is not None:
-            self._bigtiff.close()
+        # currently the only way to close the memmap
+        del self._bigtiff
         super(OpBigTiffReader, self).cleanUp()
 
     def setupOutputs(self):
-        filepath = self.Filepath.value
-        if not pytiff.utils.is_bigtiff(filepath):
-            raise OpBigTiffReader.NotBigTiffError(filepath)
+        filepath: str = self.Filepath.value
 
-        bigtiff = pytiff.Tiff(filepath)
+        with tifffile.TiffFile(filepath) as f:
+            if not f.is_bigtiff:
+                raise OpBigTiffReader.NotBigTiffError(f"File {filepath} is not a BigTiff file.")
 
-        if bigtiff.number_of_pages != 1:
-            raise RuntimeError("Multipage BigTiff not supported yet.")
+            if f.pages.is_multipage:
+                raise OpBigTiffReader.UnsupportedBigTiffError(
+                    f"File {filepath} is multipage! Multipage BigTiff not supported yet."
+                )
 
-        self.Output.meta.dtype = bigtiff.dtype
+            if len(f.series) != 1:
+                raise OpBigTiffReader.UnsupportedBigTiffError(
+                    f"File {filepath} has {len(f.series)} series! Multiple Series BigTiff not supported yet."
+                )
 
-        if bigtiff.samples_per_pixel > 1:
-            self.Output.meta.shape = bigtiff.shape + (bigtiff.samples_per_pixel,)
-            self.Output.meta.axistags = vigra.defaultAxistags("yxc")
-        else:
+            bigtiff_axes = f.series[0].axes
+            if any(ax not in "cyx" for ax in bigtiff_axes.lower()):
+                OpBigTiffReader.UnsupportedBigTiffError(f"File {filepath} has unrecognized axistags {bigtiff_axes}.")
+
+        bigtiff = tifffile.memmap(filepath)
+        try:
+            self.Output.meta.dtype = bigtiff.dtype
+            assert len(bigtiff.shape) == len(bigtiff_axes)
+            self.Output.meta.axistags = vigra.defaultAxistags(bigtiff_axes.lower())
             self.Output.meta.shape = bigtiff.shape
-            self.Output.meta.axistags = vigra.defaultAxistags("yx")
+
+        except Exception as e:
+            del bigtiff
+            raise e
 
         self._bigtiff = bigtiff
 
     def execute(self, slot, subindex, roi, result):
-        if "c" in self.Output.meta.axistags:
-            # pytiff is weird about channel data.
-            # We've got to request all channels first, and select between them ourselves.
-            # (pytiff.Tiff.__getitem__ seems to always give us all channels, regardless of what we asked for.)
-
-            # Futhermore, when I load the pytiff sample RGB TIFF image,
-            # pytiff says it has samples_per_pixel == 3,
-            # but pytiff says its shape == (400, 640, 4)
-            # No idea why that is (alpha, maybe?)
-            # For now, I just ignore that last channel and hope for the best...
-            roi = np.array([roi.start, roi.stop])
-            all_channels = self._bigtiff[roiToSlice(*roi[:, :2])]
-            result[:] = all_channels[..., slice(*roi[:, -1])]
-        else:
-            result[:] = self._bigtiff[roiToSlice(roi.start, roi.stop)]
+        result[:] = self._bigtiff[roiToSlice(roi.start, roi.stop)]
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Filepath:
             self.Output.setDirty(slice(None))
-
-
-#
-# Quick test
-#
-if __name__ == "__main__":
-    from lazyflow.graph import Graph
-
-    op = OpBigTiffReader(graph=Graph())
-    # op.Filepath.setValue('/magnetic/workspace/pytiff/test_data/rgb_sample.tif')
-    op.Filepath.setValue("/magnetic/workspace/pytiff/test_data/bigtif_example.tif")
-
-    print(op.Output.meta.shape)
-    print(op.Output.meta.dtype)
-    print(op.Output.meta.getAxisKeys())
-    print(op.Output[:10, :10].wait())
