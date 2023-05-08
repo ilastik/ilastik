@@ -34,25 +34,24 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.utility import Pipeline
 
 
-def test_OpExportMultipageTiff():
+def test_OpExportMultipageTiff(tmp_path):
     shape = 3, 10, 64, 128, 2
     axes = "tzyxc"
     dtype = numpy.uint32
     data = numpy.arange(numpy.prod(shape), dtype=dtype).reshape(shape)
     expected = vigra.VigraArray(data, axistags=vigra.defaultAxistags(axes), order="C")
 
-    with tempfile.TemporaryDirectory() as tempdir:
-        filepath = str(pathlib.Path(tempdir, "multipage.tiff"))
-        graph = Graph()
+    filepath = str(tmp_path / "multipage.tiff")
+    graph = Graph()
 
-        with Pipeline(graph=graph) as write_tiff:
-            write_tiff.add(OpArrayPiper, Input=expected)
-            write_tiff.add(OpExportMultipageTiff, Filepath=filepath)
-            write_tiff[-1].run_export()
+    with Pipeline(graph=graph) as write_tiff:
+        write_tiff.add(OpArrayPiper, Input=expected)
+        write_tiff.add(OpExportMultipageTiff, Filepath=filepath)
+        write_tiff[-1].run_export()
 
-        with Pipeline(graph=graph) as read_tiff:
-            read_tiff.add(OpTiffReader, Filepath=filepath)
-            read_tiff.add(OpReorderAxes, AxisOrder=axes)
-            actual = read_tiff[-1].Output[:].wait().astype(dtype)
+    with Pipeline(graph=graph) as read_tiff:
+        read_tiff.add(OpTiffReader, Filepath=filepath)
+        read_tiff.add(OpReorderAxes, AxisOrder=axes)
+        actual = read_tiff[-1].Output[:].wait().astype(dtype)
 
     numpy.testing.assert_array_equal(expected, actual)

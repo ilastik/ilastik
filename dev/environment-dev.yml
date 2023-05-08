@@ -29,8 +29,8 @@ dependencies:
   - pyopengl
   - pyqt 5.12.*
   - pyqtgraph
-  - python-elf
   - pytiff
+  - python-elf
   - qimage2ndarray
   - scikit-image
   - scikit-learn
