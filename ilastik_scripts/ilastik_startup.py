@@ -118,7 +118,8 @@ def fix_macos() -> None:
     if platform.system() != "Darwin":
         return
     mac_ver = tuple(map(int, platform.mac_ver()[0].split(".")))
-    if mac_ver < (10, 16):
+    python_ver = tuple(map(int, platform.python_version().split(".")))
+    if mac_ver < (10, 16) or python_ver > (3, 8, 11):
         return
 
     # https://bugreports.qt.io/browse/QTBUG-87014
