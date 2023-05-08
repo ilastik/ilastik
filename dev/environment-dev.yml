@@ -28,9 +28,8 @@ dependencies:
   - pandas <2
   - psutil
   - pyopengl
-  - pyqt 5.12.*
+  - pyqt 5.15.*
   - pyqtgraph
-  - pytiff
   - python-elf
   - qimage2ndarray
   - scikit-image
