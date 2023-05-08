@@ -26,7 +26,7 @@ import tempfile
 import unittest
 
 import numpy
-import pytiff
+import tifffile
 import vigra
 
 from lazyflow.graph import Graph
@@ -44,22 +44,11 @@ class TestOpBigTiffReader(unittest.TestCase):
         cls.test_file_name = f"{cls.tmp_data_folder}/bigtiff_testfile.tif"
 
         cls.data = numpy.random.randint(0, 255, (800, 1200)).astype("uint8")
-        try:
-            t = pytiff.Tiff(cls.test_file_name, file_mode="w", bigtiff=True)
-            t.write(cls.data)
-        finally:
-            t.close()
+        tifffile.imwrite(cls.test_file_name, cls.data, bigtiff=True, metadata={"axes": "YX"})
 
     @classmethod
     def teardown_class(cls):
         shutil.rmtree(cls.tmp_data_folder)
-
-    def test_is_obsolete(self):
-        """Check if vigra can read it
-
-        if vigra can read those tiffs, obBigTiffReader is obsolete
-        """
-        self.assertRaises(RuntimeError, vigra.impex.readImage, self.test_file_name)
 
     def test_read_bigtiff(self):
         g = Graph()
