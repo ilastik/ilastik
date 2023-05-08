@@ -44,7 +44,7 @@ dependencies:
 
   # Neural Network Workflow dependencies
   # can be changed to request gpu versions
-  - pytorch 1.9.* *cpu*
+  - pytorch 1.13.* *cpu*
 
   - cpuonly
   # - pytorch 1.9.*=*cu*
