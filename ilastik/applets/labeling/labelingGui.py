@@ -213,6 +213,18 @@ class LabelingGui(LayerViewerGui):
 
         # We own the applet bar ui
         self._labelControlUi = _labelControlUi
+        _labelControlUi.setStyleSheet(
+            """
+            QToolButton#suggestFeaturesButton { padding: 2px; height: 24px; }
+            QToolButton#liveUpdateButton {
+                padding: 5px; height: 24px; border-style: solid; border-width: 1px; border-radius: 4px;
+                border-color: #aaccaa; background-color: #eeffee; }
+            QToolButton#liveUpdateButton:hover { border-color: #a0c0a0; background-color: #c0e0c0; }
+            QToolButton#liveUpdateButton:pressed { border-color: #557755; background-color: #779977; }
+            QToolButton#liveUpdateButton:checked { border-color: #aaccaa; background-color: #cceecc; }
+            QToolButton#liveUpdateButton:checked:hover { border-color: #b0d0b0; background-color: #d0f0d0; }
+            """
+        )
 
         # Initialize the label list model
         model = LabelListModel()
