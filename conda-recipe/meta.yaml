@@ -44,6 +44,8 @@ outputs:
         - marching_cubes
         - ndstructs
         - nifty
+        # need to update our packages to be compatible with pandas 2 API
+        - pandas <2
         - psutil
         - pyopengl
         - pyqt 5.12.*

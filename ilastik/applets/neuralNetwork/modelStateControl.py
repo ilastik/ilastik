@@ -179,7 +179,9 @@ class ModelStateControl(QWidget):
         super().__init__(parent)
         self.threadRouter = ThreadRouter(self)
         self._preDownloadChecks = set()
+        self._setup_ui()
 
+    def _setup_ui(self):
         layout = QVBoxLayout()
 
         self.modelSourceEdit = ModelSourceEdit(self)
@@ -192,7 +194,6 @@ class ModelStateControl(QWidget):
         bottom_layout.addWidget(self.modelControlButton)
         layout.addWidget(self.modelSourceEdit)
         layout.addLayout(bottom_layout)
-        self.setLayout(layout)
 
     def setTiktorchController(self, tiktorchController):
         self._tiktorchController = tiktorchController
