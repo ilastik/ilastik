@@ -97,24 +97,11 @@ class _NNWorkflowBase(Workflow):
         connection_string = None or self.parsed_args.connection_string
         self._createClassifierApplet(headless=self._headless, conn_str=connection_string)
 
-        self.dataExportApplet = NNClassificationDataExportApplet(self, "Data Export")
-
-        # Configure global DataExport settings
-        opDataSelection = self.dataSelectionApplet.topLevelOperator
-        opClassify = self.nnClassificationApplet.topLevelOperator
-        opDataExport = self.dataExportApplet.topLevelOperator
-        opDataExport.WorkingDirectory.connect(opDataSelection.WorkingDirectory)
-        opDataExport.SelectionNames.setValue(self.ExportNames.asDisplayNameList())
-        opDataExport.PmapColors.connect(opClassify.PmapColors)
-
-        opDataExport.LabelNames.connect(opClassify.LabelNames)
+        self._createDataExportApplet()
 
         self.batchProcessingApplet = BatchProcessingApplet(
             self, "Batch Processing", self.dataSelectionApplet, self.dataExportApplet
         )
-
-        # Expose for shell
-        self._applets.append(self.dataExportApplet)
         self._applets.append(self.batchProcessingApplet)
 
         if unused_args:
@@ -131,6 +118,22 @@ class _NNWorkflowBase(Workflow):
     def _createClassifierApplet(self):
         # Override in child class
         raise NotImplemented
+
+    def _createDataExportApplet(self):
+        # Override in child class if necessary
+        self.dataExportApplet = NNClassificationDataExportApplet(self, "Data Export")
+
+        # Configure global DataExport settings
+        opDataSelection = self.dataSelectionApplet.topLevelOperator
+        opClassify = self.nnClassificationApplet.topLevelOperator
+        opDataExport = self.dataExportApplet.topLevelOperator
+        opDataExport.WorkingDirectory.connect(opDataSelection.WorkingDirectory)
+        opDataExport.SelectionNames.setValue(self.ExportNames.asDisplayNameList())
+        opDataExport.PmapColors.connect(opClassify.PmapColors)
+
+        opDataExport.LabelNames.connect(opClassify.LabelNames)
+
+        self._applets.append(self.dataExportApplet)
 
     def _createInputAndConfigApplets(self):
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
