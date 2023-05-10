@@ -24,6 +24,7 @@ import logging
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.serverConfiguration.types import Device, ServerConfig
 from ilastik.applets.trainableDomainAdaptation import TrainableDomainAdaptationApplet
+from ilastik.applets.trainableDomainAdaptation.tdaDataExportApplet import TdaDataExportApplet
 from ilastik.config import runtime_cfg
 from ilastik.utility import SlotNameEnum
 from ilastik.workflows.neuralNetwork._localLauncher import LocalServerLauncher
@@ -111,6 +112,20 @@ class LocalTrainableDomainAdaptationWorkflow(_NNWorkflowBase):
 
         self.nnClassificationApplet = tda_appplet
         self._applets.append(self.nnClassificationApplet)
+
+    def _createDataExportApplet(self):
+        self.dataExportApplet = TdaDataExportApplet(self, "Data Export")
+
+        # Configure global DataExport settings
+        opDataSelection = self.dataSelectionApplet.topLevelOperator
+        opClassify = self.nnClassificationApplet.topLevelOperator
+        opDataExport = self.dataExportApplet.topLevelOperator
+        opDataExport.WorkingDirectory.connect(opDataSelection.WorkingDirectory)
+        opDataExport.SelectionNames.setValue(self.ExportNames.asDisplayNameList())
+        opDataExport.PmapColors.connect(opClassify.PmapColors)
+        opDataExport.LabelNames.connect(opClassify.LabelNames)
+
+        self._applets.append(self.dataExportApplet)
 
     def connectLane(self, laneIndex):
         """
