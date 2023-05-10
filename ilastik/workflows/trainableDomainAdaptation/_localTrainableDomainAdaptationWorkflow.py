@@ -98,8 +98,8 @@ class LocalTrainableDomainAdaptationWorkflow(_NNWorkflowBase):
                     device_id = device
                     break
 
-            if not device:
-                device = "cpu"
+            if not device_id:
+                device_id = "cpu"
 
             logger.info(f"Neural Network Workflow: using default device {device_id}")
 
