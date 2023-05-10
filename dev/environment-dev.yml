@@ -12,7 +12,8 @@ dependencies:
   - fastfilters
   - future
   - greenlet
-  - grpcio
+  - grpcio 1.41.*
+  - grpcio-tools 1.41.*
   - h5py
   - hytra
   - ilastik-feature-selection
