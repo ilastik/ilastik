@@ -33,7 +33,8 @@ outputs:
         - fastfilters
         - future
         - greenlet
-        - grpcio
+        - grpcio <1.42
+        - grpcio-tools <1.42
         - h5py
         - hytra >=1.1.5
         - ilastik-feature-selection
