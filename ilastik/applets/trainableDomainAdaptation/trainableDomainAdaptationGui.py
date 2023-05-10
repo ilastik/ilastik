@@ -10,7 +10,7 @@ from volumina.colortables import default16_new
 
 from ilastik.applets.pixelClassification.pixelClassificationGui import PixelClassificationGui
 
-from ilastik.applets.pixelClassification.SuggestFeaturesDialog import SuggestFeaturesDialog
+from ilastik.applets.pixelClassification.suggestFeaturesDialog import SuggestFeaturesDialog
 from .modelStateControl import EnhancerModelStateControl
 
 logger = logging.getLogger(__name__)

@@ -55,9 +55,9 @@ class LocalTrainableDomainAdaptationWorkflow(_NNWorkflowBase):
 
     @enum.unique
     class ExportNames(SlotNameEnum):
+        NN_PROBABILITIES = enum.auto()
         PROBABILITIES = enum.auto()
         LABELS = enum.auto()
-        NN_PROBABILITIES = enum.auto()
 
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
         tiktorch_exe_path = runtime_cfg.tiktorch_executable
@@ -132,8 +132,8 @@ class LocalTrainableDomainAdaptationWorkflow(_NNWorkflowBase):
         opDataExport.RawData.connect(opData.ImageGroup[self.DATA_ROLE_RAW])
         opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[self.DATA_ROLE_RAW])
         opDataExport.Inputs.resize(len(self.ExportNames))
-        opDataExport.Inputs[self.ExportNames.PROBABILITIES].connect(opNNclassify.PredictionProbabilities)
         opDataExport.Inputs[self.ExportNames.NN_PROBABILITIES].connect(opNNclassify.NNPredictionProbabilities)
+        opDataExport.Inputs[self.ExportNames.PROBABILITIES].connect(opNNclassify.PredictionProbabilities)
         opDataExport.Inputs[self.ExportNames.LABELS].connect(opNNclassify.LabelImages)
 
     def cleanUp(self):
