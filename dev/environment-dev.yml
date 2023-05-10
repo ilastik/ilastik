@@ -13,7 +13,6 @@ dependencies:
   - future
   - greenlet
   - grpcio 1.41.*
-  - grpcio-tools 1.41.*
   - h5py
   - hytra
   - ilastik-feature-selection
@@ -49,7 +48,7 @@ dependencies:
   - cpuonly
   # - pytorch 1.9.*=*cu*
   # - cudatoolkit 11.1.*
-  - tiktorch >=23.2.0
+  - tiktorch >=23.5.0
 
   # dev-only dependencies
   - conda-build
