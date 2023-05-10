@@ -194,6 +194,7 @@ class ModelStateControl(QWidget):
         bottom_layout.addWidget(self.modelControlButton)
         layout.addWidget(self.modelSourceEdit)
         layout.addLayout(bottom_layout)
+        self.setLayout(layout)
 
     def setTiktorchController(self, tiktorchController):
         self._tiktorchController = tiktorchController
