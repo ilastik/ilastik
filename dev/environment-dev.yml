@@ -1,4 +1,5 @@
 channels:
+  - ilastik-forge/label/dev
   - ilastik-forge
   - pytorch
   - conda-forge
@@ -39,6 +40,7 @@ dependencies:
   # need to bump this manually until there is a true version bump in vigra
   - vigra 1.11.1=*_1033
   - xarray
+  - volumina
   - z5py
 
   # Neural Network Workflow dependencies
