@@ -35,10 +35,6 @@ from lazyflow.operators import tiktorch
 from lazyflow.roi import TinyVector
 
 logger = logging.getLogger(__name__)
-print(logger, __name__)
-
-
-KNOWN_NN_DEVICES = ("cuda", "mps")
 
 
 class LocalTrainableDomainAdaptationWorkflow(_NNWorkflowBase):
@@ -84,27 +80,9 @@ class LocalTrainableDomainAdaptationWorkflow(_NNWorkflowBase):
         srv_config = ServerConfig(id="auto", address=conn_str, devices=[Device(id="cpu", name="cpu", enabled=True)])
         connFactory = tiktorch.TiktorchConnectionFactory()
         conn = connFactory.ensure_connection(srv_config)
+        device_id, device_name = super()._configure_device(conn)
 
-        devices = {d[0]: d[1] for d in conn.get_devices()}
-        device_id = runtime_cfg.preferred_cuda_device_id
-
-        if device_id in devices:
-            logger.info(f"Trainable Domain Adaptation Workflow: using preferred device {device_id}")
-        else:
-            if device_id:
-                logger.warning(f"Neural Network Workflow: preferred device {device_id} not found")
-
-            for device in devices:
-                if any(device.startswith(known) for known in KNOWN_NN_DEVICES):
-                    device_id = device
-                    break
-
-            if not device_id:
-                device_id = "cpu"
-
-            logger.info(f"Neural Network Workflow: using default device {device_id}")
-
-        srv_config = srv_config.evolve(devices=[Device(id=device_id, name=devices[device_id], enabled=True)])
+        srv_config = srv_config.evolve(devices=[Device(id=device_id, name=device_name, enabled=True)])
 
         tda_appplet = TrainableDomainAdaptationApplet(self, "TrainableDomainAdaptation", connectionFactory=connFactory)
         opNNclassify = tda_appplet.topLevelOperator
