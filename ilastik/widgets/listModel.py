@@ -129,7 +129,7 @@ class ListModel(QAbstractTableModel):
     def rowCount(self, parent=None):
         return len(self._elements)
 
-    def columnCount(self, parent):
+    def columnCount(self, parent=None):
         return self.ColumnID.ncols
 
     def _getToolTipSuffix(self, row):
