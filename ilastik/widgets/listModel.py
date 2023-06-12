@@ -18,8 +18,9 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt5.QtGui import QColor, QPixmap, QIcon, QPainter, QPen, QImage
+from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QObject, QAbstractTableModel, QItemSelectionModel, Qt, QModelIndex, pyqtSignal
+from ilastik.shell.gui.iconMgr import ilastikIcons
 
 import logging
 
@@ -129,7 +130,7 @@ class ListModel(QAbstractTableModel):
     def rowCount(self, parent=None):
         return len(self._elements)
 
-    def columnCount(self, parent):
+    def columnCount(self, parent=None):
         return self.ColumnID.ncols
 
     def _getToolTipSuffix(self, row):
@@ -221,25 +222,7 @@ class ListModel(QAbstractTableModel):
             if index.row() in self.unremovable_rows:
                 return
 
-            row = index.row()
-            pixmap = QPixmap(_NPIXELS, _NPIXELS)
-            pixmap.fill(Qt.transparent)
-            painter = QPainter()
-            painter.begin(pixmap)
-            painter.setRenderHint(QPainter.Antialiasing)
-            painter.setBrush(QColor("red"))
-            painter.drawEllipse(1, 1, _NPIXELS - 2, _NPIXELS - 2)
-            pen = QPen(QColor("black"))
-            pen.setWidth(2)
-            painter.setPen(pen)
-
-            x = _XSTART
-            y = _NPIXELS - x
-            painter.drawLine(x, x, y, y)
-            painter.drawLine(y, x, x, y)
-
-            painter.end()
-            icon = QIcon(pixmap)
+            icon = QIcon(ilastikIcons.RemSel)
             return icon
 
     def flags(self, index):

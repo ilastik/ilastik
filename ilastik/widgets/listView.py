@@ -19,7 +19,6 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-import os
 from PyQt5.QtWidgets import QTableView, QAbstractItemView, QHeaderView, QStackedWidget, QLabel, QSizePolicy
 from PyQt5.QtCore import Qt
 
@@ -61,38 +60,38 @@ class ListView(QStackedWidget):
         :param modelIndex:
         """
 
-    #         if (modelIndex.column() == self.model.ColumnID.Delete and
-    #             not self._table.model().flags(modelIndex) == Qt.NoItemFlags):
-    #             self._table.model().removeRow(modelIndex.row())
-    #
     def tableViewCellDoubleClicked(self, modelIndex):
         """
         Reimplement this function to get interaction when single click
         :param modelIndex:
         """
 
-    #         if modelIndex.column() == self.model.ColumnID.Color:
-    #             self._colorDialog.setBrushColor(self._table.model()[modelIndex.row()].brushColor())
-    #             self._colorDialog.setPmapColor (self._table.model()[modelIndex.row()].pmapColor())
-    #             self._colorDialog.exec_()
-    #             #print "brush color = {}".format(self._colorDialog.brushColor().name())
-    #             #print "pmap color  = {}".format(self._colorDialog.pmapColor().name())
-    #             self._table.model().setData(modelIndex, (self._colorDialog.brushColor(),
-    #                                               self._colorDialog.pmapColor ()))
-
     def rowMovedTest(self, logicalIndex, oldVisualIndex, newVisualIndex):
         logger.debug("{} {} {}".format(logicalIndex, oldVisualIndex, newVisualIndex))
 
     def _setListViewLook(self):
+        if self.model.columnCount() < 3:
+            raise NotImplementedError("_setListViewLook can only be used for label tables with >=3 columns")
         table = self._table
-        # table.setDragEnabled(True)
+        table.setStyleSheet(
+            """
+            QTableView { padding-left: 3px; background-color: white; }
+            QTableView::item { padding: 4px; }
+            """
+        )  # item.padding does not affect all four sides of table cells
         table.setAcceptDrops(True)
         table.setFocusPolicy(Qt.NoFocus)
         table.setShowGrid(False)
         table.horizontalHeader().hide()
         table.verticalHeader().hide()
-        # table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        table.horizontalHeader().setMinimumSectionSize(1)
+        sectionResizeModes = {
+            self.model.ColumnID.Color: QHeaderView.ResizeToContents,
+            self.model.ColumnID.Name: QHeaderView.Stretch,
+            self.model.ColumnID.Delete: QHeaderView.ResizeToContents,
+        }
+        for column, mode in sectionResizeModes.items():
+            table.horizontalHeader().setSectionResizeMode(column, mode)
 
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
