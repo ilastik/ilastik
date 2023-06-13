@@ -69,12 +69,10 @@ class TestConservationTrackingHeadless(object):
         logger.info("starting setup...")
         cls.original_cwd = os.getcwd()
 
-        # Load the ilastik startup script as a module.
-        # Do it here in setupClass to ensure that it isn't loaded more than once.
-        logger.info("looking for ilastik.py...")
-        from ilastik.__main__ import main
+        # Import here in setupClass to ensure loading only once.
+        import ilastik.__main__
 
-        cls.ilastik_startup = main
+        cls.ilastik_startup = ilastik.__main__
 
     @classmethod
     def teardown_class(cls):
