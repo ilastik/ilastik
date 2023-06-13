@@ -45,6 +45,14 @@ class TestConservationTrackingHeadless(object):
     RAW_DATA_FILE = os.path.join(input_data_path, "smallVideo.h5")
     BDV_XML_FILE = os.path.join(input_data_path, "smallVideoBdv.xml")
     BINARY_SEGMENTATION_FILE = os.path.join(input_data_path, "smallVideoSimpleSegmentation.h5")
+    ILASTIK_MAIN_DEFAULT_ARGS = [
+        f"--project={PROJECT_FILE}",
+        "--headless",
+        "--raw_data",
+        os.path.join(RAW_DATA_FILE, "data"),
+        "--segmentation_image",
+        os.path.join(BINARY_SEGMENTATION_FILE, "exported_data"),
+    ]
 
     EXPECTED_TRACKING_RESULT_FILE = os.path.join(input_data_path, "smallVideo-data_Tracking-Result.h5")
     EXPECTED_SHAPE = (7, 408, 408, 1)  # Expected shape for tracking results HDF5 files
@@ -89,16 +97,13 @@ class TestConservationTrackingHeadless(object):
     def testTrackingHeadless(self, tmp_path):
         output_path = tmp_path / "testTrackingHeadlessOutput.h5"
 
-        args = " --project=" + self.PROJECT_FILE
-        args += " --headless"
-
-        args += " --export_source=Tracking-Result"
-        args += " --raw_data " + self.RAW_DATA_FILE + "/data"
-        args += " --segmentation_image " + self.BINARY_SEGMENTATION_FILE + "/exported_data"
-        args += " --output_filename_format=" + str(output_path)
+        args = self.ILASTIK_MAIN_DEFAULT_ARGS + [
+            "--export_source=Tracking-Result",
+            "--output_filename_format=" + str(output_path),
+        ]
 
         sys.argv = ["ilastik.py"]  # Clear the existing commandline args so it looks like we're starting fresh.
-        sys.argv += args.split()
+        sys.argv += args
 
         # Start up the ilastik.py entry script as if we had launched it from the command line
         self.ilastik_startup.main()
@@ -114,16 +119,10 @@ class TestConservationTrackingHeadless(object):
     @timeLogged(logger)
     def testCSVExport(self):
 
-        args = " --project=" + self.PROJECT_FILE
-        args += " --headless"
-
-        args += " --export_source=Plugin"
-        args += " --export_plugin=CSV-Table"
-        args += " --raw_data " + self.RAW_DATA_FILE + "/data"
-        args += " --segmentation_image " + self.BINARY_SEGMENTATION_FILE + "/exported_data"
+        args = self.ILASTIK_MAIN_DEFAULT_ARGS + ["--export_source=Plugin", "--export_plugin=CSV-Table"]
 
         sys.argv = ["ilastik.py"]  # Clear the existing commandline args so it looks like we're starting fresh.
-        sys.argv += args.split()
+        sys.argv += args
 
         # Start up the ilastik.py entry script as if we had launched it from the command line
         self.ilastik_startup.main()
@@ -163,16 +162,10 @@ class TestConservationTrackingHeadless(object):
     @timeLogged(logger)
     def testCTCExport(self):
 
-        args = " --project=" + self.PROJECT_FILE
-        args += " --headless"
-
-        args += " --export_source=Plugin"
-        args += " --export_plugin=CellTrackingChallenge"
-        args += " --raw_data " + self.RAW_DATA_FILE + "/data"
-        args += " --segmentation_image " + self.BINARY_SEGMENTATION_FILE + "/exported_data"
+        args = self.ILASTIK_MAIN_DEFAULT_ARGS + ["--export_source=Plugin", "--export_plugin=CellTrackingChallenge"]
 
         sys.argv = ["ilastik.py"]  # Clear the existing commandline args so it looks like we're starting fresh.
-        sys.argv += args.split()
+        sys.argv += args
 
         # Start up the ilastik.py entry script as if we had launched it from the command line
         self.ilastik_startup.main()
@@ -208,16 +201,10 @@ class TestConservationTrackingHeadless(object):
     @timeLogged(logger)
     def testHDF5Export(self):
 
-        args = " --project=" + self.PROJECT_FILE
-        args += " --headless"
-
-        args += " --export_source=Plugin"
-        args += " --export_plugin=H5-Event-Sequence"
-        args += " --raw_data " + self.RAW_DATA_FILE + "/data"
-        args += " --segmentation_image " + self.BINARY_SEGMENTATION_FILE + "/exported_data"
+        args = self.ILASTIK_MAIN_DEFAULT_ARGS + ["--export_source=Plugin", "--export_plugin=H5-Event-Sequence"]
 
         sys.argv = ["ilastik.py"]  # Clear the existing commandline args so it looks like we're starting fresh.
-        sys.argv += args.split()
+        sys.argv += args
 
         # Start up the ilastik.py entry script as if we had launched it from the command line
         self.ilastik_startup.main()
@@ -236,17 +223,14 @@ class TestConservationTrackingHeadless(object):
         except:
             pytest.xfail("Mamutexport module not present. Skipping test")
 
-        args = " --project=" + self.PROJECT_FILE
-        args += " --headless"
-
-        args += " --export_source=Plugin"
-        args += " --export_plugin=Fiji-MaMuT"
-        args += " --raw_data " + self.RAW_DATA_FILE + "/data"
-        args += " --segmentation_image " + self.BINARY_SEGMENTATION_FILE + "/exported_data"
-        args += " --big_data_viewer_xml_file=" + self.BDV_XML_FILE
+        args = self.ILASTIK_MAIN_DEFAULT_ARGS + [
+            "--export_source=Plugin",
+            "--export_plugin=Fiji-MaMuT",
+            "--big_data_viewer_xml_file=" + self.BDV_XML_FILE,
+        ]
 
         sys.argv = ["ilastik.py"]  # Clear the existing commandline args so it looks like we're starting fresh.
-        sys.argv += args.split()
+        sys.argv += args
 
         # Start up the ilastik.py entry script as if we had launched it from the command line
         self.ilastik_startup.main()
@@ -265,16 +249,10 @@ class TestConservationTrackingHeadless(object):
         except:
             pytest.xfail("Mamutexport module not present. Skipping test")
 
-        args = " --project=" + self.PROJECT_FILE
-        args += " --headless"
-
-        args += " --export_source=Plugin"
-        args += " --export_plugin=JSON"
-        args += " --raw_data " + self.RAW_DATA_FILE + "/data"
-        args += " --segmentation_image " + self.BINARY_SEGMENTATION_FILE + "/exported_data"
+        args = self.ILASTIK_MAIN_DEFAULT_ARGS + ["--export_source=Plugin", "--export_plugin=JSON"]
 
         sys.argv = ["ilastik.py"]  # Clear the existing commandline args so it looks like we're starting fresh.
-        sys.argv += args.split()
+        sys.argv += args
 
         # Start up the ilastik.py entry script as if we had launched it from the command line
         self.ilastik_startup.main()
