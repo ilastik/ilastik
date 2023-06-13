@@ -22,18 +22,10 @@ from __future__ import print_function
 ###############################################################################
 import os
 import sys
-import imp
 import numpy as np
 import h5py
-import tempfile
-import csv
 import pytest
 
-from lazyflow.graph import Graph
-from lazyflow.operators.ioOperators import OpStackLoader
-from lazyflow.operators.opReorderAxes import OpReorderAxes
-
-import ilastik
 from lazyflow.utility.timer import timeLogged
 
 import logging
@@ -57,30 +49,18 @@ except ImportError:
 class TestStructuredLearningTrackingHeadless(object):
 
     logger.info("looking for tests directory ...")
-    ilastik_tests_file_path = os.path.join(os.path.split(os.path.realpath(ilastik.__file__))[0], "../tests/")
-    if not os.path.exists(ilastik_tests_file_path):
-        raise RuntimeError("Couldn't find ilastik/tests directory: {}".format(ilastik_tests_file_path))
+    input_data_path = os.path.join(
+        os.path.dirname(__file__), "..", "..", "data", "inputdata", "cell_tracking_challenge_15", "Fluo-N2DH-SIM"
+    )
+    if not os.path.exists(input_data_path):
+        raise RuntimeError("Couldn't find ilastik/tests directory: {}".format(input_data_path))
 
-    PROJECT_FILE = (
-        ilastik_tests_file_path
-        + "data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learning-with-segmentation-gt-2017-01-17.ilp"
-    )
-    RAW_DATA_FILE = (
-        ilastik_tests_file_path + "data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17.h5"
-    )
-    BINARY_SEGMENTATION_FILE = (
-        ilastik_tests_file_path
-        + "data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01_GT/SEG/learningSeg-2017-01-17.h5"
-    )
+    PROJECT_FILE = os.path.join(input_data_path, "01/learning-with-segmentation-gt-2017-01-17.ilp")
+    RAW_DATA_FILE = os.path.join(input_data_path, "01/learningRaw-2017-01-17.h5")
+    BINARY_SEGMENTATION_FILE = os.path.join(input_data_path, "01_GT/SEG/learningSeg-2017-01-17.h5")
 
-    EXPECTED_TRACKING_RESULT_FILE = (
-        ilastik_tests_file_path
-        + "data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17_Tracking-Result.h5"
-    )
-    EXPECTED_CSV_FILE = (
-        ilastik_tests_file_path
-        + "data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17_CSV-Table.csv"
-    )
+    EXPECTED_TRACKING_RESULT_FILE = os.path.join(input_data_path, "01/learningRaw-2017-01-17_Tracking-Result.h5")
+    EXPECTED_CSV_FILE = os.path.join(input_data_path, "01/learningRaw-2017-01-17_CSV-Table.csv")
     EXPECTED_SHAPE = (10, 495, 534, 1)  # Expected shape for tracking results HDF5 files
     EXPECTED_NUM_LINES_TRACKING = 164  # Number of lines expected in exported csv file
     EXPECTED_NUM_DIVISIONS = 6  # Number of lines expected in exported csv file
@@ -102,10 +82,8 @@ class TestStructuredLearningTrackingHeadless(object):
     @classmethod
     def teardown_class(cls):
         removeFiles = [
-            cls.ilastik_tests_file_path
-            + "data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17_Tracking-Result.h5",
-            cls.ilastik_tests_file_path
-            + "data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17_CSV-Table.csv",
+            os.path.join(cls.input_data_path, "01/learningRaw-2017-01-17_Tracking-Result.h5"),
+            os.path.join(cls.input_data_path, "01/learningRaw-2017-01-17_CSV-Table.csv"),
         ]
 
         # Clean up: Delete any test files we generated
