@@ -78,6 +78,13 @@ class TestStructuredLearningTrackingHeadless(object):
 
     @classmethod
     def setup_class(cls):
+        if (
+            not os.path.isfile(cls.PROJECT_FILE)
+            or not os.path.isfile(cls.RAW_DATA_FILE)
+            or not os.path.isfile(cls.PREDICTION_FILE)
+        ):
+            raise RuntimeError("Test input files not found.")
+
         logger.info("starting setup...")
         cls.original_cwd = os.getcwd()
 
@@ -111,14 +118,6 @@ class TestStructuredLearningTrackingHeadless(object):
         except ImportError as e:
             pytest.xfail("Structured learning tracking could not be imported. CPLEX is most likely missing: " + str(e))
 
-        # Skip test because there are missing files
-        if (
-            not os.path.isfile(self.PROJECT_FILE)
-            or not os.path.isfile(self.RAW_DATA_FILE)
-            or not os.path.isfile(self.PREDICTION_FILE)
-        ):
-            pytest.xfail("Test files not found.")
-
         args = " --project=" + self.PROJECT_FILE
         args += " --headless"
 
@@ -151,14 +150,6 @@ class TestStructuredLearningTrackingHeadless(object):
             import hytra
         except ImportError as e:
             pytest.xfail("Hytra tracking pipeline couldn't be imported: " + str(e))
-
-        # Skip test because there are missing files
-        if (
-            not os.path.isfile(self.PROJECT_FILE)
-            or not os.path.isfile(self.RAW_DATA_FILE)
-            or not os.path.isfile(self.PREDICTION_FILE)
-        ):
-            pytest.xfail("Test files not found.")
 
         args = " --project=" + self.PROJECT_FILE
         args += " --headless"

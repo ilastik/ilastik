@@ -59,6 +59,13 @@ class TestConservationTrackingHeadless(object):
 
     @classmethod
     def setup_class(cls):
+        if (
+            not os.path.isfile(cls.PROJECT_FILE)
+            or not os.path.isfile(cls.RAW_DATA_FILE)
+            or not os.path.isfile(cls.BINARY_SEGMENTATION_FILE)
+        ):
+            raise RuntimeError("Test input files not found.")
+
         logger.info("starting setup...")
         cls.original_cwd = os.getcwd()
 
@@ -83,13 +90,6 @@ class TestConservationTrackingHeadless(object):
     @timeLogged(logger)
     def testTrackingHeadless(self, tmp_path):
         output_path = tmp_path / "testTrackingHeadlessOutput.h5"
-        # Skip test because there are missing files
-        if (
-            not os.path.isfile(self.PROJECT_FILE)
-            or not os.path.isfile(self.RAW_DATA_FILE)
-            or not os.path.isfile(self.BINARY_SEGMENTATION_FILE)
-        ):
-            pytest.xfail("Test files not found.")
 
         args = " --project=" + self.PROJECT_FILE
         args += " --headless"
@@ -115,13 +115,6 @@ class TestConservationTrackingHeadless(object):
 
     @timeLogged(logger)
     def testCSVExport(self):
-        # Skip test because there are missing files
-        if (
-            not os.path.isfile(self.PROJECT_FILE)
-            or not os.path.isfile(self.RAW_DATA_FILE)
-            or not os.path.isfile(self.BINARY_SEGMENTATION_FILE)
-        ):
-            pytest.xfail("Test files not found.")
 
         args = " --project=" + self.PROJECT_FILE
         args += " --headless"
@@ -171,13 +164,6 @@ class TestConservationTrackingHeadless(object):
 
     @timeLogged(logger)
     def testCTCExport(self):
-        # Skip test because there are missing files
-        if (
-            not os.path.isfile(self.PROJECT_FILE)
-            or not os.path.isfile(self.RAW_DATA_FILE)
-            or not os.path.isfile(self.BINARY_SEGMENTATION_FILE)
-        ):
-            pytest.xfail("Test files not found.")
 
         args = " --project=" + self.PROJECT_FILE
         args += " --headless"
@@ -223,13 +209,6 @@ class TestConservationTrackingHeadless(object):
 
     @timeLogged(logger)
     def testHDF5Export(self):
-        # Skip test because there are missing files
-        if (
-            not os.path.isfile(self.PROJECT_FILE)
-            or not os.path.isfile(self.RAW_DATA_FILE)
-            or not os.path.isfile(self.BINARY_SEGMENTATION_FILE)
-        ):
-            pytest.xfail("Test files not found.")
 
         args = " --project=" + self.PROJECT_FILE
         args += " --headless"
@@ -254,13 +233,6 @@ class TestConservationTrackingHeadless(object):
 
     @timeLogged(logger)
     def testMamutExport(self):
-        # Skip test because there are missing files
-        if (
-            not os.path.isfile(self.PROJECT_FILE)
-            or not os.path.isfile(self.RAW_DATA_FILE)
-            or not os.path.isfile(self.BINARY_SEGMENTATION_FILE)
-        ):
-            pytest.xfail("Test files not found.")
         try:
             from mamutexport.mamutxmlbuilder import MamutXmlBuilder
         except:
@@ -290,13 +262,6 @@ class TestConservationTrackingHeadless(object):
 
     @timeLogged(logger)
     def testJsonExport(self):
-        # Skip test because there are missing files
-        if (
-            not os.path.isfile(self.PROJECT_FILE)
-            or not os.path.isfile(self.RAW_DATA_FILE)
-            or not os.path.isfile(self.BINARY_SEGMENTATION_FILE)
-        ):
-            pytest.xfail("Test files not found.")
         try:
             from mamutexport.mamutxmlbuilder import MamutXmlBuilder
         except:
