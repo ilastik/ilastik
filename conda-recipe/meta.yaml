@@ -49,7 +49,7 @@ outputs:
         - pandas <2
         - psutil
         - pyopengl
-        - pyqt 5.12.*
+        - pyqt 5.15.*
         - python-elf
         - pytiff
         - scikit-image
