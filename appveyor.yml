@@ -17,11 +17,8 @@ install:
   - cmd: set "PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
   - cmd: where conda
   - cmd: conda config --set always_yes yes --set changeps1 no --set channel_priority strict
-  # due to an incompatibility of mamba with conda 4.13, one currently cannot update conda first
-  - cmd: conda install -n base -c conda-forge mamba
-  - cmd: mamba update -n base -c conda-forge conda
-  - cmd: mamba install -n base -c conda-forge conda-build boa setuptools_scm
-  # replace with whatever version of ilastik triggered the appveyor
+  - cmd: conda update -n base -c conda-forge --all
+  - cmd: conda install -n base -c conda-forge mamba conda-build boa setuptools_scm
   - |
     mamba env create --name %ENV_NAME% --file dev\environment-dev.yml
     mamba install --name %ENV_NAME% --freeze-installed -c ilastik-forge -c conda-forge volumina
