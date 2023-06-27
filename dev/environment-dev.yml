@@ -4,7 +4,7 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - python 3.7.*
+  - python 3.9.*
   - numpy 1.21.*
   - appdirs
   - cachetools
@@ -12,7 +12,8 @@ dependencies:
   - fastfilters
   - future
   - greenlet
-  - grpcio
+  - grpcio 1.41.*
+  - grpcio-tools 1.41.*
   - h5py
   - hytra
   - ilastik-feature-selection
@@ -29,13 +30,14 @@ dependencies:
   - pyopengl
   - pyqt 5.12.*
   - pyqtgraph
-  - python-elf
   - pytiff
+  - python-elf
   - qimage2ndarray
   - scikit-image
   - scikit-learn
-  # see note in conda recipe about tifffile compatibility
-  - tifffile 2021.11.2
+  # for python 3.7 compatible environment use
+  # tiffile >2020.9.22,<=2021.11.2
+  - tifffile
   # build 1.11.1=*_1028 on cf is the first to be compatible with numpy>1.19
   # need to bump this manually until there is a true version bump in vigra
   - vigra 1.11.1=*_1033
@@ -44,12 +46,11 @@ dependencies:
 
   # Neural Network Workflow dependencies
   # can be changed to request gpu versions
-  - pytorch 1.9.* *cpu*
+  - pytorch 1.13.* *cpu*
 
   - cpuonly
   # - pytorch 1.9.*=*cu*
   # - cudatoolkit 11.1.*
-  - tensorflow 1.14.*
   - tiktorch >=23.2.0
 
   # dev-only dependencies
@@ -61,4 +62,4 @@ dependencies:
 
   # ensure working environment on apple M1 via rosetta
   # remove once native builds are available
-  - mkl 2021.*  # [osx]
+  # - mkl 2021.*  # [osx]
