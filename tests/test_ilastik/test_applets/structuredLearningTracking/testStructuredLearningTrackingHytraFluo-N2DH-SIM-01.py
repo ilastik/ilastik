@@ -60,7 +60,9 @@ class TestStructuredLearningTrackingHeadless(object):
     RAW_DATA_FILE = os.path.join(input_data_path, "01/learningRaw-2017-01-17.h5")
     BINARY_SEGMENTATION_FILE = os.path.join(input_data_path, "01_GT/SEG/learningSeg-2017-01-17.h5")
 
-    EXPECTED_TRACKING_RESULT_FILE = os.path.join(input_data_path, "01/learningRaw-2017-01-17_Tracking-Result.h5")
+    EXPECTED_TRACKING_RESULT_FILE = os.path.join(
+        input_data_path, "01/learningRaw-2017-01-17-exported_data_Tracking-Result.h5"
+    )
     EXPECTED_CSV_FILE = os.path.join(input_data_path, "01/learningRaw-2017-01-17_CSV-Table.csv")
     EXPECTED_SHAPE = (10, 495, 534, 1)  # Expected shape for tracking results HDF5 files
     EXPECTED_NUM_LINES_TRACKING = 164  # Number of lines expected in exported csv file
