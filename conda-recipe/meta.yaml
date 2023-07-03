@@ -50,7 +50,6 @@ outputs:
         - pyopengl
         - pyqt 5.15.*
         - python-elf
-        - pytiff
         - scikit-image
         - scikit-learn
         - tifffile
