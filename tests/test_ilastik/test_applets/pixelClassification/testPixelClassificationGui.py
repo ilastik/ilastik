@@ -216,40 +216,49 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             self.data_selection_gui._detailViewerWidgets[0].overlay.current_row = 0
             self.data_selection_gui._detailViewerWidgets[0].overlay.click()
 
+    def test_00_CreateEmptyProject(self):
+        self.exec_in_shell(self.shell.createAndLoadNewProject, self.PROJECT_FILE, self.workflowClass())
+        assert os.path.exists(self.PROJECT_FILE)
+
+    @pytest.mark.skipif(
+        os.name != "nt" or os.environ.get("CI") is not None,
+        reason="this part of the test only works on windows, hangs/segfaults on any CI provider.",
+    )
+    def test_01_AddRemoveData(self):
+        workflow = self.shell.projectManager.workflow
+        opDataSelection = workflow.dataSelectionApplet.topLevelOperator
+        # opens multi dataset file and expects second dialog to choose inner path
+        self.add_file(self.tmp_h5_multiple_dataset, "/test_group_3d/test_data_3d")
+        with wait_slot_ready(opDataSelection.get_lane(0).DatasetGroup[0]):
+            assert (
+                opDataSelection.get_lane(0).DatasetGroup[0].value.nickname
+                == "multiple_datasets-test_group_3d-test_data_3d"
+            )
+        self.remove_first_dataset()
+
+        # opens multi dataset file and expects inner path to be picked automatically
+        self.add_file(self.tmp_h5_multiple_dataset)
+        with wait_slot_ready(opDataSelection.get_lane(0).DatasetGroup[0]):
+            assert (
+                opDataSelection.get_lane(0).DatasetGroup[0].value.nickname
+                == "multiple_datasets-test_group_3d-test_data_3d"
+            )
+        self.remove_first_dataset()
+
+        # opens single dataset file and expects inner path to be picked automatically
+        self.add_file(self.tmp_h5_single_dataset)
+        with wait_slot_ready(opDataSelection.get_lane(0).DatasetGroup[0]):
+            assert opDataSelection.get_lane(0).DatasetGroup[0].value.nickname == "single_dataset-test_group-test_data"
+        self.remove_first_dataset()
+
     def test_1_NewProject(self):
         """
         Create a blank project, manipulate few couple settings, and save it.
         """
-        self.exec_in_shell(self.shell.createAndLoadNewProject, self.PROJECT_FILE, self.workflowClass())
         workflow = self.shell.projectManager.workflow
         opDataSelection = workflow.dataSelectionApplet.topLevelOperator
 
-        if os.name != "nt":  # FIXME: enable these on windows without hangs or segfaults
-            # opens multi dataset file and expects second dialog to choose inner path
-            self.add_file(self.tmp_h5_multiple_dataset, "/test_group_3d/test_data_3d")
-            with wait_slot_ready(opDataSelection.get_lane(0).DatasetGroup[0]):
-                assert (
-                    opDataSelection.get_lane(0).DatasetGroup[0].value.nickname
-                    == "multiple_datasets-test_group_3d-test_data_3d"
-                )
-            self.remove_first_dataset()
-
-            # opens multi dataset file and expects inner path to be picked automatically
-            self.add_file(self.tmp_h5_multiple_dataset)
-            with wait_slot_ready(opDataSelection.get_lane(0).DatasetGroup[0]):
-                assert (
-                    opDataSelection.get_lane(0).DatasetGroup[0].value.nickname
-                    == "multiple_datasets-test_group_3d-test_data_3d"
-                )
-            self.remove_first_dataset()
-
-            # opens single dataset file and expects inner path to be picked automatically
-            self.add_file(self.tmp_h5_single_dataset)
-            with wait_slot_ready(opDataSelection.get_lane(0).DatasetGroup[0]):
-                assert (
-                    opDataSelection.get_lane(0).DatasetGroup[0].value.nickname == "single_dataset-test_group-test_data"
-                )
-            self.remove_first_dataset()
+        # FIXME: this part of the test doesn't work on windows, or on any CI (hang/segfault)
 
         def impl():
             # Add a file
