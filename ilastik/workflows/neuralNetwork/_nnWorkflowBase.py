@@ -37,6 +37,8 @@ from ilastik.utility import SlotNameEnum
 
 logger = logging.getLogger(__name__)
 
+KNOWN_NN_DEVICES = ("cuda", "mps")
+
 
 class _NNWorkflowBase(Workflow):
     """
@@ -252,26 +254,26 @@ class _NNWorkflowBase(Workflow):
         3) "first" in the list of cuda devices from the server
         4) cpu
         """
-        devices = conn.get_devices()
-        preferred_cuda_device_id = runtime_cfg.preferred_cuda_device_id or saved_device
-        device_ids = [dev[0] for dev in devices]
-        cuda_devices = tuple(d for d in device_ids if d.startswith("cuda"))
+        devices = {d[0]: d[1] for d in conn.get_devices()}
+        device_id = runtime_cfg.preferred_cuda_device_id or saved_device
 
-        if preferred_cuda_device_id not in device_ids:
-            if preferred_cuda_device_id:
-                logger.warning(f"Could nor find preferred cuda device {preferred_cuda_device_id}")
-            try:
-                preferred_cuda_device_id = cuda_devices[0]
-            except IndexError:
-                preferred_cuda_device_id = "cpu"
-
-            logger.info(f"Using default device for Neural Network Workflow {preferred_cuda_device_id}")
+        if device_id in devices:
+            logger.info(f"Trainable Domain Adaptation Workflow: using preferred device {device_id}")
         else:
-            logger.info(f"Using specified device for Neural Network Workflow {preferred_cuda_device_id}")
+            if device_id:
+                logger.warning(f"Neural Network Workflow: preferred device {device_id} not found")
 
-        device_name = devices[device_ids.index(preferred_cuda_device_id)][1]
+            for device in devices:
+                if any(device.startswith(known) for known in KNOWN_NN_DEVICES):
+                    device_id = device
+                    break
 
-        return preferred_cuda_device_id, device_name
+            if not device_id:
+                device_id = "cpu"
+
+            logger.info(f"Neural Network Workflow: using default device {device_id}")
+
+        return device_id, devices[device_id]
 
     def _setup_classifier_op_for_batch(self):
         raise NotImplemented
