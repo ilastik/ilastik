@@ -71,7 +71,7 @@ class LocalServerLauncher:
 
             self._process = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr)
             try:
-                wait(lambda: os.path.exists(conn_param_path), max_wait=20)
+                wait(lambda: os.path.exists(conn_param_path), max_wait=60)
             except RuntimeError:
                 self.stop()
 
