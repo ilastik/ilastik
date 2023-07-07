@@ -103,6 +103,9 @@ class LocalTrainableDomainAdaptationWorkflow(_NNWorkflowBase):
         opDataExport.PmapColors.connect(opClassify.PmapColors)
         opDataExport.LabelNames.connect(opClassify.LabelNames)
 
+        self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
+        self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
+
         self._applets.append(self.dataExportApplet)
 
     def connectLane(self, laneIndex):
@@ -126,7 +129,7 @@ class LocalTrainableDomainAdaptationWorkflow(_NNWorkflowBase):
         opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[self.DATA_ROLE_RAW])
         opDataExport.Inputs.resize(len(self.ExportNames))
         opDataExport.Inputs[self.ExportNames.NN_PROBABILITIES].connect(opNNclassify.NNPredictionProbabilities)
-        opDataExport.Inputs[self.ExportNames.PROBABILITIES].connect(opNNclassify.PredictionProbabilities)
+        opDataExport.Inputs[self.ExportNames.PROBABILITIES].connect(opNNclassify.HeadlessPredictionProbabilities)
         opDataExport.Inputs[self.ExportNames.LABELS].connect(opNNclassify.LabelImages)
 
     def cleanUp(self):
@@ -218,3 +221,25 @@ class LocalTrainableDomainAdaptationWorkflow(_NNWorkflowBase):
         busy |= self.dataExportApplet.busy
         busy |= self.batchProcessingApplet.busy
         self._shell.enableProjectChanges(not busy)
+
+    def prepare_for_entire_export(self):
+        """
+        Assigned to DataExportApplet.prepare_for_entire_export
+        (See above.)
+        """
+        # While exporting results, the caches should not be "frozen"
+        logger.debug("Unfreezing probability cache for export.")
+        opNNClassification = self.nnClassificationApplet.topLevelOperator
+        self._freeze_val = opNNClassification.FreezePredictions.value
+        opNNClassification.FreezePredictions.setValue(False)
+
+    def post_process_entire_export(self):
+        """
+        Assigned to DataExportApplet.post_process_entire_export
+        (See above.)
+        """
+        # After export is finished, re-freeze the segmentation caches.
+        logger.debug("Restoring probability cache freeze status for export.")
+        opNNClassification = self.nnClassificationApplet.topLevelOperator
+        opNNClassification.FreezePredictions.setValue(self._freeze_val)
+        self._freeze_val = None
