@@ -1,6 +1,7 @@
 channels:
-  - ilastik-forge
   - pytorch
+#  - nvidia  # uncomment for pytorch with cuda
+  - ilastik-forge
   - conda-forge
   - nodefaults
 dependencies:
@@ -13,7 +14,6 @@ dependencies:
   - future
   - greenlet
   - grpcio 1.41.*
-  - grpcio-tools 1.41.*
   - h5py
   - hytra
   - ilastik-feature-selection
@@ -28,9 +28,8 @@ dependencies:
   - pandas <2
   - psutil
   - pyopengl
-  - pyqt 5.12.*
+  - pyqt 5.15.*
   - pyqtgraph
-  - pytiff
   - python-elf
   - qimage2ndarray
   - scikit-image
@@ -46,11 +45,14 @@ dependencies:
 
   # Neural Network Workflow dependencies
   # can be changed to request gpu versions
-  - pytorch 1.13.* *cpu*
+  - pytorch 1.13.*
+  - cpuonly  # comment out for pytorch with cuda
+  # mamba does not "respect" track_features, which is the idea behind cpuonly,
+  # with ilastik-pytorch-version-helper-cpu we help mamba on linux and windows
+  # to install a cpu-build
+  - ilastik-pytorch-version-helper-cpu  # comment out for pytorch with cuda
+  # - pytorch-cuda=11.3  # uncomment for pytorch with cuda, specify cuda version
 
-  - cpuonly
-  # - pytorch 1.9.*=*cu*
-  # - cudatoolkit 11.1.*
   - tiktorch >=23.7.0
 
   # dev-only dependencies
