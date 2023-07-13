@@ -69,7 +69,19 @@ class LocalServerLauncher:
             conn_param_path = os.path.join(conn_dir, "conn.json")
             cmd = self._executable_path + ["--port", "0", "--addr", "127.0.0.1", "--connection-file", conn_param_path]
 
-            self._process = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr)
+            env = os.environ.copy()
+            # HACK: unset environment variables that could be detrimental to neural
+            # network performance. Those in particular set by the elf library.
+            for k in [
+                "OMP_NUM_THREADS",
+                "OPENBLAS_NUM_THREADS",
+                "MKL_NUM_THREADS",
+                "VECLIB_NUM_THREADS",
+                "NUMEXPR_NUM_THREADS",
+            ]:
+                if k in env:
+                    del env[k]
+            self._process = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr, env=env)
             try:
                 wait(lambda: os.path.exists(conn_param_path), max_wait=20)
             except RuntimeError:
