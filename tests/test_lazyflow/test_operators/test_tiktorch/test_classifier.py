@@ -27,6 +27,7 @@ def pb_session():
         outputShapes=[
             inference_pb2.OutputShape(
                 shapeType=1,
+                referenceTensor="input",
                 offset=inference_pb2.NamedFloats(
                     namedFloats=[
                         inference_pb2.NamedFloat(name="x", size=16),
@@ -50,20 +51,22 @@ def pb_session():
                 ),
             )
         ],
+        inputNames=["input"],
+        outputNames=["output"],
     )
 
 
 def test_get_halo_returns_values_specified_by_tags(pb_session):
     model_session = ModelSession(session=pb_session, factory=mock.Mock())
-    assert model_session.get_halos(axes="xy") == [(256, 128)]
-    assert model_session.get_halos(axes="yx") == [(128, 256)]
-    assert model_session.get_halos(axes="yxc") == [(128, 256, 1)]
+    assert model_session.get_halos(axes="xy") == {"output": (256, 128)}
+    assert model_session.get_halos(axes="yx") == {"output": (128, 256)}
+    assert model_session.get_halos(axes="yxc") == {"output": (128, 256, 1)}
 
 
 def test_get_halo_returns_0_if_value_is_unspecified(pb_session):
     model_session = ModelSession(session=pb_session, factory=mock.Mock())
-    assert model_session.get_halos(axes="xyz") == [(256, 128, 0)]
-    assert model_session.get_halos(axes="txyz") == [(0, 256, 128, 0)]
+    assert model_session.get_halos(axes="xyz") == {"output": (256, 128, 0)}
+    assert model_session.get_halos(axes="txyz") == {"output": (0, 256, 128, 0)}
 
 
 def test_get_output_shape(pb_session):
@@ -71,16 +74,16 @@ def test_get_output_shape(pb_session):
     model_session = ModelSession(session=pb_session, factory=mock.Mock())
 
     output_shape = model_session.get_output_shapes()
-    assert output_shape == [[{"x": 1056, "y": 320, "c": 8}]]
+    assert output_shape == {"output": [{"x": 1056, "y": 320, "c": 8}]}
 
 
 def test_get_input_shape(pb_session):
     model_session = ModelSession(session=pb_session, factory=mock.Mock())
 
-    assert model_session.get_input_shapes("xyc") == [[(1024, 512, 1)]]
-    assert model_session.get_input_shapes("cyx") == [[(1, 512, 1024)]]
-    assert model_session.get_input_shapes("c") == [[(1,)]]
-    assert model_session.get_input_shapes("tzyxc") == [[(1, 1, 512, 1024, 1)]]
+    assert model_session.get_input_shapes("xyc") == {"input": [(1024, 512, 1)]}
+    assert model_session.get_input_shapes("cyx") == {"input": [(1, 512, 1024)]}
+    assert model_session.get_input_shapes("c") == {"input": [(1,)]}
+    assert model_session.get_input_shapes("tzyxc") == {"input": [(1, 1, 512, 1024, 1)]}
 
 
 def test_known_classes(pb_session):
