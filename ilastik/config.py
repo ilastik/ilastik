@@ -24,7 +24,7 @@ import os
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 import appdirs
 
@@ -83,7 +83,7 @@ filename: in
 
 @dataclass
 class RuntimeCfg:
-    tiktorch_executable: Optional[str] = None
+    tiktorch_executable: Optional[List[str]] = None
     preferred_cuda_device_id: Optional[str] = None
 
 

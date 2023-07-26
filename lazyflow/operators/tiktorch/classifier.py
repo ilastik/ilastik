@@ -24,7 +24,7 @@ import socket
 import numpy
 import warnings
 from collections import defaultdict
-from typing import Iterable, List, Callable, Tuple, Dict
+from typing import Callable, Dict, Iterable, Sequence, Tuple, Union
 
 import xarray
 import grpc
@@ -91,59 +91,89 @@ class ModelSession:
         return self.__session.name
 
     @property
-    def input_axes(self) -> List[str]:
+    def input_names(self) -> Sequence[str]:
+        """Get names/ids for all model inputs"""
+        return self.__session.inputNames
+
+    @property
+    def output_names(self) -> Sequence[str]:
+        """Get names/ids for all model outputs"""
+        return self.__session.outputNames
+
+    @property
+    def input_axes(self) -> Sequence[str]:
+        """Get axes for all model inputs
+
+        linked via index to `input_names`
+        """
         return self.__session.inputAxes
 
     @property
-    def output_axes(self) -> List[str]:
+    def output_axes(self) -> Sequence[str]:
+        """Get axes for all model inputs
+
+        linked via index to `output_names`
+        """
         return self.__session.outputAxes
 
-    def get_output_shapes(self) -> List[List[Dict[str, int]]]:
+    def get_output_shapes(self) -> Dict[str, Sequence[Dict[str, int]]]:
         """Get output shapes for all model output
+
         shape = shape(reference_input_tensor) * scale + 2 * offset
+
+        linked via index to `output_names`
         """
-        # FIXME: we don't really send over reference tensor ids yet.
-        # so for now,
-        output_axes = self.output_axes[0]
-        input_shapes = self.get_input_shapes(axes="".join(output_axes))
-        assert (
-            len(input_shapes) == 1
-        ), "Currently referencing input tensors by name not supported. Fail if more than one input"
-        input_shape = input_shapes[0][0]
-        input_shape_by_name = {name: size for name, size in zip(output_axes, input_shape)}
-        result = []
+        # get input shapes for all possible axes that ilastik can understand
+        input_shapes = self.get_input_shapes(axes="itzyxc")
+
+        # for now, from the possible input shapes select the largest (last)
+        max_input_shapes = {k: in_shape[-1] for k, in_shape in input_shapes.items()}
+
+        max_input_shapes_dicts = {}
+        for input_name, input_shape in max_input_shapes.items():
+            max_input_shapes_dicts[input_name] = {name: size for name, size in zip("itzyxc", input_shape)}
+
+        result = {}
         output_shapes = self.__session.outputShapes
-        assert len(output_shapes) == 1, "Currently only single output shapes are supported"
-        for shape in self.__session.outputShapes:
+        output_names = self.output_names
+        assert len(output_shapes) == 1, "Currently only single output shapes are supported."
+
+        for output_name, shape in zip(output_names, output_shapes):
             if shape.shapeType == 0:
                 # explicit shape
                 output_shape_by_name = {d.name: d.size for d in shape.shape.namedInts}
-                result.append([output_shape_by_name])
+                result[output_name] = [output_shape_by_name]
             elif shape.shapeType == 1:
                 # parametrized shape
                 # HACK: need to determine min shape same way as prediction_pipeline
-                # HACK: assume input tensor at index 0 of input shapes
+                reference_tensor = shape.referenceTensor
+                assert (
+                    reference_tensor in max_input_shapes_dicts
+                ), f"Reference tensor for output {output_name} not found in input shapes {input_shapes.keys()}."
                 offset_size_by_name = defaultdict(lambda: 0, {d.name: d.size for d in shape.offset.namedFloats})
                 scale_size_by_name = defaultdict(lambda: 1.0, {d.name: d.size for d in shape.scale.namedFloats})
                 output_shape_by_name = {}
-                for dim in input_shape_by_name:
-                    output_shape_by_name[dim] = int(
-                        input_shape_by_name[dim] * scale_size_by_name[dim] + 2 * offset_size_by_name[dim]
+                for dim in shape.scale.namedFloats:
+                    if dim.name == "b":
+                        continue
+                    output_shape_by_name[dim.name] = int(
+                        max_input_shapes_dicts[reference_tensor][dim.name] * scale_size_by_name[dim.name]
+                        + 2 * offset_size_by_name[dim.name]
                     )
-                result.append([output_shape_by_name])
+                result[output_name] = [output_shape_by_name]
             else:
-                raise ValueError(f"Cannot work with shapes of shapeType {shape.shapeType}")
+                raise ValueError(f"Cannot work with shapes of shapeType {shape.shapeType}.")
 
         # sanity check:
-        assert len(result) == 1
-        res = result[0][0]
-        axes = "".join(res.keys())
-        halo = self.get_halos(axes=axes)
-        assert len(halo) == 1
-        halo = halo[0]
-        shape_after_halo = [res[axkey] - 2 * axhalo for axkey, axhalo in zip(axes, halo)]
-        if not all(x > 0 for x in shape_after_halo):
-            logger.warning(f"Network configuration problem detected - output shape - 2*halo invalid:{shape_after_halo}")
+        for output_name in output_names:
+            res = result[output_name][0]
+            axes = "".join(res.keys())
+            halo = self.get_halos(axes=axes)[output_name]
+            shape_after_halo = [res[axkey] - 2 * axhalo for axkey, axhalo in zip(axes, halo)]
+            if not all(x > 0 for x in shape_after_halo):
+                logger.warning(
+                    f"Network configuration problem detected - output {output_name} shape - 2*halo invalid:{shape_after_halo}."
+                )
 
         return result
 
@@ -151,44 +181,58 @@ class ModelSession:
     def has_training(self) -> bool:
         return self.__session.hasTraining
 
-    def get_halos(self, axes: str = "zyx") -> List[Tuple[int]]:
-        if isinstance(axes, AxisTags):
-            axes = "".join(axes.keys())
-        halos = []
-        for output_shape in self.__session.outputShapes:
-            halo_size_by_name = {d.name: d.size for d in output_shape.halo.namedInts}
-            halos.append(tuple([halo_size_by_name.get(axis, 0) for axis in axes]))
+    def get_halos(self, axes: Union[str, AxisTags] = "zyx") -> Dict[str, Tuple[int]]:
+        """Get halo sizes for all model outputs
 
-        return halos
-
-    def get_input_shapes(self, axes: str = "zyx") -> List[List[Tuple[int]]]:
-        """Get input shapes for all model inputs
+        linked to `output_names` via keys in returned dict
 
         Returns:
-          models can take multiple images as inputs. For each such input, a list
-            of shapes is returned.
+          models can take multiple images as outputs. For each such input, a
+            list of shapes is returned. Linked to `input_names` via keys in
+            returned dict.
         """
         if isinstance(axes, AxisTags):
             axes = "".join(axes.keys())
-        result = []
-        for shape in self.__session.inputShapes:
+        halos = {}
+        for output_name, output_shape in zip(self.__session.outputNames, self.__session.outputShapes):
+            halo_size_by_name = {d.name: d.size for d in output_shape.halo.namedInts}
+            halos[output_name] = tuple([halo_size_by_name.get(axis, 0) for axis in axes])
+
+        return halos
+
+    def get_input_shapes(self, axes: Union[str, AxisTags] = "itzyxc") -> Dict[str, Sequence[Tuple[int]]]:
+        """Get input shapes for all model inputs
+
+        Note: for parametrized input shapes we try to do something sensible with
+          the shape, and not just return the minimum shape. See also
+          `enforce_min_shape`.
+
+        Returns:
+          models can take multiple images as inputs. For each such input, a list
+            of shapes is returned. Linked to `input_names` via keys in returned
+            dict.
+        """
+        if isinstance(axes, AxisTags):
+            axes = "".join(axes.keys())
+        result = {}
+
+        for input_name, shape in zip(self.input_names, self.__session.inputShapes):
+            dim_size_by_name = defaultdict(lambda: 1, {d.name: d.size for d in shape.shape.namedInts})
             if shape.shapeType == 0:
                 # explicit shape
-                dim_size_by_name = defaultdict(lambda: 1, {d.name: d.size for d in shape.shape.namedInts})
-                result.append([tuple([dim_size_by_name[axis] for axis in axes])])
+                result[input_name] = [tuple([dim_size_by_name[axis] for axis in axes])]
             elif shape.shapeType == 1:
                 # parametrized shape
                 # HACK: need to determine min shape same way as prediction_pipeline
-                dim_size_by_name = defaultdict(lambda: 1, {d.name: d.size for d in shape.shape.namedInts})
                 dim_step_by_name = defaultdict(lambda: 0, {d.name: d.size for d in shape.stepShape.namedInts})
                 shape_dims = "".join(d.name for d in shape.shape.namedInts)
                 min_shape = enforce_min_shape(
                     [dim_size_by_name[x] for x in shape_dims], [dim_step_by_name[x] for x in shape_dims], shape_dims
                 )
                 min_shape_by_name = defaultdict(lambda: 1, {name: size for name, size in zip(shape_dims, min_shape)})
-                result.append([tuple(min_shape_by_name[axis] for axis in axes)])
+                result[input_name] = [tuple(min_shape_by_name[axis] for axis in axes)]
             else:
-                raise ValueError(f"Cannot work with shapes of shapeType {shape.shapeType}")
+                raise ValueError(f"Cannot work with shapes of shapeType {shape.shapeType}.")
 
         return result
 
@@ -198,15 +242,16 @@ class ModelSession:
         return (0, 0, 0, 128, 128)
 
     @property
-    def known_classes(self) -> List[int]:
+    def known_classes(self) -> Sequence[int]:
         """
-        FIXME: assumes a single output!
+        FIXME: assumes first output is the segmentation output
         """
         output_shapes = self.get_output_shapes()
-        assert len(output_shapes) == 1, "Currenlty only a single output is supported"
         # there could be multiple output shapes per output in the future (with implicit output shapes)
-        output_shape = output_shapes[0][0]
-        assert "c" in output_shape, "Channel Axis needed in output shape"
+        output_names = self.output_names
+        assert len(output_names) == 1, "Currently only single output shapes are supported."
+        output_shape = output_shapes[output_names[0]][0]
+        assert "c" in output_shape, "Channel Axis needed in output shape."
         return list(range(1, int(output_shape["c"]) + 1))
 
     @property
@@ -239,73 +284,92 @@ class ModelSession:
     def close(self):
         self.tiktorchClient.CloseModelSession(self.__session)
 
-    def predict(self, feature_image, roi, axistags=None):
+    def predict(
+        self, tensors: Sequence[numpy.ndarray], rois: Sequence[numpy.ndarray], axistags: Sequence[AxisTags]
+    ) -> Sequence[numpy.ndarray]:
         """
-        :param numpy.ndarray feature_image: classifier input
-        :param numpy.ndarray roi: ROI within feature_image
-        :param vigra.AxisTags axistags: axistags of feature_image
-        :return: probabilities
+        Args:
+            tensors: classifier inputs
+            roi: ROI
+            axistags: axistags of input tensors
+        Returns:
+            result tensors
         """
-        assert isinstance(roi, numpy.ndarray)
-        logger.debug("predict tile shape: %s (axistags: %r)", feature_image.shape, axistags)
+        assert all(isinstance(r, numpy.ndarray) for r in rois)
+        logger.debug("predict tile shape: %s (axistags: %r)", [t.shape for t in tensors], axistags)
 
         # translate roi axes todo: remove with tczyx standard
         # output_axis_order = self._model_conf.output_axis_order
         output_axes = self.output_axes
-        assert len(output_axes) == 1
-        output_axis_order = output_axes[0]
-        # need to handle batch dimension :/
-        if "c" not in output_axis_order:
-            output_axis_order = "c" + output_axis_order
-            c_was_not_in_output_axis_order = True
-        else:
-            c_was_not_in_output_axis_order = False
+
+        # Assuming images with only spacial axes to be images
+        # -> if there is no `c` axis, we'll append it in the result
+        def needs_c(axistags: Union[str, AxisTags]) -> bool:
+            if isinstance(axistags, AxisTags):
+                axistags = "".join(axistags.keys())
+            if any(ax in axistags for ax in "ci"):
+                return False
+
+            return True
+
+        needs_c_axis = [needs_c(at) for at in output_axes]
 
         input_axes = self.input_axes
-        assert len(input_axes) == 1
-        input_axis_order = input_axes[0]
-        reordered_feature_image = reorder_axes(feature_image, from_axes_tags=axistags, to_axes_tags=input_axis_order)
-        if not reordered_feature_image.dtype == "float32":
-            reordered_feature_image = reordered_feature_image.astype("float32")
+        assert (
+            len(tensors) == len(input_axes) == len(axistags)
+        ), f"Number of input tensors ({len(tensors)}) must match number of input axes ({len(input_axes)}) and axistags ({len(axistags)})"
+
+        def ensure_float32(tensor: numpy.ndarray) -> numpy.ndarray:
+            if tensor.dtype == "float32":
+                return tensor
+            else:
+                return tensor.astype("float32")
+
+        reordered_tensors = [
+            ensure_float32(reorder_axes(t, from_axes_tags=at, to_axes_tags=ati))
+            for t, at, ati in zip(tensors, axistags, input_axes)
+        ]
+
         try:
             current_rq = Request._current_request()
             resp = self.tiktorchClient.Predict.future(
                 inference_pb2.PredictRequest(
-                    tensors=[converters.numpy_to_pb_tensor(reordered_feature_image, axistags=input_axis_order)],
+                    tensors=[
+                        converters.numpy_to_pb_tensor(t, axistags=at) for t, at in zip(reordered_tensors, input_axes)
+                    ],
                     modelSessionId=self.__session.id,
                 )
             )
             resp.add_done_callback(lambda o: current_rq._wake_up())
             current_rq._suspend()
             resp = resp.result()
-            assert len(resp.tensors) == 1
-            result = converters.pb_tensor_to_numpy(resp.tensors[0])
+            assert len(resp.tensors) == len(output_axes)
+            results = [converters.pb_tensor_to_numpy(t) for t in resp.tensors]
         except Exception:
-            logger.exception("Predict call failed")
+            logger.exception(f"Predict call failed with exception.")
             return 0
 
-        logger.debug(f"Obtained a predicted block of shape {result.shape}")
-        if c_was_not_in_output_axis_order:
-            result = result[None, ...]
+        logger.debug(f"Obtained a predicted block of shape {[r.shape for r in results]}.")
+        # add c axis if needed
+        for i, (tensor, n) in enumerate(zip(results, needs_c_axis)):
+            if n:
+                results[i] = tensor[None, ...]
 
-        # make two channels out of single channel predictions
-        channel_axis = output_axis_order.find("c")
-        if result.shape[channel_axis] == 1:
-            result = numpy.concatenate((result, 1 - result), axis=channel_axis)
-            logger.debug(f"Changed shape of predicted block to {result.shape} by adding '1-p' channel")
-
-        shape_wo_halo = result.shape
+        shapes_wo_halo = [r.shape for r in results]
         halos = self.get_halos(axes=axistags)
-        assert len(halos) == 1
 
-        result = reorder_axes(result, from_axes_tags=output_axis_order, to_axes_tags=axistags)
-        result = result[roiToSlice(*roi)]
+        results = [
+            reorder_axes(r, from_axes_tags=ot, to_axes_tags=at) for r, ot, at in zip(results, output_axes, axistags)
+        ]
+        results = [r[roiToSlice(*roi)] for r, roi in zip(results, rois)]
 
-        logger.debug(f"result without halo {shape_wo_halo}. Now" f" result has shape: ({result.shape}).")
-        return result
+        logger.debug(f"result without halo {shapes_wo_halo}. Now result has shape: ({[r.shape for r in results]}).")
+        return results
 
 
-def reorder_axes(input_arr: numpy.ndarray, *, from_axes_tags: str, to_axes_tags: str) -> numpy.ndarray:
+def reorder_axes(
+    input_arr: numpy.ndarray, *, from_axes_tags: Union[str, AxisTags], to_axes_tags: Union[str, AxisTags]
+) -> numpy.ndarray:
     if isinstance(from_axes_tags, AxisTags):
         from_axes_tags = "".join(from_axes_tags.keys())
 
@@ -372,7 +436,7 @@ class Connection(_base.IConnection):
 
         return map_future(result, lambda res: res.id)
 
-    def create_model_session(self, upload_id: str, devices: List[str]):
+    def create_model_session(self, upload_id: str, devices: Sequence[str]):
         session = self._client.CreateModelSession(
             inference_pb2.CreateModelSessionRequest(model_uri=f"upload://{upload_id}", deviceIds=devices)
         )
