@@ -1,13 +1,20 @@
+import logging
+
 import numpy
 import tifffile
 import vigra
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.roi import roiToSlice
 from lazyflow.utility.helpers import get_default_axisordering
 
-import logging
-
 logger = logging.getLogger(__name__)
+
+
+class UnsupportedTiffError(Exception):
+    def __init__(self, filepath, details):
+        self.msg = f"Unable to open TIFF file: {filepath}. {details}"
+        super().__init__(self.msg)
 
 
 class OpTiffReader(Operator):
@@ -15,7 +22,6 @@ class OpTiffReader(Operator):
     Reads TIFF files as an ND array. We use two different libraries:
 
     - To read the image metadata (determine axis order), we use tifffile.py (by Christoph Gohlke)
-    - To actually read the data, we use vigra (which supports more compression types, e.g. JPEG)
 
     Note: This operator intentionally ignores any colormap
           information and uses only the raw stored pixel values.
@@ -33,97 +39,63 @@ class OpTiffReader(Operator):
         super(OpTiffReader, self).__init__(*args, **kwargs)
         self._filepath = None
         self._page_shape = None
+        self._non_page_shape = None
 
     def setupOutputs(self):
         self._filepath = self.Filepath.value
-        with tifffile.TiffFile(self._filepath) as tiff_file:
+        with tifffile.TiffFile(self._filepath, mode="r") as tiff_file:
             series = tiff_file.series[0]
             if len(tiff_file.series) > 1:
-                raise RuntimeError(
-                    "Don't know how to read TIFF files with more than one image series.\n"
-                    "(Your image has {} series".format(len(tiff_file.series))
+                raise UnsupportedTiffError(
+                    filepath=self._filepath,
+                    details=f"Don't know how to read TIFF files with more than one image series (Your image has {len(tiff_file.series)} series",
                 )
 
-            axes = series.axes
+            axes = series.axes.lower()
             shape = series.shape
-            pages = series.pages
-            first_page = pages[0]
+            dtype_code = series.dtype
 
-            dtype_code = first_page.dtype
-            if first_page.photometric == tifffile.TIFF.PHOTOMETRIC.PALETTE:
-                # For now, we don't support colormaps.
-                # Drop the (last) channel axis
-                # (Yes, there can be more than one :-/)
-                last_C_pos = axes.rfind("C")
-                assert axes[last_C_pos] == "C"
-                axes = axes[:last_C_pos] + axes[last_C_pos + 1 :]
-                shape = shape[:last_C_pos] + shape[last_C_pos + 1 :]
-
-                # first_page.dtype refers to the type AFTER colormapping.
-                # We want the original type.
-                key = (first_page.sample_format, first_page.bits_per_sample)
-                dtype_code = self._dtype = tifffile.TIFF_SAMPLE_DTYPES.get(key, None)
-
-            # From the tifffile.TiffPage code:
-            # shaped : tuple of int
-            #     Normalized 5-dimensional shape of the image in IFD:
-            #     0 : separate samplesperpixel or 1.
-            #     1 : imagedepth Z or 1.
-            #     2 : imagelength Y.
-            #     3 : imagewidth X.
-            #     4 : contig samplesperpixel or 1.
-
-            (P, D, Y, X, S) = first_page.shaped
-            assert P == 1, "Don't know how to handle any number of planar samples per pixel except 1 (per page)"
-            assert D == 1, "Don't know how to handle any image depth except 1"
-
-            if S == 1:
-                self._page_shape = (Y, X)
-                self._page_axes = "yx"
-            else:
-                assert shape[-3:] == (Y, X, S)
-                self._page_shape = (Y, X, S)
-                self._page_axes = "yxc"
-                assert "C" not in axes, (
-                    "If channels are in separate pages, then each page can't have multiple channels itself.\n"
-                    "(Don't know how to weave multi-channel pages together.)"
-                )
-
-            self._non_page_shape = shape[: -len(self._page_shape)]
-            assert shape == self._non_page_shape + self._page_shape
-            assert self._non_page_shape or len(pages) == 1
-
-            axes = axes.lower().replace("s", "c")
+            # we treat "sample" axis as "channel"
+            axes = axes.replace("s", "c")
             if "i" in axes:
                 for k in "tzc":
                     if k not in axes:
                         axes = axes.replace("i", k)
                         break
                 if "i" in axes:
-                    raise RuntimeError(
-                        "Image has an 'I' axis, and I don't know what it represents. "
-                        "(Separate T,Z,C axes already exist.)"
+                    raise UnsupportedTiffError(
+                        filepath=self._filepath,
+                        details=f"Image has an 'I' axis, and I don't know what it represents (separate T,Z,C axes already exist): {axes}",
                     )
 
+            # tifffile will add potentially multiple "q" axes to data when saving without specifying them
             if "q" in axes:
-                old_axes = axes
                 axes = get_default_axisordering(shape)
-                logger.warning(
-                    f"Unknown axistags detected - assuming default axis order. Guessed {axes} from {old_axes}."
+
+            if any(ax not in "tzyxc" for ax in axes) or len(shape) > 5:
+                raise UnsupportedTiffError(
+                    filepath=self._filepath,
+                    details=f"Don't know how to read TIFF files with more than 5 dimensions (Your image has {len(shape)} dimensions). Axes: {axes}.",
                 )
 
-            self.Output.meta.shape = shape
-            self.Output.meta.axistags = vigra.defaultAxistags(str(axes))
-            self.Output.meta.dtype = numpy.dtype(dtype_code).type
-            self.Output.meta.ideal_blockshape = ((1,) * len(self._non_page_shape)) + self._page_shape
+            self._page_axes = tiff_file.series[0].pages[0].axes.lower()
+            self._page_shape = tiff_file.series[0].pages[0].shape
+
+            self._non_page_shape = shape[: -len(self._page_shape)]
+
+        self.Output.meta.shape = shape
+        self.Output.meta.axistags = vigra.defaultAxistags(axes)
+        self.Output.meta.dtype = numpy.dtype(dtype_code).type
+        self.Output.meta.ideal_blockshape = (1,) * len(self._non_page_shape) + self._page_shape
 
     def execute(self, slot, subindex, roi, result):
         """
-        Use vigra (not tifffile) to read the result.
+        Use tifffile to read the result.
         This allows us to support JPEG-compressed TIFFs.
         """
         num_page_axes = len(self._page_shape)
         roi = numpy.array([roi.start, roi.stop])
+        # page axes are assumed to be last in roi
         page_index_roi = roi[:, :-num_page_axes]
         roi_within_page = roi[:, -num_page_axes:]
 
@@ -136,14 +108,13 @@ class OpTiffReader(Operator):
                 tiff_page_ndindex = roi_page_ndindex + page_index_roi[0]
                 tiff_page_list_index = numpy.ravel_multi_index(tiff_page_ndindex, self._non_page_shape)
                 logger.debug("Reading page: {} = {}".format(tuple(tiff_page_ndindex), tiff_page_list_index))
-                page_data = vigra.impex.readImage(
-                    self._filepath, dtype="NATIVE", index=int(tiff_page_list_index), order="C"
-                )
+                with tifffile.TiffFile(self._filepath, mode="r") as f:
+                    page_data = f.series[0].asarray(key=int(tiff_page_list_index), maxworkers=1)
             else:
                 # Only a single page
-                page_data = vigra.impex.readImage(self._filepath, dtype="NATIVE", index=0, order="C")
+                with tifffile.TiffFile(self._filepath, mode="r") as f:
+                    page_data = f.series[0].asarray(maxworkers=1)
 
-            page_data = page_data.withAxes(self._page_axes)
             assert page_data.shape == self._page_shape, "Unexpected page shape: {} vs {}".format(
                 page_data.shape, self._page_shape
             )
