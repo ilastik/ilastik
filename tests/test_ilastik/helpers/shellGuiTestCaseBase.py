@@ -26,7 +26,6 @@ from typing import Iterable, Union
 
 import pytest
 from ilastik.ilastik_logging import default_config
-from past.utils import old_div
 from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
 from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtWidgets import QAbstractScrollArea, QApplication, qApp
@@ -151,11 +150,12 @@ class ShellGuiTestCaseBase(object):
         return img.pixel(point)
 
     def moveMouseFromCenter(self, imgView, coords, modifier=Qt.NoModifier):
-        centerPoint = old_div(imgView.rect().bottomRight(), 2)
-        point = QPoint(*coords) + centerPoint
+        centerPoint = imgView.rect().bottomRight() / 2
+        point = _asQPointF(coords) + centerPoint
         move = QMouseEvent(QEvent.MouseMove, point, Qt.NoButton, Qt.NoButton, modifier)
-        QApplication.sendEvent(imgView, move)
+        QApplication.sendEvent(imgView.viewport(), move)
         QApplication.processEvents()
+        self.waitForViews([imgView])
 
     def strokeMouse(
         self,
