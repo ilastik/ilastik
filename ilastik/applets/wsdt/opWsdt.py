@@ -56,7 +56,6 @@ def parallel_watershed(
 
     """
 
-    logger.info(f"blockwise watershed with {max_workers} threads.")
     shape = data.shape
     ndim = len(shape)
 
@@ -67,11 +66,13 @@ def parallel_watershed(
     block_shape = (base_block,) * ndim if block_shape is None else block_shape
     # nifty requires the halo shape to be of type list
     halo = [10] * ndim if halo is None else halo
-    blocking = get_blocking(data, block_shape, roi=None)
 
     if max_workers is None:
         max_workers = max(1, Request.global_thread_pool.num_workers)
 
+    logger.info(f"blockwise watershed with {max_workers} threads.")
+
+    blocking = get_blocking(data, block_shape, roi=None, n_threads=max_workers)
     n_blocks = blocking.numberOfBlocks
 
     labels = np.zeros_like(data, dtype=np.uint32)

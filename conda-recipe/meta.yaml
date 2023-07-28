@@ -37,7 +37,7 @@ outputs:
         - h5py
         - hytra >=1.1.5
         - ilastik-feature-selection
-        - ilastikrag
+        - ilastikrag >=0.1.4
         - ilastiktools
         - jsonschema
         - mamutexport
@@ -45,11 +45,12 @@ outputs:
         - ndstructs
         - nifty
         # need to update our packages to be compatible with pandas 2 API
-        - pandas <2
+        - pandas
         - psutil
         - pyopengl
         - pyqt 5.15.*
-        - python-elf
+        # previous versions would set thread limits globally with side effects
+        - python-elf >=0.4.8
         - scikit-image
         - scikit-learn
         - tifffile

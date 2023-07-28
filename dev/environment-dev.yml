@@ -17,20 +17,20 @@ dependencies:
   - h5py
   - hytra
   - ilastik-feature-selection
-  - ilastikrag
+  - ilastikrag >=0.1.4
   - ilastiktools
   - jsonschema
   - mamutexport
   - marching_cubes
   - ndstructs
   - nifty
-  # need to update our packages to be compatible with pandas 2 API
-  - pandas <2
+  - pandas
   - psutil
   - pyopengl
   - pyqt 5.15.*
   - pyqtgraph
-  - python-elf
+  # previous versions would set thread limits globally with side effects
+  - python-elf >= 0.4.8
   - qimage2ndarray
   - scikit-image
   - scikit-learn

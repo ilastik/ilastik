@@ -13,7 +13,7 @@ from typing import Optional
 import h5py
 import numpy
 import pytest
-from elf.evaluation import mean_average_precision
+from elf.evaluation import mean_segmentation_accuracy
 from PyQt5.QtWidgets import QApplication
 
 from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
@@ -210,7 +210,7 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
 
             # Due to small numerical inaccuracies in filtering between the platforms, the
             # superpixels turn out slightly different
-            assert mean_average_precision(superpixels, superpixels_reference) > 0.98
+            assert mean_segmentation_accuracy(superpixels, superpixels_reference) > 0.98
             # Save the project
             saveThread = self.shell.onSaveProjectActionTriggered()
             saveThread.join()
@@ -267,7 +267,7 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
             mc_segmentation = opMulticut.Output[:].wait()
 
             assert numpy.unique(mc_segmentation).shape == (5,)
-            assert mean_average_precision(mc_segmentation, mc_segmentation_reference) > 0.98
+            assert mean_segmentation_accuracy(mc_segmentation, mc_segmentation_reference) > 0.98
 
             # Save the project
             saveThread = self.shell.onSaveProjectActionTriggered()
@@ -390,7 +390,7 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
             mc_segmentation = opMulticut.Output[:].wait()
 
             assert numpy.unique(mc_segmentation).shape == (3,)
-            assert mean_average_precision(mc_segmentation, mc_segmentation_reference) > 0.98
+            assert mean_segmentation_accuracy(mc_segmentation, mc_segmentation_reference) > 0.98
 
             # Save the project
             saveThread = self.shell.onSaveProjectActionTriggered()

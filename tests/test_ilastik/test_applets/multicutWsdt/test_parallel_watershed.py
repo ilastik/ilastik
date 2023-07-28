@@ -40,7 +40,7 @@ def test_parallel_watershed_consistency(data):
     assert max_label == 8
     assert ws.min() == 1
 
-    blocking = get_blocking(data, block_shape, roi=None)
+    blocking = get_blocking(data, block_shape, roi=None, n_threads=2)
     running_max = 1
     for block_index in range(blocking.numberOfBlocks):
         block = blocking.getBlockWithHalo(blockIndex=block_index, halo=halo)
