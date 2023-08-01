@@ -20,12 +20,14 @@
 ###############################################################################
 
 import atexit
+import contextlib
 import numbers
 import threading
-from typing import Iterable, Union
+from typing import Iterable, Sequence, Union
 
 import pytest
 from ilastik.ilastik_logging import default_config
+from volumina.imageView2D import ImageView2D
 from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
 from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtWidgets import QAbstractScrollArea, QApplication, qApp
@@ -117,7 +119,7 @@ class ShellGuiTestCaseBase(object):
     ### Convenience functions for subclasses to use during testing.
     ###
 
-    def waitForViews(self, views):
+    def waitForViews(self, views: Sequence[ImageView2D]):
         """
         Wait for the given image views to complete their rendering and repainting.
         """
@@ -129,15 +131,38 @@ class ShellGuiTestCaseBase(object):
         # Let the GUI catch up: Process all events
         QApplication.processEvents()
 
+    @contextlib.contextmanager
+    def hiddenCursor(self, imgView: ImageView2D):
+        """Context manager that hides the given image view's cursor
+
+        Useful, e.g. when accessing the viewports rendered image - where
+        sampling the cursor would be unwanted.
+        """
+        try:
+            imgView._crossHairCursor.setVisible(False)
+            # Wait for the gui to catch up
+            QApplication.processEvents()
+            self.waitForViews([imgView])
+
+            yield
+        finally:
+            imgView._crossHairCursor.setVisible(True)
+            # Wait for the gui to catch up
+            QApplication.processEvents()
+            self.waitForViews([imgView])
+
     def getPixelColor(self, imgView, coordinates, debugFileName=None, relativeToCenter=True):
         """
         Sample the color of the pixel at the given coordinates.
         If debugFileName is provided, export the view for debugging purposes.
 
+        Cursor is hidden while sampling the image.
+
         Example:
             self.getPixelColor(myview, (10,10), 'myview.png')
         """
-        img = imgView.grab().toImage()
+        with self.hiddenCursor(imgView):
+            img = imgView.grab().toImage()
 
         if debugFileName is not None:
             img.save(debugFileName)
@@ -149,9 +174,22 @@ class ShellGuiTestCaseBase(object):
 
         return img.pixel(point)
 
-    def moveMouseFromCenter(self, imgView, coords, modifier=Qt.NoModifier):
+    def moveMouseFromCenter(
+        self,
+        imgView: QAbstractScrollArea,
+        point: Union[QPointF, QPoint, Iterable[numbers.Real]],
+        modifier: int = Qt.NoModifier,
+    ):
+        """Move the mouse to a specific point.
+
+        Args:
+            imgView: View that will receive mouse events.
+            point: Target coordinate in relation to imageView center.
+            modifier: This modifier will be active when pressing, moving and releasing.
+
+        """
         centerPoint = imgView.rect().bottomRight() / 2
-        point = _asQPointF(coords) + centerPoint
+        point = _asQPointF(point) + centerPoint
         move = QMouseEvent(QEvent.MouseMove, point, Qt.NoButton, Qt.NoButton, modifier)
         QApplication.sendEvent(imgView.viewport(), move)
         QApplication.processEvents()
