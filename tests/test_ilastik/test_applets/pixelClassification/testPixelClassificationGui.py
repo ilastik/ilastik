@@ -575,7 +575,6 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             imgView = gui.currentGui().editor.imageViews[1]
 
             # Sanity check: There should be labels in the view that we can erase
-            self.waitForViews([imgView])
             observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
             labelColor = gui.currentGui()._colorTable16[2]
             assert (
@@ -588,7 +587,6 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             labelLayer = gui.currentGui().layerstack[0]
             assert labelLayer.name == "Labels"
             labelLayer.visible = False
-            self.waitForViews([imgView])
             rawDataColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
             assert (
                 rawDataColor != labelColor
@@ -605,7 +603,6 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
             # Erase and verify
             self.strokeMouseFromCenter(imgView, self.LABEL_START, self.LABEL_STOP)
-            self.waitForViews([imgView])
             erasedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
             assert erasedColor == rawDataColor, "Eraser did not remove labels! Expected {}, got {}".format(
                 hex(rawDataColor), hex(erasedColor)
@@ -620,10 +617,6 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             rawDataColor = self.getPixelColor(imgView, (5, -5))
             self.strokeMouseFromCenter(imgView, (10, -10), (0, 0))
 
-            # Move the cursor out of the way so we can sample the image
-            self.moveMouseFromCenter(imgView, (20, 20))
-
-            self.waitForViews([imgView])
             erasedColor = self.getPixelColor(imgView, (5, -5))
             assert (
                 erasedColor == rawDataColor
