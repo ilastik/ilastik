@@ -135,9 +135,10 @@ class ShellGuiTestCaseBase(object):
     def hiddenCursor(self, imgView: ImageView2D):
         """Context manager that hides the given image view's cursor
 
-        Useful, e.g. when accessing the viewports rendered image - where
+        Useful, e.g. when accessing the viewport's rendered image - where
         sampling the cursor would be unwanted.
         """
+        wasVisible = imgView._crossHairCursor.isVisible()
         try:
             imgView._crossHairCursor.setVisible(False)
             # Wait for the gui to catch up
@@ -146,7 +147,7 @@ class ShellGuiTestCaseBase(object):
 
             yield
         finally:
-            imgView._crossHairCursor.setVisible(True)
+            imgView._crossHairCursor.setVisible(wasVisible)
             # Wait for the gui to catch up
             QApplication.processEvents()
             self.waitForViews([imgView])
