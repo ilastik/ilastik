@@ -13,8 +13,7 @@ logger = logging.getLogger(__name__)
 
 class UnsupportedTiffError(Exception):
     def __init__(self, filepath, details):
-        self.msg = f"Unable to open TIFF file: {filepath}. {details}"
-        super().__init__(self.msg)
+        super().__init__(f"Unable to open TIFF file: {filepath}. {details}")
 
 
 class OpTiffReader(Operator):
@@ -56,30 +55,23 @@ class OpTiffReader(Operator):
             dtype_code = series.dtype
 
             # we treat "sample" axis as "channel"
-            axes = axes.replace("s", "c")
-            if "i" in axes:
-                for k in "tzc":
-                    if k not in axes:
-                        axes = axes.replace("i", k)
-                        break
-                if "i" in axes:
-                    raise UnsupportedTiffError(
-                        filepath=self._filepath,
-                        details=f"Image has an 'I' axis, and I don't know what it represents (separate T,Z,C axes already exist): {axes}",
-                    )
+            # "i" ("sequence") can either be "time", "z", or "channel", in that order.
+            for old, new in ("sc", "it", "iz", "ic"):
+                axes = axes.replace(old, new)
 
             # tifffile will add potentially multiple "q" axes to data when saving without specifying them
             if "q" in axes:
                 axes = get_default_axisordering(shape)
 
-            if any(ax not in "tzyxc" for ax in axes) or len(shape) > 5:
+            axes_set = set(axes)
+            if len(shape) < 2 or len(shape) > 5 or len(axes_set) != len(axes) or axes_set.difference("tzyxc"):
                 raise UnsupportedTiffError(
                     filepath=self._filepath,
-                    details=f"Don't know how to read TIFF files with more than 5 dimensions (Your image has {len(shape)} dimensions). Axes: {axes}.",
+                    details=f"Only 2D-5D TIFFs with unique 'tzyxc' axes are allowed (got {len(shape)}D TIFF with {axes} axes)",
                 )
 
-            self._page_axes = tiff_file.series[0].pages[0].axes.lower()
-            self._page_shape = tiff_file.series[0].pages[0].shape
+            self._page_axes = series.pages[0].axes.lower()
+            self._page_shape = series.pages[0].shape
 
             self._non_page_shape = shape[: -len(self._page_shape)]
 
@@ -103,23 +95,22 @@ class OpTiffReader(Operator):
 
         # Read each page out individually
         page_index_roi_shape = page_index_roi[1] - page_index_roi[0]
-        for roi_page_ndindex in numpy.ndindex(*page_index_roi_shape):
-            if self._non_page_shape:
-                tiff_page_ndindex = roi_page_ndindex + page_index_roi[0]
-                tiff_page_list_index = numpy.ravel_multi_index(tiff_page_ndindex, self._non_page_shape)
-                logger.debug("Reading page: {} = {}".format(tuple(tiff_page_ndindex), tiff_page_list_index))
-                with tifffile.TiffFile(self._filepath, mode="r") as f:
-                    page_data = f.series[0].asarray(key=int(tiff_page_list_index), maxworkers=1)
-            else:
-                # Only a single page
-                with tifffile.TiffFile(self._filepath, mode="r") as f:
-                    page_data = f.series[0].asarray(maxworkers=1)
 
-            assert page_data.shape == self._page_shape, "Unexpected page shape: {} vs {}".format(
-                page_data.shape, self._page_shape
-            )
+        with tifffile.TiffFile(self._filepath, mode="r") as f:
+            for roi_page_ndindex in numpy.ndindex(*page_index_roi_shape):
+                key = None
+                if self._non_page_shape:
+                    tiff_page_ndindex = page_index_roi[0] + roi_page_ndindex
+                    key = int(numpy.ravel_multi_index(tiff_page_ndindex, self._non_page_shape))
+                    logger.debug(...)
 
-            result[roi_page_ndindex] = page_data[roiToSlice(*roi_within_page)]
+                page_data = f.series[0].asarray(key=key, maxworkers=1)
+
+                assert page_data.shape == self._page_shape, "Unexpected page shape: {} vs {}".format(
+                    page_data.shape, self._page_shape
+                )
+
+                result[roi_page_ndindex] = page_data[roiToSlice(*roi_within_page)]
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Filepath:
