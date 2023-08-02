@@ -23,6 +23,7 @@ from builtins import zip
 ###############################################################################
 # Python
 import copy
+from typing import Dict, List
 import warnings
 
 from collections import OrderedDict, defaultdict
@@ -145,7 +146,7 @@ class MetaDict(defaultdict):
         # _setupOutputs or setValue (or copied via _changed)
         self._ready = origready
 
-    def getTaggedShape(self):
+    def getTaggedShape(self) -> Dict[str, int]:
         """Convenience function for creating an OrderedDict of axistag
         keys and shape dimensions.
 
@@ -158,7 +159,7 @@ class MetaDict(defaultdict):
     def getShape5D(self):
         return Shape5D(**self.getTaggedShape())
 
-    def getAxisKeys(self):
+    def getAxisKeys(self) -> List[str]:
         assert self.axistags is not None
         return [tag.key for tag in self.axistags]
 

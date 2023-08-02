@@ -28,6 +28,7 @@ from lazyflow.operators.tiktorch import (
     OpTikTorchTrainClassifierBlocked,
     OpTikTorchClassifierPredict,
 )
+from lazyflow.operators.tiktorch.classifier import ModelSession
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
@@ -346,12 +347,16 @@ class OpBlockShape(Operator):
         self.BlockShapeInference.setValue(self.setup_inference())
 
     def setup_train(self):
-        tikmodel = self.ModelSession.value
+        tikmodel: ModelSession = self.ModelSession.value
+        input_names = tikmodel.input_names
+        assert len(input_names) == 1, "This op can only handle models with a single input tensor."
+        output_names = tikmodel.output_names
+        assert len(output_names) == 1, "This op can only handle models with a single output tensor."
         training_shape = tikmodel.training_shape
         # FIXME: learn how to deal with multiple inputs
         halos = tikmodel.get_halos(axes="tczyx")
         assert len(halos) == 1
-        halo = halos[0]
+        halo = halos[output_names[0]]
         # total halo = 2 * halo per axis
         total_halo = 2 * numpy.array(halo)
         training_shape_wo_halo = numpy.array(training_shape) - total_halo
@@ -365,12 +370,13 @@ class OpBlockShape(Operator):
         return ret
 
     def setup_inference(self):
-        tikmodel = self.ModelSession.value
-        # FIXME: learn how to deal with multiple inputs
-        valid_tczyx_shapes = tikmodel.get_input_shapes(axes="tczyx")[0]
-        halos = tikmodel.get_halos(axes="tczyx")
-        assert len(halos) == 1
-        halo = halos[0]
+        tikmodel: ModelSession = self.ModelSession.value
+        input_names = tikmodel.input_names
+        assert len(input_names) == 1, "This op can only handle models with a single input tensor."
+        valid_tczyx_shapes = tikmodel.get_input_shapes(axes="tczyx")[input_names[0]]
+        output_names = tikmodel.output_names
+        assert len(output_names) == 1, "This op can only handle models with a single output tensor."
+        halo = tikmodel.get_halos(axes="tczyx")[output_names[0]]
         # total halo = 2 * halo per axis
         total_halo = 2 * numpy.array(halo)
         valid_tczyx_shapes_wo_halo = [numpy.array(shape) - total_halo for shape in valid_tczyx_shapes]

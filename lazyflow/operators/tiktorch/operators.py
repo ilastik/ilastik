@@ -1,8 +1,3 @@
-from __future__ import absolute_import
-from builtins import zip
-from builtins import map
-from builtins import range
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -25,8 +20,8 @@ from builtins import range
 #          http://ilastik.org/license/
 ###############################################################################
 # Python
-import copy
 import logging
+from lazyflow.operators.tiktorch.classifier import ModelSession
 
 traceLogger = logging.getLogger("TRACE." + __name__)
 
@@ -34,13 +29,10 @@ traceLogger = logging.getLogger("TRACE." + __name__)
 import numpy
 
 # lazyflow
-from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal, OperatorWrapper
+from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
 from lazyflow.roi import (
     sliceToRoi,
     roiToSlice,
-    getIntersection,
-    roiFromShape,
-    nonzero_bounding_box,
     enlargeRoiForHalo,
     getIntersectingBlocks,
 )
@@ -76,23 +68,28 @@ class OpTikTorchTrainClassifierBlocked(Operator):
         super().cleanUp()
 
     def _collect_blocks(self, image_slot, label_slot, block_slicings):
-        model = self.ModelSession.value
+        model: ModelSession = self.ModelSession.value
         image_data_blocks = []
         label_data_blocks = []
         block_ids = []
+
+        output_names = model.output_names
+        assert len(output_names) == 1, "This operator can only handle models with a single output tensor."
+        # Ask for the halo needed by the classifier
+        axiskeys = image_slot.meta.getAxisKeys()
+        halo_shape = model.get_halos(axiskeys)[output_names[0]]
+        assert halo_shape[-1] == 0, "Didn't expect a non-zero halo for channel dimension."
+
         for block_slicing in block_slicings:
             # Get labels
             block_label_roi = sliceToRoi(block_slicing, label_slot.meta.shape)
+            assert len(halo_shape) == len(
+                block_label_roi[0]
+            ), "Expected halo and upstream roi to have same dimensionality."
             block_label_data = label_slot(*block_label_roi).wait()
 
             bb_roi_within_block = numpy.array([[0] * len(block_label_data.shape), list(block_label_data.shape)])
             block_label_bb_roi = bb_roi_within_block + block_label_roi[0]
-
-            # Ask for the halo needed by the classifier
-            axiskeys = image_slot.meta.getAxisKeys()
-            halo_shape = model.get_halo(axiskeys)
-            assert len(halo_shape) == len(block_label_roi[0])
-            assert halo_shape[-1] == 0, "Didn't expect a non-zero halo for channel dimension."
 
             # Expand block by halo, but keep clipped to image bounds
             padded_label_roi, bb_roi_within_padded = enlargeRoiForHalo(
@@ -154,7 +151,7 @@ class OpTikTorchTrainClassifierBlocked(Operator):
 
                 model_session.update(image_blocks, label_blocks, axistags, block_ids)
             except Exception as e:
-                logger.error(e, exc_info=True)
+                logger.exception(e)
         else:
             self.UpdatedModelSession.setDirty()
 
@@ -170,7 +167,7 @@ class OpTikTorchClassifierPredict(Operator):
     PMaps = OutputSlot()
 
     def setupOutputs(self):
-        assert self.Image.meta.getAxisKeys()[-1] == "c"
+        assert self.Image.meta.getAxisKeys()[-1] == "c", "Expected 'c' as last axis in image axisorder."
         nlabels = max(self.LabelsCount.value, 1)
         self.PMaps.meta.assignFrom(self.Image.meta)
         self.PMaps.meta.dtype = numpy.float32
@@ -185,7 +182,7 @@ class OpTikTorchClassifierPredict(Operator):
         self.PMaps.setDirty()
 
     def execute(self, slot, subindex, roi, result):
-        session = self.ModelSession.value
+        session: ModelSession = self.ModelSession.value
 
         # Training operator may return 'None' if there was no data to train with
         skip_prediction = session is None
@@ -214,10 +211,13 @@ class OpTikTorchClassifierPredict(Operator):
         roistop[-1] = raw_channels
         upstream_roi = (roistart, roistop)
 
-        halo = numpy.array(session.get_halos(axiskeys)[0])
+        output_names = session.output_names
+        assert len(output_names) == 1, "This operator can only handle models with a single output tensor."
 
-        assert len(halo) == len(upstream_roi[0])
-        assert axiskeys[-1] == "c"
+        halo = numpy.array(session.get_halos(axiskeys)[output_names[0]])
+
+        assert len(halo) == len(upstream_roi[0]), "Expected halo and upstream roi to have same dimensionality."
+        assert axiskeys[-1] == "c", "Expected 'c' as last axis in image axisorder."
         assert halo[-1] == 0, "Didn't expect a non-zero halo for channel dimension."
 
         # simply add halo to requested roi
@@ -227,7 +227,11 @@ class OpTikTorchClassifierPredict(Operator):
 
         # Extend block further to reach a valid shape
         min_shape = upstream_roi[1] - upstream_roi[0]
-        for vs in session.get_input_shapes(axiskeys)[0]:
+        input_shapes = session.get_input_shapes(axiskeys)
+        assert (
+            len(input_shapes) == 1
+        ), f"This operator can only handle models with a single input tensor, got {len(input_shapes)}."
+        for vs in input_shapes[session.input_names[0]]:
             if all(m <= v for m, v in zip(min_shape, vs)):
                 valid_shape = numpy.array(vs)
                 if any(m < v for m, v in zip(min_shape, vs)):
@@ -267,8 +271,8 @@ class OpTikTorchClassifierPredict(Operator):
         input_data = numpy.pad(input_data, padding, mode="reflect")
 
         try:
-            result[...] = session.predict(input_data, predictions_roi, axistags)
-        except Exception as e:
-            logger.exception("Failed to predict")
+            result[...] = session.predict([input_data], [predictions_roi], [axistags])[0]
+        except Exception:
+            logger.exception(f"Prediction failed with exception.")
 
         return result
