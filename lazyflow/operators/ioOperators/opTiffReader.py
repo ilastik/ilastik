@@ -1,3 +1,24 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2023, the ilastik developers
+#                                <team@ilastik.org>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
+#
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#          http://ilastik.org/license.html
+###############################################################################
+from collections import defaultdict
 import logging
 
 import numpy
@@ -78,7 +99,12 @@ class OpTiffReader(Operator):
         self.Output.meta.shape = shape
         self.Output.meta.axistags = vigra.defaultAxistags(axes)
         self.Output.meta.dtype = numpy.dtype(dtype_code).type
-        self.Output.meta.ideal_blockshape = (1,) * len(self._non_page_shape) + self._page_shape
+
+        blockshape = defaultdict(lambda: 1, zip(self._page_axes, self._page_shape))
+        # optimization: reading bigger blockshapes in z means much smoother user experience
+        if "z" not in blockshape and "z" in axes:
+            blockshape["z"] = 32
+        self.Output.meta.ideal_blockshape = tuple(blockshape[k] for k in axes)
 
     def execute(self, slot, subindex, roi, result):
         """
