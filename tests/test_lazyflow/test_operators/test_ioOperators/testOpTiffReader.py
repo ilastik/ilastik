@@ -66,7 +66,7 @@ class TestOpTiffReader:
 
         data = numpy.random.randint(0, 256, test_shape, dtype="uint8")
         tiff_path = str(tmp_path / f"myfile_{axisorder}.tiff")
-        tifffile.imsave(tiff_path, data)
+        tifffile.imwrite(tiff_path, data)
         op = OpTiffReader(graph=Graph())
         op.Filepath.setValue(tiff_path)
         assert op.Output.ready()
