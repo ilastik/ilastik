@@ -102,8 +102,8 @@ class OpTiffReader(Operator):
 
         blockshape = defaultdict(lambda: 1, zip(self._page_axes, self._page_shape))
         # optimization: reading bigger blockshapes in z means much smoother user experience
-        if "z" not in blockshape and "z" in axes:
-            blockshape["z"] = 32
+        # but don't change z if it's part of the page shape
+        blockshape.setdefault("z", 32)
         self.Output.meta.ideal_blockshape = tuple(blockshape[k] for k in axes)
 
     def execute(self, slot, subindex, roi, result):
@@ -141,20 +141,3 @@ class OpTiffReader(Operator):
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Filepath:
             self.Output.setDirty(slice(None))
-
-
-if __name__ == "__main__":
-    from lazyflow.graph import Graph
-
-    graph = Graph()
-    opReader = OpTiffReader(graph=graph)
-    opReader.Filepath.setValue("/groups/flyem/home/bergs/Downloads/Tiff_t4_HOM3_10frames_4slices_28sec.tif")
-    print(opReader.Output.meta.axistags)
-    print(opReader.Output.meta.shape)
-    print(opReader.Output.meta.dtype)
-    print(opReader.Output[2:3, 2:3, 2:3, 10:20, 20:50].wait().shape)
-
-#     opReader.Filepath.setValue('/magnetic/data/synapse_small.tiff')
-#     print opReader.Output.meta.axistags
-#     print opReader.Output.meta.shape
-#     print opReader.Output.meta.dtype
