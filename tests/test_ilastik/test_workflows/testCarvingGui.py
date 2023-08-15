@@ -34,14 +34,15 @@ if os.environ.get("ON_CIRCLE_CI"):
 
 
 # https://bugreports.qt.io/browse/QTBUG-87014
-is_darwin_bigsur = False
+must_skip_darwing_bigsur = False
 if platform.system().lower() == "darwin":
     mac_ver = tuple(map(int, platform.mac_ver()[0].split(".")))
-    if mac_ver >= (10, 6):
-        is_darwin_bigsur = True
+    python_ver = tuple(map(int, platform.python_version().split(".")))
+    if mac_ver >= (10, 16) and python_ver <= (3, 8, 11):
+        must_skip_darwing_bigsur = True
 
 
-@pytest.mark.skipif(is_darwin_bigsur, reason="CPython cannot find OpenGL system shared lib on macOS 11")
+@pytest.mark.skipif(must_skip_darwing_bigsur, reason="CPython cannot find OpenGL system shared lib on macOS 11")
 class TestCarvingGui(ShellGuiTestCaseBase):
     """Run a set of GUI-based tests on the carving workflow.
 

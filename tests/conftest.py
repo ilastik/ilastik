@@ -15,7 +15,8 @@ from concurrent import futures
 # https://bugreports.qt.io/browse/QTBUG-87014
 if platform.system().lower() == "darwin":
     mac_ver = tuple(map(int, platform.mac_ver()[0].split(".")))
-    if mac_ver >= (10, 6):
+    python_ver = tuple(map(int, platform.python_version().split(".")))
+    if mac_ver >= (10, 16) and python_ver <= (3, 8, 11):
         os.environ["QT_MAC_WANTS_LAYER"] = "1"
         os.environ["VOLUMINA_SHOW_3D_WIDGET"] = "0"
 
