@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from builtins import range
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -23,9 +19,9 @@ from builtins import object
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-import numpy, vigra
+import numpy
+import vigra
 import collections
-import warnings
 
 from .roi import roiToSlice
 
@@ -40,7 +36,7 @@ class InvalidResult(ValueError):
     pass
 
 
-class SlotType(object):
+class SlotType:
     def __init__(self, slot):
         self.slot = slot
 
@@ -229,7 +225,7 @@ class ArrayLike(SlotType):
             dst.mask[...] = numpy.ma.getmaskarray(src_val)
             if isinstance(src_val, numpy.ma.masked_array):
                 dst.fill_value = src_val.fill_value
-        elif isinstance(dst, collections.MutableSequence) or isinstance(src, collections.MutableSequence):
+        elif isinstance(dst, collections.abc.MutableSequence) or isinstance(src, collections.abc.MutableSequence):
             dst[:] = src[:]
         else:
             dst[...] = src[...]

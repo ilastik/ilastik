@@ -1595,8 +1595,8 @@ class _ValueRequest:
             if isinstance(self.result, ma.masked_array):
                 destination.set_fill_value(self.result.fill_value)
 
-        elif isinstance(destination, collections.MutableSequence) or isinstance(
-            self.result, collections.MutableSequence
+        elif isinstance(destination, collections.abc.MutableSequence) or isinstance(
+            self.result, collections.abc.MutableSequence
         ):
             destination[:] = self.result[:]
 
