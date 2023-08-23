@@ -240,7 +240,7 @@ class CarvingGui(LabelingGui):
         highest_existing_suffix = 0
 
         for n in names:
-            match = re.match(f"^{self.objectPrefix}(?P<suffix>\d+)", n)
+            match = re.match(rf"^{self.objectPrefix}(?P<suffix>\d+)", n)
             if match:
                 val = int(match.group("suffix"))
                 if val > highest_existing_suffix:

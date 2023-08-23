@@ -1799,7 +1799,7 @@ class IlastikShell(QMainWindow):
 
         # Try to guess a good default project name, e.g. MyProject2.ilp
         currentPath, ext = os.path.splitext(self.projectManager.currentProjectPath)
-        m = re.match("(.*)_(\d+)", currentPath)
+        m = re.match(r"(.*)_(\d+)", currentPath)
         if m:
             baseName = m.groups()[0]
             projectNum = int(m.groups()[1]) + 1

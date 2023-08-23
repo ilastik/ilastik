@@ -116,7 +116,7 @@ def convertVersion(vstring):
     #  is simply converted to the integer 5 for compatibility purposes.
     int_tuple = ()
     for i in vstring.split("."):
-        m = re.search("(\d+)", i)
+        m = re.search(r"(\d+)", i)
         assert bool(m), "Don't understand version component: {}".format(i)
         next_int = int(m.groups()[0])
         int_tuple = int_tuple + (next_int,)
