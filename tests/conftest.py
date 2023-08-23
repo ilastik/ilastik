@@ -193,7 +193,7 @@ def pytest_runtestloop(session):
 def run_gui_tests(tstcls, gui_test_bag):
     assert tstcls.app is None, "Should only encounter every class once. Check Sorting"
     tst_queue = queue.Queue()
-    app = tstcls.app = QApplication([])
+    app = tstcls.app = QApplication.instance() or QApplication([])
     app.setQuitOnLastWindowClosed(False)
     app.thread_router = ThreadRouter(app)
     tstcls.shell = launchShell(None, [], [])
