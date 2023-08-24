@@ -190,22 +190,35 @@ def pytest_runtestloop(session):
     return True
 
 
-def run_gui_tests(tstcls, gui_test_bag):
-    assert tstcls.app is None, "Should only encounter every class once. Check Sorting"
-    tst_queue = queue.Queue()
-    app = tstcls.app = QApplication.instance() or QApplication([])
+_qapplication = None
+
+
+def qapplication():
+    global _qapplication
+    if not _qapplication:
+        _qapplication = QApplication.instance() or QApplication([])
+
+    app = _qapplication
     app.setQuitOnLastWindowClosed(False)
     app.thread_router = ThreadRouter(app)
-    tstcls.shell = launchShell(None, [], [])
 
-    QApplication.setAttribute(Qt.AA_DontUseNativeDialogs, True)
+    app.setAttribute(Qt.AA_DontUseNativeDialogs, True)
 
     platform_str = platform.platform().lower()
     if "ubuntu" in platform_str or "fedora" in platform_str:
-        QApplication.setAttribute(Qt.AA_X11InitThreads, True)
+        app.setAttribute(Qt.AA_X11InitThreads, True)
 
     if ilastik.config.cfg.getboolean("ilastik", "debug"):
-        QApplication.setAttribute(Qt.AA_DontUseNativeMenuBar, True)
+        app.setAttribute(Qt.AA_DontUseNativeMenuBar, True)
+
+    return app
+
+
+def run_gui_tests(tstcls, gui_test_bag):
+    assert tstcls.app is None, "Should only encounter every class once. Check Sorting"
+    tst_queue = queue.Queue()
+    app = tstcls.app = qapplication()
+    tstcls.shell = launchShell(None, [], [])
 
     # Note on the class test execution lifecycle
     # pytest infers that finalizer teardown_class should be called when
