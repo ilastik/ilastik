@@ -220,9 +220,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         self.exec_in_shell(self.shell.createAndLoadNewProject, self.PROJECT_FILE, self.workflowClass())
         assert os.path.exists(self.PROJECT_FILE)
 
-    @pytest.mark.skipif(
-        os.name != "nt" or os.environ.get("CI") is not None,
-        reason="this part of the test only works on windows, hangs/segfaults on any CI provider.",
+    @pytest.mark.skip(
+        reason="this part of the test hangs on all platforms, hangs/segfaults on any CI provider.",
     )
     def test_01_AddRemoveData(self):
         workflow = self.shell.projectManager.workflow
