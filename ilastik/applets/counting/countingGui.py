@@ -508,7 +508,7 @@ class CountingGui(LabelingGui):
             # if fixed boxes are existent, make column visible
             # self.labelingDrawerUi.boxListView._table.setColumnHidden(self.boxController.boxListModel.ColumnID.Fix, False)
             for roi in self.op.boxViewer.rois[idx].value:
-                if type(roi) is not list or len(roi) is not 2:
+                if not isinstance(roi, list) or len(roi) != 2:
                     continue
                 self.boxController.addNewBox(roi2rect(*roi, axes))
                 # boxIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.Fix)
@@ -523,7 +523,7 @@ class CountingGui(LabelingGui):
             )
             for constr in zip(op.BoxConstraintRois[idx].value, op.BoxConstraintValues[idx].value):
                 roi, val = constr
-                if type(roi) is not list or len(roi) is not 2:
+                if not isinstance(roi, list) or len(roi) != 2:
                     continue
                 self.boxController.addNewBox(roi2rect(*roi, axes))
                 boxIndex = self.boxController.boxListModel.index(
