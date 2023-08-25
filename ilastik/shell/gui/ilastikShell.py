@@ -25,6 +25,7 @@ import pathlib
 from functools import partial
 import weakref
 import logging
+import numbers
 import platform
 import threading
 import warnings
@@ -244,11 +245,16 @@ class ProgressDisplayManager(QObject):
         for serializer in app.dataSerializers:
             serializer.progressSignal.subscribe(bind(self.handleAppletProgress, index))
 
-    def handleAppletProgress(self, index, percentage, cancelled=False):
-        # Forward the signal to the handler via our qt signal, which provides a queued connection.
-        self.dispatchSignal.emit(index, percentage, cancelled)
+    def handleAppletProgress(self, index: int, percentage: numbers.Real, cancelled: bool = False):
+        """
+        Handler for applet progress signals.
 
-    def handleAppletProgressImpl(self, index, percentage, cancelled):
+        Note: percentage parameter is casted to `int`
+        """
+        # Forward the signal to the handler via our qt signal, which provides a queued connection.
+        self.dispatchSignal.emit(index, int(percentage), cancelled)
+
+    def handleAppletProgressImpl(self, index: int, percentage: int, cancelled: bool):
         # No need for locking; this function is always run from the GUI thread
         if cancelled:
             if index in list(self.appletPercentages.keys()):
