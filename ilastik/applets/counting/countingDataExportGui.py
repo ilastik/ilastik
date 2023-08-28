@@ -116,7 +116,7 @@ class CountingResultsViewer(DataExportLayerViewerGui):
         if predictionSlot.ready() and self.topLevelOperatorView.UpperBound.ready():
             upperBound = self.topLevelOperatorView.UpperBound.value
             layer = ColortableLayer(
-                createDataSource(predictionSlot), colorTable=countingColorTable(), normalize=(0, upperBound)
+                createDataSource(predictionSlot), colorTable=countingColorTable, normalize=(0, upperBound)
             )
             layer.name = "Density"
             layers.append(layer)

@@ -18,7 +18,6 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from functools import lru_cache
 import importlib
 import logging
 import os
@@ -45,6 +44,25 @@ from volumina.colortables import matplotlib_to_qt4_colortable
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
+
+
+def _countingColorTable():
+    """
+    Create a colortable for the counting applet with gradual alpha increase
+    for the first third, then two thirds red, max alpha.
+    """
+    n_total = 256
+    n_gradual = 84
+    colortable = matplotlib_to_qt4_colortable("jet", N=n_gradual, asLong=False)
+    weights = numpy.tanh(numpy.linspace(0, 1.0, n_gradual))
+    for w, c in zip(weights, colortable):
+        c.setAlpha(w * 255)
+    colortable = [c.rgba() for c in colortable]
+
+    return [*colortable, *[colortable[-1]] * (n_total - n_gradual)]
+
+
+countingColorTable = _countingColorTable()
 
 
 def _listReplace(old, new):
@@ -651,7 +669,7 @@ class CountingGui(LabelingGui):
         for name, (slot, opacity) in list(slots.items()):
             if slot.ready():
                 layer = ColortableLayer(
-                    createDataSource(slot), colorTable=countingColorTable(), normalize=(0, self.upperBound)
+                    createDataSource(slot), colorTable=countingColorTable, normalize=(0, self.upperBound)
                 )
                 layer.name = name
                 layer.opacity = opacity
@@ -782,9 +800,9 @@ class CountingGui(LabelingGui):
     def handleLabelSelectionChange(self):
         enabled = False
         if self.topLevelOperatorView.MaxLabelValue.ready():
-            enabled = True
-            enabled &= self.topLevelOperatorView.MaxLabelValue.value >= 2
-            enabled &= bool(numpy.all(numpy.asarray(self.topLevelOperatorView.CachedFeatureImages.meta.shape) > 0))
+            value = self.topLevelOperatorView.MaxLabelValue.value
+            shape = self.topLevelOperatorView.CachedFeatureImages.meta.shape
+            enabled = enabled = value >= 2 and all(d > 0 for d in shape)
             # FIXME: also check that each label has scribbles?
 
         # self.labelingDrawerUi.savePredictionsButton.setEnabled(enabled)
@@ -1101,21 +1119,3 @@ class CountingGui(LabelingGui):
             self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Pause))
         else:
             self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Play))
-
-
-@lru_cache(maxsize=1)
-def countingColorTable():
-    """
-    Create a colortable for the counting applet with gradual alpha increase
-    for the first third, then two thirds red, max alpha.
-    """
-    n_max_alpha = 172
-    n_gradual = 84
-    colortable = matplotlib_to_qt4_colortable("jet", N=n_gradual, asLong=False)
-    weights = numpy.tanh(numpy.linspace(0, 1.0, n_gradual))
-    for w, c in zip(weights, colortable):
-        c.setAlpha(int(w * 255))
-    colortable = [c.rgba() for c in colortable]
-
-    colortable = colortable + [colortable[-1]] * n_max_alpha
-    return colortable
