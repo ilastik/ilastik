@@ -13,30 +13,20 @@ from typing import Optional
 import h5py
 import numpy
 import pytest
-from elf.evaluation import mean_average_precision
-from PyQt5.QtWidgets import QApplication
+from elf.evaluation import mean_segmentation_accuracy
+from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QApplication, QMessageBox
 
 from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
 from ilastik.workflows.edgeTrainingWithMulticut import EdgeTrainingWithMulticutWorkflow
 from lazyflow.classifiers.parallelVigraRfLazyflowClassifier import ParallelVigraRfLazyflowClassifier
 from lazyflow.utility.timer import Timer
 from tests.test_ilastik.helpers import ShellGuiTestCaseBase
+from tests.test_ilastik.helpers.wait import wait_until, wait_process_events
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 logger.setLevel(logging.DEBUG)
-
-
-def waitProcessEvents(timeout: float = 1.0, event: Optional[threading.Event] = None):
-    # this is ugly, especially used without an event
-    # there is no guarantee that the state is as expected.
-    # but for now, don't know how else to let gui and all requests settle
-    # for some actions
-    start = time.time()
-    while not (event and event.is_set()):
-        QApplication.processEvents()
-        if time.time() - start > timeout:
-            return
 
 
 def get_h5_dataset(file_path, dataset_path):
@@ -72,11 +62,12 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
         cls.output_file = cls.temp_dir / "out_multicut_segmentation.h5"
 
         # reference files
-
         cls.reference_zip_file = (
             current_dir.parent / "data" / "outputdata" / "testEdgeTrainingWithMulticutReference.zip"
         )
         cls.reference_path = cls.temp_dir / "reference"
+
+        cls.sample_gt = cls.reference_path / "multicut_segmentation_rf_t0.5_kerningham-lin.h5"
         cls.reference_files = {
             "superpixels": cls.reference_path / "superpixels.h5",
             "multicut_segmentation_no_rf_t0.5_kerningham-lin": cls.reference_path
@@ -140,6 +131,10 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
             opDataSelection.DatasetGroup[0][EdgeTrainingWithMulticutWorkflow.DATA_ROLE_PROBABILITIES].setValue(
                 info_prob
             )
+            info_gt = FilesystemDatasetInfo(
+                filePath=str(self.sample_gt), project_file=self.shell.projectManager.currentProjectFile
+            )
+            opDataSelection.DatasetGroup[0][EdgeTrainingWithMulticutWorkflow.DATA_ROLE_GROUNDTRUTH].setValue(info_gt)
             # Save
             shell.projectManager.saveProject()
 
@@ -201,7 +196,7 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
 
             # trigger the preprocessing and wait
             gui.update_ws_button.click()
-            waitProcessEvents(timeout=10, event=finished)
+            wait_process_events(timeout=10, event=finished)
             assert finished.is_set()
 
             superpixels = opWsdt.Superpixels[:].wait()
@@ -210,7 +205,7 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
 
             # Due to small numerical inaccuracies in filtering between the platforms, the
             # superpixels turn out slightly different
-            assert mean_average_precision(superpixels, superpixels_reference) > 0.98
+            assert mean_segmentation_accuracy(superpixels, superpixels_reference) > 0.97
             # Save the project
             saveThread = self.shell.onSaveProjectActionTriggered()
             saveThread.join()
@@ -236,7 +231,7 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
             # activate the carving applet
             shell.setSelectedAppletDrawer(2)
             # let the gui catch up
-            waitProcessEvents(timeout=0.1)
+            wait_process_events(timeout=0.1)
             self.waitForViews(gui.editor.imageViews)
 
             gui.train_edge_clf_box.setChecked(False)
@@ -258,7 +253,7 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
             QApplication.processEvents()
             # TODO(k-dominik): fix this timeout thing!
 
-            waitProcessEvents(timeout=2, event=evt)
+            wait_process_events(timeout=2, event=evt)
 
             # load reference data and compare
             mc_segmentation_reference = get_h5_dataset(
@@ -267,7 +262,7 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
             mc_segmentation = opMulticut.Output[:].wait()
 
             assert numpy.unique(mc_segmentation).shape == (5,)
-            assert mean_average_precision(mc_segmentation, mc_segmentation_reference) > 0.98
+            assert mean_segmentation_accuracy(mc_segmentation, mc_segmentation_reference) > 0.98
 
             # Save the project
             saveThread = self.shell.onSaveProjectActionTriggered()
@@ -279,9 +274,13 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
     @pytest.mark.skipif(
         platform.system() == "Windows" and os.environ.get("APPVEYOR"), reason="Test hangs on Appveyor ci"
     )
+    @pytest.mark.skipif(
+        platform.system() == "Darwin",
+        reason="This test relies on superpixel ids being exactly the same. Due to floating point inaccuracies this might not be the case on Mac.",
+    )
     def test_04_train_rf(self):
         """
-        do multicut on the edge data directly
+        train classifier with edge annotations
         """
 
         def impl():
@@ -332,7 +331,7 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
             gui.live_update_button.click()
 
             # Unfortunately didn't find a good event to wait for
-            waitProcessEvents(timeout=0.5)
+            wait_process_events(timeout=0.5)
             gui.live_update_button.click()
             assert not gui.live_update_button.isChecked()
 
@@ -347,7 +346,77 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
     @pytest.mark.skipif(
         platform.system() == "Windows" and os.environ.get("APPVEYOR"), reason="Test hangs on Appveyor ci"
     )
-    def test_05_multicut_rf(self):
+    def test_05_train_rf_from_gt(self):
+        """
+        train classifier from ground truth data
+        """
+
+        def impl():
+            shell = self.shell
+            workflow = shell.projectManager.workflow
+            multicutApplet = workflow.edgeTrainingWithMulticutApplet
+            gui = multicutApplet.getMultiLaneGui().currentGui()
+            opMulticut = multicutApplet.topLevelOperator.getLane(0)
+
+            # activate the carving applet
+            shell.setSelectedAppletDrawer(2)
+            # let the gui catch up
+            QApplication.processEvents()
+            self.waitForViews(gui.editor.imageViews)
+
+            # test test_04_train_rf might be skipped on certain platforms, so
+            if not gui.train_edge_clf_box.isChecked():
+                assert not gui._training_box.isEnabled()
+                gui.train_edge_clf_box.setChecked(True)
+                QApplication.processEvents()
+
+            assert gui.train_edge_clf_box.isChecked()
+            assert gui._training_box.isEnabled()
+
+            # delete all labels if there are any
+            if opMulticut.EdgeLabelsDict.value:
+
+                def handle_msgbox():
+                    msgbox = wait_until(QApplication.instance().activeModalWidget)
+                    msgbox.button(QMessageBox.Ok).click()
+
+                QTimer.singleShot(100, handle_msgbox)
+                gui.clear_labels_button.click()
+                wait_process_events(timeout=1.0)
+
+            assert not opMulticut.EdgeLabelsDict.value
+
+            features = {
+                "Raw Data": ["standard_sp_mean"],
+                "Probabilities-0": [],
+                "Probabilities-1": ["standard_edge_mean"],
+            }
+            opMulticut.FeatureNames.setValue(features)
+
+            gui.train_from_gt_button.click()
+            wait_process_events(timeout=0.5)
+            self.waitForViews(gui.editor.imageViews)
+
+            assert not gui.live_update_button.isChecked()
+            gui.live_update_button.click()
+
+            # Unfortunately didn't find a good event to wait for
+            wait_process_events(timeout=0.5)
+            gui.live_update_button.click()
+            assert not gui.live_update_button.isChecked()
+
+            assert isinstance(opMulticut.opClassifierCache.Output.value, ParallelVigraRfLazyflowClassifier)
+            # Save the project
+            saveThread = self.shell.onSaveProjectActionTriggered()
+            saveThread.join()
+
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
+
+    @pytest.mark.skipif(
+        platform.system() == "Windows" and os.environ.get("APPVEYOR"), reason="Test hangs on Appveyor ci"
+    )
+    def test_06_multicut_rf(self):
         """
         do multicut on the edge probabilities
         """
@@ -381,7 +450,7 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
             gui.update_button.click()
             QApplication.processEvents()
 
-            waitProcessEvents(timeout=2, event=evt)
+            wait_process_events(timeout=2, event=evt)
 
             # load reference data and compare
             mc_segmentation_reference = get_h5_dataset(
@@ -390,7 +459,7 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
             mc_segmentation = opMulticut.Output[:].wait()
 
             assert numpy.unique(mc_segmentation).shape == (3,)
-            assert mean_average_precision(mc_segmentation, mc_segmentation_reference) > 0.98
+            assert mean_segmentation_accuracy(mc_segmentation, mc_segmentation_reference) > 0.98
 
             # Save the project
             saveThread = self.shell.onSaveProjectActionTriggered()

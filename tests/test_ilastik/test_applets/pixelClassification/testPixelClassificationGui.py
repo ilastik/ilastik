@@ -18,24 +18,22 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import contextlib
 import os
-import time
 from pathlib import Path
 import sys
 import tempfile
 import pytest
 import numpy
-from PyQt5.QtCore import QEventLoop, Qt, QTimer
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QAction
 from volumina.layer import AlphaModulatedLayer
-from lazyflow.operators import OpPixelFeaturesPresmoothed
 from ilastik.widgets.stackFileSelectionWidget import SubvolumeSelectionDlg
 
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 from lazyflow.utility.timer import Timer, timeLogged
 
 from tests.test_ilastik.helpers import ShellGuiTestCaseBase
+from tests.test_ilastik.helpers.wait import wait_until, wait_signal, wait_slot_ready
 
 from ilastik.applets.pixelClassification.pixelClassificationApplet import PixelClassificationApplet
 from ilastik.applets.pixelClassification.suggestFeaturesDialog import SuggestFeaturesDialog
@@ -49,73 +47,6 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 # logger.setLevel(logging.INFO)
 logger.setLevel(logging.DEBUG)
-
-
-def wait_until(f, timeout=10):
-    result = f()
-    while not result and timeout:
-        timeout -= 1
-        time.sleep(1)
-        result = f()
-    if not result:
-        raise Exception(f"TIMEOUT! waiting for {f}")
-    return result
-
-
-@contextlib.contextmanager
-def wait_signal(signal, timeout=1000):
-    """
-    Context manager
-    on exit would wait for signal to fire before continuing
-    :param timeout: timeout in ms
-    :param signal:
-    """
-    evtLoop = QEventLoop()
-    # QueuedConnection so we don't receive signal before entering the loop
-    signal.connect(evtLoop.quit, Qt.QueuedConnection)
-
-    yield
-
-    _exec_with_timeout(evtLoop, timeout, signal)
-
-
-@contextlib.contextmanager
-def wait_slot_ready(slot, timeout=1000):
-    """
-    Wait for slot to become ready
-    :param timeout: timeout in ms
-    :param slot: lazyflow slot
-    :return:
-    """
-    evtLoop = QEventLoop()
-
-    def _register():
-        if slot.ready():
-            evtLoop.quit()
-        else:
-            slot.notifyReady(lambda *a, **kw: evtLoop.quit())
-
-    # Use QTimer to avoid event firing before waiting has started
-    QTimer.singleShot(0, _register)
-
-    yield
-
-    _exec_with_timeout(evtLoop, timeout, slot)
-
-
-def _exec_with_timeout(loop, timeout, timeout_obj):
-    timeout_exceeded = False
-
-    def _timeout():
-        nonlocal timeout_exceeded
-        timeout_exceeded = True
-        loop.quit()
-
-    QTimer.singleShot(timeout, _timeout)
-    loop.exec_()
-
-    if timeout_exceeded:
-        raise RuntimeError(f"Timeout exceeded for {timeout_obj}")
 
 
 class TestPixelClassificationGui(ShellGuiTestCaseBase):
