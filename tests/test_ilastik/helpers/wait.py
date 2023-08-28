@@ -49,10 +49,11 @@ def wait_signal(signal, timeout=1000):
     evtLoop = QEventLoop()
     # QueuedConnection so we don't receive signal before entering the loop
     signal.connect(evtLoop.quit, Qt.QueuedConnection)
-
-    yield
-
-    _exec_with_timeout(evtLoop, timeout, signal)
+    try:
+        yield
+        _exec_with_timeout(evtLoop, timeout, signal)
+    finally:
+        evtLoop.quit()
 
 
 @contextlib.contextmanager
@@ -74,9 +75,11 @@ def wait_slot_ready(slot, timeout=1000):
     # Use QTimer to avoid event firing before waiting has started
     QTimer.singleShot(0, _register)
 
-    yield
-
-    _exec_with_timeout(evtLoop, timeout, slot)
+    try:
+        yield
+        _exec_with_timeout(evtLoop, timeout, slot)
+    finally:
+        evtLoop.quit()
 
 
 def _exec_with_timeout(loop, timeout, timeout_obj):
@@ -88,7 +91,7 @@ def _exec_with_timeout(loop, timeout, timeout_obj):
         loop.quit()
 
     QTimer.singleShot(timeout, _timeout)
-    loop.exec_()
+    loop.exec()
 
     if timeout_exceeded:
         raise RuntimeError(f"Timeout exceeded for {timeout_obj}")
