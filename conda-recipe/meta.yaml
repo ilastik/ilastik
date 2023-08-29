@@ -73,6 +73,8 @@ outputs:
         - lazyflow
 
       source_files:
+        - ilastik
+        - lazyflow
         - tests
         - pytest.ini
 
@@ -83,7 +85,7 @@ outputs:
         - tiktorch
 
       commands:
-        - pytest -v .
+        - pytest -v
 
     about:
       home: https://github.com/ilastik/ilastik
@@ -111,6 +113,8 @@ outputs:
 
     test:
       source_files:
+        - ilastik
+        - lazyflow
         - tests
         - pytest.ini
 
@@ -132,7 +136,7 @@ outputs:
 
       commands:
         - ilastik --help
-        - pytest -v .
+        - pytest -v
 
     about:
       home: https://github.com/ilastik/ilastik
@@ -161,6 +165,8 @@ outputs:
 
     test:
       source_files:
+        - ilastik
+        - lazyflow
         - tests
         - pytest.ini
 
@@ -183,7 +189,7 @@ outputs:
 
       commands:
         - ilastik --help
-        - pytest -v .
+        - pytest -v
 
     about:
       home: https://github.com/ilastik/ilastik
