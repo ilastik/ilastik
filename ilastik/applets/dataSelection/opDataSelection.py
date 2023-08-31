@@ -64,8 +64,15 @@ class CantSaveAsRelativePathsException(Exception):
 
 
 class UnsuitedAxistagsException(Exception):
-    def __init__(self, axistags, shape):
-        super().__init__(f"Axistags {axistags} don't fit data shape {shape}")
+    def __init__(self, axistags: AxisTags, shape):
+        if len(axistags) > len(shape):
+            problem = "Inconsistent metadata: The dataset reports dimensions for which it contains no data."
+        else:
+            problem = "Inconsistent metadata: The dataset has more dimensions than it reports."
+        super().__init__(
+            f"{problem}\nReported axes: {', '.join([tag.key for tag in axistags])}\n"
+            f"Actual data dimensions: {', '.join([str(s) for s in shape])} (pixels/channels/timepoints)"
+        )
 
 
 class DatasetInfo(ABC):
