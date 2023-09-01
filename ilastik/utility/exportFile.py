@@ -447,7 +447,7 @@ class ExportFile(object):
         count = 0
         self.ExportProgress(0)
         if mode in ("h5", "hd5", "hdf5"):
-            for libver in ["earliest", "v108"]:
+            for libver in ["earliest", "v108", "latest"]:
                 try:
                     with h5py.File(self.file_name, "w", libver=libver) as fout:
                         for table_name, table in self.table_dict.items():
@@ -460,8 +460,11 @@ class ExportFile(object):
                             )
                             count += 1
                             self.ExportProgress(count * 100 / len(self.table_dict))
-                except ValueError:
-                    logger.warning("Writing most compatible H5 failed, attempting HDF5 v1.8 format")
+                except ValueError as e:
+                    if libver == "latest":
+                        logger.error("latest version of HDF5 export failed in export")
+                        raise ValueError(e)
+                    logger.warning(f"Writing {libver} H5 failed, attempting more recent format: {e} ")
                     count = 0
                     self.ExportProgress(0)
                     continue
