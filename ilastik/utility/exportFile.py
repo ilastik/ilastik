@@ -447,17 +447,28 @@ class ExportFile(object):
         count = 0
         self.ExportProgress(0)
         if mode in ("h5", "hd5", "hdf5"):
-            with h5py.File(self.file_name, "w") as fout:
-                for table_name, table in self.table_dict.items():
-                    self._make_h5_dataset(
-                        fout,
-                        table_name,
-                        table,
-                        self.meta_dict.get(table_name, {}),
-                        compression if compression is not None else {},
-                    )
-                    count += 1
-                    self.ExportProgress(count * 100 / len(self.table_dict))
+            for libver in ["earliest", "v108", "latest"]:
+                try:
+                    with h5py.File(self.file_name, "w", libver=libver) as fout:
+                        for table_name, table in self.table_dict.items():
+                            self._make_h5_dataset(
+                                fout,
+                                table_name,
+                                table,
+                                self.meta_dict.get(table_name, {}),
+                                compression if compression is not None else {},
+                            )
+                            count += 1
+                            self.ExportProgress(count * 100 / len(self.table_dict))
+                except ValueError as e:
+                    if libver == "latest":
+                        logger.error("latest version of HDF5 export failed in export")
+                        raise
+                    logger.warning(f"Writing {libver} H5 failed, attempting more recent format: {e} ")
+                    count = 0
+                    self.ExportProgress(0)
+                    continue
+                break
         elif mode == "csv":
             f_name = self.file_name.rsplit(".", 1)
             if len(f_name) == 1:
