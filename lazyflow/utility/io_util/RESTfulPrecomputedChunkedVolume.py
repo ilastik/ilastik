@@ -114,7 +114,7 @@ class RESTfulPrecomputedChunkedVolume(object):
         # save json contents
         self._scale_info = _scale_info
 
-        self._use_scale, resolution = self.determine_lowest_scale(_scale_info)
+        self._use_scale, resolution = self.determine_lowest_resolution(_scale_info)
 
         self.available_scales = self._scale_info.keys()
 
@@ -122,12 +122,12 @@ class RESTfulPrecomputedChunkedVolume(object):
         self.n_channels = self._json_info["num_channels"]
 
     @staticmethod
-    def determine_lowest_scale(scales_info_dict):
+    def determine_lowest_resolution(scales_info_dict):
         scales = scales_info_dict.keys()
         resolutions = [(scale, scales_info_dict[scale]["resolution"]) for scale in scales]
         # sort by x value of the resolution
         resolutions.sort(key=lambda x: x[1][0])
-        lowest_scale = resolutions[0]
+        lowest_scale = resolutions[-1]
         logger.debug(f"using lowest scale {lowest_scale[0]}")
         return lowest_scale
 
