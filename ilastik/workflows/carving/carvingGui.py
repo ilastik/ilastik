@@ -240,7 +240,7 @@ class CarvingGui(LabelingGui):
         highest_existing_suffix = 0
 
         for n in names:
-            match = re.match(f"^{self.objectPrefix}(?P<suffix>\d+)", n)
+            match = re.match(rf"^{self.objectPrefix}(?P<suffix>\d+)", n)
             if match:
                 val = int(match.group("suffix"))
                 if val > highest_existing_suffix:
@@ -534,12 +534,12 @@ class CarvingGui(LabelingGui):
 
                     logger.info(f"Generating mesh for {obj}")
                     _, mesh_data = list(labeling_to_mesh(object_volume, [1]))[0]
-                    self.parentApplet.progressSignal((obj_n + 0.5) * progress_update)
+                    self.parentApplet.progressSignal(int((obj_n + 0.5) * progress_update))
                     logger.info(f"Mesh generation for {obj} complete.")
 
                     logger.info(f"Saving mesh for {obj} to {obj_path}")
                     mesh_to_obj(mesh_data, obj_path, obj)
-                    self.parentApplet.progressSignal((obj_n + 1) * progress_update)
+                    self.parentApplet.progressSignal(int((obj_n + 1) * progress_update))
             finally:
                 self.parentApplet.busy = False
                 self.parentApplet.progressSignal(100)
@@ -654,7 +654,7 @@ class CarvingGui(LabelingGui):
 
         def onButtonsEnabled(slot, roi):
             currObj = self.topLevelOperatorView.CurrentObjectName.value
-            canSave = self.topLevelOperatorView.CanObjectBeSaved.value
+            canSave = bool(self.topLevelOperatorView.CanObjectBeSaved.value)
             label = currObj if currObj else DEFAULT_OBJECT_NAME
 
             self.labelingDrawerUi.currentObjectLabel.setText(label)

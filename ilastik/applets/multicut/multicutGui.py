@@ -191,8 +191,9 @@ class MulticutGuiMixin:
 
     def __init_probability_colortable(self):
         self.probability_colortable = []
-        for v in np.linspace(0.0, 1.0, num=101):
-            self.probability_colortable.append(QColor(255 * (v), 255 * (1.0 - v), 0))
+        # TODO: move to volumina.colortables
+        for v in np.linspace(0, 255, num=101, dtype=int):
+            self.probability_colortable.append(QColor(v, 255 - v, 0))
 
         self.probability_pen_table = []
         for color in self.probability_colortable:

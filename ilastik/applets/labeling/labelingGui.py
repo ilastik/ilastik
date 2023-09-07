@@ -782,7 +782,7 @@ class LabelingGui(LayerViewerGui):
         """
         maxNum = 0
         for index, label in enumerate(self._labelControlUi.labelListModel):
-            nums = re.findall("\d+", label.name)
+            nums = re.findall(r"\d+", label.name)
             for n in nums:
                 maxNum = max(maxNum, int(n))
         return "Label {}".format(maxNum + 1)

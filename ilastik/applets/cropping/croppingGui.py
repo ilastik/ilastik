@@ -456,7 +456,7 @@ class CroppingGui(LayerViewerGui):
         """
         maxNum = 0
         for index, crop in enumerate(self._cropControlUi.cropListModel):
-            nums = re.findall("\d+", crop.name)
+            nums = re.findall(r"\d+", crop.name)
             for n in nums:
                 maxNum = max(maxNum, int(n))
         return "Crop {}".format(maxNum + 1)
