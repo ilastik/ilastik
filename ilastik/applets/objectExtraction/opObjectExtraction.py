@@ -19,23 +19,22 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Python
-from __future__ import division
-from builtins import range
 from copy import copy, deepcopy
 import collections
 from collections.abc import Iterable
 from functools import partial
+from typing import Dict
 
 # SciPy
 import numpy
 import vigra.analysis
 
 # lazyflow
-from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.request import Request, RequestPool
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List, SubRegion
-from lazyflow.roi import roiToSlice, sliceToRoi
+from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpLabelVolume, OpCompressedCache, OpBlockedArrayCache
 from itertools import groupby, count
 
@@ -626,7 +625,14 @@ class OpRegionFeatures(Operator):
             atlas_mapping[obj_idx] = atlas_value
         return atlas_mapping
 
-    def _extract(self, image, labels, atlas=None):
+    def _extract(self, image, labels, atlas=None) -> Dict[str, Dict[str, numpy.ndarray]]:
+        """
+        Returns a dictionary of features, with the following structure:
+            dict[plugin_name][feature_name] = feature_value
+
+            where feature value is 2D numpy array with feature values per object
+        """
+
         if not (image.ndim == labels.ndim == 4):
             raise Exception(
                 "both images must be 4D. raw image shape: {} label image shape: {}".format(image.shape, labels.shape)
@@ -687,6 +693,7 @@ class OpRegionFeatures(Operator):
 
         extrafeats = dict((k.replace(" ", ""), v) for k, v in extrafeats.items())
 
+        # index in those have an -1 offset to object ids
         mincoords = extrafeats["Coord<Minimum>"].astype(int)
         maxcoords = extrafeats["Coord<Maximum>"].astype(int)
         nobj = mincoords.shape[0]
@@ -708,19 +715,37 @@ class OpRegionFeatures(Operator):
                     break
 
         if numpy.any(margin) > 0:
-            # starting from 0, we stripped 0th background object in global computation
-            for i in range(0, nobj):
-                logger.debug("processing object {}".format(i))
-                extent = self.compute_extent(i, image, mincoords, maxcoords, axes, margin)
-                rawbbox = self.compute_rawbbox(image, extent, axes)
-                # it's i+1 here, because the background has label 0
-                binary_bbox = numpy.where(labels[tuple(extent)] == i + 1, 1, 0).astype(bool)
-                for plugin_name, feature_dict in feature_names.items():
-                    if not has_local_features[plugin_name]:
-                        continue
-                    plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-                    feats = plugin.plugin_object.compute_local(rawbbox, binary_bbox, feature_dict, axes)
-                    local_features[plugin_name] = dictextend(local_features[plugin_name], feats)
+            bboxes = {}
+            for plugin_name, feature_dict in feature_names.items():
+                if not has_local_features[plugin_name]:
+                    continue
+
+                plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
+                pool = RequestPool()
+                tmp_dicts = [None] * nobj
+
+                def _calc_single(i, raw_bbox, binary_bbox):
+                    feats = plugin.plugin_object.compute_local(raw_bbox, binary_bbox, feature_dict, axes)
+                    tmp_dicts[i] = feats
+
+                # starting from 0, we stripped 0th background object in global computation
+                for i in range(0, nobj):
+                    logger.debug("processing object {}".format(i))
+                    if i not in bboxes:
+                        extent = self.compute_extent(i, image, mincoords, maxcoords, axes, margin)
+                        raw_bbox = self.compute_rawbbox(image, extent, axes)
+                        # it's i+1 here, because the background has label 0
+                        binary_bbox = numpy.where(labels[tuple(extent)] == i + 1, 1, 0).astype(bool)
+                        bboxes[i] = (raw_bbox, binary_bbox)
+
+                    raw_bbox, binary_bbox = bboxes[i]
+                    pool.add(Request(partial(_calc_single, i, raw_bbox, binary_bbox)))
+
+                pool.wait()
+                pool.clean()
+                # merge the results
+                for i in range(0, nobj):
+                    local_features[plugin_name] = dictextend(local_features[plugin_name], tmp_dicts[i])
 
         logger.debug("computing done, removing failures")
         # remove local features that failed
