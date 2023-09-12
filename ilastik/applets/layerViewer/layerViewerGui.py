@@ -249,6 +249,16 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
                     layers.append(layer)
         return layers
 
+    def increase_resolution_multiscale(self):
+        print("layerViewer.up")
+        for layer in self.layerstack:
+            layer.increase_resolution_multiscale()
+
+    def decrease_resolution_multiscale(self):
+        print("layerViewer.down")
+        for layer in self.layerstack:
+            layer.increase_resolution_multiscale()
+
     def _handleLayerInsertion(self, slot, slotIndex):
         """
         The multislot providing our layers has a new item.
@@ -331,6 +341,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         layer.name = name or slot.name
         layer.visible = visible
         layer.opacity = opacity
+        layer.multiscale = slot.meta.multiscale
 
         return layer
 
