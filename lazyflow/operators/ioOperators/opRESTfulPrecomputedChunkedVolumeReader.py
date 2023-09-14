@@ -79,11 +79,6 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
         self.Output.meta.dtype = numpy.dtype(self._volume_object.dtype).type
         self.Output.meta.axistags = vigra.defaultAxistags(self._axes)
 
-        # scale needs to be defined for the following, so:
-        # override whatever was set before to the lowest available scale:
-        # is this a good idea? Triggers setupOutputs again
-        self.Scale.setValue(self._volume_object._use_scale)
-
     @staticmethod
     def get_intersecting_blocks(blockshape, roi, shape):
         """Find block indices for given roi
@@ -166,8 +161,7 @@ class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
 
     BaseUrl = InputSlot()
 
-    # There is also the scale to configure
-    Scale = InputSlot(optional=True)
+    Scale = InputSlot()
 
     # Available scales of the data
     AvailableScales = OutputSlot()

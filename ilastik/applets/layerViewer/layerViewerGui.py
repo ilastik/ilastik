@@ -250,14 +250,23 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         return layers
 
     def increase_resolution_multiscale(self):
-        print("layerViewer.up")
-        for layer in self.layerstack:
-            layer.increase_resolution_multiscale()
+        for multiLayerSlot in self.observedSlots:
+            for j, slot in enumerate(multiLayerSlot):
+                if slot.ready() and slot.meta.multiscale:
+                    try:
+                        slot.operator.ActiveScale.setValue("400_400_70")
+                    except AttributeError:
+                        print(f"operator has no ActiveScale on slot {slot.name} of operator {slot.operator.name}")
 
     def decrease_resolution_multiscale(self):
         print("layerViewer.down")
-        for layer in self.layerstack:
-            layer.increase_resolution_multiscale()
+        for multiLayerSlot in self.observedSlots:
+            for j, slot in enumerate(multiLayerSlot):
+                if slot.ready() and slot.meta.multiscale:
+                    try:
+                        slot.operator.ActiveScale.setValue("400_400_70")
+                    except AttributeError:
+                        print(f"operator has no ActiveScale on slot {slot.name} of operator {slot.operator.name}")
 
     def _handleLayerInsertion(self, slot, slotIndex):
         """

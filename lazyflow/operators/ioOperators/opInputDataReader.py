@@ -117,6 +117,7 @@ class OpInputDataReader(Operator):
     WorkingDirectory = InputSlot(stype="filestring", optional=True)
     FilePath = InputSlot(stype="filestring")
     SequenceAxis = InputSlot(optional=True)
+    ActiveScale = InputSlot(optional=True)  # Only relevant for multiscale data
 
     # FIXME: Document this.
     SubVolumeRoi = InputSlot(optional=True)  # (start, stop)
@@ -135,6 +136,7 @@ class OpInputDataReader(Operator):
         FilePath: str = None,
         SequenceAxis: str = None,
         SubVolumeRoi: Tuple[int, int] = None,
+        ActiveScale: InputSlot = None,
         *args,
         **kwargs,
     ):
@@ -147,6 +149,7 @@ class OpInputDataReader(Operator):
         self.FilePath.setOrConnectIfAvailable(FilePath)
         self.SequenceAxis.setOrConnectIfAvailable(SequenceAxis)
         self.SubVolumeRoi.setOrConnectIfAvailable(SubVolumeRoi)
+        self.ActiveScale.setOrConnectIfAvailable(ActiveScale)
 
     def cleanUp(self):
         super(OpInputDataReader, self).cleanUp()
@@ -295,6 +298,7 @@ class OpInputDataReader(Operator):
         else:
             url = filePath.lstrip("precomputed://")
             reader = OpRESTfulPrecomputedChunkedVolumeReader(parent=self)
+            reader.Scale.connect(self.ActiveScale)
             reader.BaseUrl.setValue(url)
             return [reader], reader.Output
 

@@ -514,7 +514,8 @@ class UrlDatasetInfo(DatasetInfo):
         return self.url
 
     def create_data_reader(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
-        op_reader = OpInputDataReader(parent=parent, graph=graph, FilePath=self.url)
+        scale_input_slot = parent.ActiveScale if hasattr(parent, "ActiveScale") else None
+        op_reader = OpInputDataReader(parent=parent, graph=graph, FilePath=self.url, ActiveScale=scale_input_slot)
         return op_reader.Output
 
     @property
@@ -690,6 +691,7 @@ class OpDataSelection(Operator):
     ProjectDataGroup = InputSlot(stype="string", optional=True)
     WorkingDirectory = InputSlot(stype="filestring")  # : The filesystem directory where the project file is located
     Dataset = InputSlot(stype="object")  # : A DatasetInfo object
+    ActiveScale = InputSlot(stype="string", optional=True)  # : The currently selected scale (for multiscale data)
 
     # Outputs
     Image = OutputSlot()  # : The output image
@@ -800,6 +802,7 @@ class OpDataSelectionGroup(Operator):
     ProjectDataGroup = InputSlot(stype="string", optional=True)
     WorkingDirectory = InputSlot(stype="filestring")
     DatasetRoles = InputSlot(stype="object")
+    ActiveScale = InputSlot(stype="string", optional=True)
 
     # Must mark as optional because not all subslots are required.
     DatasetGroup = InputSlot(stype="object", level=1, optional=True)
@@ -879,6 +882,7 @@ class OpDataSelectionGroup(Operator):
             self._opDatasets.ProjectFile.connect(self.ProjectFile)
             self._opDatasets.ProjectDataGroup.connect(self.ProjectDataGroup)
             self._opDatasets.WorkingDirectory.connect(self.WorkingDirectory)
+            self._opDatasets.ActiveScale.connect(self.ActiveScale)
 
         for role_index, opDataSelection in enumerate(self._opDatasets):
             opDataSelection.RoleName.setValue(self._roles[role_index])
