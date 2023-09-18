@@ -1,10 +1,8 @@
+from typing import Union
 import vigra
-import numpy
 import xarray
 
-from functools import singledispatch
 from lazyflow.graph import Graph
-from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.classifierOperators import OpClassifierPredict
 from lazyflow.operators import OpReorderAxes
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
@@ -50,7 +48,7 @@ def from_project_file(path) -> Pipeline:
             self._predict_op.LabelsCount.setValue(classifer.label_count)
 
         def predict(self, data):
-            data = convert_to_vigra(data)
+            data = as_vigra_array(data)
             num_channels_in_data = data.channels
             if num_channels_in_data != num_channels:
                 raise ValueError(
@@ -72,22 +70,13 @@ def from_project_file(path) -> Pipeline:
     return _PipelineImpl()
 
 
-@singledispatch
-def convert_to_vigra(data):
-    raise NotImplementedError(f"{type(data)}")
-
-
-@convert_to_vigra.register
-def _(data: vigra.VigraArray):
-    return data
-
-
-@convert_to_vigra.register
-def _(data: numpy.ndarray):
-    raise ValueError("numpy arrays don't provide information about axistags expecting xarray")
-
-
-@convert_to_vigra.register
-def _(data: xarray.DataArray):
-    axistags = "".join(data.dims)
-    return vigra.taggedView(data.values, axistags)
+def as_vigra_array(data: Union[vigra.VigraArray, xarray.DataArray]) -> vigra.VigraArray:
+    if isinstance(data, vigra.VigraArray):
+        return data
+    elif isinstance(data, xarray.DataArray):
+        axistags = "".join(data.dims)
+        return vigra.taggedView(data.values, axistags)
+    else:
+        raise NotImplementedError(
+            f"Data type '{type(data)}' not supported, use `vigra.VigraArray` or `xarray.DataArray`."
+        )
