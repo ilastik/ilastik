@@ -802,7 +802,6 @@ class OpDataSelectionGroup(Operator):
     ProjectDataGroup = InputSlot(stype="string", optional=True)
     WorkingDirectory = InputSlot(stype="filestring")
     DatasetRoles = InputSlot(stype="object")
-    ActiveScale = InputSlot(stype="string", optional=True)
 
     # Must mark as optional because not all subslots are required.
     DatasetGroup = InputSlot(stype="object", level=1, optional=True)
@@ -859,6 +858,12 @@ class OpDataSelectionGroup(Operator):
             if role_name in infos:
                 self.DatasetGroup[role_index].setValue(infos[role_name])
 
+    def increase_resolution_multiscale(self):
+        self._opDatasets.ActiveScale.setValue("400_400_70")
+
+    def decrease_resolution_multiscale(self):
+        self._opDatasets.ActiveScale.setValue("400_400_70")
+
     def setupOutputs(self):
         # Create internal operators
         if self.DatasetRoles.value != self._roles:
@@ -882,7 +887,6 @@ class OpDataSelectionGroup(Operator):
             self._opDatasets.ProjectFile.connect(self.ProjectFile)
             self._opDatasets.ProjectDataGroup.connect(self.ProjectDataGroup)
             self._opDatasets.WorkingDirectory.connect(self.WorkingDirectory)
-            self._opDatasets.ActiveScale.connect(self.ActiveScale)
 
         for role_index, opDataSelection in enumerate(self._opDatasets):
             opDataSelection.RoleName.setValue(self._roles[role_index])

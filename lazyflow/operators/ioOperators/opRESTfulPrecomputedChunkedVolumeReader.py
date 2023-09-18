@@ -173,7 +173,6 @@ class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
         self.RESTfulReader = OpRESTfulPrecomputedChunkedVolumeReaderNoCache(parent=self)
         self.RESTfulReader.BaseUrl.connect(self.BaseUrl)
         self.AvailableScales.connect(self.RESTfulReader.AvailableScales)
-        self.RESTfulReader.Scale.backpropagate_values = True
         self.RESTfulReader.Scale.connect(self.Scale)
 
         self.cache = OpBlockedArrayCache(parent=self)
