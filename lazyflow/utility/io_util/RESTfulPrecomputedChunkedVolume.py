@@ -75,11 +75,8 @@ class RESTfulPrecomputedChunkedVolume(object):
               temp-folder.
             n_threads (int, optional): number of concurrent downloads
         """
-        # might come in handy if one wants to process data on a different scale.
-        # ilastik can only process data at a single scale.
-        self._scale_info = None
+        self.scales = None
         self._json_info = None
-        self._use_scale = "1_1_1"
         self.tmp_data_file = tmp_data_file
         self.volume_url = volume_url
 
@@ -109,58 +106,34 @@ class RESTfulPrecomputedChunkedVolume(object):
             self._json_info = volume_description
 
         jsonschema.validate(self._json_info, self.info_schema)
-        _scale_info = {x["key"]: x for x in self._json_info["scales"]}
 
-        # save json contents
-        self._scale_info = _scale_info
-
-        self._use_scale, resolution = self.determine_lowest_resolution(_scale_info)
-
-        self.available_scales = self._scale_info.keys()
-
+        self.scales = self._json_info["scales"]
+        # Sort from lowest to highest resolution along x
+        # scales["resolution"] is in nanometers-per-pixel. So bigger = lower resolution, hence reverse sort.
+        self.scales.sort(key=lambda s: s["resolution"][0], reverse=True)
         self.dtype = self._json_info["data_type"]
         self.n_channels = self._json_info["num_channels"]
 
-    @staticmethod
-    def determine_lowest_resolution(scales_info_dict):
-        scales = scales_info_dict.keys()
-        resolutions = [(scale, scales_info_dict[scale]["resolution"]) for scale in scales]
-        # sort by x value of the resolution
-        resolutions.sort(key=lambda x: x[1][0])
-        lowest_scale = resolutions[-1]
-        logger.debug(f"using lowest scale {lowest_scale[0]}")
-        return lowest_scale
-
-    def get_block_shape(self, scale=None):
-        if scale is None:
-            scale = self._use_scale
+    def get_block_shape(self, scale=0):
         n_channels = self.n_channels
-        block_shape = numpy.array([n_channels] + self._scale_info[scale]["chunk_sizes"][0][::-1])
+        block_shape = numpy.array([n_channels] + self.scales[scale]["chunk_sizes"][0][::-1])
         return block_shape
 
-    def get_resolution(self, scale=None):
-        if scale is None:
-            scale = self._use_scale
-        resolution = numpy.array(self._scale_info[scale]["resolution"][::-1])
+    def get_resolution(self, scale=0):
+        resolution = numpy.array(self.scales[scale]["resolution"][::-1])
         return resolution
 
-    def get_voxel_offset(self, scale=None):
-        if scale is None:
-            scale = self._use_scale
-        voxel_offset = numpy.array([0] + self._scale_info[scale]["voxel_offset"][::-1])
+    def get_voxel_offset(self, scale=0):
+        voxel_offset = numpy.array([0] + self.scales[scale]["voxel_offset"][::-1])
         return voxel_offset
 
-    def get_encoding(self, scale=None):
-        if scale is None:
-            scale = self._use_scale
-        encoding = self._scale_info[scale]["encoding"]
+    def get_encoding(self, scale=0):
+        encoding = self.scales[scale]["encoding"]
         return encoding
 
-    def get_shape(self, scale=None):
-        if scale is None:
-            scale = self._use_scale
+    def get_shape(self, scale=0):
         n_channels = self.n_channels
-        shape = numpy.array([n_channels] + self._scale_info[scale]["size"][::-1])
+        shape = numpy.array([n_channels] + self.scales[scale]["size"][::-1])
         return shape
 
     def download_info(self):
@@ -173,23 +146,20 @@ class RESTfulPrecomputedChunkedVolume(object):
 
         self._json_info = json.loads(r.content)
 
-    def download_block(self, block_coordinates, scale=None):
+    def download_block(self, block_coordinates, scale=0):
         """downloads a single block at a given scale
 
         Args:
             block_coordinates (iterable): start of the block, 'czyx' axistags
               assumed
-            scale (string): key identifying the scale to be used
+            scale (int): index of the scale to be used
         """
-        if scale is None:
-            scale = self._use_scale
-
-        url, blockshape = self.generate_url(block_coordinates, scale)
+        url, block_shape = self.generate_url(block_coordinates, scale)
         try:
             content = self.downloading(url)
         except requests.exceptions.ConnectionError:
-            return numpy.zeros(shape=blockshape, dtype=self.dtype)
-        return self.decode_content(content, encoding=self.get_encoding(scale), shape=blockshape, dtype=self.dtype)
+            return numpy.zeros(shape=block_shape, dtype=self.dtype)
+        return self.decode_content(content, encoding=self.get_encoding(scale), shape=block_shape, dtype=self.dtype)
 
     @classmethod
     def decode_content(cls, content, encoding, shape, dtype):
@@ -213,24 +183,22 @@ class RESTfulPrecomputedChunkedVolume(object):
         r = requests.get(url)
         return r.content
 
-    def generate_url(self, block_coordinates, scale=None):
+    def generate_url(self, block_coordinates, scale=0):
         """Generate url to access a specific block
 
 
         Args:
             block_coordinates (ndarray): 2d array of voxel coordinates at the
               given scale; czyx
-            scale (string): key identifying the scale to be used
+            scale (int): index of the scale to be used
 
         Returns:
             string: URL to access the block with the given block coordinates
         """
-        if scale is None:
-            scale = self._use_scale
-
         # block shape without channel
         shape = self.get_shape(scale)
         block_shape = self.get_block_shape(scale)
+        scale_key = self.scales[scale]["key"]
         coordinates = block_coordinates
 
         if not numpy.allclose(numpy.remainder(coordinates, block_shape), 0):
@@ -247,7 +215,7 @@ class RESTfulPrecomputedChunkedVolume(object):
         min_z, min_y, min_x = min_values[1::]
         max_z, max_y, max_x = max_values[1::]
 
-        url = f"{base_url}/{scale}/{min_x}-{max_x}_{min_y}-{max_y}_{min_z}-{max_z}"
+        url = f"{base_url}/{scale_key}/{min_x}-{max_x}_{min_y}-{max_y}_{min_z}-{max_z}"
         return url, downloaded_block_shape
 
 
@@ -256,7 +224,7 @@ if __name__ == "__main__":
     volume_url = "http://localhost:8080/precomputed/cremi"
     cvol = RESTfulPrecomputedChunkedVolume(volume_url=volume_url)
     print(f"dtype: {cvol.dtype}")
-    print(f"scales: {cvol.available_scales}")
+    print(f"scales: {len(cvol.scales)}")
     print(f"block_shape: {cvol.get_block_shape()}")
     print(f"shape: {cvol.get_shape()}")
     block_start = [1, 128, 64, 256]

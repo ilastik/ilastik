@@ -827,6 +827,7 @@ class OpDataSelectionGroup(Operator):
         self._opDatasets = None
         self._roles = []
         self._forceAxisOrder = forceAxisOrder
+        self._multiscale_current_scale = 0
 
         def handleNewRoles(*args):
             self.DatasetGroup.resize(len(self.DatasetRoles.value))
@@ -859,10 +860,12 @@ class OpDataSelectionGroup(Operator):
                 self.DatasetGroup[role_index].setValue(infos[role_name])
 
     def increase_resolution_multiscale(self):
-        self._opDatasets.ActiveScale.setValue("400_400_70")
+        self._multiscale_current_scale += 1
+        self._opDatasets.ActiveScale.setValue(self._multiscale_current_scale)
 
     def decrease_resolution_multiscale(self):
-        self._opDatasets.ActiveScale.setValue("400_400_70")
+        self._multiscale_current_scale -= 1
+        self._opDatasets.ActiveScale.setValue(self._multiscale_current_scale)
 
     def setupOutputs(self):
         # Create internal operators
@@ -887,6 +890,7 @@ class OpDataSelectionGroup(Operator):
             self._opDatasets.ProjectFile.connect(self.ProjectFile)
             self._opDatasets.ProjectDataGroup.connect(self.ProjectDataGroup)
             self._opDatasets.WorkingDirectory.connect(self.WorkingDirectory)
+            self._opDatasets.ActiveScale.setValue(0)
 
         for role_index, opDataSelection in enumerate(self._opDatasets):
             opDataSelection.RoleName.setValue(self._roles[role_index])

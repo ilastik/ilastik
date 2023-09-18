@@ -44,15 +44,10 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
 
     name = "OpRESTfulPrecomputedChunkedVolumeReader"
 
-    # Base url of the chunked volume
     BaseUrl = InputSlot()
-
-    # There is also the scale to configure
     Scale = InputSlot(optional=True)
 
-    # Available scales of the data
-    AvailableScales = OutputSlot()
-    # The data itself
+    MaxScale = OutputSlot(stype="int")
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -72,12 +67,11 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
 
         self._axes = self._volume_object.axes
 
-        self.AvailableScales.setValue(self._volume_object.available_scales)
-        output_shape = tuple(self._volume_object.get_shape(scale=self._volume_object._use_scale))
-        self.Output.meta.shape = output_shape
-        self.Output.meta.multiscale = True
+        self.MaxScale.setValue(len(self._volume_object.scales) - 1)
+        self.Output.meta.shape = tuple(self._volume_object.get_shape())
         self.Output.meta.dtype = numpy.dtype(self._volume_object.dtype).type
         self.Output.meta.axistags = vigra.defaultAxistags(self._axes)
+        self.Output.meta.multiscale = True
 
     @staticmethod
     def get_intersecting_blocks(blockshape, roi, shape):
@@ -160,20 +154,17 @@ class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
     fixAtCurrent = InputSlot(value=False, stype="bool")
 
     BaseUrl = InputSlot()
-
     Scale = InputSlot()
 
-    # Available scales of the data
-    AvailableScales = OutputSlot()
-    # The data itself
+    MaxScale = OutputSlot(stype="int")
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.RESTfulReader = OpRESTfulPrecomputedChunkedVolumeReaderNoCache(parent=self)
         self.RESTfulReader.BaseUrl.connect(self.BaseUrl)
-        self.AvailableScales.connect(self.RESTfulReader.AvailableScales)
         self.RESTfulReader.Scale.connect(self.Scale)
+        self.MaxScale.connect(self.RESTfulReader.MaxScale)
 
         self.cache = OpBlockedArrayCache(parent=self)
         self.cache.name = "input_image_cache"
@@ -202,7 +193,7 @@ if __name__ == "__main__":
     g = graph.Graph()
     op = OpRESTfulPrecomputedChunkedVolumeReader(graph=g)
     op.BaseUrl.setValue(volume_url)
-    print(f"available scales: {op.AvailableScales.value}")
+    print(f"Maximum scale level: {op.MaxScale.value}")
     print(f"Selected scale: {op.Scale.value}")
 
     # get some data

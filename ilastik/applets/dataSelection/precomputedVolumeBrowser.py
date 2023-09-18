@@ -103,8 +103,8 @@ class PrecomputedVolumeBrowser(QDialog):
 
         self.debug_text.setText(
             f"volume encoding: {rv.get_encoding()}\n"
-            f"available scales: {rv.available_scales}\n"
-            f"using scale: {rv._use_scale}\n"
+            f"number of scales: {len(rv.scales)}\n"
+            f"using scale: {rv.scales[0]['key']}\n"
             f"data shape: {rv.get_shape()}\n"
         )
         self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(True)
