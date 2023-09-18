@@ -1,4 +1,6 @@
 from typing import Union
+import warnings
+
 import vigra
 import xarray
 
@@ -47,25 +49,33 @@ def from_project_file(path) -> Pipeline:
             self._predict_op.Image.connect(self._feature_sel_op.OutputImage)
             self._predict_op.LabelsCount.setValue(classifer.label_count)
 
-        def predict(self, data):
-            data = as_vigra_array(data)
-            num_channels_in_data = data.channels
+        def predict(self, data: Union[vigra.VigraArray, xarray.DataArray]) -> xarray.DataArray:
+            warnings.warn(
+                "The predict method will disappear in future versions, please use get_probabilities()",
+                DeprecationWarning,
+            )
+            return self.get_probabilities(raw_data=data)
+
+        def get_probabilities(self, raw_data: Union[vigra.VigraArray, xarray.DataArray]) -> xarray.DataArray:
+
+            raw_data = as_vigra_array(raw_data)
+            num_channels_in_data = raw_data.channels
             if num_channels_in_data != num_channels:
                 raise ValueError(
                     f"Number of channels mismatch. Classifier trained for {num_channels} but input has {num_channels_in_data}"
                 )
 
-            num_spatial_in_data = sum(a.isSpatial() for a in data.axistags)
+            num_spatial_in_data = sum(a.isSpatial() for a in raw_data.axistags)
             if num_spatial_in_data != num_spatial_dims:
                 raise ValueError(
                     "Number of spatial dims doesn't match. "
                     f"Classifier trained for {num_spatial_dims} but input has {num_spatial_in_data}"
                 )
 
-            self._reorder_op.Input.setValue(data)
+            self._reorder_op.Input.setValue(raw_data)
 
-            data = self._predict_op.PMaps.value[...]
-            return xarray.DataArray(data, dims=tuple(self._predict_op.PMaps.meta.axistags.keys()))
+            probabilities = self._predict_op.PMaps.value[...]
+            return xarray.DataArray(probabilities, dims=tuple(self._predict_op.PMaps.meta.axistags.keys()))
 
     return _PipelineImpl()
 
