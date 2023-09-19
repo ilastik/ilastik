@@ -699,6 +699,8 @@ class OpDataSelection(Operator):
 
     ImageName = OutputSlot(stype="string")  # : The name of the output image
 
+    MaxScale = OutputSlot(stype="int")  # : The maximum scale of the dataset (for multiscale data)
+
     def __init__(
         self,
         forceAxisOrder: List[str] = ["tczyx"],
@@ -757,6 +759,9 @@ class OpDataSelection(Operator):
             else:
                 meta = {"channel_names": [role_name]}
             data_provider.meta.update(meta)
+            op_reader = data_provider.operator
+            if hasattr(op_reader, "MaxScale"):
+                self.MaxScale.setValue(op_reader.MaxScale.value)
 
             output_order = self._get_output_axis_order(data_provider)
             # Export applet assumes this OpReorderAxes exists.
@@ -860,12 +865,23 @@ class OpDataSelectionGroup(Operator):
                 self.DatasetGroup[role_index].setValue(infos[role_name])
 
     def increase_resolution_multiscale(self):
-        self._multiscale_current_scale += 1
-        self._opDatasets.ActiveScale.setValue(self._multiscale_current_scale)
+        max_scale = 0
+        for opDataSelection in self._opDatasets:
+            if opDataSelection.MaxScale.value:
+                max_scale = opDataSelection.MaxScale.value
+                break
+        if max_scale == 0:
+            return
+        if self._multiscale_current_scale < max_scale:
+            print(f"Increasing resolution to scale {self._multiscale_current_scale + 1}, max={max_scale}")
+            self._multiscale_current_scale += 1
+            self._opDatasets.ActiveScale.setValue(self._multiscale_current_scale)
 
     def decrease_resolution_multiscale(self):
-        self._multiscale_current_scale -= 1
-        self._opDatasets.ActiveScale.setValue(self._multiscale_current_scale)
+        if self._multiscale_current_scale > 0:
+            print(f"Decreasing resolution to scale {self._multiscale_current_scale - 1}")
+            self._multiscale_current_scale -= 1
+            self._opDatasets.ActiveScale.setValue(self._multiscale_current_scale)
 
     def setupOutputs(self):
         # Create internal operators

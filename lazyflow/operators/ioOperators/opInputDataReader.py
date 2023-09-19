@@ -123,6 +123,7 @@ class OpInputDataReader(Operator):
     SubVolumeRoi = InputSlot(optional=True)  # (start, stop)
 
     Output = OutputSlot()
+    MaxScale = OutputSlot(stype="int")  # Only relevant for multiscale data
 
     loggingName = __name__ + ".OpInputDataReader"
     logger = logging.getLogger(loggingName)
@@ -300,6 +301,7 @@ class OpInputDataReader(Operator):
             reader = OpRESTfulPrecomputedChunkedVolumeReader(parent=self)
             reader.Scale.connect(self.ActiveScale)
             reader.BaseUrl.setValue(url)
+            self.MaxScale.setValue(reader.MaxScale.value)
             return [reader], reader.Output
 
     def _attemptOpenAsH5N5Stack(self, filePath):
