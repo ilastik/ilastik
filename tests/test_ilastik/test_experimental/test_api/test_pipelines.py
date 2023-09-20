@@ -1,15 +1,15 @@
-import sys
 import subprocess
+import sys
 
-import pytest
 import numpy as np
+import pytest
 import xarray
 from imageio import imread
 
 from ilastik.experimental.api import from_project_file
 from ilastik.experimental.parser.types import IlastikAPIError
 
-from ..types import TestData, TestProjects, ApiTestDataLookup
+from ..types import ApiTestDataLookup, TestData, TestProjects
 
 
 def _load_as_xarray(dataset: TestData):
