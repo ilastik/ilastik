@@ -4,6 +4,7 @@ import dataclasses
 
 @enum.unique
 class TestData(str, enum.Enum):
+    __test__ = False
     DATA_1_CHANNEL: str = ("Data_1channel.png", "yx", "yxc")
     DATA_3_CHANNEL: str = ("Data_3channel.png", "yxc", "yxc")
     DATA_1_CHANNEL_3D: str = ("Data_3D.npy", "zyxc", "zyxc")
@@ -18,6 +19,7 @@ class TestData(str, enum.Enum):
 
 @enum.unique
 class TestProjects(enum.Enum):
+    __test__ = False
     PIXEL_CLASS_1_CHANNEL_XYC: str = "PixelClass.ilp"
     PIXEL_CLASS_1_CHANNEL_XY: str = "2464_PixelClassification_xy_input.ilp"
     PIXEL_CLASS_3_CHANNEL: str = "PixelClass3Channel.ilp"
