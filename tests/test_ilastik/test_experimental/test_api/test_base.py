@@ -7,6 +7,7 @@ import xarray
 from imageio import imread
 
 from ilastik.experimental.api import from_project_file
+from ilastik.experimental.parser.types import IlastikAPIError
 
 from ..types import TestData, TestProjects, ApiTestDataLookup
 
@@ -133,5 +134,5 @@ class TestIlastikApi:
     )
     def test_project_insufficient_data(self, test_data_lookup, proj):
         project_path = test_data_lookup.find_project(proj)
-        with pytest.raises(ValueError):
+        with pytest.raises(IlastikAPIError):
             from_project_file(project_path)
