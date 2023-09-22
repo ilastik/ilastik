@@ -1,6 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,16 +18,19 @@ from __future__ import division
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+
+from functools import partial
+from pathlib import Path
+
 from past.utils import old_div
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QUrl, QObject, QEvent, QTimer
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QTableView, QHeaderView, QMenu, QAction, QWidget, QHBoxLayout, QPushButton, QItemDelegate
 
 from .datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
-from .addFileButton import AddFileButton, FILEPATH
+from .addFileButton import AddFileButton
 
-from pathlib import Path
-from functools import partial
+_ICON_PATH = Path(__file__).parents[2] / "shell/gui/icons/16x16/actions/list-remove.png"
 
 
 class ButtonOverlay(QPushButton):
@@ -39,12 +39,7 @@ class ButtonOverlay(QPushButton):
     """
 
     def __init__(self, parent=None):
-        super(ButtonOverlay, self).__init__(
-            QIcon(FILEPATH + "/../../shell/gui/icons/16x16/actions/list-remove.png"),
-            "",
-            parent,
-            clicked=self.removeButtonClicked,
-        )
+        super(ButtonOverlay, self).__init__(QIcon(str(_ICON_PATH)), "", parent, clicked=self.removeButtonClicked)
         self.setFixedSize(20, 20)  # size is fixed based on the icon above
         # these are used to compute placement at the right end of the
         # first column
@@ -163,6 +158,7 @@ class AddButtonDelegate(QItemDelegate):
                 # this is only executed on init, but not on remove, such that row and lane get out of sync
                 button = AddFileButton(parent_view, index=index)
                 button.addFilesRequested.connect(partial(parent_view.handleCellAddFilesEvent, button))
+                button.addFromPatternsRequested.connect(partial(parent_view.handleCellAddFromPatternsEvent, button))
                 button.addStackRequested.connect(partial(parent_view.handleCellAddStackEvent, button))
                 button.addPrecomputedVolumeRequested.connect(
                     partial(parent_view.handleCellAddPrecomputedVolumeEvent, button)
@@ -188,6 +184,7 @@ class DatasetDetailedInfoTableView(QTableView):
     resetRequested = pyqtSignal(object)  # Signature: (lane_index_list)
 
     addFilesRequested = pyqtSignal(int)  # Signature: (lane_index)
+    addFromPatternsRequested = pyqtSignal(int)  # Signature: (lane_index)
     addStackRequested = pyqtSignal(int)  # Signature: (lane_index)
     addPrecomputedVolumeRequested = pyqtSignal(int)  # Signature: (lane_index)
     addRemoteVolumeRequested = pyqtSignal(int)  # Signature: (lane_index)
@@ -223,6 +220,10 @@ class DatasetDetailedInfoTableView(QTableView):
     @pyqtSlot(int)
     def handleCellAddFilesEvent(self, button):
         self.addFilesRequested.emit(button.index.row())
+
+    @pyqtSlot(int)
+    def handleCellAddFromPatternsEvent(self, button):
+        self.addFromPatternsRequested.emit(button.index.row())
 
     @pyqtSlot(int)
     def handleCellAddStackEvent(self, button):
@@ -294,6 +295,7 @@ class DatasetDetailedInfoTableView(QTableView):
         layout = QHBoxLayout(widget)
         self._addButton = button = AddFileButton(widget, new=True)
         button.addFilesRequested.connect(partial(self.addFilesRequested.emit, -1))
+        button.addFromPatternsRequested.connect(partial(self.addFromPatternsRequested.emit, -1))
         button.addStackRequested.connect(partial(self.addStackRequested.emit, -1))
         button.addRemoteVolumeRequested.connect(partial(self.addRemoteVolumeRequested.emit, -1))
         button.addPrecomputedVolumeRequested.connect(partial(self.addPrecomputedVolumeRequested.emit, -1))
