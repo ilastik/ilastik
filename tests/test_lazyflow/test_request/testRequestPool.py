@@ -1,6 +1,3 @@
-from builtins import next
-from builtins import range
-
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
@@ -21,6 +18,8 @@ import sys
 import time
 from functools import partial
 import numpy
+
+import pytest
 
 from lazyflow.request.request import Request, RequestPool
 
@@ -166,3 +165,49 @@ def test_pool_results_discarded_REQUEST_CONTEXT():
     mainreq = Request(_impl_test_pool_results_discarded)
     mainreq.submit()
     mainreq.wait()
+
+
+def test_ctx_empty():
+    with RequestPool() as pool:
+        pass
+
+    assert pool._started
+    assert pool._finished
+    assert not pool._failed
+
+
+def test_ctx_work():
+    res = [0] * 10
+
+    with RequestPool() as pool:
+        for i in range(10):
+            pool.add(Request(partial(res.__setitem__, i, i)))
+
+    assert pool._started
+    assert pool._finished
+    assert not pool._failed
+
+    assert res == list(range(10))
+
+
+def test_ctx_exc():
+    with pytest.raises(ValueError):
+        with RequestPool() as pool:
+            raise ValueError("test")
+
+        assert not pool._started
+        assert pool._finished
+        assert not pool._failed
+
+
+def test_ctx_exc_in_req():
+    def raising():
+        raise ValueError("test")
+
+    with pytest.raises(ValueError):
+        with RequestPool() as pool:
+            pool.add(Request(raising))
+
+        assert pool._started
+        assert pool._finished
+        assert not pool._failed

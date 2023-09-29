@@ -1246,6 +1246,8 @@ class RequestPool(object):
         - don't call add() from more than one thread
         - don't call wait() from more than one thread, but you CAN add requests
           that are already executing in a different thread to a requestpool
+
+    When used as a context manager, wait() is called on exit, so don't call it yourself.
     """
 
     class RequestPoolError(Exception):
@@ -1271,6 +1273,15 @@ class RequestPool(object):
         self._max_active = max_active or max(max_active, Request.global_thread_pool.num_workers)
 
         self.clean()  # Initialize request sets
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            self.clean()
+        else:
+            self.wait()
 
     def clean(self):
         """
