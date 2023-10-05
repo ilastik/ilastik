@@ -29,8 +29,15 @@ import pytest
 from ilastik.ilastik_logging import default_config
 from volumina.imageView2D import ImageView2D
 from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
-from PyQt5.QtGui import QMouseEvent
-from PyQt5.QtWidgets import QAbstractScrollArea, QApplication, qApp
+from PyQt5.QtGui import (
+    QMouseEvent,
+    QImage,
+    QPainter,
+    QOpenGLFramebufferObjectFormat,
+    QOpenGLFramebufferObject,
+    QOpenGLPaintDevice,
+)
+from PyQt5.QtWidgets import QAbstractScrollArea, QApplication, qApp, QOpenGLWidget
 
 from .mainThreadHelpers import wait_for_main_func
 
@@ -163,7 +170,22 @@ class ShellGuiTestCaseBase(object):
             self.getPixelColor(myview, (10,10), 'myview.png')
         """
         with self.hiddenCursor(imgView):
-            img = imgView.grab().toImage()
+            viewport = imgView.viewport()
+            if isinstance(viewport, QOpenGLWidget):
+                # adapted from https://stackoverflow.com/a/31382768
+                viewport.makeCurrent()
+                buffer_format = QOpenGLFramebufferObjectFormat()
+                buffer_format.setAttachment(QOpenGLFramebufferObject.CombinedDepthStencil)
+                frame_buffer = QOpenGLFramebufferObject(imgView.width(), imgView.height(), buffer_format)
+                frame_buffer.bind()
+                paint_device = QOpenGLPaintDevice(imgView.width(), imgView.height())
+                painter = QPainter(paint_device)
+                # captures mixed OpenGL and non-OpenGL QGraphicsitems
+                imgView.render(painter)
+                painter.end()
+                img = QImage(frame_buffer.toImage())
+            else:
+                img = imgView.grab().toImage()
 
         if debugFileName is not None:
             img.save(debugFileName)
