@@ -7,7 +7,7 @@ jobs:
     environment:
       ILASTIK_ROOT: /root/ilastik
     docker:
-    - image: continuumio/miniconda3
+    - image: condaforge/mambaforge
     steps:
     - checkout
     - run:
@@ -36,17 +36,17 @@ jobs:
       TEST_ENV_NAME: test-env
       VOLUMINA_SHOW_3D_WIDGET: 0
     docker:
-    - image: continuumio/miniconda3
+    - image: condaforge/mambaforge
     steps:
     - restore_cache:
         name: restoring dependency cache
         keys:
         # This branch if available
-        - v1.4.13-dep-{{ .Branch }}-{{ epoch }}
+        - v1.4.14-dep-{{ .Branch }}-{{ epoch }}
         # Default branch if not
-        - v1.4.13-dep-main-
+        - v1.4.14-dep-main-
         # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
-        - v1.4.13-dep-
+        - v1.4.14-dep-
     - restore_cache:
         name: restore ilastik-repo cache
         key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
@@ -55,8 +55,7 @@ jobs:
         # due to an incompatibility of mamba with conda 4.13, one currently cannot update conda first
         command: >
             conda config --set always_yes yes --set changeps1 no --set channel_priority strict &&
-            conda install -n base -c conda-forge mamba &&
-            mamba update -q conda -c conda-forge &&
+            mamba update -n base -c conda-forge --all &&
             mamba install -n base -c conda-forge conda-build boa
     - run:
         name: install apt dependencies
@@ -74,16 +73,15 @@ jobs:
     - run:
         name: run ilastik tests
         command: >
-            conda activate ${TEST_ENV_NAME} &&
             cd ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
             mkdir test-results &&
-            xvfb-run --server-args="-screen 0 1024x768x24" pytest --cov-report=xml --cov=lazyflow --cov=ilastik --run-legacy-gui --junitxml=test-results/junit.xml &&
+            xvfb-run --server-args="-screen 0 1024x768x24" mamba run -n ${TEST_ENV_NAME} pytest --cov-report=xml --cov=lazyflow --cov=ilastik --run-legacy-gui --junitxml=test-results/junit.xml &&
             bash <(curl -s https://codecov.io/bash)
     - store_test_results:
         path: test-results
     - save_cache:
         name: store dependency cache
-        key: v1.4.13-dep-{{ .Branch }}-{{ epoch }}
+        key: v1.4.14-dep-{{ .Branch }}-{{ epoch }}
         paths:
         - /opt/conda/pkgs
 

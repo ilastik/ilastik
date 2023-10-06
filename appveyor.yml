@@ -5,25 +5,31 @@ clone_folder: c:\projects\ilastik
 environment:
   ENV_NAME: test-env
   # set miniconda version explicitly
-  MINICONDA: C:\Miniconda38-x64
+  MINIFORGE: C:\Miniforge
   IlASTIK_ROOT: C:\ilastik
   VOLUMINA_SHOW_3D_WIDGET: 0
   APPVEYOR_CACHE_ENTRY_ZIP_ARGS: -xr!*/ -ir-!*.tar.bz2 -ir-!*.conda  # Exclude directories only cache downloaded tars
 
-cache:
-  - C:\Miniconda38-x64\pkgs -> appveyor.yml
 
 install:
-  - cmd: set "PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
-  - cmd: where conda
+  - ps: |
+        if (!(Test-Path $env:MINIFORGE)) {
+          Write-Output "Downloading and installing Miniforge"
+          Invoke-WebRequest https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Windows-x86_64.exe -OutFile miniforge.exe
+          Start-Process -FilePath "miniforge.exe" -ArgumentList "/NoRegistry=1","/S","/D=$env:MINIFORGE" -Wait
+        }
+        else {
+          Write-Output "Using cached Miniforge install"
+        }
+  - cmd: set PATH=%MINIFORGE%;%MINIFORGE%\Scripts;%MINIFORGE%\Library\bin;%PATH%
   - cmd: conda config --set always_yes yes --set changeps1 no --set channel_priority strict
-  - cmd: conda update -n base -c conda-forge --all
-  - cmd: conda install -n base -c conda-forge mamba conda-build boa setuptools_scm
+  - cmd: conda update -n base -c conda-forge conda mamba
+  - cmd: mamba install -n base -c conda-forge setuptools_scm
   - |
     mamba env create --name %ENV_NAME% --file dev\environment-dev.yml
     mamba install --name %ENV_NAME% --freeze-installed -c ilastik-forge -c conda-forge volumina
     mamba run -n %ENV_NAME% pip install -e .
-  - mamba clean -p
+  - conda clean -p
 
 build: off
 
@@ -31,6 +37,13 @@ test_script:
   - cmd: CALL activate %ENV_NAME%
   - cmd: set VOLUMINA_SHOW_3D_WIDGET=0
   - cmd: pytest --run-legacy-gui
+
+after_test:
+  # don't cache the test environment to get clean builds every time
+  - ps: Remove-Item -Path $env:MINIFORGE\envs\$env:ENV_NAME -Recurse -Force
+
+cache:
+  - C:\Miniforge -> appveyor.yml, dev\environment-dev.yml
 
 # on_finish:
 #  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))

@@ -42,6 +42,8 @@ def test_nn_local_headless_prediction(project_path: pathlib.Path, data_path, tmp
         "yx",
         "--output_filename_format",
         f"{output_file}",
+        "--nn_device",
+        "cpu",
     ]
     # Clear the existing commandline args so it looks like we're starting fresh.
     sys.argv = ["ilastik.py"]

@@ -11,10 +11,10 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: '0'
-      - uses: akaihola/darker@1.6.0
+      - uses: akaihola/darker@1.7.2
         with:
           options: "--check --diff --revision=origin/main..."
           src: "."
