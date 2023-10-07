@@ -19,27 +19,26 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 import warnings
+from typing import Union
 
 import h5py
 import vigra
 import xarray
 
+from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
 from ilastik.experimental import parser
 from lazyflow.graph import Graph
-from lazyflow.operators.classifierOperators import OpClassifierPredict
 from lazyflow.operators import OpReorderAxes
-from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
+from lazyflow.operators.classifierOperators import OpClassifierPredict
 
 
 class PixelClassificationPipeline:
-    @staticmethod
-    def from_project_file(path) -> "PixelClassificationPipeline":
+    @classmethod
+    def from_ilp_file(cls, path: str) -> "PixelClassificationPipeline":
         with h5py.File(path, "r") as f:
-            project = parser.PixelClassificationProject(f)
-            if not all([project.data_info, project.feature_matrix, project.classifier]):
-                raise ValueError("not sufficient data in project file for predition")
+            project = parser.PixelClassificationProject.from_ilp_file(f)
 
-        return PixelClassificationPipeline(project)
+        return cls(project)
 
     def __init__(self, project: parser.PixelClassificationProject):
         self._num_spatial_dims = len(project.data_info.spatial_axes)
@@ -97,20 +96,18 @@ def ensure_channel_axis(axis_order):
 
 def from_project_file(path) -> PixelClassificationPipeline:
     warnings.warn(
-        "The `from_project_file` function will disappear in future versions.",
+        "The `from_project_file` function will disappear in future versions. Please use `PixelClassificationPipeline.from_ilp_file(path)`",
         DeprecationWarning,
     )
 
-    return PixelClassificationPipeline.from_project_file(path)
+    return PixelClassificationPipeline.from_ilp_file(path)
 
 
 def as_vigra_array(data: Union[vigra.VigraArray, xarray.DataArray]) -> vigra.VigraArray:
     if isinstance(data, vigra.VigraArray):
         return data
-    elif isinstance(data, xarray.DataArray):
-        axistags = "".join(data.dims)
-        return vigra.taggedView(data.values, axistags)
-    else:
-        raise NotImplementedError(
-            f"Data type '{type(data)}' not supported, use `vigra.VigraArray` or `xarray.DataArray`."
-        )
+
+    if isinstance(data, xarray.DataArray):
+        return vigra.taggedView(data.values, data.dims)
+
+    raise NotImplementedError(f"Data type '{type(data)}' not supported, use `vigra.VigraArray` or `xarray.DataArray`.")

@@ -20,12 +20,21 @@
 ###############################################################################
 import json
 import pickle
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, List
+from typing import List, Type, TypeVar, Union
 
 import h5py
 import numpy
+import numpy.typing as npt
+
+from lazyflow.classifiers import (
+    LazyflowPixelwiseClassifierABC,
+    LazyflowPixelwiseClassifierFactoryABC,
+    LazyflowVectorwiseClassifierABC,
+    LazyflowVectorwiseClassifierFactoryABC,
+)
 
 
 class StrEnum(str, Enum):
@@ -36,8 +45,18 @@ class IlastikAPIError(Exception):
     pass
 
 
+T = TypeVar("T", bound="ILPNode")
+
+
+class ILPNode(ABC):
+    @classmethod
+    @abstractmethod
+    def from_ilp_group(cls: Type[T], group: h5py.Group) -> T:
+        ...
+
+
 @dataclass(frozen=True)
-class FeatureMatrix:
+class FeatureMatrix(ILPNode):
     """
     Provides OpFeatureSelection compatible interface
 
@@ -51,11 +70,11 @@ class FeatureMatrix:
 
     names: List[str]
     scales: List[float]
-    selections: numpy.ndarray
-    compute_in_2d: numpy.ndarray
+    selections: npt.NDArray[numpy.bool_]
+    compute_in_2d: npt.NDArray[numpy.bool_]
 
-    @staticmethod
-    def from_ilp_group(features_group: h5py.Group) -> "FeatureMatrix":
+    @classmethod
+    def from_ilp_group(cls, features_group: h5py.Group) -> "FeatureMatrix":
         class Keys(StrEnum):
             # feature keys in project file
             FEATURES_IDS = "FeatureIds"
@@ -66,22 +85,22 @@ class FeatureMatrix:
         if missingkeys := [k for k in Keys if k not in features_group]:
             raise IlastikAPIError(f"Missing keys for feature matrix in project file: {missingkeys}")
 
-        feature_names = [name.decode("ascii") for name in features_group[Keys.FEATURES_IDS][()]]
-        scales = features_group[Keys.FEATURES_SCALES][()]
-        sel_matrix = features_group[Keys.FEATURES_SELECTION_MATRIX][()]
-        compute_in_2d = features_group[Keys.FEATURES_COMPUTE_IN_2D][()]
+        feature_names: List[str] = [name.decode("ascii") for name in features_group[Keys.FEATURES_IDS][()]]  # type: ignore
+        scales: List[float] = features_group[Keys.FEATURES_SCALES][()]  # type: ignore
+        sel_matrix: npt.NDArray[numpy.bool_] = features_group[Keys.FEATURES_SELECTION_MATRIX][()]  # type: ignore
+        compute_in_2d: npt.NDArray[numpy.bool_] = features_group[Keys.FEATURES_COMPUTE_IN_2D][()]  # type: ignore
 
-        return FeatureMatrix(feature_names, scales, sel_matrix, compute_in_2d)
+        return cls(feature_names, scales, sel_matrix, compute_in_2d)
 
 
 @dataclass
-class Classifier:
-    instance: Any
-    factory: Any
+class Classifier(ILPNode):
+    instance: Union[LazyflowPixelwiseClassifierABC, LazyflowVectorwiseClassifierABC]
+    factory: Union[LazyflowPixelwiseClassifierFactoryABC, LazyflowVectorwiseClassifierFactoryABC]
     label_count: int
 
-    @staticmethod
-    def from_ilp_group(pixel_class_group: h5py.Group) -> "Classifier":
+    @classmethod
+    def from_ilp_group(cls, pixel_class_group: h5py.Group) -> "Classifier":
         class Keys(StrEnum):
             PIXEL_CLASSIFICATION_FORESTS = "ClassifierForests"
             PIXEL_CLASSIFICATION_FACTORY = "ClassifierFactory"
@@ -97,17 +116,17 @@ class Classifier:
         classifier_factory = pickle.loads(pixel_class_group[Keys.PIXEL_CLASSIFICATION_FACTORY][()])
         label_count = len(pixel_class_group[Keys.LABEL_NAMES])
 
-        return Classifier(classifier, classifier_factory, label_count)
+        return cls(classifier, classifier_factory, label_count)
 
 
 @dataclass
-class ProjectDataInfo:
+class ProjectDataInfo(ILPNode):
     spatial_axes: str
     num_channels: int
     axis_order: str
 
-    @staticmethod
-    def from_ilp_group(infos_group: h5py.Group) -> "ProjectDataInfo":
+    @classmethod
+    def from_ilp_group(cls, infos_group: h5py.Group) -> "ProjectDataInfo":
         class Keys(StrEnum):
             # input data keys in project file
             RAW_DATA = "Raw Data"
@@ -126,15 +145,12 @@ class ProjectDataInfo:
         if len(shape) != len(tags_dict["axes"]):
             raise IlastikAPIError(f"Shape {shape} and axistags {tags_dict} mismatch")
 
-        spatial_axes = ""
-        axis_order = ""
-        num_channels = 1
-        for size, dim in zip(shape, tags_dict["axes"]):
-            if dim["key"] in "xyz":
-                spatial_axes += dim["key"]
-            elif dim["key"] == "c":
-                num_channels = size
+        axis_order = "".join(dim["key"] for dim in tags_dict["axes"])
+        spatial_axes = "".join(ax for ax in axis_order if ax in "xyz")
 
-            axis_order += dim["key"]
+        try:
+            num_channels = shape[axis_order.index("c")]
+        except ValueError:
+            num_channels = 1
 
-        return ProjectDataInfo(spatial_axes, num_channels, axis_order)
+        return cls(spatial_axes, num_channels, axis_order)

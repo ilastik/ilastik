@@ -22,7 +22,7 @@ class TestIlastikParser:
     def test_parse_project_number_of_channels(self, test_data_lookup: ApiTestDataLookup, proj, expected_num_channels):
         project_path = test_data_lookup.find_project(proj)
         with h5py.File(project_path, "r") as f:
-            proj = PixelClassificationProject(f)
+            proj = PixelClassificationProject.from_ilp_file(f)
 
         assert proj.data_info.num_channels == expected_num_channels
 
@@ -40,7 +40,7 @@ class TestIlastikParser:
         project_path = test_data_lookup.find_project(proj)
 
         with h5py.File(project_path, "r") as f:
-            proj = PixelClassificationProject(f)
+            proj = PixelClassificationProject.from_ilp_file(f)
 
         assert isinstance(proj.classifier.factory, expected_factory)
         assert isinstance(proj.classifier.instance, expected_classifier)
@@ -95,7 +95,7 @@ class TestIlastikParser:
         project_path = test_data_lookup.find_project(proj)
 
         with h5py.File(project_path, "r") as f:
-            proj = PixelClassificationProject(f)
+            proj = PixelClassificationProject.from_ilp_file(f)
 
         matrix = proj.feature_matrix
         assert matrix

@@ -18,43 +18,51 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Type, TypeVar
 
 import h5py
 
 from . import types
 
+T = TypeVar("T", bound="ILP")
 
-class PixelClassificationProject:
-    ILP_WORKFLOW_NAME = b"Pixel Classification"
 
-    def __init__(self, hdf5_file: h5py.File) -> None:
+class ILP(ABC):
+    @classmethod
+    @abstractmethod
+    def from_ilp_file(cls: Type[T], h5file: h5py.File) -> T:
+        ...
+
+
+@dataclass(frozen=True)
+class PixelClassificationProject(ILP):
+    data_info: types.ProjectDataInfo
+    feature_matrix: types.FeatureMatrix
+    classifier: types.Classifier
+
+    @classmethod
+    def from_ilp_file(cls, h5file: h5py.File):
+        ILP_WORKFLOW_NAME = b"Pixel Classification"
+
         class ILPkeys(types.StrEnum):
             WORKFLOW = "workflowName"
             INPUT_DATA = "Input Data/infos"
             FEATURES = "FeatureSelections"
             PIXEL_CLASSIFICATION = "PixelClassification"
 
-        if any(key not in hdf5_file for key in ILPkeys):
+        if any(key not in h5file for key in ILPkeys):
             raise types.IlastikAPIError(
-                f"Not a valid ilastik project pixel classification project file with keys {hdf5_file.keys()}"
+                f"Not a valid ilastik project pixel classification project file with keys {h5file.keys()}"
             )
 
-        type_ = hdf5_file[ILPkeys.WORKFLOW][()]
-        if type_ != self.ILP_WORKFLOW_NAME:
-            raise types.IlastikAPIError(f"Expected Pixel Classification Project, found {type_}")
+        type_: bytes = h5file[ILPkeys.WORKFLOW][()]
+        if type_ != ILP_WORKFLOW_NAME:
+            raise types.IlastikAPIError(f"Expected Pixel Classification Project, found {type_!r}")
 
-        self._data_info = types.ProjectDataInfo.from_ilp_group(hdf5_file[ILPkeys.INPUT_DATA.value])
-        self._feature_matrix = types.FeatureMatrix.from_ilp_group(hdf5_file[ILPkeys.FEATURES.value])
-        self._classifier = types.Classifier.from_ilp_group(hdf5_file[ILPkeys.PIXEL_CLASSIFICATION.value])
-
-    @property
-    def data_info(self) -> Optional[types.ProjectDataInfo]:
-        return self._data_info
-
-    @property
-    def feature_matrix(self) -> types.FeatureMatrix:
-        return self._feature_matrix
-
-    @property
-    def classifier(self) -> types.Classifier:
-        return self._classifier
+        return cls(
+            types.ProjectDataInfo.from_ilp_group(h5file[ILPkeys.INPUT_DATA]),
+            types.FeatureMatrix.from_ilp_group(h5file[ILPkeys.FEATURES]),
+            types.Classifier.from_ilp_group(h5file[ILPkeys.PIXEL_CLASSIFICATION]),
+        )
