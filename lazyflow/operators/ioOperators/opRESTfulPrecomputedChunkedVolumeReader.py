@@ -56,19 +56,16 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
         self._volume_object = None
 
     def setupOutputs(self):
+        if self._volume_object is not None and self._volume_object.volume_url == self.BaseUrl.value:
+            # Called multiple times during setup - skip
+            return
         # Create a RESTfulPrecomputedChunkedVolume object to handle
-        if self._volume_object is not None:
-            # check if the volume url has changed, to avoid downloading
-            # info twice (i.e. setting up the volume twice)
-            if self._volume_object.volume_url == self.BaseUrl.value:
-                return
-
         self._volume_object = RESTfulPrecomputedChunkedVolume(self.BaseUrl.value)
-
         self._axes = self._volume_object.axes
 
+        scale = self.Scale.value if self.Scale.ready() else 0
         self.MaxScale.setValue(len(self._volume_object.scales) - 1)
-        self.Output.meta.shape = tuple(self._volume_object.get_shape())
+        self.Output.meta.shape = tuple(self._volume_object.get_shape(scale))
         self.Output.meta.dtype = numpy.dtype(self._volume_object.dtype).type
         self.Output.meta.axistags = vigra.defaultAxistags(self._axes)
         self.Output.meta.multiscale = True
