@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+# pyright: strict
 import json
 import pickle
 from abc import ABC, abstractmethod
@@ -74,7 +75,7 @@ class FeatureMatrix(ILPNode):
     compute_in_2d: npt.NDArray[numpy.bool_]
 
     @classmethod
-    def from_ilp_group(cls, features_group: h5py.Group) -> "FeatureMatrix":
+    def from_ilp_group(cls, group: h5py.Group) -> "FeatureMatrix":
         class Keys(StrEnum):
             # feature keys in project file
             FEATURES_IDS = "FeatureIds"
@@ -82,13 +83,13 @@ class FeatureMatrix(ILPNode):
             FEATURES_COMPUTE_IN_2D = "ComputeIn2d"
             FEATURES_SELECTION_MATRIX = "SelectionMatrix"
 
-        if missingkeys := [k for k in Keys if k not in features_group]:
+        if missingkeys := [k for k in Keys if k not in group]:
             raise IlastikAPIError(f"Missing keys for feature matrix in project file: {missingkeys}")
 
-        feature_names: List[str] = [name.decode("ascii") for name in features_group[Keys.FEATURES_IDS][()]]  # type: ignore
-        scales: List[float] = features_group[Keys.FEATURES_SCALES][()]  # type: ignore
-        sel_matrix: npt.NDArray[numpy.bool_] = features_group[Keys.FEATURES_SELECTION_MATRIX][()]  # type: ignore
-        compute_in_2d: npt.NDArray[numpy.bool_] = features_group[Keys.FEATURES_COMPUTE_IN_2D][()]  # type: ignore
+        feature_names: List[str] = [name.decode("ascii") for name in group[Keys.FEATURES_IDS][()]]  # type: ignore
+        scales: List[float] = group[Keys.FEATURES_SCALES][()]  # type: ignore
+        sel_matrix: npt.NDArray[numpy.bool_] = group[Keys.FEATURES_SELECTION_MATRIX][()]  # type: ignore
+        compute_in_2d: npt.NDArray[numpy.bool_] = group[Keys.FEATURES_COMPUTE_IN_2D][()]  # type: ignore
 
         return cls(feature_names, scales, sel_matrix, compute_in_2d)
 
@@ -100,21 +101,21 @@ class Classifier(ILPNode):
     label_count: int
 
     @classmethod
-    def from_ilp_group(cls, pixel_class_group: h5py.Group) -> "Classifier":
+    def from_ilp_group(cls, group: h5py.Group) -> "Classifier":
         class Keys(StrEnum):
             PIXEL_CLASSIFICATION_FORESTS = "ClassifierForests"
             PIXEL_CLASSIFICATION_FACTORY = "ClassifierFactory"
             PIXEL_CLASSIFICATION_TYPE = "ClassifierForests/pickled_type"
             LABEL_NAMES = "LabelNames"
 
-        if missingkeys := [k for k in Keys if k not in pixel_class_group]:
+        if missingkeys := [k for k in Keys if k not in group]:
             raise IlastikAPIError(f"Missing keys in project file: {missingkeys}")
 
-        classifier_type = pickle.loads(pixel_class_group[Keys.PIXEL_CLASSIFICATION_TYPE][()])
-        classifier = classifier_type.deserialize_hdf5(pixel_class_group[Keys.PIXEL_CLASSIFICATION_FORESTS])
+        classifier_type = pickle.loads(group[Keys.PIXEL_CLASSIFICATION_TYPE][()])
+        classifier = classifier_type.deserialize_hdf5(group[Keys.PIXEL_CLASSIFICATION_FORESTS])
 
-        classifier_factory = pickle.loads(pixel_class_group[Keys.PIXEL_CLASSIFICATION_FACTORY][()])
-        label_count = len(pixel_class_group[Keys.LABEL_NAMES])
+        classifier_factory = pickle.loads(group[Keys.PIXEL_CLASSIFICATION_FACTORY][()])
+        label_count = len(group[Keys.LABEL_NAMES])
 
         return cls(classifier, classifier_factory, label_count)
 
@@ -126,14 +127,14 @@ class ProjectDataInfo(ILPNode):
     axis_order: str
 
     @classmethod
-    def from_ilp_group(cls, infos_group: h5py.Group) -> "ProjectDataInfo":
+    def from_ilp_group(cls, group: h5py.Group) -> "ProjectDataInfo":
         class Keys(StrEnum):
             # input data keys in project file
             RAW_DATA = "Raw Data"
             RAW_DATA_AXIS_TAGS = "Raw Data/axistags"
             RAW_DATA_SHAPE = "Raw Data/shape"
 
-        info = next(iter(infos_group.values()))
+        info = next(iter(group.values()))
 
         if missingkeys := [k for k in Keys if k not in info]:
             raise IlastikAPIError(f"Missing data info keys in project file: {missingkeys}.")

@@ -33,8 +33,34 @@ from lazyflow.operators.classifierOperators import OpClassifierPredict
 
 
 class PixelClassificationPipeline:
+    """
+    Pipeline for accessing trained Pixel Classification classifiers from Python
+
+    Example usage:
+
+    ```Python
+    from ilastik.experimental.api import PixelClassificationPipeline
+    import imageio.v3 as iio
+
+    img = iio.imread("<path/to/image-file.tif>")
+    pipeline = PixelClassificationPipeline.from_ilp_file("<path/to/project.ilp>")
+
+    prob_maps = pipeline.get_probabilities(img)
+    ```
+
+    """
+
     @classmethod
     def from_ilp_file(cls, path: str) -> "PixelClassificationPipeline":
+        """
+        Create a Pixel Classification Pipeline instance from a traine project.ilp file
+
+        Args:
+            path: Path to the ilp file
+
+        Returns:
+            PixelClassificationPipeline instance configured with trained classifier
+        """
         with h5py.File(path, "r") as f:
             project = parser.PixelClassificationProject.from_ilp_file(f)
 
@@ -68,6 +94,12 @@ class PixelClassificationPipeline:
         return self.get_probabilities(raw_data=data)
 
     def get_probabilities(self, raw_data: Union[vigra.VigraArray, xarray.DataArray]) -> xarray.DataArray:
+        """
+        Get pixel probability map from pipeline.
+
+        Args:
+            raw_data: image with same dimensionality as in the trained project file
+        """
         raw_data = as_vigra_array(raw_data)
         num_channels_in_data = raw_data.channels
         if num_channels_in_data != self._num_channels:
@@ -95,6 +127,11 @@ def ensure_channel_axis(axis_order):
 
 
 def from_project_file(path) -> PixelClassificationPipeline:
+    """
+    create a PixelClassificationPipeline
+
+    deprecated: please use `experimental.api.PixelClassificationPipeline.from_ilp_file`
+    """
     warnings.warn(
         "The `from_project_file` function will disappear in future versions. Please use `PixelClassificationPipeline.from_ilp_file(path)`",
         DeprecationWarning,
