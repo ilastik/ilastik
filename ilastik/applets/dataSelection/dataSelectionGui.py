@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,49 +19,39 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Python
-import os
-from pathlib import Path
-from typing import Dict, List, Set, Union, Optional
-from vigra import AxisTags
-import threading
-import h5py
-from functools import partial
 import itertools
 import logging
+import os
+import threading
+from functools import partial
+from pathlib import Path
+from typing import Dict, List, Set, Union, Optional
 
-logger = logging.getLogger(__name__)
-
-# PyQt
+import h5py
 from PyQt5 import uic
 from PyQt5.QtWidgets import QDialog, QMessageBox, QStackedWidget, QWidget
-
-# lazyflow
-from lazyflow.request import Request
-
-# volumina
+from vigra import AxisTags
 from volumina.utility import preferences, ShortcutManager
 
-# ilastik
+from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-from ilastik.applets.base.applet import DatasetConstraintError
-
+from ilastik.widgets.ImageFileDialog import ImageFileDialog
+from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, SubvolumeSelectionDlg
+from lazyflow.slot import Slot
+from .dataLaneSummaryTableModel import DataLaneSummaryTableModel
+from .datasetDetailedInfoTableModel import DatasetDetailedInfoTableModel
+from .datasetDetailedInfoTableView import DatasetDetailedInfoTableView
+from .datasetInfoEditorWidget import DatasetInfoEditorWidget
 from .opDataSelection import (
     DatasetInfo,
-    RelativeFilesystemDatasetInfo,
-    FilesystemDatasetInfo,
     ProjectInternalDatasetInfo,
     UrlDatasetInfo,
 )
-from .dataLaneSummaryTableModel import DataLaneSummaryTableModel
-from .datasetInfoEditorWidget import DatasetInfoEditorWidget
-from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, SubvolumeSelectionDlg
-from .datasetDetailedInfoTableModel import DatasetDetailedInfoTableModel
-from .datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 from .precomputedVolumeBrowser import PrecomputedVolumeBrowser
-from ilastik.widgets.ImageFileDialog import ImageFileDialog
-from lazyflow.slot import Slot
+
+logger = logging.getLogger(__name__)
 
 
 class LocationOptions(object):

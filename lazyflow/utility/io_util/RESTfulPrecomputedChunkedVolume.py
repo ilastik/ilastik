@@ -20,14 +20,11 @@
 #          http://ilastik.org/license/
 ###############################################################################
 import json
-import jsonschema
 import logging
-import requests
 
+import jsonschema
 import numpy
-
-import lazyflow.roi
-
+import requests
 
 logger = logging.getLogger(__file__)
 

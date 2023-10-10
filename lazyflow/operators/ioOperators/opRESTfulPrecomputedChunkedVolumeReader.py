@@ -19,19 +19,16 @@
 # This information is also available on the ilastik web site at:
 #          http://ilastik.org/license/
 ###############################################################################
-import os
-import copy
-import tempfile
-import h5py
-import vigra
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
-from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
-import lazyflow.roi
-from lazyflow.utility.helpers import bigintprod
 import logging
 
 import numpy
+import vigra
+
+import lazyflow.roi
+from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
+from lazyflow.utility.helpers import bigintprod
+from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
 
 logger = logging.getLogger(__name__)
 
