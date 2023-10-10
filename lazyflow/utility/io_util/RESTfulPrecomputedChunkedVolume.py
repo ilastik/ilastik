@@ -114,7 +114,7 @@ class RESTfulPrecomputedChunkedVolume(object):
         self.dtype = self._json_info["data_type"]
         self.n_channels = self._json_info["num_channels"]
 
-    def get_block_shape(self, scale=0):
+    def get_chunk_size(self, scale=0):
         n_channels = self.n_channels
         block_shape = numpy.array([n_channels] + self.scales[scale]["chunk_sizes"][0][::-1])
         return block_shape
@@ -197,18 +197,18 @@ class RESTfulPrecomputedChunkedVolume(object):
         """
         # block shape without channel
         shape = self.get_shape(scale)
-        block_shape = self.get_block_shape(scale)
+        chunk_size = self.get_chunk_size(scale)
         scale_key = self.scales[scale]["key"]
         coordinates = block_coordinates
 
-        if not numpy.allclose(numpy.remainder(coordinates, block_shape), 0):
+        if not numpy.allclose(numpy.remainder(coordinates, chunk_size), 0):
             raise ValueError(
-                f"Supplied coordinates ({coordinates}) not a valid block- start for block shape {block_shape}."
+                f"Supplied coordinates ({coordinates}) not a valid block- start for block shape {chunk_size}."
             )
 
         base_url = self.volume_url
         min_values = coordinates
-        max_values = min_values + block_shape
+        max_values = min_values + chunk_size
         max_values = numpy.min([shape, max_values], axis=0)
         downloaded_block_shape = max_values - min_values
         # ignore c -> [1::]
@@ -225,7 +225,7 @@ if __name__ == "__main__":
     cvol = RESTfulPrecomputedChunkedVolume(volume_url=volume_url)
     print(f"dtype: {cvol.dtype}")
     print(f"scales: {len(cvol.scales)}")
-    print(f"block_shape: {cvol.get_block_shape()}")
+    print(f"block_shape: {cvol.get_chunk_size()}")
     print(f"shape: {cvol.get_shape()}")
     block_start = [1, 128, 64, 256]
     print(f"download_url for block {block_start}: {cvol.generate_url(block_start)}")

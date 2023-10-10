@@ -42,12 +42,13 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
     These types of volumes are e.g. used in neuroglancer.
     """
 
-    name = "OpRESTfulPrecomputedChunkedVolumeReader"
+    name = "OpRESTfulPrecomputedChunkedVolumeReaderNoCache"
 
     BaseUrl = InputSlot()
     Scale = InputSlot(optional=True)
 
     MaxScale = OutputSlot(stype="int")
+    ChunkSize = OutputSlot(stype="tuple")
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -65,6 +66,7 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
 
         scale = self.Scale.value if self.Scale.ready() else 0
         self.MaxScale.setValue(len(self._volume_object.scales) - 1)
+        self.ChunkSize.setValue(self._volume_object.get_chunk_size(scale))
         self.Output.meta.shape = tuple(self._volume_object.get_shape(scale))
         self.Output.meta.dtype = numpy.dtype(self._volume_object.dtype).type
         self.Output.meta.axistags = vigra.defaultAxistags(self._axes)
@@ -128,7 +130,7 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
         scale = self.Scale.value
         assert len(roi) == 2
         assert all(len(x) == len(self._volume_object.get_shape(scale)) for x in roi)
-        block_shape = self._volume_object.get_block_shape(scale)
+        block_shape = self._volume_object.get_chunk_size(scale)
         image_shape = self._volume_object.get_shape(scale)
         array_of_blocks, block_offsets, subimage_roi, subimage_shape = self.get_intersecting_blocks(
             blockshape=block_shape, roi=roi, shape=image_shape
@@ -170,8 +172,7 @@ class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
         self.Output.connect(self.cache.Output)
 
     def setupOutputs(self):
-        # TODO: make this generic, for all dimensionalities
-        self.cache.BlockShape.setValue((1, 64, 64, 64))
+        self.cache.BlockShape.setValue(tuple(self.RESTfulReader.ChunkSize.value))
 
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty(slice(None))
