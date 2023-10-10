@@ -1,13 +1,14 @@
-import pytest
+import h5py
 import numpy as np
+import pytest
 
-from ilastik.experimental.parser import IlastikProject
-
-from ..types import TestProjects, ApiTestDataLookup
+from ilastik.experimental.parser import PixelClassificationProject
 from lazyflow.classifiers.parallelVigraRfLazyflowClassifier import (
-    ParallelVigraRfLazyflowClassifierFactory,
     ParallelVigraRfLazyflowClassifier,
+    ParallelVigraRfLazyflowClassifierFactory,
 )
+
+from ..types import ApiTestDataLookup, TestProjects
 
 
 class TestIlastikParser:
@@ -20,8 +21,10 @@ class TestIlastikParser:
     )
     def test_parse_project_number_of_channels(self, test_data_lookup: ApiTestDataLookup, proj, expected_num_channels):
         project_path = test_data_lookup.find_project(proj)
-        with IlastikProject(project_path) as proj:
-            assert proj.data_info.num_channels == expected_num_channels
+        with h5py.File(project_path, "r") as f:
+            proj = PixelClassificationProject.from_ilp_file(f)
+
+        assert proj.data_info.num_channels == expected_num_channels
 
     @pytest.mark.parametrize(
         "proj, expected_factory, expected_classifier",
@@ -36,9 +39,11 @@ class TestIlastikParser:
     def test_parse_project_classifier(self, test_data_lookup, proj, expected_factory, expected_classifier):
         project_path = test_data_lookup.find_project(proj)
 
-        with IlastikProject(project_path) as proj:
-            assert isinstance(proj.classifier.factory, expected_factory)
-            assert isinstance(proj.classifier.instance, expected_classifier)
+        with h5py.File(project_path, "r") as f:
+            proj = PixelClassificationProject.from_ilp_file(f)
+
+        assert isinstance(proj.classifier.factory, expected_factory)
+        assert isinstance(proj.classifier.instance, expected_classifier)
 
     tests = [
         (
@@ -89,8 +94,10 @@ class TestIlastikParser:
     def test_parse_project_features(self, test_data_lookup, proj, expected_sel_matrix, expected_compute_in_2d):
         project_path = test_data_lookup.find_project(proj)
 
-        with IlastikProject(project_path) as proj:
-            matrix = proj.feature_matrix
-            assert matrix
-            np.testing.assert_array_equal(matrix.selections, expected_sel_matrix)
-            np.testing.assert_array_equal(matrix.compute_in_2d, expected_compute_in_2d)
+        with h5py.File(project_path, "r") as f:
+            proj = PixelClassificationProject.from_ilp_file(f)
+
+        matrix = proj.feature_matrix
+        assert matrix
+        np.testing.assert_array_equal(matrix.selections, expected_sel_matrix)
+        np.testing.assert_array_equal(matrix.compute_in_2d, expected_compute_in_2d)
