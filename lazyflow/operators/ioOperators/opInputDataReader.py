@@ -154,9 +154,18 @@ class OpInputDataReader(Operator):
 
     def cleanUp(self):
         super(OpInputDataReader, self).cleanUp()
+        self.internalCleanup()
+
+    def internalCleanup(self):
+        self.Output.disconnect()
+        self.opInjector.cleanUp()
         if self._file is not None:
             self._file.close()
             self._file = None
+        for op in self.internalOperators[::-1]:
+            op.cleanUp()
+        self.internalOperators = []
+        self.internalOutput = None
 
     def setupOutputs(self):
         """
@@ -178,14 +187,7 @@ class OpInputDataReader(Operator):
 
         # Clean up before reconfiguring
         if self.internalOperators:
-            self.Output.disconnect()
-            self.opInjector.cleanUp()
-            for op in self.internalOperators[::-1]:
-                op.cleanUp()
-            self.internalOperators = []
-            self.internalOutput = None
-        if self._file is not None:
-            self._file.close()
+            self.internalCleanup()
 
         openFuncs = [
             self._attemptOpenAsKlb,

@@ -174,7 +174,7 @@ class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty(slice(None))
 
-    def cleanup(self):
+    def cleanUp(self):
         self.cache.Input.disconnect()
 
 
