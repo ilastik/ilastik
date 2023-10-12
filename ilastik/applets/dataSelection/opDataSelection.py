@@ -126,15 +126,15 @@ class DatasetInfo(ABC):
         if self.subvolume_roi is not None:
             metadata["subvolume_roi"] = self.subvolume_roi
 
-        provider_slot = self.get_non_transposed_provider_slot(parent=parent, graph=graph)
+        provider_slot = self.create_data_reader(parent=parent, graph=graph)
         provider_slot.meta.update(metadata)
         return provider_slot
 
     @abstractmethod
-    def get_non_transposed_provider_slot(
-        self, parent: Optional[Operator] = None, graph: Optional[Graph] = None
-    ) -> OutputSlot:
-        """Gets an OutputSlot which can be queried for the data of this DatasetInfo.
+    def create_data_reader(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
+        """Instantiate e.g. an OpInputDataReader that can read this DatasetInfo's data source.
+
+        Return the OutputSlot that provides the data.
 
         Like with operators, either parent or graph must be provided, but not both"""
         pass
@@ -382,9 +382,7 @@ class ProjectInternalDatasetInfo(DatasetInfo):
     def display_string(self) -> str:
         return "Project Internal: " + self.inner_path
 
-    def get_non_transposed_provider_slot(
-        self, parent: Optional[Operator] = None, graph: Optional[Graph] = None
-    ) -> OutputSlot:
+    def create_data_reader(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
         opReader = OpStreamingH5N5Reader(parent=parent, graph=graph)
         opReader.H5N5File.setValue(self.project_file)
         opReader.InternalPath.setValue(self.inner_path)
@@ -429,9 +427,7 @@ class PreloadedArrayDatasetInfo(DatasetInfo):
     def display_string(self) -> str:
         return "Preloaded Array"
 
-    def get_non_transposed_provider_slot(
-        self, parent: Optional[Operator] = None, graph: Optional[Graph] = None
-    ) -> OutputSlot:
+    def create_data_reader(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
         opReader = OpArrayPiper(parent=parent, graph=graph)
         opReader.Input.setValue(self.preloaded_array)
         return opReader.Output
@@ -458,9 +454,7 @@ class DummyDatasetInfo(DatasetInfo):
     def to_json_data(self) -> Dict:
         raise NotImplemented("Dummy Slots should not be serialized!")
 
-    def get_non_transposed_provider_slot(
-        self, parent: Optional[Operator] = None, graph: Optional[Graph] = None
-    ) -> OutputSlot:
+    def create_data_reader(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
         opZero = OpMissingDataSource(
             shape=self.laneShape, dtype=self.laneDtype, axistags=self.axistags, parent=parent, graph=graph
         )
@@ -502,9 +496,7 @@ class UrlDatasetInfo(DatasetInfo):
     def effective_path(self) -> str:
         return self.url
 
-    def get_non_transposed_provider_slot(
-        self, parent: Optional[Operator] = None, graph: Optional[Graph] = None
-    ) -> OutputSlot:
+    def create_data_reader(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
         op_reader = OpInputDataReader(parent=parent, graph=graph, FilePath=self.url)
         return op_reader.Output
 
@@ -569,9 +561,7 @@ class FilesystemDatasetInfo(DatasetInfo):
         first_external_path = PathComponents(self.filePath.split(os.path.pathsep)[0]).externalPath
         return Path(first_external_path).parent
 
-    def get_non_transposed_provider_slot(
-        self, parent: Optional[Operator] = None, graph: Optional[Graph] = None
-    ) -> OutputSlot:
+    def create_data_reader(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
         op_reader = OpInputDataReader(
             parent=parent,
             graph=graph,
@@ -710,31 +700,29 @@ class OpDataSelection(Operator):
         """
         super(OpDataSelection, self).__init__(*args, **kwargs)
         self.forceAxisOrder = forceAxisOrder
-        self._opReaders = []
 
         # If the gui calls disconnect() on an input slot without replacing it with something else,
         #  we still need to clean up the internal operator that was providing our data.
-        self.ProjectFile.notifyUnready(self.internalCleanup)
+        self.ProjectFile.notifyUnready(self._clean_up_all_children)
         self.ProjectFile.setOrConnectIfAvailable(ProjectFile)
 
-        self.ProjectDataGroup.notifyUnready(self.internalCleanup)
+        self.ProjectDataGroup.notifyUnready(self._clean_up_all_children)
         self.ProjectDataGroup.setOrConnectIfAvailable(ProjectDataGroup)
 
-        self.WorkingDirectory.notifyUnready(self.internalCleanup)
+        self.WorkingDirectory.notifyUnready(self._clean_up_all_children)
         self.WorkingDirectory.setOrConnectIfAvailable(WorkingDirectory)
 
-        self.Dataset.notifyUnready(self.internalCleanup)
+        self.Dataset.notifyUnready(self._clean_up_all_children)
         self.Dataset.setOrConnectIfAvailable(Dataset)
 
-    def internalCleanup(self, *args):
-        if len(self._opReaders) > 0:
-            self.Image.disconnect()
-            for reader in reversed(self._opReaders):
-                reader.cleanUp()
-            self._opReaders = []
+    def _clean_up_all_children(self, *args) -> None:
+        self.Image.disconnect()
+        # This relies on self.children being in the same order as the graph.
+        for op in reversed(self.children):
+            op.cleanUp()
 
     def setupOutputs(self):
-        self.internalCleanup()
+        self._clean_up_all_children()
         datasetInfo = self.Dataset.value
 
         try:
@@ -745,8 +733,6 @@ class OpDataSelection(Operator):
             else:
                 meta = {"channel_names": [role_name]}
             providerSlot.meta.update(meta)
-            opReader = providerSlot.operator
-            self._opReaders.append(opReader)
 
             # make sure that x and y axes are present in the selected axis order
             if "x" not in providerSlot.meta.axistags or "y" not in providerSlot.meta.axistags:
@@ -787,7 +773,6 @@ class OpDataSelection(Operator):
                 output_order += "c"
 
             op5 = OpReorderAxes(parent=self, AxisOrder=output_order, Input=providerSlot)
-            self._opReaders.append(op5)
 
             self.Image.connect(op5.Output)
 
@@ -799,7 +784,7 @@ class OpDataSelection(Operator):
             self.ImageName.setValue(datasetInfo.nickname)
 
         except:
-            self.internalCleanup()
+            self._clean_up_all_children()
             raise
 
     def propagateDirty(self, slot, subindex, roi):
