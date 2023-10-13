@@ -850,3 +850,19 @@ def test_stack_along(test_data_dir, graph, name, extension, sequence_axis, expec
     read = reader.Image[...].wait()
 
     assert numpy.allclose(read, expected), f"{name}: {read.shape}, {expected.shape}"
+
+
+def test_cleanup():
+    data_path_base = Path(__file__).parent.parent.parent / "data" / "inputdata"
+    filepath1 = data_path_base / "2d3c.h5"  # Any file is fine
+    filepath2 = data_path_base / "3d.h5"
+    reader = OpDataSelection(graph=Graph())
+    reader.WorkingDirectory.setValue(os.getcwd())
+
+    # When
+    reader.Dataset.setValue(FilesystemDatasetInfo(filePath=str(filepath1)))
+    children_after_load = len(reader.children)
+    reader.Dataset.setValue(FilesystemDatasetInfo(filePath=str(filepath2)))
+
+    # Then
+    assert len(reader.children) == children_after_load, "Did not clean up all children after input change"
