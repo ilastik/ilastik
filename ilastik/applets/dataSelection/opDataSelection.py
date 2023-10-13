@@ -115,11 +115,8 @@ class DatasetInfo(ABC):
     def legacy_location(self) -> str:
         pass
 
-    def get_provider_slot(
-        self, meta: Optional[Dict] = None, parent: Optional[Operator] = None, graph: Optional[Graph] = None
-    ) -> OutputSlot:
+    def get_provider_slot(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
         metadata = {"display_mode": self.display_mode, "axistags": self.axistags}
-        metadata.update(meta or {})
 
         if self.drange is not None:
             metadata["drange"] = self.drange
@@ -130,10 +127,9 @@ class DatasetInfo(ABC):
         if self.subvolume_roi is not None:
             metadata["subvolume_roi"] = self.subvolume_roi
 
-        opMetadataInjector = OpMetadataInjector(parent=parent, graph=graph)
-        opMetadataInjector.Input.connect(self.get_non_transposed_provider_slot(parent=parent, graph=graph))
-        opMetadataInjector.Metadata.setValue(metadata)
-        return opMetadataInjector.Output
+        provider_slot = self.get_non_transposed_provider_slot(parent=parent, graph=graph)
+        provider_slot.meta.update(metadata)
+        return provider_slot
 
     @abstractmethod
     def get_non_transposed_provider_slot(
@@ -743,12 +739,13 @@ class OpDataSelection(Operator):
         datasetInfo = self.Dataset.value
 
         try:
+            providerSlot = datasetInfo.get_provider_slot(parent=self)
             role_name = self.RoleName.value
             if datasetInfo.shape5d.c > 1:
                 meta = {"channel_names": [f"{role_name}-{i}" for i in range(datasetInfo.shape5d.c)]}
             else:
                 meta = {"channel_names": [role_name]}
-            providerSlot = datasetInfo.get_provider_slot(meta=meta, parent=self)
+            providerSlot.meta.update(meta)
             opReader = providerSlot.operator
             self._opReaders.append(opReader)
 
