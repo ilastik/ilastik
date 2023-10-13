@@ -35,10 +35,9 @@ import h5py
 import z5py
 from ndstructs import Shape5D
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
+from lazyflow.graph import InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
 from lazyflow.operators.ioOperators import OpInputDataReader
-from lazyflow.operators.valueProviders import OpMetadataInjector
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from ilastik.applets.base.applet import DatasetConstraintError
 

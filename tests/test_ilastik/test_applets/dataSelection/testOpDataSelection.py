@@ -20,9 +20,7 @@
 ###############################################################################
 import os
 import shutil
-import itertools
 from collections import defaultdict
-import h5py
 import numpy
 import vigra
 import lazyflow
@@ -33,9 +31,8 @@ from PIL import Image
 from lazyflow.utility.pathHelpers import PathComponents
 from lazyflow.graph import Graph
 from lazyflow.graph import OperatorWrapper
-from ilastik.applets.dataSelection.opDataSelection import OpMultiLaneDataSelectionGroup, OpDataSelection, DatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import OpMultiLaneDataSelectionGroup, OpDataSelection
 from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo, ProjectInternalDatasetInfo
-from ilastik.applets.dataSelection.opDataSelection import PreloadedArrayDatasetInfo
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 from ilastik.applets.base.applet import DatasetConstraintError
 
