@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from abc import abstractproperty, abstractmethod, ABC
+from abc import abstractmethod, ABC
 import glob
 import os
 import uuid
@@ -110,7 +110,8 @@ class DatasetInfo(ABC):
     def shape5d(self) -> Shape5D:
         return Shape5D(**dict(zip(self.axiskeys, self.laneShape)))
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def legacy_location(self) -> str:
         pass
 
@@ -181,7 +182,8 @@ class DatasetInfo(ABC):
     def is_hierarchical(self):
         return False
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def display_string(self) -> str:
         pass
 
@@ -246,7 +248,7 @@ class DatasetInfo(ABC):
                 elif cls.pathIsN5(path):
                     f = z5py.N5File(path)  # FIXME
                 else:
-                    raise Exception(f"{path} is not an 'n5' or 'h5' file")
+                    raise ValueError(f"{path} is not an 'n5' or 'h5' file")
                 internal_paths |= set(globH5N5(f, glob_str))
             finally:
                 if f is not None:
@@ -319,7 +321,7 @@ class DatasetInfo(ABC):
                 Image=self.get_provider_slot(graph=graph),
             )
             op_writer.progressSignal.subscribe(progress_signal)
-            success = op_writer.WriteImage.value  # reading this slot triggers the write
+            _ = op_writer.WriteImage.value  # reading this slot triggers the write
         finally:
             progress_signal(100)
 
@@ -452,7 +454,7 @@ class DummyDatasetInfo(DatasetInfo):
         return "Dummy Zero Array"
 
     def to_json_data(self) -> Dict:
-        raise NotImplemented("Dummy Slots should not be serialized!")
+        raise NotImplementedError("Dummy Slots should not be serialized!")
 
     def create_data_reader(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
         opZero = OpMissingDataSource(
@@ -534,7 +536,7 @@ class FilesystemDatasetInfo(DatasetInfo):
         self.expanded_paths = self.expand_path(filePath, cwd=self.base_dir)
         assert len(self.expanded_paths) == 1 or self.sequence_axis
         if len({PathComponents(ep).extension for ep in self.expanded_paths}) > 1:
-            raise Exception(f"Multiple extensions unsupported as a single data source: {self.expanded_paths}")
+            raise ValueError(f"Multiple extensions unsupported as a single data source: {self.expanded_paths}")
         self.filePath = os.path.pathsep.join(self.expanded_paths)
 
         op_reader = OpInputDataReader(
@@ -723,77 +725,69 @@ class OpDataSelection(Operator):
 
     def setupOutputs(self):
         self._clean_up_all_children()
-        datasetInfo = self.Dataset.value
+        datasetInfo: DatasetInfo = self.Dataset.value
 
         try:
-            providerSlot = datasetInfo.get_provider_slot(parent=self)
+            data_provider = datasetInfo.get_provider_slot(parent=self)
+            if "x" not in data_provider.meta.axistags or "y" not in data_provider.meta.axistags:
+                raise DatasetConstraintError(
+                    "DataSelection", "Data must always have at leaset the axes x and y for ilastik to work."
+                )
+
             role_name = self.RoleName.value
             if datasetInfo.shape5d.c > 1:
                 meta = {"channel_names": [f"{role_name}-{i}" for i in range(datasetInfo.shape5d.c)]}
             else:
                 meta = {"channel_names": [role_name]}
-            providerSlot.meta.update(meta)
+            data_provider.meta.update(meta)
 
-            # make sure that x and y axes are present in the selected axis order
-            if "x" not in providerSlot.meta.axistags or "y" not in providerSlot.meta.axistags:
-                raise DatasetConstraintError(
-                    "DataSelection", "Data must always have at leaset the axes x and y for ilastik to work."
-                )
-
-            if self.forceAxisOrder:
-                assert isinstance(
-                    self.forceAxisOrder, list
-                ), "forceAxisOrder should be a *list* of preferred axis orders"
-
-                # Before we re-order, make sure no non-singleton
-                #  axes would be dropped by the forced order.
-                tagged_provider_shape = providerSlot.meta.getTaggedShape()
-                minimal_axes = {k for k, v in tagged_provider_shape.items() if v > 1}
-
-                # Pick the shortest of the possible 'forced' orders that
-                # still contains all the axes of the original dataset.
-                candidate_orders = list(self.forceAxisOrder)
-                candidate_orders = [order for order in candidate_orders if minimal_axes.issubset(set(order))]
-
-                if len(candidate_orders) == 0:
-                    msg = (
-                        f"The axes of your dataset ({providerSlot.meta.getAxisKeys()}) are not compatible with "
-                        f"any of the allowed axis configurations used by this workflow ({self.forceAxisOrder})."
-                    )
-                    raise DatasetConstraintError("DataSelection", msg)
-
-                output_order = sorted(candidate_orders, key=len)[0]  # the shortest one
-                output_order = "".join(output_order)
-            else:
-                # No forced axisorder is supplied. Use original axisorder as
-                # output order: it is assumed by the export-applet, that the
-                # an OpReorderAxes operator is added in the beginning
-                output_order = providerSlot.meta.getAxisKeys()
-            if "c" not in output_order:
-                output_order += "c"
-
-            op5 = OpReorderAxes(parent=self, AxisOrder=output_order, Input=providerSlot)
-
+            output_order = self._get_output_axis_order(data_provider)
+            op5 = OpReorderAxes(parent=self, AxisOrder=output_order, Input=data_provider)
             self.Image.connect(op5.Output)
-
             self.AllowLabels.setValue(datasetInfo.allowLabels)
-
             if self.Image.meta.nickname is not None:
                 datasetInfo.nickname = self.Image.meta.nickname
-
             self.ImageName.setValue(datasetInfo.nickname)
 
         except:
             self._clean_up_all_children()
             raise
 
+    def _get_output_axis_order(self, data_provider: OutputSlot) -> str:
+        if self.forceAxisOrder:
+            assert isinstance(self.forceAxisOrder, list), "forceAxisOrder should be a *list* of preferred axis orders"
+
+            # Before we re-order, make sure no non-singleton
+            #  axes would be dropped by the forced order.
+            tagged_provider_shape = data_provider.meta.getTaggedShape()
+            minimal_axes = {k for k, v in tagged_provider_shape.items() if v > 1}
+
+            # Pick the shortest of the possible 'forced' orders that
+            # still contains all the axes of the original dataset.
+            candidate_orders = list(self.forceAxisOrder)
+            candidate_orders = [order for order in candidate_orders if minimal_axes.issubset(set(order))]
+
+            if len(candidate_orders) == 0:
+                msg = (
+                    f"The axes of your dataset ({data_provider.meta.getAxisKeys()}) are not compatible with "
+                    f"any of the allowed axis configurations used by this workflow ({self.forceAxisOrder})."
+                )
+                raise DatasetConstraintError("DataSelection", msg)
+
+            output_order = sorted(candidate_orders, key=len)[0]  # the shortest one
+            output_order = "".join(output_order)
+        else:
+            # No forced axisorder is supplied. Use original axisorder as
+            # output order: it is assumed by the export-applet, that the
+            # an OpReorderAxes operator is added in the beginning
+            output_order = data_provider.meta.getAxisKeys()
+        if "c" not in output_order:
+            output_order += "c"
+        return output_order
+
     def propagateDirty(self, slot, subindex, roi):
         # Output slots are directly connected to internal operators
         pass
-
-    @classmethod
-    def getInternalDatasets(cls, filePath):
-        return OpInputDataReader.getInternalDatasets(filePath)
 
 
 class OpDataSelectionGroup(Operator):
