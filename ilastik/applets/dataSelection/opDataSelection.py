@@ -62,14 +62,28 @@ class CantSaveAsRelativePathsException(Exception):
         super().__init__(f"Can't represent {file_path} relative to {base_dir}")
 
 
+class InconsistentAxisMetaException(Exception):
+    def __init__(self, axistags: AxisTags, shape):
+        if len(axistags) > len(shape):
+            problem = "More axes than data dimensions."
+        else:
+            problem = "Some data dimensions have no axis interpretation."
+        super().__init__(
+            f"Unable to load: {problem}. Please check if all files have the same dimensionality.\n"
+            f"Reported axes: {', '.join([tag.key for tag in axistags])}\n"
+            f"Actual data dimensions: {', '.join([str(s) for s in shape])} (pixels/channels/timepoints)"
+        )
+
+
 class UnsuitedAxistagsException(Exception):
     def __init__(self, axistags: AxisTags, shape):
         if len(axistags) > len(shape):
-            problem = "Inconsistent metadata: The dataset reports dimensions for which it contains no data."
+            problem = "No data for some axes."
         else:
-            problem = "Inconsistent metadata: The dataset has more dimensions than it reports."
+            problem = "Some data dimensions have no axis interpretation."
         super().__init__(
-            f"{problem}\nReported axes: {', '.join([tag.key for tag in axistags])}\n"
+            f"The given axis interpretation does not match the data shape: {problem}\n"
+            f"Specified axes: {', '.join([tag.key for tag in axistags])}\n"
             f"Actual data dimensions: {', '.join([str(s) for s in shape])} (pixels/channels/timepoints)"
         )
 
@@ -80,30 +94,31 @@ class DatasetInfo(ABC):
         *,
         laneShape: Tuple,
         laneDtype: type,
-        default_tags: AxisTags,
+        default_tags: AxisTags,  # inferred from dataset or another data lane
+        axistags: AxisTags = None,  # given through datasetInfoEditorWidget or cmdline
         allowLabels: bool = True,
         subvolume_roi: Tuple = None,
-        axistags: AxisTags = None,
         display_mode: str = "default",
         nickname: str = "",
         normalizeDisplay: bool = None,
         drange: Tuple[Number, Number] = None,
     ):
+        if axistags and len(axistags) != len(laneShape):
+            raise UnsuitedAxistagsException(axistags, laneShape)
+        if not axistags and len(default_tags) != len(laneShape):
+            raise InconsistentAxisMetaException(default_tags, laneShape)
+        self.default_tags = default_tags
+        self.axistags = axistags or default_tags
         self.laneShape = laneShape
         self.laneDtype = laneDtype
         if isinstance(self.laneDtype, numpy.dtype):
             self.laneDtype = numpy.sctypeDict[self.laneDtype.name]
         self.allowLabels = allowLabels
         self.subvolume_roi = subvolume_roi
-        self.axistags = axistags
         self.drange = drange
         self.display_mode = display_mode  # choices: default, grayscale, rgba, random-colortable, binary-mask.
         self.nickname = nickname
         self.normalizeDisplay = (self.drange is not None) if normalizeDisplay is None else normalizeDisplay
-        self.default_tags = default_tags
-        self.axistags = axistags or default_tags
-        if len(self.axistags) != len(self.laneShape):
-            raise UnsuitedAxistagsException(self.axistags, self.laneShape)
         self.legacy_datasetId = self.generate_id()
 
     @property
