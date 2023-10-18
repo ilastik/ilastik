@@ -790,7 +790,6 @@ class OpDataSelection(Operator):
                 raise DatasetConstraintError("DataSelection", msg)
 
             output_order = sorted(candidate_orders, key=len)[0]  # the shortest one
-            output_order = "".join(output_order)
         else:
             # No forced axisorder is supplied. Use original axisorder as
             # output order: it is assumed by the export-applet, that the
@@ -798,6 +797,7 @@ class OpDataSelection(Operator):
             output_order = data_provider.meta.getAxisKeys()
         if "c" not in output_order:
             output_order += "c"
+        output_order = "".join(output_order)
         return output_order
 
     def propagateDirty(self, slot, subindex, roi):
