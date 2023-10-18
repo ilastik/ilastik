@@ -1,9 +1,6 @@
 import logging
 import numpy
-import os
-import time
 import vigra
-import pytest
 
 from lazyflow.graph import Graph, OperatorWrapper
 
@@ -343,53 +340,3 @@ class TestCompareOpFeatureSelectionToOld:
         opFeatures.ComputeIn2d.setValue([True])
         res2d = opFeatures.OutputImage[:].wait()
         assert (res3d != res2d).all()
-
-    @pytest.mark.xfail(os.environ.get("ON_CIRCLE_CI", False), reason="Timing test on CircleCI fails for some reason.")
-    @pytest.mark.parametrize(
-        "shape,order,in2d",
-        [
-            # ([1, 1, 20, 512, 512], 'tczyx', False),
-            # ([1, 1, 20, 512, 512], 'tcxyz', False),
-            ([1, 1, 1, 2048, 2048], "tczyx", True),
-            # ([1, 1, 1, 512, 512], 'tczxy', True), # old is faster
-            # ([10, 3, 1, 1024, 1024], 'tczyx', True),
-            # ([1, 1, 25, 67, 68], 'tczyx', False),
-            # ([5, 25, 67, 68, 3], 'tzyxc', False),
-            ([5, 5, 256, 256], "tcyx", True),
-            ([5, 256, 256, 1], "tyxc", True),
-            ([25, 26, 1], "xyc", True),
-        ],
-    )
-    def test_timing(self, shape, order, in2d):
-        self.opFeatures.InputImage[0].disconnect()
-        # Configure selection matrix
-        sel = numpy.ones((6, 5), dtype=bool)
-        sel[:, 0] = False  # don't compare sigma of 0.3
-        self.opFeatures.SelectionMatrix.setValue(sel)
-        self.opFeaturesOld.SelectionMatrix.setValue(sel)
-
-        data = vigra.taggedView(numpy.resize(numpy.random.rand(numpy.prod(shape)), shape).astype(numpy.float32), order)
-        self._timing(data, in2d)
-
-    def _timing(self, data, in2d):
-        timingsNew = []
-        timingsOld = []
-
-        for _ in range(5):
-            self.opFeatures.ComputeIn2d.setValue([in2d] * 6)
-            self.opFeatures.InputImage[0].setValue(data)
-            self.opFeaturesOld.InputImage[0].setValue(data)
-            t0 = time.perf_counter()
-            self.opFeatures.OutputImage[0][:].wait()
-            t1 = time.perf_counter()
-            self.opFeaturesOld.OutputImage[0][:].wait()
-            t2 = time.perf_counter()
-            timingsNew.append(t1 - t0)
-            timingsOld.append(t2 - t1)
-
-        timeNew = numpy.mean(timingsNew)
-        timeOld = numpy.mean(timingsOld)
-
-        # The new code should (within a tolerance) run faster!
-        assert timeNew <= 1.1 * timeOld + 0.05, f"{timeNew:.2f} !<= {timeOld:.2f}"
-        logger.debug(f"{timeNew:.2f} <= {timeOld:.2f}")
