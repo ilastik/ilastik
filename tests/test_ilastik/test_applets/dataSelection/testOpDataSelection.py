@@ -852,11 +852,10 @@ def test_stack_along(test_data_dir, graph, name, extension, sequence_axis, expec
     assert numpy.allclose(read, expected), f"{name}: {read.shape}, {expected.shape}"
 
 
-def test_cleanup():
-    data_path_base = Path(__file__).parent.parent.parent / "data" / "inputdata"
-    filepath1 = data_path_base / "2d3c.h5"  # Any file is fine
-    filepath2 = data_path_base / "3d.h5"
-    reader = OpDataSelection(graph=Graph())
+def test_cleanup(data_path, graph):
+    filepath1 = data_path / "inputdata" / "2d3c.h5"  # Any file is fine
+    filepath2 = data_path / "inputdata" / "3d.h5"
+    reader = OpDataSelection(graph=graph)
     reader.WorkingDirectory.setValue(os.getcwd())
 
     # When
