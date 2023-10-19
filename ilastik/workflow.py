@@ -201,7 +201,7 @@ class Workflow(Operator):
         for subcls in cls.all_subclasses:
             if subcls.__name__ == name:
                 return subcls
-        raise RuntimeError("No known workflow class has name " + name)
+        raise RuntimeError(f"No known workflow class has name {name}")
 
     ###################
     # Private methods #
