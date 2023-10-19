@@ -326,7 +326,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         elif display_mode == "binary-mask":
             layer = cls._create_binary_mask_layer_from_slot(slot)
         else:
-            raise RuntimeError("unknown channel display mode: " + display_mode)
+            raise RuntimeError(f"unknown channel display mode: {display_mode}")
 
         layer.name = name or slot.name
         layer.visible = visible
