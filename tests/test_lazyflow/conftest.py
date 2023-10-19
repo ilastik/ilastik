@@ -24,12 +24,6 @@ def pytest_runtest_setup(item):
     item.add_marker("qt_no_exception_capture")
 
 
-@pytest.fixture(scope="session")
-def inputdata_dir():
-    conftest_dir = os.path.dirname(__file__)
-    return os.path.join(conftest_dir, "data", "inputdata")
-
-
 @pytest.fixture
 def graph():
     return Graph()
