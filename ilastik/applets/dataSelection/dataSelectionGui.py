@@ -582,25 +582,28 @@ class DataSelectionGui(QWidget):
         self._add_default_inner_path(roleIndex=roleIndex, inner_path=selected_dataset)
         return filePath / selected_dataset.lstrip("/")
 
-    def guess_axistags_for(self, role: Union[str, int], info: DatasetInfo) -> Optional[AxisTags]:
+    def _get_custom_axistags_from_previous_lane(self, role: Union[str, int], info: DatasetInfo) -> Optional[AxisTags]:
         if self.parentApplet.num_lanes == 0:
-            return info.axistags
+            return None
         lane = self.parentApplet.get_lane(-1)
         previous_info = lane.get_dataset_info(role)
-        if previous_info is None or previous_info.default_tags == previous_info.axistags:
-            return info.axistags
-        if len(previous_info.axistags) != len(info.axistags) or previous_info.shape5d.c != info.shape5d.c:
-            return info.axistags
-        return previous_info.axistags
+        if (
+            previous_info is not None
+            and previous_info.default_tags != previous_info.axistags
+            and previous_info.shape5d.c == info.shape5d.c
+            and len(previous_info.axistags) == len(info.axistags)
+        ):
+            return previous_info.axistags
+        return None
 
     def instantiate_dataset_info(self, url: str, role: Union[str, int], *info_args, **info_kwargs) -> DatasetInfo:
         info = self.parentApplet.create_dataset_info(url=url, *info_args, **info_kwargs)
         if info_kwargs.get("axistags") is not None:
-            return info
-        axistags = self.guess_axistags_for(role=role, info=info)
-        if axistags in (info.axistags, None):
-            return info
-        return self.parentApplet.create_dataset_info(url=url, *info_args, **info_kwargs, axistags=axistags)
+            return info  # This lane has custom axistags already
+        custom_axistags = self._get_custom_axistags_from_previous_lane(role=role, info=info)
+        if custom_axistags:
+            return self.parentApplet.create_dataset_info(url=url, *info_args, **info_kwargs, axistags=custom_axistags)
+        return info
 
     def _checkDataFormatWarnings(self, roleIndex, startingLaneNum, endingLane):
         warn_needed = False
