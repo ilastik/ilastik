@@ -22,6 +22,7 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license/
 ###############################################################################
 from .alternative_numpy_functions import vigra_bincount, chunked_bincount
+from .exception_helpers import is_root_cause, exception_chain
 from .memory import Memory
 from . import helpers
 from . import jsonConfig

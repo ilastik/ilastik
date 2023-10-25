@@ -1,6 +1,4 @@
-from future.utils import raise_with_traceback
-
-###############################################################################
+######################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
 #       Copyright (C) 2011-2014, the ilastik developers
@@ -105,6 +103,32 @@ def log_exception(logger, msg=None, exc_info=None, level=logging.ERROR):
     logger.log(level, sio.getvalue())
     if msg:
         logger.log(level, msg)
+
+
+class RequestError(Exception):
+    """
+    Exception raised towards consumers if request fails.
+
+    There is some special handling of Exceptions raised in the context
+    of requesting from operator slots (which is often the case).
+    Message will name operator and slot that resulted in failure.
+    For all other cases message is a generic "Request failed."
+    """
+
+    def __init__(self, request_fn):
+        if isinstance(request_fn, Request._PartialWithAppendedArgs):
+            fn = request_fn.func
+        else:
+            fn = request_fn
+        try:
+            op = fn.operator.name
+            slot = fn.slot.name
+            msg = f"Failed to request data from `{op}.{slot}`"
+        except Exception:
+            op = slot = None
+            msg = "Request failed."
+
+        super().__init__(msg)
 
 
 class Request(object):
@@ -466,7 +490,7 @@ class Request(object):
             # In this debug mode, we want to re-raise the exception.
             if self.exception is not None:
                 exc_type, exc_value, exc_tb = self.exception_info
-                raise_with_traceback(exc_value, exc_tb)
+                raise RequestError(self.fn) from exc_value
 
     def _wake_up(self):
         """
@@ -598,7 +622,7 @@ class Request(object):
             if self.finished:
                 if self.exception is not None:
                     exc_type, exc_value, exc_tb = self.exception_info
-                    raise_with_traceback(exc_value, exc_tb)
+                    raise RequestError("Request failed.") from exc_value
                 else:
                     return
             else:
@@ -621,7 +645,7 @@ class Request(object):
 
         if self.exception is not None:
             exc_type, exc_value, exc_tb = self.exception_info
-            raise_with_traceback(exc_value, exc_tb)
+            raise RequestError(self.fn) from exc_value
 
     def _wait_within_request(self, current_request):
         """
@@ -651,7 +675,7 @@ class Request(object):
                 # This request was already started and already failed.
                 # Simply raise the exception back to the current request.
                 exc_type, exc_value, exc_tb = self.exception_info
-                raise_with_traceback(exc_type(exc_value), exc_tb)
+                raise RequestError(self.fn) from exc_value
 
             direct_execute_needed = not self.started
             suspend_needed = self.started and not self.execution_complete
@@ -695,7 +719,7 @@ class Request(object):
         # Are we back because we failed?
         if self.exception is not None:
             exc_type, exc_value, exc_tb = self.exception_info
-            raise_with_traceback(exc_value, exc_tb)
+            raise RequestError(self.fn) from exc_value
 
     def _handle_finished_request(self, request, *args):
         """
