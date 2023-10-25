@@ -262,7 +262,7 @@ class OpMultiOutput(graph.Operator):
 
 
 class TestOperatorMultiSlotExecute(object):
-    def setup(self):
+    def setup_method(self):
         self.g = graph.Graph()
 
     def test(self):
@@ -354,11 +354,8 @@ class OpDirectConnection(graph.Operator):
 
 
 class TestSlotStates(object):
-    def setup(self):
+    def setup_method(self):
         self.g = graph.Graph()
-
-    def teardown(self):
-        pass
 
     def test_directlyConnectedOutputs(self):
         op = OpDirectConnection(graph=self.g)
