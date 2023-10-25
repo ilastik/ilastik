@@ -195,5 +195,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             return str(datasetInfo.laneShape)
         if DatasetColumn.Range == index.column():
             return str(datasetInfo.drange or "")
+        if DatasetColumn.Scale == index.column():
+            return str(datasetInfo.scales[datasetInfo.active_scale]["resolution"])
 
         assert False, "Unknown column: row={}, column={}".format(index.row(), index.column())

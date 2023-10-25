@@ -761,6 +761,9 @@ class OpDataSelection(Operator):
             data_provider.meta.update(meta)
             if data_provider.meta.scales:
                 self.MaxScale.setValue(len(data_provider.meta.scales) - 1)
+                datasetInfo.laneShape = data_provider.meta.shape
+                datasetInfo.scales = data_provider.meta.scales
+                datasetInfo.active_scale = self.ActiveScale.value
 
             output_order = self._get_output_axis_order(data_provider)
             # Export applet assumes this OpReorderAxes exists.
