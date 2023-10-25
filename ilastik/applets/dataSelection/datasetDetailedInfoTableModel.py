@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,19 +18,13 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import os
-
 from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
-
-from lazyflow.utility import PathComponents, isUrl
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from .opDataSelection import DatasetInfo
-
 from .dataLaneSummaryTableModel import rowOfButtonsProxy
 
 
-class DatasetDetailedInfoColumn(object):
+class DatasetColumn:
     Nickname = 0
     Location = 1
     InternalID = 2
@@ -122,7 +114,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         return 0
 
     def columnCount(self, parent=QModelIndex()):
-        return DatasetDetailedInfoColumn.NumColumns
+        return DatasetColumn.NumColumns
 
     def rowCount(self, parent=QModelIndex()):
         return len(self._op.DatasetGroup)
@@ -137,18 +129,18 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
     def parent(self, index):
         return QModelIndex()
 
-    def headerData(self, section, orientation, role=Qt.DisplayRole):
+    def headerData(self, section: int, orientation: int, role=Qt.DisplayRole):
         if role != Qt.DisplayRole:
             return None
 
         if orientation == Qt.Horizontal:
             InfoColumnNames = {
-                DatasetDetailedInfoColumn.Nickname: "Nickname",
-                DatasetDetailedInfoColumn.Location: "Location",
-                DatasetDetailedInfoColumn.InternalID: "Internal Path",
-                DatasetDetailedInfoColumn.AxisOrder: "Axes",
-                DatasetDetailedInfoColumn.Shape: "Shape",
-                DatasetDetailedInfoColumn.Range: "Data Range",
+                DatasetColumn.Nickname: "Nickname",
+                DatasetColumn.Location: "Location",
+                DatasetColumn.InternalID: "Internal Path",
+                DatasetColumn.AxisOrder: "Axes",
+                DatasetColumn.Shape: "Shape",
+                DatasetColumn.Range: "Data Range",
             }
             return InfoColumnNames[section]
         elif orientation == Qt.Vertical:
@@ -161,12 +153,12 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         laneIndex = index.row()
 
         UninitializedDisplayData = {
-            DatasetDetailedInfoColumn.Nickname: "<empty>",
-            DatasetDetailedInfoColumn.Location: "",
-            DatasetDetailedInfoColumn.InternalID: "",
-            DatasetDetailedInfoColumn.AxisOrder: "",
-            DatasetDetailedInfoColumn.Shape: "",
-            DatasetDetailedInfoColumn.Range: "",
+            DatasetColumn.Nickname: "<empty>",
+            DatasetColumn.Location: "",
+            DatasetColumn.InternalID: "",
+            DatasetColumn.AxisOrder: "",
+            DatasetColumn.Shape: "",
+            DatasetColumn.Range: "",
         }
 
         if len(self._op.DatasetGroup) <= laneIndex or len(self._op.DatasetGroup[laneIndex]) <= self._roleIndex:
@@ -178,38 +170,27 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         if not datasetSlot.ready():
             return UninitializedDisplayData[index.column()]
 
-        datasetInfo = self._op.DatasetGroup[laneIndex][self._roleIndex].value
+        datasetInfo = datasetSlot.value
 
         ## Input meta-data fields
-
-        # Name
-        if index.column() == DatasetDetailedInfoColumn.Nickname:
+        if DatasetColumn.Nickname == index.column():
             return datasetInfo.nickname
-
-        # Location
-        if index.column() == DatasetDetailedInfoColumn.Location:
+        if DatasetColumn.Location == index.column():
             return datasetInfo.display_string
-        # Internal ID
-        if index.column() == DatasetDetailedInfoColumn.InternalID:
+        if DatasetColumn.InternalID == index.column():
             return str(getattr(datasetInfo, "internal_paths", ""))
 
         ## Output meta-data fields
-
         # Defaults
         imageSlot = self._op.ImageGroup[laneIndex][self._roleIndex]
         if not imageSlot.ready():
             return UninitializedDisplayData[index.column()]
 
-        # Axis order
-        if index.column() == DatasetDetailedInfoColumn.AxisOrder:
+        if DatasetColumn.AxisOrder == index.column():
             return datasetInfo.axiskeys
-
-        # Shape
-        if index.column() == DatasetDetailedInfoColumn.Shape:
+        if DatasetColumn.Shape == index.column():
             return str(datasetInfo.laneShape)
-
-        # Range
-        if index.column() == DatasetDetailedInfoColumn.Range:
+        if DatasetColumn.Range == index.column():
             return str(datasetInfo.drange or "")
 
         assert False, "Unknown column: row={}, column={}".format(index.row(), index.column())

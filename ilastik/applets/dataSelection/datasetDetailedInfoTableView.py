@@ -26,7 +26,7 @@ from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QUrl, QObject, QEvent, QTimer
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QTableView, QHeaderView, QMenu, QAction, QWidget, QHBoxLayout, QPushButton, QItemDelegate
 
-from .datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
+from .datasetDetailedInfoTableModel import DatasetColumn
 from .addFileButton import AddFileButton, FILEPATH
 
 from pathlib import Path
@@ -308,10 +308,10 @@ class DatasetDetailedInfoTableView(QTableView):
         # the "Add..." button spans last row
         self.setSpan(lastRow, 0, 1, model.columnCount())
 
-        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.Nickname, QHeaderView.Interactive)
-        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.Location, QHeaderView.Interactive)
-        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.InternalID, QHeaderView.Interactive)
-        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.AxisOrder, QHeaderView.Interactive)
+        self.horizontalHeader().setSectionResizeMode(DatasetColumn.Nickname, QHeaderView.Interactive)
+        self.horizontalHeader().setSectionResizeMode(DatasetColumn.Location, QHeaderView.Interactive)
+        self.horizontalHeader().setSectionResizeMode(DatasetColumn.InternalID, QHeaderView.Interactive)
+        self.horizontalHeader().setSectionResizeMode(DatasetColumn.AxisOrder, QHeaderView.Interactive)
 
     def setEnabled(self, status):
         """
