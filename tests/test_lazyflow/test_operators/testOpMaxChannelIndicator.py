@@ -1,8 +1,10 @@
 import pytest
 import numpy
 import vigra
+from lazyflow.utility import is_root_cause
 
 from lazyflow.operators import OpArrayPiper, OpMaxChannelIndicatorOperator
+from lazyflow.request.request import RequestError
 from lazyflow.roi import InvalidRoiException
 from lazyflow.utility import Pipeline
 
@@ -59,9 +61,11 @@ def test_OpMaxChannelIndicatorOperator_tied_pixels(graph):
 def test_OpMaxChannelIndicatorOperator_unexpected_roi_raises(graph):
     data = vigra.VigraArray(numpy.zeros((1, 3, 5, 7, 2)), axistags=vigra.defaultAxistags("tzyxc"))
 
-    with pytest.raises(InvalidRoiException):
+    with pytest.raises(RequestError) as exc_info:
         # automatically connects op1.Output to op2.Input ...
         with Pipeline(graph=graph) as pipe_line:
             pipe_line.add(OpArrayPiper, Input=data)
             pipe_line.add(OpMaxChannelIndicatorOperator)
             pipe_line[-1].Output[()].wait()
+
+    assert is_root_cause(InvalidRoiException, exc_info.value)

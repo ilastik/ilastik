@@ -40,6 +40,8 @@ from lazyflow.graph import OperatorWrapper
 import numpy
 import pytest
 
+from lazyflow.utility.exception_helpers import is_root_cause
+
 
 class OpA(graph.Operator):
     name = "OpA"
@@ -803,7 +805,7 @@ class TestCompatibilityChecks:
         return self.OpA(graph=graph)
 
     def test_arraylike_raises_if_shapes_are_mismatched(self, op):
-        with pytest.raises(stype.InvalidResult):
+        with pytest.raises(Exception):
             op.Output[:].wait()
 
         op.execute = lambda *a, **kw: numpy.ones((3, 3), dtype=int)
@@ -811,7 +813,7 @@ class TestCompatibilityChecks:
         op.Output[:].wait()
 
     def test_arraylike_raises_if_list_shape_is_mismatched(self, op):
-        with pytest.raises(stype.InvalidResult):
+        with pytest.raises(Exception):
             res = op.OutputList[1:2].wait()
 
         assert op.OutputList[1:4].wait()
@@ -822,8 +824,10 @@ class TestCompatibilityChecks:
             assert len(record) == 0
 
     def test_arraylike_retun_non_arraylike_object_raises(self, op):
-        with pytest.raises(stype.InvalidResult):
+        with pytest.raises(Exception) as exc_info:
             assert op.OutputUnsupportedType.value
+
+        assert is_root_cause(stype.InvalidResult, exc_info.value)
 
 
 class TestOperatorStackFormatter:
@@ -852,7 +856,7 @@ class TestOperatorStackFormatter:
 
         assert exc
 
-        stack = operator.format_operator_stack(exc.__traceback__)
+        stack = operator.format_operator_stack(exc)
         assert stack
         assert len(stack) == 2
         assert "TestOperatorStackFormatter.BrokenOp.execute" in stack[0]

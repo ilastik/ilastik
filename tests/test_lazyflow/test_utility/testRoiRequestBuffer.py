@@ -3,9 +3,10 @@ import pytest
 from unittest import mock
 
 import vigra
+from lazyflow.utility import is_root_cause
 
 from lazyflow.operators import OpArrayPiper
-from lazyflow.utility import RoiRequestBufferIter
+from lazyflow.utility import RoiRequestBufferIter, RoiRequestBatchException
 from lazyflow.utility.roiRequestBuffer import _RoiIter
 import lazyflow.utility.roiRequestBuffer
 
@@ -106,6 +107,8 @@ def test_raises(raising_op):
     """Make sure iterator does not block indefinitely if exception occurs in thread"""
     rb = RoiRequestBufferIter(raising_op.Output, batchsize=2, iterate_axes="tzc")
 
-    with pytest.raises(ProcessingException):
+    with pytest.raises(RoiRequestBatchException) as exc_info:
         for item in rb:
             assert item.shape == (1, 1, 1, 16, 32)
+
+    assert is_root_cause(ProcessingException, exc_info.value)

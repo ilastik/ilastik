@@ -10,7 +10,7 @@ from lazyflow.graph import Graph
 @pytest.hookimpl()
 def pytest_exception_interact(node, call, report):
     if call.excinfo:
-        stack = format_operator_stack(call.excinfo.tb)
+        stack = format_operator_stack(call.excinfo.value)
         if stack:
             formatted_stack = "".join(stack)
             report.sections.append(("Operator Stack", formatted_stack))
