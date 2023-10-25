@@ -33,7 +33,7 @@ from .fileLock import FileLock
 from .tracer import Tracer, traceLogged
 from .pathHelpers import PathComponents, getPathVariants, isUrl, make_absolute, globH5N5, globList, mkdir_p, lsH5N5
 
-from .roiRequestBatch import RoiRequestBatch
+from .roiRequestBatch import RoiRequestBatch, RoiRequestBatchException
 from .roiRequestBuffer import RoiRequestBufferIter
 from .bigRequestStreamer import BigRequestStreamer
 from . import io_util

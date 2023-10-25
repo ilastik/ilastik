@@ -2,7 +2,6 @@ from builtins import next
 
 from builtins import range
 from builtins import object
-from future.utils import raise_with_traceback
 import sys
 
 if sys.version_info.major >= 3:
@@ -1216,18 +1215,12 @@ class Slot(object):
             self._sig_connect(self)
         except:
             try:
-                exc_info = sys.exc_info()
                 self.disconnect()
-            except:
+            except Exception as e:
                 # Well, this is bad.  We caused an exception while handling an exception.
-                # We're more interested in the FIRST excpetion, so print this one out and
+                # We're more interested in the FIRST exception, so print this one out and
                 #  continue unwinding the stack with the first one.
-                self.logger.error("Error: Caught a secondary exception while handling a different exception.")
-                import traceback
-
-                traceback.print_exc()
-                exc_type, exc_value, exc_tb = exc_info
-                raise_with_traceback(exc_type(exc_value), exc_tb)
+                raise RuntimeError("Error while handling an Exception in slot.setValue") from e
             raise
 
     @property

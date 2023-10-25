@@ -4,7 +4,7 @@ from queue import Queue
 import numpy
 
 from lazyflow.graph import Slot
-from lazyflow.utility.roiRequestBatch import RoiRequestBatch
+from lazyflow.utility import RoiRequestBatch, RoiRequestBatchException
 from lazyflow.utility.helpers import bigintprod
 
 
