@@ -40,7 +40,8 @@ dependencies:
   # build 1.11.1=*_1028 on cf is the first to be compatible with numpy>1.19
   # need to bump this manually until there is a true version bump in vigra
   - vigra 1.11.1=*_1033
-  - xarray
+  # xarray 2023.10.0 package is broken (requires numpy >1.22, but doesn't state this in the dependencies)
+  - xarray !=2023.10.0
   - z5py
 
   # Neural Network Workflow dependencies
