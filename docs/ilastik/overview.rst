@@ -1,5 +1,5 @@
-Overview
-========
+ilastik Overview
+================
 
 The ilastik 1.0 code base consists of three separate projects, each of which has its own repository:
 

@@ -741,11 +741,3 @@ ThreadPool
    :members:
 
    .. automethod:: __init__
-
-.. autoclass:: PriorityQueue
-
-.. autoclass:: FifoQueue
-    
-.. autoclass:: LifoQueue
-    
-    

@@ -10,9 +10,6 @@ Utility Classes
 
    .. automethod:: __call__
 
-.. autoclass:: SimpleSignal
-   :members:
-
 .. autoclass:: OperatorSubView
 
    .. automethod:: __init__

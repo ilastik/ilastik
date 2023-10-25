@@ -12,9 +12,6 @@
 # serve to show the default.
 
 import sys, os
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -50,7 +47,7 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-project = "lazyflow"
+project = "ilastik"
 copyright = "2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg"
 
 # The version info for the project you're documenting, acts as replacement for
@@ -101,7 +98,7 @@ pygments_style = "sphinx"
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = "default"
+html_theme = "sphinx_material"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -141,7 +138,7 @@ html_static_path = ["_static"]
 # html_use_smartypants = True
 
 # Custom sidebar templates, maps document names to template names.
-# html_sidebars = {}
+html_sidebars = {"**": ["logo-text.html", "globaltoc.html", "localtoc.html", "searchbox.html"]}
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
@@ -174,7 +171,7 @@ html_static_path = ["_static"]
 # html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "lazyflowdoc"
+htmlhelp_basename = "ilastik_doc"
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -249,10 +246,10 @@ man_pages = [
 texinfo_documents = [
     (
         "index",
-        "lazyflow",
-        "lazyflow Documentation",
+        "ilastik",
+        "ilastik developer Documentation",
         "Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg",
-        "lazyflow",
+        "ilastik",
         "One line description of project.",
         "Miscellaneous",
     )

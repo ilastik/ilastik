@@ -82,8 +82,6 @@ Applet Base Class
    
    .. automethod:: __init__
 
-.. autoclass:: ControlCommand
-   :members:
 
 .. autoclass:: ShellRequest
    :members:
