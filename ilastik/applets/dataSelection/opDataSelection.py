@@ -759,9 +759,8 @@ class OpDataSelection(Operator):
             else:
                 meta = {"channel_names": [role_name]}
             data_provider.meta.update(meta)
-            op_reader = data_provider.operator
-            if hasattr(op_reader, "MaxScale"):
-                self.MaxScale.setValue(op_reader.MaxScale.value)
+            if data_provider.meta.scales:
+                self.MaxScale.setValue(len(data_provider.meta.scales) - 1)
 
             output_order = self._get_output_axis_order(data_provider)
             # Export applet assumes this OpReorderAxes exists.
