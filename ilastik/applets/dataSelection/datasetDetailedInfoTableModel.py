@@ -31,7 +31,8 @@ class DatasetColumn:
     AxisOrder = 3
     Shape = 4
     Range = 5
-    NumColumns = 6
+    Scale = 6
+    NumColumns = 7
 
 
 @rowOfButtonsProxy
@@ -141,6 +142,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
                 DatasetColumn.AxisOrder: "Axes",
                 DatasetColumn.Shape: "Shape",
                 DatasetColumn.Range: "Data Range",
+                DatasetColumn.Scale: "Resolution",
             }
             return InfoColumnNames[section]
         elif orientation == Qt.Vertical:
@@ -159,6 +161,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             DatasetColumn.AxisOrder: "",
             DatasetColumn.Shape: "",
             DatasetColumn.Range: "",
+            DatasetColumn.Scale: "",
         }
 
         if len(self._op.DatasetGroup) <= laneIndex or len(self._op.DatasetGroup[laneIndex]) <= self._roleIndex:
