@@ -821,13 +821,8 @@ class OpDataSelectionGroup(Operator):
 
     # Outputs
     ImageGroup = OutputSlot(level=1)  # "Group" as in group of slots
+    Image = OutputSlot()  # Alias for ImageGroup[0]
 
-    # These output slots are provided as a convenience, since otherwise it is tricky to create a lane-wise multislot of
-    # level-1 for only a single role.
-    # (It can be done, but requires OpTransposeSlots to invert the level-2 multislot indexes...)
-    Image = OutputSlot()  # The first dataset. Equivalent to ImageGroup[0]
-    Image1 = OutputSlot()  # The second dataset. Equivalent to ImageGroup[1]
-    Image2 = OutputSlot()  # The third dataset. Equivalent to ImageGroup[2]
     AllowLabels = OutputSlot(stype="bool")  # Taken from dataset in first role (usually Raw Data)
 
     # Must be the LAST slot declared in this class.
@@ -836,7 +831,7 @@ class OpDataSelectionGroup(Operator):
     ImageName = OutputSlot()  # Taken from dataset in first role (usually Raw Data)
 
     def __init__(self, forceAxisOrder=None, *args, **kwargs):
-        super(OpDataSelectionGroup, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._opDatasets = None
         self._roles = []
         self._forceAxisOrder = forceAxisOrder
@@ -898,8 +893,6 @@ class OpDataSelectionGroup(Operator):
             # Clean up the old operators
             self.ImageGroup.disconnect()
             self.Image.disconnect()
-            self.Image1.disconnect()
-            self.Image2.disconnect()
             if self._opDatasets is not None:
                 self._opDatasets.cleanUp()
 
@@ -921,30 +914,13 @@ class OpDataSelectionGroup(Operator):
 
         if len(self._opDatasets.Image) > 0:
             self.Image.connect(self._opDatasets.Image[0])
-
-            if len(self._opDatasets.Image) >= 2:
-                self.Image1.connect(self._opDatasets.Image[1])
-            else:
-                self.Image1.disconnect()
-                self.Image1.meta.NOTREADY = True
-
-            if len(self._opDatasets.Image) >= 3:
-                self.Image2.connect(self._opDatasets.Image[2])
-            else:
-                self.Image2.disconnect()
-                self.Image2.meta.NOTREADY = True
-
             self.ImageName.connect(self._opDatasets.ImageName[0])
             self.AllowLabels.connect(self._opDatasets.AllowLabels[0])
         else:
             self.Image.disconnect()
-            self.Image1.disconnect()
-            self.Image2.disconnect()
             self.ImageName.disconnect()
             self.AllowLabels.disconnect()
             self.Image.meta.NOTREADY = True
-            self.Image1.meta.NOTREADY = True
-            self.Image2.meta.NOTREADY = True
             self.ImageName.meta.NOTREADY = True
             self.AllowLabels.meta.NOTREADY = True
 
