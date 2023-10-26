@@ -675,8 +675,7 @@ class RelativeFilesystemDatasetInfo(FilesystemDatasetInfo):
 
 class OpDataSelection(Operator):
     """
-    The top-level operator for the data selection applet, implemented as a single-image operator.
-    The applet uses an OperatorWrapper to make it suitable for use in a workflow.
+    The primary operator for handling a single dataset, e.g. raw data or a prediction mask.
     """
 
     name = "OpDataSelection"
@@ -804,17 +803,24 @@ class OpDataSelection(Operator):
 
 
 class OpDataSelectionGroup(Operator):
+    """
+    Handles a single data lane, i.e. a row, across the different tabs in the input data table.
+    This primarily means managing copies of slots for all roles (Raw Data, Prediction Mask,...) in the lane.
+    User actions that affect all roles in the lane also interact with this operator,
+    e.g. changing axistags (through DatasetInfos passed into .configure()).
+    """
+
     # Inputs
     ProjectFile = InputSlot(stype="object", optional=True)
-    ProjectDataGroup = InputSlot(stype="string", optional=True)
+    ProjectDataGroup = InputSlot(stype="string", optional=True)  # "Group" here refers to hdf5-group
     WorkingDirectory = InputSlot(stype="filestring")
     DatasetRoles = InputSlot(stype="object")
 
     # Must mark as optional because not all subslots are required.
-    DatasetGroup = InputSlot(stype="object", level=1, optional=True)
+    DatasetGroup = InputSlot(stype="object", level=1, optional=True)  # "Group" as in group of slots
 
     # Outputs
-    ImageGroup = OutputSlot(level=1)
+    ImageGroup = OutputSlot(level=1)  # "Group" as in group of slots
 
     # These output slots are provided as a convenience, since otherwise it is tricky to create a lane-wise multislot of
     # level-1 for only a single role.
@@ -822,12 +828,12 @@ class OpDataSelectionGroup(Operator):
     Image = OutputSlot()  # The first dataset. Equivalent to ImageGroup[0]
     Image1 = OutputSlot()  # The second dataset. Equivalent to ImageGroup[1]
     Image2 = OutputSlot()  # The third dataset. Equivalent to ImageGroup[2]
-    AllowLabels = OutputSlot(stype="bool")  # Pulled from the first dataset only.
+    AllowLabels = OutputSlot(stype="bool")  # Taken from dataset in first role (usually Raw Data)
 
     # Must be the LAST slot declared in this class.
     # When the shell detects that this slot has been resized,
     #  it assumes all the others have already been resized.
-    ImageName = OutputSlot()  # Name of the first dataset is used.  Other names are ignored.
+    ImageName = OutputSlot()  # Taken from dataset in first role (usually Raw Data)
 
     def __init__(self, forceAxisOrder=None, *args, **kwargs):
         super(OpDataSelectionGroup, self).__init__(*args, **kwargs)
@@ -951,8 +957,12 @@ class OpDataSelectionGroup(Operator):
 
 
 class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):
-    # TODO: Provide output slots DatasetsByRole and ImagesByRole as a convenience
-    #       to save clients the trouble of instantiating/using OpTransposeSlots.
+    """
+    Wraps OpDataSelectionGroup, the single-lane operator that handles different roles.
+    Lanes correspond to rows in the input data table. Each lane may receive input data in more than one role,
+    corresponding to tabs in the input data table (e.g. Raw Data, Prediction Maps).
+    """
+
     def __init__(self, forceAxisOrder=False, *args, **kwargs):
         kwargs.update(
             {
