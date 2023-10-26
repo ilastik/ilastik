@@ -710,62 +710,6 @@ class OpWrapSlot(Operator):
         self.Output[0][roi.toSlice()] = value
 
 
-class OpTransposeSlots(Operator):
-    """
-    Takes an input slot indexed as [i][j] and produces an output slot indexed as [j][i]
-    Note: Only works for a slot of level 2.
-
-    This operator is designed to be usable even if the inputs are only partially
-    configured (e.g. if not all input multi-slots have the same length).
-    The length of the output multi-slot must be specified explicitly.
-    """
-
-    OutputLength = InputSlot(value=0)  # The MINIMUM length of the j dimension = J. If the input isn't configured yet,
-    #   the output slot will be at least this long (with empty subslots).
-    Inputs = InputSlot(
-        level=2, optional=True
-    )  # Optional so that the Output mslot is configured even if len(Inputs) == 0
-    Outputs = OutputSlot(level=2)  # A level-2 multislot of len J.
-    # For each inner (level-1) multislot, len(multislot) == len(self.Inputs)
-
-    _Dummy = InputSlot(optional=True)  # Internal use only.  Do not connect.
-
-    def __init__(self, *args, **kwargs):
-        super(OpTransposeSlots, self).__init__(*args, **kwargs)
-
-    def setupOutputs(self):
-        if len(self.Inputs) == 0:
-            self.Outputs.resize(self.OutputLength.value)
-            for oslot in self.Outputs:
-                oslot.resize(0)
-            return
-
-        # If the inputs are in sync (all inner inputs have the same len)
-        #  then we'll resize the output.
-        # Otherwise, the output is not resized, but its inner slots are
-        #  still connected if possible or marked 'not ready' otherwise.
-        input_lens = [len(slot) for slot in self.Inputs]
-        if len(set(input_lens)) == 1:
-            self.Outputs.resize(max(input_lens[0], self.OutputLength.value))
-        for j, mslot in enumerate(self.Outputs):
-            mslot.resize(len(self.Inputs))
-            for i, oslot in enumerate(mslot):
-                if i < len(self.Inputs) and j < len(self.Inputs[i]):
-                    oslot.connect(self.Inputs[i][j])
-                else:
-                    # Ensure that this output is NOT ready.
-                    oslot.connect(self._Dummy)
-
-    def execute(self, slot, subindex, roi, result):
-        # Should never be called.  All output slots are directly connected to an input slot.
-        assert False
-
-    def propagateDirty(self, inputSlot, subindex, roi):
-        # Nothing to do here.
-        # All outputs are directly connected to an input slot.
-        pass
-
-
 class OpDtypeView(Operator):
     """
     Connect an input slot of one dtype to an output with a different
