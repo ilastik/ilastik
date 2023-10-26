@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 from ilastik.ilastik_logging import get_logfile_path
+from lazyflow.utility.exception_helpers import root_cause
 
 
 def init_early_exit_excepthook():
@@ -61,10 +62,11 @@ def init_user_mode_excepthook():
         # Slot-not-ready errors in the render thread are logged, but not shown to the user.
         from volumina.pixelpipeline.interface import IndeterminateRequestError
 
-        if isinstance(exc_info[1], IndeterminateRequestError):
+        exc_type, exc_value, exc_tb = exc_info
+        if isinstance(exc_value, IndeterminateRequestError):
             logger.warning("Caught unhandled IndeterminateRequestError from volumina.")
             sio = io.StringIO()
-            traceback.print_exception(exc_info[0], exc_info[1], exc_info[2], file=sio)
+            traceback.print_exception(exc_type, exc_value, exc_tb, file=sio)
             logger.warning(sio.getvalue())
             return
 
@@ -73,18 +75,19 @@ def init_user_mode_excepthook():
         try:
             from ilastik.shell.gui.startShellGui import shell
 
-            msg = str(exc_info[1]) + "\n"
+            root_exc = root_cause(exc_value)
+
+            msg = f"{exc_value!r}\n\nwith root cause:\n\n{root_exc!r}\n\n"
+
             logfile_path = get_logfile_path()
             if logfile_path:
-                msg += "\n (Advanced information about this error may be found in the log file: {})\n".format(
-                    logfile_path
-                )
+                msg += f"(Advanced information about this error may be found in the log file: {logfile_path})\n"
             if shell:
-                shell.postErrorMessage(exc_info[0].__name__, msg)
+                shell.postErrorMessage(type(root_exc).__name__, msg)
         except:
             logger.error("UNHANDLED EXCEPTION WHILE DISPLAYING AN ERROR TO THE USER:")
             sio = io.StringIO()
-            traceback.print_exception(exc_info[0], exc_info[1], exc_info[2], file=sio)
+            traceback.print_exception(exc_type, exc_value, exc_tb, file=sio)
             logger.error(sio.getvalue())
             raise
 
