@@ -952,7 +952,7 @@ class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):
                 "broadcastingSlotNames": ["ProjectFile", "ProjectDataGroup", "WorkingDirectory", "DatasetRoles"],
             }
         )
-        super(OpMultiLaneDataSelectionGroup, self).__init__(OpDataSelectionGroup, *args, **kwargs)
+        super().__init__(OpDataSelectionGroup, *args, **kwargs)
 
         # 'value' slots
         assert self.ProjectFile.level == 0
@@ -970,14 +970,14 @@ class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):
         # Only add this lane if we don't already have it
         # We might be called from within the context of our own insertSlot signal.
         if numLanes == laneIndex:
-            super(OpMultiLaneDataSelectionGroup, self).addLane(laneIndex)
+            super().addLane(laneIndex)
         return self.get_lane(laneIndex)
 
     def removeLane(self, laneIndex, finalLength):
         """Reimplemented from base class."""
         numLanes = len(self.innerOperators)
         if numLanes > finalLength:
-            super(OpMultiLaneDataSelectionGroup, self).removeLane(laneIndex, finalLength)
+            super().removeLane(laneIndex, finalLength)
 
     @property
     def workflow(self) -> Workflow:

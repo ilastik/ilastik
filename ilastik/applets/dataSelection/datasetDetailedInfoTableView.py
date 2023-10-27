@@ -1,6 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -194,7 +191,7 @@ class DatasetDetailedInfoTableView(QTableView):
     addFilesRequestedDrop = pyqtSignal(object, int)  # Signature: (filepath_list, lane_index)
 
     def __init__(self, parent):
-        super(DatasetDetailedInfoTableView, self).__init__(parent)
+        super().__init__(parent)
         # this is needed to capture mouse events that are used for
         # the remove button placement
         self.setMouseTracking(True)
@@ -240,7 +237,7 @@ class DatasetDetailedInfoTableView(QTableView):
         """
         Handle mouse wheel scroll by updating the remove button overlay.
         """
-        res = super(DatasetDetailedInfoTableView, self).wheelEvent(event)
+        res = super().wheelEvent(event)
         self.adjustRemoveButton(event.pos())
         return res
 
@@ -249,7 +246,7 @@ class DatasetDetailedInfoTableView(QTableView):
         Disable the remove button overlay when mouse leaves this widget.
         """
         self.overlay.setVisible(False)
-        return super(DatasetDetailedInfoTableView, self).enterEvent(event)
+        return super().enterEvent(event)
 
     def mouseMoveEvent(self, event=None):
         """
@@ -257,7 +254,7 @@ class DatasetDetailedInfoTableView(QTableView):
         position.
         """
         self.adjustRemoveButton(event.pos())
-        return super(DatasetDetailedInfoTableView, self).mouseMoveEvent(event)
+        return super().mouseMoveEvent(event)
 
     def adjustRemoveButton(self, pos):
         """
@@ -288,7 +285,7 @@ class DatasetDetailedInfoTableView(QTableView):
         Set model used to store the data. This method adds an extra row
         at the end, which is used to keep the "Add..." button.
         """
-        super(DatasetDetailedInfoTableView, self).setModel(model)
+        super().setModel(model)
 
         widget = QWidget()
         layout = QHBoxLayout(widget)
@@ -327,7 +324,7 @@ class DatasetDetailedInfoTableView(QTableView):
         self.dataLaneSelected.emit(self.selectedLanes)
 
     def selectionChanged(self, selected, deselected):
-        super(DatasetDetailedInfoTableView, self).selectionChanged(selected, deselected)
+        super().selectionChanged(selected, deselected)
         # Get the selected row and corresponding slot value
         selectedIndexes = self.selectedIndexes()
 
@@ -432,7 +429,7 @@ class DatasetDetailedInfoTableView(QTableView):
         This forces the table to be redrawn after the user scrolls.
         This is apparently needed on OS X.
         """
-        super(DatasetDetailedInfoTableView, self).scrollContentsBy(dx, dy)
+        super().scrollContentsBy(dx, dy)
 
         # Hack: On Mac OS X, there is an issue that causes the row buttons not to be drawn correctly in some cases.
         # We can force a repaint by resizing the column.

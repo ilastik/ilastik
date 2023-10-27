@@ -156,7 +156,7 @@ class DataSelectionGui(QWidget):
         :param guiMode: Either ``GuiMode.Normal`` or ``GuiMode.Batch``.  Currently, there is no difference between normal and batch mode.
         :param max_lanes: The maximum number of lanes that the user is permitted to add to this workflow.  If ``None``, there is no maximum.
         """
-        super(DataSelectionGui, self).__init__()
+        super().__init__()
         self._cleaning_up = False
         self.__cleanup_fns = []
         self.parentApplet = parentApplet
