@@ -499,7 +499,7 @@ class UrlDatasetInfo(DatasetInfo):
         meta = op_reader.Output.meta.copy()
         super().__init__(
             default_tags=meta.axistags,
-            nickname=nickname or self.url.rstrip("/").split("/")[-1],
+            nickname=nickname or self._nickname_from_url(url),
             laneShape=meta.shape,
             laneDtype=meta.dtype,
             **info_kwargs,
@@ -530,6 +530,12 @@ class UrlDatasetInfo(DatasetInfo):
     @classmethod
     def from_h5_group(cls, group: h5py.Group):
         return super().from_h5_group(group, {"url": group["filePath"][()].decode("utf-8")})
+
+    @staticmethod
+    def _nickname_from_url(url: str) -> str:
+        last_url_component = url.rstrip("/").split("/")[-1]
+        filename_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", last_url_component)
+        return filename_safe
 
 
 class FilesystemDatasetInfo(DatasetInfo):
