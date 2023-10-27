@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,6 +18,8 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+from functools import wraps
+
 from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
 
 from lazyflow.utility import PathComponents
@@ -44,6 +44,7 @@ def rowOfButtonsProxy(model_cls):
     the GUI.
     """
 
+    @wraps(model_cls, updated=())
     class ProxyModel(model_cls):
         def __init__(self, *args, **kwds):
             super(ProxyModel, self).__init__(*args, **kwds)
