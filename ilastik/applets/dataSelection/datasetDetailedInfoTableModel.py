@@ -35,6 +35,10 @@ class DatasetColumn:
     NumColumns = 7
 
 
+def _resolution_to_display_string(resolution: list[int]):
+    return ", ".join(map(str, resolution))
+
+
 @rowOfButtonsProxy
 class DatasetDetailedInfoTableModel(QAbstractItemModel):
     def __init__(self, parent, topLevelOperator, roleIndex):
@@ -124,6 +128,11 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         if role == Qt.DisplayRole:
             return self._getDisplayRoleData(index)
 
+    def flags(self, index):
+        if index.column() == DatasetColumn.Scale:
+            return super().flags(index) | Qt.ItemIsEditable
+        return super().flags(index)
+
     def index(self, row, column, parent=QModelIndex()):
         return self.createIndex(row, column, object=None)
 
@@ -196,6 +205,15 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         if DatasetColumn.Range == index.column():
             return str(datasetInfo.drange or "")
         if DatasetColumn.Scale == index.column():
-            return str(datasetInfo.scales[datasetInfo.active_scale]["resolution"])
+            if datasetInfo.scales:
+                return _resolution_to_display_string(datasetInfo.scales[datasetInfo.active_scale]["resolution"])
+            return UninitializedDisplayData[index.column()]
 
         assert False, "Unknown column: row={}, column={}".format(index.row(), index.column())
+
+    def get_scale_options(self, laneIndex) -> list[str]:
+        datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
+        if not datasetSlot.ready():
+            return []
+        datasetInfo = datasetSlot.value
+        return [_resolution_to_display_string(s["resolution"]) for s in datasetInfo.scales]

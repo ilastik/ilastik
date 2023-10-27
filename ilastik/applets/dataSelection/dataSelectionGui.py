@@ -248,7 +248,6 @@ class DataSelectionGui(QWidget):
             self.topLevelOperator.DatasetGroup.notifyInserted(self._update_summary_buttons_status)
         )
 
-        self._retained = []  # Retain menus so they don't get deleted
         self._detailViewerWidgets = []
 
         for roleIndex, role in enumerate(self.topLevelOperator.DatasetRoles.value):
@@ -285,6 +284,9 @@ class DataSelectionGui(QWidget):
                     self.showDataset(lanes[0], _roleIndex)
 
             detailViewer.dataLaneSelected.connect(partial(showFirstSelectedDataset, roleIndex))
+
+            # Scale selection handling
+            detailViewer.scaleSelected.connect(self.handleScaleSelected)
 
             self.fileInfoTabWidget.insertTab(roleIndex, detailViewer, role)
 
@@ -727,3 +729,6 @@ class DataSelectionGui(QWidget):
         preferences.set(group, recent_nodes_key, recent_nodes)
 
         self.addLanes([UrlDatasetInfo(url=dvid_url, subvolume_roi=subvolume_roi)], roleIndex)
+
+    def handleScaleSelected(self, laneIndex, scale_index):
+        self.topLevelOperator.get_lane(laneIndex).set_multiscale_index(scale_index)

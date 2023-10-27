@@ -724,7 +724,7 @@ class OpDataSelection(Operator):
                         workflow.
                         todo: move toward 'tczyx' standard.
         """
-        super(OpDataSelection, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.forceAxisOrder = forceAxisOrder
 
         # If the gui calls disconnect() on an input slot without replacing it with something else,
@@ -873,6 +873,10 @@ class OpDataSelectionGroup(Operator):
             if role_name in infos:
                 self.DatasetGroup[role_index].setValue(infos[role_name])
 
+    def set_multiscale_index(self, scale: int):
+        self._opDatasets.ActiveScale.setValue(scale)
+        self._multiscale_current_scale = scale
+
     def increase_resolution_multiscale(self):
         max_scale = 0
         for opDataSelection in self._opDatasets:
@@ -906,7 +910,7 @@ class OpDataSelectionGroup(Operator):
                 OpDataSelection,
                 parent=self,
                 operator_kwargs={"forceAxisOrder": self._forceAxisOrder},
-                broadcastingSlotNames=["ProjectFile", "ProjectDataGroup", "WorkingDirectory"],
+                broadcastingSlotNames=["ProjectFile", "ProjectDataGroup", "WorkingDirectory", "ActiveScale"],
             )
             self.ImageGroup.connect(self._opDatasets.Image)
             self._opDatasets.Dataset.connect(self.DatasetGroup)

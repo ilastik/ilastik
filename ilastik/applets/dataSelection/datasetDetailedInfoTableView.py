@@ -21,7 +21,19 @@
 from past.utils import old_div
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QUrl, QObject, QEvent, QTimer
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QTableView, QHeaderView, QMenu, QAction, QWidget, QHBoxLayout, QPushButton, QItemDelegate
+from PyQt5.QtWidgets import (
+    QTableView,
+    QHeaderView,
+    QMenu,
+    QAction,
+    QWidget,
+    QHBoxLayout,
+    QPushButton,
+    QItemDelegate,
+    QComboBox,
+    QAbstractItemView,
+    QStyledItemDelegate,
+)
 
 from .datasetDetailedInfoTableModel import DatasetColumn
 from .addFileButton import AddFileButton, FILEPATH
@@ -176,8 +188,28 @@ class AddButtonDelegate(QItemDelegate):
         super(AddButtonDelegate, self).paint(painter, option, index)
 
 
+class ScaleComboBoxDelegate(QStyledItemDelegate):
+    def createEditor(self, parent: "DatasetDetailedInfoTableView", option, index):
+        model: "DatasetDetailedInfoTableModel" = index.model()
+        scales = model.get_scale_options(index.row())
+        combo = QComboBox(parent)
+        for scale_index, scale in enumerate(scales):
+            combo.addItem(scale, scale_index)
+        return combo
+
+    def setEditorData(self, editor, index):
+        value = index.data(Qt.DisplayRole)
+        current_selected = editor.findText(value)
+        if current_selected >= 0:
+            editor.setCurrentIndex(current_selected)
+
+    def setModelData(self, editor, model, index):
+        self.parent().scaleSelected.emit(index.row(), editor.currentIndex())
+
+
 class DatasetDetailedInfoTableView(QTableView):
     dataLaneSelected = pyqtSignal(object)  # Signature: (laneIndex)
+    scaleSelected = pyqtSignal(int, int)  # Signature: (lane_index, scale_index)
 
     replaceWithFileRequested = pyqtSignal(int)  # Signature: (laneIndex), or (-1) to indicate "append requested"
     replaceWithStackRequested = pyqtSignal(int)  # Signature: (laneIndex)
@@ -190,7 +222,7 @@ class DatasetDetailedInfoTableView(QTableView):
     addRemoteVolumeRequested = pyqtSignal(int)  # Signature: (lane_index)
     addFilesRequestedDrop = pyqtSignal(object, int)  # Signature: (filepath_list, lane_index)
 
-    def __init__(self, parent):
+    def __init__(self, parent: "DataSelectionGui"):
         super().__init__(parent)
         # this is needed to capture mouse events that are used for
         # the remove button placement
@@ -206,6 +238,8 @@ class DatasetDetailedInfoTableView(QTableView):
         self.setShowGrid(False)
 
         self.setItemDelegateForColumn(0, AddButtonDelegate(self))
+        self.setItemDelegateForColumn(DatasetColumn.Scale, ScaleComboBoxDelegate(self))
+        self.setEditTriggers(QAbstractItemView.AllEditTriggers)
 
         self.setSelectionBehavior(QTableView.SelectRows)
 
