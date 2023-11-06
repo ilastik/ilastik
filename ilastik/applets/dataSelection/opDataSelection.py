@@ -120,6 +120,7 @@ class DatasetInfo(ABC):
         self.nickname = nickname
         self.normalizeDisplay = (self.drange is not None) if normalizeDisplay is None else normalizeDisplay
         self.legacy_datasetId = self.generate_id()
+        self.scales = []  # list of dicts dependent on data format
 
     @property
     def shape5d(self) -> Shape5D:

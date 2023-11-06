@@ -21,6 +21,7 @@
 from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
+from .opDataSelection import DatasetInfo
 from .dataLaneSummaryTableModel import rowOfButtonsProxy
 
 
@@ -182,7 +183,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         if not datasetSlot.ready():
             return UninitializedDisplayData[index.column()]
 
-        datasetInfo = datasetSlot.value
+        datasetInfo: DatasetInfo = datasetSlot.value
 
         ## Input meta-data fields
         if DatasetColumn.Nickname == index.column():
@@ -216,4 +217,6 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         if not datasetSlot.ready():
             return []
         datasetInfo = datasetSlot.value
+        if not datasetInfo.scales:
+            return []
         return [_resolution_to_display_string(s["resolution"]) for s in datasetInfo.scales]

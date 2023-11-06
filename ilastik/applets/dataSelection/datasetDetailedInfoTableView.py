@@ -195,6 +195,8 @@ class ScaleComboBoxDelegate(QStyledItemDelegate):
     def createEditor(self, parent: "DatasetDetailedInfoTableView", option, index):
         model: "DatasetDetailedInfoTableModel" = index.model()
         scales = model.get_scale_options(index.row())
+        if not scales:
+            return None
         combo = QComboBox(parent)
         for scale_index, scale in enumerate(scales):
             combo.addItem(scale, scale_index)
