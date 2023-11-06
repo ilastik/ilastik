@@ -189,12 +189,16 @@ class AddButtonDelegate(QItemDelegate):
 
 
 class ScaleComboBoxDelegate(QStyledItemDelegate):
+    def paint(self, painter, option, index):
+        self.parent().openPersistentEditor(index)
+
     def createEditor(self, parent: "DatasetDetailedInfoTableView", option, index):
         model: "DatasetDetailedInfoTableModel" = index.model()
         scales = model.get_scale_options(index.row())
         combo = QComboBox(parent)
         for scale_index, scale in enumerate(scales):
             combo.addItem(scale, scale_index)
+        combo.currentIndexChanged.connect(partial(self.on_combo_selected, index))
         return combo
 
     def setEditorData(self, editor, index):
@@ -205,6 +209,11 @@ class ScaleComboBoxDelegate(QStyledItemDelegate):
 
     def setModelData(self, editor, model, index):
         self.parent().scaleSelected.emit(index.row(), editor.currentIndex())
+
+    def on_combo_selected(self, index):
+        self.setModelData(self.sender(), None, index)
+        changed_shape_index = index.model().index(index.row(), DatasetColumn.Shape)
+        index.model().dataChanged.emit(changed_shape_index, changed_shape_index)
 
 
 class DatasetDetailedInfoTableView(QTableView):
@@ -353,9 +362,6 @@ class DatasetDetailedInfoTableView(QTableView):
         raw data lanes than prediction maps.
         """
         self._addButton.setEnabled(status)
-
-    def dataChanged(self, topLeft, bottomRight, roles):
-        self.dataLaneSelected.emit(self.selectedLanes)
 
     def selectionChanged(self, selected, deselected):
         super().selectionChanged(selected, deselected)
