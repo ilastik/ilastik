@@ -367,17 +367,9 @@ class DatasetDetailedInfoTableView(QTableView):
 
     def selectionChanged(self, selected, deselected):
         super().selectionChanged(selected, deselected)
-        # Get the selected row and corresponding slot value
-        selectedIndexes = self.selectedIndexes()
-
-        if len(selectedIndexes) == 0:
-            self.selectedLanes = []
-        else:
-            rows = set()
-            for index in selectedIndexes:
-                rows.add(index.row())
-            rows.discard(self.model().rowCount() - 1)  # last row is a button
-            self.selectedLanes = sorted(rows)
+        rows = {index.row() for index in self.selectedIndexes()}
+        rows.discard(self.model().rowCount() - 1)  # last row is a button
+        self.selectedLanes = sorted(rows)
 
         self.dataLaneSelected.emit(self.selectedLanes)
 
