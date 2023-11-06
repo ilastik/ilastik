@@ -40,7 +40,7 @@ dependencies:
   # build 1.11.1=*_1028 on cf is the first to be compatible with numpy>1.19
   # need to bump this manually until there is a true version bump in vigra
   - vigra 1.11.1=*_1033
-  - xarray
+  - xarray !=2023.10.0
   - z5py
 
   # Neural Network Workflow dependencies
@@ -53,7 +53,7 @@ dependencies:
   - ilastik-pytorch-version-helper-cpu  # comment out for pytorch with cuda
   # - pytorch-cuda=11.3  # uncomment for pytorch with cuda, specify cuda version
 
-  - tiktorch >=23.7.0
+  - tiktorch 23.11.0*
 
   # dev-only dependencies
   - conda-build
