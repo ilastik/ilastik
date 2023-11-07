@@ -40,7 +40,7 @@ class PrecomputedVolumeBrowser(QDialog):
         main_layout = QVBoxLayout()
 
         description = QLabel(self)
-        description.setText('Enter URL ("precomputed://http...") and click "Check URL".')
+        description.setText('Enter URL (with or without "precomputed://") and click "Check URL".')
         main_layout.addWidget(description)
 
         self.combo = QComboBox(self)
@@ -80,11 +80,10 @@ class PrecomputedVolumeBrowser(QDialog):
         self.setLayout(main_layout)
 
     def handle_chk_button_clicked(self, event):
-        self.selected_url = self.combo.currentText().strip()
-        if self.selected_url == "":
+        url = self.combo.currentText().strip().lstrip("precomputed://")
+        if url == "":
             return
-        logger.debug(f"Entered URL: {self.selected_url}")
-        url = self.selected_url.lstrip("precomputed://")
+        logger.debug(f"Entered URL: {url}")
         try:
             rv = RESTfulPrecomputedChunkedVolume(volume_url=url)
         except Exception as e:
@@ -93,7 +92,9 @@ class PrecomputedVolumeBrowser(QDialog):
             self.result_text_box.setText(msg)
             return
 
+        self.selected_url = f"precomputed://{url}"
         self.result_text_box.setText(
+            f"Full URL: {self.selected_url}\n"
             f"Dataset encoding: {rv.get_encoding()}\n"
             f"Number of scales: {len(rv.scales)}\n"
             f"Raw dataset shape: {rv.get_shape(-1)}\n"
