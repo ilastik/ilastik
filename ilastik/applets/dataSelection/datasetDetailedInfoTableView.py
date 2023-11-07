@@ -42,13 +42,13 @@ from pathlib import Path
 from functools import partial
 
 
-class ButtonOverlay(QPushButton):
+class RemoveButtonOverlay(QPushButton):
     """
     Overlay used to show "Remove" button in the row under the cursor.
     """
 
     def __init__(self, parent=None):
-        super(ButtonOverlay, self).__init__(
+        super().__init__(
             QIcon(FILEPATH + "/../../shell/gui/icons/16x16/actions/list-remove.png"),
             "",
             parent,
@@ -88,7 +88,7 @@ class ButtonOverlay(QPushButton):
         """
         if state is False:
             self.current_row = -1
-        return super(ButtonOverlay, self).setVisible(state)
+        return super().setVisible(state)
 
     def placeAtRow(self, ind):
         """
@@ -146,7 +146,7 @@ class DisableButtonOverlayOnMouseEnter(QObject):
         return False
 
 
-class AddButtonDelegate(QItemDelegate):
+class InlineAddButtonDelegate(QItemDelegate):
     """
     Displays an "Add..." button on the first column of the table if the
     corresponding row has not been assigned data yet. This is needed when a
@@ -154,7 +154,7 @@ class AddButtonDelegate(QItemDelegate):
     """
 
     def __init__(self, parent):
-        super(AddButtonDelegate, self).__init__(parent)
+        super().__init__(parent)
 
     def paint(self, painter, option, index):
         # This method will be called every time a particular cell is in
@@ -185,7 +185,7 @@ class AddButtonDelegate(QItemDelegate):
                 # However, we can't remove it yet, because we are currently running in the context of a signal handler for the button itself!
                 # Instead, use a QTimer to delete the button as soon as the eventloop is finished with the current event.
                 QTimer.singleShot(750, lambda: parent_view.setIndexWidget(index, None))
-        super(AddButtonDelegate, self).paint(painter, option, index)
+        super().paint(painter, option, index)
 
 
 class ScaleComboBoxDelegate(QStyledItemDelegate):
@@ -248,7 +248,7 @@ class DatasetDetailedInfoTableView(QTableView):
         self.setAlternatingRowColors(True)
         self.setShowGrid(False)
 
-        self.setItemDelegateForColumn(0, AddButtonDelegate(self))
+        self.setItemDelegateForColumn(0, InlineAddButtonDelegate(self))
         self.setItemDelegateForColumn(DatasetColumn.Scale, ScaleComboBoxDelegate(self))
         self.setEditTriggers(QAbstractItemView.AllEditTriggers)
 
@@ -256,7 +256,7 @@ class DatasetDetailedInfoTableView(QTableView):
 
         self.setAcceptDrops(True)
 
-        self.overlay = ButtonOverlay(self)
+        self.overlay = RemoveButtonOverlay(self)
 
         event_filter = DisableButtonOverlayOnMouseEnter(self, self.overlay)
         self.horizontalHeader().installEventFilter(event_filter)
