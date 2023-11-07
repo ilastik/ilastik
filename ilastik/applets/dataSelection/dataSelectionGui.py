@@ -372,32 +372,6 @@ class DataSelectionGui(QWidget):
                             layer = self.createStandardLayerFromSlot(slot)
                             layer.name = roleName
                             layers.append(layer)
-
-                    if any([layer.multiscale for layer in layers]):
-                        self.shortcut_multiscale_up = (
-                            "5",
-                            ShortcutManager().ActionInfo(
-                                "Multiscale",
-                                "Increase data resolution",
-                                "Resolution Up",
-                                opLaneView.increase_resolution_multiscale,
-                                self,
-                                None,
-                            ),
-                        )
-                        self.shortcut_multiscale_down = (
-                            "t",
-                            ShortcutManager().ActionInfo(
-                                "Multiscale",
-                                "Decrease data resolution",
-                                "Resolution Down",
-                                opLaneView.decrease_resolution_multiscale,
-                                self,
-                                None,
-                            ),
-                        )
-                        ShortcutManager().register(*self.shortcut_multiscale_up)
-                        ShortcutManager().register(*self.shortcut_multiscale_down)
                     return layers
 
             opLaneView = self.topLevelOperator.getLane(laneIndex)

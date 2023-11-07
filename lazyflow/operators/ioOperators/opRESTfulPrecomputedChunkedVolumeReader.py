@@ -63,7 +63,6 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
         self.Output.meta.shape = tuple(self._volume_object.get_shape(current_scale))
         self.Output.meta.dtype = numpy.dtype(self._volume_object.dtype).type
         self.Output.meta.axistags = vigra.defaultAxistags(self._volume_object.axes)
-        self.Output.meta.multiscale = len(self._volume_object.scales) > 1
         self.Output.meta.scales = self._volume_object.scales
 
     @staticmethod

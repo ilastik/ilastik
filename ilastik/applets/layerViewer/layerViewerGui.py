@@ -331,7 +331,6 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         layer.name = name or slot.name
         layer.visible = visible
         layer.opacity = opacity
-        layer.multiscale = slot.meta.multiscale
 
         return layer
 

@@ -878,25 +878,6 @@ class OpDataSelectionGroup(Operator):
         self._opDatasets.ActiveScale.setValue(scale)
         self._multiscale_current_scale = scale
 
-    def increase_resolution_multiscale(self):
-        max_scale = 0
-        for opDataSelection in self._opDatasets:
-            if opDataSelection.MaxScale.value:
-                max_scale = opDataSelection.MaxScale.value
-                break
-        if max_scale == 0:
-            return
-        if self._multiscale_current_scale < max_scale:
-            print(f"Increasing resolution to scale {self._multiscale_current_scale + 1}, max={max_scale}")
-            self._multiscale_current_scale += 1
-            self._opDatasets.ActiveScale.setValue(self._multiscale_current_scale)
-
-    def decrease_resolution_multiscale(self):
-        if self._multiscale_current_scale > 0:
-            print(f"Decreasing resolution to scale {self._multiscale_current_scale - 1}")
-            self._multiscale_current_scale -= 1
-            self._opDatasets.ActiveScale.setValue(self._multiscale_current_scale)
-
     def setupOutputs(self):
         # Create internal operators
         if self.DatasetRoles.value != self._roles:
