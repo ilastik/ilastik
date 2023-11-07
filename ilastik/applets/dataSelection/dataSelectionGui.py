@@ -259,7 +259,7 @@ class DataSelectionGui(QWidget):
             detailViewer.addFilesRequested.connect(partial(self.addFiles, roleIndex))
             detailViewer.addStackRequested.connect(partial(self.addStack, roleIndex))
             detailViewer.addPrecomputedVolumeRequested.connect(partial(self.addPrecomputedVolume, roleIndex))
-            detailViewer.addRemoteVolumeRequested.connect(partial(self.addDvidVolume, roleIndex))
+            detailViewer.addDvidVolumeRequested.connect(partial(self.addDvidVolume, roleIndex))
 
             # Monitor changes to each lane so we can enable/disable the 'add lanes' button for each tab
             self.__cleanup_fns.append(

@@ -176,7 +176,7 @@ class AddButtonDelegate(QItemDelegate):
                 button.addPrecomputedVolumeRequested.connect(
                     partial(parent_view.handleCellAddPrecomputedVolumeEvent, button)
                 )
-                button.addRemoteVolumeRequested.connect(partial(parent_view.handleCellAddRemoteVolumeEvent, button))
+                button.addDvidVolumeRequested.connect(partial(parent_view.handleCellAddDvidVolumeEvent, button))
                 parent_view.setIndexWidget(index, button)
         elif index.data() != "":
             if button is not None:
@@ -230,7 +230,7 @@ class DatasetDetailedInfoTableView(QTableView):
     addFilesRequested = pyqtSignal(int)  # Signature: (lane_index)
     addStackRequested = pyqtSignal(int)  # Signature: (lane_index)
     addPrecomputedVolumeRequested = pyqtSignal(int)  # Signature: (lane_index)
-    addRemoteVolumeRequested = pyqtSignal(int)  # Signature: (lane_index)
+    addDvidVolumeRequested = pyqtSignal(int)  # Signature: (lane_index)
     addFilesRequestedDrop = pyqtSignal(object, int)  # Signature: (filepath_list, lane_index)
 
     def __init__(self, parent: "DataSelectionGui"):
@@ -271,8 +271,8 @@ class DatasetDetailedInfoTableView(QTableView):
         self.addStackRequested.emit(button.index.row())
 
     @pyqtSlot(int)
-    def handleCellAddRemoteVolumeEvent(self, button):
-        self.addRemoteVolumeRequested.emit(button.index.row())
+    def handleCellAddDvidVolumeEvent(self, button):
+        self.addDvidVolumeRequested.emit(button.index.row())
 
     @pyqtSlot(int)
     def handleCellAddPrecomputedVolumeEvent(self, button):
@@ -337,7 +337,7 @@ class DatasetDetailedInfoTableView(QTableView):
         self._addButton = button = AddFileButton(widget, new=True)
         button.addFilesRequested.connect(partial(self.addFilesRequested.emit, -1))
         button.addStackRequested.connect(partial(self.addStackRequested.emit, -1))
-        button.addRemoteVolumeRequested.connect(partial(self.addRemoteVolumeRequested.emit, -1))
+        button.addDvidVolumeRequested.connect(partial(self.addDvidVolumeRequested.emit, -1))
         button.addPrecomputedVolumeRequested.connect(partial(self.addPrecomputedVolumeRequested.emit, -1))
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(button)

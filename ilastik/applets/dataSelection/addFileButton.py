@@ -49,7 +49,7 @@ class AddFileButton(QPushButton):
 
     addFilesRequested = pyqtSignal()
     addStackRequested = pyqtSignal()
-    addRemoteVolumeRequested = pyqtSignal()
+    addDvidVolumeRequested = pyqtSignal()
     addPrecomputedVolumeRequested = pyqtSignal()
 
     def __init__(self, parent, *, index=None, new=False):
@@ -76,7 +76,7 @@ class AddFileButton(QPushButton):
         )
 
         if _supports_dvid:
-            menu.addAction("Add DVID Volume...").triggered.connect(self.addRemoteVolumeRequested.emit)
+            menu.addAction("Add DVID Volume...").triggered.connect(self.addDvidVolumeRequested.emit)
 
         self.setMenu(menu)
 
