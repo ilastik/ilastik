@@ -178,13 +178,12 @@ class InlineAddButtonDelegate(QItemDelegate):
                 )
                 button.addDvidVolumeRequested.connect(partial(parent_view.handleCellAddDvidVolumeEvent, button))
                 parent_view.setIndexWidget(index, button)
-        elif index.data() != "":
-            if button is not None:
-                # If this row has data, we must delete the button.
-                # Otherwise, it can steal input events (e.g. mouse clicks) from the cell, even if it is hidden!
-                # However, we can't remove it yet, because we are currently running in the context of a signal handler for the button itself!
-                # Instead, use a QTimer to delete the button as soon as the eventloop is finished with the current event.
-                QTimer.singleShot(750, lambda: parent_view.setIndexWidget(index, None))
+        elif index.data() != "" and button is not None:
+            # If this row has data, we must delete the button.
+            # Otherwise, it can steal input events (e.g. mouse clicks) from the cell, even if it is hidden!
+            # However, we can't remove it yet, because we are currently running in the context of a signal handler for the button itself!
+            # Instead, use a QTimer to delete the button as soon as the eventloop is finished with the current event.
+            QTimer.singleShot(750, lambda: parent_view.setIndexWidget(index, None))
         super().paint(painter, option, index)
 
 
@@ -374,54 +373,54 @@ class DatasetDetailedInfoTableView(QTableView):
         self.dataLaneSelected.emit(self.selectedLanes)
 
     def handleCustomContextMenuRequested(self, pos):
+        def _is_position_within_table():
+            # last row is a button
+            return 0 <= col < self.model().columnCount() and 0 <= row < self.model().rowCount() - 1
+
+        def _is_multilane_selection():
+            return row in self.selectedLanes and len(self.selectedLanes) > 1
+
         col = self.columnAt(pos.x())
         row = self.rowAt(pos.y())
 
-        if 0 <= col < self.model().columnCount() and 0 <= row < self.model().rowCount() - 1:  # last row is a button
-            menu = QMenu(parent=self)
-            editSharedPropertiesAction = QAction("Edit shared properties...", menu)
-            editPropertiesAction = QAction("Edit properties...", menu)
-            replaceWithFileAction = QAction("Replace with file...", menu)
-            replaceWithStackAction = QAction("Replace with stack...", menu)
+        if not _is_position_within_table():
+            return
 
-            if self.model().getNumRoles() > 1:
-                resetSelectedAction = QAction("Reset", menu)
-            else:
-                resetSelectedAction = QAction("Remove", menu)
+        menu = QMenu(parent=self)
+        editSharedPropertiesAction = QAction("Edit shared properties...", menu)
+        editPropertiesAction = QAction("Edit properties...", menu)
+        replaceWithFileAction = QAction("Replace with file...", menu)
+        replaceWithStackAction = QAction("Replace with stack...", menu)
+        removeAction = QAction("Remove", menu)
 
-            if row in self.selectedLanes and len(self.selectedLanes) > 1:
-                editable = True
-                for lane in self.selectedLanes:
-                    editable &= self.model().isEditable(lane)
+        if _is_multilane_selection():
+            editable = all(self.model().isEditable(lane) for lane in self.selectedLanes)
+            menu.addAction(editSharedPropertiesAction)
+            editSharedPropertiesAction.setEnabled(editable)
+            menu.addAction(removeAction)
+        else:
+            menu.addAction(editPropertiesAction)
+            editPropertiesAction.setEnabled(self.model().isEditable(row))
+            menu.addAction(replaceWithFileAction)
+            menu.addAction(replaceWithStackAction)
+            menu.addAction(removeAction)
 
-                # Show the multi-lane menu, which allows for editing but not replacing
-                menu.addAction(editSharedPropertiesAction)
-                editSharedPropertiesAction.setEnabled(editable)
-                menu.addAction(resetSelectedAction)
-            else:
-                menu.addAction(editPropertiesAction)
-                editPropertiesAction.setEnabled(self.model().isEditable(row))
-                menu.addAction(replaceWithFileAction)
-                menu.addAction(replaceWithStackAction)
-                menu.addAction(resetSelectedAction)
-
-            globalPos = self.viewport().mapToGlobal(pos)
-            selection = menu.exec_(globalPos)
-            if selection is None:
-                return
-            if selection is editSharedPropertiesAction:
-                self.editRequested.emit(self.selectedLanes)
-            if selection is editPropertiesAction:
-                self.editRequested.emit([row])
-            if selection is replaceWithFileAction:
-                self.replaceWithFileRequested.emit(row)
-            if selection is replaceWithStackAction:
-                self.replaceWithStackRequested.emit(row)
-            if selection is resetSelectedAction:
-                self.resetRequested.emit(self.selectedLanes)
+        globalPos = self.viewport().mapToGlobal(pos)
+        selection = menu.exec_(globalPos)
+        if selection is None:
+            return
+        if selection is editSharedPropertiesAction:
+            self.editRequested.emit(self.selectedLanes)
+        if selection is editPropertiesAction:
+            self.editRequested.emit([row])
+        if selection is replaceWithFileAction:
+            self.replaceWithFileRequested.emit(row)
+        if selection is replaceWithStackAction:
+            self.replaceWithStackRequested.emit(row)
+        if selection is removeAction:
+            self.resetRequested.emit(self.selectedLanes)
 
     def mouseDoubleClickEvent(self, event):
-        col = self.columnAt(event.pos().x())
         row = self.rowAt(event.pos().y())
 
         # If the user double-clicked an empty table,
