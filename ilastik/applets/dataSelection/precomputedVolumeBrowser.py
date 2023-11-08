@@ -9,6 +9,7 @@ Todos:
 """
 import logging
 
+from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import (
     QComboBox,
     QDialog,
@@ -56,6 +57,7 @@ class PrecomputedVolumeBrowser(QDialog):
         chk_button = QPushButton(self)
         chk_button.setText("Check URL")
         chk_button.clicked.connect(self.handle_chk_button_clicked)
+        self.combo.lineEdit().returnPressed.connect(chk_button.click)
         combo_layout.addWidget(combo_label)
         combo_layout.addWidget(self.combo)
         combo_layout.addWidget(chk_button)
@@ -100,7 +102,9 @@ class PrecomputedVolumeBrowser(QDialog):
             f"Raw dataset shape: {rv.get_shape(-1)}\n"
             f"Lowest scale shape: {rv.get_shape(0)}\n"
         )
-        self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(True)
+        # This check-button might have been triggered by pressing Enter.
+        # The timer prevents triggering the now enabled OK button by the same keypress.
+        QTimer.singleShot(0, lambda: self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(True))
 
 
 if __name__ == "__main__":
