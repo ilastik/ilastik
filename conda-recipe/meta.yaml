@@ -61,7 +61,7 @@ outputs:
         - xarray
         - z5py
       run_constrained:
-        - tiktorch >=23.2.0
+        - tiktorch 23.2.0.1
         - volumina >=1.3.5
 
     test:
