@@ -42,6 +42,8 @@ outputs:
         - jsonschema
         - mamutexport
         - marching_cubes
+        # need to pin because of newer versions incompatible with py37 - but not pinning
+        - more-itertools <=9.1.0
         - ndstructs
         - nifty
         - psutil
@@ -61,7 +63,7 @@ outputs:
         - xarray
         - z5py
       run_constrained:
-        - tiktorch 23.2.0.1
+        - tiktorch 23.2.0.1.*
         - volumina >=1.3.5
 
     test:

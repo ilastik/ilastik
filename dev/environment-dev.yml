@@ -61,3 +61,6 @@ dependencies:
   # ensure working environment on apple M1 via rosetta
   # remove once native builds are available
   - mkl 2021.*  # [osx]
+
+  # need to pin because of newer versions incompatible with py37 - but not pinning
+  - more-itertools <=9.1.0
