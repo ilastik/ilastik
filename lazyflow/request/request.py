@@ -125,7 +125,6 @@ class RequestError(Exception):
             slot = fn.slot.name
             msg = f"Failed to request data from `{op}.{slot}`"
         except Exception:
-            op = slot = None
             msg = "Request failed."
 
         super().__init__(msg)

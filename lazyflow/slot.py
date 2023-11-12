@@ -1217,10 +1217,9 @@ class Slot(object):
             try:
                 self.disconnect()
             except Exception as e:
-                # Well, this is bad.  We caused an exception while handling an exception.
-                # We're more interested in the FIRST exception, so print this one out and
-                #  continue unwinding the stack with the first one.
-                raise RuntimeError("Error while handling an Exception in slot.setValue") from e
+                raise RuntimeError(
+                    f"Unable to disconnect slot after an error in slot.setValues. Slot: {self.name}"
+                ) from e
             raise
 
     @property

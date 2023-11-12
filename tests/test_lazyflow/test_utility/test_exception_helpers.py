@@ -38,7 +38,7 @@ def example_exceptions():
 
 
 @pytest.fixture
-def raising_func(example_exceptions):
+def raise_nested_exception(example_exceptions):
     ex2, ex1, ex0 = example_exceptions
 
     def fun0():
@@ -59,25 +59,25 @@ def raising_func(example_exceptions):
     return fun2
 
 
-def test_exc_chain(example_exceptions, raising_func):
+def test_exc_chain(example_exceptions, raise_nested_exception):
     try:
-        raising_func()
+        raise_nested_exception()
     except Exception as e:
         for exc, expected_exc in zip(exception_chain(e), example_exceptions):
             assert exc == expected_exc
 
 
-def test_root_cause(example_exceptions, raising_func):
+def test_root_cause(example_exceptions, raise_nested_exception):
     *_, chain_root_cause = example_exceptions
     try:
-        raising_func()
+        raise_nested_exception()
     except Exception as e:
         assert root_cause(e) == chain_root_cause
 
 
-def test_is_root_cause(example_exceptions, raising_func):
+def test_is_root_cause(example_exceptions, raise_nested_exception):
     *_, chain_root_cause = example_exceptions
     try:
-        raising_func()
+        raise_nested_exception()
     except Exception as e:
         assert is_root_cause(type(chain_root_cause), e)
