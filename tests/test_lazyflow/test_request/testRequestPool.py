@@ -20,8 +20,9 @@ from functools import partial
 import numpy
 
 import pytest
+from lazyflow.utility import is_root_cause
 
-from lazyflow.request.request import Request, RequestPool
+from lazyflow.request.request import Request, RequestError, RequestPool
 
 from lazyflow.testing import fail_after_timeout
 
@@ -81,12 +82,10 @@ def test_pool_with_failed_requests():
     for i in range(10):
         pool.add(Request(partial(workload, i)))
 
-    try:
+    with pytest.raises(RequestError) as exc_info:
         pool.wait()
-    except ExpectedException:
-        pass
-    else:
-        assert False, "Expected the pool to fail.  Why didn't it?"
+
+    assert is_root_cause(ExpectedException, exc_info.value)
 
     time.sleep(0.2)
 
@@ -204,10 +203,12 @@ def test_ctx_exc_in_req():
     def raising():
         raise ValueError("test")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(RequestError) as exc_info:
         with RequestPool() as pool:
             pool.add(Request(raising))
 
         assert pool._started
         assert pool._finished
         assert not pool._failed
+
+    assert is_root_cause(ValueError, exc_info.value)

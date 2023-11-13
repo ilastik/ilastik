@@ -1,5 +1,3 @@
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -23,14 +21,14 @@ from builtins import object
 ###############################################################################
 import pytest
 
-import sys
 import numpy
 import threading
 from lazyflow.graph import Graph
+from lazyflow.utility import is_root_cause
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiToSlice
 from lazyflow.operators import OpArrayPiper
 
-from lazyflow.utility import RoiRequestBatch
+from lazyflow.utility import RoiRequestBatch, RoiRequestBatchException
 
 from .conftest import ProcessingException
 
@@ -107,8 +105,10 @@ class TestRoiRequestBatch(object):
 
         # FIXME: There are multiple places where the RoiRequestBatch tool should be prepared to handle exceptions.
         #        This only tests one of them (in the notify_finished() handler)
-        with pytest.raises(SpecialException):
+        with pytest.raises(RoiRequestBatchException) as exc_info:
             batch.execute()
+
+        assert is_root_cause(SpecialException, exc_info.value)
 
     def testPropagatesProcessingException(self, op_raising_at_3):
         roiList = [
@@ -123,5 +123,7 @@ class TestRoiRequestBatch(object):
             op_raising_at_3.Output, roiList.__iter__(), totalVolume, batchSize=1, allowParallelResults=False
         )
 
-        with pytest.raises(ProcessingException):
+        with pytest.raises(RoiRequestBatchException) as exc_info:
             batch.execute()
+
+        assert is_root_cause(ProcessingException, exc_info.value)

@@ -25,6 +25,7 @@ from functools import partial
 import numpy
 import vigra
 import lazyflow.graph
+from lazyflow.utility import is_root_cause
 from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.valueProviders import (
     OpMetadataInjector,
@@ -37,6 +38,8 @@ from lazyflow.operators.valueProviders import (
     MissingDataAccessError,
 )
 import pytest
+
+from lazyflow.request.request import RequestError
 
 
 class TestOpMetadataInjector:
@@ -318,5 +321,7 @@ def test_OpMissingDataSource(graph, metadata):
     for k, v in metadata.items():
         assert op.Output.meta[k] == v
 
-    with pytest.raises(MissingDataAccessError):
-        output = op.Output[...].wait()
+    with pytest.raises(RequestError) as exc_info:
+        _ = op.Output[...].wait()
+
+    assert is_root_cause(MissingDataAccessError, exc_info.value)

@@ -1,6 +1,3 @@
-from builtins import zip
-from builtins import range
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -23,12 +20,17 @@ from builtins import range
 # 		   http://ilastik.org/license/
 ###############################################################################
 import copy
+import pytest
 import vigra
 import numpy
 import threading
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, OperatorWrapper, MetaDict
 from lazyflow import operators
-from lazyflow.operators import *
+from lazyflow.operators.generic import OpMultiArrayStacker
+from lazyflow.operators.opArrayPiper import OpArrayPiper
+from lazyflow.utility import is_root_cause
+
+from lazyflow.request.request import RequestError
 from lazyflow.roi import roiToSlice, sliceToRoi
 
 from lazyflow.operators.valueProviders import OpOutputProvider
@@ -416,11 +418,13 @@ class TestOpMultiArrayStacker(unittest.TestCase):
         req.notify_failed(lambda *args: None)  # Replace the default handler: dont' show a traceback
         out = req.wait()
 
-        with self.assertRaises(InputSlot.SlotNotReadyError):
+        with pytest.raises(RequestError) as exc_info:
             providers[0].screwWithOutput()
             req = op.Output[...]
             req.notify_failed(lambda *args: None)  # Replace the default handler: dont' show a traceback
             out = req.wait()
+
+        assert is_root_cause(InputSlot.SlotNotReadyError, exc_info.value)
 
 
 class OpNonReady(Operator):

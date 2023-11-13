@@ -6,8 +6,9 @@ from functools import partial
 import pytest
 import numpy as np
 from numpy.testing import assert_array_equal
+from lazyflow.utility import is_root_cause
 
-from lazyflow.request.request import Request, SimpleSignal
+from lazyflow.request.request import Request, SimpleSignal, RequestError
 
 
 class TExc(Exception):
@@ -163,8 +164,11 @@ class TestRequest:
         req.notify_finished(recv)
         req.submit()
 
-        with pytest.raises(TExc):
+        with pytest.raises(RequestError) as exc_info:
             assert req.wait() == 42
+
+        assert is_root_cause(TExc, exc_info.value)
+
         recv.assert_not_called()
 
     def test_signal_failed_should_be_called_on_exception(self, broken_fn):
@@ -176,8 +180,10 @@ class TestRequest:
         req.notify_failed(recv)
         req.submit()
 
-        with pytest.raises(TExc):
+        with pytest.raises(RequestError) as exc_info:
             assert req.wait() == 42
+
+        assert is_root_cause(TExc, exc_info.value)
         recv.assert_called_once()
         assert isinstance(recv.call_args[0][0], TExc)
 
@@ -189,8 +195,10 @@ class TestRequest:
         req = Request(work)
         req.submit()
 
-        with pytest.raises(TExc):
+        with pytest.raises(RequestError) as exc_info:
             assert req.wait() == 42
+
+        assert is_root_cause(TExc, exc_info.value)
 
         req.notify_failed(recv)
         recv.assert_called_once()
