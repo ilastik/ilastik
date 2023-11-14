@@ -247,7 +247,7 @@ class DataSelectionApplet(Applet):
     ) -> DatasetInfo:
         url = str(url)
         if isUrl(url):
-            return UrlDatasetInfo(url=url, axistags=axistags)
+            return UrlDatasetInfo(url=url, axistags=axistags, project_file=self.project_file)
         else:
             return RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
                 filePath=str(Path(url).absolute()),

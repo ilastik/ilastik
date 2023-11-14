@@ -151,8 +151,8 @@ class MetaDict(defaultdict):
         keys and shape dimensions.
 
         """
-        assert self.axistags is not None
-        assert self.shape is not None
+        assert self.axistags is not None, "This metadict has no axistags"
+        assert self.shape is not None, "This metadict has no shape"
         keys = self.getAxisKeys()
         return OrderedDict(list(zip(keys, self.shape)))
 
