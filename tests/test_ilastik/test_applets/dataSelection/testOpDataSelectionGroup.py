@@ -21,6 +21,8 @@
 import tempfile
 import shutil
 import os
+from typing import Tuple
+
 import numpy
 import vigra
 from lazyflow.graph import Graph
@@ -32,53 +34,54 @@ class TestOpDataSelectionGroup(object):
     @classmethod
     def setup_class(cls):
         cls.workingDir = tempfile.mkdtemp()
-        cls.group1Data = [
-            (os.path.join(cls.workingDir, "A.npy"), numpy.random.random((100, 100, 1))),
-            (os.path.join(cls.workingDir, "C.npy"), numpy.random.random((100, 100, 1))),
-        ]
-
-        for name, data in cls.group1Data:
-            numpy.save(name, data)
 
     @classmethod
     def teardown_class(cls):
         shutil.rmtree(cls.workingDir)
 
-    def test(self):
+    def make_test_data(
+        self, filename: str, axislabels: str, shape: Tuple[int, ...]
+    ) -> Tuple[DatasetInfo, numpy.ndarray]:
+        filepath = os.path.join(self.workingDir, filename)
+        data = numpy.random.random(shape)
+        numpy.save(filepath, data)
+        dataset_info = FilesystemDatasetInfo(filePath=filepath, axistags=vigra.defaultAxistags(axislabels))
+        return dataset_info, data
+
+    def test_handles_roles(self):
         """
         Make sure that the dataset roles work the way we expect them to.
         """
-        infoA = FilesystemDatasetInfo(filePath=self.group1Data[0][0])
-        infoC = FilesystemDatasetInfo(filePath=self.group1Data[1][0])
+        info_A, data_A = self.make_test_data("A.npy", "xyc", (100, 100, 1))
+        info_C, data_C = self.make_test_data("C.npy", "xyc", (100, 100, 1))
+        example_roles = ["Raw Data", "Segmentation", "Fancy Augmentation"]
 
         op = OpDataSelectionGroup(graph=Graph())
         op.WorkingDirectory.setValue(self.workingDir)
-        op.DatasetRoles.setValue(["RoleA", "RoleB", "RoleC"])
+        op.DatasetRoles.setValue(example_roles)
 
-        op.DatasetGroup.resize(3)
-        op.DatasetGroup[0].setValue(infoA)
-        # Leave RoleB blank -- datasets other than the first are optional
-        op.DatasetGroup[2].setValue(infoC)
+        op.DatasetGroup.resize(len(example_roles))
+        op.DatasetGroup[0].setValue(info_A)
+        # Leave second role blank -- datasets other than the first are optional
+        op.DatasetGroup[2].setValue(info_C)
 
         assert op.ImageGroup[0].ready()
+        assert op.Image.ready()  # Alias for op.ImageGroup[0]
         assert op.ImageGroup[2].ready()
 
-        expectedDataA = self.group1Data[0][1]
         dataFromOpA = op.ImageGroup[0][:].wait()
+        dataFromAlias = op.Image[:].wait()
 
-        assert dataFromOpA.dtype == expectedDataA.dtype
-        assert dataFromOpA.shape == expectedDataA.shape
-        assert (dataFromOpA == expectedDataA).all()
+        assert dataFromOpA.dtype == data_A.dtype
+        assert dataFromOpA.shape == data_A.shape
+        assert (dataFromOpA == data_A).all()
+        assert (dataFromAlias == data_A).all()
 
-        expectedDataC = self.group1Data[0][1]
-        dataFromOpC = op.ImageGroup[0][:].wait()
+        dataFromOpC = op.ImageGroup[2][:].wait()
 
-        assert dataFromOpC.dtype == expectedDataC.dtype
-        assert dataFromOpC.shape == expectedDataC.shape
-        assert (dataFromOpC == expectedDataC).all()
-
-        assert op.Image.ready()
-        assert (op.Image[:].wait() == expectedDataA).all()
+        assert dataFromOpC.dtype == data_C.dtype
+        assert dataFromOpC.shape == data_C.shape
+        assert (dataFromOpC == data_C).all()
 
         # Ensure that files opened by the inner operators are closed before we exit.
         op.DatasetGroup.resize(0)
@@ -88,11 +91,7 @@ class TestOpDataSelectionGroup(object):
         If we add a dataset that has the channel axis in the wrong place,
         the operator should automatically transpose it to be last.
         """
-        weirdAxisFilename = os.path.join(self.workingDir, "WeirdAxes.npy")
-        expected_data = numpy.random.random((3, 100, 100))
-        numpy.save(weirdAxisFilename, expected_data)
-
-        info = FilesystemDatasetInfo(filePath=weirdAxisFilename, axistags=vigra.defaultAxistags("cxy"))
+        info, expected_data = self.make_test_data("WeirdAxes.npy", "cxy", (3, 100, 100))
 
         op = OpDataSelectionGroup(graph=Graph(), forceAxisOrder=False)
         op.WorkingDirectory.setValue(self.workingDir)
@@ -121,12 +120,7 @@ class TestOpDataSelectionGroup(object):
         If we add a dataset that is missing a channel axis altogether,
         the operator should automatically append a channel axis.
         """
-        noChannelFilename = os.path.join(self.workingDir, "NoChannelAxis.npy")
-        noChannelData = numpy.random.random((100, 100))
-        numpy.save(noChannelFilename, noChannelData)
-
-        info = FilesystemDatasetInfo(filePath=noChannelFilename, axistags=vigra.defaultAxistags("xy"))
-
+        info, noChannelData = self.make_test_data("NoChannelAxis.npy", "xy", (100, 100))
         op = OpDataSelectionGroup(graph=Graph())
         op.WorkingDirectory.setValue(self.workingDir)
         op.DatasetRoles.setValue(["RoleA"])
