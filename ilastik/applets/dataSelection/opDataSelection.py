@@ -213,7 +213,7 @@ class DatasetInfo(ABC):
     @property
     def default_output_dir(self) -> Path:
         if self.project_file:
-            return Path(self.project_file.filename).parent
+            return Path(self.project_file.filename).absolute().parent
         return Path.home()
 
     @classmethod
@@ -548,12 +548,9 @@ class FilesystemDatasetInfo(DatasetInfo):
         drange: Tuple[Number, Number] = None,
         **info_kwargs,
     ):
-        """
-        sequence_axis: Axis along which to stack (only applicable for stacks).
-        """
-        self.sequence_axis = sequence_axis
+        self.sequence_axis = sequence_axis  # Only relevant for file series: Axis along which to stack files
         self.base_dir = str(Path(project_file.filename).absolute().parent) if project_file else os.getcwd()
-        assert os.path.isabs(self.base_dir)  # FIXME: if file_project was opened as a relative path, this would break
+        assert os.path.isabs(self.base_dir)
         self.expanded_paths = self.expand_path(filePath, cwd=self.base_dir)
         assert len(self.expanded_paths) == 1 or self.sequence_axis
         if len({PathComponents(ep).extension for ep in self.expanded_paths}) > 1:
