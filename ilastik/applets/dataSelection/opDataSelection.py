@@ -100,6 +100,7 @@ class DatasetInfo(ABC):
         subvolume_roi: Tuple = None,
         display_mode: str = "default",
         nickname: str = "",
+        project_file: h5py.File = None,
         normalizeDisplay: bool = None,
         drange: Tuple[Number, Number] = None,
     ):
@@ -118,6 +119,7 @@ class DatasetInfo(ABC):
         self.drange = drange
         self.display_mode = display_mode  # choices: default, grayscale, rgba, random-colortable, binary-mask.
         self.nickname = nickname
+        self.project_file = project_file
         self.normalizeDisplay = (self.drange is not None) if normalizeDisplay is None else normalizeDisplay
         self.legacy_datasetId = self.generate_id()
 
@@ -174,7 +176,13 @@ class DatasetInfo(ABC):
     @classmethod
     def from_h5_group(cls, data: h5py.Group, params: Dict = None):
         params = params or {}
-        params.update({"allowLabels": data["allowLabels"][()], "nickname": data["nickname"][()].decode("utf-8")})
+        params.update(
+            {
+                "allowLabels": data["allowLabels"][()],
+                "nickname": data["nickname"][()].decode("utf-8"),
+                "project_file": data.file,
+            }
+        )
         if "axistags" in data:
             params["axistags"] = AxisTags.fromJSON(data["axistags"][()].decode("utf-8"))
         elif "axisorder" in data:  # legacy support
@@ -204,6 +212,8 @@ class DatasetInfo(ABC):
 
     @property
     def default_output_dir(self) -> Path:
+        if self.project_file:
+            return Path(self.project_file.filename).absolute().parent
         return Path.home()
 
     @classmethod
@@ -358,6 +368,7 @@ class ProjectInternalDatasetInfo(DatasetInfo):
             laneShape=self.dataset.shape,
             laneDtype=self.dataset.dtype,
             nickname=nickname or os.path.split(self.inner_path)[-1],
+            project_file=project_file,
             **info_kwargs,
         )
         self.legacy_datasetId = Path(inner_path).name
@@ -375,7 +386,6 @@ class ProjectInternalDatasetInfo(DatasetInfo):
     @classmethod
     def from_h5_group(cls, data: h5py.Group, params: Dict = None):
         params = params or {}
-        params["project_file"] = data.file
         if "datasetId" in data and "inner_path" not in data:  # legacy format
             dataset_id = data["datasetId"][()].decode("utf-8")
             inner_path = None
@@ -408,10 +418,6 @@ class ProjectInternalDatasetInfo(DatasetInfo):
     @property
     def internal_paths(self) -> List[str]:
         return []
-
-    @property
-    def default_output_dir(self) -> Path:
-        return Path(self.project_file.filename).parent
 
 
 class PreloadedArrayDatasetInfo(DatasetInfo):
@@ -542,12 +548,9 @@ class FilesystemDatasetInfo(DatasetInfo):
         drange: Tuple[Number, Number] = None,
         **info_kwargs,
     ):
-        """
-        sequence_axis: Axis along which to stack (only applicable for stacks).
-        """
-        self.sequence_axis = sequence_axis
+        self.sequence_axis = sequence_axis  # Only relevant for file series: Axis along which to stack files
         self.base_dir = str(Path(project_file.filename).absolute().parent) if project_file else os.getcwd()
-        assert os.path.isabs(self.base_dir)  # FIXME: if file_project was opened as a relative path, this would break
+        assert os.path.isabs(self.base_dir)
         self.expanded_paths = self.expand_path(filePath, cwd=self.base_dir)
         assert len(self.expanded_paths) == 1 or self.sequence_axis
         if len({PathComponents(ep).extension for ep in self.expanded_paths}) > 1:
@@ -566,6 +569,7 @@ class FilesystemDatasetInfo(DatasetInfo):
             laneShape=meta.shape,
             laneDtype=meta.dtype,
             drange=drange or meta.get("drange"),
+            project_file=project_file,
             **info_kwargs,
         )
 
