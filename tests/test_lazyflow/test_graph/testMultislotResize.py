@@ -1,6 +1,3 @@
-from builtins import zip
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,8 +19,7 @@ from builtins import object
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, OperatorWrapper
-from lazyflow.operators import OpPixelOperator, OpTransposeSlots
+from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
 
 
 class OpA(Operator):
@@ -46,30 +42,6 @@ class OpA(Operator):
 
 
 class TestMultiSlotResize(object):
-    def testMulitSlotResize(self):
-        graph = Graph()
-        opA = OpA(graph=graph)
-        opB = OpA(graph=graph)
-        opC = OpA(graph=graph)
-
-        opP = OperatorWrapper(OpPixelOperator, graph=graph)
-
-        opB.Inputs.connect(opA.Inputs)
-        opC.Inputs.connect(opB.Inputs)
-
-        opT = OpTransposeSlots(graph=graph)
-        opT.Inputs.connect(opA.Outputs)
-        opT.OutputLength.setValue(2)
-
-        assert len(opT.Outputs) == 2
-
-        opA.Inputs.resize(3)
-        assert len(opT.Outputs[0]) == 3
-        assert len(opT.Outputs[1]) == 3
-
-        opP.Input.connect(opT.Outputs[0])
-        assert len(opP.Input) == 3
-
     def testMultiSlotPartners(self):
         graph = Graph()
         opA = OpA(graph=graph)

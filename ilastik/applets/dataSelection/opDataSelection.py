@@ -809,7 +809,6 @@ class OpDataSelectionGroup(Operator):
 
     # These output slots are provided as a convenience, since otherwise it is tricky to create a lane-wise multislot of
     # level-1 for only a single role.
-    # (It can be done, but requires OpTransposeSlots to invert the level-2 multislot indexes...)
     Image = OutputSlot()  # The first dataset. Equivalent to ImageGroup[0]
     Image1 = OutputSlot()  # The second dataset. Equivalent to ImageGroup[1]
     Image2 = OutputSlot()  # The third dataset. Equivalent to ImageGroup[2]
@@ -921,8 +920,6 @@ class OpDataSelectionGroup(Operator):
 
 
 class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):
-    # TODO: Provide output slots DatasetsByRole and ImagesByRole as a convenience
-    #       to save clients the trouble of instantiating/using OpTransposeSlots.
     def __init__(self, forceAxisOrder=False, *args, **kwargs):
         kwargs.update(
             {
