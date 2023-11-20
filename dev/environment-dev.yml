@@ -6,7 +6,7 @@ channels:
   - nodefaults
 dependencies:
   - python 3.9.*
-  - numpy 1.21.*
+  - numpy 1.22.*
   - appdirs
   - cachetools
   - dpct
