@@ -257,6 +257,122 @@ in the inputs to changes in the outputs - which is fairly easy for the simple su
         pass
 
 
+Exception propagation through connected Operators
+-------------------------------------------------
+
+Exceptions along multiple connected operators are propagated through the graph using exception chaining via the ``Request`` system.
+
+A simple chain like the following
+
+.. code-block:: python
+    # exception-test.py
+    from lazyflow.graph import InputSlot, OutputSlot, Graph, Operator
+
+    class OpBroken(Operator):
+        Out = OutputSlot()
+
+        def setupOutputs(self):
+            self.Out.meta.shape = (1,)
+            self.Out.meta.dtype = object
+
+        def execute(self, *args, **kwargs):
+            raise Exception("OpBroken 👿")
+
+        def propagateDirty(self, *args, **kwargs):
+            pass
+
+
+    class OpPassThrough(Operator):
+        In = InputSlot()
+        Out = OutputSlot()
+
+        def setupOutputs(self):
+            self.Out.meta.shape = (1,)
+            self.Out.meta.dtype = object
+
+        def execute(self, *args, **kwargs):
+            self.In[:].wait()
+
+        def propagateDirty(self, *args, **kwargs):
+            pass
+
+    g = Graph()
+    opA = OpBroken(graph=g)
+    opB = OpPassThrough(graph=g)
+    opB.name = "OpPT_1"
+    opC = OpPassThrough(graph=g)
+    opC.name = "OpPT_2"
+    opB.In.connect(opA.Out)
+    opC.In.connect(opB.Out)
+
+    opC.Out[:].wait()
+
+will result in the following traceback chain:
+
+.. code-block:: python
+    Traceback (most recent call last):
+      File "ilastik/lazyflow/request/request.py", line 384, in _execute
+        self._result = self.fn()
+      File "ilastik/lazyflow/slot.py", line 869, in __call__
+        result_op = self.operator.call_execute(self.slot.top_level_slot, self.slot.subindex, self.roi, destination)
+      File "ilastik/lazyflow/operator.py", line 602, in call_execute
+        return self.execute(slot, subindex, roi, result, **kwargs)
+      File "exception-test.py", line 15, in execute
+        raise Exception("OpBroken 👿")
+    Exception: OpBroken 👿
+
+    The above exception was the direct cause of the following exception:
+
+    Traceback (most recent call last):
+      File "ilastik/lazyflow/request/request.py", line 384, in _execute
+        self._result = self.fn()
+      File "ilastik/lazyflow/slot.py", line 869, in __call__
+        result_op = self.operator.call_execute(self.slot.top_level_slot, self.slot.subindex, self.roi, destination)
+      File "ilastik/lazyflow/operator.py", line 602, in call_execute
+        return self.execute(slot, subindex, roi, result, **kwargs)
+      File "exception-test.py", line 30, in execute
+        self.In[:].wait()
+      File "ilastik/lazyflow/request/request.py", line 565, in wait
+        return self._wait(timeout)
+      File "ilastik/lazyflow/request/request.py", line 588, in _wait
+        self._wait_within_foreign_thread(timeout)
+      File "ilastik/lazyflow/request/request.py", line 648, in _wait_within_foreign_thread
+        raise RequestError(self.fn) from exc_value
+    lazyflow.request.request.RequestError: Failed to request data from `OpBroken.Out`
+
+    The above exception was the direct cause of the following exception:
+
+    Traceback (most recent call last):
+      File "ilastik/lazyflow/request/request.py", line 384, in _execute
+        self._result = self.fn()
+      File "ilastik/lazyflow/slot.py", line 869, in __call__
+        result_op = self.operator.call_execute(self.slot.top_level_slot, self.slot.subindex, self.roi, destination)
+      File "ilastik/lazyflow/operator.py", line 602, in call_execute
+        return self.execute(slot, subindex, roi, result, **kwargs)
+      File "exception-test.py", line 30, in execute
+        self.In[:].wait()
+      File "ilastik/lazyflow/request/request.py", line 565, in wait
+        return self._wait(timeout)
+      File "ilastik/lazyflow/request/request.py", line 588, in _wait
+        self._wait_within_foreign_thread(timeout)
+      File "ilastik/lazyflow/request/request.py", line 648, in _wait_within_foreign_thread
+        raise RequestError(self.fn) from exc_value
+    lazyflow.request.request.RequestError: Failed to request data from `OpPT_1.Out`
+
+    The above exception was the direct cause of the following exception:
+
+    Traceback (most recent call last):
+      File "exception-test.py", line 44, in <module>
+        opC.Out[:].wait()
+      File "ilastik/lazyflow/request/request.py", line 565, in wait
+        return self._wait(timeout)
+      File "ilastik/lazyflow/request/request.py", line 588, in _wait
+        self._wait_within_foreign_thread(timeout)
+      File "ilastik/lazyflow/request/request.py", line 648, in _wait_within_foreign_thread
+        raise RequestError(self.fn) from exc_value
+    lazyflow.request.request.RequestError: Failed to request data from `OpPT_2.Out`
+
+
 Wrapup: Writing an Operator
 ---------------------------
 

@@ -31,6 +31,7 @@ from traceback import walk_tb, FrameSummary, format_list
 
 # lazyflow
 from lazyflow.slot import InputSlot, OutputSlot, Slot
+from lazyflow.utility import exception_chain
 
 
 class InputDict(collections.OrderedDict):
@@ -647,26 +648,28 @@ class Operator(metaclass=OperatorMetaClass):
             slot.setDirty((), _mod_time=self._pending_dirty_mod_time)
 
 
-def format_operator_stack(tb):
+def format_operator_stack(exception: BaseException):
     """
-    Extract operator stacktrace from traceback
+    Extract operator stacktrace from Exception-chain
     """
     operator_stack = []
-    for frame, lineno in walk_tb(tb):
-        code = frame.f_code
-        filename = code.co_filename
-        locals_ = frame.f_locals
-        mod_name = frame.f_globals["__name__"]
 
-        maybe_op = locals_.get("self", None)
-        if not isinstance(maybe_op, Operator):
-            continue
+    for exc in exception_chain(exception):
+        for frame, lineno in walk_tb(exc.__traceback__):
+            code = frame.f_code
+            filename = code.co_filename
+            locals_ = frame.f_locals
+            mod_name = frame.f_globals["__name__"]
 
-        op_name = type(maybe_op).__qualname__
-        qualname = f"{mod_name}.{op_name}.{code.co_name}"
+            maybe_op = locals_.get("self", None)
+            if not isinstance(maybe_op, Operator):
+                continue
 
-        if op_name:
-            operator_stack.append(FrameSummary(filename, lineno, qualname, lookup_line=False, locals=None))
+            op_name = type(maybe_op).__qualname__
+            qualname = f"{mod_name}.{op_name}.{code.co_name}"
+
+            if op_name:
+                operator_stack.append(FrameSummary(filename, lineno, qualname, lookup_line=False, locals=None))
 
     operator_stack.reverse()
 
@@ -683,7 +686,7 @@ def print_operator_stack(exc_type, exc, tb):
     """
     _original_excepthook(exc_type, exc, tb)
 
-    formatted = format_operator_stack(tb)
+    formatted = format_operator_stack(exc)
     if formatted:
         print("\n===Operator stack===\n", file=sys.stderr)
         print("".join(formatted), end="", file=sys.stderr)

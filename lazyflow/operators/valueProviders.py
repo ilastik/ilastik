@@ -534,7 +534,7 @@ class OpMissingDataSource(Operator):
         pass
 
     def execute(self, slot, subindex, roi, result):
-        raise MissingDataAccessError
+        raise MissingDataAccessError()
 
     def propagateDirty(self, *args, **kwargs):
         raise ValueError("Will never go here, no inputs...")

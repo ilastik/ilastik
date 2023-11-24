@@ -21,12 +21,15 @@ from builtins import range
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-import sys
 import unittest
 import random
 import vigra
 import numpy
+
+import pytest
+
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
+from lazyflow.request.request import RequestError
 from lazyflow.roi import TinyVector
 from lazyflow.roi import roiToSlice
 
@@ -258,7 +261,6 @@ class TestOpReorderAxes(unittest.TestCase):
 
         # Make sure this results in an error.
         req = op.Output[:]
-        req.notify_failed(
-            lambda *args: None
-        )  # We expect an exception here, so disable the default fail handler to hide the traceback
-        self.assertRaises(AssertionError, req.wait)
+
+        with pytest.raises(RequestError):
+            req.wait()

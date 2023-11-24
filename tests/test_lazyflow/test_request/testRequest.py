@@ -1,6 +1,3 @@
-from builtins import range
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,19 +19,17 @@ from builtins import object
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-from lazyflow.request.request import Request, RequestLock, SimpleRequestCondition, RequestPool
-import os
+from lazyflow.request.request import Request, RequestError, RequestLock, RequestPool
 import time
 import random
 import numpy
-import gc
-import platform
 from functools import partial
 import unittest
 
-import psutil
+import pytest
 
 from lazyflow.utility.tracer import traceLogged
+from lazyflow.utility import is_root_cause
 
 import threading
 import sys
@@ -383,12 +378,10 @@ class TestRequest(unittest.TestCase):
 
         req = Request(impossible_workload)
 
-        try:
+        with pytest.raises(RequestError) as exc_info:
             req.wait()
-        except RuntimeError:
-            pass
-        else:
-            assert False, "Expected an exception from that request, but didn't get it."
+
+        assert is_root_cause(RuntimeError, exc_info.value)
 
     @traceLogged(traceLogger)
     def test_failed_request2(self):
@@ -413,7 +406,6 @@ class TestRequest(unittest.TestCase):
             # Since there are some exception guards in the code we're testing,
             #  spit something out to stderr just to be sure this error
             #  isn't getting swallowed accidentally.
-            sys.stderr.write("ERROR: Shouldn't get here.")
             assert False, "Shouldn't get here."
 
         req1 = Request(wait_for_impossible)
@@ -423,7 +415,8 @@ class TestRequest(unittest.TestCase):
         lock = threading.Lock()
 
         def handle_failed_req(req_id, failure_exc, exc_info):
-            assert isinstance(failure_exc, CustomRuntimeError)
+            assert isinstance(failure_exc, RequestError)
+            assert is_root_cause(CustomRuntimeError, failure_exc)
             with lock:
                 failed_ids.append(req_id)
 
@@ -444,7 +437,7 @@ class TestRequest(unittest.TestCase):
 
         try:
             req1.wait()
-        except RuntimeError:
+        except RequestError:
             pass
         else:
             # submit may fail here if in single-threaded debug mode.
@@ -453,7 +446,7 @@ class TestRequest(unittest.TestCase):
 
         try:
             req2.wait()
-        except RuntimeError:
+        except RequestError:
             pass
         else:
             # submit may fail here if in single-threaded debug mode.
@@ -761,7 +754,8 @@ class TestRequestExceptions(object):
         def wait_for_request(req):
             try:
                 req.wait()
-            except SpecialException as ex:
+            except RequestError as ex:
+                assert is_root_cause(SpecialException, ex)
                 caught_exceptions.append(ex)
             except:
                 raise  # Got some other exception than the one we expected
@@ -780,8 +774,8 @@ class TestRequestExceptions(object):
         assert len(caught_exceptions) == 2, "Expected both requests to catch exceptions."
         assert len(signaled_exceptions) == 2, "Expected both requests to signal failure."
 
-        assert isinstance(caught_exceptions[0], SpecialException), "Caught exception was of the wrong type."
-        assert caught_exceptions[0] == caught_exceptions[1] == signaled_exceptions[0] == signaled_exceptions[1]
+        assert isinstance(caught_exceptions[0], RequestError), "Caught exception was of the wrong type."
+        assert all(is_root_cause(SpecialException, exc) for exc in caught_exceptions + signaled_exceptions)
 
         # Attempting to wait for a request that has already failed will raise the exception that causes the failure
         wait_for_request(req2)

@@ -18,23 +18,18 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import sys
 import argparse
 import itertools
-from lazyflow.graph import Graph, Operator, OperatorWrapper
 
 from ilastik.workflow import Workflow
 
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
-from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
 from ilastik.applets.counting import CountingApplet, CountingDataExportApplet
-from ilastik.applets.counting.opCounting import OpPredictionPipeline
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
 from lazyflow.roi import TinyVector
-from lazyflow.graph import Graph, OperatorWrapper
-from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
+from lazyflow.graph import Graph
 
 import logging
 

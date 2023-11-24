@@ -19,11 +19,6 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-from __future__ import division
-from builtins import next
-from builtins import range
-from builtins import object
-from future.utils import raise_with_traceback
 import sys
 from functools import partial
 
@@ -40,7 +35,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class RoiRequestBatch(object):
+class RoiRequestBatchException(Exception):
+    pass
+
+
+class RoiRequestBatch:
     """
     A simple utility for requesting a list of rois from an output slot.
     The number of rois requested in parallel is throttled by the batch size given to the constructor.
@@ -183,7 +182,7 @@ class RoiRequestBatch(object):
 
                 if self._failure_excinfo:
                     exc_type, exc_value, exc_tb = self._failure_excinfo
-                    raise_with_traceback(exc_type(exc_value), exc_tb)
+                    raise RoiRequestBatchException() from exc_value
 
                 # Launch new requests until we have the correct number of active requests
                 while not self._failure_excinfo and self._activated_count - self._completed_count < self._batchSize:
@@ -193,7 +192,7 @@ class RoiRequestBatch(object):
 
                 if self._failure_excinfo:
                     exc_type, exc_value, exc_tb = self._failure_excinfo
-                    raise_with_traceback(exc_type(exc_value), exc_tb)
+                    raise RoiRequestBatchException() from exc_value
 
         except StopIteration:
             # We've run out of requests to launch.
@@ -204,7 +203,7 @@ class RoiRequestBatch(object):
 
             if self._failure_excinfo:
                 exc_type, exc_value, exc_tb = self._failure_excinfo
-                raise_with_traceback(exc_type(exc_value), exc_tb)
+                raise RoiRequestBatchException() from exc_value
 
         self.progressSignal(100)
 

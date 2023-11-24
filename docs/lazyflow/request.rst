@@ -252,20 +252,48 @@ required by the current Request framework implementation, but it is considered b
 Failed Requests
 ===============
 
-If any exception is raised within a request (other than a cancellation exception), the request fails.  
-The exception that caused the failure is propagated to the request(s) or thread(s) that are waiting for it.
+If any exception is raised within a request (other than a cancellation exception), the request fails.
+The exception that caused the failure is propagated to the request(s) or thread(s) that are waiting for it via exception chaining.
+Each requests that encounters an exception during execution raises ``RequestError`` from the direct cause.
 
 .. code-block:: python
 
+    # exception-test.py
     def some_work():
         raise RuntimeError("Something went wrong.")
 
     r1 = Request( some_work )
     try:
         r1.wait()
-    except:
+    except RequestError:
         sys.stderr("Request failed.")
-    
+
+
+The traceback for the above example reflects cause and effect:
+
+.. code-block:: python
+
+    Traceback (most recent call last):
+      File "lazyflow/request/request.py", line 384, in _execute
+        self._result = self.fn()
+      File "exception-test.py", line 5, in some_work
+        raise RuntimeError("Something went wrong.")
+    RuntimeError: Something went wrong.
+
+    The above exception was the direct cause of the following exception:
+
+    Traceback (most recent call last):
+      File "excptest-simple.py", line 9, in <module>
+        r1.wait()
+      File "lazyflow/request/request.py", line 565, in wait
+        return self._wait(timeout)
+      File "lazyflow/request/request.py", line 588, in _wait
+        self._wait_within_foreign_thread(timeout)
+      File "lazyflow/request/request.py", line 648, in _wait_within_foreign_thread
+        raise RequestError(self.fn) from exc_value
+    lazyflow.request.request.RequestError: Request failed.
+
+
 .. note:: Request failure handling and exception propagation is relatively heavy-weight.  
 	      You can and should rely on it to catch occasional or unexpected failures, but do not rely 
 	      on it as though it were as cheap as a simple if/else statement.  If your requests are 
@@ -274,9 +302,9 @@ The exception that caused the failure is propagated to the request(s) or thread(
 Exception Propagation
 ---------------------
 
-As mentioned above, exceptions raised in a request are propagated backwards to waiting requests.
+As mentioned above, exceptions raised in a request cause exceptions in requests waiting upstream.
 There is an interesting consequence of this behavior: For the special case where a request is being waited on by multiple requests, 
-a single exception may propagate through multiple callstacks.
+a single exception may propagate through multiple chained callstacks.
 
 Consider this request dependency graph:
 
@@ -332,28 +360,31 @@ For some use-cases, you may want to be notified when a request completes.  Reque
 Here's an example:
 
 .. code-block:: python
-    
+    # import utility function for traversing the exception chain
+    from lazyflow.utility.exception_helpers import root_cause
+
     def some_work():
         """Do some work."""
     
     def handle_result(result)
-        print "The result was:", result
+        print(f"The result was: {result}")
     
     def handle_failure(ex):
-        print "The request failed due a {} exception".format( type(ex) )
+        root_ex = root_cause(ex)
+        print(f"The request failed due a {type(root_ex)} exception")
     
     def handle_cancelled():
-        print "The request was cancelled"
+        print("The request was cancelled")
         
-    req = Request( some_work )
-    req.notify_finished( handle_result )
-    req.notify_failed( handle_failure )
-    req.notify_cancelled( handle_cancelled )
+    req = Request(some_work)
+    req.notify_finished(handle_result)
+    req.notify_failed(handle_failure)
+    req.notify_cancelled(handle_cancelled)
 
     try:
         req.wait()
     finally:
-        print "Request is no longer executing."
+        print("Request is no longer executing.")
 
 Callback Timing Guarantee
 -------------------------

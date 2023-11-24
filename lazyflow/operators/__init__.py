@@ -54,7 +54,6 @@ from .generic import (
     OpSelectSubslot,
     OpSingleChannelSelector,
     OpSubRegion,
-    OpTransposeSlots,
     OpWrapSlot,
 )
 from .opArrayPiper import OpArrayPiper
