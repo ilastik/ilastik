@@ -1,6 +1,7 @@
 version: 2.1
 jobs:
   checkout_ilastik:
+    resource_class: medium
     working_directory: /root/ilastik/ilastik
     parallelism: 1
     shell: /bin/bash --login
@@ -28,6 +29,7 @@ jobs:
 
   test:
     working_directory: /root/ilastik/ilastik
+    resource_class: large
     parallelism: 1
     shell: /bin/bash --login
     environment:
