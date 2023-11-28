@@ -659,8 +659,14 @@ class TestOpDataSelection_SingleFileH5Stacks:
 
 
 class TestOpDataSelection_FileSeriesStacks:
-    @staticmethod
-    def _make_series_data():
+    @pytest.fixture(scope="class")
+    def tempdir(self, tmp_path_factory):
+        temp_dir = tmp_path_factory.mktemp("test_stack_along_data")
+        yield temp_dir
+        shutil.rmtree(str(temp_dir))
+
+    @pytest.fixture(scope="class")
+    def series_data(self):
         R = [
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -698,10 +704,10 @@ class TestOpDataSelection_FileSeriesStacks:
         data["rgb23c"][..., 2] = data["rgb20c"]  # blue B
         return data
 
-    @staticmethod
-    def save_test_data(data_to_save, target_path):
-        base = target_path
-        for name, data in data_to_save.items():
+    @pytest.fixture(scope="class")
+    def save_test_data(self, series_data, tempdir):
+        base = tempdir
+        for name, data in series_data.items():
             # save as h5
             save_to_hdf5(dataset_name="data", data=data, filename=base / f"{name}.h5")
 
@@ -720,24 +726,21 @@ class TestOpDataSelection_FileSeriesStacks:
                 im.save(base / f"{name}.tiff")
                 vigra.impex.writeImage(image=data.transpose(1, 0, 2), filename=str(base / f"{name}.png"))
 
-    @classmethod
-    @pytest.fixture(autouse=True)
-    def setup_class(cls, tmp_path_factory):
-        cls.tmpdir = tmp_path_factory.mktemp("test_stack_along_data")
-        _d = cls._make_series_data()
-        cls.save_test_data(_d, cls.tmpdir)
-        cls.expected_output = {
-            "rgb0c_stack": numpy.stack([_d["rgb00c"], _d["rgb10c"], _d["rgb20c"]], axis=0),
-            "rgb0c_stack_t": numpy.stack([_d["rgb00c"], _d["rgb10c"], _d["rgb20c"]], axis=2).transpose(1, 0, 2) * 255,
-            "rgb0c_stack_2": numpy.stack([_d["rgb00c"], _d["rgb10c"], _d["rgb20c"]], axis=2),
-            "rgb3c_concat": numpy.concatenate([_d["rgb03c"], _d["rgb13c"], _d["rgb23c"]], axis=2),
-            "rgb3c_concat_t": numpy.concatenate([_d["rgb03c"], _d["rgb13c"], _d["rgb23c"]], axis=2).transpose(1, 0, 2)
-            * 255,
-            "rgb3c_concat_255": numpy.concatenate([_d["rgb03c"], _d["rgb13c"], _d["rgb23c"]], axis=2) * 255,
-            "rgb0c_stack_None": numpy.stack([_d["rgb00c"], _d["rgb10c"], _d["rgb20c"]], axis=0)[..., None],
-            "rgb0c_stack_None255": numpy.stack([_d["rgb00c"], _d["rgb10c"], _d["rgb20c"]], axis=0)[..., None] * 255,
-            "rgb3c_stack": numpy.stack([_d["rgb03c"], _d["rgb13c"], _d["rgb23c"]], axis=0),
-            "rgb3c_stack255": numpy.stack([_d["rgb03c"], _d["rgb13c"], _d["rgb23c"]], axis=0) * 255,
+    @pytest.fixture(scope="class")
+    def expected_data(self, series_data):
+        series_0c = [series_data["rgb00c"], series_data["rgb10c"], series_data["rgb20c"]]
+        series_3c = [series_data["rgb03c"], series_data["rgb13c"], series_data["rgb23c"]]
+        return {
+            "rgb0c_stack": numpy.stack(series_0c, axis=0),
+            "rgb0c_stack_t": numpy.stack(series_0c, axis=2).transpose(1, 0, 2) * 255,
+            "rgb0c_stack_2": numpy.stack(series_0c, axis=2),
+            "rgb3c_concat": numpy.concatenate(series_3c, axis=2),
+            "rgb3c_concat_t": numpy.concatenate(series_3c, axis=2).transpose(1, 0, 2) * 255,
+            "rgb3c_concat_255": numpy.concatenate(series_3c, axis=2) * 255,
+            "rgb0c_stack_None": numpy.stack(series_0c, axis=0)[..., None],
+            "rgb0c_stack_None255": numpy.stack(series_0c, axis=0)[..., None] * 255,
+            "rgb3c_stack": numpy.stack(series_3c, axis=0),
+            "rgb3c_stack255": numpy.stack(series_3c, axis=0) * 255,
         }
 
     @pytest.mark.parametrize(
@@ -769,14 +772,19 @@ class TestOpDataSelection_FileSeriesStacks:
             ["rgb*3c", ".tiff", "t", "rgb3c_stack255"],
         ],
     )
-    def test_stack_along(self, graph, name, extension, sequence_axis, expected_key):
-        fileName = self.tmpdir / f"{name}{extension}"
+    def test_stack_along(
+        self, tempdir, save_test_data, expected_data, graph, name, extension, sequence_axis, expected_key
+    ):
+        fileName = tempdir / f"{name}{extension}"
         reader = OpDataSelection(graph=graph, forceAxisOrder=False)
         reader.WorkingDirectory.setValue(os.getcwd())
         reader.Dataset.setValue(FilesystemDatasetInfo(filePath=str(fileName), sequence_axis=sequence_axis))
         read = reader.Image[...].wait()
-        expected = self.expected_output[expected_key]
-        assert numpy.allclose(read, expected), f"{name}: {read.shape}, {expected.shape}"
+        expected = expected_data[expected_key]
+        try:
+            assert numpy.allclose(read, expected), f"{name}: {read.shape}, {expected.shape}"
+        finally:
+            reader.cleanUp()  # Ensure tempdir can be deleted
 
 
 def test_cleanup(data_path, graph):
