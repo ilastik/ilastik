@@ -18,10 +18,14 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+import json
 import os
 import shutil
 from collections import defaultdict
+from unittest.mock import Mock
+
 import numpy
+import requests
 import vigra
 import lazyflow
 import h5py
@@ -31,7 +35,7 @@ from PIL import Image
 from lazyflow.utility.pathHelpers import PathComponents
 from lazyflow.graph import Graph
 from lazyflow.graph import OperatorWrapper
-from ilastik.applets.dataSelection.opDataSelection import OpMultiLaneDataSelectionGroup, OpDataSelection
+from ilastik.applets.dataSelection.opDataSelection import OpMultiLaneDataSelectionGroup, OpDataSelection, UrlDatasetInfo
 from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo, ProjectInternalDatasetInfo
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -785,6 +789,80 @@ class TestOpDataSelection_FileSeriesStacks:
             assert numpy.allclose(read, expected), f"{name}: {read.shape}, {expected.shape}"
         finally:
             reader.cleanUp()  # Ensure tempdir can be deleted
+
+
+class TestOpDataSelection_PrecomputedChunks:
+    SHAPE_SCALED_XYZ = (12, 10, 1)
+    SHAPE_ORIGINAL_XYZ = (24, 20, 1)
+    CHUNK_SIZE_XYZ = (16, 16, 1)
+    CHUNKS = {  # numpy default axis order is zyx; we use it as it also works fine with the operator's tczyx
+        "1600_1600_70/0-12_0-10_0-1": numpy.random.randint(0, 256, (1, 10, 12), dtype=numpy.uint16),
+        "800_800_70/0-16_0-16_0-1": numpy.random.randint(0, 256, (1, 16, 16), dtype=numpy.uint16),
+        "800_800_70/16-24_0-16_0-1": numpy.random.randint(0, 256, (1, 16, 8), dtype=numpy.uint16),
+        "800_800_70/0-16_16-20_0-1": numpy.random.randint(0, 256, (1, 4, 16), dtype=numpy.uint16),
+        "800_800_70/16-24_16-20_0-1": numpy.random.randint(0, 256, (1, 4, 8), dtype=numpy.uint16),
+    }
+    IMAGE_SCALED = CHUNKS["1600_1600_70/0-12_0-10_0-1"]
+    IMAGE_ORIGINAL = numpy.concatenate(
+        [
+            numpy.concatenate([CHUNKS["800_800_70/0-16_0-16_0-1"], CHUNKS["800_800_70/16-24_0-16_0-1"]], axis=2),
+            numpy.concatenate([CHUNKS["800_800_70/0-16_16-20_0-1"], CHUNKS["800_800_70/16-24_16-20_0-1"]], axis=2),
+        ],
+        axis=1,
+    )
+    MOCK_DATASET_URL = "precomputed://https://mocked.com/precomputed_dataset"
+    INFO_JSON = {
+        "@type": "neuroglancer_multiscale_volume",
+        "type": "image",
+        "data_type": "uint16",
+        "num_channels": 1,
+        "scales": [
+            {
+                "key": "800_800_70",
+                "size": list(SHAPE_ORIGINAL_XYZ),
+                "resolution": [800, 800, 70],
+                "voxel_offset": [0, 0, 0],
+                "chunk_sizes": [list(CHUNK_SIZE_XYZ)],
+                "encoding": "raw",
+            },
+            {
+                "key": "1600_1600_70",
+                "size": list(SHAPE_SCALED_XYZ),
+                "resolution": [1600, 1600, 70],
+                "voxel_offset": [0, 0, 0],
+                "chunk_sizes": [list(CHUNK_SIZE_XYZ)],
+                "encoding": "raw",
+            },
+        ],
+    }
+
+    def mock_response_for_url(self, url):
+        response = Mock()
+        response.status_code = 200
+        ext = url.lstrip(self.MOCK_DATASET_URL)
+        if ext == "info":
+            response.content = json.dumps(self.INFO_JSON)
+        elif ext in self.CHUNKS:
+            response.content = self.CHUNKS[ext].tobytes()
+        else:
+            raise KeyError(f"Unknown mock url: {url}")
+        return response
+
+    @pytest.fixture
+    def mock_requests_get(self, monkeypatch):
+        monkeypatch.setattr(requests, "get", lambda url: self.mock_response_for_url(url))
+
+    def test_load_precomputed_chunks_over_http(self, graph, mock_requests_get):
+        op = OpDataSelection(graph=graph)
+        op.WorkingDirectory.setValue(os.getcwd())
+        op.ActiveScale.setValue(0)
+        op.Dataset.setValue(UrlDatasetInfo(url=self.MOCK_DATASET_URL))
+        loaded_scale0 = op.Image[:].wait()
+        assert numpy.allclose(loaded_scale0, self.IMAGE_SCALED)
+
+        op.ActiveScale.setValue(1)
+        loaded_scale1 = op.Image[:].wait()
+        assert numpy.allclose(loaded_scale1, self.IMAGE_ORIGINAL)
 
 
 def test_cleanup(data_path, graph):
