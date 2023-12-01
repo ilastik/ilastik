@@ -213,8 +213,9 @@ class ScaleComboBoxDelegate(QStyledItemDelegate):
 
     def on_combo_selected(self, index):
         self.setModelData(self.sender(), None, index)
-        changed_shape_index = index.model().index(index.row(), DatasetColumn.Shape)
-        index.model().dataChanged.emit(changed_shape_index, changed_shape_index)
+        changed_index = index.model().index(index.row(), DatasetColumn.Shape)
+        # dataChanged(topLeft, bottomRight); since we're editing one cell, topLeft == bottomRight
+        index.model().dataChanged.emit(changed_index, changed_index)
 
 
 class DatasetDetailedInfoTableView(QTableView):
