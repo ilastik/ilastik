@@ -22,6 +22,7 @@ import json
 import os
 import shutil
 from collections import defaultdict
+from unittest import mock
 from unittest.mock import Mock
 
 import numpy
@@ -35,8 +36,14 @@ from PIL import Image
 from lazyflow.utility.pathHelpers import PathComponents
 from lazyflow.graph import Graph
 from lazyflow.graph import OperatorWrapper
-from ilastik.applets.dataSelection.opDataSelection import OpMultiLaneDataSelectionGroup, OpDataSelection, UrlDatasetInfo
-from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo, ProjectInternalDatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import (
+    OpMultiLaneDataSelectionGroup,
+    OpDataSelection,
+    UrlDatasetInfo,
+    RelativeFilesystemDatasetInfo,
+    FilesystemDatasetInfo,
+    ProjectInternalDatasetInfo,
+)
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 from ilastik.applets.base.applet import DatasetConstraintError
 
@@ -863,6 +870,35 @@ class TestOpDataSelection_PrecomputedChunks:
         op.ActiveScale.setValue(1)
         loaded_scale1 = op.Image[:].wait()
         assert numpy.allclose(loaded_scale1, self.IMAGE_ORIGINAL)
+
+    @pytest.fixture
+    def mock_project(self, data_path):
+        data = mock.Mock()
+        data.shape = (10, 10)
+        data.attrs = {}
+        project = mock.MagicMock()
+        project.filename = data_path / "mock.file"
+        project.__getitem__.return_value = data
+        return project
+
+    @pytest.mark.parametrize(
+        "info_class, expected_sub_path",
+        [
+            (ProjectInternalDatasetInfo, ""),
+            (FilesystemDatasetInfo, "inputdata"),
+            (RelativeFilesystemDatasetInfo, "inputdata"),
+            (UrlDatasetInfo, ""),
+        ],
+    )
+    def test_default_export_paths(self, data_path, mock_project, mock_requests_get, info_class, expected_sub_path):
+        info_args = {
+            "ProjectInternalDatasetInfo": {"inner_path": "foo", "project_file": mock_project},
+            "FilesystemDatasetInfo": {"filePath": str(data_path / "inputdata" / "3d1c-synthetic.h5")},
+            "RelativeFilesystemDatasetInfo": {"filePath": str(data_path / "inputdata" / "3d1c-synthetic.h5")},
+            "UrlDatasetInfo": {"url": self.MOCK_DATASET_URL, "project_file": mock_project},
+        }
+        dataset_info = info_class(**info_args[info_class.__name__])
+        assert dataset_info.default_output_dir == data_path / expected_sub_path
 
 
 def test_cleanup(data_path, graph):
