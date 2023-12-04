@@ -791,6 +791,32 @@ class TestOpDataSelection_FileSeriesStacks:
             reader.cleanUp()  # Ensure tempdir can be deleted
 
 
+class MockRemoteDataset:
+    """
+    Monkeypatches requests.get as a side effect of instantiation,
+    to mock a server hosting a precomputed dataset.
+    Needs to be passed the monkeypatch fixture and dataset parameters.
+    """
+
+    def __init__(self, monkeypatch, url: str, info: dict, chunks: dict[str, numpy.array]):
+        self.url = url
+        self.info = info
+        self.chunks = chunks
+        monkeypatch.setattr(requests, "get", lambda _url: self.mock_response_for_url(_url))
+
+    def mock_response_for_url(self, url):
+        response = Mock()
+        response.status_code = 200
+        ext = url.lstrip(self.url)
+        if ext == "info":
+            response.content = json.dumps(self.info)
+        elif ext in self.chunks:
+            response.content = self.chunks[ext].tobytes()
+        else:
+            raise KeyError(f"Unknown mock url: {url}")
+        return response
+
+
 class TestOpDataSelection_PrecomputedChunks:
     SHAPE_SCALED_XYZ = (12, 10, 1)
     SHAPE_ORIGINAL_XYZ = (24, 20, 1)
@@ -836,23 +862,8 @@ class TestOpDataSelection_PrecomputedChunks:
         ],
     }
 
-    def mock_response_for_url(self, url):
-        response = Mock()
-        response.status_code = 200
-        ext = url.lstrip(self.MOCK_DATASET_URL)
-        if ext == "info":
-            response.content = json.dumps(self.INFO_JSON)
-        elif ext in self.CHUNKS:
-            response.content = self.CHUNKS[ext].tobytes()
-        else:
-            raise KeyError(f"Unknown mock url: {url}")
-        return response
-
-    @pytest.fixture
-    def mock_requests_get(self, monkeypatch):
-        monkeypatch.setattr(requests, "get", lambda url: self.mock_response_for_url(url))
-
-    def test_load_precomputed_chunks_over_http(self, graph, mock_requests_get):
+    def test_load_precomputed_chunks_over_http(self, graph, monkeypatch):
+        _ = MockRemoteDataset(monkeypatch, self.MOCK_DATASET_URL, self.INFO_JSON, self.CHUNKS)
         op = OpDataSelection(graph=graph)
         op.WorkingDirectory.setValue(os.getcwd())
         op.ActiveScale.setValue(0)
@@ -863,6 +874,16 @@ class TestOpDataSelection_PrecomputedChunks:
         op.ActiveScale.setValue(1)
         loaded_scale1 = op.Image[:].wait()
         assert numpy.allclose(loaded_scale1, self.IMAGE_ORIGINAL)
+
+
+class TestOpDataSelection_DatasetInfo:
+    MOCK_PRECOMPUTED_URL = "precomputed://https://mocked.com/precomputed_dataset"
+    MOCK_PRECOMPUTED_INFO = {
+        "type": "image",
+        "data_type": "uint16",
+        "num_channels": 1,
+        "scales": [{"chunk_sizes": [[1, 1, 1]], "resolution": [""], "size": [1, 1, 1]}],
+    }
 
     @pytest.fixture
     def mock_project(self, data_path):
@@ -883,12 +904,13 @@ class TestOpDataSelection_PrecomputedChunks:
             (UrlDatasetInfo, ""),
         ],
     )
-    def test_default_export_paths(self, data_path, mock_project, mock_requests_get, info_class, expected_sub_path):
+    def test_default_export_paths(self, data_path, mock_project, monkeypatch, info_class, expected_sub_path):
+        _ = MockRemoteDataset(monkeypatch, self.MOCK_PRECOMPUTED_URL, self.MOCK_PRECOMPUTED_INFO, {})
         info_args = {
             "ProjectInternalDatasetInfo": {"inner_path": "foo", "project_file": mock_project},
             "FilesystemDatasetInfo": {"filePath": str(data_path / "inputdata" / "3d1c-synthetic.h5")},
             "RelativeFilesystemDatasetInfo": {"filePath": str(data_path / "inputdata" / "3d1c-synthetic.h5")},
-            "UrlDatasetInfo": {"url": self.MOCK_DATASET_URL, "project_file": mock_project},
+            "UrlDatasetInfo": {"url": self.MOCK_PRECOMPUTED_URL, "project_file": mock_project},
         }
         dataset_info = info_class(**info_args[info_class.__name__])
         assert dataset_info.default_output_dir == data_path / expected_sub_path
