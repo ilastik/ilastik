@@ -28,13 +28,11 @@ from unittest.mock import Mock
 import numpy
 import requests
 import vigra
-import lazyflow
 import h5py
 from pathlib import Path
 from PIL import Image
 
 from lazyflow.utility.pathHelpers import PathComponents
-from lazyflow.graph import Graph
 from lazyflow.graph import OperatorWrapper
 from ilastik.applets.dataSelection.opDataSelection import (
     OpMultiLaneDataSelectionGroup,
@@ -166,10 +164,9 @@ class TestOpDataSelection_Basic2D(object):
             expected_nickname += comps.internalPath.replace("/", "-")
         return expected_nickname
 
-    def testBasic2D(self):
+    def testBasic2D(self, graph):
         """Test if plane 2d files are loaded correctly"""
         for fileName in self.imgFileNames2D:
-            graph = lazyflow.graph.Graph()
             reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
@@ -190,12 +187,11 @@ class TestOpDataSelection_Basic2D(object):
                 continue
             numpy.testing.assert_array_equal(imgData2D, self.imgData2D)
 
-    def testBasic2Dc(self):
+    def testBasic2Dc(self, graph):
         """Test if 2d 3-channel files are loaded correctly"""
         # For some reason vigra saves 2D+c data compressed in gifs, so skip!
         self.compressedExtensions.append(".gif")
         for fileName in self.imgFileNames2Dc:
-            graph = lazyflow.graph.Graph()
             reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
@@ -318,10 +314,9 @@ class TestOpDataSelection_Basic_native_3D(object):
         except OSError as e:
             print("Exception caught while deleting temporary files: {}".format(e))
 
-    def testBasic3D(self):
+    def testBasic3D(self, graph):
         """Test if plane 2d files are loaded correctly"""
         for fileName, nickname in zip(self.imgFileNames3D, self.imgFileNames3DNicknames):
-            graph = lazyflow.graph.Graph()
             reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
@@ -337,10 +332,9 @@ class TestOpDataSelection_Basic_native_3D(object):
             # skip this if image was saved compressed:
             numpy.testing.assert_array_equal(imgData3D, self.imgData3D)
 
-    def testBasic3DWrongAxes(self):
+    def testBasic3DWrongAxes(self, graph):
         """Test if 3D file with intentionally wrong axes is rejected"""
         for fileName in self.imgFileNames3D:
-            graph = lazyflow.graph.Graph()
             reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
@@ -356,11 +350,10 @@ class TestOpDataSelection_Basic_native_3D(object):
             except:
                 assert False, "Should have thrown a DatasetConstraintError!"
 
-    def testBasic3Dc(self):
+    def testBasic3Dc(self, graph):
         """Test if 2d 3-channel files are loaded correctly"""
         # For some reason vigra saves 2D+c data compressed in gifs, so skip!
         for fileName, nickname in zip(self.imgFileNames3Dc, self.imgFileNames3DcNicknames):
-            graph = lazyflow.graph.Graph()
             reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
@@ -534,10 +527,10 @@ class TestOpDataSelection_3DStacks(object):
         except OSError as e:
             print("Exception caught while deleting temporary files: {}".format(e))
 
-    def testBasic3DstackFromGlobString(self, empty_project_file):
+    def testBasic3DstackFromGlobString(self, empty_project_file, graph):
         """Test if stacked 2d files are loaded correctly"""
 
-        reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={"forceAxisOrder": False})
+        reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
         reader.WorkingDirectory.setValue(str(Path(empty_project_file.filename).parent))
         for fileName, nickname in zip(self.imgFileNameGlobs2D, self.imgFileNameGlobs2DNicknames):
             reader.Dataset.setValues([FilesystemDatasetInfo(filePath=fileName, sequence_axis="z")])
@@ -555,10 +548,10 @@ class TestOpDataSelection_3DStacks(object):
                 continue
             numpy.testing.assert_array_equal(imgData3D, self.imgData3D)
 
-    def testBasic3DstacksFromFileList(self, empty_project_file):
+    def testBasic3DstacksFromFileList(self, empty_project_file, graph):
         for ext, fileNames in list(self.imgFileLists2D.items()):
             fileNameString = os.path.pathsep.join(fileNames)
-            reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={"forceAxisOrder": False})
+            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
             reader.WorkingDirectory.setValue(str(Path(empty_project_file.filename).parent))
 
             reader.Dataset.setValues([FilesystemDatasetInfo(filePath=fileNameString, sequence_axis="z")])
@@ -574,11 +567,11 @@ class TestOpDataSelection_3DStacks(object):
                 continue
             numpy.testing.assert_array_equal(imgData3D, self.imgData3D)
 
-    def testBasic3DcStackFromGlobString(self, empty_project_file):
+    def testBasic3DcStackFromGlobString(self, empty_project_file, graph):
         """Test if stacked 2d 3-channel files are loaded correctly"""
         # For some reason vigra saves 2D+c data compressed in gifs, so skip!
         for fileName, nickname in zip(self.imgFileNameGlobs2Dc, self.imgFileNameGlobs2DcNicknames):
-            reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={"forceAxisOrder": False})
+            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
             reader.WorkingDirectory.setValue(str(Path(empty_project_file.filename).parent))
 
             reader.Dataset.setValues([FilesystemDatasetInfo(filePath=fileName, sequence_axis="z")])
@@ -636,8 +629,8 @@ class TestOpDataSelection_SingleFileH5Stacks:
         except OSError as e:
             print("Exception caught while deleting temporary files: {}".format(e))
 
-    def test_load_single_file_with_glob(self):
-        reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={"forceAxisOrder": False})
+    def test_load_single_file_with_glob(self, graph):
+        reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
         reader.WorkingDirectory.setValue(os.getcwd())
 
         reader.Dataset.setValues([FilesystemDatasetInfo(filePath=self.glob_string, sequence_axis="t")])
@@ -650,8 +643,8 @@ class TestOpDataSelection_SingleFileH5Stacks:
 
         numpy.testing.assert_array_equal(imgData, self.imgData3Dct)
 
-    def test_load_single_file_with_list(self):
-        reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={"forceAxisOrder": False})
+    def test_load_single_file_with_list(self, graph):
+        reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
         reader.WorkingDirectory.setValue(os.getcwd())
 
         fileNameString = os.path.pathsep.join(self.file_names)
