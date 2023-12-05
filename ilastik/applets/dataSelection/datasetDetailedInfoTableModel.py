@@ -220,3 +220,10 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         if not datasetInfo.scales:
             return []
         return [_resolution_to_display_string(s["resolution"]) for s in datasetInfo.scales]
+
+    def is_scale_locked(self, laneIndex) -> bool:
+        datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
+        if not datasetSlot.ready():
+            return False
+        datasetInfo = datasetSlot.value
+        return datasetInfo.scale_locked

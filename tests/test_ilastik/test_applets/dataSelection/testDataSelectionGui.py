@@ -22,7 +22,8 @@ def dataset_table(qtbot) -> DatasetDetailedInfoTableView:
     def mock_DatasetDetailedInfoTableModel():
         empty_model = QStandardItemModel()
         empty_model.isEmptyRow = lambda _row: False
-        empty_model.get_scale_options = lambda _row: ["100, 100, 10", "50, 50, 10"] if _row == 1 else []
+        empty_model.get_scale_options = lambda _row: ["100, 100, 10", "50, 50, 10"] if _row > 0 else []
+        empty_model.is_scale_locked = lambda _row: False
         return empty_model
 
     data_rows = [

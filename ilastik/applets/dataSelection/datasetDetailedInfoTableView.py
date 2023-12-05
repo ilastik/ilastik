@@ -31,8 +31,8 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QItemDelegate,
     QComboBox,
-    QAbstractItemView,
     QStyledItemDelegate,
+    QMessageBox,
 )
 
 from .datasetDetailedInfoTableModel import DatasetColumn
@@ -208,14 +208,33 @@ class ScaleComboBoxDelegate(QStyledItemDelegate):
         if current_selected >= 0:
             editor.setCurrentIndex(current_selected)
 
-    def setModelData(self, editor, model, index):
+    def setModelData(self, editor, model, index, user_triggered=False):
+        if not user_triggered:
+            # De-focussing the combobox triggers setModelData.
+            # We only want to emit when the user actually selects from the combobox.
+            return
         self.parent().scaleSelected.emit(index.row(), editor.currentIndex())
 
     def on_combo_selected(self, index):
-        self.setModelData(self.sender(), None, index)
-        changed_index = index.model().index(index.row(), DatasetColumn.Shape)
+        model = index.model()
+        if model.is_scale_locked(index.row()):
+            message = (
+                "You have already continued in the project with this dataset at the selected scale. "
+                'To inspect another scale, please use "Add New" and add the same remote source as '
+                "another dataset, or create a new project."
+            )
+            QMessageBox.information(self.parent(), "Scale locked", message)
+            # Reset the combobox to the previous value
+            editor = self.sender()
+            previous_index = editor.findText(index.data(Qt.DisplayRole))
+            editor.blockSignals(True)  # To avoid re-triggering on_combo_selected
+            editor.setCurrentIndex(previous_index)
+            editor.blockSignals(False)
+            return
+        self.setModelData(self.sender(), None, index, user_triggered=True)
+        changed_cell = model.index(index.row(), DatasetColumn.Shape)
         # dataChanged(topLeft, bottomRight); since we're editing one cell, topLeft == bottomRight
-        index.model().dataChanged.emit(changed_index, changed_index)
+        model.dataChanged.emit(changed_cell, changed_cell)
 
 
 class DatasetDetailedInfoTableView(QTableView):
@@ -250,7 +269,6 @@ class DatasetDetailedInfoTableView(QTableView):
 
         self.setItemDelegateForColumn(0, InlineAddButtonDelegate(self))
         self.setItemDelegateForColumn(DatasetColumn.Scale, ScaleComboBoxDelegate(self))
-        self.setEditTriggers(QAbstractItemView.AllEditTriggers)
 
         self.setSelectionBehavior(QTableView.SelectRows)
 

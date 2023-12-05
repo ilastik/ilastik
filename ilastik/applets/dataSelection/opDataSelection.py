@@ -123,6 +123,7 @@ class DatasetInfo(ABC):
         self.normalizeDisplay = (self.drange is not None) if normalizeDisplay is None else normalizeDisplay
         self.legacy_datasetId = self.generate_id()
         self.scales = []  # list of dicts dependent on data format
+        self.scale_locked = False
 
     @property
     def shape5d(self) -> Shape5D:
@@ -996,3 +997,12 @@ class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):
 
     def get_lane(self, lane_idx: int) -> OpDataSelectionGroup:
         return self.innerOperators[lane_idx]
+
+    def lock_scale_selection(self):
+        for lane in self.innerOperators:
+            for info_slot in lane.DatasetGroup:
+                if not info_slot.ready():
+                    continue
+                info: DatasetInfo = info_slot.value
+                if info.scales:
+                    info.scale_locked = True
