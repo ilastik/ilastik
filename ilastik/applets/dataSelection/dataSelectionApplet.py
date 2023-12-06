@@ -342,6 +342,8 @@ class DataSelectionApplet(Applet):
         """
         # currentAppletChanged is emitted frequently to refresh the drawer.
         # We only care if the user is moving away from data selection.
+        if self.topLevelOperator.workflow is None:
+            return
         data_selection_applet_index = self.topLevelOperator.workflow.applets.index(self)
         if prev_applet_index == data_selection_applet_index and new_applet_index != prev_applet_index:
             self.topLevelOperator.lock_scale_selection()
