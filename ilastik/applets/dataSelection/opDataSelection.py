@@ -847,7 +847,6 @@ class OpDataSelectionGroup(Operator):
         self._opDatasets = None
         self._roles = []
         self._forceAxisOrder = forceAxisOrder
-        self._multiscale_current_scale = 0
 
         def handleNewRoles(*args):
             self.DatasetGroup.resize(len(self.DatasetRoles.value))
@@ -881,7 +880,6 @@ class OpDataSelectionGroup(Operator):
 
     def set_multiscale_index(self, scale: int):
         self._opDatasets.ActiveScale.setValue(scale)
-        self._multiscale_current_scale = scale
 
     def setupOutputs(self):
         # Create internal operators
