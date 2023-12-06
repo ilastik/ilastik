@@ -81,7 +81,8 @@ class DataSelectionApplet(Applet):
         self.busy = False
         self.show_axis_details = show_axis_details
 
-        workflow.shell.currentAppletChanged.connect(self._lock_scale_selection)
+        if hasattr(workflow.shell, "currentAppletChanged"):  # Absent in headless mode
+            workflow.shell.currentAppletChanged.connect(self._lock_scale_selection)
 
     #
     # GUI
