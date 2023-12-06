@@ -91,12 +91,12 @@ class DataSelectionSerializer(AppletSerializer):
             slot[roleIndex].notifyDisconnect(bind(handleDirty))
 
         def handleNewLane(multislot, laneIndex):
-            assert multislot == self.topLevelOperator.DatasetGroup
             multislot[laneIndex].notifyInserted(bind(handleNewDataset))
             for roleIndex in range(len(multislot[laneIndex])):
                 handleNewDataset(multislot[laneIndex], roleIndex)
 
         self.topLevelOperator.DatasetGroup.notifyInserted(bind(handleNewLane))
+        self.topLevelOperator.ActiveScaleGroup.notifyInserted(bind(handleNewLane))
 
         # If a dataset was removed, we need to be reserialized.
         self.topLevelOperator.DatasetGroup.notifyRemoved(bind(handleDirty))
@@ -215,6 +215,9 @@ class DataSelectionSerializer(AppletSerializer):
                                 missing_role_warning_issued = True
                         else:
                             self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(datasetInfo)
+                            self.topLevelOperator.ActiveScaleGroup[laneIndex][roleIndex].setValue(
+                                datasetInfo.working_scale
+                            )
 
         # Finish the 'transaction' as described above.
         self.topLevelOperator.WorkingDirectory.setValue(working_dir)

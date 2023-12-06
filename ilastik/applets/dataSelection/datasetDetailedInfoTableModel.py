@@ -207,7 +207,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             return str(datasetInfo.drange or "")
         if DatasetColumn.Scale == index.column():
             if datasetInfo.scales:
-                return _resolution_to_display_string(datasetInfo.scales[datasetInfo.active_scale]["resolution"])
+                return _resolution_to_display_string(datasetInfo.scales[datasetInfo.working_scale]["resolution"])
             return UninitializedDisplayData[index.column()]
 
         assert False, "Unknown column: row={}, column={}".format(index.row(), index.column())

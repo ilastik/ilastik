@@ -103,6 +103,8 @@ class DatasetInfo(ABC):
         project_file: h5py.File = None,
         normalizeDisplay: bool = None,
         drange: Tuple[Number, Number] = None,
+        working_scale: int = 0,
+        scale_locked: bool = False,
     ):
         if axistags and len(axistags) != len(laneShape):
             raise UnsuitedAxistagsException(axistags, laneShape)
@@ -122,8 +124,9 @@ class DatasetInfo(ABC):
         self.project_file = project_file
         self.normalizeDisplay = (self.drange is not None) if normalizeDisplay is None else normalizeDisplay
         self.legacy_datasetId = self.generate_id()
+        self.working_scale = working_scale
+        self.scale_locked = scale_locked
         self.scales = []  # list of dicts dependent on data format
-        self.scale_locked = False
 
     @property
     def shape5d(self) -> Shape5D:
@@ -169,6 +172,8 @@ class DatasetInfo(ABC):
             "nickname": self.nickname.encode("utf-8"),
             "normalizeDisplay": self.normalizeDisplay,
             "drange": self.drange,
+            "working_scale": self.working_scale,
+            "scale_locked": self.scale_locked,
             "location": self.legacy_location.encode("utf-8"),  # legacy support
             "filePath": self.effective_path.encode("utf-8"),  # legacy support
             "datasetId": self.legacy_datasetId.encode("utf-8"),  # legacy support
@@ -199,6 +204,10 @@ class DatasetInfo(ABC):
             params["drange"] = tuple(data["drange"])
         if "display_mode" in data:
             params["display_mode"] = data["display_mode"][()].decode("utf-8")
+        if "working_scale" in data:
+            params["working_scale"] = int(data["working_scale"][()])
+        if "scale_locked" in data:
+            params["scale_locked"] = bool(data["scale_locked"][()])
         return cls(**params)
 
     def is_in_filesystem(self) -> bool:
@@ -774,7 +783,7 @@ class OpDataSelection(Operator):
                 self.MaxScale.setValue(len(data_provider.meta.scales) - 1)
                 datasetInfo.laneShape = data_provider.meta.shape
                 datasetInfo.scales = data_provider.meta.scales
-                datasetInfo.active_scale = self.ActiveScale.value
+                datasetInfo.working_scale = self.ActiveScale.value
 
             output_order = self._get_output_axis_order(data_provider)
             # Export applet assumes this OpReorderAxes exists.
