@@ -31,8 +31,8 @@ class DatasetColumn:
     InternalID = 2
     AxisOrder = 3
     Shape = 4
-    Range = 5
-    Scale = 6
+    Scale = 5
+    Range = 6
     NumColumns = 7
 
 

@@ -33,8 +33,8 @@ def dataset_table(qtbot) -> DatasetDetailedInfoTableView:
         m.is_scale_locked = lambda _row: _row == 2
         data_rows = [
             ["image", "/usr/root/image.png", "", "zyx", "(1,10,10)", "", ""],
-            ["image", "precomputed://http://localhost:8000", "", "zyx", "(1,10,10)", "", "100, 100, 10"],
-            ["image", "precomputed://http://localhost:8000", "", "zyx", "(1,10,10)", "", "50, 50, 10"],
+            ["image", "precomputed://http://localhost:8000", "", "zyx", "(1,10,10)", "100, 100, 10", ""],
+            ["image", "precomputed://http://localhost:8000", "", "zyx", "(1,10,10)", "50, 50, 10", ""],
             [],  # Empty row because the custom setModel replaces the model's last row with an AddFileButton
         ]
         for i, row in enumerate(data_rows):
