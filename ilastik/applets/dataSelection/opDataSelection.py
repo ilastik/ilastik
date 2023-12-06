@@ -830,6 +830,7 @@ class OpDataSelectionGroup(Operator):
 
     # Must mark as optional because not all subslots are required.
     DatasetGroup = InputSlot(stype="object", level=1, optional=True)  # "Group" as in group of slots
+    ActiveScaleGroup = InputSlot(stype="int", level=1, optional=True, value=0)
 
     # Outputs
     ImageGroup = OutputSlot(level=1)  # "Group" as in group of slots
@@ -850,6 +851,7 @@ class OpDataSelectionGroup(Operator):
 
         def handleNewRoles(*args):
             self.DatasetGroup.resize(len(self.DatasetRoles.value))
+            self.ActiveScaleGroup.resize(len(self.DatasetRoles.value))
 
         self.DatasetRoles.notifyReady(handleNewRoles)
 
@@ -878,9 +880,6 @@ class OpDataSelectionGroup(Operator):
             if role_name in infos:
                 self.DatasetGroup[role_index].setValue(infos[role_name])
 
-    def set_multiscale_index(self, scale: int):
-        self._opDatasets.ActiveScale.setValue(scale)
-
     def setupOutputs(self):
         # Create internal operators
         if self.DatasetRoles.value != self._roles:
@@ -895,14 +894,14 @@ class OpDataSelectionGroup(Operator):
                 OpDataSelection,
                 parent=self,
                 operator_kwargs={"forceAxisOrder": self._forceAxisOrder},
-                broadcastingSlotNames=["ProjectFile", "ProjectDataGroup", "WorkingDirectory", "ActiveScale"],
+                broadcastingSlotNames=["ProjectFile", "ProjectDataGroup", "WorkingDirectory"],
             )
             self.ImageGroup.connect(self._opDatasets.Image)
             self._opDatasets.Dataset.connect(self.DatasetGroup)
             self._opDatasets.ProjectFile.connect(self.ProjectFile)
             self._opDatasets.ProjectDataGroup.connect(self.ProjectDataGroup)
             self._opDatasets.WorkingDirectory.connect(self.WorkingDirectory)
-            self._opDatasets.ActiveScale.setValue(0)
+            self._opDatasets.ActiveScale.connect(self.ActiveScaleGroup)
 
         for role_index, opDataSelection in enumerate(self._opDatasets):
             opDataSelection.RoleName.setValue(self._roles[role_index])
