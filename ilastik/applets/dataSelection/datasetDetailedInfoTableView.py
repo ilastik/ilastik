@@ -206,7 +206,9 @@ class ScaleComboBoxDelegate(QStyledItemDelegate):
         value = index.data(Qt.DisplayRole)
         current_selected = editor.findText(value)
         if current_selected >= 0:
+            editor.blockSignals(True)  # To avoid triggering on_combo_selected
             editor.setCurrentIndex(current_selected)
+            editor.blockSignals(False)
 
     def setModelData(self, editor, model, index, user_triggered=False):
         if not user_triggered:
