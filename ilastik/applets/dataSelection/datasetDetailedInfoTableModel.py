@@ -152,7 +152,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
                 DatasetColumn.AxisOrder: "Axes",
                 DatasetColumn.Shape: "Shape",
                 DatasetColumn.Range: "Data Range",
-                DatasetColumn.Scale: "Resolution",
+                DatasetColumn.Scale: "Resolution Level",
             }
             return InfoColumnNames[section]
         elif orientation == Qt.Vertical:
