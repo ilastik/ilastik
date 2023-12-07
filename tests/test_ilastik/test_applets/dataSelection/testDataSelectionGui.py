@@ -1,5 +1,6 @@
 # Data selection is already covered in workflow tests (e.g. testPixelClassificationGui.py)
 # Additional tests here should be workflow-agnostic.
+import os
 from unittest import mock
 
 import pytest
@@ -8,6 +9,8 @@ from PyQt5.QtWidgets import QComboBox, QMessageBox
 
 from ilastik.applets.dataSelection.datasetDetailedInfoTableModel import DatasetColumn
 from ilastik.applets.dataSelection.datasetDetailedInfoTableView import DatasetDetailedInfoTableView
+
+CI = os.environ.get("GITHUB_ACTIONS", "false") == "true" or os.environ.get("APPVEYOR")
 
 
 def prepare_widget(qtbot, widget):
@@ -78,5 +81,6 @@ def test_locked_scale_select_does_not_trigger_gui_and_informs_user(dataset_table
     editor_locked = dataset_table.indexWidget(scale_cell_multiscale_locked)
 
     editor_locked.setCurrentIndex(0)
-    intercept_info_popup.assert_called_once()
+    if not CI:  # Popups are off in CI
+        intercept_info_popup.assert_called_once()
     assert 0 == mock_gui.handleScaleSelected.call_count
