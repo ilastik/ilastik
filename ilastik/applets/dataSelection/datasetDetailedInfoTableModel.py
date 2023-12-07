@@ -213,7 +213,10 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         assert False, "Unknown column: row={}, column={}".format(index.row(), index.column())
 
     def get_scale_options(self, laneIndex) -> list[str]:
-        datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
+        try:
+            datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
+        except IndexError:  # This can happen during "Save Project As"
+            return []
         if not datasetSlot.ready():
             return []
         datasetInfo = datasetSlot.value
