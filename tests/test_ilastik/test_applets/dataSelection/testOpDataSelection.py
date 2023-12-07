@@ -37,7 +37,7 @@ from lazyflow.graph import OperatorWrapper
 from ilastik.applets.dataSelection.opDataSelection import (
     OpMultiLaneDataSelectionGroup,
     OpDataSelection,
-    UrlDatasetInfo,
+    MultiscaleUrlDatasetInfo,
     RelativeFilesystemDatasetInfo,
     FilesystemDatasetInfo,
     ProjectInternalDatasetInfo,
@@ -867,7 +867,7 @@ class TestOpDataSelection_PrecomputedChunks:
         op = OpDataSelection(graph=graph)
         op.WorkingDirectory.setValue(os.getcwd())
         op.ActiveScale.setValue(0)
-        op.Dataset.setValue(UrlDatasetInfo(url=self.MOCK_DATASET_URL))
+        op.Dataset.setValue(MultiscaleUrlDatasetInfo(url=self.MOCK_DATASET_URL))
         loaded_scale0 = op.Image[:].wait()
         assert numpy.allclose(loaded_scale0, self.IMAGE_SCALED)
 
@@ -901,7 +901,7 @@ class TestOpDataSelection_DatasetInfo:
             (ProjectInternalDatasetInfo, ""),
             (FilesystemDatasetInfo, "inputdata"),
             (RelativeFilesystemDatasetInfo, "inputdata"),
-            (UrlDatasetInfo, ""),
+            (MultiscaleUrlDatasetInfo, ""),
         ],
     )
     def test_default_export_paths(self, data_path, mock_project, monkeypatch, info_class, expected_sub_path):
@@ -910,7 +910,7 @@ class TestOpDataSelection_DatasetInfo:
             "ProjectInternalDatasetInfo": {"inner_path": "foo", "project_file": mock_project},
             "FilesystemDatasetInfo": {"filePath": str(data_path / "inputdata" / "3d1c-synthetic.h5")},
             "RelativeFilesystemDatasetInfo": {"filePath": str(data_path / "inputdata" / "3d1c-synthetic.h5")},
-            "UrlDatasetInfo": {"url": self.MOCK_PRECOMPUTED_URL, "project_file": mock_project},
+            "MultiscaleUrlDatasetInfo": {"url": self.MOCK_PRECOMPUTED_URL, "project_file": mock_project},
         }
         dataset_info = info_class(**info_args[info_class.__name__])
         assert dataset_info.default_output_dir == data_path / expected_sub_path

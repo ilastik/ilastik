@@ -47,7 +47,7 @@ from .datasetInfoEditorWidget import DatasetInfoEditorWidget
 from .opDataSelection import (
     DatasetInfo,
     ProjectInternalDatasetInfo,
-    UrlDatasetInfo,
+    MultiscaleUrlDatasetInfo,
 )
 from .precomputedVolumeBrowser import PrecomputedVolumeBrowser
 
@@ -702,7 +702,7 @@ class DataSelectionGui(QWidget):
         recent_nodes[hostname] = node_uuid
         preferences.set(group, recent_nodes_key, recent_nodes)
 
-        self.addLanes([UrlDatasetInfo(url=dvid_url, subvolume_roi=subvolume_roi)], roleIndex)
+        self.addLanes([MultiscaleUrlDatasetInfo(url=dvid_url, subvolume_roi=subvolume_roi)], roleIndex)
 
     def handleScaleSelected(self, laneIndex, scale_index):
         self.topLevelOperator.get_lane(laneIndex).ActiveScaleGroup.setValue(scale_index)

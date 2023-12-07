@@ -25,7 +25,7 @@ from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
 from lazyflow.utility import PathComponents
 from ilastik.utility import bind
 from .opDataSelection import RelativeFilesystemDatasetInfo, FilesystemDatasetInfo
-from .opDataSelection import PreloadedArrayDatasetInfo, ProjectInternalDatasetInfo, UrlDatasetInfo
+from .opDataSelection import PreloadedArrayDatasetInfo, ProjectInternalDatasetInfo, MultiscaleUrlDatasetInfo
 
 
 class LaneColumn(object):
@@ -183,7 +183,7 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
             LocationNames = {
                 RelativeFilesystemDatasetInfo: "External File",
                 FilesystemDatasetInfo: "External File",
-                UrlDatasetInfo: "Remote Data",
+                MultiscaleUrlDatasetInfo: "Remote Data",
                 PreloadedArrayDatasetInfo: "Preloaded Array",
                 ProjectInternalDatasetInfo: "Project File",
             }

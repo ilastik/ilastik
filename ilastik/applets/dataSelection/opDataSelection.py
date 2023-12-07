@@ -509,7 +509,15 @@ class DummyDatasetInfo(DatasetInfo):
         return super().from_h5_group(data, params)
 
 
-class UrlDatasetInfo(DatasetInfo):
+class MultiscaleUrlDatasetInfo(DatasetInfo):
+    """
+    This used to be named UrlDatasetInfo, and it should not be renamed back to this old name.
+    To avoid deceptive project file compatibility: We want old project files with
+    UrlDatasetInfos (of which we think none exist) to fail to load, and we want old ilastik
+    versions to fail loading project files with MultiscaleUrlDatasetInfos.
+    Renaming may be fine from ilastik 1.5 onwards.
+    """
+
     def __init__(self, *, url: str, nickname: str = "", **info_kwargs):
         self.url = url
         op_reader = OpInputDataReader(graph=Graph(), FilePath=self.url)

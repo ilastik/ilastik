@@ -30,7 +30,7 @@ from .opDataSelection import (
     FilesystemDatasetInfo,
     RelativeFilesystemDatasetInfo,
     DummyDatasetInfo,
-    UrlDatasetInfo,
+    MultiscaleUrlDatasetInfo,
 )
 from .opDataSelection import PreloadedArrayDatasetInfo, ProjectInternalDatasetInfo
 from lazyflow.operators.ioOperators import OpInputDataReader, OpStackLoader, OpH5N5WriterBigDataset
@@ -66,7 +66,12 @@ class DataSelectionSerializer(AppletSerializer):
     # Constants
     InfoClassNames = {
         klass.__name__: klass
-        for klass in [ProjectInternalDatasetInfo, FilesystemDatasetInfo, RelativeFilesystemDatasetInfo, UrlDatasetInfo]
+        for klass in [
+            ProjectInternalDatasetInfo,
+            FilesystemDatasetInfo,
+            RelativeFilesystemDatasetInfo,
+            MultiscaleUrlDatasetInfo,
+        ]
     }
 
     def __init__(self, topLevelOperator, projectFileGroupName):
@@ -236,7 +241,7 @@ class DataSelectionSerializer(AppletSerializer):
             if location == "FileSystem":  # legacy support: a lot of DatasetInfo types are saved as "FileSystem"
                 filePath = infoGroup["filePath"][()].decode("utf-8")
                 if isUrl(filePath):
-                    info_class = UrlDatasetInfo
+                    info_class = MultiscaleUrlDatasetInfo
                 elif isRelative(filePath):
                     info_class = RelativeFilesystemDatasetInfo
                 else:
