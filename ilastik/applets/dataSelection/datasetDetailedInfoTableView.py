@@ -189,7 +189,11 @@ class InlineAddButtonDelegate(QItemDelegate):
 
 class ScaleComboBoxDelegate(QStyledItemDelegate):
     def paint(self, painter, option, index):
-        self.parent().openPersistentEditor(index)
+        scales = index.model().get_scale_options(index.row())
+        if scales:
+            self.parent().openPersistentEditor(index)
+        else:
+            super().paint(painter, option, index)
 
     def createEditor(self, parent: "DatasetDetailedInfoTableView", option, index):
         model: "DatasetDetailedInfoTableModel" = index.model()
