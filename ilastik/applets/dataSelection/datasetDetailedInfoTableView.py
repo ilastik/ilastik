@@ -193,6 +193,7 @@ class ScaleComboBoxDelegate(QStyledItemDelegate):
         if scales:
             self.parent().openPersistentEditor(index)
         else:
+            self.parent().closePersistentEditor(index)
             super().paint(painter, option, index)
 
     def createEditor(self, parent: "DatasetDetailedInfoTableView", option, index):
