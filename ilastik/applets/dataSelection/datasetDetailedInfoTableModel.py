@@ -36,8 +36,19 @@ class DatasetColumn:
     NumColumns = 7
 
 
-def _resolution_to_display_string(resolution: list[int]):
-    return ", ".join(map(str, resolution))
+def _resolution_to_display_string(resolution: list[int], axiskeys: str) -> str:
+    """
+    We assume that resolution is in xyz order, but axistags may be in any order.
+    Determine the order of the resolution values by looking at the axistags.
+    To support formats other than Precomputed, the tableModel would need to be able to obtain
+    the order of the resolution axes (or generally, how to transform resolution to a display string)
+    from the datasetSlot.
+    """
+    assert len(resolution) == 3, "Expected resolution to be in xyz order, please report this on http://image.sc"
+    input_axes = dict(zip("xyz", resolution))
+    reordered_resolution = [input_axes.get(axis, None) for axis in axiskeys]
+    display_string_parts = map(str, filter(None, reordered_resolution))
+    return ", ".join(display_string_parts)
 
 
 @rowOfButtonsProxy
@@ -207,7 +218,9 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             return str(datasetInfo.drange or "")
         if DatasetColumn.Scale == index.column():
             if datasetInfo.scales:
-                return _resolution_to_display_string(datasetInfo.scales[datasetInfo.working_scale]["resolution"])
+                return _resolution_to_display_string(
+                    datasetInfo.scales[datasetInfo.working_scale]["resolution"], datasetInfo.axiskeys
+                )
             return UninitializedDisplayData[index.column()]
 
         assert False, "Unknown column: row={}, column={}".format(index.row(), index.column())
@@ -222,7 +235,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         datasetInfo = datasetSlot.value
         if not datasetInfo.scales:
             return []
-        return [_resolution_to_display_string(s["resolution"]) for s in datasetInfo.scales]
+        return [_resolution_to_display_string(s["resolution"], datasetInfo.axiskeys) for s in datasetInfo.scales]
 
     def is_scale_locked(self, laneIndex) -> bool:
         datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
