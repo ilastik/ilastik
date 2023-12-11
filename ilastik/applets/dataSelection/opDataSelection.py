@@ -727,8 +727,6 @@ class OpDataSelection(Operator):
 
     ImageName = OutputSlot(stype="string")  # : The name of the output image
 
-    MaxScale = OutputSlot(stype="int")  # : The maximum scale of the dataset (for multiscale data)
-
     def __init__(
         self,
         forceAxisOrder: List[str] = ["tczyx"],
@@ -788,7 +786,6 @@ class OpDataSelection(Operator):
                 meta = {"channel_names": [role_name]}
             data_provider.meta.update(meta)
             if data_provider.meta.scales:
-                self.MaxScale.setValue(len(data_provider.meta.scales) - 1)
                 datasetInfo.laneShape = data_provider.meta.shape
                 datasetInfo.scales = data_provider.meta.scales
                 datasetInfo.working_scale = self.ActiveScale.value
