@@ -71,7 +71,7 @@ import vigra
 import os
 import re
 import logging
-from typing import List, Tuple
+from typing import Tuple, Optional
 
 from lazyflow.utility.io_util.multiprocessHdf5File import MultiProcessHdf5File
 
@@ -132,11 +132,11 @@ class OpInputDataReader(Operator):
 
     def __init__(
         self,
-        WorkingDirectory: str = None,
-        FilePath: str = None,
-        SequenceAxis: str = None,
-        SubVolumeRoi: Tuple[int, int] = None,
-        ActiveScale: InputSlot = None,
+        WorkingDirectory: Optional[str] = None,
+        FilePath: Optional[str] = None,
+        SequenceAxis: Optional[str] = None,
+        SubVolumeRoi: Optional[Tuple[int, int]] = None,
+        ActiveScale: Optional[InputSlot] = None,
         *args,
         **kwargs,
     ):

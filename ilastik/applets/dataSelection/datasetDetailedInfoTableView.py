@@ -399,7 +399,6 @@ class DatasetDetailedInfoTableView(QTableView):
         self.dataLaneSelected.emit(self.selectedLanes)
 
     def handleCustomContextMenuRequested(self, pos):
-
         col = self.columnAt(pos.x())
         row = self.rowAt(pos.y())
 
