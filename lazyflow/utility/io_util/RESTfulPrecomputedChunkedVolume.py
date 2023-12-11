@@ -154,6 +154,7 @@ class RESTfulPrecomputedChunkedVolume(object):
         try:
             content = self.downloading(url)
         except requests.exceptions.ConnectionError:
+            logger.warning(f"Could not download block from {url}. Returning empty image instead.")
             return numpy.zeros(shape=block_shape, dtype=self.dtype)
         return self.decode_content(content, encoding=self.get_encoding(scale), shape=block_shape, dtype=self.dtype)
 
