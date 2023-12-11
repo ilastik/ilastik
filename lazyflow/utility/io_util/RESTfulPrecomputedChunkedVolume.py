@@ -104,10 +104,9 @@ class RESTfulPrecomputedChunkedVolume(object):
 
         jsonschema.validate(self._json_info, self.info_schema)
 
-        self.scales = self._json_info["scales"]
-        # Sort from lowest to highest resolution along x
-        # scales["resolution"] is in nanometers-per-pixel. So bigger = lower resolution, hence reverse sort.
-        self.scales.sort(key=lambda s: s["resolution"][0], reverse=True)
+        # Precomputed spec requires scales to be ordered from highest resolution (original) to lowest (most downscaled).
+        # We want the opposite: to load the lowest resolution, i.e. smallest file size, first.
+        self.scales = list(reversed(self._json_info["scales"]))
         self.dtype = self._json_info["data_type"]
         self.n_channels = self._json_info["num_channels"]
 
