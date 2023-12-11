@@ -18,6 +18,8 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+from typing import List
+
 from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
@@ -36,7 +38,7 @@ class DatasetColumn:
     NumColumns = 7
 
 
-def _resolution_to_display_string(resolution: list[int], axiskeys: str) -> str:
+def _resolution_to_display_string(resolution: List[int], axiskeys: str) -> str:
     """
     In Precomputed format, resolution is in xyz order, which we want to display in the same order as axiskeys.
     To support formats other than Precomputed, the tableModel would need to be able to obtain
@@ -223,7 +225,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
         assert False, "Unknown column: row={}, column={}".format(index.row(), index.column())
 
-    def get_scale_options(self, laneIndex) -> list[str]:
+    def get_scale_options(self, laneIndex) -> List[str]:
         try:
             datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
         except IndexError:  # This can happen during "Save Project As"
