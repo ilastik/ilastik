@@ -161,7 +161,7 @@ class OpInputDataReader(Operator):
         if self._file is not None:
             self._file.close()
             self._file = None
-        for op in self.internalOperators[::-1]:
+        for op in reversed(self.internalOperators):
             op.cleanUp()
         self.internalOperators = []
         self.internalOutput = None

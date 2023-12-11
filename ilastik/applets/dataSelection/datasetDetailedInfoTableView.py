@@ -399,17 +399,12 @@ class DatasetDetailedInfoTableView(QTableView):
         self.dataLaneSelected.emit(self.selectedLanes)
 
     def handleCustomContextMenuRequested(self, pos):
-        def _is_position_within_table():
-            # last row is a button
-            return 0 <= col < self.model().columnCount() and 0 <= row < self.model().rowCount() - 1
-
-        def _is_multilane_selection():
-            return row in self.selectedLanes and len(self.selectedLanes) > 1
 
         col = self.columnAt(pos.x())
         row = self.rowAt(pos.y())
 
-        if not _is_position_within_table():
+        is_position_within_table = not 0 <= col < self.model().columnCount() and 0 <= row < self.model().rowCount() - 1
+        if is_position_within_table:
             return
 
         menu = QMenu(parent=self)
@@ -419,7 +414,8 @@ class DatasetDetailedInfoTableView(QTableView):
         replaceWithStackAction = QAction("Replace with stack...", menu)
         removeAction = QAction("Remove", menu)
 
-        if _is_multilane_selection():
+        is_multiple_lanes_selected = row in self.selectedLanes and len(self.selectedLanes) > 1
+        if is_multiple_lanes_selected:
             editable = all(self.model().isEditable(lane) for lane in self.selectedLanes)
             menu.addAction(editSharedPropertiesAction)
             editSharedPropertiesAction.setEnabled(editable)
@@ -435,15 +431,15 @@ class DatasetDetailedInfoTableView(QTableView):
         selection = menu.exec_(globalPos)
         if selection is None:
             return
-        if selection is editSharedPropertiesAction:
+        elif selection is editSharedPropertiesAction:
             self.editRequested.emit(self.selectedLanes)
-        if selection is editPropertiesAction:
+        elif selection is editPropertiesAction:
             self.editRequested.emit([row])
-        if selection is replaceWithFileAction:
+        elif selection is replaceWithFileAction:
             self.replaceWithFileRequested.emit(row)
-        if selection is replaceWithStackAction:
+        elif selection is replaceWithStackAction:
             self.replaceWithStackRequested.emit(row)
-        if selection is removeAction:
+        elif selection is removeAction:
             self.resetRequested.emit(self.selectedLanes)
 
     def mouseDoubleClickEvent(self, event):

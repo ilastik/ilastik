@@ -539,7 +539,7 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         return self.url
 
     def create_data_reader(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
-        scale_input_slot = parent.ActiveScale if hasattr(parent, "ActiveScale") else None
+        scale_input_slot = getattr(parent, "ActiveScale", None)
         op_reader = OpInputDataReader(parent=parent, graph=graph, FilePath=self.url, ActiveScale=scale_input_slot)
         return op_reader.Output
 
@@ -558,7 +558,7 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
 
     @staticmethod
     def _nickname_from_url(url: str) -> str:
-        last_url_component = url.rstrip("/").split("/")[-1]
+        last_url_component = url.rstrip("/").rpartition("/")[2]
         filename_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", last_url_component)
         return filename_safe
 

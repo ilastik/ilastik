@@ -905,6 +905,8 @@ class TestOpDataSelection_DatasetInfo:
         ],
     )
     def test_default_export_paths(self, data_path, mock_project, monkeypatch, info_class, expected_sub_path):
+        # During instantiation, file-based datasetInfos read their file for metadata,
+        # web-based datasetInfos request their url. Hence, provide actually existing files, and mock the web server.
         _ = MockRemoteDataset(monkeypatch, self.MOCK_PRECOMPUTED_URL, self.MOCK_PRECOMPUTED_INFO, {})
         info_args = {
             "ProjectInternalDatasetInfo": {"inner_path": "foo", "project_file": mock_project},

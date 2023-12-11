@@ -38,17 +38,15 @@ class DatasetColumn:
 
 def _resolution_to_display_string(resolution: list[int], axiskeys: str) -> str:
     """
-    We assume that resolution is in xyz order, but axistags may be in any order.
-    Determine the order of the resolution values by looking at the axistags.
+    In Precomputed format, resolution is in xyz order, which we want to display in the same order as axiskeys.
     To support formats other than Precomputed, the tableModel would need to be able to obtain
     the order of the resolution axes (or generally, how to transform resolution to a display string)
     from the datasetSlot.
     """
     assert len(resolution) == 3, "Expected resolution to be in xyz order, please report this on http://image.sc"
     input_axes = dict(zip("xyz", resolution))
-    reordered_resolution = [input_axes.get(axis, None) for axis in axiskeys]
-    display_string_parts = map(str, filter(None, reordered_resolution))
-    return ", ".join(display_string_parts)
+    reordered_resolution = [input_axes[axis] for axis in axiskeys if axis in input_axes]
+    return ", ".join(str(size) for size in reordered_resolution)
 
 
 @rowOfButtonsProxy
@@ -197,11 +195,11 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         datasetInfo: DatasetInfo = datasetSlot.value
 
         ## Input meta-data fields
-        if DatasetColumn.Nickname == index.column():
+        if index.column() == DatasetColumn.Nickname:
             return datasetInfo.nickname
-        if DatasetColumn.Location == index.column():
+        if index.column() == DatasetColumn.Location:
             return datasetInfo.display_string
-        if DatasetColumn.InternalID == index.column():
+        if index.column() == DatasetColumn.InternalID:
             return str(getattr(datasetInfo, "internal_paths", ""))
 
         ## Output meta-data fields
@@ -210,13 +208,13 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         if not imageSlot.ready():
             return UninitializedDisplayData[index.column()]
 
-        if DatasetColumn.AxisOrder == index.column():
+        if index.column() == DatasetColumn.AxisOrder:
             return datasetInfo.axiskeys
-        if DatasetColumn.Shape == index.column():
+        if index.column() == DatasetColumn.Shape:
             return str(datasetInfo.laneShape)
-        if DatasetColumn.Range == index.column():
+        if index.column() == DatasetColumn.Range:
             return str(datasetInfo.drange or "")
-        if DatasetColumn.Scale == index.column():
+        if index.column() == DatasetColumn.Scale:
             if datasetInfo.scales:
                 return _resolution_to_display_string(
                     datasetInfo.scales[datasetInfo.working_scale]["resolution"], datasetInfo.axiskeys

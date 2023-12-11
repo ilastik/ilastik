@@ -574,7 +574,7 @@ class DataSelectionGui(QWidget):
 
     def instantiate_dataset_info(self, url: str, role: Union[str, int], *info_args, **info_kwargs) -> DatasetInfo:
         info = self.parentApplet.create_dataset_info(url=url, *info_args, **info_kwargs)
-        if info_kwargs.get("axistags") is not None:
+        if "axistags" in info_kwargs:
             return info  # This lane has custom axistags already
         custom_axistags = self._get_custom_axistags_from_previous_lane(role=role, info=info)
         if custom_axistags:

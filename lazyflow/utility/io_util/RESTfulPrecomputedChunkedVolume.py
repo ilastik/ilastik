@@ -208,9 +208,8 @@ class RESTfulPrecomputedChunkedVolume(object):
         max_values = min_values + chunk_size
         max_values = numpy.min([shape, max_values], axis=0)
         downloaded_block_shape = max_values - min_values
-        # ignore c -> [1::]
-        min_z, min_y, min_x = min_values[1::]
-        max_z, max_y, max_x = max_values[1::]
+        min_z, min_y, min_x = min_values[1:]  # ignore c
+        max_z, max_y, max_x = max_values[1:]
 
         url = f"{base_url}/{scale_key}/{min_x}-{max_x}_{min_y}-{max_y}_{min_z}-{max_z}"
         return url, downloaded_block_shape
