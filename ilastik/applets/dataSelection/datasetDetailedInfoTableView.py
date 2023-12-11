@@ -41,6 +41,8 @@ from .addFileButton import AddFileButton, FILEPATH
 from pathlib import Path
 from functools import partial
 
+from ilastik.utility.gui import silent_qobject
+
 
 class RemoveButtonOverlay(QPushButton):
     """
@@ -211,9 +213,8 @@ class ScaleComboBoxDelegate(QStyledItemDelegate):
         value = index.data(Qt.DisplayRole)
         current_selected = editor.findText(value)
         if current_selected >= 0:
-            editor.blockSignals(True)  # To avoid triggering on_combo_selected
-            editor.setCurrentIndex(current_selected)
-            editor.blockSignals(False)
+            with silent_qobject(editor):  # To avoid triggering on_combo_selected
+                editor.setCurrentIndex(current_selected)
 
     def setModelData(self, editor, model, index, user_triggered=False):
         if not user_triggered:
@@ -234,9 +235,8 @@ class ScaleComboBoxDelegate(QStyledItemDelegate):
             # Reset the combobox to the previous value
             editor = self.sender()
             previous_index = editor.findText(index.data(Qt.DisplayRole))
-            editor.blockSignals(True)  # To avoid re-triggering on_combo_selected
-            editor.setCurrentIndex(previous_index)
-            editor.blockSignals(False)
+            with silent_qobject(editor):  # To avoid re-triggering on_combo_selected
+                editor.setCurrentIndex(previous_index)
             return
         self.setModelData(self.sender(), None, index, user_triggered=True)
         changed_cell = model.index(index.row(), DatasetColumn.Shape)
