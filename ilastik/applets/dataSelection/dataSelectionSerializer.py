@@ -23,7 +23,6 @@ from __future__ import absolute_import
 from typing import List, Tuple, Callable
 from pathlib import Path
 
-
 from .opDataSelection import (
     OpDataSelection,
     DatasetInfo,
@@ -234,14 +233,23 @@ class DataSelectionSerializer(AppletSerializer):
         if len(infoGroup) == 0:
             return None, False
 
+        old_UrlDatasetInfo_msg = (
+            "This project requires HBP-style access to a remote dataset, which is no longer supported. "
+            "We would appreciate if you let us know you still need this feature. "
+            "In the meantime, please use ilastik version 1.4.0 or earlier for this project."
+        )
+
         if "__class__" in infoGroup:
-            info_class = self.InfoClassNames[infoGroup["__class__"][()].decode("utf-8")]
+            loaded_class_name = infoGroup["__class__"][()].decode("utf-8")
+            if loaded_class_name == "UrlDatasetInfo":
+                raise RuntimeError(old_UrlDatasetInfo_msg)
+            info_class = self.InfoClassNames[loaded_class_name]
         else:  # legacy support
             location = infoGroup["location"][()].decode("utf-8")
             if location == "FileSystem":  # legacy support: a lot of DatasetInfo types are saved as "FileSystem"
                 filePath = infoGroup["filePath"][()].decode("utf-8")
                 if isUrl(filePath):
-                    info_class = MultiscaleUrlDatasetInfo
+                    raise RuntimeError(old_UrlDatasetInfo_msg)
                 elif isRelative(filePath):
                     info_class = RelativeFilesystemDatasetInfo
                 else:
