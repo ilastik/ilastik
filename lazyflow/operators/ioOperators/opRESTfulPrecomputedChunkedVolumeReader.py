@@ -19,19 +19,16 @@
 # This information is also available on the ilastik web site at:
 #          http://ilastik.org/license/
 ###############################################################################
-import os
-import copy
-import tempfile
-import h5py
-import vigra
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
-from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
-import lazyflow.roi
-from lazyflow.utility.helpers import bigintprod
 import logging
 
 import numpy
+import vigra
+
+import lazyflow.roi
+from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
+from lazyflow.utility.helpers import bigintprod
+from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
 
 logger = logging.getLogger(__name__)
 
@@ -42,46 +39,31 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
     These types of volumes are e.g. used in neuroglancer.
     """
 
-    name = "OpRESTfulPrecomputedChunkedVolumeReader"
+    name = "OpRESTfulPrecomputedChunkedVolumeReaderNoCache"
 
-    # Base url of the chunked volume
     BaseUrl = InputSlot()
-
-    # There is also the scale to configure
     Scale = InputSlot(optional=True)
 
-    # Available scales of the data
-    AvailableScales = OutputSlot()
-    # The data itself
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._axes = None
         self._volume_object = None
+        self.chunk_size = ()
 
     def setupOutputs(self):
+        if self._volume_object is not None and self._volume_object.volume_url == self.BaseUrl.value:
+            # Called multiple times during setup - skip
+            return
         # Create a RESTfulPrecomputedChunkedVolume object to handle
-        if self._volume_object is not None:
-            # check if the volume url has changed, to avoid downloading
-            # info twice (i.e. setting up the volume twice)
-            if self._volume_object.volume_url == self.BaseUrl.value:
-                return
-
         self._volume_object = RESTfulPrecomputedChunkedVolume(self.BaseUrl.value)
 
-        self._axes = self._volume_object.axes
-
-        self.AvailableScales.setValue(self._volume_object.available_scales)
-        output_shape = tuple(self._volume_object.get_shape(scale=self._volume_object._use_scale))
-        self.Output.meta.shape = output_shape
+        current_scale = self.Scale.value if self.Scale.ready() else 0
+        self.chunk_size = self._volume_object.get_chunk_size(current_scale)
+        self.Output.meta.shape = tuple(self._volume_object.get_shape(current_scale))
         self.Output.meta.dtype = numpy.dtype(self._volume_object.dtype).type
-        self.Output.meta.axistags = vigra.defaultAxistags(self._axes)
-
-        # scale needs to be defined for the following, so:
-        # override whatever was set before to the lowest available scale:
-        # is this a good idea? Triggers setupOutputs again
-        self.Scale.setValue(self._volume_object._use_scale)
+        self.Output.meta.axistags = vigra.defaultAxistags(self._volume_object.axes)
+        self.Output.meta.scales = self._volume_object.scales
 
     @staticmethod
     def get_intersecting_blocks(blockshape, roi, shape):
@@ -141,7 +123,7 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
         scale = self.Scale.value
         assert len(roi) == 2
         assert all(len(x) == len(self._volume_object.get_shape(scale)) for x in roi)
-        block_shape = self._volume_object.get_block_shape(scale)
+        block_shape = self._volume_object.get_chunk_size(scale)
         image_shape = self._volume_object.get_shape(scale)
         array_of_blocks, block_offsets, subimage_roi, subimage_shape = self.get_intersecting_blocks(
             blockshape=block_shape, roi=roi, shape=image_shape
@@ -164,21 +146,14 @@ class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
     fixAtCurrent = InputSlot(value=False, stype="bool")
 
     BaseUrl = InputSlot()
-
-    # There is also the scale to configure
     Scale = InputSlot(optional=True)
 
-    # Available scales of the data
-    AvailableScales = OutputSlot()
-    # The data itself
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.RESTfulReader = OpRESTfulPrecomputedChunkedVolumeReaderNoCache(parent=self)
         self.RESTfulReader.BaseUrl.connect(self.BaseUrl)
-        self.AvailableScales.connect(self.RESTfulReader.AvailableScales)
-        self.RESTfulReader.Scale.backpropagate_values = True
         self.RESTfulReader.Scale.connect(self.Scale)
 
         self.cache = OpBlockedArrayCache(parent=self)
@@ -188,13 +163,12 @@ class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
         self.Output.connect(self.cache.Output)
 
     def setupOutputs(self):
-        # TODO: make this generic, for all dimensionalities
-        self.cache.BlockShape.setValue((1, 64, 64, 64))
+        self.cache.BlockShape.setValue(tuple(self.RESTfulReader.chunk_size))
 
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty(slice(None))
 
-    def cleanup(self):
+    def cleanUp(self):
         self.cache.Input.disconnect()
 
 
@@ -208,8 +182,7 @@ if __name__ == "__main__":
     g = graph.Graph()
     op = OpRESTfulPrecomputedChunkedVolumeReader(graph=g)
     op.BaseUrl.setValue(volume_url)
-    print(f"available scales: {op.AvailableScales.value}")
-    print(f"Selected scale: {op.Scale.value}")
+    print(f"Number of scales: {len(op.Output.meta.scales)}")
 
     # get some data
     roi = ((0, 0, 0, 0), (1, 10, 100, 100))

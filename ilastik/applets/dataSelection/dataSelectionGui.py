@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,49 +19,39 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Python
-import os
-from pathlib import Path
-from typing import Dict, List, Set, Union, Optional
-from vigra import AxisTags
-import threading
-import h5py
-from functools import partial
 import itertools
 import logging
+import os
+import threading
+from functools import partial
+from pathlib import Path
+from typing import Dict, List, Set, Union, Optional
 
-logger = logging.getLogger(__name__)
-
-# PyQt
+import h5py
 from PyQt5 import uic
 from PyQt5.QtWidgets import QDialog, QMessageBox, QStackedWidget, QWidget
+from vigra import AxisTags
+from volumina.utility import preferences, ShortcutManager
 
-# lazyflow
-from lazyflow.request import Request
-
-# volumina
-from volumina.utility import preferences
-
-# ilastik
+from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-from ilastik.applets.base.applet import DatasetConstraintError
-
-from .opDataSelection import (
-    DatasetInfo,
-    RelativeFilesystemDatasetInfo,
-    FilesystemDatasetInfo,
-    ProjectInternalDatasetInfo,
-    UrlDatasetInfo,
-)
-from .dataLaneSummaryTableModel import DataLaneSummaryTableModel
-from .datasetInfoEditorWidget import DatasetInfoEditorWidget
+from ilastik.widgets.ImageFileDialog import ImageFileDialog
 from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, SubvolumeSelectionDlg
+from lazyflow.slot import Slot
+from .dataLaneSummaryTableModel import DataLaneSummaryTableModel
 from .datasetDetailedInfoTableModel import DatasetDetailedInfoTableModel
 from .datasetDetailedInfoTableView import DatasetDetailedInfoTableView
+from .datasetInfoEditorWidget import DatasetInfoEditorWidget
+from .opDataSelection import (
+    DatasetInfo,
+    ProjectInternalDatasetInfo,
+    MultiscaleUrlDatasetInfo,
+)
 from .precomputedVolumeBrowser import PrecomputedVolumeBrowser
-from ilastik.widgets.ImageFileDialog import ImageFileDialog
-from lazyflow.slot import Slot
+
+logger = logging.getLogger(__name__)
 
 
 class LocationOptions(object):
@@ -168,7 +156,7 @@ class DataSelectionGui(QWidget):
         :param guiMode: Either ``GuiMode.Normal`` or ``GuiMode.Batch``.  Currently, there is no difference between normal and batch mode.
         :param max_lanes: The maximum number of lanes that the user is permitted to add to this workflow.  If ``None``, there is no maximum.
         """
-        super(DataSelectionGui, self).__init__()
+        super().__init__()
         self._cleaning_up = False
         self.__cleanup_fns = []
         self.parentApplet = parentApplet
@@ -260,7 +248,6 @@ class DataSelectionGui(QWidget):
             self.topLevelOperator.DatasetGroup.notifyInserted(self._update_summary_buttons_status)
         )
 
-        self._retained = []  # Retain menus so they don't get deleted
         self._detailViewerWidgets = []
 
         for roleIndex, role in enumerate(self.topLevelOperator.DatasetRoles.value):
@@ -272,7 +259,7 @@ class DataSelectionGui(QWidget):
             detailViewer.addFilesRequested.connect(partial(self.addFiles, roleIndex))
             detailViewer.addStackRequested.connect(partial(self.addStack, roleIndex))
             detailViewer.addPrecomputedVolumeRequested.connect(partial(self.addPrecomputedVolume, roleIndex))
-            detailViewer.addRemoteVolumeRequested.connect(partial(self.addDvidVolume, roleIndex))
+            detailViewer.addDvidVolumeRequested.connect(partial(self.addDvidVolume, roleIndex))
 
             # Monitor changes to each lane so we can enable/disable the 'add lanes' button for each tab
             self.__cleanup_fns.append(
@@ -297,6 +284,9 @@ class DataSelectionGui(QWidget):
                     self.showDataset(lanes[0], _roleIndex)
 
             detailViewer.dataLaneSelected.connect(partial(showFirstSelectedDataset, roleIndex))
+
+            # Scale selection handling
+            detailViewer.scaleSelected.connect(self.handleScaleSelected)
 
             self.fileInfoTabWidget.insertTab(roleIndex, detailViewer, role)
 
@@ -568,25 +558,28 @@ class DataSelectionGui(QWidget):
         self._add_default_inner_path(roleIndex=roleIndex, inner_path=selected_dataset)
         return filePath / selected_dataset.lstrip("/")
 
-    def guess_axistags_for(self, role: Union[str, int], info: DatasetInfo) -> Optional[AxisTags]:
+    def _get_custom_axistags_from_previous_lane(self, role: Union[str, int], info: DatasetInfo) -> Optional[AxisTags]:
         if self.parentApplet.num_lanes == 0:
-            return info.axistags
+            return None
         lane = self.parentApplet.get_lane(-1)
         previous_info = lane.get_dataset_info(role)
-        if previous_info is None or previous_info.default_tags == previous_info.axistags:
-            return info.axistags
-        if len(previous_info.axistags) != len(info.axistags) or previous_info.shape5d.c != info.shape5d.c:
-            return info.axistags
-        return previous_info.axistags
+        if (
+            previous_info is not None
+            and previous_info.default_tags != previous_info.axistags
+            and previous_info.shape5d.c == info.shape5d.c
+            and len(previous_info.axistags) == len(info.axistags)
+        ):
+            return previous_info.axistags
+        return None
 
     def instantiate_dataset_info(self, url: str, role: Union[str, int], *info_args, **info_kwargs) -> DatasetInfo:
         info = self.parentApplet.create_dataset_info(url=url, *info_args, **info_kwargs)
-        if info_kwargs.get("axistags") is not None:
-            return info
-        axistags = self.guess_axistags_for(role=role, info=info)
-        if axistags in (info.axistags, None):
-            return info
-        return self.parentApplet.create_dataset_info(url=url, *info_args, **info_kwargs, axistags=axistags)
+        if "axistags" in info_kwargs:
+            return info  # This lane has custom axistags already
+        custom_axistags = self._get_custom_axistags_from_previous_lane(role=role, info=info)
+        if custom_axistags:
+            return self.parentApplet.create_dataset_info(url=url, *info_args, **info_kwargs, axistags=custom_axistags)
+        return info
 
     def _checkDataFormatWarnings(self, roleIndex, startingLaneNum, endingLane):
         warn_needed = False
@@ -709,4 +702,7 @@ class DataSelectionGui(QWidget):
         recent_nodes[hostname] = node_uuid
         preferences.set(group, recent_nodes_key, recent_nodes)
 
-        self.addLanes([UrlDatasetInfo(url=dvid_url, subvolume_roi=subvolume_roi)], roleIndex)
+        self.addLanes([MultiscaleUrlDatasetInfo(url=dvid_url, subvolume_roi=subvolume_roi)], roleIndex)
+
+    def handleScaleSelected(self, laneIndex, scale_index):
+        self.topLevelOperator.get_lane(laneIndex).ActiveScaleGroup.setValue(scale_index)

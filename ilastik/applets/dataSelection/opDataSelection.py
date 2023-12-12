@@ -103,6 +103,8 @@ class DatasetInfo(ABC):
         project_file: h5py.File = None,
         normalizeDisplay: bool = None,
         drange: Tuple[Number, Number] = None,
+        working_scale: int = 0,
+        scale_locked: bool = False,
     ):
         if axistags and len(axistags) != len(laneShape):
             raise UnsuitedAxistagsException(axistags, laneShape)
@@ -122,6 +124,9 @@ class DatasetInfo(ABC):
         self.project_file = project_file
         self.normalizeDisplay = (self.drange is not None) if normalizeDisplay is None else normalizeDisplay
         self.legacy_datasetId = self.generate_id()
+        self.working_scale = working_scale
+        self.scale_locked = scale_locked
+        self.scales = []  # list of dicts dependent on data format
 
     @property
     def shape5d(self) -> Shape5D:
@@ -167,6 +172,8 @@ class DatasetInfo(ABC):
             "nickname": self.nickname.encode("utf-8"),
             "normalizeDisplay": self.normalizeDisplay,
             "drange": self.drange,
+            "working_scale": self.working_scale,
+            "scale_locked": self.scale_locked,
             "location": self.legacy_location.encode("utf-8"),  # legacy support
             "filePath": self.effective_path.encode("utf-8"),  # legacy support
             "datasetId": self.legacy_datasetId.encode("utf-8"),  # legacy support
@@ -197,6 +204,10 @@ class DatasetInfo(ABC):
             params["drange"] = tuple(data["drange"])
         if "display_mode" in data:
             params["display_mode"] = data["display_mode"][()].decode("utf-8")
+        if "working_scale" in data:
+            params["working_scale"] = int(data["working_scale"][()])
+        if "scale_locked" in data:
+            params["scale_locked"] = bool(data["scale_locked"][()])
         return cls(**params)
 
     def is_in_filesystem(self) -> bool:
@@ -498,14 +509,22 @@ class DummyDatasetInfo(DatasetInfo):
         return super().from_h5_group(data, params)
 
 
-class UrlDatasetInfo(DatasetInfo):
+class MultiscaleUrlDatasetInfo(DatasetInfo):
+    """
+    This used to be named UrlDatasetInfo, and it should not be renamed back to this old name.
+    To avoid deceptive project file compatibility: We want old project files with
+    UrlDatasetInfos (of which we think none exist) to fail to load, and we want old ilastik
+    versions to fail loading project files with MultiscaleUrlDatasetInfos.
+    Renaming may be fine from ilastik 1.5 onwards.
+    """
+
     def __init__(self, *, url: str, nickname: str = "", **info_kwargs):
         self.url = url
         op_reader = OpInputDataReader(graph=Graph(), FilePath=self.url)
         meta = op_reader.Output.meta.copy()
         super().__init__(
             default_tags=meta.axistags,
-            nickname=nickname or self.url.rstrip("/").split("/")[-1],
+            nickname=nickname or self._nickname_from_url(url),
             laneShape=meta.shape,
             laneDtype=meta.dtype,
             **info_kwargs,
@@ -520,7 +539,8 @@ class UrlDatasetInfo(DatasetInfo):
         return self.url
 
     def create_data_reader(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
-        op_reader = OpInputDataReader(parent=parent, graph=graph, FilePath=self.url)
+        scale_input_slot = getattr(parent, "ActiveScale", None)
+        op_reader = OpInputDataReader(parent=parent, graph=graph, FilePath=self.url, ActiveScale=scale_input_slot)
         return op_reader.Output
 
     @property
@@ -535,6 +555,12 @@ class UrlDatasetInfo(DatasetInfo):
     @classmethod
     def from_h5_group(cls, group: h5py.Group):
         return super().from_h5_group(group, {"url": group["filePath"][()].decode("utf-8")})
+
+    @staticmethod
+    def _nickname_from_url(url: str) -> str:
+        last_url_component = url.rstrip("/").rpartition("/")[2]
+        filename_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", last_url_component)
+        return filename_safe
 
 
 class FilesystemDatasetInfo(DatasetInfo):
@@ -678,8 +704,7 @@ class RelativeFilesystemDatasetInfo(FilesystemDatasetInfo):
 
 class OpDataSelection(Operator):
     """
-    The top-level operator for the data selection applet, implemented as a single-image operator.
-    The applet uses an OperatorWrapper to make it suitable for use in a workflow.
+    The primary operator for handling a single dataset, e.g. raw data or a prediction mask.
     """
 
     name = "OpDataSelection"
@@ -694,6 +719,7 @@ class OpDataSelection(Operator):
     ProjectDataGroup = InputSlot(stype="string", optional=True)
     WorkingDirectory = InputSlot(stype="filestring")  # : The filesystem directory where the project file is located
     Dataset = InputSlot(stype="object")  # : A DatasetInfo object
+    ActiveScale = InputSlot(stype="string", optional=True)  # : The currently selected scale (for multiscale data)
 
     # Outputs
     Image = OutputSlot()  # : The output image
@@ -719,7 +745,7 @@ class OpDataSelection(Operator):
                         workflow.
                         todo: move toward 'tczyx' standard.
         """
-        super(OpDataSelection, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.forceAxisOrder = forceAxisOrder
 
         # If the gui calls disconnect() on an input slot without replacing it with something else,
@@ -759,6 +785,10 @@ class OpDataSelection(Operator):
             else:
                 meta = {"channel_names": [role_name]}
             data_provider.meta.update(meta)
+            if data_provider.meta.scales:
+                datasetInfo.laneShape = data_provider.meta.shape
+                datasetInfo.scales = data_provider.meta.scales
+                datasetInfo.working_scale = self.ActiveScale.value
 
             output_order = self._get_output_axis_order(data_provider)
             # Export applet assumes this OpReorderAxes exists.
@@ -799,38 +829,43 @@ class OpDataSelection(Operator):
 
 
 class OpDataSelectionGroup(Operator):
+    """
+    Handles a single data lane, i.e. a row, across the different tabs in the input data table.
+    This primarily means managing copies of slots for all roles (Raw Data, Prediction Mask,...) in the lane.
+    User actions that affect all roles in the lane also interact with this operator,
+    e.g. changing axistags (through DatasetInfos passed into .configure()).
+    """
+
     # Inputs
     ProjectFile = InputSlot(stype="object", optional=True)
-    ProjectDataGroup = InputSlot(stype="string", optional=True)
+    ProjectDataGroup = InputSlot(stype="string", optional=True)  # "Group" here refers to hdf5-group
     WorkingDirectory = InputSlot(stype="filestring")
     DatasetRoles = InputSlot(stype="object")
 
     # Must mark as optional because not all subslots are required.
-    DatasetGroup = InputSlot(stype="object", level=1, optional=True)
+    DatasetGroup = InputSlot(stype="object", level=1, optional=True)  # "Group" as in group of slots
+    ActiveScaleGroup = InputSlot(stype="int", level=1, optional=True, value=0)
 
     # Outputs
-    ImageGroup = OutputSlot(level=1)
+    ImageGroup = OutputSlot(level=1)  # "Group" as in group of slots
+    Image = OutputSlot()  # Alias for ImageGroup[0]
 
-    # These output slots are provided as a convenience, since otherwise it is tricky to create a lane-wise multislot of
-    # level-1 for only a single role.
-    Image = OutputSlot()  # The first dataset. Equivalent to ImageGroup[0]
-    Image1 = OutputSlot()  # The second dataset. Equivalent to ImageGroup[1]
-    Image2 = OutputSlot()  # The third dataset. Equivalent to ImageGroup[2]
-    AllowLabels = OutputSlot(stype="bool")  # Pulled from the first dataset only.
+    AllowLabels = OutputSlot(stype="bool")  # Taken from dataset in first role (usually Raw Data)
 
     # Must be the LAST slot declared in this class.
     # When the shell detects that this slot has been resized,
     #  it assumes all the others have already been resized.
-    ImageName = OutputSlot()  # Name of the first dataset is used.  Other names are ignored.
+    ImageName = OutputSlot()  # Taken from dataset in first role (usually Raw Data)
 
     def __init__(self, forceAxisOrder=None, *args, **kwargs):
-        super(OpDataSelectionGroup, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._opDatasets = None
         self._roles = []
         self._forceAxisOrder = forceAxisOrder
 
         def handleNewRoles(*args):
             self.DatasetGroup.resize(len(self.DatasetRoles.value))
+            self.ActiveScaleGroup.resize(len(self.DatasetRoles.value))
 
         self.DatasetRoles.notifyReady(handleNewRoles)
 
@@ -866,8 +901,6 @@ class OpDataSelectionGroup(Operator):
             # Clean up the old operators
             self.ImageGroup.disconnect()
             self.Image.disconnect()
-            self.Image1.disconnect()
-            self.Image2.disconnect()
             if self._opDatasets is not None:
                 self._opDatasets.cleanUp()
 
@@ -882,36 +915,20 @@ class OpDataSelectionGroup(Operator):
             self._opDatasets.ProjectFile.connect(self.ProjectFile)
             self._opDatasets.ProjectDataGroup.connect(self.ProjectDataGroup)
             self._opDatasets.WorkingDirectory.connect(self.WorkingDirectory)
+            self._opDatasets.ActiveScale.connect(self.ActiveScaleGroup)
 
         for role_index, opDataSelection in enumerate(self._opDatasets):
             opDataSelection.RoleName.setValue(self._roles[role_index])
 
         if len(self._opDatasets.Image) > 0:
             self.Image.connect(self._opDatasets.Image[0])
-
-            if len(self._opDatasets.Image) >= 2:
-                self.Image1.connect(self._opDatasets.Image[1])
-            else:
-                self.Image1.disconnect()
-                self.Image1.meta.NOTREADY = True
-
-            if len(self._opDatasets.Image) >= 3:
-                self.Image2.connect(self._opDatasets.Image[2])
-            else:
-                self.Image2.disconnect()
-                self.Image2.meta.NOTREADY = True
-
             self.ImageName.connect(self._opDatasets.ImageName[0])
             self.AllowLabels.connect(self._opDatasets.AllowLabels[0])
         else:
             self.Image.disconnect()
-            self.Image1.disconnect()
-            self.Image2.disconnect()
             self.ImageName.disconnect()
             self.AllowLabels.disconnect()
             self.Image.meta.NOTREADY = True
-            self.Image1.meta.NOTREADY = True
-            self.Image2.meta.NOTREADY = True
             self.ImageName.meta.NOTREADY = True
             self.AllowLabels.meta.NOTREADY = True
 
@@ -924,6 +941,12 @@ class OpDataSelectionGroup(Operator):
 
 
 class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):
+    """
+    Wraps OpDataSelectionGroup, the single-lane operator that handles different roles.
+    Lanes correspond to rows in the input data table. Each lane may receive input data in more than one role,
+    corresponding to tabs in the input data table (e.g. Raw Data, Prediction Maps).
+    """
+
     def __init__(self, forceAxisOrder=False, *args, **kwargs):
         kwargs.update(
             {
@@ -931,7 +954,7 @@ class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):
                 "broadcastingSlotNames": ["ProjectFile", "ProjectDataGroup", "WorkingDirectory", "DatasetRoles"],
             }
         )
-        super(OpMultiLaneDataSelectionGroup, self).__init__(OpDataSelectionGroup, *args, **kwargs)
+        super().__init__(OpDataSelectionGroup, *args, **kwargs)
 
         # 'value' slots
         assert self.ProjectFile.level == 0
@@ -949,14 +972,14 @@ class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):
         # Only add this lane if we don't already have it
         # We might be called from within the context of our own insertSlot signal.
         if numLanes == laneIndex:
-            super(OpMultiLaneDataSelectionGroup, self).addLane(laneIndex)
+            super().addLane(laneIndex)
         return self.get_lane(laneIndex)
 
     def removeLane(self, laneIndex, finalLength):
         """Reimplemented from base class."""
         numLanes = len(self.innerOperators)
         if numLanes > finalLength:
-            super(OpMultiLaneDataSelectionGroup, self).removeLane(laneIndex, finalLength)
+            super().removeLane(laneIndex, finalLength)
 
     @property
     def workflow(self) -> Workflow:
@@ -985,3 +1008,12 @@ class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):
 
     def get_lane(self, lane_idx: int) -> OpDataSelectionGroup:
         return self.innerOperators[lane_idx]
+
+    def lock_scale_selection(self):
+        for lane in self.innerOperators:
+            for info_slot in lane.DatasetGroup:
+                if not info_slot.ready():
+                    continue
+                info: DatasetInfo = info_slot.value
+                if info.scales:
+                    info.scale_locked = True

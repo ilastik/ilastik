@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,26 +18,37 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import os
+from typing import List
 
 from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
-
-from lazyflow.utility import PathComponents, isUrl
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from .opDataSelection import DatasetInfo
-
 from .dataLaneSummaryTableModel import rowOfButtonsProxy
 
 
-class DatasetDetailedInfoColumn(object):
+class DatasetColumn:
     Nickname = 0
     Location = 1
     InternalID = 2
     AxisOrder = 3
     Shape = 4
-    Range = 5
-    NumColumns = 6
+    Scale = 5
+    Range = 6
+    NumColumns = 7
+
+
+def _resolution_to_display_string(resolution: List[int], axiskeys: str) -> str:
+    """
+    In Precomputed format, resolution is in xyz order, which we want to display in the same order as axiskeys.
+    To support formats other than Precomputed, the tableModel would need to be able to obtain
+    the order of the resolution axes (or generally, how to transform resolution to a display string)
+    from the datasetSlot.
+    """
+    assert len(resolution) == 3, "Expected resolution to be in xyz order, please report this on http://image.sc"
+    input_axes = dict(zip("xyz", resolution))
+    reordered_resolution = [input_axes[axis] for axis in axiskeys if axis in input_axes]
+    return ", ".join(str(size) for size in reordered_resolution)
 
 
 @rowOfButtonsProxy
@@ -122,7 +131,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         return 0
 
     def columnCount(self, parent=QModelIndex()):
-        return DatasetDetailedInfoColumn.NumColumns
+        return DatasetColumn.NumColumns
 
     def rowCount(self, parent=QModelIndex()):
         return len(self._op.DatasetGroup)
@@ -131,24 +140,30 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         if role == Qt.DisplayRole:
             return self._getDisplayRoleData(index)
 
+    def flags(self, index):
+        if index.column() == DatasetColumn.Scale:
+            return super().flags(index) | Qt.ItemIsEditable
+        return super().flags(index)
+
     def index(self, row, column, parent=QModelIndex()):
         return self.createIndex(row, column, object=None)
 
     def parent(self, index):
         return QModelIndex()
 
-    def headerData(self, section, orientation, role=Qt.DisplayRole):
+    def headerData(self, section: int, orientation: int, role=Qt.DisplayRole):
         if role != Qt.DisplayRole:
             return None
 
         if orientation == Qt.Horizontal:
             InfoColumnNames = {
-                DatasetDetailedInfoColumn.Nickname: "Nickname",
-                DatasetDetailedInfoColumn.Location: "Location",
-                DatasetDetailedInfoColumn.InternalID: "Internal Path",
-                DatasetDetailedInfoColumn.AxisOrder: "Axes",
-                DatasetDetailedInfoColumn.Shape: "Shape",
-                DatasetDetailedInfoColumn.Range: "Data Range",
+                DatasetColumn.Nickname: "Nickname",
+                DatasetColumn.Location: "Location",
+                DatasetColumn.InternalID: "Internal Path",
+                DatasetColumn.AxisOrder: "Axes",
+                DatasetColumn.Shape: "Shape",
+                DatasetColumn.Range: "Data Range",
+                DatasetColumn.Scale: "Resolution Level",
             }
             return InfoColumnNames[section]
         elif orientation == Qt.Vertical:
@@ -161,12 +176,13 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         laneIndex = index.row()
 
         UninitializedDisplayData = {
-            DatasetDetailedInfoColumn.Nickname: "<empty>",
-            DatasetDetailedInfoColumn.Location: "",
-            DatasetDetailedInfoColumn.InternalID: "",
-            DatasetDetailedInfoColumn.AxisOrder: "",
-            DatasetDetailedInfoColumn.Shape: "",
-            DatasetDetailedInfoColumn.Range: "",
+            DatasetColumn.Nickname: "<empty>",
+            DatasetColumn.Location: "",
+            DatasetColumn.InternalID: "",
+            DatasetColumn.AxisOrder: "",
+            DatasetColumn.Shape: "",
+            DatasetColumn.Range: "",
+            DatasetColumn.Scale: "",
         }
 
         if len(self._op.DatasetGroup) <= laneIndex or len(self._op.DatasetGroup[laneIndex]) <= self._roleIndex:
@@ -178,38 +194,52 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         if not datasetSlot.ready():
             return UninitializedDisplayData[index.column()]
 
-        datasetInfo = self._op.DatasetGroup[laneIndex][self._roleIndex].value
+        datasetInfo: DatasetInfo = datasetSlot.value
 
         ## Input meta-data fields
-
-        # Name
-        if index.column() == DatasetDetailedInfoColumn.Nickname:
+        if index.column() == DatasetColumn.Nickname:
             return datasetInfo.nickname
-
-        # Location
-        if index.column() == DatasetDetailedInfoColumn.Location:
+        if index.column() == DatasetColumn.Location:
             return datasetInfo.display_string
-        # Internal ID
-        if index.column() == DatasetDetailedInfoColumn.InternalID:
+        if index.column() == DatasetColumn.InternalID:
             return str(getattr(datasetInfo, "internal_paths", ""))
 
         ## Output meta-data fields
-
         # Defaults
         imageSlot = self._op.ImageGroup[laneIndex][self._roleIndex]
         if not imageSlot.ready():
             return UninitializedDisplayData[index.column()]
 
-        # Axis order
-        if index.column() == DatasetDetailedInfoColumn.AxisOrder:
+        if index.column() == DatasetColumn.AxisOrder:
             return datasetInfo.axiskeys
-
-        # Shape
-        if index.column() == DatasetDetailedInfoColumn.Shape:
+        if index.column() == DatasetColumn.Shape:
             return str(datasetInfo.laneShape)
-
-        # Range
-        if index.column() == DatasetDetailedInfoColumn.Range:
+        if index.column() == DatasetColumn.Range:
             return str(datasetInfo.drange or "")
+        if index.column() == DatasetColumn.Scale:
+            if datasetInfo.scales:
+                return _resolution_to_display_string(
+                    datasetInfo.scales[datasetInfo.working_scale]["resolution"], datasetInfo.axiskeys
+                )
+            return UninitializedDisplayData[index.column()]
 
         assert False, "Unknown column: row={}, column={}".format(index.row(), index.column())
+
+    def get_scale_options(self, laneIndex) -> List[str]:
+        try:
+            datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
+        except IndexError:  # This can happen during "Save Project As"
+            return []
+        if not datasetSlot.ready():
+            return []
+        datasetInfo = datasetSlot.value
+        if not datasetInfo.scales:
+            return []
+        return [_resolution_to_display_string(s["resolution"], datasetInfo.axiskeys) for s in datasetInfo.scales]
+
+    def is_scale_locked(self, laneIndex) -> bool:
+        datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
+        if not datasetSlot.ready():
+            return False
+        datasetInfo = datasetSlot.value
+        return datasetInfo.scale_locked

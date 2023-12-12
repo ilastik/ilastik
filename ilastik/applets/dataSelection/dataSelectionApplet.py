@@ -18,14 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from __future__ import division
-from __future__ import absolute_import
-from builtins import range
-import os
-import sys
-import glob
 import argparse
-import collections
 import logging
 from typing import List, Dict, Optional, Union, Sequence
 import itertools
@@ -36,15 +29,14 @@ logger = logging.getLogger(__name__)  # noqa
 
 import vigra
 import h5py
-from lazyflow.utility import PathComponents, isUrl
+from lazyflow.utility import isUrl
 from ilastik.utility.commandLineProcessing import parse_axiskeys
 from ilastik.applets.base.applet import Applet
 from .opDataSelection import (
     OpMultiLaneDataSelectionGroup,
     DatasetInfo,
     RelativeFilesystemDatasetInfo,
-    UrlDatasetInfo,
-    FilesystemDatasetInfo,
+    MultiscaleUrlDatasetInfo,
     OpDataSelectionGroup,
 )
 from .dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
@@ -88,6 +80,9 @@ class DataSelectionApplet(Applet):
         self._max_lanes = max_lanes
         self.busy = False
         self.show_axis_details = show_axis_details
+
+        if hasattr(workflow.shell, "currentAppletChanged"):  # Absent in headless mode
+            workflow.shell.currentAppletChanged.connect(self._lock_scale_selection)
 
     #
     # GUI
@@ -247,7 +242,7 @@ class DataSelectionApplet(Applet):
     ) -> DatasetInfo:
         url = str(url)
         if isUrl(url):
-            return UrlDatasetInfo(url=url, axistags=axistags, project_file=self.project_file)
+            return MultiscaleUrlDatasetInfo(url=url, axistags=axistags, project_file=self.project_file)
         else:
             return RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
                 filePath=str(Path(url).absolute()),
@@ -338,3 +333,18 @@ class DataSelectionApplet(Applet):
     def configure_operator_with_parsed_args(self, parsed_args: argparse.Namespace):
         for lane_config in self.lane_configs_from_parsed_args(parsed_args):
             self.pushLane(lane_config)
+
+    def _lock_scale_selection(self, prev_applet_index, new_applet_index):
+        """
+        For multiscale datasets, we want to make sure that the user cannot change scale
+        after they have already continued on in the workflow.
+        Room for improvement, but for now we lock the selected scale when the user moves away
+        from data selection.
+        """
+        # currentAppletChanged is emitted frequently to refresh the drawer.
+        # We only care if the user is moving away from data selection.
+        if self.topLevelOperator.workflow is None:
+            return
+        data_selection_applet_index = self.topLevelOperator.workflow.applets.index(self)
+        if prev_applet_index == data_selection_applet_index and new_applet_index != prev_applet_index:
+            self.topLevelOperator.lock_scale_selection()

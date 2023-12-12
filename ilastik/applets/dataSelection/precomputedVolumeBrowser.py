@@ -7,24 +7,22 @@ Todos:
   - check whether can me somehow merged with dvidDataSelctionBrowser
 
 """
+import logging
+
+from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
     QHBoxLayout,
     QLabel,
-    QMessageBox,
     QPushButton,
     QSizePolicy,
     QTextBrowser,
     QVBoxLayout,
 )
 
-
 from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
-
-import logging
-
 
 logger = logging.getLogger(__name__)
 
@@ -39,14 +37,11 @@ class PrecomputedVolumeBrowser(QDialog):
 
     def setup_ui(self):
         self.setMinimumSize(800, 200)
-        self.setWindowTitle("Precomputed Volume Selection Dialog")
+        self.setWindowTitle("Select Precomputed Volume")
         main_layout = QVBoxLayout()
 
         description = QLabel(self)
-        description.setText(
-            'enter base URL of volume starting with "precomputed://http..."'
-            'hit the "check URL" button to validate the entered address.'
-        )
+        description.setText('Enter URL (with or without "precomputed://") and click "Check URL".')
         main_layout.addWidget(description)
 
         self.combo = QComboBox(self)
@@ -56,58 +51,60 @@ class PrecomputedVolumeBrowser(QDialog):
         for item in self._history:
             self.combo.addItem(item)
 
-        combo_label = QLabel(parent=self)
-        combo_label.setText("Enter volume address: ")
+        combo_label = QLabel(self)
+        combo_label.setText("Dataset address: ")
         combo_layout = QHBoxLayout()
         chk_button = QPushButton(self)
         chk_button.setText("Check URL")
         chk_button.clicked.connect(self.handle_chk_button_clicked)
+        self.combo.lineEdit().returnPressed.connect(chk_button.click)
         combo_layout.addWidget(combo_label)
         combo_layout.addWidget(self.combo)
         combo_layout.addWidget(chk_button)
 
         main_layout.addLayout(combo_layout)
 
-        # add some debug stuff
-        debug_label = QLabel(self)
-        debug_label.setText("debug: ")
-        self.debug_text = QTextBrowser(self)
-        debug_layout = QVBoxLayout()
-        debug_layout.addWidget(debug_label)
-        debug_layout.addWidget(self.debug_text)
+        result_label = QLabel(self)
+        result_label.setText("Metadata found at the given address: ")
+        self.result_text_box = QTextBrowser(self)
+        result_layout = QVBoxLayout()
+        result_layout.addWidget(result_label)
+        result_layout.addWidget(self.result_text_box)
 
-        main_layout.addLayout(debug_layout)
+        main_layout.addLayout(result_layout)
 
         self.qbuttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.qbuttons.accepted.connect(self.accept)
         self.qbuttons.rejected.connect(self.reject)
+        self.qbuttons.button(QDialogButtonBox.Ok).setText("Add to project")
         self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)
         main_layout.addWidget(self.qbuttons)
         self.setLayout(main_layout)
 
     def handle_chk_button_clicked(self, event):
-        self.selected_url = self.combo.currentText()
-        logger.debug(f"selected url: {self.selected_url}")
-        url = self.selected_url.lstrip("precomputed://")
+        url = self.combo.currentText().strip().lstrip("precomputed://")
+        if url == "":
+            return
+        logger.debug(f"Entered URL: {url}")
         try:
             rv = RESTfulPrecomputedChunkedVolume(volume_url=url)
         except Exception as e:
-            # :<
             self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)
-            self.debug_text.setText("")
-            qm = QMessageBox(self)
-            qm.setWindowTitle("An Error Occured!")
-            qm.setText(f"woops: {e}")
-            qm.show()
+            msg = f"Could not connect to a Precomputed dataset at this address. Full error message:\n\n{e}"
+            self.result_text_box.setText(msg)
             return
 
-        self.debug_text.setText(
-            f"volume encoding: {rv.get_encoding()}\n"
-            f"available scales: {rv.available_scales}\n"
-            f"using scale: {rv._use_scale}\n"
-            f"data shape: {rv.get_shape()}\n"
+        self.selected_url = f"precomputed://{url}"
+        self.result_text_box.setText(
+            f"Full URL: {self.selected_url}\n"
+            f"Dataset encoding: {rv.get_encoding()}\n"
+            f"Number of scales: {len(rv.scales)}\n"
+            f"Raw dataset shape: {rv.get_shape(-1)}\n"
+            f"Lowest scale shape: {rv.get_shape(0)}\n"
         )
-        self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(True)
+        # This check-button might have been triggered by pressing Enter.
+        # The timer prevents triggering the now enabled OK button by the same keypress.
+        QTimer.singleShot(0, lambda: self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(True))
 
 
 if __name__ == "__main__":

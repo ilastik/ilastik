@@ -23,14 +23,13 @@ from __future__ import absolute_import
 from typing import List, Tuple, Callable
 from pathlib import Path
 
-
 from .opDataSelection import (
     OpDataSelection,
     DatasetInfo,
     FilesystemDatasetInfo,
     RelativeFilesystemDatasetInfo,
     DummyDatasetInfo,
-    UrlDatasetInfo,
+    MultiscaleUrlDatasetInfo,
 )
 from .opDataSelection import PreloadedArrayDatasetInfo, ProjectInternalDatasetInfo
 from lazyflow.operators.ioOperators import OpInputDataReader, OpStackLoader, OpH5N5WriterBigDataset
@@ -66,7 +65,12 @@ class DataSelectionSerializer(AppletSerializer):
     # Constants
     InfoClassNames = {
         klass.__name__: klass
-        for klass in [ProjectInternalDatasetInfo, FilesystemDatasetInfo, RelativeFilesystemDatasetInfo, UrlDatasetInfo]
+        for klass in [
+            ProjectInternalDatasetInfo,
+            FilesystemDatasetInfo,
+            RelativeFilesystemDatasetInfo,
+            MultiscaleUrlDatasetInfo,
+        ]
     }
 
     def __init__(self, topLevelOperator, projectFileGroupName):
@@ -91,12 +95,12 @@ class DataSelectionSerializer(AppletSerializer):
             slot[roleIndex].notifyDisconnect(bind(handleDirty))
 
         def handleNewLane(multislot, laneIndex):
-            assert multislot == self.topLevelOperator.DatasetGroup
             multislot[laneIndex].notifyInserted(bind(handleNewDataset))
             for roleIndex in range(len(multislot[laneIndex])):
                 handleNewDataset(multislot[laneIndex], roleIndex)
 
         self.topLevelOperator.DatasetGroup.notifyInserted(bind(handleNewLane))
+        self.topLevelOperator.ActiveScaleGroup.notifyInserted(bind(handleNewLane))
 
         # If a dataset was removed, we need to be reserialized.
         self.topLevelOperator.DatasetGroup.notifyRemoved(bind(handleDirty))
@@ -215,6 +219,9 @@ class DataSelectionSerializer(AppletSerializer):
                                 missing_role_warning_issued = True
                         else:
                             self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(datasetInfo)
+                            self.topLevelOperator.ActiveScaleGroup[laneIndex][roleIndex].setValue(
+                                datasetInfo.working_scale
+                            )
 
         # Finish the 'transaction' as described above.
         self.topLevelOperator.WorkingDirectory.setValue(working_dir)
@@ -226,14 +233,23 @@ class DataSelectionSerializer(AppletSerializer):
         if len(infoGroup) == 0:
             return None, False
 
+        old_UrlDatasetInfo_msg = (
+            "This project requires HBP-style access to a remote dataset, which is no longer supported. "
+            "We would appreciate if you let us know you still need this feature. "
+            "In the meantime, please use ilastik version 1.4.0 or earlier for this project."
+        )
+
         if "__class__" in infoGroup:
-            info_class = self.InfoClassNames[infoGroup["__class__"][()].decode("utf-8")]
+            loaded_class_name = infoGroup["__class__"][()].decode("utf-8")
+            if loaded_class_name == "UrlDatasetInfo":
+                raise RuntimeError(old_UrlDatasetInfo_msg)
+            info_class = self.InfoClassNames[loaded_class_name]
         else:  # legacy support
             location = infoGroup["location"][()].decode("utf-8")
             if location == "FileSystem":  # legacy support: a lot of DatasetInfo types are saved as "FileSystem"
                 filePath = infoGroup["filePath"][()].decode("utf-8")
                 if isUrl(filePath):
-                    info_class = UrlDatasetInfo
+                    raise RuntimeError(old_UrlDatasetInfo_msg)
                 elif isRelative(filePath):
                     info_class = RelativeFilesystemDatasetInfo
                 else:

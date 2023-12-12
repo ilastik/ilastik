@@ -71,7 +71,7 @@ import vigra
 import os
 import re
 import logging
-from typing import List, Tuple
+from typing import Tuple, Optional
 
 from lazyflow.utility.io_util.multiprocessHdf5File import MultiProcessHdf5File
 
@@ -117,6 +117,7 @@ class OpInputDataReader(Operator):
     WorkingDirectory = InputSlot(stype="filestring", optional=True)
     FilePath = InputSlot(stype="filestring")
     SequenceAxis = InputSlot(optional=True)
+    ActiveScale = InputSlot(optional=True)  # Only relevant for multiscale data
 
     # FIXME: Document this.
     SubVolumeRoi = InputSlot(optional=True)  # (start, stop)
@@ -131,10 +132,11 @@ class OpInputDataReader(Operator):
 
     def __init__(
         self,
-        WorkingDirectory: str = None,
-        FilePath: str = None,
-        SequenceAxis: str = None,
-        SubVolumeRoi: Tuple[int, int] = None,
+        WorkingDirectory: Optional[str] = None,
+        FilePath: Optional[str] = None,
+        SequenceAxis: Optional[str] = None,
+        SubVolumeRoi: Optional[Tuple[int, int]] = None,
+        ActiveScale: Optional[InputSlot] = None,
         *args,
         **kwargs,
     ):
@@ -147,12 +149,22 @@ class OpInputDataReader(Operator):
         self.FilePath.setOrConnectIfAvailable(FilePath)
         self.SequenceAxis.setOrConnectIfAvailable(SequenceAxis)
         self.SubVolumeRoi.setOrConnectIfAvailable(SubVolumeRoi)
+        self.ActiveScale.setOrConnectIfAvailable(ActiveScale)
 
     def cleanUp(self):
         super(OpInputDataReader, self).cleanUp()
+        self.internalCleanup()
+
+    def internalCleanup(self):
+        self.Output.disconnect()
+        self.opInjector.cleanUp()
         if self._file is not None:
             self._file.close()
             self._file = None
+        for op in reversed(self.internalOperators):
+            op.cleanUp()
+        self.internalOperators = []
+        self.internalOutput = None
 
     def setupOutputs(self):
         """
@@ -174,14 +186,7 @@ class OpInputDataReader(Operator):
 
         # Clean up before reconfiguring
         if self.internalOperators:
-            self.Output.disconnect()
-            self.opInjector.cleanUp()
-            for op in self.internalOperators[::-1]:
-                op.cleanUp()
-            self.internalOperators = []
-            self.internalOutput = None
-        if self._file is not None:
-            self._file.close()
+            self.internalCleanup()
 
         openFuncs = [
             self._attemptOpenAsKlb,
@@ -292,11 +297,11 @@ class OpInputDataReader(Operator):
     def _attemptOpenAsRESTfulPrecomputedChunkedVolume(self, filePath):
         if not filePath.lower().startswith("precomputed://"):
             return ([], None)
-        else:
-            url = filePath.lstrip("precomputed://")
-            reader = OpRESTfulPrecomputedChunkedVolumeReader(parent=self)
-            reader.BaseUrl.setValue(url)
-            return [reader], reader.Output
+        url = filePath.lstrip("precomputed://")
+        reader = OpRESTfulPrecomputedChunkedVolumeReader(parent=self)
+        reader.Scale.connect(self.ActiveScale)
+        reader.BaseUrl.setValue(url)
+        return [reader], reader.Output
 
     def _attemptOpenAsH5N5Stack(self, filePath):
         if not ("*" in filePath or os.path.pathsep in filePath):

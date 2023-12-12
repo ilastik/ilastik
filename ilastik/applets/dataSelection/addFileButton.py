@@ -35,8 +35,6 @@ try:
 except ImportError:
     _supports_dvid = False
 
-import ilastik.config
-
 
 class AddFileButton(QPushButton):
     """
@@ -51,7 +49,7 @@ class AddFileButton(QPushButton):
 
     addFilesRequested = pyqtSignal()
     addStackRequested = pyqtSignal()
-    addRemoteVolumeRequested = pyqtSignal()
+    addDvidVolumeRequested = pyqtSignal()
     addPrecomputedVolumeRequested = pyqtSignal()
 
     def __init__(self, parent, *, index=None, new=False):
@@ -73,14 +71,12 @@ class AddFileButton(QPushButton):
         menu = QMenu(parent=self)
         menu.addAction("Add separate Image(s)...").triggered.connect(self.addFilesRequested.emit)
         menu.addAction("Add a single 3D/4D Volume from Sequence...").triggered.connect(self.addStackRequested.emit)
-
-        if ilastik.config.cfg.getboolean("ilastik", "hbp", fallback=False):
-            menu.addAction("Add a precomputed chunked volume...").triggered.connect(
-                self.addPrecomputedVolumeRequested.emit
-            )
+        menu.addAction("Add Neuroglancer Precomputed volume...").triggered.connect(
+            self.addPrecomputedVolumeRequested.emit
+        )
 
         if _supports_dvid:
-            menu.addAction("Add DVID Volume...").triggered.connect(self.addRemoteVolumeRequested.emit)
+            menu.addAction("Add DVID Volume...").triggered.connect(self.addDvidVolumeRequested.emit)
 
         self.setMenu(menu)
 

@@ -18,21 +18,30 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+import json
 import os
 import shutil
 from collections import defaultdict
+from unittest import mock
+from unittest.mock import Mock
+
 import numpy
+import requests
 import vigra
-import lazyflow
 import h5py
 from pathlib import Path
 from PIL import Image
 
 from lazyflow.utility.pathHelpers import PathComponents
-from lazyflow.graph import Graph
 from lazyflow.graph import OperatorWrapper
-from ilastik.applets.dataSelection.opDataSelection import OpMultiLaneDataSelectionGroup, OpDataSelection
-from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo, ProjectInternalDatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import (
+    OpMultiLaneDataSelectionGroup,
+    OpDataSelection,
+    MultiscaleUrlDatasetInfo,
+    RelativeFilesystemDatasetInfo,
+    FilesystemDatasetInfo,
+    ProjectInternalDatasetInfo,
+)
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 from ilastik.applets.base.applet import DatasetConstraintError
 
@@ -155,10 +164,9 @@ class TestOpDataSelection_Basic2D(object):
             expected_nickname += comps.internalPath.replace("/", "-")
         return expected_nickname
 
-    def testBasic2D(self):
+    def testBasic2D(self, graph):
         """Test if plane 2d files are loaded correctly"""
         for fileName in self.imgFileNames2D:
-            graph = lazyflow.graph.Graph()
             reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
@@ -179,12 +187,11 @@ class TestOpDataSelection_Basic2D(object):
                 continue
             numpy.testing.assert_array_equal(imgData2D, self.imgData2D)
 
-    def testBasic2Dc(self):
+    def testBasic2Dc(self, graph):
         """Test if 2d 3-channel files are loaded correctly"""
         # For some reason vigra saves 2D+c data compressed in gifs, so skip!
         self.compressedExtensions.append(".gif")
         for fileName in self.imgFileNames2Dc:
-            graph = lazyflow.graph.Graph()
             reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
@@ -307,10 +314,9 @@ class TestOpDataSelection_Basic_native_3D(object):
         except OSError as e:
             print("Exception caught while deleting temporary files: {}".format(e))
 
-    def testBasic3D(self):
+    def testBasic3D(self, graph):
         """Test if plane 2d files are loaded correctly"""
         for fileName, nickname in zip(self.imgFileNames3D, self.imgFileNames3DNicknames):
-            graph = lazyflow.graph.Graph()
             reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
@@ -326,10 +332,9 @@ class TestOpDataSelection_Basic_native_3D(object):
             # skip this if image was saved compressed:
             numpy.testing.assert_array_equal(imgData3D, self.imgData3D)
 
-    def testBasic3DWrongAxes(self):
+    def testBasic3DWrongAxes(self, graph):
         """Test if 3D file with intentionally wrong axes is rejected"""
         for fileName in self.imgFileNames3D:
-            graph = lazyflow.graph.Graph()
             reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
@@ -345,11 +350,10 @@ class TestOpDataSelection_Basic_native_3D(object):
             except:
                 assert False, "Should have thrown a DatasetConstraintError!"
 
-    def testBasic3Dc(self):
+    def testBasic3Dc(self, graph):
         """Test if 2d 3-channel files are loaded correctly"""
         # For some reason vigra saves 2D+c data compressed in gifs, so skip!
         for fileName, nickname in zip(self.imgFileNames3Dc, self.imgFileNames3DcNicknames):
-            graph = lazyflow.graph.Graph()
             reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
@@ -523,10 +527,10 @@ class TestOpDataSelection_3DStacks(object):
         except OSError as e:
             print("Exception caught while deleting temporary files: {}".format(e))
 
-    def testBasic3DstackFromGlobString(self, empty_project_file):
+    def testBasic3DstackFromGlobString(self, empty_project_file, graph):
         """Test if stacked 2d files are loaded correctly"""
 
-        reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={"forceAxisOrder": False})
+        reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
         reader.WorkingDirectory.setValue(str(Path(empty_project_file.filename).parent))
         for fileName, nickname in zip(self.imgFileNameGlobs2D, self.imgFileNameGlobs2DNicknames):
             reader.Dataset.setValues([FilesystemDatasetInfo(filePath=fileName, sequence_axis="z")])
@@ -544,10 +548,10 @@ class TestOpDataSelection_3DStacks(object):
                 continue
             numpy.testing.assert_array_equal(imgData3D, self.imgData3D)
 
-    def testBasic3DstacksFromFileList(self, empty_project_file):
+    def testBasic3DstacksFromFileList(self, empty_project_file, graph):
         for ext, fileNames in list(self.imgFileLists2D.items()):
             fileNameString = os.path.pathsep.join(fileNames)
-            reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={"forceAxisOrder": False})
+            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
             reader.WorkingDirectory.setValue(str(Path(empty_project_file.filename).parent))
 
             reader.Dataset.setValues([FilesystemDatasetInfo(filePath=fileNameString, sequence_axis="z")])
@@ -563,11 +567,11 @@ class TestOpDataSelection_3DStacks(object):
                 continue
             numpy.testing.assert_array_equal(imgData3D, self.imgData3D)
 
-    def testBasic3DcStackFromGlobString(self, empty_project_file):
+    def testBasic3DcStackFromGlobString(self, empty_project_file, graph):
         """Test if stacked 2d 3-channel files are loaded correctly"""
         # For some reason vigra saves 2D+c data compressed in gifs, so skip!
         for fileName, nickname in zip(self.imgFileNameGlobs2Dc, self.imgFileNameGlobs2DcNicknames):
-            reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={"forceAxisOrder": False})
+            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
             reader.WorkingDirectory.setValue(str(Path(empty_project_file.filename).parent))
 
             reader.Dataset.setValues([FilesystemDatasetInfo(filePath=fileName, sequence_axis="z")])
@@ -625,8 +629,8 @@ class TestOpDataSelection_SingleFileH5Stacks:
         except OSError as e:
             print("Exception caught while deleting temporary files: {}".format(e))
 
-    def test_load_single_file_with_glob(self):
-        reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={"forceAxisOrder": False})
+    def test_load_single_file_with_glob(self, graph):
+        reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
         reader.WorkingDirectory.setValue(os.getcwd())
 
         reader.Dataset.setValues([FilesystemDatasetInfo(filePath=self.glob_string, sequence_axis="t")])
@@ -639,8 +643,8 @@ class TestOpDataSelection_SingleFileH5Stacks:
 
         numpy.testing.assert_array_equal(imgData, self.imgData3Dct)
 
-    def test_load_single_file_with_list(self):
-        reader = OperatorWrapper(OpDataSelection, graph=Graph(), operator_kwargs={"forceAxisOrder": False})
+    def test_load_single_file_with_list(self, graph):
+        reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={"forceAxisOrder": False})
         reader.WorkingDirectory.setValue(os.getcwd())
 
         fileNameString = os.path.pathsep.join(self.file_names)
@@ -658,198 +662,260 @@ class TestOpDataSelection_SingleFileH5Stacks:
         numpy.testing.assert_array_equal(imgData, self.imgData3Dct)
 
 
-def _make_data():
-    data_dict = {}
-    data_dict["rgb00c"] = numpy.array(
-        [
+class TestOpDataSelection_FileSeriesStacks:
+    @pytest.fixture(scope="class")
+    def tempdir(self, tmp_path_factory):
+        temp_dir = tmp_path_factory.mktemp("test_stack_along_data")
+        yield temp_dir
+        shutil.rmtree(str(temp_dir))
+
+    @pytest.fixture(scope="class")
+    def series_data(self):
+        R = [
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        ],
-        dtype=numpy.float32,
-    )
-
-    data_dict["rgb10c"] = numpy.array(
-        [
+        ]
+        G = [
             [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-        ],
-        dtype=numpy.float32,
-    )
-
-    data_dict["rgb20c"] = numpy.array(
-        [
+        ]
+        B = [
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+        ]
+        data = {
+            "rgb00c": numpy.array(R, dtype=numpy.float32),  # b&w letters
+            "rgb10c": numpy.array(G, dtype=numpy.float32),
+            "rgb20c": numpy.array(B, dtype=numpy.float32),
+        }
+        data["rgb01c"] = data["rgb00c"][..., None]  # b&w letters with empty channel axis
+        data["rgb11c"] = data["rgb10c"][..., None]
+        data["rgb21c"] = data["rgb20c"][..., None]
+        data["rgb03c"] = numpy.zeros((data["rgb00c"].shape[0], data["rgb00c"].shape[1], 3), dtype=numpy.float32)
+        data["rgb13c"] = numpy.zeros((data["rgb10c"].shape[0], data["rgb10c"].shape[1], 3), dtype=numpy.float32)
+        data["rgb23c"] = numpy.zeros((data["rgb20c"].shape[0], data["rgb20c"].shape[1], 3), dtype=numpy.float32)
+        data["rgb03c"][..., 0] = data["rgb00c"]  # red R
+        data["rgb13c"][..., 1] = data["rgb10c"]  # green G
+        data["rgb23c"][..., 2] = data["rgb20c"]  # blue B
+        return data
+
+    @pytest.fixture(scope="class")
+    def save_test_data(self, series_data, tempdir):
+        base = tempdir
+        for name, data in series_data.items():
+            # save as h5
+            save_to_hdf5(dataset_name="data", data=data, filename=base / f"{name}.h5")
+
+            # save as png and tiff, if possible
+            if name.endswith("0c"):
+                im = Image.fromarray(data)
+                im.save(base / f"{name}.tiff")
+                vigra.impex.writeImage(image=(data.T * 255).astype(numpy.uint8), filename=str(base / f"{name}.png"))
+            elif name.endswith("1c"):
+                vigra.impex.writeImage(
+                    image=(data.transpose(1, 0, 2) * 255).astype(numpy.uint8), filename=str(base / f"{name}.png")
+                )
+            elif name.endswith("3c"):
+                data = (data * 255).astype(numpy.uint8)
+                im = Image.fromarray(data, mode="RGB")
+                im.save(base / f"{name}.tiff")
+                vigra.impex.writeImage(image=data.transpose(1, 0, 2), filename=str(base / f"{name}.png"))
+
+    @pytest.fixture(scope="class")
+    def expected_data(self, series_data):
+        series_0c = [series_data["rgb00c"], series_data["rgb10c"], series_data["rgb20c"]]
+        series_3c = [series_data["rgb03c"], series_data["rgb13c"], series_data["rgb23c"]]
+        return {
+            "rgb0c_stack": numpy.stack(series_0c, axis=0),
+            "rgb0c_stack_t": numpy.stack(series_0c, axis=2).transpose(1, 0, 2) * 255,
+            "rgb0c_stack_2": numpy.stack(series_0c, axis=2),
+            "rgb3c_concat": numpy.concatenate(series_3c, axis=2),
+            "rgb3c_concat_t": numpy.concatenate(series_3c, axis=2).transpose(1, 0, 2) * 255,
+            "rgb3c_concat_255": numpy.concatenate(series_3c, axis=2) * 255,
+            "rgb0c_stack_None": numpy.stack(series_0c, axis=0)[..., None],
+            "rgb0c_stack_None255": numpy.stack(series_0c, axis=0)[..., None] * 255,
+            "rgb3c_stack": numpy.stack(series_3c, axis=0),
+            "rgb3c_stack255": numpy.stack(series_3c, axis=0) * 255,
+        }
+
+    @pytest.mark.parametrize(
+        "name, extension, sequence_axis, expected_key",
+        [
+            ["rgb*0c", ".h5/data", "c", "rgb0c_stack"],
+            ["rgb*0c", ".png", "c", "rgb0c_stack_t"],
+            ["rgb*0c", ".tiff", "c", "rgb0c_stack"],
+            ["rgb*1c", ".h5/data", "c", "rgb0c_stack_2"],
+            ["rgb*1c", ".png", "c", "rgb0c_stack_t"],
+            ["rgb*3c", ".h5/data", "c", "rgb3c_concat"],
+            ["rgb*3c", ".png", "c", "rgb3c_concat_t"],
+            ["rgb*3c", ".tiff", "c", "rgb3c_concat_255"],
+            ["rgb*0c", ".h5/data", "z", "rgb0c_stack_None"],
+            ["rgb*0c", ".png", "z", "rgb0c_stack_None255"],
+            ["rgb*0c", ".tiff", "z", "rgb0c_stack_None"],
+            ["rgb*1c", ".h5/data", "z", "rgb0c_stack_None"],
+            ["rgb*1c", ".png", "z", "rgb0c_stack_None255"],
+            ["rgb*3c", ".h5/data", "z", "rgb3c_stack"],
+            ["rgb*3c", ".png", "z", "rgb3c_stack255"],
+            ["rgb*3c", ".tiff", "z", "rgb3c_stack255"],
+            ["rgb*0c", ".h5/data", "t", "rgb0c_stack_None"],
+            ["rgb*0c", ".png", "t", "rgb0c_stack_None255"],
+            ["rgb*0c", ".tiff", "t", "rgb0c_stack_None"],
+            ["rgb*1c", ".h5/data", "t", "rgb0c_stack_None"],
+            ["rgb*1c", ".png", "t", "rgb0c_stack_None255"],
+            ["rgb*3c", ".h5/data", "t", "rgb3c_stack"],
+            ["rgb*3c", ".png", "t", "rgb3c_stack255"],
+            ["rgb*3c", ".tiff", "t", "rgb3c_stack255"],
         ],
-        dtype=numpy.float32,
     )
-
-    data_dict["grey0c"] = (
-        numpy.array(
-            [
-                [1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1],
-                [1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1],
-                [1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0],
-                [1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0],
-                [1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 0],
-            ],
-            dtype=numpy.float32,
-        )
-        / 2
-    )
-
-    data_dict["rgb01c"] = data_dict["rgb00c"][..., None]
-    data_dict["rgb11c"] = data_dict["rgb10c"][..., None]
-    data_dict["rgb21c"] = data_dict["rgb20c"][..., None]
-    data_dict["grey1c"] = data_dict["grey0c"][..., None]
-
-    data_dict["rgb03c"] = numpy.zeros(
-        (data_dict["rgb00c"].shape[0], data_dict["rgb00c"].shape[1], 3), dtype=numpy.float32
-    )
-    data_dict["rgb13c"] = numpy.zeros(
-        (data_dict["rgb10c"].shape[0], data_dict["rgb10c"].shape[1], 3), dtype=numpy.float32
-    )
-    data_dict["rgb23c"] = numpy.zeros(
-        (data_dict["rgb20c"].shape[0], data_dict["rgb20c"].shape[1], 3), dtype=numpy.float32
-    )
-    data_dict["rgb03c"][..., 0] = data_dict["rgb00c"]
-    data_dict["rgb13c"][..., 1] = data_dict["rgb10c"]
-    data_dict["rgb23c"][..., 2] = data_dict["rgb20c"]
-    data_dict["grey3c"] = numpy.repeat(data_dict["grey1c"], 3, axis=2)
-    return data_dict
+    def test_stack_along(
+        self, tempdir, save_test_data, expected_data, graph, name, extension, sequence_axis, expected_key
+    ):
+        fileName = tempdir / f"{name}{extension}"
+        reader = OpDataSelection(graph=graph, forceAxisOrder=False)
+        reader.WorkingDirectory.setValue(os.getcwd())
+        reader.Dataset.setValue(FilesystemDatasetInfo(filePath=str(fileName), sequence_axis=sequence_axis))
+        read = reader.Image[...].wait()
+        expected = expected_data[expected_key]
+        try:
+            assert numpy.allclose(read, expected), f"{name}: {read.shape}, {expected.shape}"
+        finally:
+            reader.cleanUp()  # Ensure tempdir can be deleted
 
 
-_data = _make_data()
+class MockRemoteDataset:
+    """
+    Monkeypatches requests.get as a side effect of instantiation,
+    to mock a server hosting a precomputed dataset.
+    Needs to be passed the monkeypatch fixture and dataset parameters.
+    """
 
+    def __init__(self, monkeypatch, url: str, info: dict, chunks: dict[str, numpy.array]):
+        self.url = url
+        self.info = info
+        self.chunks = chunks
+        monkeypatch.setattr(requests, "get", lambda _url: self.mock_response_for_url(_url))
 
-@pytest.fixture(scope="module")
-def test_data_dir(tmp_path_factory):
-    base = tmp_path_factory.mktemp("test_stack_along_data")
-    for name, data in _data.items():
-        # save as h5
-        save_to_hdf5(dataset_name="data", data=data, filename=base / f"{name}.h5")
-
-        # save as png and tiff, if possible
-        if name.endswith("0c"):
-            im = Image.fromarray(data)
-            im.save(base / f"{name}.tiff")
-            vigra.impex.writeImage(image=(data.T * 255).astype(numpy.uint8), filename=str(base / f"{name}.png"))
-        elif name.endswith("1c"):
-            vigra.impex.writeImage(
-                image=(data.transpose(1, 0, 2) * 255).astype(numpy.uint8), filename=str(base / f"{name}.png")
-            )
-        elif name.endswith("3c"):
-            data = (data * 255).astype(numpy.uint8)
-            im = Image.fromarray(data, mode="RGB")
-            im.save(base / f"{name}.tiff")
-            vigra.impex.writeImage(image=data.transpose(1, 0, 2), filename=str(base / f"{name}.png"))
+    def mock_response_for_url(self, url):
+        response = Mock()
+        response.status_code = 200
+        ext = url.lstrip(self.url)
+        if ext == "info":
+            response.content = json.dumps(self.info)
+        elif ext in self.chunks:
+            response.content = self.chunks[ext].tobytes()
         else:
-            raise NotImplementedError(f"How to create PIL/png image with c == {c}?")
+            raise KeyError(f"Unknown mock url: {url}")
+        return response
 
-    return base
+
+class TestOpDataSelection_PrecomputedChunks:
+    SHAPE_SCALED_XYZ = (12, 10, 1)
+    SHAPE_ORIGINAL_XYZ = (24, 20, 1)
+    CHUNK_SIZE_XYZ = (16, 16, 1)
+    CHUNKS = {  # numpy default axis order is zyx; we use it as it also works fine with the operator's tczyx
+        "1600_1600_70/0-12_0-10_0-1": numpy.random.randint(0, 256, (1, 10, 12), dtype=numpy.uint16),
+        "800_800_70/0-16_0-16_0-1": numpy.random.randint(0, 256, (1, 16, 16), dtype=numpy.uint16),
+        "800_800_70/16-24_0-16_0-1": numpy.random.randint(0, 256, (1, 16, 8), dtype=numpy.uint16),
+        "800_800_70/0-16_16-20_0-1": numpy.random.randint(0, 256, (1, 4, 16), dtype=numpy.uint16),
+        "800_800_70/16-24_16-20_0-1": numpy.random.randint(0, 256, (1, 4, 8), dtype=numpy.uint16),
+    }
+    IMAGE_SCALED = CHUNKS["1600_1600_70/0-12_0-10_0-1"]
+    IMAGE_ORIGINAL = numpy.concatenate(
+        [
+            numpy.concatenate([CHUNKS["800_800_70/0-16_0-16_0-1"], CHUNKS["800_800_70/16-24_0-16_0-1"]], axis=2),
+            numpy.concatenate([CHUNKS["800_800_70/0-16_16-20_0-1"], CHUNKS["800_800_70/16-24_16-20_0-1"]], axis=2),
+        ],
+        axis=1,
+    )
+    MOCK_DATASET_URL = "precomputed://https://mocked.com/precomputed_dataset"
+    INFO_JSON = {
+        "@type": "neuroglancer_multiscale_volume",
+        "type": "image",
+        "data_type": "uint16",
+        "num_channels": 1,
+        "scales": [
+            {
+                "key": "800_800_70",
+                "size": list(SHAPE_ORIGINAL_XYZ),
+                "resolution": [800, 800, 70],
+                "voxel_offset": [0, 0, 0],
+                "chunk_sizes": [list(CHUNK_SIZE_XYZ)],
+                "encoding": "raw",
+            },
+            {
+                "key": "1600_1600_70",
+                "size": list(SHAPE_SCALED_XYZ),
+                "resolution": [1600, 1600, 70],
+                "voxel_offset": [0, 0, 0],
+                "chunk_sizes": [list(CHUNK_SIZE_XYZ)],
+                "encoding": "raw",
+            },
+        ],
+    }
+
+    def test_load_precomputed_chunks_over_http(self, graph, monkeypatch):
+        _ = MockRemoteDataset(monkeypatch, self.MOCK_DATASET_URL, self.INFO_JSON, self.CHUNKS)
+        op = OpDataSelection(graph=graph)
+        op.WorkingDirectory.setValue(os.getcwd())
+        op.ActiveScale.setValue(0)
+        op.Dataset.setValue(MultiscaleUrlDatasetInfo(url=self.MOCK_DATASET_URL))
+        loaded_scale0 = op.Image[:].wait()
+        assert numpy.allclose(loaded_scale0, self.IMAGE_SCALED)
+
+        op.ActiveScale.setValue(1)
+        loaded_scale1 = op.Image[:].wait()
+        assert numpy.allclose(loaded_scale1, self.IMAGE_ORIGINAL)
 
 
-@pytest.mark.parametrize(
-    "name, extension, sequence_axis, expected",
-    [
-        ["rgb*0c", ".h5/data", "c", numpy.stack([_data["rgb00c"], _data["rgb10c"], _data["rgb20c"]], axis=0)],
-        [
-            "rgb*0c",
-            ".png",
-            "c",
-            numpy.stack([_data["rgb00c"], _data["rgb10c"], _data["rgb20c"]], axis=2).transpose(1, 0, 2) * 255,
-        ],
-        ["rgb*0c", ".tiff", "c", numpy.stack([_data["rgb00c"], _data["rgb10c"], _data["rgb20c"]], axis=0)],
-        ["rgb*1c", ".h5/data", "c", numpy.stack([_data["rgb00c"], _data["rgb10c"], _data["rgb20c"]], axis=2)],
-        [
-            "rgb*1c",
-            ".png",
-            "c",
-            numpy.stack([_data["rgb00c"], _data["rgb10c"], _data["rgb20c"]], axis=2).transpose(1, 0, 2) * 255,
-        ],
-        ["rgb*3c", ".h5/data", "c", numpy.concatenate([_data["rgb03c"], _data["rgb13c"], _data["rgb23c"]], axis=2)],
-        [
-            "rgb*3c",
-            ".png",
-            "c",
-            numpy.concatenate([_data["rgb03c"], _data["rgb13c"], _data["rgb23c"]], axis=2).transpose(1, 0, 2) * 255,
-        ],
-        ["rgb*3c", ".tiff", "c", numpy.concatenate([_data["rgb03c"], _data["rgb13c"], _data["rgb23c"]], axis=2) * 255],
-        [
-            "rgb*0c",
-            ".h5/data",
-            "z",
-            numpy.stack([_data["rgb00c"], _data["rgb10c"], _data["rgb20c"]], axis=0)[..., None],
-        ],
-        [
-            "rgb*0c",
-            ".png",
-            "z",
-            numpy.stack([_data["rgb00c"], _data["rgb10c"], _data["rgb20c"]], axis=0)[..., None] * 255,
-        ],
-        ["rgb*0c", ".tiff", "z", numpy.stack([_data["rgb00c"], _data["rgb10c"], _data["rgb20c"]], axis=0)[..., None]],
-        [
-            "rgb*1c",
-            ".h5/data",
-            "z",
-            numpy.stack([_data["rgb00c"], _data["rgb10c"], _data["rgb20c"]], axis=0)[..., None],
-        ],
-        [
-            "rgb*1c",
-            ".png",
-            "z",
-            numpy.stack([_data["rgb00c"], _data["rgb10c"], _data["rgb20c"]], axis=0)[..., None] * 255,
-        ],
-        ["rgb*3c", ".h5/data", "z", numpy.stack([_data["rgb03c"], _data["rgb13c"], _data["rgb23c"]], axis=0)],
-        ["rgb*3c", ".png", "z", numpy.stack([_data["rgb03c"], _data["rgb13c"], _data["rgb23c"]], axis=0) * 255],
-        ["rgb*3c", ".tiff", "z", numpy.stack([_data["rgb03c"], _data["rgb13c"], _data["rgb23c"]], axis=0) * 255],
-        [
-            "rgb*0c",
-            ".h5/data",
-            "t",
-            numpy.stack([_data["rgb00c"], _data["rgb10c"], _data["rgb20c"]], axis=0)[..., None],
-        ],
-        [
-            "rgb*0c",
-            ".png",
-            "t",
-            numpy.stack([_data["rgb00c"], _data["rgb10c"], _data["rgb20c"]], axis=0)[..., None] * 255,
-        ],
-        ["rgb*0c", ".tiff", "t", numpy.stack([_data["rgb00c"], _data["rgb10c"], _data["rgb20c"]], axis=0)[..., None]],
-        [
-            "rgb*1c",
-            ".h5/data",
-            "t",
-            numpy.stack([_data["rgb00c"], _data["rgb10c"], _data["rgb20c"]], axis=0)[..., None],
-        ],
-        [
-            "rgb*1c",
-            ".png",
-            "t",
-            numpy.stack([_data["rgb00c"], _data["rgb10c"], _data["rgb20c"]], axis=0)[..., None] * 255,
-        ],
-        ["rgb*3c", ".h5/data", "t", numpy.stack([_data["rgb03c"], _data["rgb13c"], _data["rgb23c"]], axis=0)],
-        ["rgb*3c", ".png", "t", numpy.stack([_data["rgb03c"], _data["rgb13c"], _data["rgb23c"]], axis=0) * 255],
-        ["rgb*3c", ".tiff", "t", numpy.stack([_data["rgb03c"], _data["rgb13c"], _data["rgb23c"]], axis=0) * 255],
-    ],
-)
-def test_stack_along(test_data_dir, graph, name, extension, sequence_axis, expected):
-    fileName = test_data_dir / f"{name}{extension}"
-    reader = OpDataSelection(graph=graph, forceAxisOrder=False)
-    reader.WorkingDirectory.setValue(os.getcwd())
-    reader.Dataset.setValue(FilesystemDatasetInfo(filePath=str(fileName), sequence_axis=sequence_axis))
-    read = reader.Image[...].wait()
+class TestOpDataSelection_DatasetInfo:
+    MOCK_PRECOMPUTED_URL = "precomputed://https://mocked.com/precomputed_dataset"
+    MOCK_PRECOMPUTED_INFO = {
+        "type": "image",
+        "data_type": "uint16",
+        "num_channels": 1,
+        "scales": [{"chunk_sizes": [[1, 1, 1]], "resolution": [""], "size": [1, 1, 1]}],
+    }
 
-    assert numpy.allclose(read, expected), f"{name}: {read.shape}, {expected.shape}"
+    @pytest.fixture
+    def mock_project(self, data_path):
+        data = mock.Mock()
+        data.shape = (10, 10)
+        data.attrs = {}
+        project = mock.MagicMock()
+        project.filename = data_path / "mock.file"
+        project.__getitem__.return_value = data
+        return project
+
+    @pytest.mark.parametrize(
+        "info_class, expected_sub_path",
+        [
+            (ProjectInternalDatasetInfo, ""),
+            (FilesystemDatasetInfo, "inputdata"),
+            (RelativeFilesystemDatasetInfo, "inputdata"),
+            (MultiscaleUrlDatasetInfo, ""),
+        ],
+    )
+    def test_default_export_paths(self, data_path, mock_project, monkeypatch, info_class, expected_sub_path):
+        # During instantiation, file-based datasetInfos read their file for metadata,
+        # web-based datasetInfos request their url. Hence, provide actually existing files, and mock the web server.
+        _ = MockRemoteDataset(monkeypatch, self.MOCK_PRECOMPUTED_URL, self.MOCK_PRECOMPUTED_INFO, {})
+        info_args = {
+            "ProjectInternalDatasetInfo": {"inner_path": "foo", "project_file": mock_project},
+            "FilesystemDatasetInfo": {"filePath": str(data_path / "inputdata" / "3d1c-synthetic.h5")},
+            "RelativeFilesystemDatasetInfo": {"filePath": str(data_path / "inputdata" / "3d1c-synthetic.h5")},
+            "MultiscaleUrlDatasetInfo": {"url": self.MOCK_PRECOMPUTED_URL, "project_file": mock_project},
+        }
+        dataset_info = info_class(**info_args[info_class.__name__])
+        assert dataset_info.default_output_dir == data_path / expected_sub_path
 
 
 def test_cleanup(data_path, graph):

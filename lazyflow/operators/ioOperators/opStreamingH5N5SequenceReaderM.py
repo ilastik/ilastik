@@ -122,7 +122,7 @@ class OpStreamingH5N5SequenceReaderM(Operator):
             opReader.cleanUp()
         for hdfFile in self._h5N5Files:
             hdfFile.close()
-        self._h5N5Files = None
+        self._h5N5Files = []
         super().cleanUp()
 
     def setupOutputs(self):

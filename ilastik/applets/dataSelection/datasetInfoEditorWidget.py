@@ -38,7 +38,7 @@ from .opDataSelection import (
     ProjectInternalDatasetInfo,
     FilesystemDatasetInfo,
     RelativeFilesystemDatasetInfo,
-    UrlDatasetInfo,
+    MultiscaleUrlDatasetInfo,
 )
 
 import logging
@@ -241,8 +241,8 @@ class DatasetInfoEditorWidget(QDialog):
                 info_constructor = partial(
                     ProjectInternalDatasetInfo, inner_path=project_inner_path, project_file=project_file
                 )
-            elif new_info_class == UrlDatasetInfo:
-                info_constructor = partial(UrlDatasetInfo, url=info.url)
+            elif new_info_class == MultiscaleUrlDatasetInfo:
+                info_constructor = partial(MultiscaleUrlDatasetInfo, url=info.url)
             else:
                 new_internal_path = self.internalDatasetNameComboBox.currentText()
                 if new_internal_path:

@@ -1,6 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -24,22 +21,36 @@ from __future__ import division
 from past.utils import old_div
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QUrl, QObject, QEvent, QTimer
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QTableView, QHeaderView, QMenu, QAction, QWidget, QHBoxLayout, QPushButton, QItemDelegate
+from PyQt5.QtWidgets import (
+    QTableView,
+    QHeaderView,
+    QMenu,
+    QAction,
+    QWidget,
+    QHBoxLayout,
+    QPushButton,
+    QItemDelegate,
+    QComboBox,
+    QStyledItemDelegate,
+    QMessageBox,
+)
 
-from .datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
+from .datasetDetailedInfoTableModel import DatasetColumn
 from .addFileButton import AddFileButton, FILEPATH
 
 from pathlib import Path
 from functools import partial
 
+from ilastik.utility.gui import silent_qobject
 
-class ButtonOverlay(QPushButton):
+
+class RemoveButtonOverlay(QPushButton):
     """
     Overlay used to show "Remove" button in the row under the cursor.
     """
 
     def __init__(self, parent=None):
-        super(ButtonOverlay, self).__init__(
+        super().__init__(
             QIcon(FILEPATH + "/../../shell/gui/icons/16x16/actions/list-remove.png"),
             "",
             parent,
@@ -79,7 +90,7 @@ class ButtonOverlay(QPushButton):
         """
         if state is False:
             self.current_row = -1
-        return super(ButtonOverlay, self).setVisible(state)
+        return super().setVisible(state)
 
     def placeAtRow(self, ind):
         """
@@ -137,7 +148,7 @@ class DisableButtonOverlayOnMouseEnter(QObject):
         return False
 
 
-class AddButtonDelegate(QItemDelegate):
+class InlineAddButtonDelegate(QItemDelegate):
     """
     Displays an "Add..." button on the first column of the table if the
     corresponding row has not been assigned data yet. This is needed when a
@@ -145,7 +156,7 @@ class AddButtonDelegate(QItemDelegate):
     """
 
     def __init__(self, parent):
-        super(AddButtonDelegate, self).__init__(parent)
+        super().__init__(parent)
 
     def paint(self, painter, option, index):
         # This method will be called every time a particular cell is in
@@ -167,20 +178,75 @@ class AddButtonDelegate(QItemDelegate):
                 button.addPrecomputedVolumeRequested.connect(
                     partial(parent_view.handleCellAddPrecomputedVolumeEvent, button)
                 )
-                button.addRemoteVolumeRequested.connect(partial(parent_view.handleCellAddRemoteVolumeEvent, button))
+                button.addDvidVolumeRequested.connect(partial(parent_view.handleCellAddDvidVolumeEvent, button))
                 parent_view.setIndexWidget(index, button)
-        elif index.data() != "":
-            if button is not None:
-                # If this row has data, we must delete the button.
-                # Otherwise, it can steal input events (e.g. mouse clicks) from the cell, even if it is hidden!
-                # However, we can't remove it yet, because we are currently running in the context of a signal handler for the button itself!
-                # Instead, use a QTimer to delete the button as soon as the eventloop is finished with the current event.
-                QTimer.singleShot(750, lambda: parent_view.setIndexWidget(index, None))
-        super(AddButtonDelegate, self).paint(painter, option, index)
+        elif index.data() != "" and button is not None:
+            # If this row has data, we must delete the button.
+            # Otherwise, it can steal input events (e.g. mouse clicks) from the cell, even if it is hidden!
+            # However, we can't remove it yet, because we are currently running in the context of a signal handler for the button itself!
+            # Instead, use a QTimer to delete the button as soon as the eventloop is finished with the current event.
+            QTimer.singleShot(750, lambda: parent_view.setIndexWidget(index, None))
+        super().paint(painter, option, index)
+
+
+class ScaleComboBoxDelegate(QStyledItemDelegate):
+    def paint(self, painter, option, index):
+        scales = index.model().get_scale_options(index.row())
+        if scales:
+            self.parent().openPersistentEditor(index)
+        else:
+            self.parent().closePersistentEditor(index)
+            super().paint(painter, option, index)
+
+    def createEditor(self, parent: "DatasetDetailedInfoTableView", option, index):
+        model: "DatasetDetailedInfoTableModel" = index.model()
+        scales = model.get_scale_options(index.row())
+        if not scales:
+            return None
+        combo = QComboBox(parent)
+        for scale_index, scale in enumerate(scales):
+            combo.addItem(scale, scale_index)
+        combo.currentIndexChanged.connect(partial(self.on_combo_selected, index))
+        return combo
+
+    def setEditorData(self, editor, index):
+        value = index.data(Qt.DisplayRole)
+        current_selected = editor.findText(value)
+        if current_selected >= 0:
+            with silent_qobject(editor):  # To avoid triggering on_combo_selected
+                editor.setCurrentIndex(current_selected)
+
+    def setModelData(self, editor, model, index, user_triggered=False):
+        if not user_triggered:
+            # De-focussing the combobox triggers setModelData.
+            # We only want to emit when the user actually selects from the combobox.
+            return
+        self.parent().scaleSelected.emit(index.row(), editor.currentIndex())
+
+    def on_combo_selected(self, index):
+        model = index.model()
+        if model.is_scale_locked(index.row()):
+            message = (
+                "You have already continued in the project with this dataset at the selected scale. "
+                'To inspect another scale, please use "Add New" and add the same remote source as '
+                "another dataset, or create a new project."
+            )
+            QMessageBox.information(self.parent(), "Scale locked", message)
+            # Reset the combobox to the previous value
+            editor = self.sender()
+            previous_index = editor.findText(index.data(Qt.DisplayRole))
+            with silent_qobject(editor):  # To avoid re-triggering on_combo_selected
+                editor.setCurrentIndex(previous_index)
+            return
+        self.setModelData(self.sender(), None, index, user_triggered=True)
+        changed_cell = model.index(index.row(), DatasetColumn.Shape)
+        # dataChanged(topLeft, bottomRight); since we're editing one cell, topLeft == bottomRight
+        model.dataChanged.emit(changed_cell, changed_cell)
 
 
 class DatasetDetailedInfoTableView(QTableView):
     dataLaneSelected = pyqtSignal(object)  # Signature: (laneIndex)
+    scaleSelected = pyqtSignal(int, int)  # Signature: (lane_index, scale_index)
 
     replaceWithFileRequested = pyqtSignal(int)  # Signature: (laneIndex), or (-1) to indicate "append requested"
     replaceWithStackRequested = pyqtSignal(int)  # Signature: (laneIndex)
@@ -190,11 +256,11 @@ class DatasetDetailedInfoTableView(QTableView):
     addFilesRequested = pyqtSignal(int)  # Signature: (lane_index)
     addStackRequested = pyqtSignal(int)  # Signature: (lane_index)
     addPrecomputedVolumeRequested = pyqtSignal(int)  # Signature: (lane_index)
-    addRemoteVolumeRequested = pyqtSignal(int)  # Signature: (lane_index)
+    addDvidVolumeRequested = pyqtSignal(int)  # Signature: (lane_index)
     addFilesRequestedDrop = pyqtSignal(object, int)  # Signature: (filepath_list, lane_index)
 
-    def __init__(self, parent):
-        super(DatasetDetailedInfoTableView, self).__init__(parent)
+    def __init__(self, parent: "DataSelectionGui"):
+        super().__init__(parent)
         # this is needed to capture mouse events that are used for
         # the remove button placement
         self.setMouseTracking(True)
@@ -208,13 +274,14 @@ class DatasetDetailedInfoTableView(QTableView):
         self.setAlternatingRowColors(True)
         self.setShowGrid(False)
 
-        self.setItemDelegateForColumn(0, AddButtonDelegate(self))
+        self.setItemDelegateForColumn(0, InlineAddButtonDelegate(self))
+        self.setItemDelegateForColumn(DatasetColumn.Scale, ScaleComboBoxDelegate(self))
 
         self.setSelectionBehavior(QTableView.SelectRows)
 
         self.setAcceptDrops(True)
 
-        self.overlay = ButtonOverlay(self)
+        self.overlay = RemoveButtonOverlay(self)
 
         event_filter = DisableButtonOverlayOnMouseEnter(self, self.overlay)
         self.horizontalHeader().installEventFilter(event_filter)
@@ -229,8 +296,8 @@ class DatasetDetailedInfoTableView(QTableView):
         self.addStackRequested.emit(button.index.row())
 
     @pyqtSlot(int)
-    def handleCellAddRemoteVolumeEvent(self, button):
-        self.addRemoteVolumeRequested.emit(button.index.row())
+    def handleCellAddDvidVolumeEvent(self, button):
+        self.addDvidVolumeRequested.emit(button.index.row())
 
     @pyqtSlot(int)
     def handleCellAddPrecomputedVolumeEvent(self, button):
@@ -240,7 +307,7 @@ class DatasetDetailedInfoTableView(QTableView):
         """
         Handle mouse wheel scroll by updating the remove button overlay.
         """
-        res = super(DatasetDetailedInfoTableView, self).wheelEvent(event)
+        res = super().wheelEvent(event)
         self.adjustRemoveButton(event.pos())
         return res
 
@@ -249,7 +316,7 @@ class DatasetDetailedInfoTableView(QTableView):
         Disable the remove button overlay when mouse leaves this widget.
         """
         self.overlay.setVisible(False)
-        return super(DatasetDetailedInfoTableView, self).enterEvent(event)
+        return super().enterEvent(event)
 
     def mouseMoveEvent(self, event=None):
         """
@@ -257,7 +324,7 @@ class DatasetDetailedInfoTableView(QTableView):
         position.
         """
         self.adjustRemoveButton(event.pos())
-        return super(DatasetDetailedInfoTableView, self).mouseMoveEvent(event)
+        return super().mouseMoveEvent(event)
 
     def adjustRemoveButton(self, pos):
         """
@@ -288,14 +355,14 @@ class DatasetDetailedInfoTableView(QTableView):
         Set model used to store the data. This method adds an extra row
         at the end, which is used to keep the "Add..." button.
         """
-        super(DatasetDetailedInfoTableView, self).setModel(model)
+        super().setModel(model)
 
         widget = QWidget()
         layout = QHBoxLayout(widget)
         self._addButton = button = AddFileButton(widget, new=True)
         button.addFilesRequested.connect(partial(self.addFilesRequested.emit, -1))
         button.addStackRequested.connect(partial(self.addStackRequested.emit, -1))
-        button.addRemoteVolumeRequested.connect(partial(self.addRemoteVolumeRequested.emit, -1))
+        button.addDvidVolumeRequested.connect(partial(self.addDvidVolumeRequested.emit, -1))
         button.addPrecomputedVolumeRequested.connect(partial(self.addPrecomputedVolumeRequested.emit, -1))
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(button)
@@ -308,10 +375,10 @@ class DatasetDetailedInfoTableView(QTableView):
         # the "Add..." button spans last row
         self.setSpan(lastRow, 0, 1, model.columnCount())
 
-        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.Nickname, QHeaderView.Interactive)
-        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.Location, QHeaderView.Interactive)
-        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.InternalID, QHeaderView.Interactive)
-        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.AxisOrder, QHeaderView.Interactive)
+        self.horizontalHeader().setSectionResizeMode(DatasetColumn.Nickname, QHeaderView.Interactive)
+        self.horizontalHeader().setSectionResizeMode(DatasetColumn.Location, QHeaderView.Interactive)
+        self.horizontalHeader().setSectionResizeMode(DatasetColumn.InternalID, QHeaderView.Interactive)
+        self.horizontalHeader().setSectionResizeMode(DatasetColumn.AxisOrder, QHeaderView.Interactive)
 
     def setEnabled(self, status):
         """
@@ -323,22 +390,11 @@ class DatasetDetailedInfoTableView(QTableView):
         """
         self._addButton.setEnabled(status)
 
-    def dataChanged(self, topLeft, bottomRight, roles):
-        self.dataLaneSelected.emit(self.selectedLanes)
-
     def selectionChanged(self, selected, deselected):
-        super(DatasetDetailedInfoTableView, self).selectionChanged(selected, deselected)
-        # Get the selected row and corresponding slot value
-        selectedIndexes = self.selectedIndexes()
-
-        if len(selectedIndexes) == 0:
-            self.selectedLanes = []
-        else:
-            rows = set()
-            for index in selectedIndexes:
-                rows.add(index.row())
-            rows.discard(self.model().rowCount() - 1)  # last row is a button
-            self.selectedLanes = sorted(rows)
+        super().selectionChanged(selected, deselected)
+        rows = {index.row() for index in self.selectedIndexes()}
+        rows.discard(self.model().rowCount() - 1)  # last row is a button
+        self.selectedLanes = sorted(rows)
 
         self.dataLaneSelected.emit(self.selectedLanes)
 
@@ -346,51 +402,46 @@ class DatasetDetailedInfoTableView(QTableView):
         col = self.columnAt(pos.x())
         row = self.rowAt(pos.y())
 
-        if 0 <= col < self.model().columnCount() and 0 <= row < self.model().rowCount() - 1:  # last row is a button
-            menu = QMenu(parent=self)
-            editSharedPropertiesAction = QAction("Edit shared properties...", menu)
-            editPropertiesAction = QAction("Edit properties...", menu)
-            replaceWithFileAction = QAction("Replace with file...", menu)
-            replaceWithStackAction = QAction("Replace with stack...", menu)
+        is_position_within_table = not 0 <= col < self.model().columnCount() and 0 <= row < self.model().rowCount() - 1
+        if is_position_within_table:
+            return
 
-            if self.model().getNumRoles() > 1:
-                resetSelectedAction = QAction("Reset", menu)
-            else:
-                resetSelectedAction = QAction("Remove", menu)
+        menu = QMenu(parent=self)
+        editSharedPropertiesAction = QAction("Edit shared properties...", menu)
+        editPropertiesAction = QAction("Edit properties...", menu)
+        replaceWithFileAction = QAction("Replace with file...", menu)
+        replaceWithStackAction = QAction("Replace with stack...", menu)
+        removeAction = QAction("Remove", menu)
 
-            if row in self.selectedLanes and len(self.selectedLanes) > 1:
-                editable = True
-                for lane in self.selectedLanes:
-                    editable &= self.model().isEditable(lane)
+        is_multiple_lanes_selected = row in self.selectedLanes and len(self.selectedLanes) > 1
+        if is_multiple_lanes_selected:
+            editable = all(self.model().isEditable(lane) for lane in self.selectedLanes)
+            menu.addAction(editSharedPropertiesAction)
+            editSharedPropertiesAction.setEnabled(editable)
+            menu.addAction(removeAction)
+        else:
+            menu.addAction(editPropertiesAction)
+            editPropertiesAction.setEnabled(self.model().isEditable(row))
+            menu.addAction(replaceWithFileAction)
+            menu.addAction(replaceWithStackAction)
+            menu.addAction(removeAction)
 
-                # Show the multi-lane menu, which allows for editing but not replacing
-                menu.addAction(editSharedPropertiesAction)
-                editSharedPropertiesAction.setEnabled(editable)
-                menu.addAction(resetSelectedAction)
-            else:
-                menu.addAction(editPropertiesAction)
-                editPropertiesAction.setEnabled(self.model().isEditable(row))
-                menu.addAction(replaceWithFileAction)
-                menu.addAction(replaceWithStackAction)
-                menu.addAction(resetSelectedAction)
-
-            globalPos = self.viewport().mapToGlobal(pos)
-            selection = menu.exec_(globalPos)
-            if selection is None:
-                return
-            if selection is editSharedPropertiesAction:
-                self.editRequested.emit(self.selectedLanes)
-            if selection is editPropertiesAction:
-                self.editRequested.emit([row])
-            if selection is replaceWithFileAction:
-                self.replaceWithFileRequested.emit(row)
-            if selection is replaceWithStackAction:
-                self.replaceWithStackRequested.emit(row)
-            if selection is resetSelectedAction:
-                self.resetRequested.emit(self.selectedLanes)
+        globalPos = self.viewport().mapToGlobal(pos)
+        selection = menu.exec_(globalPos)
+        if selection is None:
+            return
+        elif selection is editSharedPropertiesAction:
+            self.editRequested.emit(self.selectedLanes)
+        elif selection is editPropertiesAction:
+            self.editRequested.emit([row])
+        elif selection is replaceWithFileAction:
+            self.replaceWithFileRequested.emit(row)
+        elif selection is replaceWithStackAction:
+            self.replaceWithStackRequested.emit(row)
+        elif selection is removeAction:
+            self.resetRequested.emit(self.selectedLanes)
 
     def mouseDoubleClickEvent(self, event):
-        col = self.columnAt(event.pos().x())
         row = self.rowAt(event.pos().y())
 
         # If the user double-clicked an empty table,
@@ -432,7 +483,7 @@ class DatasetDetailedInfoTableView(QTableView):
         This forces the table to be redrawn after the user scrolls.
         This is apparently needed on OS X.
         """
-        super(DatasetDetailedInfoTableView, self).scrollContentsBy(dx, dy)
+        super().scrollContentsBy(dx, dy)
 
         # Hack: On Mac OS X, there is an issue that causes the row buttons not to be drawn correctly in some cases.
         # We can force a repaint by resizing the column.
