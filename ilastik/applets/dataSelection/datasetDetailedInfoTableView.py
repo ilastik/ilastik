@@ -402,8 +402,8 @@ class DatasetDetailedInfoTableView(QTableView):
         col = self.columnAt(pos.x())
         row = self.rowAt(pos.y())
 
-        is_position_within_table = not 0 <= col < self.model().columnCount() and 0 <= row < self.model().rowCount() - 1
-        if is_position_within_table:
+        is_position_within_table = 0 <= col < self.model().columnCount() and 0 <= row < self.model().rowCount() - 1
+        if not is_position_within_table:
             return
 
         menu = QMenu(parent=self)
