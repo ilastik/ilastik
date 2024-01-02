@@ -219,7 +219,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
                 )
             return UninitializedDisplayData[index.column()]
 
-        assert False, "Unknown column: row={}, column={}".format(index.row(), index.column())
+        raise NotImplementedError(f"Unknown column: row={index.row()}, column={index.column()}")
 
     def get_scale_options(self, laneIndex) -> List[str]:
         try:
