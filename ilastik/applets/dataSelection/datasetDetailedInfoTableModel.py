@@ -137,7 +137,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         return len(self._op.DatasetGroup)
 
     def data(self, index, role=Qt.DisplayRole):
-        if role == Qt.DisplayRole:
+        if role == Qt.DisplayRole or role == Qt.ToolTipRole:
             return self._getDisplayRoleData(index)
 
     def flags(self, index):
