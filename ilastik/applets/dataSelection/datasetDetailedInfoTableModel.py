@@ -202,7 +202,8 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         if index.column() == DatasetColumn.Location:
             return datasetInfo.display_string
         if index.column() == DatasetColumn.InternalID:
-            return str(getattr(datasetInfo, "internal_paths", ""))
+            paths = [p for p in getattr(datasetInfo, "internal_paths", []) if p is not None]
+            return "\n".join(paths)
 
         ## Output meta-data fields
         # Defaults
