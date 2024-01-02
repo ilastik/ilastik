@@ -375,10 +375,11 @@ class DatasetDetailedInfoTableView(QTableView):
         # the "Add..." button spans last row
         self.setSpan(lastRow, 0, 1, model.columnCount())
 
+        self.setColumnWidth(DatasetColumn.Shape, 215)
         self.horizontalHeader().setSectionResizeMode(DatasetColumn.Nickname, QHeaderView.Interactive)
         self.horizontalHeader().setSectionResizeMode(DatasetColumn.Location, QHeaderView.Interactive)
         self.horizontalHeader().setSectionResizeMode(DatasetColumn.InternalID, QHeaderView.Interactive)
-        self.horizontalHeader().setSectionResizeMode(DatasetColumn.AxisOrder, QHeaderView.Interactive)
+        self.horizontalHeader().setSectionResizeMode(DatasetColumn.Shape, QHeaderView.Interactive)
 
     def setEnabled(self, status):
         """

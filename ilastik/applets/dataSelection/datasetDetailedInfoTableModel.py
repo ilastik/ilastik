@@ -31,11 +31,10 @@ class DatasetColumn:
     Nickname = 0
     Location = 1
     InternalID = 2
-    AxisOrder = 3
-    Shape = 4
-    Scale = 5
-    Range = 6
-    NumColumns = 7
+    Shape = 3
+    Scale = 4
+    Range = 5
+    NumColumns = 6
 
 
 def _resolution_to_display_string(resolution: List[int], axiskeys: str) -> str:
@@ -160,7 +159,6 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
                 DatasetColumn.Nickname: "Nickname",
                 DatasetColumn.Location: "Location",
                 DatasetColumn.InternalID: "Internal Path",
-                DatasetColumn.AxisOrder: "Axes",
                 DatasetColumn.Shape: "Shape",
                 DatasetColumn.Range: "Data Range",
                 DatasetColumn.Scale: "Resolution Level",
@@ -179,7 +177,6 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             DatasetColumn.Nickname: "<empty>",
             DatasetColumn.Location: "",
             DatasetColumn.InternalID: "",
-            DatasetColumn.AxisOrder: "",
             DatasetColumn.Shape: "",
             DatasetColumn.Range: "",
             DatasetColumn.Scale: "",
@@ -211,10 +208,8 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         if not imageSlot.ready():
             return UninitializedDisplayData[index.column()]
 
-        if index.column() == DatasetColumn.AxisOrder:
-            return datasetInfo.axiskeys
         if index.column() == DatasetColumn.Shape:
-            return str(datasetInfo.laneShape)
+            return ", ".join([f"{axis}: {size}" for axis, size in zip(datasetInfo.axiskeys, datasetInfo.laneShape)])
         if index.column() == DatasetColumn.Range:
             return str(datasetInfo.drange or "")
         if index.column() == DatasetColumn.Scale:
