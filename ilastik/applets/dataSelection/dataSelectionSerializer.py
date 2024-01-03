@@ -338,8 +338,11 @@ class DataSelectionSerializer(AppletSerializer):
                     continue
                 loaded_class_name = infoGroup["__class__"][()].decode("utf-8")
                 if loaded_class_name == "UrlDatasetInfo":
+                    old_nickname = infoGroup["nickname"][()].decode("utf-8")
                     del infoGroup["__class__"]
+                    del infoGroup["nickname"]
                     infoGroup["__class__"] = "MultiscaleUrlDatasetInfo".encode("utf-8")
+                    infoGroup["nickname"] = MultiscaleUrlDatasetInfo.nickname_from_url(old_nickname).encode("utf-8")
                     infoGroup["working_scale"] = "-1".encode("utf-8")
                     infoGroup["scale_locked"] = "True".encode("utf-8")
 

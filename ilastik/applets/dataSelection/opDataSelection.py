@@ -524,7 +524,7 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         meta = op_reader.Output.meta.copy()
         super().__init__(
             default_tags=meta.axistags,
-            nickname=nickname or self._nickname_from_url(url),
+            nickname=nickname or self.nickname_from_url(url),
             laneShape=meta.shape,
             laneDtype=meta.dtype,
             **info_kwargs,
@@ -557,7 +557,7 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         return super().from_h5_group(group, {"url": group["filePath"][()].decode("utf-8")})
 
     @staticmethod
-    def _nickname_from_url(url: str) -> str:
+    def nickname_from_url(url: str) -> str:
         last_url_component = url.rstrip("/").rpartition("/")[2]
         filename_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", last_url_component)
         return filename_safe
