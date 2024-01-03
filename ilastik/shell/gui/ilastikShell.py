@@ -1457,7 +1457,7 @@ class IlastikShell(QMainWindow):
     def onImportProjectActionTriggered(self):
         """
         Import an existing project into a new file.
-        This involves opening the old file, saving it to a new file, and then opening the new file.
+        Fix known legacy incompatibilities in the new file.
         """
         logger.debug("Import Project Action")
 
@@ -1470,21 +1470,21 @@ class IlastikShell(QMainWindow):
 
         # Select the paths to the ilp to import and the name of the new one we'll create
         importedFilePath = self.getProjectPathToOpen(defaultDirectory)
-        if importedFilePath is not None:
-            preferences.set("shell", "recently imported", importedFilePath)
-            defaultFile, ext = os.path.splitext(importedFilePath)
-            defaultFile += "_imported"
-            defaultFile += ext
-            newProjectFilePath = self.getProjectPathToCreate(defaultFile)
+        if importedFilePath is None:  # User cancelled
+            return
 
-        # If the user didn't cancel
-        if importedFilePath is not None and newProjectFilePath is not None:
-            if not self.ensureNoCurrentProject():
-                return
-            newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath)
-            self._loadProject(
-                newProjectFile, newProjectFilePath, workflow_class=None, readOnly=False, importFromPath=importedFilePath
-            )
+        preferences.set("shell", "recently imported", importedFilePath)
+        defaultFile, ext = os.path.splitext(importedFilePath)
+        defaultFile += "_imported"
+        defaultFile += ext
+        newProjectFilePath = self.getProjectPathToCreate(defaultFile)
+        if newProjectFilePath is None or not self.ensureNoCurrentProject():
+            return
+
+        newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath)
+        self._loadProject(
+            newProjectFile, newProjectFilePath, workflow_class=None, readOnly=False, importFromPath=importedFilePath
+        )
 
     def onDownloadProjectFromDvidActionTriggered(self):
         logger.debug("Download Project From DVID")

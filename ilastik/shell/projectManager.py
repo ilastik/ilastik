@@ -502,6 +502,7 @@ class ProjectManager(object):
     def _importProject(self, importedFilePath, newProjectFile, newProjectFilePath):
         """
         Load the data from a project and save it to a different project file.
+        Then fix known legacy incompatibilities in the new file.
 
         importedFilePath - The path to a (not open) .ilp file to import data from
         newProjectFile - An hdf5 handle to a new .ilp to load data into (must be open already)
@@ -521,6 +522,7 @@ class ProjectManager(object):
 
             for serializer in serializers:
                 serializer.ignoreDirty = True
+                serializer.updateLegacyProjectFile(self.currentProjectFile)
                 serializer.deserializeFromHdf5(self.currentProjectFile, newProjectFilePath, self._headless)
                 serializer.ignoreDirty = False
             self.closed = False

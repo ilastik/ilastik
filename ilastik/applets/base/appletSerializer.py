@@ -1197,6 +1197,13 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
         if they store relative paths."""
         pass
 
+    def updateLegacyProjectFile(self, file: h5py.File):
+        """Optional override for subclasses. Called during "Import Project".
+        Should modify the file in-place to make it compatible with the current version of the applet.
+        :param file: h5py.File to be modified - a copy of the imported project file.
+        """
+        pass
+
 
 class JSONSerialSlot(SerialSlot):
     """
