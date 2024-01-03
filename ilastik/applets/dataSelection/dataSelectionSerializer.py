@@ -23,6 +23,7 @@ import os
 from pathlib import Path
 
 import vigra
+from h5py import File
 
 import ilastik.utility.globals
 from ilastik.applets.base.appletSerializer import AppletSerializer, getOrCreateGroup, deleteIfPresent
@@ -222,7 +223,8 @@ class DataSelectionSerializer(AppletSerializer):
         old_UrlDatasetInfo_msg = (
             "This project requires HBP-style access to a remote dataset, which is no longer supported. "
             "We would appreciate if you let us know you still need this feature. "
-            "In the meantime, please use ilastik version 1.4.0 or earlier for this project."
+            "You can attempt to create an updated copy of this project for the current ilastik version "
+            'using "Import Project."'
         )
 
         if "__class__" in infoGroup:
@@ -316,6 +318,30 @@ class DataSelectionSerializer(AppletSerializer):
 
         self.topLevelOperator.WorkingDirectory.setValue(newdir)
         self._projectFilePath = newdir
+
+    def updateLegacyProjectFile(self, file: File):
+        """
+        Presence of UrlDatasetInfo indicates this is a pre-multiscale project file created in HBP mode.
+        These projects only supported working on the first scale in the list of resolutions
+        of a Precomputed volume.
+        We reverse this list in RESTfulPrecomputedChunkedVolume._init_config, so we need to
+        use the last scale when storing the object as a new MultiscaleUrlDatasetInfo.
+        """
+        try:
+            info_dir = file[self.topGroupName]["infos"]
+        except KeyError:
+            return
+
+        for laneIndex, (_, laneGroup) in enumerate(sorted(info_dir.items())):
+            for roleName, infoGroup in sorted(laneGroup.items()):
+                if "__class__" not in infoGroup:
+                    continue
+                loaded_class_name = infoGroup["__class__"][()].decode("utf-8")
+                if loaded_class_name == "UrlDatasetInfo":
+                    del infoGroup["__class__"]
+                    infoGroup["__class__"] = "MultiscaleUrlDatasetInfo".encode("utf-8")
+                    infoGroup["working_scale"] = "-1".encode("utf-8")
+                    infoGroup["scale_locked"] = "True".encode("utf-8")
 
     def isDirty(self):
         """Return true if the current state of this item
