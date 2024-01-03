@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,37 +18,25 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from typing import List, Tuple, Callable
+import logging
+import os
 from pathlib import Path
 
+import vigra
+
+import ilastik.utility.globals
+from ilastik.applets.base.appletSerializer import AppletSerializer, getOrCreateGroup, deleteIfPresent
+from ilastik.utility import bind
+from lazyflow.utility import PathComponents
+from lazyflow.utility.pathHelpers import getPathVariants, isUrl, isRelative
+from lazyflow.utility.timer import timeLogged
 from .opDataSelection import (
-    OpDataSelection,
-    DatasetInfo,
     FilesystemDatasetInfo,
     RelativeFilesystemDatasetInfo,
     DummyDatasetInfo,
     MultiscaleUrlDatasetInfo,
 )
 from .opDataSelection import PreloadedArrayDatasetInfo, ProjectInternalDatasetInfo
-from lazyflow.operators.ioOperators import OpInputDataReader, OpStackLoader, OpH5N5WriterBigDataset
-from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
-from lazyflow.operators.ioOperators.opTiffSequenceReader import OpTiffSequenceReader
-from lazyflow.operators.ioOperators.opStreamingH5N5SequenceReaderM import OpStreamingH5N5SequenceReaderM
-from lazyflow.operators.ioOperators.opStreamingH5N5SequenceReaderS import OpStreamingH5N5SequenceReaderS
-from lazyflow.graph import Graph
-
-import os
-import vigra
-import numpy
-from lazyflow.utility import PathComponents
-from lazyflow.utility.timer import timeLogged
-from ilastik.utility import bind
-from lazyflow.utility.pathHelpers import getPathVariants, isUrl, isRelative, splitPath
-import ilastik.utility.globals
-
-from ilastik.applets.base.appletSerializer import AppletSerializer, getOrCreateGroup, deleteIfPresent
-
-import logging
 
 logger = logging.getLogger(__name__)
 
