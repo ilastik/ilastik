@@ -332,19 +332,18 @@ class DataSelectionSerializer(AppletSerializer):
         except KeyError:
             return
 
-        for laneIndex, (_, laneGroup) in enumerate(sorted(info_dir.items())):
-            for roleName, infoGroup in sorted(laneGroup.items()):
-                if "__class__" not in infoGroup:
+        for lane_group in info_dir.values():
+            for info_group in lane_group.values():
+                if "__class__" not in info_group or info_group["__class__"][()] != b"UrlDatasetInfo":
                     continue
-                loaded_class_name = infoGroup["__class__"][()].decode("utf-8")
-                if loaded_class_name == "UrlDatasetInfo":
-                    old_nickname = infoGroup["nickname"][()].decode("utf-8")
-                    del infoGroup["__class__"]
-                    del infoGroup["nickname"]
-                    infoGroup["__class__"] = "MultiscaleUrlDatasetInfo".encode("utf-8")
-                    infoGroup["nickname"] = MultiscaleUrlDatasetInfo.nickname_from_url(old_nickname).encode("utf-8")
-                    infoGroup["working_scale"] = "-1".encode("utf-8")
-                    infoGroup["scale_locked"] = "True".encode("utf-8")
+                old_nickname = info_group["nickname"][()].decode()
+                new_nickname = MultiscaleUrlDatasetInfo.nickname_from_url(old_nickname).encode()
+                del info_group["__class__"]
+                del info_group["nickname"]
+                info_group["__class__"] = b"MultiscaleUrlDatasetInfo"
+                info_group["nickname"] = new_nickname
+                info_group["working_scale"] = b"-1"
+                info_group["scale_locked"] = b"True"
 
     def isDirty(self):
         """Return true if the current state of this item
