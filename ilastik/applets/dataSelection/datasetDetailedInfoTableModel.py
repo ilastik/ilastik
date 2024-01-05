@@ -31,7 +31,7 @@ class DatasetColumn:
     Nickname = 0
     Location = 1
     InternalID = 2
-    Shape = 3
+    TaggedShape = 3
     Scale = 4
     Range = 5
     NumColumns = 6
@@ -159,7 +159,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
                 DatasetColumn.Nickname: "Nickname",
                 DatasetColumn.Location: "Location",
                 DatasetColumn.InternalID: "Internal Path",
-                DatasetColumn.Shape: "Shape",
+                DatasetColumn.TaggedShape: "Shape",
                 DatasetColumn.Range: "Data Range",
                 DatasetColumn.Scale: "Resolution Level",
             }
@@ -177,7 +177,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             DatasetColumn.Nickname: "<empty>",
             DatasetColumn.Location: "",
             DatasetColumn.InternalID: "",
-            DatasetColumn.Shape: "",
+            DatasetColumn.TaggedShape: "",
             DatasetColumn.Range: "",
             DatasetColumn.Scale: "",
         }
@@ -208,7 +208,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         if not imageSlot.ready():
             return UninitializedDisplayData[index.column()]
 
-        if index.column() == DatasetColumn.Shape:
+        if index.column() == DatasetColumn.TaggedShape:
             return ", ".join([f"{axis}: {size}" for axis, size in zip(datasetInfo.axiskeys, datasetInfo.laneShape)])
         if index.column() == DatasetColumn.Range:
             return str(datasetInfo.drange or "")
