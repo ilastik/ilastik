@@ -393,10 +393,10 @@
             </sizepolicy>
            </property>
            <property name="toolTip">
-            <string>Min object area in pixels</string>
+            <string>Min object area in pixels. Cannot be higher than the max value of a 32-bit integer (2147483647).</string>
            </property>
            <property name="maximum">
-            <number>2000000000</number>
+            <number>2147483647</number>
            </property>
           </widget>
          </item>
@@ -423,10 +423,10 @@
             </sizepolicy>
            </property>
            <property name="toolTip">
-            <string>Max object area in pixels</string>
+            <string>Max object area in pixels. Cannot be higher than the max value of a 32-bit integer (2147483647).</string>
            </property>
            <property name="maximum">
-            <number>2000000000</number>
+            <number>2147483647</number>
            </property>
           </widget>
          </item>
