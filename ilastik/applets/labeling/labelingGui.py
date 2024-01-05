@@ -160,9 +160,6 @@ class LabelingGui(LayerViewerGui):
         :param rawInputSlot: Data from the rawInputSlot parameter will be displayed directly underneath the elements
                              (if provided).
         """
-
-        self._colorTable16 = list(colortables.default16_new)
-
         # Do have have all the slots we need?
         assert isinstance(labelingSlots, LabelingGui.LabelingSlots)
         assert labelingSlots.labelInput is not None, "Missing a required slot."
@@ -181,7 +178,7 @@ class LabelingGui(LayerViewerGui):
 
         self._labelingSlots.labelNames.notifyDirty(bind(self._updateLabelList))
         self.__cleanup_fns.append(partial(self._labelingSlots.labelNames.unregisterDirty, bind(self._updateLabelList)))
-        self._colorTable16 = colortables.default16_new
+        self._colorTable16 = list(colortables.default16_new)
         self._programmaticallyRemovingLabels = False
 
         if drawerUiPath is None:
