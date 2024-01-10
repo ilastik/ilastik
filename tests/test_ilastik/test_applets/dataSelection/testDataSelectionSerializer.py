@@ -18,23 +18,15 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import os
-import h5py
+from unittest import mock
+
 import vigra
-import numpy
-import tempfile
 from pathlib import Path
-import unittest
 import pytest
 
-from ilastik.applets.dataSelection.opDataSelection import (
-    OpMultiLaneDataSelectionGroup,
-    DatasetInfo,
-    ProjectInternalDatasetInfo,
-)
+from ilastik.applets.dataSelection.opDataSelection import OpMultiLaneDataSelectionGroup
 from ilastik.applets.dataSelection.opDataSelection import ProjectInternalDatasetInfo, FilesystemDatasetInfo
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
-
 
 import logging
 
@@ -102,3 +94,34 @@ def test06(serializer, internal_datasetinfo, empty_project_file, graph):
 
     assert operatorToLoad.Image[0].meta.shape == serializer.topLevelOperator.Image[0].meta.shape
     assert operatorToLoad.Image[0].meta.axistags == serializer.topLevelOperator.Image[0].meta.axistags
+
+
+@pytest.fixture
+def mock_project_file(data_path):
+    class_entry = mock.MagicMock()
+    class_entry.__getitem__.return_value = b"UrlDatasetInfo"
+    nickname_entry = mock.MagicMock()
+    nickname_entry.__getitem__.return_value = b"localhost:8000"
+    file = {
+        TOP_GROUP_NAME: {
+            "infos": {
+                "0": {
+                    "Raw Data": {
+                        "__class__": class_entry,
+                        "nickname": nickname_entry,
+                    }
+                }
+            }
+        }
+    }
+    return file
+
+
+def test_imported_legacy_urldatasetinfo_is_converted(mock_project_file, serializer):
+    ilp_with_legacy_urldatasetinfo = mock_project_file
+    serializer.updateLegacyProjectFile(ilp_with_legacy_urldatasetinfo)
+    datasetinfo_after_import = ilp_with_legacy_urldatasetinfo[TOP_GROUP_NAME]["infos"]["0"]["Raw Data"]
+    assert datasetinfo_after_import["__class__"] == b"MultiscaleUrlDatasetInfo"
+    assert datasetinfo_after_import["nickname"] == b"localhost_8000"
+    assert datasetinfo_after_import["working_scale"] == b"-1"
+    assert datasetinfo_after_import["scale_locked"] == b"True"
