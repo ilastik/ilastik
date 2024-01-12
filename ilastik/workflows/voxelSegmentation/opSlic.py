@@ -63,13 +63,15 @@ class OpSlic(Operator):
             # If the number of supervoxels was not given, use a default proportional to the number of voxels
             n_segments = numpy.int64(bigintprod(input_data.shape) / 2500)
 
+        channel_axis = self.Input.meta.getAxisKeys().index("c")
+
         logger.debug(
             "calling skimage.segmentation.slic with {}".format(
                 dict(
                     n_segments=n_segments,
                     compactness=self.Compactness.value,
-                    max_iter=self.MaxIter.value,
-                    multichannel=True,
+                    max_num_iter=self.MaxIter.value,
+                    channel_axis=channel_axis,
                     enforce_connectivity=True,
                     convert2lab=False,
                 )
@@ -79,8 +81,8 @@ class OpSlic(Operator):
             input_data,
             n_segments=n_segments,
             compactness=self.Compactness.value,
-            max_iter=self.MaxIter.value,
-            multichannel=True,
+            max_num_iter=self.MaxIter.value,
+            channel_axis=channel_axis,
             enforce_connectivity=True,
             convert2lab=False,
         )  # Use with caution.

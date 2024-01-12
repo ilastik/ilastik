@@ -45,12 +45,13 @@ class OpSlic(Operator):
 
     def execute(self, slot, subindex, roi, result):
         input_data = self.Input(roi.start, roi.stop).wait()
+        channel_axis = self.Input.meta.getAxisKeys().index("c")
         slic_sp = skimage.segmentation.slic(
             input_data,
             n_segments=self.NumSegments.value,
             compactness=self.Compactness.value,
-            max_iter=self.MaxIter.value,
-            multichannel=True,
+            max_num_iter=self.MaxIter.value,
+            channel_axis=channel_axis,
             enforce_connectivity=True,
             convert2lab=False,
         )  # Use with caution.
