@@ -239,7 +239,7 @@ class ScaleComboBoxDelegate(QStyledItemDelegate):
                 editor.setCurrentIndex(previous_index)
             return
         self.setModelData(self.sender(), None, index, user_triggered=True)
-        changed_cell = model.index(index.row(), DatasetColumn.Shape)
+        changed_cell = model.index(index.row(), DatasetColumn.TaggedShape)
         # dataChanged(topLeft, bottomRight); since we're editing one cell, topLeft == bottomRight
         model.dataChanged.emit(changed_cell, changed_cell)
 
@@ -375,10 +375,11 @@ class DatasetDetailedInfoTableView(QTableView):
         # the "Add..." button spans last row
         self.setSpan(lastRow, 0, 1, model.columnCount())
 
+        self.setColumnWidth(DatasetColumn.TaggedShape, 215)
         self.horizontalHeader().setSectionResizeMode(DatasetColumn.Nickname, QHeaderView.Interactive)
         self.horizontalHeader().setSectionResizeMode(DatasetColumn.Location, QHeaderView.Interactive)
         self.horizontalHeader().setSectionResizeMode(DatasetColumn.InternalID, QHeaderView.Interactive)
-        self.horizontalHeader().setSectionResizeMode(DatasetColumn.AxisOrder, QHeaderView.Interactive)
+        self.horizontalHeader().setSectionResizeMode(DatasetColumn.TaggedShape, QHeaderView.Interactive)
 
     def setEnabled(self, status):
         """

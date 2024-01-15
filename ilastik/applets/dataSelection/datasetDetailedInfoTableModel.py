@@ -31,11 +31,10 @@ class DatasetColumn:
     Nickname = 0
     Location = 1
     InternalID = 2
-    AxisOrder = 3
-    Shape = 4
-    Scale = 5
-    Range = 6
-    NumColumns = 7
+    TaggedShape = 3
+    Scale = 4
+    Range = 5
+    NumColumns = 6
 
 
 def _resolution_to_display_string(resolution: List[int], axiskeys: str) -> str:
@@ -137,7 +136,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         return len(self._op.DatasetGroup)
 
     def data(self, index, role=Qt.DisplayRole):
-        if role == Qt.DisplayRole:
+        if role == Qt.DisplayRole or role == Qt.ToolTipRole:
             return self._getDisplayRoleData(index)
 
     def flags(self, index):
@@ -160,8 +159,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
                 DatasetColumn.Nickname: "Nickname",
                 DatasetColumn.Location: "Location",
                 DatasetColumn.InternalID: "Internal Path",
-                DatasetColumn.AxisOrder: "Axes",
-                DatasetColumn.Shape: "Shape",
+                DatasetColumn.TaggedShape: "Shape",
                 DatasetColumn.Range: "Data Range",
                 DatasetColumn.Scale: "Resolution Level",
             }
@@ -179,8 +177,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             DatasetColumn.Nickname: "<empty>",
             DatasetColumn.Location: "",
             DatasetColumn.InternalID: "",
-            DatasetColumn.AxisOrder: "",
-            DatasetColumn.Shape: "",
+            DatasetColumn.TaggedShape: "",
             DatasetColumn.Range: "",
             DatasetColumn.Scale: "",
         }
@@ -202,7 +199,8 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         if index.column() == DatasetColumn.Location:
             return datasetInfo.display_string
         if index.column() == DatasetColumn.InternalID:
-            return str(getattr(datasetInfo, "internal_paths", ""))
+            paths = [p for p in getattr(datasetInfo, "internal_paths", []) if p is not None]
+            return "\n".join(paths)
 
         ## Output meta-data fields
         # Defaults
@@ -210,10 +208,8 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         if not imageSlot.ready():
             return UninitializedDisplayData[index.column()]
 
-        if index.column() == DatasetColumn.AxisOrder:
-            return datasetInfo.axiskeys
-        if index.column() == DatasetColumn.Shape:
-            return str(datasetInfo.laneShape)
+        if index.column() == DatasetColumn.TaggedShape:
+            return ", ".join([f"{axis}: {size}" for axis, size in zip(datasetInfo.axiskeys, datasetInfo.laneShape)])
         if index.column() == DatasetColumn.Range:
             return str(datasetInfo.drange or "")
         if index.column() == DatasetColumn.Scale:
@@ -223,7 +219,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
                 )
             return UninitializedDisplayData[index.column()]
 
-        assert False, "Unknown column: row={}, column={}".format(index.row(), index.column())
+        raise NotImplementedError(f"Unknown column: row={index.row()}, column={index.column()}")
 
     def get_scale_options(self, laneIndex) -> List[str]:
         try:
