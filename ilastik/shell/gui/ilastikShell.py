@@ -1457,7 +1457,8 @@ class IlastikShell(QMainWindow):
     def onImportProjectActionTriggered(self):
         """
         Import an existing project into a new file.
-        Fix known legacy incompatibilities in the new file.
+        This mainly serves to convert the project to a different workflow type.
+        Also fixes known legacy incompatibilities in the new file.
         """
         logger.debug("Import Project Action")
 
@@ -1482,6 +1483,8 @@ class IlastikShell(QMainWindow):
             return
 
         newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath)
+
+        # workflow_class=None triggers a prompt for the user to choose a workflow type
         self._loadProject(
             newProjectFile, newProjectFilePath, workflow_class=None, readOnly=False, importFromPath=importedFilePath
         )
@@ -1606,7 +1609,8 @@ class IlastikShell(QMainWindow):
 
     def _loadProject(self, hdf5File, projectFilePath, workflow_class, readOnly, importFromPath=None):
         """
-        Load the data from the given hdf5File (which should already be open).
+        Instantiate a ProjectManager and have it either load hdf5File,
+        or import into hdf5File from another project at the given importFromPath.
         Populate the shell with widgets from all the applets in the new workflow.
         """
 
