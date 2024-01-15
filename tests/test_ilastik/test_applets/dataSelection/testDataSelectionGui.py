@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import QComboBox, QMessageBox
 from ilastik.applets.dataSelection.datasetDetailedInfoTableModel import DatasetColumn
 from ilastik.applets.dataSelection.datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 
-CI = os.environ.get("GITHUB_ACTIONS") or os.environ.get("APPVEYOR")
+CI = os.environ.get("GITHUB_ACTIONS") or os.environ.get("APPVEYOR") or os.environ.get("ON_CIRCLE_CI")
 
 
 def prepare_widget(qtbot, widget):
