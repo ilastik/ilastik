@@ -159,7 +159,7 @@ class ProjectManager(object):
 
         # FIXME: version comparison
         if not isVersionCompatible(projectVersion):
-            # Must use _importProject() for old project files.
+            # Must use importProject() for old project files.
             raise ProjectManager.ProjectVersionError(projectVersion, ilastik.__version__)
 
         workflow_class = None
@@ -429,7 +429,7 @@ class ProjectManager(object):
             return []
 
     @timeLogged(logger, logging.DEBUG)
-    def _loadProject(self, hdf5File, projectFilePath, readOnly):
+    def loadProject(self, hdf5File, projectFilePath, readOnly):
         """
         Load the data from the given hdf5File (which should already be open).
 
@@ -497,9 +497,9 @@ class ProjectManager(object):
         self.currentProjectFile = None
 
         # Open the snapshot of the old project that we just made
-        self._loadProject(hdf5File, newPath, readOnly)
+        self.loadProject(hdf5File, newPath, readOnly)
 
-    def _importProject(self, importedFilePath, newProjectFile, newProjectFilePath):
+    def importProject(self, importedFilePath, newProjectFile, newProjectFilePath):
         """
         Load the data from a project and save it to a different project file.
         Then fix known legacy incompatibilities in the new file.

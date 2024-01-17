@@ -1657,15 +1657,15 @@ class IlastikShell(QMainWindow):
                 # load the project data from file
                 if importFromPath is None:
                     # FIXME: load the project asynchronously
-                    self.projectManager._loadProject(hdf5File, projectFilePath, readOnly)
+                    self.projectManager.loadProject(hdf5File, projectFilePath, readOnly)
                 else:
                     assert not readOnly, "Can't import into a read-only file."
-                    self.projectManager._importProject(importFromPath, hdf5File, projectFilePath)
+                    self.projectManager.importProject(importFromPath, hdf5File, projectFilePath)
             except Exception as ex:
                 log_exception(logger)
                 self.closeCurrentProject()
 
-                # _loadProject failed, so we cannot expect it to clean up
+                # loadProject failed, so we cannot expect it to clean up
                 # the hdf5 file (but it might have cleaned it up, so we catch
                 # the error)
                 try:

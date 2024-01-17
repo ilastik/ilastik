@@ -54,7 +54,7 @@ class HeadlessShell(object):
         self.projectManager = ProjectManager(
             self, workflow_class, headless=True, workflow_cmdline_args=self._workflow_cmdline_args
         )
-        self.projectManager._loadProject(hdf5File, newProjectFilePath, readOnly)
+        self.projectManager.loadProject(hdf5File, newProjectFilePath, readOnly)
         self.projectManager.saveProject()
 
     @classmethod
@@ -122,7 +122,7 @@ class HeadlessShell(object):
                 workflow_cmdline_args=self._workflow_cmdline_args,
                 project_creation_args=project_creation_args,
             )
-            self.projectManager._loadProject(hdf5File, projectFilePath, readOnly)
+            self.projectManager.loadProject(hdf5File, projectFilePath, readOnly)
 
         except ProjectManager.FileMissingError:
             logger.error("Couldn't find project file: {}".format(projectFilePath))
@@ -151,7 +151,7 @@ class HeadlessShell(object):
                 project_creation_args=self._workflow_cmdline_args,
             )
 
-            self.projectManager._importProject(oldProjectFilePath, hdf5File, projectFilePath)
+            self.projectManager.importProject(oldProjectFilePath, hdf5File, projectFilePath)
 
     def setAppletEnabled(self, applet, enabled):
         """
