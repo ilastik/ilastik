@@ -1,6 +1,7 @@
 import numpy
 from numpy.testing import assert_array_equal
 import pytest
+import tifffile
 import vigra
 
 from lazyflow.graph import Graph
@@ -62,8 +63,6 @@ class TestOpTiffReader:
 
         Here, we generate a 3D tiff file with scikit-learn and try to read it
         """
-        import tifffile
-
         data = numpy.random.randint(0, 256, test_shape, dtype="uint8")
         tiff_path = str(tmp_path / f"myfile_{axisorder}.tiff")
         tifffile.imwrite(tiff_path, data)
@@ -94,3 +93,22 @@ class TestOpTiffReader:
         assert op.Output.ready()
         assert op.Output.meta.shape == data.shape
         assert_array_equal(data, op.Output[:].wait())
+
+    def test_bigtiff(self, tmp_path):
+        test_file_name = f"{tmp_path}/bigtiff_testfile.tif"
+
+        # generate random bigtiff file
+        data = numpy.random.randint(0, 255, (800, 1200)).astype("uint8")
+        tifffile.imwrite(test_file_name, data, bigtiff=True, metadata={"axes": "YX"})
+
+        op = OpTiffReader(graph=Graph())
+        op.Filepath.setValue(test_file_name)
+
+        assert op.Output.ready()
+        assert op.Output.meta.shape == data.shape
+        output_data = op.Output[:].wait()
+
+        # clean up closes tiff file, which prevents PermissionError on Windows
+        op.cleanUp()
+
+        numpy.testing.assert_array_equal(output_data, data)
