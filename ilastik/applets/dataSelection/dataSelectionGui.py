@@ -704,5 +704,5 @@ class DataSelectionGui(QWidget):
 
         self.addLanes([MultiscaleUrlDatasetInfo(url=dvid_url, subvolume_roi=subvolume_roi)], roleIndex)
 
-    def handleScaleSelected(self, laneIndex, scale_index):
-        self.topLevelOperator.get_lane(laneIndex).ActiveScaleGroup.setValue(scale_index)
+    def handleScaleSelected(self, laneIndex, scale_key):
+        self.topLevelOperator.get_lane(laneIndex).ActiveScaleGroup.setValue(scale_key)

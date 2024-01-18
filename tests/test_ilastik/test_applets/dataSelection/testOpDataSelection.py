@@ -867,12 +867,13 @@ class TestOpDataSelection_PrecomputedChunks:
         _ = MockRemoteDataset(monkeypatch, self.MOCK_DATASET_URL, self.INFO_JSON, self.CHUNKS)
         op = OpDataSelection(graph=graph)
         op.WorkingDirectory.setValue(os.getcwd())
-        op.ActiveScale.setValue(0)
+        op.ActiveScale.setValue("")
         op.Dataset.setValue(MultiscaleUrlDatasetInfo(url=self.MOCK_DATASET_URL))
         loaded_scale0 = op.Image[:].wait()
         assert numpy.allclose(loaded_scale0, self.IMAGE_SCALED)
 
-        op.ActiveScale.setValue(1)
+        scale_keys = list(op.Image.meta.scales.keys())
+        op.ActiveScale.setValue(scale_keys[1])
         loaded_scale1 = op.Image[:].wait()
         assert numpy.allclose(loaded_scale1, self.IMAGE_ORIGINAL)
 
@@ -884,7 +885,7 @@ class TestOpDataSelection_DatasetInfo:
         "type": "image",
         "data_type": "uint16",
         "num_channels": 1,
-        "scales": [{"chunk_sizes": [[1, 1, 1]], "resolution": [""], "size": [1, 1, 1]}],
+        "scales": [{"key": "foo", "chunk_sizes": [[1, 1, 1]], "resolution": [""], "size": [1, 1, 1]}],
     }
 
     @pytest.fixture
@@ -947,7 +948,7 @@ class TestOpDataSelection_DatasetInfo:
 
         # We know that as of now, a legacy UrlDatasetInfo would be equivalent to a modern MultiscaleUrlDatasetInfo
         # with the scale set to the original resolution (the last in the list), and locked-in.
-        modern_dataset_info.working_scale = -1
+        modern_dataset_info.working_scale = self.MOCK_PRECOMPUTED_INFO["scales"][-1]["key"]
         modern_dataset_info.scale_locked = True
         assert legacy_dataset_info.to_json_data() == modern_dataset_info.to_json_data()
 

@@ -103,7 +103,7 @@ class DatasetInfo(ABC):
         project_file: h5py.File = None,
         normalizeDisplay: bool = None,
         drange: Tuple[Number, Number] = None,
-        working_scale: int = 0,
+        working_scale: str = "",
         scale_locked: bool = False,
     ):
         if axistags and len(axistags) != len(laneShape):
@@ -126,7 +126,7 @@ class DatasetInfo(ABC):
         self.legacy_datasetId = self.generate_id()
         self.working_scale = working_scale
         self.scale_locked = scale_locked
-        self.scales = []  # list of dicts dependent on data format
+        self.scales = {}  # {scale_key: scale_object}, dependent on data format
 
     @property
     def shape5d(self) -> Shape5D:
@@ -172,7 +172,7 @@ class DatasetInfo(ABC):
             "nickname": self.nickname.encode("utf-8"),
             "normalizeDisplay": self.normalizeDisplay,
             "drange": self.drange,
-            "working_scale": self.working_scale,
+            "working_scale": self.working_scale.encode("utf-8"),
             "scale_locked": self.scale_locked,
             "location": self.legacy_location.encode("utf-8"),  # legacy support
             "filePath": self.effective_path.encode("utf-8"),  # legacy support
@@ -205,7 +205,9 @@ class DatasetInfo(ABC):
         if "display_mode" in data:
             params["display_mode"] = data["display_mode"][()].decode("utf-8")
         if "working_scale" in data:
-            params["working_scale"] = int(data["working_scale"][()])
+            # This raises if working_scale is an int,
+            # which would be the case if anyone actually created a Precomputed project with ilastik1.4.1b13
+            params["working_scale"] = data["working_scale"][()].decode("utf-8")
         if "scale_locked" in data:
             params["scale_locked"] = bool(data["scale_locked"][()])
         return cls(**params)
@@ -584,10 +586,13 @@ class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
         """
         Returns a deserialized DatasetInfo dict equivalent to a dict from a MultiscaleUrlDatasetInfo
         """
+        from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
+
+        remote_source = RESTfulPrecomputedChunkedVolume(group["filePath"][()].decode().lstrip("precomputed://"))
         deserialized = super().from_h5_group(
             group,
             {
-                "working_scale": -1,
+                "working_scale": remote_source.original_resolution_key,
                 "scale_locked": True,
             },
         )
@@ -820,7 +825,9 @@ class OpDataSelection(Operator):
             if data_provider.meta.scales:
                 datasetInfo.laneShape = data_provider.meta.shape
                 datasetInfo.scales = data_provider.meta.scales
-                datasetInfo.working_scale = self.ActiveScale.value
+                # Using "" for working_scale would also default to the lowest, but the datasetInfo property
+                # may be stored in the project file, so we want to be explicit with the key.
+                datasetInfo.working_scale = data_provider.meta.lowest_scale
 
             output_order = self._get_output_axis_order(data_provider)
             # Export applet assumes this OpReorderAxes exists.
@@ -876,7 +883,7 @@ class OpDataSelectionGroup(Operator):
 
     # Must mark as optional because not all subslots are required.
     DatasetGroup = InputSlot(stype="object", level=1, optional=True)  # "Group" as in group of slots
-    ActiveScaleGroup = InputSlot(stype="int", level=1, optional=True, value=0)
+    ActiveScaleGroup = InputSlot(stype="string", level=1, optional=True, value="")
 
     # Outputs
     ImageGroup = OutputSlot(level=1)  # "Group" as in group of slots
