@@ -522,7 +522,7 @@ class ProjectManager(object):
 
             for serializer in serializers:
                 serializer.ignoreDirty = True
-                serializer.updateLegacyProjectFile(self.currentProjectFile)
+                serializer.updateLegacyEntries(self.currentProjectFile)
                 serializer.deserializeFromHdf5(self.currentProjectFile, newProjectFilePath, self._headless)
                 serializer.ignoreDirty = False
             self.closed = False

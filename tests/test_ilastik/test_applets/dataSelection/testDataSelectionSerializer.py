@@ -119,7 +119,7 @@ def mock_project_file(data_path):
 
 def test_imported_legacy_urldatasetinfo_is_converted(mock_project_file, serializer):
     ilp_with_legacy_urldatasetinfo = mock_project_file
-    serializer.updateLegacyProjectFile(ilp_with_legacy_urldatasetinfo)
+    serializer.updateLegacyEntries(ilp_with_legacy_urldatasetinfo)
     datasetinfo_after_import = ilp_with_legacy_urldatasetinfo[TOP_GROUP_NAME]["infos"]["0"]["Raw Data"]
     assert datasetinfo_after_import["__class__"] == b"MultiscaleUrlDatasetInfo"
     assert datasetinfo_after_import["nickname"] == b"localhost_8000"

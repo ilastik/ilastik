@@ -319,7 +319,7 @@ class DataSelectionSerializer(AppletSerializer):
         self.topLevelOperator.WorkingDirectory.setValue(newdir)
         self._projectFilePath = newdir
 
-    def updateLegacyProjectFile(self, file: File):
+    def updateLegacyEntries(self, file: File):
         """
         Presence of UrlDatasetInfo indicates this is a pre-multiscale project file created in HBP mode.
         These projects only supported working on the first scale in the list of resolutions
