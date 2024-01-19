@@ -44,13 +44,6 @@ from .opStreamingUfmfReader import OpStreamingUfmfReader
 from .opStreamingMmfReader import OpStreamingMmfReader
 
 try:
-    from .opBigTiffReader import OpBigTiffReader
-
-    _supports_bigtiff = True
-except ImportError:
-    _supports_bigtiff = False
-
-try:
     from lazyflow.operators.ioOperators import OpDvidVolume, OpDvidRoi
 
     _supports_dvid = True
@@ -204,7 +197,6 @@ class OpInputDataReader(Operator):
             self._attemptOpenAsH5BlockStore,
             self._attemptOpenAsBlockwiseFileset,
             self._attemptOpenAsRESTfulBlockwiseFileset,
-            self._attemptOpenAsBigTiff,
             self._attemptOpenAsTiff,
             self._attemptOpenWithVigraImpex,
         ]
@@ -576,27 +568,6 @@ class OpInputDataReader(Operator):
                 return ([opReader], opReader.SpecifiedOutput)
             except JsonConfigParser.SchemaError:
                 opReader.cleanUp()
-        return ([], None)
-
-    def _attemptOpenAsBigTiff(self, filePath):
-        if not _supports_bigtiff:
-            return ([], None)
-
-        fileExtension = os.path.splitext(filePath)[1].lower()
-        fileExtension = fileExtension.lstrip(".")  # Remove leading dot
-
-        if fileExtension not in OpInputDataReader.tiffExts:
-            return ([], None)
-
-        if not os.path.exists(filePath):
-            raise OpInputDataReader.DatasetReadError("Input file does not exist: " + filePath)
-
-        opReader = OpBigTiffReader(parent=self)
-        try:
-            opReader.Filepath.setValue(filePath)
-            return ([opReader], opReader.Output)
-        except OpBigTiffReader.NotBigTiffError as ex:
-            opReader.cleanUp()
         return ([], None)
 
     def _attemptOpenAsTiff(self, filePath):
