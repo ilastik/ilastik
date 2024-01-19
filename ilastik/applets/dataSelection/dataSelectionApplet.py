@@ -129,7 +129,8 @@ class DataSelectionApplet(Applet):
                         if named_configured_roles:
                             raise ValueError(
                                 "You can only have trailing file paths if no other role was set by name. "
-                                f"You have set the following roles by name: {named_configured_roles}"
+                                f"You have set the following roles by name: {named_configured_roles}. "
+                                f"Trailing filenames {values}."
                             )
                         setattr(namespace, role_arg_names[0], values)
 
