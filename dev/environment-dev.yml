@@ -36,10 +36,10 @@ dependencies:
   - scikit-learn
   # for python 3.7 compatible environment use
   # tiffile >2020.9.22,<=2021.11.2
-  - tifffile
+  - tifffile 2023*
   # build 1.11.1=*_1028 on cf is the first to be compatible with numpy>1.19
   # need to bump this manually until there is a true version bump in vigra
-  - vigra 1.11.1=*_1033
+  - vigra 1.11.2*
   # xarray versions not compatible with numpy 1.21, 2023.08.0 might be, but lost trust
   # 2023.10.1 correctly pins numpy to 1.22 and up
   - xarray !=2023.8.0,!=2023.9.0,!=2023.10.0
@@ -47,7 +47,7 @@ dependencies:
 
   # Neural Network Workflow dependencies
   # can be changed to request gpu versions
-  - pytorch 1.13.*
+  - pytorch 2*
   - cpuonly  # comment out for pytorch with cuda
   # mamba does not "respect" track_features, which is the idea behind cpuonly,
   # with ilastik-pytorch-version-helper-cpu we help mamba on linux and windows
