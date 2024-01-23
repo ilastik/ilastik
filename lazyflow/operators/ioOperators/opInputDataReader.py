@@ -20,7 +20,7 @@
 #          http://ilastik.org/license/
 ###############################################################################
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpBlockedArrayCache, OpMetadataInjector, OpSubRegion
+from lazyflow.operators import OpMetadataInjector, OpSubRegion
 from .opNpyFileReader import OpNpyFileReader
 from lazyflow.operators.ioOperators import (
     OpBlockwiseFilesetReader,
@@ -250,18 +250,6 @@ class OpInputDataReader(Operator):
             mmfReader.FileName.setValue(filePath)
 
             return ([mmfReader], mmfReader.Output)
-
-            """
-            # Cache the frames we read
-            frameShape = mmfReader.Output.meta.ideal_blockshape
-
-            mmfCache = OpBlockedArrayCache( parent=self )
-            mmfCache.fixAtCurrent.setValue( False )
-            mmfCache.BlockShape.setValue( frameShape )
-            mmfCache.Input.connect( mmfReader.Output )
-
-            return ([mmfReader, mmfCache], mmfCache.Output)
-            """
         else:
             return ([], None)
 
@@ -271,18 +259,6 @@ class OpInputDataReader(Operator):
             ufmfReader.FileName.setValue(filePath)
 
             return ([ufmfReader], ufmfReader.Output)
-
-            # Cache the frames we read
-            """
-            frameShape = ufmfReader.Output.meta.ideal_blockshape
-
-            ufmfCache = OpBlockedArrayCache( parent=self )
-            ufmfCache.fixAtCurrent.setValue( False )
-            ufmfCache.BlockShape.setValue( frameShape )
-            ufmfCache.Input.connect( ufmfReader.Output )
-
-            return ([ufmfReader, ufmfCache], ufmfCache.Output)
-            """
         else:
             return ([], None)
 
@@ -583,15 +559,7 @@ class OpInputDataReader(Operator):
         opReader = OpTiffReader(parent=self)
         opReader.Filepath.setValue(filePath)
 
-        page_shape = opReader.Output.meta.ideal_blockshape
-
-        # Cache the pages we read
-        opCache = OpBlockedArrayCache(parent=self)
-        opCache.fixAtCurrent.setValue(False)
-        opCache.BlockShape.setValue(page_shape)
-        opCache.Input.connect(opReader.Output)
-
-        return ([opReader, opCache], opCache.Output)
+        return ([opReader], opReader.Output)
 
     def _attemptOpenWithVigraImpex(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()
@@ -606,24 +574,7 @@ class OpInputDataReader(Operator):
         vigraReader = OpImageReader(parent=self)
         vigraReader.Filename.setValue(filePath)
 
-        # Cache the image instead of reading the hard disk for every access.
-        imageCache = OpBlockedArrayCache(parent=self)
-        imageCache.Input.connect(vigraReader.Image)
-
-        # 2D: Just one block for the whole image
-        cacheBlockShape = vigraReader.Image.meta.shape
-
-        taggedShape = vigraReader.Image.meta.getTaggedShape()
-        if "z" in list(taggedShape.keys()):
-            # 3D: blocksize is one slice.
-            taggedShape["z"] = 1
-            cacheBlockShape = tuple(taggedShape.values())
-
-        imageCache.fixAtCurrent.setValue(False)
-        imageCache.BlockShape.setValue(cacheBlockShape)
-        assert imageCache.Output.ready()
-
-        return ([vigraReader, imageCache], imageCache.Output)
+        return ([vigraReader], vigraReader.Image)
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here because our output is directly connected..."
