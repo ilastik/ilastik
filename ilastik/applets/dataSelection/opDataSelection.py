@@ -46,10 +46,16 @@ from ilastik.utility import OpMultiLaneWrapper
 from ilastik.workflow import Workflow
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents
 from lazyflow.utility.helpers import get_default_axisordering
+from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators import OpMissingDataSource
 from lazyflow.operators.ioOperators import OpH5N5WriterBigDataset
 from lazyflow.graph import Graph, Operator
+
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def getTypeRange(numpy_type):
@@ -702,6 +708,27 @@ class RelativeFilesystemDatasetInfo(FilesystemDatasetInfo):
         return os.path.pathsep.join(str(Path(p).relative_to(self.base_dir)) for p in self.expanded_paths)
 
 
+def minimal_block_shapes(tagged_block_shape: dict[str, int]) -> dict[str, int]:
+    """Helper function that sets up cache sizes with "optimal" values
+
+    In principle the readers should define the block-size properly,
+    but sometimes, axes are not set correctly.
+
+    For the `z` axis we want a minimal block size as this drastically
+    speeds up loading the ortho-views.
+
+    Args:
+        tagged_block_shape: dictionary mapping axis string to block-size
+
+    Returns:
+        dictionary modified with empirically found sensible minimum values
+        per axis.
+    """
+    minima = {"z": 32}
+
+    return {k: max(v, minima.get(k, 1)) for k, v in tagged_block_shape.items()}
+
+
 class OpDataSelection(Operator):
     """
     The primary operator for handling a single dataset, e.g. raw data or a prediction mask.
@@ -762,11 +789,17 @@ class OpDataSelection(Operator):
         self.Dataset.notifyUnready(self._clean_up_all_children)
         self.Dataset.setOrConnectIfAvailable(Dataset)
 
+        self._op5 = None
+        self._opCache = None
+
     def _clean_up_all_children(self, *args) -> None:
         self.Image.disconnect()
         # This relies on self.children being in the same order as the graph.
         for op in reversed(self.children):
             op.cleanUp()
+
+        self._op5 = None
+        self._opCache = None
 
     def setupOutputs(self):
         self._clean_up_all_children()
@@ -792,8 +825,26 @@ class OpDataSelection(Operator):
 
             output_order = self._get_output_axis_order(data_provider)
             # Export applet assumes this OpReorderAxes exists.
-            op5 = OpReorderAxes(parent=self, AxisOrder=output_order, Input=data_provider)
-            self.Image.connect(op5.Output)
+            self._op5 = OpReorderAxes(parent=self, AxisOrder=output_order, Input=data_provider)
+
+            # Cache input data for efficient display
+            self._opCache = OpBlockedArrayCache(parent=self)
+            self._opCache.name = "OpBlockedArrayCache reordered input data"
+            self._opCache.fixAtCurrent.setValue(False)
+            ideal_blockshape = self._op5.Output.meta.get("ideal_blockshape", None)
+            if ideal_blockshape:
+                tagged_block_shape = minimal_block_shapes(
+                    {k: v for k, v in zip(self._op5.Output.meta.getAxisKeys(), ideal_blockshape)}
+                )
+                block_shape = [tagged_block_shape[k] for k in self._op5.Output.meta.getAxisKeys()]
+            else:
+                block_shape = self._op5.Output.meta.shape
+                logger.debug(f"Could not determine ideal blockshape, will use full volume extent {block_shape}!")
+
+            self._opCache.BlockShape.setValue(block_shape)
+            self._opCache.Input.connect(self._op5.Output)
+
+            self.Image.connect(self._opCache.Output)
             self.AllowLabels.setValue(datasetInfo.allowLabels)
             if self.Image.meta.nickname is not None:
                 datasetInfo.nickname = self.Image.meta.nickname
