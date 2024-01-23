@@ -71,6 +71,7 @@ class OpImageReader(Operator):
             self.Image.meta.shape = shape_yxc
             v_tags = info.getAxisTags()
             self.Image.meta.axistags = vigra.AxisTags([v_tags[k] for k in "yxc"])
+            self.Image.meta.ideal_blockshape = self.Image.meta.shape
         else:
             # For 3D, we use zyxc
             # Insert z-axis shape
@@ -78,10 +79,9 @@ class OpImageReader(Operator):
             self.Image.meta.shape = shape_zyxc
 
             # Insert z tag
-            z_tag = vigra.defaultAxistags("z")[0]
-            tags_xyc = [tag for tag in info.getAxisTags()]
-            tags_zyxc = [z_tag] + list(reversed(tags_xyc[:-1])) + tags_xyc[-1:]
-            self.Image.meta.axistags = vigra.AxisTags(tags_zyxc)
+            self.Image.meta.axistags = vigra.defaultAxistags("zyxc")
+            ideal_blockshape = tuple([1] + list(self.Image.meta.shape)[1:])
+            self.Image.meta.ideal_blockshape = ideal_blockshape
 
     def execute(self, slot, subindex, rroi, result):
         filename = self.Filename.value

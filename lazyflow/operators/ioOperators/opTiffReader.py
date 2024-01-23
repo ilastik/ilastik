@@ -101,9 +101,6 @@ class OpTiffReader(Operator):
         self.Output.meta.dtype = numpy.dtype(dtype_code).type
 
         blockshape = defaultdict(lambda: 1, zip(self._page_axes, self._page_shape))
-        # optimization: reading bigger blockshapes in z means much smoother user experience
-        # but don't change z if it's part of the page shape
-        blockshape.setdefault("z", 32)
         self.Output.meta.ideal_blockshape = tuple(blockshape[k] for k in axes)
 
     def execute(self, slot, subindex, roi, result):
