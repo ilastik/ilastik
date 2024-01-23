@@ -724,7 +724,7 @@ def minimal_block_shapes(tagged_block_shape: dict[str, int]) -> dict[str, int]:
         dictionary modified with empirically found sensible minimum values
         per axis.
     """
-    minima = {"z": 32}
+    minima = {"z": 32, "y": 256, "x": 256}
 
     return {k: max(v, minima.get(k, 1)) for k, v in tagged_block_shape.items()}
 
