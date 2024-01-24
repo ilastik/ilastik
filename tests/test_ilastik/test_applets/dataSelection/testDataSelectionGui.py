@@ -1,12 +1,11 @@
 # Data selection is already covered in workflow tests (e.g. testPixelClassificationGui.py)
 # Additional tests here should be workflow-agnostic.
 import os
-import platform
 from unittest import mock
 
 import pytest
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
-from PyQt5.QtWidgets import QComboBox, QMessageBox
+from PyQt5.QtWidgets import QComboBox, QMessageBox, QApplication
 
 from ilastik.applets.dataSelection.datasetDetailedInfoTableModel import DatasetColumn
 from ilastik.applets.dataSelection.datasetDetailedInfoTableView import DatasetDetailedInfoTableView
@@ -36,9 +35,9 @@ def dataset_table(qtbot) -> DatasetDetailedInfoTableView:
         m.get_scale_options = lambda _row: ["100, 100, 10", "50, 50, 10"] if _row > 0 else []
         m.is_scale_locked = lambda _row: _row == 2
         data_rows = [
-            ["image", "/usr/root/image.png", "", "zyx", "(1,10,10)", "", ""],
-            ["image", "precomputed://http://localhost:8000", "", "zyx", "(1,10,10)", "100, 100, 10", ""],
-            ["image", "precomputed://http://localhost:8000", "", "zyx", "(1,10,10)", "50, 50, 10", ""],
+            ["image", "/usr/root/image.png", "", "z: 1, y: 10, x: 10", "", ""],
+            ["image", "precomputed://http://localhost:8000", "", "z: 1, y: 10, x: 10", "100, 100, 10", ""],
+            ["image", "precomputed://http://localhost:8000", "", "z: 1, y: 10, x: 10", "50, 50, 10", ""],
             [],  # Empty row because the custom setModel replaces the model's last row with an AddFileButton
         ]
         for i, row in enumerate(data_rows):
@@ -76,13 +75,16 @@ def test_scale_select_exists_and_triggers_gui_event(dataset_table, mock_gui):
     assert mock_gui.handleScaleSelected.called_once_with(1, 1)
 
 
-@pytest.mark.skipif(CI and platform.system() == "Darwin", reason="Flaky on Mac: editor_locked is None")
 def test_locked_scale_select_does_not_trigger_gui_and_informs_user(dataset_table, mock_gui, intercept_info_popup):
     dataset_table.scaleSelected.connect(mock_gui.handleScaleSelected)
     scale_cell_multiscale_locked = dataset_table.model().index(2, DatasetColumn.Scale)
-    editor_locked = dataset_table.indexWidget(scale_cell_multiscale_locked)
+    combobox = dataset_table.indexWidget(scale_cell_multiscale_locked)
+    QApplication.processEvents()  # Needed on Mac to avoid `combobox is None` race condition
+    index_changed_mock = mock.Mock()
+    combobox.currentIndexChanged.connect(index_changed_mock)
 
-    editor_locked.setCurrentIndex(0)
+    combobox.setCurrentIndex(0)
     if not CI:  # Popups are off in CI
         intercept_info_popup.assert_called_once()
+    assert 1 == index_changed_mock.call_count
     assert 0 == mock_gui.handleScaleSelected.call_count
