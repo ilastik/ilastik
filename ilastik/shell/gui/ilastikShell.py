@@ -77,6 +77,7 @@ import ilastik.ilastik_logging.default_config
 from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
 from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
+from ilastik.exceptions import UserAbort
 from ilastik.applets.base.applet import Applet, ShellRequest
 from ilastik.applets.base.appletGuiInterface import AppletGuiInterface, VolumeViewerGui
 from ilastik.applets.base.singleToMultiGuiAdapter import SingleToMultiGuiAdapter
@@ -1661,7 +1662,6 @@ class IlastikShell(QMainWindow):
                     assert not readOnly, "Can't import into a read-only file."
                     self.projectManager.importProject(importFromPath, hdf5File, projectFilePath)
             except Exception as ex:
-                log_exception(logger)
                 self.closeCurrentProject()
 
                 # loadProject failed, so we cannot expect it to clean up
@@ -1671,7 +1671,10 @@ class IlastikShell(QMainWindow):
                     hdf5File.close()
                 except:
                     pass
-                QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + str(ex))
+
+                if not isinstance(ex, UserAbort):
+                    log_exception(logger)
+                    QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + str(ex))
 
             else:
                 stop = time.perf_counter()

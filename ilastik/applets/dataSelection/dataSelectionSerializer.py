@@ -26,6 +26,7 @@ import vigra
 
 import ilastik.utility.globals
 from ilastik.applets.base.appletSerializer import AppletSerializer, getOrCreateGroup, deleteIfPresent
+from ilastik.exceptions import UserAbort
 from ilastik.utility import bind
 from lazyflow.utility import PathComponents
 from lazyflow.utility.pathHelpers import getPathVariants, isUrl, isRelative
@@ -260,7 +261,7 @@ class DataSelectionSerializer(AppletSerializer):
 
         if info_class == UrlDatasetInfo:
             if not _confirmLoadLegacyProject():
-                raise RuntimeError("Loading aborted by user.")
+                raise UserAbort("User aborted loading of legacy project file.")
             dirty = True
 
         try:
