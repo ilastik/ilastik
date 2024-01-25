@@ -1457,7 +1457,7 @@ class IlastikShell(QMainWindow):
     def onImportProjectActionTriggered(self):
         """
         Import an existing project into a new file.
-        This involves opening the old file, saving it to a new file, and then opening the new file.
+        This mainly serves to convert the project to a different workflow type.
         """
         logger.debug("Import Project Action")
 
@@ -1470,21 +1470,23 @@ class IlastikShell(QMainWindow):
 
         # Select the paths to the ilp to import and the name of the new one we'll create
         importedFilePath = self.getProjectPathToOpen(defaultDirectory)
-        if importedFilePath is not None:
-            preferences.set("shell", "recently imported", importedFilePath)
-            defaultFile, ext = os.path.splitext(importedFilePath)
-            defaultFile += "_imported"
-            defaultFile += ext
-            newProjectFilePath = self.getProjectPathToCreate(defaultFile)
+        if importedFilePath is None:  # User cancelled
+            return
 
-        # If the user didn't cancel
-        if importedFilePath is not None and newProjectFilePath is not None:
-            if not self.ensureNoCurrentProject():
-                return
-            newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath)
-            self._loadProject(
-                newProjectFile, newProjectFilePath, workflow_class=None, readOnly=False, importFromPath=importedFilePath
-            )
+        preferences.set("shell", "recently imported", importedFilePath)
+        defaultFile, ext = os.path.splitext(importedFilePath)
+        defaultFile += "_imported"
+        defaultFile += ext
+        newProjectFilePath = self.getProjectPathToCreate(defaultFile)
+        if newProjectFilePath is None or not self.ensureNoCurrentProject():
+            return
+
+        newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath)
+
+        # workflow_class=None triggers a prompt for the user to choose a workflow type
+        self._loadProject(
+            newProjectFile, newProjectFilePath, workflow_class=None, readOnly=False, importFromPath=importedFilePath
+        )
 
     def onDownloadProjectFromDvidActionTriggered(self):
         logger.debug("Download Project From DVID")
@@ -1607,7 +1609,8 @@ class IlastikShell(QMainWindow):
     def _loadProject(self, hdf5File, projectFilePath, workflow_class, readOnly, importFromPath=None):
         """
         Load the data from the given hdf5File (which should already be open).
-        Populate the shell with widgets from all the applets in the new workflow.
+        Instantiate a ProjectManager and have it either load hdf5File,
+        or import into hdf5File from another project at the given importFromPath.
         """
 
         if workflow_class is None:
