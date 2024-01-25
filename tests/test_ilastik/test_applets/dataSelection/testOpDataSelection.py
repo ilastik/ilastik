@@ -41,6 +41,7 @@ from ilastik.applets.dataSelection.opDataSelection import (
     RelativeFilesystemDatasetInfo,
     FilesystemDatasetInfo,
     ProjectInternalDatasetInfo,
+    UrlDatasetInfo,
 )
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -877,7 +878,8 @@ class TestOpDataSelection_PrecomputedChunks:
 
 
 class TestOpDataSelection_DatasetInfo:
-    MOCK_PRECOMPUTED_URL = "precomputed://https://mocked.com/precomputed_dataset"
+    # Having a bad char (:) in the url makes sure that nickname conversion to a file-name-safe string is covered
+    MOCK_PRECOMPUTED_URL = "precomputed://http://localhost:8000"
     MOCK_PRECOMPUTED_INFO = {
         "type": "image",
         "data_type": "uint16",
@@ -916,6 +918,38 @@ class TestOpDataSelection_DatasetInfo:
         }
         dataset_info = info_class(**info_args[info_class.__name__])
         assert dataset_info.default_output_dir == data_path / expected_sub_path
+
+    @pytest.fixture
+    def ilp_with_legacy_urldatasetinfo(self, empty_project_file):
+        ilp = empty_project_file
+        info_group = (
+            ilp.require_group(TOP_GROUP_NAME).require_group("infos").require_group("0").require_group("Raw Data")
+        )
+        info_entries = {
+            "__class__": "UrlDatasetInfo",
+            "nickname": self.MOCK_PRECOMPUTED_URL.lstrip("precomputed://http://"),
+            "filePath": self.MOCK_PRECOMPUTED_URL,
+            "allowLabels": True,
+        }
+        for k, v in info_entries.items():
+            info_group.create_dataset(k, data=v)
+        return ilp
+
+    def test_urldatasetinfo_serializes_equivalent_to_multiscaleurldatasetinfo(
+        self, ilp_with_legacy_urldatasetinfo, monkeypatch
+    ):
+        _ = MockRemoteDataset(monkeypatch, self.MOCK_PRECOMPUTED_URL, self.MOCK_PRECOMPUTED_INFO, {})
+        legacy_group = ilp_with_legacy_urldatasetinfo[TOP_GROUP_NAME]["infos"]["0"]["Raw Data"]
+        legacy_dataset_info = UrlDatasetInfo.from_h5_group(legacy_group)
+        modern_dataset_info = MultiscaleUrlDatasetInfo(url=self.MOCK_PRECOMPUTED_URL)
+        # ID is randomly generated, but we want them to be identical for this test
+        legacy_dataset_info.legacy_datasetId = modern_dataset_info.legacy_datasetId
+
+        # We know that as of now, a legacy UrlDatasetInfo would be equivalent to a modern MultiscaleUrlDatasetInfo
+        # with the scale set to the original resolution (the last in the list), and locked-in.
+        modern_dataset_info.working_scale = -1
+        modern_dataset_info.scale_locked = True
+        assert legacy_dataset_info.to_json_data() == modern_dataset_info.to_json_data()
 
 
 def test_cleanup(data_path, graph):
