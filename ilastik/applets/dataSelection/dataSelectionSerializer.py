@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,39 +18,47 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from typing import List, Tuple, Callable
+import logging
+import os
 from pathlib import Path
 
+import vigra
+
+import ilastik.utility.globals
+from ilastik.applets.base.appletSerializer import AppletSerializer, getOrCreateGroup, deleteIfPresent
+from ilastik.exceptions import UserAbort
+from ilastik.utility import bind
+from lazyflow.utility import PathComponents
+from lazyflow.utility.pathHelpers import getPathVariants, isUrl, isRelative
+from lazyflow.utility.timer import timeLogged
 from .opDataSelection import (
-    OpDataSelection,
-    DatasetInfo,
     FilesystemDatasetInfo,
     RelativeFilesystemDatasetInfo,
     DummyDatasetInfo,
     MultiscaleUrlDatasetInfo,
+    UrlDatasetInfo,
 )
 from .opDataSelection import PreloadedArrayDatasetInfo, ProjectInternalDatasetInfo
-from lazyflow.operators.ioOperators import OpInputDataReader, OpStackLoader, OpH5N5WriterBigDataset
-from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
-from lazyflow.operators.ioOperators.opTiffSequenceReader import OpTiffSequenceReader
-from lazyflow.operators.ioOperators.opStreamingH5N5SequenceReaderM import OpStreamingH5N5SequenceReaderM
-from lazyflow.operators.ioOperators.opStreamingH5N5SequenceReaderS import OpStreamingH5N5SequenceReaderS
-from lazyflow.graph import Graph
-
-import os
-import vigra
-import numpy
-from lazyflow.utility import PathComponents
-from lazyflow.utility.timer import timeLogged
-from ilastik.utility import bind
-from lazyflow.utility.pathHelpers import getPathVariants, isUrl, isRelative, splitPath
-import ilastik.utility.globals
-
-from ilastik.applets.base.appletSerializer import AppletSerializer, getOrCreateGroup, deleteIfPresent
-
-import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _confirmLoadLegacyProject():
+    from PyQt5.QtWidgets import QMessageBox
+
+    should_load = QMessageBox.warning(
+        None,
+        "Outdated project file - please make backup copy",
+        (
+            "This project file was created with ilastik version 1.4.0 or older. "
+            "Please make a backup copy before loading it.\n"
+            "If you save the project after loading it, ilastik will convert it to the current format. "
+            "Older ilastik versions will no longer be able to load the file at that point.\n"
+            "Proceed with loading?"
+        ),
+        QMessageBox.Yes | QMessageBox.No,
+    )
+    return should_load == QMessageBox.Yes
 
 
 class DataSelectionSerializer(AppletSerializer):
@@ -70,6 +76,7 @@ class DataSelectionSerializer(AppletSerializer):
             FilesystemDatasetInfo,
             RelativeFilesystemDatasetInfo,
             MultiscaleUrlDatasetInfo,
+            UrlDatasetInfo,
         ]
     }
 
@@ -233,23 +240,14 @@ class DataSelectionSerializer(AppletSerializer):
         if len(infoGroup) == 0:
             return None, False
 
-        old_UrlDatasetInfo_msg = (
-            "This project requires HBP-style access to a remote dataset, which is no longer supported. "
-            "We would appreciate if you let us know you still need this feature. "
-            "In the meantime, please use ilastik version 1.4.0 or earlier for this project."
-        )
-
         if "__class__" in infoGroup:
-            loaded_class_name = infoGroup["__class__"][()].decode("utf-8")
-            if loaded_class_name == "UrlDatasetInfo":
-                raise RuntimeError(old_UrlDatasetInfo_msg)
-            info_class = self.InfoClassNames[loaded_class_name]
+            info_class = self.InfoClassNames[infoGroup["__class__"][()].decode("utf-8")]
         else:  # legacy support
             location = infoGroup["location"][()].decode("utf-8")
             if location == "FileSystem":  # legacy support: a lot of DatasetInfo types are saved as "FileSystem"
                 filePath = infoGroup["filePath"][()].decode("utf-8")
                 if isUrl(filePath):
-                    raise RuntimeError(old_UrlDatasetInfo_msg)
+                    info_class = UrlDatasetInfo
                 elif isRelative(filePath):
                     info_class = RelativeFilesystemDatasetInfo
                 else:
@@ -260,6 +258,12 @@ class DataSelectionSerializer(AppletSerializer):
                 info_class = PreloadedArrayDatasetInfo
 
         dirty = False
+
+        if info_class == UrlDatasetInfo:
+            if not _confirmLoadLegacyProject():
+                raise UserAbort("User aborted loading of legacy project file.")
+            dirty = True
+
         try:
             datasetInfo = info_class.from_h5_group(infoGroup)
         except FileNotFoundError as e:

@@ -510,14 +510,6 @@ class DummyDatasetInfo(DatasetInfo):
 
 
 class MultiscaleUrlDatasetInfo(DatasetInfo):
-    """
-    This used to be named UrlDatasetInfo, and it should not be renamed back to this old name.
-    To avoid deceptive project file compatibility: We want old project files with
-    UrlDatasetInfos (of which we think none exist) to fail to load, and we want old ilastik
-    versions to fail loading project files with MultiscaleUrlDatasetInfos.
-    Renaming may be fine from ilastik 1.5 onwards.
-    """
-
     def __init__(self, *, url: str, nickname: str = "", **info_kwargs):
         self.url = url
         op_reader = OpInputDataReader(graph=Graph(), FilePath=self.url)
@@ -553,14 +545,54 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         return out
 
     @classmethod
-    def from_h5_group(cls, group: h5py.Group):
-        return super().from_h5_group(group, {"url": group["filePath"][()].decode("utf-8")})
+    def from_h5_group(cls, group: h5py.Group, params: Dict = None):
+        params = params or {}
+        if "url" not in params:
+            params["url"] = group["filePath"][()].decode()
+        return super().from_h5_group(group, params)
 
     @staticmethod
     def _nickname_from_url(url: str) -> str:
         last_url_component = url.rstrip("/").rpartition("/")[2]
         filename_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", last_url_component)
         return filename_safe
+
+
+class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
+    """
+    Legacy variant of MultiscaleUrlDatasetInfo to support loading HBP-mode projects
+    with Neuroglancer Precomputed data sources.
+    Such old project files contain a UrlDatasetInfo missing the working_scale and scale_locked attributes.
+    The working scale would always be the dataset's original resolution (last index in the list ilastik-internally),
+    and since scale change was not possible, the scale would inherently be locked.
+    """
+
+    def to_json_data(self) -> Dict:
+        """
+        Returns a serializable dict that claims to represent, and is equivalent to, a MultiscaleUrlDatasetInfo.
+        Saving this prevents older ilastik versions from loading the project file (since they only know UrlDatasetInfo),
+        and potentially misinterpreting what we have stored.
+        As of 1.4.1, there would not actually be any incompatibility. But we do not want to guarantee this in the future,
+        therefore we forcefully break it.
+        """
+        out = super().to_json_data()
+        out["__class__"] = "MultiscaleUrlDatasetInfo".encode()
+        return out
+
+    @classmethod
+    def from_h5_group(cls, group: h5py.Group, params: Dict = None):
+        """
+        Returns a deserialized DatasetInfo dict equivalent to a dict from a MultiscaleUrlDatasetInfo
+        """
+        deserialized = super().from_h5_group(
+            group,
+            {
+                "working_scale": -1,
+                "scale_locked": True,
+            },
+        )
+        deserialized.nickname = cls._nickname_from_url(deserialized.nickname)
+        return deserialized
 
 
 class FilesystemDatasetInfo(DatasetInfo):
