@@ -32,7 +32,7 @@ from lazyflow.utility.slicingtools import slicing2shape
 
 
 class TestOpCompressedUserLabelArray(object):
-    def setup(self):
+    def setup_method(self):
         graph = Graph()
         op = OpCompressedUserLabelArray(graph=graph)
         arrayshape = (1, 100, 100, 10, 1)
@@ -305,7 +305,7 @@ class TestOpCompressedUserLabelArray(object):
 
 
 class TestOpCompressedUserLabelArray_masked(object):
-    def setup(self):
+    def setup_method(self):
         graph = Graph()
         op = OpCompressedUserLabelArray(graph=graph)
         arrayshape = (1, 100, 100, 10, 1)

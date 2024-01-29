@@ -35,7 +35,7 @@ class TestOpDenseLabelArray(object):
     This test doesn't really test anything except for the most basic functionality.
     """
 
-    def setup(self):
+    def setup_method(self):
         graph = Graph()
 
         op = OpDenseLabelArray(graph=graph)
