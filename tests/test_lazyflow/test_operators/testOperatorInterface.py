@@ -1,6 +1,3 @@
-from builtins import range
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,10 +19,8 @@ from builtins import object
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-
 import weakref
 import gc
-import time
 import types
 
 from unittest import mock
@@ -815,10 +810,9 @@ class TestCompatibilityChecks:
 
         assert op.OutputList[1:4].wait()
 
-    def test_access_opaque_slot_value_should_not_raise_error(self, op):
-        with pytest.warns(None) as record:
-            assert op.OutputOpaque.value
-            assert len(record) == 0
+    @pytest.mark.filterwarnings("error")
+    def test_access_opaque_slot_value_should_not_warn_or_raise(self, op):
+        assert op.OutputOpaque.value
 
     def test_arraylike_retun_non_arraylike_object_raises(self, op):
         with pytest.raises(Exception) as exc_info:
