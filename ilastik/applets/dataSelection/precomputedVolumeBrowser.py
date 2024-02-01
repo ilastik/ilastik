@@ -24,6 +24,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
+from lazyflow.utility.io_util.OMEZarrRemoteStore import OMEZarrRemoteStore
 from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
 
 logger = logging.getLogger(__name__)
@@ -106,7 +107,8 @@ class PrecomputedVolumeBrowser(QDialog):
             return
         logger.debug(f"Entered URL: {url}")
         try:
-            rv = RESTfulPrecomputedChunkedVolume(volume_url=url)
+            rv = OMEZarrRemoteStore(url)
+            # rv = RESTfulPrecomputedChunkedVolume(volume_url=url)
         except Exception as e:
             self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)
             if isinstance(e, SSLError):
@@ -122,7 +124,7 @@ class PrecomputedVolumeBrowser(QDialog):
         self.selected_url = f"precomputed://{url}"
         self.result_text_box.setText(
             f"Full URL: {self.selected_url}\n"
-            f"Dataset encoding: {rv.get_encoding()}\n"
+            # f"Dataset encoding: {rv.get_encoding()}\n"
             f"Number of scales: {len(rv.scales)}\n"
             f"Raw dataset shape: {rv.get_shape(rv.highest_resolution_key)}\n"
             f"Lowest scale shape: {rv.get_shape(rv.lowest_resolution_key)}\n"

@@ -39,6 +39,7 @@ from lazyflow.operators.ioOperators import (
 )
 from lazyflow.utility.jsonConfig import JsonConfigParser
 from lazyflow.utility.pathHelpers import lsH5N5, isUrl, isRelative, splitPath, PathComponents
+from .opOMEZarrRemoteReader import OpOMEZarrRemoteReader
 
 from .opStreamingUfmfReader import OpStreamingUfmfReader
 from .opStreamingMmfReader import OpStreamingMmfReader
@@ -185,6 +186,7 @@ class OpInputDataReader(Operator):
             self._attemptOpenAsKlb,
             self._attemptOpenAsUfmf,
             self._attemptOpenAsMmf,
+            self._attemptOpenAsOmeZarrRemoteFileset,
             self._attemptOpenAsRESTfulPrecomputedChunkedVolume,
             self._attemptOpenAsDvidVolume,
             self._attemptOpenAsH5N5Stack,
@@ -285,6 +287,15 @@ class OpInputDataReader(Operator):
             """
         else:
             return ([], None)
+
+    def _attemptOpenAsOmeZarrRemoteFileset(self, filePath):
+        if not filePath.lower().startswith("precomputed://"):
+            return ([], None)
+        url = filePath.lstrip("precomputed://")
+        reader = OpOMEZarrRemoteReader(parent=self)
+        reader.Scale.connect(self.ActiveScale)
+        reader.BaseUrl.setValue(url)
+        return [reader], reader.Output
 
     def _attemptOpenAsRESTfulPrecomputedChunkedVolume(self, filePath):
         if not filePath.lower().startswith("precomputed://"):
