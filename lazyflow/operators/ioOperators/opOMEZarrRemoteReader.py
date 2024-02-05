@@ -59,6 +59,7 @@ class OpOMEZarrRemoteReaderNoCache(Operator):
         self.Output.meta.scales = self._store.scales
         # To feed back to DatasetInfo and hence the project file
         self.Output.meta.lowest_scale = self._store.lowest_resolution_key
+        self.Output.meta.prefer_2d = True
 
     def execute(self, slot, subindex, roi, result):
         """
