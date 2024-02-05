@@ -68,7 +68,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: cmd
         run: echo C:\Program Files\Git\usr\bin>>"%GITHUB_PATH%"
-      - uses: al-cheb/configure-pagefile-action@v1.3
+      - uses: al-cheb/configure-pagefile-action@v1.4
         with:
           minimum-size: 12GB
         if: |
