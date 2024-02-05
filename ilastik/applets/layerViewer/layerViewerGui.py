@@ -463,6 +463,8 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         newDataShape = self.determineDatashape()
         if newDataShape is not None and self.editor.dataShape != newDataShape:
             self.editor.dataShape = newDataShape
+            if self._isAnySlotPrefer2d():
+                self.volumeEditorWidget.quadview.ensureMaximized(2)
 
             # Find the xyz midpoint
             midpos5d = [x // 2 for x in newDataShape]
@@ -667,15 +669,18 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
             view.doScaleTo(1)
 
         # Should we default to 2D?
+        if self._isAnySlotPrefer2d():
+            # Default to Z (axis 2 in the editor)
+            self.volumeEditorWidget.quadview.ensureMaximized(2)
+
+    def _isAnySlotPrefer2d(self):
         prefer_2d = False
         for multislot in self.observedSlots:
             for slot in multislot:
                 if slot.ready() and slot.meta.prefer_2d:
                     prefer_2d = True
                     break
-        if prefer_2d:
-            # Default to Z (axis 2 in the editor)
-            self.volumeEditorWidget.quadview.ensureMaximized(2)
+        return prefer_2d
 
     def _convertPositionToDataSpace(self, voluminaPosition):
         taggedPosition = {k: p for k, p in zip("txyzc", voluminaPosition)}
