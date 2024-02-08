@@ -588,15 +588,11 @@ class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
         """
         from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
 
-        remote_source = RESTfulPrecomputedChunkedVolume(group["filePath"][()].decode().lstrip("precomputed://"))
-        deserialized = super().from_h5_group(
-            group,
-            {
-                "working_scale": remote_source.original_resolution_key,
-                "scale_locked": True,
-            },
-        )
+        deserialized = super().from_h5_group(group)
+        remote_source = RESTfulPrecomputedChunkedVolume(deserialized.url.lstrip("precomputed://"))
         deserialized.nickname = cls._nickname_from_url(deserialized.nickname)
+        deserialized.working_scale = remote_source.highest_resolution_key
+        deserialized.scale_locked = True
         return deserialized
 
 

@@ -73,8 +73,8 @@ class RESTfulPrecomputedChunkedVolume(object):
             n_threads (int, optional): number of concurrent downloads
         """
         self.scales = None
-        self.lowest_scale_key = None
-        self.original_resolution_key = None
+        self.lowest_resolution_key = None
+        self.highest_resolution_key = None
         self._json_info = None
         self.tmp_data_file = tmp_data_file
         self.volume_url = volume_url
@@ -107,36 +107,36 @@ class RESTfulPrecomputedChunkedVolume(object):
         jsonschema.validate(self._json_info, self.info_schema)
 
         # Scales are ordered from original to most-downscaled in Precomputed spec
-        self.lowest_scale_key = self._json_info["scales"][-1]["key"]
-        self.original_resolution_key = self._json_info["scales"][0]["key"]
+        self.lowest_resolution_key = self._json_info["scales"][-1]["key"]
+        self.highest_resolution_key = self._json_info["scales"][0]["key"]
         # Reverse so that the ScaleComboBox shows the options ordered from most-downscaled to original
         self.scales = {scale["key"]: scale for scale in reversed(self._json_info["scales"])}
         self.dtype = self._json_info["data_type"]
         self.n_channels = self._json_info["num_channels"]
 
     def get_chunk_size(self, scale=""):
-        scale = scale if scale else self.lowest_scale_key
+        scale = scale if scale else self.lowest_resolution_key
         n_channels = self.n_channels
         block_shape = numpy.array([n_channels] + self.scales[scale]["chunk_sizes"][0][::-1])
         return block_shape
 
     def get_resolution(self, scale=""):
-        scale = scale if scale else self.lowest_scale_key
+        scale = scale if scale else self.lowest_resolution_key
         resolution = numpy.array(self.scales[scale]["resolution"][::-1])
         return resolution
 
     def get_voxel_offset(self, scale=""):
-        scale = scale if scale else self.lowest_scale_key
+        scale = scale if scale else self.lowest_resolution_key
         voxel_offset = numpy.array([0] + self.scales[scale]["voxel_offset"][::-1])
         return voxel_offset
 
     def get_encoding(self, scale=""):
-        scale = scale if scale else self.lowest_scale_key
+        scale = scale if scale else self.lowest_resolution_key
         encoding = self.scales[scale]["encoding"]
         return encoding
 
     def get_shape(self, scale=""):
-        scale = scale if scale else self.lowest_scale_key
+        scale = scale if scale else self.lowest_resolution_key
         n_channels = self.n_channels
         shape = numpy.array([n_channels] + self.scales[scale]["size"][::-1])
         return shape
@@ -159,7 +159,7 @@ class RESTfulPrecomputedChunkedVolume(object):
               assumed
             scale (int): index of the scale to be used
         """
-        scale = scale if scale else self.lowest_scale_key
+        scale = scale if scale else self.lowest_resolution_key
         url, block_shape = self.generate_url(block_coordinates, scale)
         try:
             content = self.downloading(url)
@@ -202,7 +202,7 @@ class RESTfulPrecomputedChunkedVolume(object):
         Returns:
             string: URL to access the block with the given block coordinates
         """
-        scale = scale if scale else self.lowest_scale_key
+        scale = scale if scale else self.lowest_resolution_key
         # block shape without channel
         shape = self.get_shape(scale)
         chunk_size = self.get_chunk_size(scale)
