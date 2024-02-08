@@ -44,6 +44,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik import Project
 from ilastik.utility import OpMultiLaneWrapper
 from ilastik.workflow import Workflow
+from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import DEFAULT_LOWEST_SCALE_KEY
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents
 from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -103,7 +104,7 @@ class DatasetInfo(ABC):
         project_file: h5py.File = None,
         normalizeDisplay: bool = None,
         drange: Tuple[Number, Number] = None,
-        working_scale: str = "",
+        working_scale: str = DEFAULT_LOWEST_SCALE_KEY,
         scale_locked: bool = False,
     ):
         if axistags and len(axistags) != len(laneShape):
@@ -821,9 +822,10 @@ class OpDataSelection(Operator):
             if data_provider.meta.scales:
                 datasetInfo.laneShape = data_provider.meta.shape
                 datasetInfo.scales = data_provider.meta.scales
-                # Using "" for working_scale would also default to the lowest, but the datasetInfo property
-                # may be stored in the project file, so we want to be explicit with the key.
-                datasetInfo.working_scale = data_provider.meta.lowest_scale
+                if datasetInfo.working_scale == DEFAULT_LOWEST_SCALE_KEY:
+                    # datasetInfo.working_scale may be saved to the project file, so we want a real key here
+                    # if we didn't already load one from the file.
+                    datasetInfo.working_scale = data_provider.meta.lowest_scale
 
             output_order = self._get_output_axis_order(data_provider)
             # Export applet assumes this OpReorderAxes exists.
@@ -879,7 +881,7 @@ class OpDataSelectionGroup(Operator):
 
     # Must mark as optional because not all subslots are required.
     DatasetGroup = InputSlot(stype="object", level=1, optional=True)  # "Group" as in group of slots
-    ActiveScaleGroup = InputSlot(stype="string", level=1, optional=True, value="")
+    ActiveScaleGroup = InputSlot(stype="string", level=1, optional=True, value=DEFAULT_LOWEST_SCALE_KEY)
 
     # Outputs
     ImageGroup = OutputSlot(level=1)  # "Group" as in group of slots
