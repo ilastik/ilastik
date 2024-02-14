@@ -56,7 +56,7 @@ class OpOMEZarrRemoteReaderNoCache(Operator):
         self.Output.meta.shape = self._store.get_shape(active_scale)
         self.Output.meta.dtype = self._store.dtype
         self.Output.meta.axistags = vigra.defaultAxistags(self._store.axes)
-        self.Output.meta.scales = self._store.scales
+        self.Output.meta.scales = self._store.multiscales
         # To feed back to DatasetInfo and hence the project file
         self.Output.meta.lowest_scale = self._store.lowest_resolution_key
         self.Output.meta.prefer_2d = True

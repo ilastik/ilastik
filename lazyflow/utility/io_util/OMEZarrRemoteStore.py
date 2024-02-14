@@ -59,26 +59,26 @@ class OMEZarrRemoteStore:
         self.lowest_resolution_key = datasets[-1]["path"]
         self.highest_resolution_key = datasets[0]["path"]
         self._zarrays = {}
-        self.scales = {}  # Becomes slot metadata -> must be serializable
+        self.multiscales = {}  # Becomes slot metadata -> must be serializable
         for scale in reversed(datasets):
             with Timer() as timer:
                 zarray = ZarrArray(store=self._store, path=scale["path"])
                 self.dtype = zarray.dtype.type
-                self.scales[scale["path"]] = {
+                self.multiscales[scale["path"]] = {
                     "resolution": list(zarray.shape[-1:-4:-1]),  # xyz
                     "chunks": zarray.chunks,
                     "shape": zarray.shape,
                 }
-                self._zarrays[scale["path"]] = zarray  # Not serializable -> can't be in self.scales
+                self._zarrays[scale["path"]] = zarray  # Not serializable -> can't be in self.multiscales
                 logger.debug(f"Init scale {scale['path']} took {timer.seconds()*1000} ms.")
 
     def get_chunk_size(self, scale_key=""):
         scale_key = scale_key if scale_key else self.lowest_resolution_key
-        return self.scales[scale_key]["chunks"]
+        return self.multiscales[scale_key]["chunks"]
 
     def get_shape(self, scale_key=""):
         scale_key = scale_key if scale_key else self.lowest_resolution_key
-        return self.scales[scale_key]["shape"]
+        return self.multiscales[scale_key]["shape"]
 
     def request(self, roi: rtype.Roi, scale_key=""):
         scale_key = scale_key if scale_key else self.lowest_resolution_key

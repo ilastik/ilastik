@@ -125,7 +125,7 @@ class PrecomputedVolumeBrowser(QDialog):
         self.result_text_box.setText(
             f"Full URL: {self.selected_url}\n"
             # f"Dataset encoding: {rv.get_encoding()}\n"
-            f"Number of scales: {len(rv.scales)}\n"
+            f"Number of scales: {len(rv.multiscales)}\n"
             f"Raw dataset shape: {rv.get_shape(rv.highest_resolution_key)}\n"
             f"Lowest scale shape: {rv.get_shape(rv.lowest_resolution_key)}\n"
         )
