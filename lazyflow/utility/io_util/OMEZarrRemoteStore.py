@@ -7,6 +7,7 @@ from zarr.storage import FSStore
 
 from lazyflow import rtype
 from lazyflow.utility import Timer
+from lazyflow.utility.io_util.multiscaleWebStore import MultiscaleWebStore, Multiscale
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -40,7 +41,7 @@ def _get_ome_spec_version(metadata: dict) -> Optional[str]:
     return None
 
 
-class OMEZarrRemoteStore:
+class OMEZarrRemoteStore(MultiscaleWebStore):
     """
     Adapter class to handle communication with a web source serving a dataset in OME-Zarr format.
     """
@@ -54,35 +55,42 @@ class OMEZarrRemoteStore:
                 self._store = FSStore(self.url, mode="r", **OME_ZARR_V_0_1_ARGS)
             logger.debug(f"Init store at {url} took {timer.seconds()*1000} ms.")
 
-        self.axes = "tczyx"
         datasets = self.ome_spec["multiscales"][0]["datasets"]
-        self.lowest_resolution_key = datasets[-1]["path"]
-        self.highest_resolution_key = datasets[0]["path"]
-        self._zarrays = {}
-        self.multiscales = {}  # Becomes slot metadata -> must be serializable
+        dtype = None
+        gui_scale_metadata = {}  # Becomes slot metadata -> must be serializable
+        self._scale_data = {}
         for scale in reversed(datasets):
             with Timer() as timer:
                 zarray = ZarrArray(store=self._store, path=scale["path"])
-                self.dtype = zarray.dtype.type
-                self.multiscales[scale["path"]] = {
-                    "resolution": list(zarray.shape[-1:-4:-1]),  # xyz
+                dtype = zarray.dtype.type
+                gui_scale_metadata[scale["path"]] = Multiscale(
+                    key=scale["path"], resolution=list(zarray.shape[-1:-4:-1])  # xyz
+                )
+                self._scale_data[scale["path"]] = {
+                    "zarray": zarray,
                     "chunks": zarray.chunks,
                     "shape": zarray.shape,
                 }
-                self._zarrays[scale["path"]] = zarray  # Not serializable -> can't be in self.multiscales
                 logger.debug(f"Init scale {scale['path']} took {timer.seconds()*1000} ms.")
+        super().__init__(
+            dtype=dtype,
+            axes="tczyx",
+            multiscales=gui_scale_metadata,
+            lowest_resolution_key=datasets[-1]["path"],
+            highest_resolution_key=datasets[0]["path"],
+        )
 
     def get_chunk_size(self, scale_key=""):
         scale_key = scale_key if scale_key else self.lowest_resolution_key
-        return self.multiscales[scale_key]["chunks"]
+        return self._scale_data[scale_key]["chunks"]
 
     def get_shape(self, scale_key=""):
         scale_key = scale_key if scale_key else self.lowest_resolution_key
-        return self.multiscales[scale_key]["shape"]
+        return self._scale_data[scale_key]["shape"]
 
     def request(self, roi: rtype.Roi, scale_key=""):
         scale_key = scale_key if scale_key else self.lowest_resolution_key
         with Timer() as timer:
-            data = self._zarrays[scale_key][roi.toSlice()]
+            data = self._scale_data[scale_key]["zarray"][roi.toSlice()]
             logger.debug(f"Request roi {roi} from scale {scale_key} took {timer.seconds()*1000} ms.")
         return data
