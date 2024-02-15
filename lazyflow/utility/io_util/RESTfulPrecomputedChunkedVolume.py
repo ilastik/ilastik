@@ -111,6 +111,10 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleWebStore):
 
         super().__init__(dtype, axistags, gui_scale_metadata, lowest_resolution_key, highest_resolution_key)
 
+    @staticmethod
+    def is_url_compatible(url: str) -> bool:
+        return url.startswith("precomputed://")
+
     def get_chunk_size(self, scale=DEFAULT_LOWEST_SCALE_KEY):
         scale = scale if scale != DEFAULT_LOWEST_SCALE_KEY else self.lowest_resolution_key
         n_channels = self.n_channels

@@ -72,7 +72,10 @@ class OMEZarrRemoteStore(MultiscaleWebStore):
         with Timer() as timer:
             self.url = url
             self._store = FSStore(self.url, mode="r", **OME_ZARR_V_0_4_ARGS)
-            self.ome_spec = json.loads(self._store[".zattrs"])
+            try:
+                self.ome_spec = json.loads(self._store[".zattrs"])
+            except KeyError:
+                raise ValueError("Expected a Zarr store, but could not find .zattrs file at the address.")
             if _get_ome_spec_version(self.ome_spec) == "0.1":
                 self._store = FSStore(self.url, mode="r", **OME_ZARR_V_0_1_ARGS)
             logger.debug(f"Init store at {url} took {timer.seconds()*1000} ms.")
@@ -102,6 +105,10 @@ class OMEZarrRemoteStore(MultiscaleWebStore):
             lowest_resolution_key=datasets[-1]["path"],
             highest_resolution_key=datasets[0]["path"],
         )
+
+    @staticmethod
+    def is_url_compatible(url: str) -> bool:
+        return "zarr" in url
 
     def get_chunk_size(self, scale_key=""):
         scale_key = scale_key if scale_key else self.lowest_resolution_key

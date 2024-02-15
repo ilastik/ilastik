@@ -40,11 +40,11 @@ class RemoteDatasetBrowser(QDialog):
 
     def setup_ui(self):
         self.setMinimumSize(800, 200)
-        self.setWindowTitle("Select Precomputed Volume")
+        self.setWindowTitle("Select Web Source")
         main_layout = QVBoxLayout()
 
         description = QLabel(self)
-        description.setText('Enter URL (with or without "precomputed://") and click "Check URL".')
+        description.setText('Enter URL and click "Check URL".')
         main_layout.addWidget(description)
 
         self.combo = QComboBox(self)
@@ -94,7 +94,7 @@ class RemoteDatasetBrowser(QDialog):
 
     def handle_chk_button_clicked(self, event):
         self.selected_url = None
-        url = self.combo.currentText().strip().lstrip("precomputed://")
+        url = self.combo.currentText().strip()
         if url == "":
             return
         if "http" not in url:
@@ -107,8 +107,13 @@ class RemoteDatasetBrowser(QDialog):
             return
         logger.debug(f"Entered URL: {url}")
         try:
-            rv = OMEZarrRemoteStore(url)
-            # rv = RESTfulPrecomputedChunkedVolume(volume_url=url)
+            if OMEZarrRemoteStore.is_url_compatible(url):
+                rv = OMEZarrRemoteStore(url)
+            elif RESTfulPrecomputedChunkedVolume.is_url_compatible(url):
+                rv = RESTfulPrecomputedChunkedVolume(volume_url=url)
+            else:
+                self.result_text_box.setText("Address does not look like any supported format.")
+                return
         except Exception as e:
             self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)
             if isinstance(e, SSLError):
@@ -121,10 +126,9 @@ class RemoteDatasetBrowser(QDialog):
             self.result_text_box.setText(msg)
             return
 
-        self.selected_url = f"precomputed://{url}"
+        self.selected_url = url
         self.result_text_box.setText(
-            f"Full URL: {self.selected_url}\n"
-            # f"Dataset encoding: {rv.get_encoding()}\n"
+            f"URL: {self.selected_url}\n"
             f"Number of scales: {len(rv.multiscales)}\n"
             f"Raw dataset shape: {rv.get_shape(rv.highest_resolution_key)}\n"
             f"Lowest scale shape: {rv.get_shape(rv.lowest_resolution_key)}\n"

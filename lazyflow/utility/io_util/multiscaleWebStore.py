@@ -56,3 +56,10 @@ class MultiscaleWebStore(metaclass=ABCMeta):
     def get_chunk_size(self, scale_key: str) -> Tuple[int]:
         """Preferred download/computation chunk size of the dataset at the given scale."""
         ...
+
+    @staticmethod
+    @abstractmethod
+    def is_url_compatible(url: str) -> bool:
+        """Check if the dataset at this URL might be compatible with this adapter.
+        All adapters are asked to check in turn, so need to avoid slow operations like web requests here."""
+        ...

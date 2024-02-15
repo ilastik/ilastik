@@ -71,9 +71,7 @@ class AddFileButton(QPushButton):
         menu = QMenu(parent=self)
         menu.addAction("Add separate Image(s)...").triggered.connect(self.addFilesRequested.emit)
         menu.addAction("Add a single 3D/4D Volume from Sequence...").triggered.connect(self.addStackRequested.emit)
-        menu.addAction("Add Neuroglancer Precomputed volume...").triggered.connect(
-            self.addDatasetByUrlRequested.emit
-        )
+        menu.addAction("Add dataset by URL...").triggered.connect(self.addDatasetByUrlRequested.emit)
 
         if _supports_dvid:
             menu.addAction("Add DVID Volume...").triggered.connect(self.addDvidVolumeRequested.emit)
