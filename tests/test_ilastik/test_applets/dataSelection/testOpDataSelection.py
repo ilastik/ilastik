@@ -897,7 +897,7 @@ class TestOpDataSelection_DatasetInfo:
         "type": "image",
         "data_type": "uint16",
         "num_channels": 1,
-        "scales": [{"key": "foo", "chunk_sizes": [[1, 1, 1]], "resolution": [""], "size": [1, 1, 1]}],
+        "scales": [{"key": "foo", "chunk_sizes": [[1, 1, 1]], "resolution": [0], "size": [1, 1, 1]}],
     }
 
     @pytest.fixture
