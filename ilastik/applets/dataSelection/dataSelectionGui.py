@@ -49,7 +49,7 @@ from .opDataSelection import (
     ProjectInternalDatasetInfo,
     MultiscaleUrlDatasetInfo,
 )
-from .precomputedVolumeBrowser import PrecomputedVolumeBrowser
+from .remoteDatasetBrowser import RemoteDatasetBrowser
 
 logger = logging.getLogger(__name__)
 
@@ -651,9 +651,9 @@ class DataSelectionGui(QWidget):
         PREFERENCES_GROUP = "DataSelection"
         RECENT_URLS_KEY = "recent urls"
         history = preferences.get(PREFERENCES_GROUP, RECENT_URLS_KEY) or []
-        browser = PrecomputedVolumeBrowser(history=history, parent=self)
+        browser = RemoteDatasetBrowser(history=history, parent=self)
 
-        if browser.exec_() == PrecomputedVolumeBrowser.Rejected:
+        if browser.exec_() == RemoteDatasetBrowser.Rejected:
             return
 
         url = browser.selected_url

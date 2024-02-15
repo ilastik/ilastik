@@ -30,7 +30,7 @@ from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrec
 logger = logging.getLogger(__name__)
 
 
-class PrecomputedVolumeBrowser(QDialog):
+class RemoteDatasetBrowser(QDialog):
     def __init__(self, history=None, parent=None):
         super().__init__(parent)
         self._history = history or []
@@ -141,7 +141,7 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
 
-    pv = PrecomputedVolumeBrowser()
+    pv = RemoteDatasetBrowser()
     pv.combo.addItem("test")
     pv.show()
     app.exec_()
