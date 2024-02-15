@@ -1,7 +1,8 @@
 import json
 import logging
-from typing import Optional
+from typing import Optional, Dict
 
+import vigra
 from zarr.core import Array as ZarrArray
 from zarr.storage import FSStore
 
@@ -41,6 +42,27 @@ def _get_ome_spec_version(metadata: dict) -> Optional[str]:
     return None
 
 
+def _get_axistags_from_spec(ome_spec: Dict) -> vigra.AxisTags:
+    if "axes" not in ome_spec:
+        # v0.1 and v0.2 did not allow variable axes
+        axis_keys = ["t", "c", "z", "y", "x"]
+    else:
+        ome_axes = ome_spec["axes"]
+        assert isinstance(ome_axes, list), f"Expected axis information to be a list, received: {ome_axes}."
+        if "name" not in ome_axes[0]:
+            # v0.3: ['t', 'c', 'y', 'x']
+            axis_keys = ome_axes
+        else:
+            # v0.4: spec["axes"] requires name, recommends type and unit; like:
+            # [
+            #   {'name': 'c', 'type': 'channel'},
+            #   {'name': 'y', 'type': 'space', 'unit': 'nanometer'},
+            #   {'name': 'x', 'type': 'space', 'unit': 'nanometer'}
+            # ]
+            axis_keys = [d["name"] for d in ome_axes]
+    return vigra.defaultAxistags("".join(axis_keys))
+
+
 class OMEZarrRemoteStore(MultiscaleWebStore):
     """
     Adapter class to handle communication with a web source serving a dataset in OME-Zarr format.
@@ -54,8 +76,9 @@ class OMEZarrRemoteStore(MultiscaleWebStore):
             if _get_ome_spec_version(self.ome_spec) == "0.1":
                 self._store = FSStore(self.url, mode="r", **OME_ZARR_V_0_1_ARGS)
             logger.debug(f"Init store at {url} took {timer.seconds()*1000} ms.")
-
-        datasets = self.ome_spec["multiscales"][0]["datasets"]
+        multiscale_spec = self.ome_spec["multiscales"][0]
+        axistags = _get_axistags_from_spec(multiscale_spec)
+        datasets = multiscale_spec["datasets"]
         dtype = None
         gui_scale_metadata = {}  # Becomes slot metadata -> must be serializable
         self._scale_data = {}
@@ -74,7 +97,7 @@ class OMEZarrRemoteStore(MultiscaleWebStore):
                 logger.debug(f"Init scale {scale['path']} took {timer.seconds()*1000} ms.")
         super().__init__(
             dtype=dtype,
-            axes="tczyx",
+            axistags=axistags,
             multiscales=gui_scale_metadata,
             lowest_resolution_key=datasets[-1]["path"],
             highest_resolution_key=datasets[0]["path"],

@@ -21,13 +21,8 @@
 ###############################################################################
 import logging
 
-import numpy
-import vigra
-
-import lazyflow.roi
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
-from lazyflow.utility.helpers import bigintprod
 from lazyflow.utility.io_util.OMEZarrRemoteStore import OMEZarrRemoteStore
 
 logger = logging.getLogger(__name__)
@@ -55,7 +50,7 @@ class OpOMEZarrRemoteReaderNoCache(Operator):
         self.ChunkSize.setValue(self._store.get_chunk_size(active_scale))
         self.Output.meta.shape = self._store.get_shape(active_scale)
         self.Output.meta.dtype = self._store.dtype
-        self.Output.meta.axistags = vigra.defaultAxistags(self._store.axes)
+        self.Output.meta.axistags = self._store.axistags
         self.Output.meta.scales = self._store.multiscales
         # To feed back to DatasetInfo and hence the project file
         self.Output.meta.lowest_scale = self._store.lowest_resolution_key

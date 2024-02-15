@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 import numpy
+import vigra
 
 
 @dataclass
@@ -26,14 +27,14 @@ class MultiscaleWebStore(metaclass=ABCMeta):
     def __init__(
         self,
         dtype: numpy.dtype,
-        axes: str,
+        axistags: vigra.AxisTags,
         multiscales: Dict[str, Multiscale],
         lowest_resolution_key: str,
         highest_resolution_key: str,
     ):
         """
         :param dtype: The dataset's numpy dtype.
-        :param axes: The dataset's axis keys as ordered when loading remote data, e.g. "tczyx"
+        :param axistags: The dataset's axis keys as ordered when loading remote data, e.g. "tczyx"
         :param multiscales: Dict of scale metadata for GUI interaction and storage in the project file.
             Keys should be human-readable absolute identifiers for each scale as found in the dataset.
         :param lowest_resolution_key: Key of the lowest-resolution scale within the multiscales dict.
@@ -41,7 +42,7 @@ class MultiscaleWebStore(metaclass=ABCMeta):
         :param highest_resolution_key: Used to infer the maximum dataset size, and for legacy HBP-mode projects.
         """
         self.dtype = dtype
-        self.axes = axes
+        self.axistags = axistags
         self.multiscales = multiscales
         self.lowest_resolution_key = lowest_resolution_key
         self.highest_resolution_key = highest_resolution_key
