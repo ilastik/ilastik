@@ -93,7 +93,7 @@ class OpDataExport(Operator):
         value=cfg["ilastik"]["output_filename_format"]
     )  # A format string allowing {dataset_dir} {nickname}, {roi}, {x_start}, {x_stop}, etc.
     OutputInternalPath = InputSlot(value="exported_data")
-    OutputFormat = InputSlot(value="hdf5")
+    OutputFormat = InputSlot(value=cfg["ilastik"]["output_format"])
 
     # Only export csv/HDF5 table (don't export volume)
     TableOnlyName = InputSlot(value="Table-Only")
