@@ -289,12 +289,11 @@ class OpInputDataReader(Operator):
             return ([], None)
 
     def _attemptOpenAsOmeZarrRemoteFileset(self, filePath):
-        if not filePath.lower().startswith("precomputed://"):
+        if "zarr" not in filePath.lower():
             return ([], None)
-        url = filePath.lstrip("precomputed://")
         reader = OpOMEZarrRemoteReader(parent=self)
         reader.Scale.connect(self.ActiveScale)
-        reader.BaseUrl.setValue(url)
+        reader.BaseUrl.setValue(filePath)
         return [reader], reader.Output
 
     def _attemptOpenAsRESTfulPrecomputedChunkedVolume(self, filePath):
