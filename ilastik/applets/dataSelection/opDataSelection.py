@@ -44,6 +44,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik import Project
 from ilastik.utility import OpMultiLaneWrapper
 from ilastik.workflow import Workflow
+from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import DEFAULT_LOWEST_SCALE_KEY
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents
 from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -103,7 +104,7 @@ class DatasetInfo(ABC):
         project_file: h5py.File = None,
         normalizeDisplay: bool = None,
         drange: Tuple[Number, Number] = None,
-        working_scale: int = 0,
+        working_scale: str = DEFAULT_LOWEST_SCALE_KEY,
         scale_locked: bool = False,
     ):
         if axistags and len(axistags) != len(laneShape):
@@ -126,7 +127,7 @@ class DatasetInfo(ABC):
         self.legacy_datasetId = self.generate_id()
         self.working_scale = working_scale
         self.scale_locked = scale_locked
-        self.scales = []  # list of dicts dependent on data format
+        self.scales = {}  # {scale_key: scale_object}, dependent on data format
 
     @property
     def shape5d(self) -> Shape5D:
@@ -172,7 +173,7 @@ class DatasetInfo(ABC):
             "nickname": self.nickname.encode("utf-8"),
             "normalizeDisplay": self.normalizeDisplay,
             "drange": self.drange,
-            "working_scale": self.working_scale,
+            "working_scale": self.working_scale.encode("utf-8"),
             "scale_locked": self.scale_locked,
             "location": self.legacy_location.encode("utf-8"),  # legacy support
             "filePath": self.effective_path.encode("utf-8"),  # legacy support
@@ -205,7 +206,9 @@ class DatasetInfo(ABC):
         if "display_mode" in data:
             params["display_mode"] = data["display_mode"][()].decode("utf-8")
         if "working_scale" in data:
-            params["working_scale"] = int(data["working_scale"][()])
+            # This raises if working_scale is an int,
+            # which would be the case if anyone actually created a Precomputed project with ilastik1.4.1b13
+            params["working_scale"] = data["working_scale"][()].decode("utf-8")
         if "scale_locked" in data:
             params["scale_locked"] = bool(data["scale_locked"][()])
         return cls(**params)
@@ -584,14 +587,13 @@ class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
         """
         Returns a deserialized DatasetInfo dict equivalent to a dict from a MultiscaleUrlDatasetInfo
         """
-        deserialized = super().from_h5_group(
-            group,
-            {
-                "working_scale": -1,
-                "scale_locked": True,
-            },
-        )
+        from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
+
+        deserialized = super().from_h5_group(group)
+        remote_source = RESTfulPrecomputedChunkedVolume(deserialized.url.lstrip("precomputed://"))
         deserialized.nickname = cls._nickname_from_url(deserialized.nickname)
+        deserialized.working_scale = remote_source.highest_resolution_key
+        deserialized.scale_locked = True
         return deserialized
 
 
@@ -820,7 +822,10 @@ class OpDataSelection(Operator):
             if data_provider.meta.scales:
                 datasetInfo.laneShape = data_provider.meta.shape
                 datasetInfo.scales = data_provider.meta.scales
-                datasetInfo.working_scale = self.ActiveScale.value
+                if datasetInfo.working_scale == DEFAULT_LOWEST_SCALE_KEY:
+                    # datasetInfo.working_scale may be saved to the project file, so we want a real key here
+                    # if we didn't already load one from the file.
+                    datasetInfo.working_scale = data_provider.meta.lowest_scale
 
             output_order = self._get_output_axis_order(data_provider)
             # Export applet assumes this OpReorderAxes exists.
@@ -876,7 +881,7 @@ class OpDataSelectionGroup(Operator):
 
     # Must mark as optional because not all subslots are required.
     DatasetGroup = InputSlot(stype="object", level=1, optional=True)  # "Group" as in group of slots
-    ActiveScaleGroup = InputSlot(stype="int", level=1, optional=True, value=0)
+    ActiveScaleGroup = InputSlot(stype="string", level=1, optional=True, value=DEFAULT_LOWEST_SCALE_KEY)
 
     # Outputs
     ImageGroup = OutputSlot(level=1)  # "Group" as in group of slots

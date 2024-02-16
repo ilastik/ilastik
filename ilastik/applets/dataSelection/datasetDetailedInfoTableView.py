@@ -200,12 +200,12 @@ class ScaleComboBoxDelegate(QStyledItemDelegate):
 
     def createEditor(self, parent: "DatasetDetailedInfoTableView", option, index):
         model: "DatasetDetailedInfoTableModel" = index.model()
-        scales = model.get_scale_options(index.row())
-        if not scales:
+        scale_options = model.get_scale_options(index.row())
+        if not scale_options:
             return None
         combo = QComboBox(parent)
-        for scale_index, scale in enumerate(scales):
-            combo.addItem(scale, scale_index)
+        for scale_key, scale in scale_options.items():
+            combo.addItem(scale, scale_key)
         combo.currentIndexChanged.connect(partial(self.on_combo_selected, index))
         return combo
 
@@ -221,7 +221,7 @@ class ScaleComboBoxDelegate(QStyledItemDelegate):
             # De-focussing the combobox triggers setModelData.
             # We only want to emit when the user actually selects from the combobox.
             return
-        self.parent().scaleSelected.emit(index.row(), editor.currentIndex())
+        self.parent().scaleSelected.emit(index.row(), editor.currentData())
 
     def on_combo_selected(self, index):
         model = index.model()
@@ -246,7 +246,7 @@ class ScaleComboBoxDelegate(QStyledItemDelegate):
 
 class DatasetDetailedInfoTableView(QTableView):
     dataLaneSelected = pyqtSignal(object)  # Signature: (laneIndex)
-    scaleSelected = pyqtSignal(int, int)  # Signature: (lane_index, scale_index)
+    scaleSelected = pyqtSignal(int, str)  # Signature: (lane_index, scale_key)
 
     replaceWithFileRequested = pyqtSignal(int)  # Signature: (laneIndex), or (-1) to indicate "append requested"
     replaceWithStackRequested = pyqtSignal(int)  # Signature: (laneIndex)

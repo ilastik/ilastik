@@ -99,8 +99,8 @@ class PrecomputedVolumeBrowser(QDialog):
             f"Full URL: {self.selected_url}\n"
             f"Dataset encoding: {rv.get_encoding()}\n"
             f"Number of scales: {len(rv.scales)}\n"
-            f"Raw dataset shape: {rv.get_shape(-1)}\n"
-            f"Lowest scale shape: {rv.get_shape(0)}\n"
+            f"Raw dataset shape: {rv.get_shape(rv.highest_resolution_key)}\n"
+            f"Lowest scale shape: {rv.get_shape(rv.lowest_resolution_key)}\n"
         )
         # This check-button might have been triggered by pressing Enter.
         # The timer prevents triggering the now enabled OK button by the same keypress.

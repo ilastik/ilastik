@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from typing import List
+from typing import List, Dict
 
 from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
 from ilastik.utility import bind
@@ -221,17 +221,20 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
         raise NotImplementedError(f"Unknown column: row={index.row()}, column={index.column()}")
 
-    def get_scale_options(self, laneIndex) -> List[str]:
+    def get_scale_options(self, laneIndex) -> Dict[str, str]:
         try:
             datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
         except IndexError:  # This can happen during "Save Project As"
-            return []
+            return {}
         if not datasetSlot.ready():
-            return []
+            return {}
         datasetInfo = datasetSlot.value
         if not datasetInfo.scales:
-            return []
-        return [_resolution_to_display_string(s["resolution"], datasetInfo.axiskeys) for s in datasetInfo.scales]
+            return {}
+        return {
+            key: _resolution_to_display_string(scale["resolution"], datasetInfo.axiskeys)
+            for key, scale in datasetInfo.scales.items()
+        }
 
     def is_scale_locked(self, laneIndex) -> bool:
         datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]

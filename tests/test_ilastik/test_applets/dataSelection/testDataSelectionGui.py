@@ -32,7 +32,7 @@ def dataset_table(qtbot) -> DatasetDetailedInfoTableView:
     def mock_DatasetDetailedInfoTableModel():
         m = QStandardItemModel()
         m.isEmptyRow = lambda _row: False
-        m.get_scale_options = lambda _row: ["100, 100, 10", "50, 50, 10"] if _row > 0 else []
+        m.get_scale_options = lambda _row: {"100_100_10": "100, 100, 10", "50_50_10": "50, 50, 10"} if _row > 0 else {}
         m.is_scale_locked = lambda _row: _row == 2
         data_rows = [
             ["image", "/usr/root/image.png", "", "z: 1, y: 10, x: 10", "", ""],

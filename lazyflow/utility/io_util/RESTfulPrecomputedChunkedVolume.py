@@ -29,6 +29,9 @@ import requests
 logger = logging.getLogger(__file__)
 
 
+DEFAULT_LOWEST_SCALE_KEY = ""
+
+
 class RESTfulPrecomputedChunkedVolume(object):
     """Class to access "precomputed" data in the neuroglancer style
 
@@ -73,6 +76,8 @@ class RESTfulPrecomputedChunkedVolume(object):
             n_threads (int, optional): number of concurrent downloads
         """
         self.scales = None
+        self.lowest_resolution_key = None
+        self.highest_resolution_key = None
         self._json_info = None
         self.tmp_data_file = tmp_data_file
         self.volume_url = volume_url
@@ -104,30 +109,37 @@ class RESTfulPrecomputedChunkedVolume(object):
 
         jsonschema.validate(self._json_info, self.info_schema)
 
-        # Precomputed spec requires scales to be ordered from highest resolution (original) to lowest (most downscaled).
-        # We want the opposite: to load the lowest resolution, i.e. smallest file size, first.
-        self.scales = list(reversed(self._json_info["scales"]))
+        # Scales are ordered from original to most-downscaled in Precomputed spec
+        self.lowest_resolution_key = self._json_info["scales"][-1]["key"]
+        self.highest_resolution_key = self._json_info["scales"][0]["key"]
+        # Reverse so that the ScaleComboBox shows the options ordered from most-downscaled to original
+        self.scales = {scale["key"]: scale for scale in reversed(self._json_info["scales"])}
         self.dtype = self._json_info["data_type"]
         self.n_channels = self._json_info["num_channels"]
 
-    def get_chunk_size(self, scale=0):
+    def get_chunk_size(self, scale=DEFAULT_LOWEST_SCALE_KEY):
+        scale = scale if scale != DEFAULT_LOWEST_SCALE_KEY else self.lowest_resolution_key
         n_channels = self.n_channels
         block_shape = numpy.array([n_channels] + self.scales[scale]["chunk_sizes"][0][::-1])
         return block_shape
 
-    def get_resolution(self, scale=0):
+    def get_resolution(self, scale=DEFAULT_LOWEST_SCALE_KEY):
+        scale = scale if scale != DEFAULT_LOWEST_SCALE_KEY else self.lowest_resolution_key
         resolution = numpy.array(self.scales[scale]["resolution"][::-1])
         return resolution
 
-    def get_voxel_offset(self, scale=0):
+    def get_voxel_offset(self, scale=DEFAULT_LOWEST_SCALE_KEY):
+        scale = scale if scale != DEFAULT_LOWEST_SCALE_KEY else self.lowest_resolution_key
         voxel_offset = numpy.array([0] + self.scales[scale]["voxel_offset"][::-1])
         return voxel_offset
 
-    def get_encoding(self, scale=0):
+    def get_encoding(self, scale=DEFAULT_LOWEST_SCALE_KEY):
+        scale = scale if scale != DEFAULT_LOWEST_SCALE_KEY else self.lowest_resolution_key
         encoding = self.scales[scale]["encoding"]
         return encoding
 
-    def get_shape(self, scale=0):
+    def get_shape(self, scale=DEFAULT_LOWEST_SCALE_KEY):
+        scale = scale if scale != DEFAULT_LOWEST_SCALE_KEY else self.lowest_resolution_key
         n_channels = self.n_channels
         shape = numpy.array([n_channels] + self.scales[scale]["size"][::-1])
         return shape
@@ -142,7 +154,7 @@ class RESTfulPrecomputedChunkedVolume(object):
 
         self._json_info = json.loads(r.content)
 
-    def download_block(self, block_coordinates, scale=0):
+    def download_block(self, block_coordinates, scale=DEFAULT_LOWEST_SCALE_KEY):
         """downloads a single block at a given scale
 
         Args:
@@ -150,6 +162,7 @@ class RESTfulPrecomputedChunkedVolume(object):
               assumed
             scale (int): index of the scale to be used
         """
+        scale = scale if scale != DEFAULT_LOWEST_SCALE_KEY else self.lowest_resolution_key
         url, block_shape = self.generate_url(block_coordinates, scale)
         try:
             content = self.downloading(url)
@@ -180,7 +193,7 @@ class RESTfulPrecomputedChunkedVolume(object):
         r = requests.get(url)
         return r.content
 
-    def generate_url(self, block_coordinates, scale=0):
+    def generate_url(self, block_coordinates, scale=DEFAULT_LOWEST_SCALE_KEY):
         """Generate url to access a specific block
 
 
@@ -192,10 +205,10 @@ class RESTfulPrecomputedChunkedVolume(object):
         Returns:
             string: URL to access the block with the given block coordinates
         """
+        scale = scale if scale != DEFAULT_LOWEST_SCALE_KEY else self.lowest_resolution_key
         # block shape without channel
         shape = self.get_shape(scale)
         chunk_size = self.get_chunk_size(scale)
-        scale_key = self.scales[scale]["key"]
         coordinates = block_coordinates
 
         if not numpy.allclose(numpy.remainder(coordinates, chunk_size), 0):
@@ -211,7 +224,7 @@ class RESTfulPrecomputedChunkedVolume(object):
         min_z, min_y, min_x = min_values[1:]  # ignore c
         max_z, max_y, max_x = max_values[1:]
 
-        url = f"{base_url}/{scale_key}/{min_x}-{max_x}_{min_y}-{max_y}_{min_z}-{max_z}"
+        url = f"{base_url}/{scale}/{min_x}-{max_x}_{min_y}-{max_y}_{min_z}-{max_z}"
         return url, downloaded_block_shape
 
 
