@@ -83,7 +83,24 @@ def flatten_ilastik_feature_table(table, selection, signal):
     feature_channels = []
     feature_types = []
 
-    for plugin_name, feature_dict in computed_feature[0].items():
+    # HACK: local features are not computed if there are no objects.
+    # As a result, the feature table will not contain these columns in time those
+    # time frames.
+    # Ideally we would go by `selection` here. However, selection is
+    # a flat list, only with the feature names, without plugin association.
+    # So we got through the whole table and and check whether there are object
+    # from which we can get the column names
+    computed_features = {}  # {plugin_name: {feature_name: (feature_shape, feature_dtype)}}
+    for plugins in computed_feature.values():
+        for plugin in plugins:
+            if plugin in computed_features or not plugins[plugin]:
+                continue
+
+            computed_features[plugin] = {
+                feat_name: (feat_array.shape[1], feat_array.dtype) for feat_name, feat_array in plugins[plugin].items()
+            }
+
+    for plugin_name, feature_spec in computed_features.items():
         all_props = None
 
         if plugin_name == default_features_key:
@@ -91,10 +108,10 @@ def flatten_ilastik_feature_table(table, selection, signal):
         else:
             plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
         if plugin:
-            plugin_feature_names = {el: {} for el in list(feature_dict.keys())}
+            plugin_feature_names = {el: {} for el in list(feature_spec.keys())}
             all_props = plugin.plugin_object.fill_properties(plugin_feature_names)  # fill in display name and such
 
-        for feat_name, feat_array in feature_dict.items():
+        for feat_name, (feat_array_ch, feat_array_dtype) in feature_spec.items():
             if all_props:
                 long_name = all_props[feat_name]["displaytext"]
             else:
@@ -105,8 +122,8 @@ def flatten_ilastik_feature_table(table, selection, signal):
                 feature_long_names.append(long_name)
                 feature_short_names.append(feat_name)
                 feature_plugins.append(plugin_name)
-                feature_channels.append((feat_array.shape[1]))
-                feature_types.append(feat_array.dtype)
+                feature_channels.append((feat_array_ch))
+                feature_types.append(feat_array_dtype)
 
     signal(25)
 
@@ -141,8 +158,11 @@ def flatten_ilastik_feature_table(table, selection, signal):
     for t, cf in computed_feature.items():
         for name in dtype_names:
             plugin, feat_name, index = dtype_to_key[name]
-            data_len = len(cf[plugin][feat_name][1:, index])
-            feature_table[name][start : start + data_len] = cf[plugin][feat_name][1:, index]
+            # HACK: there could be time frames with 0 objects - which will result in
+            # the features names not being present in cf.
+            if feat_name in cf[plugin]:
+                data_len = len(cf[plugin][feat_name][1:, index])
+                feature_table[name][start : start + data_len] = cf[plugin][feat_name][1:, index]
         start = end
         try:
             end += obj_count[int(t) + 1]
