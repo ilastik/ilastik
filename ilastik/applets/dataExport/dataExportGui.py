@@ -142,6 +142,7 @@ class DataExportGui(QWidget):
             multislot[index].notifyReady(self._updateExportButtons)
 
         self.topLevelOperator.ExportPath.notifyInserted(bind(handleNewDataset))
+        self.topLevelOperator.ImageToExport.notifyRemoved(self._updateExportButtons)
 
         # For each dataset that already exists, update the GUI
         for i, subslot in enumerate(self.topLevelOperator.ExportPath):
