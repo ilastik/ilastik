@@ -91,15 +91,17 @@ def test_selected_channel_change(graph, random_data_5c):
 @pytest.mark.parametrize(
     "selected_channels",
     [
+        (4,),
         (0, 1, 2, 3, 4),
+        (4, 3, 2, 1, 0),
         (1, 2),
         (2, 4),
-        (5, 2),
+        (4, 2),
         (3, 2, 4),
+        (1, 1, 1),
     ],
 )
 def test_select_multi_channels(graph, selected_channels, random_data_5c):
-    selected_channels = (2, 4)
     op = OpMultiChannelSelector(graph=graph)
     op.SelectedChannels.setValue(selected_channels)
     op.Input.setValue(random_data_5c)

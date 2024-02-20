@@ -1,7 +1,3 @@
-from builtins import zip
-from builtins import map
-from builtins import range
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -40,6 +36,7 @@ from lazyflow import roi
 from lazyflow.roi import roiToSlice, sliceToRoi, TinyVector, getIntersection, InvalidRoiException
 from lazyflow.request import RequestPool
 
+from typing import Tuple
 
 # Utility functions
 def axisTagsToString(axistags):
@@ -801,7 +798,10 @@ class OpMultiChannelSelector(Operator):
     """
 
     Input = InputSlot()
-    SelectedChannels = InputSlot(value=[0])
+    # tuple mapping output_channels to input channels
+    # any mapping is valid, even with repeats (1, 1, 1)
+    # channels must exist in input of course
+    SelectedChannels = InputSlot(value=(0,))
 
     Output = OutputSlot()
 
@@ -809,33 +809,64 @@ class OpMultiChannelSelector(Operator):
         if self.Input.meta.getAxisKeys()[-1] != "c":
             raise ValueError("Channel axis must be last for the input")
 
-        if len(self.SelectedChannels.value) == 0:
+        channel_axis = -1
+
+        selected_channels: Tuple[int] = self.SelectedChannels.value
+        if len(selected_channels) == 0:
             self.Output.meta.NOTREADY = True
             return
 
         max_channel = self.Input.meta.getTaggedShape()["c"]
-        if any(x >= max_channel for x in self.SelectedChannels.value):
-            raise ValueError(f"Input has only {max_channel} channels, channel-selector {self.SelectedChannels.value}")
+        if any(x >= max_channel for x in selected_channels):
+            raise ValueError(f"Input has only {max_channel} channels, channel-selector {selected_channels}")
 
         self.Output.meta.assignFrom(self.Input.meta)
-        self.Output.meta.shape = (*self.Input.meta.shape[:-1], len(self.SelectedChannels.value))
+
+        in_shape = self.Input.meta.shape
+        self.Output.meta.shape = (*in_shape[:-1], len(selected_channels))
+
+        ideal = self.Output.meta.ideal_blockshape
+        if ideal is not None:
+            assert len(ideal) == len(in_shape)
+            ideal = numpy.asarray(ideal, dtype=numpy.int64)
+            ideal[channel_axis] = 1
+            self.Output.meta.ideal_blockshape = tuple(ideal)
+
+        max_blockshape = self.Output.meta.max_blockshape
+        if max_blockshape is not None:
+            assert len(max_blockshape) == len(in_shape)
+            max_blockshape = numpy.asarray(max_blockshape, dtype=numpy.int64)
+            max_blockshape[channel_axis] = len(selected_channels)
+            self.Output.meta.max_blockshape = tuple(max_blockshape)
 
     def execute(self, slot, subindex, roi, result):
-        channel_indexes = self.SelectedChannels.value
+        channel_indexes: Tuple[int] = self.SelectedChannels.value
 
         # make sure to request the minimum (consecutive) channels
         input_roi = roi.copy()
-        input_roi.start[-1] = min(channel_indexes)
-        input_roi.stop[-1] = max(channel_indexes) + 1
 
         if len(channel_indexes) == 1:
             # Fetch in-place
+            channel_index = channel_indexes[0]
+            input_roi.start[-1] = channel_index
+            input_roi.stop[-1] = channel_index + 1
             self.Input(input_roi.start, input_roi.stop).writeInto(result).wait()
 
         else:
-            fetched_data = self.Input(input_roi.start, input_roi.stop).wait()
-            channel_indexes = tuple(x - channel_indexes[0] for x in channel_indexes)
-            result[...] = fetched_data[..., channel_indexes]
+            pool = RequestPool()
+
+            # get data from the respective channels in the input individually (channel_indexes)
+            # and write them to the expected channel in result
+            for i, channel in enumerate(channel_indexes):
+                # add 1 to channel indices stop for valid single channel slices
+                input_roi.start[-1] = channel
+                input_roi.stop[-1] = channel + 1
+                dest_key = tuple([slice(None) for _ in input_roi.start[:-1]]) + (slice(i, i + 1),)
+                req = self.Input(input_roi.start, input_roi.stop).writeInto(result[dest_key])
+                pool.add(req)
+
+            pool.wait()
+            pool.clean()
 
     def propagateDirty(self, slot, subindex, roi):
         self.propagateDirtyIfNewModTime()
