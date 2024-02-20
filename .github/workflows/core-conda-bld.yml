@@ -71,6 +71,7 @@ jobs:
       - uses: al-cheb/configure-pagefile-action@v1.4
         with:
           minimum-size: 12GB
+          disk-root: "C:"
         if: |
           matrix.os == 'windows-latest' &&
           matrix.ilastik_variant == 'ilastik-gpu'
