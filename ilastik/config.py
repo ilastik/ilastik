@@ -29,7 +29,12 @@ from typing import List, Optional, Union
 import appdirs
 
 """
-ilastik will read settings from ~/.ilastikrc
+ilastik will read settings from ilastik.ini
+which should be located at
+
+* windows: C:\\Users\\<USERNAME>\\AppData\\Local\\ilastik
+* osx: /Users/<USERNAME>/Library/Caches/ilastik
+* linux: /home/<USERNAME>/.config/ilastik
 
 Example:
 
@@ -44,6 +49,7 @@ default_config = """
 debug: false
 plugin_directories: ~/.ilastik/plugins,
 output_filename_format: {dataset_dir}/{nickname}_{result_type}
+output_format: compressed hdf5
 
 [lazyflow]
 threads: -1
