@@ -227,6 +227,10 @@ class RESTfulPrecomputedChunkedVolume(object):
         url = f"{base_url}/{scale}/{min_x}-{max_x}_{min_y}-{max_y}_{min_z}-{max_z}"
         return url, downloaded_block_shape
 
+    def get_scales_list_legacy(self):
+        """Returns the list of scales as they were used in ilastik 1.4.1b13."""
+        return list(reversed(self._json_info["scales"]))
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)

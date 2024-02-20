@@ -206,9 +206,20 @@ class DatasetInfo(ABC):
         if "display_mode" in data:
             params["display_mode"] = data["display_mode"][()].decode("utf-8")
         if "working_scale" in data:
-            # This raises if working_scale is an int,
-            # which would be the case if anyone actually created a Precomputed project with ilastik1.4.1b13
-            params["working_scale"] = data["working_scale"][()].decode("utf-8")
+            try:
+                params["working_scale"] = data["working_scale"][()].decode("utf-8")
+            except AttributeError:
+                # Support for projects created with ilastik 1.4.1b13
+                saved_scale = int(data["working_scale"][()])
+                if saved_scale == 0:  # 0 by default (in all project files).
+                    params["working_scale"] = DEFAULT_LOWEST_SCALE_KEY
+                elif saved_scale > 0:  # Precomputed dataset with non-default scale selected
+                    from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
+
+                    url = params["url"]  # Should have url in this case
+                    remote_source = RESTfulPrecomputedChunkedVolume(url.lstrip("precomputed://"))
+                    scales = remote_source.get_scales_list_legacy()
+                    params["working_scale"] = scales[saved_scale]["key"]
         if "scale_locked" in data:
             params["scale_locked"] = bool(data["scale_locked"][()])
         return cls(**params)
