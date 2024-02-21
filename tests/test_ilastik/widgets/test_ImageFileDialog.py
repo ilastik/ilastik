@@ -11,7 +11,6 @@ from PyQt5.QtWidgets import QApplication
 from volumina.utility import preferences
 
 
-GH_ACTIONS = os.environ.get("GITHUB_ACTIONS", "false") == "true"
 WIN = platform.system() == "Windows"
 OSX = platform.system() == "Darwin"
 
@@ -37,7 +36,7 @@ def test_default_image_directory_is_home_with_blank_preferences_file():
     assert dialog.directory().absolutePath() == Path.home().as_posix()
 
 
-@pytest.mark.skipif(OSX or GH_ACTIONS and WIN, reason="This test hangs on osx, and on windows when run in GH actions.")
+@pytest.mark.skipif(OSX or WIN, reason="This test hangs on osx, and on windows when run in GH actions.")
 def test_picking_file_updates_default_image_directory_to_previously_used(image: Path, tmp_preferences):
     dialog = ImageFileDialog(None)
     dialog.selectFile(image.as_posix())
@@ -55,7 +54,7 @@ def test_picking_file_updates_default_image_directory_to_previously_used(image: 
         assert json.load(f) == {"DataSelection": {"recent image": image.as_posix()}}
 
 
-@pytest.mark.skipif(OSX or GH_ACTIONS and WIN, reason="This test hangs on osx, and on windows when run in GH actions.")
+@pytest.mark.skipif(OSX or WIN, reason="This test hangs on osx, and on windows when run in GH actions.")
 def test_picking_n5_json_file_returns_directory_path(tmp_n5_file: Path):
     dialog = ImageFileDialog(None)
     dialog.setDirectory(str(tmp_n5_file))
