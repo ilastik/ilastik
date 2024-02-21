@@ -1,18 +1,11 @@
 import json
-import os
 import pathlib
 from pathlib import Path
-import platform
 
 import pytest
 from ilastik.widgets.ImageFileDialog import ImageFileDialog
-from PyQt5.QtCore import QTimer
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QFileDialog
 from volumina.utility import preferences
-
-
-WIN = platform.system() == "Windows"
-OSX = platform.system() == "Darwin"
 
 
 @pytest.fixture(autouse=True)
@@ -36,36 +29,18 @@ def test_default_image_directory_is_home_with_blank_preferences_file():
     assert dialog.directory().absolutePath() == Path.home().as_posix()
 
 
-@pytest.mark.skipif(OSX or WIN, reason="This test hangs on osx, and on windows when run in GH actions.")
-def test_picking_file_updates_default_image_directory_to_previously_used(image: Path, tmp_preferences):
+def test_picking_file_updates_default_image_directory_to_previously_used(monkeypatch, image: Path, tmp_preferences):
+    monkeypatch.setattr(QFileDialog, "exec_", lambda _: True)
+    monkeypatch.setattr(ImageFileDialog, "selectedFiles", lambda _: [image.as_posix()])
     dialog = ImageFileDialog(None)
-    dialog.selectFile(image.as_posix())
-
-    def handle_dialog():
-        while not dialog.isVisible():
-            QApplication.processEvents()
-
-        dialog.accept()
-
-    QTimer.singleShot(0, handle_dialog)
     assert dialog.getSelectedPaths() == [image]
 
     with open(tmp_preferences, "r") as f:
         assert json.load(f) == {"DataSelection": {"recent image": image.as_posix()}}
 
 
-@pytest.mark.skipif(OSX or WIN, reason="This test hangs on osx, and on windows when run in GH actions.")
-def test_picking_n5_json_file_returns_directory_path(tmp_n5_file: Path):
+def test_picking_n5_json_file_returns_directory_path(monkeypatch, tmp_n5_file: Path):
+    monkeypatch.setattr(QFileDialog, "exec_", lambda _: True)
+    monkeypatch.setattr(ImageFileDialog, "selectedFiles", lambda _: [str(tmp_n5_file / "attributes.json")])
     dialog = ImageFileDialog(None)
-    dialog.setDirectory(str(tmp_n5_file))
-    dialog.selectFile("attributes.json")
-
-    def handle_dialog():
-        while not dialog.isVisible():
-            QApplication.processEvents()
-
-        dialog.accept()
-
-    QTimer.singleShot(0, handle_dialog)
-
     assert dialog.getSelectedPaths() == [tmp_n5_file]
