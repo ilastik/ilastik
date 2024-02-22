@@ -68,6 +68,9 @@ class OMEZarrRemoteStore(MultiscaleStore):
     Adapter class to handle communication with a web source serving a dataset in OME-Zarr format.
     """
 
+    NAME = "OME-Zarr"
+    URL_HINT = 'URL contains "zarr"'
+
     def __init__(self, url: str = ""):
         with Timer() as timer:
             self.url = url

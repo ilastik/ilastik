@@ -55,6 +55,9 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
       coordinates, shapes, rois.
     """
 
+    NAME = "Neuroglancer Precomputed"
+    URL_HINT = 'URL starts with "precomputed://"'
+
     info_schema = {
         "type": "object",
         "properties": {

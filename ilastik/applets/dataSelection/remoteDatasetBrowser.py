@@ -112,7 +112,10 @@ class RemoteDatasetBrowser(QDialog):
             elif RESTfulPrecomputedChunkedVolume.is_url_compatible(url):
                 rv = RESTfulPrecomputedChunkedVolume(volume_url=url)
             else:
-                self.result_text_box.setText("Address does not look like any supported format.")
+                store_types = [OMEZarrRemoteStore, RESTfulPrecomputedChunkedVolume]
+                supported_formats = "\n".join([f"{s.NAME} ({s.URL_HINT})" for s in store_types])
+                msg = f"Address does not look like any supported format.\n\nSupported formats:\n{supported_formats}"
+                self.result_text_box.setText(msg)
                 return
         except Exception as e:
             self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)
@@ -129,6 +132,7 @@ class RemoteDatasetBrowser(QDialog):
         self.selected_url = url
         self.result_text_box.setText(
             f"URL: {self.selected_url}\n"
+            f"Data format: {rv.NAME}\n"
             f"Number of scales: {len(rv.multiscales)}\n"
             f"Raw dataset shape: {rv.get_shape(rv.highest_resolution_key)}\n"
             f"Lowest scale shape: {rv.get_shape(rv.lowest_resolution_key)}\n"

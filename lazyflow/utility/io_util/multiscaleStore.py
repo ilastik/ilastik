@@ -57,6 +57,18 @@ class MultiscaleStore(metaclass=ABCMeta):
         """Preferred download/computation chunk size of the dataset at the given scale."""
         ...
 
+    @property
+    @abstractmethod
+    def NAME(self) -> str:
+        """Human-readable name of the store, e.g. "OME-Zarr" or "Precomputed"."""
+        ...
+
+    @property
+    @abstractmethod
+    def URL_HINT(self) -> str:
+        """Human-readable description how to recognize URLs of this format."""
+        ...
+
     @staticmethod
     @abstractmethod
     def is_url_compatible(url: str) -> bool:
