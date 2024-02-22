@@ -648,14 +648,20 @@ class DataSelectionGui(QWidget):
             self.applyDatasetInfos(editorDlg.edited_infos, selected_info_slots)
 
     def addPrecomputedVolume(self, roleIndex, laneIndex):
-        # add history...
-        history = []
+        PREFERENCES_GROUP = "DataSelection"
+        RECENT_URLS_KEY = "recent urls"
+        history = preferences.get(PREFERENCES_GROUP, RECENT_URLS_KEY) or []
         browser = PrecomputedVolumeBrowser(history=history, parent=self)
 
         if browser.exec_() == PrecomputedVolumeBrowser.Rejected:
             return
 
-        info = self.instantiate_dataset_info(url=browser.selected_url, role=roleIndex)
+        url = browser.selected_url
+        if url in history:
+            history.remove(url)
+        preferences.set(PREFERENCES_GROUP, RECENT_URLS_KEY, [url] + history[:9])
+
+        info = self.instantiate_dataset_info(url=url, role=roleIndex)
         self.addLanes([info], roleIndex=roleIndex, startingLaneNum=laneIndex)
 
     def addDvidVolume(self, roleIndex, laneIndex):
