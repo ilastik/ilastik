@@ -23,7 +23,7 @@ from typing import List, Dict
 from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from lazyflow.utility.io_util.multiscaleWebStore import Multiscale
+from lazyflow.utility.io_util.multiscaleStore import Multiscale
 from .opDataSelection import DatasetInfo
 from .dataLaneSummaryTableModel import rowOfButtonsProxy
 

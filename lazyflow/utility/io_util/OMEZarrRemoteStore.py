@@ -8,7 +8,7 @@ from zarr.storage import FSStore
 
 from lazyflow import rtype
 from lazyflow.utility import Timer
-from lazyflow.utility.io_util.multiscaleWebStore import MultiscaleWebStore, Multiscale
+from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, Multiscale
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -63,7 +63,7 @@ def _get_axistags_from_spec(ome_spec: Dict) -> vigra.AxisTags:
     return vigra.defaultAxistags("".join(axis_keys))
 
 
-class OMEZarrRemoteStore(MultiscaleWebStore):
+class OMEZarrRemoteStore(MultiscaleStore):
     """
     Adapter class to handle communication with a web source serving a dataset in OME-Zarr format.
     """

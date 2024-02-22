@@ -27,7 +27,7 @@ import numpy
 import requests
 import vigra
 
-from lazyflow.utility.io_util.multiscaleWebStore import MultiscaleWebStore, Multiscale
+from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, Multiscale
 
 logger = logging.getLogger(__file__)
 
@@ -35,7 +35,7 @@ logger = logging.getLogger(__file__)
 DEFAULT_LOWEST_SCALE_KEY = ""
 
 
-class RESTfulPrecomputedChunkedVolume(MultiscaleWebStore):
+class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
     """Class to access "precomputed" data in the neuroglancer style
 
     Precomputed volumes are saved chunk-wise, potentially at various scales.

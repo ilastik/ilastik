@@ -20,7 +20,7 @@ class Multiscale:
     resolution: Optional[List[int]]
 
 
-class MultiscaleWebStore(metaclass=ABCMeta):
+class MultiscaleStore(metaclass=ABCMeta):
     """Base class for adapter classes that handle communication with a web source serving a multiscale dataset.
     Specifies the minimum interface required for GUI interaction, image computations and project file storage."""
 
