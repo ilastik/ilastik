@@ -216,8 +216,7 @@ class DatasetInfo(ABC):
                 elif saved_scale > 0:  # Precomputed dataset with non-default scale selected
                     from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
 
-                    url = params["url"]  # Should have url in this case
-                    remote_source = RESTfulPrecomputedChunkedVolume(url.lstrip("precomputed://"))
+                    remote_source = RESTfulPrecomputedChunkedVolume(params["url"])
                     scales = remote_source.get_scales_list_legacy()
                     params["working_scale"] = scales[saved_scale]["key"]
         if "scale_locked" in data:
@@ -601,7 +600,7 @@ class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
         from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
 
         deserialized = super().from_h5_group(group)
-        remote_source = RESTfulPrecomputedChunkedVolume(deserialized.url.lstrip("precomputed://"))
+        remote_source = RESTfulPrecomputedChunkedVolume(deserialized.url)
         deserialized.nickname = cls._nickname_from_url(deserialized.nickname)
         deserialized.working_scale = remote_source.highest_resolution_key
         deserialized.scale_locked = True

@@ -80,7 +80,7 @@ class RESTfulPrecomputedChunkedVolume(object):
         self.highest_resolution_key = None
         self._json_info = None
         self.tmp_data_file = tmp_data_file
-        self.volume_url = volume_url
+        self.volume_url = volume_url.lstrip("precomputed://")
 
         # Assuming axes and dtype will be the same in every scale
         # neuroglancer axes are always in this order; channel axis might singleton
@@ -100,7 +100,7 @@ class RESTfulPrecomputedChunkedVolume(object):
               instance. If not, `self.volume_url` is used.
         """
         if volume_url is not None:
-            self.volume_url = volume_url
+            self.volume_url = volume_url.lstrip("precomputed://")
 
         if volume_description is None and self.volume_url is not None:
             self.download_info()
