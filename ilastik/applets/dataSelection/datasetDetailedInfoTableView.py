@@ -175,7 +175,7 @@ class InlineAddButtonDelegate(QItemDelegate):
                 button = AddFileButton(parent_view, index=index)
                 button.addFilesRequested.connect(partial(parent_view.handleCellAddFilesEvent, button))
                 button.addStackRequested.connect(partial(parent_view.handleCellAddStackEvent, button))
-                button.addPrecomputedVolumeRequested.connect(
+                button.addDatasetByUrlRequested.connect(
                     partial(parent_view.handleCellAddPrecomputedVolumeEvent, button)
                 )
                 button.addDvidVolumeRequested.connect(partial(parent_view.handleCellAddDvidVolumeEvent, button))
@@ -251,7 +251,7 @@ class DatasetDetailedInfoTableView(QTableView):
 
     addFilesRequested = pyqtSignal(int)  # Signature: (lane_index)
     addStackRequested = pyqtSignal(int)  # Signature: (lane_index)
-    addPrecomputedVolumeRequested = pyqtSignal(int)  # Signature: (lane_index)
+    addRemoteSourceRequested = pyqtSignal(int)  # Signature: (lane_index)
     addDvidVolumeRequested = pyqtSignal(int)  # Signature: (lane_index)
     addFilesRequestedDrop = pyqtSignal(object, int)  # Signature: (filepath_list, lane_index)
 
@@ -297,7 +297,7 @@ class DatasetDetailedInfoTableView(QTableView):
 
     @pyqtSlot(int)
     def handleCellAddPrecomputedVolumeEvent(self, button):
-        self.addPrecomputedVolumeRequested.emit(button.index.row())
+        self.addRemoteSourceRequested.emit(button.index.row())
 
     def wheelEvent(self, event):
         """
@@ -359,7 +359,7 @@ class DatasetDetailedInfoTableView(QTableView):
         button.addFilesRequested.connect(partial(self.addFilesRequested.emit, -1))
         button.addStackRequested.connect(partial(self.addStackRequested.emit, -1))
         button.addDvidVolumeRequested.connect(partial(self.addDvidVolumeRequested.emit, -1))
-        button.addPrecomputedVolumeRequested.connect(partial(self.addPrecomputedVolumeRequested.emit, -1))
+        button.addDatasetByUrlRequested.connect(partial(self.addRemoteSourceRequested.emit, -1))
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(button)
         layout.addStretch()

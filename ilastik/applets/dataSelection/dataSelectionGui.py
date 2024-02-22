@@ -258,7 +258,7 @@ class DataSelectionGui(QWidget):
             # Button
             detailViewer.addFilesRequested.connect(partial(self.addFiles, roleIndex))
             detailViewer.addStackRequested.connect(partial(self.addStack, roleIndex))
-            detailViewer.addPrecomputedVolumeRequested.connect(partial(self.addPrecomputedVolume, roleIndex))
+            detailViewer.addRemoteSourceRequested.connect(partial(self.addRemoteDataset, roleIndex))
             detailViewer.addDvidVolumeRequested.connect(partial(self.addDvidVolume, roleIndex))
 
             # Monitor changes to each lane so we can enable/disable the 'add lanes' button for each tab
@@ -647,7 +647,7 @@ class DataSelectionGui(QWidget):
         if editorDlg.exec_() == QDialog.Accepted:
             self.applyDatasetInfos(editorDlg.edited_infos, selected_info_slots)
 
-    def addPrecomputedVolume(self, roleIndex, laneIndex):
+    def addRemoteDataset(self, roleIndex, laneIndex):
         PREFERENCES_GROUP = "DataSelection"
         RECENT_URLS_KEY = "recent urls"
         history = preferences.get(PREFERENCES_GROUP, RECENT_URLS_KEY) or []
