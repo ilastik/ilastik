@@ -90,17 +90,17 @@ def flatten_ilastik_feature_table(table, selection, signal):
     # a flat list, only with the feature names, without plugin association.
     # So we got through the whole table and and check whether there are object
     # from which we can get the column names
-    computed_features = {}  # {plugin_name: {feature_name: (feature_shape, feature_dtype)}}
+    features_by_plugin = {}  # {plugin_name: {feature_name: (feature_shape, feature_dtype)}}
     for plugins in computed_feature.values():
         for plugin in plugins:
-            if plugin in computed_features or not plugins[plugin]:
+            if plugin in features_by_plugin or not plugins[plugin]:
                 continue
 
-            computed_features[plugin] = {
+            features_by_plugin[plugin] = {
                 feat_name: (feat_array.shape[1], feat_array.dtype) for feat_name, feat_array in plugins[plugin].items()
             }
 
-    for plugin_name, feature_spec in computed_features.items():
+    for plugin_name, feature_spec in features_by_plugin.items():
         all_props = None
 
         if plugin_name == default_features_key:
