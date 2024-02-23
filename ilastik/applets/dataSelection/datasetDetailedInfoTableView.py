@@ -181,11 +181,7 @@ class InlineAddButtonDelegate(QItemDelegate):
                 button.addDvidVolumeRequested.connect(partial(parent_view.handleCellAddDvidVolumeEvent, button))
                 parent_view.setIndexWidget(index, button)
         elif index.data() != "" and button is not None:
-            # If this row has data, we must delete the button.
-            # Otherwise, it can steal input events (e.g. mouse clicks) from the cell, even if it is hidden!
-            # However, we can't remove it yet, because we are currently running in the context of a signal handler for the button itself!
-            # Instead, use a QTimer to delete the button as soon as the eventloop is finished with the current event.
-            QTimer.singleShot(750, lambda: parent_view.setIndexWidget(index, None))
+            parent_view.setIndexWidget(index, None)
         super().paint(painter, option, index)
 
 
