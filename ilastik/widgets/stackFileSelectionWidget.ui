@@ -111,6 +111,16 @@ Examples:
       </widget>
      </item>
      <item>
+      <widget class="QLabel" name="import_copy_info">
+       <property name="text">
+        <string>Note: ilastik will copy the data into the project (.ilp) file.</string>
+       </property>
+       <property name="font">
+        <font><italic>true</italic></font>
+       </property>
+      </widget>
+     </item>
+     <item>
       <layout class="QHBoxLayout" name="horizontalLayout">
        <item>
         <spacer name="horizontalSpacer_2">
