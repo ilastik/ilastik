@@ -113,7 +113,10 @@ Examples:
      <item>
       <widget class="QLabel" name="import_copy_info">
        <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;Note: ilastik will copy the data into the project (.ilp) file.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>Note: ilastik will copy the data into the project (.ilp) file.</string>
+       </property>
+       <property name="font">
+        <font><italic>true</italic></font>
        </property>
       </widget>
      </item>
