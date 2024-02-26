@@ -833,6 +833,7 @@ class OpDataSelection(Operator):
             if data_provider.meta.scales:
                 datasetInfo.laneShape = data_provider.meta.shape
                 datasetInfo.scales = data_provider.meta.scales
+                datasetInfo.working_scale = self.ActiveScale.value
                 if datasetInfo.working_scale == DEFAULT_LOWEST_SCALE_KEY:
                     # datasetInfo.working_scale may be saved to the project file, so we want a real key here
                     # if we didn't already load one from the file.
