@@ -85,6 +85,14 @@ class PrecomputedVolumeBrowser(QDialog):
         url = self.combo.currentText().strip().lstrip("precomputed://")
         if url == "":
             return
+        if "http" not in url:
+            self.combo.lineEdit().setText(f"https://{url}")
+            msg = (
+                'Address must contain "http". Only web sources are supported.\n\n'
+                'The default "https://" has been added to your URL automatically, please try again.'
+            )
+            self.result_text_box.setText(msg)
+            return
         logger.debug(f"Entered URL: {url}")
         try:
             rv = RESTfulPrecomputedChunkedVolume(volume_url=url)
