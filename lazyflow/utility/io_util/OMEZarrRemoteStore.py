@@ -2,6 +2,7 @@ import json
 import logging
 from typing import Optional, Dict
 
+import jsonschema
 import vigra
 from zarr.core import Array as ZarrArray
 from zarr.storage import FSStore
@@ -71,6 +72,31 @@ class OMEZarrRemoteStore(MultiscaleStore):
     NAME = "OME-Zarr"
     URL_HINT = 'URL contains "zarr"'
 
+    spec_schema = {
+        "type": "object",
+        "properties": {
+            "multiscales": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "axes": {"type": "array"},
+                        "datasets": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {"path": {"type": "string"}},
+                                "required": ["path"],
+                            },
+                        },
+                    },
+                    "required": ["datasets"],
+                },
+            },
+        },
+        "required": ["multiscales"],
+    }
+
     def __init__(self, url: str = ""):
         with Timer() as timer:
             self.url = url
@@ -82,6 +108,10 @@ class OMEZarrRemoteStore(MultiscaleStore):
             if _get_ome_spec_version(self.ome_spec) == "0.1":
                 self._store = FSStore(self.url, mode="r", **OME_ZARR_V_0_1_ARGS)
             logger.debug(f"Init store at {url} took {timer.seconds()*1000} ms.")
+        try:
+            jsonschema.validate(self.ome_spec, self.spec_schema)
+        except jsonschema.ValidationError:
+            raise ValueError(f"Could not find multiscale metadata for this dataset.\nReceived:\n{self.ome_spec}.")
         multiscale_spec = self.ome_spec["multiscales"][0]
         axistags = _get_axistags_from_spec(multiscale_spec)
         datasets = multiscale_spec["datasets"]
