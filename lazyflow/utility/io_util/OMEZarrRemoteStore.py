@@ -5,7 +5,7 @@ from typing import Optional, Dict
 import jsonschema
 import vigra
 from zarr.core import Array as ZarrArray
-from zarr.storage import FSStore
+from zarr.storage import FSStore, LRUStoreCache
 
 from lazyflow import rtype
 from lazyflow.utility import Timer
@@ -100,13 +100,14 @@ class OMEZarrRemoteStore(MultiscaleStore):
     def __init__(self, url: str = ""):
         with Timer() as timer:
             self.url = url
-            self._store = FSStore(self.url, mode="r", **OME_ZARR_V_0_4_ARGS)
+            uncached_store = FSStore(self.url, mode="r", **OME_ZARR_V_0_4_ARGS)
             try:
-                self.ome_spec = json.loads(self._store[".zattrs"])
+                self.ome_spec = json.loads(uncached_store[".zattrs"])
             except KeyError:
                 raise ValueError("Expected a Zarr store, but could not find .zattrs file at the address.")
             if _get_ome_spec_version(self.ome_spec) == "0.1":
-                self._store = FSStore(self.url, mode="r", **OME_ZARR_V_0_1_ARGS)
+                uncached_store = FSStore(self.url, mode="r", **OME_ZARR_V_0_1_ARGS)
+            self._store = LRUStoreCache(uncached_store, max_size=None)
             logger.debug(f"Init store at {url} took {timer.seconds()*1000} ms.")
         try:
             jsonschema.validate(self.ome_spec, self.spec_schema)
