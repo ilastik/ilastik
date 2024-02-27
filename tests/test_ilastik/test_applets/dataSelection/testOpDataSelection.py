@@ -863,12 +863,18 @@ class TestOpDataSelection_PrecomputedChunks:
         ],
     }
 
-    def test_load_precomputed_chunks_over_http(self, graph, monkeypatch):
+    @pytest.fixture
+    def op_and_dataset(self, graph, monkeypatch) -> (OpDataSelection, MultiscaleUrlDatasetInfo):
         _ = MockRemoteDataset(monkeypatch, self.MOCK_DATASET_URL, self.INFO_JSON, self.CHUNKS)
         op = OpDataSelection(graph=graph)
         op.WorkingDirectory.setValue(os.getcwd())
         op.ActiveScale.setValue("")
-        op.Dataset.setValue(MultiscaleUrlDatasetInfo(url=self.MOCK_DATASET_URL))
+        datasetInfo = MultiscaleUrlDatasetInfo(url=self.MOCK_DATASET_URL)
+        op.Dataset.setValue(datasetInfo)
+        return op, datasetInfo
+
+    def test_load_precomputed_chunks_over_http(self, op_and_dataset):
+        op, _ = op_and_dataset
         loaded_scale0 = op.Image[:].wait()
         assert numpy.allclose(loaded_scale0, self.IMAGE_SCALED)
 
@@ -876,6 +882,12 @@ class TestOpDataSelection_PrecomputedChunks:
         op.ActiveScale.setValue(scale_keys[1])
         loaded_scale1 = op.Image[:].wait()
         assert numpy.allclose(loaded_scale1, self.IMAGE_ORIGINAL)
+
+    def test_scale_updates_dataset_info(self, op_and_dataset):
+        op, datasetInfo = op_and_dataset
+        scale_keys = list(op.Image.meta.scales.keys())
+        op.ActiveScale.setValue(scale_keys[1])
+        assert datasetInfo.working_scale == scale_keys[1]
 
 
 class TestOpDataSelection_DatasetInfo:
