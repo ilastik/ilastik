@@ -177,7 +177,7 @@ class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
 if __name__ == "__main__":
     # assumes there is a server running at localhost
     logging.basicConfig(level=logging.DEBUG)
-    volume_url = "http://localhost:8000/cremi"
+    volume_url = "precomputed://http://localhost:8000/cremi"
 
     from lazyflow import graph
 

@@ -289,10 +289,9 @@ class OpInputDataReader(Operator):
     def _attemptOpenAsRESTfulPrecomputedChunkedVolume(self, filePath):
         if not filePath.lower().startswith("precomputed://"):
             return ([], None)
-        url = filePath.lstrip("precomputed://")
         reader = OpRESTfulPrecomputedChunkedVolumeReader(parent=self)
         reader.Scale.connect(self.ActiveScale)
-        reader.BaseUrl.setValue(url)
+        reader.BaseUrl.setValue(filePath)
         return [reader], reader.Output
 
     def _attemptOpenAsH5N5Stack(self, filePath):
