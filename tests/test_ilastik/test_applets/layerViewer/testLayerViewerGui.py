@@ -1,4 +1,5 @@
 import numpy
+import pytest
 import vigra
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
@@ -23,34 +24,30 @@ class OpPassthrough(Operator):
 
 def make_simple_op():
     op = OpPassthrough(parent=Operator(graph=Graph()))
-    op.Image.setValue(numpy.array([[1, 1], [1, 1]]))
-    op.Output.meta.axistags = vigra.defaultAxistags("xy")
+    op.Image.setValue(numpy.array([[[1, 1], [1, 1]], [[1, 1], [1, 1]]]))
+    op.Output.meta.axistags = vigra.defaultAxistags("xyz")
     return op
 
 
-def test_layer_update_respects_2d_default():
+@pytest.mark.parametrize("prefer_2d", [True, False])
+def test_layer_update_respects_2d_default(prefer_2d):
     # This test relies on the default implementation of LayerViewerGui.setupLayers provided in the base class.
     op = make_simple_op()
-    op.Output.meta.prefer_2d = True
+    if prefer_2d:  # False case here corresponds to prefer_2d being undefined in prod
+        op.Output.meta.prefer_2d = True
     gui = LayerViewerGui(None, op)
-    assert gui.volumeEditorWidget.quadview.dock1_ofSplitHorizontal1._isMaximized
+    assert prefer_2d == gui.volumeEditorWidget.quadview.dock1_ofSplitHorizontal1._isMaximized
     assert not gui.volumeEditorWidget.quadview.dock2_ofSplitHorizontal1._isMaximized
     assert not gui.volumeEditorWidget.quadview.dock1_ofSplitHorizontal2._isMaximized
 
 
 def test_layer_update_does_not_update_viewer_with_unready_layers(monkeypatch):
     """
-    This reproduces a complex race condition encountered when switching scales in the dev-version OME implementation.
-    * LayerViewerGui.updateAllLayers detects shape change, sets self.editor.dataShape = newShape
-    * Qt triggers drawBackground on the editor's imageScenes (I think this happens after `dataShape.setter` exits)
-    * _refreshTile calls `LazyflowSource.request` (tileprovider.py:277 `ims_req = ims.request(dataRect, stack_id[1])`)
-    * dispatches the req to the threadpool (tileprovider.py:287 `fetch_fn = partial(self._fetch_layer_tile, ...)`)
-    * `ims.request` calls op.Output[] and catches SlotNotReadyErrors, but at this time the slot is still ready
-    * the delayed _fetch_layer_tile awaits the request, but now the slot is not ready anymore
-    * _fetch_layer_tile does not catch SlotNotReadyErrors, so it crashes
-
-    Reproducing the exact problem is difficult, but in general volumina should be able to expect layers to be ready
-    whenever it is asked to draw them.
+    Prevents regression to a race condition where volumina.tileprovier can crash
+    because a layer's data source slot is ready when _refreshTile creates a request,
+    but becomes unready by the time the request is executed (_fetch_layer_tile).
+    Reproducing the exact problem is difficult (see PR on GitHub), but in general
+    volumina should be able to expect layers to be ready whenever it is asked to draw them.
     """
     gui = LayerViewerGui(None, make_simple_op())
     first_op = make_simple_op()
