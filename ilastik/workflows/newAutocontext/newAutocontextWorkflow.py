@@ -268,7 +268,7 @@ class NewAutocontextWorkflowBase(Workflow):
         downstreamFeatureApplets = self.featureSelectionApplets[1:]
         downstreamPcApplets = self.pcApplets[1:]
 
-        for (upstreamPcApplet, downstreamFeaturesApplet, downstreamPcApplet) in zip(
+        for upstreamPcApplet, downstreamFeaturesApplet, downstreamPcApplet in zip(
             upstreamPcApplets, downstreamFeatureApplets, downstreamPcApplets
         ):
 
@@ -292,7 +292,9 @@ class NewAutocontextWorkflowBase(Workflow):
             opStacker.AxisFlag.setValue("c")
 
             opDownstreamFeatures.InputImage.connect(opStacker.Output)
-            opDownstreamClassify.InputImages.connect(opStacker.Output)
+
+            opDownstreamClassify.InputImages.connect(opData.ImageGroup[self.DATA_ROLE_RAW])
+            opDownstreamClassify.AutocontextInput.connect(opStacker.Output)
             opDownstreamClassify.FeatureImages.connect(opDownstreamFeatures.OutputImage)
             opDownstreamClassify.CachedFeatureImages.connect(opDownstreamFeatures.CachedOutputImage)
 
