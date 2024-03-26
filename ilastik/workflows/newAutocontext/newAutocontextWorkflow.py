@@ -54,7 +54,6 @@ class NewAutocontextWorkflowBase(Workflow):
 
     DATA_ROLE_RAW = 0
     DATA_ROLE_PREDICTION_MASK = 1
-    DATA_ROLE_OVERLAY = 2
 
     # First export names must match these for the export GUI, because we re-use the ordinary PC gui
     # (See PixelClassificationDataExportGui.)
@@ -107,7 +106,7 @@ class NewAutocontextWorkflowBase(Workflow):
         opDataSelection = self.dataSelectionApplet.topLevelOperator
 
         # see role constants, above
-        role_names = ["Raw Data", "Prediction Mask", "Overlay"]
+        role_names = ["Raw Data", "Prediction Mask"]
         opDataSelection.DatasetRoles.setValue(role_names)
 
         self.featureSelectionApplets = []
@@ -264,7 +263,6 @@ class NewAutocontextWorkflowBase(Workflow):
         # Feature Images -> Classification Op (for training, prediction)
         opFirstClassify.FeatureImages.connect(opFirstFeatures.OutputImage)
         opFirstClassify.CachedFeatureImages.connect(opFirstFeatures.CachedOutputImage)
-        opFirstClassify.Overlay.connect(opData.ImageGroup[self.DATA_ROLE_OVERLAY])
 
         upstreamPcApplets = self.pcApplets[0:-1]
         downstreamFeatureApplets = self.featureSelectionApplets[1:]
@@ -297,7 +295,7 @@ class NewAutocontextWorkflowBase(Workflow):
             opDownstreamClassify.InputImages.connect(opStacker.Output)
             opDownstreamClassify.FeatureImages.connect(opDownstreamFeatures.OutputImage)
             opDownstreamClassify.CachedFeatureImages.connect(opDownstreamFeatures.CachedOutputImage)
-            opDownstreamClassify.Overlay.connect(opData.ImageGroup[self.DATA_ROLE_OVERLAY])
+            opDownstreamClassify.Overlay.connect(opData.ImageGroup[self.DATA_ROLE_RAW])
 
         # Data Export connections
         opDataExport.RawData.connect(opData.ImageGroup[self.DATA_ROLE_RAW])
