@@ -12,8 +12,6 @@ from lazyflow.utility import Timer
 from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, Multiscale
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-logger.addHandler(logging.StreamHandler())
 
 OME_ZARR_V_0_4_ARGS = {
     "dimension_separator": "/",
@@ -108,7 +106,7 @@ class OMEZarrRemoteStore(MultiscaleStore):
             if _get_ome_spec_version(self.ome_spec) == "0.1":
                 uncached_store = FSStore(self.url, mode="r", **OME_ZARR_V_0_1_ARGS)
             self._store = LRUStoreCache(uncached_store, max_size=None)
-            logger.debug(f"Init store at {url} took {timer.seconds()*1000} ms.")
+            logger.info(f"Init OME-Zarr store at {url} took {timer.seconds()*1000} ms.")
         try:
             jsonschema.validate(self.ome_spec, self.spec_schema)
         except jsonschema.ValidationError:
@@ -131,7 +129,7 @@ class OMEZarrRemoteStore(MultiscaleStore):
                     "chunks": zarray.chunks,
                     "shape": zarray.shape,
                 }
-                logger.debug(f"Init scale {scale['path']} took {timer.seconds()*1000} ms.")
+                logger.info(f"Init scale {scale['path']} took {timer.seconds()*1000} ms.")
         super().__init__(
             dtype=dtype,
             axistags=axistags,
@@ -156,5 +154,5 @@ class OMEZarrRemoteStore(MultiscaleStore):
         scale_key = scale_key if scale_key else self.lowest_resolution_key
         with Timer() as timer:
             data = self._scale_data[scale_key]["zarray"][roi.toSlice()]
-            logger.debug(f"Request roi {roi} from scale {scale_key} took {timer.seconds()*1000} ms.")
+            logger.info(f"Request roi {roi} from scale {scale_key} took {timer.seconds()*1000} ms.")
         return data
