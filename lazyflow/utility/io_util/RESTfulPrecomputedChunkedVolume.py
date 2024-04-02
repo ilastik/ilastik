@@ -63,7 +63,7 @@ class RESTfulPrecomputedChunkedVolume(object):
         "required": ["type", "data_type", "num_channels", "scales"],
     }
 
-    def __init__(self, volume_url, tmp_data_file=None, n_threads=4):
+    def __init__(self, volume_url: str, tmp_data_file=None, n_threads=4):
         """
         Args:
             volume_url (string): base url of the precomputed volume.
@@ -81,6 +81,7 @@ class RESTfulPrecomputedChunkedVolume(object):
         self._json_info = None
         self.tmp_data_file = tmp_data_file
         self.volume_url = volume_url
+        self.base_url = volume_url.lstrip("precomputed://")
 
         # Assuming axes and dtype will be the same in every scale
         # neuroglancer axes are always in this order; channel axis might singleton
@@ -88,24 +89,11 @@ class RESTfulPrecomputedChunkedVolume(object):
         self.dtype = None
         self.n_channels = None
 
-        if volume_url is not None:
-            self._init_config()
+        self._init_from_url()
 
-    def _init_config(self, volume_url=None, volume_description=None):
-        """Downloads and checks the volume info file
-
-        Args:
-            volume_url (string, optional): volume_url (see `self.__init__`). If
-              supplied, the given volume is checked and set as volume for the
-              instance. If not, `self.volume_url` is used.
-        """
-        if volume_url is not None:
-            self.volume_url = volume_url
-
-        if volume_description is None and self.volume_url is not None:
-            self.download_info()
-        else:
-            self._json_info = volume_description
+    def _init_from_url(self):
+        """Downloads and checks the volume info file"""
+        self.download_info()
 
         jsonschema.validate(self._json_info, self.info_schema)
 
@@ -145,12 +133,12 @@ class RESTfulPrecomputedChunkedVolume(object):
         return shape
 
     def download_info(self):
-        logger.debug(f"getting volume from {self.volume_url}/info")
-        r = requests.get(f"{self.volume_url}/info")
+        logger.debug(f"getting volume from {self.base_url}/info")
+        r = requests.get(f"{self.base_url}/info")
 
         # check if success:
         if r.status_code != 200:
-            raise ValueError(f"Could not find info file at {self.volume_url}, status code {r.status_code}!")
+            raise ValueError(f"Could not find info file at {self.base_url}, status code {r.status_code}!")
 
         self._json_info = json.loads(r.content)
 
@@ -216,7 +204,7 @@ class RESTfulPrecomputedChunkedVolume(object):
                 f"Supplied coordinates ({coordinates}) not a valid block- start for block shape {chunk_size}."
             )
 
-        base_url = self.volume_url
+        base_url = self.base_url
         min_values = coordinates
         max_values = min_values + chunk_size
         max_values = numpy.min([shape, max_values], axis=0)
@@ -234,7 +222,7 @@ class RESTfulPrecomputedChunkedVolume(object):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
-    volume_url = "http://localhost:8080/precomputed/cremi"
+    volume_url = "precomputed://http://localhost:8080/precomputed/cremi"
     cvol = RESTfulPrecomputedChunkedVolume(volume_url=volume_url)
     print(f"dtype: {cvol.dtype}")
     print(f"scales: {len(cvol.scales)}")

@@ -9,6 +9,7 @@ Todos:
 """
 import logging
 
+from requests.exceptions import SSLError, ConnectionError
 from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import (
     QComboBox,
@@ -98,7 +99,13 @@ class PrecomputedVolumeBrowser(QDialog):
             rv = RESTfulPrecomputedChunkedVolume(volume_url=url)
         except Exception as e:
             self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)
-            msg = f"Could not connect to a Precomputed dataset at this address. Full error message:\n\n{e}"
+            if isinstance(e, SSLError):
+                msg = "SSL error, please check that you are using the correct protocol (http/https)."
+            elif isinstance(e, ConnectionError):
+                msg = "Connection error, please check that the server is online and the URL is correct."
+            else:
+                msg = "Unknown error while trying to connect to this address."
+            msg += f"\n\nFull error message:\n{e}"
             self.result_text_box.setText(msg)
             return
 
