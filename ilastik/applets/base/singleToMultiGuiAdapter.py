@@ -43,6 +43,9 @@ class SingleToMultiGuiAdapter(object):
             else:
                 return None
 
+        if self._imageLaneIndex >= len(self._guis):
+            return None
+
         # Create first if necessary
         if self._guis[self._imageLaneIndex] is None:
             self._guis[self._imageLaneIndex] = self.singleImageGuiFactory(self._imageLaneIndex)
