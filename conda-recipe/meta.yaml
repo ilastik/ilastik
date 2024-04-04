@@ -60,6 +60,7 @@ outputs:
         - xarray !=2023.8.0,!=2023.9.0,!=2023.10.0
         - z5py
       run_constrained:
+        - mkl !=2024.1.0
         - tiktorch >=23.11.0
         - volumina >=1.3.10
 
@@ -94,7 +95,7 @@ outputs:
         ilastik-core package enables ilastik-api usage to mix into environments.
         ilastik is a simple, user-friendly tool for interactive image classification,
         segmentation and analysis.
-        
+
 
   - name: ilastik
     build:
