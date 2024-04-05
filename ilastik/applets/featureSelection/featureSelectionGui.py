@@ -133,7 +133,8 @@ class FeatureSelectionGui(LayerViewerGui):
         # updated his data yet by the time he calls the rowsInserted signal
         def handleLayerStackDataChanged(startIndex, stopIndex):
             row = startIndex.row()
-            layerListWidget.item(row).setText(self.layerstack[row].name)
+            if self.layerstack:
+                layerListWidget.item(row).setText(self.layerstack[row].name)
 
         def handleSelectionChanged(row):
             # Only one layer is visible at a time
