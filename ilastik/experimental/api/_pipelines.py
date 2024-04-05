@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+# pyright: strict
 import warnings
 from typing import Union
 
@@ -62,16 +63,16 @@ class PixelClassificationPipeline:
             PixelClassificationPipeline instance configured with trained classifier
         """
         with h5py.File(path, "r") as f:
-            project = parser.PixelClassificationProject.from_ilp_file(f)
+            project = parser.PixelClassificationProject.model_validate(f)
 
         return cls(project)
 
     def __init__(self, project: parser.PixelClassificationProject):
-        self._num_spatial_dims = len(project.data_info.spatial_axes)
-        self._num_channels = project.data_info.num_channels
+        self._num_spatial_dims = len(project.input_data.spatial_axes)
+        self._num_channels = project.input_data.num_channels
 
         graph = Graph()
-        self._reorder_op = OpReorderAxes(graph=graph, AxisOrder=ensure_channel_axis(project.data_info.axis_order))
+        self._reorder_op = OpReorderAxes(graph=graph, AxisOrder=ensure_channel_axis(project.input_data.axis_order))
 
         self._feature_sel_op = OpFeatureSelection(graph=graph)
         self._feature_sel_op.InputImage.connect(self._reorder_op.Output)
@@ -81,8 +82,8 @@ class PixelClassificationPipeline:
         self._feature_sel_op.ComputeIn2d.setValue(project.feature_matrix.compute_in_2d.tolist())
 
         self._predict_op = OpClassifierPredict(graph=graph)
-        self._predict_op.Classifier.setValue(project.classifier.instance)
-        self._predict_op.Classifier.meta.classifier_factory = project.classifier.factory
+        self._predict_op.Classifier.setValue(project.classifier.classifier)
+        self._predict_op.Classifier.meta.classifier_factory = project.classifier.classifier_factory
         self._predict_op.Image.connect(self._feature_sel_op.OutputImage)
         self._predict_op.LabelsCount.setValue(project.classifier.label_count)
 

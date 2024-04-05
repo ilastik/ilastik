@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2023, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -19,139 +19,113 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 # pyright: strict
-import json
-import pickle
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from enum import Enum
-from typing import List, Type, TypeVar, Union
+from collections import OrderedDict
+from pathlib import Path
+from typing import Annotated, Dict, List, Literal, Optional, Tuple, Type
 
-import h5py
+import annotated_types
 import numpy
 import numpy.typing as npt
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, StringConstraints
 
-from lazyflow.classifiers import (
-    LazyflowPixelwiseClassifierABC,
-    LazyflowPixelwiseClassifierFactoryABC,
-    LazyflowVectorwiseClassifierABC,
-    LazyflowVectorwiseClassifierFactoryABC,
+from ilastik.applets.base.appletSerializer.legacyClassifiers import (
+    deserialize_classifier,
+    deserialize_classifier_factory,
 )
+from ilastik.applets.base.appletSerializer.serializerUtils import deserialize_string_from_h5
+from ilastik.experimental.parser._h5helpers import (
+    deserialize_arraylike_from_h5,
+    deserialize_axistags_from_h5,
+    deserialize_str_list_from_h5,
+)
+from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
+
+NDShape = Annotated[Tuple[int, ...], annotated_types.Len(2, 6)]
+LaneName = Annotated[str, StringConstraints(pattern=r"lane\d{4}")]
 
 
-class StrEnum(str, Enum):
-    pass
+class VigraAxisTags(BaseModel):
+    key: str
+    typeFlags: int
+    resolution: int
+    description: str
 
 
-class IlastikAPIError(Exception):
-    pass
+class DatasetInfo(BaseModel):
+    axistags: Annotated[List[VigraAxisTags], BeforeValidator(deserialize_axistags_from_h5)]
+    shape: Annotated[
+        NDShape, BeforeValidator(lambda x: tuple(x.tolist())), BeforeValidator(deserialize_arraylike_from_h5)
+    ]
 
 
-T = TypeVar("T", bound="ILPNode")
+class InputData(BaseModel):
+    role_names: Annotated[List[str], BeforeValidator(deserialize_str_list_from_h5)] = Field(alias="Role Names")
+    infos: OrderedDict[
+        LaneName, Dict[str, Annotated[Optional[DatasetInfo], BeforeValidator(lambda x: None if len(x) == 0 else x)]]
+    ]
+
+    @property
+    def _last_lane(self):
+        last_lane_name = next(reversed(self.infos))
+        return self.infos[last_lane_name]
+
+    @property
+    def axis_order(self) -> str:
+        """Returns the axis keys of the last lane as a string"""
+        # should usually be 'Raw Data'
+        last_lane = self._last_lane
+        base_role_name = self.role_names[0]
+        base_info = last_lane[base_role_name]
+        assert base_info
+        return "".join(ax.key for ax in base_info.axistags)
+
+    @property
+    def num_channels(self) -> int:
+        """Returns the number for channels in the last lane"""
+        last_lane = self._last_lane
+        base_role_name = self.role_names[0]
+        base_info = last_lane[base_role_name]
+        assert base_info
+        n_channels = 1
+        for ind, at in enumerate(base_info.axistags):
+            if at.key == "c":
+                n_channels = base_info.shape[ind]
+                break
+        return n_channels
+
+    @property
+    def spatial_axes(self):
+        return "".join(ax for ax in self.axis_order if ax in "xyz")
 
 
-class ILPNode(ABC):
-    @classmethod
-    @abstractmethod
-    def from_ilp_group(cls: Type[T], group: h5py.Group) -> T:
-        ...
+class FeatureMatrix(BaseModel):
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+    names: Annotated[List[str], BeforeValidator(deserialize_arraylike_from_h5)] = Field(alias="FeatureIds")
+    scales: Annotated[List[float], BeforeValidator(deserialize_arraylike_from_h5)] = Field(alias="Scales")
+    selections: Annotated[npt.NDArray[numpy.bool_], BeforeValidator(deserialize_arraylike_from_h5)] = Field(
+        alias="SelectionMatrix"
+    )
+    compute_in_2d: Annotated[npt.NDArray[numpy.bool_], BeforeValidator(deserialize_arraylike_from_h5)] = Field(
+        alias="ComputeIn2d"
+    )
 
 
-@dataclass(frozen=True)
-class FeatureMatrix(ILPNode):
-    """
-    Provides OpFeatureSelection compatible interface
+class Classifier(BaseModel):
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
 
-    Attributes:
-        names: List of feature ids
-        scales: List of feature scales
-        selections: Boolean matrix where rows are feature names and scales are columuns
-            True value means feature is enabled
-        compute_in_2d: 1d array for each scale reflecting if feature should be computed in 2D
-    """
+    classifier_factory: Annotated[
+        LazyflowVectorwiseClassifierFactoryABC, BeforeValidator(deserialize_classifier_factory)
+    ] = Field(alias="ClassifierFactory")
+    classifier: Annotated[
+        LazyflowVectorwiseClassifierABC,
+        BeforeValidator(deserialize_classifier),
+    ] = Field(alias="ClassifierForests")
+    label_names: List[str] = Field(alias="LabelNames")
 
-    names: List[str]
-    scales: List[float]
-    selections: npt.NDArray[numpy.bool_]
-    compute_in_2d: npt.NDArray[numpy.bool_]
-
-    @classmethod
-    def from_ilp_group(cls, group: h5py.Group) -> "FeatureMatrix":
-        class Keys(StrEnum):
-            # feature keys in project file
-            FEATURES_IDS = "FeatureIds"
-            FEATURES_SCALES = "Scales"
-            FEATURES_COMPUTE_IN_2D = "ComputeIn2d"
-            FEATURES_SELECTION_MATRIX = "SelectionMatrix"
-
-        if missingkeys := [k for k in Keys if k not in group]:
-            raise IlastikAPIError(f"Missing keys for feature matrix in project file: {missingkeys}")
-
-        feature_names: List[str] = [name.decode("ascii") for name in group[Keys.FEATURES_IDS][()]]  # type: ignore
-        scales: List[float] = group[Keys.FEATURES_SCALES][()]  # type: ignore
-        sel_matrix: npt.NDArray[numpy.bool_] = group[Keys.FEATURES_SELECTION_MATRIX][()]  # type: ignore
-        compute_in_2d: npt.NDArray[numpy.bool_] = group[Keys.FEATURES_COMPUTE_IN_2D][()]  # type: ignore
-
-        return cls(feature_names, scales, sel_matrix, compute_in_2d)
-
-
-@dataclass
-class Classifier(ILPNode):
-    instance: Union[LazyflowPixelwiseClassifierABC, LazyflowVectorwiseClassifierABC]
-    factory: Union[LazyflowPixelwiseClassifierFactoryABC, LazyflowVectorwiseClassifierFactoryABC]
-    label_count: int
-
-    @classmethod
-    def from_ilp_group(cls, group: h5py.Group) -> "Classifier":
-        class Keys(StrEnum):
-            PIXEL_CLASSIFICATION_FORESTS = "ClassifierForests"
-            PIXEL_CLASSIFICATION_FACTORY = "ClassifierFactory"
-            PIXEL_CLASSIFICATION_TYPE = "ClassifierForests/pickled_type"
-            LABEL_NAMES = "LabelNames"
-
-        if missingkeys := [k for k in Keys if k not in group]:
-            raise IlastikAPIError(f"Missing keys in project file: {missingkeys}")
-
-        classifier_type = pickle.loads(group[Keys.PIXEL_CLASSIFICATION_TYPE][()])
-        classifier = classifier_type.deserialize_hdf5(group[Keys.PIXEL_CLASSIFICATION_FORESTS])
-
-        classifier_factory = pickle.loads(group[Keys.PIXEL_CLASSIFICATION_FACTORY][()])
-        label_count = len(group[Keys.LABEL_NAMES])
-
-        return cls(classifier, classifier_factory, label_count)
-
-
-@dataclass
-class ProjectDataInfo(ILPNode):
-    spatial_axes: str
-    num_channels: int
-    axis_order: str
-
-    @classmethod
-    def from_ilp_group(cls, group: h5py.Group) -> "ProjectDataInfo":
-        class Keys(StrEnum):
-            # input data keys in project file
-            RAW_DATA = "Raw Data"
-            RAW_DATA_AXIS_TAGS = "Raw Data/axistags"
-            RAW_DATA_SHAPE = "Raw Data/shape"
-
-        info = next(iter(group.values()))
-
-        if missingkeys := [k for k in Keys if k not in info]:
-            raise IlastikAPIError(f"Missing data info keys in project file: {missingkeys}.")
-
-        json_bytes = info[Keys.RAW_DATA_AXIS_TAGS][()]
-        tags_dict = json.loads(json_bytes.decode("ascii"))
-        shape = info[Keys.RAW_DATA_SHAPE][()]
-
-        if len(shape) != len(tags_dict["axes"]):
-            raise IlastikAPIError(f"Shape {shape} and axistags {tags_dict} mismatch")
-
-        axis_order = "".join(dim["key"] for dim in tags_dict["axes"])
-        spatial_axes = "".join(ax for ax in axis_order if ax in "xyz")
-
-        try:
-            num_channels = shape[axis_order.index("c")]
-        except ValueError:
-            num_channels = 1
-
-        return cls(spatial_axes, num_channels, axis_order)
+    @property
+    def label_count(self) -> int:
+        return len(self.label_names)
