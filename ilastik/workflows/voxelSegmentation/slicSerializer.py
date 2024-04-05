@@ -24,11 +24,7 @@ import vigra
 
 from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
-    SerialClassifierSlot,
     SerialBlockSlot,
-    SerialListSlot,
-    SerialClassifierFactorySlot,
-    SerialPickleableSlot,
     SerialSlot,
 )
 from ilastik.utility import bind
