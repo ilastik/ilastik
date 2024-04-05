@@ -1,3 +1,24 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2024, the ilastik developers
+#                                <team@ilastik.org>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
+#
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#          http://ilastik.org/license.html
+###############################################################################
+
 """
 This module provides an interface to define serializers
 without modifying a serializable class (e.g. adding toJson, todict methods).
@@ -29,21 +50,17 @@ Foo(42)
 
 """
 import abc
-
-from typing import TypeVar, Dict, Any, Generic, Type, Callable, Union, Tuple
-
+from typing import Any, Callable, Dict, Generic, Tuple, Type, TypeVar, Union
 
 T = TypeVar("T")
 
 
 class IDictSerializer(abc.ABC, Generic[T]):
     @abc.abstractmethod
-    def serialize(self, obj: T) -> Dict[str, Any]:
-        ...
+    def serialize(self, obj: T) -> Dict[str, Any]: ...
 
     @abc.abstractmethod
-    def deserialize(self, dct: Dict[str, Any]) -> T:
-        ...
+    def deserialize(self, dct: Dict[str, Any]) -> T: ...
 
 
 class RegistryError(Exception):

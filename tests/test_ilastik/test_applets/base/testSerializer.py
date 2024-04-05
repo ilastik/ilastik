@@ -35,7 +35,7 @@ from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
 
-from ilastik.applets.base import jsonSerializerRegistry
+from ilastik.applets.base.appletSerializer import jsonSerializerRegistry
 from ilastik.applets.base.appletSerializer import (
     getOrCreateGroup,
     deleteIfPresent,

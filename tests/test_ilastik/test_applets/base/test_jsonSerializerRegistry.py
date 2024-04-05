@@ -1,10 +1,9 @@
 import pytest
 import json
 
-from ilastik.applets.base.jsonSerializerRegistry import (
+from ilastik.applets.base.appletSerializer.jsonSerializerRegistry import (
     _DictSerialzierRegistry,
     IDictSerializer,
-    SerializationError,
     DeserializationError,
     DuplicateEntryError,
     RegistryError,
