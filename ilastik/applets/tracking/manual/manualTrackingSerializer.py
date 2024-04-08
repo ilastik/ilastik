@@ -23,7 +23,6 @@ from ilastik.applets.base.appletSerializer import (
     SerialSlot,
     deleteIfPresent,
     getOrCreateGroup,
-    SerialPickleableSlot,
 )
 
 

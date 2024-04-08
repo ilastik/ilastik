@@ -28,7 +28,6 @@ import numpy as np
 
 from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
-    JSONSerialSlot,
     SerialBlockSlot,
     SerialListSlot,
     SerialSlot,

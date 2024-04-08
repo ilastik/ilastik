@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -16,99 +16,31 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-# 		   http://ilastik.org/license.html
+#          http://ilastik.org/license.html
 ###############################################################################
-from future import standard_library
-
-standard_library.install_aliases()
-from builtins import range
+import json
 import logging
-from future.utils import with_metaclass
-from typing import Tuple, List
-
-logger = logging.getLogger(__name__)
-
-from abc import ABCMeta
-
-from ilastik.config import cfg as ilastik_config
-from lazyflow.utility.orderedSignal import OrderedSignal
-from ilastik.utility.maybe import maybe
-from ilastik.utility.commandLineProcessing import convertStringToList
-from ilastik import Project
 import os
-import sys
+import pickle
 import re
 import tempfile
-import h5py
-import json
-import numpy
 import warnings
-import pickle as pickle
+from typing import List, Tuple
 
+import h5py
+import numpy
+
+from ilastik import Project
+from ilastik.utility.commandLineProcessing import convertStringToList
+from ilastik.utility.maybe import maybe
 from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
-from lazyflow.utility import timeLogged
 from lazyflow.slot import OutputSlot, Slot
+from lazyflow.utility import timeLogged
 
 from . import jsonSerializerRegistry
+from .serializerUtils import deleteIfPresent, slicingToString, stringToSlicing
 
-#######################
-# Convenience methods #
-#######################
-
-
-def getOrCreateGroup(parentGroup, groupName):
-    """Returns parentGroup[groupName], creating first it if
-    necessary.
-
-    """
-
-    return parentGroup.require_group(groupName)
-
-
-def deleteIfPresent(parentGroup, name):
-    """Deletes parentGroup[name], if it exists."""
-    # Check first. If we try to delete a non-existent key,
-    # hdf5 will complain on the console.
-    if name in parentGroup:
-        del parentGroup[name]
-
-
-def slicingToString(slicing):
-    """Convert the given slicing into a string of the form
-    '[0:1,2:3,4:5]'
-
-    The result is a utf-8 encoded bytes, for easy storage via h5py
-    """
-    strSlicing = "["
-    for s in slicing:
-        strSlicing += str(s.start)
-        strSlicing += ":"
-        strSlicing += str(s.stop)
-        strSlicing += ","
-
-    strSlicing = strSlicing[:-1]  # Drop the last comma
-    strSlicing += "]"
-    return strSlicing.encode("utf-8")
-
-
-def stringToSlicing(strSlicing):
-    """Parse a string of the form '[0:1,2:3,4:5]' into a slicing (i.e.
-    tuple of slices)
-
-    """
-    if isinstance(strSlicing, bytes):
-        strSlicing = strSlicing.decode("utf-8")
-
-    slicing = []
-    strSlicing = strSlicing[1:-1]  # Drop brackets
-    sliceStrings = strSlicing.split(",")
-    for s in sliceStrings:
-        ends = s.split(":")
-        start = int(ends[0])
-        stop = int(ends[1])
-        slicing.append(slice(start, stop))
-
-    return tuple(slicing)
+logger = logging.getLogger(__name__)
 
 
 class SerialSlot(object):
@@ -966,236 +898,6 @@ class SerialPickleableSlot(SerialSlot):
             slot.setValue(self._default)
         else:
             slot.setValue(value)
-
-
-####################################
-# the base applet serializer class #
-####################################
-
-
-class AppletSerializer(with_metaclass(ABCMeta, object)):
-    """
-    Base class for all AppletSerializers.
-    """
-
-    base_initialized = False
-
-    # override if necessary
-    version = "0.1"
-
-    class IncompatibleProjectVersionError(Exception):
-        pass
-
-    #########################
-    # Semi-abstract methods #
-    #########################
-
-    def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
-
-        """Child classes should override this function, if
-        necessary.
-
-        """
-        pass
-
-    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath, headless=False):
-        """Child classes should override this function, if
-        necessary.
-
-        """
-        pass
-
-    #############################
-    # Base class implementation #
-    #############################
-
-    def __init__(self, topGroupName, slots=None, operator=None):
-        """Constructor. Subclasses must call this method in their own
-        __init__ functions. If they fail to do so, the shell raises an
-        exception.
-
-        Parameters:
-        :param topGroupName: name of this applet's data group in the file.
-            Defaults to the name of the operator.
-        :param slots: a list of SerialSlots
-
-        """
-        self.progressSignal = OrderedSignal()  # Signature: __call__(percentComplete)
-        self.base_initialized = True
-        self.topGroupName = topGroupName
-        self.serialSlots = maybe(slots, [])
-        self.operator = operator
-        self._ignoreDirty = False
-
-    def isDirty(self):
-        """Returns true if the current state of this item (in memory)
-        does not match the state of the HDF5 group on disk.
-
-        Subclasses only need override this method if ORing the flags
-        is not enough.
-
-        """
-        return any(list(ss.dirty for ss in self.serialSlots))
-
-    def shouldSerialize(self, hdf5File):
-        """Whether to serialize or not."""
-
-        if self.isDirty():
-            return True
-
-        # Need to check if slots should be serialized. First must verify that self.topGroupName is not an empty string
-        # (as this seems to happen sometimes).
-        if self.topGroupName:
-            topGroup = getOrCreateGroup(hdf5File, self.topGroupName)
-            return any([ss.shouldSerialize(topGroup) for ss in self.serialSlots])
-
-        return False
-
-    @property
-    def ignoreDirty(self):
-        return self._ignoreDirty
-
-    @ignoreDirty.setter
-    def ignoreDirty(self, value):
-        self._ignoreDirty = value
-        for ss in self.serialSlots:
-            ss.ignoreDirty = value
-
-    def progressIncrement(self, group=None):
-        """Get the percentage progress for each slot.
-
-        :param group: If None, all all slots are assumed to be
-            processed. Otherwise, decides for each slot by calling
-            slot.shouldSerialize(group).
-
-        """
-        if group is None:
-            nslots = len(self.serialSlots)
-        else:
-            nslots = sum(ss.shouldSerialize(group) for ss in self.serialSlots)
-        if nslots == 0:
-            return 0
-        return divmod(100, nslots)[0]
-
-    def serializeToHdf5(self, hdf5File, projectFilePath):
-        """Serialize the current applet state to the given hdf5 file.
-
-        Subclasses should **not** override this method. Instead,
-        subclasses override the 'private' version, *_serializetoHdf5*
-
-        :param hdf5File: An h5py.File handle to the project file,
-            which should already be open
-
-        :param projectFilePath: The path to the given file handle.
-            (Most serializers do not use this parameter.)
-
-        """
-        topGroup = getOrCreateGroup(hdf5File, self.topGroupName)
-
-        progress = 0
-        self.progressSignal(progress)
-
-        # Set the version
-        key = "StorageVersion"
-        deleteIfPresent(topGroup, key)
-        topGroup.create_dataset(key, data=self.version)
-
-        try:
-            inc = self.progressIncrement(topGroup)
-            for ss in self.serialSlots:
-                ss.serialize(topGroup)
-                progress += inc
-                self.progressSignal(progress)
-
-            # Call the subclass to do remaining work, if any
-            self._serializeToHdf5(topGroup, hdf5File, projectFilePath)
-        finally:
-            self.progressSignal(100)
-
-    def deserializeFromHdf5(self, hdf5File, projectFilePath, headless=False):
-        """Read the the current applet state from the given hdf5File
-        handle, which should already be open.
-
-        Subclasses should **not** override this method. Instead,
-        subclasses override the 'private' version,
-        *_deserializeFromHdf5*
-
-        :param hdf5File: An h5py.File handle to the project file,
-            which should already be open
-
-        :param projectFilePath: The path to the given file handle.
-            (Most serializers do not use this parameter.)
-
-        :param headless: Are we called in headless mode?
-            (in headless mode corrupted files cannot be fixed via the GUI)
-
-        """
-        self.progressSignal(0)
-
-        # If the top group isn't there, call initWithoutTopGroup
-        try:
-            topGroup = hdf5File[self.topGroupName]
-            groupVersion = topGroup["StorageVersion"][()]
-            if isinstance(groupVersion, bytes):
-                groupVersion = groupVersion.decode("utf-8")
-        except KeyError:
-            topGroup = None
-            groupVersion = None
-
-        try:
-            if topGroup is not None:
-                inc = self.progressIncrement()
-                for ss in self.serialSlots:
-                    ss.deserialize(topGroup)
-                    self.progressSignal(inc)
-
-                # Call the subclass to do remaining work
-                self._deserializeFromHdf5(topGroup, groupVersion, hdf5File, projectFilePath, headless)
-            else:
-                self.initWithoutTopGroup(hdf5File, projectFilePath)
-        finally:
-            self.progressSignal(100)
-
-    def repairFile(self, path, filt=None):
-        """get new path to lost file"""
-
-        from PyQt5.QtWidgets import QFileDialog, QMessageBox
-
-        text = "The file at {} could not be found any more. Do you want to search for it at another directory?".format(
-            path
-        )
-        logger.info(text)
-        c = QMessageBox.critical(None, "update external data", text, QMessageBox.Ok | QMessageBox.Cancel)
-
-        if c == QMessageBox.Cancel:
-            raise RuntimeError("Could not find external data: " + path)
-
-        options = QFileDialog.Options()
-        if ilastik_config.getboolean("ilastik", "debug"):
-            options |= QFileDialog.DontUseNativeDialog
-        fileName, _filter = QFileDialog.getOpenFileName(None, "repair files", path, filt, options=options)
-        if not fileName:
-            raise RuntimeError("Could not find external data: " + path)
-        else:
-            return fileName
-
-    #######################
-    # Optional methods    #
-    #######################
-
-    def initWithoutTopGroup(self, hdf5File, projectFilePath):
-        """Optional override for subclasses. Called when there is no
-        top group to deserialize.
-
-        """
-        pass
-
-    def updateWorkingDirectory(self, newdir, olddir):
-        """Optional override for subclasses. Called when the
-        working directory is changed and relative paths have
-        to be updated. Child Classes should overwrite this method
-        if they store relative paths."""
-        pass
 
 
 class JSONSerialSlot(SerialSlot):

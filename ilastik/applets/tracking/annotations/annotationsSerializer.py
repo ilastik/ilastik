@@ -21,7 +21,6 @@
 from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
     SerialSlot,
-    SerialDictSlot,
     deleteIfPresent,
     getOrCreateGroup,
 )

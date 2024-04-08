@@ -35,7 +35,6 @@ from ilastik.applets.base.appletSerializer import (
     getOrCreateGroup,
     SerialSlot,
     SerialBlockSlot,
-    SerialDictSlot,
     SerialObjectFeatureNamesSlot,
 )
 from ilastik.utility.commandLineProcessing import convertStringToList

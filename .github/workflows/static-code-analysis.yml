@@ -18,4 +18,3 @@ jobs:
         with:
           options: "--check --diff --revision=origin/main..."
           src: "."
-          version: "1.6.0"

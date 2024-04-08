@@ -1,14 +1,9 @@
 from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
-    SerialSlot,
-    deleteIfPresent,
-    getOrCreateGroup,
     SerialBlockSlot,
-    SerialDictSlot,
     SerialObjectFeatureNamesSlot,
 )
 from ilastik.applets.objectExtraction.objectExtractionSerializer import (
-    ObjectExtractionSerializer,
     SerialObjectFeaturesSlot,
 )
 

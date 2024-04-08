@@ -23,8 +23,6 @@ from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
     SerialDictSlot,
     SerialSlot,
-    SerialBlockSlot,
-    SerialListSlot,
 )
 
 
