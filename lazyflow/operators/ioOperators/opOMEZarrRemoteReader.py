@@ -41,9 +41,11 @@ class OpOMEZarrRemoteReader(Operator):
         self._store = None
 
     def setupOutputs(self):
-        if self._store is None or self._store.url != self.BaseUrl.value:
-            self._store = OMEZarrRemoteStore(self.BaseUrl.value)
+        if self._store is not None and self._store.url == self.BaseUrl.value:
+            # Must not set Output.meta here.
+            return
 
+        self._store = OMEZarrRemoteStore(self.BaseUrl.value)
         active_scale = self.Scale.value if self.Scale.ready() else self._store.lowest_resolution_key
         self.Output.meta.shape = self._store.get_shape(active_scale)
         self.Output.meta.dtype = self._store.dtype
