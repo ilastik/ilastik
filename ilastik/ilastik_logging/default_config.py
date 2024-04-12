@@ -71,20 +71,12 @@ def get_default_config(
 
     default_log_config = {
         "version": 1,
-        # "incremental" : False,
-        # "disable_existing_loggers": True,
         "formatters": {
             "verbose": {
                 "format": "{}%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s".format(prefix)
             },
-            "location": {
-                # "format": "%(levelname)s %(thread)d %(name)s:%(funcName)s:%(lineno)d %(message)s"
-                "format": "{}%(levelname)s %(name)s: %(message)s".format(prefix)
-            },
-            "timestamped": {
-                # "format": "%(levelname)s %(thread)d %(name)s:%(funcName)s:%(lineno)d %(message)s"
-                "format": "{}%(levelname)s %(name)s: [%(asctime)s] %(message)s".format(prefix)
-            },
+            "location": {"format": "{}%(levelname)s %(name)s: %(message)s".format(prefix)},
+            "timestamped": {"format": "{}%(levelname)s %(name)s: [%(asctime)s] %(message)s".format(prefix)},
             "simple": {"format": "{}%(levelname)s %(message)s".format(prefix)},
         },
         "filters": {"no_warn": {"()": "ilastik.ilastik_logging.loggingHelpers.NoWarnFilter"}},
