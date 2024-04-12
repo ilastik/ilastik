@@ -48,6 +48,10 @@ def get_logfile_path():
 def get_default_config(
     prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, logfile_path=DEFAULT_LOGFILE_PATH
 ):
+    root_log_level = "INFO"
+
+    if ilastik_config.getboolean("ilastik", "debug"):
+        root_log_level = "DEBUG"
 
     if output_mode == OutputMode.CONSOLE:
         root_handlers = ["console", "console_warn"]
@@ -132,7 +136,7 @@ def get_default_config(
                 "formatter": "verbose",
             },
         },
-        "root": {"handlers": root_handlers, "level": "INFO"},
+        "root": {"handlers": root_handlers, "level": root_log_level},
         "loggers": {
             # This logger captures warnings module warnings
             "py.warnings": {"level": "WARN", "handlers": warnings_module_handlers, "propagate": False},
