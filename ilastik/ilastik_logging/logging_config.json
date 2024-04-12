@@ -19,6 +19,7 @@
         "ilastik.applets.networkClassification":                    { "level":"DEBUG" },
         "ilastik.applets.thresholdTwoLevels":                       { "level":"INFO" },
         "ilastik.applets.thresholdTwoLevels.ipht":                  { "level":"INFO" },
+        "ilastik.applets.tracking.conservation":                    { "level":"INFO" },
         "ilastik.applets.objectExtraction":                         { "level":"INFO" },
         "ilastik.applets.blockwiseObjectClassification":            { "level":"INFO" },
         "ilastik.shell":                                            { "level":"INFO" },
