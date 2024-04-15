@@ -23,8 +23,6 @@
 import logging
 from lazyflow.operators.tiktorch.classifier import ModelSession
 
-traceLogger = logging.getLogger("TRACE." + __name__)
-
 # SciPy
 import numpy
 

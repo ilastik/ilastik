@@ -27,8 +27,6 @@ from builtins import range
 # Python
 import logging
 
-traceLogger = logging.getLogger("TRACE." + __name__)
-
 # SciPy
 import numpy
 

@@ -26,8 +26,6 @@ from abc import abstractmethod
 import copy
 import logging
 
-traceLogger = logging.getLogger("TRACE." + __name__)
-
 # SciPy
 import numpy
 

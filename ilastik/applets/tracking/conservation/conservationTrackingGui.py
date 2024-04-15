@@ -28,7 +28,6 @@ from ilastik.utility.gui.progress import GuiProgressVisitor
 from ilastik.utility.progress import DefaultProgressVisitor
 
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger("TRACE." + __name__)
 
 import hytra
 

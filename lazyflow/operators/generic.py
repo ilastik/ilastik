@@ -24,7 +24,6 @@ import copy
 import logging
 
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger("TRACE." + __name__)
 
 # SciPy
 import numpy

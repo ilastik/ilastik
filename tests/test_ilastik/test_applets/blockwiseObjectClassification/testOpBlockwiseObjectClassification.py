@@ -45,8 +45,6 @@ handler.setFormatter(formatter)
 
 # Test
 logger = logging.getLogger("tests.testOpBlockwiseObjectClassification")
-# Test Trace
-traceLogger = logging.getLogger("TRACE." + logger.name)
 
 WRITE_DEBUG_IMAGES = False
 

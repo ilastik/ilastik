@@ -83,7 +83,6 @@ class Slot(object):
 
     loggerName = __name__ + ".Slot"
     logger = logging.getLogger(loggerName)
-    traceLogger = logging.getLogger("TRACE." + loggerName)
 
     # Allow slots to be sorted by their order of creation for debug
     # output and diagramming purposes.

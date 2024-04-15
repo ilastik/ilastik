@@ -36,7 +36,6 @@ from ilastik.utility.gui.threadRouter import threadRouted
 from lazyflow.request.request import Request
 
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger("TRACE." + __name__)
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility import log_exception
