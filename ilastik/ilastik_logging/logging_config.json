@@ -62,23 +62,9 @@
         "volumina.imageScene2D":                                     { "level":"INFO" },
         "volumina.utility.shortcutManager":                          { "level":"INFO" },
 
-        "TRACE": { "level":"INFO", "handlers":["console_trace","console_warn"] },
-        "TRACE.lazyflow.graph.Slot":                                { "level":"INFO" },
-        "TRACE.lazyflow.graph.Operator":                            { "level":"INFO" },
-        "TRACE.lazyflow.graph.OperatorWrapper":                     { "level":"INFO" },
-        "TRACE.lazyflow.operators.ioOperators":                     { "level":"INFO" },
-        "TRACE.lazyflow.operators":                                 { "level":"INFO" },
-        "TRACE.lazyflow.operators.operators":                       { "level":"INFO" },
-        "TRACE.lazyflow.operators.generic":                         { "level":"INFO" },
-        "TRACE.lazyflow.operators.classifierOperators":             { "level":"INFO" },
-        "TRACE.lazyflow.operators.operators.OpArrayCache":          { "level":"INFO" },
-        "TRACE.lazyflow.operators.operators.ArrayCacheMemoryMgr":   { "level":"INFO" },
-        "TRACE.lazyflow.operators.valueProviders.OpValueCache":     { "level":"INFO" },
-        "TRACE.ilastik.clusterOps":                                 { "level":"INFO" },
-        "TRACE.ilastik.applets":                                    { "level":"INFO" },
-        "TRACE.ilastik.applets.blockwiseObjectClassification":      { "level":"INFO" },
-        "TRACE.ilastik.shell":                                      { "level":"INFO" },
-        "TRACE.volumina":                                           { "level":"INFO" },
-        "TRACE.volumina.imageScene2D":                              { "level":"INFO" }
+        "TRACE": { "level":"INFO", "handlers":["console_trace","console_warn"], "__comment": "Legacy convention where modules use a second logger (traceLogger) to implement an additional TRACE loglevel." },
+        "TRACE.ilastik.applets.counting":                            { "level":"INFO" },
+        "TRACE.lazyflow.operators.valueProviders":                   { "level":"INFO" },
+        "TRACE.lazyflow.operators.ioOperators":                      { "level":"INFO" }
     }
 }

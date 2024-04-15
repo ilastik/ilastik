@@ -138,10 +138,6 @@ def get_default_config(
             "OpenGL": {"level": "INFO"},
             "yapsy": {"level": "INFO"},
             # Loglevels for our own modules (ilastik, lazyflow, volumina) are in ./logging_config.json.
-            # Note regarding TRACE settings: Python doesn't provide a trace log level, so we use a workaround.
-            # By convention, trace loggers have the same hierarchy as the regular loggers,
-            # but are prefixed with 'TRACE' and always emit DEBUG messages.
-            # To enable trace messages, change one or more of these to use level DEBUG
         },
     }
     return default_log_config
