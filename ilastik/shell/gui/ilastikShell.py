@@ -158,7 +158,7 @@ class MemoryWidget(QWidget):
         self.setMemoryBytes(0)
 
     def setMemoryBytes(self, bytes):
-        self.label.setText("Cached Data: %1.1f MB" % (bytes / (1024.0 ** 2.0)))
+        self.label.setText("Cached Data: %1.1f MB" % (bytes / (1024.0**2.0)))
 
 
 # ===----------------------------------------------------------------------------------------------------------------===
@@ -1680,17 +1680,10 @@ class IlastikShell(QMainWindow):
                 stop = time.perf_counter()
                 logger.debug("Loading the project took {:.2f} sec.".format(stop - start))
 
-                workflowName = self.projectManager.workflow.workflowName
                 workflowDisplayName = self.projectManager.workflow.workflowDisplayName
+                self._setRecentlyOpenedList(projectFilePath, workflowDisplayName)
 
-                recentlyOpenedList = [(projectFilePath, workflowDisplayName)] + [
-                    (path, name)
-                    for path, name in preferences.get("shell", "recently opened list", [])
-                    if path != projectFilePath
-                ]
-                preferences.set("shell", "recently opened list", recentlyOpenedList[:5])
-                preferences.set("shell", "recently opened", projectFilePath)
-
+                workflowName = self.projectManager.workflow.workflowName
                 # be friendly to user: if this file has not specified a default workflow, do it now
                 if not "workflowName" in list(hdf5File.keys()) and not readOnly:
                     hdf5File.create_dataset("workflowName", data=workflowName.encode("utf-8"))
@@ -1714,6 +1707,15 @@ class IlastikShell(QMainWindow):
                     self.setSelectedAppletDrawer(appletName)
                 else:
                     self.setSelectedAppletDrawer(self.projectManager.workflow.defaultAppletIndex)
+
+    def _setRecentlyOpenedList(self, projectFilePath, workflowDisplayName):
+        recentlyOpenedList = [(projectFilePath, workflowDisplayName)] + [
+            (path, name)
+            for path, name in preferences.get("shell", "recently opened list", [])
+            if path != projectFilePath
+        ]
+        preferences.set("shell", "recently opened list", recentlyOpenedList[:5])
+        preferences.set("shell", "recently opened", projectFilePath)
 
     def closeCurrentProject(self):
         """
@@ -1832,6 +1834,8 @@ class IlastikShell(QMainWindow):
 
                 try:
                     self.projectManager.saveProjectAs(newPath)
+                    workflowDisplayName = self.projectManager.workflow.workflowDisplayName
+                    self._setRecentlyOpenedList(newPath, workflowDisplayName)
                 except ProjectManager.SaveError as err:
                     self.thunkEventHandler.post(partial(QMessageBox.warning, self, "Error Attempting Save", str(err)))
                 self.updateShellProjectDisplay()
