@@ -29,10 +29,10 @@ Note: This script does not make any attempt to be efficient with RAM usage.
       (The entire label volume is loaded at once.)  As a result, each image volume you
       train with must be significantly smaller than the available RAM on your machine.
 """
-from __future__ import print_function
-from builtins import range
+
 import os
 import numpy as np
+
 
 def main():
     # Cmd-line args to this script.
@@ -86,22 +86,16 @@ def prepare_feature_selections():
     import numpy
 
     # #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
-    # selections = numpy.array( [[False, False, False, False, False, False, False],
-    #                            [False, False, False, False, False, False, False],
-    #                            [False, False, False, False, False, False, False],
-    #                            [False, False, False, False, False, False, False],
-    #                            [False, False, False, False, False, False, False],
-    #                            [False, False, False, False, False, False, False]] )
-
-    # Start with an all-False matrix and apply the features we want.
-    selections = numpy.zeros((len(FeatureIds), len(ScalesList)), dtype=bool)
-
-    def set_feature(feature_id, scale):
-        selections[FeatureIds.index(feature_id), ScalesList.index(scale)] = True
-
-    set_feature("GaussianSmoothing", 0.3)
-    set_feature("GaussianSmoothing", 1.0)
-    set_feature("GaussianGradientMagnitude", 1.0)
+    selections = numpy.array(
+        [
+            [True, True, True, True, True, True, True],
+            [False, True, True, True, True, True, True],
+            [False, True, True, True, True, True, True],
+            [False, True, True, True, True, True, True],
+            [False, True, True, True, True, True, True],
+            [False, True, True, True, True, True, True],
+        ]
+    )
 
     return selections
 
