@@ -22,7 +22,6 @@ from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
     SerialSlot,
     deleteIfPresent,
-    getOrCreateGroup,
 )
 
 
@@ -31,22 +30,22 @@ class SerialAnnotationsSlot(SerialSlot):
         if not self.shouldSerialize(group):
             return
         deleteIfPresent(group, self.name)
-        group = getOrCreateGroup(group, self.name)
+        group = group.require_group(self.name)
         mainOperator = self.slot.operator
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
-            gr = getOrCreateGroup(group, str(i))
-            labels_gr = getOrCreateGroup(gr, str("labels"))
+            gr = group.require_group(str(i))
+            labels_gr = gr.require_group(str("labels"))
             if "labels" in op.Annotations.value.keys():
                 for t in op.Annotations.value["labels"].keys():
-                    t_gr = getOrCreateGroup(labels_gr, str(t))
+                    t_gr = labels_gr.require_group(str(t))
                     for oid in op.Annotations.value["labels"][t].keys():
                         l = op.Annotations.value["labels"][t][oid]
                         dset = list(l)
                         if len(dset) > 0:
                             t_gr.create_dataset(name=str(oid), data=dset)
 
-            divisions_gr = getOrCreateGroup(gr, str("divisions"))
+            divisions_gr = gr.require_group(str("divisions"))
             dset = []
             if "divisions" in op.Annotations.value.keys():
                 for trackid in op.Annotations.value["divisions"].keys():
@@ -94,7 +93,7 @@ class SerialDivisionsSlot(SerialSlot):
         if not self.shouldSerialize(group):
             return
         deleteIfPresent(group, self.name)
-        group = getOrCreateGroup(group, self.name)
+        group = group.require_group(self.name)
         mainOperator = self.slot.operator
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
@@ -127,13 +126,13 @@ class SerialLabelsSlot(SerialSlot):
         if not self.shouldSerialize(group):
             return
         deleteIfPresent(group, self.name)
-        group = getOrCreateGroup(group, self.name)
+        group = group.require_group(self.name)
         mainOperator = self.slot.operator
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
-            gr = getOrCreateGroup(group, str(i))
+            gr = group.require_group(str(i))
             for t in list(op.labels.keys()):
-                t_gr = getOrCreateGroup(gr, str(t))
+                t_gr = gr.require_group(str(t))
                 for oid in list(op.labels[t].keys()):
                     l = op.labels[t][oid]
                     dset = list(l)
@@ -165,15 +164,15 @@ class SerialAppearancesSlot(SerialSlot):
         if not self.shouldSerialize(group):
             return
         deleteIfPresent(group, self.name)
-        group = getOrCreateGroup(group, self.name)
+        group = group.require_group(self.name)
         mainOperator = self.slot.operator
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
-            gr = getOrCreateGroup(group, str(i))
+            gr = group.require_group(str(i))
             for t in list(op.appearances.keys()):
-                t_gr = getOrCreateGroup(gr, str(t))
+                t_gr = gr.require_group(str(t))
                 for oid in list(op.appearances[t].keys()):
-                    oid_gr = getOrCreateGroup(t_gr, str(oid))
+                    oid_gr = t_gr.require_group(str(oid))
                     for track in list(op.appearances[t][oid].keys()):
                         app = op.appearances[t][oid][track]
                         if app:
@@ -208,15 +207,15 @@ class SerialDisappearancesSlot(SerialSlot):
         if not self.shouldSerialize(group):
             return
         deleteIfPresent(group, self.name)
-        group = getOrCreateGroup(group, self.name)
+        group = group.require_group(self.name)
         mainOperator = self.slot.operator
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
-            gr = getOrCreateGroup(group, str(i))
+            gr = group.require_group(str(i))
             for t in list(op.disappearances.keys()):
-                t_gr = getOrCreateGroup(gr, str(t))
+                t_gr = gr.require_group(str(t))
                 for oid in list(op.disappearances[t].keys()):
-                    oid_gr = getOrCreateGroup(t_gr, str(oid))
+                    oid_gr = t_gr.require_group(str(oid))
                     for track in list(op.disappearances[t][oid].keys()):
                         app = op.disappearances[t][oid][track]
                         if app:

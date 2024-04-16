@@ -20,7 +20,6 @@
 ###############################################################################
 from .appletSerializer import AppletSerializer as AppletSerializer
 from .serializerUtils import deleteIfPresent as deleteIfPresent
-from .serializerUtils import getOrCreateGroup as getOrCreateGroup
 from .slotSerializer import JSONSerialSlot as JSONSerialSlot
 from .slotSerializer import SerialBlockSlot as SerialBlockSlot
 from .slotSerializer import SerialClassifierFactorySlot as SerialClassifierFactorySlot

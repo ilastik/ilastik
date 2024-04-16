@@ -19,20 +19,20 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import logging
-from abc import ABCMeta
+from abc import ABC
 
-from future.utils import with_metaclass
+import h5py
 
 from ilastik.config import cfg as ilastik_config
 from ilastik.utility.maybe import maybe
 from lazyflow.utility.orderedSignal import OrderedSignal
 
-from .serializerUtils import deleteIfPresent, getOrCreateGroup
+from .serializerUtils import deleteIfPresent
 
 logger = logging.getLogger(__name__)
 
 
-class AppletSerializer(with_metaclass(ABCMeta, object)):
+class AppletSerializer(ABC):
     """
     Base class for all AppletSerializers.
     """
@@ -49,14 +49,16 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
     # Semi-abstract methods #
     #########################
 
-    def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
+    def _serializeToHdf5(self, topGroup: h5py.Group, hdf5File: h5py.File, projectFilePath):
         """Child classes should override this function, if
         necessary.
 
         """
         pass
 
-    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath, headless=False):
+    def _deserializeFromHdf5(
+        self, topGroup: h5py.Group, groupVersion, hdf5File: h5py.File, projectFilePath, headless=False
+    ):
         """Child classes should override this function, if
         necessary.
 
@@ -67,7 +69,7 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
     # Base class implementation #
     #############################
 
-    def __init__(self, topGroupName, slots=None, operator=None):
+    def __init__(self, topGroupName: str, slots=None, operator=None):
         """Constructor. Subclasses must call this method in their own
         __init__ functions. If they fail to do so, the shell raises an
         exception.
@@ -95,7 +97,7 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
         """
         return any(list(ss.dirty for ss in self.serialSlots))
 
-    def shouldSerialize(self, hdf5File):
+    def shouldSerialize(self, hdf5File: h5py.File):
         """Whether to serialize or not."""
 
         if self.isDirty():
@@ -104,7 +106,7 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
         # Need to check if slots should be serialized. First must verify that self.topGroupName is not an empty string
         # (as this seems to happen sometimes).
         if self.topGroupName:
-            topGroup = getOrCreateGroup(hdf5File, self.topGroupName)
+            topGroup = hdf5File.require_group(self.topGroupName)
             return any([ss.shouldSerialize(topGroup) for ss in self.serialSlots])
 
         return False
@@ -135,7 +137,7 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
             return 0
         return divmod(100, nslots)[0]
 
-    def serializeToHdf5(self, hdf5File, projectFilePath):
+    def serializeToHdf5(self, hdf5File: h5py.File, projectFilePath):
         """Serialize the current applet state to the given hdf5 file.
 
         Subclasses should **not** override this method. Instead,
@@ -148,7 +150,7 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
             (Most serializers do not use this parameter.)
 
         """
-        topGroup = getOrCreateGroup(hdf5File, self.topGroupName)
+        topGroup = hdf5File.require_group(self.topGroupName)
 
         progress = 0
         self.progressSignal(progress)

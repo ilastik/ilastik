@@ -18,18 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-
-
-def getOrCreateGroup(parentGroup, groupName):
-    """Returns parentGroup[groupName], creating first it if
-    necessary.
-
-    """
-
-    return parentGroup.require_group(groupName)
-
-
-def deleteIfPresent(parentGroup, name):
+def deleteIfPresent(parentGroup: h5py.Group, name: str) -> None:
     """Deletes parentGroup[name], if it exists."""
     # Check first. If we try to delete a non-existent key,
     # hdf5 will complain on the console.

@@ -26,19 +26,15 @@ import unittest
 import shutil
 import tempfile
 import pytest
-from pathlib import Path
 from copy import deepcopy
 from ilastik.applets.base.appletSerializer import SerialObjectFeatureNamesSlot
 from lazyflow.graph import Graph, Operator, InputSlot, Slot, OperatorWrapper
 from lazyflow.operators import OpCompressedUserLabelArray
-from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
 
 from ilastik.applets.base.appletSerializer import jsonSerializerRegistry
 from ilastik.applets.base.appletSerializer import (
-    getOrCreateGroup,
-    deleteIfPresent,
     SerialSlot,
     SerialListSlot,
     AppletSerializer,
@@ -75,60 +71,6 @@ class OpMockSerializer(AppletSerializer):
 
 def randArray():
     return numpy.random.randn(10, 10)
-
-
-class TestHDF5HelperFunctions(unittest.TestCase):
-    def setUp(self):
-        self.tmpDir = tempfile.mkdtemp()
-        self.tmpFile = h5py.File(os.path.join(self.tmpDir, "test.h5"), "a")
-        self.tmpFile.create_group("a")
-        self.tmpFile.create_dataset("c", (2, 2), dtype=numpy.int64)
-
-    def test_getOrCreateGroup_1(self):
-        self.assertTrue("a" in self.tmpFile)
-        self.assertTrue(isinstance(self.tmpFile["a"], h5py.Group))
-
-        group = getOrCreateGroup(self.tmpFile, "a")
-
-        self.assertEqual(group.name, "/a")
-        self.assertTrue("a" in self.tmpFile)
-        self.assertTrue(isinstance(self.tmpFile["a"], h5py.Group))
-
-    def test_getOrCreateGroup_2(self):
-        self.assertTrue("b" not in self.tmpFile)
-
-        group = getOrCreateGroup(self.tmpFile, "b")
-
-        self.assertEqual(group.name, "/b")
-        self.assertTrue("b" in self.tmpFile)
-        self.assertTrue(isinstance(self.tmpFile["b"], h5py.Group))
-
-    def test_getOrCreateGroup_3(self):
-        self.assertTrue("c" in self.tmpFile)
-        self.assertTrue(isinstance(self.tmpFile["c"], h5py.Dataset))
-
-        self.assertRaises(TypeError, lambda: getOrCreateGroup(self.tmpFile, "c"))
-
-        self.assertTrue("c" in self.tmpFile)
-        self.assertTrue(isinstance(self.tmpFile["c"], h5py.Dataset))
-
-    def test_deleteIfPresent_1(self):
-        self.assertTrue("a" in self.tmpFile)
-
-        deleteIfPresent(self.tmpFile, "a")
-
-        self.assertTrue("a" not in self.tmpFile)
-
-    def test_deleteIfPresent_2(self):
-        self.assertTrue("b" not in self.tmpFile)
-
-        deleteIfPresent(self.tmpFile, "b")
-
-        self.assertTrue("b" not in self.tmpFile)
-
-    def tearDown(self):
-        self.tmpFile.close()
-        shutil.rmtree(self.tmpDir)
 
 
 class TestSerializer(unittest.TestCase):
