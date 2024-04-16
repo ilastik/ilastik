@@ -30,9 +30,7 @@ if sys.version_info.major >= 3:
 ###############################################################################
 # Python
 import logging
-import collections
 import itertools
-import threading
 from functools import partial, wraps
 from contextlib import contextmanager
 import warnings
@@ -50,6 +48,8 @@ from lazyflow.request import Request
 from lazyflow.stype import ArrayLike, Opaque
 from lazyflow.metaDict import MetaDict
 from lazyflow.utility import slicingtools, OrderedSignal
+
+module_logger = logging.getLogger(__name__)
 
 
 def is_setup_fn(func):
@@ -81,9 +81,6 @@ class Slot(object):
     Base class for InputSlot, OutputSlot
     """
 
-    loggerName = __name__ + ".Slot"
-    logger = logging.getLogger(loggerName)
-
     # Allow slots to be sorted by their order of creation for debug
     # output and diagramming purposes.
     _global_counter = itertools.count()
@@ -108,6 +105,7 @@ class Slot(object):
         allow_mask=False,
         subindex=(),
         top_level_slot=None,
+        write_logs=False,
     ):
         """Constructor of the Slot class.
 
@@ -162,6 +160,13 @@ class Slot(object):
         self._optional = optional
         self.operator = operator
         self.allow_mask = allow_mask
+        self.logger = None
+        if write_logs:
+            # Using module-like dot separation allows turning on/off all slot loggers at once
+            logger_name = f"lazyflow.slot.NoOperator.{self.name}"
+            if self.operator is not None:
+                logger_name = f"lazyflow.slot.{self.operator.name}.{self.name}"
+            self.logger = logging.getLogger(logger_name)
 
         # in the case of an InputSlot this is the slot to which it is
         # connected
@@ -519,6 +524,9 @@ class Slot(object):
                         )
                     )
 
+                    if self.logger:
+                        op_name = upstream_slot.operator.name if upstream_slot.operator is not None else "Unassigned"
+                        self.logger.debug(f"Connecting to {op_name}.{upstream_slot.name}")
                     self.upstream_slot = upstream_slot
                     notifyReady = self.upstream_slot.meta._ready and not self.meta._ready
                     self.meta = self.upstream_slot.meta.copy()
@@ -604,11 +612,10 @@ class Slot(object):
                     # Well, this is bad.  We caused an exception while handling an exception.
                     # We're more interested in the FIRST exception, so print this one out and
                     #  continue unwinding the stack with the first one.
-                    self.logger.error("Error: Caught a secondary exception while handling a different exception.")
+                    module_logger.error("Caught a secondary exception while handling a different exception.")
                     import traceback
 
                     traceback.print_exc()
-                    pass
 
     @is_setup_fn
     def disconnect(self):
@@ -626,6 +633,9 @@ class Slot(object):
         had_upstream_slot = False
         if self.upstream_slot is not None:
             had_upstream_slot = True
+            if self.logger:
+                op_name = self.upstream_slot.operator.name if self.upstream_slot.operator is not None else "Unassigned"
+                self.logger.debug(f"Disconnecting from {op_name}.{self.upstream_slot.name}")
             # safe to unsubscribe, even if not subscribed
             self.upstream_slot._sig_unready.unsubscribe(self._handleUpstreamUnready)
             try:
@@ -672,8 +682,8 @@ class Slot(object):
             return
 
         self._resizing = True
-        if self.operator is not None:
-            self.logger.debug("Resizing slot {} of operator {} to size {}".format(self.name, self.operator.name, size))
+        if self.logger:
+            self.logger.debug(f"Resizing to {size=}")
 
         # call before resize callbacks
         self._sig_resize(self, oldsize, size)
@@ -718,19 +728,14 @@ class Slot(object):
         # call after insert callbacks
         self._sig_insert(self, position, finalsize)
 
+        if self.logger:
+            self.logger.debug(f"Inserting slot {position} to {finalsize=}")
+
         slot = self._insertNew(position)
 
         # New slot inherits our settings
         slot.backpropagate_values = self.backpropagate_values
 
-        operator_name = "<NO OPERATOR>"
-        if self.operator:
-            operator_name = self.operator.name
-        self.logger.debug(
-            "Inserting slot {} into slot {} of operator {} to size {}".format(
-                position, self.name, operator_name, finalsize
-            )
-        )
         if propagate:
             if self.upstream_slot is not None and self.upstream_slot.level == self.level:
                 self.upstream_slot.insertSlot(position, finalsize)
@@ -754,12 +759,8 @@ class Slot(object):
         if len(self) <= finalsize:
             return None
         assert position < len(self)
-        if self.operator is not None:
-            self.logger.debug(
-                "Removing slot {} into slot {} of operator {} to size {}".format(
-                    position, self.name, self.operator.name, finalsize
-                )
-            )
+        if self.logger:
+            self.logger.debug(f"Removing slot {position} to {finalsize=}")
 
         # call before-remove callbacks
         self._sig_remove(self, position, finalsize)
@@ -793,6 +794,8 @@ class Slot(object):
 
         """
         if self._value is not None:
+            if self.logger:
+                self.logger.debug(f"Returning value={self._value}")
             # this handles the case of an inputslot
             # having a ._value
             # --> construct cheaper request object for this case
@@ -801,6 +804,8 @@ class Slot(object):
         elif self.upstream_slot is not None:
             # this handles the case of an inputslot
             # --> just relay the request
+            if self.logger:
+                self.logger.debug(f"Passing request to {self.upstream_slot}.")
             return self.upstream_slot.get(roi)
         else:
             if not self.ready():
@@ -826,6 +831,8 @@ class Slot(object):
                 ), "This inputSlot has no value and no upstream_slot.  You can't ask for its data yet!"
             # normal (outputslot) case
             # --> construct heavy request object..
+            if self.logger:
+                self.logger.debug(f"Getting data for {roi=}")
             execWrapper = Slot.RequestExecutionWrapper(self, roi)
             request = Request(execWrapper)
 
@@ -961,9 +968,6 @@ class Slot(object):
                 # Something is wrong.  Are we cancelled?
                 Request.raise_if_cancelled()
                 if not self.ready():
-                    # msg = "This slot ({}.{}) isn't ready yet, which means " \
-                    #      "you can't ask for its data.  Is it connected?".format(self.operator and self.operator.name, self.name)
-                    # self.logger.error(msg)
                     problem_slot = Slot._findUpstreamProblemSlot(self)
                     problem_str = str(problem_slot)
                     if isinstance(problem_slot, Slot):
@@ -978,7 +982,6 @@ class Slot(object):
                         "First upstream problem slot is: {}"
                         "".format(self.operator and self.operator.__class__, self.name, problem_str)
                     )
-                    # self.logger.error(slotInfoMsg)
                     raise Slot.SlotNotReadyError(slotInfoMsg)
                 assert self.meta.shape is not None, (
                     "Can't ask for slices of this slot yet:"
@@ -1099,6 +1102,8 @@ class Slot(object):
                     " Call disconnect first if that's what you really wanted."
                 )
             elif self.upstream_slot is not None:
+                if self.logger:
+                    self.logger.debug("Propagating setValue upstream.")
                 self.upstream_slot.setValue(value, notify, check_changed)
                 return
 
@@ -1139,6 +1144,8 @@ class Slot(object):
                     changed = not same
 
             if changed:
+                if self.logger:
+                    self.logger.debug(f"Setting {value=}")
                 # call disconnect callbacks
                 self._sig_disconnect(self)
                 self._value = value
@@ -1155,10 +1162,14 @@ class Slot(object):
                 # a slot with a value is ready unless the value is None.
                 if self._value is not None:
                     if self.meta._ready != True:
+                        if self.logger:
+                            self.logger.debug("Now ready.")
                         self.meta._ready = True
                         self._sig_ready(self)
                 else:
                     if self.meta._ready != False:
+                        if self.logger:
+                            self.logger.debug("Now unready.")
                         self.meta._ready = False
                         self._sig_unready(self)
 
@@ -1191,11 +1202,10 @@ class Slot(object):
                     # Well, this is bad.  We caused an exception while handling an exception.
                     # We're more interested in the FIRST excpetion, so print this one out and
                     #  continue unwinding the stack with the first one.
-                    self.logger.error("Error: Caught a secondary exception while handling a different exception.")
+                    module_logger.error("Caught a secondary exception while handling a different exception.")
                     import traceback
 
                     traceback.print_exc()
-                    pass
 
     @is_setup_fn
     def setValues(self, values):
@@ -1269,6 +1279,7 @@ class Slot(object):
         return ready
 
     def _setReady(self):
+        """Called at the end of Operator._setupOutputs to set all outputs ready."""
         wasReady = self.ready()
 
         for p in self._subSlots:
@@ -1278,6 +1289,8 @@ class Slot(object):
 
         # If we just became ready...
         if not wasReady and self.meta._ready:
+            if self.logger:
+                self.logger.debug("Now ready. Notifying downstream slots.")
             # Notify downstream_slots of changed readystatus
             self._changed()
             self._sig_ready(self)
@@ -1324,6 +1337,7 @@ class Slot(object):
         init_kwargs["level"] = self.level
         init_kwargs["nonlane"] = self.nonlane
         init_kwargs["allow_mask"] = self.allow_mask
+        init_kwargs["write_logs"] = self.logger is not None
         if self._type == "input":
             init_kwargs["optional"] = self._optional
 
@@ -1338,6 +1352,14 @@ class Slot(object):
     def _changed(self):
         old_ready = self.ready()
         if self.upstream_slot is not None and self.meta != self.upstream_slot.meta:
+            if self.logger:
+                op_name = self.upstream_slot.operator.name if self.upstream_slot.operator is not None else "Unassigned"
+                msg = (
+                    f"Copying meta from {op_name}.{self.upstream_slot.name}."
+                    f" Ready: {self.meta._ready} -> {self.upstream_slot.meta._ready}."
+                    f" Shape: {self.meta.shape} -> {self.upstream_slot.meta.shape}."
+                )
+                self.logger.debug(msg)
             self.meta = self.upstream_slot.meta.copy()
 
         if self._type == "output":
@@ -1377,6 +1399,8 @@ class Slot(object):
 
         """
         if self.operator is not None:
+            if self.logger:
+                self.logger.debug(f"Calling setupOutputs of {id(self.operator)}.")
             # check whether all slots are connected and notify operator
             self.operator._setupOutputs()
 
