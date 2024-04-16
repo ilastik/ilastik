@@ -842,10 +842,8 @@ class SerialClassifierFactorySlot(SerialSlot):
             return super(SerialClassifierFactorySlot, self).shouldSerialize(group)
 
     def _getValue(self, dset, slot):
-        pickled = dset[()]
         try:
-            # Attempt to unpickle
-            value = pickle.loads(pickled)
+            value = deserialize_legacy_classifier_factory(dset)
 
             # Verify that the VERSION of the classifier factory in the currently executing code
             #  has not changed since this classifier was stored.
