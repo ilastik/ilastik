@@ -18,6 +18,13 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+import re
+from dataclasses import dataclass
+from typing import Type, Union
+
+import h5py
+
+
 def deleteIfPresent(parentGroup: h5py.Group, name: str) -> None:
     """Deletes parentGroup[name], if it exists."""
     # Check first. If we try to delete a non-existent key,
@@ -78,3 +85,89 @@ def stringToSlicing(strSlicing: Union[bytes, str]) -> Tuple[slice, ...]:
         slicing.append(slice(start, stop))
 
     return tuple(slicing)
+
+
+def deserialize_string_from_h5(ds: h5py.Dataset):
+    return ds[()].decode()
+
+
+LazyflowClassifierABCs = Union[LazyflowPixelwiseClassifierABC, LazyflowVectorwiseClassifierABC]
+
+LazyflowClassifierTypeABCs = Union[Type[LazyflowPixelwiseClassifierABC], Type[LazyflowVectorwiseClassifierABC]]
+
+
+_lazyflow_classifier_factory_submodule_allow_list = [
+    "vigraRfPixelwiseClassifier",
+    "vigraRfLazyflowClassifier",
+    "parallelVigraRfLazyflowClassifier",
+    "sklearnLazyflowClassifier",
+]
+
+
+_lazyflow_classifier_type_allow_list = [
+    "VigraRfPixelwiseClassifier",
+    "VigraRfLazyflowClassifier",
+    "ParallelVigraRfLazyflowClassifier",
+    "SklearnLazyflowClassifier",
+]
+
+
+@dataclass
+class ClassifierInfo:
+    submodule_name: str
+    type_name: str
+
+    @property
+    def classifier_type(self) -> LazyflowClassifierTypeABCs:
+        submodule = getattr(lazyflow.classifiers, self.submodule_name)
+        classifier_type = getattr(submodule, self.type_name)
+        return classifier_type
+
+
+def deserialize_legacy_classifier_type_info(ds: h5py.Dataset) -> ClassifierInfo:
+    """Legacy helper for classifier type_info deserialization
+
+    in order to avoid unpickling, the protocol0-style pickle string is
+    parsed to extract the classifier typename of the form
+    `lazyflow.classifier.myclassifier.MyClassifierType`, e.g.
+    `lazyflow.classifier.vigraRfLazyflowClassifier.VigraRfLazyflowClassifier`.
+
+    Args:
+      ds: h5py dataset with that holds the pickled string - usually in
+          `PixelClassification/ClassifierForests/pickled_type`
+
+    Returns:
+      Dictionary with two keys: `submodule_name`, and `typename`
+
+    Raises:
+      ValueError if pickled string does not conform to required pattern
+    """
+    class_string: str = deserialize_string_from_h5(ds)
+    classifier_pickle_string_matcher = re.compile(
+        r"""
+        c                                  # GLOBAL
+        lazyflow\.classifiers\.(?P<submodule_name>\w+)
+        \n
+        (?P<type_name>\w+)
+        \n
+        p\d+
+        \n
+        \.                                 # all pickles end in "." STOP
+        $
+    """,
+        re.X,
+    )
+
+    # legacy support - ilastik used to pickle the classifier type
+    if class_string.isascii() and (m := classifier_pickle_string_matcher.match(class_string)):
+        groupdict = m.groupdict()
+
+        if groupdict["submodule_name"] not in _lazyflow_classifier_factory_submodule_allow_list:
+            raise ValueError(f"Could not load classifier: submodule {groupdict['submodule_name']} not allowed.")
+
+        if groupdict["type_name"] not in _lazyflow_classifier_type_allow_list:
+            raise ValueError(f"Could not load classifier: type {groupdict['type_name']} not allowed.")
+
+        return ClassifierInfo(**groupdict)
+
+    raise ValueError(f"Could not load classifier type {class_string=}")

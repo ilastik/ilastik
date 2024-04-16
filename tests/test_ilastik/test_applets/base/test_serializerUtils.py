@@ -1,12 +1,17 @@
+import pickle
 from typing import Sequence, Tuple, Union
+
 import h5py
 import pytest
 
 from ilastik.applets.base.appletSerializer.serializerUtils import (
     deleteIfPresent,
+    deserialize_legacy_classifier_type_info,
+    deserialize_string_from_h5,
     slicingToString,
     stringToSlicing,
 )
+from lazyflow.classifiers.vigraRfLazyflowClassifier import VigraRfLazyflowClassifier
 
 
 def test_deleteIfPresent_present(empty_in_memory_project_file: h5py.File):
@@ -99,3 +104,40 @@ def test_stringToSlicing(slice_string: Union[bytes, str], expected_slicing: Tupl
 def test_stringToSlicing_raises(slice_string: Union[bytes, str]):
     with pytest.raises(ValueError):
         _ = stringToSlicing(slice_string)
+
+
+def test_deserialize_string_from_h5(empty_in_memory_project_file: h5py.File):
+    test_string = "this is a test string"
+    ds = empty_in_memory_project_file.create_dataset("test", data=test_string.encode("utf-8"))
+
+    assert deserialize_string_from_h5(ds) == test_string
+
+
+def test_deserialize_classifier(empty_in_memory_project_file: h5py.File):
+    classifier_bytes = b"clazyflow.classifiers.vigraRfLazyflowClassifier\nVigraRfLazyflowClassifier\np0\n."
+    expected_submodule = "vigraRfLazyflowClassifier"
+    expected_type = "VigraRfLazyflowClassifier"
+    ds = empty_in_memory_project_file.create_dataset("classifier_type", data=classifier_bytes)
+
+    cl_info = deserialize_legacy_classifier_type_info(ds)
+
+    assert cl_info.submodule_name == expected_submodule
+    assert cl_info.type_name == expected_type
+
+    assert issubclass(cl_info.classifier_type, VigraRfLazyflowClassifier)
+
+
+@pytest.mark.parametrize(
+    "classifier_bytes",
+    [
+        b"clazyflow.class.vigraRfLazyflowClassifier\nVigraRfLazyflowClassifierFactory\np0\n.",
+        b"csome.other_submodule.classifiers.vigraRfLazyflowClassifier\nVigraRfLazyflowClassifierFactory\np0\n.",
+        b"clazyflow.classifiers.sneakyVigraRfLazyflowClassifier\nVigraRfLazyflowClassifierFactory\np0\n.",
+        b"clazyflow.classifiers.vigraRfLazyflowClassifier\nSneakyVigraRfLazyflowClassifierFactory\np0\n.",
+        b"random.",
+    ],
+)
+def test_deserialize_classifier_raises(empty_in_memory_project_file: h5py.File, classifier_bytes: bytes):
+    ds = empty_in_memory_project_file.create_dataset("classifier_type", data=classifier_bytes)
+    with pytest.raises(ValueError):
+        _ = deserialize_legacy_classifier_type_info(ds)

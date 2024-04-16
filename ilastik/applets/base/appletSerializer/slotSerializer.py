@@ -38,7 +38,12 @@ from lazyflow.slot import OutputSlot, Slot
 from lazyflow.utility import timeLogged
 
 from . import jsonSerializerRegistry
-from .serializerUtils import deleteIfPresent, slicingToString, stringToSlicing
+from .serializerUtils import (
+    deleteIfPresent,
+    slicingToString,
+    stringToSlicing,
+    deserialize_legacy_classifier_type_info,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -636,7 +641,7 @@ class SerialClassifierSlot(SerialSlot):
 
     def _deserialize(self, classifierGroup, slot):
         try:
-            classifier_type = pickle.loads(classifierGroup["pickled_type"][()])
+            classifier_type = deserialize_legacy_classifier_type_info(classifierGroup["pickled_type"]).classifier_type
         except KeyError:
             # For compatibility with old project files, choose the default classifier.
             from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier
