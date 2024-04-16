@@ -26,12 +26,24 @@ def deleteIfPresent(parentGroup: h5py.Group, name: str) -> None:
         del parentGroup[name]
 
 
-def slicingToString(slicing):
+def slicingToString(slicing: Sequence[slice]) -> bytes:
     """Convert the given slicing into a string of the form
     '[0:1,2:3,4:5]'
 
+    slices need to have integer start and stop values, step-size of 1
+    is assumed
+
     The result is a utf-8 encoded bytes, for easy storage via h5py
     """
+    if any(sl.step not in [None, 1] for sl in slicing):
+        raise ValueError("Only slices with step size of `1` or `None` are supported.")
+
+    if any(sl.start == None for sl in slicing):
+        raise ValueError("Start indices for slicing must be integer, got `None`.")
+
+    if any(sl.stop == None for sl in slicing):
+        raise ValueError("Stop indices for slicing must be integer, got `None`.")
+
     strSlicing = "["
     for s in slicing:
         strSlicing += str(s.start)
@@ -44,7 +56,7 @@ def slicingToString(slicing):
     return strSlicing.encode("utf-8")
 
 
-def stringToSlicing(strSlicing):
+def stringToSlicing(strSlicing: Union[bytes, str]) -> Tuple[slice, ...]:
     """Parse a string of the form '[0:1,2:3,4:5]' into a slicing (i.e.
     tuple of slices)
 
@@ -52,11 +64,15 @@ def stringToSlicing(strSlicing):
     if isinstance(strSlicing, bytes):
         strSlicing = strSlicing.decode("utf-8")
 
+    assert isinstance(strSlicing, str)
+
     slicing = []
     strSlicing = strSlicing[1:-1]  # Drop brackets
     sliceStrings = strSlicing.split(",")
     for s in sliceStrings:
         ends = s.split(":")
+        if len(ends) != 2:
+            raise ValueError(f"Did not expect slice element of form {s}")
         start = int(ends[0])
         stop = int(ends[1])
         slicing.append(slice(start, stop))
