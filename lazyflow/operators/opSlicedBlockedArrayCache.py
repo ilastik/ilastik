@@ -55,7 +55,6 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
 
     loggerName = __name__ + ".OpSlicedBlockedArrayCache"
     logger = logging.getLogger(loggerName)
-    traceLogger = logging.getLogger("TRACE." + loggerName)
 
     def __init__(self, *args, **kwargs):
         super(OpSlicedBlockedArrayCache, self).__init__(*args, **kwargs)

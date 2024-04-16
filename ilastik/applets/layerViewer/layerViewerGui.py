@@ -26,7 +26,6 @@ import logging
 from future.utils import with_metaclass
 
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger("TRACE." + __name__)
 
 # SciPy
 import numpy

@@ -34,8 +34,6 @@ handler.setFormatter(formatter)
 
 # Test
 logger = logging.getLogger("tests.testRequestRewrite")
-# Test Trace
-traceLogger = logging.getLogger("TRACE." + logger.name)
 
 
 def test_basic():

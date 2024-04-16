@@ -47,7 +47,6 @@ from lazyflow.operators.generic import OpSingleChannelSelector
 from .opThresholdTwoLevels import ThresholdMethod, _has_graphcut
 
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger("TRACE." + __name__)
 
 
 class DebugLayerCmap(Enum):

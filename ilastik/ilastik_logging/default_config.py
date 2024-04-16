@@ -48,6 +48,10 @@ def get_logfile_path():
 def get_default_config(
     prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, logfile_path=DEFAULT_LOGFILE_PATH
 ):
+    root_log_level = "INFO"
+
+    if ilastik_config.getboolean("ilastik", "debug"):
+        root_log_level = "DEBUG"
 
     if output_mode == OutputMode.CONSOLE:
         root_handlers = ["console", "console_warn"]
@@ -67,20 +71,13 @@ def get_default_config(
 
     default_log_config = {
         "version": 1,
-        # "incremental" : False,
-        # "disable_existing_loggers": True,
+        "disable_existing_loggers": False,
         "formatters": {
             "verbose": {
                 "format": "{}%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s".format(prefix)
             },
-            "location": {
-                # "format": "%(levelname)s %(thread)d %(name)s:%(funcName)s:%(lineno)d %(message)s"
-                "format": "{}%(levelname)s %(name)s: %(message)s".format(prefix)
-            },
-            "timestamped": {
-                # "format": "%(levelname)s %(thread)d %(name)s:%(funcName)s:%(lineno)d %(message)s"
-                "format": "{}%(levelname)s %(name)s: [%(asctime)s] %(message)s".format(prefix)
-            },
+            "location": {"format": "{}%(levelname)s %(name)s: %(message)s".format(prefix)},
+            "timestamped": {"format": "{}%(levelname)s %(name)s: [%(asctime)s] %(message)s".format(prefix)},
             "simple": {"format": "{}%(levelname)s %(message)s".format(prefix)},
         },
         "filters": {"no_warn": {"()": "ilastik.ilastik_logging.loggingHelpers.NoWarnFilter"}},
@@ -132,85 +129,16 @@ def get_default_config(
                 "formatter": "verbose",
             },
         },
-        "root": {"handlers": root_handlers, "level": "INFO"},
+        "root": {"handlers": root_handlers, "level": root_log_level},
         "loggers": {
             # This logger captures warnings module warnings
             "py.warnings": {"level": "WARN", "handlers": warnings_module_handlers, "propagate": False},
             "PyQt5": {"level": "INFO"},
-            # The requests module spits out a lot of INFO messages by default.
-            "requests": {"level": "WARN"},
+            "requests": {"level": "WARN"},  # Lots of messages at INFO
             "wsdt": {"level": "INFO"},
-            # When copying to a json file, remember to remove comments and change True/False to true/false
-            "__main__": {"level": "INFO"},
-            "ilastik_main": {"level": "INFO"},
-            "thread_start": {"level": "INFO"},
-            "lazyflow": {"level": "INFO"},
-            "lazyflow.request": {"level": "INFO"},
-            "lazyflow.request.RequestLock": {"level": "INFO"},
-            "lazyflow.request.SimpleRequestCondition": {"level": "INFO"},
-            "lazyflow.graph": {"level": "INFO"},
-            "lazyflow.graph.Slot": {"level": "INFO"},
-            "lazyflow.operators": {"level": "INFO"},
-            "lazyflow.classifiers": {"level": "INFO"},
-            "lazyflow.operators.ioOperators": {"level": "INFO"},
-            "lazyflow.operators.ioOperators.opRESTfulVolumeReader": {"level": "INFO"},
-            "lazyflow.operators.cacheMemoryManager": {"level": "INFO"},
-            "lazyflow.operators.filterOperators": {"level": "INFO"},
-            "lazyflow.operators.ioOperators.ioOperators.OpH5N5WriterBigDataset": {"level": "INFO"},
-            "lazyflow.operators.classifierOperators": {"level": "INFO"},
-            "lazyflow.operators.opCompressedCache": {"level": "INFO"},
-            "lazyflow.operators.opRelabelConsecutive": {"level": "INFO"},
-            "lazyflow.utility.io_util.RESTfulVolume": {"level": "INFO"},
-            "lazyflow.utility.io_util.tiledVolume": {"level": "INFO"},
-            "lazyflow.operators.opFeatureMatrixCache": {"level": "INFO"},
-            "lazyflow.operators.opConcatenateFeatureMatrices": {"level": "INFO"},
-            "lazyflow.utility.roiRequestBatch": {"level": "INFO"},
-            "lazyflow.utility.bigRequestStreamer": {"level": "INFO"},
-            "ilastik": {"level": "INFO"},
-            "ilastik.clusterOps": {"level": "INFO"},
-            "ilastik.applets": {"level": "INFO"},
-            "ilastik.applets.base.appletSerializer": {"level": "INFO"},
-            "ilastik.applets.dataSelection": {"level": "INFO"},
-            "ilastik.applets.featureSelection": {"level": "INFO"},
-            "ilastik.applets.pixelClassification": {"level": "INFO"},
-            "ilastik.applets.thresholdTwoLevels": {"level": "INFO"},
-            "ilastik.applets.thresholdTwoLevels.ipht": {"level": "INFO"},
-            "ilastik.applets.objectExtraction": {"level": "INFO"},
-            "ilastik.applets.blockwiseObjectClassification": {"level": "INFO"},
-            "ilastik.applets.tracking.conservation": {"level": "INFO"},
-            "ilastik.shell": {"level": "INFO"},
-            "ilastik.shell.projectManager": {"level": "INFO"},
-            "ilastik.shell.gui.ipcManager": {"level": "INFO"},
-            "ilastik.workflows": {"level": "INFO"},
-            "ilastik.widgets": {"level": "INFO"},
-            "ilastik.utility": {"level": "INFO"},
-            "ilastik.utility.exportingOperator": {"level": "INFO"},
-            "ilastik.utility.exportFile": {"level": "INFO"},
-            "workflows": {"level": "INFO"},
-            "volumina": {"level": "INFO"},
-            "volumina.pixelpipeline": {"level": "INFO"},
-            "volumina.imageScene2D": {"level": "INFO"},
-            "volumina.utility.shortcutManager": {"level": "INFO"},
-            # Python doesn't provide a trace log level, so we use a workaround.
-            # By convention, trace loggers have the same hierarchy as the regular loggers, but are prefixed with 'TRACE' and always emit DEBUG messages
-            # To enable trace messages, change one or more of these to use level DEBUG
-            "TRACE": {"level": "INFO", "handlers": ["console_trace", "console_warn"]},
-            "TRACE.lazyflow.graph.Slot": {"level": "INFO"},
-            "TRACE.lazyflow.graph.Operator": {"level": "INFO"},
-            "TRACE.lazyflow.graph.OperatorWrapper": {"level": "INFO"},
-            "TRACE.lazyflow.operators.ioOperators": {"level": "INFO"},
-            "TRACE.lazyflow.operators": {"level": "INFO"},
-            "TRACE.lazyflow.operators.operators": {"level": "INFO"},
-            "TRACE.lazyflow.operators.generic": {"level": "INFO"},
-            "TRACE.lazyflow.operators.classifierOperators": {"level": "INFO"},
-            "TRACE.lazyflow.operators.operators.ArrayCacheMemoryMgr": {"level": "INFO"},
-            "TRACE.lazyflow.operators.valueProviders.OpValueCache": {"level": "INFO"},
-            "TRACE.ilastik.clusterOps": {"level": "INFO"},
-            "TRACE.ilastik.applets": {"level": "INFO"},
-            "TRACE.ilastik.applets.blockwiseObjectClassification": {"level": "INFO"},
-            "TRACE.ilastik.shell": {"level": "INFO"},
-            "TRACE.volumina": {"level": "INFO"},
-            "TRACE.volumina.imageScene2D": {"level": "INFO"},
+            "OpenGL": {"level": "INFO"},
+            "yapsy": {"level": "INFO"},
+            # Loglevels for our own modules (ilastik, lazyflow, volumina) are in ./logging_config.json.
         },
     }
     return default_log_config

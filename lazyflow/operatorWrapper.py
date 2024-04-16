@@ -32,7 +32,6 @@ class OperatorWrapper(Operator):
 
     loggerName = __name__ + ".OperatorWrapper"
     logger = logging.getLogger(loggerName)
-    traceLogger = logging.getLogger("TRACE." + loggerName)
 
     def __init__(
         self,

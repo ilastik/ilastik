@@ -130,13 +130,13 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
     init_logging: Skip logging config initialization by setting this to False.
                   (Useful when opening multiple projects in a Python script.)
     """
+    _update_debug_mode(parsed_args)  # Debug mode affects logging, so update it first
     if init_logging:
         _init_logging(parsed_args)  # Initialize logging before anything else
 
     this_path = os.path.dirname(__file__)
     ilastik_dir = os.path.abspath(os.path.join(this_path, "..%s.." % os.path.sep))
     _import_h5py_with_utf8_encoding()
-    _update_debug_mode(parsed_args)
     _update_hbp_mode(parsed_args)
     _update_tiktorch_executable_location(parsed_args)
     runtime_cfg.preferred_cuda_device_id = parsed_args.nn_device
@@ -181,7 +181,6 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
 
     if ilastik_config.getboolean("ilastik", "debug"):
         message = 'Starting ilastik in debug mode from "%s".' % ilastik_dir
-        logging.basicConfig(level=logging.DEBUG)
         logger.info(message)
         print(message)  # always print the startup message
     else:

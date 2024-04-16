@@ -45,7 +45,6 @@ from ilastik.applets.objectClassification.opObjectClassification import (
 from ilastik.applets.base.applet import DatasetConstraintError
 
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger("TRACE." + __name__)
 
 
 class OpSingleBlockObjectPrediction(Operator):

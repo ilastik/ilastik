@@ -175,7 +175,6 @@ class Operator(metaclass=OperatorMetaClass):
 
     loggerName = __name__ + ".Operator"
     logger = logging.getLogger(loggerName)
-    traceLogger = logging.getLogger("TRACE." + loggerName)
 
     # definition of inputs slots
     inputSlots = []
