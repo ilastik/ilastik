@@ -1,6 +1,7 @@
 {
     "version" : 1,
     "incremental" : true,
+    "disable_existing_loggers" : false,
     "loggers": {
         "py.warnings": {  "level":"WARN" },
         "__main__":                                                 { "level":"DEBUG" },

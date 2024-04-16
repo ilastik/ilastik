@@ -71,6 +71,7 @@ def get_default_config(
 
     default_log_config = {
         "version": 1,
+        "disable_existing_loggers": False,
         "formatters": {
             "verbose": {
                 "format": "{}%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s".format(prefix)
