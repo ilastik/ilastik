@@ -33,6 +33,7 @@
         "lazyflow.request.SimpleRequestCondition":                  { "level":"INFO" },
         "lazyflow.graph":                                           { "level":"INFO" },
         "lazyflow.classifiers":                                     { "level":"INFO" },
+        "lazyflow.op_debug":                                        { "level":"INFO" },
         "lazyflow.operatorWrapper.OperatorWrapper":                 { "level":"INFO" },
         "lazyflow.operators.ioOperators":                           { "level":"INFO" },
         "lazyflow.operators.ioOperators.opRESTfulVolumeReader":     { "level":"INFO" },

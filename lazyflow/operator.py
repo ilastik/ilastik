@@ -173,9 +173,6 @@ class Operator(metaclass=OperatorMetaClass):
 
     """
 
-    loggerName = __name__ + ".Operator"
-    logger = logging.getLogger(loggerName)
-
     # definition of inputs slots
     inputSlots = []
 
@@ -301,6 +298,10 @@ class Operator(metaclass=OperatorMetaClass):
             islot.notifyUnready(self.handleInputBecameUnready)
 
         self._initialized = True
+
+        self.logger = logging.getLogger(f"lazyflow.op_debug.{type(self).__name__}")
+        self.logger.debug(f"Instantiated {self.name} {id(self)} with parent={self.parent.name if self.parent else ''}")
+
         self._setupOutputs()
 
     def _instantiate_slots(self):
@@ -393,6 +394,7 @@ class Operator(metaclass=OperatorMetaClass):
         if self._parent is not None:
             del self._parent._children[self]
 
+        self.logger.debug(f"Cleaning up {self.name} {id(self)}")
         # Disconnect ourselves and all children
         self._disconnect()
 
@@ -489,6 +491,7 @@ class Operator(metaclass=OperatorMetaClass):
                 self._condition.wait()
 
             self._settingUp = True
+            self.logger.debug(f"Starting setupOutputs on {self.name} {id(self)}")
 
             # Keep a copy of the old metadata for comparison.
             #  We only trigger downstream changes if something really changed.
@@ -498,6 +501,7 @@ class Operator(metaclass=OperatorMetaClass):
             self.setupOutputs()
             self._setup_count += 1
 
+            self.logger.debug(f"Finished setupOutputs on {self.name} {id(self)}")
             self._settingUp = False
             self._condition.notify_all()
 
@@ -588,6 +592,7 @@ class Operator(metaclass=OperatorMetaClass):
             # We are executing the operator. Incremement the execution
             # count to protect against simultaneous setupOutputs()
             # calls.
+            self.logger.debug(f"Executing {self.name} {id(self)} slot={slot.name} for roi={str(roi)} with {kwargs=}")
             self._incrementOperatorExecutionCount()
             return self.execute(slot, subindex, roi, result, **kwargs)
         finally:
