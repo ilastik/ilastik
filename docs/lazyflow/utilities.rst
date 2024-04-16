@@ -11,7 +11,7 @@ Utilities
 General Utilities
 =================
 
-.. currentmodule:: lazyflow.utility
+.. py:currentmodule:: lazyflow.utility
 
 OrderedSignal
 -------------
@@ -44,14 +44,6 @@ FileLock
 .. automodule:: lazyflow.utility.fileLock
 
 .. autoclass:: FileLock
-   :members:
-
-   .. automethod:: __init__
-
-PathComponents
---------------
-
-.. autoclass:: PathComponents
    :members:
 
    .. automethod:: __init__
