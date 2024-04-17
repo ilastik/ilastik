@@ -127,6 +127,7 @@ def get_default_config(
                 "maxBytes": 50e6,  # 20 MB
                 "backupCount": 5,
                 "formatter": "verbose",
+                "encoding": "utf-8",
             },
         },
         "root": {"handlers": root_handlers, "level": root_log_level},

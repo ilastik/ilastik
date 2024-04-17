@@ -525,8 +525,7 @@ class Slot(object):
                     )
 
                     if self.logger:
-                        op_name = upstream_slot.operator.name if upstream_slot.operator is not None else "Unassigned"
-                        self.logger.debug(f"Connecting to {op_name}.{upstream_slot.name}")
+                        self.logger.debug(f"Connecting to {upstream_slot}")
                     self.upstream_slot = upstream_slot
                     notifyReady = self.upstream_slot.meta._ready and not self.meta._ready
                     self.meta = self.upstream_slot.meta.copy()
@@ -634,8 +633,7 @@ class Slot(object):
         if self.upstream_slot is not None:
             had_upstream_slot = True
             if self.logger:
-                op_name = self.upstream_slot.operator.name if self.upstream_slot.operator is not None else "Unassigned"
-                self.logger.debug(f"Disconnecting from {op_name}.{self.upstream_slot.name}")
+                self.logger.debug(f"Disconnecting from {self.upstream_slot}")
             # safe to unsubscribe, even if not subscribed
             self.upstream_slot._sig_unready.unsubscribe(self._handleUpstreamUnready)
             try:
@@ -1353,11 +1351,11 @@ class Slot(object):
         old_ready = self.ready()
         if self.upstream_slot is not None and self.meta != self.upstream_slot.meta:
             if self.logger:
-                op_name = self.upstream_slot.operator.name if self.upstream_slot.operator is not None else "Unassigned"
                 msg = (
-                    f"Copying meta from {op_name}.{self.upstream_slot.name}."
+                    f"Copying meta."
                     f" Ready: {self.meta._ready} -> {self.upstream_slot.meta._ready}."
                     f" Shape: {self.meta.shape} -> {self.upstream_slot.meta.shape}."
+                    f" From {self.upstream_slot}. Previous: {self.meta}."
                 )
                 self.logger.debug(msg)
             self.meta = self.upstream_slot.meta.copy()
