@@ -26,6 +26,7 @@ dependencies:
   - nifty
   - pandas
   - psutil
+  - pydantic 2.*
   - pyopengl
   - pyqt 5.15.*
   - pyqtgraph
