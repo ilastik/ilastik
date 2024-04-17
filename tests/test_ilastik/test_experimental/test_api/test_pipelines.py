@@ -2,12 +2,12 @@ import subprocess
 import sys
 
 import numpy as np
+from pydantic import ValidationError
 import pytest
 import xarray
 import imageio.v3 as iio
 
 from ilastik.experimental.api import PixelClassificationPipeline, from_project_file
-from ilastik.experimental.parser.types import IlastikAPIError
 
 from ..types import ApiTestDataLookup, TestData, TestProjects
 
@@ -134,7 +134,7 @@ class TestIlastikApiPixelClassification:
     )
     def test_project_insufficient_data(self, test_data_lookup, proj):
         project_path = test_data_lookup.find_project(proj)
-        with pytest.raises(IlastikAPIError):
+        with pytest.raises(ValidationError):
             PixelClassificationPipeline.from_ilp_file(project_path)
 
     @pytest.mark.parametrize(

@@ -22,9 +22,9 @@ class TestIlastikParser:
     def test_parse_project_number_of_channels(self, test_data_lookup: ApiTestDataLookup, proj, expected_num_channels):
         project_path = test_data_lookup.find_project(proj)
         with h5py.File(project_path, "r") as f:
-            proj = PixelClassificationProject.from_ilp_file(f)
+            proj = PixelClassificationProject.model_validate(f)
 
-        assert proj.data_info.num_channels == expected_num_channels
+        assert proj.input_data.num_channels == expected_num_channels
 
     @pytest.mark.parametrize(
         "proj, expected_factory, expected_classifier",
@@ -40,10 +40,10 @@ class TestIlastikParser:
         project_path = test_data_lookup.find_project(proj)
 
         with h5py.File(project_path, "r") as f:
-            proj = PixelClassificationProject.from_ilp_file(f)
+            proj = PixelClassificationProject.model_validate(f)
 
-        assert isinstance(proj.classifier.factory, expected_factory)
-        assert isinstance(proj.classifier.instance, expected_classifier)
+        assert isinstance(proj.classifier.classifier_factory, expected_factory)
+        assert isinstance(proj.classifier.classifier, expected_classifier)
 
     tests = [
         (
@@ -95,7 +95,7 @@ class TestIlastikParser:
         project_path = test_data_lookup.find_project(proj)
 
         with h5py.File(project_path, "r") as f:
-            proj = PixelClassificationProject.from_ilp_file(f)
+            proj = PixelClassificationProject.model_validate(f)
 
         matrix = proj.feature_matrix
         assert matrix
