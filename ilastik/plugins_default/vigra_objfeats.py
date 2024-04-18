@@ -147,6 +147,8 @@ class VigraObjFeats(ObjectFeaturesPlugin):
                 features[feature_name]["detailtext"] = (
                     "Skewness of the intensity distribution inside the object, also known as the third standardized moment. This feature measures the asymmetry of the "
                     "intensity distribution inside the object. For multi-channel data, this feature is computed channel-wise. "
+                    "If all pixels in an object have the same value, you may encounter a 'bad features' warning when computing Skewness. "
+                    "Skewness will have a value of 0 for these objects."
                 )
                 features[feature_name]["group"] = "Intensity Distribution"
 
@@ -155,6 +157,8 @@ class VigraObjFeats(ObjectFeaturesPlugin):
                 features[feature_name]["detailtext"] = (
                     "Kurtosis of the intensity distribution inside the object, also known as the fourth standardized moment. This feature measures the heaviness of the "
                     "tails for the distribution of intensity over the object's pixels. For multi-channel data, this feature is computed channel-wise. "
+                    "If all pixels in an object have the same value, you may encounter a 'bad features' warning when computing Kurtosis. "
+                    "Kurtosis will have a value of 0 for these objects."
                 )
                 features[feature_name]["group"] = "Intensity Distribution"
 
