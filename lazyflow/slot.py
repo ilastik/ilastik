@@ -1335,17 +1335,7 @@ class Slot(object):
             s = OutputSlot(self.name, operator, **init_kwargs)
         return s
 
-    def maybe_call_within_transaction(self, fn):
-        if self.graph:
-            self.graph.maybe_call_within_transaction(fn)
-        else:
-            fn()
-
     def _changed(self):
-        self.maybe_call_within_transaction(self._changed_impl)
-
-    def _changed_impl(self):
-        oldMeta = self.meta
         old_ready = self.ready()
         if self.upstream_slot is not None and self.meta != self.upstream_slot.meta:
             self.meta = self.upstream_slot.meta.copy()
@@ -1388,7 +1378,7 @@ class Slot(object):
         """
         if self.operator is not None:
             # check whether all slots are connected and notify operator
-            self.maybe_call_within_transaction(self.operator._setupOutputs)
+            self.operator._setupOutputs()
 
     def _setupOutputs(self):
         """"""
