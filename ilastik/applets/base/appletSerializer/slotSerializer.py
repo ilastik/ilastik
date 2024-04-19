@@ -43,6 +43,7 @@ from .serializerUtils import (
     slicingToString,
     stringToSlicing,
     deserialize_legacy_classifier_type_info,
+    deserialize_legacy_classifier_factory,
 )
 
 logger = logging.getLogger(__name__)

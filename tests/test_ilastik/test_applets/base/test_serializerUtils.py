@@ -17,7 +17,7 @@ from ilastik.applets.base.appletSerializer.serializerUtils import (
     _deserialize_legacy_classifier_factory_type_info,
     _deserialize_legacy_ParallelVigraRfLazyflowClassifierFactory,
     _deserialize_legacy_SklearnLazyflowClassifierFactory,
-    _deserialize_legacy_VigraRflassifierFactory,
+    _deserialize_legacy_VigraRfClassifierFactory,
     _deserialize_sklearn_classifier_details,
     deleteIfPresent,
     deserialize_legacy_classifier_factory,
@@ -366,14 +366,14 @@ def test_deserialize_legacy_ParallelVigraRfLazyflowClassifierFactory_raises(pick
     ],
 )
 def test_deserialize_legacy_VigraRflassifierFactory(classifier_factory):
-    info = _deserialize_legacy_VigraRflassifierFactory(pickle.dumps(classifier_factory, 0).decode())
+    info = _deserialize_legacy_VigraRfClassifierFactory(pickle.dumps(classifier_factory, 0).decode())
 
     assert info.instance == classifier_factory
 
 
 def test_deserialize_legacy_VigraRflassifierFactory_raises():
     with pytest.raises(ValueError):
-        _ = _deserialize_legacy_VigraRflassifierFactory(pickle.dumps(VigraRfLazyflowClassifierFactory(), 0).decode())
+        _ = _deserialize_legacy_VigraRfClassifierFactory(pickle.dumps(VigraRfLazyflowClassifierFactory(), 0).decode())
 
 
 @pytest.mark.parametrize(

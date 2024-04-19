@@ -65,10 +65,10 @@ def slicingToString(slicing: Sequence[slice]) -> bytes:
     if any(sl.step not in [None, 1] for sl in slicing):
         raise ValueError("Only slices with step size of `1` or `None` are supported.")
 
-    if any(sl.start == None for sl in slicing):
+    if any(sl.start is None for sl in slicing):
         raise ValueError("Start indices for slicing must be integer, got `None`.")
 
-    if any(sl.stop == None for sl in slicing):
+    if any(sl.stop is None for sl in slicing):
         raise ValueError("Stop indices for slicing must be integer, got `None`.")
 
     strSlicing = "["
@@ -111,9 +111,9 @@ def deserialize_string_from_h5(ds: h5py.Dataset):
     return ds[()].decode()
 
 
-LazyflowClassifierABCs = Union[LazyflowPixelwiseClassifierABC, LazyflowVectorwiseClassifierABC]
+LazyflowClassifierABC = Union[LazyflowPixelwiseClassifierABC, LazyflowVectorwiseClassifierABC]
 
-LazyflowClassifierTypeABCs = Union[Type[LazyflowPixelwiseClassifierABC], Type[LazyflowVectorwiseClassifierABC]]
+LazyflowClassifierTypeABC = Union[Type[LazyflowPixelwiseClassifierABC], Type[LazyflowVectorwiseClassifierABC]]
 
 
 _lazyflow_classifier_factory_submodule_allow_list = [
@@ -144,7 +144,7 @@ class ClassifierInfo:
     type_name: str
 
     @property
-    def classifier_type(self) -> LazyflowClassifierTypeABCs:
+    def classifier_type(self) -> LazyflowClassifierTypeABC:
         submodule = getattr(lazyflow.classifiers, self.submodule_name)
         classifier_type = getattr(submodule, self.type_name)
         return classifier_type
@@ -199,9 +199,9 @@ def deserialize_legacy_classifier_type_info(ds: h5py.Dataset) -> ClassifierInfo:
     raise ValueError(f"Could not load classifier type {class_string=}")
 
 
-LazyflowClassifierFactoryABCs = Union[LazyflowPixelwiseClassifierFactoryABC, LazyflowVectorwiseClassifierFactoryABC]
+LazyflowClassifierFactoryABC = Union[LazyflowPixelwiseClassifierFactoryABC, LazyflowVectorwiseClassifierFactoryABC]
 
-LazyflowClassifierFactoryTypeABCs = Union[
+LazyflowClassifierFactoryTypeABC = Union[
     Type[LazyflowPixelwiseClassifierFactoryABC], Type[LazyflowVectorwiseClassifierFactoryABC]
 ]
 
@@ -213,7 +213,7 @@ class ClassifierFactoryTypeInfo:
     factory_version: int
 
     @property
-    def classifier_factory_type(self) -> LazyflowClassifierFactoryTypeABCs:
+    def classifier_factory_type(self) -> LazyflowClassifierFactoryTypeABC:
         submod = getattr(lazyflow.classifiers, self.factory_submodule)
         classifier_factory_type = getattr(submod, self.factory_typename)
         return classifier_factory_type
@@ -223,14 +223,14 @@ class ClassifierFactoryInfo(ABC):
 
     @property
     @abstractmethod
-    def instance(self) -> LazyflowClassifierFactoryABCs: ...
+    def instance(self) -> LazyflowClassifierFactoryABC: ...
 
 
-def deserialize_legacy_classifier_factory(ds: h5py.Dataset) -> LazyflowClassifierFactoryABCs:
+def deserialize_legacy_classifier_factory(ds: h5py.Dataset) -> LazyflowClassifierFactoryABC:
     pickle_string: str = deserialize_string_from_h5(ds)
-    clasifier_factory_info = _deserialize_legacy_classifier_factory_type_info(pickle_string)
+    classifier_factory_info = _deserialize_legacy_classifier_factory_type_info(pickle_string)
 
-    classifier_factory_type = clasifier_factory_info.classifier_factory_type
+    classifier_factory_type = classifier_factory_info.classifier_factory_type
     classifier_factory_details = _deserialize_classifier_factory_details(classifier_factory_type, pickle_string)
     return classifier_factory_details.instance
 
@@ -294,11 +294,11 @@ def _deserialize_legacy_classifier_factory_type_info(pickle_string: str) -> Clas
 
 
 def _deserialize_classifier_factory_details(
-    classifier_factory: LazyflowClassifierFactoryTypeABCs, pickle_str: str
+    classifier_factory: LazyflowClassifierFactoryTypeABC, pickle_str: str
 ) -> ClassifierFactoryInfo:
 
     if issubclass(classifier_factory, (VigraRfPixelwiseClassifierFactory, VigraRfLazyflowClassifierFactory)):
-        return _deserialize_legacy_VigraRflassifierFactory(pickle_str)
+        return _deserialize_legacy_VigraRfClassifierFactory(pickle_str)
 
     if issubclass(classifier_factory, ParallelVigraRfLazyflowClassifierFactory):
         return _deserialize_legacy_ParallelVigraRfLazyflowClassifierFactory(pickle_str)
@@ -318,7 +318,7 @@ class VigraRfLazyflowClassifierFactoryInfo(ClassifierFactoryInfo):
         return VigraRfLazyflowClassifierFactory(*self.args)
 
 
-def _deserialize_legacy_VigraRflassifierFactory(pickle_string: str) -> VigraRfLazyflowClassifierFactoryInfo:
+def _deserialize_legacy_VigraRfClassifierFactory(pickle_string: str) -> VigraRfLazyflowClassifierFactoryInfo:
     """
     These classifier factories have only been used with a single arg
     """
@@ -350,9 +350,8 @@ class ParallelVigraRfLazyflowClassifierFactoryInfo(ClassifierFactoryInfo):
     variable_importance_enabled: bool
     num_forests: int
 
-    # we don't do kwargs here - there is no evidence that in ilastik
-    # history kwargs were ever used
-    # kwargs
+    # ParallelVigraRfLazyflowClassifierFactory accepts additional kwargs, but we cannot deserialize arbitrary input.
+    # The parameters listed are all that we ever used in ilastik history.
     @property
     def instance(self) -> ParallelVigraRfLazyflowClassifierFactory:
         return ParallelVigraRfLazyflowClassifierFactory(
@@ -496,7 +495,7 @@ class SklearnClassifierFactoryInfo(ClassifierFactoryInfo):
     kwargs: Dict[str, Union[bool, int, float]]
 
     @property
-    def instance(self) -> LazyflowClassifierFactoryABCs:
+    def instance(self) -> LazyflowClassifierFactoryABC:
         return SklearnLazyflowClassifierFactory(self.classifier_type, *self.args, **self.kwargs)
 
 
