@@ -19,64 +19,20 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-"""
-This module implements the basic flow graph
-of the lazyflow module.
-
-Basic usage example:
-
----
-import numpy
-import lazyflow.graph
-from lazyflow.operators.operators import  OpArrayPiper
-
-
-g = lazyflow.graph.Graph()
-
-operator1 = OpArrayPiper(graph=g)
-operator2 = OpArrayPiper(graph=g)
-
-operator1.inputs["Input"].setValue(numpy.zeros((10,20,30), dtype=numpy.uint8))
-
-operator2.inputs["Input"].connect(operator1.outputs["Output"])
-
-result = operator2.outputs["Output"][:].wait()
----
-
-"""
-
-# Python
-import sys
-import copy
-import functools
-import collections
-import itertools
 import threading
 import logging
+from lazyflow.utility import OrderedSignal
 
-logger = logging.getLogger(__name__)
-
-# third-party
-import psutil
-
-if int(psutil.__version__.split(".")[0]) < 1 and int(psutil.__version__.split(".")[1]) < 3:
-    msg = "Lazyflow: Please install a psutil python module version of at least >= 0.3.0"
-    sys.stderr.write(msg)
-    logger.error(msg)
-    sys.exit(1)
-
-# SciPy
-import numpy
-
-# lazyflow
 from lazyflow import rtype
 from lazyflow.request import Request
 from lazyflow.stype import ArrayLike
-from lazyflow.utility import slicingtools, Tracer, OrderedSignal, Singleton
+from lazyflow.utility import slicingtools, Tracer, Singleton
 from lazyflow.slot import InputSlot, OutputSlot, Slot
 from lazyflow.operator import Operator, InputDict, OutputDict, OperatorMetaClass
 from lazyflow.operatorWrapper import OperatorWrapper
 from lazyflow.metaDict import MetaDict
+
+logger = logging.getLogger(__name__)
 
 
 class Graph:
@@ -85,37 +41,10 @@ class Graph:
     bookkeeping or globally accessible state needed by all operators/slots in the graph.
     """
 
-    class Transaction:
-        def __init__(self):
-            self._deferred_callbacks = None
-
-        @property
-        def active(self):
-            return self._deferred_callbacks is not None
-
-        def on_exit(self, fn):
-            assert self.active, "Cannot register callbacks on inactive transaction"
-            if fn in self._deferred_callbacks:
-                return
-            else:
-                self._deferred_callbacks.append(fn)
-
-        def __enter__(self):
-            assert not self.active, "Nested transactions are not supported"
-            self._deferred_callbacks = []
-
-        def __exit__(self, *args, **kw):
-            try:
-                for cb in self._deferred_callbacks:
-                    cb()
-            finally:
-                self._deferred_callbacks = None
-
     def __init__(self):
         self._setup_depth = 0
         self._sig_setup_complete = None
         self._lock = threading.Lock()
-        self.transaction = self.Transaction()
 
     def call_when_setup_finished(self, fn):
         # The graph is considered in "setup" mode if any slot is executing a function that affects the state of the graph.
@@ -135,12 +64,6 @@ class Graph:
         else:
             # Subscribe to the next completion.
             self._sig_setup_complete.subscribe(fn)
-
-    def maybe_call_within_transaction(self, fn):
-        if self.transaction.active:
-            self.transaction.on_exit(fn)
-        else:
-            fn()
 
     class SetupDepthContext(object):
         """

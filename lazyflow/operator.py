@@ -188,15 +188,6 @@ class Operator(metaclass=OperatorMetaClass):
     inputs: InputDict
     outputs: OutputDict
 
-    @property
-    def transaction(self):
-        """
-        Create transaction for this operation deferring setupOutputs call
-        until transaction is finished
-        :returns: Transaction context manager
-        """
-        return self.graph.transaction
-
     def __new__(cls, *args, **kwargs):
         ##
         # before __init__
