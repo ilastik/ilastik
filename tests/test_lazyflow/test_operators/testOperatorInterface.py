@@ -680,6 +680,85 @@ class TransactionOp(graph.Operator):
         pass
 
 
+class TestTransaction:
+    def testTransactionMultipleSetsOnSameSlot(self):
+        g = graph.Graph()
+        op = TransactionOp(graph=g)
+
+        with op.transaction:
+            op.Input1.setValue("val1")
+            op.Input1.setValue("val2")
+
+        op.setupOutputs.assert_called_once()
+
+    def testTransactionSetMultipleSlots(self):
+        input1, input2 = None, None
+
+        def fetch_values(self, *args, **kwargs):
+            nonlocal input1, input2
+            input1 = self.Input1.value
+            input2 = self.Input2.value
+
+        g = graph.Graph()
+        op = TransactionOp(graph=g)
+
+        setup_mock = mock.Mock()
+        setup_mock.side_effect = fetch_values
+
+        op.setupOutputs = types.MethodType(setup_mock, op)
+
+        with op.transaction:
+            op.Input1.setValue("val1")
+            op.Input2.setValue("val2")
+
+        op.setupOutputs.assert_called_once()
+        assert input1 == "val1"
+        assert input2 == "val2"
+
+    def testNestedTransactionFails(self):
+        g = graph.Graph()
+        op = TransactionOp(graph=g)
+
+        with op.transaction:
+            op.Input1.setValue("val1")
+
+            with pytest.raises(AssertionError):
+                with op.transaction:
+                    op.Input2.setValue("val2")
+
+    def test_chain(self):
+        class OpA(graph.Operator):
+            Input = graph.InputSlot()  # required slot
+
+            def setupOutputs(self):
+                pass
+
+            def propagateDirty(self, *a, **kw):
+                pass
+
+        class OpB(graph.Operator):
+            Input = graph.InputSlot()  # required slot
+            Output = graph.OutputSlot()
+
+            setupOutputs = mock.Mock()
+
+            def propagateDirty(self, *a, **kw):
+                pass
+
+        g = graph.Graph()
+
+        op_a = OpA(graph=g)
+        op_b = OpB(graph=g)
+
+        op_b.Input.connect(op_a.Input)
+
+        with op_a.transaction:
+            op_a.Input.setValue("fadf")
+            op_b.setupOutputs.assert_not_called()
+
+        op_b.setupOutputs.assert_called_once()
+
+
 class TestCompatibilityChecks:
     class OpA(graph.Operator):
         Output = graph.OutputSlot(stype=stype.ArrayLike)
