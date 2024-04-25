@@ -218,6 +218,9 @@ class Operator(metaclass=OperatorMetaClass):
                 )
             graph = parent.graph
 
+        if self.name == Operator.name:
+            self.name = type(self).__name__  # better default if subclass does not override self.name
+
         self._cleaningUp = False
         self.graph = graph
         self._children = collections.OrderedDict()
@@ -263,9 +266,8 @@ class Operator(metaclass=OperatorMetaClass):
 
     # continue initialization, when user overrides __init__
     def _after_init(self):
-        # provide simple default name for lazy users
         if self.name == Operator.name:
-            self.name = type(self).__name__
+            self.name = type(self).__name__  # repeat in case subclass.__init__ does not call super().__init__()
         assert self.graph is not None, (
             "Operator {}: self.graph is None, the parent ({})"
             " given to the operator must have a valid .graph attribute!".format(self, self._parent)
