@@ -90,7 +90,7 @@ class OperatorWrapper(Operator):
 
         self._initialized = False
 
-        if operatorClass.name == "":
+        if operatorClass.name == Operator.name:
             self._name = "Wrapped " + operatorClass.__name__
         else:
             self._name = "Wrapped " + operatorClass.name
