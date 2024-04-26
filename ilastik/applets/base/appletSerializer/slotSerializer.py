@@ -864,14 +864,6 @@ class SerialClassifierFactorySlot(SerialSlot):
             )
             return
 
-        # Verify that the VERSION of the classifier factory in the currently executing code
-        #  has not changed since this classifier was stored.
-        if not hasattr(value, "VERSION") or value.VERSION != type(value).VERSION:
-            warnings.warn(
-                "This project file uses an old or unsupported classifier-factory storage format. "
-                "When retraining, the default classifier-factory will be used."
-            )
-            return
         slot.setValue(value)
 
 

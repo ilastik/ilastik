@@ -32,12 +32,12 @@ from sklearn.tree import DecisionTreeClassifier
 from ilastik.applets.base.appletSerializer.legacyClassifiers import (
     ClassifierFactoryTypeInfo,
     SklearnClassifierFactoryInfo,
-    _deserialize_classifier_factory_details,
-    _deserialize_classifier_factory_type_info,
+    _deserialize_classifier_factory_impl,
+    _deserialize_classifier_factory_type,
     _deserialize_ParallelVigraRfLazyflowClassifierFactory,
     _deserialize_SklearnLazyflowClassifierFactory,
     _deserialize_VigraRfClassifierFactory,
-    _deserialize_sklearn_classifier_details,
+    _deserialize_sklearn_classifier,
     deserialize_classifier_factory,
     deserialize_classifier_type,
 )
@@ -131,7 +131,7 @@ def test_sklearn_lazyflow_classifier_pickled_deserialization(
     pickled_classifier = pickle.dumps(
         SklearnLazyflowClassifierFactory(classifier_type, *c_args, **c_kwargs), 0
     ).decode()
-    deserialized_info = _deserialize_sklearn_classifier_details(classifier_type, pickled_classifier)
+    deserialized_info = _deserialize_sklearn_classifier(classifier_type, pickled_classifier)
     assert deserialized_info == expected_info
 
 
@@ -149,7 +149,7 @@ def test_sklearn_lazyflow_classifier_pickled_deserialization_raises(
     classifier_type,
 ):
     with pytest.raises(ValueError, match="Could not deserialize"):
-        _ = _deserialize_sklearn_classifier_details(classifier_type, "someRandomString")
+        _ = _deserialize_sklearn_classifier(classifier_type, "someRandomString")
 
 
 @pytest.mark.parametrize(
@@ -303,10 +303,8 @@ def test_deserialize_legacy_VigraRflassifierFactory_raises():
         VigraRfLazyflowClassifierFactory(42),
     ],
 )
-def test_deserialize_classifier_factory_details(classifier_factory):
-    info = _deserialize_classifier_factory_details(
-        type(classifier_factory), pickle.dumps(classifier_factory, 0).decode()
-    )
+def test_deserialize_classifier_factory_impl(classifier_factory):
+    info = _deserialize_classifier_factory_impl(type(classifier_factory), pickle.dumps(classifier_factory, 0).decode())
 
     assert info.instance == classifier_factory
 
@@ -316,12 +314,12 @@ class MyTestClassifierFactory:
         pass
 
 
-def test_deserialize_classifier_factory_details_raises():
+def test_deserialize_classifier_factory_raises():
 
     classifier_factory = MyTestClassifierFactory(42)
 
     with pytest.raises(ValueError):
-        _ = _deserialize_classifier_factory_details(
+        _ = _deserialize_classifier_factory_impl(
             type(classifier_factory), pickle.dumps(classifier_factory, 0).decode()  # type: ignore[reportArgumentType]
         )
 
@@ -419,8 +417,8 @@ def test_deserialize_classifier_factory_details_raises():
         ),
     ],
 )
-def test_deserialize_classifier_factory_type_info(classifier_factory, expected_info):
-    info = _deserialize_classifier_factory_type_info(pickle.dumps(classifier_factory, 0).decode())
+def test_deserialize_classifier_factory_type(classifier_factory, expected_info):
+    info = _deserialize_classifier_factory_type(pickle.dumps(classifier_factory, 0).decode())
     assert info == expected_info
 
 
@@ -433,9 +431,9 @@ def test_deserialize_classifier_factory_type_info(classifier_factory, expected_i
         "ccopy_reg\n_reconstructor\np0\n(clazyflow.classifiers.vigraRfLazyflowClassifier\nVigraRfLazyflowClassifierFactory\np1\nc__builtin__\nobject\np2\nNtp3\nRp4\n(dp5\nsV_args",
     ],
 )
-def test_deserialize_classifier_factory_type_info_raises(pickle_string):
+def test_deserialize_classifier_factory_type_raises(pickle_string):
     with pytest.raises(ValueError):
-        _ = _deserialize_classifier_factory_type_info(pickle_string)
+        _ = _deserialize_classifier_factory_type(pickle_string)
 
 
 @pytest.mark.parametrize(

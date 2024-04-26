@@ -151,6 +151,12 @@ class ClassifierFactoryTypeInfo:
     def classifier_factory_type(self) -> LazyflowClassifierFactoryTypeABC:
         submod = getattr(lazyflow.classifiers, self.factory_submodule)
         classifier_factory_type = getattr(submod, self.factory_typename)
+
+        if classifier_factory_type.VERSION != self.factory_version:
+            raise ValueError(
+                f"Version mismatch for classifier factory {self.factory_typename}, supporting {classifier_factory_type.VERSION}, but found {self.factory_version}."
+            )
+
         return classifier_factory_type
 
 
@@ -162,17 +168,33 @@ class ClassifierFactoryInfo(ABC):
 
 
 def deserialize_classifier_factory(ds: h5py.Dataset) -> LazyflowClassifierFactoryABC:
+    """Load legacy pickled classifier factory from ilp dataset
+
+    Deserialization happens in two steps:
+      1) Common to all classifier factories are values for module, typename
+         and version
+      2) Details for each factory are then deserialized separately
+
+    args:
+        ds: dataset containing the classifier factory as a pickled string
+
+    Returns:
+        instance of classifier factory as saved in the project file
+
+    Raises:
+        ValueError: in case of problems, including version mismatch of the factory
+    """
     pickle_string: str = deserialize_string_from_h5(ds)
-    classifier_factory_info = _deserialize_classifier_factory_type_info(pickle_string)
+    classifier_factory_info = _deserialize_classifier_factory_type(pickle_string)
 
-    classifier_factory_type = classifier_factory_info.classifier_factory_type
-    classifier_factory_details = _deserialize_classifier_factory_details(classifier_factory_type, pickle_string)
-    factory_instance = classifier_factory_details.instance
-    factory_instance.VERSION = classifier_factory_info.factory_version
-    return factory_instance
+    classifier_factory_details = _deserialize_classifier_factory_impl(
+        classifier_factory_info.classifier_factory_type, pickle_string
+    )
+
+    return classifier_factory_details.instance
 
 
-def _deserialize_classifier_factory_type_info(pickle_string: str) -> ClassifierFactoryTypeInfo:
+def _deserialize_classifier_factory_type(pickle_string: str) -> ClassifierFactoryTypeInfo:
     """Legacy helper for classifier type_info deserialization
 
     in order to avoid unpickling, the protocol0-style pickle string is
@@ -230,7 +252,7 @@ def _deserialize_classifier_factory_type_info(pickle_string: str) -> ClassifierF
     return ClassifierFactoryTypeInfo(factory_submodule=submodule, factory_typename=typename, factory_version=version)
 
 
-def _deserialize_classifier_factory_details(
+def _deserialize_classifier_factory_impl(
     classifier_factory: LazyflowClassifierFactoryTypeABC, pickle_str: str
 ) -> ClassifierFactoryInfo:
 
@@ -490,10 +512,10 @@ def _deserialize_SklearnLazyflowClassifierFactory(pickle_string) -> SklearnClass
     classifier_info = SklearnClassifierTypeInfo(submodules=submodules.split("."), typename=typename)
     classifier_type = classifier_info.classifier_type
 
-    return _deserialize_sklearn_classifier_details(classifier_type, pickle_string)
+    return _deserialize_sklearn_classifier(classifier_type, pickle_string)
 
 
-def _deserialize_sklearn_classifier_details(
+def _deserialize_sklearn_classifier(
     classifier_type: SklearnClassifierType, pickle_str: str
 ) -> SklearnClassifierFactoryInfo:
     if issubclass(classifier_type, RandomForestClassifier):
