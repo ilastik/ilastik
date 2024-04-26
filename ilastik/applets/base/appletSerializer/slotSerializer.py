@@ -33,18 +33,22 @@ import numpy
 from ilastik import Project
 from ilastik.utility.commandLineProcessing import convertStringToList
 from ilastik.utility.maybe import maybe
+from lazyflow.operators.valueProviders import OpValueCache
 from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
 from lazyflow.slot import OutputSlot, Slot
 from lazyflow.utility import timeLogged
 
 from . import jsonSerializerRegistry
+from .legacyClassifiers import (
+    deserialize_legacy_classifier_type,
+    deserialize_legacy_classifier_factory,
+)
 from .serializerUtils import (
     deleteIfPresent,
     slicingToString,
     stringToSlicing,
-    deserialize_legacy_classifier_type_info,
-    deserialize_legacy_classifier_factory,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -607,7 +611,7 @@ class SerialHdf5BlockSlot(SerialBlockSlot):
 class SerialClassifierSlot(SerialSlot):
     """For saving a classifier.  Here we assume the classifier is stored in the ."""
 
-    def __init__(self, slot, cache, inslot=None, name=None, default=None, depends=None, selfdepends=True):
+    def __init__(self, slot, cache: OpValueCache, inslot=None, name=None, default=None, depends=None, selfdepends=True):
         super(SerialClassifierSlot, self).__init__(slot, inslot, name, None, default, depends, selfdepends)
         self.cache = cache
         if self.name is None:
@@ -642,12 +646,18 @@ class SerialClassifierSlot(SerialSlot):
 
     def _deserialize(self, classifierGroup, slot):
         try:
-            classifier_type = deserialize_legacy_classifier_type_info(classifierGroup["pickled_type"]).classifier_type
+            classifier_type = deserialize_legacy_classifier_type(classifierGroup["pickled_type"])
         except KeyError:
             # For compatibility with old project files, choose the default classifier.
             from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier
 
             classifier_type = ParallelVigraRfLazyflowClassifier
+
+        except ValueError:
+            warnings.warn(
+                "Unexpected classifier found in project file - cannot deserialize - classifier will need to be retrained."
+            )
+            return
 
         try:
             classifier = classifier_type.deserialize_hdf5(classifierGroup)
@@ -668,7 +678,7 @@ class SerialClassifierSlot(SerialSlot):
 class SerialCountingSlot(SerialSlot):
     """For saving a random forest classifier."""
 
-    def __init__(self, slot, cache, inslot=None, name=None, default=None, depends=None, selfdepends=True):
+    def __init__(self, slot, cache: OpValueCache, inslot=None, name=None, default=None, depends=None, selfdepends=True):
         super(SerialCountingSlot, self).__init__(slot, inslot, name, "wrapper{:04d}", default, depends, selfdepends)
         self.cache = cache
         if self.name is None:
