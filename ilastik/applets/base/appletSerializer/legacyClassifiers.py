@@ -85,7 +85,7 @@ class ClassifierInfo:
         return classifier_type
 
 
-def deserialize_legacy_classifier_type(ds: h5py.Dataset) -> LazyflowClassifierTypeABC:
+def deserialize_classifier_type(ds: h5py.Dataset) -> LazyflowClassifierTypeABC:
     """Legacy helper for classifier type_info deserialization
 
     in order to avoid unpickling, the protocol0-style pickle string is
@@ -161,9 +161,9 @@ class ClassifierFactoryInfo(ABC):
     def instance(self) -> LazyflowClassifierFactoryABC: ...
 
 
-def deserialize_legacy_classifier_factory(ds: h5py.Dataset) -> LazyflowClassifierFactoryABC:
+def deserialize_classifier_factory(ds: h5py.Dataset) -> LazyflowClassifierFactoryABC:
     pickle_string: str = deserialize_string_from_h5(ds)
-    classifier_factory_info = _deserialize_legacy_classifier_factory_type_info(pickle_string)
+    classifier_factory_info = _deserialize_classifier_factory_type_info(pickle_string)
 
     classifier_factory_type = classifier_factory_info.classifier_factory_type
     classifier_factory_details = _deserialize_classifier_factory_details(classifier_factory_type, pickle_string)
@@ -172,7 +172,7 @@ def deserialize_legacy_classifier_factory(ds: h5py.Dataset) -> LazyflowClassifie
     return factory_instance
 
 
-def _deserialize_legacy_classifier_factory_type_info(pickle_string: str) -> ClassifierFactoryTypeInfo:
+def _deserialize_classifier_factory_type_info(pickle_string: str) -> ClassifierFactoryTypeInfo:
     """Legacy helper for classifier type_info deserialization
 
     in order to avoid unpickling, the protocol0-style pickle string is
@@ -235,13 +235,13 @@ def _deserialize_classifier_factory_details(
 ) -> ClassifierFactoryInfo:
 
     if issubclass(classifier_factory, (VigraRfPixelwiseClassifierFactory, VigraRfLazyflowClassifierFactory)):
-        return _deserialize_legacy_VigraRfClassifierFactory(pickle_str)
+        return _deserialize_VigraRfClassifierFactory(pickle_str)
 
     if issubclass(classifier_factory, ParallelVigraRfLazyflowClassifierFactory):
-        return _deserialize_legacy_ParallelVigraRfLazyflowClassifierFactory(pickle_str)
+        return _deserialize_ParallelVigraRfLazyflowClassifierFactory(pickle_str)
 
     if issubclass(classifier_factory, SklearnLazyflowClassifierFactory):
-        return _deserialize_legacy_SklearnLazyflowClassifierFactory(pickle_str)
+        return _deserialize_SklearnLazyflowClassifierFactory(pickle_str)
 
     raise ValueError(f"Don't know how to deserialize classifier of type {classifier_factory!r}")
 
@@ -255,7 +255,7 @@ class VigraRfLazyflowClassifierFactoryInfo(ClassifierFactoryInfo):
         return VigraRfLazyflowClassifierFactory(*self.args)
 
 
-def _deserialize_legacy_VigraRfClassifierFactory(pickle_string: str) -> VigraRfLazyflowClassifierFactoryInfo:
+def _deserialize_VigraRfClassifierFactory(pickle_string: str) -> VigraRfLazyflowClassifierFactoryInfo:
     """
     These classifier factories have only been used with a single arg
     """
@@ -300,7 +300,7 @@ class ParallelVigraRfLazyflowClassifierFactoryInfo(ClassifierFactoryInfo):
         )
 
 
-def _deserialize_legacy_ParallelVigraRfLazyflowClassifierFactory(
+def _deserialize_ParallelVigraRfLazyflowClassifierFactory(
     pickle_string,
 ) -> ParallelVigraRfLazyflowClassifierFactoryInfo:
     classifier_factory_num_trees_pickle_string_matcher = re.compile(
@@ -436,7 +436,7 @@ class SklearnClassifierFactoryInfo(ClassifierFactoryInfo):
         return SklearnLazyflowClassifierFactory(self.classifier_type, *self.args, **self.kwargs)
 
 
-def _deserialize_legacy_SklearnLazyflowClassifierFactory(pickle_string) -> SklearnClassifierFactoryInfo:
+def _deserialize_SklearnLazyflowClassifierFactory(pickle_string) -> SklearnClassifierFactoryInfo:
     """
     _args : RandomForestClassifier, 100 | GaussianNB | AdaBoostClassifier | DecisionTreeClassifier | KNeighborsClassifier | LDA | QDA | SVC | NuSVC
     _kwargs NONE | NONE | n_estimators=100 | max_depth=5 | NONE | N NONE | NONE | probability=True | probability=True

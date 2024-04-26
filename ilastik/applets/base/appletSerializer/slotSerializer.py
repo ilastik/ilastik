@@ -40,8 +40,8 @@ from lazyflow.utility import timeLogged
 
 from . import jsonSerializerRegistry
 from .legacyClassifiers import (
-    deserialize_legacy_classifier_type,
-    deserialize_legacy_classifier_factory,
+    deserialize_classifier_type,
+    deserialize_classifier_factory,
 )
 from .serializerUtils import (
     deleteIfPresent,
@@ -646,7 +646,7 @@ class SerialClassifierSlot(SerialSlot):
 
     def _deserialize(self, classifierGroup, slot):
         try:
-            classifier_type = deserialize_legacy_classifier_type(classifierGroup["pickled_type"])
+            classifier_type = deserialize_classifier_type(classifierGroup["pickled_type"])
         except KeyError:
             # For compatibility with old project files, choose the default classifier.
             from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier
@@ -854,7 +854,7 @@ class SerialClassifierFactorySlot(SerialSlot):
 
     def _getValue(self, dset, slot):
         try:
-            value = deserialize_legacy_classifier_factory(dset)
+            value = deserialize_classifier_factory(dset)
 
         except ValueError:
             self._failed_to_deserialize = True
