@@ -232,7 +232,9 @@ def deserialize_legacy_classifier_factory(ds: h5py.Dataset) -> LazyflowClassifie
 
     classifier_factory_type = classifier_factory_info.classifier_factory_type
     classifier_factory_details = _deserialize_classifier_factory_details(classifier_factory_type, pickle_string)
-    return classifier_factory_details.instance
+    factory_instance = classifier_factory_details.instance
+    factory_instance.VERSION = classifier_factory_info.factory_version
+    return factory_instance
 
 
 def _deserialize_legacy_classifier_factory_type_info(pickle_string: str) -> ClassifierFactoryTypeInfo:
