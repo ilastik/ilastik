@@ -846,17 +846,23 @@ class SerialClassifierFactorySlot(SerialSlot):
         try:
             value = deserialize_legacy_classifier_factory(dset)
 
-            # Verify that the VERSION of the classifier factory in the currently executing code
-            #  has not changed since this classifier was stored.
-            assert "VERSION" in value.__dict__ and value.VERSION == type(value).VERSION
-        except:
+        except ValueError:
             self._failed_to_deserialize = True
             warnings.warn(
-                "This project file uses an old or unsupported classifier storage format. "
-                "The classifier will be stored in the new format when you save your project."
+                "This project file uses an old or unsupported classifier-factory storage format. "
+                "The classifier-factory will be stored in the new format when you save your project."
             )
-        else:
-            slot.setValue(value)
+            return
+
+        # Verify that the VERSION of the classifier factory in the currently executing code
+        #  has not changed since this classifier was stored.
+        if not hasattr(value, "VERSION") or value.VERSION != type(value).VERSION:
+            warnings.warn(
+                "This project file uses an old or unsupported classifier-factory storage format. "
+                "When retraining, the default classifier-factory will be used."
+            )
+            return
+        slot.setValue(value)
 
 
 class SerialPickleableSlot(SerialSlot):

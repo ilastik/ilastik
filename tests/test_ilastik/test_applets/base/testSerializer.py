@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -19,29 +19,42 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import os
-import h5py
-import numpy
-import vigra
-import unittest
+import pickle
 import shutil
 import tempfile
-import pytest
+import unittest
 from copy import deepcopy
-from ilastik.applets.base.appletSerializer import SerialObjectFeatureNamesSlot
-from lazyflow.graph import Graph, Operator, InputSlot, Slot, OperatorWrapper
-from lazyflow.operators import OpCompressedUserLabelArray
-from lazyflow.stype import Opaque
-from lazyflow.rtype import List
 
-from ilastik.applets.base.appletSerializer import jsonSerializerRegistry
+import h5py
+import numpy
+import pytest
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
+from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC, NuSVC
+from sklearn.tree import DecisionTreeClassifier
+import vigra
+
 from ilastik.applets.base.appletSerializer import (
-    SerialSlot,
-    SerialListSlot,
     AppletSerializer,
-    SerialDictSlot,
-    SerialBlockSlot,
     JSONSerialSlot,
+    SerialBlockSlot,
+    SerialDictSlot,
+    SerialListSlot,
+    SerialObjectFeatureNamesSlot,
+    SerialSlot,
+    jsonSerializerRegistry,
 )
+from ilastik.applets.base.appletSerializer.slotSerializer import SerialClassifierFactorySlot
+from lazyflow.classifiers.parallelVigraRfLazyflowClassifier import ParallelVigraRfLazyflowClassifierFactory
+from lazyflow.classifiers.sklearnLazyflowClassifier import SklearnLazyflowClassifierFactory
+from lazyflow.classifiers.vigraRfLazyflowClassifier import VigraRfLazyflowClassifierFactory
+from lazyflow.graph import Graph, InputSlot, Operator, OperatorWrapper, Slot
+from lazyflow.operators import OpCompressedUserLabelArray
+from lazyflow.rtype import List
+from lazyflow.slot import OutputSlot
+from lazyflow.stype import Opaque
 
 
 class OpMock(Operator):
@@ -861,3 +874,71 @@ class TestJSONSerialSlot:
             group = f.create_group("test")
             slot.deserialize(group)
             assert not operator.TestSlot.ready()
+
+
+class TestSerialClassifierFactorySlot:
+    default_factory = VigraRfLazyflowClassifierFactory(48)
+
+    @pytest.fixture
+    def operator(self, graph):
+        class OpPassThrough(Operator):
+            ClassifierFactory = InputSlot(stype=Opaque, value=self.default_factory)
+            Out = OutputSlot()
+
+            def setupOutputs(self):
+                self.Out.meta.assignFrom(self.ClassifierFactory.meta)
+
+            def execute(self, slot, subindex, roi, result):
+                result[:] = self.ClassifierFactory[:].wait()
+
+            def propagateDirty(self, *args, **kwargs):
+                pass
+
+        op = OpPassThrough(graph=graph)
+        op.name = "classifier"
+        return op
+
+    @pytest.mark.parametrize(
+        "classifier_factory",
+        [
+            ParallelVigraRfLazyflowClassifierFactory(46, 89, "VVmyfunnyteststringVV", 1.0, True),
+            SklearnLazyflowClassifierFactory(RandomForestClassifier, 143),
+            SklearnLazyflowClassifierFactory(classifier_type=AdaBoostClassifier, n_estimators=257),
+            SklearnLazyflowClassifierFactory(classifier_type=DecisionTreeClassifier, max_depth=257),
+            SklearnLazyflowClassifierFactory(classifier_type=GaussianNB),
+            SklearnLazyflowClassifierFactory(classifier_type=KNeighborsClassifier),
+            SklearnLazyflowClassifierFactory(classifier_type=LinearDiscriminantAnalysis),
+            SklearnLazyflowClassifierFactory(classifier_type=NuSVC, probability=False),
+            SklearnLazyflowClassifierFactory(classifier_type=QuadraticDiscriminantAnalysis),
+            SklearnLazyflowClassifierFactory(classifier_type=SVC, probability=False),
+            VigraRfLazyflowClassifierFactory(100),
+        ],
+    )
+    def test_deserialization(self, operator, empty_in_memory_project_file, classifier_factory):
+        serializer = SerialClassifierFactorySlot(operator.ClassifierFactory)
+        g = empty_in_memory_project_file.create_group("classifier")
+        g.create_dataset("ClassifierFactory", data=pickle.dumps(classifier_factory, 0))
+        serializer.deserialize(g)
+
+        assert operator.Out.value == classifier_factory
+
+    def test_deserialization_skip_on_exc(self, operator, empty_in_memory_project_file):
+        serializer = SerialClassifierFactorySlot(operator.ClassifierFactory)
+        g = empty_in_memory_project_file.create_group("classifier")
+        g.create_dataset("ClassifierFactory", data=b"some random string")
+        with pytest.warns(UserWarning):
+            serializer.deserialize(g)
+
+        assert operator.Out.value == self.default_factory
+
+    def test_deserialization_skip_on_version_mismatch(self, operator, empty_in_memory_project_file):
+        serializer = SerialClassifierFactorySlot(operator.ClassifierFactory)
+        g = empty_in_memory_project_file.create_group("classifier")
+        classifier_factory = VigraRfLazyflowClassifierFactory(100)
+        classifier_factory.VERSION += 1
+        g.create_dataset("ClassifierFactory", data=pickle.dumps(classifier_factory, 0))
+
+        with pytest.warns(UserWarning):
+            serializer.deserialize(g)
+
+        assert operator.Out.value == self.default_factory
