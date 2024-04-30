@@ -479,10 +479,10 @@ class ObjectExtractionGui(LayerViewerGui):
             layers.append(layer)
 
         # white foreground on transparent background, even for labeled images
-        binct = [QColor(255, 255, 255, 255).rgba()] * 65536
+        binct = [QColor(255, 255, 255, 255).rgba()] * 2
         binct[0] = 0
-        if mainOperator.BinaryImage.ready():
-            self.binaryimagesrc = createDataSource(mainOperator.BinaryImage)
+        if mainOperator.LabelImage.ready():
+            self.binaryimagesrc = createDataSource(mainOperator.LabelImage)
             self.binaryimagesrc.setObjectName("Binary LazyflowSrc")
             layer = ColortableLayer(self.binaryimagesrc, binct)
             layer.name = "Binary image"
