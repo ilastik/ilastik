@@ -19,11 +19,11 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
-from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 from ilastik.applets.objectExtraction.objectExtractionSerializer import ObjectExtractionSerializer
+from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction, OpObjectExtractionFromLabels
 
 
-class ObjectExtractionApplet(StandardApplet):
+class ObjectExtractionAppletBase(StandardApplet):
     """Calculates object features for each object in an image.
 
     Features are provided by plugins, which are responsible for
@@ -34,12 +34,8 @@ class ObjectExtractionApplet(StandardApplet):
     def __init__(
         self, name="Object Extraction", workflow=None, projectFileGroupName="ObjectExtraction", interactive=True
     ):
-        super(ObjectExtractionApplet, self).__init__(name=name, workflow=workflow, interactive=interactive)
+        super().__init__(name=name, workflow=workflow, interactive=interactive)
         self._serializableItems = [ObjectExtractionSerializer(self.topLevelOperator, projectFileGroupName)]
-
-    @property
-    def singleLaneOperatorClass(self):
-        return OpObjectExtraction
 
     @property
     def broadcastingSlots(self):
@@ -47,8 +43,10 @@ class ObjectExtractionApplet(StandardApplet):
 
     @property
     def singleLaneGuiClass(self):
-        from ilastik.applets.objectExtraction.objectExtractionGui import ObjectExtractionGui
-        from ilastik.applets.objectExtraction.objectExtractionGui import ObjectExtractionGuiNonInteractive
+        from ilastik.applets.objectExtraction.objectExtractionGui import (
+            ObjectExtractionGui,
+            ObjectExtractionGuiNonInteractive,
+        )
 
         if self.interactive:
             return ObjectExtractionGui
@@ -58,3 +56,17 @@ class ObjectExtractionApplet(StandardApplet):
     @property
     def dataSerializers(self):
         return self._serializableItems
+
+
+class ObjectExtractionApplet(ObjectExtractionAppletBase):
+
+    @property
+    def singleLaneOperatorClass(self):
+        return OpObjectExtraction
+
+
+class ObjectExtractionAppletFromLabels(ObjectExtractionAppletBase):
+
+    @property
+    def singleLaneOperatorClass(self):
+        return OpObjectExtractionFromLabels

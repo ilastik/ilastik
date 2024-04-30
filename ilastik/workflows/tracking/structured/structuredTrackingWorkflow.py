@@ -265,7 +265,7 @@ class StructuredTrackingWorkflowBase(Workflow):
         op5Binary.Input.connect(binarySrc)
 
         opObjExtraction.RawImage.connect(op5Raw.Output)
-        opObjExtraction.BinaryImage.connect(op5Binary.Output)
+        opObjExtraction.SegmentationImage.connect(op5Binary.Output)
 
         opTrackingFeatureExtraction.RawImage.connect(op5Raw.Output)
         opTrackingFeatureExtraction.BinaryImage.connect(op5Binary.Output)

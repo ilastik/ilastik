@@ -516,14 +516,14 @@ class ObjectExtractionGui(LayerViewerGui):
         mainOperator.RawImage.notifyMetaChanged(self._onMetaChanged)
         self.__cleanup_fns.append(partial(mainOperator.RawImage.unregisterMetaChanged, self._onMetaChanged))
 
-        mainOperator.BinaryImage.notifyMetaChanged(self._onMetaChanged)
-        self.__cleanup_fns.append(partial(mainOperator.BinaryImage.unregisterMetaChanged, self._onMetaChanged))
+        mainOperator.SegmentationImage.notifyMetaChanged(self._onMetaChanged)
+        self.__cleanup_fns.append(partial(mainOperator.SegmentationImage.unregisterMetaChanged, self._onMetaChanged))
 
         return layers
 
     def _onMetaChanged(self, slot):
         # FiXME: why do we need that?
-        if slot is self.topLevelOperatorView.BinaryImage:
+        if slot is self.topLevelOperatorView.SegmentationImage:
             if slot.meta.shape:
                 self.editor.dataShape = slot.meta.shape
 
@@ -578,7 +578,7 @@ class ObjectExtractionGui(LayerViewerGui):
             mexBox.exec_()
             return
 
-        if not mainOperator.BinaryImage.ready():
+        if not mainOperator.SegmentationImage.ready():
             mexBox = QMessageBox()
             mexBox.setText("Please add binary (segmentation) data before selecting features ")
             mexBox.exec_()

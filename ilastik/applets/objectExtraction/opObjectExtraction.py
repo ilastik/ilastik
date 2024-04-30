@@ -19,11 +19,12 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Python
+from abc import ABC, abstractmethod
 from copy import copy, deepcopy
 import collections
 from collections.abc import Iterable
 from functools import partial
-from typing import Dict
+from typing import Dict, Tuple
 
 # SciPy
 import numpy
@@ -31,7 +32,9 @@ import vigra.analysis
 
 # lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.operators.opRelabelConsecutive import OpRelabelConsecutive
 from lazyflow.request import Request, RequestPool
+from lazyflow.slot import Slot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List, SubRegion
 from lazyflow.roi import roiToSlice
@@ -303,17 +306,10 @@ class OpObjectCenterImage(Operator):
             self.Output.setDirty(roi)
 
 
-class OpObjectExtraction(Operator):
-    """The top-level operator for the object extraction applet.
-
-    Computes object features and object center images.
-
-    """
-
-    name = "Object Extraction"
-
+class OpObjectExtractionBase(Operator, ABC):
     RawImage = InputSlot()
-    BinaryImage = InputSlot()
+    SegmentationImage = InputSlot()  # binary or label image
+
     Atlas = InputSlot(optional=True)
     BackgroundLabels = InputSlot(optional=True)
 
@@ -349,28 +345,22 @@ class OpObjectExtraction(Operator):
     #
     # BackgroundLabels               LabelImage
     #                 \             /
-    # BinaryImage ---> OpLabelVolume ---> opRegFeats ---> opRegFeatsAdaptOutput ---> RegionFeatures
+    # SegmentationImage ---> EnsureConsecutiveLabels ---> opRegFeats ---> opRegFeatsAdaptOutput ---> RegionFeatures
     #                                   /                                     \
-    # RawImage--------------------------                      BinaryImage ---> opObjectCenterImage --> opCenterCache --> ObjectCenterImage
+    # RawImage--------------------------                      LabelImage ---> opObjectCenterImage --> opCenterCache --> ObjectCenterImage
+    #
+    # EnsureConsecutiveLabels should be customized via `_create_label_volume_op`,
+    # enabling different segmentation input types: binary, and label image.
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, parent=None, graph=None):
 
-        super(OpObjectExtraction, self).__init__(*args, **kwargs)
+        super().__init__(parent, graph)
 
-        # internal operators
-        # TODO BinaryImage is not binary in some workflows, could be made more
-        # efficient
-        self._opLabelVolume = OpLabelVolume(parent=self)
-        self._opLabelVolume.name = "OpObjectExtraction._opLabelVolume"
+        self._opLabelVolume = self._create_label_volume_op()
+
         self._opRegFeats = OpCachedRegionFeatures(parent=self)
         self._opRegFeatsAdaptOutput = OpAdaptTimeListRoi(parent=self)
         self._opObjectCenterImage = OpObjectCenterImage(parent=self)
-
-        # connect internal operators
-        self._opLabelVolume.Input.connect(self.BinaryImage)
-        self._opLabelVolume.Background.connect(self.BackgroundLabels)
-        self._opLabelVolume.BypassModeEnabled.connect(self.BypassModeEnabled)
-
         self._opRegFeats.RawImage.connect(self.RawImage)
         self._opRegFeats.LabelImage.connect(self._opLabelVolume.CachedOutput)
         self._opRegFeats.Features.connect(self.Features)
@@ -381,7 +371,7 @@ class OpObjectExtraction(Operator):
 
         self._opRegFeatsAdaptOutput.Input.connect(self._opRegFeats.Output)
 
-        self._opObjectCenterImage.BinaryImage.connect(self.BinaryImage)
+        self._opObjectCenterImage.BinaryImage.connect(self._opLabelVolume.CachedOutput)
         self._opObjectCenterImage.RegionCenters.connect(self._opRegFeatsAdaptOutput.Output)
 
         self._opCenterCache = OpCompressedCache(parent=self)
@@ -395,27 +385,53 @@ class OpObjectExtraction(Operator):
         self.BlockwiseRegionFeatures.connect(self._opRegFeats.Output)
         self.CleanLabelBlocks.connect(self._opLabelVolume.CleanBlocks)
 
-        # As soon as input data is available, check its constraints
-        self.RawImage.notifyReady(self._checkConstraints)
-        self.BinaryImage.notifyReady(self._checkConstraints)
-
-    def _checkConstraints(self, *args):
-        if self.RawImage.ready() and self.BinaryImage.ready():
+    def _checkConstraints(self, *_):
+        if self.RawImage.ready() and self.SegmentationImage.ready():
             rawTaggedShape = self.RawImage.meta.getTaggedShape()
-            binTaggedShape = self.BinaryImage.meta.getTaggedShape()
+            segTaggedShape = self.SegmentationImage.meta.getTaggedShape()
             rawTaggedShape["c"] = None
-            binTaggedShape["c"] = None
-            if dict(rawTaggedShape) != dict(binTaggedShape):
-                logger.info(
-                    "Raw data and other data must have equal dimensions (different channels are okay).\n"
-                    "Your datasets have shapes: {} and {}".format(self.RawImage.meta.shape, self.BinaryImage.meta.shape)
-                )
-
+            segTaggedShape["c"] = None
+            if dict(rawTaggedShape) != dict(segTaggedShape):
                 msg = (
-                    "Raw data and other data must have equal dimensions (different channels are okay).\n"
-                    "Your datasets have shapes: {} and {}".format(self.RawImage.meta.shape, self.BinaryImage.meta.shape)
+                    "Raw data and label data must have equal dimensions (different channels are okay)."
+                    f"Your datasets have shapes: {self.RawImage.meta.shape} and {self.SegmentationImage.meta.shape}."
                 )
+                logger.info(msg)
                 raise DatasetConstraintError("Object Extraction", msg)
+
+    def setInSlot(self, slot, subindex, roi, value):
+        assert (
+            slot == self.RegionFeaturesCacheInput or slot == self.LabelImageCacheInput
+        ), "Invalid slot for setInSlot(): {}".format(slot.name)
+
+    def _install_constraint_checks(self):
+        """listen input changes and check compatibility"""
+        self.RawImage.notifyReady(self._checkConstraints)
+        self.SegmentationImage.notifyReady(self._checkConstraints)
+
+    @abstractmethod
+    def _create_label_volume_op(self) -> Operator:
+        """Setup operator that provides label image slots
+
+        Returns:
+            label_operator: Operator with
+              CachedOutput
+              CleanLabelBlocks
+
+        """
+        ...
+
+
+class OpObjectExtractionFromLabels(OpObjectExtractionBase):
+
+    def _create_label_volume_op(self):
+        opLabelVolume = OpRelabelConsecutive(parent=self)
+        opLabelVolume.name = "OpObjectExtraction._opLabelVolume"
+
+        opLabelVolume.Input.connect(self.SegmentationImage)
+        opLabelVolume.BypassModeEnabled.connect(self.BypassModeEnabled)
+
+        return opLabelVolume
 
     def setupOutputs(self):
         # Setup LabelImageCacheInput for the serialization of the compressed cache
@@ -425,23 +441,34 @@ class OpObjectExtraction(Operator):
         for k in list(taggedShape.keys()):
             if k == "t" or k == "c":
                 taggedShape[k] = 1
-            # else:
-            #     taggedShape[k] = 256
         self._opCenterCache.blockShape.setValue(tuple(taggedShape.values()))
 
-    def execute(self, slot, subindex, roi, result):
-        assert False, "Shouldn't get here."
 
-    def propagateDirty(self, inputSlot, subindex, roi):
-        pass
+class OpObjectExtraction(OpObjectExtractionBase):
+    """The top-level operator for the object extraction applet.
 
-    def setInSlot(self, slot, subindex, roi, value):
-        assert (
-            slot == self.RegionFeaturesCacheInput or slot == self.LabelImageCacheInput
-        ), "Invalid slot for setInSlot(): {}".format(slot.name)
-        # Nothing to do here.
-        # Our Input slots are directly fed into the cache,
-        #  so all calls to __setitem__ are forwarded automatically
+    Computes object features and object center images.
+    """
+
+    def _create_label_volume_op(self):
+        opLabelVolume = OpLabelVolume(parent=self)
+        opLabelVolume.name = "OpObjectExtraction._opLabelVolume"
+
+        opLabelVolume.Input.connect(self.SegmentationImage)
+        opLabelVolume.Background.connect(self.BackgroundLabels)
+        opLabelVolume.BypassModeEnabled.connect(self.BypassModeEnabled)
+
+        return opLabelVolume
+
+    def setupOutputs(self):
+        # Setup LabelImageCacheInput for the serialization of the compressed cache
+        self._opLabelVolume._opLabel._cache.Input.connect(self.LabelImageCacheInput)
+
+        taggedShape = self.RawImage.meta.getTaggedShape()
+        for k in list(taggedShape.keys()):
+            if k == "t" or k == "c":
+                taggedShape[k] = 1
+        self._opCenterCache.blockShape.setValue(tuple(taggedShape.values()))
 
 
 class OpRegionFeatures(Operator):
@@ -476,7 +503,9 @@ class OpRegionFeatures(Operator):
 
     def setupOutputs(self):
         if self.LabelVolume.meta.axistags != self.RawVolume.meta.axistags:
-            raise Exception("raw and label axis tags do not match")
+            raise Exception(
+                f"raw and label axis tags do not match ({self.RawVolume.meta.axistags} != {self.LabelVolume.meta.axistags})."
+            )
 
         taggedOutputShape = self.LabelVolume.meta.getTaggedShape()
         taggedRawShape = self.RawVolume.meta.getTaggedShape()
