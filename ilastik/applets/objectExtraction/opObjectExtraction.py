@@ -388,6 +388,9 @@ class OpObjectExtractionBase(Operator, ABC):
         self.BlockwiseRegionFeatures.connect(self._opRegFeats.Output)
         self.CleanLabelBlocks.connect(self._opLabelVolume.CleanBlocks)
 
+        self.RawImage.notifyReady(self._checkConstraints)
+        self.SegmentationImage.notifyReady(self._checkConstraints)
+
     def _checkConstraints(self, *_):
         if self.RawImage.ready() and self.SegmentationImage.ready():
             rawTaggedShape = self.RawImage.meta.getTaggedShape()
@@ -406,11 +409,6 @@ class OpObjectExtractionBase(Operator, ABC):
         assert (
             slot == self.RegionFeaturesCacheInput or slot == self.LabelImageCacheInput
         ), "Invalid slot for setInSlot(): {}".format(slot.name)
-
-    def _install_constraint_checks(self):
-        """listen input changes and check compatibility"""
-        self.RawImage.notifyReady(self._checkConstraints)
-        self.SegmentationImage.notifyReady(self._checkConstraints)
 
     @abstractmethod
     def _create_label_volume_op(self) -> Operator:
