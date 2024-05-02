@@ -674,8 +674,7 @@ class ObjectClassificationGui(LabelingGui):
 
         if binarySlot.ready():
             # white foreground on transparent background, even for labeled images
-            binct = [QColor(255, 255, 255, 255).rgba()] * 65536
-            binct[0] = 0
+            binct = [0, QColor(255, 255, 255, 255).rgba()]
             binaryimagesrc = createDataSource(binarySlot)
             binLayer = ColortableLayer(binaryimagesrc, binct)
             binLayer.name = "Binary image"

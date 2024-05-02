@@ -117,7 +117,7 @@ class OpSingleBlockObjectPrediction(Operator):
         self._opRawSubRegion.Input.connect(self.RawImage)
 
         self._opExtract = OpObjectExtraction(parent=self)
-        self._opExtract.BinaryImage.connect(self._opBinarySubRegion.Output)
+        self._opExtract.SegmentationImage.connect(self._opBinarySubRegion.Output)
         self._opExtract.RawImage.connect(self._opRawSubRegion.Output)
         self._opExtract.Features.connect(self.SelectedFeatures)
         self.BlockwiseRegionFeatures.connect(self._opExtract.BlockwiseRegionFeatures)
