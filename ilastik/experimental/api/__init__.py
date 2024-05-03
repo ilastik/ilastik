@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2023, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -18,4 +18,6 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from ._pipelines import PixelClassificationPipeline, from_project_file
+from ._pipelines import AutocontextPipeline as AutocontextPipeline
+from ._pipelines import PixelClassificationPipeline as PixelClassificationPipeline
+from ._pipelines import from_project_file as from_project_file

@@ -29,3 +29,11 @@ class PixelClassificationProject(BaseModel):
     input_data: types.InputData = Field(alias="Input Data")
     feature_matrix: types.FeatureMatrix = Field(alias="FeatureSelections")
     classifier: types.Classifier = Field(alias="PixelClassification")
+
+
+class AutocontextProject(BaseModel):
+    input_data: types.InputData = Field(alias="Input Data")
+    feature_matrix_stage1: types.FeatureMatrix = Field(alias="FeatureSelections")
+    classifier_stage1: types.Classifier = Field(alias="PixelClassification")
+    feature_matrix_stage2: types.FeatureMatrix = Field(alias="FeatureSelections01")
+    classifier_stage2: types.Classifier = Field(alias="PixelClassification01")
