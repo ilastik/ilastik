@@ -291,6 +291,8 @@ class OpInputDataReader(Operator):
     def _attemptOpenAsOmeZarrRemoteFileset(self, filePath):
         if "zarr" not in filePath.lower():
             return ([], None)
+        if not (filePath.startswith("http") or filePath.startswith("file")):
+            return ([], None)
         reader = OpOMEZarrRemoteReader(parent=self)
         reader.Scale.connect(self.ActiveScale)
         reader.BaseUrl.setValue(filePath)
