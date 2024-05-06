@@ -21,6 +21,7 @@
 import pickle
 
 import h5py
+import numpy
 import pytest
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
 from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
@@ -35,14 +36,14 @@ from ilastik.applets.base.appletSerializer.legacyClassifiers import (
     _deserialize_classifier_factory_impl,
     _deserialize_classifier_factory_type,
     _deserialize_ParallelVigraRfLazyflowClassifierFactory,
+    _deserialize_sklearn_classifier,
     _deserialize_SklearnLazyflowClassifierFactory,
     _deserialize_VigraRfClassifierFactory,
-    _deserialize_sklearn_classifier,
     deserialize_classifier_factory,
     deserialize_classifier_type,
 )
 from lazyflow.classifiers.parallelVigraRfLazyflowClassifier import ParallelVigraRfLazyflowClassifierFactory
-from lazyflow.classifiers.sklearnLazyflowClassifier import SklearnLazyflowClassifierFactory
+from lazyflow.classifiers.sklearnLazyflowClassifier import SklearnLazyflowClassifier, SklearnLazyflowClassifierFactory
 from lazyflow.classifiers.vigraRfLazyflowClassifier import VigraRfLazyflowClassifier, VigraRfLazyflowClassifierFactory
 
 
@@ -135,6 +136,20 @@ def test_sklearn_lazyflow_classifier_pickled_deserialization(
     assert deserialized_info == expected_info
 
 
+def test_sklearn_deserialization_from_project_file(empty_in_memory_project_file):
+    """Ensure loading of sklearn classifiers as saved in ilastik"""
+
+    classifier = SklearnLazyflowClassifier(
+        KNeighborsClassifier(), known_classes=3, feature_count=3, feature_names=["a", "b", "c"]
+    )
+    classifier_bytes = pickle.dumps(classifier, 0)
+    # note that sklearn classifiers are saved wrapped in numpy.void
+    ds = empty_in_memory_project_file.create_dataset("classifier_type", data=numpy.void(classifier_bytes))
+
+    classifier_type = deserialize_classifier_type(ds)
+    assert issubclass(classifier_type, SklearnLazyflowClassifier)
+
+
 @pytest.mark.parametrize(
     "classifier_type",
     [
@@ -207,7 +222,6 @@ def test_sklearn_lazyflow_classifier_pickled_deserialization_raises(
     ],
 )
 def test_deserialize_SklearnLazyflowClassifierFactory(classifier_type, c_args, c_kwargs, expected_info):
-    assert True
     pickled_classifier = pickle.dumps(
         SklearnLazyflowClassifierFactory(classifier_type, *c_args, **c_kwargs), 0
     ).decode()

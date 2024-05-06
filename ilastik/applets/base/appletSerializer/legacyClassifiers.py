@@ -113,14 +113,12 @@ def deserialize_classifier_type(ds: h5py.Dataset) -> LazyflowClassifierTypeABC:
         \n
         p\d+
         \n
-        \.                                 # all pickles end in "." STOP
-        $
     """,
         re.X,
     )
 
     # legacy support - ilastik used to pickle the classifier type
-    if class_string.isascii() and (m := classifier_pickle_string_matcher.match(class_string)):
+    if class_string.isascii() and (m := classifier_pickle_string_matcher.search(class_string)):
         m
 
         if m["submodule_name"] not in _lazyflow_classifier_factory_submodule_allow_list:

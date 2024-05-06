@@ -21,6 +21,7 @@
 from typing import Sequence, Tuple, Union
 
 import h5py
+import numpy
 import pytest
 
 from ilastik.applets.base.appletSerializer.serializerUtils import (
@@ -126,5 +127,12 @@ def test_stringToSlicing_raises(slice_string: Union[bytes, str]):
 def test_deserialize_string_from_h5(empty_in_memory_project_file: h5py.File):
     test_string = "this is a test string"
     ds = empty_in_memory_project_file.create_dataset("test", data=test_string.encode("utf-8"))
+
+    assert deserialize_string_from_h5(ds) == test_string
+
+
+def test_deserialize_void_wrapped_string_from_h5(empty_in_memory_project_file: h5py.File):
+    test_string = "this is a another test string"
+    ds = empty_in_memory_project_file.create_dataset("test", data=numpy.void(test_string.encode("utf-8")))
 
     assert deserialize_string_from_h5(ds) == test_string

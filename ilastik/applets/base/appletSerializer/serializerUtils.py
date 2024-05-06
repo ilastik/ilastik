@@ -21,6 +21,7 @@
 from typing import Sequence, Tuple, Union
 
 import h5py
+import numpy
 
 
 def deleteIfPresent(parentGroup: h5py.Group, name: str) -> None:
@@ -86,4 +87,8 @@ def stringToSlicing(strSlicing: Union[bytes, str]) -> Tuple[slice, ...]:
 
 
 def deserialize_string_from_h5(ds: h5py.Dataset):
-    return ds[()].decode()
+    data = ds[()]
+    if isinstance(data, numpy.void):
+        data = data.tobytes()
+
+    return data.decode()
