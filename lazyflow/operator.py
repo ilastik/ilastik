@@ -432,7 +432,7 @@ class Operator(metaclass=OperatorMetaClass):
         assert self._executionCount > 0, "BUG: Can't decrement the execution count below zero!"
         with self._condition:
             self._executionCount -= 1
-            self._condition.notifyAll()
+            self._condition.notify_all()
 
     def propagateDirty(self, slot, subindex, roi):
         """This method is called when an output of another operator on
@@ -473,7 +473,7 @@ class Operator(metaclass=OperatorMetaClass):
                     return func(self, *args, **kwargs)
                 finally:
                     self._settingUp = False
-                    self._condition.notifyAll()
+                    self._condition.notify_all()
 
         wrapper.__wrapped__ = func  # Emulate python 3 behavior of @wraps
         return wrapper
@@ -499,7 +499,7 @@ class Operator(metaclass=OperatorMetaClass):
             self._setup_count += 1
 
             self._settingUp = False
-            self._condition.notifyAll()
+            self._condition.notify_all()
 
         try:
             # Determine new "ready" flags
