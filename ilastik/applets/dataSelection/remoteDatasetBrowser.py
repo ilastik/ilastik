@@ -97,10 +97,10 @@ class RemoteDatasetBrowser(QDialog):
         url = self.combo.currentText().strip()
         if url == "":
             return
-        if "http" not in url:
+        if "http" not in url and "file" not in url:
             self.combo.lineEdit().setText(f"https://{url}")
             msg = (
-                'Address must contain "http". Only web sources are supported.\n\n'
+                'Address must contain a protocol ("http(s)://" or "file://").\n\n'
                 'The default "https://" has been added to your URL automatically, please try again.'
             )
             self.result_text_box.setText(msg)
