@@ -25,7 +25,7 @@ from pathlib import Path
 import vigra
 
 import ilastik.utility.globals
-from ilastik.applets.base.appletSerializer import AppletSerializer, getOrCreateGroup, deleteIfPresent
+from ilastik.applets.base.appletSerializer import AppletSerializer, deleteIfPresent
 from ilastik.exceptions import UserAbort
 from ilastik.utility import bind
 from lazyflow.utility import PathComponents
@@ -114,13 +114,13 @@ class DataSelectionSerializer(AppletSerializer):
 
     @timeLogged(logger, logging.DEBUG)
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
-        getOrCreateGroup(topGroup, "local_data")
+        topGroup.require_group("local_data")
         deleteIfPresent(topGroup, "Role Names")
         role_names = [name.encode("utf-8") for name in self.topLevelOperator.DatasetRoles.value]
         topGroup.create_dataset("Role Names", data=role_names)
 
         # Access the info group
-        infoDir = getOrCreateGroup(topGroup, "infos")
+        infoDir = topGroup.require_group("infos")
 
         # Delete all infos
         infoDir.clear()

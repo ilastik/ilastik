@@ -20,8 +20,7 @@
 ###############################################################################
 from typing import TYPE_CHECKING
 
-from builtins import range
-from ilastik.applets.base.appletSerializer import AppletSerializer, getOrCreateGroup, deleteIfPresent, SerialSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, deleteIfPresent, SerialSlot
 import numpy
 
 from lazyflow.roi import roiFromShape, roiToSlice
@@ -40,7 +39,7 @@ class CarvingSerializer(AppletSerializer):
         self._o = operator
 
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
-        obj = getOrCreateGroup(topGroup, "objects")
+        obj = topGroup.require_group("objects")
         for imageIndex, opCarving in enumerate(self._o.innerOperators):
             mst = opCarving._mst
 
@@ -72,7 +71,7 @@ class CarvingSerializer(AppletSerializer):
                     deleteIfPresent(obj, name)
                     continue
 
-                g = getOrCreateGroup(obj, name)
+                g = obj.require_group(name)
                 deleteIfPresent(g, "fg_voxels")
                 deleteIfPresent(g, "bg_voxels")
                 deleteIfPresent(g, "sv")

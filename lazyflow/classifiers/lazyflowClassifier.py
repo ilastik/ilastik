@@ -1,6 +1,4 @@
-from builtins import object
 import abc
-from future.utils import with_metaclass
 
 
 def _has_attribute(cls, attr):
@@ -11,12 +9,14 @@ def _has_attributes(cls, attrs):
     return all(_has_attribute(cls, a) for a in attrs)
 
 
-class LazyflowVectorwiseClassifierFactoryABC(with_metaclass(abc.ABCMeta, object)):
+class LazyflowVectorwiseClassifierFactoryABC(abc.ABC):
     """
     Defines an interface for vector-wise classifier 'factory' objects,
     which lazyflow classifier operators use to construct new vector-wise classifiers.
     A "vector-wise" classifier is trained with a 2D feature matrix and a 1D label vector.
     """
+
+    VERSION: int
 
     def __new__(cls, *args, **kwargs):
         # Force the VERSION class member to be copied to an instance member.
@@ -61,7 +61,7 @@ class LazyflowVectorwiseClassifierFactoryABC(with_metaclass(abc.ABCMeta, object)
         return NotImplemented
 
 
-class LazyflowVectorwiseClassifierABC(with_metaclass(abc.ABCMeta, object)):
+class LazyflowVectorwiseClassifierABC(abc.ABC):
     """
     Defines an interface for "vector-wise" classifier objects that can be used by the lazyflow classifier operators.
     A "vector-wise" classifier is trained with a 2D feature matrix and a 1D label vector.
@@ -122,7 +122,7 @@ class LazyflowVectorwiseClassifierABC(with_metaclass(abc.ABCMeta, object)):
         raise NotImplementedError
 
 
-class LazyflowPixelwiseClassifierFactoryABC(with_metaclass(abc.ABCMeta, object)):
+class LazyflowPixelwiseClassifierFactoryABC(abc.ABC):
     """
     Defines an interface for pixel-wise classifier 'factory' objects,
     which lazyflow classifier operators use to construct new pixel-wise classifiers.
@@ -131,6 +131,8 @@ class LazyflowPixelwiseClassifierFactoryABC(with_metaclass(abc.ABCMeta, object))
 
     Note: It is assumed here that 'channel' is always the last axis of the image.
     """
+
+    VERSION: int
 
     def __new__(cls, *args, **kwargs):
         # Force the VERSION class member to be copied to an instance member.
@@ -202,7 +204,7 @@ class LazyflowPixelwiseClassifierFactoryABC(with_metaclass(abc.ABCMeta, object))
         raise NotImplementedError
 
 
-class LazyflowPixelwiseClassifierABC(with_metaclass(abc.ABCMeta, object)):
+class LazyflowPixelwiseClassifierABC(abc.ABC):
     """
     Defines an interface for "pixel-wise" classifier objects that can be used by the lazyflow classifier operators.
     A "pixel-wise" classifier expects its input be given as a list of ND feature images (with M feature channels).

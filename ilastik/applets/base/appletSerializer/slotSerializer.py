@@ -25,7 +25,7 @@ import pickle
 import re
 import tempfile
 import warnings
-from typing import List, Tuple
+from typing import Any, List, Optional, Tuple
 
 import h5py
 import numpy
@@ -33,12 +33,22 @@ import numpy
 from ilastik import Project
 from ilastik.utility.commandLineProcessing import convertStringToList
 from ilastik.utility.maybe import maybe
+from lazyflow.operators.valueProviders import OpValueCache
 from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
 from lazyflow.slot import OutputSlot, Slot
 from lazyflow.utility import timeLogged
 
 from . import jsonSerializerRegistry
-from .serializerUtils import deleteIfPresent, slicingToString, stringToSlicing
+from .legacyClassifiers import (
+    deserialize_classifier_type,
+    deserialize_classifier_factory,
+)
+from .serializerUtils import (
+    deleteIfPresent,
+    slicingToString,
+    stringToSlicing,
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +56,16 @@ logger = logging.getLogger(__name__)
 class SerialSlot(object):
     """Implements the logic for serializing a slot."""
 
-    def __init__(self, slot, inslot=None, name=None, subname=None, default=None, depends=None, selfdepends=True):
+    def __init__(
+        self,
+        slot: Slot,
+        inslot: Optional[Slot] = None,
+        name: Optional[str] = None,
+        subname: Optional[str] = None,
+        default: Any = None,
+        depends: Optional[List[Slot]] = None,
+        selfdepends: bool = True,
+    ):
         """
         :param slot: where to get data to save
 
@@ -76,7 +95,7 @@ class SerialSlot(object):
         self.inslot = inslot
 
         self.default = default
-        self.depends = maybe(depends, [])
+        self.depends: List[Slot] = maybe(depends, [])
         if selfdepends:
             self.depends.append(slot)
         if name is None:
@@ -86,23 +105,23 @@ class SerialSlot(object):
             subname = "{:04d}"
         self.subname = subname
 
-        self._dirty = False
+        self._dirty: bool = False
         self._bind()
-        self.ignoreDirty = False
+        self.ignoreDirty: bool = False
 
     @property
     def dirty(self):
         return self._dirty
 
     @dirty.setter
-    def dirty(self, isDirty):
+    def dirty(self, isDirty: bool):
         if not isDirty or (isDirty and not self.ignoreDirty):
             self._dirty = isDirty
 
     def setDirty(self, *args, **kwargs):
         self.dirty = True
 
-    def _bind(self, slot=None):
+    def _bind(self, slot: Optional[Slot] = None):
         """Setup so that when slot is dirty, set appropriate dirty
         flag.
 
@@ -120,7 +139,7 @@ class SerialSlot(object):
             slot.notifyInserted(doMulti)
             slot.notifyRemoved(self.setDirty)
 
-    def shouldSerialize(self, group):
+    def shouldSerialize(self, group: h5py.Group):
         """Whether to serialize or not."""
         result = self.dirty
         result |= self.name not in list(group.keys())
@@ -128,7 +147,7 @@ class SerialSlot(object):
             result &= s.ready()
         return result
 
-    def serialize(self, group):
+    def serialize(self, group: h5py.Group):
         """Performs tasks common to all serializations, like changing
         dirty status.
 
@@ -149,7 +168,7 @@ class SerialSlot(object):
         self.dirty = False
 
     @staticmethod
-    def _saveValue(group, name, value):
+    def _saveValue(group: h5py.Group, name: str, value):
         """Separate so that subclasses can override, if necessary.
 
         For instance, SerialListSlot needs to save an extra attribute
@@ -161,7 +180,7 @@ class SerialSlot(object):
             value = value.encode("utf-8")
         group.create_dataset(name, data=value)
 
-    def _serialize(self, group, name, slot):
+    def _serialize(self, group: h5py.Group, name: str, slot):
         """
         :param group: The parent group.
         :type group: h5py.Group
@@ -182,7 +201,7 @@ class SerialSlot(object):
                 subname = self.subname.format(i)
                 self._serialize(subgroup, subname, slot[i])
 
-    def deserialize(self, group):
+    def deserialize(self, group: h5py.Group):
         """Performs tasks common to all deserializations.
 
         Do not override (unless for some reason this function does not
@@ -200,14 +219,14 @@ class SerialSlot(object):
         self.dirty = False
 
     @staticmethod
-    def _getValue(subgroup, slot):
+    def _getValue(subgroup: h5py.Group, slot: Slot):
         val = subgroup[()]
         if isinstance(val, bytes):
             # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
             val = val.decode("utf-8")
         slot.setValue(val)
 
-    def _deserialize(self, subgroup, slot):
+    def _deserialize(self, subgroup: h5py.Group, slot: Slot):
         """
         :param subgroup: *not* the parent group. This slot's group.
         :type subgroup: h5py.Group
@@ -592,7 +611,7 @@ class SerialHdf5BlockSlot(SerialBlockSlot):
 class SerialClassifierSlot(SerialSlot):
     """For saving a classifier.  Here we assume the classifier is stored in the ."""
 
-    def __init__(self, slot, cache, inslot=None, name=None, default=None, depends=None, selfdepends=True):
+    def __init__(self, slot, cache: OpValueCache, inslot=None, name=None, default=None, depends=None, selfdepends=True):
         super(SerialClassifierSlot, self).__init__(slot, inslot, name, None, default, depends, selfdepends)
         self.cache = cache
         if self.name is None:
@@ -627,12 +646,18 @@ class SerialClassifierSlot(SerialSlot):
 
     def _deserialize(self, classifierGroup, slot):
         try:
-            classifier_type = pickle.loads(classifierGroup["pickled_type"][()])
+            classifier_type = deserialize_classifier_type(classifierGroup["pickled_type"])
         except KeyError:
             # For compatibility with old project files, choose the default classifier.
             from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier
 
             classifier_type = ParallelVigraRfLazyflowClassifier
+
+        except ValueError:
+            warnings.warn(
+                "Unexpected classifier found in project file - cannot deserialize - classifier will need to be retrained."
+            )
+            return
 
         try:
             classifier = classifier_type.deserialize_hdf5(classifierGroup)
@@ -653,7 +678,7 @@ class SerialClassifierSlot(SerialSlot):
 class SerialCountingSlot(SerialSlot):
     """For saving a random forest classifier."""
 
-    def __init__(self, slot, cache, inslot=None, name=None, default=None, depends=None, selfdepends=True):
+    def __init__(self, slot, cache: OpValueCache, inslot=None, name=None, default=None, depends=None, selfdepends=True):
         super(SerialCountingSlot, self).__init__(slot, inslot, name, "wrapper{:04d}", default, depends, selfdepends)
         self.cache = cache
         if self.name is None:
@@ -828,22 +853,18 @@ class SerialClassifierFactorySlot(SerialSlot):
             return super(SerialClassifierFactorySlot, self).shouldSerialize(group)
 
     def _getValue(self, dset, slot):
-        pickled = dset[()]
         try:
-            # Attempt to unpickle
-            value = pickle.loads(pickled)
+            value = deserialize_classifier_factory(dset)
 
-            # Verify that the VERSION of the classifier factory in the currently executing code
-            #  has not changed since this classifier was stored.
-            assert "VERSION" in value.__dict__ and value.VERSION == type(value).VERSION
-        except:
+        except ValueError:
             self._failed_to_deserialize = True
             warnings.warn(
-                "This project file uses an old or unsupported classifier storage format. "
-                "The classifier will be stored in the new format when you save your project."
+                "This project file uses an old or unsupported classifier-factory storage format. "
+                "The classifier-factory will be stored in the new format when you save your project."
             )
-        else:
-            slot.setValue(value)
+            return
+
+        slot.setValue(value)
 
 
 class SerialPickleableSlot(SerialSlot):

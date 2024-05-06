@@ -20,7 +20,7 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer, getOrCreateGroup, deleteIfPresent
+from ilastik.applets.base.appletSerializer import AppletSerializer, deleteIfPresent
 import h5py
 import numpy
 import os
@@ -57,7 +57,7 @@ class PreprocessingSerializer(AppletSerializer):
                 preproc.create_dataset("size_regularizer", data=opPre.cachedSizeRegularizer)
                 preproc.create_dataset("reduce_to", data=opPre.cachedReduceTo)
 
-                preprocgraph = getOrCreateGroup(preproc, "graph")
+                preprocgraph = preproc.require_group("graph")
                 mst.saveH5G(preprocgraph)
 
             opPre.hasUnsavedData = False
