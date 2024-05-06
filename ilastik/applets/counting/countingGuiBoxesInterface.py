@@ -449,7 +449,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     def setOpacity(self, float):
         logger.debug("Resetting Opacity {}".format(float))
 
-        self._normalColor.setAlpha(float * 255)
+        self._normalColor.setAlpha(int(float * 255))
 
         self.updateColor()
 

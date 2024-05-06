@@ -1,5 +1,3 @@
-from __future__ import division
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,10 +18,10 @@ from __future__ import division
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from past.utils import old_div
-from PyQt5.QtGui import QPixmap, QPainter, QBrush, QPen, QPalette, QColor
+from PyQt5.QtGui import QPixmap, QPainter, QBrush, QPen, QPalette
 from PyQt5.QtWidgets import QGraphicsView, QVBoxLayout, QLabel, QGraphicsScene
 from PyQt5.QtCore import Qt, QRect, QSize, QEvent
+
 
 # ===============================================================================
 # PreView
@@ -32,13 +30,11 @@ class PreView(QGraphicsView):
     def __init__(self):
         QGraphicsView.__init__(self)
 
-        self.zoom = 2
+        self.zoom: int = 2
         self.scale(self.zoom, self.zoom)
-        self.lastSize = 0
+        self.lastSize: int = 0
 
         self.setDragMode(QGraphicsView.ScrollHandDrag)
-        #        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        #        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.installEventFilter(self)
 
         self.hudLayout = QVBoxLayout(self)
@@ -64,7 +60,7 @@ class PreView(QGraphicsView):
     def sizeHint(self):
         return QSize(200, 200)
 
-    def updateFilledCircle(self, s):
+    def updateFilledCircle(self, s: int):
         size = s * self.zoom
         pixmap = QPixmap(self.width(), self.height())
         pixmap.fill(Qt.transparent)
@@ -76,9 +72,7 @@ class PreView(QGraphicsView):
         brush = QBrush(p.link().color())
         painter.setBrush(brush)
         painter.setOpacity(0.4)
-        painter.drawEllipse(
-            QRect(old_div(self.width(), 2) - old_div(size, 2), old_div(self.height(), 2) - old_div(size, 2), size, size)
-        )
+        painter.drawEllipse(QRect(self.width() // 2 - size // 2, self.height() // 2 - size // 2, size, size))
         painter.end()
         # painter ellipse 2
         painter2 = QPainter()
@@ -87,9 +81,7 @@ class PreView(QGraphicsView):
         pen2 = QPen(Qt.green)
         pen2.setWidth(1)
         painter2.setPen(pen2)
-        painter2.drawEllipse(
-            QRect(old_div(self.width(), 2) - old_div(size, 2), old_div(self.height(), 2) - old_div(size, 2), size, size)
-        )
+        painter2.drawEllipse(QRect(self.width() // 2 - size // 2, self.height() // 2 - size // 2, size, size))
         painter2.end()
 
         self.ellipseLabel.setPixmap(QPixmap(pixmap))

@@ -1105,7 +1105,7 @@ class IlastikShell(QMainWindow):
         self.updateShellProjectDisplay()
         # Default to a 50-50 split
         totalSplitterHeight = sum(self.sideSplitter.sizes())
-        self.sideSplitter.setSizes([totalSplitterHeight / 2, totalSplitterHeight / 2])
+        self.sideSplitter.setSizes([totalSplitterHeight // 2, totalSplitterHeight // 2])
 
     @threadRouted
     def updateShellProjectDisplay(self):
