@@ -613,6 +613,8 @@ class CarvingGui(LabelingGui):
     def _update_colors(self):
         """Update colors of objects in 3D viewport"""
         op = self.topLevelOperatorView
+        if not self._shownObjects3D.items():
+            return
         ctable = self._doneSegmentationLayer.colorTable
 
         for name, label in self._shownObjects3D.items():
