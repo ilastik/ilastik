@@ -7,6 +7,7 @@ Todos:
   - check whether can me somehow merged with dvidDataSelctionBrowser
 
 """
+
 import logging
 
 from requests.exceptions import SSLError, ConnectionError
@@ -79,10 +80,19 @@ class PrecomputedVolumeBrowser(QDialog):
         self.qbuttons.rejected.connect(self.reject)
         self.qbuttons.button(QDialogButtonBox.Ok).setText("Add to project")
         self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)
+
+        def update_ok_button(text):
+            if text == self.selected_url:
+                self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(True)
+            else:
+                self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)
+
+        self.combo.lineEdit().textChanged.connect(update_ok_button)
         main_layout.addWidget(self.qbuttons)
         self.setLayout(main_layout)
 
     def handle_chk_button_clicked(self, event):
+        self.selected_url = None
         url = self.combo.currentText().strip().lstrip("precomputed://")
         if url == "":
             return
