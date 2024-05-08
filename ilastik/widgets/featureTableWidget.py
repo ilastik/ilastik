@@ -350,22 +350,6 @@ class ItemDelegate(QItemDelegate):
                 painter.fillRect(option.rect.adjusted(5, 5, -5, -5), QColor(0, 250, 154))
                 painter.drawPixmap(option.rect, self.getPixmap(self.Role.CHECKED, option.rect.size()))
 
-    def adjustRectForImage(self, option):
-        if self.itemWidth > self.itemHeight:
-            return option.rect.adjusted(
-                old_div((self.itemWidth - self.itemHeight), 2) + 5,
-                5,
-                -(old_div((self.itemWidth - self.itemHeight), 2)) - 5,
-                -5,
-            )
-        else:
-            return option.rect.adjusted(
-                5,
-                old_div((self.itemHeight - self.itemWidth), 2) + 5,
-                -(old_div((self.itemHeight - self.itemWidth), 2)) - 5,
-                -5,
-            )
-
 
 # ==============================================================================
 # FeatureTableWidget2d
