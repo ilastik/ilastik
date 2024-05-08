@@ -256,7 +256,7 @@ class _CacheMemoryManager(threading.Thread):
         """
         with self._condition:
             self._refresh_interval = t
-            self._condition.notifyAll()
+            self._condition.notify_all()
 
     def disable(self):
         """
@@ -274,7 +274,7 @@ class _CacheMemoryManager(threading.Thread):
         with self._disable_lock:
             self._disabled = False
         with self._condition:
-            self._condition.notifyAll()
+            self._condition.notify_all()
 
 
 _cache_memory_manager = _CacheMemoryManager()

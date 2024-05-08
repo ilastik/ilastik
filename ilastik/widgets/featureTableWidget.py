@@ -19,8 +19,7 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 import enum
-from past.utils import old_div
-from PyQt5.QtGui import QBrush, QColor, QFont, QIcon, QImage, QPainter, QPen, QPixmap, QPolygon, QKeyEvent
+from PyQt5.QtGui import QBrush, QColor, QFont, QIcon, QPainter, QPen, QPixmap, QPolygon, QKeyEvent
 from PyQt5.QtWidgets import (
     QAbstractItemView,
     QHeaderView,
@@ -173,8 +172,8 @@ class FeatureTableWidgetHHeader(QTableWidgetItem):
         painter.setBrush(brush)
         painter.drawEllipse(
             QRect(
-                old_div(self.pixmapSize.width(), 2) - old_div(self.brushSize, 2),
-                old_div(self.pixmapSize.height(), 2) - old_div(self.brushSize, 2),
+                self.pixmapSize.width() // 2 - self.brushSize // 2,
+                self.pixmapSize.height() // 2 - self.brushSize // 2,
                 self.brushSize,
                 self.brushSize,
             )
@@ -297,8 +296,8 @@ class ItemDelegate(QItemDelegate):
         painter.drawRect(QRect(5, 5, width - 10, height - 10))
         pen.setWidth(4)
         painter.setPen(pen)
-        painter.drawLine(width / 2 - 5, height / 2, width / 2, height - 10)
-        painter.drawLine(width / 2, height - 10, width / 2 + 10, 2)
+        painter.drawLine(width // 2 - 5, height // 2, width // 2, height - 10)
+        painter.drawLine(width // 2, height - 10, width // 2 + 10, 2)
         painter.end()
 
     def drawPixmapForPartiallyChecked(self, painter: QPainter, width: int, height: int) -> None:
@@ -310,8 +309,8 @@ class ItemDelegate(QItemDelegate):
         pen.setWidth(4)
         pen.setColor(QColor(139, 137, 137))
         painter.setPen(pen)
-        painter.drawLine(width / 2 - 5, height / 2, width / 2, height - 10)
-        painter.drawLine(width / 2, height - 10, width / 2 + 10, 2)
+        painter.drawLine(width // 2 - 5, height // 2, width // 2, height - 10)
+        painter.drawLine(width // 2, height - 10, width // 2 + 10, 2)
         painter.end()
 
     def paint(self, painter, option, index):
@@ -350,22 +349,6 @@ class ItemDelegate(QItemDelegate):
             else:
                 painter.fillRect(option.rect.adjusted(5, 5, -5, -5), QColor(0, 250, 154))
                 painter.drawPixmap(option.rect, self.getPixmap(self.Role.CHECKED, option.rect.size()))
-
-    def adjustRectForImage(self, option):
-        if self.itemWidth > self.itemHeight:
-            return option.rect.adjusted(
-                old_div((self.itemWidth - self.itemHeight), 2) + 5,
-                5,
-                -(old_div((self.itemWidth - self.itemHeight), 2)) - 5,
-                -5,
-            )
-        else:
-            return option.rect.adjusted(
-                5,
-                old_div((self.itemHeight - self.itemWidth), 2) + 5,
-                -(old_div((self.itemHeight - self.itemWidth), 2)) - 5,
-                -5,
-            )
 
 
 # ==============================================================================

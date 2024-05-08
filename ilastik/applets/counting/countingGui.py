@@ -56,7 +56,7 @@ def _countingColorTable():
     colortable = matplotlib_to_qt4_colortable("jet", N=n_gradual, asLong=False)
     weights = numpy.tanh(numpy.linspace(0, 1.0, n_gradual))
     for w, c in zip(weights, colortable):
-        c.setAlpha(w * 255)
+        c.setAlpha(int(w * 255))
     colortable = [c.rgba() for c in colortable]
 
     return [*colortable, *[colortable[-1]] * (n_total - n_gradual)]
