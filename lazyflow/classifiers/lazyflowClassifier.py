@@ -1,5 +1,12 @@
 import abc
 
+from typing import Type, TypeVar
+
+import h5py
+
+
+T = TypeVar("T", bound="LazyflowVectorwiseClassifierABC")
+
 
 def _has_attribute(cls, attr):
     return any(attr in B.__dict__ for B in cls.__mro__)
@@ -115,7 +122,7 @@ class LazyflowVectorwiseClassifierABC(abc.ABC):
         raise NotImplementedError
 
     @classmethod
-    def deserialize_hdf5(cls, h5py_group):
+    def deserialize_hdf5(cls: Type[T], h5py_group: h5py.Group) -> T:
         """
         Class method.  Deserialize the classifier stored in the given ``h5py.Group`` object, and return it.
         """

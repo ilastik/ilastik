@@ -85,6 +85,12 @@ class ClassifierInfo:
         return classifier_type
 
 
+def deserialize_classifier(classifier_group: h5py.Group) -> LazyflowClassifierABC:
+    classifier_type = deserialize_classifier_type(classifier_group["pickled_type"])
+    classifier = classifier_type.deserialize_hdf5(classifier_group)
+    return classifier
+
+
 def deserialize_classifier_type(ds: h5py.Dataset) -> LazyflowClassifierTypeABC:
     """Legacy helper for classifier type_info deserialization
 
