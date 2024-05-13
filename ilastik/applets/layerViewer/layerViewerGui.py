@@ -150,6 +150,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
 
         self._stopped = False
         self._initialized = False
+        self._need_update = True
         self.__cleanup_fns = []
 
         self.threadRouter = ThreadRouter(self)  # For using @threadRouted
@@ -211,7 +212,6 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
 
     def _after_init(self):
         self._initialized = True
-        self.updateAllLayers()
 
     def setNeedUpdate(self, slot=None):
         self._need_update = True
