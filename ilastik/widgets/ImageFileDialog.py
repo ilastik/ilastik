@@ -37,7 +37,9 @@ class ImageFileDialog(QFileDialog):
         filePaths = []
         for selected_file in self.selectedFiles():
             path = Path(selected_file)
-            if path.name.lower() == "attributes.json" and any(p.suffix.lower() == ".n5" for p in path.parents):
+            if (path.name.lower() == "attributes.json" and any(p.suffix.lower() == ".n5" for p in path.parents)) or (
+                path.name.lower() == ".zgroup" and any(p.suffix.lower() == ".zarr" for p in path.parents)
+            ):
                 # For the n5 extension the attributes.json file has to be selected in the file dialog.
                 # However we need just the *.n5 directory-file.
                 filePaths.append(path.parent)

@@ -79,8 +79,11 @@ class OpInputDataReader(Operator):
     category = "Input"
 
     videoExts = ["ufmf", "mmf"]
-    h5_n5_Exts = ["h5", "hdf5", "ilp", "n5"]
-    n5Selection = ["json"]  # n5 stores data in a directory, containing a json-file which we use to select the n5-file
+    h5_n5_Exts = ["h5", "hdf5", "ilp", "n5", "zarr"]
+    n5Selection = [
+        "json",
+        "zgroup",
+    ]  # n5 stores data in a directory, containing a json-file which we use to select the n5-file
     klbExts = ["klb"]
     npyExts = ["npy"]
     npzExts = ["npz"]
@@ -394,12 +397,6 @@ class OpInputDataReader(Operator):
                         "No internal path provided for dataset in file: {}".format(externalPath)
                     )
                     raise OpInputDataReader.DatasetReadError(msg)
-            try:
-                compression_setting = h5N5File[internalPath].compression
-            except Exception as e:
-                h5N5File.close()
-                msg = "Error reading H5/N5 File: {}\n{}".format(externalPath, e)
-                raise OpInputDataReader.DatasetReadError(msg) from e
 
             # If the h5 dataset is compressed, we'll have better performance
             #  with a multi-process hdf5 access object.
@@ -407,9 +404,16 @@ class OpInputDataReader(Operator):
             allow_multiprocess_hdf5 = (
                 "LAZYFLOW_MULTIPROCESS_HDF5" in os.environ and os.environ["LAZYFLOW_MULTIPROCESS_HDF5"] != ""
             )
-            if compression_setting is not None and allow_multiprocess_hdf5 and isinstance(h5N5File, h5py.File):
-                h5N5File.close()
-                h5N5File = MultiProcessHdf5File(externalPath, "r")
+            if isinstance(h5N5File, h5py.File) and allow_multiprocess_hdf5:
+                try:
+                    compression_setting = h5N5File[internalPath].compression
+                except Exception as e:
+                    h5N5File.close()
+                    msg = "Error reading H5/N5 File: {}\n{}".format(externalPath, e)
+                    raise OpInputDataReader.DatasetReadError(msg) from e
+                if compression_setting is not None:
+                    h5N5File.close()
+                    h5N5File = MultiProcessHdf5File(externalPath, "r")
 
         self._file = h5N5File
 
