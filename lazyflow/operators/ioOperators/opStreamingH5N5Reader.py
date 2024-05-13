@@ -56,6 +56,7 @@ class OpStreamingH5N5Reader(Operator):
 
     H5EXTS = [".h5", ".hdf5", ".ilp"]
     N5EXTS = [".n5"]
+    ZARREXTS = [".zarr"]
 
     class DatasetReadError(Exception):
         def __init__(self, internalPath):
@@ -87,8 +88,11 @@ class OpStreamingH5N5Reader(Operator):
                 raise KeyError("?")
         except KeyError:
             # No axistags found.
-            if "axes" in dataset.attrs:
-                axisorder = "".join(dataset.attrs["axes"][::-1]).lower()
+            if "axes" in dataset.attrs and isinstance(dataset.attrs["axes"][0], dict):
+                # OME-Zarr v0.4 and upper format of axistags: [ { "name": "x", "type": "space", "unit": "nm" }, ... ]
+                axisorder = "".join([ax["name"] for ax in reversed(dataset.attrs["axes"])])
+            elif "axes" in dataset.attrs:
+                axisorder = "".join(reversed(dataset.attrs["axes"])).lower()
             else:
                 axisorder = get_default_axisordering(dataset.shape)
             axistags = vigra.defaultAxistags(str(axisorder))
@@ -161,3 +165,5 @@ class OpStreamingH5N5Reader(Operator):
             return z5py.N5File(filepath, mode)
         elif ext in OpStreamingH5N5Reader.H5EXTS:
             return h5py.File(filepath, mode)
+        elif ext in OpStreamingH5N5Reader.ZARREXTS:
+            return z5py.ZarrFile(filepath, mode)
