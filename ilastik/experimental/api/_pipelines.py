@@ -40,10 +40,11 @@ class PixelClassificationPipeline:
     Example usage:
 
     ```Python
-    from ilastik.experimental.api import PixelClassificationPipeline
     import imageio.v3 as iio
+    import xarray
+    from ilastik.experimental.api import PixelClassificationPipeline
 
-    img = iio.imread("<path/to/image-file.tif>")
+    img = xarray.DataArray(iio.imread("<path/to/image-file.tif>"), dims=("y", "x"))
     pipeline = PixelClassificationPipeline.from_ilp_file("<path/to/project.ilp>")
 
     prob_maps = pipeline.get_probabilities(img)

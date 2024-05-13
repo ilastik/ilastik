@@ -72,9 +72,8 @@ class InputData(BaseModel):
     @property
     def axis_order(self) -> str:
         """Returns the axis keys of the last lane as a string"""
-        # should usually be 'Raw Data'
         last_lane = self._last_lane
-        base_role_name = self.role_names[0]
+        base_role_name = self.role_names[0]  # should usually be 'Raw Data'
         base_info = last_lane[base_role_name]
         assert base_info
         return "".join(ax.key for ax in base_info.axistags)
@@ -83,7 +82,7 @@ class InputData(BaseModel):
     def num_channels(self) -> int:
         """Returns the number for channels in the last lane"""
         last_lane = self._last_lane
-        base_role_name = self.role_names[0]
+        base_role_name = self.role_names[0]  # should usually be 'Raw Data'
         base_info = last_lane[base_role_name]
         assert base_info
         n_channels = 1

@@ -1,6 +1,6 @@
 import abc
 
-from typing import TYPE_CHECKING, Type, TypeVar
+from typing import Type, TypeVar
 
 import h5py
 
