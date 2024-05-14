@@ -28,6 +28,7 @@ from PyQt5.QtWidgets import (
     QTextEdit,
     QVBoxLayout,
     QWidget,
+    QCheckBox,
 )
 
 from PyQt5.QtCore import Qt
@@ -40,7 +41,7 @@ class SubvolumeSelectionDlg(QDialog):
     A window to ask the user to choose between multiple HDF5 datasets in a single file.
     """
 
-    def __init__(self, datasetNames, parent):
+    def __init__(self, datasetNames, parent, offer_remember_dataset=False):
         super().__init__(parent)
         label = QLabel(
             "Your HDF5/N5 File contains multiple image volumes.\nPlease select the one you would like to open."
@@ -50,6 +51,9 @@ class SubvolumeSelectionDlg(QDialog):
         for name in datasetNames:
             self.combo.addItem(name)
 
+        if offer_remember_dataset:
+            self.checkbox = QCheckBox("Always use this dataset in this file (until next ilastik restart)")
+
         buttonbox = QDialogButtonBox(Qt.Horizontal, parent=self)
         buttonbox.setStandardButtons(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttonbox.accepted.connect(self.accept)
@@ -58,6 +62,8 @@ class SubvolumeSelectionDlg(QDialog):
         layout = QVBoxLayout()
         layout.addWidget(label)
         layout.addWidget(self.combo)
+        if offer_remember_dataset:
+            layout.addWidget(self.checkbox)
         layout.addWidget(buttonbox)
 
         self.setLayout(layout)
