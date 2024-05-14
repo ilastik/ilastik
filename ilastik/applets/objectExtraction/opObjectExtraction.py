@@ -24,7 +24,7 @@ from copy import copy, deepcopy
 import collections
 from collections.abc import Iterable
 from functools import partial
-from typing import Dict, Tuple
+from typing import Dict, Optional
 
 # SciPy
 import numpy
@@ -494,6 +494,7 @@ class OpRegionFeatures(Operator):
 
     RawVolume = InputSlot()
     Atlas = InputSlot(optional=True)
+    ObjectIDMapping = InputSlot(optional=True, rtype=List, stype=Opaque)
     LabelVolume = InputSlot()
     Features = InputSlot(rtype=List, stype=Opaque)
 
@@ -548,6 +549,11 @@ class OpRegionFeatures(Operator):
             else:
                 atlasVolume = None
 
+            if self.ObjectIDMapping.ready():
+                object_id_mapping = self.ObjectIDMapping[s].wait()
+            else:
+                object_id_mapping = None
+
             # Get results
             rawVolume = raw_req.wait()
             labelVolume = label_req.wait()
@@ -558,7 +564,7 @@ class OpRegionFeatures(Operator):
             # Convert to 4D (preserve axis order)
             rawVolume = rawVolume.withAxes(*axes4d)
             labelVolume = labelVolume.withAxes(*axes4d)
-            acc = self._extract(rawVolume, labelVolume, atlasVolume)
+            acc = self._extract(rawVolume, labelVolume, atlasVolume, object_id_mapping)
 
             # Copy into the result
             result[res_t_ind] = acc
@@ -649,7 +655,9 @@ class OpRegionFeatures(Operator):
             atlas_mapping[obj_idx] = atlas_value
         return atlas_mapping
 
-    def _extract(self, image, labels, atlas=None) -> Dict[str, Dict[str, numpy.ndarray]]:
+    def _extract(
+        self, image, labels, atlas=None, object_id_mapping: Optional[dict[int, int]] = None
+    ) -> Dict[str, Dict[str, numpy.ndarray]]:
         """
         Returns a dictionary of features, with the following structure:
             dict[plugin_name][feature_name] = feature_value
@@ -714,6 +722,12 @@ class OpRegionFeatures(Operator):
 
         if atlas is not None:
             extrafeats["AtlasMapping"] = self._createAtlasMapping(extrafeats["RegionCenter"], atlas)
+
+        if object_id_mapping is not None:
+            rev_mapping = {v: k for k, v in object_id_mapping.items()}
+            extrafeats["OriginalObjectID"] = numpy.vectorize(rev_mapping.get)(
+                numpy.arange(1, extrafeats["Count"].shape[0] + 1)
+            )
 
         extrafeats = dict((k.replace(" ", ""), v) for k, v in extrafeats.items())
 
