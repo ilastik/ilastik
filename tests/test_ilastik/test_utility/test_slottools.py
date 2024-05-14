@@ -26,7 +26,8 @@ from ilastik.utility.slottools import DtypeConvertFunction
                 dtype="uint8",
             ),
         ),
-        (numpy.array((42 ** 3,), dtype="uint32"), "float32", numpy.array((42 ** 3,), dtype="float32")),
+        (numpy.array((42**3,), dtype="uint32"), "float32", numpy.array((42**3,), dtype="float32")),
+        (numpy.array((42**3,), dtype="uint32"), numpy.dtype("float32"), numpy.array((42**3,), dtype="float32")),
     ],
 )
 def test_rescaling(input_array, dtype, expected):
@@ -42,6 +43,8 @@ def test_rescaling(input_array, dtype, expected):
         ("uint8", "uint8", True),
         ("float", "uint8", False),
         ("float32", "float64", False),
+        (numpy.dtype("uint8"), "uint8", True),
+        (numpy.dtype("uint8"), "uint32", False),
     ],
 )
 def test_eq(dtype_a, dtype_b, expected):
