@@ -20,10 +20,10 @@ def _load_as_xarray(dataset: TestData):
     return xarray.DataArray(data, dims=tuple(dataset.axes))
 
 
-class TestIlastikApiPixelClassification:
+class TestIlastikApiBase:
     @pytest.fixture
     def run_headless(self, tmpdir):
-        def _run_headless(proj, input_):
+        def _run_headless(proj, input_, export_source: str):
             out_path = str(tmpdir / "out.npy")
             args = [
                 sys.executable,
@@ -39,11 +39,16 @@ class TestIlastikApiPixelClassification:
                 "numpy",
                 "--output_filename_format",
                 out_path,
+                "--export_source",
+                export_source,
             ]
             subprocess.check_call(args)
             return np.load(out_path)
 
         return _run_headless
+
+
+class TestIlastikApiPixelClassification(TestIlastikApiBase):
 
     @pytest.mark.parametrize(
         "input_, proj",
@@ -59,7 +64,7 @@ class TestIlastikApiPixelClassification:
         project_path = test_data_lookup.find_project(proj)
         input_dataset = test_data_lookup.find_dataset(input_)
 
-        expected_prediction = run_headless(project_path, input_dataset)
+        expected_prediction = run_headless(project_path, input_dataset, "Probabilities")
         pipeline = PixelClassificationPipeline.from_ilp_file(project_path)
 
         prediction = pipeline.get_probabilities(_load_as_xarray(input_dataset))
@@ -83,7 +88,7 @@ class TestIlastikApiPixelClassification:
         input_dataset = test_data_lookup.find_dataset(input_)
 
         pipeline = PixelClassificationPipeline.from_ilp_file(project_path)
-        expected_prediction = run_headless(project_path, input_dataset)
+        expected_prediction = run_headless(project_path, input_dataset, "Probabilities")
 
         input_data = _load_as_xarray(input_dataset)
         input_numpy = input_data.data
@@ -148,7 +153,7 @@ class TestIlastikApiPixelClassification:
         project_path = test_data_lookup.find_project(proj)
         input_dataset = test_data_lookup.find_dataset(input_)
 
-        expected_prediction = run_headless(project_path, input_dataset)
+        expected_prediction = run_headless(project_path, input_dataset, "Probabilities")
         with pytest.deprecated_call():
             pipeline = from_project_file(project_path)
 
