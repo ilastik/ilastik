@@ -28,6 +28,9 @@ class TestProjects(enum.Enum):
     PIXEL_CLASS_NO_DATA: str = "PixelClassNoData.ilp"
     PIXEL_CLASS_3D_2D_3D_FEATURE_MIX: str = "PixelClass3D_2D_3D_feature_mix.ilp"
 
+    AUTOCONTEXT_2D: str = "Autocontext_2D.ilp"
+    AUTOCONTEXT_3D: str = "Autocontext_3D.ilp"
+
 
 @dataclasses.dataclass
 class Dataset:
