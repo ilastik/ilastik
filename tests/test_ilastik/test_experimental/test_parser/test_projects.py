@@ -22,9 +22,9 @@ class TestIlastikParser:
     def test_parse_project_number_of_channels(self, test_data_lookup: ApiTestDataLookup, proj, expected_num_channels):
         project_path = test_data_lookup.find_project(proj)
         with h5py.File(project_path, "r") as f:
-            proj = PixelClassificationProject.model_validate(f)
+            project = PixelClassificationProject.model_validate(f)
 
-        assert proj.input_data.num_channels == expected_num_channels
+        assert project.input_data.num_channels == expected_num_channels
 
     @pytest.mark.parametrize(
         "proj, expected_factory, expected_classifier",
@@ -40,10 +40,10 @@ class TestIlastikParser:
         project_path = test_data_lookup.find_project(proj)
 
         with h5py.File(project_path, "r") as f:
-            proj = PixelClassificationProject.model_validate(f)
+            project = PixelClassificationProject.model_validate(f)
 
-        assert isinstance(proj.classifier.classifier_factory, expected_factory)
-        assert isinstance(proj.classifier.classifier, expected_classifier)
+        assert isinstance(project.classifier.classifier_factory, expected_factory)
+        assert isinstance(project.classifier.classifier, expected_classifier)
 
     tests = [
         (
@@ -95,9 +95,9 @@ class TestIlastikParser:
         project_path = test_data_lookup.find_project(proj)
 
         with h5py.File(project_path, "r") as f:
-            proj = PixelClassificationProject.model_validate(f)
+            project = PixelClassificationProject.model_validate(f)
 
-        matrix = proj.feature_matrix
+        matrix = project.feature_matrix
         assert matrix
         np.testing.assert_array_equal(matrix.selections, expected_sel_matrix)
         np.testing.assert_array_equal(matrix.compute_in_2d, expected_compute_in_2d)
