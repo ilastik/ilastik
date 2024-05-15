@@ -371,7 +371,7 @@ def lsH5N5(h5N5FileObject, minShape=2, maxShape=5):
             return
         if len(obj.shape) not in range(minShape, maxShape + 1):
             return
-        if isinstance(h5N5FileObject, z5py.N5File):
+        if isinstance(h5N5FileObject, (z5py.N5File, z5py.ZarrFile)):
             # make sure we get a path with forward slashes on windows
             objectName = pathlib.Path(objectName).as_posix()
         listOfDatasets.append({"name": objectName, "object": obj})
