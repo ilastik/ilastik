@@ -9,6 +9,7 @@ Todos:
 """
 
 import logging
+import pathlib
 
 from requests.exceptions import SSLError, ConnectionError
 from PyQt5.QtCore import QTimer
@@ -24,6 +25,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
+from lazyflow.utility import isUrl
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore
 from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
 
@@ -34,7 +36,7 @@ class MultiscaleDatasetBrowser(QDialog):
     def __init__(self, history=None, parent=None):
         super().__init__(parent)
         self._history = history or []
-        self.selected_url = None
+        self.selected_url = None  # Return value read by the caller after the dialog is closed
 
         self.setup_ui()
 
@@ -44,7 +46,7 @@ class MultiscaleDatasetBrowser(QDialog):
         main_layout = QVBoxLayout()
 
         description = QLabel(self)
-        description.setText('Enter URL and click "Check URL".')
+        description.setText('Enter path or URL and click "Check".')
         main_layout.addWidget(description)
 
         self.combo = QComboBox(self)
@@ -58,8 +60,8 @@ class MultiscaleDatasetBrowser(QDialog):
         combo_label.setText("Dataset address: ")
         combo_layout = QHBoxLayout()
         chk_button = QPushButton(self)
-        chk_button.setText("Check URL")
-        chk_button.clicked.connect(self.handle_chk_button_clicked)
+        chk_button.setText("Check")
+        chk_button.clicked.connect(self.validate_entered_uri)
         self.combo.lineEdit().returnPressed.connect(chk_button.click)
         combo_layout.addWidget(combo_label)
         combo_layout.addWidget(self.combo)
@@ -82,8 +84,8 @@ class MultiscaleDatasetBrowser(QDialog):
         self.qbuttons.button(QDialogButtonBox.Ok).setText("Add to project")
         self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)
 
-        def update_ok_button(text):
-            if text == self.selected_url:
+        def update_ok_button(current_entered_text):
+            if current_entered_text == self.selected_url:
                 self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(True)
             else:
                 self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)
@@ -92,21 +94,17 @@ class MultiscaleDatasetBrowser(QDialog):
         main_layout.addWidget(self.qbuttons)
         self.setLayout(main_layout)
 
-    def handle_chk_button_clicked(self, event):
+    def validate_entered_uri(self, _event):
         self.selected_url = None
         url = self.combo.currentText().strip()
         if url == "":
             return
-        if "http" not in url and "file" not in url:
-            self.combo.lineEdit().setText(f"https://{url}")
-            msg = (
-                'Address must contain a protocol ("http(s)://" or "file://").\n\n'
-                'The default "https://" has been added to your URL automatically, please try again.'
-            )
-            self.result_text_box.setText(msg)
+        if not isUrl(url):
+            self._set_text_input_to_guessed_uri(url)
             return
         logger.debug(f"Entered URL: {url}")
         try:
+            # Ask each store type if it likes the URL to avoid web requests during instantiation attempts.
             if OMEZarrStore.is_url_compatible(url):
                 rv = OMEZarrStore(url)
             elif RESTfulPrecomputedChunkedVolume.is_url_compatible(url):
@@ -140,6 +138,19 @@ class MultiscaleDatasetBrowser(QDialog):
         # This check-button might have been triggered by pressing Enter.
         # The timer prevents triggering the now enabled OK button by the same keypress.
         QTimer.singleShot(0, lambda: self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(True))
+
+    def _set_text_input_to_guessed_uri(self, path):
+        ospath = pathlib.Path(path)
+        if ospath.exists():
+            guessed_uri = ospath.as_uri()
+        else:
+            guessed_uri = f"https://{path}"
+        self.combo.lineEdit().setText(guessed_uri)
+        msg = (
+            'Address must be a URI starting with "http(s)://" or "file://".\n\n'
+            "Your address was modified as a guess, please try again if it looks good."
+        )
+        self.result_text_box.setText(msg)
 
 
 if __name__ == "__main__":
