@@ -39,7 +39,7 @@ from lazyflow.operators.ioOperators import (
 )
 from lazyflow.utility.jsonConfig import JsonConfigParser
 from lazyflow.utility.pathHelpers import lsH5N5, isUrl, isRelative, splitPath, PathComponents
-from .opOMEZarrRemoteReader import OpOMEZarrRemoteReader
+from .opOMEZarrMultiscaleReader import OpOMEZarrMultiscaleReader
 
 from .opStreamingUfmfReader import OpStreamingUfmfReader
 from .opStreamingMmfReader import OpStreamingMmfReader
@@ -186,7 +186,7 @@ class OpInputDataReader(Operator):
             self._attemptOpenAsKlb,
             self._attemptOpenAsUfmf,
             self._attemptOpenAsMmf,
-            self._attemptOpenAsOmeZarrRemoteFileset,
+            self._attemptOpenAsOmeZarrMultiscaleFileset,
             self._attemptOpenAsRESTfulPrecomputedChunkedVolume,
             self._attemptOpenAsDvidVolume,
             self._attemptOpenAsH5N5Stack,
@@ -288,12 +288,12 @@ class OpInputDataReader(Operator):
         else:
             return ([], None)
 
-    def _attemptOpenAsOmeZarrRemoteFileset(self, filePath):
+    def _attemptOpenAsOmeZarrMultiscaleFileset(self, filePath):
         if "zarr" not in filePath.lower():
             return ([], None)
         if not (filePath.startswith("http") or filePath.startswith("file")):
             return ([], None)
-        reader = OpOMEZarrRemoteReader(parent=self)
+        reader = OpOMEZarrMultiscaleReader(parent=self)
         reader.Scale.connect(self.ActiveScale)
         reader.BaseUrl.setValue(filePath)
         return [reader], reader.Output

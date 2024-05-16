@@ -24,13 +24,13 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
-from lazyflow.utility.io_util.OMEZarrRemoteStore import OMEZarrRemoteStore
+from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore
 from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
 
 logger = logging.getLogger(__name__)
 
 
-class RemoteDatasetBrowser(QDialog):
+class MultiscaleDatasetBrowser(QDialog):
     def __init__(self, history=None, parent=None):
         super().__init__(parent)
         self._history = history or []
@@ -40,7 +40,7 @@ class RemoteDatasetBrowser(QDialog):
 
     def setup_ui(self):
         self.setMinimumSize(800, 200)
-        self.setWindowTitle("Select Web Source")
+        self.setWindowTitle("Select Multiscale Source")
         main_layout = QVBoxLayout()
 
         description = QLabel(self)
@@ -107,12 +107,12 @@ class RemoteDatasetBrowser(QDialog):
             return
         logger.debug(f"Entered URL: {url}")
         try:
-            if OMEZarrRemoteStore.is_url_compatible(url):
-                rv = OMEZarrRemoteStore(url)
+            if OMEZarrStore.is_url_compatible(url):
+                rv = OMEZarrStore(url)
             elif RESTfulPrecomputedChunkedVolume.is_url_compatible(url):
                 rv = RESTfulPrecomputedChunkedVolume(volume_url=url)
             else:
-                store_types = [OMEZarrRemoteStore, RESTfulPrecomputedChunkedVolume]
+                store_types = [OMEZarrStore, RESTfulPrecomputedChunkedVolume]
                 supported_formats = "\n".join([f"{s.NAME} ({s.URL_HINT})" for s in store_types])
                 msg = f"Address does not look like any supported format.\n\nSupported formats:\n{supported_formats}"
                 self.result_text_box.setText(msg)
@@ -149,7 +149,7 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
 
-    pv = RemoteDatasetBrowser()
+    pv = MultiscaleDatasetBrowser()
     pv.combo.addItem("test")
     pv.show()
     app.exec_()

@@ -62,7 +62,7 @@ def _get_axistags_from_spec(ome_spec: Dict) -> vigra.AxisTags:
     return vigra.defaultAxistags("".join(axis_keys))
 
 
-class OMEZarrRemoteStore(MultiscaleStore):
+class OMEZarrStore(MultiscaleStore):
     """
     Adapter class to handle communication with a web source serving a dataset in OME-Zarr format.
     """

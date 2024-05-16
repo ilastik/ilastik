@@ -49,7 +49,7 @@ from .opDataSelection import (
     ProjectInternalDatasetInfo,
     MultiscaleUrlDatasetInfo,
 )
-from .remoteDatasetBrowser import RemoteDatasetBrowser
+from .multiscaleDatasetBrowser import MultiscaleDatasetBrowser
 
 logger = logging.getLogger(__name__)
 
@@ -258,7 +258,7 @@ class DataSelectionGui(QWidget):
             # Button
             detailViewer.addFilesRequested.connect(partial(self.addFiles, roleIndex))
             detailViewer.addStackRequested.connect(partial(self.addStack, roleIndex))
-            detailViewer.addRemoteSourceRequested.connect(partial(self.addRemoteDataset, roleIndex))
+            detailViewer.addMultiscaleRequested.connect(partial(self.addMultiscaleDataset, roleIndex))
             detailViewer.addDvidVolumeRequested.connect(partial(self.addDvidVolume, roleIndex))
 
             # Monitor changes to each lane so we can enable/disable the 'add lanes' button for each tab
@@ -647,13 +647,13 @@ class DataSelectionGui(QWidget):
         if editorDlg.exec_() == QDialog.Accepted:
             self.applyDatasetInfos(editorDlg.edited_infos, selected_info_slots)
 
-    def addRemoteDataset(self, roleIndex, laneIndex):
+    def addMultiscaleDataset(self, roleIndex, laneIndex):
         PREFERENCES_GROUP = "DataSelection"
         RECENT_URLS_KEY = "recent urls"
         history = preferences.get(PREFERENCES_GROUP, RECENT_URLS_KEY) or []
-        browser = RemoteDatasetBrowser(history=history, parent=self)
+        browser = MultiscaleDatasetBrowser(history=history, parent=self)
 
-        if browser.exec_() == RemoteDatasetBrowser.Rejected:
+        if browser.exec_() == MultiscaleDatasetBrowser.Rejected:
             return
 
         url = browser.selected_url

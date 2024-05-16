@@ -43,14 +43,14 @@ class AddFileButton(QPushButton):
 
         - Add separate image(s)
         - Add 3D/4D volume from sequence
+        - Add multiscale/pyramidal dataset
         - Add DVID volume
-        - Add precomputed chunked volume
     """
 
     addFilesRequested = pyqtSignal()
     addStackRequested = pyqtSignal()
     addDvidVolumeRequested = pyqtSignal()
-    addDatasetByUrlRequested = pyqtSignal()
+    addMultiscaleDatasetRequested = pyqtSignal()
 
     def __init__(self, parent, *, index=None, new=False):
         """
@@ -71,7 +71,7 @@ class AddFileButton(QPushButton):
         menu = QMenu(parent=self)
         menu.addAction("Add separate Image(s)...").triggered.connect(self.addFilesRequested.emit)
         menu.addAction("Add a single 3D/4D Volume from Sequence...").triggered.connect(self.addStackRequested.emit)
-        menu.addAction("Add dataset by URL...").triggered.connect(self.addDatasetByUrlRequested.emit)
+        menu.addAction("Add multiscale dataset...").triggered.connect(self.addMultiscaleDatasetRequested.emit)
 
         if _supports_dvid:
             menu.addAction("Add DVID Volume...").triggered.connect(self.addDvidVolumeRequested.emit)

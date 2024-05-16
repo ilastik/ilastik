@@ -22,14 +22,14 @@
 import logging
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.utility.io_util.OMEZarrRemoteStore import OMEZarrRemoteStore
+from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore
 
 logger = logging.getLogger(__name__)
 
 
-class OpOMEZarrRemoteReader(Operator):
+class OpOMEZarrMultiscaleReader(Operator):
 
-    name = "OpOMEZarrRemoteReader"
+    name = "OpOMEZarrMultiscaleReader"
 
     BaseUrl = InputSlot()
     Scale = InputSlot(optional=True)
@@ -45,7 +45,7 @@ class OpOMEZarrRemoteReader(Operator):
             # Must not set Output.meta here.
             return
 
-        self._store = OMEZarrRemoteStore(self.BaseUrl.value)
+        self._store = OMEZarrStore(self.BaseUrl.value)
         active_scale = self.Scale.value if self.Scale.ready() else self._store.lowest_resolution_key
         self.Output.meta.shape = self._store.get_shape(active_scale)
         self.Output.meta.dtype = self._store.dtype

@@ -550,7 +550,7 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
 
     @property
     def display_string(self):
-        return "Remote: " + self.url
+        return "URI: " + self.url
 
     def to_json_data(self) -> Dict:
         out = super().to_json_data()

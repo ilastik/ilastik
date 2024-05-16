@@ -183,7 +183,7 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
             LocationNames = {
                 RelativeFilesystemDatasetInfo: "External File",
                 FilesystemDatasetInfo: "External File",
-                MultiscaleUrlDatasetInfo: "Remote Data",
+                MultiscaleUrlDatasetInfo: "Multiscale Data",
                 PreloadedArrayDatasetInfo: "Preloaded Array",
                 ProjectInternalDatasetInfo: "Project File",
             }

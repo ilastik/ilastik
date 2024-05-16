@@ -34,7 +34,7 @@ class MultiscaleStore(metaclass=ABCMeta):
     ):
         """
         :param dtype: The dataset's numpy dtype.
-        :param axistags: The dataset's axis keys as ordered when loading remote data, e.g. "tczyx"
+        :param axistags: vigra.AxisTags describing the dataset's axes.
         :param multiscales: Dict of scale metadata for GUI interaction and storage in the project file.
             Keys should be human-readable absolute identifiers for each scale as found in the dataset.
         :param lowest_resolution_key: Key of the lowest-resolution scale within the multiscales dict.
