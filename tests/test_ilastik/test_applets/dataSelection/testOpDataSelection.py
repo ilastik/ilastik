@@ -793,30 +793,25 @@ class TestOpDataSelection_FileSeriesStacks:
             reader.cleanUp()  # Ensure tempdir can be deleted
 
 
-class MockRemoteDataset:
+def mock_precomputed_requests(monkeypatch, url: str, info: dict, chunks: dict[str, numpy.array]):
     """
-    Monkeypatches requests.get as a side effect of instantiation,
-    to mock a server hosting a precomputed dataset.
+    Monkeypatches requests.get to mock a server hosting a precomputed dataset.
     Needs to be passed the monkeypatch fixture and dataset parameters.
     """
 
-    def __init__(self, monkeypatch, url: str, info: dict, chunks: dict[str, numpy.array]):
-        self.url = url
-        self.info = info
-        self.chunks = chunks
-        monkeypatch.setattr(requests, "get", lambda _url: self.mock_response_for_url(_url))
-
-    def mock_response_for_url(self, url):
+    def mock_response_for_url(_url):
         response = Mock()
         response.status_code = 200
-        ext = url.lstrip(self.url)
+        ext = _url.lstrip(url)
         if ext == "info":
-            response.content = json.dumps(self.info)
-        elif ext in self.chunks:
-            response.content = self.chunks[ext].tobytes()
+            response.content = json.dumps(info)
+        elif ext in chunks:
+            response.content = chunks[ext].tobytes()
         else:
-            raise KeyError(f"Unknown mock url: {url}")
+            raise KeyError(f"Unknown mock url: {_url}")
         return response
+
+    monkeypatch.setattr(requests, "get", lambda _url: mock_response_for_url(_url))
 
 
 class TestOpDataSelection_PrecomputedChunks:
@@ -865,17 +860,19 @@ class TestOpDataSelection_PrecomputedChunks:
     }
 
     @pytest.fixture
-    def op_and_dataset(self, graph, monkeypatch) -> (OpDataSelection, MultiscaleUrlDatasetInfo):
-        _ = MockRemoteDataset(monkeypatch, self.MOCK_DATASET_URL, self.INFO_JSON, self.CHUNKS)
+    def datasetInfo(self, monkeypatch):
+        mock_precomputed_requests(monkeypatch, self.MOCK_DATASET_URL, self.INFO_JSON, self.CHUNKS)
+        return MultiscaleUrlDatasetInfo(url=self.MOCK_DATASET_URL)
+
+    @pytest.fixture
+    def op(self, graph, monkeypatch, datasetInfo) -> OpDataSelection:
         op = OpDataSelection(graph=graph)
         op.WorkingDirectory.setValue(os.getcwd())
         op.ActiveScale.setValue(DEFAULT_LOWEST_SCALE_KEY)
-        datasetInfo = MultiscaleUrlDatasetInfo(url=self.MOCK_DATASET_URL)
         op.Dataset.setValue(datasetInfo)
-        return op, datasetInfo
+        return op
 
-    def test_load_precomputed_chunks_over_http(self, op_and_dataset):
-        op, _ = op_and_dataset
+    def test_load_precomputed_chunks_over_http(self, op):
         loaded_scale0 = op.Image[:].wait()
         assert numpy.allclose(loaded_scale0, self.IMAGE_SCALED)
 
@@ -884,8 +881,7 @@ class TestOpDataSelection_PrecomputedChunks:
         loaded_scale1 = op.Image[:].wait()
         assert numpy.allclose(loaded_scale1, self.IMAGE_ORIGINAL)
 
-    def test_scale_updates_dataset_info(self, op_and_dataset):
-        op, datasetInfo = op_and_dataset
+    def test_scale_updates_dataset_info(self, op, datasetInfo):
         scale_keys = list(op.Image.meta.scales.keys())
         op.ActiveScale.setValue(scale_keys[1])
         assert datasetInfo.working_scale == scale_keys[1]
@@ -923,7 +919,7 @@ class TestOpDataSelection_DatasetInfo:
     def test_default_export_paths(self, data_path, mock_project, monkeypatch, info_class, expected_sub_path):
         # During instantiation, file-based datasetInfos read their file for metadata,
         # web-based datasetInfos request their url. Hence, provide actually existing files, and mock the web server.
-        _ = MockRemoteDataset(monkeypatch, self.MOCK_PRECOMPUTED_URL, self.MOCK_PRECOMPUTED_INFO, {})
+        mock_precomputed_requests(monkeypatch, self.MOCK_PRECOMPUTED_URL, self.MOCK_PRECOMPUTED_INFO, {})
         info_args = {
             "ProjectInternalDatasetInfo": {"inner_path": "foo", "project_file": mock_project},
             "FilesystemDatasetInfo": {"filePath": str(data_path / "inputdata" / "3d1c-synthetic.h5")},
@@ -952,7 +948,7 @@ class TestOpDataSelection_DatasetInfo:
     def test_urldatasetinfo_serializes_equivalent_to_multiscaleurldatasetinfo(
         self, ilp_with_legacy_urldatasetinfo, monkeypatch
     ):
-        _ = MockRemoteDataset(monkeypatch, self.MOCK_PRECOMPUTED_URL, self.MOCK_PRECOMPUTED_INFO, {})
+        mock_precomputed_requests(monkeypatch, self.MOCK_PRECOMPUTED_URL, self.MOCK_PRECOMPUTED_INFO, {})
         legacy_group = ilp_with_legacy_urldatasetinfo[TOP_GROUP_NAME]["infos"]["0"]["Raw Data"]
         legacy_dataset_info = UrlDatasetInfo.from_h5_group(legacy_group)
         modern_dataset_info = MultiscaleUrlDatasetInfo(url=self.MOCK_PRECOMPUTED_URL)
