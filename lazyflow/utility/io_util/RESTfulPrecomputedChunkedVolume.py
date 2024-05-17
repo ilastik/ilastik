@@ -27,12 +27,9 @@ import numpy
 import requests
 import vigra
 
-from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, Multiscale
+from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, Multiscale, DEFAULT_LOWEST_SCALE_KEY
 
 logger = logging.getLogger(__file__)
-
-
-DEFAULT_LOWEST_SCALE_KEY = ""
 
 
 class RESTfulPrecomputedChunkedVolume(MultiscaleStore):

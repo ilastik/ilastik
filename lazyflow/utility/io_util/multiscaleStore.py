@@ -6,6 +6,9 @@ import numpy
 import vigra
 
 
+DEFAULT_LOWEST_SCALE_KEY = ""
+
+
 @dataclass
 class Multiscale:
     """

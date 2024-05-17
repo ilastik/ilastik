@@ -32,6 +32,7 @@ import h5py
 from pathlib import Path
 from PIL import Image
 
+from lazyflow.utility.io_util.multiscaleStore import DEFAULT_LOWEST_SCALE_KEY
 from lazyflow.utility.pathHelpers import PathComponents
 from lazyflow.graph import OperatorWrapper
 from ilastik.applets.dataSelection.opDataSelection import (
@@ -868,7 +869,7 @@ class TestOpDataSelection_PrecomputedChunks:
         _ = MockRemoteDataset(monkeypatch, self.MOCK_DATASET_URL, self.INFO_JSON, self.CHUNKS)
         op = OpDataSelection(graph=graph)
         op.WorkingDirectory.setValue(os.getcwd())
-        op.ActiveScale.setValue("")
+        op.ActiveScale.setValue(DEFAULT_LOWEST_SCALE_KEY)
         datasetInfo = MultiscaleUrlDatasetInfo(url=self.MOCK_DATASET_URL)
         op.Dataset.setValue(datasetInfo)
         return op, datasetInfo
