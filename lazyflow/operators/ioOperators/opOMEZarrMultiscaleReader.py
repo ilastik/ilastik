@@ -53,6 +53,8 @@ class OpOMEZarrMultiscaleReader(Operator):
         self.Output.meta.scales = self._store.multiscales
         # To feed back to DatasetInfo and hence the project file
         self.Output.meta.lowest_scale = self._store.lowest_resolution_key
+        # Many public OME-Zarr datasets are chunked as full xy slices,
+        # so orthoviews lead to downloading the entire dataset.
         self.Output.meta.prefer_2d = True
 
     def execute(self, slot, subindex, roi, result):

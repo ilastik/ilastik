@@ -106,16 +106,16 @@ class OMEZarrStore(MultiscaleStore):
             if _get_ome_spec_version(self.ome_spec) == "0.1":
                 uncached_store = FSStore(self.url, mode="r", **OME_ZARR_V_0_1_ARGS)
             self._store = LRUStoreCache(uncached_store, max_size=None)
-            logger.info(f"Init OME-Zarr store at {url} took {timer.seconds()*1000} ms.")
+            logger.info(f"Initializing OME-Zarr store at {url} took {timer.seconds()*1000} ms.")
         try:
             jsonschema.validate(self.ome_spec, self.spec_schema)
         except jsonschema.ValidationError:
-            raise ValueError(f"Could not find multiscale metadata for this dataset.\nReceived:\n{self.ome_spec}.")
+            raise ValueError(f"Metadata for this dataset did not match OME-Zarr spec.\nReceived:\n{self.ome_spec}.")
         multiscale_spec = self.ome_spec["multiscales"][0]
         axistags = _get_axistags_from_spec(multiscale_spec)
         datasets = multiscale_spec["datasets"]
         dtype = None
-        gui_scale_metadata = {}  # Becomes slot metadata -> must be serializable
+        gui_scale_metadata = {}  # Becomes slot metadata -> must be serializable (no ZarrArray allowed)
         self._scale_data = {}
         for scale in reversed(datasets):
             with Timer() as timer:
@@ -129,7 +129,7 @@ class OMEZarrStore(MultiscaleStore):
                     "chunks": zarray.chunks,
                     "shape": zarray.shape,
                 }
-                logger.info(f"Init scale {scale['path']} took {timer.seconds()*1000} ms.")
+                logger.info(f"Initializing scale {scale['path']} took {timer.seconds()*1000} ms.")
         super().__init__(
             dtype=dtype,
             axistags=axistags,
@@ -154,5 +154,5 @@ class OMEZarrStore(MultiscaleStore):
         scale_key = scale_key if scale_key else self.lowest_resolution_key
         with Timer() as timer:
             data = self._scale_data[scale_key]["zarray"][roi.toSlice()]
-            logger.info(f"Request roi {roi} from scale {scale_key} took {timer.seconds()*1000} ms.")
+            logger.info(f"Requesting roi {roi} from scale {scale_key} took {timer.seconds()*1000} ms.")
         return data
