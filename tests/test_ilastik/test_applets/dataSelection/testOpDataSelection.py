@@ -30,6 +30,7 @@ import requests
 import vigra
 import h5py
 from pathlib import Path
+import zarr
 from PIL import Image
 
 from lazyflow.utility.io_util.multiscaleStore import DEFAULT_LOWEST_SCALE_KEY
@@ -873,6 +874,106 @@ class TestOpDataSelection_PrecomputedChunks:
         return op
 
     def test_load_precomputed_chunks_over_http(self, op):
+        loaded_scale0 = op.Image[:].wait()
+        assert numpy.allclose(loaded_scale0, self.IMAGE_SCALED)
+
+        scale_keys = list(op.Image.meta.scales.keys())
+        op.ActiveScale.setValue(scale_keys[1])
+        loaded_scale1 = op.Image[:].wait()
+        assert numpy.allclose(loaded_scale1, self.IMAGE_ORIGINAL)
+
+    def test_scale_updates_dataset_info(self, op, datasetInfo):
+        scale_keys = list(op.Image.meta.scales.keys())
+        op.ActiveScale.setValue(scale_keys[1])
+        assert datasetInfo.working_scale == scale_keys[1]
+
+
+class TestOpDataSelection_OMEZarr:
+    SHAPE_SCALED_ZYX = (1, 10, 12)
+    SHAPE_ORIGINAL_ZYX = (1, 20, 24)
+    CHUNK_SIZE_ZYX = (1, 16, 16)
+    IMAGE_SCALED = numpy.random.randint(0, 256, SHAPE_SCALED_ZYX, dtype=numpy.uint16)
+    IMAGE_ORIGINAL = numpy.random.randint(0, 256, SHAPE_ORIGINAL_ZYX, dtype=numpy.uint16)
+    MOCK_DATASET_URL = "https://localhost:8000/dataset.zarr"
+    S1ZARRAY = {
+        "zarr_format": 2,
+        "shape": list(SHAPE_SCALED_ZYX),
+        "chunks": list(CHUNK_SIZE_ZYX),
+        "dtype": "|u1",
+        "compressor": {"id": "gzip", "level": -1},
+        "fill_value": 0,
+        "filters": [],
+        "order": "C",
+        "dimension_separator": "/",
+    }
+    S0ZARRAY = {
+        "zarr_format": 2,
+        "shape": list(SHAPE_ORIGINAL_ZYX),
+        "chunks": list(CHUNK_SIZE_ZYX),
+        "dtype": "|u1",
+        "compressor": {"id": "gzip", "level": -1},
+        "fill_value": 0,
+        "filters": [],
+        "order": "C",
+        "dimension_separator": "/",
+    }
+    ZATTRS = {
+        "multiscales": [
+            {
+                "name": "dataset.zarr",
+                "type": "Sample",
+                "version": "0.4",
+                "axes": [
+                    {"type": "space", "name": "z", "unit": "pixel"},
+                    {"type": "space", "name": "y", "unit": "pixel"},
+                    {"type": "space", "name": "x", "unit": "pixel"},
+                ],
+                "datasets": [
+                    {
+                        "path": "s0",
+                        "coordinateTransformations": [
+                            {"scale": [1.0, 1.0, 1.0], "type": "scale"},
+                            {"translation": [0.0, 0.0, 0.0], "type": "translation"},
+                        ],
+                    },
+                    {
+                        "path": "s1",
+                        "coordinateTransformations": [
+                            {"scale": [2.0, 2.0, 2.0], "type": "scale"},
+                            {"translation": [0.0, 0.0, 0.0], "type": "translation"},
+                        ],
+                    },
+                ],
+                "coordinateTransformations": [],
+            }
+        ]
+    }
+
+    @pytest.fixture
+    def mock_ome_zarr_metadata(self, monkeypatch):
+        """Monkeypatches FSStore.__getitem__ to mock metadata responses of an OME-Zarr dataset."""
+        responses = {".zattrs": self.ZATTRS, "s1/.zarray": self.S1ZARRAY, "s0/.zarray": self.S0ZARRAY}
+        monkeypatch.setattr(zarr.storage.FSStore, "__getitem__", lambda _self, key: json.dumps(responses[key]).encode())
+
+    @pytest.fixture
+    def mock_ome_zarr_data(self, monkeypatch):
+        """Monkeypatches zarr.Array.__getitem__ to mock contents of an OME-Zarr dataset."""
+        images = {"s0": self.IMAGE_ORIGINAL, "s1": self.IMAGE_SCALED}
+        monkeypatch.setattr(zarr.Array, "__getitem__", lambda _self, slicing: images[_self.path][slicing])
+
+    @pytest.fixture
+    def datasetInfo(self, monkeypatch, mock_ome_zarr_metadata):
+        return MultiscaleUrlDatasetInfo(url=self.MOCK_DATASET_URL)
+
+    @pytest.fixture
+    def op(self, graph, monkeypatch, datasetInfo):
+        op = OpDataSelection(graph=graph)
+        op.WorkingDirectory.setValue(os.getcwd())
+        op.ActiveScale.setValue(DEFAULT_LOWEST_SCALE_KEY)
+        op.Dataset.setValue(datasetInfo)
+        return op
+
+    def test_ome_zarr_loads_via_FSStore_and_ZarrArray(self, op, mock_ome_zarr_data):
         loaded_scale0 = op.Image[:].wait()
         assert numpy.allclose(loaded_scale0, self.IMAGE_SCALED)
 
