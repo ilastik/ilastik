@@ -1032,6 +1032,24 @@ class TestOpDataSelection_DatasetInfo:
         project.__getitem__.return_value = data
         return project
 
+    @pytest.fixture
+    def mock_ome_zarr_metadata(self, monkeypatch):
+        """Monkeypatches FSStore.__getitem__ to mock metadata responses of an OME-Zarr dataset."""
+        responses = {
+            ".zattrs": {"multiscales": [{"axes": [{"name": "x"}, {"name": "y"}], "datasets": [{"path": "s0"}]}]},
+            "s0/.zarray": {
+                "zarr_format": 2,
+                "dtype": "|u1",
+                "fill_value": 0,
+                "shape": [1, 1],
+                "chunks": [1, 1],
+                "compressor": {"id": "gzip", "level": -1},
+                "order": "C",
+                "filters": [],
+            },
+        }
+        monkeypatch.setattr(zarr.storage.FSStore, "__getitem__", lambda _self, key: json.dumps(responses[key]).encode())
+
     def test_default_export_paths_filesystem(self, data_path):
         # Need to provide actually existing files because file-based DatasetInfos
         # read the file for metadata during instantiation.
@@ -1044,12 +1062,20 @@ class TestOpDataSelection_DatasetInfo:
         dataset_info = ProjectInternalDatasetInfo(inner_path="foo", project_file=mock_project)
         assert dataset_info.default_output_dir == data_path / self.MOCK_PROJECT_SUBPATH
 
-    def test_default_export_paths_url(self, data_path, mock_project, monkeypatch):
+    def test_default_export_paths_url(self, data_path, mock_project, monkeypatch, mock_ome_zarr_metadata):
         # Need to mock requests because web-based DatasetInfos
         # request metadata from the server during instantiation
         mock_precomputed_requests(monkeypatch, self.MOCK_PRECOMPUTED_URL, self.MOCK_PRECOMPUTED_INFO, {})
         dataset_info = MultiscaleUrlDatasetInfo(url=self.MOCK_PRECOMPUTED_URL, project_file=mock_project)
         assert dataset_info.default_output_dir == data_path / self.MOCK_PROJECT_SUBPATH
+
+        dataset_info2 = MultiscaleUrlDatasetInfo(url="http://localhost:8000/some.zarr", project_file=mock_project)
+        assert dataset_info2.default_output_dir == data_path / self.MOCK_PROJECT_SUBPATH
+
+        # When using a "file:" URI, the default export path should be the dataset's parent directory
+        ome_zarr_path = data_path / "dataset.zarr"
+        dataset_info3 = MultiscaleUrlDatasetInfo(url=ome_zarr_path.as_uri(), project_file=mock_project)
+        assert dataset_info3.default_output_dir == data_path
 
     @pytest.fixture
     def ilp_with_legacy_urldatasetinfo(self, empty_project_file):

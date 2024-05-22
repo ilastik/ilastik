@@ -552,6 +552,16 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
     def display_string(self):
         return "URI: " + self.url
 
+    @property
+    def default_output_dir(self) -> Path:
+        if self.url.startswith("file://"):  # Might be // or ///
+            stripped = self.url.removeprefix("file:").lstrip("/")
+            if not Path(stripped).is_absolute():
+                # Linux/Mac - we stripped the root /
+                stripped = "/" + stripped
+            return Path(stripped).resolve().parent
+        return super().default_output_dir
+
     def to_json_data(self) -> Dict:
         out = super().to_json_data()
         out["url"] = self.url
