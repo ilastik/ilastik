@@ -1019,38 +1019,37 @@ class TestOpDataSelection_DatasetInfo:
         "num_channels": 1,
         "scales": [{"key": "foo", "chunk_sizes": [[1, 1, 1]], "resolution": [0], "size": [1, 1, 1]}],
     }
+    MOCK_PROJECT_SUBPATH = "mock_dir"
 
     @pytest.fixture
     def mock_project(self, data_path):
+        mock_project_location = data_path / self.MOCK_PROJECT_SUBPATH
         data = mock.Mock()
         data.shape = (10, 10)
         data.attrs = {}
         project = mock.MagicMock()
-        project.filename = data_path / "mock.file"
+        project.filename = mock_project_location / "mock.file"
         project.__getitem__.return_value = data
         return project
 
-    @pytest.mark.parametrize(
-        "info_class, expected_sub_path",
-        [
-            (ProjectInternalDatasetInfo, ""),
-            (FilesystemDatasetInfo, "inputdata"),
-            (RelativeFilesystemDatasetInfo, "inputdata"),
-            (MultiscaleUrlDatasetInfo, ""),
-        ],
-    )
-    def test_default_export_paths(self, data_path, mock_project, monkeypatch, info_class, expected_sub_path):
-        # During instantiation, file-based datasetInfos read their file for metadata,
-        # web-based datasetInfos request their url. Hence, provide actually existing files, and mock the web server.
+    def test_default_export_paths_filesystem(self, data_path):
+        # Need to provide actually existing files because file-based DatasetInfos
+        # read the file for metadata during instantiation.
+        dataset_info = FilesystemDatasetInfo(filePath=str(data_path / "inputdata" / "3d1c-synthetic.h5"))
+        assert dataset_info.default_output_dir == data_path / "inputdata"
+        dataset_info2 = RelativeFilesystemDatasetInfo(filePath=str(data_path / "inputdata" / "3d1c-synthetic.h5"))
+        assert dataset_info2.default_output_dir == data_path / "inputdata"
+
+    def test_default_export_paths_project(self, data_path, mock_project):
+        dataset_info = ProjectInternalDatasetInfo(inner_path="foo", project_file=mock_project)
+        assert dataset_info.default_output_dir == data_path / self.MOCK_PROJECT_SUBPATH
+
+    def test_default_export_paths_url(self, data_path, mock_project, monkeypatch):
+        # Need to mock requests because web-based DatasetInfos
+        # request metadata from the server during instantiation
         mock_precomputed_requests(monkeypatch, self.MOCK_PRECOMPUTED_URL, self.MOCK_PRECOMPUTED_INFO, {})
-        info_args = {
-            "ProjectInternalDatasetInfo": {"inner_path": "foo", "project_file": mock_project},
-            "FilesystemDatasetInfo": {"filePath": str(data_path / "inputdata" / "3d1c-synthetic.h5")},
-            "RelativeFilesystemDatasetInfo": {"filePath": str(data_path / "inputdata" / "3d1c-synthetic.h5")},
-            "MultiscaleUrlDatasetInfo": {"url": self.MOCK_PRECOMPUTED_URL, "project_file": mock_project},
-        }
-        dataset_info = info_class(**info_args[info_class.__name__])
-        assert dataset_info.default_output_dir == data_path / expected_sub_path
+        dataset_info = MultiscaleUrlDatasetInfo(url=self.MOCK_PRECOMPUTED_URL, project_file=mock_project)
+        assert dataset_info.default_output_dir == data_path / self.MOCK_PROJECT_SUBPATH
 
     @pytest.fixture
     def ilp_with_legacy_urldatasetinfo(self, empty_project_file):
