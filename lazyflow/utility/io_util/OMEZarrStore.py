@@ -95,7 +95,7 @@ class OMEZarrStore(MultiscaleStore):
         "required": ["multiscales"],
     }
 
-    def __init__(self, url: str = ""):
+    def __init__(self, url: str = "", last_scale_only_mode: bool = False):
         with Timer() as timer:
             self.url = url
             uncached_store = FSStore(self.url, mode="r", **OME_ZARR_V_0_4_ARGS)
@@ -130,6 +130,8 @@ class OMEZarrStore(MultiscaleStore):
                     "shape": zarray.shape,
                 }
                 logger.info(f"Initializing scale {scale['path']} took {timer.seconds()*1000} ms.")
+            if last_scale_only_mode:
+                break  # One scale is enough to get dtype
         super().__init__(
             dtype=dtype,
             axistags=axistags,

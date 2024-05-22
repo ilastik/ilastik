@@ -293,7 +293,7 @@ class OpInputDataReader(Operator):
             return ([], None)
         if not (filePath.startswith("http") or filePath.startswith("file")):
             return ([], None)
-        reader = OpOMEZarrMultiscaleReader(parent=self)
+        reader = OpOMEZarrMultiscaleReader(parent=self, last_scale_only_mode=self.parent is None)
         reader.Scale.connect(self.ActiveScale)
         reader.BaseUrl.setValue(filePath)
         return [reader], reader.Output

@@ -36,8 +36,9 @@ class OpOMEZarrMultiscaleReader(Operator):
 
     Output = OutputSlot()
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, last_scale_only_mode=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._load_only_last_scale = last_scale_only_mode
         self._store = None
 
     def setupOutputs(self):
@@ -45,7 +46,7 @@ class OpOMEZarrMultiscaleReader(Operator):
             # Must not set Output.meta here.
             return
 
-        self._store = OMEZarrStore(self.BaseUrl.value)
+        self._store = OMEZarrStore(self.BaseUrl.value, self._load_only_last_scale)
         active_scale = self.Scale.value if self.Scale.ready() else self._store.lowest_resolution_key
         self.Output.meta.shape = self._store.get_shape(active_scale)
         self.Output.meta.dtype = self._store.dtype

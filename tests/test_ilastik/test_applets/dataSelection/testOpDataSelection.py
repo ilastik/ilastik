@@ -987,6 +987,28 @@ class TestOpDataSelection_OMEZarr:
         op.ActiveScale.setValue(scale_keys[1])
         assert datasetInfo.working_scale == scale_keys[1]
 
+    def test_datasetInfo_init_loads_only_one_scale(self, monkeypatch, mock_ome_zarr_metadata):
+        """
+        Instantiating a zarr.Array with a web OME store fires a request for
+        https://server.com/dataset.zarr/scaleN/.zarray. This can take a long time, esp with many scales.
+        The backend instantiates reader operators twice: once during MultiscaleUrlDatasetInfo.__init__,
+        and once during OpDataSelection.setupOutputs. The latter needs to load metadata of all scales,
+        for the DatasetInfo a single scale is enough.
+        """
+        # Monkeypatch a counter into zarr.Array instantiation
+        zarr.Array.instance_counter = 0
+        zarr_init = zarr.Array.__init__
+
+        def track_instances(*args, **kwargs):
+            zarr.Array.instance_counter += 1
+            return zarr_init(*args, **kwargs)
+
+        monkeypatch.setattr(zarr.Array, "__init__", track_instances)
+
+        # Make sure that instantiating a DatasetInfo does not load more than one scale into a zarr.Array
+        _ = MultiscaleUrlDatasetInfo(url=self.MOCK_DATASET_URL)
+        assert zarr.Array.instance_counter == 1
+
 
 class TestOpDataSelection_DatasetInfo:
     # Having a bad char (:) in the url makes sure that nickname conversion to a file-name-safe string is covered
