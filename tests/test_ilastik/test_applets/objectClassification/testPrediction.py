@@ -119,7 +119,7 @@ class TestWithCube(unittest.TestCase):
         opPredict = OpObjectClassification(graph=gr)
 
         opExtract.RawImage.setValue(self.rawimg)
-        opExtract.BinaryImage.setValue(self.binimg)
+        opExtract.SegmentationImage.setValue(self.binimg)
         opExtract.Features.setValue(self.features)
 
         opPredict.RawImages.setValues([self.rawimg])
@@ -190,7 +190,7 @@ class TestWithCube(unittest.TestCase):
         opPredict = OpObjectClassification(graph=gr)
 
         opExtract.RawImage.setValue(self.rawimg)
-        opExtract.BinaryImage.setValue(self.binimg)
+        opExtract.SegmentationImage.setValue(self.binimg)
         opExtract.Features.setValue(self.features)
 
         opPredict.RawImages.setValues([self.rawimg])
@@ -206,7 +206,7 @@ class TestWithCube(unittest.TestCase):
         opPredictT = OpObjectClassification(graph=grT)
 
         opExtractT.RawImage.setValue(self.rawimgt)
-        opExtractT.BinaryImage.setValue(self.binimgt)
+        opExtractT.SegmentationImage.setValue(self.binimgt)
         opExtractT.Features.setValue(self.features)
 
         opPredictT.RawImages.setValues([self.rawimgt])

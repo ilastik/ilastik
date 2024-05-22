@@ -233,7 +233,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
 
             # make sure some preconditions are met:
             assert op_object_features.RawImage.ready()
-            assert op_object_features.BinaryImage.ready()
+            assert op_object_features.SegmentationImage.ready()
 
             # we cannot test the feature-selection dialog here, as it's modal.
             # we therefore select a set of object features (all of them) and
