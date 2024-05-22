@@ -114,6 +114,7 @@ class OMEZarrStore(MultiscaleStore):
         multiscale_spec = self.ome_spec["multiscales"][0]
         axistags = _get_axistags_from_spec(multiscale_spec)
         datasets = multiscale_spec["datasets"]
+        assert len(datasets) > 0, "The OME-Zarr store contains no datasets."
         dtype = None
         gui_scale_metadata = {}  # Becomes slot metadata -> must be serializable (no ZarrArray allowed)
         self._scale_data = {}
