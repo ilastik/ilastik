@@ -170,15 +170,6 @@ class OperatorWrapper(Operator):
         for s in list(self.outputs.values()):
             assert len(s) == 0
 
-    @property
-    def name(self):
-        return self._name
-
-    @name.setter
-    def name(self, name):
-        self._name = name
-        self._customName = True
-
     def __getitem__(self, key):
         return self.innerOperators[key]
 
@@ -216,11 +207,6 @@ class OperatorWrapper(Operator):
         if len(self.innerOperators) >= length:
             return self.innerOperators[index]
         op = self._createInnerOperator()
-
-        # Update our name (if the client didn't already give us a
-        # special one)
-        if self._customName is False:
-            self._name = "Wrapped " + op.name
 
         # If anyone calls setValue() on one of these slots,
         # forward the setValue call to the slot's upstream_slot (the
