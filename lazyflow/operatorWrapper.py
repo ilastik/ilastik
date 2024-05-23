@@ -30,9 +30,6 @@ from lazyflow.operator import Operator
 class OperatorWrapper(Operator):
     name = "OperatorWrapper"
 
-    loggerName = __name__ + ".OperatorWrapper"
-    logger = logging.getLogger(loggerName)
-
     def __init__(
         self,
         operatorClass,

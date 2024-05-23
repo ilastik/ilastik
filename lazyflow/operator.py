@@ -228,6 +228,9 @@ class Operator(metaclass=OperatorMetaClass):
         if parent is not None:
             parent._add_child(self)
 
+        self.logger = logging.getLogger(f"lazyflow.op_debug.{type(self).__name__}")
+        self.logger.debug(f"Instantiated {self.name} {id(self)} with parent={self.parent.name if self.parent else ''}")
+
         self._initialized = False
 
         self._condition = threading.Condition()
@@ -298,10 +301,6 @@ class Operator(metaclass=OperatorMetaClass):
             islot.notifyUnready(self.handleInputBecameUnready)
 
         self._initialized = True
-
-        self.logger = logging.getLogger(f"lazyflow.op_debug.{type(self).__name__}")
-        self.logger.debug(f"Instantiated {self.name} {id(self)} with parent={self.parent.name if self.parent else ''}")
-
         self._setupOutputs()
 
     def _instantiate_slots(self):
