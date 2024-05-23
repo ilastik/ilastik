@@ -228,7 +228,7 @@ class Operator(metaclass=OperatorMetaClass):
         if parent is not None:
             parent._add_child(self)
 
-        self.logger = logging.getLogger(f"lazyflow.op_debug.{type(self).__name__}")
+        self.logger = logging.getLogger(f"lazyflow.op_debug.{self.name}")
         self.logger.debug(f"Instantiated {self.name} {id(self)} with parent={self.parent.name if self.parent else ''}")
 
         self._initialized = False
