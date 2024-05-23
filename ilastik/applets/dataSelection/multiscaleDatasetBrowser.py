@@ -131,9 +131,12 @@ class MultiscaleDatasetBrowser(QDialog):
                 rv = RESTfulPrecomputedChunkedVolume(volume_url=url)
             else:
                 store_types = [OMEZarrStore, RESTfulPrecomputedChunkedVolume]
-                supported_formats = "\n".join([f"{s.NAME} ({s.URL_HINT})" for s in store_types])
-                msg = f"Address does not look like any supported format.\n\nSupported formats:\n{supported_formats}"
-                self.result_text_box.setText(msg)
+                supported_formats = "\n".join(f"<li>{s.NAME} ({s.URL_HINT})</li>" for s in store_types)
+                self.result_text_box.setHtml(
+                    f"<p>Address does not look like any supported format.</p>"
+                    f"<p>Supported formats:</p>"
+                    f"<ul>{supported_formats}</ul>"
+                )
                 return
         except Exception as e:
             self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)

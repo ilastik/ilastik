@@ -33,13 +33,8 @@ from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, Multiscale
 
 logger = logging.getLogger(__name__)
 
-OME_ZARR_V_0_4_ARGS = {
-    "dimension_separator": "/",
-    "normalize_keys": False,
-}
-OME_ZARR_V_0_1_ARGS = {
-    "dimension_separator": ".",
-}
+OME_ZARR_V_0_4_KWARGS = dict(dimension_separator="/", normalize_keys=False)
+OME_ZARR_V_0_1_KWARGS = dict(dimension_separator=".")
 
 
 def _get_ome_spec_version(metadata: dict) -> Optional[str]:
@@ -53,11 +48,11 @@ def _get_ome_spec_version(metadata: dict) -> Optional[str]:
     multiscales = metadata.get("multiscales", [])
     if multiscales:
         dataset = multiscales[0]
-        return dataset.get("version", None)
+        return dataset.get("version")
     for name in ["plate", "well", "image-label"]:
         obj = metadata.get(name, {})
         if obj:
-            return obj.get("version", None)
+            return obj.get("version")
     return None
 
 
@@ -118,13 +113,13 @@ class OMEZarrStore(MultiscaleStore):
     def __init__(self, url: str = "", last_scale_only_mode: bool = False):
         with Timer() as timer:
             self.url = url
-            uncached_store = FSStore(self.url, mode="r", **OME_ZARR_V_0_4_ARGS)
+            uncached_store = FSStore(self.url, mode="r", **OME_ZARR_V_0_4_KWARGS)
             try:
                 self.ome_spec = json.loads(uncached_store[".zattrs"])
             except KeyError:
                 raise ValueError("Expected a Zarr store, but could not find .zattrs file at the address.")
             if _get_ome_spec_version(self.ome_spec) == "0.1":
-                uncached_store = FSStore(self.url, mode="r", **OME_ZARR_V_0_1_ARGS)
+                uncached_store = FSStore(self.url, mode="r", **OME_ZARR_V_0_1_KWARGS)
             self._store = LRUStoreCache(uncached_store, max_size=None)
             logger.info(f"Initializing OME-Zarr store at {url} took {timer.seconds()*1000} ms.")
         try:

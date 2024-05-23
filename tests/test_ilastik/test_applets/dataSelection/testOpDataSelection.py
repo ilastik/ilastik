@@ -789,7 +789,7 @@ class TestOpDataSelection_FileSeriesStacks:
         read = reader.Image[...].wait()
         expected = expected_data[expected_key]
         try:
-            assert numpy.allclose(read, expected), f"{name}: {read.shape}, {expected.shape}"
+            numpy.testing.assert_allclose(read, expected), f"{name}: {read.shape}, {expected.shape}"
         finally:
             reader.cleanUp()  # Ensure tempdir can be deleted
 
@@ -875,12 +875,12 @@ class TestOpDataSelection_PrecomputedChunks:
 
     def test_load_precomputed_chunks_over_http(self, op):
         loaded_scale0 = op.Image[:].wait()
-        assert numpy.allclose(loaded_scale0, self.IMAGE_SCALED)
+        numpy.testing.assert_allclose(loaded_scale0, self.IMAGE_SCALED.reshape((1, 1, 1, 10, 12)))
 
         scale_keys = list(op.Image.meta.scales.keys())
         op.ActiveScale.setValue(scale_keys[1])
         loaded_scale1 = op.Image[:].wait()
-        assert numpy.allclose(loaded_scale1, self.IMAGE_ORIGINAL)
+        numpy.testing.assert_allclose(loaded_scale1, self.IMAGE_ORIGINAL.reshape((1, 1, 1, 20, 24)))
 
     def test_scale_updates_dataset_info(self, op, datasetInfo):
         scale_keys = list(op.Image.meta.scales.keys())
@@ -975,12 +975,12 @@ class TestOpDataSelection_OMEZarr:
 
     def test_ome_zarr_loads_via_FSStore_and_ZarrArray(self, op, mock_ome_zarr_data):
         loaded_scale0 = op.Image[:].wait()
-        assert numpy.allclose(loaded_scale0, self.IMAGE_SCALED)
+        numpy.testing.assert_allclose(loaded_scale0, self.IMAGE_SCALED.reshape((1, 1, 1, 10, 12)))
 
         scale_keys = list(op.Image.meta.scales.keys())
         op.ActiveScale.setValue(scale_keys[1])
         loaded_scale1 = op.Image[:].wait()
-        assert numpy.allclose(loaded_scale1, self.IMAGE_ORIGINAL)
+        numpy.testing.assert_allclose(loaded_scale1, self.IMAGE_ORIGINAL.reshape((1, 1, 1, 20, 24)))
 
     def test_scale_updates_dataset_info(self, op, datasetInfo):
         scale_keys = list(op.Image.meta.scales.keys())
