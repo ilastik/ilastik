@@ -45,7 +45,7 @@ from ilastik import Project
 from ilastik.utility import OpMultiLaneWrapper
 from ilastik.workflow import Workflow
 from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import DEFAULT_LOWEST_SCALE_KEY
-from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents
+from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
 from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators import OpMissingDataSource
@@ -554,12 +554,8 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
 
     @property
     def default_output_dir(self) -> Path:
-        if self.url.startswith("file://"):  # Might be // or ///
-            stripped = self.url.removeprefix("file:").lstrip("/")
-            if not Path(stripped).is_absolute():
-                # Linux/Mac - we stripped the root /
-                stripped = "/" + stripped
-            return Path(stripped).resolve().parent
+        if self.url.startswith("file:"):
+            return uri_to_Path(self.url).resolve().parent
         return super().default_output_dir
 
     def to_json_data(self) -> Dict:

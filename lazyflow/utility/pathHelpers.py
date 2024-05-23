@@ -27,6 +27,7 @@ import fnmatch
 import errno
 import pathlib
 from typing import List
+from urllib.parse import unquote_to_bytes
 
 import h5py
 import z5py
@@ -416,3 +417,26 @@ def globNpz(path: str, globString: str):
 def globList(listOfPaths, globString):
     matches = [x for x in listOfPaths if fnmatch.fnmatch(x, globString)]
     return matches
+
+
+def uri_to_Path(uri: str) -> pathlib.Path:
+    """Copy of the Python 3.13 implementation of pathlib.Path.from_uri"""
+    if not uri.startswith("file:"):
+        raise ValueError(f"URI does not start with 'file:': {uri!r}")
+    path = uri[5:]
+    if path.startswith("///"):
+        # Remove empty authority
+        path = path[2:]
+    elif path.startswith("//localhost/"):
+        # Remove 'localhost' authority
+        path = path[11:]
+    if path.startswith("///") or (path.startswith("/") and path[2:3] in ":|"):
+        # Remove slash before DOS device/UNC path
+        path = path[1:]
+    if path[1:2] == "|":
+        # Replace bar with colon in DOS drive
+        path = path[:1] + ":" + path[2:]
+    path = pathlib.Path(os.fsdecode(unquote_to_bytes(path)))
+    if not path.is_absolute():
+        raise ValueError(f"URI is not absolute: {uri!r}")
+    return path
