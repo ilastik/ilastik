@@ -77,8 +77,6 @@ class OperatorWrapper(Operator):
             or not they appear in the promotedSlotNames argument.
 
         """
-        # Base class init
-        self._name = "Uninitialized OperatorWrapper"
         super(OperatorWrapper, self).__init__(parent=parent, graph=graph)
         if operator_args == None:
             operator_args = ()
@@ -90,12 +88,8 @@ class OperatorWrapper(Operator):
 
         self._initialized = False
 
-        if operatorClass.name == Operator.name:
-            self._name = "Wrapped " + operatorClass.__name__
-        else:
-            self._name = "Wrapped " + operatorClass.name
-
-        self._customName = False
+        self.name = "Wrapped " + operatorClass.name
+        self.logger.debug(f"Wrapper {id(self)} name={self.name}")
 
         allInputSlotNames = set([s.name for s in operatorClass.inputSlots])
 
@@ -140,7 +134,6 @@ class OperatorWrapper(Operator):
         self.promotedSlotNames = promotedSlotNames
 
         self.innerOperators = []
-        self.logger.log(logging.DEBUG, "wrapping operator '{}'".format(operatorClass.name))
 
         # replicate input slot definitions
         for innerSlot in sorted(operatorClass.inputSlots, key=lambda s: s._global_slot_id):
