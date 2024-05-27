@@ -121,6 +121,7 @@ class OpCachedRegionFeatures(Operator):
 
     RawImage = InputSlot()
     Atlas = InputSlot(optional=True)
+    ObjectIDMapping = InputSlot(optional=True, rtype=List, stype=Opaque)
     LabelImage = InputSlot()
     CacheInput = InputSlot(optional=True)
     Features = InputSlot(rtype=List, stype=Opaque)
@@ -143,6 +144,7 @@ class OpCachedRegionFeatures(Operator):
         self._opRegionFeatures = OpRegionFeatures(parent=self)
         self._opRegionFeatures.RawVolume.connect(self.RawImage)
         self._opRegionFeatures.Atlas.connect(self.Atlas)
+        self._opRegionFeatures.ObjectIDMapping.connect(self.ObjectIDMapping)
         self._opRegionFeatures.LabelVolume.connect(self.LabelImage)
         self._opRegionFeatures.Features.connect(self.Features)
 
@@ -421,6 +423,10 @@ class OpObjectExtractionBase(Operator, ABC):
 
 
 class OpObjectExtractionFromLabels(OpObjectExtractionBase):
+
+    def __init__(self, parent=None, graph=None):
+        super().__init__(parent, graph)
+        self._opRegFeats.ObjectIDMapping.connect(self._opLabelVolume.CachedRelabelDict)
 
     def _create_label_volume_op(self):
         opLabelVolume = OpRelabelConsecutive(parent=self)

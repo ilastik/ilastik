@@ -28,7 +28,10 @@ from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.operators.generic import OpPixelOperator
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.operators.valueProviders import OpValueCache
+from lazyflow.rtype import List
 from lazyflow.slot import Slot
+from lazyflow.stype import Opaque
 from lazyflow.utility import timeLogged
 
 logger = logging.getLogger(__name__)
@@ -40,6 +43,7 @@ class OpRelabelConsecutive(Operator):
     BypassModeEnabled = InputSlot(value=False)
     Output = OutputSlot()
     CachedOutput = OutputSlot()
+    CachedRelabelDict = OutputSlot(rtype=List, stype=Opaque)
     CleanBlocks = OutputSlot()
 
     supportedDtypes = [numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64]
@@ -61,6 +65,10 @@ class OpRelabelConsecutive(Operator):
         self._cache.BypassModeEnabled.connect(self.BypassModeEnabled)
         self._cache.Input.connect(self._opRelabel.Output)
         self.CleanBlocks.connect(self._cache.CleanBlocks)
+
+        self._relabel_dict_cache = OpValueCache(parent=self)
+        self._relabel_dict_cache.Input.connect(self._opRelabel.RelabelDict)
+        self.CachedRelabelDict.connect(self._relabel_dict_cache.Output)
 
         self._reoder_to_input_order = OpReorderAxes(parent=self, Input=self._opRelabel.Output, AxisOrder=None)
         self._reoder_to_input_order_cached = OpReorderAxes(parent=self, Input=self._cache.Output, AxisOrder=None)
@@ -102,6 +110,7 @@ class OpRelabelConsecutive5DNoCache(Operator):
     Input = InputSlot()
     StartLabel = InputSlot()
     Output = OutputSlot()
+    RelabelDict = OutputSlot(rtype=List, stype=Opaque)
 
     supportedDtypes = [numpy.uint8, numpy.uint32, numpy.uint64]
 
@@ -110,16 +119,38 @@ class OpRelabelConsecutive5DNoCache(Operator):
         self.Input.setOrConnectIfAvailable(Input)
         self.StartLabel.setOrConnectIfAvailable(StartLabel)
 
+        self._relable_dict = None
+
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
+        self.RelabelDict.meta.shape = (1,)
+        self.RelabelDict.meta.dtype = object
+        self.RelabelDict.meta.axistags = None
+
+        self._relable_dict = [None] * self.Input.meta.getTaggedShape()["t"]
 
     @timeLogged(logger)
+    @Operator.forbidParallelExecute
     def execute(self, slot, subindex, roi, result):
-        self.Input.get(roi).writeInto(result).wait()
-        result = vigra.taggedView(result, self.Output.meta.axistags).withAxes("zyx")
-        _res, _max_label, _labelmap_dict = vigra.analysis.relabelConsecutive(
-            result, self.StartLabel.value, keep_zeros=True, out=result
-        )
+        # Todo: in fact iterate over time (can be parallel)
+        if slot == self.Output:
+            self.Input.get(roi).writeInto(result).wait()
+            result = vigra.taggedView(result, self.Output.meta.axistags).withAxes("zyx")
+            _res, _max_label, labelmap_dict = vigra.analysis.relabelConsecutive(
+                result, self.StartLabel.value, keep_zeros=True, out=result
+            )
+            self._relable_dict = labelmap_dict
+        elif slot == self.RelabelDict:
+            if self._relable_dict is None:
+                tmp = self.Input.get(roi).wait()
+                tmp = vigra.taggedView(tmp, self.Output.meta.axistags).withAxes("zyx")
+                _res, _max_label, labelmap_dict = vigra.analysis.relabelConsecutive(
+                    tmp, self.StartLabel.value, keep_zeros=True, out=tmp
+                )
+                self._relable_dict = labelmap_dict
+            result[:] = self._relable_dict
 
     def propagateDirty(self, slot, subindex, roi):
+        self._relable_dict = None
         self.Output.setDirty(())
+        self.RelabelDict.setDirty(())
