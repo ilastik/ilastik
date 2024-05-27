@@ -331,6 +331,8 @@ class OpSupervoxelwiseClassifierPredict(Operator):
 
     PMaps = OutputSlot()
 
+    logger = logging.getLogger(__name__ + ".OpSupervoxelwiseClassifierPredict")
+
     def __init__(self, *args, **kwargs):
         super(OpSupervoxelwiseClassifierPredict, self).__init__(*args, **kwargs)
 

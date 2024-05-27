@@ -21,7 +21,6 @@
 ###############################################################################
 # Python
 import functools
-import logging
 
 # lazyflow
 from lazyflow.operator import Operator
@@ -86,7 +85,8 @@ class OperatorWrapper(Operator):
         self._initialized = False
 
         self.name = "Wrapped " + operatorClass.name
-        self.logger.debug(f"Wrapper {id(self)} name={self.name}")
+        if self._debug_logger:
+            self._debug_logger.debug(f"Wrapper {id(self)} name={self.name}")
 
         allInputSlotNames = set([s.name for s in operatorClass.inputSlots])
 
