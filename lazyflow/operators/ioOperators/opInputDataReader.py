@@ -293,6 +293,8 @@ class OpInputDataReader(Operator):
             return ([], None)
         if not (filePath.startswith("http") or filePath.startswith("file")):
             return ([], None)
+        # DatasetInfo instantiates a standalone OpInputDataReader to obtain laneShape and dtype.
+        # We pass this down to the loader so that it can avoid loading scale metadata unnecessarily.
         reader = OpOMEZarrMultiscaleReader(parent=self, last_scale_only_mode=self.parent is None)
         reader.Scale.connect(self.ActiveScale)
         reader.BaseUrl.setValue(filePath)

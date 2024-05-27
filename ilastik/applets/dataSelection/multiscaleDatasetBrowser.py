@@ -120,8 +120,19 @@ class MultiscaleDatasetBrowser(QDialog):
         if url == "":
             return
         if not isUrl(url):
-            self._set_text_input_to_guessed_uri(url)
-            return
+            ospath = pathlib.Path(url)
+            if ospath.exists():  # It's a local file path - convert to file: URL and continue
+                url = ospath.as_uri()
+                self.combo.lineEdit().setText(url)
+            else:  # Maybe the user typed the address manually and forgot https://?
+                guessed_uri = f"https://{url}"
+                msg = (
+                    'Address must be a URL starting with "http(s)://" or "file://".\n\n'
+                    '"https://" was added to your address. Please press "Check" to try again.'
+                )
+                self.combo.lineEdit().setText(guessed_uri)
+                self.result_text_box.setText(msg)
+                return
         logger.debug(f"Entered URL: {url}")
         try:
             # Ask each store type if it likes the URL to avoid web requests during instantiation attempts.
@@ -161,19 +172,6 @@ class MultiscaleDatasetBrowser(QDialog):
         # This check-button might have been triggered by pressing Enter.
         # The timer prevents triggering the now enabled OK button by the same keypress.
         QTimer.singleShot(0, lambda: self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(True))
-
-    def _set_text_input_to_guessed_uri(self, path):
-        ospath = pathlib.Path(path)
-        if ospath.exists():
-            guessed_uri = ospath.as_uri()
-        else:
-            guessed_uri = f"https://{path}"
-        self.combo.lineEdit().setText(guessed_uri)
-        msg = (
-            'Address must be a URI starting with "http(s)://" or "file://".\n\n'
-            "Your address was modified as a guess, please try again if it looks good."
-        )
-        self.result_text_box.setText(msg)
 
 
 if __name__ == "__main__":

@@ -28,6 +28,13 @@ logger = logging.getLogger(__name__)
 
 
 class OpOMEZarrMultiscaleReader(Operator):
+    """
+    Operator to plug the OME-Zarr loader into lazyflow.
+
+    :param last_scale_only_mode: Passed through to the internal OMEZarrStore.
+        If True, only the last scale is loaded to determine the dtype. Used to shorten init time
+        when DatasetInfo instantiates an OpInputDataReader to get lane shape and dtype.
+    """
 
     name = "OpOMEZarrMultiscaleReader"
 

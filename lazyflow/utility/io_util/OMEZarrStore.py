@@ -79,7 +79,12 @@ def _get_axistags_from_spec(ome_spec: Dict) -> vigra.AxisTags:
 
 class OMEZarrStore(MultiscaleStore):
     """
-    Adapter class to handle communication with a web source serving a dataset in OME-Zarr format.
+    Adapter class to handle communication with a source serving a dataset in OME-Zarr format.
+
+    :param url: URL to the OME-Zarr store.
+    :param last_scale_only_mode:
+        If True, only the last scale is loaded to determine the dtype. Used to shorten init time
+        when DatasetInfo instantiates a standalone OpInputDataReader to get lane shape and dtype.
     """
 
     NAME = "OME-Zarr"
