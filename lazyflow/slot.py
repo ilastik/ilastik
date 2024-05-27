@@ -163,9 +163,9 @@ class Slot(object):
         self.logger = None
         if write_logs:
             # Using module-like dot separation allows turning on/off all slot loggers at once
-            logger_name = f"lazyflow.slot.NoOperator.{self.name}"
+            logger_name = f"lazyflow.slot_debug.NoOperator.{self.name}"
             if self.operator is not None:
-                logger_name = f"lazyflow.slot.{self.operator.name}.{self.name}"
+                logger_name = f"lazyflow.slot_debug.{self.operator.name}.{self.name}"
             self.logger = logging.getLogger(logger_name)
 
         # in the case of an InputSlot this is the slot to which it is

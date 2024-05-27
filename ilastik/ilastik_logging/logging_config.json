@@ -32,6 +32,7 @@
         "lazyflow.request.RequestLock":                             { "level":"INFO" },
         "lazyflow.request.SimpleRequestCondition":                  { "level":"INFO" },
         "lazyflow.graph":                                           { "level":"INFO" },
+        "lazyflow.slot_debug":                                      { "level":"INFO" },
         "lazyflow.classifiers":                                     { "level":"INFO" },
         "lazyflow.op_debug":                                        { "level":"INFO" },
         "lazyflow.operators.ioOperators":                           { "level":"INFO" },
