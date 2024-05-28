@@ -232,7 +232,7 @@ class Operator(metaclass=OperatorMetaClass):
         if write_logs:
             self._debug_logger = logging.getLogger(f"lazyflow.op_debug.{self.name}")
             self._debug_logger.debug(
-                f"Instantiated {self.name} {id(self)} with parent={self.parent.name if self.parent else ''}"
+                f"Instantiated {self.name} {id(self)} with parent={self.parent.name if self.parent is not None else ''}"
             )
 
         self._initialized = False

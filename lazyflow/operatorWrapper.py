@@ -38,6 +38,7 @@ class OperatorWrapper(Operator):
         graph=None,
         promotedSlotNames=None,
         broadcastingSlotNames=None,
+        write_logs=False,
     ):
         """Constructs a wrapper for the given operator. That is,
         manages a list of copies of the original operator, and
@@ -73,13 +74,14 @@ class OperatorWrapper(Operator):
             or not they appear in the promotedSlotNames argument.
 
         """
-        super(OperatorWrapper, self).__init__(parent=parent, graph=graph)
-        if operator_args == None:
+        super(OperatorWrapper, self).__init__(parent=parent, graph=graph, write_logs=write_logs)
+        if operator_args is None:
             operator_args = ()
-        if operator_kwargs == None:
+        if operator_kwargs is None:
             operator_kwargs = {}
         assert isinstance(operator_args, (tuple, list))
         assert isinstance(operator_kwargs, dict)
+        operator_kwargs.update({"write_logs": write_logs})
         self._createInnerOperator = functools.partial(operatorClass, parent=self, *operator_args, **operator_kwargs)
 
         self._initialized = False
@@ -203,6 +205,8 @@ class OperatorWrapper(Operator):
     def _insertInnerOperator(self, index, length):
         if len(self.innerOperators) >= length:
             return self.innerOperators[index]
+        if self._debug_logger:
+            self._debug_logger.debug(f"Inserting inner operator at index {index}")
         op = self._createInnerOperator()
 
         # If anyone calls setValue() on one of these slots,
