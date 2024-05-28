@@ -9,10 +9,10 @@ import imageio.v3 as iio
 
 from ilastik.experimental.api import AutocontextPipeline, PixelClassificationPipeline, from_project_file
 
-from ..types import ApiTestDataLookup, TestData, TestProjects
+from ..types import ApiTestDataLookup, Dataset, TestData, TestProjects
 
 
-def _load_as_xarray(dataset: TestData):
+def _load_as_xarray(dataset: Dataset):
     loader = iio.imread
     if dataset.path.endswith(".npy"):
         loader = np.load
@@ -20,35 +20,34 @@ def _load_as_xarray(dataset: TestData):
     return xarray.DataArray(data, dims=tuple(dataset.axes))
 
 
-class TestIlastikApiBase:
-    @pytest.fixture
-    def run_headless(self, tmpdir):
-        def _run_headless(proj, input_, export_source: str):
-            out_path = str(tmpdir / "out.npy")
-            args = [
-                sys.executable,
-                "-m",
-                "ilastik",
-                "--headless",
-                "--project",
-                proj,
-                input_.path,
-                "--input_axes",
-                input_.data_axes,
-                "--output_format",
-                "numpy",
-                "--output_filename_format",
-                out_path,
-                "--export_source",
-                export_source,
-            ]
-            subprocess.check_call(args)
-            return np.load(out_path)
+@pytest.fixture
+def run_headless(tmpdir):
+    def _run_headless(proj, input_, export_source: str):
+        out_path = str(tmpdir / "out.npy")
+        args = [
+            sys.executable,
+            "-m",
+            "ilastik",
+            "--headless",
+            "--project",
+            proj,
+            input_.path,
+            "--input_axes",
+            input_.data_axes,
+            "--output_format",
+            "numpy",
+            "--output_filename_format",
+            out_path,
+            "--export_source",
+            export_source,
+        ]
+        subprocess.check_call(args)
+        return np.load(out_path)
 
-        return _run_headless
+    return _run_headless
 
 
-class TestIlastikApiPixelClassification(TestIlastikApiBase):
+class TestIlastikApiPixelClassification:
 
     @pytest.mark.parametrize(
         "input_, proj",
@@ -164,7 +163,7 @@ class TestIlastikApiPixelClassification(TestIlastikApiBase):
         np.testing.assert_array_almost_equal(prediction, expected_prediction)
 
 
-class TestIlastikApiAutocontext(TestIlastikApiBase):
+class TestIlastikApiAutocontext:
 
     @pytest.mark.parametrize(
         "input_, proj",

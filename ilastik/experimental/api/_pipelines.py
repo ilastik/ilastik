@@ -133,11 +133,12 @@ class AutocontextPipeline:
     ```Python
     from ilastik.experimental.api import AutocontextPipeline
     import imageio.v3 as iio
+    import xarray
 
     img = xarray.DataArray(iio.imread("<path/to/image-file.tif>"), dims=("y", "x"))
     pipeline = AutocontextPipeline.from_ilp_file("<path/to/project.ilp>")
 
-    prob_maps = pipeline.get_probabilities_stage2(img)
+    prob_maps = pipeline.get_probabilities_stage_2(img)
     ```
 
     """
@@ -208,7 +209,7 @@ class AutocontextPipeline:
 
         fun_convert = DtypeConvertFunction(raw_data.dtype)
 
-        if self._opConvertPMapsToInputPixelType.Function != fun_convert:
+        if self._opConvertPMapsToInputPixelType.Function.value != fun_convert:
             self._opConvertPMapsToInputPixelType.Function.setValue(fun_convert)
 
         if num_channels_in_data != self._num_channels:
@@ -229,6 +230,8 @@ class AutocontextPipeline:
             predict_op = self._predict_op_stage1
         elif stage == 2:
             predict_op = self._predict_op_stage2
+        else:
+            raise ValueError(f"Invalid argument {stage=}. There are only stage 1 and 2.")
 
         probabilities = predict_op.PMaps.value[...]
         return xarray.DataArray(probabilities, dims=tuple(predict_op.PMaps.meta.axistags.keys()))
