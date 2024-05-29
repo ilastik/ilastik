@@ -60,18 +60,18 @@ class OperatorWrapper(Operator):
 
         :param graph: the graph operator to init each inner operator with
 
-        :param promotedSlotNames:
-
-          If provided, only those slots will be promoted when
+        :param promotedSlotNames: If provided, only those slots will be promoted when
             replicated. All other slots will be replicated without
             promotion, and their input values will be broadcasted to
             all inner operators.
-
           If not provided (i.e. promotedSlotNames=None), the default
             behavior is to promote ALL replicated slots.
-
           Note: Outputslots are always promoted, regardless of whether
             or not they appear in the promotedSlotNames argument.
+
+        :param write_logs: Debugging feature. The wrapper and wrapped ops will write debug logs if True.
+            The wrapped operator's __init__ must also accept the write_logs kwarg.
+            Make sure the `lazyflow.op_debug` logger has level=DEBUG in the logging config.
 
         """
         super(OperatorWrapper, self).__init__(parent=parent, graph=graph, write_logs=write_logs)
@@ -81,7 +81,8 @@ class OperatorWrapper(Operator):
             operator_kwargs = {}
         assert isinstance(operator_args, (tuple, list))
         assert isinstance(operator_kwargs, dict)
-        operator_kwargs.update({"write_logs": write_logs})
+        if write_logs:
+            operator_kwargs.update({"write_logs": write_logs})
         self._createInnerOperator = functools.partial(operatorClass, parent=self, *operator_args, **operator_kwargs)
 
         self._initialized = False

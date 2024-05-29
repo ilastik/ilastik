@@ -205,6 +205,8 @@ class Operator(metaclass=OperatorMetaClass):
         :param parent: the parent operator; if None the instance is a
         root operator
         :param graph: a Graph instance
+        :param write_logs: Debugging feature. The operator will write debug logs if True.
+        Make sure the `lazyflow.op_debug` logger has level=DEBUG in the logging config.
 
         """
         if not (parent is None or isinstance(parent, Operator)):

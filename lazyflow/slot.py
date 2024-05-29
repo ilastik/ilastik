@@ -134,6 +134,9 @@ class Slot(object):
         :param subindex: index within the top level slot
 
         :param top_level_slot: in case of multilevel slots a slot with the highest level
+
+        :param write_logs: Debugging feature. The slot will write debug logs if True.
+        Make sure the `lazyflow.slot_debug` logger has level=DEBUG in the logging config.
         """
         # This assertion is here for a reason: default values do NOT work on OutputSlots.
         # (We should probably change that at some point...)
