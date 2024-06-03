@@ -1,11 +1,8 @@
-import subprocess
-import sys
-
+import imageio.v3 as iio
 import numpy as np
-from pydantic import ValidationError
 import pytest
 import xarray
-import imageio.v3 as iio
+from pydantic import ValidationError
 
 from ilastik.experimental.api import AutocontextPipeline, PixelClassificationPipeline, from_project_file
 
@@ -20,33 +17,6 @@ def _load_as_xarray(dataset: Dataset):
     return xarray.DataArray(data, dims=tuple(dataset.axes))
 
 
-@pytest.fixture
-def run_headless(tmpdir):
-    def _run_headless(proj, input_, export_source: str):
-        out_path = str(tmpdir / "out.npy")
-        args = [
-            sys.executable,
-            "-m",
-            "ilastik",
-            "--headless",
-            "--project",
-            proj,
-            input_.path,
-            "--input_axes",
-            input_.data_axes,
-            "--output_format",
-            "numpy",
-            "--output_filename_format",
-            out_path,
-            "--export_source",
-            export_source,
-        ]
-        subprocess.check_call(args)
-        return np.load(out_path)
-
-    return _run_headless
-
-
 class TestIlastikApiPixelClassification:
 
     @pytest.mark.parametrize(
@@ -59,11 +29,11 @@ class TestIlastikApiPixelClassification:
             (TestData.DATA_1_CHANNEL_3D, TestProjects.PIXEL_CLASS_3D_2D_3D_FEATURE_MIX),
         ],
     )
-    def test_predict_pretrained(self, test_data_lookup: ApiTestDataLookup, input_, proj, run_headless):
+    def test_predict_pretrained(self, test_data_lookup: ApiTestDataLookup, input_, proj):
         project_path = test_data_lookup.find_project(proj)
         input_dataset = test_data_lookup.find_dataset(input_)
 
-        expected_prediction = run_headless(project_path, input_dataset, "Probabilities")
+        expected_prediction = _load_as_xarray(test_data_lookup.find_test_result(proj, input_, "Probabilities"))
         pipeline = PixelClassificationPipeline.from_ilp_file(project_path)
 
         prediction = pipeline.get_probabilities(_load_as_xarray(input_dataset))
@@ -81,13 +51,12 @@ class TestIlastikApiPixelClassification:
         test_data_lookup: ApiTestDataLookup,
         input_,
         proj,
-        run_headless,
     ):
         project_path = test_data_lookup.find_project(proj)
         input_dataset = test_data_lookup.find_dataset(input_)
 
         pipeline = PixelClassificationPipeline.from_ilp_file(project_path)
-        expected_prediction = run_headless(project_path, input_dataset, "Probabilities")
+        expected_prediction = _load_as_xarray(test_data_lookup.find_test_result(proj, input_, "Probabilities"))
 
         input_data = _load_as_xarray(input_dataset)
         input_numpy = input_data.data
@@ -148,11 +117,11 @@ class TestIlastikApiPixelClassification:
             (TestData.DATA_3_CHANNEL, TestProjects.PIXEL_CLASS_3_CHANNEL),
         ],
     )
-    def test_legacy_operation(self, test_data_lookup: ApiTestDataLookup, input_, proj, run_headless):
+    def test_legacy_operation(self, test_data_lookup: ApiTestDataLookup, input_, proj):
         project_path = test_data_lookup.find_project(proj)
         input_dataset = test_data_lookup.find_dataset(input_)
 
-        expected_prediction = run_headless(project_path, input_dataset, "Probabilities")
+        expected_prediction = _load_as_xarray(test_data_lookup.find_test_result(proj, input_, "Probabilities"))
         with pytest.deprecated_call():
             pipeline = from_project_file(project_path)
 
@@ -172,12 +141,16 @@ class TestIlastikApiAutocontext:
             (TestData.DATA_1_CHANNEL_3D, TestProjects.AUTOCONTEXT_3D),
         ],
     )
-    def test_predict_pretrained(self, test_data_lookup: ApiTestDataLookup, input_, proj, run_headless):
+    def test_predict_pretrained(self, test_data_lookup: ApiTestDataLookup, input_, proj):
         project_path = test_data_lookup.find_project(proj)
         input_dataset = test_data_lookup.find_dataset(input_)
 
-        expected_prediction_stage_1 = run_headless(project_path, input_dataset, "Probabilities Stage 1")
-        expected_prediction_stage_2 = run_headless(project_path, input_dataset, "Probabilities Stage 2")
+        expected_prediction_stage_1 = _load_as_xarray(
+            test_data_lookup.find_test_result(proj, input_, "Probabilities Stage 1")
+        )
+        expected_prediction_stage_2 = _load_as_xarray(
+            test_data_lookup.find_test_result(proj, input_, "Probabilities Stage 2")
+        )
         pipeline = AutocontextPipeline.from_ilp_file(project_path)
 
         prediction_stage_1 = pipeline.get_probabilities_stage_1(_load_as_xarray(input_dataset))
