@@ -9,6 +9,36 @@ from ilastik.experimental.api import AutocontextPipeline, PixelClassificationPip
 from ..types import ApiTestDataLookup, Dataset, TestData, TestProjects
 
 
+def assert_predictions_equal_ilastik_cross(a, b):
+    """Compares ilastik prediction results
+
+    Accuracies are tuned to allow passing tests across architectures.
+    Applicable for pixel classification and autocontext results.
+
+    This function requires that 99.9 % of pixels have a deviation lower
+    than 0.015 and all pixels deviate less than 0.15.
+
+    Checks:
+      * less than 0.1 % deviate more than 0.015 (equal to what
+        `numpy.testing.assert_array_almost_equal` assumes for 2 decimals)
+      * no pixels have deviation more than 0.15 (equal to what
+        `numpy.testing.assert_array_almost_equal` assumes for 1 decimals)
+
+    """
+    # Hide traceback in pytest for this function
+    __tracebackhide__ = True
+    diff = np.abs(a - b)
+
+    n_2dec = np.count_nonzero(diff >= 1.5 * 10 ** (-2))
+
+    if n_2dec / diff.size > 10 ** (-3):
+        np.testing.assert_array_almost_equal(a, b, decimal=2)
+
+    n_1dec = np.count_nonzero(diff >= 1.5 * 10 ** (-1))
+    if n_1dec != 0:
+        np.testing.assert_array_almost_equal(a, b, decimal=1)
+
+
 def _load_as_xarray(dataset: Dataset):
     loader = iio.imread
     if dataset.path.endswith(".npy"):
@@ -38,7 +68,7 @@ class TestIlastikApiPixelClassification:
 
         prediction = pipeline.get_probabilities(_load_as_xarray(input_dataset))
         assert prediction.shape == expected_prediction.shape
-        np.testing.assert_array_almost_equal(prediction, expected_prediction)
+        assert_predictions_equal_ilastik_cross(prediction, expected_prediction)
 
     @pytest.mark.parametrize(
         "input_, proj",
@@ -129,7 +159,7 @@ class TestIlastikApiPixelClassification:
             prediction = pipeline.predict(_load_as_xarray(input_dataset))
 
         assert prediction.shape == expected_prediction.shape
-        np.testing.assert_array_almost_equal(prediction, expected_prediction)
+        assert_predictions_equal_ilastik_cross(prediction, expected_prediction)
 
 
 class TestIlastikApiAutocontext:
@@ -155,11 +185,11 @@ class TestIlastikApiAutocontext:
 
         prediction_stage_1 = pipeline.get_probabilities_stage_1(_load_as_xarray(input_dataset))
         assert prediction_stage_1.shape == expected_prediction_stage_1.shape
-        np.testing.assert_array_almost_equal(prediction_stage_1, expected_prediction_stage_1)
+        assert_predictions_equal_ilastik_cross(prediction_stage_1, expected_prediction_stage_1)
 
         prediction_stage_2 = pipeline.get_probabilities_stage_2(_load_as_xarray(input_dataset))
         assert prediction_stage_2.shape == expected_prediction_stage_2.shape
-        np.testing.assert_array_almost_equal(prediction_stage_2, expected_prediction_stage_2)
+        assert_predictions_equal_ilastik_cross(prediction_stage_2, expected_prediction_stage_2)
 
     @pytest.mark.parametrize(
         "input_, proj",
