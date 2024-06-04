@@ -30,6 +30,7 @@ from contextlib import contextmanager
 from traceback import walk_tb, FrameSummary, format_list
 
 # lazyflow
+from lazyflow.rtype import Roi, SubRegion
 from lazyflow.slot import InputSlot, OutputSlot, Slot
 from lazyflow.utility import exception_chain
 
@@ -609,7 +610,7 @@ class Operator(metaclass=OperatorMetaClass):
         finally:
             self._decrementOperatorExecutionCount()
 
-    def execute(self, slot, subindex, roi, result):
+    def execute(self, slot: OutputSlot, subindex: int, roi: SubRegion, result):
         """This method of the operator is called when a connected
         operator or an outside user of the graph wants to retrieve the
         calculation results from the operator.

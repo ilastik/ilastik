@@ -110,7 +110,6 @@ class OpRelabelConsecutive5DNoCache(Operator):
     Input = InputSlot()
     StartLabel = InputSlot()
     Output = OutputSlot()
-    RelabelDict = OutputSlot(rtype=List, stype=Opaque)
 
     supportedDtypes = [numpy.uint8, numpy.uint32, numpy.uint64]
 
@@ -123,32 +122,21 @@ class OpRelabelConsecutive5DNoCache(Operator):
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
-        self.RelabelDict.meta.shape = (1,)
-        self.RelabelDict.meta.dtype = object
-        self.RelabelDict.meta.axistags = None
-
-        self._relable_dict = [None] * self.Input.meta.getTaggedShape()["t"]
+        self.Output.meta.relabel_dict = [None] * self.Input.meta.getTaggedShape()["t"]
 
     @timeLogged(logger)
     @Operator.forbidParallelExecute
     def execute(self, slot, subindex, roi, result):
         # Todo: in fact iterate over time (can be parallel)
-        if slot == self.Output:
-            self.Input.get(roi).writeInto(result).wait()
-            result = vigra.taggedView(result, self.Output.meta.axistags).withAxes("zyx")
-            _res, _max_label, labelmap_dict = vigra.analysis.relabelConsecutive(
-                result, self.StartLabel.value, keep_zeros=True, out=result
-            )
-            self._relable_dict = labelmap_dict
-        elif slot == self.RelabelDict:
-            if self._relable_dict is None:
-                tmp = self.Input.get(roi).wait()
-                tmp = vigra.taggedView(tmp, self.Output.meta.axistags).withAxes("zyx")
-                _res, _max_label, labelmap_dict = vigra.analysis.relabelConsecutive(
-                    tmp, self.StartLabel.value, keep_zeros=True, out=tmp
-                )
-                self._relable_dict = labelmap_dict
-            result[:] = self._relable_dict
+        assert slot == self.Output
+        t_idx = self.Input.meta.getAxisKeys().index("t")
+
+        self.Input.get(roi).writeInto(result).wait()
+        result = vigra.taggedView(result, self.Output.meta.axistags).withAxes("zyx")
+        _res, _max_label, labelmap_dict = vigra.analysis.relabelConsecutive(
+            result, self.StartLabel.value, keep_zeros=True, out=result
+        )
+        # slot.meta.relable_dict[] = labelmap_dict
 
     def propagateDirty(self, slot, subindex, roi):
         self._relable_dict = None
