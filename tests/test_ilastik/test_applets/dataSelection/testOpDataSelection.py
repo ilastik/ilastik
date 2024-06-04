@@ -1036,7 +1036,11 @@ class TestOpDataSelection_DatasetInfo:
     def mock_ome_zarr_metadata(self, monkeypatch):
         """Monkeypatches FSStore.__getitem__ to mock metadata responses of an OME-Zarr dataset."""
         responses = {
-            ".zattrs": {"multiscales": [{"axes": [{"name": "x"}, {"name": "y"}], "datasets": [{"path": "s0"}]}]},
+            ".zattrs": {
+                "multiscales": [
+                    {"axes": [{"name": "x"}, {"name": "y"}], "datasets": [{"path": "s0"}], "version": "0.4"}
+                ]
+            },
             "s0/.zarray": {
                 "zarr_format": 2,
                 "dtype": "|u1",

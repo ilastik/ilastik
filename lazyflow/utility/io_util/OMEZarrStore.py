@@ -37,25 +37,6 @@ OME_ZARR_V_0_4_KWARGS = dict(dimension_separator="/", normalize_keys=False)
 OME_ZARR_V_0_1_KWARGS = dict(dimension_separator=".")
 
 
-def _get_ome_spec_version(metadata: dict) -> Optional[str]:
-    """
-    https://github.com/ome/ome-zarr-py/blob/master/ome_zarr/format.py#L69
-    Checks the metadata dict for a version
-
-    Returns the version of the first object found in the metadata,
-    checking for 'multiscales', 'plate', 'well' etc
-    """
-    multiscales = metadata.get("multiscales", [])
-    if multiscales:
-        dataset = multiscales[0]
-        return dataset.get("version")
-    for name in ["plate", "well", "image-label"]:
-        obj = metadata.get(name, {})
-        if obj:
-            return obj.get("version")
-    return None
-
-
 def _get_axistags_from_spec(ome_spec: Dict) -> vigra.AxisTags:
     if "axes" not in ome_spec:
         # v0.1 and v0.2 did not allow variable axes
@@ -95,20 +76,23 @@ class OMEZarrStore(MultiscaleStore):
         "properties": {
             "multiscales": {
                 "type": "array",
+                "minItems": 1,
                 "items": {
                     "type": "object",
                     "properties": {
                         "axes": {"type": "array"},
                         "datasets": {
                             "type": "array",
+                            "minItems": 1,
                             "items": {
                                 "type": "object",
                                 "properties": {"path": {"type": "string"}},
                                 "required": ["path"],
                             },
                         },
+                        "version": {"type": "string"},
                     },
-                    "required": ["datasets"],
+                    "required": ["datasets", "version"],
                 },
             },
         },
@@ -123,18 +107,27 @@ class OMEZarrStore(MultiscaleStore):
                 self.ome_spec = json.loads(uncached_store[".zattrs"])
             except KeyError:
                 raise ValueError("Expected a Zarr store, but could not find .zattrs file at the address.")
-            if _get_ome_spec_version(self.ome_spec) == "0.1":
+            if self.ome_spec.get("multiscales", [{}])[0].get("version") == "0.1":
                 uncached_store = FSStore(self.url, mode="r", **OME_ZARR_V_0_1_KWARGS)
             self._store = LRUStoreCache(uncached_store, max_size=None)
             logger.info(f"Initializing OME-Zarr store at {url} took {timer.seconds()*1000} ms.")
         try:
             jsonschema.validate(self.ome_spec, self.spec_schema)
         except jsonschema.ValidationError:
-            raise ValueError(f"Metadata for this dataset did not match OME-Zarr spec.\nReceived:\n{self.ome_spec}.")
+            err = (
+                f"Metadata for this store did not match OME-Zarr spec, "
+                f"or reports no multiscale datasets.\nReceived:\n{self.ome_spec}."
+            )
+            raise ValueError(err)
+        if len(self.ome_spec["multiscales"]) > 1:
+            warn = (
+                f"The OME-Zarr store contains more than one multiscale dataset. "
+                f"The first dataset will be used.\nReceived metadata:\n{self.ome_spec}"
+            )
+            logger.warning(warn)
         multiscale_spec = self.ome_spec["multiscales"][0]
         axistags = _get_axistags_from_spec(multiscale_spec)
         datasets = multiscale_spec["datasets"]
-        assert len(datasets) > 0, "The OME-Zarr store contains no datasets."
         dtype = None
         gui_scale_metadata = {}  # Becomes slot metadata -> must be serializable (no ZarrArray allowed)
         self._scale_data = {}
