@@ -147,6 +147,7 @@ class OpExportSlot(Operator):
 
         # Remove existing extension (if present) and add the correct extension (if any)
         if file_extension:
+            path_format = os.path.splitext(path_format)[0]
             path_format += "." + file_extension
 
         # Provide the TOTAL path (including dataset name)
