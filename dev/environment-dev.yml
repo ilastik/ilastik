@@ -44,7 +44,7 @@ dependencies:
   # 2023.10.1 correctly pins numpy to 1.22 and up
   - xarray !=2023.8.0,!=2023.9.0,!=2023.10.0
   - z5py
-  - zarr
+  - zarr 2.*
   - aiohttp
   - fsspec
 

@@ -61,7 +61,7 @@ outputs:
         - vigra
         - xarray !=2023.8.0,!=2023.9.0,!=2023.10.0
         - z5py
-        - zarr
+        - zarr 2.*
       run_constrained:
         - mkl !=2024.1.0
         - tiktorch >=23.11.0
