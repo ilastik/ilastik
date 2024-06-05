@@ -176,7 +176,5 @@ class OMEZarrStore(MultiscaleStore):
 
     def request(self, roi: rtype.Roi, scale_key=DEFAULT_SCALE_KEY):
         scale_key = scale_key if scale_key else self.lowest_resolution_key
-        with Timer() as timer:
-            data = self._scale_data[scale_key]["zarray"][roi.toSlice()]
-            logger.info(f"Requesting roi {roi} from scale {scale_key} took {timer.seconds()*1000} ms.")
+        data = self._scale_data[scale_key]["zarray"][roi.toSlice()]
         return data
