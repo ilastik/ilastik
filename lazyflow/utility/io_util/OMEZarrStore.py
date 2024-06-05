@@ -21,6 +21,7 @@
 import json
 import logging
 import os
+from collections import OrderedDict
 from typing import Dict
 from urllib.parse import unquote_to_bytes
 
@@ -31,7 +32,7 @@ from zarr.storage import FSStore, LRUStoreCache
 
 from lazyflow import rtype
 from lazyflow.utility import Timer
-from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, Multiscale, DEFAULT_LOWEST_SCALE_KEY
+from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_LOWEST_SCALE_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +66,8 @@ class OMEZarrStore(MultiscaleStore):
     Adapter class to handle communication with a source serving a dataset in OME-Zarr format.
 
     :param url: URL to the OME-Zarr store.
-    :param last_scale_only_mode:
-        If True, only the last scale is loaded to determine the dtype. Used to shorten init time
+    :param single_scale_mode:
+        If True, only the first scale is loaded to determine the dtype. Used to shorten init time
         when DatasetInfo instantiates a standalone OpInputDataReader to get lane shape and dtype.
     """
 
@@ -101,7 +102,7 @@ class OMEZarrStore(MultiscaleStore):
         "required": ["multiscales"],
     }
 
-    def __init__(self, url: str = "", last_scale_only_mode: bool = False):
+    def __init__(self, url: str = "", single_scale_mode: bool = False):
         if url.startswith("file:"):
             # Zarr's FSStore implementation doesn't unescape file URLs before piping them to
             # the file system. We do it here the same way as in pathHelpers.uri_to_Path.
@@ -136,23 +137,23 @@ class OMEZarrStore(MultiscaleStore):
         axistags = _get_axistags_from_spec(multiscale_spec)
         datasets = multiscale_spec["datasets"]
         dtype = None
-        gui_scale_metadata = {}  # Becomes slot metadata -> must be serializable (no ZarrArray allowed)
+        gui_scale_metadata = OrderedDict()  # Becomes slot metadata -> must be serializable (no ZarrArray allowed)
         self._scale_data = {}
-        for scale in reversed(datasets):
+        for scale in datasets:  # OME-Zarr spec requires datasets ordered from high to low resolution
             with Timer() as timer:
                 zarray = ZarrArray(store=self._store, path=scale["path"])
                 dtype = zarray.dtype.type
-                gui_scale_metadata[scale["path"]] = Multiscale(
-                    key=scale["path"], dimensions=list(zarray.shape[-1:-4:-1])  # xyz
-                )
+                gui_scale_metadata[scale["path"]] = list(zarray.shape[-1:-4:-1])  # xyz
                 self._scale_data[scale["path"]] = {
                     "zarray": zarray,
                     "chunks": zarray.chunks,
                     "shape": zarray.shape,
                 }
                 logger.info(f"Initializing scale {scale['path']} took {timer.seconds()*1000} ms.")
-            if last_scale_only_mode:
+            if single_scale_mode:
                 break  # One scale is enough to get dtype
+        # Reverse so that GUI displays from low to high resolution
+        gui_scale_metadata = OrderedDict(reversed(list(gui_scale_metadata.items())))
         super().__init__(
             dtype=dtype,
             axistags=axistags,

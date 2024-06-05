@@ -31,7 +31,7 @@ class OpOMEZarrMultiscaleReader(Operator):
     """
     Operator to plug the OME-Zarr loader into lazyflow.
 
-    :param last_scale_only_mode: Passed through to the internal OMEZarrStore.
+    :param metadata_only_mode: Passed through to the internal OMEZarrStore.
         If True, only the last scale is loaded to determine the dtype. Used to shorten init time
         when DatasetInfo instantiates an OpInputDataReader to get lane shape and dtype.
     """
@@ -43,9 +43,9 @@ class OpOMEZarrMultiscaleReader(Operator):
 
     Output = OutputSlot()
 
-    def __init__(self, last_scale_only_mode=False, *args, **kwargs):
+    def __init__(self, metadata_only_mode=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._load_only_last_scale = last_scale_only_mode
+        self._load_only_one_scale = metadata_only_mode
         self._store = None
 
     def setupOutputs(self):
@@ -53,7 +53,7 @@ class OpOMEZarrMultiscaleReader(Operator):
             # Must not set Output.meta here.
             return
 
-        self._store = OMEZarrStore(self.BaseUrl.value, self._load_only_last_scale)
+        self._store = OMEZarrStore(self.BaseUrl.value, self._load_only_one_scale)
         active_scale = self.Scale.value if self.Scale.ready() else self._store.lowest_resolution_key
         self.Output.meta.shape = self._store.get_shape(active_scale)
         self.Output.meta.dtype = self._store.dtype

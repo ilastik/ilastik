@@ -21,13 +21,14 @@
 ###############################################################################
 import json
 import logging
+from collections import OrderedDict
 
 import jsonschema
 import numpy
 import requests
 import vigra
 
-from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, Multiscale, DEFAULT_LOWEST_SCALE_KEY
+from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_LOWEST_SCALE_KEY
 
 logger = logging.getLogger(__file__)
 
@@ -84,10 +85,6 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
               `self.info_schema`.
             n_threads (int, optional): number of concurrent downloads
         """
-        gui_scale_metadata = {}
-        lowest_resolution_key = None
-        highest_resolution_key = None
-        dtype = None  # Assuming dtype will be the same in every scale
         axistags = vigra.defaultAxistags("czyx")  # neuroglancer axes are always czyx; channel might be singleton
         self._json_info = {}
         self.volume_url = volume_url
@@ -102,11 +99,10 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
         lowest_resolution_key = self._json_info["scales"][-1]["key"]
         highest_resolution_key = self._json_info["scales"][0]["key"]
         # Reverse so that the ScaleComboBox shows the options ordered from most-downscaled to original
-        gui_scale_metadata = {
-            scale["key"]: Multiscale(key=scale["key"], resolution=scale["resolution"])
-            for scale in reversed(self._json_info["scales"])
-        }
-        self._scales = {scale["key"]: scale for scale in reversed(self._json_info["scales"])}
+        gui_scale_metadata = OrderedDict(
+            [(scale["key"], scale["resolution"]) for scale in reversed(self._json_info["scales"])]
+        )
+        self._scales = {scale["key"]: scale for scale in self._json_info["scales"]}
         self.n_channels = self._json_info["num_channels"]
 
         super().__init__(dtype, axistags, gui_scale_metadata, lowest_resolution_key, highest_resolution_key)

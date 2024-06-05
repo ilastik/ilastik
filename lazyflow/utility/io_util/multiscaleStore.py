@@ -19,29 +19,14 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from collections import OrderedDict
+from typing import List, Tuple
 
 import numpy
 import vigra
 
 
 DEFAULT_LOWEST_SCALE_KEY = ""
-
-
-@dataclass
-class Multiscale:
-    """
-    Metadata for a single scale of a multiscale dataset as required for the GUI.
-    This is stored in `Slot.meta` dicts, so must be serializable.
-
-    :param key: Key-string used by the MultiscaleStore internally to identify this scale.
-    :param dimensions: (xyz) Metadata of the dataset at this scale, to inform the user's choice.
-        E.g. resolution (Precomputed) or size (OME-Zarr).
-    """
-
-    key: str
-    dimensions: List[int]
 
 
 class MultiscaleStore(metaclass=ABCMeta):
@@ -52,15 +37,17 @@ class MultiscaleStore(metaclass=ABCMeta):
         self,
         dtype: numpy.dtype,
         axistags: vigra.AxisTags,
-        multiscales: Dict[str, Multiscale],
+        multiscales: OrderedDict[str, List[int]],
         lowest_resolution_key: str,
         highest_resolution_key: str,
     ):
         """
         :param dtype: The dataset's numpy dtype.
         :param axistags: vigra.AxisTags describing the dataset's axes.
-        :param multiscales: Dict of scale metadata for GUI interaction and storage in the project file.
-            Keys should be human-readable absolute identifiers for each scale as found in the dataset.
+        :param multiscales: Dict of scale metadata for GUI/shell/project file.
+            Order as the scales should appear when displayed to the user.
+            Keys should be absolute identifiers for each scale as found in the dataset.
+            Values are xyz dimensions (e.g. resolution or shape) of the image at each scale to inform user choice.
         :param lowest_resolution_key: Key of the lowest-resolution scale within the multiscales dict.
             This acts as the default scale after load until the user selects a different one.
         :param highest_resolution_key: Used to infer the maximum dataset size, and for legacy HBP-mode projects.
@@ -70,6 +57,10 @@ class MultiscaleStore(metaclass=ABCMeta):
         self.multiscales = multiscales
         self.lowest_resolution_key = lowest_resolution_key
         self.highest_resolution_key = highest_resolution_key
+        keys = list(self.multiscales.keys())
+        assert (self.lowest_resolution_key == keys[0] and self.highest_resolution_key == keys[-1]) or (
+            self.lowest_resolution_key == keys[-1] and self.highest_resolution_key == keys[0]
+        ), "Lowest and highest resolution keys must be at the extremes of the multiscales dict."
 
     @abstractmethod
     def get_shape(self, scale_key: str) -> Tuple[int]:

@@ -22,6 +22,7 @@ from abc import abstractmethod, ABC
 import glob
 import os
 import uuid
+from collections import OrderedDict
 from typing import List, Tuple, Dict, Optional, Union, Callable
 from numbers import Number
 import re
@@ -127,7 +128,7 @@ class DatasetInfo(ABC):
         self.legacy_datasetId = self.generate_id()
         self.working_scale = working_scale
         self.scale_locked = scale_locked
-        self.scales = {}  # {scale_key: scale_object}, dependent on data format
+        self.scales = OrderedDict()  # {scale_key: scale_dimensions}, see MultiscaleStore.multiscales
 
     @property
     def shape5d(self) -> Shape5D:

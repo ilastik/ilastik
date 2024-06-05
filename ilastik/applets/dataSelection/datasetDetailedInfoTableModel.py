@@ -23,7 +23,6 @@ from typing import List, Dict
 from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from lazyflow.utility.io_util.multiscaleStore import Multiscale
 from .opDataSelection import DatasetInfo
 from .dataLaneSummaryTableModel import rowOfButtonsProxy
 
@@ -38,12 +37,12 @@ class DatasetColumn:
     NumColumns = 6
 
 
-def _scale_to_display_string(scale: Multiscale, axiskeys: str) -> str:
+def _dims_to_display_string(dimensions: List[int], axiskeys: str) -> str:
     """Generate labels to put into the scale combobox.
-    scale.resolution must be in xyz and will be reordered to match axiskeys."""
-    input_axes = dict(zip("xyz", scale.dimensions))
-    reordered_resolution = [input_axes[axis] for axis in axiskeys if axis in input_axes]
-    return ", ".join(str(size) for size in reordered_resolution)
+    Scale dimensions must be in xyz and will be reordered to match axiskeys."""
+    input_axes = dict(zip("xyz", dimensions))
+    reordered_dimensions = [input_axes[axis] for axis in axiskeys if axis in input_axes]
+    return ", ".join(str(size) for size in reordered_dimensions)
 
 
 @rowOfButtonsProxy
@@ -210,7 +209,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             return str(datasetInfo.drange or "")
         if index.column() == DatasetColumn.Scale:
             if datasetInfo.scales:
-                return _scale_to_display_string(datasetInfo.scales[datasetInfo.working_scale], datasetInfo.axiskeys)
+                return _dims_to_display_string(datasetInfo.scales[datasetInfo.working_scale], datasetInfo.axiskeys)
             return UninitializedDisplayData[index.column()]
 
         raise NotImplementedError(f"Unknown column: row={index.row()}, column={index.column()}")
@@ -225,7 +224,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         datasetInfo = datasetSlot.value
         if not datasetInfo.scales:
             return {}
-        return {key: _scale_to_display_string(scale, datasetInfo.axiskeys) for key, scale in datasetInfo.scales.items()}
+        return {key: _dims_to_display_string(dims, datasetInfo.axiskeys) for key, dims in datasetInfo.scales.items()}
 
     def is_scale_locked(self, laneIndex) -> bool:
         datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
