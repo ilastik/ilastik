@@ -555,7 +555,7 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
     @property
     def default_output_dir(self) -> Path:
         if self.url.startswith("file:"):
-            return uri_to_Path(self.url).resolve().parent
+            return uri_to_Path(self.url).absolute().parent
         return super().default_output_dir
 
     def to_json_data(self) -> Dict:
@@ -580,8 +580,7 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         last_url_component = url.rstrip("/").rpartition("/")[2]
         filename_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", last_url_component)
         extensionless = os.path.splitext(filename_safe)[0]
-        exporter_safe = extensionless.replace(".", "_")
-        return exporter_safe
+        return extensionless
 
 
 class UrlDatasetInfo(MultiscaleUrlDatasetInfo):

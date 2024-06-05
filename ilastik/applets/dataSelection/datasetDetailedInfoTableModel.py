@@ -41,9 +41,7 @@ class DatasetColumn:
 def _scale_to_display_string(scale: Multiscale, axiskeys: str) -> str:
     """Generate labels to put into the scale combobox.
     scale.resolution must be in xyz and will be reordered to match axiskeys."""
-    if scale.resolution is None:
-        return scale.key
-    input_axes = dict(zip("xyz", scale.resolution))
+    input_axes = dict(zip("xyz", scale.dimensions))
     reordered_resolution = [input_axes[axis] for axis in axiskeys if axis in input_axes]
     return ", ".join(str(size) for size in reordered_resolution)
 

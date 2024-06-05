@@ -20,7 +20,7 @@
 ###############################################################################
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import numpy
 import vigra
@@ -36,11 +36,12 @@ class Multiscale:
     This is stored in `Slot.meta` dicts, so must be serializable.
 
     :param key: Key-string used by the MultiscaleStore internally to identify this scale.
-    :param resolution: xyz list of dataset size at this scale. Used to inform the user's scale choice.
+    :param dimensions: (xyz) Metadata of the dataset at this scale, to inform the user's choice.
+        E.g. resolution (Precomputed) or size (OME-Zarr).
     """
 
     key: str
-    resolution: Optional[List[int]]
+    dimensions: List[int]
 
 
 class MultiscaleStore(metaclass=ABCMeta):
@@ -83,13 +84,23 @@ class MultiscaleStore(metaclass=ABCMeta):
     @property
     @abstractmethod
     def NAME(self) -> str:
-        """Human-readable name of the store, e.g. "OME-Zarr" or "Precomputed"."""
+        """
+        User-facing name of the data format the store handles, e.g. "OME-Zarr" or "Precomputed".
+        Subclasses should implement this as a class string constant like:
+        class OMEZarrStore(MultiscaleStore):
+            NAME = 'OME-Zarr'
+        """
         ...
 
     @property
     @abstractmethod
     def URL_HINT(self) -> str:
-        """Human-readable description how to recognize URLs of this format."""
+        """
+        User-facing description how to recognize URLs of this format.
+        Subclasses should implement this as a class string constant like:
+        class OMEZarrStore(MultiscaleStore):
+            URL_HINT = 'URL contains .zarr'
+        """
         ...
 
     @staticmethod

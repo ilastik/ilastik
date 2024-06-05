@@ -23,6 +23,8 @@ from builtins import object
 ###############################################################################
 import os
 import h5py
+import pytest
+
 from lazyflow.utility.pathHelpers import (
     compressPathForDisplay,
     getPathVariants,
@@ -145,13 +147,19 @@ class TestPathHelpers(object):
                 dg.create_dataset("test-{index:02d}".format(index=i), (0, 0), dtype="i8")
         return f
 
-    def test_isUrl(self):
+    @pytest.mark.parametrize(
+        "url,expected",
+        [
+            ("http://domain.com", True),
+            ("https://domain.com", True),
+            ("file://localhost/some/file", True),
+            ("file:///some/file", True),
+            ("https:some/file", False),
+            ("file:some/file", False),
+            ("/some/path", False),
+            ("C:\\some\\path", False),
+        ],
+    )
+    def test_isUrl(self, url, expected):
         """Ensure both http(s) and file urls are accepted"""
-        assert isUrl("http://domain.com")
-        assert isUrl("https://domain.com")
-        assert isUrl("file://localhost/some/file")
-        assert isUrl("file:///some/file")
-        assert not isUrl("https:some/file")
-        assert not isUrl("file:some/file")
-        assert not isUrl("/some/path")
-        assert not isUrl("C:\\some\\path")
+        assert isUrl(url) == expected

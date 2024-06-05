@@ -20,7 +20,9 @@
 ###############################################################################
 import json
 import logging
-from typing import Optional, Dict
+import os
+from typing import Dict
+from urllib.parse import unquote_to_bytes
 
 import jsonschema
 import vigra
@@ -100,6 +102,11 @@ class OMEZarrStore(MultiscaleStore):
     }
 
     def __init__(self, url: str = "", last_scale_only_mode: bool = False):
+        if url.startswith("file:"):
+            # Zarr's FSStore implementation doesn't unescape file URLs before piping them to
+            # the file system. We do it here the same way as in pathHelpers.uri_to_Path.
+            # Primarily this is to deal with spaces in Windows paths (encoded as %20).
+            url = os.fsdecode(unquote_to_bytes(url))
         with Timer() as timer:
             self.url = url
             uncached_store = FSStore(self.url, mode="r", **OME_ZARR_V_0_4_KWARGS)
@@ -136,7 +143,7 @@ class OMEZarrStore(MultiscaleStore):
                 zarray = ZarrArray(store=self._store, path=scale["path"])
                 dtype = zarray.dtype.type
                 gui_scale_metadata[scale["path"]] = Multiscale(
-                    key=scale["path"], resolution=list(zarray.shape[-1:-4:-1])  # xyz
+                    key=scale["path"], dimensions=list(zarray.shape[-1:-4:-1])  # xyz
                 )
                 self._scale_data[scale["path"]] = {
                     "zarray": zarray,

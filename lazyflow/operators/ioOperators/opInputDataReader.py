@@ -186,7 +186,7 @@ class OpInputDataReader(Operator):
             self._attemptOpenAsKlb,
             self._attemptOpenAsUfmf,
             self._attemptOpenAsMmf,
-            self._attemptOpenAsOmeZarrMultiscaleFileset,
+            self._attemptOpenAsOmeZarrMultiscale,
             self._attemptOpenAsRESTfulPrecomputedChunkedVolume,
             self._attemptOpenAsDvidVolume,
             self._attemptOpenAsH5N5Stack,
@@ -288,7 +288,7 @@ class OpInputDataReader(Operator):
         else:
             return ([], None)
 
-    def _attemptOpenAsOmeZarrMultiscaleFileset(self, filePath):
+    def _attemptOpenAsOmeZarrMultiscale(self, filePath):
         if "zarr" not in filePath.lower():
             return ([], None)
         if not (filePath.startswith("http") or filePath.startswith("file")):
