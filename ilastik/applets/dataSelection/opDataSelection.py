@@ -551,7 +551,7 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
 
     @property
     def display_string(self):
-        return "URI: " + self.url
+        return "URL: " + self.url
 
     @property
     def default_output_dir(self) -> Path:

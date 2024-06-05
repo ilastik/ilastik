@@ -297,7 +297,7 @@ class OpInputDataReader(Operator):
         # We pass this down to the loader so that it can avoid loading scale metadata unnecessarily.
         reader = OpOMEZarrMultiscaleReader(parent=self, metadata_only_mode=self.parent is None)
         reader.Scale.connect(self.ActiveScale)
-        reader.BaseUrl.setValue(filePath)
+        reader.BaseUri.setValue(filePath)
         return [reader], reader.Output
 
     def _attemptOpenAsRESTfulPrecomputedChunkedVolume(self, filePath):

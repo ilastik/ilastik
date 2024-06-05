@@ -54,7 +54,7 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
     """
 
     NAME = "Neuroglancer Precomputed"
-    URL_HINT = 'URL starts with "precomputed://"'
+    URI_HINT = 'URL starts with "precomputed://"'
 
     info_schema = {
         "type": "object",
@@ -108,8 +108,8 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
         super().__init__(dtype, axistags, gui_scale_metadata, lowest_resolution_key, highest_resolution_key)
 
     @staticmethod
-    def is_url_compatible(url: str) -> bool:
-        return url.startswith("precomputed://")
+    def is_uri_compatible(uri: str) -> bool:
+        return uri.startswith("precomputed://")
 
     def get_chunk_size(self, scale=DEFAULT_SCALE_KEY):
         scale = scale if scale != DEFAULT_SCALE_KEY else self.lowest_resolution_key

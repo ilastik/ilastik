@@ -649,19 +649,19 @@ class DataSelectionGui(QWidget):
 
     def addMultiscaleDataset(self, roleIndex, laneIndex):
         PREFERENCES_GROUP = "DataSelection"
-        RECENT_URLS_KEY = "recent urls"
-        history = preferences.get(PREFERENCES_GROUP, RECENT_URLS_KEY) or []
+        RECENT_URIS_KEY = "recent urls"
+        history = preferences.get(PREFERENCES_GROUP, RECENT_URIS_KEY) or []
         browser = MultiscaleDatasetBrowser(history=history, parent=self)
 
         if browser.exec_() == MultiscaleDatasetBrowser.Rejected:
             return
 
-        url = browser.selected_url
-        if url in history:
-            history.remove(url)
-        preferences.set(PREFERENCES_GROUP, RECENT_URLS_KEY, [url] + history[:9])
+        uri = browser.selected_uri
+        if uri in history:
+            history.remove(uri)
+        preferences.set(PREFERENCES_GROUP, RECENT_URIS_KEY, [uri] + history[:9])
 
-        info = self.instantiate_dataset_info(url=url, role=roleIndex)
+        info = self.instantiate_dataset_info(url=uri, role=roleIndex)
         self.addLanes([info], roleIndex=roleIndex, startingLaneNum=laneIndex)
 
     def addDvidVolume(self, roleIndex, laneIndex):

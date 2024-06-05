@@ -38,7 +38,7 @@ class OpOMEZarrMultiscaleReader(Operator):
 
     name = "OpOMEZarrMultiscaleReader"
 
-    BaseUrl = InputSlot()
+    BaseUri = InputSlot()
     Scale = InputSlot(optional=True)
 
     Output = OutputSlot()
@@ -49,11 +49,11 @@ class OpOMEZarrMultiscaleReader(Operator):
         self._store = None
 
     def setupOutputs(self):
-        if self._store is not None and self._store.url == self.BaseUrl.value:
+        if self._store is not None and self._store.uri == self.BaseUri.value:
             # Must not set Output.meta here.
             return
 
-        self._store = OMEZarrStore(self.BaseUrl.value, self._load_only_one_scale)
+        self._store = OMEZarrStore(self.BaseUri.value, self._load_only_one_scale)
         active_scale = self.Scale.value if self.Scale.ready() else self._store.lowest_resolution_key
         self.Output.meta.shape = self._store.get_shape(active_scale)
         self.Output.meta.dtype = self._store.dtype

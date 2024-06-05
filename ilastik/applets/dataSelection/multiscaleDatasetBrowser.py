@@ -56,7 +56,7 @@ class MultiscaleDatasetBrowser(QDialog):
     def __init__(self, history=None, parent=None):
         super().__init__(parent)
         self._history = history or []
-        self.selected_url = None  # Return value read by the caller after the dialog is closed
+        self.selected_uri = None  # Return value read by the caller after the dialog is closed
 
         self.setup_ui()
 
@@ -105,7 +105,7 @@ class MultiscaleDatasetBrowser(QDialog):
         self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)
 
         def update_ok_button(current_entered_text):
-            if current_entered_text == self.selected_url:
+            if current_entered_text == self.selected_uri:
                 self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(True)
             else:
                 self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)
@@ -115,17 +115,17 @@ class MultiscaleDatasetBrowser(QDialog):
         self.setLayout(main_layout)
 
     def validate_entered_uri(self, _event):
-        self.selected_url = None
-        url = self.combo.currentText().strip()
-        if url == "":
+        self.selected_uri = None
+        uri = self.combo.currentText().strip()
+        if uri == "":
             return
-        if not isUrl(url):
-            ospath = pathlib.Path(url)
+        if not isUrl(uri):
+            ospath = pathlib.Path(uri)
             if ospath.exists():  # It's a local file path - convert to file: URL and continue
-                url = ospath.as_uri()
-                self.combo.lineEdit().setText(url)
+                uri = ospath.as_uri()
+                self.combo.lineEdit().setText(uri)
             else:  # Maybe the user typed the address manually and forgot https://?
-                guessed_uri = f"https://{url}"
+                guessed_uri = f"https://{uri}"
                 msg = (
                     'Address must be a URL starting with "http(s)://" or "file://".\n\n'
                     '"https://" was added to your address. Please press "Check" to try again.'
@@ -133,16 +133,16 @@ class MultiscaleDatasetBrowser(QDialog):
                 self.combo.lineEdit().setText(guessed_uri)
                 self.result_text_box.setText(msg)
                 return
-        logger.debug(f"Entered URL: {url}")
+        logger.debug(f"Entered URL: {uri}")
         try:
             # Ask each store type if it likes the URL to avoid web requests during instantiation attempts.
-            if OMEZarrStore.is_url_compatible(url):
-                rv = OMEZarrStore(url)
-            elif RESTfulPrecomputedChunkedVolume.is_url_compatible(url):
-                rv = RESTfulPrecomputedChunkedVolume(volume_url=url)
+            if OMEZarrStore.is_uri_compatible(uri):
+                rv = OMEZarrStore(uri)
+            elif RESTfulPrecomputedChunkedVolume.is_uri_compatible(uri):
+                rv = RESTfulPrecomputedChunkedVolume(volume_url=uri)
             else:
                 store_types = [OMEZarrStore, RESTfulPrecomputedChunkedVolume]
-                supported_formats = "\n".join(f"<li>{s.NAME} ({s.URL_HINT})</li>" for s in store_types)
+                supported_formats = "\n".join(f"<li>{s.NAME} ({s.URI_HINT})</li>" for s in store_types)
                 self.result_text_box.setHtml(
                     f"<p>Address does not look like any supported format.</p>"
                     f"<p>Supported formats:</p>"
@@ -161,9 +161,9 @@ class MultiscaleDatasetBrowser(QDialog):
             self.result_text_box.setText(msg)
             return
 
-        self.selected_url = url
+        self.selected_uri = uri
         self.result_text_box.setText(
-            f"URL: {self.selected_url}\n"
+            f"URL: {self.selected_uri}\n"
             f"Data format: {rv.NAME}\n"
             f"Number of scales: {len(rv.multiscales)}\n"
             f"Raw dataset shape: {rv.get_shape(rv.highest_resolution_key)}\n"
@@ -185,4 +185,4 @@ if __name__ == "__main__":
     pv.combo.addItem("test")
     pv.show()
     app.exec_()
-    print(pv.result(), pv.selected_url)
+    print(pv.result(), pv.selected_uri)

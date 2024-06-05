@@ -224,7 +224,7 @@ class ScaleComboBoxDelegate(QStyledItemDelegate):
         if model.is_scale_locked(index.row()):
             message = (
                 "You have already continued in the project with this dataset at the selected scale. "
-                'To inspect another scale, please use "Add New" and add the same URL as '
+                'To inspect another scale, please use "Add New" and add the same URL or path as '
                 "another dataset, or create a new project."
             )
             QMessageBox.information(self.parent(), "Scale locked", message)

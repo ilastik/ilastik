@@ -65,14 +65,14 @@ class OMEZarrStore(MultiscaleStore):
     """
     Adapter class to handle communication with a source serving a dataset in OME-Zarr format.
 
-    :param url: URL to the OME-Zarr store.
+    :param uri: URI of the OME-Zarr store.
     :param single_scale_mode:
         If True, only the first scale is loaded to determine the dtype. Used to shorten init time
         when DatasetInfo instantiates a standalone OpInputDataReader to get lane shape and dtype.
     """
 
     NAME = "OME-Zarr"
-    URL_HINT = 'URL contains "zarr"'
+    URI_HINT = 'URL contains "zarr"'
 
     spec_schema = {
         "type": "object",
@@ -102,23 +102,23 @@ class OMEZarrStore(MultiscaleStore):
         "required": ["multiscales"],
     }
 
-    def __init__(self, url: str = "", single_scale_mode: bool = False):
-        if url.startswith("file:"):
+    def __init__(self, uri: str = "", single_scale_mode: bool = False):
+        if uri.startswith("file:"):
             # Zarr's FSStore implementation doesn't unescape file URLs before piping them to
             # the file system. We do it here the same way as in pathHelpers.uri_to_Path.
             # Primarily this is to deal with spaces in Windows paths (encoded as %20).
-            url = os.fsdecode(unquote_to_bytes(url))
+            uri = os.fsdecode(unquote_to_bytes(uri))
         with Timer() as timer:
-            self.url = url
-            uncached_store = FSStore(self.url, mode="r", **OME_ZARR_V_0_4_KWARGS)
+            self.uri = uri
+            uncached_store = FSStore(self.uri, mode="r", **OME_ZARR_V_0_4_KWARGS)
             try:
                 self.ome_spec = json.loads(uncached_store[".zattrs"])
             except KeyError:
                 raise ValueError("Expected a Zarr store, but could not find .zattrs file at the address.")
             if self.ome_spec.get("multiscales", [{}])[0].get("version") == "0.1":
-                uncached_store = FSStore(self.url, mode="r", **OME_ZARR_V_0_1_KWARGS)
+                uncached_store = FSStore(self.uri, mode="r", **OME_ZARR_V_0_1_KWARGS)
             self._store = LRUStoreCache(uncached_store, max_size=None)
-            logger.info(f"Initializing OME-Zarr store at {url} took {timer.seconds()*1000} ms.")
+            logger.info(f"Initializing OME-Zarr store at {uri} took {timer.seconds()*1000} ms.")
         try:
             jsonschema.validate(self.ome_spec, self.spec_schema)
         except jsonschema.ValidationError:
@@ -163,8 +163,8 @@ class OMEZarrStore(MultiscaleStore):
         )
 
     @staticmethod
-    def is_url_compatible(url: str) -> bool:
-        return "zarr" in url
+    def is_uri_compatible(uri: str) -> bool:
+        return "zarr" in uri
 
     def get_chunk_size(self, scale_key=DEFAULT_SCALE_KEY):
         scale_key = scale_key if scale_key else self.lowest_resolution_key

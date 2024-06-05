@@ -92,18 +92,19 @@ class MultiscaleStore(metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def URL_HINT(self) -> str:
+    def URI_HINT(self) -> str:
         """
-        User-facing description how to recognize URLs of this format.
+        User-facing description how to recognize URIs of this format.
+        Note we aim to use "URI" in code but "URL" in user-facing text.
         Subclasses should implement this as a class string constant like:
         class OMEZarrStore(MultiscaleStore):
-            URL_HINT = 'URL contains .zarr'
+            URI_HINT = 'URL contains .zarr'
         """
         ...
 
     @staticmethod
     @abstractmethod
-    def is_url_compatible(url: str) -> bool:
-        """Check if the dataset at this URL might be compatible with this adapter.
+    def is_uri_compatible(uri: str) -> bool:
+        """Check if the dataset at this URI might be compatible with this adapter.
         All adapters are asked to check in turn, so need to avoid slow operations like web requests here."""
         ...
