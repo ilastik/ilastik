@@ -32,7 +32,7 @@ from zarr.storage import FSStore, LRUStoreCache
 
 from lazyflow import rtype
 from lazyflow.utility import Timer
-from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_LOWEST_SCALE_KEY
+from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SCALE_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -166,15 +166,15 @@ class OMEZarrStore(MultiscaleStore):
     def is_url_compatible(url: str) -> bool:
         return "zarr" in url
 
-    def get_chunk_size(self, scale_key=DEFAULT_LOWEST_SCALE_KEY):
+    def get_chunk_size(self, scale_key=DEFAULT_SCALE_KEY):
         scale_key = scale_key if scale_key else self.lowest_resolution_key
         return self._scale_data[scale_key]["chunks"]
 
-    def get_shape(self, scale_key=DEFAULT_LOWEST_SCALE_KEY):
+    def get_shape(self, scale_key=DEFAULT_SCALE_KEY):
         scale_key = scale_key if scale_key else self.lowest_resolution_key
         return self._scale_data[scale_key]["shape"]
 
-    def request(self, roi: rtype.Roi, scale_key=DEFAULT_LOWEST_SCALE_KEY):
+    def request(self, roi: rtype.Roi, scale_key=DEFAULT_SCALE_KEY):
         scale_key = scale_key if scale_key else self.lowest_resolution_key
         with Timer() as timer:
             data = self._scale_data[scale_key]["zarray"][roi.toSlice()]

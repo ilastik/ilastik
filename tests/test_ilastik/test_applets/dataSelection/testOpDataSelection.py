@@ -33,7 +33,7 @@ from pathlib import Path
 import zarr
 from PIL import Image
 
-from lazyflow.utility.io_util.multiscaleStore import DEFAULT_LOWEST_SCALE_KEY
+from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY
 from lazyflow.utility.pathHelpers import PathComponents
 from lazyflow.graph import OperatorWrapper
 from ilastik.applets.dataSelection.opDataSelection import (
@@ -869,7 +869,7 @@ class TestOpDataSelection_PrecomputedChunks:
     def op(self, graph, monkeypatch, datasetInfo) -> OpDataSelection:
         op = OpDataSelection(graph=graph)
         op.WorkingDirectory.setValue(os.getcwd())
-        op.ActiveScale.setValue(DEFAULT_LOWEST_SCALE_KEY)
+        op.ActiveScale.setValue(DEFAULT_SCALE_KEY)
         op.Dataset.setValue(datasetInfo)
         return op
 
@@ -969,7 +969,7 @@ class TestOpDataSelection_OMEZarr:
     def op(self, graph, monkeypatch, datasetInfo):
         op = OpDataSelection(graph=graph)
         op.WorkingDirectory.setValue(os.getcwd())
-        op.ActiveScale.setValue(DEFAULT_LOWEST_SCALE_KEY)
+        op.ActiveScale.setValue(DEFAULT_SCALE_KEY)
         op.Dataset.setValue(datasetInfo)
         return op
 

@@ -26,12 +26,19 @@ import numpy
 import vigra
 
 
-DEFAULT_LOWEST_SCALE_KEY = ""
+DEFAULT_SCALE_KEY = ""
 
 
 class MultiscaleStore(metaclass=ABCMeta):
-    """Base class for adapter classes that handle communication with a web source serving a multiscale dataset.
-    Specifies the minimum interface required for GUI interaction, image computations and project file storage."""
+    """
+    Base class for adapter classes that handle communication with a web source serving a multiscale dataset.
+    Specifies the minimum interface required for GUI interaction, image computations and project file storage.
+
+    Terminology around this subject is not standardised, in particular "scale" and "resolution" are used
+    somewhat interchangeably. We aim to stick with "scale" as the term for a level of scaling of the dataset,
+    synonymously to "pyramid level" or "multiscale" in some communities. "Resolution" for image detail,
+    i.e. "high res" = more pixels.
+    """
 
     def __init__(
         self,

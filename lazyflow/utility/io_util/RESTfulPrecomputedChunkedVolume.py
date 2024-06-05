@@ -28,7 +28,7 @@ import numpy
 import requests
 import vigra
 
-from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_LOWEST_SCALE_KEY
+from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SCALE_KEY
 
 logger = logging.getLogger(__file__)
 
@@ -111,24 +111,24 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
     def is_url_compatible(url: str) -> bool:
         return url.startswith("precomputed://")
 
-    def get_chunk_size(self, scale=DEFAULT_LOWEST_SCALE_KEY):
-        scale = scale if scale != DEFAULT_LOWEST_SCALE_KEY else self.lowest_resolution_key
+    def get_chunk_size(self, scale=DEFAULT_SCALE_KEY):
+        scale = scale if scale != DEFAULT_SCALE_KEY else self.lowest_resolution_key
         n_channels = self.n_channels
         block_shape = numpy.array([n_channels] + self._scales[scale]["chunk_sizes"][0][::-1])
         return block_shape
 
-    def get_voxel_offset(self, scale=DEFAULT_LOWEST_SCALE_KEY):
-        scale = scale if scale != DEFAULT_LOWEST_SCALE_KEY else self.lowest_resolution_key
+    def get_voxel_offset(self, scale=DEFAULT_SCALE_KEY):
+        scale = scale if scale != DEFAULT_SCALE_KEY else self.lowest_resolution_key
         voxel_offset = numpy.array([0] + self._scales[scale]["voxel_offset"][::-1])
         return voxel_offset
 
-    def get_encoding(self, scale=DEFAULT_LOWEST_SCALE_KEY):
-        scale = scale if scale != DEFAULT_LOWEST_SCALE_KEY else self.lowest_resolution_key
+    def get_encoding(self, scale=DEFAULT_SCALE_KEY):
+        scale = scale if scale != DEFAULT_SCALE_KEY else self.lowest_resolution_key
         encoding = self._scales[scale]["encoding"]
         return encoding
 
-    def get_shape(self, scale=DEFAULT_LOWEST_SCALE_KEY):
-        scale = scale if scale != DEFAULT_LOWEST_SCALE_KEY else self.lowest_resolution_key
+    def get_shape(self, scale=DEFAULT_SCALE_KEY):
+        scale = scale if scale != DEFAULT_SCALE_KEY else self.lowest_resolution_key
         n_channels = self.n_channels
         shape = numpy.array([n_channels] + self._scales[scale]["size"][::-1])
         return shape
@@ -143,7 +143,7 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
 
         self._json_info = json.loads(r.content)
 
-    def download_block(self, block_coordinates, scale=DEFAULT_LOWEST_SCALE_KEY):
+    def download_block(self, block_coordinates, scale=DEFAULT_SCALE_KEY):
         """downloads a single block at a given scale
 
         Args:
@@ -151,7 +151,7 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
               assumed
             scale (int): index of the scale to be used
         """
-        scale = scale if scale != DEFAULT_LOWEST_SCALE_KEY else self.lowest_resolution_key
+        scale = scale if scale != DEFAULT_SCALE_KEY else self.lowest_resolution_key
         url, block_shape = self.generate_url(block_coordinates, scale)
         try:
             content = self.downloading(url)
@@ -182,7 +182,7 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
         r = requests.get(url)
         return r.content
 
-    def generate_url(self, block_coordinates, scale=DEFAULT_LOWEST_SCALE_KEY):
+    def generate_url(self, block_coordinates, scale=DEFAULT_SCALE_KEY):
         """Generate url to access a specific block
 
 
@@ -194,7 +194,7 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
         Returns:
             string: URL to access the block with the given block coordinates
         """
-        scale = scale if scale != DEFAULT_LOWEST_SCALE_KEY else self.lowest_resolution_key
+        scale = scale if scale != DEFAULT_SCALE_KEY else self.lowest_resolution_key
         # block shape without channel
         shape = self.get_shape(scale)
         chunk_size = self.get_chunk_size(scale)
