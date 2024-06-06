@@ -20,6 +20,7 @@
 ###############################################################################
 import json
 import logging
+import math
 import os
 from collections import OrderedDict
 from typing import Dict
@@ -31,7 +32,7 @@ from zarr.core import Array as ZarrArray
 from zarr.storage import FSStore, LRUStoreCache
 
 from lazyflow import rtype
-from lazyflow.utility import Timer
+from lazyflow.utility import Timer, Memory
 from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SCALE_KEY
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,15 @@ def _get_axistags_from_spec(validated_ome_spec: Dict) -> vigra.AxisTags:
         # v0.1 and v0.2 did not allow variable axes
         axis_keys = ["t", "c", "z", "y", "x"]
     return vigra.defaultAxistags("".join(axis_keys))
+
+
+def _get_zarr_cache_max_size() -> int:
+    caches_max = Memory.getAvailableRamCaches()
+    # Given that the only benefit of this cache is to prevent downloading the same file repeatedly for multiple
+    # blocks, it shouldn't need to be huge. 1/8 might be a reasonable default for now.
+    # Should see if we can implement a managed cache on top of this and use cacheMemoryManager to share the global pool.
+    permissible_fraction_max = 0.125
+    return math.floor(caches_max * permissible_fraction_max)
 
 
 class OMEZarrStore(MultiscaleStore):
@@ -133,7 +143,11 @@ class OMEZarrStore(MultiscaleStore):
                 raise ValueError("Expected a Zarr store, but could not find .zattrs file at the address.")
             if self.ome_spec.get("multiscales", [{}])[0].get("version") == "0.1":
                 uncached_store = FSStore(self.uri, mode="r", **OME_ZARR_V_0_1_KWARGS)
-            self._store = LRUStoreCache(uncached_store, max_size=None)
+            # There is an additional block cache in front of OpOMEZarrMultiscaleReader, so e.g. when
+            # the user scrolls across z back and forth, this does not trigger requests to the store.
+            # But blocks can be misaligned with file size in the store. This cache can prevent downloading
+            # the same file repeatedly for multipled blocks.
+            self._store = LRUStoreCache(uncached_store, max_size=_get_zarr_cache_max_size())
             logger.info(f"Initializing OME-Zarr store at {uri} took {timer.seconds()*1000} ms.")
         try:
             jsonschema.validate(self.ome_spec, self.spec_schema)
