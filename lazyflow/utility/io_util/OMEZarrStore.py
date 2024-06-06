@@ -40,17 +40,11 @@ OME_ZARR_V_0_4_KWARGS = dict(dimension_separator="/", normalize_keys=False)
 OME_ZARR_V_0_1_KWARGS = dict(dimension_separator=".")
 
 
-def _get_axistags_from_spec(ome_spec: Dict) -> vigra.AxisTags:
-    if "axes" not in ome_spec:
-        # v0.1 and v0.2 did not allow variable axes
-        axis_keys = ["t", "c", "z", "y", "x"]
-    else:
-        ome_axes = ome_spec["axes"]
-        assert isinstance(ome_axes, list), f"Expected axis information to be a list, received: {ome_axes}."
-        if "name" not in ome_axes[0]:
-            # v0.3: ['t', 'c', 'y', 'x']
-            axis_keys = ome_axes
-        else:
+def _get_axistags_from_spec(validated_ome_spec: Dict) -> vigra.AxisTags:
+    # We assume the spec is already `jsonschema.validate`d to be a Dict according to OME schema
+    if "axes" in validated_ome_spec:
+        ome_axes = validated_ome_spec["axes"]
+        if "name" in ome_axes[0]:
             # v0.4: spec["axes"] requires name, recommends type and unit; like:
             # [
             #   {'name': 'c', 'type': 'channel'},
@@ -58,6 +52,12 @@ def _get_axistags_from_spec(ome_spec: Dict) -> vigra.AxisTags:
             #   {'name': 'x', 'type': 'space', 'unit': 'nanometer'}
             # ]
             axis_keys = [d["name"] for d in ome_axes]
+        else:
+            # v0.3: ['t', 'c', 'y', 'x']
+            axis_keys = ome_axes
+    else:
+        # v0.1 and v0.2 did not allow variable axes
+        axis_keys = ["t", "c", "z", "y", "x"]
     return vigra.defaultAxistags("".join(axis_keys))
 
 
@@ -83,7 +83,23 @@ class OMEZarrStore(MultiscaleStore):
                 "items": {
                     "type": "object",
                     "properties": {
-                        "axes": {"type": "array"},
+                        "axes": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 5,
+                            "items": {
+                                "oneOf": [
+                                    {"type": "string"},
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "name": {"type": "string"},
+                                        },
+                                        "required": ["name"],
+                                    },
+                                ]
+                            },
+                        },
                         "datasets": {
                             "type": "array",
                             "minItems": 1,
@@ -121,12 +137,16 @@ class OMEZarrStore(MultiscaleStore):
             logger.info(f"Initializing OME-Zarr store at {uri} took {timer.seconds()*1000} ms.")
         try:
             jsonschema.validate(self.ome_spec, self.spec_schema)
-        except jsonschema.ValidationError:
-            err = (
-                f"Metadata for this store did not match OME-Zarr spec, "
-                f"or reports no multiscale datasets.\nReceived:\n{self.ome_spec}."
+        except jsonschema.ValidationError as e:
+            err_msg = (
+                "Metadata for this store did not match OME-Zarr spec, "
+                "or reports no multiscale datasets. Details below."
+                f"\n\nProblematic metadata entry: {e.json_path}"
+                f"\nProblem: {e.message}"
+                f"\nRequired properties: {e.schema}"
+                f"\nFull metadata received:\n{self.ome_spec}"
             )
-            raise ValueError(err)
+            raise ValueError(err_msg)
         if len(self.ome_spec["multiscales"]) > 1:
             warn = (
                 f"The OME-Zarr store contains more than one multiscale dataset. "
@@ -141,15 +161,18 @@ class OMEZarrStore(MultiscaleStore):
         self._scale_data = {}
         for scale in datasets:  # OME-Zarr spec requires datasets ordered from high to low resolution
             with Timer() as timer:
-                zarray = ZarrArray(store=self._store, path=scale["path"])
+                scale_key = scale["path"]
+                # Loading a ZarrArray at this path is necessary to obtain the scale dimensions for the GUI.
+                # As a bonus, this also validates all scale["path"] strings passed outside this class.
+                zarray = ZarrArray(store=self._store, path=scale_key)
                 dtype = zarray.dtype.type
-                gui_scale_metadata[scale["path"]] = list(zarray.shape[-1:-4:-1])  # xyz
-                self._scale_data[scale["path"]] = {
+                gui_scale_metadata[scale_key] = list(zarray.shape[-1:-4:-1])  # xyz
+                self._scale_data[scale_key] = {
                     "zarray": zarray,
                     "chunks": zarray.chunks,
                     "shape": zarray.shape,
                 }
-                logger.info(f"Initializing scale {scale['path']} took {timer.seconds()*1000} ms.")
+                logger.info(f"Initializing scale {scale_key} took {timer.seconds()*1000} ms.")
             if single_scale_mode:
                 break  # One scale is enough to get dtype
         # Reverse so that GUI displays from low to high resolution
