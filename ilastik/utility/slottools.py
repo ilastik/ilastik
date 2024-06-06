@@ -35,18 +35,15 @@ class DtypeConvertFunction:
     dirtyness.
     """
 
-    def __init__(self, dtype: numpy.dtype):
+    def __init__(self, dtype: numpy.typing.DTypeLike):
         """
         Args:
             dtype (numpy.dtype): dtype to which this functions __call__ will
               convert.
         """
-        # When from other libraries, the dtype could also be
-        # numpy.dtype('uint8'), which would not be the same as numpy.uint8
-        assert not isinstance(dtype, numpy.dtype)
-        self._dtype = dtype
+        self._dtype = numpy.dtype(dtype)
 
-        if numpy.dtype(dtype).char in numpy.typecodes["AllInteger"]:
+        if self._dtype.char in numpy.typecodes["AllInteger"]:
             # For integer dtype scale according to dtype min and max to maximize precision
             dtype_info = numpy.iinfo(dtype)
             min_val = dtype_info.min

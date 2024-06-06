@@ -17,6 +17,9 @@ def test_data_lookup(data_path, tmpdir_factory) -> types.ApiTestDataLookup:
         for prj in types.TestProjects:
             known_filenames.add(prj.value)
 
+        for result in types.ResultData:
+            known_filenames.add(result.value)
+
         path_by_name = {}
         unknown_names = set()
         for name in zip.namelist():
