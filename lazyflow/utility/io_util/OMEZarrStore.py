@@ -173,6 +173,8 @@ class OMEZarrStore(MultiscaleStore):
         dtype = None
         gui_scale_metadata = OrderedDict()  # Becomes slot metadata -> must be serializable (no ZarrArray allowed)
         self._scale_data = {}
+        if single_scale_mode:
+            datasets = datasets[:1]  # One scale is enough to get dtype
         for scale in datasets:  # OME-Zarr spec requires datasets ordered from high to low resolution
             with Timer() as timer:
                 scale_key = scale["path"]
@@ -187,8 +189,6 @@ class OMEZarrStore(MultiscaleStore):
                     "shape": zarray.shape,
                 }
                 logger.info(f"Initializing scale {scale_key} took {timer.seconds()*1000} ms.")
-            if single_scale_mode:
-                break  # One scale is enough to get dtype
         # Reverse so that GUI displays from low to high resolution
         gui_scale_metadata = OrderedDict(reversed(list(gui_scale_metadata.items())))
         super().__init__(
