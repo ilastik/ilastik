@@ -48,6 +48,7 @@ from PyQt5.QtWidgets import (
 from lazyflow.utility import isUrl
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore
 from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
+from lazyflow.utility.pathHelpers import uri_to_Path
 
 logger = logging.getLogger(__name__)
 
@@ -119,19 +120,29 @@ class MultiscaleDatasetBrowser(QDialog):
         uri = self.combo.currentText().strip()
         if uri == "":
             return
-        if not isUrl(uri):
+        if isUrl(uri) and uri.startswith("file:"):
+            # Check the file URI points to an existing path
+            try:
+                if not uri_to_Path(uri).exists():
+                    self.result_text_box.setText(
+                        "Directory does not exist or URL is malformed. Please try copy-pasting the path directly."
+                    )
+                    return
+            except ValueError:
+                self.result_text_box.setText("Path is not absolute. Please try copy-pasting the full path.")
+                return
+        elif not isUrl(uri):
             ospath = pathlib.Path(uri)
-            if ospath.exists():  # It's a local file path - convert to file: URL and continue
+            if ospath.exists():  # It's a local file path - convert to file: URI and continue
                 uri = ospath.as_uri()
                 self.combo.lineEdit().setText(uri)
             else:  # Maybe the user typed the address manually and forgot https://?
                 guessed_uri = f"https://{uri}"
-                msg = (
-                    'Address must be a URL starting with "http(s)://" or "file://".\n\n'
+                self.combo.lineEdit().setText(guessed_uri)
+                self.result_text_box.setText(
+                    'Address must be a URL starting with "http(s)://" or "file:".\n\n'
                     '"https://" was added to your address. Please press "Check" to try again.'
                 )
-                self.combo.lineEdit().setText(guessed_uri)
-                self.result_text_box.setText(msg)
                 return
         logger.debug(f"Entered URL: {uri}")
         try:
@@ -156,7 +167,7 @@ class MultiscaleDatasetBrowser(QDialog):
             elif isinstance(e, ConnectionError):
                 msg = "Connection error, please check that the server is online and the URL is correct."
             else:
-                msg = "Unknown error while trying to connect to this address."
+                msg = "Error while trying to read a dataset at this address."
             msg += f"\n\nFull error message:\n{e}"
             self.result_text_box.setText(msg)
             return
