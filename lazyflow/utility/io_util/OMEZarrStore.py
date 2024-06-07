@@ -204,14 +204,14 @@ class OMEZarrStore(MultiscaleStore):
         return "zarr" in uri
 
     def get_chunk_size(self, scale_key=DEFAULT_SCALE_KEY):
-        scale_key = scale_key if scale_key else self.lowest_resolution_key
+        scale_key = scale_key if scale_key != DEFAULT_SCALE_KEY else self.lowest_resolution_key
         return self._scale_data[scale_key]["chunks"]
 
     def get_shape(self, scale_key=DEFAULT_SCALE_KEY):
-        scale_key = scale_key if scale_key else self.lowest_resolution_key
+        scale_key = scale_key if scale_key != DEFAULT_SCALE_KEY else self.lowest_resolution_key
         return self._scale_data[scale_key]["shape"]
 
     def request(self, roi: rtype.Roi, scale_key=DEFAULT_SCALE_KEY):
-        scale_key = scale_key if scale_key else self.lowest_resolution_key
+        scale_key = scale_key if scale_key != DEFAULT_SCALE_KEY else self.lowest_resolution_key
         data = self._scale_data[scale_key]["zarray"][roi.toSlice()]
         return data
