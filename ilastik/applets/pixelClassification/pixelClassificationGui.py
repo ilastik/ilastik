@@ -762,6 +762,12 @@ class PixelClassificationGui(LabelingGui):
                 ref_label.pmapColorChanged.connect(setLayerColor)
                 ref_label.nameChanged.connect(setPredLayerName)
                 layers.append(predictLayer)
+
+        if self.topLevelOperatorView.Overlay.ready():
+            layer = self.createStandardLayerFromSlot(self.topLevelOperatorView.Overlay)
+            layer.name = "Overlay"
+            layers.append(layer)
+
         return layers
 
     def hasFeatures(self) -> bool:

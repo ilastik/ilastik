@@ -295,6 +295,7 @@ class NewAutocontextWorkflowBase(Workflow):
             opDownstreamClassify.InputImages.connect(opStacker.Output)
             opDownstreamClassify.FeatureImages.connect(opDownstreamFeatures.OutputImage)
             opDownstreamClassify.CachedFeatureImages.connect(opDownstreamFeatures.CachedOutputImage)
+            opDownstreamClassify.Overlay.connect(opData.ImageGroup[self.DATA_ROLE_RAW])
 
         # Data Export connections
         opDataExport.RawData.connect(opData.ImageGroup[self.DATA_ROLE_RAW])

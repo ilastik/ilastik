@@ -71,6 +71,7 @@ class OpPixelClassification(Operator):
     PredictionMasks = InputSlot(
         level=1, optional=True
     )  # Routed to OpClassifierPredict.PredictionMask.  See there for details.
+    Overlay = InputSlot(level=1, optional=True)
 
     LabelInputs = InputSlot(optional=True, level=1)  # Input for providing label data from an external source
 
