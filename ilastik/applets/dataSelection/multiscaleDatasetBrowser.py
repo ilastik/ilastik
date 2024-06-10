@@ -53,6 +53,28 @@ from lazyflow.utility.pathHelpers import uri_to_Path
 logger = logging.getLogger(__name__)
 
 
+def _validate_uri(text: str) -> str:
+    """Make sure the input is a URI, convert if it's a path, ensure path exists if it's a 'file:' URI already.
+    Returns a valid URI, or raises ValueError if invalid."""
+    if text == "":
+        raise ValueError('Please enter a path or URL, then press "Check".')
+    if not isUrl(text):
+        ospath = pathlib.Path(text)
+        if ospath.exists():  # It's a local file path - convert to file: URI
+            return ospath.as_uri()
+        else:  # Maybe the user typed the address manually and forgot https://?
+            raise ValueError('Please enter a URL including protocol ("http(s)://" or "file:").')
+    elif isUrl(text) and text.startswith("file:"):
+        # Check the file URI points to an existing path
+        try:
+            exists = uri_to_Path(text).exists()
+        except ValueError:  # from uri_to_Path
+            raise ValueError("Path is not absolute. Please try copy-pasting the full path.")
+        if not exists:
+            raise ValueError("Directory does not exist or URL is malformed. Please try copy-pasting the path directly.")
+    return text
+
+
 class MultiscaleDatasetBrowser(QDialog):
     def __init__(self, history=None, parent=None):
         super().__init__(parent)
@@ -82,7 +104,7 @@ class MultiscaleDatasetBrowser(QDialog):
         combo_layout = QHBoxLayout()
         chk_button = QPushButton(self)
         chk_button.setText("Check")
-        chk_button.clicked.connect(self.validate_entered_uri)
+        chk_button.clicked.connect(self._validate_text_input)
         self.combo.lineEdit().returnPressed.connect(chk_button.click)
         combo_layout.addWidget(combo_label)
         combo_layout.addWidget(self.combo)
@@ -115,35 +137,16 @@ class MultiscaleDatasetBrowser(QDialog):
         main_layout.addWidget(self.qbuttons)
         self.setLayout(main_layout)
 
-    def validate_entered_uri(self, _event):
+    def _validate_text_input(self, _event):
         self.selected_uri = None
-        uri = self.combo.currentText().strip()
-        if uri == "":
+        text = self.combo.currentText().strip()
+        try:
+            uri = _validate_uri(text)
+        except ValueError as e:
+            self.result_text_box.setText(str(e))
             return
-        if isUrl(uri) and uri.startswith("file:"):
-            # Check the file URI points to an existing path
-            try:
-                if not uri_to_Path(uri).exists():
-                    self.result_text_box.setText(
-                        "Directory does not exist or URL is malformed. Please try copy-pasting the path directly."
-                    )
-                    return
-            except ValueError:
-                self.result_text_box.setText("Path is not absolute. Please try copy-pasting the full path.")
-                return
-        elif not isUrl(uri):
-            ospath = pathlib.Path(uri)
-            if ospath.exists():  # It's a local file path - convert to file: URI and continue
-                uri = ospath.as_uri()
-                self.combo.lineEdit().setText(uri)
-            else:  # Maybe the user typed the address manually and forgot https://?
-                guessed_uri = f"https://{uri}"
-                self.combo.lineEdit().setText(guessed_uri)
-                self.result_text_box.setText(
-                    'Address must be a URL starting with "http(s)://" or "file:".\n\n'
-                    '"https://" was added to your address. Please press "Check" to try again.'
-                )
-                return
+        if uri != text:
+            self.combo.lineEdit().setText(uri)
         logger.debug(f"Entered URL: {uri}")
         try:
             # Ask each store type if it likes the URL to avoid web requests during instantiation attempts.
