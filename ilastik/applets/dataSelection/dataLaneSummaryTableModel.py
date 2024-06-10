@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -183,7 +183,7 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
             LocationNames = {
                 RelativeFilesystemDatasetInfo: "External File",
                 FilesystemDatasetInfo: "External File",
-                MultiscaleUrlDatasetInfo: "Remote Data",
+                MultiscaleUrlDatasetInfo: "Multiscale Data",
                 PreloadedArrayDatasetInfo: "Preloaded Array",
                 ProjectInternalDatasetInfo: "Project File",
             }

@@ -416,3 +416,34 @@ def globNpz(path: str, globString: str):
 def globList(listOfPaths, globString):
     matches = [x for x in listOfPaths if fnmatch.fnmatch(x, globString)]
     return matches
+
+
+def uri_to_Path(uri: str) -> pathlib.Path:
+    """
+    Return a new path from the given 'file' URI.
+    Copy of the Python 3.13 implementation of pathlib.Path.from_uri,
+    changed to a static function by instantiating return as pathlib.Path instead of cls.
+    https://github.com/python/cpython/blob/7ca74a760a5d3cdf48159f003d4db7c2778e9261/Lib/pathlib/_local.py#L862
+    Copyright © 2001-2023 Python Software Foundation. All rights reserved.
+    """
+    if not uri.startswith("file:"):
+        raise ValueError(f"URI does not start with 'file:': {uri!r}")
+    path = uri[5:]
+    if path[:3] == "///":
+        # Remove empty authority
+        path = path[2:]
+    elif path[:12] == "//localhost/":
+        # Remove 'localhost' authority
+        path = path[11:]
+    if path[:3] == "///" or (path[:1] == "/" and path[2:3] in ":|"):
+        # Remove slash before DOS device/UNC path
+        path = path[1:]
+    if path[1:2] == "|":
+        # Replace bar with colon in DOS drive
+        path = path[:1] + ":" + path[2:]
+    from urllib.parse import unquote_to_bytes
+
+    path = pathlib.Path(os.fsdecode(unquote_to_bytes(path)))
+    if not path.is_absolute():
+        raise ValueError(f"URI is not absolute: {uri!r}")
+    return path

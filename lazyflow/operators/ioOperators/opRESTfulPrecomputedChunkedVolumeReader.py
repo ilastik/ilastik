@@ -1,7 +1,7 @@
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
-#       Copyright (C) 2011-2017, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -22,7 +22,6 @@
 import logging
 
 import numpy
-import vigra
 
 import lazyflow.roi
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -62,8 +61,8 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
         self.chunk_size = self._volume_object.get_chunk_size(active_scale)
         self.Output.meta.shape = tuple(self._volume_object.get_shape(active_scale))
         self.Output.meta.dtype = numpy.dtype(self._volume_object.dtype).type
-        self.Output.meta.axistags = vigra.defaultAxistags(self._volume_object.axes)
-        self.Output.meta.scales = self._volume_object.scales
+        self.Output.meta.axistags = self._volume_object.axistags
+        self.Output.meta.scales = self._volume_object.multiscales
         # To feed back to DatasetInfo and hence the project file
         self.Output.meta.lowest_scale = self._volume_object.lowest_resolution_key
 

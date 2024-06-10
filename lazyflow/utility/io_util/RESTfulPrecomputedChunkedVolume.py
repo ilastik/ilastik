@@ -1,7 +1,7 @@
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
-#       Copyright (C) 2011-2017, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -21,18 +21,19 @@
 ###############################################################################
 import json
 import logging
+from collections import OrderedDict
 
 import jsonschema
 import numpy
 import requests
+import vigra
+
+from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SCALE_KEY
 
 logger = logging.getLogger(__file__)
 
 
-DEFAULT_LOWEST_SCALE_KEY = ""
-
-
-class RESTfulPrecomputedChunkedVolume(object):
+class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
     """Class to access "precomputed" data in the neuroglancer style
 
     Precomputed volumes are saved chunk-wise, potentially at various scales.
@@ -52,84 +53,84 @@ class RESTfulPrecomputedChunkedVolume(object):
       coordinates, shapes, rois.
     """
 
+    NAME = "Neuroglancer Precomputed"
+    URI_HINT = 'URL starts with "precomputed://"'
+
     info_schema = {
         "type": "object",
         "properties": {
             "type": {"type": "string", "enum": ["image", "segmentation"]},
             "data_type": {"type": "string", "enum": ["uint8", "uint16", "uint32", "uint64", "float32"]},
             "num_channels": {"type": "number"},
-            "scales": {"type": "array", "items": {"type": "object", "properties": {"key": {"type": "string"}}}},
+            "scales": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "key": {"type": "string"},
+                        "resolution": {"type": "array", "items": {"type": "number"}},
+                    },
+                },
+            },
         },
         "required": ["type", "data_type", "num_channels", "scales"],
     }
 
-    def __init__(self, volume_url: str, tmp_data_file=None, n_threads=4):
+    def __init__(self, volume_url: str, n_threads=4):
         """
         Args:
             volume_url (string): base url of the precomputed volume.
               {base_url}/info should be reachable. The info file holds the json
               description of the volume. Will be validated against
               `self.info_schema`.
-            tmp_data_file (string, optional): Data will be downloaded to a
-              temporary hdf5 file. If `None`, a file will be generated in the
-              temp-folder.
             n_threads (int, optional): number of concurrent downloads
         """
-        self.scales = None
-        self.lowest_resolution_key = None
-        self.highest_resolution_key = None
-        self._json_info = None
-        self.tmp_data_file = tmp_data_file
+        axistags = vigra.defaultAxistags("czyx")  # neuroglancer axes are always czyx; channel might be singleton
+        self._json_info = {}
         self.volume_url = volume_url
         self.base_url = volume_url.lstrip("precomputed://")
-
-        # Assuming axes and dtype will be the same in every scale
-        # neuroglancer axes are always in this order; channel axis might singleton
-        self.axes = "czyx"
-        self.dtype = None
         self.n_channels = None
 
-        self._init_from_url()
-
-    def _init_from_url(self):
-        """Downloads and checks the volume info file"""
         self.download_info()
-
         jsonschema.validate(self._json_info, self.info_schema)
 
+        dtype = self._json_info["data_type"]
         # Scales are ordered from original to most-downscaled in Precomputed spec
-        self.lowest_resolution_key = self._json_info["scales"][-1]["key"]
-        self.highest_resolution_key = self._json_info["scales"][0]["key"]
+        lowest_resolution_key = self._json_info["scales"][-1]["key"]
+        highest_resolution_key = self._json_info["scales"][0]["key"]
         # Reverse so that the ScaleComboBox shows the options ordered from most-downscaled to original
-        self.scales = {scale["key"]: scale for scale in reversed(self._json_info["scales"])}
-        self.dtype = self._json_info["data_type"]
+        gui_scale_metadata = OrderedDict(
+            [(scale["key"], scale["resolution"]) for scale in reversed(self._json_info["scales"])]
+        )
+        self._scales = {scale["key"]: scale for scale in self._json_info["scales"]}
         self.n_channels = self._json_info["num_channels"]
 
-    def get_chunk_size(self, scale=DEFAULT_LOWEST_SCALE_KEY):
-        scale = scale if scale != DEFAULT_LOWEST_SCALE_KEY else self.lowest_resolution_key
+        super().__init__(dtype, axistags, gui_scale_metadata, lowest_resolution_key, highest_resolution_key)
+
+    @staticmethod
+    def is_uri_compatible(uri: str) -> bool:
+        return uri.startswith("precomputed://")
+
+    def get_chunk_size(self, scale=DEFAULT_SCALE_KEY):
+        scale = scale if scale != DEFAULT_SCALE_KEY else self.lowest_resolution_key
         n_channels = self.n_channels
-        block_shape = numpy.array([n_channels] + self.scales[scale]["chunk_sizes"][0][::-1])
+        block_shape = numpy.array([n_channels] + self._scales[scale]["chunk_sizes"][0][::-1])
         return block_shape
 
-    def get_resolution(self, scale=DEFAULT_LOWEST_SCALE_KEY):
-        scale = scale if scale != DEFAULT_LOWEST_SCALE_KEY else self.lowest_resolution_key
-        resolution = numpy.array(self.scales[scale]["resolution"][::-1])
-        return resolution
-
-    def get_voxel_offset(self, scale=DEFAULT_LOWEST_SCALE_KEY):
-        scale = scale if scale != DEFAULT_LOWEST_SCALE_KEY else self.lowest_resolution_key
-        voxel_offset = numpy.array([0] + self.scales[scale]["voxel_offset"][::-1])
+    def get_voxel_offset(self, scale=DEFAULT_SCALE_KEY):
+        scale = scale if scale != DEFAULT_SCALE_KEY else self.lowest_resolution_key
+        voxel_offset = numpy.array([0] + self._scales[scale]["voxel_offset"][::-1])
         return voxel_offset
 
-    def get_encoding(self, scale=DEFAULT_LOWEST_SCALE_KEY):
-        scale = scale if scale != DEFAULT_LOWEST_SCALE_KEY else self.lowest_resolution_key
-        encoding = self.scales[scale]["encoding"]
+    def get_encoding(self, scale=DEFAULT_SCALE_KEY):
+        scale = scale if scale != DEFAULT_SCALE_KEY else self.lowest_resolution_key
+        encoding = self._scales[scale]["encoding"]
         return encoding
 
-    def get_shape(self, scale=DEFAULT_LOWEST_SCALE_KEY):
-        scale = scale if scale != DEFAULT_LOWEST_SCALE_KEY else self.lowest_resolution_key
+    def get_shape(self, scale=DEFAULT_SCALE_KEY):
+        scale = scale if scale != DEFAULT_SCALE_KEY else self.lowest_resolution_key
         n_channels = self.n_channels
-        shape = numpy.array([n_channels] + self.scales[scale]["size"][::-1])
+        shape = numpy.array([n_channels] + self._scales[scale]["size"][::-1])
         return shape
 
     def download_info(self):
@@ -142,7 +143,7 @@ class RESTfulPrecomputedChunkedVolume(object):
 
         self._json_info = json.loads(r.content)
 
-    def download_block(self, block_coordinates, scale=DEFAULT_LOWEST_SCALE_KEY):
+    def download_block(self, block_coordinates, scale=DEFAULT_SCALE_KEY):
         """downloads a single block at a given scale
 
         Args:
@@ -150,7 +151,7 @@ class RESTfulPrecomputedChunkedVolume(object):
               assumed
             scale (int): index of the scale to be used
         """
-        scale = scale if scale != DEFAULT_LOWEST_SCALE_KEY else self.lowest_resolution_key
+        scale = scale if scale != DEFAULT_SCALE_KEY else self.lowest_resolution_key
         url, block_shape = self.generate_url(block_coordinates, scale)
         try:
             content = self.downloading(url)
@@ -181,7 +182,7 @@ class RESTfulPrecomputedChunkedVolume(object):
         r = requests.get(url)
         return r.content
 
-    def generate_url(self, block_coordinates, scale=DEFAULT_LOWEST_SCALE_KEY):
+    def generate_url(self, block_coordinates, scale=DEFAULT_SCALE_KEY):
         """Generate url to access a specific block
 
 
@@ -193,7 +194,7 @@ class RESTfulPrecomputedChunkedVolume(object):
         Returns:
             string: URL to access the block with the given block coordinates
         """
-        scale = scale if scale != DEFAULT_LOWEST_SCALE_KEY else self.lowest_resolution_key
+        scale = scale if scale != DEFAULT_SCALE_KEY else self.lowest_resolution_key
         # block shape without channel
         shape = self.get_shape(scale)
         chunk_size = self.get_chunk_size(scale)
@@ -225,7 +226,7 @@ if __name__ == "__main__":
     volume_url = "precomputed://http://localhost:8080/precomputed/cremi"
     cvol = RESTfulPrecomputedChunkedVolume(volume_url=volume_url)
     print(f"dtype: {cvol.dtype}")
-    print(f"scales: {len(cvol.scales)}")
+    print(f"scales: {len(cvol.multiscales)}")
     print(f"block_shape: {cvol.get_chunk_size()}")
     print(f"shape: {cvol.get_shape()}")
     block_start = [1, 128, 64, 256]

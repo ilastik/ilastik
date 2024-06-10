@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -49,7 +49,7 @@ from .opDataSelection import (
     ProjectInternalDatasetInfo,
     MultiscaleUrlDatasetInfo,
 )
-from .precomputedVolumeBrowser import PrecomputedVolumeBrowser
+from .multiscaleDatasetBrowser import MultiscaleDatasetBrowser
 
 logger = logging.getLogger(__name__)
 
@@ -258,7 +258,7 @@ class DataSelectionGui(QWidget):
             # Button
             detailViewer.addFilesRequested.connect(partial(self.addFiles, roleIndex))
             detailViewer.addStackRequested.connect(partial(self.addStack, roleIndex))
-            detailViewer.addPrecomputedVolumeRequested.connect(partial(self.addPrecomputedVolume, roleIndex))
+            detailViewer.addMultiscaleRequested.connect(partial(self.addMultiscaleDataset, roleIndex))
             detailViewer.addDvidVolumeRequested.connect(partial(self.addDvidVolume, roleIndex))
 
             # Monitor changes to each lane so we can enable/disable the 'add lanes' button for each tab
@@ -647,21 +647,21 @@ class DataSelectionGui(QWidget):
         if editorDlg.exec_() == QDialog.Accepted:
             self.applyDatasetInfos(editorDlg.edited_infos, selected_info_slots)
 
-    def addPrecomputedVolume(self, roleIndex, laneIndex):
+    def addMultiscaleDataset(self, roleIndex, laneIndex):
         PREFERENCES_GROUP = "DataSelection"
-        RECENT_URLS_KEY = "recent urls"
-        history = preferences.get(PREFERENCES_GROUP, RECENT_URLS_KEY) or []
-        browser = PrecomputedVolumeBrowser(history=history, parent=self)
+        RECENT_URIS_KEY = "recent urls"
+        history = preferences.get(PREFERENCES_GROUP, RECENT_URIS_KEY) or []
+        browser = MultiscaleDatasetBrowser(history=history, parent=self)
 
-        if browser.exec_() == PrecomputedVolumeBrowser.Rejected:
+        if browser.exec_() == MultiscaleDatasetBrowser.Rejected:
             return
 
-        url = browser.selected_url
-        if url in history:
-            history.remove(url)
-        preferences.set(PREFERENCES_GROUP, RECENT_URLS_KEY, [url] + history[:9])
+        uri = browser.selected_uri
+        if uri in history:
+            history.remove(uri)
+        preferences.set(PREFERENCES_GROUP, RECENT_URIS_KEY, [uri] + history[:9])
 
-        info = self.instantiate_dataset_info(url=url, role=roleIndex)
+        info = self.instantiate_dataset_info(url=uri, role=roleIndex)
         self.addLanes([info], roleIndex=roleIndex, startingLaneNum=laneIndex)
 
     def addDvidVolume(self, roleIndex, laneIndex):

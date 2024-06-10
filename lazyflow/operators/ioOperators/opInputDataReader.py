@@ -1,7 +1,7 @@
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -39,6 +39,7 @@ from lazyflow.operators.ioOperators import (
 )
 from lazyflow.utility.jsonConfig import JsonConfigParser
 from lazyflow.utility.pathHelpers import lsH5N5, isUrl, isRelative, splitPath, PathComponents
+from .opOMEZarrMultiscaleReader import OpOMEZarrMultiscaleReader
 
 from .opStreamingUfmfReader import OpStreamingUfmfReader
 from .opStreamingMmfReader import OpStreamingMmfReader
@@ -185,6 +186,7 @@ class OpInputDataReader(Operator):
             self._attemptOpenAsKlb,
             self._attemptOpenAsUfmf,
             self._attemptOpenAsMmf,
+            self._attemptOpenAsOmeZarrMultiscale,
             self._attemptOpenAsRESTfulPrecomputedChunkedVolume,
             self._attemptOpenAsDvidVolume,
             self._attemptOpenAsH5N5Stack,
@@ -285,6 +287,18 @@ class OpInputDataReader(Operator):
             """
         else:
             return ([], None)
+
+    def _attemptOpenAsOmeZarrMultiscale(self, filePath):
+        if "zarr" not in filePath.lower():
+            return ([], None)
+        if not (filePath.startswith("http") or filePath.startswith("file")):
+            return ([], None)
+        # DatasetInfo instantiates a standalone OpInputDataReader to obtain laneShape and dtype.
+        # We pass this down to the loader so that it can avoid loading scale metadata unnecessarily.
+        reader = OpOMEZarrMultiscaleReader(parent=self, metadata_only_mode=self.parent is None)
+        reader.Scale.connect(self.ActiveScale)
+        reader.BaseUri.setValue(filePath)
+        return [reader], reader.Output
 
     def _attemptOpenAsRESTfulPrecomputedChunkedVolume(self, filePath):
         if not filePath.lower().startswith("precomputed://"):
