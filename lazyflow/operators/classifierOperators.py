@@ -430,6 +430,8 @@ class OpBaseClassifierPredict(Operator):
 
     PMaps = OutputSlot()
 
+    logger = logging.getLogger(__name__ + ".OpBaseClassifierPredict")
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

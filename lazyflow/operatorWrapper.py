@@ -21,7 +21,6 @@
 ###############################################################################
 # Python
 import functools
-import logging
 
 # lazyflow
 from lazyflow.operator import Operator
@@ -29,9 +28,6 @@ from lazyflow.operator import Operator
 
 class OperatorWrapper(Operator):
     name = "OperatorWrapper"
-
-    loggerName = __name__ + ".OperatorWrapper"
-    logger = logging.getLogger(loggerName)
 
     def __init__(
         self,
@@ -42,6 +38,7 @@ class OperatorWrapper(Operator):
         graph=None,
         promotedSlotNames=None,
         broadcastingSlotNames=None,
+        write_logs=False,
     ):
         """Constructs a wrapper for the given operator. That is,
         manages a list of copies of the original operator, and
@@ -63,39 +60,36 @@ class OperatorWrapper(Operator):
 
         :param graph: the graph operator to init each inner operator with
 
-        :param promotedSlotNames:
-
-          If provided, only those slots will be promoted when
+        :param promotedSlotNames: If provided, only those slots will be promoted when
             replicated. All other slots will be replicated without
             promotion, and their input values will be broadcasted to
             all inner operators.
-
           If not provided (i.e. promotedSlotNames=None), the default
             behavior is to promote ALL replicated slots.
-
           Note: Outputslots are always promoted, regardless of whether
             or not they appear in the promotedSlotNames argument.
 
+        :param write_logs: Debugging feature. The wrapper and wrapped ops will write debug logs if True.
+            The wrapped operator's __init__ must also accept the write_logs kwarg.
+            Make sure the `lazyflow.op_debug` logger has level=DEBUG in the logging config.
+
         """
-        # Base class init
-        self._name = "Uninitialized OperatorWrapper"
-        super(OperatorWrapper, self).__init__(parent=parent, graph=graph)
-        if operator_args == None:
+        super(OperatorWrapper, self).__init__(parent=parent, graph=graph, write_logs=write_logs)
+        if operator_args is None:
             operator_args = ()
-        if operator_kwargs == None:
+        if operator_kwargs is None:
             operator_kwargs = {}
         assert isinstance(operator_args, (tuple, list))
         assert isinstance(operator_kwargs, dict)
+        if write_logs:
+            operator_kwargs.update({"write_logs": write_logs})
         self._createInnerOperator = functools.partial(operatorClass, parent=self, *operator_args, **operator_kwargs)
 
         self._initialized = False
 
-        if operatorClass.name == "":
-            self._name = "Wrapped " + operatorClass.__name__
-        else:
-            self._name = "Wrapped " + operatorClass.name
-
-        self._customName = False
+        self.name = "Wrapped " + operatorClass.name
+        if self._debug_logger:
+            self._debug_logger.debug(f"Wrapper {id(self)} name={self.name}")
 
         allInputSlotNames = set([s.name for s in operatorClass.inputSlots])
 
@@ -140,7 +134,6 @@ class OperatorWrapper(Operator):
         self.promotedSlotNames = promotedSlotNames
 
         self.innerOperators = []
-        self.logger.log(logging.DEBUG, "wrapping operator '{}'".format(operatorClass.name))
 
         # replicate input slot definitions
         for innerSlot in sorted(operatorClass.inputSlots, key=lambda s: s._global_slot_id):
@@ -176,15 +169,6 @@ class OperatorWrapper(Operator):
             assert len(s) == 0
         for s in list(self.outputs.values()):
             assert len(s) == 0
-
-    @property
-    def name(self):
-        return self._name
-
-    @name.setter
-    def name(self, name):
-        self._name = name
-        self._customName = True
 
     def __getitem__(self, key):
         return self.innerOperators[key]
@@ -222,12 +206,9 @@ class OperatorWrapper(Operator):
     def _insertInnerOperator(self, index, length):
         if len(self.innerOperators) >= length:
             return self.innerOperators[index]
+        if self._debug_logger:
+            self._debug_logger.debug(f"Inserting inner operator at index {index}")
         op = self._createInnerOperator()
-
-        # Update our name (if the client didn't already give us a
-        # special one)
-        if self._customName is False:
-            self._name = "Wrapped " + op.name
 
         # If anyone calls setValue() on one of these slots,
         # forward the setValue call to the slot's upstream_slot (the

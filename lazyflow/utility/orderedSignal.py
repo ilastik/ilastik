@@ -1,5 +1,3 @@
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,6 +20,9 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 from collections import OrderedDict
+import logging
+
+logger = logging.getLogger("lazyflow.signals")
 
 
 class OrderedSignal(object):
@@ -77,6 +78,7 @@ class OrderedSignal(object):
 
         for f, kw in list(self.callbacks.items()):
             try:
+                logger.debug(f"Calling {f}")
                 f(*args, **kw)
             except Request.CancellationException:
                 # We cannot allow graph setup operations to fail due to

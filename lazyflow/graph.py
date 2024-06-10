@@ -63,6 +63,7 @@ class Graph:
             fn()
         else:
             # Subscribe to the next completion.
+            logger.debug(f"Adding to queue in setup={id(self._sig_setup_complete)}: {fn}")
             self._sig_setup_complete.subscribe(fn)
 
     class SetupDepthContext(object):
@@ -79,6 +80,7 @@ class Graph:
                 with self._graph._lock:
                     if self._graph._setup_depth == 0:
                         self._graph._sig_setup_complete = OrderedSignal()
+                        logger.debug(f"New setupDepthContext={id(self._graph._sig_setup_complete)}")
                     self._graph._setup_depth += 1
 
         def __exit__(self, *args):
@@ -88,7 +90,8 @@ class Graph:
                     self._graph._setup_depth -= 1
                     if self._graph._setup_depth == 0:
                         sig_setup_complete = self._graph._sig_setup_complete
-                        # Reset.
+                        logger.debug(f"Finish setupDepthContext={id(sig_setup_complete)}")
                         self._graph._sig_setup_complete = None
                 if sig_setup_complete:
+                    logger.debug(f"Flushing queue of setupDepthContext={id(sig_setup_complete)}")
                     sig_setup_complete()

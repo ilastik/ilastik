@@ -110,6 +110,9 @@ class OperatorMetaClass(ABCMeta):
             if isinstance(v, OutputSlot):
                 v.name = k
                 cls.outputSlots.append(v)
+
+        if "name" not in classDict:
+            cls.name = name  # better default if subclass does not provide cls.name
         return cls
 
     def __call__(cls, *args, **kwargs):
@@ -173,9 +176,6 @@ class Operator(metaclass=OperatorMetaClass):
 
     """
 
-    loggerName = __name__ + ".Operator"
-    logger = logging.getLogger(loggerName)
-
     # definition of inputs slots
     inputSlots = []
 
@@ -197,7 +197,7 @@ class Operator(metaclass=OperatorMetaClass):
         obj.outputs = OutputDict(obj)
         return obj
 
-    def __init__(self, parent=None, graph=None):
+    def __init__(self, parent=None, graph=None, write_logs=False):
         """
         Either parent or graph have to be given. If both are given
         parent.graph has to be identical with graph.
@@ -205,6 +205,8 @@ class Operator(metaclass=OperatorMetaClass):
         :param parent: the parent operator; if None the instance is a
         root operator
         :param graph: a Graph instance
+        :param write_logs: Debugging feature. The operator will write debug logs if True.
+        Make sure the `lazyflow.op_debug` logger has level=DEBUG in the logging config.
 
         """
         if not (parent is None or isinstance(parent, Operator)):
@@ -227,6 +229,13 @@ class Operator(metaclass=OperatorMetaClass):
         self._parent = None
         if parent is not None:
             parent._add_child(self)
+
+        self._debug_logger = None
+        if write_logs:
+            self._debug_logger = logging.getLogger(f"lazyflow.op_debug.{self.name}")
+            self._debug_logger.debug(
+                f"Instantiated {self.name} {id(self)} with parent={self.parent.name if self.parent is not None else ''}"
+            )
 
         self._initialized = False
 
@@ -266,9 +275,6 @@ class Operator(metaclass=OperatorMetaClass):
 
     # continue initialization, when user overrides __init__
     def _after_init(self):
-        # provide simple default name for lazy users
-        if self.name == Operator.name:
-            self.name = type(self).__name__
         assert self.graph is not None, (
             "Operator {}: self.graph is None, the parent ({})"
             " given to the operator must have a valid .graph attribute!".format(self, self._parent)
@@ -393,6 +399,8 @@ class Operator(metaclass=OperatorMetaClass):
         if self._parent is not None:
             del self._parent._children[self]
 
+        if self._debug_logger:
+            self._debug_logger.debug(f"Cleaning up {self.name} {id(self)}")
         # Disconnect ourselves and all children
         self._disconnect()
 
@@ -489,6 +497,8 @@ class Operator(metaclass=OperatorMetaClass):
                 self._condition.wait()
 
             self._settingUp = True
+            if self._debug_logger:
+                self._debug_logger.debug(f"Starting setupOutputs on {self.name} {id(self)}")
 
             # Keep a copy of the old metadata for comparison.
             #  We only trigger downstream changes if something really changed.
@@ -498,6 +508,8 @@ class Operator(metaclass=OperatorMetaClass):
             self.setupOutputs()
             self._setup_count += 1
 
+            if self._debug_logger:
+                self._debug_logger.debug(f"Finished setupOutputs on {self.name} {id(self)}")
             self._settingUp = False
             self._condition.notify_all()
 
@@ -588,6 +600,10 @@ class Operator(metaclass=OperatorMetaClass):
             # We are executing the operator. Incremement the execution
             # count to protect against simultaneous setupOutputs()
             # calls.
+            if self._debug_logger:
+                self._debug_logger.debug(
+                    f"Executing {self.name} {id(self)} slot={slot.name} for roi={str(roi)} with {kwargs=}"
+                )
             self._incrementOperatorExecutionCount()
             return self.execute(slot, subindex, roi, result, **kwargs)
         finally:
