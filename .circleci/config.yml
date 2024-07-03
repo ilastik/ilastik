@@ -73,13 +73,21 @@ jobs:
             conda run -n ${TEST_ENV_NAME} pip install -e ilastik
 
     - run:
+        name: start xvfb
+        command: >
+          Xvfb :42 -screen 0 1024x768x24
+        background: true
+    - run:
+        name: wait for xvfb to be ready
+        command: while [ ! -e /tmp/.X11-unix/X42 ]; do sleep 0.1; done
+    - run:
         name: run ilastik tests
+        environment:
+            DISPLAY: :42
         command: >
             cd ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
             mkdir test-results &&
-            echo "before tests" &&
-            xvfb-run --server-args="-screen 0 1024x768x24" conda run -n ${TEST_ENV_NAME} pytest --cov-report=xml --cov=lazyflow --cov=ilastik --run-legacy-gui --junitxml=test-results/junit.xml &&
-            echo "after tests" &&
+            conda run -n ${TEST_ENV_NAME} pytest -v --run-legacy-gui --cov-report=xml --cov=lazyflow --cov=ilastik --junitxml=test-results/junit.xml &&
             bash <(curl -s https://codecov.io/bash)
     - store_test_results:
         path: test-results
