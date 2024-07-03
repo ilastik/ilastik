@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -18,21 +18,8 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
-from ilastik.config import cfg
-
-from yapsy.IPlugin import IPlugin
-from yapsy.PluginManager import PluginManager
-
-import os
-from collections import namedtuple
-from functools import partial
 import numpy
-
-# these directories are searched for plugins
-plugin_paths = cfg.get("ilastik", "plugin_directories")
-plugin_paths = list(os.path.expanduser(d) for d in plugin_paths.split(",") if len(d) > 0)
-plugin_paths.append(os.path.join(os.path.split(__file__)[0], "plugins_default"))
+from yapsy.IPlugin import IPlugin
 
 ##########################
 # different plugin types #
@@ -65,7 +52,6 @@ class ObjectFeaturesPlugin(IPlugin):
         return []
 
     def compute_global(self, image, labels, features, axes):
-
         """calculate the requested features.
 
         :param image: np.ndarray
@@ -158,7 +144,7 @@ class TrackingExportFormatPlugin(IPlugin):
         super(TrackingExportFormatPlugin, self).__init__(*args, **kwargs)
 
     def checkFilesExist(self, filename: str) -> bool:
-        """ Check whether the files we want to export (when appending the base filename) are already present """
+        """Check whether the files we want to export (when appending the base filename) are already present"""
         return False
 
     def export(self, filename, hypothesesGraph, pluginExportContext):
@@ -206,24 +192,3 @@ class TrackingExportFormatPlugin(IPlugin):
             long_name = name
 
         return long_name
-
-
-# Helper class used to pass the necessary context information to the export plugin
-PluginExportContext = namedtuple(
-    "PluginExportContext", ["objectFeaturesSlot", "labelImageSlot", "rawImageSlot", "additionalPluginArgumentsSlot"]
-)
-
-###############
-# the manager #
-###############
-
-pluginManager = PluginManager()
-pluginManager.setPluginPlaces(plugin_paths)
-
-pluginManager.setCategoriesFilter(
-    {"ObjectFeatures": ObjectFeaturesPlugin, "TrackingExportFormats": TrackingExportFormatPlugin}
-)
-
-pluginManager.collectPlugins()
-for pluginInfo in pluginManager.getAllPlugins():
-    pluginManager.activatePluginByName(pluginInfo.name)
