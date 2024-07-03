@@ -176,6 +176,8 @@ class TrackingExportFormatPlugin(IPlugin):
         :param name: The feature name string
         :returns: the long name of the feature
         """
+        from ilastik.plugins.manager import pluginManager
+
         all_props = None
 
         if category == "Default features":

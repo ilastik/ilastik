@@ -25,7 +25,7 @@ import numpy
 from PyQt5 import uic
 from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
-from ilastik.plugins import pluginManager
+from ilastik.plugins.manager import pluginManager
 
 try:
     from lazyflow.graph import Operator, InputSlot, OutputSlot

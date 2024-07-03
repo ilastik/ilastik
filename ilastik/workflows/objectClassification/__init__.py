@@ -21,7 +21,7 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # to ensure that plugin system is available
-from ilastik.plugins import pluginManager
+from ilastik.plugins.manager import pluginManager
 
 import logging
 

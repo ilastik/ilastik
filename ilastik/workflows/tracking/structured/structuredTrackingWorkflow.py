@@ -39,7 +39,7 @@ from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingB
 from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet import TrackingFeatureExtractionApplet
 from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
 from ilastik.applets.batchProcessing import BatchProcessingApplet
-from ilastik.plugins import pluginManager
+from ilastik.plugins.manager import pluginManager
 from ilastik.workflows.tracking.common import DIVISION_CLASSIFIER_LABEL_NAMES
 
 import logging

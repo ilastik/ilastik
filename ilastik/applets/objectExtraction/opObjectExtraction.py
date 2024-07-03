@@ -42,11 +42,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# ilastik
-try:
-    from ilastik.plugins import pluginManager
-except:
-    logger.warning("could not import pluginManager")
+from ilastik.plugins.manager import pluginManager
+
 
 from ilastik.applets.base.applet import DatasetConstraintError
 

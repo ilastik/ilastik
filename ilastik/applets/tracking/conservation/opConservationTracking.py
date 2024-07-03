@@ -7,7 +7,8 @@ import numpy as np
 import os
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
-from ilastik.plugins import PluginExportContext, TrackingExportFormatPlugin
+from ilastik.plugins import TrackingExportFormatPlugin
+from ilastik.plugins.manager import PluginExportContext
 from lazyflow.rtype import List
 from lazyflow.stype import Opaque
 

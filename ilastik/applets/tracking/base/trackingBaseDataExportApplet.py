@@ -30,7 +30,8 @@ from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.dataExport.opDataExport import DataExportPathFormatter
 from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
 from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
-from ilastik.plugins import pluginManager, TrackingExportFormatPlugin
+from ilastik.plugins.manager import pluginManager
+from ilastik.plugins import TrackingExportFormatPlugin
 from ilastik.utility import OpMultiLaneWrapper
 from lazyflow.slot import InputSlot
 
@@ -271,7 +272,7 @@ class TrackingBaseDataExportApplet(DataExportApplet):
         return True
 
     def getPartiallyFormattedName(self, lane_index: int, path_format_string: str) -> str:
-        """ Takes the format string for the output file, fills in the most important placeholders, and returns it """
+        """Takes the format string for the output file, fills in the most important placeholders, and returns it"""
         path_formatter = DataExportPathFormatter(
             dataset_info=self.topLevelOperator.RawDatasetInfo[lane_index].value,
             working_dir=self.topLevelOperator.WorkingDirectory.value,

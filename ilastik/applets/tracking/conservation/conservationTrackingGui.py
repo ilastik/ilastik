@@ -18,7 +18,7 @@ from ilastik.utility.gui.titledMenu import TitledMenu
 from ilastik.utility.ipcProtocol import Protocol
 from ilastik.shell.gui.ipcManager import IPCFacade
 from ilastik.config import cfg as ilastik_config
-from ilastik.plugins import pluginManager
+from ilastik.plugins.manager import pluginManager
 
 
 from lazyflow.request.request import Request

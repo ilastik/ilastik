@@ -24,7 +24,7 @@ from __future__ import absolute_import
 import logging
 
 logger = logging.getLogger(__name__)
-from ilastik.plugins import pluginManager
+from ilastik.plugins.manager import pluginManager
 
 try:
     from .countingWorkflow import *
