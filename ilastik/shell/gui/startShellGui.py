@@ -58,7 +58,7 @@ def startShellGui(workflow_cmdline_args, preinit_funcs, postinit_funcs):
     if ilastik.config.cfg.getboolean("ilastik", "debug"):
         QApplication.setAttribute(Qt.AA_DontUseNativeMenuBar, True)
 
-    app = QApplication([])
+    app = QApplication(["ilastik"])
     _applyStyleSheet(app)
 
     splash = getSplashScreen()
