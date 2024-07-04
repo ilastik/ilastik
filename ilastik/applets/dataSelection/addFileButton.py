@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -43,14 +43,14 @@ class AddFileButton(QPushButton):
 
         - Add separate image(s)
         - Add 3D/4D volume from sequence
+        - Add multiscale/pyramidal dataset
         - Add DVID volume
-        - Add precomputed chunked volume
     """
 
     addFilesRequested = pyqtSignal()
     addStackRequested = pyqtSignal()
     addDvidVolumeRequested = pyqtSignal()
-    addPrecomputedVolumeRequested = pyqtSignal()
+    addMultiscaleDatasetRequested = pyqtSignal()
 
     def __init__(self, parent, *, index=None, new=False):
         """
@@ -71,9 +71,7 @@ class AddFileButton(QPushButton):
         menu = QMenu(parent=self)
         menu.addAction("Add separate Image(s)...").triggered.connect(self.addFilesRequested.emit)
         menu.addAction("Add a single 3D/4D Volume from Sequence...").triggered.connect(self.addStackRequested.emit)
-        menu.addAction("Add Neuroglancer Precomputed volume...").triggered.connect(
-            self.addPrecomputedVolumeRequested.emit
-        )
+        menu.addAction("Add multiscale dataset...").triggered.connect(self.addMultiscaleDatasetRequested.emit)
 
         if _supports_dvid:
             menu.addAction("Add DVID Volume...").triggered.connect(self.addDvidVolumeRequested.emit)

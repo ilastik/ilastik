@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -22,6 +22,7 @@ from abc import abstractmethod, ABC
 import glob
 import os
 import uuid
+from collections import OrderedDict
 from typing import List, Tuple, Dict, Optional, Union, Callable
 from numbers import Number
 import re
@@ -44,8 +45,8 @@ from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik import Project
 from ilastik.utility import OpMultiLaneWrapper
 from ilastik.workflow import Workflow
-from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import DEFAULT_LOWEST_SCALE_KEY
-from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents
+from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import DEFAULT_SCALE_KEY
+from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
 from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators import OpMissingDataSource
@@ -104,7 +105,7 @@ class DatasetInfo(ABC):
         project_file: h5py.File = None,
         normalizeDisplay: bool = None,
         drange: Tuple[Number, Number] = None,
-        working_scale: str = DEFAULT_LOWEST_SCALE_KEY,
+        working_scale: str = DEFAULT_SCALE_KEY,
         scale_locked: bool = False,
     ):
         if axistags and len(axistags) != len(laneShape):
@@ -127,7 +128,7 @@ class DatasetInfo(ABC):
         self.legacy_datasetId = self.generate_id()
         self.working_scale = working_scale
         self.scale_locked = scale_locked
-        self.scales = {}  # {scale_key: scale_object}, dependent on data format
+        self.scales = OrderedDict()  # {scale_key: scale_dimensions}, see MultiscaleStore.multiscales
 
     @property
     def shape5d(self) -> Shape5D:
@@ -212,7 +213,7 @@ class DatasetInfo(ABC):
                 # Support for projects created with ilastik 1.4.1b13
                 saved_scale = int(data["working_scale"][()])
                 if saved_scale == 0:  # 0 by default (in all project files).
-                    params["working_scale"] = DEFAULT_LOWEST_SCALE_KEY
+                    params["working_scale"] = DEFAULT_SCALE_KEY
                 elif saved_scale > 0:  # Precomputed dataset with non-default scale selected
                     from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
 
@@ -550,7 +551,13 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
 
     @property
     def display_string(self):
-        return "Remote: " + self.url
+        return "URL: " + self.url
+
+    @property
+    def default_output_dir(self) -> Path:
+        if self.url.startswith("file:"):
+            return uri_to_Path(self.url).absolute().parent
+        return super().default_output_dir
 
     def to_json_data(self) -> Dict:
         out = super().to_json_data()
@@ -566,9 +573,15 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
 
     @staticmethod
     def _nickname_from_url(url: str) -> str:
+        """
+        Take the part after the last /, make it safe for use as a file name,
+        remove anything that looks like an extension ('.zarr') and replace remaining dots
+        to ensure exporting logic does not mistake them for file extensions.
+        """
         last_url_component = url.rstrip("/").rpartition("/")[2]
         filename_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", last_url_component)
-        return filename_safe
+        extensionless = os.path.splitext(filename_safe)[0]
+        return extensionless
 
 
 class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
@@ -833,7 +846,7 @@ class OpDataSelection(Operator):
                 datasetInfo.laneShape = data_provider.meta.shape
                 datasetInfo.scales = data_provider.meta.scales
                 datasetInfo.working_scale = self.ActiveScale.value
-                if datasetInfo.working_scale == DEFAULT_LOWEST_SCALE_KEY:
+                if datasetInfo.working_scale == DEFAULT_SCALE_KEY:
                     # datasetInfo.working_scale may be saved to the project file, so we want a real key here
                     # if we didn't already load one from the file.
                     datasetInfo.working_scale = data_provider.meta.lowest_scale
@@ -892,7 +905,7 @@ class OpDataSelectionGroup(Operator):
 
     # Must mark as optional because not all subslots are required.
     DatasetGroup = InputSlot(stype="object", level=1, optional=True)  # "Group" as in group of slots
-    ActiveScaleGroup = InputSlot(stype="string", level=1, optional=True, value=DEFAULT_LOWEST_SCALE_KEY)
+    ActiveScaleGroup = InputSlot(stype="string", level=1, optional=True, value=DEFAULT_SCALE_KEY)
 
     # Outputs
     ImageGroup = OutputSlot(level=1)  # "Group" as in group of slots

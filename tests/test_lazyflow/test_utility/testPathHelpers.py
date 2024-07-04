@@ -3,7 +3,7 @@ from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -23,21 +23,19 @@ from builtins import object
 ###############################################################################
 import os
 import h5py
-from lazyflow.utility.pathHelpers import compressPathForDisplay, getPathVariants, PathComponents, globH5N5, splitPath
-import os
+import pytest
 
-SIMULATE_WINDOWS = False
+from lazyflow.utility.pathHelpers import (
+    compressPathForDisplay,
+    getPathVariants,
+    PathComponents,
+    globH5N5,
+    splitPath,
+    isUrl,
+)
 
 
 class TestPathHelpers(object):
-    @classmethod
-    def setup_class(cls):
-        if SIMULATE_WINDOWS:
-            import ntpath
-
-            os.sep = ntpath.sep
-            os.path = ntpath
-
     def testPathComponents(self):
         components = PathComponents("/some/external/path/to/file.h5/with/internal/path/to/data")
         assert components.externalPath == "/some/external/path/to/file.h5"
@@ -148,3 +146,20 @@ class TestPathHelpers(object):
             for dg in [data_group, data_group2]:
                 dg.create_dataset("test-{index:02d}".format(index=i), (0, 0), dtype="i8")
         return f
+
+    @pytest.mark.parametrize(
+        "url,expected",
+        [
+            ("http://domain.com", True),
+            ("https://domain.com", True),
+            ("file://localhost/some/file", True),
+            ("file:///some/file", True),
+            ("https:some/file", False),
+            ("file:some/file", False),
+            ("/some/path", False),
+            ("C:\\some\\path", False),
+        ],
+    )
+    def test_isUrl(self, url, expected):
+        """Ensure both http(s) and file urls are accepted"""
+        assert isUrl(url) == expected

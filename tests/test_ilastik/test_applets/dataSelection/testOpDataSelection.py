@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -30,8 +30,10 @@ import requests
 import vigra
 import h5py
 from pathlib import Path
+import zarr
 from PIL import Image
 
+from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY
 from lazyflow.utility.pathHelpers import PathComponents
 from lazyflow.graph import OperatorWrapper
 from ilastik.applets.dataSelection.opDataSelection import (
@@ -787,35 +789,30 @@ class TestOpDataSelection_FileSeriesStacks:
         read = reader.Image[...].wait()
         expected = expected_data[expected_key]
         try:
-            assert numpy.allclose(read, expected), f"{name}: {read.shape}, {expected.shape}"
+            numpy.testing.assert_allclose(read, expected), f"{name}: {read.shape}, {expected.shape}"
         finally:
             reader.cleanUp()  # Ensure tempdir can be deleted
 
 
-class MockRemoteDataset:
+def mock_precomputed_requests(monkeypatch, url: str, info: dict, chunks: dict[str, numpy.array]):
     """
-    Monkeypatches requests.get as a side effect of instantiation,
-    to mock a server hosting a precomputed dataset.
+    Monkeypatches requests.get to mock a server hosting a precomputed dataset.
     Needs to be passed the monkeypatch fixture and dataset parameters.
     """
 
-    def __init__(self, monkeypatch, url: str, info: dict, chunks: dict[str, numpy.array]):
-        self.url = url
-        self.info = info
-        self.chunks = chunks
-        monkeypatch.setattr(requests, "get", lambda _url: self.mock_response_for_url(_url))
-
-    def mock_response_for_url(self, url):
+    def mock_response_for_url(_url):
         response = Mock()
         response.status_code = 200
-        ext = url.lstrip(self.url)
+        ext = _url.lstrip(url)
         if ext == "info":
-            response.content = json.dumps(self.info)
-        elif ext in self.chunks:
-            response.content = self.chunks[ext].tobytes()
+            response.content = json.dumps(info)
+        elif ext in chunks:
+            response.content = chunks[ext].tobytes()
         else:
-            raise KeyError(f"Unknown mock url: {url}")
+            raise KeyError(f"Unknown mock url: {_url}")
         return response
+
+    monkeypatch.setattr(requests, "get", lambda _url: mock_response_for_url(_url))
 
 
 class TestOpDataSelection_PrecomputedChunks:
@@ -864,30 +861,153 @@ class TestOpDataSelection_PrecomputedChunks:
     }
 
     @pytest.fixture
-    def op_and_dataset(self, graph, monkeypatch) -> (OpDataSelection, MultiscaleUrlDatasetInfo):
-        _ = MockRemoteDataset(monkeypatch, self.MOCK_DATASET_URL, self.INFO_JSON, self.CHUNKS)
+    def datasetInfo(self, monkeypatch):
+        mock_precomputed_requests(monkeypatch, self.MOCK_DATASET_URL, self.INFO_JSON, self.CHUNKS)
+        return MultiscaleUrlDatasetInfo(url=self.MOCK_DATASET_URL)
+
+    @pytest.fixture
+    def op(self, graph, monkeypatch, datasetInfo) -> OpDataSelection:
         op = OpDataSelection(graph=graph)
         op.WorkingDirectory.setValue(os.getcwd())
-        op.ActiveScale.setValue("")
-        datasetInfo = MultiscaleUrlDatasetInfo(url=self.MOCK_DATASET_URL)
+        op.ActiveScale.setValue(DEFAULT_SCALE_KEY)
         op.Dataset.setValue(datasetInfo)
-        return op, datasetInfo
+        return op
 
-    def test_load_precomputed_chunks_over_http(self, op_and_dataset):
-        op, _ = op_and_dataset
+    def test_load_precomputed_chunks_over_http(self, op):
         loaded_scale0 = op.Image[:].wait()
-        assert numpy.allclose(loaded_scale0, self.IMAGE_SCALED)
+        numpy.testing.assert_allclose(loaded_scale0, self.IMAGE_SCALED.reshape((1, 1, 1, 10, 12)))
 
         scale_keys = list(op.Image.meta.scales.keys())
         op.ActiveScale.setValue(scale_keys[1])
         loaded_scale1 = op.Image[:].wait()
-        assert numpy.allclose(loaded_scale1, self.IMAGE_ORIGINAL)
+        numpy.testing.assert_allclose(loaded_scale1, self.IMAGE_ORIGINAL.reshape((1, 1, 1, 20, 24)))
 
-    def test_scale_updates_dataset_info(self, op_and_dataset):
-        op, datasetInfo = op_and_dataset
+    def test_scale_updates_dataset_info(self, op, datasetInfo):
         scale_keys = list(op.Image.meta.scales.keys())
         op.ActiveScale.setValue(scale_keys[1])
         assert datasetInfo.working_scale == scale_keys[1]
+
+
+class TestOpDataSelection_OMEZarr:
+    SHAPE_SCALED_ZYX = (1, 10, 12)
+    SHAPE_ORIGINAL_ZYX = (1, 20, 24)
+    CHUNK_SIZE_ZYX = (1, 16, 16)
+    IMAGE_SCALED = numpy.random.randint(0, 256, SHAPE_SCALED_ZYX, dtype=numpy.uint16)
+    IMAGE_ORIGINAL = numpy.random.randint(0, 256, SHAPE_ORIGINAL_ZYX, dtype=numpy.uint16)
+    MOCK_DATASET_URL = "https://localhost:8000/dataset.zarr"
+    S1ZARRAY = {
+        "zarr_format": 2,
+        "shape": list(SHAPE_SCALED_ZYX),
+        "chunks": list(CHUNK_SIZE_ZYX),
+        "dtype": "|u1",
+        "compressor": {"id": "gzip", "level": -1},
+        "fill_value": 0,
+        "filters": [],
+        "order": "C",
+        "dimension_separator": "/",
+    }
+    S0ZARRAY = {
+        "zarr_format": 2,
+        "shape": list(SHAPE_ORIGINAL_ZYX),
+        "chunks": list(CHUNK_SIZE_ZYX),
+        "dtype": "|u1",
+        "compressor": {"id": "gzip", "level": -1},
+        "fill_value": 0,
+        "filters": [],
+        "order": "C",
+        "dimension_separator": "/",
+    }
+    ZATTRS = {
+        "multiscales": [
+            {
+                "name": "dataset.zarr",
+                "type": "Sample",
+                "version": "0.4",
+                "axes": [
+                    {"type": "space", "name": "z", "unit": "pixel"},
+                    {"type": "space", "name": "y", "unit": "pixel"},
+                    {"type": "space", "name": "x", "unit": "pixel"},
+                ],
+                "datasets": [
+                    {
+                        "path": "s0",
+                        "coordinateTransformations": [
+                            {"scale": [1.0, 1.0, 1.0], "type": "scale"},
+                            {"translation": [0.0, 0.0, 0.0], "type": "translation"},
+                        ],
+                    },
+                    {
+                        "path": "s1",
+                        "coordinateTransformations": [
+                            {"scale": [2.0, 2.0, 2.0], "type": "scale"},
+                            {"translation": [0.0, 0.0, 0.0], "type": "translation"},
+                        ],
+                    },
+                ],
+                "coordinateTransformations": [],
+            }
+        ]
+    }
+
+    @pytest.fixture
+    def mock_ome_zarr_metadata(self, monkeypatch):
+        """Monkeypatches FSStore.__getitem__ to mock metadata responses of an OME-Zarr dataset."""
+        responses = {".zattrs": self.ZATTRS, "s1/.zarray": self.S1ZARRAY, "s0/.zarray": self.S0ZARRAY}
+        monkeypatch.setattr(zarr.storage.FSStore, "__getitem__", lambda _self, key: json.dumps(responses[key]).encode())
+
+    @pytest.fixture
+    def mock_ome_zarr_data(self, monkeypatch):
+        """Monkeypatches zarr.Array.__getitem__ to mock contents of an OME-Zarr dataset."""
+        images = {"s0": self.IMAGE_ORIGINAL, "s1": self.IMAGE_SCALED}
+        monkeypatch.setattr(zarr.Array, "__getitem__", lambda _self, slicing: images[_self.path][slicing])
+
+    @pytest.fixture
+    def datasetInfo(self, monkeypatch, mock_ome_zarr_metadata):
+        return MultiscaleUrlDatasetInfo(url=self.MOCK_DATASET_URL)
+
+    @pytest.fixture
+    def op(self, graph, monkeypatch, datasetInfo):
+        op = OpDataSelection(graph=graph)
+        op.WorkingDirectory.setValue(os.getcwd())
+        op.ActiveScale.setValue(DEFAULT_SCALE_KEY)
+        op.Dataset.setValue(datasetInfo)
+        return op
+
+    def test_ome_zarr_loads_via_FSStore_and_ZarrArray(self, op, mock_ome_zarr_data):
+        loaded_scale0 = op.Image[:].wait()
+        numpy.testing.assert_allclose(loaded_scale0, self.IMAGE_SCALED.reshape((1, 1, 1, 10, 12)))
+
+        scale_keys = list(op.Image.meta.scales.keys())
+        op.ActiveScale.setValue(scale_keys[1])
+        loaded_scale1 = op.Image[:].wait()
+        numpy.testing.assert_allclose(loaded_scale1, self.IMAGE_ORIGINAL.reshape((1, 1, 1, 20, 24)))
+
+    def test_scale_updates_dataset_info(self, op, datasetInfo):
+        scale_keys = list(op.Image.meta.scales.keys())
+        op.ActiveScale.setValue(scale_keys[1])
+        assert datasetInfo.working_scale == scale_keys[1]
+
+    def test_datasetInfo_init_loads_only_one_scale(self, monkeypatch, mock_ome_zarr_metadata):
+        """
+        Instantiating a zarr.Array with a web OME store fires a request for
+        https://server.com/dataset.zarr/scaleN/.zarray. This can take a long time, esp with many scales.
+        The backend instantiates reader operators twice: once during MultiscaleUrlDatasetInfo.__init__,
+        and once during OpDataSelection.setupOutputs. The latter needs to load metadata of all scales,
+        for the DatasetInfo a single scale is enough.
+        """
+        # Monkeypatch a counter into zarr.Array instantiation
+        zarr.Array.instance_counter = 0
+        zarr_init = zarr.Array.__init__
+
+        def track_instances(*args, **kwargs):
+            zarr.Array.instance_counter += 1
+            return zarr_init(*args, **kwargs)
+
+        monkeypatch.setattr(zarr.Array, "__init__", track_instances)
+
+        # Make sure that instantiating a DatasetInfo does not load more than one scale into a zarr.Array
+        _ = MultiscaleUrlDatasetInfo(url=self.MOCK_DATASET_URL)
+        assert zarr.Array.instance_counter == 1
 
 
 class TestOpDataSelection_DatasetInfo:
@@ -897,40 +1017,69 @@ class TestOpDataSelection_DatasetInfo:
         "type": "image",
         "data_type": "uint16",
         "num_channels": 1,
-        "scales": [{"key": "foo", "chunk_sizes": [[1, 1, 1]], "resolution": [""], "size": [1, 1, 1]}],
+        "scales": [{"key": "foo", "chunk_sizes": [[1, 1, 1]], "resolution": [0, 0, 0], "size": [1, 1, 1]}],
     }
+    MOCK_PROJECT_SUBPATH = "mock_dir"
 
     @pytest.fixture
     def mock_project(self, data_path):
+        mock_project_location = data_path / self.MOCK_PROJECT_SUBPATH
         data = mock.Mock()
         data.shape = (10, 10)
         data.attrs = {}
         project = mock.MagicMock()
-        project.filename = data_path / "mock.file"
+        project.filename = mock_project_location / "mock.file"
         project.__getitem__.return_value = data
         return project
 
-    @pytest.mark.parametrize(
-        "info_class, expected_sub_path",
-        [
-            (ProjectInternalDatasetInfo, ""),
-            (FilesystemDatasetInfo, "inputdata"),
-            (RelativeFilesystemDatasetInfo, "inputdata"),
-            (MultiscaleUrlDatasetInfo, ""),
-        ],
-    )
-    def test_default_export_paths(self, data_path, mock_project, monkeypatch, info_class, expected_sub_path):
-        # During instantiation, file-based datasetInfos read their file for metadata,
-        # web-based datasetInfos request their url. Hence, provide actually existing files, and mock the web server.
-        _ = MockRemoteDataset(monkeypatch, self.MOCK_PRECOMPUTED_URL, self.MOCK_PRECOMPUTED_INFO, {})
-        info_args = {
-            "ProjectInternalDatasetInfo": {"inner_path": "foo", "project_file": mock_project},
-            "FilesystemDatasetInfo": {"filePath": str(data_path / "inputdata" / "3d1c-synthetic.h5")},
-            "RelativeFilesystemDatasetInfo": {"filePath": str(data_path / "inputdata" / "3d1c-synthetic.h5")},
-            "MultiscaleUrlDatasetInfo": {"url": self.MOCK_PRECOMPUTED_URL, "project_file": mock_project},
+    @pytest.fixture
+    def mock_ome_zarr_metadata(self, monkeypatch):
+        """Monkeypatches FSStore.__getitem__ to mock metadata responses of an OME-Zarr dataset."""
+        responses = {
+            ".zattrs": {
+                "multiscales": [
+                    {"axes": [{"name": "x"}, {"name": "y"}], "datasets": [{"path": "s0"}], "version": "0.4"}
+                ]
+            },
+            "s0/.zarray": {
+                "zarr_format": 2,
+                "dtype": "|u1",
+                "fill_value": 0,
+                "shape": [1, 1],
+                "chunks": [1, 1],
+                "compressor": {"id": "gzip", "level": -1},
+                "order": "C",
+                "filters": [],
+            },
         }
-        dataset_info = info_class(**info_args[info_class.__name__])
-        assert dataset_info.default_output_dir == data_path / expected_sub_path
+        monkeypatch.setattr(zarr.storage.FSStore, "__getitem__", lambda _self, key: json.dumps(responses[key]).encode())
+
+    def test_default_export_paths_filesystem(self, data_path):
+        # Need to provide actually existing files because file-based DatasetInfos
+        # read the file for metadata during instantiation.
+        dataset_info = FilesystemDatasetInfo(filePath=str(data_path / "inputdata" / "3d1c-synthetic.h5"))
+        assert dataset_info.default_output_dir == data_path / "inputdata"
+        dataset_info2 = RelativeFilesystemDatasetInfo(filePath=str(data_path / "inputdata" / "3d1c-synthetic.h5"))
+        assert dataset_info2.default_output_dir == data_path / "inputdata"
+
+    def test_default_export_paths_project(self, data_path, mock_project):
+        dataset_info = ProjectInternalDatasetInfo(inner_path="foo", project_file=mock_project)
+        assert dataset_info.default_output_dir == data_path / self.MOCK_PROJECT_SUBPATH
+
+    def test_default_export_paths_url(self, data_path, mock_project, monkeypatch, mock_ome_zarr_metadata):
+        # Need to mock requests because web-based DatasetInfos
+        # request metadata from the server during instantiation
+        mock_precomputed_requests(monkeypatch, self.MOCK_PRECOMPUTED_URL, self.MOCK_PRECOMPUTED_INFO, {})
+        dataset_info = MultiscaleUrlDatasetInfo(url=self.MOCK_PRECOMPUTED_URL, project_file=mock_project)
+        assert dataset_info.default_output_dir == data_path / self.MOCK_PROJECT_SUBPATH
+
+        dataset_info2 = MultiscaleUrlDatasetInfo(url="http://localhost:8000/some.zarr", project_file=mock_project)
+        assert dataset_info2.default_output_dir == data_path / self.MOCK_PROJECT_SUBPATH
+
+        # When using a "file:" URI, the default export path should be the dataset's parent directory
+        ome_zarr_path = data_path / "dataset.zarr"
+        dataset_info3 = MultiscaleUrlDatasetInfo(url=ome_zarr_path.as_uri(), project_file=mock_project)
+        assert dataset_info3.default_output_dir == data_path
 
     @pytest.fixture
     def ilp_with_legacy_urldatasetinfo(self, empty_project_file):
@@ -951,7 +1100,7 @@ class TestOpDataSelection_DatasetInfo:
     def test_urldatasetinfo_serializes_equivalent_to_multiscaleurldatasetinfo(
         self, ilp_with_legacy_urldatasetinfo, monkeypatch
     ):
-        _ = MockRemoteDataset(monkeypatch, self.MOCK_PRECOMPUTED_URL, self.MOCK_PRECOMPUTED_INFO, {})
+        mock_precomputed_requests(monkeypatch, self.MOCK_PRECOMPUTED_URL, self.MOCK_PRECOMPUTED_INFO, {})
         legacy_group = ilp_with_legacy_urldatasetinfo[TOP_GROUP_NAME]["infos"]["0"]["Raw Data"]
         legacy_dataset_info = UrlDatasetInfo.from_h5_group(legacy_group)
         modern_dataset_info = MultiscaleUrlDatasetInfo(url=self.MOCK_PRECOMPUTED_URL)

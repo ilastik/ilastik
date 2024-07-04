@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -175,8 +175,8 @@ class InlineAddButtonDelegate(QItemDelegate):
                 button = AddFileButton(parent_view, index=index)
                 button.addFilesRequested.connect(partial(parent_view.handleCellAddFilesEvent, button))
                 button.addStackRequested.connect(partial(parent_view.handleCellAddStackEvent, button))
-                button.addPrecomputedVolumeRequested.connect(
-                    partial(parent_view.handleCellAddPrecomputedVolumeEvent, button)
+                button.addMultiscaleDatasetRequested.connect(
+                    partial(parent_view.handleCellAddMultiscaleDatasetEvent, button)
                 )
                 button.addDvidVolumeRequested.connect(partial(parent_view.handleCellAddDvidVolumeEvent, button))
                 parent_view.setIndexWidget(index, button)
@@ -224,7 +224,7 @@ class ScaleComboBoxDelegate(QStyledItemDelegate):
         if model.is_scale_locked(index.row()):
             message = (
                 "You have already continued in the project with this dataset at the selected scale. "
-                'To inspect another scale, please use "Add New" and add the same remote source as '
+                'To inspect another scale, please use "Add New" and add the same URL or path as '
                 "another dataset, or create a new project."
             )
             QMessageBox.information(self.parent(), "Scale locked", message)
@@ -251,7 +251,7 @@ class DatasetDetailedInfoTableView(QTableView):
 
     addFilesRequested = pyqtSignal(int)  # Signature: (lane_index)
     addStackRequested = pyqtSignal(int)  # Signature: (lane_index)
-    addPrecomputedVolumeRequested = pyqtSignal(int)  # Signature: (lane_index)
+    addMultiscaleRequested = pyqtSignal(int)  # Signature: (lane_index)
     addDvidVolumeRequested = pyqtSignal(int)  # Signature: (lane_index)
     addFilesRequestedDrop = pyqtSignal(object, int)  # Signature: (filepath_list, lane_index)
 
@@ -296,8 +296,8 @@ class DatasetDetailedInfoTableView(QTableView):
         self.addDvidVolumeRequested.emit(button.index.row())
 
     @pyqtSlot(int)
-    def handleCellAddPrecomputedVolumeEvent(self, button):
-        self.addPrecomputedVolumeRequested.emit(button.index.row())
+    def handleCellAddMultiscaleDatasetEvent(self, button):
+        self.addMultiscaleRequested.emit(button.index.row())
 
     def wheelEvent(self, event):
         """
@@ -359,7 +359,7 @@ class DatasetDetailedInfoTableView(QTableView):
         button.addFilesRequested.connect(partial(self.addFilesRequested.emit, -1))
         button.addStackRequested.connect(partial(self.addStackRequested.emit, -1))
         button.addDvidVolumeRequested.connect(partial(self.addDvidVolumeRequested.emit, -1))
-        button.addPrecomputedVolumeRequested.connect(partial(self.addPrecomputedVolumeRequested.emit, -1))
+        button.addMultiscaleDatasetRequested.connect(partial(self.addMultiscaleRequested.emit, -1))
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(button)
         layout.addStretch()

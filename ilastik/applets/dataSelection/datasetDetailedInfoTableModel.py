@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -37,17 +37,12 @@ class DatasetColumn:
     NumColumns = 6
 
 
-def _resolution_to_display_string(resolution: List[int], axiskeys: str) -> str:
-    """
-    In Precomputed format, resolution is in xyz order, which we want to display in the same order as axiskeys.
-    To support formats other than Precomputed, the tableModel would need to be able to obtain
-    the order of the resolution axes (or generally, how to transform resolution to a display string)
-    from the datasetSlot.
-    """
-    assert len(resolution) == 3, "Expected resolution to be in xyz order, please report this on http://image.sc"
-    input_axes = dict(zip("xyz", resolution))
-    reordered_resolution = [input_axes[axis] for axis in axiskeys if axis in input_axes]
-    return ", ".join(str(size) for size in reordered_resolution)
+def _dims_to_display_string(dimensions: List[int], axiskeys: str) -> str:
+    """Generate labels to put into the scale combobox.
+    Scale dimensions must be in xyz and will be reordered to match axiskeys."""
+    input_axes = dict(zip("xyz", dimensions))
+    reordered_dimensions = [input_axes[axis] for axis in axiskeys if axis in input_axes]
+    return ", ".join(str(size) for size in reordered_dimensions)
 
 
 @rowOfButtonsProxy
@@ -214,9 +209,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             return str(datasetInfo.drange or "")
         if index.column() == DatasetColumn.Scale:
             if datasetInfo.scales:
-                return _resolution_to_display_string(
-                    datasetInfo.scales[datasetInfo.working_scale]["resolution"], datasetInfo.axiskeys
-                )
+                return _dims_to_display_string(datasetInfo.scales[datasetInfo.working_scale], datasetInfo.axiskeys)
             return UninitializedDisplayData[index.column()]
 
         raise NotImplementedError(f"Unknown column: row={index.row()}, column={index.column()}")
@@ -231,10 +224,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         datasetInfo = datasetSlot.value
         if not datasetInfo.scales:
             return {}
-        return {
-            key: _resolution_to_display_string(scale["resolution"], datasetInfo.axiskeys)
-            for key, scale in datasetInfo.scales.items()
-        }
+        return {key: _dims_to_display_string(dims, datasetInfo.axiskeys) for key, dims in datasetInfo.scales.items()}
 
     def is_scale_locked(self, laneIndex) -> bool:
         datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
