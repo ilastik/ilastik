@@ -81,14 +81,18 @@ jobs:
         name: wait for xvfb to be ready
         command: while [ ! -e /tmp/.X11-unix/X42 ]; do sleep 0.1; done
     - run:
-        name: run ilastik tests
+        name: setup test paths
+        command: mkdir test-results
+    - run:
+        name: run ${ILASTIK_ROOT}/ilastik-meta/ilastik/test-results
         environment:
             DISPLAY: :42
         command: >
             cd ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
-            mkdir test-results &&
-            conda run -n ${TEST_ENV_NAME} pytest -v --run-legacy-gui --cov-report=xml --cov=lazyflow --cov=ilastik --junitxml=test-results/junit.xml &&
-            bash <(curl -s https://codecov.io/bash)
+            conda run --live-stream -n ${TEST_ENV_NAME} pytest -v --run-legacy-gui --cov-report=xml --cov=lazyflow --cov=ilastik --junitxml=test-results/junit.xml 
+    - run:
+        name: upload codecov results
+        command: cd ${ILASTIK_ROOT}/ilastik-meta/ilastik && bash <(curl -s https://codecov.io/bash)
     - store_test_results:
         path: test-results
     - save_cache:
