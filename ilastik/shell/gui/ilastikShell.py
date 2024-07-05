@@ -750,14 +750,36 @@ class IlastikShell(QMainWindow):
         self.openProjectFile(path)
 
     def _createHelpMenu(self):
+        def _sendEmailToDevs():
+            body = (
+                "Please describe the issue you are experiencing and adapt the email subject.\n"
+                "A file browser should have opened at the location of the ilastik log file. "
+                "Please attach this file to the email.\n"
+                "If you are able to reproduce the issue, even better would be if you close ilastik, "
+                "delete the log file, restart ilastik, repeat the error, and then attach the new log file."
+                "\n\n--\nAdditional diagnostics (please include this in your email):\n"
+                f"ilastik version: {ilastik.__version__}\n"
+                f"OS: {platform.platform()}\n"
+            )
+            if self.workflow:
+                body += (
+                    f"Active workflow: {self.workflow.workflowName}\n"
+                    f"Active applet: ({self.workflow.applets[self.currentAppletIndex].name})"
+                )
+            subject = "ilastik issue report"
+            QDesktopServices.openUrl(QUrl(f"mailto:team@ilastik.org?subject={subject}&body={body}"))
+            open_file_browser(ilastik.ilastik_logging.default_config.get_logfile_path())
+
         menu = QMenu("&Help", self)
         menu.setObjectName("help_menu")
         aboutIlastikAction = menu.addAction("&About ilastik")
         aboutIlastikAction.triggered.connect(partial(AboutDialog.createAndShowModal, self))
         readTheDocsAction = menu.addAction("&Documentation")
         readTheDocsAction.triggered.connect(
-            partial(QDesktopServices.openUrl, QUrl("http://ilastik.org/documentation/"))
+            partial(QDesktopServices.openUrl, QUrl("https://ilastik.org/documentation/"))
         )
+        emailDevsAction = menu.addAction("&Report issue by email")
+        emailDevsAction.triggered.connect(_sendEmailToDevs)
         licenseAction = menu.addAction("License")
         licenseAction.triggered.connect(partial(LicenseDialog, self))
         return menu
