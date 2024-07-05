@@ -89,7 +89,7 @@ jobs:
             DISPLAY: :42
         command: >
             cd ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
-            conda run --live-stream -n ${TEST_ENV_NAME} pytest -v --run-legacy-gui --cov-report=xml --cov=lazyflow --cov=ilastik --junitxml=test-results/junit.xml 
+            conda run --live-stream -n ${TEST_ENV_NAME} pytest -v -s --run-legacy-gui --cov-report=xml --cov=lazyflow --cov=ilastik --junitxml=test-results/junit.xml
     - run:
         name: upload codecov results
         command: cd ${ILASTIK_ROOT}/ilastik-meta/ilastik && bash <(curl -s https://codecov.io/bash)
