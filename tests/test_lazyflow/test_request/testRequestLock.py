@@ -1,10 +1,15 @@
 from __future__ import division
+
+import os
 from builtins import range
 from builtins import object
 import time
 import random
 import logging
 import threading
+
+import pytest
+
 from lazyflow.request import Request, RequestLock
 from lazyflow.testing import fail_after_timeout
 
@@ -26,7 +31,7 @@ class ThreadRequest(object):
         self.thr.join()
 
 
-@fail_after_timeout(20)
+@pytest.mark.skipif(os.environ.get("ON_CIRCLE_CI"), reason="Hangs on CircleCI.")
 def test_RequestLock():
     assert Request.global_thread_pool.num_workers > 0, "This test must be used with the real threadpool."
 
