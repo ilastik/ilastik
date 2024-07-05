@@ -39,7 +39,7 @@ from functools import partial
 from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from ilastik.plugins import pluginManager
+from ilastik.plugins.manager import pluginManager
 
 from lazyflow.request import Request, RequestPool
 

@@ -22,7 +22,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QMessageBox
 from PyQt5.QtGui import QColor
 from ilastik.utility.exportingOperator import ExportingGui
-from ilastik.plugins import pluginManager
+from ilastik.plugins.manager import pluginManager
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
 import volumina.colortables as colortables

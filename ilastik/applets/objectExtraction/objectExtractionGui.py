@@ -38,7 +38,7 @@ from functools import partial
 from itertools import chain
 from ilastik.applets.objectExtraction.opObjectExtraction import max_margin
 
-from ilastik.plugins import pluginManager
+from ilastik.plugins.manager import pluginManager
 from ilastik.utility.gui import threadRouted
 from ilastik.utility import log_exception
 from ilastik.config import cfg as ilastik_config

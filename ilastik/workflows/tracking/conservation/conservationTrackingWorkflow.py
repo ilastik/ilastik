@@ -14,7 +14,7 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
 from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
 from ilastik.applets.batchProcessing import BatchProcessingApplet
-from ilastik.plugins import pluginManager
+from ilastik.plugins.manager import pluginManager
 from ilastik.config import cfg as ilastik_config
 from ilastik.workflows.tracking.common import DIVISION_CLASSIFIER_LABEL_NAMES
 import logging

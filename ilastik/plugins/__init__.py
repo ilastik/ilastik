@@ -1,9 +1,7 @@
-from __future__ import absolute_import
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -18,17 +16,7 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-# 		   http://ilastik.org/license.html
+#          http://ilastik.org/license.html
 ###############################################################################
-# to ensure that plugin system is available
-from ilastik.plugins.manager import pluginManager
-
-import logging
-
-logger = logging.getLogger(__name__)
-
-from .objectClassificationWorkflow import (
-    ObjectClassificationWorkflowPixel,
-    ObjectClassificationWorkflowBinary,
-    ObjectClassificationWorkflowPrediction,
-)
+from .types import ObjectFeaturesPlugin as ObjectFeaturesPlugin
+from .types import TrackingExportFormatPlugin as TrackingExportFormatPlugin

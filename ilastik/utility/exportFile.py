@@ -13,10 +13,8 @@ from typing import Iterator, List, Tuple
 
 
 logger = logging.getLogger(__name__)
-try:
-    from ilastik.plugins import pluginManager
-except:
-    logger.warning("could not import pluginManager")
+
+from ilastik.plugins.manager import pluginManager
 
 
 class Default(object):
