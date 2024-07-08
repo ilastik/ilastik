@@ -1,9 +1,8 @@
 name: deploy
 
-on:  
-  push:
-    tags:
-      - '1.*'
+on:
+  pull_request:
+    branches: [ main ]
 
 jobs:
   package:
@@ -23,14 +22,12 @@ jobs:
       - name: install build dependencies
         run: |
           mamba install -n base -c conda-forge boa setuptools_scm anaconda-client -y
-          mamba config --set anaconda_upload yes
       - name: linux conda build and upload
         shell: bash -l {0}
         env:
-          ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
+          ANACONDA_API_TOKEN: noop
         run: |
           mamba install -n base -c conda-forge boa setuptools_scm anaconda-client -y
-          mamba config --set anaconda_upload yes
           xvfb-run --server-args="-screen 0 1024x768x24" \
           conda mambabuild -c pytorch -c ilastik-forge -c conda-forge \
           --user ilastik-forge \
