@@ -77,7 +77,7 @@ class Pipeline(abc.Sequence):
         op = opfunc(**self._op_init_kwargs)
 
         if self:
-            if "Input" is slots:
+            if "Input" in slots:
                 raise ValueError('slot with the name "Input" cannot be manually assigned for non-first operator')
             if not hasattr(op, "Input"):
                 raise ValueError(f'new operator {op} does not have a slot with the name "Input"')
