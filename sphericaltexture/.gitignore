@@ -1,0 +1,6 @@
+*.ilp
+*.h5
+*.zip
+**/__pycache__
+*.egg-info
+

@@ -1,0 +1,1 @@
+from .sphericaltexture import ObjFeatSphericalTexture as ObjFeatSphericalTexture

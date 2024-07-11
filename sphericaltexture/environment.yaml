@@ -1,0 +1,12 @@
+channels:
+  - conda-forge
+  - ilastik-forge
+  - nodefaults
+
+dependencies:
+  - python 3.9.*
+  - pip
+  - ilastik
+  - typing_extensions
+  - pytest
+  # TODO: add any additional dependencies here
