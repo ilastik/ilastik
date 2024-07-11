@@ -35,6 +35,7 @@ dependencies:
   - qimage2ndarray
   - scikit-image
   - scikit-learn
+  - sphericaltexture
   # for python 3.7 compatible environment use
   # tiffile >2020.9.22,<=2021.11.2
   - tifffile
@@ -48,6 +49,7 @@ dependencies:
   - zarr 2.*
   - aiohttp
   - fsspec
+
 
   # Neural Network Workflow dependencies
   # can be changed to request gpu versions
@@ -70,6 +72,6 @@ dependencies:
 
   # ensure working environment on apple M1 via rosetta
   # remove once native builds are available
-  # - mkl 2021.*  # [osx]
+  - mkl 2021.*  # [osx]
 
-  - mkl !=2024.1.0  # [linux] until pytorch is compatible with the current version
+  # - mkl !=2024.1.0  # [linux] until pytorch is compatible with the current version
