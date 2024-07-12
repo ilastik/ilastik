@@ -129,12 +129,10 @@ class ObjFeatSphericalTexture(ObjectFeaturesPlugin):
 
         if self.stg == None:
             self.stg = SphericalTextureGenerator(projections=["Intensity"], output_types=output_types)
-        print("hey")
-        print(image.shape, tight_bbox.shape)
         return self.do_channels(self._do_extract, image, tight_bbox=tight_bbox, stg_to_feat=stg_to_feat, axes=axes)
 
     def _do_extract(self, image, axes, tight_bbox, stg_to_feat):
-        print(image.shape, tight_bbox.shape)
+
         if self.stg is None:
             raise Exception("SphericalTextureGenerator was not initialized")
         stg_results = self.stg.process_image(image, tight_bbox)
@@ -152,7 +150,6 @@ class ObjFeatSphericalTexture(ObjectFeaturesPlugin):
         results = []
         slc = [slice(None)] * 4
         channel_index = image.channelIndex
-        print(channel_index)
         for channel in range(image.shape[channel_index]):
             slc[channel_index] = channel
             # a dictionary for the channel
