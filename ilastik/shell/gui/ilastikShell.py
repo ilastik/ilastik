@@ -1631,6 +1631,7 @@ class IlastikShell(QMainWindow):
 
         try:
             assert self.projectManager is None, "Expected projectManager to be None."
+            QApplication.setOverrideCursor(Qt.WaitCursor)
             self.projectManager = ProjectManager(
                 self,
                 workflow_class,
@@ -1645,6 +1646,8 @@ class IlastikShell(QMainWindow):
             # no project will be loaded, free the file resource
             hdf5File.close()
             return
+        finally:
+            QApplication.restoreOverrideCursor()
 
         try:
             # Add all the applets from the workflow
