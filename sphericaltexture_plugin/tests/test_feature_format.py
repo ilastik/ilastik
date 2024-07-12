@@ -69,9 +69,9 @@ def objects_with_margin_2d(image):
 def objects_with_margin_3d(image):
     # margin is 2, 2, 2
     margin = 2
-    labels = label_data_2d()
+    labels = label_data_3d()
 
-    min_coords, max_coords = bbox_coords_2d()
+    min_coords, max_coords = bbox_coords_3d()
     min_coords -= margin
     max_coords += margin
 
