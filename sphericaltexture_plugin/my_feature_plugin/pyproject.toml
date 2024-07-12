@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "my_feature_plugin"
+version = "0.0.1"
+authors = [{name="Your Name", email="your_email@provider.tld" }]
+description = "A short description on what kind of features the plugin computes."
+readme = "README.md"
+
+# TODO: Add your dependencies here:
+dependencies = ["ilastik", "typing_extensions"]
+requires-python = ">=3.9"
+
+
+[project.entry-points."ilastik.objectfeatures"]
+my_feature_plugin = "my_feature_plugin"
+
+[tool.setuptools.package-data]
+my_feature_plugin = ["*.yapsy-plugin"]

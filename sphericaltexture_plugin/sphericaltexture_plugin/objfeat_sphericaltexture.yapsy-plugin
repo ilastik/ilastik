@@ -1,8 +1,8 @@
 [Core]
-Name = sphericaltexture
-Module = sphericaltexture
+Name = Spherical Texture
+Module = objfeat_sphericaltexture
 
 [Documentation]
 Author = Oane Gros
-Version = 0.0.1
+Version = 0.0.2
 Description = Maps each object to a sphere/circle by mean intensity projection, and quantifies the distribution of the intensity signal in the projection through Spherical Harmonics/Fourier decomposition, or exposes polarization direction.

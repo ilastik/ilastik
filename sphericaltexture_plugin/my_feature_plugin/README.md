@@ -1,13 +1,13 @@
-# sphericaltexture
+# my_feature_plugin
 
-Maps each object to a sphere/circle by mean intensity projection, and quantifies the distribution of the intensity signal in the projection through Spherical Harmonics/Fourier decomposition, or exposes polarization direction.
+A short description on what kind of features the plugin computes.
 
 
 ## TODOs:
 
-- [x] Add dependencies to `environment.yaml` and `pyproject.toml`
+- [ ] Add dependencies to `environment.yaml` and `pyproject.toml`
 - [ ] Development setup
-  - [x] create conda environment
+  - [ ] create conda environment
   - [ ] install package in editable mode
 - [ ] test initial plugin setup
 
@@ -48,16 +48,16 @@ ilastik
 The ilastik UI should start up.
 
 You can download and open the following a [sample project][ocex] or [create your own][ocdocs].
-Open the project, when clicking on _Select Features_, the **sphericaltexture** plugin should show up.
+Open the project, when clicking on _Select Features_, the **my_feature_plugin** plugin should show up.
 Per default the feature _"example_global_feature"_, and "example_local_feature" is implemented.
 
 ## Writing your object feature plugin
 
-The `sphericaltexture` folder holds a template that you can use to implement your feature plugin.
-The file `sphericaltexture.py` and `sphericaltexture.yapsy-plugin` are the only files that you will need to edit.
+The `my_feature_plugin` folder holds a template that you can use to implement your feature plugin.
+The file `the_module.py` and `the_module.yapsy-plugin` are the only files that you will need to edit.
 
-* `sphericaltexture.yapsy-plugin`: this holds the metadata that is used by the plugin manager that is used in ilastik `yapsy`.
-* `sphericaltexture.py`: The class `ObjFeatSphericalTexture` is the template class that you need to edit in order to add your feature.
+* `the_module.yapsy-plugin`: this holds the metadata that is used by the plugin manager that is used in ilastik `yapsy`.
+* `the_module.py`: The class `MyObjectFeatures` is the template class that you need to edit in order to add your feature.
   These methods have to be implemented: `availableFeatures` and either (or both) `compute_global`, and/or `compute_local`.
   _`compute_global`_ assumes that the computation is done on the whole image at once.
   _`compute_local`_ assumes that the computation will happen per object.

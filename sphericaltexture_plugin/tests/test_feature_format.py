@@ -5,7 +5,7 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 import vigra
-from sphericaltexture.sphericaltexture import ObjFeatSphericalTexture
+from sphericaltexture_plugin.objfeat_sphericaltexture import ObjFeatSphericalTexture
 
 
 def image_data_2d():

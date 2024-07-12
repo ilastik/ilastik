@@ -1,0 +1,8 @@
+[Core]
+Name = my_feature_plugin
+Module = the_module
+
+[Documentation]
+Author = Your Name
+Version = 0.0.1
+Description = A short description on what kind of features the plugin computes.

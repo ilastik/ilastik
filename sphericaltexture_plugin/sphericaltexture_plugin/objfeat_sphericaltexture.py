@@ -3,9 +3,11 @@ from typing import Dict, List
 from typing_extensions import NotRequired, TypedDict
 
 import numpy
-import numpy.typing as npt
+import numpy.typing as numpyt
 import vigra
 from ilastik.plugins.types import ObjectFeaturesPlugin
+
+from sphericaltexture import SphericalTextureGenerator
 
 
 class FeatureDescription(TypedDict):
@@ -27,10 +29,10 @@ class FeatureDescription(TypedDict):
 class ObjFeatSphericalTexture(ObjectFeaturesPlugin):
     """Plugins of this class calculate object features."""
 
-    name = "sphericaltexture"
+    name = "Spherical Texture"
 
     _feature_dict: Dict[str, FeatureDescription] = {
-        "Spherical Texture": {
+        "Spectrum": {
             "displaytext": "Spherical Texture",
             "detailtext": (
                 "Maps each object to a sphere/circle by mean intensity projection,"
@@ -40,7 +42,6 @@ class ObjFeatSphericalTexture(ObjectFeaturesPlugin):
             ),
             "tooltip": "Spherical/Circular Texture",
             "advanced": False,
-            "group": "Radial Quantifications",
             "margin": 0,
         },
         "Polarization Direction": {
@@ -51,7 +52,6 @@ class ObjFeatSphericalTexture(ObjectFeaturesPlugin):
             ),
             "tooltip": "Spherical/Circular Polarization Direction",
             "advanced": False,
-            "group": "Radial Quantifications",
             "margin": 0,
         },
     }
@@ -111,7 +111,6 @@ class ObjFeatSphericalTexture(ObjectFeaturesPlugin):
         max_idx = non_zero_indices.max(axis=0)
 
         tight_slicing = tuple([slice(mmin, mmax + 1) for mmin, mmax in zip(min_idx, max_idx)])
-
         tight_bbox = binary_bbox[tight_slicing]
 
         # wrap naming and initialization of
@@ -119,7 +118,7 @@ class ObjFeatSphericalTexture(ObjectFeaturesPlugin):
         stg_to_feat = {}
         ndim = None
         for feature in features:
-            if "Spherical Texture" in feature:
+            if "Spectrum" in feature:
                 output_types.append("Condensed Spectrum")
                 ndim = int(feature[0])
                 stg_to_feat["Intensity Condensed Spectrum"] = feature
@@ -130,22 +129,21 @@ class ObjFeatSphericalTexture(ObjectFeaturesPlugin):
 
         if self.stg == None:
             self.stg = SphericalTextureGenerator(projections=["Intensity"], output_types=output_types)
-        feature_dict["example_local_feature"] = tight_bbox.sum() / tight_bbox.size
-
+        print("hey")
+        print(image.shape, tight_bbox.shape)
         return self.do_channels(self._do_extract, image, tight_bbox=tight_bbox, stg_to_feat=stg_to_feat, axes=axes)
 
-    def _do_extract(self, image, tight_bbox, stg_to_feat, axes):
+    def _do_extract(self, image, axes, tight_bbox, stg_to_feat):
+        print(image.shape, tight_bbox.shape)
         if self.stg is None:
             raise Exception("SphericalTextureGenerator was not initialized")
-        stg_results = self.stg.process_image(image, binary_bbox)
+        stg_results = self.stg.process_image(image, tight_bbox)
         for key in list(stg_results.keys()):  # rename keys to ilastik feature names
-            stg_results[key] = np.nan_to_num(stg_results[key])
+            stg_results[key] = numpy.nan_to_num(stg_results[key], nan=0.0).astype(numpy.float64)
             stg_results[stg_to_feat[key]] = stg_results.pop(key)
-
-        print(stg_results)
         return stg_results
 
-    def do_channels(self, fn, image: vigra.VigraArray, labels: vigra.VigraArray, axes, **kwargs):
+    def do_channels(self, fn, image: vigra.VigraArray, axes, **kwargs):
         """Helper for features that only take one channel.
 
         :param fn: function that computes features
@@ -154,11 +152,11 @@ class ObjFeatSphericalTexture(ObjectFeaturesPlugin):
         results = []
         slc = [slice(None)] * 4
         channel_index = image.channelIndex
+        print(channel_index)
         for channel in range(image.shape[channel_index]):
             slc[channel_index] = channel
             # a dictionary for the channel
-
-            result = fn(image[slc], labels, axes, **kwargs)
+            result = fn(image[slc], axes, **kwargs)
             results.append(result)
 
         return self.combine_dicts_with_numpy(results)

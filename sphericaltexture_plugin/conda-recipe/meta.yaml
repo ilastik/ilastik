@@ -35,7 +35,7 @@ requirements:
 
 test:
   imports:
-    - sphericaltexture
+    - sphericaltexture_plugin
   commands:
     - pytest
   source_files:

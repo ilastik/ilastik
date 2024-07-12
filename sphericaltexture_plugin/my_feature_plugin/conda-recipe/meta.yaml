@@ -1,0 +1,44 @@
+
+{% set pyproject = load_file_data('pyproject.toml') %}
+{% set pp = pyproject.get('project') %}
+
+
+package:
+  version: {{ pp.get('version') }}
+  name: {{ pp.get('name') }}
+
+source:
+  path: ..
+
+build:
+  noarch: python
+  script: python -m pip install --no-deps --ignore-installed .
+
+
+requirements:
+  host:
+    - python {{ pp.get('requires-python') }}
+    - pip
+    
+    {% for host_dep in pyproject.get('build-system').get('requires') %}
+    - {{ host_dep.lower() }}
+    {% endfor %}
+    
+
+  run:
+    - python {{ pp.get('requires-python') }}
+    
+    {% for dep in pp.get('dependencies') %}
+    - {{ dep.lower() }}
+    {% endfor %}
+    
+
+test:
+  imports:
+    - my_feature_plugin
+  commands:
+    - pytest
+  source_files:
+    - tests
+  requires:
+    - pytest
