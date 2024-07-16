@@ -28,6 +28,7 @@ from urllib.parse import unquote_to_bytes
 
 import jsonschema
 import vigra
+from aiohttp import ClientConnectorError
 from zarr.core import Array as ZarrArray
 from zarr.storage import FSStore, LRUStoreCache
 
@@ -139,8 +140,14 @@ class OMEZarrStore(MultiscaleStore):
             uncached_store = FSStore(self.uri, mode="r", **OME_ZARR_V_0_4_KWARGS)
             try:
                 self.ome_spec = json.loads(uncached_store[".zattrs"])
-            except KeyError:
-                raise ValueError("Expected a Zarr store, but could not find .zattrs file at the address.")
+            except Exception as e:
+                # Connection problems on FSSpec side raise a ClientConnectorError wrapped in a KeyError
+                if isinstance(e.__context__, ClientConnectorError):
+                    raise ConnectionError(f"Could not connect to {e.__context__.host}:{e.__context__.port}.") from e
+                elif isinstance(e, KeyError):
+                    raise ValueError("Expected a Zarr store, but could not find .zattrs file at the address.") from e
+                else:
+                    raise e
             if self.ome_spec.get("multiscales", [{}])[0].get("version") == "0.1":
                 uncached_store = FSStore(self.uri, mode="r", **OME_ZARR_V_0_1_KWARGS)
             # There is an additional block cache in front of OpOMEZarrMultiscaleReader, so e.g. when

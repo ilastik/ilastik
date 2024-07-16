@@ -172,6 +172,7 @@ class MultiscaleDatasetBrowser(QDialog):
             else:
                 msg = "Error while trying to read a dataset at this address."
             msg += f"\n\nFull error message:\n{e}"
+            logger.error(e, exc_info=True)
             self.result_text_box.setText(msg)
             return
 
