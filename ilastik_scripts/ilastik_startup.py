@@ -1,11 +1,16 @@
 import ctypes.util
+import logging
 import os
 import pathlib
 import platform
 import shlex
+import ssl
 import sys
 import warnings
-from typing import Iterable, Mapping, Sequence, Tuple, Union
+from typing import Iterable, Mapping, Sequence, Tuple, Union, Optional
+
+
+logger = logging.getLogger(__name__)
 
 
 def _env_list(name: str, sep: str = os.pathsep) -> Iterable[str]:
@@ -102,7 +107,7 @@ def path_setup():
             _clean_paths(ilastik_root)
         else:
             warnings.warn(
-                f"--clean_paths argument only supported on windows and should only be used in the binary distribution. Skipping path cleanup."
+                "--clean_paths argument only supported on windows and should only be used in the binary distribution. Skipping path cleanup."
             )
 
     # Allow to start-up by double-clicking a project file.
@@ -138,9 +143,59 @@ def fix_macos() -> None:
     ctypes.util.find_library = find_library
 
 
+def fix_ssl() -> None:
+    """
+    Paths to cert.pem and the CA certificates dir are hard-coded into openssl during the build process
+    of our installer packages.
+    It has some special logic for Windows, and there the paths don't seem to be an issue.
+    On Linux and macOS, the build machine's path is written (/opt/conda/envs/ilastik-release/ssl/),
+    which does not exist on the end user's machine.
+    Being unable to find the cert files means aiohttp cannot connect via https. Currently only
+    zarr.storage.FSStore depends on this.
+    We override the broken paths using the env vars that openssl listens to. Better would be if we can
+    find a way to write the correct paths during build.
+    """
+    if platform.system() == "Windows":
+        return
+
+    ssl_paths = ssl.get_default_verify_paths()
+    if os.path.isfile(ssl_paths.openssl_cafile):
+        # All good then I guess
+        return
+
+    def check_parent_for_dir_recursive(path: pathlib.Path, dir_name: str) -> Optional[pathlib.Path]:
+        if path.is_dir() and any(p.name == dir_name for p in path.iterdir()):
+            return path
+        if path.parent == path:
+            raise RecursionError(f"Could not find {dir_name} directory")
+        return check_parent_for_dir_recursive(path.parent, dir_name)
+
+    ssl_parent = None
+    try:
+        ssl_parent = check_parent_for_dir_recursive(pathlib.Path(__file__).parent, "ssl")
+    except RecursionError:
+        try:
+            # Try from PWD and OLDPWD env variables
+            # on macOS: os.environ["PWD"] = {app_root}/Contents/MacOS; os.environ["OLDPWD"] = {app_root}/Contents
+            # on Linux: os.environ["PWD"] = {tar_root}; os.environ["OLDPWD"] = {tar_root}/bin
+            app_root_or_subdir = pathlib.Path(os.environ.get("PWD", "") or os.environ.get("OLDPWD", ""))
+            ssl_parent = check_parent_for_dir_recursive(app_root_or_subdir, "ssl")
+        except RecursionError:
+            logger.warning(
+                "Could not find SSL certificate directory, may not be able to connect to web servers via https. "
+                "If you know it, you can explicitly set the environment variables SSL_CERT_FILE and SSL_CERT_DIR. "
+                "SSL_CERT_FILE should point to /your/path/ssl/cert.pem and SSL_CERT_DIR to /your/path/ssl/certs"
+            )
+    if ssl_parent:
+        logger.info(f"Found SSL dir in {ssl_parent}, writing to env vars SSL_CERT_FILE / SSL_CERT_DIR")
+        os.environ["SSL_CERT_FILE"] = str(ssl_parent / "ssl" / "cert.pem")
+        os.environ["SSL_CERT_DIR"] = str(ssl_parent / "ssl" / "certs")
+
+
 def main():
     path_setup()
     fix_macos()
+    fix_ssl()
 
     from ilastik.__main__ import main
 
