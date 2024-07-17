@@ -1,11 +1,16 @@
 import ctypes.util
+import logging
 import os
 import pathlib
 import platform
 import shlex
+import ssl
 import sys
 import warnings
 from typing import Iterable, Mapping, Sequence, Tuple, Union
+
+
+logger = logging.getLogger(__name__)
 
 
 def _env_list(name: str, sep: str = os.pathsep) -> Iterable[str]:
@@ -102,7 +107,7 @@ def path_setup():
             _clean_paths(ilastik_root)
         else:
             warnings.warn(
-                f"--clean_paths argument only supported on windows and should only be used in the binary distribution. Skipping path cleanup."
+                "--clean_paths argument only supported on windows and should only be used in the binary distribution. Skipping path cleanup."
             )
 
     # Allow to start-up by double-clicking a project file.
@@ -138,9 +143,101 @@ def fix_macos() -> None:
     ctypes.util.find_library = find_library
 
 
+def fix_ssl() -> None:
+    """
+    Paths to the CA certificates file and the CA certificates dir are hard-coded into openssl
+    during the build process of our installer packages.
+    It has some special logic for Windows, and there the paths don't seem to be an issue.
+    On Linux and macOS, the build machine's path is written (/opt/conda/envs/ilastik-release/ssl/),
+    which does not exist on the end user's machine.
+    Being unable to find the cert files means aiohttp cannot connect via https. Currently only
+    zarr.storage.FSStore depends on this.
+    We override the broken paths using the env vars that openssl listens to. Better would be if we can
+    find a way to write the correct paths during build.
+    Priority order:
+    1) User choice: If already set, leave existing SSL_CERT_FILE or SSL_CERT_DIR untouched
+    2) User machine config: Default system locations
+    3) Reasonable default: cacert.pem provided by certifi
+    4) Last resort: ssl dir inside the ilastik package
+        (macOS: $app_root/Contents/ilastik-release/ssl, Linux: $tar_root/ssl)
+    """
+    if platform.system() == "Windows":
+        return
+
+    ssl_paths = ssl.get_default_verify_paths()
+    if os.path.isfile(ssl_paths.openssl_cafile) or "SSL_CERT_FILE" in os.environ or "SSL_CERT_DIR" in os.environ:
+        # All good, or user has manually set an env variable (one of SSL_CERT_FILE or SSL_CERT_DIR is sufficient)
+        return
+
+    # Check default locations first so that we preferably use the system certs if available
+    # https://serverfault.com/a/722646
+    default_cert_files = (
+        "/etc/ssl/certs/ca-certificates.crt",
+        "/etc/pki/tls/certs/ca-bundle.crt",
+        "/etc/ssl/ca-bundle.pem",
+        "/etc/pki/tls/cacert.pem",
+        "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+        "/etc/ssl/cert.pem",
+    )
+    for cert_file in default_cert_files:
+        if os.path.isfile(cert_file):
+            logger.info(f"Found cert file in {cert_file}, writing to env var SSL_CERT_FILE")
+            os.environ["SSL_CERT_FILE"] = cert_file
+            return
+
+    default_cert_paths = (
+        "/etc/ssl/certs",
+        "/system/etc/security/cacerts",
+        "/usr/local/share/certs",
+        "/etc/pki/tls/certs",
+        "/etc/openssl/certs",
+        "/var/ssl/certs",
+    )
+    for certs_dir in default_cert_paths:
+        if os.path.isdir(certs_dir):
+            logger.info(f"Found certs dir at {certs_dir}, writing to env var SSL_CERT_DIR")
+            os.environ["SSL_CERT_DIR"] = certs_dir
+            return
+
+    # Try certifi
+    import certifi
+
+    if os.path.isfile(certifi.where()):
+        logger.info(f"Falling back to certifi for SSL at {certifi.where()}, writing to env var SSL_CERT_FILE")
+        os.environ["SSL_CERT_FILE"] = certifi.where()
+        return
+
+    # None of the defaults worked, we have to find the ssl dir inside the ilastik package.
+    # This can be tricky, because the path to the package root isn't stored anywhere.
+    # We check __file__'s parents, because we know that this script is in the package.
+    # On Linux, that easily gets us to $tar_root/ssl.
+    # On macOS, we need $app_root/Contents/ilastik-release/ssl.
+    # This script file should also be somewhere inside ilastik-release.
+    for candidate_dir in pathlib.Path(__file__).parents:
+        package_cert_file = candidate_dir / "ssl" / "cert.pem"
+        if package_cert_file.is_file():
+            logger.info(f"Found cert file in {str(package_cert_file)}, writing to env var SSL_CERT_FILE")
+            os.environ["SSL_CERT_FILE"] = str(package_cert_file)
+            return
+
+        package_cert_dir = candidate_dir / "ssl" / "certs"
+        if package_cert_file.is_dir():
+            logger.info(f"Found certs dir at {str(package_cert_dir)}, writing to env var SSL_CERT_DIR")
+            os.environ["SSL_CERT_DIR"] = str(package_cert_dir)
+            return
+
+    logger.warning(
+        "Could not find SSL CA certificates directory or file. "
+        "This means connecting to web servers via https may not be possible. "
+        "If you know the path to the CA certificates on your machine, you can set the environment "
+        "variables SSL_CERT_FILE or SSL_CERT_DIR."
+    )
+
+
 def main():
     path_setup()
     fix_macos()
+    fix_ssl()
 
     from ilastik.__main__ import main
 

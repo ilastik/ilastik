@@ -141,7 +141,7 @@ class OpLabelVolume(Operator):
 
         if self._opLabel is None:
             self._opLabel = self._labelOps[method](parent=self)
-            if method is "vigra":
+            if method == "vigra":
                 self._opLabel.BypassModeEnabled.connect(self.BypassModeEnabled)
 
         if input_dtype == np.uint16:
@@ -351,7 +351,6 @@ except ImportError as e:
 
     class OpBlockedConnectedComponents(object):
         pass
-
 
 else:
     _blockedarray_module_available = True

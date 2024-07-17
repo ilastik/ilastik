@@ -27,11 +27,14 @@ outputs:
       run:
         - python >=3.7
         - numpy >1.12
+        # aiohttp to enable zarr.storage.FSStore
         - aiohttp
         - appdirs
         - cachetools
+        - certifi
         - dpct
         - fastfilters
+        # fsspec to enable zarr.storage.FSStore
         - fsspec
         - future
         - greenlet
