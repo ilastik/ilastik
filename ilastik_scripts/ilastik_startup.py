@@ -7,7 +7,7 @@ import shlex
 import ssl
 import sys
 import warnings
-from typing import Iterable, Mapping, Sequence, Tuple, Union, Optional
+from typing import Iterable, Mapping, Sequence, Tuple, Union
 
 
 logger = logging.getLogger(__name__)
@@ -145,8 +145,8 @@ def fix_macos() -> None:
 
 def fix_ssl() -> None:
     """
-    Paths to cert.pem and the CA certificates dir are hard-coded into openssl during the build process
-    of our installer packages.
+    Paths to the CA certificates file and the CA certificates dir are hard-coded into openssl
+    during the build process of our installer packages.
     It has some special logic for Windows, and there the paths don't seem to be an issue.
     On Linux and macOS, the build machine's path is written (/opt/conda/envs/ilastik-release/ssl/),
     which does not exist on the end user's machine.
@@ -154,42 +154,84 @@ def fix_ssl() -> None:
     zarr.storage.FSStore depends on this.
     We override the broken paths using the env vars that openssl listens to. Better would be if we can
     find a way to write the correct paths during build.
+    Priority order:
+    1) User choice: If already set, leave existing SSL_CERT_FILE or SSL_CERT_DIR untouched
+    2) User machine config: Default system locations
+    3) Reasonable default: cacert.pem provided by certifi
+    4) Last resort: ssl dir inside the ilastik package
+        (macOS: $app_root/Contents/ilastik-release/ssl, Linux: $tar_root/ssl)
     """
     if platform.system() == "Windows":
         return
 
     ssl_paths = ssl.get_default_verify_paths()
-    if os.path.isfile(ssl_paths.openssl_cafile):
-        # All good then I guess
+    if os.path.isfile(ssl_paths.openssl_cafile) or "SSL_CERT_FILE" in os.environ or "SSL_CERT_DIR" in os.environ:
+        # All good, or user has manually set an env variable (one of SSL_CERT_FILE or SSL_CERT_DIR is sufficient)
         return
 
-    def check_parent_for_dir_recursive(path: pathlib.Path, dir_name: str) -> Optional[pathlib.Path]:
-        if path.is_dir() and any(p.name == dir_name for p in path.iterdir()):
-            return path
-        if path.parent == path:
-            raise RecursionError(f"Could not find {dir_name} directory")
-        return check_parent_for_dir_recursive(path.parent, dir_name)
+    # Check default locations first so that we preferably use the system certs if available
+    # https://serverfault.com/a/722646
+    default_cert_files = (
+        "/etc/ssl/certs/ca-certificates.crt",
+        "/etc/pki/tls/certs/ca-bundle.crt",
+        "/etc/ssl/ca-bundle.pem",
+        "/etc/pki/tls/cacert.pem",
+        "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+        "/etc/ssl/cert.pem",
+    )
+    for cert_file in default_cert_files:
+        if os.path.isfile(cert_file):
+            logger.info(f"Found cert file in {cert_file}, writing to env var SSL_CERT_FILE")
+            os.environ["SSL_CERT_FILE"] = cert_file
+            return
 
-    ssl_parent = None
-    try:
-        ssl_parent = check_parent_for_dir_recursive(pathlib.Path(__file__).parent, "ssl")
-    except RecursionError:
-        try:
-            # Try from PWD and OLDPWD env variables
-            # on macOS: os.environ["PWD"] = {app_root}/Contents/MacOS; os.environ["OLDPWD"] = {app_root}/Contents
-            # on Linux: os.environ["PWD"] = {tar_root}; os.environ["OLDPWD"] = {tar_root}/bin
-            app_root_or_subdir = pathlib.Path(os.environ.get("PWD", "") or os.environ.get("OLDPWD", ""))
-            ssl_parent = check_parent_for_dir_recursive(app_root_or_subdir, "ssl")
-        except RecursionError:
-            logger.warning(
-                "Could not find SSL certificate directory, may not be able to connect to web servers via https. "
-                "If you know it, you can explicitly set the environment variables SSL_CERT_FILE and SSL_CERT_DIR. "
-                "SSL_CERT_FILE should point to /your/path/ssl/cert.pem and SSL_CERT_DIR to /your/path/ssl/certs"
-            )
-    if ssl_parent:
-        logger.info(f"Found SSL dir in {ssl_parent}, writing to env vars SSL_CERT_FILE / SSL_CERT_DIR")
-        os.environ["SSL_CERT_FILE"] = str(ssl_parent / "ssl" / "cert.pem")
-        os.environ["SSL_CERT_DIR"] = str(ssl_parent / "ssl" / "certs")
+    default_cert_paths = (
+        "/etc/ssl/certs",
+        "/system/etc/security/cacerts",
+        "/usr/local/share/certs",
+        "/etc/pki/tls/certs",
+        "/etc/openssl/certs",
+        "/var/ssl/certs",
+    )
+    for certs_dir in default_cert_paths:
+        if os.path.isdir(certs_dir):
+            logger.info(f"Found certs dir at {certs_dir}, writing to env var SSL_CERT_DIR")
+            os.environ["SSL_CERT_DIR"] = certs_dir
+            return
+
+    # Try certifi
+    import certifi
+
+    if os.path.isfile(certifi.where()):
+        logger.info(f"Falling back to certifi for SSL at {certifi.where()}, writing to env var SSL_CERT_FILE")
+        os.environ["SSL_CERT_FILE"] = certifi.where()
+        return
+
+    # None of the defaults worked, we have to find the ssl dir inside the ilastik package.
+    # This can be tricky, because the path to the package root isn't stored anywhere.
+    # We check __file__'s parents, because we know that this script is in the package.
+    # On Linux, that easily gets us to $tar_root/ssl.
+    # On macOS, we need $app_root/Contents/ilastik-release/ssl.
+    # This script file should also be somewhere inside ilastik-release.
+    for candidate_dir in pathlib.Path(__file__).parents:
+        package_cert_file = candidate_dir / "ssl" / "cert.pem"
+        if package_cert_file.is_file():
+            logger.info(f"Found cert file in {str(package_cert_file)}, writing to env var SSL_CERT_FILE")
+            os.environ["SSL_CERT_FILE"] = str(package_cert_file)
+            return
+
+        package_cert_dir = candidate_dir / "ssl" / "certs"
+        if package_cert_file.is_dir():
+            logger.info(f"Found certs dir at {str(package_cert_dir)}, writing to env var SSL_CERT_DIR")
+            os.environ["SSL_CERT_DIR"] = str(package_cert_dir)
+            return
+
+    logger.warning(
+        "Could not find SSL CA certificates directory or file. "
+        "This means connecting to web servers via https may not be possible. "
+        "If you know the path to the CA certificates on your machine, you can set the environment "
+        "variables SSL_CERT_FILE or SSL_CERT_DIR."
+    )
 
 
 def main():
