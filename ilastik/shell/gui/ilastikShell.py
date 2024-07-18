@@ -91,6 +91,7 @@ from ilastik.shell.headless.headlessShell import HeadlessShell
 
 from ilastik.shell.gui.aboutDialog import AboutDialog
 from ilastik.shell.gui.licenseDialog import LicenseDialog
+from ilastik.shell.gui.reportIssueDialog import ReportIssueDialog
 
 from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox, AppletBarManager
 from ilastik.widgets.filePathButton import FilePathButton
@@ -750,25 +751,14 @@ class IlastikShell(QMainWindow):
         self.openProjectFile(path)
 
     def _createHelpMenu(self):
-        def _sendEmailToDevs():
-            body = (
-                "Please describe the issue you are experiencing and adapt the email subject.\n"
-                "A file browser should have opened at the location of the ilastik log file. "
-                "Please attach this file to the email.\n"
-                "If you are able to reproduce the issue, even better would be if you close ilastik, "
-                "delete the log file, restart ilastik, repeat the error, and then attach the new log file."
-                "\n\n--\nAdditional diagnostics (please include this in your email):\n"
-                f"ilastik version: {ilastik.__version__}\n"
-                f"OS: {platform.platform()}\n"
-            )
+        def _openReportIssueDialog():
+            workflow_text = ""
             if self.workflow:
-                body += (
+                workflow_text = (
                     f"Active workflow: {self.workflow.workflowName}\n"
-                    f"Active applet: ({self.workflow.applets[self.currentAppletIndex].name})"
+                    f"Active applet: {self.workflow.applets[self.currentAppletIndex].name}\n"
                 )
-            subject = "ilastik issue report"
-            QDesktopServices.openUrl(QUrl(f"mailto:team@ilastik.org?subject={subject}&body={body}"))
-            open_file_browser(ilastik.ilastik_logging.default_config.get_logfile_path())
+            ReportIssueDialog(self, workflow_text)
 
         menu = QMenu("&Help", self)
         menu.setObjectName("help_menu")
@@ -778,8 +768,8 @@ class IlastikShell(QMainWindow):
         readTheDocsAction.triggered.connect(
             partial(QDesktopServices.openUrl, QUrl("https://ilastik.org/documentation/"))
         )
-        emailDevsAction = menu.addAction("&Report issue by email")
-        emailDevsAction.triggered.connect(_sendEmailToDevs)
+        emailDevsAction = menu.addAction("&Report issue")
+        emailDevsAction.triggered.connect(_openReportIssueDialog)
         licenseAction = menu.addAction("License")
         licenseAction.triggered.connect(partial(LicenseDialog, self))
         return menu
