@@ -1,5 +1,6 @@
 import os
 import platform
+import re
 import webbrowser
 from ilastik import __version__ as ilastik_version
 from ilastik import ilastik_logging
@@ -9,16 +10,33 @@ from urllib.parse import quote
 
 FORUM_URI = "https://forum.image.sc/tag/ilastik"
 TEAM_EMAIL = "team@ilastik.org"
+FILE_PATH_MASK = "(file path masked)"
 
 
-def _get_log_since_last_startup() -> str:
+def _mask_file_paths(text: str) -> str:
+    """Replace file paths with a placeholder for privacy."""
+    windows_pattern = r"""       # Windows path or file-URI with Windows path (could be with double-backslash)
+        [a-zA-Z]:[/\\]\\?        # Drive and first slash
+        (?!/)                    # Not immediately followed by another slash (avoid matching schema://)
+        ([^/\\\n]+[/\\]\\?)*     # Any number of directories
+        \S*
     """
-    Reads the log up to maximum 500 KiB from the end and returns the text since the last startup, or the entire 500 KiB.
-    We don't want people emailing us more than 1MB of log...
+    unix_pattern = r"""          # Unix path or other URI
+            /[^/\n]+/            # at least two slashes, but not double-slash
+            \S*
+    """
+    combined_pattern = re.compile(f"({windows_pattern}|{unix_pattern})", re.X)
+    masked = re.sub(combined_pattern, FILE_PATH_MASK, text)
+    return masked
+
+
+def _get_log_since_last_startup(text_size_limit=65536, pre_marker_padding=512) -> str:
+    """
+    Reads the log up to maximum `text_size_limit` from the end (64 KiB).
+    Returns the text since the last startup plus `pre_marker_padding`, or the entire text if the marker is not found.
+    We don't want people posting or emailing us huge amounts of log...
     """
     log_path = ilastik_logging.default_config.get_logfile_path()
-    text_size_limit = 524288  # 500 KiB
-    pre_marker_padding = 1024
     file_size = int(os.path.getsize(log_path))
     with open(log_path, "rb") as log_file:
         position = max(0, file_size - text_size_limit)
@@ -34,7 +52,7 @@ class ReportIssueDialog(QDialog):
         super().__init__(parent=parent)
 
         self.setWindowTitle("Report issue")
-        self.setFixedSize(600, 300)
+        self.setMinimumSize(600, 300)
 
         main_layout = QVBoxLayout()
 
@@ -49,6 +67,7 @@ class ReportIssueDialog(QDialog):
         )
         instruction_label.setOpenExternalLinks(True)
         instruction_label.setWordWrap(True)
+        instruction_label.setMaximumHeight(150)
         main_layout.addWidget(instruction_label)
 
         report = (
@@ -56,7 +75,7 @@ class ReportIssueDialog(QDialog):
             f"OS: {platform.platform()}\n"
             f"{workflow_report_text}"
             "Log since last startup (please shorten to relevant parts if this seems very long):\n"
-            f"```\n{_get_log_since_last_startup()}\n```"
+            f"```\n{_mask_file_paths(_get_log_since_last_startup())}\n```"
         )
         self.report_text = QTextEdit()
         self.report_text.setPlainText(report)
