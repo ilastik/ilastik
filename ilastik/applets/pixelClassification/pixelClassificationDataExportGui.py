@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -18,20 +18,13 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
 import warnings
-
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor
-import warnings
-
-from lazyflow.operators.generic import OpMultiArraySlicer2
-
-from volumina.api import createDataSource, AlphaModulatedLayer, ColortableLayer
-from volumina import colortables
 
 from ilastik.utility import bind
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
+from lazyflow.operators.generic import OpMultiArraySlicer2
+from PyQt5.QtGui import QColor
+from volumina.api import createDataSource, AlphaModulatedLayer, ColortableLayer
 
 
 class PixelClassificationDataExportGui(DataExportGui):
@@ -48,8 +41,16 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
         super(PixelClassificationResultsViewer, self).__init__(*args, **kwargs)
         self.topLevelOperatorView.PmapColors.notifyDirty(bind(self.updateAllLayers))
         self.topLevelOperatorView.LabelNames.notifyDirty(bind(self.updateAllLayers))
+        self._channel_slicer_op = None
 
     def setupLayers(self):
+        if self._channel_slicer_op:
+            # self._initPredictionLayers may have created an op for our Gui purposes.
+            # Clean up before potentially creating another one.
+            self._channel_slicer_op.Input.disconnect()
+            self._channel_slicer_op.cleanUp()
+            self._channel_slicer_op = None
+
         layers = []
         opLane = self.topLevelOperatorView
 
@@ -154,6 +155,7 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
         opSlicer = OpMultiArraySlicer2(parent=opLane.viewed_operator().parent)
         opSlicer.Input.connect(predictionSlot)
         opSlicer.AxisFlag.setValue("c")
+        self._channel_slicer_op = opSlicer
 
         for channel, channelSlot in enumerate(opSlicer.Slices):
             if channelSlot.ready() and channel < len(colors) and channel < len(names):
