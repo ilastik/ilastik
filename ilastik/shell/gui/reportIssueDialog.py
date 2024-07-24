@@ -1,16 +1,21 @@
-import os
+import pathlib
 import platform
 import re
 import webbrowser
+from functools import partial
+
+from PyQt5.QtCore import QUrl, Qt
+from PyQt5.QtGui import QDesktopServices
+
 from ilastik import __version__ as ilastik_version
 from ilastik import ilastik_logging
-from ilastik.app import STARTUP_MARKER
 from PyQt5.QtWidgets import QApplication, QDialog, QVBoxLayout, QLabel, QTextEdit, QPushButton, QHBoxLayout, QSizePolicy
 from urllib.parse import quote
 
 FORUM_URI = "https://forum.image.sc/tag/ilastik"
 TEAM_EMAIL = "team@ilastik.org"
 FILE_PATH_MASK = "(file path masked)"
+LOG_LENGTH_THRESHOLD = 5000  # Maximum we are happy to have people email or post in the forum
 
 
 def _mask_file_paths(text: str) -> str:
@@ -30,21 +35,15 @@ def _mask_file_paths(text: str) -> str:
     return masked
 
 
-def _get_log_since_last_startup(text_size_limit=65536, pre_marker_padding=512) -> str:
-    """
-    Reads the log up to maximum `text_size_limit` from the end (64 KiB).
-    Returns the text since the last startup plus `pre_marker_padding`, or the entire text if the marker is not found.
-    We don't want people posting or emailing us huge amounts of log...
-    """
-    log_path = ilastik_logging.default_config.get_logfile_path()
-    file_size = int(os.path.getsize(log_path))
-    with open(log_path, "rb") as log_file:
-        position = max(0, file_size - text_size_limit)
-        log_file.seek(position)
-        log_text = log_file.read().decode()
-    # Go back a bit further than the marker to catch pre-startup log messages
-    before_marker = max(0, log_text.rfind(STARTUP_MARKER) - pre_marker_padding)
-    return log_text[before_marker:]
+def _get_current_session_log_or_hint() -> str:
+    log_path = ilastik_logging.get_session_logfile_path()
+    if not log_path:
+        return 'Could not find session log file. Please use the "Open log folder" button to locate the log.'
+    with open(log_path, "r") as log_file:
+        log_text = log_file.read()
+    if len(log_text) > LOG_LENGTH_THRESHOLD:
+        return 'Session log is too long to include here. Please use the "Open log folder" button to locate the log.'
+    return log_text
 
 
 class ReportIssueDialog(QDialog):
@@ -74,13 +73,20 @@ class ReportIssueDialog(QDialog):
             f"ilastik version: {ilastik_version}\n"
             f"OS: {platform.platform()}\n"
             f"{workflow_report_text}"
-            "Log since last startup (please shorten to relevant parts if this seems very long):\n"
-            f"```\n{_mask_file_paths(_get_log_since_last_startup())}\n```"
+            "Session log (please shorten to relevant parts if possible):\n"
+            f"```\n{_mask_file_paths(_get_current_session_log_or_hint())}\n```"
         )
         self.report_text = QTextEdit()
         self.report_text.setPlainText(report)
         self.report_text.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
         main_layout.addWidget(self.report_text)
+
+        log_path = ilastik_logging.get_logfile_path()
+        if log_path:
+            log_url = QUrl(pathlib.Path(log_path).parent.as_uri())
+            log_button = QPushButton("Open log folder")
+            log_button.clicked.connect(partial(QDesktopServices.openUrl, log_url))
+            main_layout.addWidget(log_button, alignment=Qt.AlignRight)
 
         button_layout = QHBoxLayout()
         copy_button = QPushButton("Copy and open forum")

@@ -33,7 +33,6 @@ from ilastik.config import cfg as ilastik_config, runtime_cfg
 from ilastik.utility.commandLineProcessing import OptionalFlagAction
 
 logger = logging.getLogger(__name__)
-STARTUP_MARKER = "[Startup]"  # Used to identify the startup message in the log file
 
 
 def _argparser() -> argparse.ArgumentParser:
@@ -181,9 +180,9 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
     _init_excepthooks(parsed_args)
 
     if ilastik_config.getboolean("ilastik", "debug"):
-        message = f"{STARTUP_MARKER} Starting ilastik in debug mode from {ilastik_dir}"
+        message = f"Starting ilastik in debug mode from {ilastik_dir}"
     else:
-        message = f"{STARTUP_MARKER} Starting ilastik from {ilastik_dir}"
+        message = f"Starting ilastik from {ilastik_dir}"
     logger.info(message)
     print(message)  # always print the startup message
 

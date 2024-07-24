@@ -1,23 +1,6 @@
 import pytest
 
-from ilastik.app import STARTUP_MARKER
-from ilastik.shell.gui.reportIssueDialog import _get_log_since_last_startup, _mask_file_paths, FILE_PATH_MASK
-
-
-@pytest.mark.parametrize(
-    "full_log, expected_truncation",
-    [
-        ("", ""),
-        (f"{STARTUP_MARKER}\nsome\ntext_after", f"{STARTUP_MARKER}\nsome\ntext_after"),
-        (f"987654321{STARTUP_MARKER}", f"54321{STARTUP_MARKER}"),
-    ],
-)
-def test_get_log_since_last_startup(monkeypatch, tmp_path, full_log, expected_truncation):
-    log_path = tmp_path / "testlog.txt"
-    log_path.write_text(full_log)  # This might add \r before \n (OS-dependent)
-    monkeypatch.setattr("ilastik.ilastik_logging.default_config.get_logfile_path", lambda: log_path)
-    adjusted_for_CR = _get_log_since_last_startup(pre_marker_padding=5).replace("\r", "")
-    assert adjusted_for_CR == expected_truncation
+from ilastik.shell.gui.reportIssueDialog import _mask_file_paths, FILE_PATH_MASK
 
 
 @pytest.mark.parametrize(
