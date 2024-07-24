@@ -22,11 +22,18 @@
 import os
 import logging.config
 import warnings
+from datetime import datetime
+from typing import Optional
 
 import appdirs
 from . import loggingHelpers
 from ilastik.config import cfg as ilastik_config
 
+SESSION_FILEHANDLER_NAME = "session_file"
+SESSION_LOGFILE_PATH = os.path.join(
+    appdirs.user_log_dir(appname="ilastik", appauthor=False), datetime.now().strftime("log_%Y%m%d_%H%M%S.txt")
+)
+DEFAULT_FILEHANDLER_NAME = "rotating_file"
 DEFAULT_LOGFILE_PATH = os.path.join(appdirs.user_log_dir(appname="ilastik", appauthor=False), "log.txt")
 
 
@@ -37,10 +44,21 @@ class OutputMode(object):
     LOGFILE_WITH_CONSOLE_ERRORS = 3
 
 
-def get_logfile_path():
+def get_logfile_path() -> Optional[str]:
+    root_handlers = logging.getLogger().handlers
+    file_handlers = [h for h in root_handlers if isinstance(h, logging.FileHandler)]
+    for handler in file_handlers:
+        if handler.name == DEFAULT_FILEHANDLER_NAME:
+            return handler.baseFilename
+    if file_handlers:
+        return file_handlers[0].baseFilename
+    return None
+
+
+def get_session_logfile_path() -> Optional[str]:
     root_handlers = logging.getLogger().handlers
     for handler in root_handlers:
-        if isinstance(handler, logging.FileHandler):
+        if isinstance(handler, logging.FileHandler) and handler.name == SESSION_FILEHANDLER_NAME:
             return handler.baseFilename
     return None
 
@@ -58,16 +76,25 @@ def get_default_config(
         warnings_module_handlers = ["console_warnings_module"]
 
     if output_mode == OutputMode.LOGFILE:
-        root_handlers = ["rotating_file"]
-        warnings_module_handlers = ["rotating_file"]
+        root_handlers = [DEFAULT_FILEHANDLER_NAME]
+        warnings_module_handlers = [DEFAULT_FILEHANDLER_NAME]
+        if logfile_path == DEFAULT_LOGFILE_PATH:
+            root_handlers.append(SESSION_FILEHANDLER_NAME)
+            warnings_module_handlers.append(SESSION_FILEHANDLER_NAME)
 
     if output_mode == OutputMode.BOTH:
-        root_handlers = ["console", "console_warn", "rotating_file"]
-        warnings_module_handlers = ["console_warnings_module", "rotating_file"]
+        root_handlers = ["console", "console_warn", DEFAULT_FILEHANDLER_NAME]
+        warnings_module_handlers = ["console_warnings_module", DEFAULT_FILEHANDLER_NAME]
+        if logfile_path == DEFAULT_LOGFILE_PATH:
+            root_handlers.append(SESSION_FILEHANDLER_NAME)
+            warnings_module_handlers.append(SESSION_FILEHANDLER_NAME)
 
     if output_mode == OutputMode.LOGFILE_WITH_CONSOLE_ERRORS:
-        root_handlers = ["rotating_file", "console_errors_only"]
-        warnings_module_handlers = ["rotating_file"]
+        root_handlers = [DEFAULT_FILEHANDLER_NAME, "console_errors_only"]
+        warnings_module_handlers = [DEFAULT_FILEHANDLER_NAME]
+        if logfile_path == DEFAULT_LOGFILE_PATH:
+            root_handlers.append(SESSION_FILEHANDLER_NAME)
+            warnings_module_handlers.append(SESSION_FILEHANDLER_NAME)
 
     default_log_config = {
         "version": 1,
@@ -120,10 +147,19 @@ def get_default_config(
                 "stream": "ext://sys.stdout",
                 "formatter": "verbose",
             },
-            "rotating_file": {
+            DEFAULT_FILEHANDLER_NAME: {
                 "level": "DEBUG",
                 "class": "logging.handlers.RotatingFileHandler",
                 "filename": logfile_path,
+                "maxBytes": 50e6,  # 20 MB
+                "backupCount": 5,
+                "formatter": "verbose",
+                "encoding": "utf-8",
+            },
+            SESSION_FILEHANDLER_NAME: {
+                "level": "DEBUG",
+                "class": "logging.handlers.RotatingFileHandler",
+                "filename": SESSION_LOGFILE_PATH,
                 "maxBytes": 50e6,  # 20 MB
                 "backupCount": 5,
                 "formatter": "verbose",
