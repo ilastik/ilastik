@@ -195,7 +195,7 @@ def init(format_prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, l
         output_mode = OutputMode.CONSOLE
 
     if output_mode != OutputMode.CONSOLE:
-        os.makedirs(os.path.dirname(DEFAULT_LOGFILE_PATH), exist_ok=True)
+        os.makedirs(os.path.dirname(logfile_path), exist_ok=True)
 
     # Preserve pre-existing handlers
     original_root_handlers = list(logging.getLogger().handlers)
