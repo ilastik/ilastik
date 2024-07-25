@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 _NO_MODEL = object()
+_NO_BLOCK_PARAM_MULTIPLIER = -1
 
 
 class OpNNClassification(Operator):
@@ -122,6 +123,7 @@ class OpNNClassification(Operator):
         self.opBlockShape = OpMultiLaneWrapper(OpBlockShape, parent=self)
         self.opBlockShape.RawImage.connect(self.InputImages)
         self.opBlockShape.ModelSession.connect(self.ModelSession)
+        self.opBlockShape.BlockParamMultiplier.setValue(_NO_BLOCK_PARAM_MULTIPLIER)
 
         # self.opModel = OpModel(parent=self.parent, connectionFactory=connectionFactory)
         # self.opModel.ServerConfig.connect(self.ServerConfig)
@@ -334,6 +336,7 @@ class OpNNClassification(Operator):
 class OpBlockShape(Operator):
     RawImage = InputSlot()
     ModelSession = InputSlot()
+    BlockParamMultiplier = InputSlot()
 
     BlockShapeTrain = OutputSlot()
     BlockShapeInference = OutputSlot()
@@ -365,6 +368,11 @@ class OpBlockShape(Operator):
 
     def setup_inference(self):
         tikmodel: ModelSession = self.ModelSession.value
+
+        block_param_multiplier = self.BlockParamMultiplier.value
+        if tikmodel.is_input_shape_parameterized() and block_param_multiplier != _NO_BLOCK_PARAM_MULTIPLIER:
+            tikmodel.input_shape.multiplier = block_param_multiplier
+
         valid_tczyx_shape = tikmodel.get_explicit_input_shape(axes="tczyx")
         halo = tikmodel.get_halo(axes="tczyx")
         # total halo = 2 * halo per axis

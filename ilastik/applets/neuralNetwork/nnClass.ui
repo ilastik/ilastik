@@ -273,6 +273,16 @@
     </layout>
    </item>
    <item>
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="BlockParamConfig" name="blockParamConfig" native="true"/>
+     </item>
+    </layout>
+   </item>
+   <item>
     <spacer name="verticalSpacer">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -303,6 +313,11 @@
    <class>ModelStateControl</class>
    <extends>QWidget</extends>
    <header>ilastik.applets.neuralNetwork.modelStateControl</header>
+  </customwidget>
+   <customwidget>
+   <class>BlockParamConfig</class>
+   <extends>QWidget</extends>
+   <header>ilastik.applets.neuralNetwork.nnClassGui</header>
   </customwidget>
  </customwidgets>
  <resources/>
