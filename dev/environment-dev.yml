@@ -67,6 +67,8 @@ dependencies:
   - pre-commit
   - pytest >4
   - pytest-qt
+  - pytest-cov
+  - black=24.3.0
 
   # ensure working environment on apple M1 via rosetta
   # remove once native builds are available
