@@ -78,6 +78,16 @@ class ModelSession:
         self.__session = session
         self.__factory = factory
 
+        assert (
+            len(self.__session.inputNames) == 1 and len(self.__session.inputShapes) == 1
+        ), "Currently operators can handle only a single input tensor."
+        assert (
+            len(self.__session.outputNames) == 1 and len(self.__session.outputShapes) == 1
+        ), "Currently operators can handle only a single output tensor"
+
+        self._implicit_input_shape = self.__session.inputShapes[0]
+        self._implicit_output_shape = self.__session.outputShapes[0]
+
     @property
     def tiktorchClient(self):
         return self.__factory._client
@@ -91,89 +101,67 @@ class ModelSession:
         return self.__session.name
 
     @property
-    def input_names(self) -> Sequence[str]:
-        """Get names/ids for all model inputs"""
-        return self.__session.inputNames
+    def input_name(self) -> str:
+        return self.__session.inputNames[0]
 
     @property
-    def output_names(self) -> Sequence[str]:
-        """Get names/ids for all model outputs"""
-        return self.__session.outputNames
+    def output_name(self) -> str:
+        return self.__session.outputNames[0]
 
     @property
     def input_axes(self) -> Sequence[str]:
-        """Get axes for all model inputs
-
-        linked via index to `input_names`
-        """
+        """Get axes for model input"""
         return self.__session.inputAxes
 
     @property
     def output_axes(self) -> Sequence[str]:
-        """Get axes for all model inputs
-
-        linked via index to `output_names`
-        """
+        """Get axes for model output"""
         return self.__session.outputAxes
 
-    def get_output_shapes(self) -> Dict[str, Sequence[Dict[str, int]]]:
-        """Get output shapes for all model output
+    def get_output_shape(self) -> Dict[str, int]:
+        """Get shape for model output
 
         shape = shape(reference_input_tensor) * scale + 2 * offset
-
-        linked via index to `output_names`
         """
         # get input shapes for all possible axes that ilastik can understand
-        input_shapes = self.get_input_shapes(axes="itzyxc")
+        input_shape = {name: size for name, size in zip("itzyxc", self.get_input_shape("itzyxc"))}
 
-        # for now, from the possible input shapes select the largest (last)
-        max_input_shapes = {k: in_shape[-1] for k, in_shape in input_shapes.items()}
+        input_name = self.input_name
+        output_name = self.output_name
+        shape = self._implicit_output_shape
 
-        max_input_shapes_dicts = {}
-        for input_name, input_shape in max_input_shapes.items():
-            max_input_shapes_dicts[input_name] = {name: size for name, size in zip("itzyxc", input_shape)}
-
-        result = {}
-        output_shapes = self.__session.outputShapes
-        output_names = self.output_names
-        assert len(output_shapes) == 1, "Currently only single output shapes are supported."
-
-        for output_name, shape in zip(output_names, output_shapes):
-            if shape.shapeType == 0:
-                # explicit shape
-                output_shape_by_name = {d.name: d.size for d in shape.shape.namedInts}
-                result[output_name] = [output_shape_by_name]
-            elif shape.shapeType == 1:
-                # parametrized shape
-                # HACK: need to determine min shape same way as prediction_pipeline
-                reference_tensor = shape.referenceTensor
-                assert (
-                    reference_tensor in max_input_shapes_dicts
-                ), f"Reference tensor for output {output_name} not found in input shapes {input_shapes.keys()}."
-                offset_size_by_name = defaultdict(lambda: 0, {d.name: d.size for d in shape.offset.namedFloats})
-                scale_size_by_name = defaultdict(lambda: 1.0, {d.name: d.size for d in shape.scale.namedFloats})
-                output_shape_by_name = {}
-                for dim in shape.scale.namedFloats:
-                    if dim.name == "b":
-                        continue
-                    output_shape_by_name[dim.name] = int(
-                        max_input_shapes_dicts[reference_tensor][dim.name] * scale_size_by_name[dim.name]
-                        + 2 * offset_size_by_name[dim.name]
-                    )
-                result[output_name] = [output_shape_by_name]
-            else:
-                raise ValueError(f"Cannot work with shapes of shapeType {shape.shapeType}.")
+        if shape.shapeType == 0:
+            # explicit shape
+            output_shape_by_name = {d.name: d.size for d in shape.shape.namedInts}
+            result = output_shape_by_name
+        elif shape.shapeType == 1:
+            # parametrized shape
+            # HACK: need to determine min shape same way as prediction_pipeline
+            reference_tensor = shape.referenceTensor
+            assert (
+                reference_tensor == input_name
+            ), f"Reference tensor {reference_tensor} for output {output_name} not found in input shape {input_name}."
+            offset_size_by_name = defaultdict(lambda: 0, {d.name: d.size for d in shape.offset.namedFloats})
+            scale_size_by_name = defaultdict(lambda: 1.0, {d.name: d.size for d in shape.scale.namedFloats})
+            output_shape_by_name = {}
+            for dim in shape.scale.namedFloats:
+                if dim.name == "b":
+                    continue
+                output_shape_by_name[dim.name] = int(
+                    input_shape[dim.name] * scale_size_by_name[dim.name] + 2 * offset_size_by_name[dim.name]
+                )
+            result = output_shape_by_name
+        else:
+            raise ValueError(f"Cannot work with shapes of shapeType {shape.shapeType}.")
 
         # sanity check:
-        for output_name in output_names:
-            res = result[output_name][0]
-            axes = "".join(res.keys())
-            halo = self.get_halos(axes=axes)[output_name]
-            shape_after_halo = [res[axkey] - 2 * axhalo for axkey, axhalo in zip(axes, halo)]
-            if not all(x > 0 for x in shape_after_halo):
-                logger.warning(
-                    f"Network configuration problem detected - output {output_name} shape - 2*halo invalid:{shape_after_halo}."
-                )
+        axes = "".join(result.keys())
+        halo = self.get_halo(axes=axes)
+        shape_after_halo = [result[axkey] - 2 * axhalo for axkey, axhalo in zip(axes, halo)]
+        if not all(x > 0 for x in shape_after_halo):
+            logger.warning(
+                f"Network configuration problem detected - output {output_name} shape - 2*halo invalid:{shape_after_halo}."
+            )
 
         return result
 
@@ -181,10 +169,8 @@ class ModelSession:
     def has_training(self) -> bool:
         return self.__session.hasTraining
 
-    def get_halos(self, axes: Union[str, AxisTags] = "zyx") -> Dict[str, Tuple[int]]:
-        """Get halo sizes for all model outputs
-
-        linked to `output_names` via keys in returned dict
+    def get_halo(self, axes: Union[str, AxisTags] = "zyx") -> Tuple[int, ...]:
+        """Get halo sizes for model output
 
         Returns:
           models can take multiple images as outputs. For each such input, a
@@ -193,15 +179,11 @@ class ModelSession:
         """
         if isinstance(axes, AxisTags):
             axes = "".join(axes.keys())
-        halos = {}
-        for output_name, output_shape in zip(self.__session.outputNames, self.__session.outputShapes):
-            halo_size_by_name = {d.name: d.size for d in output_shape.halo.namedInts}
-            halos[output_name] = tuple([halo_size_by_name.get(axis, 0) for axis in axes])
+        halo_size_by_name = {d.name: d.size for d in self._implicit_output_shape.halo.namedInts}
+        return tuple([halo_size_by_name.get(axis, 0) for axis in axes])
 
-        return halos
-
-    def get_input_shapes(self, axes: Union[str, AxisTags] = "itzyxc") -> Dict[str, Sequence[Tuple[int]]]:
-        """Get input shapes for all model inputs
+    def get_input_shape(self, axes: Union[str, AxisTags] = "itzyxc") -> Tuple[int, ...]:
+        """Get input shape for model input
 
         Note: for parametrized input shapes we try to do something sensible with
           the shape, and not just return the minimum shape. See also
@@ -214,25 +196,25 @@ class ModelSession:
         """
         if isinstance(axes, AxisTags):
             axes = "".join(axes.keys())
-        result = {}
 
-        for input_name, shape in zip(self.input_names, self.__session.inputShapes):
-            dim_size_by_name = defaultdict(lambda: 1, {d.name: d.size for d in shape.shape.namedInts})
-            if shape.shapeType == 0:
-                # explicit shape
-                result[input_name] = [tuple([dim_size_by_name[axis] for axis in axes])]
-            elif shape.shapeType == 1:
-                # parametrized shape
-                # HACK: need to determine min shape same way as prediction_pipeline
-                dim_step_by_name = defaultdict(lambda: 0, {d.name: d.size for d in shape.stepShape.namedInts})
-                shape_dims = "".join(d.name for d in shape.shape.namedInts)
-                min_shape = enforce_min_shape(
-                    [dim_size_by_name[x] for x in shape_dims], [dim_step_by_name[x] for x in shape_dims], shape_dims
-                )
-                min_shape_by_name = defaultdict(lambda: 1, {name: size for name, size in zip(shape_dims, min_shape)})
-                result[input_name] = [tuple(min_shape_by_name[axis] for axis in axes)]
-            else:
-                raise ValueError(f"Cannot work with shapes of shapeType {shape.shapeType}.")
+        shape = self._implicit_input_shape
+        dim_size_by_name = defaultdict(lambda: 1, {d.name: d.size for d in shape.shape.namedInts})
+
+        if shape.shapeType == 0:
+            # explicit shape
+            result = tuple([dim_size_by_name[axis] for axis in axes])
+        elif shape.shapeType == 1:
+            # parametrized shape
+            # HACK: need to determine min shape same way as prediction_pipeline
+            dim_step_by_name = defaultdict(lambda: 0, {d.name: d.size for d in shape.stepShape.namedInts})
+            shape_dims = "".join(d.name for d in shape.shape.namedInts)
+            min_shape = enforce_min_shape(
+                [dim_size_by_name[x] for x in shape_dims], [dim_step_by_name[x] for x in shape_dims], shape_dims
+            )
+            min_shape_by_name = defaultdict(lambda: 1, {name: size for name, size in zip(shape_dims, min_shape)})
+            result = tuple(min_shape_by_name[axis] for axis in axes)
+        else:
+            raise ValueError(f"Cannot work with shapes of shapeType {shape.shapeType}.")
 
         return result
 
@@ -246,11 +228,7 @@ class ModelSession:
         """
         FIXME: assumes first output is the segmentation output
         """
-        output_shapes = self.get_output_shapes()
-        # there could be multiple output shapes per output in the future (with implicit output shapes)
-        output_names = self.output_names
-        assert len(output_names) == 1, "Currently only single output shapes are supported."
-        output_shape = output_shapes[output_names[0]][0]
+        output_shape = self.get_output_shape()
         assert "c" in output_shape, "Channel Axis needed in output shape."
         return list(range(1, int(output_shape["c"]) + 1))
 
@@ -356,7 +334,6 @@ class ModelSession:
                 results[i] = tensor[None, ...]
 
         shapes_wo_halo = [r.shape for r in results]
-        halos = self.get_halos(axes=axistags)
 
         results = [
             reorder_axes(r, from_axes_tags=ot, to_axes_tags=at) for r, ot, at in zip(results, output_axes, axistags)

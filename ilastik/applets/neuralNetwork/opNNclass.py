@@ -348,15 +348,9 @@ class OpBlockShape(Operator):
 
     def setup_train(self):
         tikmodel: ModelSession = self.ModelSession.value
-        input_names = tikmodel.input_names
-        assert len(input_names) == 1, "This op can only handle models with a single input tensor."
-        output_names = tikmodel.output_names
-        assert len(output_names) == 1, "This op can only handle models with a single output tensor."
         training_shape = tikmodel.training_shape
         # FIXME: learn how to deal with multiple inputs
-        halos = tikmodel.get_halos(axes="tczyx")
-        assert len(halos) == 1
-        halo = halos[output_names[0]]
+        halo = tikmodel.get_halo(axes="tczyx")
         # total halo = 2 * halo per axis
         total_halo = 2 * numpy.array(halo)
         training_shape_wo_halo = numpy.array(training_shape) - total_halo
@@ -371,24 +365,19 @@ class OpBlockShape(Operator):
 
     def setup_inference(self):
         tikmodel: ModelSession = self.ModelSession.value
-        input_names = tikmodel.input_names
-        assert len(input_names) == 1, "This op can only handle models with a single input tensor."
-        valid_tczyx_shapes = tikmodel.get_input_shapes(axes="tczyx")[input_names[0]]
-        output_names = tikmodel.output_names
-        assert len(output_names) == 1, "This op can only handle models with a single output tensor."
-        halo = tikmodel.get_halos(axes="tczyx")[output_names[0]]
+        valid_tczyx_shape = tikmodel.get_input_shape(axes="tczyx")
+        halo = tikmodel.get_halo(axes="tczyx")
         # total halo = 2 * halo per axis
         total_halo = 2 * numpy.array(halo)
-        valid_tczyx_shapes_wo_halo = [numpy.array(shape) - total_halo for shape in valid_tczyx_shapes]
-        largest_valid_shape = valid_tczyx_shapes_wo_halo[-1]
+        valid_tczyx_shape_wo_halo = numpy.array(valid_tczyx_shape) - total_halo
 
-        blockDims = dict(zip("tczyx", largest_valid_shape))
+        blockDims = dict(zip("tczyx", valid_tczyx_shape_wo_halo))
         blockDims["c"] = tikmodel.num_classes  # always request all channels
         axisOrder = self.RawImage.meta.getAxisKeys()
         ret = tuple(blockDims[a] for a in axisOrder)
         logger.debug(
             "got largest valid shape %s and axis order %s => Set BlockShapeInference to %s",
-            largest_valid_shape,
+            valid_tczyx_shape_wo_halo,
             axisOrder,
             ret,
         )

@@ -71,11 +71,9 @@ class OpTikTorchTrainClassifierBlocked(Operator):
         label_data_blocks = []
         block_ids = []
 
-        output_names = model.output_names
-        assert len(output_names) == 1, "This operator can only handle models with a single output tensor."
         # Ask for the halo needed by the classifier
         axiskeys = image_slot.meta.getAxisKeys()
-        halo_shape = model.get_halos(axiskeys)[output_names[0]]
+        halo_shape = model.get_halo(axiskeys)
         assert halo_shape[-1] == 0, "Didn't expect a non-zero halo for channel dimension."
 
         for block_slicing in block_slicings:
@@ -134,11 +132,13 @@ class OpTikTorchTrainClassifierBlocked(Operator):
                 axis_keys = label_slot.meta.getAxisKeys()
                 block_slicings = [
                     [
-                        slice(None)
-                        if axis == "c"
-                        else slice(dmax - dblock, dmax)
-                        if dstart + dblock > dmax
-                        else slice(dstart, dstart + dblock)
+                        (
+                            slice(None)
+                            if axis == "c"
+                            else (
+                                slice(dmax - dblock, dmax) if dstart + dblock > dmax else slice(dstart, dstart + dblock)
+                            )
+                        )
                         for dstart, dblock, dmax, axis in zip(block_start, block_shape, label_shape, axis_keys)
                     ]
                     for block_start in block_starts
@@ -209,10 +209,7 @@ class OpTikTorchClassifierPredict(Operator):
         roistop[-1] = raw_channels
         upstream_roi = (roistart, roistop)
 
-        output_names = session.output_names
-        assert len(output_names) == 1, "This operator can only handle models with a single output tensor."
-
-        halo = numpy.array(session.get_halos(axiskeys)[output_names[0]])
+        halo = numpy.array(session.get_halo(axiskeys))
 
         assert len(halo) == len(upstream_roi[0]), "Expected halo and upstream roi to have same dimensionality."
         assert axiskeys[-1] == "c", "Expected 'c' as last axis in image axisorder."
@@ -225,23 +222,16 @@ class OpTikTorchClassifierPredict(Operator):
 
         # Extend block further to reach a valid shape
         min_shape = upstream_roi[1] - upstream_roi[0]
-        input_shapes = session.get_input_shapes(axiskeys)
-        assert (
-            len(input_shapes) == 1
-        ), f"This operator can only handle models with a single input tensor, got {len(input_shapes)}."
-        for vs in input_shapes[session.input_names[0]]:
-            if all(m <= v for m, v in zip(min_shape, vs)):
-                valid_shape = numpy.array(vs)
-                if any(m < v for m, v in zip(min_shape, vs)):
-                    shape_diff = valid_shape - min_shape
-                    upstream_roi[0] -= numpy.array([(a + 1) // 2 for a in shape_diff])
-                    upstream_roi[1] += numpy.array([a // 2 for a in shape_diff])
-
-                break
+        input_shape = session.get_input_shape(axiskeys)
+        if all(m <= v for m, v in zip(min_shape, input_shape)):
+            valid_shape = numpy.array(input_shape)
+            shape_diff = valid_shape - min_shape
+            upstream_roi[0] -= numpy.array([(a + 1) // 2 for a in shape_diff])
+            upstream_roi[1] += numpy.array([a // 2 for a in shape_diff])
         else:
             raise ValueError(
                 f"The requested roi {roi} with halo {halo} is too large for the "
-                f"session's valid shapes: {session.get_input_shapes(axiskeys)}"
+                f"session's valid shapes: {input_shape}"
             )
 
         # Determine how to extract the data from the result (without halo, padding)
