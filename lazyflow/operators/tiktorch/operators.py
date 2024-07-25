@@ -222,7 +222,7 @@ class OpTikTorchClassifierPredict(Operator):
 
         # Extend block further to reach a valid shape
         min_shape = upstream_roi[1] - upstream_roi[0]
-        input_shape = session.get_input_shape(axiskeys)
+        input_shape = session.get_explicit_input_shape(axiskeys)
         if all(m <= v for m, v in zip(min_shape, input_shape)):
             valid_shape = numpy.array(input_shape)
             shape_diff = valid_shape - min_shape

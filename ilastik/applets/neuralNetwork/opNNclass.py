@@ -365,7 +365,7 @@ class OpBlockShape(Operator):
 
     def setup_inference(self):
         tikmodel: ModelSession = self.ModelSession.value
-        valid_tczyx_shape = tikmodel.get_input_shape(axes="tczyx")
+        valid_tczyx_shape = tikmodel.get_explicit_input_shape(axes="tczyx")
         halo = tikmodel.get_halo(axes="tczyx")
         # total halo = 2 * halo per axis
         total_halo = 2 * numpy.array(halo)
