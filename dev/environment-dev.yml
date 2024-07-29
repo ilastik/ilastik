@@ -61,6 +61,13 @@ dependencies:
 
   - tiktorch 23.11.0*
 
+
+  # Third-party object feature plugins
+  - sphericaltexture_plugin
+  - sphericaltexture >=0.0.4
+  # pyshtools 4.10 conflicts with pytorch (via openmp) on windows
+  - pyshtools >=4.12
+
   # dev-only dependencies
   - conda-build
   - mypy
