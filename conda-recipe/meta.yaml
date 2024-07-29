@@ -118,7 +118,6 @@ outputs:
         - ilastik-core {{ setup_py_data.version }}
         - pytorch >=1.6
         - tiktorch 23.11.0*
-        - inferno
         - torchvision
         - volumina
         # Third-party object feature plugins
@@ -171,7 +170,6 @@ outputs:
         - ilastik-core {{ setup_py_data.version }}
         - pytorch >=1.6
         - tiktorch 23.11.0*
-        - inferno
         - torchvision
         - pytorch-cuda
         - volumina
