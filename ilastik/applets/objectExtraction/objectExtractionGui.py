@@ -55,6 +55,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# default plugins as those were the only ones included until 1.4.18
+DEFAULT_PLUGINS = [
+    "Standard Object Features",
+    "2D Convex Hull Features",
+    "3D Convex Hull Features",
+    "2D Skeleton Features",
+]
+
 
 class FeatureSelectionDialog(QDialog):
     # for now all features get the same margin parameter. In the
@@ -208,14 +216,14 @@ class FeatureSelectionDialog(QDialog):
         # self.ui.treeWidget.resizeColumnToContents(1)
 
     @staticmethod
-    def recursiveCheckChildren(twitem, val, location=True):
+    def recursiveCheckChildren(twitem, val, exclude_location=False):
         # check or uncheck all children of an item at the lowest level of the hierarchy
         for child_id in range(twitem.childCount()):
             child = twitem.child(child_id)
             if child.childCount() > 0:
-                FeatureSelectionDialog.recursiveCheckChildren(child, val, location)
+                FeatureSelectionDialog.recursiveCheckChildren(child, val, exclude_location)
             else:
-                if location:
+                if not exclude_location:
                     child.setCheckState(0, val)
                 else:
                     if getattr(child, "group_name", ""):
@@ -377,19 +385,42 @@ class FeatureSelectionDialog(QDialog):
                 selectedFeatures[plugin_name] = features
         self.selectedFeatures = selectedFeatures
 
-    def _setAll(self, val, location=True):
+    def _setDefaults(self):
+        """Select default set of object features
+
+        This function selects non-location (as in not relating to absolute image coordinates)
+        features from the set of default plugins. The set of default plugins is defined
+        as the plugins that were included in ilastik until 1.4.1b18.
+        Newer version might include more plugins, but the default selection should change
+        in a more deliberate manner.
+        """
+        self._setAll(Qt.Unchecked)
+
+        root = self.ui.treeWidget.invisibleRootItem()
+        for plugin_id in range(root.childCount()):
+            plugin = root.child(plugin_id)
+            pluginName = str(plugin.text(0))
+
+            if pluginName not in DEFAULT_PLUGINS:
+                continue
+
+            plugin.setCheckState(0, Qt.Checked)
+            FeatureSelectionDialog.recursiveCheckChildren(plugin, Qt.Checked, exclude_location=True)
+
+            self.countChecked[pluginName] = self.countAll[pluginName]
+            self.updateToolTip(plugin)
+
+    def _setAll(self, val: Qt.CheckState):
         """Alter state all checkboxes
 
         Args:
-            val (Qt.CheckState): {Qt.Checked, Qt.Unchecked}
-            location (bool, optional): if set to True, will also visit items
-              from the location group. If false, these will not be changed.
+            val: {Qt.Checked, Qt.Unchecked}
         """
         root = self.ui.treeWidget.invisibleRootItem()
         for plugin_id in range(root.childCount()):
             plugin = root.child(plugin_id)
             plugin.setCheckState(0, val)
-            FeatureSelectionDialog.recursiveCheckChildren(plugin, val, location)
+            FeatureSelectionDialog.recursiveCheckChildren(plugin, val, exclude_location=False)
 
             pluginName = str(plugin.text(0))
             if val == Qt.Checked:
@@ -402,8 +433,7 @@ class FeatureSelectionDialog(QDialog):
         self._setAll(Qt.Checked)
 
     def handleAllButLocation(self):
-        self._setAll(Qt.Unchecked)
-        self._setAll(Qt.Checked, location=False)
+        self._setDefaults()
 
     def handleNone(self):
         self._setAll(Qt.Unchecked)
