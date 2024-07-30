@@ -51,7 +51,9 @@ dependencies:
 
   # Neural Network Workflow dependencies
   # can be changed to request gpu versions
-  - pytorch 1.13.*
+  # pytorch 2.4.* will work for all platforms except osx-64, where currently the
+  # latest version is 2.2.2
+  - pytorch 2.4.*
   - cpuonly  # comment out for pytorch with cuda
   # mamba does not "respect" track_features, which is the idea behind cpuonly,
   # with ilastik-pytorch-version-helper-cpu we help mamba on linux and windows
@@ -60,6 +62,13 @@ dependencies:
   # - pytorch-cuda=11.3  # uncomment for pytorch with cuda, specify cuda version
 
   - tiktorch 23.11.0*
+
+
+  # Third-party object feature plugins
+  - sphericaltexture_plugin
+  - sphericaltexture >=0.0.4
+  # pyshtools 4.10 conflicts with pytorch (via openmp) on windows
+  - pyshtools >=4.12
 
   # dev-only dependencies
   - conda-build
@@ -72,4 +81,5 @@ dependencies:
   # remove once native builds are available
   # - mkl 2021.*  # [osx]
 
-  - mkl !=2024.1.0  # [linux] until pytorch is compatible with the current version
+  # must be commented out on arm-64 native (no mkl!)
+  - mkl <2024.1.0  # [linux] until pytorch is compatible with the current version

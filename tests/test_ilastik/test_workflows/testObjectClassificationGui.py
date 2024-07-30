@@ -33,9 +33,8 @@ import h5py
 import numpy
 
 from ilastik.workflows import ObjectClassificationWorkflowPrediction
-from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, FilesystemDatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
 from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog, FILE_TYPES
-
 
 from lazyflow.utility.timer import Timer
 from tests.test_ilastik.helpers import ShellGuiTestCaseBase
@@ -253,6 +252,13 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
                 for plugin in features
             }
 
+            # in order to also calculate neighborhood features, we need to set one
+            # margin to non-zero
+            for plugin in features:
+                for _, feature_descr in features[plugin].items():
+                    if "margin" in feature_descr:
+                        feature_descr["margin"] = (3, 3, 3)
+
             op_object_features.Features.setValue(features)
             # save a flattened list of feature names for the export applet
             # we should really use the same format in all the applets
@@ -276,10 +282,8 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             for plugin in features:
                 assert plugin in computed_features, f"Could not find plugin {plugin}"
                 for feature_name in features[plugin]:
-                    # feature names are altered in the operator:
-                    feature_name_in_result = feature_name.split(" ")[0]
-                    assert feature_name_in_result in computed_features[plugin], (
-                        f"Could not find feature {feature_name_in_result}" f"\n{computed_features[plugin].keys()}"
+                    assert feature_name in computed_features[plugin], (
+                        f"Could not find feature {feature_name}" f"\n{computed_features[plugin].keys()}"
                     )
 
         # Run this test from within the shell event loop
