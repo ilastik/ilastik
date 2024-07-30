@@ -18,18 +18,13 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from future import standard_library
-
-standard_library.install_aliases()
-from builtins import range
-from PyQt5.QtWidgets import QTreeWidgetItem, QMessageBox, QHeaderView
-from PyQt5.QtGui import QColor, QResizeEvent, QMouseEvent
+from PyQt5.QtWidgets import QTreeWidgetItem, QMessageBox
+from PyQt5.QtGui import QColor, QMouseEvent
 from PyQt5 import uic
 from PyQt5.QtCore import Qt, QEvent
 
 from lazyflow.rtype import SubRegion
 import os
-import sys
 from collections import defaultdict, Counter
 from copy import deepcopy
 
@@ -51,7 +46,6 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 import vigra
 import numpy
 
-from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QDialog, QFileDialog
 
 import pickle as pickle
