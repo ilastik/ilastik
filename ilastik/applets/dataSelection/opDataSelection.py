@@ -296,7 +296,12 @@ class DatasetInfo(ABC):
                 elif cls.pathIsHdf5(path):
                     f = h5py.File(path, "r")
                 elif cls.pathIsN5(path):
-                    f = z5py.N5File(path)  # FIXME
+                    try:
+                        f = z5py.N5File(path)
+                    except AttributeError as e:
+                        # z5py.file doesn't check metadata cleanly:
+                        # `metadata.get('n5') # AttributeError: 'NoneType' object has no attribute 'get'
+                        raise ValueError(f'N5 metadata at "{path}" has incompatible format') from e
                 elif cls.pathIsZarr(path):
                     f = z5py.ZarrFile(path)
                 else:

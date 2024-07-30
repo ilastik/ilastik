@@ -87,11 +87,14 @@ class OpStreamingH5N5Reader(Operator):
             if "?" in axisorder:
                 raise KeyError("?")
         except KeyError:
-            # No axistags found.
+            # No axistags found, i.e. this file isn't ilastik-flavor.
             if "axes" in dataset.attrs and isinstance(dataset.attrs["axes"][0], dict):
-                # OME-Zarr v0.4 and upper format of axistags: [ { "name": "x", "type": "space", "unit": "nm" }, ... ]
+                # OME-Zarr v0.4: [ { "name": "x", "type": "space", "unit": "nm" }, ... ]
+                # But z5py reverses the order stored in the .zattrs file
                 axisorder = "".join([ax["name"] for ax in reversed(dataset.attrs["axes"])])
             elif "axes" in dataset.attrs:
+                # Neuroglancer Precomputed or OME-Zarr v0.3: [ "x", "y", "z" ]
+                # Still reversed due to z5py
                 axisorder = "".join(reversed(dataset.attrs["axes"])).lower()
             else:
                 axisorder = get_default_axisordering(dataset.shape)
