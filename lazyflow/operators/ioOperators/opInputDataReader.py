@@ -189,7 +189,7 @@ class OpInputDataReader(Operator):
             self._attemptOpenAsKlb,
             self._attemptOpenAsUfmf,
             self._attemptOpenAsMmf,
-            self._attemptOpenAsOmeZarrMultiscale,
+            self._attemptOpenAsOmeZarrUri,
             self._attemptOpenAsRESTfulPrecomputedChunkedVolume,
             self._attemptOpenAsDvidVolume,
             self._attemptOpenAsH5N5Stack,
@@ -291,16 +291,22 @@ class OpInputDataReader(Operator):
         else:
             return ([], None)
 
-    def _attemptOpenAsOmeZarrMultiscale(self, filePath):
-        if "zarr" not in filePath.lower():
+    def _attemptOpenAsOmeZarrUri(self, filePath):
+        # Local file system paths with .zarr are handled in _attemptOpenAsH5N5
+        path = PathComponents(filePath)
+        if path.extension != ".zarr":
             return ([], None)
         if not (filePath.startswith("http") or filePath.startswith("file")):
             return ([], None)
         # DatasetInfo instantiates a standalone OpInputDataReader to obtain laneShape and dtype.
         # We pass this down to the loader so that it can avoid loading scale metadata unnecessarily.
         reader = OpOMEZarrMultiscaleReader(parent=self, metadata_only_mode=self.parent is None)
-        reader.Scale.connect(self.ActiveScale)
-        reader.BaseUri.setValue(filePath)
+        if path.internalPath and self.parent:
+            # Headless/batch
+            reader.Scale.setValue(path.internalPath.lstrip("/"))
+        else:
+            reader.Scale.connect(self.ActiveScale)
+        reader.BaseUri.setValue(path.externalPath)
         return [reader], reader.Output
 
     def _attemptOpenAsRESTfulPrecomputedChunkedVolume(self, filePath):
