@@ -160,8 +160,8 @@ def get_default_config(
                 "level": "DEBUG",
                 "class": "logging.handlers.RotatingFileHandler",
                 "filename": SESSION_LOGFILE_PATH,
-                "maxBytes": 50e6,  # 20 MB
-                "backupCount": 5,
+                "maxBytes": 1048576,  # 1 MiB
+                "backupCount": 1,
                 "formatter": "verbose",
                 "encoding": "utf-8",
             },

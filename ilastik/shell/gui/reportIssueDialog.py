@@ -42,7 +42,11 @@ def _get_current_session_log_or_hint() -> str:
     with open(log_path, "r") as log_file:
         log_text = log_file.read()
     if len(log_text) > LOG_LENGTH_THRESHOLD:
-        return 'Session log is too long to include here. Please use the "Open log folder" button to locate the log.'
+        return (
+            "Session log is too long to include here. "
+            'Please use the "Open log folder" button to locate the log file '
+            "and attach it to your forum thread or email."
+        )
     return log_text
 
 
@@ -102,7 +106,6 @@ class ReportIssueDialog(QDialog):
 
         # Set the layout to the dialog
         self.setLayout(main_layout)
-        self.show()
 
     def copy_and_go_to_forum(self):
         clipboard = QApplication.clipboard()
@@ -116,5 +119,10 @@ class ReportIssueDialog(QDialog):
             "\n\n--\nAuto-generated report:\n"
         )
         body += self.report_text.toPlainText()
-        mailto_url = f"mailto:{TEAM_EMAIL}?subject={subject}&body={quote(body)}"
+        mailto_url = f"mailto:{TEAM_EMAIL}?subject={quote(subject)}&body={quote(body)}"
         webbrowser.open(mailto_url)
+
+    @classmethod
+    def createAndShowModal(cls, parent=None, workflow_report_text=""):
+        dialog = cls(parent=parent, workflow_report_text=workflow_report_text)
+        dialog.exec()

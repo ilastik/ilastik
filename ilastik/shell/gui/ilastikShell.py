@@ -758,7 +758,7 @@ class IlastikShell(QMainWindow):
                     f"Active workflow: {self.workflow.workflowName}\n"
                     f"Active applet: {self.workflow.applets[self.currentAppletIndex].name}\n"
                 )
-            ReportIssueDialog(self, workflow_text)
+            ReportIssueDialog.createAndShowModal(self, workflow_text)
 
         menu = QMenu("&Help", self)
         menu.setObjectName("help_menu")
