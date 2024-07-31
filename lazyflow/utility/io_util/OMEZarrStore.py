@@ -222,3 +222,13 @@ class OMEZarrStore(MultiscaleStore):
         scale_key = scale_key if scale_key != DEFAULT_SCALE_KEY else self.lowest_resolution_key
         data = self._scale_data[scale_key]["zarray"][roi.toSlice()]
         return data
+
+    def get_zarr_array(self, scale_key: str):
+        """
+        Intended exclusively for use through ilastik-API.
+        Internally, ilastik and lazyflow should never directly access the ZarrArray.
+        """
+        if scale_key not in self._scale_data:
+            msg = f"No scale named {scale_key} in this store. Please inspect `.multiscales` to see available scales."
+            raise KeyError(msg)
+        return self._scale_data[scale_key]["zarray"]
