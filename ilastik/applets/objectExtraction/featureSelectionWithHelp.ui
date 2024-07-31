@@ -104,7 +104,10 @@
      <item>
       <widget class="QPushButton" name="allButLocationButton">
        <property name="text">
-        <string>All excl. Location</string>
+        <string>Default selection</string>
+       </property>
+       <property name="ToolTip">
+        <string>Default feature plugins, excluding features that relate to absolute pixel coordinates.</string>
        </property>
       </widget>
      </item>
