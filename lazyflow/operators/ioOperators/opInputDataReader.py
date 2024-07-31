@@ -140,6 +140,7 @@ class OpInputDataReader(Operator):
         super(OpInputDataReader, self).__init__(*args, **kwargs)
         self.internalOperators = []
         self.internalOutput = None
+        self.opInjector = None
         self._file = None
 
         self.WorkingDirectory.setOrConnectIfAvailable(WorkingDirectory)
@@ -154,7 +155,9 @@ class OpInputDataReader(Operator):
 
     def internalCleanup(self):
         self.Output.disconnect()
-        self.opInjector.cleanUp()
+        if self.opInjector:
+            self.opInjector.cleanUp()
+            self.opInjector = None
         if self._file is not None:
             self._file.close()
             self._file = None
