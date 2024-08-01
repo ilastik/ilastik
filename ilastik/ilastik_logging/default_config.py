@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -20,21 +20,27 @@
 ###############################################################################
 
 import os
+import re
 import logging.config
 import warnings
 from datetime import datetime
 from typing import Optional
+from pathlib import Path
 
 import appdirs
 from . import loggingHelpers
 from ilastik.config import cfg as ilastik_config
 
 SESSION_FILEHANDLER_NAME = "session_file"
+SESSION_LOGFILE_NAME = "log_%Y%m%d_%H%M%S.txt"
+SESSION_LOGFILE_NAME_PATTERN = r"log_\d{8}_\d{6}\.txt"  # For deleting old ones, must correspond to _NAME
 SESSION_LOGFILE_PATH = os.path.join(
-    appdirs.user_log_dir(appname="ilastik", appauthor=False), datetime.now().strftime("log_%Y%m%d_%H%M%S.txt")
+    appdirs.user_log_dir(appname="ilastik", appauthor=False), datetime.now().strftime(SESSION_LOGFILE_NAME)
 )
+KEEP_SESSION_LOGS = 10
 DEFAULT_FILEHANDLER_NAME = "rotating_file"
-DEFAULT_LOGFILE_PATH = os.path.join(appdirs.user_log_dir(appname="ilastik", appauthor=False), "log.txt")
+DEFAULT_LOG_NAME = "log.txt"
+DEFAULT_LOGFILE_PATH = os.path.join(appdirs.user_log_dir(appname="ilastik", appauthor=False), DEFAULT_LOG_NAME)
 
 
 class OutputMode(object):
@@ -61,6 +67,16 @@ def get_session_logfile_path() -> Optional[str]:
         if isinstance(handler, logging.FileHandler) and handler.name == SESSION_FILEHANDLER_NAME:
             return handler.baseFilename
     return None
+
+
+def _delete_old_session_logs(logfile_path: str):
+    """Delete all but the last KEEP_SESSION_LOGS log files."""
+    log_dir = Path(logfile_path).parent
+    if not log_dir.exists():
+        return
+    log_files = sorted([f for f in os.listdir(log_dir) if re.match(SESSION_LOGFILE_NAME_PATTERN, f)], reverse=True)
+    for log_file in log_files[KEEP_SESSION_LOGS:]:
+        os.remove(str(log_dir / log_file))
 
 
 def get_default_config(
@@ -196,6 +212,7 @@ def init(format_prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, l
 
     if output_mode != OutputMode.CONSOLE:
         os.makedirs(os.path.dirname(logfile_path), exist_ok=True)
+        _delete_old_session_logs(logfile_path)
 
     # Preserve pre-existing handlers
     original_root_handlers = list(logging.getLogger().handlers)

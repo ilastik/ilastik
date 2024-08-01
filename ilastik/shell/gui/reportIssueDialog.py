@@ -27,8 +27,8 @@ def _mask_file_paths(text: str) -> str:
         \S*
     """
     unix_pattern = r"""          # Unix path or other URI
-            /[^/\n]+/            # at least two slashes, but not double-slash
-            \S*
+        /[^/\s]+/                # at least two slashes, but not double-slash
+        \S*
     """
     combined_pattern = re.compile(f"({windows_pattern}|{unix_pattern})", re.X)
     masked = re.sub(combined_pattern, FILE_PATH_MASK, text)
@@ -59,7 +59,6 @@ class ReportIssueDialog(QDialog):
 
         main_layout = QVBoxLayout()
 
-        # Create and add the instruction label
         instruction_label = QLabel()
         instruction_label.setText(
             "<p>Sorry you ran into a problem! Please include the information below when you report your issue.</p>"
@@ -83,14 +82,17 @@ class ReportIssueDialog(QDialog):
         self.report_text = QTextEdit()
         self.report_text.setPlainText(report)
         self.report_text.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
+        self.report_text.setFocusPolicy(Qt.ClickFocus)
         main_layout.addWidget(self.report_text)
 
         log_path = ilastik_logging.get_logfile_path()
         if log_path:
+            log_button_layout = QHBoxLayout()  # To align this with the button_layout underneath
             log_url = QUrl(pathlib.Path(log_path).parent.as_uri())
             log_button = QPushButton("Open log folder")
             log_button.clicked.connect(partial(QDesktopServices.openUrl, log_url))
-            main_layout.addWidget(log_button, alignment=Qt.AlignRight)
+            log_button_layout.addWidget(log_button, alignment=Qt.AlignRight)
+            main_layout.addLayout(log_button_layout)
 
         button_layout = QHBoxLayout()
         copy_button = QPushButton("Copy and open forum")
@@ -99,13 +101,18 @@ class ReportIssueDialog(QDialog):
         email_button = QPushButton("Open in email app")
         email_button.clicked.connect(self.open_in_email_app)
         button_layout.addWidget(email_button)
-        close_button = QPushButton("Close")
-        close_button.clicked.connect(self.close)
-        button_layout.addWidget(close_button)
+        self.close_button = QPushButton("Close")
+        self.close_button.clicked.connect(self.close)
+        button_layout.addWidget(self.close_button)
         main_layout.addLayout(button_layout)
 
-        # Set the layout to the dialog
         self.setLayout(main_layout)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        # This doesn't work when called in __init__ after self.report_text.setFocusPolicy(Qt.ClickFocus)
+        self.close_button.setDefault(True)
+        self.close_button.setFocus()
 
     def copy_and_go_to_forum(self):
         clipboard = QApplication.clipboard()

@@ -9,6 +9,7 @@ from ilastik.shell.gui.reportIssueDialog import _mask_file_paths, FILE_PATH_MASK
         ("", ""),
         ("some text/home/me/dir/file.tif", f"some text{FILE_PATH_MASK}"),
         ("some/slash\nand/another", "some/slash\nand/another"),
+        ("some/slash and/another", "some/slash and/another"),
         ("backslashes C:\\\\might\\\\be\\\\doubled", f"backslashes {FILE_PATH_MASK}"),
         ("textC:\\dir with space\\", f"text{FILE_PATH_MASK}"),
         ("textC:\\space in file.tif", f"text{FILE_PATH_MASK} in file.tif"),  # don't think we can catch this
