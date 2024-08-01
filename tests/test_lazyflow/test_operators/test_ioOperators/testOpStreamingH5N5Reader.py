@@ -1,9 +1,7 @@
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -21,77 +19,49 @@ from builtins import object
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-from lazyflow.graph import Graph
-from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
 import numpy
+import pytest
 import vigra
-import tempfile
+from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
 
 
-class TestOpStreamingH5N5Reader(object):
-    def setup_method(self, method):
-        self.graph = Graph()
-        self.testFileDir = tempfile.TemporaryDirectory()
-        self.testDataH5FileName = self.testFileDir.name + "test.h5"
-        self.testDataN5FileName = self.testFileDir.name + "test.n5"
-        self.h5_op = OpStreamingH5N5Reader(graph=self.graph)
-        self.n5_op = OpStreamingH5N5Reader(graph=self.graph)
+@pytest.fixture(params=["test.h5", "test.n5", "test.zarr"])
+def h5n5_file(request, tmp_path):
+    file = OpStreamingH5N5Reader.get_h5_n5_file(str(tmp_path / request.param))
+    yield file
+    file.close()
 
-        self.h5File = OpStreamingH5N5Reader.get_h5_n5_file(self.testDataH5FileName)
-        self.n5File = OpStreamingH5N5Reader.get_h5_n5_file(self.testDataN5FileName)
-        self.h5File.create_group("volume")
-        self.n5File.create_group("volume")
 
-        # Create a test dataset
-        datashape = (1, 2, 3, 4, 5)
-        self.data = numpy.indices(datashape).sum(0).astype(numpy.float32)
+@pytest.fixture
+def data() -> numpy.ndarray:
+    # Create a test dataset
+    datashape = (1, 2, 3, 4, 5)
+    return numpy.indices(datashape).sum(0).astype(numpy.float32)
 
-    def teardown_method(self, method):
-        self.h5File.close()
-        self.n5File.close()
-        self.testFileDir.cleanup()
 
-    def test_plain(self):
-        # Write the dataset to an hdf5 file
-        self.h5File["volume"].create_dataset("data", data=self.data)
-        self.n5File["volume"].create_dataset("data", data=self.data)
+def test_reader_loads_data(graph, h5n5_file, data):
+    h5n5_file.create_group("volume").create_dataset("data", data=data)
+    op = OpStreamingH5N5Reader(graph=graph)
+    op.H5N5File.setValue(h5n5_file)
+    op.InternalPath.setValue("volume/data")
 
-        # Read the data with an operator
-        self.h5_op.H5N5File.setValue(self.h5File)
-        self.n5_op.H5N5File.setValue(self.n5File)
-        self.h5_op.InternalPath.setValue("volume/data")
-        self.n5_op.InternalPath.setValue("volume/data")
+    assert op.OutputImage.meta.shape == data.shape
+    numpy.testing.assert_array_equal(op.OutputImage.value, data)
 
-        assert self.h5_op.OutputImage.meta.shape == self.data.shape
-        assert self.n5_op.OutputImage.meta.shape == self.data.shape
-        numpy.testing.assert_array_equal(self.h5_op.OutputImage.value, self.data)
-        numpy.testing.assert_array_equal(self.n5_op.OutputImage.value, self.data)
 
-    def test_withAxisTags(self):
-        # Write it again, this time with weird axistags
-        axistags = vigra.AxisTags(
-            vigra.AxisInfo("x", vigra.AxisType.Space),
-            vigra.AxisInfo("y", vigra.AxisType.Space),
-            vigra.AxisInfo("z", vigra.AxisType.Space),
-            vigra.AxisInfo("c", vigra.AxisType.Channels),
-            vigra.AxisInfo("t", vigra.AxisType.Time),
-        )
+def test_reader_loads_data_with_axistags(graph, h5n5_file, data):
+    axistags = vigra.AxisTags(
+        vigra.AxisInfo("x", vigra.AxisType.Space),
+        vigra.AxisInfo("y", vigra.AxisType.Space),
+        vigra.AxisInfo("z", vigra.AxisType.Space),
+        vigra.AxisInfo("c", vigra.AxisType.Channels),
+        vigra.AxisInfo("t", vigra.AxisType.Time),
+    )
+    h5n5_file.create_group("volume").create_dataset("tagged_data", data=data)
+    h5n5_file["volume/tagged_data"].attrs["axistags"] = axistags.toJSON()
+    op = OpStreamingH5N5Reader(graph=graph)
+    op.H5N5File.setValue(h5n5_file)
+    op.InternalPath.setValue("volume/tagged_data")
 
-        # Write the dataset to an hdf5 file
-        # (Note: Don't use vigra to do this, which may reorder the axes)
-        self.h5File["volume"].create_dataset("tagged_data", data=self.data)
-        self.n5File["volume"].create_dataset("tagged_data", data=self.data)
-        # Write the axistags attribute
-        self.h5File["volume/tagged_data"].attrs["axistags"] = axistags.toJSON()
-        self.n5File["volume/tagged_data"].attrs["axistags"] = axistags.toJSON()
-
-        # Read the data with an operator
-        self.h5_op.H5N5File.setValue(self.h5File)
-        self.n5_op.H5N5File.setValue(self.n5File)
-        self.h5_op.InternalPath.setValue("volume/tagged_data")
-        self.n5_op.InternalPath.setValue("volume/tagged_data")
-
-        assert self.h5_op.OutputImage.meta.shape == self.data.shape
-        assert self.n5_op.OutputImage.meta.shape == self.data.shape
-        numpy.testing.assert_array_equal(self.h5_op.OutputImage.value, self.data)
-        numpy.testing.assert_array_equal(self.n5_op.OutputImage.value, self.data)
+    assert op.OutputImage.meta.shape == data.shape
+    numpy.testing.assert_array_equal(op.OutputImage.value, data)
