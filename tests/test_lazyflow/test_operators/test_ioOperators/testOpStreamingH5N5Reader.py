@@ -22,6 +22,7 @@
 import numpy
 import pytest
 import vigra
+
 from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
 
 
@@ -64,4 +65,36 @@ def test_reader_loads_data_with_axistags(graph, h5n5_file, data):
     op.InternalPath.setValue("volume/tagged_data")
 
     assert op.OutputImage.meta.shape == data.shape
+    assert op.OutputImage.meta.axistags == axistags
+    numpy.testing.assert_array_equal(op.OutputImage.value, data)
+
+
+@pytest.fixture
+def ome_zarr_file(tmp_path, data):
+    file = OpStreamingH5N5Reader.get_h5_n5_file(str(tmp_path / "test.zarr"))
+    # Not a fully OME-Zarr compliant spec; just the axes
+    file.attrs["multiscales"] = [
+        {
+            "datasets": [],
+            "axes": [
+                {"type": "time", "name": "t", "unit": "sec"},
+                {"type": "channel", "name": "c"},
+                {"type": "space", "name": "z", "unit": "pixel"},
+                {"type": "space", "name": "y", "unit": "pixel"},
+                {"type": "space", "name": "x", "unit": "pixel"},
+            ],
+        }
+    ]
+    file.create_group("volume").create_dataset("ome_data", data=data)
+    yield file
+    file.close()
+
+
+def test_reader_loads_ome_zarr_axes_v0_4(graph, ome_zarr_file, data):
+    op = OpStreamingH5N5Reader(graph=graph)
+    op.H5N5File.setValue(ome_zarr_file)
+    op.InternalPath.setValue("volume/ome_data")
+
+    assert op.OutputImage.meta.shape == data.shape
+    assert op.OutputImage.meta.axistags.keys() == ["t", "c", "z", "y", "x"]
     numpy.testing.assert_array_equal(op.OutputImage.value, data)

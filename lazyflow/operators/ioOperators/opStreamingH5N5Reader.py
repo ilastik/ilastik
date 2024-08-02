@@ -22,19 +22,55 @@
 # Python
 import logging
 import time
-import numpy
+from typing import Union
+
 import vigra
 import h5py
 import z5py
-import json
 import os
-import numpy as np
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import Timer
 from lazyflow.utility.helpers import get_default_axisordering, bigintprod
+from lazyflow.utility.io_util.OMEZarrStore import get_axistags_from_spec as get_ome_zarr_axistags
 
 logger = logging.getLogger(__name__)
+
+
+def _find_or_infer_axistags(file: Union[h5py.File, z5py.N5File, z5py.ZarrFile], internalPath: str) -> vigra.AxisTags:
+    assert internalPath in file, "Existence of dataset must be checked earlier"
+    try:
+        # Look for ilastik-style axistags property.
+        axistagsJson = file[internalPath].attrs["axistags"]
+        axistags = vigra.AxisTags.fromJSON(axistagsJson)
+        axisorder = "".join(tag.key for tag in axistags)
+        if "?" in axisorder:
+            raise KeyError("?")
+        return axistags
+    except KeyError:
+        pass
+
+    try:
+        # Look for OME-Zarr metadata (found at store root, not in dataset)
+        if len(file.attrs["multiscales"]) > 1:
+            logger.info(
+                f"Found multiple multiscales in OME-Zarr store {file.filename}. Using axistags from the first one."
+            )
+        return get_ome_zarr_axistags(file.attrs["multiscales"][0])
+    except KeyError:
+        pass
+
+    try:
+        # Look for metadata at dataset level (Neuroglancer-style N5 ["x", "y", "z"])
+        axisorder = "".join(reversed(file[internalPath].attrs["axes"])).lower()
+        return vigra.defaultAxistags(axisorder)
+    except KeyError:
+        pass
+
+    # Infer from shape
+    axisorder = get_default_axisordering(file[internalPath].shape)
+    logger.info(f"Could not find stored axistags. Inferred {axisorder} from dataset shape.")
+    return vigra.defaultAxistags(str(axisorder))
 
 
 class OpStreamingH5N5Reader(Operator):
@@ -77,30 +113,8 @@ class OpStreamingH5N5Reader(Operator):
             raise OpStreamingH5N5Reader.DatasetReadError(internalPath)
 
         dataset = self._h5N5File[internalPath]
-
-        try:
-            # Read the axistags property without actually importing the data
-            # Throws KeyError if 'axistags' can't be found
-            axistagsJson = self._h5N5File[internalPath].attrs["axistags"]
-            axistags = vigra.AxisTags.fromJSON(axistagsJson)
-            axisorder = "".join(tag.key for tag in axistags)
-            if "?" in axisorder:
-                raise KeyError("?")
-        except KeyError:
-            # No axistags found, i.e. this file isn't ilastik-flavor.
-            if "axes" in dataset.attrs and isinstance(dataset.attrs["axes"][0], dict):
-                # OME-Zarr v0.4: [ { "name": "x", "type": "space", "unit": "nm" }, ... ]
-                # But z5py reverses the order stored in the .zattrs file
-                axisorder = "".join([ax["name"] for ax in reversed(dataset.attrs["axes"])])
-            elif "axes" in dataset.attrs:
-                # Neuroglancer Precomputed or OME-Zarr v0.3: [ "x", "y", "z" ]
-                # Still reversed due to z5py
-                axisorder = "".join(reversed(dataset.attrs["axes"])).lower()
-            else:
-                axisorder = get_default_axisordering(dataset.shape)
-            axistags = vigra.defaultAxistags(str(axisorder))
-
-        assert len(axistags) == len(dataset.shape), f"Mismatch between shape {dataset.shape} and axisorder {axisorder}"
+        axistags = _find_or_infer_axistags(self._h5N5File, internalPath)
+        assert len(axistags) == len(dataset.shape), f"Mismatch between shape {dataset.shape} and axis tags {axistags}"
 
         # Configure our slot meta-info
         self.OutputImage.meta.dtype = dataset.dtype.type
