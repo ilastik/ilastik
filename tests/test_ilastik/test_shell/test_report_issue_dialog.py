@@ -1,6 +1,8 @@
+from unittest import mock
+
 import pytest
 
-from ilastik.shell.gui.reportIssueDialog import _mask_file_paths, FILE_PATH_MASK
+from ilastik.shell.gui.reportIssueDialog import _mask_file_paths, FILE_PATH_MASK, ReportIssueDialog, FORUM_URI
 
 
 @pytest.mark.parametrize(
@@ -25,3 +27,34 @@ from ilastik.shell.gui.reportIssueDialog import _mask_file_paths, FILE_PATH_MASK
 )
 def test_mask_file_paths(input_log, masked_log):
     assert _mask_file_paths(input_log) == masked_log
+
+
+@pytest.fixture
+def dialog(qtbot):
+    dlg = ReportIssueDialog()
+    dlg.show()
+    qtbot.addWidget(dlg)
+    qtbot.waitExposed(dlg)
+    return dlg
+
+
+@pytest.fixture
+def mock_webbrowser(monkeypatch):
+    patch = mock.Mock()
+    monkeypatch.setattr("webbrowser.open", patch)
+    return patch
+
+
+def test_dialog_runs(dialog):
+    assert dialog.isVisible()
+
+
+def test_link_to_forum(dialog, mock_webbrowser):
+    dialog.copy_and_go_to_forum()
+    mock_webbrowser.assert_called_once_with(FORUM_URI)
+
+
+def test_link_to_mail(dialog, mock_webbrowser):
+    dialog.open_in_email_app()
+    mock_webbrowser.assert_called_once()
+    assert mock_webbrowser.call_args.args[0].startswith("mailto:")
