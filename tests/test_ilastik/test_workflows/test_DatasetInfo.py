@@ -1,13 +1,10 @@
 import os
 from pathlib import Path
 import numpy
-import vigra
-import shutil
 import tempfile
 import pytest
-import requests
-from typing import List
 import h5py
+import z5py
 from PIL import Image as PilImage
 
 from ilastik.applets.dataSelection import DatasetInfo, FilesystemDatasetInfo
@@ -200,6 +197,35 @@ def test_h5_stack_via_star_file_glob_and_stared_internal_path(h5_stack_dir, empt
             Path(h5_stack_dir).joinpath("2d_apoptotic_binary_0.h5/volume/data").as_posix(),
             Path(h5_stack_dir).joinpath("2d_apoptotic_binary_1.h5/volume/data").as_posix(),
             Path(h5_stack_dir).joinpath("2d_apoptotic_binary_2.h5/volume/data").as_posix(),
+        ]
+    )
+
+    assert info.filePath == expected_filepath
+
+
+@pytest.fixture(params=["n5", "zarr"])
+def z5_stack_dir(request, stack_path):
+    sub_path = stack_path / request.param  # Include param so tests can find out which case they are running
+    for i in range(3):
+        with z5py.File(str(sub_path / f"2d_apoptotic_binary_{i}.{request.param}"), "w") as f:
+            raw = (numpy.random.rand(1, 10, 20, 1, 1) * 255).astype(numpy.uint8)
+            f.create_group("volume")  # Needed for zarr (see z5py#231)
+            f.create_dataset("volume/data", data=raw)
+    return sub_path
+
+
+def test_z5py_stack_double_star_glob(z5_stack_dir, empty_project_file):
+    file_extension = z5_stack_dir.name
+    star_glob = z5_stack_dir / f"*.{file_extension}/*"
+    info = FilesystemDatasetInfo(filePath=str(star_glob), sequence_axis="z", project_file=empty_project_file)
+    assert info.nickname == "2d_apoptotic_binary_-volume-data"
+    assert info.is_under_project_file()
+
+    expected_filepath = os.path.pathsep.join(
+        [
+            (z5_stack_dir / f"2d_apoptotic_binary_0.{file_extension}/volume/data").as_posix(),
+            (z5_stack_dir / f"2d_apoptotic_binary_1.{file_extension}/volume/data").as_posix(),
+            (z5_stack_dir / f"2d_apoptotic_binary_2.{file_extension}/volume/data").as_posix(),
         ]
     )
 
