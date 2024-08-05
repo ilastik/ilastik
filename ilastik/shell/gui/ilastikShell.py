@@ -91,6 +91,7 @@ from ilastik.shell.headless.headlessShell import HeadlessShell
 
 from ilastik.shell.gui.aboutDialog import AboutDialog
 from ilastik.shell.gui.licenseDialog import LicenseDialog
+from ilastik.shell.gui.reportIssueDialog import ReportIssueDialog
 
 from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox, AppletBarManager
 from ilastik.widgets.filePathButton import FilePathButton
@@ -750,14 +751,25 @@ class IlastikShell(QMainWindow):
         self.openProjectFile(path)
 
     def _createHelpMenu(self):
+        def _openReportIssueDialog():
+            workflow_text = ""
+            if self.workflow:
+                workflow_text = (
+                    f"Active workflow: {self.workflow.workflowName}\n"
+                    f"Active applet: {self.workflow.applets[self.currentAppletIndex].name}\n"
+                )
+            ReportIssueDialog.createAndShowModal(self, workflow_text)
+
         menu = QMenu("&Help", self)
         menu.setObjectName("help_menu")
         aboutIlastikAction = menu.addAction("&About ilastik")
         aboutIlastikAction.triggered.connect(partial(AboutDialog.createAndShowModal, self))
         readTheDocsAction = menu.addAction("&Documentation")
         readTheDocsAction.triggered.connect(
-            partial(QDesktopServices.openUrl, QUrl("http://ilastik.org/documentation/"))
+            partial(QDesktopServices.openUrl, QUrl("https://ilastik.org/documentation/"))
         )
+        emailDevsAction = menu.addAction("&Report issue")
+        emailDevsAction.triggered.connect(_openReportIssueDialog)
         licenseAction = menu.addAction("License")
         licenseAction.triggered.connect(partial(LicenseDialog, self))
         return menu
