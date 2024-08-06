@@ -19,12 +19,13 @@
 # This information is also available on the ilastik web site at:
 #          http://ilastik.org/license/
 ###############################################################################
+from __future__ import annotations
 import logging
 import socket
 import numpy
 import warnings
 from collections import defaultdict
-from typing import Callable, Dict, Iterable, Sequence, Tuple, Union
+from typing import Callable, Dict, Iterable, Sequence, Tuple, Union, List, Optional
 
 import xarray
 import grpc
@@ -43,40 +44,179 @@ from . import _base
 logger = logging.getLogger(__name__)
 
 
-def enforce_min_shape(min_shape, step, axes) -> Tuple[int, ...]:
-    """Hack: pick a bigger shape than min shape
+class Shape:
+    VALID_AXES = "itbczyx"
+    SPATIAL_AXES = "xyz"
 
-    Some models come with super tiny minimal shapes, that make the processing
-    too slow. While dryrun is not implemented, we'll "guess" a sensible shape
-    and hope it will fit into memory.
-    """
-    MIN_SIZE_2D = 512
-    MIN_SIZE_3D = 64
+    def __init__(self, axes: str, sizes: Tuple[int, ...]):
+        self._axes = axes
+        self._sizes = sizes
+        assert len(self._axes) == len(self._sizes)
+        assert all(self._check_axis(axis) for axis in axes)
+        assert all(size >= 0 for size in sizes)
+        self._mapping = {axis: size for axis, size in zip(self._axes, self._sizes)}
+        self._xyz = {axis: size for axis, size in self._mapping.items() if axis in self.SPATIAL_AXES}
+        self._spatial_axes = "".join(self._xyz.keys())
+        self._spatial_sizes = tuple(list(self._xyz.values()))
 
-    assert len(min_shape) == len(step) == len(axes)
+    @classmethod
+    def from_axes_size_map(cls, dict: Dict[str, int]) -> Shape:
+        return Shape("".join(dict.keys()), tuple(list((dict.values()))))
 
-    spacial_increments = sum(i != 0 for i, a in zip(step, axes) if a in "xyz")
-    if spacial_increments > 2:
-        target_size = MIN_SIZE_3D
-    else:
-        target_size = MIN_SIZE_2D
+    @property
+    def spatial_axes(self) -> str:
+        return self._spatial_axes
 
-    factors = [
-        int(numpy.ceil((target_size - s) / i)) for s, i, a in zip(min_shape, step, axes) if (a in "xyz") and (i != 0)
-    ]
-    # we assume shape is "large" enough if one of the axes is larger than min_size
-    if any(f <= 0 for f in factors):
-        return min_shape
+    @property
+    def spatial_sizes(self) -> Tuple[int, ...]:
+        return self._spatial_sizes
 
-    # choose the smallest increment to make at least one size >= target_size
-    m = min([x for x in factors])
-    return tuple([int(s + i * m) for s, i in zip(min_shape, step)])
+    @property
+    def axes(self) -> str:
+        return self._axes
+
+    @property
+    def sizes(self) -> Tuple[int, ...]:
+        return self._sizes
+
+    @property
+    def xyz(self) -> Dict[str, int]:
+        return self._xyz
+
+    @property
+    def is_3d(self) -> bool:
+        return len(self.xyz) == 3
+
+    def _check_axis(self, axis: str):
+        return axis in self.VALID_AXES
+
+    def is_same_axes(self, other: Shape) -> bool:
+        return self._mapping.keys() == other._mapping.keys()
+
+    def __getitem__(self, item):
+        if item in self._mapping:
+            return self._mapping[item]
+        else:
+            return 1
+
+    def __iter__(self):
+        return iter(self._mapping.items())
+
+    def __len__(self):
+        return len(self.axes)
+
+    def __str__(self):
+        return f"{self._mapping}"
+
+
+class InputParameterizedShape:
+    def __init__(self, min_shape: Shape, steps: Shape):
+        self._min_shape = min_shape
+        self._steps = steps
+        assert self._min_shape.is_same_axes(self._steps)
+        assert all(step == 0 for axis, step in steps if axis not in Shape.SPATIAL_AXES)
+        self._default_multiplier = self._enforce_min_shape()
+        self._custom_multiplier: Optional[int] = None
+        self._total_shape = self.get_total_shape()
+
+    @classmethod
+    def from_sizes(cls, min_shape: Tuple[int, ...], steps: Tuple[int, ...], axes: str) -> InputParameterizedShape:
+        return InputParameterizedShape(Shape(axes, min_shape), Shape(axes, steps))
+
+    @property
+    def axes(self) -> str:
+        return self._min_shape.axes
+
+    @property
+    def spatial_axes(self) -> str:
+        return self._min_shape.spatial_axes
+
+    @property
+    def min_shape(self) -> Shape:
+        return self._min_shape
+
+    @property
+    def steps(self) -> Shape:
+        return self._steps
+
+    @property
+    def default_multiplier(self) -> int:
+        return self._default_multiplier
+
+    @property
+    def multiplier(self) -> int:
+        if self._custom_multiplier is not None:
+            return self._custom_multiplier
+        else:
+            return self._default_multiplier
+
+    @multiplier.setter
+    def multiplier(self, value):
+        self._check_multiplier(value)
+        self._custom_multiplier = value
+
+    def get_total_shape(self, multiplier: Optional[int] = None) -> Shape:
+        if multiplier is not None:
+            self._check_multiplier(multiplier)
+            self._custom_multiplier = multiplier
+        else:
+            multiplier = self._default_multiplier if self._custom_multiplier is None else self._custom_multiplier
+        total_size = [size + multiplier * self._steps[axis] for axis, size in self._min_shape]
+        self._total_shape = Shape(self.axes, tuple(total_size))
+        return self._total_shape
+
+    def _enforce_min_shape(self) -> int:
+        """Hack: pick a bigger shape than min shape
+
+        Some models come with super tiny minimal shapes, that make the processing
+        too slow. While dryrun is not implemented, we'll "guess" a sensible shape
+        and hope it will fit into memory.
+        """
+        MIN_SIZE_2D = 512
+        MIN_SIZE_3D = 64
+
+        spacial_increments = sum(i != 0 for i, a in self._steps.xyz.items())
+        if spacial_increments > 2:
+            target_size = MIN_SIZE_3D
+        else:
+            target_size = MIN_SIZE_2D
+
+        factors = [
+            int(numpy.ceil((target_size - size) / self._steps[axis]))
+            for axis, size in self._min_shape.xyz.items()
+            if self._steps[axis] != 0
+        ]
+        # we assume shape is "large" enough if one of the axes is larger than min_size
+        if any(f <= 0 for f in factors):
+            return 0
+
+        # choose the smallest increment to make at least one size >= target_size
+        m = min([x for x in factors])
+        return m
+
+    def _check_multiplier(self, value: int):
+        if value < 0:
+            raise ValueError(f"Multiplier value {value}. It should be >= 0")
+
+    def __str__(self):
+        return f"{self.min_shape.spatial_sizes} + {self.multiplier} * {self.steps.spatial_sizes} = {self.get_total_shape().spatial_sizes}"
 
 
 class ModelSession:
     def __init__(self, session, factory):
         self.__session = session
         self.__factory = factory
+
+        assert (
+            len(self.__session.inputNames) == 1 and len(self.__session.inputShapes) == 1
+        ), "Currently operators can handle only a single input tensor."
+        assert (
+            len(self.__session.outputNames) == 1 and len(self.__session.outputShapes) == 1
+        ), "Currently operators can handle only a single output tensor"
+
+        self._implicit_input_shape = self.__session.inputShapes[0]
+        self._implicit_output_shape = self.__session.outputShapes[0]
+        self._input_shape = self._transform_input_shapes()
 
     @property
     def tiktorchClient(self):
@@ -91,89 +231,71 @@ class ModelSession:
         return self.__session.name
 
     @property
-    def input_names(self) -> Sequence[str]:
-        """Get names/ids for all model inputs"""
-        return self.__session.inputNames
+    def input_name(self) -> str:
+        return self.__session.inputNames[0]
 
     @property
-    def output_names(self) -> Sequence[str]:
-        """Get names/ids for all model outputs"""
-        return self.__session.outputNames
+    def output_name(self) -> str:
+        return self.__session.outputNames[0]
 
     @property
     def input_axes(self) -> Sequence[str]:
-        """Get axes for all model inputs
-
-        linked via index to `input_names`
-        """
+        """Get axes for model input"""
         return self.__session.inputAxes
 
     @property
     def output_axes(self) -> Sequence[str]:
-        """Get axes for all model inputs
-
-        linked via index to `output_names`
-        """
+        """Get axes for model output"""
         return self.__session.outputAxes
 
-    def get_output_shapes(self) -> Dict[str, Sequence[Dict[str, int]]]:
-        """Get output shapes for all model output
+    @property
+    def input_shape(self):
+        return self._input_shape
+
+    def get_output_shape(self) -> Dict[str, int]:
+        """Get shape for model output
 
         shape = shape(reference_input_tensor) * scale + 2 * offset
-
-        linked via index to `output_names`
         """
         # get input shapes for all possible axes that ilastik can understand
-        input_shapes = self.get_input_shapes(axes="itzyxc")
+        input_shape = {name: size for name, size in zip("itzyxc", self.get_explicit_input_shape("itzyxc"))}
 
-        # for now, from the possible input shapes select the largest (last)
-        max_input_shapes = {k: in_shape[-1] for k, in_shape in input_shapes.items()}
+        input_name = self.input_name
+        output_name = self.output_name
+        shape = self._implicit_output_shape
 
-        max_input_shapes_dicts = {}
-        for input_name, input_shape in max_input_shapes.items():
-            max_input_shapes_dicts[input_name] = {name: size for name, size in zip("itzyxc", input_shape)}
-
-        result = {}
-        output_shapes = self.__session.outputShapes
-        output_names = self.output_names
-        assert len(output_shapes) == 1, "Currently only single output shapes are supported."
-
-        for output_name, shape in zip(output_names, output_shapes):
-            if shape.shapeType == 0:
-                # explicit shape
-                output_shape_by_name = {d.name: d.size for d in shape.shape.namedInts}
-                result[output_name] = [output_shape_by_name]
-            elif shape.shapeType == 1:
-                # parametrized shape
-                # HACK: need to determine min shape same way as prediction_pipeline
-                reference_tensor = shape.referenceTensor
-                assert (
-                    reference_tensor in max_input_shapes_dicts
-                ), f"Reference tensor for output {output_name} not found in input shapes {input_shapes.keys()}."
-                offset_size_by_name = defaultdict(lambda: 0, {d.name: d.size for d in shape.offset.namedFloats})
-                scale_size_by_name = defaultdict(lambda: 1.0, {d.name: d.size for d in shape.scale.namedFloats})
-                output_shape_by_name = {}
-                for dim in shape.scale.namedFloats:
-                    if dim.name == "b":
-                        continue
-                    output_shape_by_name[dim.name] = int(
-                        max_input_shapes_dicts[reference_tensor][dim.name] * scale_size_by_name[dim.name]
-                        + 2 * offset_size_by_name[dim.name]
-                    )
-                result[output_name] = [output_shape_by_name]
-            else:
-                raise ValueError(f"Cannot work with shapes of shapeType {shape.shapeType}.")
+        if shape.shapeType == 0:
+            # explicit shape
+            output_shape_by_name = {d.name: d.size for d in shape.shape.namedInts}
+            result = output_shape_by_name
+        elif shape.shapeType == 1:
+            # parametrized shape
+            # HACK: need to determine min shape same way as prediction_pipeline
+            reference_tensor = shape.referenceTensor
+            assert (
+                reference_tensor == input_name
+            ), f"Reference tensor {reference_tensor} for output {output_name} not found in input shape {input_name}."
+            offset_size_by_name = defaultdict(lambda: 0, {d.name: d.size for d in shape.offset.namedFloats})
+            scale_size_by_name = defaultdict(lambda: 1.0, {d.name: d.size for d in shape.scale.namedFloats})
+            output_shape_by_name = {}
+            for dim in shape.scale.namedFloats:
+                if dim.name == "b":
+                    continue
+                output_shape_by_name[dim.name] = int(
+                    input_shape[dim.name] * scale_size_by_name[dim.name] + 2 * offset_size_by_name[dim.name]
+                )
+            result = output_shape_by_name
+        else:
+            raise ValueError(f"Cannot work with shapes of shapeType {shape.shapeType}.")
 
         # sanity check:
-        for output_name in output_names:
-            res = result[output_name][0]
-            axes = "".join(res.keys())
-            halo = self.get_halos(axes=axes)[output_name]
-            shape_after_halo = [res[axkey] - 2 * axhalo for axkey, axhalo in zip(axes, halo)]
-            if not all(x > 0 for x in shape_after_halo):
-                logger.warning(
-                    f"Network configuration problem detected - output {output_name} shape - 2*halo invalid:{shape_after_halo}."
-                )
+        axes = "".join(result.keys())
+        halo = self.get_halo(axes=axes)
+        shape_after_halo = [result[axkey] - 2 * axhalo for axkey, axhalo in zip(axes, halo)]
+        if not all(x > 0 for x in shape_after_halo):
+            logger.warning(
+                f"Network configuration problem detected - output {output_name} shape - 2*halo invalid:{shape_after_halo}."
+            )
 
         return result
 
@@ -181,10 +303,8 @@ class ModelSession:
     def has_training(self) -> bool:
         return self.__session.hasTraining
 
-    def get_halos(self, axes: Union[str, AxisTags] = "zyx") -> Dict[str, Tuple[int]]:
-        """Get halo sizes for all model outputs
-
-        linked to `output_names` via keys in returned dict
+    def get_halo(self, axes: Union[str, AxisTags] = "zyx") -> Tuple[int, ...]:
+        """Get halo sizes for model output
 
         Returns:
           models can take multiple images as outputs. For each such input, a
@@ -193,15 +313,23 @@ class ModelSession:
         """
         if isinstance(axes, AxisTags):
             axes = "".join(axes.keys())
-        halos = {}
-        for output_name, output_shape in zip(self.__session.outputNames, self.__session.outputShapes):
-            halo_size_by_name = {d.name: d.size for d in output_shape.halo.namedInts}
-            halos[output_name] = tuple([halo_size_by_name.get(axis, 0) for axis in axes])
+        halo_size_by_name = {d.name: d.size for d in self._implicit_output_shape.halo.namedInts}
+        return tuple([halo_size_by_name.get(axis, 0) for axis in axes])
 
-        return halos
+    def get_explicit_input_shape(self, axes: Union[str, AxisTags] = "itzyxc") -> Tuple[int, ...]:
+        if isinstance(axes, AxisTags):
+            axes = "".join(axes.keys())
+        input_shape = self._input_shape
+        if isinstance(input_shape, InputParameterizedShape):
+            explicit_shape = self._input_shape.get_total_shape()
+        elif isinstance(input_shape, Shape):
+            explicit_shape = input_shape
+        else:
+            raise ValueError(f"Unexpected input shape {input_shape}")
+        return tuple(explicit_shape[axis] for axis in axes)
 
-    def get_input_shapes(self, axes: Union[str, AxisTags] = "itzyxc") -> Dict[str, Sequence[Tuple[int]]]:
-        """Get input shapes for all model inputs
+    def _transform_input_shapes(self, axes: str = "itzyxc") -> Union[Shape, InputParameterizedShape]:
+        """Get input shape for model input
 
         Note: for parametrized input shapes we try to do something sensible with
           the shape, and not just return the minimum shape. See also
@@ -212,29 +340,33 @@ class ModelSession:
             of shapes is returned. Linked to `input_names` via keys in returned
             dict.
         """
-        if isinstance(axes, AxisTags):
-            axes = "".join(axes.keys())
-        result = {}
+        shape = self._implicit_input_shape
 
-        for input_name, shape in zip(self.input_names, self.__session.inputShapes):
-            dim_size_by_name = defaultdict(lambda: 1, {d.name: d.size for d in shape.shape.namedInts})
-            if shape.shapeType == 0:
-                # explicit shape
-                result[input_name] = [tuple([dim_size_by_name[axis] for axis in axes])]
-            elif shape.shapeType == 1:
-                # parametrized shape
-                # HACK: need to determine min shape same way as prediction_pipeline
-                dim_step_by_name = defaultdict(lambda: 0, {d.name: d.size for d in shape.stepShape.namedInts})
-                shape_dims = "".join(d.name for d in shape.shape.namedInts)
-                min_shape = enforce_min_shape(
-                    [dim_size_by_name[x] for x in shape_dims], [dim_step_by_name[x] for x in shape_dims], shape_dims
-                )
-                min_shape_by_name = defaultdict(lambda: 1, {name: size for name, size in zip(shape_dims, min_shape)})
-                result[input_name] = [tuple(min_shape_by_name[axis] for axis in axes)]
-            else:
-                raise ValueError(f"Cannot work with shapes of shapeType {shape.shapeType}.")
+        dim_size_by_name = defaultdict(lambda: 1, {d.name: d.size for d in shape.shape.namedInts})
+        if self.is_input_shape_parameterized():
+            # parametrized shape
+            # HACK: need to determine min shape same way as prediction_pipeline
+            dim_size_by_name, dim_step_by_name = self._get_parameterized_shapes()
+            return InputParameterizedShape(dim_size_by_name, dim_step_by_name)
+        else:
+            # explicit shape
+            return Shape.from_axes_size_map({axis: dim_size_by_name[axis] for axis in axes})
 
-        return result
+    def _get_parameterized_shapes(self) -> Tuple[Shape, Shape]:
+        assert self.is_input_shape_parameterized()
+        implicit_input_shape = self._implicit_input_shape
+        dim_size_by_name = {d.name: d.size for d in implicit_input_shape.shape.namedInts}
+        dim_step_by_name = {d.name: d.size for d in implicit_input_shape.stepShape.namedInts}
+        return Shape.from_axes_size_map(dim_size_by_name), Shape.from_axes_size_map(dim_step_by_name)
+
+    def is_input_shape_parameterized(self):
+        implicit_shape = self._implicit_input_shape
+        if implicit_shape.shapeType == 0:
+            return False
+        elif implicit_shape.shapeType == 1:
+            return True
+        else:
+            raise ValueError(f"Cannot work with shapes of shapeType {implicit_shape.shapeType}.")
 
     @property
     def training_shape(self) -> Tuple[int, ...]:
@@ -246,11 +378,7 @@ class ModelSession:
         """
         FIXME: assumes first output is the segmentation output
         """
-        output_shapes = self.get_output_shapes()
-        # there could be multiple output shapes per output in the future (with implicit output shapes)
-        output_names = self.output_names
-        assert len(output_names) == 1, "Currently only single output shapes are supported."
-        output_shape = output_shapes[output_names[0]][0]
+        output_shape = self.get_output_shape()
         assert "c" in output_shape, "Channel Axis needed in output shape."
         return list(range(1, int(output_shape["c"]) + 1))
 
@@ -356,7 +484,6 @@ class ModelSession:
                 results[i] = tensor[None, ...]
 
         shapes_wo_halo = [r.shape for r in results]
-        halos = self.get_halos(axes=axistags)
 
         results = [
             reorder_axes(r, from_axes_tags=ot, to_axes_tags=at) for r, ot, at in zip(results, output_axes, axistags)
