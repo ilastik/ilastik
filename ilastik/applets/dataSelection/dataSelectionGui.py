@@ -542,20 +542,24 @@ class DataSelectionGui(QWidget):
         datasetNames = DatasetInfo.getPossibleInternalPathsFor(filePath.absolute())
         if len(datasetNames) == 0:
             raise RuntimeError(f"File {filePath} has no image datasets")
+        keep_selected_as_default = False
         if len(datasetNames) == 1:
             selected_dataset = datasetNames.pop()
+            keep_selected_as_default = True
         else:
             auto_inner_paths = self._get_previously_used_inner_paths(roleIndex).intersection(set(datasetNames))
             if len(auto_inner_paths) == 1:
                 selected_dataset = auto_inner_paths.pop()
             else:
                 # Ask the user which dataset to choose
-                dlg = SubvolumeSelectionDlg(datasetNames, self)
+                dlg = SubvolumeSelectionDlg(datasetNames, self, offer_remember_dataset=True)
                 if dlg.exec_() != QDialog.Accepted:
                     raise DataSelectionGui.UserCancelledError()
                 selected_index = dlg.combo.currentIndex()
+                keep_selected_as_default = dlg.checkbox.isChecked()
                 selected_dataset = str(datasetNames[selected_index])
-        self._add_default_inner_path(roleIndex=roleIndex, inner_path=selected_dataset)
+        if keep_selected_as_default:
+            self._add_default_inner_path(roleIndex=roleIndex, inner_path=selected_dataset)
         return filePath / selected_dataset.lstrip("/")
 
     def _get_custom_axistags_from_previous_lane(self, role: Union[str, int], info: DatasetInfo) -> Optional[AxisTags]:

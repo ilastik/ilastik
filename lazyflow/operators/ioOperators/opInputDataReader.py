@@ -80,8 +80,11 @@ class OpInputDataReader(Operator):
     category = "Input"
 
     videoExts = ["ufmf", "mmf"]
-    h5_n5_Exts = ["h5", "hdf5", "ilp", "n5"]
-    n5Selection = ["json"]  # n5 stores data in a directory, containing a json-file which we use to select the n5-file
+    h5_n5_Exts = ["h5", "hdf5", "ilp", "n5", "zarr"]
+    n5Selection = [
+        "json",
+        "zgroup",
+    ]  # n5 stores data in a directory, containing a json-file which we use to select the n5-file
     klbExts = ["klb"]
     npyExts = ["npy"]
     npzExts = ["npz"]
@@ -137,6 +140,7 @@ class OpInputDataReader(Operator):
         super(OpInputDataReader, self).__init__(*args, **kwargs)
         self.internalOperators = []
         self.internalOutput = None
+        self.opInjector = None
         self._file = None
 
         self.WorkingDirectory.setOrConnectIfAvailable(WorkingDirectory)
@@ -151,7 +155,9 @@ class OpInputDataReader(Operator):
 
     def internalCleanup(self):
         self.Output.disconnect()
-        self.opInjector.cleanUp()
+        if self.opInjector:
+            self.opInjector.cleanUp()
+            self.opInjector = None
         if self._file is not None:
             self._file.close()
             self._file = None
@@ -186,7 +192,7 @@ class OpInputDataReader(Operator):
             self._attemptOpenAsKlb,
             self._attemptOpenAsUfmf,
             self._attemptOpenAsMmf,
-            self._attemptOpenAsOmeZarrMultiscale,
+            self._attemptOpenAsOmeZarrUri,
             self._attemptOpenAsRESTfulPrecomputedChunkedVolume,
             self._attemptOpenAsDvidVolume,
             self._attemptOpenAsH5N5Stack,
@@ -288,16 +294,22 @@ class OpInputDataReader(Operator):
         else:
             return ([], None)
 
-    def _attemptOpenAsOmeZarrMultiscale(self, filePath):
-        if "zarr" not in filePath.lower():
+    def _attemptOpenAsOmeZarrUri(self, filePath):
+        # Local file system paths with .zarr are handled in _attemptOpenAsH5N5
+        path = PathComponents(filePath)
+        if path.extension != ".zarr":
             return ([], None)
         if not (filePath.startswith("http") or filePath.startswith("file")):
             return ([], None)
         # DatasetInfo instantiates a standalone OpInputDataReader to obtain laneShape and dtype.
         # We pass this down to the loader so that it can avoid loading scale metadata unnecessarily.
         reader = OpOMEZarrMultiscaleReader(parent=self, metadata_only_mode=self.parent is None)
-        reader.Scale.connect(self.ActiveScale)
-        reader.BaseUri.setValue(filePath)
+        if path.internalPath and self.parent:
+            # Headless/batch
+            reader.Scale.setValue(path.internalPath.lstrip("/"))
+        else:
+            reader.Scale.connect(self.ActiveScale)
+        reader.BaseUri.setValue(path.externalPath)
         return [reader], reader.Output
 
     def _attemptOpenAsRESTfulPrecomputedChunkedVolume(self, filePath):
@@ -408,12 +420,6 @@ class OpInputDataReader(Operator):
                         "No internal path provided for dataset in file: {}".format(externalPath)
                     )
                     raise OpInputDataReader.DatasetReadError(msg)
-            try:
-                compression_setting = h5N5File[internalPath].compression
-            except Exception as e:
-                h5N5File.close()
-                msg = "Error reading H5/N5 File: {}\n{}".format(externalPath, e)
-                raise OpInputDataReader.DatasetReadError(msg) from e
 
             # If the h5 dataset is compressed, we'll have better performance
             #  with a multi-process hdf5 access object.
@@ -421,9 +427,16 @@ class OpInputDataReader(Operator):
             allow_multiprocess_hdf5 = (
                 "LAZYFLOW_MULTIPROCESS_HDF5" in os.environ and os.environ["LAZYFLOW_MULTIPROCESS_HDF5"] != ""
             )
-            if compression_setting is not None and allow_multiprocess_hdf5 and isinstance(h5N5File, h5py.File):
-                h5N5File.close()
-                h5N5File = MultiProcessHdf5File(externalPath, "r")
+            if isinstance(h5N5File, h5py.File) and allow_multiprocess_hdf5:
+                try:
+                    compression_setting = h5N5File[internalPath].compression
+                except Exception as e:
+                    h5N5File.close()
+                    msg = "Error reading H5/N5 File: {}\n{}".format(externalPath, e)
+                    raise OpInputDataReader.DatasetReadError(msg) from e
+                if compression_setting is not None:
+                    h5N5File.close()
+                    h5N5File = MultiProcessHdf5File(externalPath, "r")
 
         self._file = h5N5File
 

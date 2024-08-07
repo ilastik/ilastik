@@ -42,7 +42,7 @@ OME_ZARR_V_0_4_KWARGS = dict(dimension_separator="/", normalize_keys=False)
 OME_ZARR_V_0_1_KWARGS = dict(dimension_separator=".")
 
 
-def _get_axistags_from_spec(validated_ome_spec: Dict) -> vigra.AxisTags:
+def get_axistags_from_spec(validated_ome_spec: Dict) -> vigra.AxisTags:
     # We assume the spec is already `jsonschema.validate`d to be a Dict according to OME schema
     if "axes" in validated_ome_spec:
         ome_axes = validated_ome_spec["axes"]
@@ -175,7 +175,7 @@ class OMEZarrStore(MultiscaleStore):
             )
             logger.warning(warn)
         multiscale_spec = self.ome_spec["multiscales"][0]
-        axistags = _get_axistags_from_spec(multiscale_spec)
+        axistags = get_axistags_from_spec(multiscale_spec)
         datasets = multiscale_spec["datasets"]
         dtype = None
         gui_scale_metadata = OrderedDict()  # Becomes slot metadata -> must be serializable (no ZarrArray allowed)
@@ -222,3 +222,13 @@ class OMEZarrStore(MultiscaleStore):
         scale_key = scale_key if scale_key != DEFAULT_SCALE_KEY else self.lowest_resolution_key
         data = self._scale_data[scale_key]["zarray"][roi.toSlice()]
         return data
+
+    def get_zarr_array(self, scale_key: str):
+        """
+        Intended exclusively for use through ilastik-API.
+        Internally, ilastik and lazyflow should never directly access the ZarrArray.
+        """
+        if scale_key not in self._scale_data:
+            msg = f"No scale named {scale_key} in this store. Please inspect `.multiscales` to see available scales."
+            raise KeyError(msg)
+        return self._scale_data[scale_key]["zarray"]
