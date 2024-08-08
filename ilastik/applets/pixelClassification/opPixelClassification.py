@@ -71,6 +71,9 @@ class OpPixelClassification(Operator):
     PredictionMasks = InputSlot(
         level=1, optional=True
     )  # Routed to OpClassifierPredict.PredictionMask.  See there for details.
+    AutocontextInput = InputSlot(
+        level=1, optional=True
+    )  # Connected if in "autocontext mode", stacked input + preds from previous round - for display only
 
     LabelInputs = InputSlot(optional=True, level=1)  # Input for providing label data from an external source
 
@@ -435,7 +438,7 @@ class OpLabelPipeline(Operator):
             tagged_shape["t"] = 1
 
         # Aim for blocks that are roughly 20px
-        block_shape = determineBlockShape(list(tagged_shape.values()), 40 ** 3)
+        block_shape = determineBlockShape(list(tagged_shape.values()), 40**3)
         self.opLabelArray.blockShape.setValue(block_shape)
 
     def setInSlot(self, slot, subindex, roi, value):

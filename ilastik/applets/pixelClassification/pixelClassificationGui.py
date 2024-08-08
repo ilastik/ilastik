@@ -169,9 +169,9 @@ class ClassifierSelectionDlg(QDialog):
             warnings.warn(f"Couldn't import sklearn. Scikit-learn classifiers not available. Error encountered at {e}")
 
         # Debug classifiers
-        classifiers[
-            "Parallel Random Forest with Variable Importance (VIGRA)"
-        ] = ParallelVigraRfLazyflowClassifierFactory(100, variable_importance_enabled=True)
+        classifiers["Parallel Random Forest with Variable Importance (VIGRA)"] = (
+            ParallelVigraRfLazyflowClassifierFactory(100, variable_importance_enabled=True)
+        )
         classifiers["(debug) Single-threaded Random Forest (VIGRA)"] = VigraRfLazyflowClassifierFactory(100)
         classifiers["(debug) Pixelwise Random Forest (VIGRA)"] = VigraRfPixelwiseClassifierFactory(100)
 
@@ -762,6 +762,13 @@ class PixelClassificationGui(LabelingGui):
                 ref_label.pmapColorChanged.connect(setLayerColor)
                 ref_label.nameChanged.connect(setPredLayerName)
                 layers.append(predictLayer)
+
+        if self.topLevelOperatorView.AutocontextInput.ready():
+            layer = self.createStandardLayerFromSlot(self.topLevelOperatorView.AutocontextInput)
+            layer.name = "Autocontext Input"
+            layer.visible = False
+            layers.append(layer)
+
         return layers
 
     def hasFeatures(self) -> bool:
