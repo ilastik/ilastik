@@ -103,15 +103,19 @@ Data Selection
 .. autoclass:: OpDataSelection
    :members:
 
+Data Export
+-----------
+
+.. currentmodule:: ilastik.applets.dataExport.dataExportApplet
+.. autoclass:: DataExportApplet
+   :members:
+
+
 Batch Output
 ------------
 
-.. figure:: images/BatchOutput-Top-Level-Operator.svg
-   :scale: 100  %
-   :alt: Batch Output Top-Level Operator
-
-.. currentmodule:: ilastik.applets.batchIo.batchIoApplet
-.. autoclass:: BatchIoApplet
+.. currentmodule:: ilastik.applets.batchProcessing
+.. autoclass:: BatchProcessingApplet
    :members:
 
 
@@ -163,9 +167,11 @@ with object features can be found in the $ILASTIK/examples directory.
 To get your plugins discovered by ilastik, you have to add their path 
 to the .ilastikrc file in your home directory. The file should look
 as follows:
-    [ilastik]
-    
-    plugin_directories: /path/to/cool_features
+
+.. code-block::
+
+   [ilastik]
+   plugin_directories: /path/to/cool_features
 
 The cool_features directory in this case should contain the .py and the .yapsy-plugin files.
 
@@ -188,9 +194,6 @@ The cool_features directory in this case should contain the .py and the .yapsy-p
    :members:
 
 .. autoclass:: OpRegionFeatures
-   :members:
-
-.. autoclass:: OpRegionFeatures3d
    :members:
 
 .. autoclass:: OpObjectCenterImage
