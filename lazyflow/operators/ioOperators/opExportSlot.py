@@ -1,12 +1,7 @@
-from builtins import zip
-from builtins import map
-
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -25,7 +20,6 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import os
-import shutil
 import collections
 import contextlib
 from functools import partial
@@ -35,7 +29,7 @@ import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiFromShape
-from lazyflow.utility import OrderedSignal, format_known_keys, PathComponents, mkdir_p
+from lazyflow.utility import OrderedSignal, format_known_keys, PathComponents, mkdir_p, isUrl
 from lazyflow.operators.ioOperators import (
     OpH5N5WriterBigDataset,
     OpStreamingH5N5Reader,
@@ -46,6 +40,7 @@ from lazyflow.operators.ioOperators import (
     OpExportMultipageTiffSequence,
     OpExportToArray,
 )
+from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr
 
 try:
     from lazyflow.operators.ioOperators import OpExportDvidVolume
@@ -84,6 +79,7 @@ class OpExportSlot(Operator):
     _2d_exts = vigra.impex.listExtensions().split()
 
     # List all supported formats
+    # Only FormatInfo.name is used (to generate help text for a cmd parameter, DataExportApplet)
     _2d_formats = [FormatInfo(ext, ext, 2, 2) for ext in _2d_exts]
     _3d_sequence_formats = [FormatInfo(ext + " sequence", ext, 3, 3) for ext in _2d_exts]
     _3d_volume_formats = [FormatInfo("multipage tiff", "tiff", 3, 3)]
@@ -93,11 +89,11 @@ class OpExportSlot(Operator):
         FormatInfo("compressed hdf5", "h5", 0, 5),
         FormatInfo("n5", "n5", 0, 5),
         FormatInfo("compressed n5", "n5", 0, 5),
+        FormatInfo("OME-Zarr", "zarr", 0, 5),
         FormatInfo("numpy", "npy", 0, 5),
         FormatInfo("dvid", "", 2, 5),
         FormatInfo("blockwise hdf5", "json", 0, 5),
     ]
-
     ALL_FORMATS = _2d_formats + _3d_sequence_formats + _3d_volume_formats + _4d_sequence_formats + nd_format_formats
 
     def __init__(self, *args, **kwargs):
@@ -110,6 +106,7 @@ class OpExportSlot(Operator):
         export_impls["compressed hdf5"] = ("h5", partial(self._export_h5n5, True))
         export_impls["n5"] = ("n5", self._export_h5n5)
         export_impls["compressed n5"] = ("n5", partial(self._export_h5n5, True))
+        export_impls["OME-Zarr"] = ("zarr", self._export_ome_zarr)
         export_impls["numpy"] = ("npy", self._export_npy)
         export_impls["dvid"] = ("", self._export_dvid)
         export_impls["blockwise hdf5"] = ("json", self._export_blockwise_hdf5)
@@ -151,7 +148,7 @@ class OpExportSlot(Operator):
             path_format += "." + file_extension
 
         # Provide the TOTAL path (including dataset name)
-        if self.OutputFormat.value in ("hdf5", "compressed hdf5", "n5", "compressed n5"):
+        if self.OutputFormat.value in ("hdf5", "compressed hdf5", "n5", "compressed n5", "OME-Zarr"):
             path_format += "/" + self.OutputInternalPath.value
 
         roi = numpy.array(roiFromShape(self.Input.meta.shape))
@@ -186,7 +183,7 @@ class OpExportSlot(Operator):
         output_format = self.OutputFormat.value
 
         # These cases support all combinations
-        if output_format in ("hdf5", "compressed hdf5", "n5", "compressed n5", "npy", "blockwise hdf5"):
+        if output_format in ("hdf5", "compressed hdf5", "n5", "compressed n5", "npy", "blockwise hdf5", "OME-Zarr"):
             return ""
 
         tagged_shape = self.Input.meta.getTaggedShape()
@@ -252,10 +249,10 @@ class OpExportSlot(Operator):
         try:
             export_func = self._export_impls[output_format][1]
         except KeyError as e:
-            raise Exception(f"Unknown export format: {output_format}") from e
-        else:
+            raise NotImplementedError(f"Unknown export format: {output_format}") from e
+        if not isUrl(self.ExportPath.value):
             mkdir_p(PathComponents(self.ExportPath.value).externalDirectory)
-            export_func()
+        export_func()
 
     def _export_h5n5(self, compress=False):
         self.progressSignal(0)
@@ -399,11 +396,31 @@ class OpExportSlot(Operator):
             opExport.cleanUp()
             self.progressSignal(100)
 
+    def _export_ome_zarr(self):
+        self.progressSignal(0)
+        try:
+            write_ome_zarr(self.ExportPath.value, self.Input, self.progressSignal)
+        finally:
+            self.progressSignal(100)
+
 
 np = numpy
 
 
 class FormatValidity(object):
+
+    ALL_DTYPES = (
+        np.uint8,
+        np.uint16,
+        np.uint32,
+        np.uint64,
+        np.int8,
+        np.int16,
+        np.int32,
+        np.int64,
+        np.float32,
+        np.float64,
+    )
 
     # { extension : [permitted formats] }
     dtypes = {
@@ -425,66 +442,12 @@ class FormatValidity(object):
         "ppm": (np.uint8, np.uint16),
         "pgm": (np.uint8, np.uint16),
         "pbm": (np.uint8, np.uint16),  # vigra outputs p[gn]m
-        "numpy": (
-            np.uint8,
-            np.uint16,
-            np.uint32,
-            np.uint64,
-            np.int8,
-            np.int16,
-            np.int32,
-            np.int64,
-            np.float32,
-            np.float64,
-        ),
-        "hdf5": (
-            np.uint8,
-            np.uint16,
-            np.uint32,
-            np.uint64,
-            np.int8,
-            np.int16,
-            np.int32,
-            np.int64,
-            np.float32,
-            np.float64,
-        ),
-        "compressed hdf5": (
-            np.uint8,
-            np.uint16,
-            np.uint32,
-            np.uint64,
-            np.int8,
-            np.int16,
-            np.int32,
-            np.int64,
-            np.float32,
-            np.float64,
-        ),
-        "n5": (
-            np.uint8,
-            np.uint16,
-            np.uint32,
-            np.uint64,
-            np.int8,
-            np.int16,
-            np.int32,
-            np.int64,
-            np.float32,
-            np.float64,
-        ),
-        "compressed n5": (
-            np.uint8,
-            np.uint16,
-            np.uint32,
-            np.uint64,
-            np.int8,
-            np.int16,
-            np.int32,
-            np.int64,
-            np.float32,
-            np.float64,
-        ),
+        "numpy": ALL_DTYPES,
+        "hdf5": ALL_DTYPES,
+        "compressed hdf5": ALL_DTYPES,
+        "n5": ALL_DTYPES,
+        "compressed n5": ALL_DTYPES,
+        "OME-Zarr": ALL_DTYPES,
     }
 
     # { extension : (min_ndim, max_ndim) }
@@ -505,6 +468,7 @@ class FormatValidity(object):
         "compressed hdf5": (0, 5),
         "n5": (0, 5),
         "compressed n5": (0, 5),
+        "OME-Zarr": (0, 5),
     }
 
     # { extension : [allowed_num_channels] }
@@ -525,6 +489,7 @@ class FormatValidity(object):
         "compressed hdf5": (),  # ditto
         "n5": (),  # ditto
         "compressed n5": (),  # ditto
+        "OME-Zarr": (),
     }
 
     @classmethod
