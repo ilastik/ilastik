@@ -1,6 +1,3 @@
-from __future__ import print_function
-from __future__ import division
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,15 +18,12 @@ from __future__ import division
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
-from past.utils import old_div
 import unittest
 import numpy as np
 import vigra
 from lazyflow.graph import Graph
 from lazyflow.operators import OpLabelVolume
 from ilastik.applets.objectExtraction.opObjectExtraction import OpAdaptTimeListRoi, OpRegionFeatures, OpObjectExtraction
-from ilastik.plugins.manager import pluginManager
 
 import warnings
 
@@ -129,7 +123,7 @@ class TestPlugins(unittest.TestCase):
         # self.op.Features.setValue(FEATURES)
         bm = binaryImage()
         bm = bm[:, :, :, 0:1, :]
-        self.op.BinaryImage.setValue(bm)
+        self.op.SegmentationImage.setValue(bm)
 
     def test_plugins(self):
         self.op.Features.setValue(self.Features_standard)
