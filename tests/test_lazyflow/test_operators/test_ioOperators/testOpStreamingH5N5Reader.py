@@ -19,9 +19,12 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
+from typing import List
+
 import numpy
 import pytest
 import vigra
+import z5py
 
 from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
 
@@ -69,33 +72,66 @@ def test_reader_loads_data_with_axistags(graph, h5n5_file, data):
     numpy.testing.assert_array_equal(op.OutputImage.value, data)
 
 
-@pytest.fixture(params=["v0.4", "v0.3", "v0.1/v0.2"])
-def ome_zarr_file(request, tmp_path, data):
+@pytest.fixture(
+    ids=["v0.4", "v0.4 custom", "v0.3", "v0.3 multiple datasets", "v0.1/v0.2"],
+    params=[
+        (  # Tuple[OME-Zarr_multiscale_spec, expected_axiskeys]
+            [  # Not fully OME-Zarr compliant spec; just the axes
+                {
+                    "datasets": [],
+                    "axes": [  # Conventional order
+                        {"type": "time", "name": "t", "unit": "sec"},
+                        {"type": "channel", "name": "c"},
+                        {"type": "space", "name": "z", "unit": "pixel"},
+                        {"type": "space", "name": "y", "unit": "pixel"},
+                        {"type": "space", "name": "x", "unit": "pixel"},
+                    ],
+                }
+            ],
+            ["t", "c", "z", "y", "x"],
+        ),
+        (
+            [
+                {
+                    "datasets": [],
+                    "axes": [  # v0.4 requires leading t and c, but xyz may be arbitrarily ordered
+                        {"type": "time", "name": "t", "unit": "sec"},
+                        {"type": "channel", "name": "c"},
+                        {"type": "space", "name": "x", "unit": "pixel"},
+                        {"type": "space", "name": "y", "unit": "pixel"},
+                        {"type": "space", "name": "z", "unit": "pixel"},
+                    ],
+                }
+            ],
+            ["t", "c", "x", "y", "z"],
+        ),
+        ([{"datasets": [], "axes": ["t", "c", "z", "y", "x"]}], ["t", "c", "z", "y", "x"]),
+        (
+            [  # Multiple multiscales tested on v0.3 because it's more compact :)
+                {"datasets": [{"path": "somewhere/else"}], "axes": ["t", "c", "z", "y", "x"]},
+                {"datasets": [{"path": "volume/ome_data"}], "axes": ["t", "c", "y", "x", "z"]},
+            ],
+            ["t", "c", "y", "x", "z"],
+        ),
+        ([{"datasets": []}], ["t", "c", "z", "y", "x"]),
+    ],
+)
+def ome_zarr_params(request, tmp_path, data) -> (z5py.ZarrFile, List[str]):
+    """Sets up a Zarr-file with relevant OME-Zarr metadata, returns file handle and expected axis keys"""
+    spec, expected_axiskeys = request.param
     file = OpStreamingH5N5Reader.get_h5_n5_file(str(tmp_path / "test.zarr"))
-    # Not a fully OME-Zarr compliant spec; just the axes
-    file.attrs["multiscales"] = [{"datasets": []}]
-    axes = {
-        "v0.4": [
-            {"type": "time", "name": "t", "unit": "sec"},
-            {"type": "channel", "name": "c"},
-            {"type": "space", "name": "z", "unit": "pixel"},
-            {"type": "space", "name": "y", "unit": "pixel"},
-            {"type": "space", "name": "x", "unit": "pixel"},
-        ],
-        "v0.3": ["t", "c", "z", "y", "x"],
-    }
-    if request.param in axes:  # v0.1 and v0.2 did not allow axes metadata
-        file.attrs["axes"] = axes[request.param]
+    file.attrs["multiscales"] = spec
     file.create_group("volume").create_dataset("ome_data", data=data)
-    yield file
+    yield file, expected_axiskeys
     file.close()
 
 
-def test_reader_loads_ome_zarr_axes(graph, ome_zarr_file, data):
+def test_reader_loads_ome_zarr_axes(graph, ome_zarr_params, data):
+    ome_zarr_file, expected_axes = ome_zarr_params
     op = OpStreamingH5N5Reader(graph=graph)
     op.H5N5File.setValue(ome_zarr_file)
     op.InternalPath.setValue("volume/ome_data")
 
     assert op.OutputImage.meta.shape == data.shape
-    assert op.OutputImage.meta.axistags.keys() == ["t", "c", "z", "y", "x"]
+    assert op.OutputImage.meta.axistags.keys() == expected_axes
     numpy.testing.assert_array_equal(op.OutputImage.value, data)
