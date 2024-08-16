@@ -32,7 +32,7 @@ import os
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import Timer
 from lazyflow.utility.helpers import get_default_axisordering, bigintprod
-from lazyflow.utility.io_util.OMEZarrStore import get_axistags_from_spec as get_ome_zarr_axistags
+from lazyflow.utility.io_util.OMEZarrStore import get_axistags_for_sub_path
 
 logger = logging.getLogger(__name__)
 
@@ -52,12 +52,7 @@ def _find_or_infer_axistags(file: Union[h5py.File, z5py.N5File, z5py.ZarrFile], 
 
     try:
         # Look for OME-Zarr metadata (found at store root, not in dataset)
-        # OME-Zarr stores with more than one multiscale don't exist in public, but the spec allows it
-        multiscale_index = 0
-        for i, scale in enumerate(file.attrs["multiscales"]):
-            if any(d.get("path", "") == internalPath for d in scale.get("datasets", [])):
-                multiscale_index = i
-        return get_ome_zarr_axistags(file.attrs["multiscales"][multiscale_index])
+        return get_axistags_for_sub_path(file.attrs, internalPath)
     except KeyError:
         pass
 
@@ -70,7 +65,7 @@ def _find_or_infer_axistags(file: Union[h5py.File, z5py.N5File, z5py.ZarrFile], 
 
     # Infer from shape
     axisorder = get_default_axisordering(file[internalPath].shape)
-    logger.info(f"Could not find stored axistags. Inferred {axisorder} from dataset shape.")
+    logger.info(f"Could not find stored axistags. Inferred {axisorder} from dataset shape {file[internalPath].shape}.")
     return vigra.defaultAxistags(str(axisorder))
 
 

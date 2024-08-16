@@ -245,6 +245,14 @@ def ome_zarr_store_on_disc(tmp_path) -> Dict[str, numpy.ndarray]:
     chunk_size = [3, 64, 64]
     zattrs = {
         "multiscales": [
+            {  # Additional multiscales entry to test that the correct one (the other one) is used
+                "version": "0.4",
+                "axes": [
+                    {"type": "space", "name": "y"},
+                    {"type": "space", "name": "x"},
+                ],
+                "datasets": [{"path": "wrong/s0"}],
+            },
             {
                 "name": "some.zarr",
                 "type": "Sample",
@@ -271,7 +279,7 @@ def ome_zarr_store_on_disc(tmp_path) -> Dict[str, numpy.ndarray]:
                     },
                 ],
                 "coordinateTransformations": [],
-            }
+            },
         ]
     }
     (zarr_dir / ".zattrs").write_text(json.dumps(zattrs))
@@ -279,6 +287,13 @@ def ome_zarr_store_on_disc(tmp_path) -> Dict[str, numpy.ndarray]:
     image_original = numpy.random.randint(0, 256, dataset_shape, dtype=numpy.uint16)
     image_scaled = image_original[:, ::2, ::2]
     chunks = tuple(chunk_size)
+    # Also create the wrong dataset. It should not be loaded, but ilastik may (for now) rely on it actually existing
+    zarr.array(
+        numpy.array([[1]]),
+        chunks=(1, 1),
+        store=zarr.DirectoryStore(str(zarr_dir / "wrong/s0")),
+        **OME_ZARR_V_0_4_KWARGS,
+    )
     zarr.array(image_original, chunks=chunks, store=zarr.DirectoryStore(str(zarr_dir / "s0")), **OME_ZARR_V_0_4_KWARGS)
     zarr.array(image_scaled, chunks=chunks, store=zarr.DirectoryStore(str(zarr_dir / "s1")), **OME_ZARR_V_0_4_KWARGS)
 

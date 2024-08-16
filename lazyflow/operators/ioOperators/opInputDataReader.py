@@ -304,7 +304,7 @@ class OpInputDataReader(Operator):
         # DatasetInfo instantiates a standalone OpInputDataReader to obtain laneShape and dtype.
         # We pass this down to the loader so that it can avoid loading scale metadata unnecessarily.
         reader = OpOMEZarrMultiscaleReader(parent=self, metadata_only_mode=self.parent is None)
-        if path.internalPath and self.parent:
+        if path.internalPath:
             # Headless/batch
             reader.Scale.setValue(path.internalPath.lstrip("/"))
         else:
