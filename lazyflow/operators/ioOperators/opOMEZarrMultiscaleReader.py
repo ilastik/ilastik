@@ -23,6 +23,7 @@ import logging
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore
+from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -50,10 +51,16 @@ class OpOMEZarrMultiscaleReader(Operator):
 
     def setupOutputs(self):
         if self._store is not None and self._store.uri == self.BaseUri.value:
-            # Must not set Output.meta here.
+            # Must not set Output.meta here, because downstream ilastik can't handle changing lane shape
             return
-
-        self._store = OMEZarrStore(self.BaseUri.value, self._load_only_one_scale)
+        # preset_scale in case of setup with a /direct/path/to.zarr/scale
+        # for now this only works if the scale key (e.g. "s1") happens to also be the full subpath
+        # e.g. does not work for /direct/path/to.zarr/labels/nuclei/s1
+        # or /direct/path/to.zarr/internal-name-for-some-reason/s1
+        preset_scale = self.Scale.value if self.Scale.ready() and self.Scale.value != DEFAULT_SCALE_KEY else None
+        self._store = OMEZarrStore(
+            self.BaseUri.value, target_dataset_subpath=preset_scale, single_scale_mode=self._load_only_one_scale
+        )
         active_scale = self.Scale.value if self.Scale.ready() else self._store.lowest_resolution_key
         self.Output.meta.shape = self._store.get_shape(active_scale)
         self.Output.meta.dtype = self._store.dtype

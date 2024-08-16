@@ -37,6 +37,7 @@ from lazyflow.operators.ioOperators import (
     OpRESTfulPrecomputedChunkedVolumeReader,
     OpImageReader,
 )
+from lazyflow.utility.io_util.OMEZarrStore import scale_key_from_path
 from lazyflow.utility.jsonConfig import JsonConfigParser
 from lazyflow.utility.pathHelpers import lsH5N5, isUrl, isRelative, splitPath, PathComponents
 from .opOMEZarrMultiscaleReader import OpOMEZarrMultiscaleReader
@@ -304,9 +305,9 @@ class OpInputDataReader(Operator):
         # DatasetInfo instantiates a standalone OpInputDataReader to obtain laneShape and dtype.
         # We pass this down to the loader so that it can avoid loading scale metadata unnecessarily.
         reader = OpOMEZarrMultiscaleReader(parent=self, metadata_only_mode=self.parent is None)
-        if path.internalPath and self.parent:
+        if path.internalPath:
             # Headless/batch
-            reader.Scale.setValue(path.internalPath.lstrip("/"))
+            reader.Scale.setValue(scale_key_from_path(path.internalPath.lstrip("/")))
         else:
             reader.Scale.connect(self.ActiveScale)
         reader.BaseUri.setValue(path.externalPath)
