@@ -75,7 +75,7 @@ class ListView(QStackedWidget):
         table = self._table
         table.setStyleSheet(
             """
-            QTableView { padding-left: 3px; background-color: white; }
+            QTableView { padding-left: 3px; }
             QTableView::item { padding: 4px; }
             """
         )  # item.padding does not affect all four sides of table cells
