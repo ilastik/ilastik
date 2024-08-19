@@ -18,8 +18,24 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+from PyQt5.QtWidgets import QApplication
+
 
 from .roi import roi2rect
 from .threadRouter import ThreadRouter, threadRouted, threadRoutedWithRouter
 from .thunkEvent import ThunkEvent, ThunkEventHandler
 from .widgets import enable_when_ready, silent_qobject
+
+
+def is_qt_dark_mode() -> bool:
+    """
+    One of the methods reported working to determine dark/light mode during runtime
+    with Qt5.
+
+    ref: https://stackoverflow.com/questions/75457687/detect-dark-application-style
+
+    Note: This might break users using custom themes.
+
+    Returns True if in dark mode, False if light mode
+    """
+    return QApplication.palette().windowText().color().value() > QApplication.palette().window().color().value()
