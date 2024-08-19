@@ -43,7 +43,7 @@ from volumina import colortables
 
 # ilastik
 from ilastik.utility import bind, log_exception
-from ilastik.utility.gui import ThunkEventHandler, threadRouted
+from ilastik.utility.gui import ThunkEventHandler, is_qt_dark_mode, threadRouted
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 from ilastik.applets.labeling.labelingImport import import_labeling_layer
@@ -210,8 +210,7 @@ class LabelingGui(LayerViewerGui):
 
         # We own the applet bar ui
         self._labelControlUi = _labelControlUi
-        _labelControlUi.setStyleSheet(
-            """
+        stylesheet_light = """
             QToolButton#suggestFeaturesButton { padding: 2px; height: 24px; }
             QToolButton#liveUpdateButton {
                 padding: 5px; height: 24px; border-style: solid; border-width: 1px; border-radius: 4px;
@@ -220,8 +219,21 @@ class LabelingGui(LayerViewerGui):
             QToolButton#liveUpdateButton:pressed { border-color: #557755; background-color: #779977; }
             QToolButton#liveUpdateButton:checked { border-color: #aaccaa; background-color: #cceecc; }
             QToolButton#liveUpdateButton:checked:hover { border-color: #b0d0b0; background-color: #d0f0d0; }
-            """
-        )
+        """
+
+        stylesheet_dark = """
+            QToolButton#suggestFeaturesButton { padding: 2px; height: 24px; }
+            QToolButton#liveUpdateButton {
+                padding: 5px; height: 24px; border-style: solid; border-width: 1px; border-radius: 4px;
+                border-color: #97b6b7; background-color: #638182; }
+            QToolButton#liveUpdateButton:hover { border-color: #befcfe; background-color: #7ab5b8; }
+            QToolButton#liveUpdateButton:pressed { border-color: #a0acbd; background-color: #637a95; }
+            QToolButton#liveUpdateButton:checked { border-color: #aaa6cb; background-color: #757295; }
+            QToolButton#liveUpdateButton:checked:hover { border-color: #f1edff; background-color: #aaa6cb; }
+        """
+
+        stylesheet = stylesheet_dark if is_qt_dark_mode() else stylesheet_light
+        _labelControlUi.setStyleSheet(stylesheet)
 
         # Initialize the label list model
         model = LabelListModel()
