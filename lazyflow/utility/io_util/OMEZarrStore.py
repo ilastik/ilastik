@@ -87,7 +87,12 @@ OME_ZARR_V_0_4_KWARGS = dict(dimension_separator="/", normalize_keys=False)
 OME_ZARR_V_0_1_KWARGS = dict(dimension_separator=".")
 
 
-def get_ome_zarr_spec(uri: str) -> OME_ZARR_SPEC:
+def get_axistags_for_sub_path(ome_spec: OME_ZARR_SPEC, sub_path: str) -> vigra.AxisTags:
+    multiscale_index = _get_multiscale_index_for_dataset(ome_spec, sub_path)
+    return _get_axistags_for_multiscale(ome_spec, multiscale_index)
+
+
+def _fetch_ome_zarr_spec(uri: str) -> OME_ZARR_SPEC:
     """Fetches uri/.zattrs and validates it against OME-Zarr spec.
     Extracted from __init__ so that OpOMEZarrMultiscaleReader can use it to determine the multiscale_index
     that corresponds to a given dataset path."""
@@ -124,16 +129,11 @@ def get_ome_zarr_spec(uri: str) -> OME_ZARR_SPEC:
     return spec
 
 
-def get_multiscale_index_for_sub_path(ome_spec: OME_ZARR_SPEC, sub_path: str) -> int:
+def _get_multiscale_index_for_dataset(ome_spec: OME_ZARR_SPEC, dataset: str) -> int:
     for i, scale in enumerate(ome_spec["multiscales"]):
-        if any(d["path"] == sub_path for d in scale["datasets"]):
+        if any(d["path"] == dataset for d in scale["datasets"]):
             return i
-    raise KeyError(f"Could not find metadata entry corresponding to {sub_path=}.")
-
-
-def get_axistags_for_sub_path(ome_spec: OME_ZARR_SPEC, sub_path: str) -> vigra.AxisTags:
-    multiscale_index = get_multiscale_index_for_sub_path(ome_spec, sub_path)
-    return _get_axistags_for_multiscale(ome_spec, multiscale_index)
+    raise KeyError(f"Could not find metadata entry corresponding to {dataset=}.")
 
 
 def _get_axistags_for_multiscale(ome_spec: OME_ZARR_SPEC, multiscale_index: int) -> vigra.AxisTags:
@@ -173,7 +173,8 @@ class OMEZarrStore(MultiscaleStore):
     "multiscales" key of the zattrs spec dict), each of which can contain multiple scales (datasets).
 
     :param uri: URI of the OME-Zarr store.
-    :param multiscale_index: Which multiscale collection within the store to load. Default None (load first collection).
+    :param target_dataset: Store will load the multiscale collection containing the target dataset.
+        Default None (load first collection).
     :param single_scale_mode:
         If True, only metadata of the first scale is requested from server. Used to shorten init time when DatasetInfo
         instantiates a standalone OpInputDataReader to get lane shape and dtype. Default False (load all scales).
@@ -182,16 +183,18 @@ class OMEZarrStore(MultiscaleStore):
     NAME = "OME-Zarr"
     URI_HINT = 'URL contains "zarr"'
 
-    def __init__(self, uri: str, multiscale_index: Optional[int] = None, single_scale_mode: bool = False):
-        self.ome_spec = get_ome_zarr_spec(uri)
+    def __init__(self, uri: str, target_dataset: Optional[str] = None, single_scale_mode: bool = False):
+        self.ome_spec = _fetch_ome_zarr_spec(uri)
         self.uri = uri
-        if len(self.ome_spec["multiscales"]) > 1 and multiscale_index is None:
+        if len(self.ome_spec["multiscales"]) > 1 and target_dataset is None:
             warn = (
                 f"The OME-Zarr store contains more than one multiscale dataset. "
                 f"The first dataset will be used.\nReceived metadata:\n{self.ome_spec}"
             )
             logger.warning(warn)
-        multiscale_index = multiscale_index or 0
+        multiscale_index = (
+            0 if target_dataset is None else _get_multiscale_index_for_dataset(self.ome_spec, target_dataset)
+        )
         multiscale_spec = self.ome_spec["multiscales"][multiscale_index]
         axistags = _get_axistags_for_multiscale(self.ome_spec, multiscale_index)
         datasets = multiscale_spec["datasets"]
