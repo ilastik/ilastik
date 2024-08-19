@@ -18,7 +18,6 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-import sys
 import os
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (
@@ -27,12 +26,9 @@ from PyQt5.QtWidgets import (
     QDialogButtonBox,
     QHBoxLayout,
     QLabel,
-    QPushButton,
-    QTextEdit,
     QVBoxLayout,
 )
 from PyQt5.QtCore import Qt
-from functools import partial
 
 
 import ilastik
@@ -41,11 +37,11 @@ import ilastik
 about_text = f"""
     <p>ilastik version {ilastik.__version__}</p>
     <p>ilastik development has started in 2010 in the
-    <a href="https://hci.iwr.uni-heidelberg.de/mip">group of Prof. Fred Hamprecht
+    <a href="https://sciai-lab.org/members/fred-hamprecht.html">group of Prof. Fred Hamprecht
     </a>at University of Heidelberg.</p>
 
     <p>In 2018 the ilastik development team has moved with Anna Kreshuk to her
-    <a href="https://www.embl.de/research/units/cbb/kreshuk/">
+    <a href="https://www.embl.org/groups/kreshuk/">
     newly established lab</a>
     at European Molecular Biology Laboratory Heidelberg.
     More information can be found at
@@ -93,9 +89,9 @@ class AboutDialog(QDialog):
         main_layout.addWidget(btn_box)
 
         self.setLayout(main_layout)
-        self.setStyleSheet("background-color: white;")
+        self.setStyleSheet(f"AboutDialog {{background-color: {QApplication.palette().light().color().name()}; }}")
         self.setWindowTitle("About ilastik")
-        self.setFixedSize(splash_pixmap.width() * 2.5, splash_pixmap.height() * 1.05)
+        self.setFixedSize(splash_pixmap.width() * 3.0, splash_pixmap.height() * 1.25)
 
     @classmethod
     def createAndShowModal(cls, parent=None):
