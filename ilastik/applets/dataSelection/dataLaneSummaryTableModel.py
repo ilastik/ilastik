@@ -63,7 +63,7 @@ def rowOfButtonsProxy(model_cls):
 
             Skip vertical header for the last row, which is used for buttons.
             """
-            if orientation == Qt.Vertical:
+            if role == Qt.DisplayRole and orientation == Qt.Vertical:
                 if section >= super(ProxyModel, self).rowCount():
                     return ""
             return super(ProxyModel, self).headerData(section, orientation, role)
