@@ -162,9 +162,8 @@ class InlineAddButtonDelegate(QItemDelegate):
         # This method will be called every time a particular cell is in
         # view and that view is changed in some way. We ask the delegates
         # parent (in this case a table view) if the index in question (the
-        # table cell) corresponds to an empty row (indicated by '<empty>'
-        # in the data field), and create a button if there isn't one
-        # already associated with the cell.
+        # table cell) corresponds to an empty row, we create a button if
+        # there isn't one already associated with the cell.
         parent_view = self.parent()
         button = parent_view.indexWidget(index)
         if index.row() < parent_view.model().rowCount() - 1 and parent_view.model().isEmptyRow(index.row()):
