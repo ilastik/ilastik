@@ -220,9 +220,6 @@ def _init_configfile(parsed_args):
     if parsed_args.configfile:
         ilastik.config.init_ilastik_config(parsed_args.configfile)
 
-    path = ilastik.config.cfg_path
-    logger.info("config file location: %s", path if path is not None else "<none>")
-
 
 stdout_redirect_file = None
 old_stdout = None

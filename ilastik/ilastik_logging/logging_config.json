@@ -21,6 +21,7 @@
         "ilastik.applets.tracking.conservation":                    { "level":"INFO" },
         "ilastik.applets.objectExtraction":                         { "level":"INFO" },
         "ilastik.applets.blockwiseObjectClassification":            { "level":"INFO" },
+        "ilastik.config":                                           { "level":"INFO" },
         "ilastik.shell":                                            { "level":"INFO" },
         "ilastik.shell.projectManager":                             { "level":"INFO" },
         "ilastik.utility":                                          { "level":"INFO" },

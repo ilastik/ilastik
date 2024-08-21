@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -27,6 +27,10 @@ from pathlib import Path
 from typing import List, Optional, Union
 
 import appdirs
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 """
 ilastik will read settings from ilastik.ini
@@ -68,13 +72,14 @@ cfg_path: Optional[Path] = None
 runtime_cfg: RuntimeCfg = RuntimeCfg()
 
 
-def _init(path: Union[None, str, bytes, os.PathLike]) -> None:
+def _init(path: Union[str, bytes, os.PathLike]) -> None:
     """Initialize module variables."""
-    config_path = Path(path) if path is not None else None
+    config_path = Path(path)
 
     config = configparser.ConfigParser()
     config.read_string(default_config)
-    if config_path is not None:
+    if config_path.is_file():
+        logger.info(f"Loading configuration from {config_path!s}.")
         config.read(config_path)
 
     global cfg, cfg_path
@@ -93,10 +98,8 @@ def _get_default_config_path() -> Optional[Path]:
             DeprecationWarning,
         )
         return old
-    elif new.is_file():
-        return new
     else:
-        return None
+        return new
 
 
 def init_ilastik_config(path: Union[None, str, bytes, os.PathLike] = None) -> None:
