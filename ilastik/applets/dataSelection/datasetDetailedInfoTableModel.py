@@ -169,7 +169,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         laneIndex = index.row()
 
         UninitializedDisplayData = {
-            DatasetColumn.Nickname: "<empty>",
+            DatasetColumn.Nickname: "",
             DatasetColumn.Location: "",
             DatasetColumn.InternalID: "",
             DatasetColumn.TaggedShape: "",

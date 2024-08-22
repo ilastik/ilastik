@@ -1,9 +1,7 @@
-from __future__ import absolute_import
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -20,7 +18,6 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
 import os
 from functools import partial
 
