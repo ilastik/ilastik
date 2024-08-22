@@ -24,7 +24,6 @@ from PyQt5 import uic
 from PyQt5.QtCore import pyqtSlot, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QFileDialog, QTableWidget, QTableWidgetItem, QGridLayout, QProgressBar
-from ilastik.shell.gui.ipcManager import IPCFacade, Protocol
 
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
@@ -758,22 +757,6 @@ class ObjectClassificationGui(LabelingGui):
         menu = QMenu(self)
         text = "Print info for object {} in the terminal".format(obj)
         menu.addAction(text)
-
-        # IPC stuff
-        if ilastik_config.getboolean("ilastik", "debug"):
-            menu.addSeparator()
-            if any(IPCFacade().sending):
-                time = position5d[0]
-
-                sub = menu.addMenu("Hilite Object")
-                for mode in Protocol.ValidHiliteModes[:-1]:
-                    where = Protocol.simple("and", time=time, ilastik_id=obj)
-                    cmd = Protocol.cmd(mode, where)
-                    sub.addAction(mode.capitalize(), IPCFacade().broadcast(cmd))
-                menu.addAction("Clear Hilite", IPCFacade().broadcast(Protocol.cmd("clear")))
-            else:
-                menu.addAction("Open IPC Server Window", IPCFacade().show_info)
-                menu.addAction("Start All IPC Servers", IPCFacade().start)
 
         menu.addSeparator()
         clearlabel = "Clear label for object {}".format(obj)

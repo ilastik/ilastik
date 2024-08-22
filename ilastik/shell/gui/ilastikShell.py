@@ -60,8 +60,6 @@ from PyQt5.QtWidgets import (
 )
 
 # lazyflow
-from ilastik.widgets.ipcserver.tcpServerInfoWidget import TCPServerInfoWidget
-from ilastik.widgets.ipcserver.zmqPubSubInfoWidget import ZMQPublisherInfoWidget
 from ilastik.widgets.collapsibleWidget import CollapsibleWidget
 from lazyflow.roi import TinyVector
 from lazyflow.graph import Operator
@@ -97,7 +95,6 @@ from ilastik.shell.gui.reportIssueDialog import ReportIssueDialog
 from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox, AppletBarManager
 from ilastik.widgets.filePathButton import FilePathButton
 
-from ilastik.shell.gui.ipcManager import IPCFacade, TCPServer, TCPClient, ZMQPublisher, ZMQSubscriber, ZMQBase
 
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
@@ -326,50 +323,6 @@ class IlastikShell(QMainWindow):
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
         self.threadRouter = ThreadRouter(self)  # Enable @threadRouted
-
-        # Server/client for inter process communication for receiving remote commands (e.g. from KNIME)
-        # For now, this is a developer-only feature, activated by a debug menu item.
-        if ilastik_config.getboolean("ilastik", "debug"):
-            facade = IPCFacade()
-            facade.register_shell(self)
-            facade.register_widget(TCPServerInfoWidget(), "TCP Connection", "raw tcp")
-            interface = ilastik_config.get("ipc raw tcp", "interface")
-            port = ilastik_config.getint("ipc raw tcp", "port")
-            start = ilastik_config.getboolean("ipc raw tcp", "autostart")
-            facade.register_module(TCPServer(interface, port), "receiver", "raw tcp server", "raw tcp", start=start)
-            facade.register_module(TCPClient(), "sender", "raw tcp client", "raw tcp", "tcp")
-
-            if ZMQBase.available("tcp"):
-                facade.register_widget(ZMQPublisherInfoWidget(), "ZeroMQ Pub Sub TCP", "zmq tcp")
-                start = ilastik_config.getboolean("ipc zmq tcp publisher", "autostart")
-                address = ilastik_config.get("ipc zmq tcp publisher", "address")
-                facade.register_module(ZMQPublisher("tcp", address), "sender", "zmq tcp pub", "zmq tcp", start=start)
-                start = ilastik_config.getboolean("ipc zmq tcp subscriber", "autostart")
-                address = ilastik_config.get("ipc zmq tcp subscriber", "address")
-                facade.register_module(ZMQSubscriber("tcp", address), "receiver", "zmq tcp sub", "zmq tcp", start=start)
-
-                if ZMQBase.available("ipc"):
-                    base_dir = ilastik_config.get("ipc zmq ipc", "basedir")
-                    can_start = True
-                    try:
-                        os.mkdir(base_dir)
-                    except OSError as e:
-                        if e.errno != 17:  # exists
-                            can_start = False
-                    if can_start:
-                        facade.register_widget(ZMQPublisherInfoWidget(), "ZeroMQ Pub Sub IPC", "zmq ipc")
-                        start = ilastik_config.getboolean("ipc zmq ipc publisher", "autostart")
-                        filename = ilastik_config.get("ipc zmq ipc publisher", "filename")
-                        path = os.path.join(base_dir, filename)
-                        facade.register_module(
-                            ZMQPublisher("ipc", path), "sender", "zmq ipc pub", "zmq ipc", start=start
-                        )
-                        start = ilastik_config.getboolean("ipc zmq ipc subscriber", "autostart")
-                        filename = ilastik_config.get("ipc zmq ipc subscriber", "filename")
-                        path = os.path.join(base_dir, filename)
-                        facade.register_module(
-                            ZMQSubscriber("ipc", path), "receiver", "zmq ipc sub", "zmq ipc", start=start
-                        )
 
         self.openFileButtons = []
         self.cleanupFunctions = []
@@ -788,8 +741,6 @@ class IlastikShell(QMainWindow):
         menu.addMenu(self._createProfilingSubmenu())
 
         menu.addMenu(self._createAllocationTrackingSubmenu())
-
-        menu.addAction("Show IPC Server Info", IPCFacade().show_info)
 
         def hideApplets(hideThem):
             self.mainSplitter.setVisible(not hideThem)

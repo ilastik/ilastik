@@ -17,8 +17,6 @@ from ilastik.utility.gui.progress import TrackProgressDialog
 from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.utility.gui.threadRouter import threadRouted
 from ilastik.utility.gui.titledMenu import TitledMenu
-from ilastik.utility.ipcProtocol import Protocol
-from ilastik.shell.gui.ipcManager import IPCFacade
 from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 
@@ -654,92 +652,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
     def get_export_dialog_title(self):
         return "Export Tracking Information"
 
-    # def handleEditorRightClick(self, position5d, win_coord):
-    #     debug = ilastik_config.getboolean("ilastik", "debug")
-    #
-    #     obj, time = self.get_object(position5d)
-    #     if obj == 0:
-    #         menu = TitledMenu(["Background"])
-    #         if debug:
-    #             menu.addAction("Clear Hilite", IPCFacade().broadcast(Protocol.cmd("clear")))
-    #         menu.exec_(win_coord)
-    #         return
-    #
-    #     try:
-    #         extra = self.mainOperator.extra_track_ids
-    #     except (IndexError, KeyError):
-    #         extra = {}
-    #
-    #     # if this is a resolved merger, find which of the merged IDs we actually clicked on
-    #     if time in extra and obj in extra[time]:
-    #         colors = [self.mainOperator.label2color[time][t] for t in extra[time][obj]]
-    #         tracks = [self.mainOperator.track_id[time][t] for t in extra[time][obj]]
-    #         selected_track = self.get_color(position5d)
-    #         idx = colors.index(selected_track)
-    #         color = colors[idx]
-    #         track = tracks[idx]
-    #     else:
-    #         try:
-    #             color = self.mainOperator.label2color[time][obj]
-    #             track = [self.mainOperator.track_id[time][obj]][0]
-    #         except (IndexError, KeyError):
-    #             color = None
-    #             track = []
-    #
-    #     if track:
-    #         children, parents = self.mainOperator.track_family(track)
-    #     else:
-    #         children, parents = None, None
-    #
-    #     menu = TitledMenu([
-    #         "Object {} of lineage id {}".format(obj, color),
-    #         "Track id: " + (str(track) or "None"),
-    #     ])
-    #
-    #     if not debug:
-    #         menu.exec_(win_coord)
-    #         return
-    #
-    #     if any(IPCFacade().sending):
-    #
-    #         obj_sub_menu = menu.addMenu("Hilite Object")
-    #         for mode in Protocol.ValidHiliteModes:
-    #             where = Protocol.simple("and", ilastik_id=obj, time=time)
-    #             cmd = Protocol.cmd(mode, where)
-    #             obj_sub_menu.addAction(mode.capitalize(), IPCFacade().broadcast(cmd))
-    #
-    #         sub_menus = [
-    #             ("Tracks", Protocol.simple_in, tracks),
-    #             ("Parents", Protocol.simple_in, parents),
-    #             ("Children", Protocol.simple_in, children)
-    #         ]
-    #         for name, protocol, args in sub_menus:
-    #             if args:
-    #                 sub = menu.addMenu("Hilite {}".format(name))
-    #                 for mode in Protocol.ValidHiliteModes[:-1]:
-    #                     mode = mode.capitalize()
-    #                     where = protocol("track_id*", args)
-    #                     cmd = Protocol.cmd(mode, where)
-    #                     sub.addAction(mode, IPCFacade().broadcast(cmd))
-    #             else:
-    #                 sub = menu.addAction("Hilite {}".format(name))
-    #                 sub.setEnabled(False)
-    #
-    #         menu.addAction("Clear Hilite", IPCFacade().broadcast(Protocol.cmd("clear")))
-    #     else:
-    #         menu.addAction("Open IPC Server Window", IPCFacade().show_info)
-    #         menu.addAction("Start IPC Server", IPCFacade().start)
-    #
-    #     menu.exec_(win_coord)
-
     def handleEditorRightClick(self, position5d, win_coord):
-        debug = ilastik_config.getboolean("ilastik", "debug")
-
         obj, time = self.get_object(position5d)
         if obj == 0:
             menu = TitledMenu(["Background"])
-            if debug:
-                menu.addAction("Clear Hilite", IPCFacade().broadcast(Protocol.cmd("clear")))
             menu.exec_(win_coord)
             return
 
@@ -752,45 +668,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             color = hypothesesGraph.getLineageId(time, obj)
             track = hypothesesGraph.getTrackId(time, obj)
 
-        tracks = None
-        children = None
-        parents = None
-
         menu = TitledMenu(["Object {} of lineage id {}".format(obj, color), "Track id: " + (str(track) or "None")])
-
-        if not debug:
-            menu.exec_(win_coord)
-            return
-
-        if any(IPCFacade().sending):
-
-            obj_sub_menu = menu.addMenu("Hilite Object")
-            for mode in Protocol.ValidHiliteModes:
-                where = Protocol.simple("and", ilastik_id=obj, time=time)
-                cmd = Protocol.cmd(mode, where)
-                obj_sub_menu.addAction(mode.capitalize(), IPCFacade().broadcast(cmd))
-
-            sub_menus = [
-                ("Tracks", Protocol.simple_in, tracks),
-                ("Parents", Protocol.simple_in, parents),
-                ("Children", Protocol.simple_in, children),
-            ]
-            for name, protocol, args in sub_menus:
-                if args:
-                    sub = menu.addMenu("Hilite {}".format(name))
-                    for mode in Protocol.ValidHiliteModes[:-1]:
-                        mode = mode.capitalize()
-                        where = protocol("track_id*", args)
-                        cmd = Protocol.cmd(mode, where)
-                        sub.addAction(mode, IPCFacade().broadcast(cmd))
-                else:
-                    sub = menu.addAction("Hilite {}".format(name))
-                    sub.setEnabled(False)
-
-            menu.addAction("Clear Hilite", IPCFacade().broadcast(Protocol.cmd("clear")))
-        else:
-            menu.addAction("Open IPC Server Window", IPCFacade().show_info)
-            menu.addAction("Start IPC Server", IPCFacade().start)
 
         menu.exec_(win_coord)
 
