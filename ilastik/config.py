@@ -59,31 +59,6 @@ total_ram_mb: 0
 token_url: https://web.ilastik.org/token/
 upload_file_url: https://web.ilastik.org/v1/files/
 create_project_url: https://web.ilastik.org/v1/batch/projects/
-
-[ipc raw tcp]
-autostart: false
-autoaccept: true
-port: 9999
-interface: localhost
-
-[ipc zmq tcp publisher]
-autostart: false
-address: 127.0.0.1:9998
-
-[ipc zmq tcp subscriber]
-autostart: false
-address: localhost:9997
-
-[ipc zmq ipc]
-basedir: /tmp/ilastik
-
-[ipc zmq ipc publisher]
-autostart: false
-filename: out
-
-[ipc zmq ipc subscriber]
-autostart: false
-filename: in
 """
 
 

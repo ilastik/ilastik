@@ -22,6 +22,8 @@ import os
 import gc
 import copy
 import platform
+from typing import Optional, List, Type, Dict
+
 import h5py
 import logging
 import time
@@ -33,7 +35,7 @@ import ilastik
 from ilastik import Project
 from ilastik import isVersionCompatible
 from ilastik.utility import log_exception
-from ilastik.workflow import getWorkflowFromName
+from ilastik.workflow import getWorkflowFromName, Workflow
 from lazyflow.utility.timer import Timer, timeLogged
 
 try:
@@ -56,10 +58,6 @@ class ProjectManager(object):
     Once the project manager has been instantiated, clients can access its ``workflow``
     member for direct access to its applets and their top-level operators.
     """
-
-    #########################
-    ## Error types
-    #########################
 
     class ProjectVersionError(RuntimeError):
         """
@@ -88,13 +86,49 @@ class ProjectManager(object):
 
         pass
 
-    #########################
-    ## Class methods
-    #########################
+    @property
+    def _applets(self):
+        if self.workflow is not None:
+            return self.workflow.applets
+        else:
+            return []
 
-    @classmethod
+    def __init__(
+        self,
+        shell,
+        workflowClass: Type[Workflow],
+        headless: bool = False,
+        workflow_cmdline_args: Optional[List[str]] = None,
+        project_creation_args: Optional[List[str]] = None,
+    ):
+        """
+        :param shell
+        :param workflowClass: The class of the workflow to be managed.
+        :param headless: Indicates whether the workflow should be opened in 'headless' mode (default is False).
+        :param workflow_cmdline_args: Optional list of strings from the command-line to configure the workflow.
+        :param project_creation_args: Optional list of strings for project creation arguments.
+        """
+        # Init
+        self.closed = True
+        self._shell = shell
+        self.workflow = None
+        self.currentProjectFile = None
+        self.currentProjectPath = None
+        self.currentProjectIsReadOnly = False
+
+        # Instantiate the workflow.
+        self._workflowClass = workflowClass
+        self._workflow_cmdline_args = workflow_cmdline_args or []
+        self._project_creation_args = project_creation_args or []
+        self._headless = headless
+
+        # the workflow class has to be specified at this point
+        assert workflowClass is not None
+        self.workflow = workflowClass(shell, headless, self._workflow_cmdline_args, self._project_creation_args)
+
+    @staticmethod
     def createBlankProjectFile(
-        cls, projectFilePath, workflow_class=None, workflow_cmdline_args=None, h5_file_kwargs={}
+        projectFilePath, workflow_class=None, workflow_cmdline_args=None, h5_file_kwargs: Optional[Dict] = None
     ):
         """Create a new ilp file at the given path and initialize it with a project version.
 
@@ -109,6 +143,7 @@ class ProjectManager(object):
         :rtype: h5py.File
 
         """
+        h5_file_kwargs = h5_file_kwargs or {}
         # Create the blank project file
         if "mode" in h5_file_kwargs:
             raise ValueError("ProjectManager.createBlankProjectFile(): 'mode' is not allowed as a h5py.File kwarg")
@@ -123,12 +158,12 @@ class ProjectManager(object):
 
         return h5File
 
-    @classmethod
-    def getWorkflowName(self, projectFile):
+    @staticmethod
+    def getWorkflowName(projectFile):
         return str(projectFile["workflowName"][()].decode("utf-8"))
 
-    @classmethod
-    def openProjectFile(cls, projectFilePath, forceReadOnly=False):
+    @staticmethod
+    def openProjectFile(projectFilePath, forceReadOnly=False):
         """
         Class method.
         Attempt to open the given path to an existing project file.
@@ -170,8 +205,8 @@ class ProjectManager(object):
 
         return (hdf5File, workflow_class, readOnly)
 
-    @classmethod
-    def downloadProjectFromDvid(cls, hostname, node_uuid, keyvalue_name, project_key=None, local_filepath=None):
+    @staticmethod
+    def downloadProjectFromDvid(hostname, node_uuid, keyvalue_name, project_key=None, local_filepath=None):
         """
         Download a file from a dvid keyvalue data instance and store it to the given local_filepath.
         If no local_filepath is given, create a new temporary file.
@@ -207,37 +242,6 @@ class ProjectManager(object):
             local_file.write(file_data)
 
         return local_filepath
-
-    #########################
-    ## Public methods
-    #########################
-
-    def __init__(self, shell, workflowClass, headless=False, workflow_cmdline_args=None, project_creation_args=None):
-        """
-        Constructor.
-
-        :param workflowClass: A subclass of ilastik.workflow.Workflow (the class, not an instance).
-        :param headless: A bool that is passed to the workflow constructor,
-                         indicating whether or not the workflow should be opened in 'headless' mode.
-        :param workflow_cmdline_args: A list of strings from the command-line to configure the workflow.
-        """
-        # Init
-        self.closed = True
-        self._shell = shell
-        self.workflow = None
-        self.currentProjectFile = None
-        self.currentProjectPath = None
-        self.currentProjectIsReadOnly = False
-
-        # Instantiate the workflow.
-        self._workflowClass = workflowClass
-        self._workflow_cmdline_args = workflow_cmdline_args or []
-        self._project_creation_args = project_creation_args or []
-        self._headless = headless
-
-        # the workflow class has to be specified at this point
-        assert workflowClass is not None
-        self.workflow = workflowClass(shell, headless, self._workflow_cmdline_args, self._project_creation_args)
 
     def cleanUp(self):
         """
@@ -416,17 +420,6 @@ class ProjectManager(object):
 
         # Save the current project state
         self.saveProject()
-
-    #########################
-    ## Private methods
-    #########################
-
-    @property
-    def _applets(self):
-        if self.workflow is not None:
-            return self.workflow.applets
-        else:
-            return []
 
     @timeLogged(logger, logging.DEBUG)
     def loadProject(self, hdf5File, projectFilePath, readOnly):

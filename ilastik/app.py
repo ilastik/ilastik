@@ -180,13 +180,11 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
     _init_excepthooks(parsed_args)
 
     if ilastik_config.getboolean("ilastik", "debug"):
-        message = 'Starting ilastik in debug mode from "%s".' % ilastik_dir
-        logger.info(message)
-        print(message)  # always print the startup message
+        message = f"Starting ilastik in debug mode from {ilastik_dir}"
     else:
-        message = 'Starting ilastik from "%s".' % ilastik_dir
-        logger.info(message)
-        print(message)  # always print the startup message
+        message = f"Starting ilastik from {ilastik_dir}"
+    logger.info(message)
+    print(message)  # always print the startup message
 
     # Headless launch
     if parsed_args.headless:
@@ -366,7 +364,7 @@ def _prepare_lazyflow_config(parsed_args):
                         f"limited to {total_ram_mb} MB. Remember "
                         "to specify RAM in MB, not GB."
                     )
-                ram = total_ram_mb * 1024 ** 2
+                ram = total_ram_mb * 1024**2
                 fmt = Memory.format(ram)
                 logger.info("Configuring lazyflow RAM limit to {}".format(fmt))
                 Memory.setAvailableRam(ram)

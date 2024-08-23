@@ -29,6 +29,7 @@ import numbers
 import platform
 import threading
 import warnings
+from typing import List, Type, Optional
 
 # SciPy
 import numpy
@@ -59,8 +60,6 @@ from PyQt5.QtWidgets import (
 )
 
 # lazyflow
-from ilastik.widgets.ipcserver.tcpServerInfoWidget import TCPServerInfoWidget
-from ilastik.widgets.ipcserver.zmqPubSubInfoWidget import ZMQPublisherInfoWidget
 from ilastik.widgets.collapsibleWidget import CollapsibleWidget
 from lazyflow.roi import TinyVector
 from lazyflow.graph import Operator
@@ -74,7 +73,7 @@ from volumina.utility import preferences, ShortcutManagerDlg, ShortcutManager
 
 # ilastik
 import ilastik.ilastik_logging.default_config
-from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
+from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName, Workflow
 from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
 from ilastik.exceptions import UserAbort
@@ -91,11 +90,11 @@ from ilastik.shell.headless.headlessShell import HeadlessShell
 
 from ilastik.shell.gui.aboutDialog import AboutDialog
 from ilastik.shell.gui.licenseDialog import LicenseDialog
+from ilastik.shell.gui.reportIssueDialog import ReportIssueDialog
 
 from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox, AppletBarManager
 from ilastik.widgets.filePathButton import FilePathButton
 
-from ilastik.shell.gui.ipcManager import IPCFacade, TCPServer, TCPClient, ZMQPublisher, ZMQSubscriber, ZMQBase
 
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
@@ -325,50 +324,6 @@ class IlastikShell(QMainWindow):
         self.thunkEventHandler = ThunkEventHandler(self)
         self.threadRouter = ThreadRouter(self)  # Enable @threadRouted
 
-        # Server/client for inter process communication for receiving remote commands (e.g. from KNIME)
-        # For now, this is a developer-only feature, activated by a debug menu item.
-        if ilastik_config.getboolean("ilastik", "debug"):
-            facade = IPCFacade()
-            facade.register_shell(self)
-            facade.register_widget(TCPServerInfoWidget(), "TCP Connection", "raw tcp")
-            interface = ilastik_config.get("ipc raw tcp", "interface")
-            port = ilastik_config.getint("ipc raw tcp", "port")
-            start = ilastik_config.getboolean("ipc raw tcp", "autostart")
-            facade.register_module(TCPServer(interface, port), "receiver", "raw tcp server", "raw tcp", start=start)
-            facade.register_module(TCPClient(), "sender", "raw tcp client", "raw tcp", "tcp")
-
-            if ZMQBase.available("tcp"):
-                facade.register_widget(ZMQPublisherInfoWidget(), "ZeroMQ Pub Sub TCP", "zmq tcp")
-                start = ilastik_config.getboolean("ipc zmq tcp publisher", "autostart")
-                address = ilastik_config.get("ipc zmq tcp publisher", "address")
-                facade.register_module(ZMQPublisher("tcp", address), "sender", "zmq tcp pub", "zmq tcp", start=start)
-                start = ilastik_config.getboolean("ipc zmq tcp subscriber", "autostart")
-                address = ilastik_config.get("ipc zmq tcp subscriber", "address")
-                facade.register_module(ZMQSubscriber("tcp", address), "receiver", "zmq tcp sub", "zmq tcp", start=start)
-
-                if ZMQBase.available("ipc"):
-                    base_dir = ilastik_config.get("ipc zmq ipc", "basedir")
-                    can_start = True
-                    try:
-                        os.mkdir(base_dir)
-                    except OSError as e:
-                        if e.errno != 17:  # exists
-                            can_start = False
-                    if can_start:
-                        facade.register_widget(ZMQPublisherInfoWidget(), "ZeroMQ Pub Sub IPC", "zmq ipc")
-                        start = ilastik_config.getboolean("ipc zmq ipc publisher", "autostart")
-                        filename = ilastik_config.get("ipc zmq ipc publisher", "filename")
-                        path = os.path.join(base_dir, filename)
-                        facade.register_module(
-                            ZMQPublisher("ipc", path), "sender", "zmq ipc pub", "zmq ipc", start=start
-                        )
-                        start = ilastik_config.getboolean("ipc zmq ipc subscriber", "autostart")
-                        filename = ilastik_config.get("ipc zmq ipc subscriber", "filename")
-                        path = os.path.join(base_dir, filename)
-                        facade.register_module(
-                            ZMQSubscriber("ipc", path), "receiver", "zmq ipc sub", "zmq ipc", start=start
-                        )
-
         self.openFileButtons = []
         self.cleanupFunctions = []
 
@@ -507,8 +462,7 @@ class IlastikShell(QMainWindow):
     def loadWorkflow(self, workflow_class):
         self.onNewProjectActionTriggered(workflow_class)
 
-    def getWorkflow(self, w=None):
-
+    def getWorkflow(self, w: Optional[str] = None) -> Type[Workflow]:
         listOfItems = [workflowDisplayName for _, __, workflowDisplayName in getAvailableWorkflows()]
         if w is not None and w in listOfItems:
             cur = listOfItems.index(w)
@@ -578,7 +532,6 @@ class IlastikShell(QMainWindow):
         return (menu, shellActions)
 
     def setupOpenFileButtons(self):
-
         for b in self.openFileButtons:
             b.close()
             b.deleteLater()
@@ -750,14 +703,25 @@ class IlastikShell(QMainWindow):
         self.openProjectFile(path)
 
     def _createHelpMenu(self):
+        def _openReportIssueDialog():
+            workflow_text = ""
+            if self.workflow:
+                workflow_text = (
+                    f"Active workflow: {self.workflow.workflowName}\n"
+                    f"Active applet: {self.workflow.applets[self.currentAppletIndex].name}\n"
+                )
+            ReportIssueDialog.createAndShowModal(self, workflow_text)
+
         menu = QMenu("&Help", self)
         menu.setObjectName("help_menu")
         aboutIlastikAction = menu.addAction("&About ilastik")
         aboutIlastikAction.triggered.connect(partial(AboutDialog.createAndShowModal, self))
         readTheDocsAction = menu.addAction("&Documentation")
         readTheDocsAction.triggered.connect(
-            partial(QDesktopServices.openUrl, QUrl("http://ilastik.org/documentation/"))
+            partial(QDesktopServices.openUrl, QUrl("https://ilastik.org/documentation/"))
         )
+        emailDevsAction = menu.addAction("&Report issue")
+        emailDevsAction.triggered.connect(_openReportIssueDialog)
         licenseAction = menu.addAction("License")
         licenseAction.triggered.connect(partial(LicenseDialog, self))
         return menu
@@ -777,8 +741,6 @@ class IlastikShell(QMainWindow):
         menu.addMenu(self._createProfilingSubmenu())
 
         menu.addMenu(self._createAllocationTrackingSubmenu())
-
-        menu.addAction("Show IPC Server Info", IPCFacade().show_info)
 
         def hideApplets(hideThem):
             self.mainSplitter.setVisible(not hideThem)
@@ -1632,13 +1594,13 @@ class IlastikShell(QMainWindow):
 
         try:
             assert self.projectManager is None, "Expected projectManager to be None."
+            QApplication.setOverrideCursor(Qt.WaitCursor)
             self.projectManager = ProjectManager(
                 self,
                 workflow_class,
                 workflow_cmdline_args=self._workflow_cmdline_args,
                 project_creation_args=project_creation_args,
             )
-
         except Exception as e:
             msg = "Could not load project file.\n" + str(e)
             log_exception(logger, msg)
@@ -1646,67 +1608,69 @@ class IlastikShell(QMainWindow):
 
             # no project will be loaded, free the file resource
             hdf5File.close()
-        else:
+            return
+        finally:
+            QApplication.restoreOverrideCursor()
 
-            try:
-                # Add all the applets from the workflow
-                for index, app in enumerate(self.projectManager.workflow.applets):
-                    self.addApplet(index, app)
+        try:
+            # Add all the applets from the workflow
+            for index, app in enumerate(self.projectManager.workflow.applets):
+                self.addApplet(index, app)
 
-                start = time.perf_counter()
-                # load the project data from file
-                if importFromPath is None:
-                    # FIXME: load the project asynchronously
-                    self.projectManager.loadProject(hdf5File, projectFilePath, readOnly)
-                else:
-                    assert not readOnly, "Can't import into a read-only file."
-                    self.projectManager.importProject(importFromPath, hdf5File, projectFilePath)
-            except Exception as ex:
-                self.closeCurrentProject()
-
-                # loadProject failed, so we cannot expect it to clean up
-                # the hdf5 file (but it might have cleaned it up, so we catch
-                # the error)
-                try:
-                    hdf5File.close()
-                except:
-                    pass
-
-                if not isinstance(ex, UserAbort):
-                    log_exception(logger)
-                    QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + str(ex))
-
+            start = time.perf_counter()
+            # load the project data from file
+            if importFromPath is None:
+                # FIXME: load the project asynchronously
+                self.projectManager.loadProject(hdf5File, projectFilePath, readOnly)
             else:
-                stop = time.perf_counter()
-                logger.debug("Loading the project took {:.2f} sec.".format(stop - start))
+                assert not readOnly, "Can't import into a read-only file."
+                self.projectManager.importProject(importFromPath, hdf5File, projectFilePath)
+        except Exception as ex:
+            self.closeCurrentProject()
 
-                workflowDisplayName = self.projectManager.workflow.workflowDisplayName
-                self._setRecentlyOpenedList(projectFilePath, workflowDisplayName)
+            # loadProject failed, so we cannot expect it to clean up
+            # the hdf5 file (but it might have cleaned it up, so we catch
+            # the error)
+            try:
+                hdf5File.close()
+            except:
+                pass
 
-                workflowName = self.projectManager.workflow.workflowName
-                # be friendly to user: if this file has not specified a default workflow, do it now
-                if not "workflowName" in list(hdf5File.keys()) and not readOnly:
-                    hdf5File.create_dataset("workflowName", data=workflowName.encode("utf-8"))
+            if not isinstance(ex, UserAbort):
+                log_exception(logger)
+                QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + str(ex))
+            return
 
-                # switch away from the startup screen to show the loaded project
-                self.mainStackedWidget.setCurrentIndex(1)
-                # By default, make the splitter control expose a reasonable width of the applet bar
-                self.mainSplitter.setSizes([300, 1])
+        stop = time.perf_counter()
+        logger.debug("Loading the project took {:.2f} sec.".format(stop - start))
 
-                self.progressDisplayManager.cleanUp()
-                self.progressDisplayManager.initializeForWorkflow(self.projectManager.workflow)
+        workflowDisplayName = self.projectManager.workflow.workflowDisplayName
+        self._setRecentlyOpenedList(projectFilePath, workflowDisplayName)
 
-                self.setImageNameListSlot(self.projectManager.workflow.imageNameListSlot)
-                self.updateShellProjectDisplay()
+        workflowName = self.projectManager.workflow.workflowName
+        # be friendly to user: if this file has not specified a default workflow, do it now
+        if not "workflowName" in list(hdf5File.keys()) and not readOnly:
+            hdf5File.create_dataset("workflowName", data=workflowName.encode("utf-8"))
 
-                # Enable all the applet controls
-                self.enableWorkflow = True
+        # switch away from the startup screen to show the loaded project
+        self.mainStackedWidget.setCurrentIndex(1)
+        # By default, make the splitter control expose a reasonable width of the applet bar
+        self.mainSplitter.setSizes([300, 1])
 
-                if "currentApplet" in list(hdf5File.keys()):
-                    appletName = hdf5File["currentApplet"][()]
-                    self.setSelectedAppletDrawer(appletName)
-                else:
-                    self.setSelectedAppletDrawer(self.projectManager.workflow.defaultAppletIndex)
+        self.progressDisplayManager.cleanUp()
+        self.progressDisplayManager.initializeForWorkflow(self.projectManager.workflow)
+
+        self.setImageNameListSlot(self.projectManager.workflow.imageNameListSlot)
+        self.updateShellProjectDisplay()
+
+        # Enable all the applet controls
+        self.enableWorkflow = True
+
+        if "currentApplet" in list(hdf5File.keys()):
+            appletName = hdf5File["currentApplet"][()]
+            self.setSelectedAppletDrawer(appletName)
+        else:
+            self.setSelectedAppletDrawer(self.projectManager.workflow.defaultAppletIndex)
 
     def _setRecentlyOpenedList(self, projectFilePath, workflowDisplayName):
         recentlyOpenedList = [(projectFilePath, workflowDisplayName)] + [
@@ -1723,7 +1687,6 @@ class IlastikShell(QMainWindow):
         """
         assert threading.current_thread().name == "MainThread"
         if self.projectManager is not None:
-
             self.removeAllAppletWidgets()
             for f in self.cleanupFunctions:
                 f()

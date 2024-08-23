@@ -32,7 +32,7 @@ jobs:
           conda install -n base -c conda-forge boa setuptools_scm anaconda-client -y
           conda config --set anaconda_upload yes
           xvfb-run --server-args="-screen 0 1024x768x24" \
-          conda mambabuild -c pytorch -c ilastik-forge -c conda-forge \
+          conda mambabuild -c pytorch -c nvidia -c ilastik-forge -c conda-forge \
           --user ilastik-forge \
           conda-recipe
 

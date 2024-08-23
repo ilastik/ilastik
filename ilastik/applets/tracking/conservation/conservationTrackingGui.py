@@ -15,8 +15,6 @@ from ilastik.utility import log_exception
 from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.utility.gui.threadRouter import threadRouted
 from ilastik.utility.gui.titledMenu import TitledMenu
-from ilastik.utility.ipcProtocol import Protocol
-from ilastik.shell.gui.ipcManager import IPCFacade
 from ilastik.config import cfg as ilastik_config
 from ilastik.plugins.manager import pluginManager
 
@@ -405,13 +403,10 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         return "Export Tracking Information"
 
     def handleEditorRightClick(self, position5d, win_coord):
-        debug = ilastik_config.getboolean("ilastik", "debug")
 
         obj, time = self.get_object(position5d)
         if obj == 0:
             menu = TitledMenu(["Background"])
-            if debug:
-                menu.addAction("Clear Hilite", IPCFacade().broadcast(Protocol.cmd("clear")))
             menu.exec_(win_coord)
             return
 
@@ -425,44 +420,6 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             color = hypothesesGraph.getLineageId(time, obj)
             track = hypothesesGraph.getTrackId(time, obj)
 
-        tracks = None
-        children = None
-        parents = None
-
         menu = TitledMenu(["Object {} of lineage id {}".format(obj, color), "Track id: " + (str(track) or "None")])
-
-        if not debug:
-            menu.exec_(win_coord)
-            return
-
-        if any(IPCFacade().sending):
-
-            obj_sub_menu = menu.addMenu("Hilite Object")
-            for mode in Protocol.ValidHiliteModes:
-                where = Protocol.simple("and", ilastik_id=obj, time=time)
-                cmd = Protocol.cmd(mode, where)
-                obj_sub_menu.addAction(mode.capitalize(), IPCFacade().broadcast(cmd))
-
-            sub_menus = [
-                ("Tracks", Protocol.simple_in, tracks),
-                ("Parents", Protocol.simple_in, parents),
-                ("Children", Protocol.simple_in, children),
-            ]
-            for name, protocol, args in sub_menus:
-                if args:
-                    sub = menu.addMenu("Hilite {}".format(name))
-                    for mode in Protocol.ValidHiliteModes[:-1]:
-                        mode = mode.capitalize()
-                        where = protocol("track_id*", args)
-                        cmd = Protocol.cmd(mode, where)
-                        sub.addAction(mode, IPCFacade().broadcast(cmd))
-                else:
-                    sub = menu.addAction("Hilite {}".format(name))
-                    sub.setEnabled(False)
-
-            menu.addAction("Clear Hilite", IPCFacade().broadcast(Protocol.cmd("clear")))
-        else:
-            menu.addAction("Open IPC Server Window", IPCFacade().show_info)
-            menu.addAction("Start IPC Server", IPCFacade().start)
 
         menu.exec_(win_coord)

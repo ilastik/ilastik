@@ -26,7 +26,7 @@ from string import ascii_uppercase
 from ilastik.shell.shellAbc import ShellABC
 import logging
 
-from typing import Tuple
+from typing import Tuple, Type, Iterator, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -40,10 +40,6 @@ class Workflow(Operator):
     workflowDisplayName = None  # override in your own workflow if you need it different from name
     #: Should workflow be automatically added to start widget
     auto_register = True
-
-    ###############################
-    # Abstract methods/properties #
-    ###############################
 
     @abstractproperty
     def applets(self):
@@ -81,6 +77,10 @@ class Workflow(Operator):
     @property
     def defaultAppletIndex(self):
         return 0
+
+    @property
+    def shell(self):
+        return self._shell
 
     @abstractmethod
     def connectLane(self, laneIndex):
@@ -138,10 +138,6 @@ class Workflow(Operator):
     def postprocessClusterSubResult(self, roi, result, blockwise_fileset):
         pass
 
-    ##################
-    # Public methods #
-    ##################
-
     def __init__(
         self, shell, headless=False, workflow_cmdline_args=(), project_creation_args=(), parent=None, graph=None
     ):
@@ -168,10 +164,6 @@ class Workflow(Operator):
         super(Workflow, self).__init__(parent=parent, graph=graph)
         self._shell = shell
         self._headless = headless
-
-    @property
-    def shell(self):
-        return self._shell
 
     def cleanUp(self):
         """
@@ -202,10 +194,6 @@ class Workflow(Operator):
             if subcls.__name__ == name:
                 return subcls
         raise RuntimeError(f"No known workflow class has name {name}")
-
-    ###################
-    # Private methods #
-    ###################
 
     def _after_init(self):
         """
@@ -254,7 +242,7 @@ def all_subclasses(cls):
     return cls.__subclasses__() + [g for s in cls.__subclasses__() for g in all_subclasses(s)]
 
 
-def getAvailableWorkflows() -> Tuple[Workflow, str, str]:
+def getAvailableWorkflows() -> Iterator[Tuple[Type[Workflow], str, str]]:
     """
     This function used to iterate over all workflows that have been imported so far,
     but now we rely on the explicit list in workflows/__init__.py,
@@ -273,7 +261,7 @@ def getAvailableWorkflows() -> Tuple[Workflow, str, str]:
 
     from . import workflows
 
-    def _makeWorkflowTuple(workflow_cls):
+    def _makeWorkflowTuple(workflow_cls: Type[Workflow]):
         if isinstance(workflow_cls.workflowName, str):
             if workflow_cls.workflowDisplayName is None:
                 workflow_cls.workflowDisplayName = workflow_cls.workflowName
@@ -318,8 +306,9 @@ def getAvailableWorkflows() -> Tuple[Workflow, str, str]:
         yield _makeWorkflowTuple(W)
 
 
-def getWorkflowFromName(Name):
+def getWorkflowFromName(name: str) -> Optional[Type[Workflow]]:
     """return workflow by naming its workflowName variable"""
     for w, _name, _displayName in getAvailableWorkflows():
-        if _name == Name or w.__name__ == Name or _displayName == Name:
+        if _name == name or w.__name__ == name or _displayName == name:
             return w
+    return None

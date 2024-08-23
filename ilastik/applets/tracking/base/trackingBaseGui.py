@@ -46,7 +46,6 @@ from lazyflow.request.request import Request
 from ilastik.utility.gui.threadRouter import threadRouted
 from ilastik.utility.gui.titledMenu import TitledMenu
 from ilastik.utility import log_exception
-from ilastik.shell.gui.ipcManager import IPCFacade, Protocol
 
 
 logger = logging.getLogger(__name__)

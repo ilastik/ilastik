@@ -22,6 +22,7 @@ import enum
 from PyQt5.QtGui import QBrush, QColor, QFont, QIcon, QPainter, QPen, QPixmap, QPolygon, QKeyEvent
 from PyQt5.QtWidgets import (
     QAbstractItemView,
+    QApplication,
     QHeaderView,
     QItemDelegate,
     QStyle,
@@ -30,6 +31,8 @@ from PyQt5.QtWidgets import (
     QTableWidgetSelectionRange,
 )
 from PyQt5.QtCore import QPoint, QRect, QSize, Qt
+
+from ilastik.utility.gui import is_qt_dark_mode
 
 
 class FeatureEntry(object):
@@ -62,6 +65,44 @@ class FeatureTableWidgetVSigmaHeader(QTableWidgetItem):
         self.setText(text)
 
 
+class _FeatureSelectionColors:
+    """
+    Class that holds some color "constants". Colors change according to
+    used system theme (on windows and MacOS).
+    """
+
+    @staticmethod
+    def foreground():
+        return QApplication.palette().windowText().color()
+
+    @staticmethod
+    def green():
+        if is_qt_dark_mode():
+            # dark mode
+            return QColor("#00ad6b")
+        else:
+            # light mode
+            return QColor("#00fa9a")
+
+    @staticmethod
+    def light_gray():
+        if is_qt_dark_mode():
+            # dark mode
+            return QColor("#4d4d4d")
+        else:
+            # light mode
+            return QColor("#dcdcdc")
+
+    @staticmethod
+    def dark_gray():
+        if is_qt_dark_mode():
+            # dark mode
+            return QColor("#dcdcdc")
+        else:
+            # light mode
+            return QColor("#4d4d4d")
+
+
 # ==============================================================================
 # FeatureTableWidgetVHeader
 # ==============================================================================
@@ -87,8 +128,8 @@ class FeatureTableWidgetVHeader(QTableWidgetItem):
         self.isExpanded = False
         self._drawIcon()
 
-    def setIconAndTextColor(self, color):
-        self._drawIcon(color)
+    def setIconAndText(self):
+        self._drawIcon()
 
     def setFeatureVHeader(self, feature):
         self.feature = feature
@@ -104,18 +145,17 @@ class FeatureTableWidgetVHeader(QTableWidgetItem):
         self.setText(self.vHeaderName)
         self.isRootNode = True
 
-    def _drawIcon(self, color=Qt.black):
-        self.setForeground(QBrush(color))
+    def _drawIcon(self):
 
         if self.isRootNode:
             pixmap = QPixmap(20, 20)
             pixmap.fill(Qt.transparent)
             painter = QPainter()
             painter.begin(pixmap)
-            pen = QPen(color)
+            pen = QPen(_FeatureSelectionColors.foreground())
             pen.setWidth(1)
             painter.setPen(pen)
-            painter.setBrush(color)
+            painter.setBrush(QBrush(_FeatureSelectionColors.foreground(), Qt.SolidPattern))
             painter.setRenderHint(QPainter.Antialiasing)
             if not self.isExpanded:
                 arrowRightPolygon = [QPoint(6, 6), QPoint(6, 14), QPoint(14, 10)]
@@ -150,7 +190,7 @@ class FeatureTableWidgetHHeader(QTableWidgetItem):
         else:
             return int(3.0 * self.sigma + 0.5) + 1
 
-    def setNameAndBrush(self, sigma, color=Qt.black):
+    def setNameAndBrush(self, sigma):
         self.sigma = sigma
         self.setText(f"σ{self.column}".translate(self.sub_trans))
         if self.sigma is not None:
@@ -158,17 +198,14 @@ class FeatureTableWidgetHHeader(QTableWidgetItem):
             self.setToolTip(f"sigma = {sigma:.1f} pixels, window diameter = {total_window:.1f}")
         font = QFont()
         font.setPointSize(10)
-        # font.setBold(True)
         self.setFont(font)
-        self.setForeground(color)
 
         pixmap = QPixmap(self.pixmapSize)
         pixmap.fill(Qt.transparent)
         painter = QPainter()
         painter.begin(pixmap)
         painter.setRenderHint(QPainter.Antialiasing, True)
-        painter.setPen(color)
-        brush = QBrush(color)
+        brush = QBrush(_FeatureSelectionColors.foreground(), Qt.SolidPattern)
         painter.setBrush(brush)
         painter.drawEllipse(
             QRect(
@@ -182,8 +219,8 @@ class FeatureTableWidgetHHeader(QTableWidgetItem):
         self.setIcon(QIcon(pixmap))
         self.setTextAlignment(Qt.AlignVCenter)
 
-    def setIconAndTextColor(self, color):
-        self.setNameAndBrush(self.sigma, color)
+    def setIconAndText(self):
+        self.setNameAndBrush(self.sigma)
 
 
 # ==============================================================================
@@ -234,21 +271,21 @@ class ItemDelegate(QItemDelegate):
         elif role == self.Role.MODE_2D:
             self.drawPixmapFor2d(painter, width, height)
         elif role == self.Role.DISABLED:
-            pixmap.fill(Qt.white)
+            pixmap.fill(Qt.transparent)
         else:
             raise NotImplementedError(f"{role}")
 
         return pixmap
 
     def drawPixmapFor2d(self, painter: QPainter, width: int, height: int) -> None:
-        pen = QPen()
+        pen = QPen(_FeatureSelectionColors.foreground())
         pen.setWidth(4)
         painter.setPen(pen)
         font = QFont()
         font.setPixelSize(height - 10)
         painter.setFont(font)
         painter.drawRect(QRect(5, 5, width - 15, height - 10))
-        painter.fillRect(QRect(5, 5, width - 15, height - 10), QColor(0, 250, 154))
+        painter.fillRect(QRect(5, 5, width - 15, height - 10), _FeatureSelectionColors.green())
 
         painter.drawText(QRect(5, 4, width - 15, height - 10), Qt.AlignCenter, "2D")
         painter.end()
@@ -256,10 +293,10 @@ class ItemDelegate(QItemDelegate):
     def drawPixmapFor3d(self, painter: QPainter, width: int, height: int) -> None:
         font = QFont()
         font.setPixelSize(height - 10)
-        pen = QPen()
+        pen = QPen(_FeatureSelectionColors.foreground())
         pen.setWidth(2)
         painter.setPen(pen)
-        painter.setBrush(QBrush(QColor(220, 220, 220)))
+        painter.setBrush(QBrush(_FeatureSelectionColors.light_gray()))
         top = [
             QPoint(5, 5),
             QPoint(width - 10, 5),
@@ -283,14 +320,14 @@ class ItemDelegate(QItemDelegate):
         painter.end()
 
     def drawPixmapForUnchecked(self, painter: QPainter, width: int, height: int) -> None:
-        pen = QPen()
+        pen = QPen(_FeatureSelectionColors.foreground())
         pen.setWidth(2)
         painter.setPen(pen)
         painter.drawRect(QRect(5, 5, width - 10, height - 10))
         painter.end()
 
     def drawPixmapForChecked(self, painter: QPainter, width: int, height: int) -> None:
-        pen = QPen()
+        pen = QPen(_FeatureSelectionColors.foreground())
         pen.setWidth(2)
         painter.setPen(pen)
         painter.drawRect(QRect(5, 5, width - 10, height - 10))
@@ -302,12 +339,12 @@ class ItemDelegate(QItemDelegate):
 
     def drawPixmapForPartiallyChecked(self, painter: QPainter, width: int, height: int) -> None:
         painter.setRenderHint(QPainter.Antialiasing)
-        pen = QPen()
+        pen = QPen(_FeatureSelectionColors.foreground())
         pen.setWidth(2)
         painter.setPen(pen)
         painter.drawRect(QRect(5, 5, width - 10, height - 10))
         pen.setWidth(4)
-        pen.setColor(QColor(139, 137, 137))
+        pen.setColor(_FeatureSelectionColors.dark_gray())
         painter.setPen(pen)
         painter.drawLine(width // 2 - 5, height // 2, width // 2, height - 10)
         painter.drawLine(width // 2, height - 10, width // 2 + 10, 2)
@@ -344,10 +381,10 @@ class ItemDelegate(QItemDelegate):
                 painter.drawPixmap(option.rect, self.getPixmap(self.Role.UNCHECKED, option.rect.size()))
                 option.state = QStyle.State_Off
             elif tableWidgetCell.featureState == Qt.PartiallyChecked:
-                painter.fillRect(option.rect.adjusted(5, 5, -5, -5), QColor(220, 220, 220))
+                painter.fillRect(option.rect.adjusted(5, 5, -5, -5), _FeatureSelectionColors.light_gray())
                 painter.drawPixmap(option.rect, self.getPixmap(self.Role.PARTIAL, option.rect.size()))
             else:
-                painter.fillRect(option.rect.adjusted(5, 5, -5, -5), QColor(0, 250, 154))
+                painter.fillRect(option.rect.adjusted(5, 5, -5, -5), _FeatureSelectionColors.green())
                 painter.drawPixmap(option.rect, self.getPixmap(self.Role.CHECKED, option.rect.size()))
 
 

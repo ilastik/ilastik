@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -18,16 +18,28 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-
+import appdirs
 import os
+import re
 import logging.config
 import warnings
 
-import appdirs
+from datetime import datetime
+from typing import Optional
+from pathlib import Path
 from . import loggingHelpers
 from ilastik.config import cfg as ilastik_config
 
-DEFAULT_LOGFILE_PATH = os.path.join(appdirs.user_log_dir(appname="ilastik", appauthor=False), "log.txt")
+SESSION_FILEHANDLER_NAME = "session_file"
+SESSION_LOGFILE_NAME = "log_%Y%m%d_%H%M%S.txt"
+SESSION_LOGFILE_NAME_PATTERN = re.compile(r"^log_\d{8}_\d{6}\.txt$")  # For deleting old ones, must correspond to _NAME
+SESSION_LOGFILE_PATH = os.path.join(
+    appdirs.user_log_dir(appname="ilastik", appauthor=False), datetime.now().strftime(SESSION_LOGFILE_NAME)
+)
+KEEP_SESSION_LOGS = 10
+DEFAULT_FILEHANDLER_NAME = "rotating_file"
+DEFAULT_LOG_NAME = "log.txt"
+DEFAULT_LOGFILE_PATH = os.path.join(appdirs.user_log_dir(appname="ilastik", appauthor=False), DEFAULT_LOG_NAME)
 
 
 class OutputMode(object):
@@ -37,12 +49,34 @@ class OutputMode(object):
     LOGFILE_WITH_CONSOLE_ERRORS = 3
 
 
-def get_logfile_path():
+def get_logfile_path() -> Optional[str]:
+    root_handlers = logging.getLogger().handlers
+    file_handlers = [h for h in root_handlers if isinstance(h, logging.FileHandler)]
+    for handler in file_handlers:
+        if handler.name == DEFAULT_FILEHANDLER_NAME:
+            return handler.baseFilename
+    if file_handlers:
+        return file_handlers[0].baseFilename
+    return None
+
+
+def get_session_logfile_path() -> Optional[str]:
     root_handlers = logging.getLogger().handlers
     for handler in root_handlers:
-        if isinstance(handler, logging.FileHandler):
+        if isinstance(handler, logging.FileHandler) and handler.name == SESSION_FILEHANDLER_NAME:
             return handler.baseFilename
     return None
+
+
+def _delete_old_session_logs(*, log_dir: Path):
+    """Delete all but the last n=KEEP_SESSION_LOGS log files in log_dir."""
+    if not log_dir.exists():
+        return
+    log_files = sorted(
+        [child for child in log_dir.iterdir() if re.match(SESSION_LOGFILE_NAME_PATTERN, child.name)], reverse=True
+    )
+    for log_file in log_files[KEEP_SESSION_LOGS:]:
+        log_file.unlink()
 
 
 def get_default_config(
@@ -58,16 +92,25 @@ def get_default_config(
         warnings_module_handlers = ["console_warnings_module"]
 
     if output_mode == OutputMode.LOGFILE:
-        root_handlers = ["rotating_file"]
-        warnings_module_handlers = ["rotating_file"]
+        root_handlers = [DEFAULT_FILEHANDLER_NAME]
+        warnings_module_handlers = [DEFAULT_FILEHANDLER_NAME]
+        if logfile_path == DEFAULT_LOGFILE_PATH:
+            root_handlers.append(SESSION_FILEHANDLER_NAME)
+            warnings_module_handlers.append(SESSION_FILEHANDLER_NAME)
 
     if output_mode == OutputMode.BOTH:
-        root_handlers = ["console", "console_warn", "rotating_file"]
-        warnings_module_handlers = ["console_warnings_module", "rotating_file"]
+        root_handlers = ["console", "console_warn", DEFAULT_FILEHANDLER_NAME]
+        warnings_module_handlers = ["console_warnings_module", DEFAULT_FILEHANDLER_NAME]
+        if logfile_path == DEFAULT_LOGFILE_PATH:
+            root_handlers.append(SESSION_FILEHANDLER_NAME)
+            warnings_module_handlers.append(SESSION_FILEHANDLER_NAME)
 
     if output_mode == OutputMode.LOGFILE_WITH_CONSOLE_ERRORS:
-        root_handlers = ["rotating_file", "console_errors_only"]
-        warnings_module_handlers = ["rotating_file"]
+        root_handlers = [DEFAULT_FILEHANDLER_NAME, "console_errors_only"]
+        warnings_module_handlers = [DEFAULT_FILEHANDLER_NAME]
+        if logfile_path == DEFAULT_LOGFILE_PATH:
+            root_handlers.append(SESSION_FILEHANDLER_NAME)
+            warnings_module_handlers.append(SESSION_FILEHANDLER_NAME)
 
     default_log_config = {
         "version": 1,
@@ -120,12 +163,21 @@ def get_default_config(
                 "stream": "ext://sys.stdout",
                 "formatter": "verbose",
             },
-            "rotating_file": {
+            DEFAULT_FILEHANDLER_NAME: {
                 "level": "DEBUG",
                 "class": "logging.handlers.RotatingFileHandler",
                 "filename": logfile_path,
                 "maxBytes": 50e6,  # 20 MB
                 "backupCount": 5,
+                "formatter": "verbose",
+                "encoding": "utf-8",
+            },
+            SESSION_FILEHANDLER_NAME: {
+                "level": "DEBUG",
+                "class": "logging.handlers.RotatingFileHandler",
+                "filename": SESSION_LOGFILE_PATH,
+                "maxBytes": 1048576,  # 1 MiB
+                "backupCount": 1,
                 "formatter": "verbose",
                 "encoding": "utf-8",
             },
@@ -159,7 +211,8 @@ def init(format_prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, l
         output_mode = OutputMode.CONSOLE
 
     if output_mode != OutputMode.CONSOLE:
-        os.makedirs(os.path.dirname(DEFAULT_LOGFILE_PATH), exist_ok=True)
+        os.makedirs(os.path.dirname(logfile_path), exist_ok=True)
+        _delete_old_session_logs(log_dir=Path(logfile_path).parent)
 
     # Preserve pre-existing handlers
     original_root_handlers = list(logging.getLogger().handlers)
