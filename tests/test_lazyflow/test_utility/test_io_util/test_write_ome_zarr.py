@@ -59,7 +59,8 @@ def test_metadata_integrity(tmp_path, graph, data_array):
     store = zarr.open(str(export_path))
     assert "multiscales" in store.attrs
     written_meta = store.attrs["multiscales"][0]
-    assert all(key in written_meta for key in ("datasets", "axes", "version"))
+    assert all([key in written_meta for key in ("datasets", "axes", "version")])  # Keys required by spec
+    assert all([value is not None for value in written_meta.values()])  # Should not write None anywhere
     assert written_meta["version"] == "0.4"
     assert [a["name"] for a in written_meta["axes"]] == list(expected_axiskeys)
     tagged_shape = dict(zip(data_array.axistags.keys(), data_array.shape))
@@ -72,6 +73,7 @@ def test_metadata_integrity(tmp_path, graph, data_array):
         written_array = store[dataset["path"]]
         assert "axistags" in written_array.attrs, f"no axistags for {dataset['path']}"
         assert vigra.AxisTags.fromJSON(written_array.attrs["axistags"]) == vigra.defaultAxistags(expected_axiskeys)
+        assert all([value is not None for value in written_array.attrs.values()])  # Should not write None anywhere
         reported_scalings = [
             transform for transform in dataset["coordinateTransformations"] if transform["type"] == "scale"
         ]

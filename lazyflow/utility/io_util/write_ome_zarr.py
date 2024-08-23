@@ -109,16 +109,19 @@ def _write_ome_zarr_and_ilastik_metadata(
         }
         for image in multiscale_metadata
     ]
+    ome_zarr_multiscale_meta = {"_creator": ilastik_signature, "version": "0.4", "axes": axes, "datasets": datasets}
+    if multiscale_name:
+        ome_zarr_multiscale_meta["name"] = multiscale_name
     store = FSStore(external_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
     root = zarr.group(store, overwrite=False)
-    root.attrs["multiscales"] = [
-        {"_creator": ilastik_signature, "version": "0.4", "name": multiscale_name, "axes": axes, "datasets": datasets}
-    ]
+    root.attrs["multiscales"] = [ome_zarr_multiscale_meta]
     for image in multiscale_metadata:
         za = zarr.Array(store, path=image.path)
         za.attrs["axistags"] = ilastik_meta["axistags"].toJSON()
-        za.attrs["display_mode"] = ilastik_meta["display_mode"]
-        za.attrs["drange"] = ilastik_meta.get("drange")
+        if ilastik_meta["display_mode"]:
+            za.attrs["display_mode"] = ilastik_meta["display_mode"]
+        if ilastik_meta["drange"]:
+            za.attrs["drange"] = ilastik_meta["drange"]
 
 
 def write_ome_zarr(
@@ -139,7 +142,7 @@ def write_ome_zarr(
             ome_zarr_meta,
             {
                 "axistags": op_reorder.Output.meta.axistags,
-                "display_mode": image_source_slot.meta.display_mode,
+                "display_mode": image_source_slot.meta.get("display_mode"),
                 "drange": image_source_slot.meta.get("drange"),
             },
         )
