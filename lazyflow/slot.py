@@ -1528,37 +1528,3 @@ class OutputSlot(Slot):
         super(OutputSlot, self).__init__(*args, **kwargs)
         self._type = "output"
         assert "optional" not in kwargs, '"optional" init arg cannot be used with OutputSlot'
-
-
-class SlotAsNDArray:
-    """Adapter class to provide a numpy-like interface to a Slot.
-    Primarily this means returning data, not Requests, when sliced.
-    As a consequence, this undoes the lazy-loading behavior of the Slot.
-    The intended use is to pass the slot to dask, which then handles the lazy-loading."""
-
-    @property
-    def ndim(self):
-        return len(self.shape)
-
-    @property
-    def dtype(self):
-        return self.slot.meta.dtype
-
-    @property
-    def shape(self):
-        return self.slot.meta.shape
-
-    def __init__(self, slot: Slot):
-        self.slot = slot
-
-    def __getitem__(self, key):
-        request = self.slot[key]
-        return request.wait()
-
-    def __array__(self):
-        # For typing only: Allows instances to match numpy.typing.ArrayLike
-        # If necessary, the implementation should probably just be `return self.slot.value`
-        raise NotImplementedError("Should never be directly converted to an array.")
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.slot})"

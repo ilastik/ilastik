@@ -1,18 +1,27 @@
+import dataclasses
 import logging
-from typing import List, Literal, Optional, Tuple
+from functools import partial
+from typing import List, Tuple, Dict
 
-import ngff_zarr
 import numpy
 import zarr
 from zarr.storage import FSStore
 
+from ilastik import __version__ as ilastik_version
 from lazyflow.operators import OpReorderAxes
-from lazyflow.roi import determineBlockShape
-from lazyflow.slot import Slot, SlotAsNDArray
-from lazyflow.utility import OrderedSignal, PathComponents
+from lazyflow.roi import determineBlockShape, roiFromShape, roiToSlice
+from lazyflow.slot import Slot
+from lazyflow.utility import OrderedSignal, PathComponents, BigRequestStreamer
 from lazyflow.utility.io_util.OMEZarrStore import OME_ZARR_V_0_4_KWARGS
 
 logger = logging.getLogger(__name__)
+
+
+@dataclasses.dataclass
+class ImageMetadata:
+    path: str
+    scale: Dict[str, float]
+    translation: Dict[str, float]
 
 
 def _get_chunk_shape(image_source_slot) -> Tuple[int, ...]:
@@ -25,52 +34,114 @@ def _get_chunk_shape(image_source_slot) -> Tuple[int, ...]:
     tagged_maxshape = image_source_slot.meta.getTaggedShape()
     tagged_maxshape["t"] = 1
     tagged_maxshape["c"] = 1
-    chunk_shape = determineBlockShape(list(tagged_maxshape.values()), 512_000.0 / dtype_bytes)
+    chunk_shape = determineBlockShape(list(tagged_maxshape.values()), 512_000.0 / dtype_bytes)  # 512KB chunk size
     return chunk_shape
+
+
+def _get_scalings(image_source_slot, chunk_shape: Tuple[int, ...]) -> List[Dict[str, float]]:
+    """
+    Computes scaling factors in the OME-Zarr sense.
+    Downscaling is done by a factor of 2 in all spatial dimensions until one dimension is smaller than half its chunk size.
+    Returns list of scaling factors by axis, starting with original scale.
+    Scaling is meant as a factor of the pixel unit, i.e. if axis is in nm, factor 2.0 means 2nm.
+    When applied to pixel shape, this means the factor is a divisor (scaled shape = original shape // factor).
+    """
+    # Until ilastik handles pixel units, original scale is 1px
+    spatial = ["z", "y", "x"]
+    original_scale = {a: 1.0 for a in image_source_slot.meta.getAxisKeys()}
+    return [original_scale]  # [{"z": 1., "y": 2., "x": 2.}, {"z": 1., "y": 4., "x": 4.}]
+
+
+def _compute_and_write_scales(
+    export_path: str,
+    image_source_slot,
+    progress_signal: OrderedSignal,
+) -> List[ImageMetadata]:
+    pc = PathComponents(export_path)
+    external_path = pc.externalPath
+    internal_path = pc.internalPath
+    store = FSStore(external_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
+    chunk_shape = _get_chunk_shape(image_source_slot)
+    scalings = _get_scalings(image_source_slot, chunk_shape)
+    meta = []
+
+    for i, scaling in enumerate(scalings):
+        scale_path = f"{internal_path}/s{i}" if internal_path else f"s{i}"
+        scaled_shape = (
+            int(s // scaling[a]) if a in scaling else s for a, s in image_source_slot.meta.getTaggedShape().items()
+        )
+        zarray = zarr.creation.empty(
+            scaled_shape, store=store, path=scale_path, chunks=chunk_shape, dtype=image_source_slot.meta.dtype
+        )
+
+        def scale_and_write_block(scale_index, scaling_, zarray_, roi, data):
+            if scale_index > 0:
+                logger.info(f"Scale {scale_index}: Applying {scaling_=} to {roi=}")
+            slicing = roiToSlice(*roi)
+            logger.info(f"Scale {scale_index}: Writing to {slicing=}: {data=}")
+            zarray_[slicing] = data
+
+        requester = BigRequestStreamer(image_source_slot, roiFromShape(image_source_slot.meta.shape))
+        requester.resultSignal.subscribe(partial(scale_and_write_block, i, scaling, zarray))
+        requester.progressSignal.subscribe(progress_signal)
+        requester.execute()
+
+        meta.append(ImageMetadata(scale_path, scaling, {}))
+
+    return meta
+
+
+def _write_ome_zarr_and_ilastik_metadata(
+    export_path: str, multiscale_metadata: List[ImageMetadata], ilastik_meta: Dict
+):
+    pc = PathComponents(export_path)
+    external_path = pc.externalPath
+    multiscale_name = pc.internalPath
+    ilastik_signature = {"name": "ilastik", "version": ilastik_version, "ome_zarr_exporter_version": 1}
+    axis_types = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
+    axes = [{"name": tag.key, "type": axis_types[tag.key]} for tag in ilastik_meta["axistags"]]
+    datasets = [
+        {
+            "path": image.path,
+            "coordinateTransformations": [
+                {"type": "scale", "scale": [image.scale[tag.key] for tag in ilastik_meta["axistags"]]}
+            ],
+        }
+        for image in multiscale_metadata
+    ]
+    store = FSStore(external_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
+    root = zarr.group(store, overwrite=False)
+    root.attrs["multiscales"] = [
+        {"_creator": ilastik_signature, "version": "0.4", "name": multiscale_name, "axes": axes, "datasets": datasets}
+    ]
+    for image in multiscale_metadata:
+        za = zarr.Array(store, path=image.path)
+        za.attrs["axistags"] = ilastik_meta["axistags"].toJSON()
+        za.attrs["display_mode"] = ilastik_meta["display_mode"]
+        za.attrs["drange"] = ilastik_meta.get("drange")
 
 
 def write_ome_zarr(
     export_path: str,
     image_source_slot: Slot,
     progress_signal: OrderedSignal,
-    downscale_method: Optional[ngff_zarr.methods.Methods] = None,
 ):
-    pc = PathComponents(export_path)
-    external_path = pc.externalPath
-    internal_path = pc.internalPath
-
     op_reorder = OpReorderAxes(parent=image_source_slot.operator)
-    op_reorder.AxisOrder.setValue("tczyx")  # OME-Zarr convention
+    op_reorder.AxisOrder.setValue("tczyx")
     try:
         op_reorder.Input.connect(image_source_slot)
-        image_source = SlotAsNDArray(op_reorder.Output)
-        chunk_shape = _get_chunk_shape(op_reorder.Output)
-        dims: List[Literal["t", "c", "z", "y", "x"]] = list(op_reorder.Output.meta.axistags.keys())
-        scale = {k: 1.0 for k in dims}
-        translation = {k: 0.0 for k in dims}
-        image = ngff_zarr.to_ngff_image(
-            image_source, name=internal_path or "image", dims=dims, scale=scale, translation=translation
-        )
+        image_source = op_reorder.Output
         progress_signal(25)
-        multiscales = ngff_zarr.to_multiscales(image, scale_factors=2, chunks=chunk_shape, method=downscale_method)
-        progress_signal(50)
-        store = FSStore(external_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
-        ngff_zarr.to_ngff_zarr(store, multiscales, overwrite=False)
-        # Write ilastik metadata
-        for image in multiscales.images:
-            # ngff-zarr does not record the storage path in the image object, so we have to look it up.
-            # The only way we can know that a metadata entry corresponds to this image is the scale factor.
-            dataset = None
-            for d in multiscales.metadata.datasets:
-                scale_transforms = [t for t in d.coordinateTransformations if t.type == "scale"]
-                dataset_scale_factors = scale_transforms[0].scale  # Should only be one
-                if all(image_scale_factor in dataset_scale_factors for image_scale_factor in image.scale.values()):
-                    dataset = d
-                    break
-            assert dataset is not None, f"Could not find metadata for image, must be an error in to_ngff_zarr. {image=}"
-            za = zarr.Array(store, path=dataset.path)
-            za.attrs["axistags"] = op_reorder.Output.meta.axistags.toJSON()
-            za.attrs["display_mode"] = image_source_slot.meta.display_mode
-            za.attrs["drange"] = image_source_slot.meta.get("drange")
+        ome_zarr_meta = _compute_and_write_scales(export_path, image_source, progress_signal)
+        progress_signal(95)
+        _write_ome_zarr_and_ilastik_metadata(
+            export_path,
+            ome_zarr_meta,
+            {
+                "axistags": op_reorder.Output.meta.axistags,
+                "display_mode": image_source_slot.meta.display_mode,
+                "drange": image_source_slot.meta.get("drange"),
+            },
+        )
     finally:
         op_reorder.cleanUp()

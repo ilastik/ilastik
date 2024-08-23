@@ -11,7 +11,7 @@ from lazyflow.utility import Timer
 from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr
 
 
-@pytest.fixture(params=["125MiB"])
+@pytest.fixture(params=["ilastik default order", "2d", "3d", "2dc", "125MiB"])
 def data_array(request) -> vigra.VigraArray:
     shapes = {
         "ilastik default order": (1, 128, 127, 10, 1),
@@ -41,7 +41,7 @@ def data_array(request) -> vigra.VigraArray:
     return data
 
 
-def test_write_new_ome_zarr_on_disc(tmp_path, graph, data_array):
+def test_metadata_integrity(tmp_path, graph, data_array):
     export_path = tmp_path / "test.zarr"
     source_op = OpArrayPiper(graph=graph)
     source_op.Input.setValue(data_array)
@@ -58,22 +58,25 @@ def test_write_new_ome_zarr_on_disc(tmp_path, graph, data_array):
     assert export_path.exists()
     store = zarr.open(str(export_path))
     assert "multiscales" in store.attrs
-    m = store.attrs["multiscales"][0]
-    assert all(key in m for key in ("datasets", "axes", "version"))
-    assert m["version"] == "0.4"
-    assert [a["name"] for a in m["axes"]] == list(expected_axiskeys)
+    written_meta = store.attrs["multiscales"][0]
+    assert all(key in written_meta for key in ("datasets", "axes", "version"))
+    assert written_meta["version"] == "0.4"
+    assert [a["name"] for a in written_meta["axes"]] == list(expected_axiskeys)
     tagged_shape = dict(zip(data_array.axistags.keys(), data_array.shape))
     original_shape_reordered = [tagged_shape[a] if a in tagged_shape else 1 for a in expected_axiskeys]
 
     discovered_keys = []
-    for i, dataset in enumerate(m["datasets"]):
+    for dataset in written_meta["datasets"]:
         assert dataset["path"] in store
         discovered_keys.append(dataset["path"])
         written_array = store[dataset["path"]]
         assert "axistags" in written_array.attrs, f"no axistags for {dataset['path']}"
         assert vigra.AxisTags.fromJSON(written_array.attrs["axistags"]) == vigra.defaultAxistags(expected_axiskeys)
-        reported_scaling = dataset["coordinateTransformations"][0]["scale"]
-        expected_shape = tuple(numpy.array(original_shape_reordered) / numpy.array(reported_scaling))
+        reported_scalings = [
+            transform for transform in dataset["coordinateTransformations"] if transform["type"] == "scale"
+        ]
+        assert len(reported_scalings) == 1
+        expected_shape = tuple(numpy.array(original_shape_reordered) // numpy.array(reported_scalings[0]["scale"]))
         assert written_array.shape == expected_shape
         assert numpy.count_nonzero(written_array) > numpy.prod(expected_shape) / 2, "did not write actual data"
     assert all([key in discovered_keys for key in store.keys()]), "store contains undocumented subpaths"
