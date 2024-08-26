@@ -87,10 +87,6 @@ class IlastikSection(_ConfigBase):
     ] = Field(default=False)
     """Enable legacy hbp mode. If checked, the VoxelSegmentationWorkflow will be visible."""
 
-    def model_validate(self, *args, **kwargs):
-        print(args, kwargs)
-        super().model_validate(*args, **kwargs)
-
 
 class LazyflowSection(_ConfigBase):
     threads: Annotated[

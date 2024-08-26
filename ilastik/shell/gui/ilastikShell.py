@@ -91,6 +91,7 @@ from ilastik.shell.headless.headlessShell import HeadlessShell
 from ilastik.shell.gui.aboutDialog import AboutDialog
 from ilastik.shell.gui.licenseDialog import LicenseDialog
 from ilastik.shell.gui.reportIssueDialog import ReportIssueDialog
+from ilastik.shell.gui.preferencesDialog import PreferencesDialog
 
 from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox, AppletBarManager
 from ilastik.widgets.filePathButton import FilePathButton
@@ -1011,6 +1012,10 @@ class IlastikShell(QMainWindow):
         logfile_path = ilastik.ilastik_logging.default_config.get_logfile_path()
         if logfile_path:
             menu.addAction("Open &Log Folder...").triggered.connect(open_dir_func(logfile_path))
+
+        menu.addSeparator()
+        preferencesAction = menu.addAction("&Preferences")
+        preferencesAction.triggered.connect(partial(PreferencesDialog.createAndShowModal, self))
 
         return menu
 
