@@ -1,7 +1,7 @@
 import dataclasses
 import logging
 from functools import partial
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional, OrderedDict
 
 import numpy
 import zarr
@@ -24,7 +24,7 @@ class ImageMetadata:
     translation: Dict[str, float]
 
 
-def _get_chunk_shape(image_source_slot) -> Tuple[int, ...]:
+def _get_chunk_shape(image_source_slot: Slot) -> Tuple[int, ...]:
     """Determine chunk shape for OME-Zarr storage based on image source slot.
     Chunk size is 1 for t and c, and determined by ilastik default rules for zyx, with a target of 512KB per chunk."""
     dtype = image_source_slot.meta.dtype
@@ -38,38 +38,72 @@ def _get_chunk_shape(image_source_slot) -> Tuple[int, ...]:
     return chunk_shape
 
 
-def _get_scalings(image_source_slot, chunk_shape: Tuple[int, ...]) -> List[Dict[str, float]]:
+def _get_scalings(
+    original_tagged_shape: OrderedDict[str, int], chunk_shape: Tuple[int, ...], min_length: Optional[int]
+) -> List[Dict[str, float]]:
     """
-    Computes scaling factors in the OME-Zarr sense.
-    Downscaling is done by a factor of 2 in all spatial dimensions until one dimension is smaller than half its chunk size.
-    Returns list of scaling factors by axis, starting with original scale.
-    Scaling is meant as a factor of the pixel unit, i.e. if axis is in nm, factor 2.0 means 2nm.
-    When applied to pixel shape, this means the factor is a divisor (scaled shape = original shape // factor).
+    Computes scaling "factors".
+    Technically they are divisors for the shape (factor 2.0 means half the shape).
+    Downscaling is done by a factor of 2 in all spatial dimensions until:
+    - the dataset would be less than 4 x chunk size (2MiB)
+    - an axis that started non-singleton would become singleton
+    - the largest axis would be smaller than min_length (if defined).
+    Returns list of scaling factor dicts by axis, starting with original scale.
+    The scaling level that meets one of the exit conditions is excluded.
+    Raises if more than 20 scales are computed (sanity).
     """
-    # Until ilastik handles pixel units, original scale is 1px
+    assert len(chunk_shape) == len(original_tagged_shape), "Chunk shape and tagged shape must have same length"
     spatial = ["z", "y", "x"]
-    original_scale = {a: 1.0 for a in image_source_slot.meta.getAxisKeys()}
-    return [original_scale]  # [{"z": 1., "y": 2., "x": 2.}, {"z": 1., "y": 4., "x": 4.}]
+    original_scale = {a: 1.0 for a in original_tagged_shape.keys()}
+    scalings = [original_scale]
+    sanity_limit = 20
+    for i in range(sanity_limit):
+        if i == sanity_limit:
+            raise ValueError(f"Too many scales computed, limit={sanity_limit}. Please report this to the developers.")
+        previous_scaling = scalings[-1]
+        new_scaling = {
+            a: s * 2.0 if a in spatial and original_tagged_shape[a] > 1 else 1.0 for a, s in previous_scaling.items()
+        }
+        new_shape = _get_scaled_slot_shape(original_tagged_shape, new_scaling)
+        if (
+            _is_less_than_4_chunks(new_shape, chunk_shape)
+            or _reduces_any_axis_to_singleton(new_shape, tuple(original_tagged_shape.values()))
+            or (min_length and max(new_shape) < min_length)
+        ):
+            break
+        scalings.append(new_scaling)
+    return scalings
+
+
+def _reduces_any_axis_to_singleton(new_shape: Tuple[int, ...], original_shape: Tuple[int, ...]):
+    return any(new <= 1 < orig for new, orig in zip(new_shape, original_shape))
+
+
+def _is_less_than_4_chunks(new_shape: Tuple[int, ...], chunk_shape: Tuple[int, ...]):
+    return numpy.prod(new_shape) < 4 * numpy.prod(chunk_shape)
+
+
+def _get_scaled_slot_shape(
+    original_tagged_shape: OrderedDict[str, int], new_scaling: Dict[str, float]
+) -> Tuple[int, ...]:
+    assert all(s > 0 for s in new_scaling.values()), f"Invalid scaling: {new_scaling}"
+    return tuple(int(s // new_scaling[a]) if a in new_scaling else s for a, s in original_tagged_shape.items())
 
 
 def _compute_and_write_scales(
-    export_path: str,
-    image_source_slot,
-    progress_signal: OrderedSignal,
+    export_path: str, image_source_slot: Slot, progress_signal: OrderedSignal, min_length: Optional[int]
 ) -> List[ImageMetadata]:
     pc = PathComponents(export_path)
     external_path = pc.externalPath
     internal_path = pc.internalPath
     store = FSStore(external_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
     chunk_shape = _get_chunk_shape(image_source_slot)
-    scalings = _get_scalings(image_source_slot, chunk_shape)
+    scalings = _get_scalings(image_source_slot.meta.getTaggedShape(), chunk_shape, min_length)
     meta = []
 
     for i, scaling in enumerate(scalings):
         scale_path = f"{internal_path}/s{i}" if internal_path else f"s{i}"
-        scaled_shape = (
-            int(s // scaling[a]) if a in scaling else s for a, s in image_source_slot.meta.getTaggedShape().items()
-        )
+        scaled_shape = _get_scaled_slot_shape(image_source_slot.meta.getTaggedShape(), scaling)
         zarray = zarr.creation.empty(
             scaled_shape, store=store, path=scale_path, chunks=chunk_shape, dtype=image_source_slot.meta.dtype
         )
@@ -128,6 +162,7 @@ def write_ome_zarr(
     export_path: str,
     image_source_slot: Slot,
     progress_signal: OrderedSignal,
+    min_length: Optional[int] = None,
 ):
     op_reorder = OpReorderAxes(parent=image_source_slot.operator)
     op_reorder.AxisOrder.setValue("tczyx")
@@ -135,7 +170,7 @@ def write_ome_zarr(
         op_reorder.Input.connect(image_source_slot)
         image_source = op_reorder.Output
         progress_signal(25)
-        ome_zarr_meta = _compute_and_write_scales(export_path, image_source, progress_signal)
+        ome_zarr_meta = _compute_and_write_scales(export_path, image_source, progress_signal, min_length)
         progress_signal(95)
         _write_ome_zarr_and_ilastik_metadata(
             export_path,
