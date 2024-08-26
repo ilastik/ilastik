@@ -504,7 +504,7 @@ class EdgeTrainingMixin:
             layers.append(layer)
             del layer
 
-        if ilastik_config.getboolean("ilastik", "debug"):
+        if ilastik_config.ilastik.debug:
             # Naive Segmentation
             if op.NaiveSegmentation.ready():
                 layer = self.createStandardLayerFromSlot(op.NaiveSegmentation)
@@ -549,7 +549,7 @@ class EdgeTrainingMixin:
             layers.append(layer)
             del layer
 
-        if ilastik_config.getboolean("ilastik", "debug"):
+        if ilastik_config.ilastik.debug:
             # Voxel data
             if op.VoxelData.ready():
                 layer = self._create_grayscale_layer_from_slot(op.VoxelData, op.VoxelData.meta.getTaggedShape()["c"])

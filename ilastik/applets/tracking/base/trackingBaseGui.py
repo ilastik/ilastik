@@ -273,7 +273,7 @@ class TrackingBaseGui(LayerViewerGui):
     def initAppletDrawerUi(self):
         self._drawer = self._loadUiFile()
 
-        if not ilastik_config.getboolean("ilastik", "debug"):
+        if not ilastik_config.ilastik.debug:
             self._drawer.exportLabel.hide()
             self._drawer.exportTifButton.hide()
 

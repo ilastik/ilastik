@@ -35,7 +35,7 @@ WORKFLOW_CLASSES += [PixelClassificationWorkflow]
 from .newAutocontext.newAutocontextWorkflow import AutocontextTwoStage
 
 WORKFLOW_CLASSES += [AutocontextTwoStage]
-if ilastik.config.cfg.getboolean("ilastik", "debug"):
+if ilastik.config.cfg.ilastik.debug:
     from .newAutocontext.newAutocontextWorkflow import AutocontextThreeStage, AutocontextFourStage
 
     WORKFLOW_CLASSES += [AutocontextThreeStage, AutocontextFourStage]
@@ -127,7 +127,7 @@ from .examples.dataConversion.dataConversionWorkflow import DataConversionWorkfl
 
 WORKFLOW_CLASSES += [DataConversionWorkflow]
 
-if ilastik.config.cfg.getboolean("ilastik", "hbp", fallback=False):
+if ilastik.config.cfg.ilastik.hbp:
     from .voxelSegmentation import VoxelSegmentationWorkflow
 
     WORKFLOW_CLASSES += [VoxelSegmentationWorkflow]
@@ -149,7 +149,7 @@ except ImportError as e:
     logger.warning("Failed to import NeuralNet workflow; check dependencies: " + str(e), exc_info=1)
 
 # Examples
-if ilastik.config.cfg.getboolean("ilastik", "debug"):
+if ilastik.config.cfg.ilastik.debug:
     from . import wsdt
     from .examples import layerViewer
     from .examples import thresholdMasking

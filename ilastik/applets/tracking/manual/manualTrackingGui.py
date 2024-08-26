@@ -61,7 +61,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
     def initAppletDrawerUi(self):
         self._drawer = self._loadUiFile()
 
-        if not ilastik_config.getboolean("ilastik", "debug"):
+        if not ilastik_config.ilastik.debug:
             self._drawer.exportTifButton.hide()
 
         self._drawer.newTrack.pressed.connect(self._onNewTrackPressed)
@@ -983,7 +983,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
 
     def _onExportDivisionsButtonPressed(self):
         options = QtWidgets.QFileDialog.Options()
-        if ilastik_config.getboolean("ilastik", "debug"):
+        if ilastik_config.ilastik.debug:
             options |= QtWidgets.QFileDialog.DontUseNativeDialog
 
         out_fn, _filter = QtWidgets.QFileDialog.getSaveFileName(
@@ -1013,7 +1013,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
 
     def _onExportMergersButtonPressed(self):
         options = QtWidgets.QFileDialog.Options()
-        if ilastik_config.getboolean("ilastik", "debug"):
+        if ilastik_config.ilastik.debug:
             options |= QtWidgets.QFileDialog.DontUseNativeDialog
 
         out_fn, _filter = QtWidgets.QFileDialog.getSaveFileName(
@@ -1046,7 +1046,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
         import h5py
 
         options = QtWidgets.QFileDialog.Options()
-        if ilastik_config.getboolean("ilastik", "debug"):
+        if ilastik_config.ilastik.debug:
             options |= QtWidgets.QFileDialog.DontUseNativeDialog
 
         directory = QtWidgets.QFileDialog.getExistingDirectory(
@@ -1142,9 +1142,9 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                         if len(div_at):
                             div_at = numpy.array(sorted(div_at, key=lambda a_entry: a_entry[0]))[::-1]
                             ds = tg.create_dataset("Splits", data=div_at[:, :-1], dtype=numpy.uint32, compression=1)
-                            ds.attrs[
-                                "Format"
-                            ] = "ancestor (previous file), descendant (current file), descendant (current file)"
+                            ds.attrs["Format"] = (
+                                "ancestor (previous file), descendant (current file), descendant (current file)"
+                            )
                             ds = tg.create_dataset(
                                 "Splits-Energy", data=div_at[:, -1], dtype=numpy.double, compression=1
                             )
@@ -1198,7 +1198,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
         import vigra
 
         options = QtWidgets.QFileDialog.Options()
-        if ilastik_config.getboolean("ilastik", "debug"):
+        if ilastik_config.ilastik.debug:
             options |= QtWidgets.QFileDialog.DontUseNativeDialog
 
         directory = QtWidgets.QFileDialog.getExistingDirectory(
@@ -1370,7 +1370,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
 
     def menus(self):
         menu_list = []
-        if ilastik_config.getboolean("ilastik", "debug"):
+        if ilastik_config.ilastik.debug:
             menu_list.append(QtWidgets.QMenu("&Export", self.volumeEditorWidget))
             menu_list[-1].addAction("Export Tracking Information").triggered.connect(self.show_export_dialog)
 

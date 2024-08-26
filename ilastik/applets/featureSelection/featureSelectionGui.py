@@ -110,7 +110,7 @@ class FeatureSelectionGui(LayerViewerGui):
         self.drawer = uic.loadUi(localDir + "/featureSelectionDrawer.ui")
         self.drawer.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
         self.drawer.UsePrecomputedFeaturesButton.clicked.connect(self.onUsePrecomputedFeaturesButtonClicked)
-        dbg = ilastik_config.getboolean("ilastik", "debug")
+        dbg = ilastik_config.ilastik.debug
         if not dbg:
             self.drawer.UsePrecomputedFeaturesButton.setHidden(True)
 
@@ -264,7 +264,7 @@ class FeatureSelectionGui(LayerViewerGui):
 
     def onUsePrecomputedFeaturesButtonClicked(self):
         options = QFileDialog.Options()
-        if ilastik_config.getboolean("ilastik", "debug"):
+        if ilastik_config.ilastik.debug:
             options |= QFileDialog.DontUseNativeDialog
 
         filenames, _filter = QFileDialog.getOpenFileNames(self, "Open Feature Files", ".", options=options)

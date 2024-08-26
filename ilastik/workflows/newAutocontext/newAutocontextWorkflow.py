@@ -709,7 +709,7 @@ class AutocontextTwoStage(NewAutocontextWorkflowBase):
 
 import ilastik.config
 
-if ilastik.config.cfg.getboolean("ilastik", "debug"):
+if ilastik.config.cfg.ilastik.debug:
 
     class AutocontextThreeStage(NewAutocontextWorkflowBase):
         workflowName = "AutocontextThreeStage"
@@ -721,7 +721,7 @@ if ilastik.config.cfg.getboolean("ilastik", "debug"):
 
 import ilastik.config
 
-if ilastik.config.cfg.getboolean("ilastik", "debug"):
+if ilastik.config.cfg.ilastik.debug:
 
     class AutocontextFourStage(NewAutocontextWorkflowBase):
         workflowName = "AutocontextFourStage"

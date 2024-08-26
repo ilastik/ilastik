@@ -179,7 +179,7 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
     faulthandler.enable()
     _init_excepthooks(parsed_args)
 
-    if ilastik_config.getboolean("ilastik", "debug"):
+    if ilastik_config.ilastik.debug:
         message = f"Starting ilastik in debug mode from {ilastik_dir}"
     else:
         message = f"Starting ilastik from {ilastik_dir}"
@@ -245,17 +245,17 @@ def _redirect_output(parsed_args):
 
 def _update_debug_mode(parsed_args):
     # Force debug mode if any of these flags are active.
-    if parsed_args.debug or ilastik_config.getboolean("ilastik", "debug"):
+    if parsed_args.debug or ilastik_config.ilastik.debug:
         # There are two places that debug mode can be checked.
         # Make sure both are set.
-        ilastik_config.set("ilastik", "debug", "true")
+        ilastik_config.ilastik.debug = True
         parsed_args.debug = True
 
 
 def _update_hbp_mode(parsed_args):
     """enable HBP-specific functionality"""
     if parsed_args.hbp:
-        ilastik_config.set("ilastik", "hbp", "true")
+        ilastik_config.ilastik.hbp = True
 
 
 def _update_tiktorch_executable_location(parsed_args):
@@ -283,7 +283,7 @@ def _init_logging(parsed_args):
     if parsed_args.process_name:
         process_name = parsed_args.process_name + " "
 
-    if ilastik_config.getboolean("ilastik", "debug") or parsed_args.headless:
+    if ilastik_config.ilastik.debug or parsed_args.headless:
         default_config.init(process_name, default_config.OutputMode.BOTH, logfile_path)
     else:
         default_config.init(process_name, default_config.OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, logfile_path)
@@ -332,10 +332,10 @@ def _prepare_lazyflow_config(parsed_args):
 
     # If not in env, check config file.
     if n_threads is None:
-        n_threads = ilastik_config.getint("lazyflow", "threads")
+        n_threads = ilastik_config.lazyflow.threads
         if n_threads == -1:
             n_threads = None
-    total_ram_mb = total_ram_mb or ilastik_config.getint("lazyflow", "total_ram_mb")
+    total_ram_mb = total_ram_mb or ilastik_config.lazyflow.total_ram_mb
 
     # Note that n_threads == 0 is valid and useful for debugging.
     if (n_threads is not None) or total_ram_mb or status_interval_secs:
@@ -424,7 +424,7 @@ def _init_excepthooks(parsed_args):
     if parsed_args.exit_on_failure:
         # Auto-exit on uncaught exceptions (useful for testing)
         ilastik.excepthooks.init_early_exit_excepthook()
-    elif not ilastik_config.getboolean("ilastik", "debug") and not parsed_args.headless:
+    elif not ilastik_config.ilastik.debug and not parsed_args.headless:
         # Show most uncaught exceptions to the user (default behavior)
         ilastik.excepthooks.init_user_mode_excepthook()
     else:

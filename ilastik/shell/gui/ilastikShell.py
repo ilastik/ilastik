@@ -352,20 +352,20 @@ class IlastikShell(QMainWindow):
 
         self.setAttribute(Qt.WA_AlwaysShowToolTips)
 
-        if ilastik_config.getboolean("ilastik", "debug") or "Ubuntu" in platform.platform():
+        if ilastik_config.ilastik.debug or "Ubuntu" in platform.platform():
             # Native menus are prettier, but aren't working on Ubuntu at this time (Qt 4.7, Ubuntu 11)
             # Navive menus also required for event-recorded tests
             self.menuBar().setNativeMenuBar(False)
 
         (self._projectMenu, self._shellActions) = self._createProjectMenu()
         self._settingsMenu = self._createSettingsMenu()
-        if ilastik_config.getboolean("ilastik", "debug"):
+        if ilastik_config.ilastik.debug:
             self._debugMenu = self._createDebugMenu()
         self._helpMenu = self._createHelpMenu()
         self.menuBar().addMenu(self._projectMenu)
         if self._settingsMenu is not None:
             self.menuBar().addMenu(self._settingsMenu)
-        if ilastik_config.getboolean("ilastik", "debug"):
+        if ilastik_config.ilastik.debug:
             self.menuBar().addMenu(self._debugMenu)
         self.menuBar().addMenu(self._helpMenu)
 
@@ -1284,7 +1284,7 @@ class IlastikShell(QMainWindow):
             if appletMenus is not None:
                 for m in appletMenus:
                     self.menuBar().addMenu(m)
-        if ilastik_config.getboolean("ilastik", "debug"):
+        if ilastik_config.ilastik.debug:
             self.menuBar().addMenu(self._debugMenu)
         self.menuBar().addMenu(self._helpMenu)
 
@@ -1386,7 +1386,7 @@ class IlastikShell(QMainWindow):
         fileSelected = False
         while not fileSelected:
             options = QFileDialog.Options()
-            if ilastik_config.getboolean("ilastik", "debug"):
+            if ilastik_config.ilastik.debug:
                 options |= QFileDialog.DontUseNativeDialog
                 # For testing, it's easier if we don't record the overwrite confirmation
                 options |= QFileDialog.DontConfirmOverwrite
@@ -1505,7 +1505,7 @@ class IlastikShell(QMainWindow):
         Return the path of the project the user wants to open (or None if he cancels).
         """
         options = QFileDialog.Options()
-        if ilastik_config.getboolean("ilastik", "debug"):
+        if ilastik_config.ilastik.debug:
             options = QFileDialog.Options(QFileDialog.DontUseNativeDialog)
 
         projectFilePath, _filter = QFileDialog.getOpenFileName(

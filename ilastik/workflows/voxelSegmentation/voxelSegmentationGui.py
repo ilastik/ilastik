@@ -253,7 +253,7 @@ class VoxelSegmentationGui(LabelingGui):
 
         advanced_menu.addMenu(labels_submenu)
 
-        if ilastik_config.getboolean("ilastik", "debug"):
+        if ilastik_config.ilastik.debug:
 
             def showBookmarksWindow():
                 self._bookmarks_window.show()
@@ -279,7 +279,7 @@ class VoxelSegmentationGui(LabelingGui):
 
         ActionInfo = ShortcutManager.ActionInfo
 
-        if ilastik_config.getboolean("ilastik", "debug"):
+        if ilastik_config.ilastik.debug:
 
             # Add the label projection layer.
             labelProjectionSlot = self.topLevelOperatorView.opLabelPipeline.opLabelArray.Projection2D
