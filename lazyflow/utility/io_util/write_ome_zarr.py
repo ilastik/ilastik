@@ -135,7 +135,7 @@ def _compute_and_write_scales(
 ) -> List[ImageMetadata]:
     pc = PathComponents(export_path)
     external_path = pc.externalPath
-    internal_path = pc.internalPath
+    internal_path = pc.internalPath.lstrip("/") if pc.internalPath else None
     store = FSStore(external_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
     chunk_shape = _get_chunk_shape(image_source_slot)
 
@@ -177,7 +177,7 @@ def _write_ome_zarr_and_ilastik_metadata(
 ):
     pc = PathComponents(export_path)
     external_path = pc.externalPath
-    multiscale_name = pc.internalPath
+    multiscale_name = pc.internalPath.lstrip("/") if pc.internalPath else None
     ilastik_signature = {"name": "ilastik", "version": ilastik_version, "ome_zarr_exporter_version": 1}
     axis_types = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
     axes = [{"name": tag.key, "type": axis_types[tag.key]} for tag in ilastik_meta["axistags"]]

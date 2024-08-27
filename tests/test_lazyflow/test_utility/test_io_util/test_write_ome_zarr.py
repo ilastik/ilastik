@@ -208,3 +208,22 @@ def test_blockwise_downsampling_edge_cases():
     assert scaled_block.shape == expected_scaled_block.shape
     numpy.testing.assert_array_equal(scaled_block, expected_scaled_block)
     assert scaled_roi == expected_scaled_roi
+
+
+def test_write_new_ome_zarr_with_name_on_disc(tmp_path, graph, data_array):
+    export_path = tmp_path / "test.zarr/predictions/first_attempt"
+    source_op = OpArrayPiper(graph=graph)
+    source_op.Input.setValue(data_array)
+    progress = mock.Mock()
+    write_ome_zarr(str(export_path), source_op.Output, progress)
+
+    assert export_path.exists()
+    store = zarr.open(str(tmp_path / "test.zarr"))
+    assert "multiscales" in store.attrs
+    m = store.attrs["multiscales"][0]
+    assert all(key in m for key in ("datasets", "axes", "version", "name"))
+    assert m["version"] == "0.4"
+    assert m["name"] == "predictions/first_attempt"
+    assert [a["name"] for a in m["axes"]] == ["t", "c", "z", "y", "x"]
+    assert all(dataset["path"] in store for dataset in m["datasets"])
+    assert all(dataset["path"][0] != "/" in store for dataset in m["datasets"])
