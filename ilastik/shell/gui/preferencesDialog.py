@@ -42,7 +42,8 @@ from PyQt5.QtWidgets import (
 )
 from pydantic import BaseModel
 
-from ilastik.config import IlastikPreferences, Increment, cfg, cfg_path
+from ilastik.config import IlastikPreferences, Increment
+import ilastik.config as iconfig
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,7 @@ class PreferencesModel(QObject):
         self.configChanged.emit(section, option)
 
     def resetToDefaults(self):
-        self.config = IlastikPreferences()
+        self.config = self.config.model_validate({})
         for section in self.getSections():
             for option in self.getOptions(section):
                 self.configChanged.emit(section, option)
@@ -81,12 +82,12 @@ class PreferencesModel(QObject):
         write config file, but only write values that are different to
         the default config.
         """
-        logger.info(f"writing config to {cfg_path}")
+        logger.info(f"writing config to {iconfig.cfg_path}")
 
-        pref_dict = self.config.dict(exclude_defaults=True)
+        pref_dict = self.config.model_dump(exclude_defaults=True)
         cf = configparser.ConfigParser()
         cf.read_dict(pref_dict)
-        with open(cfg_path, "w") as f:
+        with open(iconfig.cfg_path, "w") as f:
             cf.write(f)
 
 
@@ -184,7 +185,7 @@ class PreferencesDialog(QDialog):
 
     @classmethod
     def createAndShowModal(cls, parent=None):
-        model = PreferencesModel(cfg)
+        model = PreferencesModel(iconfig.cfg)
         dialog = cls(parent=parent, model=model)
         dialog.exec()
 

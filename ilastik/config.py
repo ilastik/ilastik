@@ -152,7 +152,7 @@ def _init(path: Union[str, bytes, os.PathLike]) -> None:
                 flat_dict[k] = v
             else:
                 flat_dict[k] = {sk: sv for sk, sv in v.items()}
-        print(flat_dict)
+
         config = IlastikPreferences.model_validate(flat_dict)
     else:
         config = IlastikPreferences()
