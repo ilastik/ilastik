@@ -1,5 +1,7 @@
 import dataclasses
 import logging
+import math
+from collections import OrderedDict as ODict
 from functools import partial
 from typing import List, Tuple, Dict, Optional, OrderedDict
 
@@ -16,15 +18,19 @@ from lazyflow.utility.io_util.OMEZarrStore import OME_ZARR_V_0_4_KWARGS
 
 logger = logging.getLogger(__name__)
 
+Shape = Tuple[int, ...]
+TaggedShape = OrderedDict[str, int]  # axis: size
+OrderedScaling = OrderedDict[str, float]  # axis: scale
+
 
 @dataclasses.dataclass
 class ImageMetadata:
     path: str
-    scale: Dict[str, float]
+    scale: OrderedScaling
     translation: Dict[str, float]
 
 
-def _get_chunk_shape(image_source_slot: Slot) -> Tuple[int, ...]:
+def _get_chunk_shape(image_source_slot: Slot) -> Shape:
     """Determine chunk shape for OME-Zarr storage based on image source slot.
     Chunk size is 1 for t and c, and determined by ilastik default rules for zyx, with a target of 512KB per chunk."""
     dtype = image_source_slot.meta.dtype
@@ -39,8 +45,8 @@ def _get_chunk_shape(image_source_slot: Slot) -> Tuple[int, ...]:
 
 
 def _get_scalings(
-    original_tagged_shape: OrderedDict[str, int], chunk_shape: Tuple[int, ...], min_length: Optional[int]
-) -> List[Dict[str, float]]:
+    original_tagged_shape: TaggedShape, chunk_shape: Shape, min_length: Optional[int]
+) -> List[OrderedScaling]:
     """
     Computes scaling "factors".
     Technically they are divisors for the shape (factor 2.0 means half the shape).
@@ -54,17 +60,19 @@ def _get_scalings(
     """
     assert len(chunk_shape) == len(original_tagged_shape), "Chunk shape and tagged shape must have same length"
     spatial = ["z", "y", "x"]
-    original_scale = {a: 1.0 for a in original_tagged_shape.keys()}
+    original_scale = ODict([(a, 1.0) for a in original_tagged_shape.keys()])
     scalings = [original_scale]
     sanity_limit = 20
     for i in range(sanity_limit):
         if i == sanity_limit:
             raise ValueError(f"Too many scales computed, limit={sanity_limit}. Please report this to the developers.")
-        previous_scaling = scalings[-1]
-        new_scaling = {
-            a: s * 2.0 if a in spatial and original_tagged_shape[a] > 1 else 1.0 for a, s in previous_scaling.items()
-        }
-        new_shape = _get_scaled_slot_shape(original_tagged_shape, new_scaling)
+        new_scaling = ODict(
+            [
+                (a, 2.0 ** (i + 1)) if a in spatial and original_tagged_shape[a] > 1 else (a, 1.0)
+                for a in original_tagged_shape.keys()
+            ]
+        )
+        new_shape = _scale_tagged_shape(original_tagged_shape, new_scaling)
         if (
             _is_less_than_4_chunks(new_shape, chunk_shape)
             or _reduces_any_axis_to_singleton(new_shape, tuple(original_tagged_shape.values()))
@@ -75,19 +83,51 @@ def _get_scalings(
     return scalings
 
 
-def _reduces_any_axis_to_singleton(new_shape: Tuple[int, ...], original_shape: Tuple[int, ...]):
+def _reduces_any_axis_to_singleton(new_shape: Shape, original_shape: Shape):
     return any(new <= 1 < orig for new, orig in zip(new_shape, original_shape))
 
 
-def _is_less_than_4_chunks(new_shape: Tuple[int, ...], chunk_shape: Tuple[int, ...]):
+def _is_less_than_4_chunks(new_shape: Shape, chunk_shape: Shape):
     return numpy.prod(new_shape) < 4 * numpy.prod(chunk_shape)
 
 
-def _get_scaled_slot_shape(
-    original_tagged_shape: OrderedDict[str, int], new_scaling: Dict[str, float]
-) -> Tuple[int, ...]:
-    assert all(s > 0 for s in new_scaling.values()), f"Invalid scaling: {new_scaling}"
-    return tuple(int(s // new_scaling[a]) if a in new_scaling else s for a, s in original_tagged_shape.items())
+def _scale_tagged_shape(original_tagged_shape: TaggedShape, scaling: OrderedScaling) -> Shape:
+    assert all(s > 0 for s in scaling.values()), f"Invalid scaling: {scaling}"
+    return tuple(
+        _round_like_scaling_method(s / scaling[a]) if a in scaling else s for a, s in original_tagged_shape.items()
+    )
+
+
+def _round_like_scaling_method(value: float) -> int:
+    """For calculating scaled shape after applying the scaling method.
+    Different scaling methods might round differently, so we need to match that."""
+    # Currently the only rounding method is 2-step indexing of numpy array, which always rounds up
+    # numpy.ones(7)[::2].shape == (4,)
+    return math.ceil(value)
+
+
+def _apply_scaling_method(
+    data: numpy.typing.NDArray, current_block_roi: Tuple[List[int], List[int]], scaling: OrderedScaling
+) -> Tuple[numpy.typing.NDArray, Tuple[List[int], List[int]]]:
+    """Downscale data by applying scaling factors to spatial dimensions.
+    Ordering of `data.shape`, scaling and current_block_roi must match.
+    Needs to know block roi to determine position of the scaled block within the total scaled image.
+    Returns scaled data and scaled roi because the roi must be adjusted for blockwise rounding.
+    """
+    scaling_int = [int(s) for s in scaling.values()]
+    starts = current_block_roi[0]
+    # Specific to downsampling, where scale = step size.
+    # When scale=5, the pixels that should be included in the final result are at 0, 5, 10, 15, ...
+    # If e.g. start=22 for this block, the block must internally add crop=3,
+    # so that it globally starts at 25: 22 + 3 = 25, where 3 = 5 - (22 % 5)
+    block_start_crops = [
+        (scale - (start % scale)) if start % scale > 0 else 0 for start, scale in zip(starts, scaling_int)
+    ]
+    crop_and_downsample_slicing = tuple(slice(crop, None, scale) for crop, scale in zip(block_start_crops, scaling_int))
+    scaled_starts = [_round_like_scaling_method(start / scale) for start, scale in zip(starts, scaling_int)]
+    scaled_stops = [_round_like_scaling_method(stop / scale) for stop, scale in zip(current_block_roi[1], scaling_int)]
+    scaled_roi = (scaled_starts, scaled_stops)
+    return data[crop_and_downsample_slicing], scaled_roi
 
 
 def _compute_and_write_scales(
@@ -98,29 +138,36 @@ def _compute_and_write_scales(
     internal_path = pc.internalPath
     store = FSStore(external_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
     chunk_shape = _get_chunk_shape(image_source_slot)
-    scalings = _get_scalings(image_source_slot.meta.getTaggedShape(), chunk_shape, min_length)
-    meta = []
 
+    scalings = _get_scalings(image_source_slot.meta.getTaggedShape(), chunk_shape, min_length)
+    zarrays = []
+    meta = []
     for i, scaling in enumerate(scalings):
         scale_path = f"{internal_path}/s{i}" if internal_path else f"s{i}"
-        scaled_shape = _get_scaled_slot_shape(image_source_slot.meta.getTaggedShape(), scaling)
-        zarray = zarr.creation.empty(
-            scaled_shape, store=store, path=scale_path, chunks=chunk_shape, dtype=image_source_slot.meta.dtype
+        scaled_shape = _scale_tagged_shape(image_source_slot.meta.getTaggedShape(), scaling)
+        zarrays.append(
+            zarr.creation.empty(
+                scaled_shape, store=store, path=scale_path, chunks=chunk_shape, dtype=image_source_slot.meta.dtype
+            )
         )
-
-        def scale_and_write_block(scale_index, scaling_, zarray_, roi, data):
-            if scale_index > 0:
-                logger.info(f"Scale {scale_index}: Applying {scaling_=} to {roi=}")
-            slicing = roiToSlice(*roi)
-            logger.info(f"Scale {scale_index}: Writing to {slicing=}: {data=}")
-            zarray_[slicing] = data
-
-        requester = BigRequestStreamer(image_source_slot, roiFromShape(image_source_slot.meta.shape))
-        requester.resultSignal.subscribe(partial(scale_and_write_block, i, scaling, zarray))
-        requester.progressSignal.subscribe(progress_signal)
-        requester.execute()
-
         meta.append(ImageMetadata(scale_path, scaling, {}))
+
+    def scale_and_write_block(scalings_, zarrays_, roi, data):
+        for i_, scaling_ in enumerate(scalings_):
+            if i_ > 0:
+                logger.info(f"Scale {i_}: Applying {scaling_=} to {roi=}")
+                scaled_data, scaled_roi = _apply_scaling_method(data, roi, scaling_)
+                slicing = roiToSlice(*scaled_roi)
+            else:
+                slicing = roiToSlice(*roi)
+                scaled_data = data
+            logger.info(f"Scale {i_}: Writing data with shape={scaled_data.shape} to {slicing=}")
+            zarrays_[i_][slicing] = scaled_data
+
+    requester = BigRequestStreamer(image_source_slot, roiFromShape(image_source_slot.meta.shape))
+    requester.resultSignal.subscribe(partial(scale_and_write_block, scalings, zarrays))
+    requester.progressSignal.subscribe(progress_signal)
+    requester.execute()
 
     return meta
 
