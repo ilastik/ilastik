@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -29,6 +29,7 @@ import warnings
 import numpy
 import h5py
 
+from ilastik.applets.dataExport import opDataExport
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
@@ -237,6 +238,10 @@ class ObjectClassificationWorkflow(Workflow):
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
+    @property
+    def _liveUpdateActive(self) -> bool:
+        return not self.objectClassificationApplet.topLevelOperator.FreezePredictions.value
+
     def prepareForNewLane(self, laneIndex):
         opObjectClassification = self.objectClassificationApplet.topLevelOperator
         if (
@@ -398,15 +403,18 @@ class ObjectClassificationWorkflow(Workflow):
         # blockwise classification
         # batch input
         # batch prediction export
+        live_update_active = self._liveUpdateActive
 
-        self._shell.setAppletEnabled(self.dataSelectionApplet, not self.batchProcessingApplet.busy)
+        self._shell.setAppletEnabled(
+            self.dataSelectionApplet, not self.batchProcessingApplet.busy and not live_update_active
+        )
 
         cumulated_readyness = upstream_ready
         cumulated_readyness &= (
             not self.batchProcessingApplet.busy
         )  # Nothing can be touched while batch mode is executing.
 
-        self._shell.setAppletEnabled(self.objectExtractionApplet, cumulated_readyness)
+        self._shell.setAppletEnabled(self.objectExtractionApplet, cumulated_readyness and not live_update_active)
 
         object_features_ready = (
             self.objectExtractionApplet.topLevelOperator.Features.ready()
@@ -417,24 +425,34 @@ class ObjectClassificationWorkflow(Workflow):
 
         opObjectClassification = self.objectClassificationApplet.topLevelOperator
         invalid_classifier = (
-            opObjectClassification.classifier_cache.fixAtCurrent.value
+            not live_update_active
             and opObjectClassification.classifier_cache.Output.ready()
             and opObjectClassification.classifier_cache.Output.value is None
         )
 
-        invalid_classifier |= not opObjectClassification.NumLabels.ready() or opObjectClassification.NumLabels.value < 2
+        opDataExport = self.dataExportApplet.topLevelOperator
 
-        object_classification_ready = object_features_ready and not invalid_classifier
+        predictions_ready = (
+            object_features_ready
+            and not invalid_classifier
+            and len(opDataExport.Inputs) > 0
+            and opDataExport.Inputs[0][self.ExportNames.OBJECT_PREDICTIONS].ready()
+            and (TinyVector(opDataExport.Inputs[0][self.ExportNames.OBJECT_PREDICTIONS].meta.shape) > 0).all()
+        )
+
+        object_classification_ready = predictions_ready and not invalid_classifier
 
         cumulated_readyness = cumulated_readyness and object_classification_ready
-        self._shell.setAppletEnabled(self.dataExportApplet, cumulated_readyness)
+        self._shell.setAppletEnabled(self.dataExportApplet, cumulated_readyness and not live_update_active)
 
         if self.batch:
             object_prediction_ready = True  # TODO is that so?
             cumulated_readyness = cumulated_readyness and object_prediction_ready
 
-            self._shell.setAppletEnabled(self.blockwiseObjectClassificationApplet, cumulated_readyness)
-            self._shell.setAppletEnabled(self.batchProcessingApplet, cumulated_readyness)
+            self._shell.setAppletEnabled(
+                self.blockwiseObjectClassificationApplet, cumulated_readyness and not live_update_active
+            )
+            self._shell.setAppletEnabled(self.batchProcessingApplet, cumulated_readyness and not live_update_active)
 
         # Lastly, check for certain "busy" conditions, during which we
         # should prevent the shell from closing the project.
@@ -817,12 +835,14 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
         Overridden from Workflow base class
         Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
         """
+        live_update_active = self._liveUpdateActive
+
         input_ready = self._inputReady()
         cumulated_readyness = input_ready
         cumulated_readyness &= (
             not self.batchProcessingApplet.busy
         )  # Nothing can be touched while batch mode is executing.
-        self._shell.setAppletEnabled(self.thresholdingApplet, cumulated_readyness)
+        self._shell.setAppletEnabled(self.thresholdingApplet, cumulated_readyness and not live_update_active)
 
         thresholding_ready = True  # is that so?
         cumulated_readyness = cumulated_readyness and thresholding_ready
