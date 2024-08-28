@@ -54,11 +54,6 @@ output_format: compressed hdf5
 [lazyflow]
 threads: -1
 total_ram_mb: 0
-
-[hbp]
-token_url: https://web.ilastik.org/token/
-upload_file_url: https://web.ilastik.org/v1/files/
-create_project_url: https://web.ilastik.org/v1/batch/projects/
 """
 
 
