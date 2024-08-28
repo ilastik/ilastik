@@ -1,8 +1,9 @@
-from builtins import range
 import os
 import numpy as np
 import h5py
 from functools import partial
+
+import vigra
 from lazyflow.request import Request, RequestPool
 
 from ilastik.plugins import TrackingExportFormatPlugin
@@ -50,7 +51,7 @@ else:
                 seg = dest_file.create_group("segmentation")
                 seg.create_dataset("labels", data=labelImage, compression="gzip")
                 meta = dest_file.create_group("objects/meta")
-                ids = np.unique(labelImage)
+                ids = vigra.analysis.unique(labelImage)
                 ids = ids[ids > 0]
                 valid = np.ones(ids.shape)
                 meta.create_dataset("id", data=ids, dtype=np.uint32)
@@ -73,9 +74,9 @@ else:
 
                 if div is not None and len(div) > 0:
                     ds = tg.create_dataset("Splits", data=div, dtype=np.int32)
-                    ds.attrs[
-                        "Format"
-                    ] = "ancestor (previous file), descendant (current file), descendant (current file)"
+                    ds.attrs["Format"] = (
+                        "ancestor (previous file), descendant (current file), descendant (current file)"
+                    )
 
                 if mer is not None and len(mer) > 0:
                     ds = tg.create_dataset("Mergers", data=mer, dtype=np.int32)
@@ -95,7 +96,7 @@ else:
         exportsToFile = False
 
         def checkFilesExist(self, filename):
-            """ Check whether the files we want to export are already present """
+            """Check whether the files we want to export are already present"""
             return os.path.exists(filename)
 
         def export(self, filename, hypothesesGraph, pluginExportContext):

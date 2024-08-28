@@ -29,10 +29,11 @@ Note: This script does not make any attempt to be efficient with RAM usage.
       (The entire label volume is loaded at once.)  As a result, each image volume you
       train with must be significantly smaller than the available RAM on your machine.
 """
-from __future__ import print_function
-from builtins import range
+
 import os
 import numpy as np
+import vigra
+
 
 def main():
     # Cmd-line args to this script.
@@ -204,7 +205,7 @@ def generate_trained_project_file(
             label_volume = label_volume[..., None]
 
         # Auto-calculate the max label value
-        label_classes.update(np.unique(label_volume))
+        label_classes.update(vigra.analysis.unique(label_volume))
 
         print("Applying label volume to lane #{}".format(lane))
         entire_volume_slicing = roiToSlice(*roiFromShape(label_volume.shape))

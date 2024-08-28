@@ -31,6 +31,7 @@ from PyQt5.QtWidgets import QApplication
 
 import h5py
 import numpy
+import vigra
 
 from ilastik.workflows import ObjectClassificationWorkflowPrediction
 from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
@@ -205,7 +206,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             # now get the object count
             n_objects_expected = 23  # including the background object
             output = op_threshold.Output[:].wait()
-            n_objects = len(numpy.unique(output))
+            n_objects = len(vigra.analysis.unique(output))
             assert (
                 n_objects == n_objects_expected
             ), f"Number of objects mismatch, expected {n_objects_expected}, got {n_objects}"
