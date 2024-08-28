@@ -5,13 +5,11 @@ import shutil
 import sys
 import tempfile
 import threading
-import time
 import zipfile
 from pathlib import Path
-from typing import Optional
 
 import h5py
-import numpy
+import vigra
 import pytest
 from elf.evaluation import mean_segmentation_accuracy
 from PyQt5.QtCore import QTimer
@@ -261,7 +259,7 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
             )
             mc_segmentation = opMulticut.Output[:].wait()
 
-            assert numpy.unique(mc_segmentation).shape == (5,)
+            assert vigra.analysis.unique(mc_segmentation).shape == (5,)
             assert mean_segmentation_accuracy(mc_segmentation, mc_segmentation_reference) > 0.98
 
             # Save the project
@@ -458,7 +456,7 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
             )
             mc_segmentation = opMulticut.Output[:].wait()
 
-            assert numpy.unique(mc_segmentation).shape == (3,)
+            assert vigra.analysis.unique(mc_segmentation).shape == (3,)
             assert mean_segmentation_accuracy(mc_segmentation, mc_segmentation_reference) > 0.98
 
             # Save the project

@@ -3,6 +3,7 @@ import logging
 import time
 
 from lazyflow.request import Request, RequestPool
+from lazyflow.utility import vigra_bincount
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -42,7 +43,7 @@ def get_supervoxel_labels(labels, supervoxel_mask):
     supervoxel_labels = np.ndarray((N_supervoxels,))
 
     for supervoxel in range(N_supervoxels):
-        counts = np.bincount(labels[supervoxel_mask == supervoxel].ravel())
+        counts = vigra_bincount(labels[supervoxel_mask == supervoxel].ravel())
 
         # Little trick to avoid labelling a supervoxel as unlabelled if only a small part of it has been labelled
         if len(counts) == 1:  # or max(counts[1:]) == 0:
@@ -68,7 +69,7 @@ def slic_to_mask(slic_segmentation, supervoxel_values):
         nonlocal slices_out
         shape = slice_.shape + (supervoxel_values.shape[-1],)
         slice_out = np.zeros(shape, dtype=supervoxel_values.dtype)
-        for (i, v) in enumerate(supervoxel_values):
+        for i, v in enumerate(supervoxel_values):
             slice_out[slice_ == i, :] = v[:]
         slices_out.append(slice_out)
 

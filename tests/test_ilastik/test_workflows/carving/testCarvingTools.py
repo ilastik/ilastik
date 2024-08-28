@@ -1,6 +1,7 @@
 import unittest
 import numpy
 import fastfilters
+import vigra
 
 
 class TestCarvingTools(unittest.TestCase):
@@ -61,7 +62,7 @@ class TestCarvingTools(unittest.TestCase):
         x = numpy.random.rand(*shape).astype("float32")
         seg, _ = watershed_and_agglomerate(x, max_workers=4)
         # we check that there is a reasonable number of unique ids
-        ids = numpy.unique(seg)
+        ids = vigra.analysis.unique(seg)
         assert len(ids) > 5, f"Expected non trivial number of unique ids, got {len(ids)}"
         assert ids[0] == 1, f"Expected ids to start at 1, got {ids[0]}"
 

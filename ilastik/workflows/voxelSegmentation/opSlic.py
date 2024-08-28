@@ -6,6 +6,7 @@ a cache can be used to force every request to be taken from a global result.
 See the __main__ section, below.
 It also includes a brief demonstration of lazyflow's OperatorWrapper mechanism.
 """
+
 import logging
 
 import numpy
@@ -43,7 +44,7 @@ class OpSlic(Operator):
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
-        self.Output.meta.dtype = numpy.uint16
+        self.Output.meta.dtype = numpy.uint32
 
         tagged_shape = self.Input.meta.getTaggedShape()
         assert "c" in tagged_shape, "We assume the image has an explicit channel axis."
@@ -91,7 +92,7 @@ class OpSlic(Operator):
         # (not, say 3 unrelated image features).
 
         # slic_sp has no channel axis, so insert that axis before copying to 'result'
-        result[:] = slic_sp[..., None]
+        result[:] = slic_sp[..., None].astype("uint32")
         # import IPython; IPython.embed()
 
         return result

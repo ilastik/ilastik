@@ -26,6 +26,7 @@ from functools import partial
 from collections import defaultdict
 from typing import List
 import numpy
+import vigra
 
 # PyQt
 from PyQt5 import uic
@@ -523,7 +524,7 @@ class CarvingGui(LabelingGui):
             try:
                 for obj, obj_path, obj_n in zip(object_names, obj_filepaths, range(n_objects)):
                     object_volume = get_label_volume_from_mst(mst, obj)
-                    unique_ids = len(numpy.unique(object_volume))
+                    unique_ids = len(vigra.analysis.unique(object_volume))
 
                     if unique_ids <= 1:
                         logger.info(f"No voxels found for {obj}, skipping")

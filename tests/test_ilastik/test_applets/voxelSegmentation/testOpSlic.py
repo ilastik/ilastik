@@ -28,7 +28,7 @@ def test_slic(input_data, graph):
         slic_pipeline.add(OpSlic, NumSegments=8)
         seg = slic_pipeline[-1].outputs["Output"][:].wait()
 
-    assert len(np.unique(seg)) == 8
+    assert len(vigra.analysis.unique(seg)) == 8
 
     assert np.all(seg[:10, :11, :13, 0] == 1)
     assert np.all(seg[:10, :11, 13:, 0] == 2)

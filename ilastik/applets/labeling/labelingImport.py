@@ -135,7 +135,7 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
             readData = req.result
 
             # Can't use return_counts feature because that requires numpy >= 1.9
-            # unique_read_labels, readLabelCounts = numpy.unique(readData, return_counts=True)
+            # unique_read_labels, readLabelCounts = vigra.analysis.unique(readData, return_counts=True)
 
             # This does the same as the above, albeit slower, and probably with more ram.
             bincounts = chunked_bincount(readData)
@@ -551,14 +551,14 @@ class LabelImportOptionsDlg(QDialog):
     def _updatePosition(self):
         writeAxes = self._writeSeedsSlot.meta.getAxisKeys()
 
-        for (k, v) in list(self._insert_position_boxes.items()):
+        for k, v in list(self._insert_position_boxes.items()):
             insertBox, _ = v
             self.imageOffsets[writeAxes.index(k)] = insertBox.value()
 
     def _updateMappingEnabled(self):
         max_labels, _ = self._labelInfo
 
-        for (k, v) in list(self._insert_mapping_boxes.items()):
+        for k, v in list(self._insert_mapping_boxes.items()):
             enabledBox, mapToBox = v
             enabled = enabledBox.isChecked()
             if enabled:
@@ -580,6 +580,6 @@ class LabelImportOptionsDlg(QDialog):
         self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(enableOk)
 
     def _updateMapping(self):
-        for (k, v) in list(self._insert_mapping_boxes.items()):
+        for k, v in list(self._insert_mapping_boxes.items()):
             _, mapToBox = v
             self.labelMapping[k] = mapToBox.value()

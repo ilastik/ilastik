@@ -114,7 +114,9 @@ class TestConservationTrackingHeadless(object):
             shape = f["exported_data"].shape
             assert shape == self.EXPECTED_SHAPE, "Exported data has wrong shape: {}".format(shape)
             data = f["exported_data"][()]
-            assert len(np.unique(data)) == self.EXPECTED_NUM_LINEAGES + 1  # background also shows up, hence + 1
+            assert (
+                len(vigra.analysis.unique(data)) == self.EXPECTED_NUM_LINEAGES + 1
+            )  # background also shows up, hence + 1
 
     @timeLogged(logger)
     def testCSVExport(self):
@@ -178,7 +180,7 @@ class TestConservationTrackingHeadless(object):
         # check that ids are starting at 1 and are consecutive
         assert np.all(np.sort(a[:, 0]) == np.arange(1, 6))
         # check that parent IDs are present in tracks or zero
-        parents = np.unique(a[:, 3])
+        parents = vigra.analysis.unique(a[:, 3])
         for p in parents:
             assert p == 0 or p in a[:, 0], "Parent is invalid track ID"
 
@@ -191,7 +193,7 @@ class TestConservationTrackingHeadless(object):
         # check that the first frame contains consecutive trackIDs starting at 1, where 0 is background
         imagePath = os.path.join(self.input_data_path, "smallVideo-data_CellTrackingChallenge", "mask000.tif")
         image = vigra.impex.readImage(imagePath, dtype=np.uint32)
-        assert set(np.unique(image)) == set(
+        assert set(vigra.analysis.unique(image)) == set(
             range(image.max() + 1)
         ), "First frame does not contain consecutive IDs starting at 1!"
 

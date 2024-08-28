@@ -55,7 +55,7 @@ class TestOpLabeledThreshold(object):
 
         result = op.Output[:].wait()
 
-        label_values = np.unique(result)[1:]
+        label_values = vigra.analysis.unique(result)[1:]
         assert len(label_values) == 1
 
         expected_result = np.where(data, label_values[0], 0)
@@ -81,10 +81,10 @@ class TestOpLabeledThreshold(object):
         result_yx = result[0, :, :, 0, 0]
         # print result_yx
 
-        label_values = np.unique(result)[1:]
+        label_values = vigra.analysis.unique(result)[1:]
         assert len(label_values) == 2
-        assert len(np.unique(result_yx[1:6, 1:5])) == 1
-        assert len(np.unique(result_yx[7:12, 1:5])) == 1
+        assert len(vigra.analysis.unique(result_yx[1:6, 1:5])) == 1
+        assert len(vigra.analysis.unique(result_yx[7:12, 1:5])) == 1
 
     def test_graphcut(self):
         if _has_graphcut:
@@ -106,7 +106,9 @@ class TestOpLabeledThreshold(object):
             result_yx = result[0, :, :, 0, 0]
             # print result_yx
 
-            label_values = np.unique(result)[1:]
+            label_values = vigra.analysis.unique(result)[1:]
             assert len(label_values) == 3
-            assert len(np.unique(result_yx[1:12, 1:5])) == 1  # Same as 'simple'
-            assert len(np.unique(result_yx[7:10, 6:9])) == 1  # Almost same as simple, but with the hole filled in.
+            assert len(vigra.analysis.unique(result_yx[1:12, 1:5])) == 1  # Same as 'simple'
+            assert (
+                len(vigra.analysis.unique(result_yx[7:10, 6:9])) == 1
+            )  # Almost same as simple, but with the hole filled in.

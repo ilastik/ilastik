@@ -33,6 +33,7 @@ from lazyflow.roi import roiToSlice
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
+from lazyflow.utility.alternative_numpy_functions import vigra_bincount
 
 from .classifierOperators import OpTrainSupervoxelClassifierBlocked, OpSupervoxelClassifierPredict
 from .utils import timeit
@@ -443,7 +444,7 @@ class OpLabelPipeline(Operator):
             tagged_shape["t"] = 1
 
         # Aim for blocks that are roughly 20px
-        block_shape = determineBlockShape(list(tagged_shape.values()), 40 ** 3)
+        block_shape = determineBlockShape(list(tagged_shape.values()), 40**3)
         self.opLabelArray.blockShape.setValue(block_shape)
 
     def setInSlot(self, slot, subindex, roi, value):
@@ -509,7 +510,7 @@ class OpSupervoxelFeaturesAndLabels(Operator):
                 updated_labels = self.getUpdatedSupervoxelLabels(self.dirtySlices)
                 self.dirtySlices = []
 
-            for (supervoxel, label) in updated_labels.items():
+            for supervoxel, label in updated_labels.items():
                 self.supervoxelLabelsCache[supervoxel] = label
 
             return self.supervoxelLabelsCache
@@ -534,7 +535,7 @@ class OpSupervoxelFeaturesAndLabels(Operator):
             nonlocal supervoxel_labels_dicts
             supervoxel_labels = {}
             for supervoxel in supervoxels:
-                counts = np.bincount(labels[supervoxel_mask == supervoxel].ravel())
+                counts = vigra_bincount(labels[supervoxel_mask == supervoxel].ravel())
 
                 # Little trick to avoid labelling a supervoxel as unlabelled if only a small part of it has been labelled
                 if len(counts) == 1:  # or max(counts[1:]) == 0:
@@ -548,7 +549,7 @@ class OpSupervoxelFeaturesAndLabels(Operator):
             supervoxel_labels_dicts.append(supervoxel_labels)
 
         pool = RequestPool()
-        supervoxels_list = np.unique(supervoxel_mask)
+        supervoxels_list = vigra.analysis.unique(supervoxel_mask)
         # supervoxel_labels = np.concatenate(pool.map(computeLabel, np.array_split(supervoxels_list, num_cores)))
         supervoxel_labels = {}
         num_workers = Request.global_thread_pool.num_workers
