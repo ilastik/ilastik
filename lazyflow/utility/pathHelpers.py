@@ -43,6 +43,7 @@ class PathComponents(object):
     HDF5_EXTS = [".ilp", ".h5", ".hdf5"]
     N5_EXTS = [".n5"]
     NPZ_EXTS = [".npz"]
+    ZARR_EXTS = [".zarr"]
 
     def __init__(self, totalPath, cwd=None):
         """
@@ -78,7 +79,7 @@ class PathComponents(object):
         totalPath = totalPath.replace("\\", "/")
 
         # For hdf5/n5 paths, split into external, extension, and internal paths
-        for x in self.HDF5_EXTS + self.NPZ_EXTS + self.N5_EXTS:
+        for x in self.HDF5_EXTS + self.NPZ_EXTS + self.N5_EXTS + self.ZARR_EXTS:
             if totalPath.find(x) > extIndex:
                 extIndex = totalPath.find(x)
                 ext = x
@@ -370,7 +371,7 @@ def lsH5N5(h5N5FileObject, minShape=2, maxShape=5):
             return
         if len(obj.shape) not in range(minShape, maxShape + 1):
             return
-        if isinstance(h5N5FileObject, z5py.N5File):
+        if isinstance(h5N5FileObject, (z5py.N5File, z5py.ZarrFile)):
             # make sure we get a path with forward slashes on windows
             objectName = pathlib.Path(objectName).as_posix()
         listOfDatasets.append({"name": objectName, "object": obj})
@@ -400,7 +401,7 @@ def globH5N5(fileObject, globString):
           matches occurred.
         - None if fileObject is not a h5 or n5 file object
     """
-    if isinstance(fileObject, (h5py.File, z5py.N5File)):
+    if isinstance(fileObject, (h5py.File, z5py.N5File, z5py.ZarrFile)):
         pathlist = [x["name"] for x in lsH5N5(fileObject)]
     else:
         return None

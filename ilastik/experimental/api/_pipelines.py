@@ -52,6 +52,21 @@ class PixelClassificationPipeline:
     prob_maps = pipeline.get_probabilities(img)
     ```
 
+    Example using an OME-Zarr dataset stored remotely:
+    ```Python
+    import xarray
+    from ilastik.experimental.api import PixelClassificationPipeline
+    from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore
+
+    store = OMEZarrStore("<https://example.com/data.zarr>")
+    zarray = store.get_zarr_array("<scale name>")
+    dims = tuple(store.axistags.keys())
+
+    img = xarray.DataArray(zarray, dims=dims)  # downloads the entire image
+    pipeline = PixelClassificationPipeline.from_ilp_file("<path/to/project.ilp>")
+
+    prob_maps = pipeline.get_probabilities(img)
+    ```
     """
 
     @classmethod
