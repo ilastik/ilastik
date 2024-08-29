@@ -9,52 +9,28 @@ import zarr
 
 from lazyflow.operators import OpArrayPiper
 from lazyflow.roi import roiToSlice
-from lazyflow.utility import Timer
 from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr, _get_scalings, _apply_scaling_method
 
 
-@pytest.fixture(params=["ilastik default order", "2d", "3d", "2dc", "125MiB"])
-def data_array(request) -> vigra.VigraArray:
-    shapes = {
-        "ilastik default order": (1, 128, 127, 10, 1),
-        "2d": (256, 255),
-        "3d": (10, 126, 125),
-        "2dc": (124, 123, 3),
-        "125MiB": (30, 1024, 1024),  # 4 bytes per pixel
-        "500MiB": (125, 1024, 1024),  # 4 bytes per pixel
-        "1GiB": (256, 1024, 1024),
-        "3GiB": (768, 1024, 1024),
-        "6GiB": (768, 2048, 1024),
-    }
-    axis_order = {
-        "ilastik default order": "txyzc",
-        "2d": "yx",
-        "3d": "zyx",
-        "2dc": "yxc",
-        "125MiB": "zyx",
-        "500MiB": "zyx",
-        "1GiB": "zyx",
-        "3GiB": "zyx",
-        "6GiB": "zyx",
-    }
-    shape = shapes[request.param]
-    data = vigra.VigraArray(shape, axistags=vigra.defaultAxistags(axis_order[request.param]))
-    data[...] = numpy.indices(shape).sum(0)
-    return data
-
-
-def test_metadata_integrity(tmp_path, graph, data_array):
+@pytest.mark.parametrize(
+    "shape, axes",
+    [
+        ((1, 128, 127, 10, 1), "txyzc"),  # ilastik default order
+        ((1, 1, 3, 26, 25), "tczyx"),  # OME-Zarr convention
+        ((256, 255), "yx"),
+        ((10, 126, 125), "zyx"),
+        ((124, 123, 3), "yxc"),
+    ],
+)
+def test_metadata_integrity(tmp_path, graph, shape, axes):
+    data_array = vigra.VigraArray(shape, axistags=vigra.defaultAxistags(axes))
+    data_array[...] = numpy.indices(shape).sum(0)
     export_path = tmp_path / "test.zarr"
     source_op = OpArrayPiper(graph=graph)
     source_op.Input.setValue(data_array)
     progress = mock.Mock()
-    with Timer() as timer:
-        write_ome_zarr(str(export_path), source_op.Output, progress)
-        duration = timer.seconds()
 
-    # Manual benchmarking
-    raw_size = math.prod(data_array.shape) * data_array.dtype.type().nbytes
-    print(";" f"{data_array.shape};" f"{data_array.dtype};" f"{raw_size};" f"{duration};" f"{duration / raw_size};")
+    write_ome_zarr(str(export_path), source_op.Output, progress)
 
     expected_axiskeys = "tczyx"
     assert export_path.exists()
@@ -142,13 +118,8 @@ def test_downscaling(tmp_path, graph, data_shape, computation_block_shape, expec
     # but computations and scaling are broken up into blocks.
     source_op.Output.meta.max_blockshape = computation_block_shape
     progress = mock.Mock()
-    with Timer() as timer:
-        write_ome_zarr(str(export_path), source_op.Output, progress)
-        duration = timer.seconds()
 
-    # Manual benchmarking
-    raw_size = math.prod(data.shape) * data.dtype.type().nbytes
-    print(";" f"{data.shape};" f"{data.dtype};" f"{raw_size};" f"{duration};" f"{duration / raw_size};")
+    write_ome_zarr(str(export_path), source_op.Output, progress)
 
     store = zarr.open(str(export_path))
     meta = store.attrs["multiscales"][0]
@@ -210,7 +181,9 @@ def test_blockwise_downsampling_edge_cases():
     assert scaled_roi == expected_scaled_roi
 
 
-def test_write_new_ome_zarr_with_name_on_disc(tmp_path, graph, data_array):
+def test_write_new_ome_zarr_with_name_on_disc(tmp_path, graph):
+    data_array = vigra.VigraArray((2, 2, 5, 5, 5), axistags=vigra.defaultAxistags("tczyx"))
+    data_array[...] = numpy.indices((2, 2, 5, 5, 5)).sum(0)
     export_path = tmp_path / "test.zarr/predictions/first_attempt"
     source_op = OpArrayPiper(graph=graph)
     source_op.Input.setValue(data_array)
