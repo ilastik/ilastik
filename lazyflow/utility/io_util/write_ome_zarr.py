@@ -22,6 +22,8 @@ Shape = Tuple[int, ...]
 TaggedShape = OrderedDict[str, int]  # axis: size
 OrderedScaling = OrderedDict[str, float]  # axis: scale
 
+SPATIAL_AXES = ["z", "y", "x"]
+
 
 @dataclasses.dataclass
 class ImageMetadata:
@@ -59,7 +61,6 @@ def _get_scalings(
     Raises if more than 20 scales are computed (sanity).
     """
     assert len(chunk_shape) == len(original_tagged_shape), "Chunk shape and tagged shape must have same length"
-    spatial = ["z", "y", "x"]
     original_scale = ODict([(a, 1.0) for a in original_tagged_shape.keys()])
     scalings = [original_scale]
     sanity_limit = 20
@@ -68,15 +69,15 @@ def _get_scalings(
             raise ValueError(f"Too many scales computed, limit={sanity_limit}. Please report this to the developers.")
         new_scaling = ODict(
             [
-                (a, 2.0 ** (i + 1)) if a in spatial and original_tagged_shape[a] > 1 else (a, 1.0)
+                (a, 2.0 ** (i + 1)) if a in SPATIAL_AXES and original_tagged_shape[a] > 1 else (a, 1.0)
                 for a in original_tagged_shape.keys()
             ]
         )
         new_shape = _scale_tagged_shape(original_tagged_shape, new_scaling)
         if (
             _is_less_than_4_chunks(new_shape, chunk_shape)
-            or _reduces_any_axis_to_singleton(new_shape, tuple(original_tagged_shape.values()))
-            or (min_length and max(new_shape) < min_length)
+            or _reduces_any_axis_to_singleton(new_shape.values(), original_tagged_shape.values())
+            or (min_length and max(new_shape.values()) < min_length)
         ):
             break
         scalings.append(new_scaling)
@@ -87,14 +88,18 @@ def _reduces_any_axis_to_singleton(new_shape: Shape, original_shape: Shape):
     return any(new <= 1 < orig for new, orig in zip(new_shape, original_shape))
 
 
-def _is_less_than_4_chunks(new_shape: Shape, chunk_shape: Shape):
-    return numpy.prod(new_shape) < 4 * numpy.prod(chunk_shape)
+def _is_less_than_4_chunks(new_shape: TaggedShape, chunk_shape: Shape):
+    spatial_shape = [s for a, s in new_shape.items() if a in SPATIAL_AXES]
+    return numpy.prod(spatial_shape) < 4 * numpy.prod(chunk_shape)
 
 
-def _scale_tagged_shape(original_tagged_shape: TaggedShape, scaling: OrderedScaling) -> Shape:
+def _scale_tagged_shape(original_tagged_shape: TaggedShape, scaling: OrderedScaling) -> TaggedShape:
     assert all(s > 0 for s in scaling.values()), f"Invalid scaling: {scaling}"
-    return tuple(
-        _round_like_scaling_method(s / scaling[a]) if a in scaling else s for a, s in original_tagged_shape.items()
+    return ODict(
+        [
+            (a, _round_like_scaling_method(s / scaling[a]) if a in scaling else s)
+            for a, s in original_tagged_shape.items()
+        ]
     )
 
 
@@ -144,7 +149,7 @@ def _compute_and_write_scales(
     meta = []
     for i, scaling in enumerate(scalings):
         scale_path = f"{internal_path}/s{i}" if internal_path else f"s{i}"
-        scaled_shape = _scale_tagged_shape(image_source_slot.meta.getTaggedShape(), scaling)
+        scaled_shape = _scale_tagged_shape(image_source_slot.meta.getTaggedShape(), scaling).values()
         zarrays.append(
             zarr.creation.empty(
                 scaled_shape, store=store, path=scale_path, chunks=chunk_shape, dtype=image_source_slot.meta.dtype

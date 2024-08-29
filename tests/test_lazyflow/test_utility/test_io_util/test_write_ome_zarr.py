@@ -72,6 +72,7 @@ def test_metadata_integrity(tmp_path, graph, shape, axes):
         (1, 1, 4, 1008, 1010),  # Just under criterion to be scaled
         (1, 1, 1, 30, 30),  # Tiny
         (1, 1, 2, 1432, 1432),  # No reduction to singleton or anisotropic scaling
+        (3, 3, 67, 79, 97),  # Big enough to scale when taking c and t into account (which we shouldn't)
     ],
 )
 def test_writes_with_no_scaling(tmp_path, graph, data_shape):
