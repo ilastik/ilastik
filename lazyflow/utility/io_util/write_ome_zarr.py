@@ -7,7 +7,7 @@ from typing import List, Tuple, Dict, Optional, OrderedDict
 
 import numpy
 import zarr
-from zarr.storage import FSStore
+from zarr.storage import FSStore, contains_array
 
 from ilastik import __version__ as ilastik_version
 from lazyflow.operators import OpReorderAxes
@@ -150,6 +150,9 @@ def _compute_and_write_scales(
     for i, scaling in enumerate(scalings):
         scale_path = f"{internal_path}/s{i}" if internal_path else f"s{i}"
         scaled_shape = _scale_tagged_shape(image_source_slot.meta.getTaggedShape(), scaling).values()
+        if contains_array(store, scale_path):
+            logger.warning(f"Deleting existing dataset at {external_path}/{scale_path}.")
+            del store[scale_path]
         zarrays.append(
             zarr.creation.empty(
                 scaled_shape, store=store, path=scale_path, chunks=chunk_shape, dtype=image_source_slot.meta.dtype

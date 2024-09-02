@@ -201,3 +201,23 @@ def test_write_new_ome_zarr_with_name_on_disc(tmp_path, graph):
     assert [a["name"] for a in m["axes"]] == ["t", "c", "z", "y", "x"]
     assert all(dataset["path"] in store for dataset in m["datasets"])
     assert all(dataset["path"][0] != "/" in store for dataset in m["datasets"])
+
+
+def test_overwrite_existing_store(tmp_path, graph):
+    data_array = vigra.VigraArray((2, 2, 5, 5, 5), axistags=vigra.defaultAxistags("tczyx"))
+    data_array[...] = numpy.indices((2, 2, 5, 5, 5)).sum(0)
+    data_array2 = vigra.VigraArray((1, 1, 3, 3, 3), axistags=vigra.defaultAxistags("tczyx"))
+    data_array2[...] = numpy.indices((1, 1, 3, 3, 3)).sum(0)
+    export_path = tmp_path / "test.zarr"
+    source_op = OpArrayPiper(graph=graph)
+    progress = mock.Mock()
+    source_op.Input.setValue(data_array)
+    write_ome_zarr(str(export_path), source_op.Output, progress)
+    source_op.Input.setValue(data_array2)
+    write_ome_zarr(str(export_path), source_op.Output, progress)
+    store = zarr.open(str(tmp_path / "test.zarr"))
+    assert "multiscales" in store.attrs
+    m = store.attrs["multiscales"][0]
+    assert "datasets" in m and "path" in m["datasets"][0]
+    written_data = store[m["datasets"][0]["path"]]
+    numpy.testing.assert_array_equal(written_data, data_array2)
