@@ -20,6 +20,7 @@
 # 		   http://ilastik.org/license/
 ###############################################################################
 # Python
+import contextlib
 import logging
 import time
 from typing import Union
@@ -39,31 +40,26 @@ logger = logging.getLogger(__name__)
 
 def _find_or_infer_axistags(file: Union[h5py.File, z5py.N5File, z5py.ZarrFile], internalPath: str) -> vigra.AxisTags:
     assert internalPath in file, "Existence of dataset must be checked earlier"
-    try:
+    with contextlib.suppress(KeyError):
         # Look for ilastik-style axistags property.
         axistagsJson = file[internalPath].attrs["axistags"]
         axistags = vigra.AxisTags.fromJSON(axistagsJson)
         axisorder = "".join(tag.key for tag in axistags)
-        if "?" in axisorder:
-            raise KeyError("?")
-        return axistags
-    except KeyError:
-        pass
+        if "?" not in axisorder:
+            return axistags
 
-    try:
-        # Look for OME-Zarr metadata (found at store root, not in dataset)
-        # OME-Zarr stores with more than one multiscale don't exist in public, but the spec allows it
-        multiscale_index = None
-        for i, scale in enumerate(file.attrs["multiscales"]):
-            if any(d.get("path", "") == internalPath.lstrip("/") for d in scale.get("datasets", [])):
-                multiscale_index = i
-        if multiscale_index is None:
-            raise KeyError("no spec for dataset path")
-        return get_ome_zarr_axistags(file.attrs["multiscales"][multiscale_index])
-    except KeyError as e:
-        if isinstance(file, z5py.ZarrFile):
-            # Could warn instead of raise if we want to let custom Zarr stores pass,
-            # and hope we guess the axes right
+    if isinstance(file, z5py.ZarrFile):
+        try:
+            # Look for OME-Zarr metadata (found at store root, not in dataset)
+            # OME-Zarr stores with more than one multiscale don't exist in public, but the spec allows it
+            multiscale_index = None
+            for i, scale in enumerate(file.attrs["multiscales"]):
+                if any(d.get("path", "") == internalPath.lstrip("/") for d in scale.get("datasets", [])):
+                    multiscale_index = i
+            if multiscale_index is None:
+                raise KeyError("no spec for dataset path")
+            return get_ome_zarr_axistags(file.attrs["multiscales"][multiscale_index])
+        except KeyError as e:
             msg = (
                 f"Could not find axis information according to OME-Zarr standard "
                 f"for dataset {internalPath} in {file.filename}. "
@@ -71,12 +67,11 @@ def _find_or_infer_axistags(file: Union[h5py.File, z5py.N5File, z5py.ZarrFile], 
             )
             raise ValueError(msg) from e
 
-    try:
-        # Look for metadata at dataset level (Neuroglancer-style N5 ["x", "y", "z"])
-        axisorder = "".join(reversed(file[internalPath].attrs["axes"])).lower()
-        return vigra.defaultAxistags(axisorder)
-    except KeyError:
-        pass
+    if not isinstance(file, z5py.ZarrFile):
+        with contextlib.suppress(KeyError):
+            # Look for metadata at dataset level (Neuroglancer-style N5 ["x", "y", "z"])
+            axisorder = "".join(reversed(file[internalPath].attrs["axes"])).lower()
+            return vigra.defaultAxistags(axisorder)
 
     # Infer from shape
     axisorder = get_default_axisordering(file[internalPath].shape)

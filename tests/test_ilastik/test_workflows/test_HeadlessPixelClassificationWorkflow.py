@@ -234,10 +234,11 @@ def test_distributed_results_are_identical_to_single_process_results(
 
 
 @pytest.fixture
-def ome_zarr_store_on_disc(tmp_path) -> Dict[str, numpy.ndarray]:
+def ome_zarr_store_on_disc(tmp_path) -> str:
     """Sets up a zarr store of a random image at raw scale and a downscale.
-    Returns a dictionary of the expected datasets (scale_key: numpy.ndarray)"""
-    zarr_dir = tmp_path / "some.zarr"
+    Returns the store's subdir under tmp_path"""
+    subdir = "some.zarr"
+    zarr_dir = tmp_path / subdir
     zarr_dir.mkdir(parents=True, exist_ok=True)
 
     dataset_shape = [3, 100, 100]  # cyx - to match the 2d3c project
@@ -282,13 +283,13 @@ def ome_zarr_store_on_disc(tmp_path) -> Dict[str, numpy.ndarray]:
     zarr.array(image_original, chunks=chunks, store=zarr.DirectoryStore(str(zarr_dir / "s0")), **OME_ZARR_V_0_4_KWARGS)
     zarr.array(image_scaled, chunks=chunks, store=zarr.DirectoryStore(str(zarr_dir / "s1")), **OME_ZARR_V_0_4_KWARGS)
 
-    return {"s0": image_original, "s1": image_scaled}
+    return subdir
 
 
 def test_headless_from_ome_zarr_file_uri(testdir, tmp_path, pixel_classification_ilp_2d3c, ome_zarr_store_on_disc):
     # Request raw scale to test that the full path is used.
     # The loader implementation defaults to loading the lowest resolution (last scale).
-    raw_data_path = tmp_path / "some.zarr/s0"
+    raw_data_path = tmp_path / ome_zarr_store_on_disc / "s0"
     output_path = tmp_path / "out_100x100y3c.h5"
     run_headless_pixel_classification(
         testdir,
@@ -318,18 +319,17 @@ def wait_for_server(host_and_port: Tuple[str, int], timeout=5):
 
 
 @pytest.fixture
-def ome_zarr_store_via_localhost(tmp_path, ome_zarr_store_on_disc) -> Dict[str, numpy.ndarray]:
-    """Serves ome_zarr_store_on_disc at localhost:8889.
-    Returns a dictionary of the expected datasets (scale_key: numpy.ndarray)"""
-    host_and_port = ("localhost", 8889)
+def ome_zarr_store_via_localhost(tmp_path, ome_zarr_store_on_disc) -> str:
+    """Serves ome_zarr_store_on_disc on a random open port under localhost.
+    Returns the store's base URI."""
     handler = partial(http.server.SimpleHTTPRequestHandler, directory=str(tmp_path))
-    server = http.server.HTTPServer(host_and_port, handler)
+    server = http.server.HTTPServer(("localhost", 0), handler)
     thread = threading.Thread(target=server.serve_forever)
     thread.daemon = True  # Allows the server to be killed after the test ends
     thread.start()
-    wait_for_server(host_and_port)
+    wait_for_server(("localhost", server.server_port))
 
-    yield ome_zarr_store_on_disc
+    yield f"http://localhost:{server.server_port}/{ome_zarr_store_on_disc}"
 
     server.shutdown()
     thread.join()
@@ -340,7 +340,7 @@ def test_headless_from_ome_zarr_http_uri(
 ):
     # Request raw scale to test that the full path is used.
     # The loader implementation defaults to loading the lowest resolution (last scale).
-    raw_data_path = "http://localhost:8889/some.zarr/s0"
+    raw_data_path = f"{ome_zarr_store_via_localhost}/s0"
     output_path = tmp_path / "out_100x100y3c.h5"
     run_headless_pixel_classification(
         testdir,
