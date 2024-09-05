@@ -21,14 +21,14 @@ jobs:
           auto-activate-base: true
           activate-environment: ""
           channel-priority: strict
-          miniforge-variant: Mambaforge
-          use-mamba: true
+          miniforge-version: latest
+          conda-solver: libmamba
       - name: install xvfb/deps
         run: |
           sudo apt-get update
           sudo apt-get install -yy libgl1-mesa-dev xvfb curl
       - name: install common conda dependencies
-        run: mamba install -n base -c conda-forge mamba boa setuptools_scm -y
+        run: conda install -n base -c conda-forge boa setuptools_scm -y
       - uses: actions/cache@v4
         with:
           path: |
@@ -84,15 +84,15 @@ jobs:
           auto-activate-base: true
           activate-environment: ""
           channel-priority: strict
-          miniforge-variant: Mambaforge
-          use-mamba: true
+          miniforge-version: latest
+          conda-solver: libmamba
       - name: install xvfb/deps
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -yy mesa-utils libgl1-mesa-dev xvfb curl
       - name: install common conda dependencies
-        run: mamba install -n base -c conda-forge boa setuptools_scm -y
+        run: conda install -n base -c conda-forge boa setuptools_scm -y
       - uses: actions/cache@v4
         with:
           path: |
