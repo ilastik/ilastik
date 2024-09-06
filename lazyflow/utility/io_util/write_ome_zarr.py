@@ -3,7 +3,7 @@ import logging
 import math
 from collections import OrderedDict as ODict
 from functools import partial
-from typing import List, Tuple, Dict, Optional, OrderedDict
+from typing import List, Tuple, Dict, OrderedDict
 
 import numpy
 import zarr
@@ -47,7 +47,7 @@ def _get_chunk_shape(image_source_slot: Slot) -> Shape:
 
 
 def _get_scalings(
-    original_tagged_shape: TaggedShape, chunk_shape: Shape, min_length: Optional[int]
+    original_tagged_shape: TaggedShape, chunk_shape: Shape, compute_downscales: bool
 ) -> List[OrderedScaling]:
     """
     Computes scaling "factors".
@@ -55,7 +55,6 @@ def _get_scalings(
     Downscaling is done by a factor of 2 in all spatial dimensions until:
     - the dataset would be less than 4 x chunk size (2MiB)
     - an axis that started non-singleton would become singleton
-    - the largest axis would be smaller than min_length (if defined).
     Returns list of scaling factor dicts by axis, starting with original scale.
     The scaling level that meets one of the exit conditions is excluded.
     Raises if more than 20 scales are computed (sanity).
@@ -63,6 +62,8 @@ def _get_scalings(
     assert len(chunk_shape) == len(original_tagged_shape), "Chunk shape and tagged shape must have same length"
     original_scale = ODict([(a, 1.0) for a in original_tagged_shape.keys()])
     scalings = [original_scale]
+    if not compute_downscales:
+        return scalings
     sanity_limit = 20
     for i in range(sanity_limit):
         if i == sanity_limit:
@@ -74,10 +75,8 @@ def _get_scalings(
             ]
         )
         new_shape = _scale_tagged_shape(original_tagged_shape, new_scaling)
-        if (
-            _is_less_than_4_chunks(new_shape, chunk_shape)
-            or _reduces_any_axis_to_singleton(new_shape.values(), original_tagged_shape.values())
-            or (min_length and max(new_shape.values()) < min_length)
+        if _is_less_than_4_chunks(new_shape, chunk_shape) or _reduces_any_axis_to_singleton(
+            new_shape.values(), original_tagged_shape.values()
         ):
             break
         scalings.append(new_scaling)
@@ -136,7 +135,7 @@ def _apply_scaling_method(
 
 
 def _compute_and_write_scales(
-    export_path: str, image_source_slot: Slot, progress_signal: OrderedSignal, min_length: Optional[int]
+    export_path: str, image_source_slot: Slot, progress_signal: OrderedSignal, compute_downscales: bool
 ) -> List[ImageMetadata]:
     pc = PathComponents(export_path)
     external_path = pc.externalPath
@@ -144,7 +143,7 @@ def _compute_and_write_scales(
     store = FSStore(external_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
     chunk_shape = _get_chunk_shape(image_source_slot)
 
-    scalings = _get_scalings(image_source_slot.meta.getTaggedShape(), chunk_shape, min_length)
+    scalings = _get_scalings(image_source_slot.meta.getTaggedShape(), chunk_shape, compute_downscales)
     zarrays = []
     meta = []
     for i, scaling in enumerate(scalings):
@@ -217,7 +216,7 @@ def write_ome_zarr(
     export_path: str,
     image_source_slot: Slot,
     progress_signal: OrderedSignal,
-    min_length: Optional[int] = None,
+    compute_downscales: bool = False,
 ):
     op_reorder = OpReorderAxes(parent=image_source_slot.operator)
     op_reorder.AxisOrder.setValue("tczyx")
@@ -225,7 +224,7 @@ def write_ome_zarr(
         op_reorder.Input.connect(image_source_slot)
         image_source = op_reorder.Output
         progress_signal(25)
-        ome_zarr_meta = _compute_and_write_scales(export_path, image_source, progress_signal, min_length)
+        ome_zarr_meta = _compute_and_write_scales(export_path, image_source, progress_signal, compute_downscales)
         progress_signal(95)
         _write_ome_zarr_and_ilastik_metadata(
             export_path,

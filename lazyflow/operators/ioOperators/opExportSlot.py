@@ -89,7 +89,8 @@ class OpExportSlot(Operator):
         FormatInfo("compressed hdf5", "h5", 0, 5),
         FormatInfo("n5", "n5", 0, 5),
         FormatInfo("compressed n5", "n5", 0, 5),
-        FormatInfo("OME-Zarr", "zarr", 0, 5),
+        FormatInfo("single-scale OME-Zarr", "zarr", 0, 5),
+        FormatInfo("multi-scale OME-Zarr", "zarr", 0, 5),
         FormatInfo("numpy", "npy", 0, 5),
         FormatInfo("dvid", "", 2, 5),
         FormatInfo("blockwise hdf5", "json", 0, 5),
@@ -106,7 +107,8 @@ class OpExportSlot(Operator):
         export_impls["compressed hdf5"] = ("h5", partial(self._export_h5n5, True))
         export_impls["n5"] = ("n5", self._export_h5n5)
         export_impls["compressed n5"] = ("n5", partial(self._export_h5n5, True))
-        export_impls["OME-Zarr"] = ("zarr", self._export_ome_zarr)
+        export_impls["single-scale OME-Zarr"] = ("zarr", self._export_ome_zarr)
+        export_impls["multi-scale OME-Zarr"] = ("zarr", partial(self._export_ome_zarr, True))
         export_impls["numpy"] = ("npy", self._export_npy)
         export_impls["dvid"] = ("", self._export_dvid)
         export_impls["blockwise hdf5"] = ("json", self._export_blockwise_hdf5)
@@ -148,7 +150,14 @@ class OpExportSlot(Operator):
             path_format += "." + file_extension
 
         # Provide the TOTAL path (including dataset name)
-        if self.OutputFormat.value in ("hdf5", "compressed hdf5", "n5", "compressed n5", "OME-Zarr"):
+        if self.OutputFormat.value in (
+            "hdf5",
+            "compressed hdf5",
+            "n5",
+            "compressed n5",
+            "single-scale OME-Zarr",
+            "multi-scale OME-Zarr",
+        ):
             path_format += "/" + self.OutputInternalPath.value
 
         roi = numpy.array(roiFromShape(self.Input.meta.shape))
@@ -183,7 +192,16 @@ class OpExportSlot(Operator):
         output_format = self.OutputFormat.value
 
         # These cases support all combinations
-        if output_format in ("hdf5", "compressed hdf5", "n5", "compressed n5", "npy", "blockwise hdf5", "OME-Zarr"):
+        if output_format in (
+            "hdf5",
+            "compressed hdf5",
+            "n5",
+            "compressed n5",
+            "npy",
+            "blockwise hdf5",
+            "single-scale OME-Zarr",
+            "multi-scale OME-Zarr",
+        ):
             return ""
 
         tagged_shape = self.Input.meta.getTaggedShape()
@@ -396,10 +414,10 @@ class OpExportSlot(Operator):
             opExport.cleanUp()
             self.progressSignal(100)
 
-    def _export_ome_zarr(self):
+    def _export_ome_zarr(self, compute_downscales: bool = False):
         self.progressSignal(0)
         try:
-            write_ome_zarr(self.ExportPath.value, self.Input, self.progressSignal)
+            write_ome_zarr(self.ExportPath.value, self.Input, self.progressSignal, compute_downscales)
         finally:
             self.progressSignal(100)
 
@@ -447,7 +465,8 @@ class FormatValidity(object):
         "compressed hdf5": ALL_DTYPES,
         "n5": ALL_DTYPES,
         "compressed n5": ALL_DTYPES,
-        "OME-Zarr": ALL_DTYPES,
+        "single-scale OME-Zarr": ALL_DTYPES,
+        "multi-scale OME-Zarr": ALL_DTYPES,
     }
 
     # { extension : (min_ndim, max_ndim) }
@@ -468,7 +487,8 @@ class FormatValidity(object):
         "compressed hdf5": (0, 5),
         "n5": (0, 5),
         "compressed n5": (0, 5),
-        "OME-Zarr": (0, 5),
+        "single-scale OME-Zarr": (0, 5),
+        "multi-scale OME-Zarr": (0, 5),
     }
 
     # { extension : [allowed_num_channels] }
@@ -489,7 +509,8 @@ class FormatValidity(object):
         "compressed hdf5": (),  # ditto
         "n5": (),  # ditto
         "compressed n5": (),  # ditto
-        "OME-Zarr": (),
+        "single-scale OME-Zarr": (),
+        "multi-scale OME-Zarr": (),
     }
 
     @classmethod

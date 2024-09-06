@@ -30,7 +30,7 @@ def test_metadata_integrity(tmp_path, graph, shape, axes):
     source_op.Input.setValue(data_array)
     progress = mock.Mock()
 
-    write_ome_zarr(str(export_path), source_op.Output, progress)
+    write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=True)
 
     expected_axiskeys = "tczyx"
     assert export_path.exists()
@@ -66,16 +66,17 @@ def test_metadata_integrity(tmp_path, graph, shape, axes):
 
 
 @pytest.mark.parametrize(
-    "data_shape",
+    "data_shape,scaling_on",
     [
         # Criterion: 4 x chunk size, i.e.: 4 * math.prod(4, 179, 178) -- times 8 for scaling by 2 in 3D
-        (1, 1, 4, 1008, 1010),  # Just under criterion to be scaled
-        (1, 1, 1, 30, 30),  # Tiny
-        (1, 1, 2, 1432, 1432),  # No reduction to singleton or anisotropic scaling
-        (3, 3, 67, 79, 97),  # Big enough to scale when taking c and t into account (which we shouldn't)
+        ((1, 1, 4, 1008, 1010), True),  # Just under criterion to be scaled
+        ((1, 1, 1, 30, 30), True),  # Tiny
+        ((1, 1, 2, 1432, 1432), True),  # No reduction to singleton or anisotropic scaling
+        ((3, 3, 67, 79, 97), True),  # Big enough to scale when taking c and t into account (which we shouldn't)
+        ((1, 1, 4, 1432, 1432), False),  # Big enough but switched off
     ],
 )
-def test_writes_with_no_scaling(tmp_path, graph, data_shape):
+def test_writes_with_no_scaling(tmp_path, graph, data_shape, scaling_on):
     data = vigra.VigraArray(data_shape, axistags=vigra.defaultAxistags("tczyx"))
     data[...] = numpy.indices(data_shape).sum(0)
     export_path = tmp_path / "test.zarr"
@@ -83,7 +84,7 @@ def test_writes_with_no_scaling(tmp_path, graph, data_shape):
     source_op.Input.setValue(data)
     progress = mock.Mock()
 
-    write_ome_zarr(str(export_path), source_op.Output, progress)
+    write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=scaling_on)
 
     store = zarr.open(str(export_path))
     meta = store.attrs["multiscales"][0]
@@ -120,7 +121,7 @@ def test_downscaling(tmp_path, graph, data_shape, computation_block_shape, expec
     source_op.Output.meta.max_blockshape = computation_block_shape
     progress = mock.Mock()
 
-    write_ome_zarr(str(export_path), source_op.Output, progress)
+    write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=True)
 
     store = zarr.open(str(export_path))
     meta = store.attrs["multiscales"][0]
@@ -155,7 +156,7 @@ def test_downscaling_raises():
     insane_length = chunk_length * (scaling_factor**sanity_limit) * minimum_chunks_per_scale
     insane_data_shape = OrderedDict({"t": 1, "c": 1, "z": 1, "y": 1, "x": insane_length})
     with pytest.raises(ValueError, match="Too many scales"):
-        _get_scalings(insane_data_shape, (1, 1, 1, 1, chunk_length), None)
+        _get_scalings(insane_data_shape, (1, 1, 1, 1, chunk_length), compute_downscales=True)
 
 
 def test_blockwise_downsampling_edge_cases():
@@ -189,7 +190,7 @@ def test_write_new_ome_zarr_with_name_on_disc(tmp_path, graph):
     source_op = OpArrayPiper(graph=graph)
     source_op.Input.setValue(data_array)
     progress = mock.Mock()
-    write_ome_zarr(str(export_path), source_op.Output, progress)
+    write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=True)
 
     assert export_path.exists()
     store = zarr.open(str(tmp_path / "test.zarr"))
@@ -212,9 +213,9 @@ def test_overwrite_existing_store(tmp_path, graph):
     source_op = OpArrayPiper(graph=graph)
     progress = mock.Mock()
     source_op.Input.setValue(data_array)
-    write_ome_zarr(str(export_path), source_op.Output, progress)
+    write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=True)
     source_op.Input.setValue(data_array2)
-    write_ome_zarr(str(export_path), source_op.Output, progress)
+    write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=True)
     store = zarr.open(str(tmp_path / "test.zarr"))
     assert "multiscales" in store.attrs
     m = store.attrs["multiscales"][0]
