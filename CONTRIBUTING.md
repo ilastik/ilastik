@@ -29,13 +29,10 @@ The following text equips you with knowledge that makes contributing to ilastik 
    gh repo clone ilastik
    ```
 
-1. If you have an existing [Miniconda][miniconda] installation, you can use it for ilastik development, but configure conda to use [strict channel priority][strict-channel-priority]. If your conda version is older than 23.10.0, make sure install `mamba`, and for all following steps, run the commands with "`mamba`" instead of "`conda`" (or consider updating conda instead):
+1. If you have an existing conda installation, you can use it for ilastik development, but configure it to use [strict channel priority][strict-channel-priority].
 
    ```
    conda config --set channel_priority strict
-
-   conda --version  # If below 23.10.0, install mamba, and use mamba instead of conda for all further steps:
-   conda install --name base --channel conda-forge mamba
    ```
 
 1. Create a new environment and install dependencies:
@@ -158,7 +155,6 @@ But please run those tools on the code you are contributing :)
 
 [git]: https://git-scm.com/
 [github-cli]: https://cli.github.com/
-[miniconda]: https://docs.conda.io/en/latest/miniconda.html
 [homebrew]: https://brew.sh/
 [conda-build]: https://docs.conda.io/projects/conda-build/en/latest/
 [conda-develop]: https://docs.conda.io/projects/conda-build/en/latest/resources/commands/conda-develop.html
