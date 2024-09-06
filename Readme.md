@@ -37,10 +37,10 @@ If you don't have a dataset to work with, download one of the example projects t
 ### Conda installation (experimental)
 
 ilastik is also available as a conda package on our `ilastik-forge` conda channel.
-We recommend using [mamba][mamba] instead of conda, for faster installation:
+You can install it from the commandline using [conda][conda]:
 
 ```bash
-mamba create -n ilastik --override-channels -c pytorch -c ilastik-forge -c conda-forge ilastik
+conda create -n ilastik --override-channels -c pytorch -c ilastik-forge -c conda-forge ilastik
 
 # activate ilastik environment and start ilastik
 conda activate ilastik
@@ -99,4 +99,4 @@ For more complex changes, see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 [imagesc-search]: https://forum.image.sc/search
 [issues]: https://github.com/ilastik/ilastik/issues
 [edit-files-on-github]: https://docs.github.com/en/free-pro-team@latest/github/managing-files-in-a-repository/editing-files-in-another-users-repository
-[mamba]: https://github.com/mamba-org/mamba
+[conda]: https://github.com/conda-forge/miniforge?tab=readme-ov-file#miniforge3
