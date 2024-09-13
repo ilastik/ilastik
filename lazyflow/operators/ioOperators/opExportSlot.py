@@ -200,7 +200,6 @@ class OpExportSlot(Operator):
             "npy",
             "blockwise hdf5",
             "single-scale OME-Zarr",
-            "multi-scale OME-Zarr",
         ):
             return ""
 
@@ -415,6 +414,8 @@ class OpExportSlot(Operator):
             self.progressSignal(100)
 
     def _export_ome_zarr(self, compute_downscales: bool = False):
+        if compute_downscales:
+            raise NotImplementedError()
         self.progressSignal(0)
         try:
             write_ome_zarr(self.ExportPath.value, self.Input, self.progressSignal, compute_downscales)

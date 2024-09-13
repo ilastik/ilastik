@@ -1,6 +1,5 @@
 import dataclasses
 import logging
-import math
 from collections import OrderedDict as ODict
 from functools import partial
 from typing import List, Tuple, Dict, OrderedDict
@@ -79,7 +78,7 @@ def _get_scalings(
             new_shape.values(), original_tagged_shape.values()
         ):
             break
-        scalings.append(new_scaling)
+        raise NotImplementedError("See _apply_scaling_method()")  # scalings.append(new_scaling)
     return scalings
 
 
@@ -104,34 +103,18 @@ def _scale_tagged_shape(original_tagged_shape: TaggedShape, scaling: OrderedScal
 
 def _round_like_scaling_method(value: float) -> int:
     """For calculating scaled shape after applying the scaling method.
-    Different scaling methods might round differently, so we need to match that."""
-    # Currently the only rounding method is 2-step indexing of numpy array, which always rounds up
-    # numpy.ones(7)[::2].shape == (4,)
-    return math.ceil(value)
+    Different scaling methods round differently, so we need to match that.
+    E.g. scaling by stepwise downsampling like image[::2, ::2] always rounds up,
+    while e.g. skimage.transform.rescale rounds mathematically like standard round()."""
+    return int(value)
 
 
 def _apply_scaling_method(
     data: numpy.typing.NDArray, current_block_roi: Tuple[List[int], List[int]], scaling: OrderedScaling
 ) -> Tuple[numpy.typing.NDArray, Tuple[List[int], List[int]]]:
-    """Downscale data by applying scaling factors to spatial dimensions.
-    Ordering of `data.shape`, scaling and current_block_roi must match.
-    Needs to know block roi to determine position of the scaled block within the total scaled image.
-    Returns scaled data and scaled roi because the roi must be adjusted for blockwise rounding.
-    """
-    scaling_int = [int(s) for s in scaling.values()]
-    starts = current_block_roi[0]
-    # Specific to downsampling, where scale = step size.
-    # When scale=5, the pixels that should be included in the final result are at 0, 5, 10, 15, ...
-    # If e.g. start=22 for this block, the block must internally add crop=3,
-    # so that it globally starts at 25: 22 + 3 = 25, where 3 = 5 - (22 % 5)
-    block_start_crops = [
-        (scale - (start % scale)) if start % scale > 0 else 0 for start, scale in zip(starts, scaling_int)
-    ]
-    crop_and_downsample_slicing = tuple(slice(crop, None, scale) for crop, scale in zip(block_start_crops, scaling_int))
-    scaled_starts = [_round_like_scaling_method(start / scale) for start, scale in zip(starts, scaling_int)]
-    scaled_stops = [_round_like_scaling_method(stop / scale) for stop, scale in zip(current_block_roi[1], scaling_int)]
-    scaled_roi = (scaled_starts, scaled_stops)
-    return data[crop_and_downsample_slicing], scaled_roi
+    """Downscaling tbd, need to investigate whether blockwise scaling is feasible.
+    May have to restructure the flow instead and potentially do export blockwise, then scaling afterwards."""
+    raise NotImplementedError()
 
 
 def _compute_and_write_scales(

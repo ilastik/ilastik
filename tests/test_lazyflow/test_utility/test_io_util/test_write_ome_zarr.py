@@ -95,6 +95,7 @@ def test_writes_with_no_scaling(tmp_path, graph, data_shape, scaling_on):
     assert scale_transforms[0]["scale"] == [1.0, 1.0, 1.0, 1.0, 1.0]
 
 
+@pytest.mark.skip("To be implemented after releasing single-scale export")
 @pytest.mark.parametrize(
     "data_shape, computation_block_shape, expected_scalings",
     [
@@ -146,6 +147,7 @@ def test_downscaling(tmp_path, graph, data_shape, computation_block_shape, expec
             numpy.testing.assert_array_equal(store[dataset["path"]], downscaled_data)
 
 
+@pytest.mark.skip("To be implemented after releasing single-scale export")
 def test_downscaling_raises():
     # Testing at the implementation level instead of top-level write_ome_zarr for simplicity.
     # Would need to set up a data array with an insane shape without actually allocating RAM for it.
@@ -159,6 +161,7 @@ def test_downscaling_raises():
         _get_scalings(insane_data_shape, (1, 1, 1, 1, chunk_length), compute_downscales=True)
 
 
+@pytest.mark.skip("To be implemented after releasing single-scale export")
 def test_blockwise_downsampling_edge_cases():
     """Ensures that downsampling can handle blocks smaller than scaling step size,
     and starts that are not a multiple of block size (both of which can occur in the last block
