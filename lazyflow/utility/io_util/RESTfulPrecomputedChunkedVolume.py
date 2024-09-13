@@ -98,10 +98,7 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
         # Scales are ordered from original to most-downscaled in Precomputed spec
         lowest_resolution_key = self._json_info["scales"][-1]["key"]
         highest_resolution_key = self._json_info["scales"][0]["key"]
-        # Reverse so that the ScaleComboBox shows the options ordered from most-downscaled to original
-        gui_scale_metadata = OrderedDict(
-            [(scale["key"], scale["resolution"]) for scale in reversed(self._json_info["scales"])]
-        )
+        gui_scale_metadata = OrderedDict([(scale["key"], scale["resolution"]) for scale in self._json_info["scales"]])
         self._scales = {scale["key"]: scale for scale in self._json_info["scales"]}
         self.n_channels = self._json_info["num_channels"]
 

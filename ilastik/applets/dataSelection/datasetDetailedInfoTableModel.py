@@ -224,7 +224,13 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         datasetInfo = datasetSlot.value
         if not datasetInfo.scales:
             return {}
-        return {key: _dims_to_display_string(dims, datasetInfo.axiskeys) for key, dims in datasetInfo.scales.items()}
+        # Reverse the scale list:
+        # Multiscale datasets always list scales from original (largest) to most-downscaled (smallest).
+        # We want to display them in the opposite order.
+        return {
+            key: _dims_to_display_string(dims, datasetInfo.axiskeys)
+            for key, dims in reversed(datasetInfo.scales.items())
+        }
 
     def is_scale_locked(self, laneIndex) -> bool:
         datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]

@@ -196,8 +196,6 @@ class OMEZarrStore(MultiscaleStore):
                     "shape": zarray.shape,
                 }
                 logger.info(f"Initializing scale {scale_key} took {timer.seconds()*1000} ms.")
-        # Reverse so that GUI displays from low to high resolution
-        gui_scale_metadata = OrderedDict(reversed(list(gui_scale_metadata.items())))
         super().__init__(
             dtype=dtype,
             axistags=axistags,

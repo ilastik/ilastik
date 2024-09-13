@@ -52,7 +52,7 @@ class MultiscaleStore(metaclass=ABCMeta):
         :param dtype: The dataset's numpy dtype.
         :param axistags: vigra.AxisTags describing the dataset's axes.
         :param multiscales: Dict of scale metadata for GUI/shell/project file.
-            Order as the scales should appear when displayed to the user.
+            Order from highest to lowest resolution (i.e. largest to smallest shape).
             Keys should be absolute identifiers for each scale as found in the dataset.
             Values are xyz dimensions (e.g. resolution or shape) of the image at each scale to inform user choice.
         :param lowest_resolution_key: Key of the lowest-resolution scale within the multiscales dict.
@@ -65,9 +65,9 @@ class MultiscaleStore(metaclass=ABCMeta):
         self.lowest_resolution_key = lowest_resolution_key
         self.highest_resolution_key = highest_resolution_key
         keys = list(self.multiscales.keys())
-        assert (self.lowest_resolution_key == keys[0] and self.highest_resolution_key == keys[-1]) or (
-            self.lowest_resolution_key == keys[-1] and self.highest_resolution_key == keys[0]
-        ), "Lowest and highest resolution keys must be at the extremes of the multiscales dict."
+        assert (
+            self.highest_resolution_key == keys[0] and self.lowest_resolution_key == keys[-1]
+        ), "Multiscales dict must be ordered from highest to lowest resolution (i.e. largest to smallest shape)"
 
     @abstractmethod
     def get_shape(self, scale_key: str) -> Tuple[int]:
