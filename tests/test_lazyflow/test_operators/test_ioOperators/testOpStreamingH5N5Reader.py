@@ -1,9 +1,7 @@
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -21,77 +19,142 @@ from builtins import object
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-from lazyflow.graph import Graph
-from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
+from typing import List
+
 import numpy
+import pytest
 import vigra
-import tempfile
+import z5py
+
+from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
 
 
-class TestOpStreamingH5N5Reader(object):
-    def setup_method(self, method):
-        self.graph = Graph()
-        self.testFileDir = tempfile.TemporaryDirectory()
-        self.testDataH5FileName = self.testFileDir.name + "test.h5"
-        self.testDataN5FileName = self.testFileDir.name + "test.n5"
-        self.h5_op = OpStreamingH5N5Reader(graph=self.graph)
-        self.n5_op = OpStreamingH5N5Reader(graph=self.graph)
+@pytest.fixture(params=["test.h5", "test.n5", "test.zarr"])
+def h5n5_file(request, tmp_path):
+    file = OpStreamingH5N5Reader.get_h5_n5_file(str(tmp_path / request.param))
+    if request.param == "test.zarr":
+        file.attrs["multiscales"] = [{"datasets": [{"path": "volume/data"}]}]
+    yield file
+    file.close()
 
-        self.h5File = OpStreamingH5N5Reader.get_h5_n5_file(self.testDataH5FileName)
-        self.n5File = OpStreamingH5N5Reader.get_h5_n5_file(self.testDataN5FileName)
-        self.h5File.create_group("volume")
-        self.n5File.create_group("volume")
 
-        # Create a test dataset
-        datashape = (1, 2, 3, 4, 5)
-        self.data = numpy.indices(datashape).sum(0).astype(numpy.float32)
+@pytest.fixture
+def data() -> numpy.ndarray:
+    # Create a test dataset
+    datashape = (1, 2, 3, 4, 5)
+    return numpy.indices(datashape).sum(0).astype(numpy.float32)
 
-    def teardown_method(self, method):
-        self.h5File.close()
-        self.n5File.close()
-        self.testFileDir.cleanup()
 
-    def test_plain(self):
-        # Write the dataset to an hdf5 file
-        self.h5File["volume"].create_dataset("data", data=self.data)
-        self.n5File["volume"].create_dataset("data", data=self.data)
+def test_reader_loads_data(graph, h5n5_file, data):
+    h5n5_file.create_group("volume").create_dataset("data", data=data)
+    op = OpStreamingH5N5Reader(graph=graph)
+    op.H5N5File.setValue(h5n5_file)
+    op.InternalPath.setValue("volume/data")
 
-        # Read the data with an operator
-        self.h5_op.H5N5File.setValue(self.h5File)
-        self.n5_op.H5N5File.setValue(self.n5File)
-        self.h5_op.InternalPath.setValue("volume/data")
-        self.n5_op.InternalPath.setValue("volume/data")
+    assert op.OutputImage.meta.shape == data.shape
+    numpy.testing.assert_array_equal(op.OutputImage.value, data)
 
-        assert self.h5_op.OutputImage.meta.shape == self.data.shape
-        assert self.n5_op.OutputImage.meta.shape == self.data.shape
-        numpy.testing.assert_array_equal(self.h5_op.OutputImage.value, self.data)
-        numpy.testing.assert_array_equal(self.n5_op.OutputImage.value, self.data)
 
-    def test_withAxisTags(self):
-        # Write it again, this time with weird axistags
-        axistags = vigra.AxisTags(
-            vigra.AxisInfo("x", vigra.AxisType.Space),
-            vigra.AxisInfo("y", vigra.AxisType.Space),
-            vigra.AxisInfo("z", vigra.AxisType.Space),
-            vigra.AxisInfo("c", vigra.AxisType.Channels),
-            vigra.AxisInfo("t", vigra.AxisType.Time),
-        )
+def test_reader_loads_data_with_axistags(graph, h5n5_file, data):
+    axistags = vigra.AxisTags(
+        vigra.AxisInfo("x", vigra.AxisType.Space),
+        vigra.AxisInfo("y", vigra.AxisType.Space),
+        vigra.AxisInfo("z", vigra.AxisType.Space),
+        vigra.AxisInfo("c", vigra.AxisType.Channels),
+        vigra.AxisInfo("t", vigra.AxisType.Time),
+    )
+    h5n5_file.create_group("volume").create_dataset("tagged_data", data=data)
+    h5n5_file["volume/tagged_data"].attrs["axistags"] = axistags.toJSON()
+    op = OpStreamingH5N5Reader(graph=graph)
+    op.H5N5File.setValue(h5n5_file)
+    op.InternalPath.setValue("volume/tagged_data")
 
-        # Write the dataset to an hdf5 file
-        # (Note: Don't use vigra to do this, which may reorder the axes)
-        self.h5File["volume"].create_dataset("tagged_data", data=self.data)
-        self.n5File["volume"].create_dataset("tagged_data", data=self.data)
-        # Write the axistags attribute
-        self.h5File["volume/tagged_data"].attrs["axistags"] = axistags.toJSON()
-        self.n5File["volume/tagged_data"].attrs["axistags"] = axistags.toJSON()
+    assert op.OutputImage.meta.shape == data.shape
+    assert op.OutputImage.meta.axistags == axistags
+    numpy.testing.assert_array_equal(op.OutputImage.value, data)
 
-        # Read the data with an operator
-        self.h5_op.H5N5File.setValue(self.h5File)
-        self.n5_op.H5N5File.setValue(self.n5File)
-        self.h5_op.InternalPath.setValue("volume/tagged_data")
-        self.n5_op.InternalPath.setValue("volume/tagged_data")
 
-        assert self.h5_op.OutputImage.meta.shape == self.data.shape
-        assert self.n5_op.OutputImage.meta.shape == self.data.shape
-        numpy.testing.assert_array_equal(self.h5_op.OutputImage.value, self.data)
-        numpy.testing.assert_array_equal(self.n5_op.OutputImage.value, self.data)
+@pytest.fixture(
+    ids=["v0.4", "v0.4 custom", "v0.3", "v0.3 multiple datasets", "v0.1/v0.2"],
+    params=[
+        (  # Tuple[OME-Zarr_multiscale_spec, expected_axiskeys]
+            [  # Not fully OME-Zarr compliant spec; just the axes
+                {
+                    "datasets": [{"path": "volume/ome_data"}],
+                    "axes": [  # Conventional order
+                        {"type": "time", "name": "t", "unit": "sec"},
+                        {"type": "channel", "name": "c"},
+                        {"type": "space", "name": "z", "unit": "pixel"},
+                        {"type": "space", "name": "y", "unit": "pixel"},
+                        {"type": "space", "name": "x", "unit": "pixel"},
+                    ],
+                }
+            ],
+            ["t", "c", "z", "y", "x"],
+        ),
+        (
+            [
+                {
+                    "datasets": [{"path": "volume/ome_data"}],
+                    "axes": [  # v0.4 requires leading t and c, but xyz may be arbitrarily ordered
+                        {"type": "time", "name": "t", "unit": "sec"},
+                        {"type": "channel", "name": "c"},
+                        {"type": "space", "name": "x", "unit": "pixel"},
+                        {"type": "space", "name": "y", "unit": "pixel"},
+                        {"type": "space", "name": "z", "unit": "pixel"},
+                    ],
+                }
+            ],
+            ["t", "c", "x", "y", "z"],
+        ),
+        ([{"datasets": [{"path": "volume/ome_data"}], "axes": ["t", "c", "z", "y", "x"]}], ["t", "c", "z", "y", "x"]),
+        (
+            [  # Multiple multiscales tested on v0.3 because it's more compact :)
+                {"datasets": [{"path": "somewhere/else"}], "axes": ["t", "c", "z", "y", "x"]},
+                {"datasets": [{"path": "volume/ome_data"}], "axes": ["t", "c", "y", "x", "z"]},
+            ],
+            ["t", "c", "y", "x", "z"],
+        ),
+        ([{"datasets": [{"path": "volume/ome_data"}]}], ["t", "c", "z", "y", "x"]),
+    ],
+)
+def ome_zarr_params(request, tmp_path, data) -> (z5py.ZarrFile, List[str]):
+    """Sets up a Zarr-file with relevant OME-Zarr metadata, returns file handle and expected axis keys"""
+    spec, expected_axiskeys = request.param
+    file = OpStreamingH5N5Reader.get_h5_n5_file(str(tmp_path / "test.zarr"))
+    file.attrs["multiscales"] = spec
+    file.create_group("volume").create_dataset("ome_data", data=data)
+    yield file, expected_axiskeys
+    file.close()
+
+
+def test_reader_loads_ome_zarr_axes(graph, ome_zarr_params, data):
+    ome_zarr_file, expected_axes = ome_zarr_params
+    op = OpStreamingH5N5Reader(graph=graph)
+    op.H5N5File.setValue(ome_zarr_file)
+    op.InternalPath.setValue("volume/ome_data")
+
+    assert op.OutputImage.meta.shape == data.shape
+    assert op.OutputImage.meta.axistags.keys() == expected_axes
+    numpy.testing.assert_array_equal(op.OutputImage.value, data)
+
+
+@pytest.mark.parametrize(
+    "attrs",
+    [
+        {},
+        {"axes": "xyz"},
+        {"multiscales": [{"datasets": []}]},  # Empty datasets
+        {"multiscales": [{"datasets": [{"path": "s0"}]}]},  # Valid OME-Zarr but no meta for this dataset
+    ],
+)
+def test_reader_raises_on_invalid_meta(tmp_path, graph, data, attrs):
+    file = OpStreamingH5N5Reader.get_h5_n5_file(str(tmp_path / "test.zarr"))
+    for k, v in attrs.items():
+        file.attrs[k] = v
+    file.create_group("volume").create_dataset("ome_data", data=data)
+
+    op = OpStreamingH5N5Reader(graph=graph)
+    op.H5N5File.setValue(file)
+    with pytest.raises(ValueError, match="Could not find axis information"):
+        op.InternalPath.setValue("volume/ome_data")
