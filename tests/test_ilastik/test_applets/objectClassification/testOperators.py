@@ -332,7 +332,7 @@ class TestFeatureSelection(unittest.TestCase):
         }
 
         self.extrOp = OpObjectExtraction(graph=g)
-        self.extrOp.BinaryImage.setValue(binimg)
+        self.extrOp.SegmentationImage.setValue(binimg)
         self.extrOp.RawImage.setValue(rawimg)
         self.extrOp.Features.setValue(features)
 
@@ -500,7 +500,7 @@ class TestFullOperator(unittest.TestCase):
         }
 
         self.extrOp = OpObjectExtraction(graph=g)
-        self.extrOp.BinaryImage.setValue(binimg)
+        self.extrOp.SegmentationImage.setValue(binimg)
         self.extrOp.RawImage.setValue(rawimg)
         self.extrOp.Features.setValue(features)
         assert self.extrOp.RegionFeatures.ready()

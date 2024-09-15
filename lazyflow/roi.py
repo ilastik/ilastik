@@ -254,7 +254,7 @@ def sliceToRoi(
     shape: Sequence[numbers.Integral],
     *,
     extendSingleton: bool = True,
-) -> Tuple[Sequence[int], Sequence[int]]:
+) -> Tuple[TinyVector, TinyVector]:
     """Convert slicing to ROI.
 
     Negative indices and slices are allowed similarly to usual Python

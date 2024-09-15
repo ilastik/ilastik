@@ -176,7 +176,7 @@ class TestOpBlockwiseObjectClassification(unittest.TestCase):
         opObjectExtraction = OpObjectExtraction(graph=self.graph)
 
         opObjectExtraction.RawImage.connect(self.rawSource.Output)
-        opObjectExtraction.BinaryImage.connect(self.binarySource.Output)
+        opObjectExtraction.SegmentationImage.connect(self.binarySource.Output)
         opObjectExtraction.BackgroundLabels.setValue([0])
         opObjectExtraction.Features.setValue(self.testingFeatures)
 
