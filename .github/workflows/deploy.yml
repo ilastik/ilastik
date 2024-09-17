@@ -18,8 +18,8 @@ jobs:
           auto-update-conda: true
           auto-activate-base: true
           activate-environment: ""
-          miniforge-variant: Mambaforge
-          use-mamba: true
+          miniforge-version: latest
+          conda-solver: libmamba
       - name: install build dependencies
         run: |
           conda install -n base -c conda-forge boa setuptools_scm anaconda-client -y
