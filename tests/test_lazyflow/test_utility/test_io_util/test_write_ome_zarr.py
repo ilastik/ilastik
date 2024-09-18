@@ -9,6 +9,7 @@ import zarr
 
 from lazyflow.operators import OpArrayPiper
 from lazyflow.roi import roiToSlice
+from lazyflow.utility.io_util import multiscaleStore
 from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr, _get_scalings, _apply_scaling_method
 
 
@@ -186,14 +187,19 @@ def test_blockwise_downsampling_edge_cases():
     assert scaled_roi == expected_scaled_roi
 
 
-def test_write_new_ome_zarr_with_name_on_disc(tmp_path, graph):
+@pytest.fixture
+def tiny_5d_vigra_array_piper(graph):
     data_array = vigra.VigraArray((2, 2, 5, 5, 5), axistags=vigra.defaultAxistags("tczyx"))
     data_array[...] = numpy.indices((2, 2, 5, 5, 5)).sum(0)
+    op = OpArrayPiper(graph=graph)
+    op.Input.setValue(data_array)
+    return op
+
+
+def test_write_new_ome_zarr_with_name_on_disc(tmp_path, tiny_5d_vigra_array_piper):
     export_path = tmp_path / "test.zarr/predictions/first_attempt"
-    source_op = OpArrayPiper(graph=graph)
-    source_op.Input.setValue(data_array)
     progress = mock.Mock()
-    write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=True)
+    write_ome_zarr(str(export_path), tiny_5d_vigra_array_piper.Output, progress, compute_downscales=True)
 
     assert export_path.exists()
     store = zarr.open(str(tmp_path / "test.zarr"))
@@ -207,15 +213,12 @@ def test_write_new_ome_zarr_with_name_on_disc(tmp_path, graph):
     assert all(dataset["path"][0] != "/" in store for dataset in m["datasets"])
 
 
-def test_overwrite_existing_store(tmp_path, graph):
-    data_array = vigra.VigraArray((2, 2, 5, 5, 5), axistags=vigra.defaultAxistags("tczyx"))
-    data_array[...] = numpy.indices((2, 2, 5, 5, 5)).sum(0)
+def test_overwrite_existing_store(tmp_path, tiny_5d_vigra_array_piper):
     data_array2 = vigra.VigraArray((1, 1, 3, 3, 3), axistags=vigra.defaultAxistags("tczyx"))
     data_array2[...] = numpy.indices((1, 1, 3, 3, 3)).sum(0)
     export_path = tmp_path / "test.zarr"
-    source_op = OpArrayPiper(graph=graph)
+    source_op = tiny_5d_vigra_array_piper
     progress = mock.Mock()
-    source_op.Input.setValue(data_array)
     write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=True)
     source_op.Input.setValue(data_array2)
     write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=True)
@@ -225,3 +228,29 @@ def test_overwrite_existing_store(tmp_path, graph):
     assert "datasets" in m and "path" in m["datasets"][0]
     written_data = store[m["datasets"][0]["path"]]
     numpy.testing.assert_array_equal(written_data, data_array2)
+
+
+def test_match_scale_key_to_input(tmp_path, tiny_5d_vigra_array_piper):
+    """If the source slot has scale metadata, the export should match the scale name to the input."""
+    store_path = tmp_path / "test.zarr"
+    export_path = store_path / "subdir"
+    source_op = tiny_5d_vigra_array_piper
+    progress = mock.Mock()
+    multiscales: multiscaleStore.Multiscales = OrderedDict(
+        [
+            ("raw_scale", OrderedDict([("t", 2), ("c", 2), ("z", 10), ("y", 10), ("x", 10)])),
+            ("matching_scale", OrderedDict([("t", 2), ("c", 2), ("z", 5), ("y", 5), ("x", 5)])),
+            ("downscale", OrderedDict([("t", 2), ("c", 2), ("z", 2), ("y", 2), ("x", 2)])),
+        ]
+    )
+    source_op.Output.meta.scales = multiscales
+
+    write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=False)
+
+    store = zarr.open(str(store_path))
+    assert "multiscales" in store.attrs
+    m = store.attrs["multiscales"][0]
+    assert "datasets" in m and "path" in m["datasets"][0]
+    assert len(m["datasets"]) == 1
+    assert m["datasets"][0]["path"] == "subdir/matching_scale"
+    assert m["datasets"][0]["coordinateTransformations"][0]["scale"] == [1.0, 1.0, 1.0, 1.0, 1.0]

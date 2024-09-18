@@ -178,7 +178,7 @@ class OMEZarrStore(MultiscaleStore):
         axistags = get_axistags_from_spec(multiscale_spec)
         datasets = multiscale_spec["datasets"]
         dtype = None
-        gui_scale_metadata = OrderedDict()  # Becomes slot metadata -> must be serializable (no ZarrArray allowed)
+        scale_metadata = OrderedDict()  # Becomes slot metadata -> must be serializable (no ZarrArray allowed)
         self._scale_data = {}
         if single_scale_mode:
             datasets = datasets[:1]  # One scale is enough to get dtype
@@ -189,7 +189,7 @@ class OMEZarrStore(MultiscaleStore):
                 # As a bonus, this also validates all scale["path"] strings passed outside this class.
                 zarray = ZarrArray(store=self._store, path=scale_key)
                 dtype = zarray.dtype.type
-                gui_scale_metadata[scale_key] = list(zarray.shape[-1:-4:-1])  # xyz
+                scale_metadata[scale_key] = OrderedDict(zip([tag.key for tag in axistags], zarray.shape))
                 self._scale_data[scale_key] = {
                     "zarray": zarray,
                     "chunks": zarray.chunks,
@@ -199,7 +199,7 @@ class OMEZarrStore(MultiscaleStore):
         super().__init__(
             dtype=dtype,
             axistags=axistags,
-            multiscales=gui_scale_metadata,
+            multiscales=scale_metadata,
             lowest_resolution_key=datasets[-1]["path"],
             highest_resolution_key=datasets[0]["path"],
         )

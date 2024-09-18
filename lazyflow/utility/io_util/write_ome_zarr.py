@@ -13,6 +13,7 @@ from lazyflow.operators import OpReorderAxes
 from lazyflow.roi import determineBlockShape, roiFromShape, roiToSlice
 from lazyflow.slot import Slot
 from lazyflow.utility import OrderedSignal, PathComponents, BigRequestStreamer
+from lazyflow.utility.io_util import multiscaleStore
 from lazyflow.utility.io_util.OMEZarrStore import OME_ZARR_V_0_4_KWARGS
 
 logger = logging.getLogger(__name__)
@@ -109,6 +110,38 @@ def _round_like_scaling_method(value: float) -> int:
     return int(value)
 
 
+def _get_input_multiscales_matching_export_image(
+    image_source_slot: Slot, compute_downscales: bool
+) -> multiscaleStore.Multiscales:
+    """Filter for multiscales entry that matches source image, plus lower scales if compute_downscales is True."""
+    input_scales = image_source_slot.meta.scales
+    export_shape = image_source_slot.meta.getTaggedShape()
+    matching_scales = []
+    # Multiscales is ordered from highest to lowest resolution, so start collecting once match found
+    match_found = False
+    for key, scale_shape in input_scales.items():
+        if all(scale_shape[a] == export_shape[a] for a in scale_shape.keys()):
+            match_found = True
+            matching_scales.append((key, scale_shape))
+            if not compute_downscales:
+                break
+        elif match_found:
+            matching_scales.append((key, scale_shape))
+    assert len(matching_scales) > 0, "Should be impossible, input must be one of the scales"
+    return ODict(matching_scales)
+
+
+def _multiscales_to_scalings(multiscales: multiscaleStore.Multiscales, base_shape: TaggedShape) -> List[OrderedScaling]:
+    scalings = []
+    for scale_shape in multiscales.values():
+        # base_shape / scale_shape: See note on scaling divisors in _get_scalings
+        tagged_factors = ODict(
+            [(a, base / s) for a, s, base in zip(scale_shape.keys(), scale_shape.values(), base_shape.values())]
+        )
+        scalings.append(tagged_factors)
+    return scalings
+
+
 def _apply_scaling_method(
     data: numpy.typing.NDArray, current_block_roi: Tuple[List[int], List[int]], scaling: OrderedScaling
 ) -> Tuple[numpy.typing.NDArray, Tuple[List[int], List[int]]]:
@@ -126,11 +159,20 @@ def _compute_and_write_scales(
     store = FSStore(external_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
     chunk_shape = _get_chunk_shape(image_source_slot)
 
-    scalings = _get_scalings(image_source_slot.meta.getTaggedShape(), chunk_shape, compute_downscales)
+    if "scales" in image_source_slot.meta and image_source_slot.meta.scales:
+        # Source image is already multiscale, match its scales
+        input_scales = _get_input_multiscales_matching_export_image(image_source_slot, compute_downscales)
+        scalings = _multiscales_to_scalings(input_scales, image_source_slot.meta.getTaggedShape())
+        output_scales = ODict(zip(input_scales.keys(), scalings))
+    else:
+        # Compute new scale levels
+        scalings = _get_scalings(image_source_slot.meta.getTaggedShape(), chunk_shape, compute_downscales)
+        output_scales = ODict(zip([f"s{i}" for i in range(len(scalings))], scalings))
+
     zarrays = []
     meta = []
-    for i, scaling in enumerate(scalings):
-        scale_path = f"{internal_path}/s{i}" if internal_path else f"s{i}"
+    for scale_key, scaling in output_scales.items():
+        scale_path = f"{internal_path}/{scale_key}" if internal_path else scale_key
         scaled_shape = _scale_tagged_shape(image_source_slot.meta.getTaggedShape(), scaling).values()
         if contains_array(store, scale_path):
             logger.warning(f"Deleting existing dataset at {external_path}/{scale_path}.")
@@ -155,7 +197,7 @@ def _compute_and_write_scales(
             zarrays_[i_][slicing] = scaled_data
 
     requester = BigRequestStreamer(image_source_slot, roiFromShape(image_source_slot.meta.shape))
-    requester.resultSignal.subscribe(partial(scale_and_write_block, scalings, zarrays))
+    requester.resultSignal.subscribe(partial(scale_and_write_block, output_scales.values(), zarrays))
     requester.progressSignal.subscribe(progress_signal)
     requester.execute()
 

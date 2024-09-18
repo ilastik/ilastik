@@ -68,7 +68,7 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
                     "type": "object",
                     "properties": {
                         "key": {"type": "string"},
-                        "resolution": {"type": "array", "items": {"type": "number"}},
+                        "size": {"type": "array", "items": {"type": "number"}},
                     },
                 },
             },
@@ -98,11 +98,20 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
         # Scales are ordered from original to most-downscaled in Precomputed spec
         lowest_resolution_key = self._json_info["scales"][-1]["key"]
         highest_resolution_key = self._json_info["scales"][0]["key"]
-        gui_scale_metadata = OrderedDict([(scale["key"], scale["resolution"]) for scale in self._json_info["scales"]])
         self._scales = {scale["key"]: scale for scale in self._json_info["scales"]}
         self.n_channels = self._json_info["num_channels"]
+        scale_shapes = [
+            OrderedDict(zip("czyx", [self.n_channels] + scale["size"])) for scale in self._json_info["scales"]
+        ]
+        scale_metadata = OrderedDict(zip(self._scales.keys(), scale_shapes))
 
-        super().__init__(dtype, axistags, gui_scale_metadata, lowest_resolution_key, highest_resolution_key)
+        super().__init__(
+            dtype=dtype,
+            axistags=axistags,
+            multiscales=scale_metadata,
+            lowest_resolution_key=lowest_resolution_key,
+            highest_resolution_key=highest_resolution_key,
+        )
 
     @staticmethod
     def is_uri_compatible(uri: str) -> bool:
