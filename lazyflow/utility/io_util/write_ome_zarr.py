@@ -150,6 +150,20 @@ def _apply_scaling_method(
     raise NotImplementedError()
 
 
+def _scale_and_write_block(scales: OrderedDict[str, OrderedScaling], zarrays: OrderedDict[str, zarr.Array], roi, data):
+    assert scales.keys() == zarrays.keys()
+    for scale_key_, scaling_ in scales.items():
+        if scaling_["x"] > 1.0 or scaling_["y"] > 1.0:
+            logger.info(f"Scale {scale_key_}: Applying {scaling_=} to {roi=}")
+            scaled_data, scaled_roi = _apply_scaling_method(data, roi, scaling_)
+            slicing = roiToSlice(*scaled_roi)
+        else:
+            slicing = roiToSlice(*roi)
+            scaled_data = data
+        logger.info(f"Scale {scale_key_}: Writing data with shape={scaled_data.shape} to {slicing=}")
+        zarrays[scale_key_][slicing] = scaled_data
+
+
 def _compute_and_write_scales(
     export_path: str, image_source_slot: Slot, progress_signal: OrderedSignal, compute_downscales: bool
 ) -> List[ImageMetadata]:
@@ -169,7 +183,7 @@ def _compute_and_write_scales(
         scalings = _get_scalings(image_source_slot.meta.getTaggedShape(), chunk_shape, compute_downscales)
         output_scales = ODict(zip([f"s{i}" for i in range(len(scalings))], scalings))
 
-    zarrays = []
+    zarrays = ODict()
     meta = []
     for scale_key, scaling in output_scales.items():
         scale_path = f"{internal_path}/{scale_key}" if internal_path else scale_key
@@ -177,27 +191,13 @@ def _compute_and_write_scales(
         if contains_array(store, scale_path):
             logger.warning(f"Deleting existing dataset at {external_path}/{scale_path}.")
             del store[scale_path]
-        zarrays.append(
-            zarr.creation.zeros(
-                scaled_shape, store=store, path=scale_path, chunks=chunk_shape, dtype=image_source_slot.meta.dtype
-            )
+        zarrays[scale_key] = zarr.creation.zeros(
+            scaled_shape, store=store, path=scale_path, chunks=chunk_shape, dtype=image_source_slot.meta.dtype
         )
         meta.append(ImageMetadata(scale_path, scaling, {}))
 
-    def scale_and_write_block(scalings_, zarrays_, roi, data):
-        for i_, scaling_ in enumerate(scalings_):
-            if i_ > 0:
-                logger.info(f"Scale {i_}: Applying {scaling_=} to {roi=}")
-                scaled_data, scaled_roi = _apply_scaling_method(data, roi, scaling_)
-                slicing = roiToSlice(*scaled_roi)
-            else:
-                slicing = roiToSlice(*roi)
-                scaled_data = data
-            logger.info(f"Scale {i_}: Writing data with shape={scaled_data.shape} to {slicing=}")
-            zarrays_[i_][slicing] = scaled_data
-
     requester = BigRequestStreamer(image_source_slot, roiFromShape(image_source_slot.meta.shape))
-    requester.resultSignal.subscribe(partial(scale_and_write_block, output_scales.values(), zarrays))
+    requester.resultSignal.subscribe(partial(_scale_and_write_block, output_scales, zarrays))
     requester.progressSignal.subscribe(progress_signal)
     requester.execute()
 
