@@ -178,7 +178,7 @@ def _compute_and_write_scales(
             logger.warning(f"Deleting existing dataset at {external_path}/{scale_path}.")
             del store[scale_path]
         zarrays.append(
-            zarr.creation.empty(
+            zarr.creation.zeros(
                 scaled_shape, store=store, path=scale_path, chunks=chunk_shape, dtype=image_source_slot.meta.dtype
             )
         )
