@@ -184,10 +184,10 @@ class OMEZarrStore(MultiscaleStore):
             datasets = datasets[:1]  # One scale is enough to get dtype
         for scale in datasets:  # OME-Zarr spec requires datasets ordered from high to low resolution
             with Timer() as timer:
-                scale_key = scale["path"]
-                # Loading a ZarrArray at this path is necessary to obtain the scale dimensions for the GUI.
-                # As a bonus, this also validates all scale["path"] strings passed outside this class.
-                zarray = ZarrArray(store=self._store, path=scale_key)
+                scale_path = scale["path"]
+                scale_key = scale_path.split("/")[-1]
+                # Loading a ZarrArray at this path is necessary to obtain the scale dimensions for the GUI
+                zarray = ZarrArray(store=self._store, path=scale_path)
                 dtype = zarray.dtype.type
                 scale_metadata[scale_key] = OrderedDict(zip([tag.key for tag in axistags], zarray.shape))
                 self._scale_data[scale_key] = {
@@ -200,8 +200,8 @@ class OMEZarrStore(MultiscaleStore):
             dtype=dtype,
             axistags=axistags,
             multiscales=scale_metadata,
-            lowest_resolution_key=datasets[-1]["path"],
-            highest_resolution_key=datasets[0]["path"],
+            lowest_resolution_key=list(scale_metadata.keys())[-1],
+            highest_resolution_key=list(scale_metadata.keys())[0],
         )
 
     @staticmethod
