@@ -10,7 +10,7 @@ import zarr
 from lazyflow.operators import OpArrayPiper
 from lazyflow.roi import roiToSlice
 from lazyflow.utility.io_util import multiscaleStore
-from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr, _get_scalings, _apply_scaling_method
+from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr, _compute_new_scaling_factors, _apply_scaling_method
 
 
 @pytest.mark.parametrize(
@@ -160,7 +160,7 @@ def test_downscaling_raises():
     insane_length = chunk_length * (scaling_factor**sanity_limit) * minimum_chunks_per_scale
     insane_data_shape = OrderedDict({"t": 1, "c": 1, "z": 1, "y": 1, "x": insane_length})
     with pytest.raises(ValueError, match="Too many scales"):
-        _get_scalings(insane_data_shape, (1, 1, 1, 1, chunk_length), compute_downscales=True)
+        _compute_new_scaling_factors(insane_data_shape, (1, 1, 1, 1, chunk_length), compute_downscales=True)
 
 
 @pytest.mark.skip("To be implemented after releasing single-scale export")
