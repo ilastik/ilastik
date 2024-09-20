@@ -78,6 +78,35 @@ class TestOpExportSlot(object):
         finally:
             opRead.cleanUp()
 
+    def testBasic_ome_zarr(self):
+        data = numpy.random.random((90, 100)).astype(numpy.float32)
+        data = vigra.taggedView(data, vigra.defaultAxistags("yx"))
+
+        graph = Graph()
+        opPiper = OpArrayPiper(graph=graph)
+        opPiper.Input.setValue(data)
+
+        opExport = OpExportSlot(graph=graph)
+        opExport.Input.connect(opPiper.Output)
+        opExport.OutputFormat.setValue("single-scale OME-Zarr")
+        opExport.OutputFilenameFormat.setValue(self._tmpdir + "/test_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}")
+        opExport.OutputInternalPath.setValue("volume/data")
+        opExport.CoordinateOffset.setValue((10, 20))
+
+        assert opExport.ExportPath.ready()
+        export_file = PathComponents(opExport.ExportPath.value).externalPath
+        assert os.path.split(export_file)[1] == "test_export_x20-120_y10-100.zarr"
+        opExport.run_export()
+
+        opRead = OpInputDataReader(graph=graph)
+        try:
+            opRead.FilePath.setValue(opExport.ExportPath.value + "/s0")
+            expected_data = data.view(numpy.ndarray).reshape((1, 1, 1) + data.shape)  # OME-Zarr always tczyx
+            read_data = opRead.Output[:].wait()
+            numpy.testing.assert_array_equal(read_data, expected_data)
+        finally:
+            opRead.cleanUp()
+
     def testBasic_Npy(self):
         data = numpy.random.random((100, 100)).astype(numpy.float32)
         data = vigra.taggedView(data, vigra.defaultAxistags("xy"))
