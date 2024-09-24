@@ -10,6 +10,7 @@ import zarr
 from lazyflow.operators import OpArrayPiper
 from lazyflow.roi import roiToSlice
 from lazyflow.utility.io_util import multiscaleStore
+from lazyflow.utility.io_util.OMEZarrStore import OMEZarrMultiscaleMeta
 from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr, _compute_new_scaling_factors, _apply_scaling_method
 
 
@@ -231,8 +232,42 @@ def test_overwrite_existing_store(tmp_path, tiny_5d_vigra_array_piper):
     numpy.testing.assert_array_equal(written_data, data_array2)
 
 
-def test_match_scale_key_to_input(tmp_path, tiny_5d_vigra_array_piper):
-    """If the source slot has scale metadata, the export should match the scale name to the input."""
+def test_match_input_scale_key_and_factors(tmp_path, tiny_5d_vigra_array_piper):
+    """If the source slot has scale metadata, the export should match the scale name to the input.
+    Scaling metadata should be relative to the input's raw data."""
+    store_path = tmp_path / "test.zarr"
+    export_path = store_path / "subdir"
+    source_op = tiny_5d_vigra_array_piper
+    progress = mock.Mock()
+    input_axes = ["t", "z", "y", "x"]
+    multiscales: multiscaleStore.Multiscales = OrderedDict(
+        [
+            ("raw_scale", OrderedDict(zip(input_axes, (2, 15, 15, 15)))),
+            ("matching_scale", OrderedDict(zip(input_axes, (2, 5, 5, 5)))),
+            ("downscale", OrderedDict(zip(input_axes, (2, 2, 2, 2)))),
+        ]
+    )
+    source_op.Output.meta.scales = multiscales
+    # Scale metadata should be relative to raw scale, even if the export was not scaled
+    # Exported array is 5d, so 5 scaling entries expected even though source multiscales to match are 4d
+    expected_matching_scale_transform = [{"type": "scale", "scale": [1.0, 1.0, 3.0, 3.0, 3.0]}]
+
+    write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=False)
+
+    store = zarr.open(str(store_path))
+    assert "multiscales" in store.attrs
+    m = store.attrs["multiscales"][0]
+    assert "datasets" in m and "path" in m["datasets"][0]
+    assert len(m["datasets"]) == 1
+    assert m["datasets"][0]["path"] == "subdir/matching_scale"
+    assert m["datasets"][0]["coordinateTransformations"] == expected_matching_scale_transform
+
+
+def test_port_ome_zarr_metadata_from_input(tmp_path, tiny_5d_vigra_array_piper):
+    """If the source slot has scale metadata, the export should match the scale name to the input.
+    If there is OME-Zarr specific additional metadata (even unused in ilastik),
+    the export should write metadata that describe the pyramid as a whole, and those that
+    describe the written scale."""
     store_path = tmp_path / "test.zarr"
     export_path = store_path / "subdir"
     source_op = tiny_5d_vigra_array_piper
@@ -245,6 +280,41 @@ def test_match_scale_key_to_input(tmp_path, tiny_5d_vigra_array_piper):
         ]
     )
     source_op.Output.meta.scales = multiscales
+    expected_multiscale_transform = [{"type": "scale", "scale": [0.1, 1.0, 1.0, 1.0, 1.0]}]
+    expected_matching_scale_transform = [
+        {"type": "scale", "scale": [1.0, 1.0, 2.0, 2.0, 2.0]},
+        {"type": "translation", "translation": [0.1, 0.0, 3.2, 1.0, 1.0]},
+    ]
+    source_op.Output.meta.ome_zarr_meta = OMEZarrMultiscaleMeta.from_multiscale_spec(
+        {
+            "name": "wonderful_pyramid",
+            "axes": ["t", "z", "y", "x"],  # Input metadata tzyx, but e.g. Probabilities output would be tczyx
+            "coordinateTransformations": [{"type": "scale", "scale": [0.1, 1.0, 1.0, 1.0]}],
+            "datasets": [
+                {
+                    "path": "raw_scale",
+                    "coordinateTransformations": [
+                        {"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0]},
+                        {"type": "translation", "translation": [0.1, 5.0, 2.0, 1.0]},
+                    ],
+                },
+                {
+                    "path": "matching_scale",
+                    "coordinateTransformations": [
+                        {"type": "scale", "scale": [1.0, 2.0, 2.0, 2.0]},
+                        {"type": "translation", "translation": [0.1, 3.2, 1.0, 1.0]},
+                    ],
+                },
+                {
+                    "path": "downscale",
+                    "coordinateTransformations": [
+                        {"type": "scale", "scale": [1.0, 4.0, 4.0, 4.0]},
+                        {"type": "translation", "translation": [5.1, 3.5, 5.4, 1.0]},
+                    ],
+                },
+            ],
+        }
+    )
 
     write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=False)
 
@@ -253,5 +323,7 @@ def test_match_scale_key_to_input(tmp_path, tiny_5d_vigra_array_piper):
     m = store.attrs["multiscales"][0]
     assert "datasets" in m and "path" in m["datasets"][0]
     assert len(m["datasets"]) == 1
+    assert m["name"] == "subdir"  # Input name should not be carried over - presumably it names the raw data
+    assert m["coordinateTransformations"] == expected_multiscale_transform
     assert m["datasets"][0]["path"] == "subdir/matching_scale"
-    assert m["datasets"][0]["coordinateTransformations"][0]["scale"] == [1.0, 1.0, 1.0, 1.0, 1.0]
+    assert m["datasets"][0]["coordinateTransformations"] == expected_matching_scale_transform

@@ -18,12 +18,13 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+import dataclasses
 import json
 import logging
 import math
 import os
 from collections import OrderedDict
-from typing import Dict
+from typing import Dict, List, Optional, Union, Literal
 from urllib.parse import unquote_to_bytes
 
 import jsonschema
@@ -40,6 +41,55 @@ logger = logging.getLogger(__name__)
 
 OME_ZARR_V_0_4_KWARGS = dict(dimension_separator="/", normalize_keys=False)
 OME_ZARR_V_0_1_KWARGS = dict(dimension_separator=".")
+
+# {
+#   "type": "scale" OR "translation",
+#   "scale": List[float] OR "translation": List[float] OR "path": str
+# }
+OMEZarrCoordinateTransformation = Dict[str, Union[str, List[float]]]
+
+
+def _remove_transforms_with_path(
+    coordinate_transformations: Optional[List[OMEZarrCoordinateTransformation]],
+) -> Optional[List[OMEZarrCoordinateTransformation]]:
+    """
+    coordinateTransformations may provide a path to transformation data in binary format, instead
+    of specifying floats for each axis. We don't know of any commonly used tool that writes such data,
+    so there is no way to know what to do with this.
+    """
+    if coordinate_transformations is None:
+        return None
+    return [transform for transform in coordinate_transformations if "path" not in transform]
+
+
+@dataclasses.dataclass
+class OMEZarrMultiscaleMeta:
+    """
+    Specifically for metadata that ilastik does _not_ use internally.
+    It is used for porting metadata from an OME-Zarr input to export.
+    """
+
+    axiskeys: List[Literal["t", "c", "z", "y", "x"]]
+    multiscale_name: Optional[str]
+    multiscale_transformations: Optional[List[OMEZarrCoordinateTransformation]]
+    dataset_transformations: OrderedDict[str, List[OMEZarrCoordinateTransformation]]  # { scale_key: transformations }
+
+    @classmethod
+    def from_multiscale_spec(cls, multiscale_spec) -> "OMEZarrMultiscaleMeta":
+        return cls(
+            axiskeys=[tag.key for tag in get_axistags_from_spec(multiscale_spec)],
+            multiscale_name=multiscale_spec.get("name"),
+            multiscale_transformations=_remove_transforms_with_path(multiscale_spec.get("coordinateTransformations")),
+            dataset_transformations=OrderedDict(
+                [
+                    (
+                        scale_key_from_path(scale["path"]),
+                        _remove_transforms_with_path(scale.get("coordinateTransformations", [])),
+                    )
+                    for scale in multiscale_spec["datasets"]
+                ]
+            ),
+        )
 
 
 def get_axistags_from_spec(validated_ome_spec: Dict) -> vigra.AxisTags:
@@ -70,6 +120,10 @@ def _get_zarr_cache_max_size() -> int:
     # Should see if we can implement a managed cache on top of this and use cacheMemoryManager to share the global pool.
     permissible_fraction_max = 0.125
     return math.floor(caches_max * permissible_fraction_max)
+
+
+def scale_key_from_path(scale_path):
+    return scale_path.split("/")[-1]
 
 
 class OMEZarrStore(MultiscaleStore):
@@ -185,7 +239,7 @@ class OMEZarrStore(MultiscaleStore):
         for scale in datasets:  # OME-Zarr spec requires datasets ordered from high to low resolution
             with Timer() as timer:
                 scale_path = scale["path"]
-                scale_key = scale_path.split("/")[-1]
+                scale_key = scale_key_from_path(scale_path)
                 # Loading a ZarrArray at this path is necessary to obtain the scale dimensions for the GUI
                 zarray = ZarrArray(store=self._store, path=scale_path)
                 dtype = zarray.dtype.type
@@ -196,6 +250,7 @@ class OMEZarrStore(MultiscaleStore):
                     "shape": zarray.shape,
                 }
                 logger.info(f"Initializing scale {scale_key} took {timer.seconds()*1000} ms.")
+        self.ome_meta_for_export = OMEZarrMultiscaleMeta.from_multiscale_spec(multiscale_spec)
         super().__init__(
             dtype=dtype,
             axistags=axistags,

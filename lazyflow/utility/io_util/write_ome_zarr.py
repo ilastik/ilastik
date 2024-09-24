@@ -2,7 +2,7 @@ import dataclasses
 import logging
 from collections import OrderedDict as ODict
 from functools import partial
-from typing import List, Tuple, Dict, OrderedDict
+from typing import List, Tuple, Dict, OrderedDict, Optional, Literal
 
 import numpy
 import zarr
@@ -14,7 +14,11 @@ from lazyflow.roi import determineBlockShape, roiFromShape, roiToSlice
 from lazyflow.slot import Slot
 from lazyflow.utility import OrderedSignal, PathComponents, BigRequestStreamer
 from lazyflow.utility.io_util import multiscaleStore
-from lazyflow.utility.io_util.OMEZarrStore import OME_ZARR_V_0_4_KWARGS
+from lazyflow.utility.io_util.OMEZarrStore import (
+    OME_ZARR_V_0_4_KWARGS,
+    OMEZarrMultiscaleMeta,
+    OMEZarrCoordinateTransformation,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +33,7 @@ SPATIAL_AXES = ["z", "y", "x"]
 @dataclasses.dataclass
 class ImageMetadata:
     path: str
-    scale: OrderedScaling
+    scaling: OrderedScaling
     translation: Dict[str, float]
 
 
@@ -118,7 +122,7 @@ def _get_input_multiscales_matching_export(
     # Multiscales is ordered from highest to lowest resolution, so start collecting once match found
     match_found = False
     for key, scale_shape in input_scales.items():
-        if all(scale_shape[a] == export_shape[a] for a in scale_shape.keys()):
+        if all(scale_shape[a] == export_shape[a] or a == "c" for a in scale_shape.keys()):
             match_found = True
             matching_scales.append((key, scale_shape))
             if not compute_downscales:
@@ -129,32 +133,51 @@ def _get_input_multiscales_matching_export(
     return ODict(matching_scales)
 
 
-def _multiscales_to_scaling_factors(
-    multiscales: multiscaleStore.Multiscales, base_shape: TaggedShape
+def _scale_shapes_to_factors(
+    multiscales: multiscaleStore.Multiscales,
+    base_shape: TaggedShape,
+    axiskeys_to_match: List[Literal["t", "c", "z", "y", "x"]],
 ) -> List[OrderedScaling]:
+    """Input multiscales may have arbitrary axes.
+    Output are scaling factors relative to base_shape, with axes axiskeys_to_match.
+    Scale factor 1.0 for axes not present in scale_shape, and for channel."""
     scalings = []
     for scale_shape in multiscales.values():
-        # base_shape / scale_shape: See note on scaling divisors in _get_scalings
-        tagged_factors = ODict(
-            [(a, base / s) for a, s, base in zip(scale_shape.keys(), scale_shape.values(), base_shape.values())]
+        filtered_base_values = [s for a, s in base_shape.items() if a in scale_shape]
+        # base_shape / scale_shape: See note on scaling "factors" in _compute_new_scaling_factors
+        relative_factors = {
+            a: base / s for a, s, base in zip(scale_shape.keys(), scale_shape.values(), filtered_base_values)
+        }
+        axes_matched_factors = ODict(
+            [(a, relative_factors[a] if a in relative_factors and a != "c" else 1.0) for a in axiskeys_to_match]
         )
-        scalings.append(tagged_factors)
+        scalings.append(axes_matched_factors)
     return scalings
 
 
 def _match_or_create_scalings(
     input_scales: multiscaleStore.Multiscales, export_shape: TaggedShape, chunk_shape, compute_downscales: bool
-) -> ScalingsByScaleKey:
+) -> Tuple[ScalingsByScaleKey, Optional[ScalingsByScaleKey]]:
+    """
+    Determine scale keys and scaling factors for export.
+    The second optional return value are the input's scaling factors relative to its raw scale
+    (needed to provide correct metadata for the exported scale(s), which may exclude the original raw).
+    """
     if input_scales:
         # Source image is already multiscale, match its scales
         filtered_input_scales = _get_input_multiscales_matching_export(input_scales, export_shape, compute_downscales)
-        factors = _multiscales_to_scaling_factors(filtered_input_scales, export_shape)
-        output_scalings = ODict(zip(filtered_input_scales.keys(), factors))
+        factors_relative_to_export = _scale_shapes_to_factors(filtered_input_scales, export_shape, export_shape.keys())
+        scalings_relative_to_export = ODict(zip(filtered_input_scales.keys(), factors_relative_to_export))
+        # Factors relative to raw scale are used later to provide correct scaling metadata
+        raw_shape = next(iter(input_scales.values()))
+        factors_relative_to_raw = _scale_shapes_to_factors(filtered_input_scales, raw_shape, export_shape.keys())
+        scalings_relative_to_raw = ODict(zip(filtered_input_scales.keys(), factors_relative_to_raw))
     else:
         # Compute new scale levels
         factors = _compute_new_scaling_factors(export_shape, chunk_shape, compute_downscales)
-        output_scalings = ODict(zip([f"s{i}" for i in range(len(factors))], factors))
-    return output_scalings
+        scalings_relative_to_export = ODict(zip([f"s{i}" for i in range(len(factors))], factors))
+        scalings_relative_to_raw = None
+    return scalings_relative_to_export, scalings_relative_to_raw
 
 
 def _create_empty_zarrays(
@@ -163,13 +186,13 @@ def _create_empty_zarrays(
     chunk_shape: Shape,
     export_shape: TaggedShape,
     output_scalings: ScalingsByScaleKey,
-) -> Tuple[OrderedDict[str, zarr.Array], List[ImageMetadata]]:
+) -> Tuple[OrderedDict[str, zarr.Array], OrderedDict[str, ImageMetadata]]:
     pc = PathComponents(export_path)
     external_path = pc.externalPath
     internal_path = pc.internalPath.lstrip("/") if pc.internalPath else None
     store = FSStore(external_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
     zarrays = ODict()
-    meta = []
+    meta = ODict()
     for scale_key, scaling in output_scalings.items():
         scale_path = f"{internal_path}/{scale_key}" if internal_path else scale_key
         scaled_shape = _scale_tagged_shape(export_shape, scaling).values()
@@ -179,7 +202,7 @@ def _create_empty_zarrays(
         zarrays[scale_key] = zarr.creation.zeros(
             scaled_shape, store=store, path=scale_path, chunks=chunk_shape, dtype=export_dtype
         )
-        meta.append(ImageMetadata(scale_path, scaling, {}))
+        meta[scale_key] = ImageMetadata(scale_path, scaling, {})
 
     return zarrays, meta
 
@@ -206,37 +229,155 @@ def _scale_and_write_block(scales: ScalingsByScaleKey, zarrays: OrderedDict[str,
         zarrays[scale_key_][slicing] = scaled_data
 
 
+def _get_input_raw_absolute_scaling(input_ome_meta: Optional[OMEZarrMultiscaleMeta]) -> Optional[OrderedScaling]:
+    input_scale = None
+    if input_ome_meta:
+        raw_transforms = next(iter(input_ome_meta.dataset_transformations.values()))
+        # Spec requires that if any, first must be scale
+        if len(raw_transforms) > 0:
+            input_scale = raw_transforms[0]
+    if input_scale is None or "scale" not in input_scale:
+        return None
+    return ODict(zip(input_ome_meta.axiskeys, input_scale["scale"]))
+
+
+def _get_input_dataset_transformations(
+    input_ome_meta: Optional[OMEZarrMultiscaleMeta], scale_key: str
+) -> Tuple[Optional[OMEZarrCoordinateTransformation], Optional[OMEZarrCoordinateTransformation]]:
+    input_scale = None
+    input_translation = None
+    if input_ome_meta and input_ome_meta.dataset_transformations.get(scale_key):
+        input_transforms = input_ome_meta.dataset_transformations[scale_key]
+        # Spec requires that if any, first must be scale, second may be translation
+        if len(input_transforms) > 0:
+            input_scale = input_transforms[0]
+        if len(input_transforms) > 1:
+            input_translation = input_transforms[1]
+    return input_scale, input_translation
+
+
+def _update_export_scaling_from_input(
+    absolute_scaling: OrderedScaling,
+    input_ome_meta: Optional[OMEZarrMultiscaleMeta],
+    input_scale: Optional[OMEZarrCoordinateTransformation],
+    scale_key: str,
+) -> OrderedScaling:
+    if not input_scale or "scale" not in input_scale:
+        return absolute_scaling
+    input_scaling = ODict(zip(input_ome_meta.axiskeys, input_scale["scale"]))
+    if any([input_scaling[a] != absolute_scaling[a] for a in SPATIAL_AXES if a in input_scaling]):
+        # This shouldn't happen
+        logger.warning(
+            "The scaling level of the exported OME-Zarr dataset was supposed to be "
+            f"matched to the input dataset, but the scaling factors differ at scale {scale_key}. "
+            "Your exported images should be fine, but their metadata (pixel resolution) may be incorrect. "
+            "Please report this to the ilastik team. "
+        )
+    # The only scale to actually update is time, if it exists in the input
+    updated_scaling = absolute_scaling.copy()
+    if "t" in input_scaling.keys() and "t" in absolute_scaling.keys():
+        updated_scaling["t"] = input_scaling["t"]
+    return updated_scaling
+
+
+def _make_absolute_if_possible(relative_scaling: OrderedScaling, raw_data_abs_scale: Optional[OrderedScaling]):
+    if not raw_data_abs_scale:
+        return relative_scaling
+    items_per_axis = [
+        (a, s * raw_data_abs_scale[a]) if a in raw_data_abs_scale and a != "c" else (a, s)
+        for a, s in relative_scaling.items()
+    ]
+    return ODict(items_per_axis)
+
+
+def _write_to_dataset_attrs(ilastik_meta: Dict, za: zarr.Array):
+    za.attrs["axistags"] = ilastik_meta["axistags"].toJSON()
+    if ilastik_meta["display_mode"]:
+        za.attrs["display_mode"] = ilastik_meta["display_mode"]
+    if ilastik_meta["drange"]:
+        za.attrs["drange"] = ilastik_meta["drange"]
+
+
+def _get_datasets_meta(
+    multiscale_metadata: OrderedDict[str, ImageMetadata],
+    input_ome_meta: Optional[OMEZarrMultiscaleMeta],
+    scalings_relative_to_raw_input: Optional[ScalingsByScaleKey],
+):
+    """
+    Dataset metadata consists of (1) path, (2) coordinate transformations (scale and translation).
+    By default, scale is just pixel resolution relative to export, i.e. 1.0, 2.0, 4.0 etc. along each scaled axis.
+    This gets more complex when the source dataset was multiscale (providing `scalings_relative_to_raw_input`),
+    or OME-Zarr (providing `input_ome_meta`).
+    """
+    datasets = []
+    raw_data_abs_scale = _get_input_raw_absolute_scaling(input_ome_meta)
+    for scale_key, image in multiscale_metadata.items():
+        if scalings_relative_to_raw_input and scale_key in scalings_relative_to_raw_input:
+            relative_scaling = scalings_relative_to_raw_input[scale_key]
+        else:
+            relative_scaling = image.scaling
+        # The scaling factors are relative to export or raw data shape now,
+        # but the input dataset might contain absolute scale values, i.e. time/pixel resolution
+        absolute_scaling = _make_absolute_if_possible(relative_scaling, raw_data_abs_scale)
+        input_scale, input_translation = _get_input_dataset_transformations(input_ome_meta, scale_key)
+        absolute_scaling = _update_export_scaling_from_input(absolute_scaling, input_ome_meta, input_scale, scale_key)
+        dataset = {
+            "path": image.path,
+            "coordinateTransformations": [{"type": "scale", "scale": list(absolute_scaling.values())}],
+        }
+        if input_translation and "translation" in input_translation:
+            tagged_translation = ODict(zip(input_ome_meta.axiskeys, input_translation["translation"]))
+            reordered_translation = [
+                tagged_translation[a] if a in tagged_translation and a != "c" else 0.0 for a in image.scaling.keys()
+            ]
+            dataset["coordinateTransformations"].append({"type": "translation", "translation": reordered_translation})
+        datasets.append(dataset)
+    return datasets
+
+
 def _write_ome_zarr_and_ilastik_metadata(
-    export_path: str, multiscale_metadata: List[ImageMetadata], ilastik_meta: Dict
+    export_path: str,
+    export_meta: OrderedDict[str, ImageMetadata],
+    scalings_relative_to_raw_input: Optional[ScalingsByScaleKey],
+    input_ome_meta: Optional[OMEZarrMultiscaleMeta],
+    ilastik_meta: Dict,
 ):
     pc = PathComponents(export_path)
     external_path = pc.externalPath
     multiscale_name = pc.internalPath.lstrip("/") if pc.internalPath else None
     ilastik_signature = {"name": "ilastik", "version": ilastik_version, "ome_zarr_exporter_version": 1}
     axis_types = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
-    axes = [{"name": tag.key, "type": axis_types[tag.key]} for tag in ilastik_meta["axistags"]]
-    datasets = [
-        {
-            "path": image.path,
-            "coordinateTransformations": [
-                {"type": "scale", "scale": [image.scale[tag.key] for tag in ilastik_meta["axistags"]]}
-            ],
-        }
-        for image in multiscale_metadata
-    ]
+    export_axiskeys = [tag.key for tag in ilastik_meta["axistags"]]
+
+    axes = [{"name": a, "type": axis_types[a]} for a in export_axiskeys]
+    datasets = _get_datasets_meta(export_meta, input_ome_meta, scalings_relative_to_raw_input)
     ome_zarr_multiscale_meta = {"_creator": ilastik_signature, "version": "0.4", "axes": axes, "datasets": datasets}
+
+    # Optional fields
     if multiscale_name:
         ome_zarr_multiscale_meta["name"] = multiscale_name
+    if input_ome_meta and input_ome_meta.multiscale_transformations:
+        transforms_axis_matched = []
+        for transform in input_ome_meta.multiscale_transformations:
+            transform_type = transform["type"]
+            tagged_transform = ODict(zip(input_ome_meta.axiskeys, transform[transform_type]))
+            default_value = 0.0 if transform_type == "translation" else 1.0
+            transforms_axis_matched.append(
+                {
+                    "type": transform_type,
+                    transform_type: [
+                        tagged_transform[a] if a in tagged_transform else default_value for a in export_axiskeys
+                    ],
+                }
+            )
+        ome_zarr_multiscale_meta["coordinateTransformations"] = transforms_axis_matched
+
     store = FSStore(external_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
     root = zarr.group(store, overwrite=False)
     root.attrs["multiscales"] = [ome_zarr_multiscale_meta]
-    for image in multiscale_metadata:
+    for image in export_meta.values():
         za = zarr.Array(store, path=image.path)
-        za.attrs["axistags"] = ilastik_meta["axistags"].toJSON()
-        if ilastik_meta["display_mode"]:
-            za.attrs["display_mode"] = ilastik_meta["display_mode"]
-        if ilastik_meta["drange"]:
-            za.attrs["drange"] = ilastik_meta["drange"]
+        _write_to_dataset_attrs(ilastik_meta, za)
 
 
 def write_ome_zarr(
@@ -254,22 +395,27 @@ def write_ome_zarr(
         export_shape = reordered_source.meta.getTaggedShape()
         export_dtype = reordered_source.meta.dtype
         input_scales = reordered_source.meta.scales if "scales" in reordered_source.meta else None
+        input_ome_meta = reordered_source.meta.get("ome_zarr_meta")
 
         chunk_shape = _get_chunk_shape(export_shape, export_dtype)
-        output_scalings = _match_or_create_scalings(input_scales, export_shape, chunk_shape, compute_downscales)
-        zarrays, ome_zarr_meta = _create_empty_zarrays(
-            export_path, export_dtype, chunk_shape, export_shape, output_scalings
+        export_scalings, scalings_relative_to_raw_input = _match_or_create_scalings(
+            input_scales, export_shape, chunk_shape, compute_downscales
+        )
+        zarrays, export_meta = _create_empty_zarrays(
+            export_path, export_dtype, chunk_shape, export_shape, export_scalings
         )
 
         requester = BigRequestStreamer(reordered_source, roiFromShape(reordered_source.meta.shape))
-        requester.resultSignal.subscribe(partial(_scale_and_write_block, output_scalings, zarrays))
+        requester.resultSignal.subscribe(partial(_scale_and_write_block, export_scalings, zarrays))
         requester.progressSignal.subscribe(progress_signal)
         requester.execute()
 
         progress_signal(95)
         _write_ome_zarr_and_ilastik_metadata(
             export_path,
-            ome_zarr_meta,
+            export_meta,
+            scalings_relative_to_raw_input,
+            input_ome_meta,
             {
                 "axistags": reordered_source.meta.axistags,
                 "display_mode": reordered_source.meta.get("display_mode"),
