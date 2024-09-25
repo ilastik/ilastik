@@ -61,7 +61,7 @@ dependencies:
   - ilastik-pytorch-version-helper-cpu  # comment out for pytorch with cuda
   # - pytorch-cuda=11.3  # uncomment for pytorch with cuda, specify cuda version
 
-  - tiktorch 23.11.0*
+  - tiktorch 24.9.0*
 
 
   # Third-party object feature plugins
