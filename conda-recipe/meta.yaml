@@ -68,7 +68,7 @@ outputs:
         - zarr 2.*
       run_constrained:
         - mkl <2024.1.0
-        - tiktorch >=23.11.0
+        - tiktorch 24.9.0*
         - volumina >=1.3.10
         - sphericaltexture >=0.0.4
         # pyshtools 4.10 conflicts with pytorch via openmp on windows
@@ -117,7 +117,7 @@ outputs:
         - python 3.9.*
         - ilastik-core {{ setup_py_data.version }}
         - pytorch >=1.6,!=2.4.1
-        - tiktorch 23.11.0*
+        - tiktorch
         - torchvision
         - volumina
         # Third-party object feature plugins
@@ -169,7 +169,7 @@ outputs:
         - python 3.9.*
         - ilastik-core {{ setup_py_data.version }}
         - pytorch >=1.6,!=2.4.1
-        - tiktorch 23.11.0*
+        - tiktorch
         - torchvision
         - pytorch-cuda
         - volumina
