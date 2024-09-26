@@ -23,6 +23,7 @@
 import contextlib
 import logging
 import time
+from collections import OrderedDict
 from typing import Union
 
 import vigra
@@ -33,7 +34,12 @@ import os
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import Timer
 from lazyflow.utility.helpers import get_default_axisordering, bigintprod
-from lazyflow.utility.io_util.OMEZarrStore import get_axistags_from_spec as get_ome_zarr_axistags, OMEZarrMultiscaleMeta
+from lazyflow.utility.io_util.OMEZarrStore import (
+    get_axistags_from_spec as get_ome_zarr_axistags,
+    OMEZarrMultiscaleMeta,
+    scale_key_from_path,
+)
+from lazyflow.utility.io_util.multiscaleStore import Multiscales
 
 logger = logging.getLogger(__name__)
 
@@ -153,10 +159,17 @@ class OpStreamingH5N5Reader(Operator):
 
         if isinstance(self._h5N5File, z5py.ZarrFile):
             # Add OME-Zarr metadata to slot so that it can be ported over to an export
-            multiscales_spec = self._h5N5File.attrs["multiscales"]
-            self.OutputImage.meta.ome_zarr_meta = OMEZarrMultiscaleMeta.from_multiscale_spec(
-                multiscales_spec[_multiscale_index_for_path(multiscales_spec, internalPath)]
-            )
+            multiscales_meta = self._h5N5File.attrs["multiscales"]
+            multiscale_spec = multiscales_meta[_multiscale_index_for_path(multiscales_meta, internalPath)]
+            scale_keys = [scale_key_from_path(dataset["path"]) for dataset in multiscale_spec["datasets"]]
+            scale_tagged_shapes = [
+                OrderedDict(zip(axistags.keys(), self._h5N5File[dataset["path"]].shape))
+                for dataset in multiscale_spec["datasets"]
+            ]
+            scales: Multiscales = OrderedDict(zip(scale_keys, scale_tagged_shapes))
+            self.OutputImage.meta.scales = scales
+            self.OutputImage.meta.lowest_scale = scale_keys[-1]
+            self.OutputImage.meta.ome_zarr_meta = OMEZarrMultiscaleMeta.from_multiscale_spec(multiscale_spec)
 
     def execute(self, slot, subindex, roi, result):
         t = time.time()

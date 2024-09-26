@@ -136,20 +136,28 @@ def _get_input_multiscales_matching_export(
 def _scale_shapes_to_factors(
     multiscales: multiscaleStore.Multiscales,
     base_shape: TaggedShape,
-    axiskeys_to_match: List[Literal["t", "c", "z", "y", "x"]],
+    output_axiskeys: List[Literal["t", "c", "z", "y", "x"]],
 ) -> List[OrderedScaling]:
-    """Input multiscales may have arbitrary axes.
-    Output are scaling factors relative to base_shape, with axes axiskeys_to_match.
-    Scale factor 1.0 for axes not present in scale_shape, and for channel."""
+    """Multiscales and base_shape may have arbitrary axes.
+    Output are scaling factors relative to base_shape, with axes output_axiskeys.
+    Scale factor 1.0 for axes not present in scale or base shape, and for channel."""
     scalings = []
     for scale_shape in multiscales.values():
-        filtered_base_values = [s for a, s in base_shape.items() if a in scale_shape]
-        # base_shape / scale_shape: See note on scaling "factors" in _compute_new_scaling_factors
-        relative_factors = {
-            a: base / s for a, s, base in zip(scale_shape.keys(), scale_shape.values(), filtered_base_values)
+        common_axes = [a for a in scale_shape.keys() if a in base_shape.keys()]
+        scale_values = [scale_shape[a] for a in common_axes]
+        base_values = [base_shape[a] for a in common_axes]
+        # This scale's scaling relative to base_shape; cf note on scaling "factors" in _compute_new_scaling_factors
+        relative_factors = {a: base / s for a, s, base in zip(common_axes, scale_values, base_values)}
+        # Account for scale_shape maybe being the result of rounding while downscaling base_shape
+        rounded = {a: float(round(f)) for a, f in relative_factors.items()}
+        rounding_errors = {a: (base / rounded[a]) - s for a, s, base in zip(common_axes, scale_values, base_values)}
+        # Use rounded factors for axes where scale shape was result of rounding (rounding error less than 1px)
+        rounded_or_relative = {
+            a: rounded[a] if abs(error) < 1.0 else relative_factors[a] for a, error in rounding_errors.items()
         }
+        # Pad with 1.0 for requested axes not present in scale/base, and c
         axes_matched_factors = ODict(
-            [(a, relative_factors[a] if a in relative_factors and a != "c" else 1.0) for a in axiskeys_to_match]
+            [(a, rounded_or_relative[a] if a in rounded_or_relative and a != "c" else 1.0) for a in output_axiskeys]
         )
         scalings.append(axes_matched_factors)
     return scalings
@@ -283,8 +291,10 @@ def _update_export_scaling_from_input(
 def _make_absolute_if_possible(relative_scaling: OrderedScaling, raw_data_abs_scale: Optional[OrderedScaling]):
     if not raw_data_abs_scale:
         return relative_scaling
+    # Round to avoid floating point errors leading to numbers like 1.4000000000000001
+    # Presumably nobody needs scaling factors to more than 13 decimal places
     items_per_axis = [
-        (a, s * raw_data_abs_scale[a]) if a in raw_data_abs_scale and a != "c" else (a, s)
+        (a, round(s * raw_data_abs_scale[a], 13)) if a in raw_data_abs_scale and a != "c" else (a, s)
         for a, s in relative_scaling.items()
     ]
     return ODict(items_per_axis)
