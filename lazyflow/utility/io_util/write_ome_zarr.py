@@ -351,7 +351,7 @@ def _write_ome_zarr_and_ilastik_metadata(
 
     axes = [{"name": a, "type": axis_types[a]} for a in export_axiskeys]
     datasets = _get_datasets_meta(export_meta, input_ome_meta, scalings_relative_to_raw_input)
-    ome_zarr_multiscale_meta = {"_creator": ilastik_signature, "version": "0.4", "axes": axes, "datasets": datasets}
+    ome_zarr_multiscale_meta = {"axes": axes, "datasets": datasets, "version": "0.4"}
 
     # Optional fields
     if multiscale_name:
@@ -374,6 +374,7 @@ def _write_ome_zarr_and_ilastik_metadata(
 
     store = FSStore(external_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
     root = zarr.group(store, overwrite=False)
+    root.attrs["_creator"] = ilastik_signature
     root.attrs["multiscales"] = [ome_zarr_multiscale_meta]
     for image in export_meta.values():
         za = zarr.Array(store, path=image.path)
