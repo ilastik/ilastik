@@ -288,7 +288,12 @@ def test_port_ome_zarr_metadata_from_input(tmp_path, tiny_5d_vigra_array_piper):
     source_op.Output.meta.ome_zarr_meta = OMEZarrMultiscaleMeta.from_multiscale_spec(
         {
             "name": "wonderful_pyramid",
-            "axes": ["t", "z", "y", "x"],  # Input metadata tzyx, but e.g. Probabilities output would be tczyx
+            "axes": [
+                {"name": "t", "type": "time", "unit": "second"},
+                {"name": "z", "type": "space", "unit": "micrometer"},
+                {"name": "y", "type": "space", "unit": "micrometer"},
+                {"name": "x", "type": "space", "unit": "micrometer"},
+            ],  # Input metadata tzyx, but e.g. Probabilities output would be tczyx
             "coordinateTransformations": [{"type": "scale", "scale": [0.1, 1.0, 1.0, 1.0]}],
             "datasets": [
                 {
@@ -324,6 +329,13 @@ def test_port_ome_zarr_metadata_from_input(tmp_path, tiny_5d_vigra_array_piper):
     assert "datasets" in m and "path" in m["datasets"][0]
     assert len(m["datasets"]) == 1
     assert m["name"] == "subdir"  # Input name should not be carried over - presumably it names the raw data
+    assert m["axes"] == [
+        {"name": "t", "type": "time", "unit": "second"},
+        {"name": "c", "type": "channel"},
+        {"name": "z", "type": "space", "unit": "micrometer"},
+        {"name": "y", "type": "space", "unit": "micrometer"},
+        {"name": "x", "type": "space", "unit": "micrometer"},
+    ]  # Axis units should be carried over
     assert m["coordinateTransformations"] == expected_multiscale_transform
     assert m["datasets"][0]["path"] == "subdir/matching_scale"
     assert m["datasets"][0]["coordinateTransformations"] == expected_matching_scale_transform

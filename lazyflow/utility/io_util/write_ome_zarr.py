@@ -238,7 +238,7 @@ def _get_input_raw_absolute_scaling(input_ome_meta: Optional[OMEZarrMultiscaleMe
             input_scale = raw_transforms[0]
     if input_scale is None or "scale" not in input_scale:
         return None
-    return ODict(zip(input_ome_meta.axiskeys, input_scale["scale"]))
+    return ODict(zip(input_ome_meta.axis_units.keys(), input_scale["scale"]))
 
 
 def _get_input_dataset_transformations(
@@ -264,7 +264,7 @@ def _update_export_scaling_from_input(
 ) -> OrderedScaling:
     if not input_scale or "scale" not in input_scale:
         return absolute_scaling
-    input_scaling = ODict(zip(input_ome_meta.axiskeys, input_scale["scale"]))
+    input_scaling = ODict(zip(input_ome_meta.axis_units.keys(), input_scale["scale"]))
     if any([input_scaling[a] != absolute_scaling[a] for a in SPATIAL_AXES if a in input_scaling]):
         # This shouldn't happen
         logger.warning(
@@ -298,6 +298,17 @@ def _write_to_dataset_attrs(ilastik_meta: Dict, za: zarr.Array):
         za.attrs["drange"] = ilastik_meta["drange"]
 
 
+def _get_axes_meta(export_axiskeys, input_ome_meta):
+    axis_types = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
+    axes = [{"name": a, "type": axis_types[a]} for a in export_axiskeys]
+    if input_ome_meta:
+        # Add unit metadata if available
+        for a in axes:
+            if a["name"] in input_ome_meta.axis_units and input_ome_meta.axis_units[a["name"]]:
+                a["unit"] = input_ome_meta.axis_units[a["name"]]
+    return axes
+
+
 def _get_datasets_meta(
     multiscale_metadata: OrderedDict[str, ImageMetadata],
     input_ome_meta: Optional[OMEZarrMultiscaleMeta],
@@ -326,7 +337,7 @@ def _get_datasets_meta(
             "coordinateTransformations": [{"type": "scale", "scale": list(absolute_scaling.values())}],
         }
         if input_translation and "translation" in input_translation:
-            tagged_translation = ODict(zip(input_ome_meta.axiskeys, input_translation["translation"]))
+            tagged_translation = ODict(zip(input_ome_meta.axis_units.keys(), input_translation["translation"]))
             reordered_translation = [
                 tagged_translation[a] if a in tagged_translation and a != "c" else 0.0 for a in image.scaling.keys()
             ]
@@ -346,10 +357,9 @@ def _write_ome_zarr_and_ilastik_metadata(
     external_path = pc.externalPath
     multiscale_name = pc.internalPath.lstrip("/") if pc.internalPath else None
     ilastik_signature = {"name": "ilastik", "version": ilastik_version, "ome_zarr_exporter_version": 1}
-    axis_types = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
     export_axiskeys = [tag.key for tag in ilastik_meta["axistags"]]
 
-    axes = [{"name": a, "type": axis_types[a]} for a in export_axiskeys]
+    axes = _get_axes_meta(export_axiskeys, input_ome_meta)
     datasets = _get_datasets_meta(export_meta, input_ome_meta, scalings_relative_to_raw_input)
     ome_zarr_multiscale_meta = {"axes": axes, "datasets": datasets, "version": "0.4"}
 
@@ -360,7 +370,7 @@ def _write_ome_zarr_and_ilastik_metadata(
         transforms_axis_matched = []
         for transform in input_ome_meta.multiscale_transformations:
             transform_type = transform["type"]
-            tagged_transform = ODict(zip(input_ome_meta.axiskeys, transform[transform_type]))
+            tagged_transform = ODict(zip(input_ome_meta.axis_units.keys(), transform[transform_type]))
             default_value = 0.0 if transform_type == "translation" else 1.0
             transforms_axis_matched.append(
                 {

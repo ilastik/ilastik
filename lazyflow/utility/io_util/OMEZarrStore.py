@@ -69,15 +69,20 @@ class OMEZarrMultiscaleMeta:
     It is used for porting metadata from an OME-Zarr input to export.
     """
 
-    axiskeys: List[Literal["t", "c", "z", "y", "x"]]
+    axis_units: OrderedDict[Literal["t", "c", "z", "y", "x"], Optional[str]]  # { axis_key: axis_unit }
     multiscale_name: Optional[str]
     multiscale_transformations: Optional[List[OMEZarrCoordinateTransformation]]
     dataset_transformations: OrderedDict[str, List[OMEZarrCoordinateTransformation]]  # { scale_key: transformations }
 
     @classmethod
     def from_multiscale_spec(cls, multiscale_spec) -> "OMEZarrMultiscaleMeta":
+        if "axes" in multiscale_spec and "name" in multiscale_spec["axes"][0]:
+            # In v0.4 OME-Zarr attrs, we might also receive units for each axis
+            axis_units = OrderedDict([(a["name"], a.get("unit")) for a in multiscale_spec["axes"]])
+        else:
+            axis_units = OrderedDict([(tag.key, None) for tag in get_axistags_from_spec(multiscale_spec)])
         return cls(
-            axiskeys=[tag.key for tag in get_axistags_from_spec(multiscale_spec)],
+            axis_units=axis_units,
             multiscale_name=multiscale_spec.get("name"),
             multiscale_transformations=_remove_transforms_with_path(multiscale_spec.get("coordinateTransformations")),
             dataset_transformations=OrderedDict(
