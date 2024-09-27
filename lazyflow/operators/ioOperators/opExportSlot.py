@@ -150,14 +150,15 @@ class OpExportSlot(Operator):
             path_format += "." + file_extension
 
         # Provide the TOTAL path (including dataset name)
-        if self.OutputFormat.value in (
+        hierarchical_formats = (
             "hdf5",
             "compressed hdf5",
             "n5",
             "compressed n5",
             "single-scale OME-Zarr",
             "multi-scale OME-Zarr",
-        ):
+        )
+        if self.OutputFormat.value in hierarchical_formats and self.OutputInternalPath.value != "":
             path_format += "/" + self.OutputInternalPath.value
 
         roi = numpy.array(roiFromShape(self.Input.meta.shape))

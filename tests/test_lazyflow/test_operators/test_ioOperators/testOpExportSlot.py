@@ -81,7 +81,7 @@ class TestOpExportSlot(object):
         finally:
             opRead.cleanUp()
 
-    def testBasic_ome_zarr(self):
+    def test_ome_zarr_without_internal_path(self):
         data = numpy.random.random((90, 100)).astype(numpy.float32)
         data = vigra.taggedView(data, vigra.defaultAxistags("yx"))
 
@@ -93,17 +93,19 @@ class TestOpExportSlot(object):
         opExport.Input.connect(opPiper.Output)
         opExport.OutputFormat.setValue("single-scale OME-Zarr")
         opExport.OutputFilenameFormat.setValue(self._tmpdir + "/test_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}")
-        opExport.OutputInternalPath.setValue("volume/data")
+        opExport.OutputInternalPath.setValue("")  # Overwrite the slot's default "exported_data"
         opExport.CoordinateOffset.setValue((10, 20))
 
         assert opExport.ExportPath.ready()
-        export_file = PathComponents(opExport.ExportPath.value).externalPath
-        assert os.path.split(export_file)[1] == "test_export_x20-120_y10-100.zarr"
+        export_path_components = PathComponents(opExport.ExportPath.value)
+        expected_export_path = Path(self._tmpdir) / "test_export_x20-120_y10-100.zarr"
+        assert Path(export_path_components.externalPath) == expected_export_path
+        assert export_path_components.internalPath is None
         opExport.run_export()
 
         opRead = OpInputDataReader(graph=graph)
         try:
-            opRead.FilePath.setValue(opExport.ExportPath.value + "/s0")
+            opRead.FilePath.setValue(str(expected_export_path / "s0"))
             expected_data = data.view(numpy.ndarray).reshape((1, 1, 1) + data.shape)  # OME-Zarr always tczyx
             read_data = opRead.Output[:].wait()
             numpy.testing.assert_array_equal(read_data, expected_data)
@@ -215,7 +217,7 @@ class TestOpExportSlot(object):
         try:
             opRead.FilePath.setValue(path_in + "/s0")
 
-            export_path = self._tmpdir + "/test_export.zarr"
+            export_path = self._tmpdir + "/test_export1.zarr"
             opExport.Input.connect(opRead.Output)
             opExport.OutputFormat.setValue("single-scale OME-Zarr")
             opExport.OutputFilenameFormat.setValue(export_path)
@@ -226,9 +228,7 @@ class TestOpExportSlot(object):
             assert written_file.attrs["multiscales"] == expected_meta_s0
         finally:
             opExport.cleanUp()
-            del opExport
             opRead.cleanUp()
-            del opRead
 
         # Same thing for the second scale
         # Have to make new ops because they aren't "recyclable" after a cleanUp
@@ -237,7 +237,7 @@ class TestOpExportSlot(object):
         try:
             opRead.FilePath.setValue(path_in + "/s1")
 
-            export_path = self._tmpdir + "/test_export.zarr"
+            export_path = self._tmpdir + "/test_export2.zarr"
             opExport.Input.connect(opRead.Output)
             opExport.OutputFormat.setValue("single-scale OME-Zarr")
             opExport.OutputFilenameFormat.setValue(export_path)
@@ -259,7 +259,7 @@ class TestOpExportSlot(object):
             opRead.FilePath.setValue(Path(path_in).as_uri())
             opRead.ActiveScale.setValue("s1")
 
-            export_path = self._tmpdir + "/test_export.zarr"
+            export_path = self._tmpdir + "/test_export3.zarr"
             opExport.Input.connect(opRead.Output)
             opExport.OutputFormat.setValue("single-scale OME-Zarr")
             opExport.OutputFilenameFormat.setValue(export_path)
