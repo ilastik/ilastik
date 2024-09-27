@@ -36,9 +36,9 @@ def test_metadata_integrity(tmp_path, graph, shape, axes):
 
     expected_axiskeys = "tczyx"
     assert export_path.exists()
-    store = zarr.open(str(export_path))
-    assert "multiscales" in store.attrs
-    written_meta = store.attrs["multiscales"][0]
+    group = zarr.open(str(export_path))
+    assert "multiscales" in group.attrs
+    written_meta = group.attrs["multiscales"][0]
     assert all([key in written_meta for key in ("datasets", "axes", "version")])  # Keys required by spec
     assert all([value is not None for value in written_meta.values()])  # Should not write None anywhere
     assert written_meta["version"] == "0.4"
@@ -48,9 +48,9 @@ def test_metadata_integrity(tmp_path, graph, shape, axes):
 
     discovered_keys = []
     for dataset in written_meta["datasets"]:
-        assert dataset["path"] in store
+        assert dataset["path"] in group
         discovered_keys.append(dataset["path"])
-        written_array = store[dataset["path"]]
+        written_array = group[dataset["path"]]
         assert written_array.fill_value is not None, "FIJI and z5py don't open zarrays without a fill_value"
         assert "axistags" in written_array.attrs, f"no axistags for {dataset['path']}"
         assert vigra.AxisTags.fromJSON(written_array.attrs["axistags"]) == vigra.defaultAxistags(expected_axiskeys)
@@ -65,7 +65,7 @@ def test_metadata_integrity(tmp_path, graph, shape, axes):
         )
         assert written_array.shape == expected_shape
         assert numpy.count_nonzero(written_array) > numpy.prod(expected_shape) / 2, "did not write actual data"
-    assert all([key in discovered_keys for key in store.keys()]), "store contains undocumented subpaths"
+    assert all([key in discovered_keys for key in group.keys()]), "store contains undocumented subpaths"
 
 
 @pytest.mark.parametrize(
@@ -89,11 +89,11 @@ def test_writes_with_no_scaling(tmp_path, graph, data_shape, scaling_on):
 
     write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=scaling_on)
 
-    store = zarr.open(str(export_path))
-    meta = store.attrs["multiscales"][0]
+    group = zarr.open(str(export_path))
+    meta = group.attrs["multiscales"][0]
     assert len(meta["datasets"]) == 1
     dataset = meta["datasets"][0]
-    numpy.testing.assert_array_equal(store[dataset["path"]], data)
+    numpy.testing.assert_array_equal(group[dataset["path"]], data)
     scale_transforms = [transform for transform in dataset["coordinateTransformations"] if transform["type"] == "scale"]
     assert scale_transforms[0]["scale"] == [1.0, 1.0, 1.0, 1.0, 1.0]
 
@@ -127,10 +127,10 @@ def test_downscaling(tmp_path, graph, data_shape, computation_block_shape, expec
 
     write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=True)
 
-    store = zarr.open(str(export_path))
-    meta = store.attrs["multiscales"][0]
+    group = zarr.open(str(export_path))
+    meta = group.attrs["multiscales"][0]
     assert len(meta["datasets"]) == len(expected_scalings)
-    numpy.testing.assert_array_equal(store[meta["datasets"][0]["path"]], data)
+    numpy.testing.assert_array_equal(group[meta["datasets"][0]["path"]], data)
 
     for i, scaling in enumerate(expected_scalings):
         dataset = meta["datasets"][i]
@@ -141,13 +141,13 @@ def test_downscaling(tmp_path, graph, data_shape, computation_block_shape, expec
         # Makes sure that the blockwise-scaled image is identical to downscaling the data at once
         if scaling == [1.0, 1.0, 4.0, 4.0, 4.0]:
             downscaled_data = data[:, :, ::4, ::4, ::4]
-            numpy.testing.assert_array_equal(store[dataset["path"]], downscaled_data)
+            numpy.testing.assert_array_equal(group[dataset["path"]], downscaled_data)
         elif scaling == [1.0, 1.0, 2.0, 2.0, 2.0]:
             downscaled_data = data[:, :, ::2, ::2, ::2]
-            numpy.testing.assert_array_equal(store[dataset["path"]], downscaled_data)
+            numpy.testing.assert_array_equal(group[dataset["path"]], downscaled_data)
         elif scaling == [1.0, 1.0, 1.0, 2.0, 2.0]:
             downscaled_data = data[:, :, :, ::2, ::2]
-            numpy.testing.assert_array_equal(store[dataset["path"]], downscaled_data)
+            numpy.testing.assert_array_equal(group[dataset["path"]], downscaled_data)
 
 
 @pytest.mark.skip("To be implemented after releasing single-scale export")
@@ -204,32 +204,38 @@ def test_write_new_ome_zarr_with_name_on_disc(tmp_path, tiny_5d_vigra_array_pipe
     write_ome_zarr(str(export_path), tiny_5d_vigra_array_piper.Output, progress, compute_downscales=True)
 
     assert export_path.exists()
-    store = zarr.open(str(tmp_path / "test.zarr"))
-    assert "multiscales" in store.attrs
-    m = store.attrs["multiscales"][0]
+    group = zarr.open(str(tmp_path / "test.zarr"))
+    assert "multiscales" in group.attrs
+    m = group.attrs["multiscales"][0]
     assert all(key in m for key in ("datasets", "axes", "version", "name"))
     assert m["version"] == "0.4"
     assert m["name"] == "predictions/first_attempt"
     assert [a["name"] for a in m["axes"]] == ["t", "c", "z", "y", "x"]
-    assert all(dataset["path"] in store for dataset in m["datasets"])
-    assert all(dataset["path"][0] != "/" in store for dataset in m["datasets"])
+    assert all(dataset["path"] in group for dataset in m["datasets"])
+    assert all(dataset["path"][0] != "/" in group for dataset in m["datasets"])
 
 
-def test_overwrite_existing_store(tmp_path, tiny_5d_vigra_array_piper):
+def test_do_not_overwrite(tmp_path, tiny_5d_vigra_array_piper):
+    original_data_array = tiny_5d_vigra_array_piper.Output.value
     data_array2 = vigra.VigraArray((1, 1, 3, 3, 3), axistags=vigra.defaultAxistags("tczyx"))
     data_array2[...] = numpy.indices((1, 1, 3, 3, 3)).sum(0)
     export_path = tmp_path / "test.zarr"
     source_op = tiny_5d_vigra_array_piper
     progress = mock.Mock()
     write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=True)
+
+    with pytest.raises(FileExistsError):
+        write_ome_zarr(str(export_path / "copy"), source_op.Output, progress, compute_downscales=True)
+    group = zarr.open(str(export_path))
+    assert "copy" not in group, "should not append to existing store"
+    m = group.attrs["multiscales"][0]
+    assert m["datasets"][0]["path"] == "s0"
+
     source_op.Input.setValue(data_array2)
-    write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=True)
-    store = zarr.open(str(tmp_path / "test.zarr"))
-    assert "multiscales" in store.attrs
-    m = store.attrs["multiscales"][0]
-    assert "datasets" in m and "path" in m["datasets"][0]
-    written_data = store[m["datasets"][0]["path"]]
-    numpy.testing.assert_array_equal(written_data, data_array2)
+    with pytest.raises(FileExistsError):
+        write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=True)
+    # should not overwrite existing array
+    numpy.testing.assert_array_equal(group["s0"], original_data_array)
 
 
 def test_match_input_scale_key_and_factors(tmp_path, tiny_5d_vigra_array_piper):
@@ -254,9 +260,9 @@ def test_match_input_scale_key_and_factors(tmp_path, tiny_5d_vigra_array_piper):
 
     write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=False)
 
-    store = zarr.open(str(store_path))
-    assert "multiscales" in store.attrs
-    m = store.attrs["multiscales"][0]
+    group = zarr.open(str(store_path))
+    assert "multiscales" in group.attrs
+    m = group.attrs["multiscales"][0]
     assert "datasets" in m and "path" in m["datasets"][0]
     assert len(m["datasets"]) == 1
     assert m["datasets"][0]["path"] == "subdir/matching_scale"
@@ -323,9 +329,9 @@ def test_port_ome_zarr_metadata_from_input(tmp_path, tiny_5d_vigra_array_piper):
 
     write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=False)
 
-    store = zarr.open(str(store_path))
-    assert "multiscales" in store.attrs
-    m = store.attrs["multiscales"][0]
+    group = zarr.open(str(store_path))
+    assert "multiscales" in group.attrs
+    m = group.attrs["multiscales"][0]
     assert "datasets" in m and "path" in m["datasets"][0]
     assert len(m["datasets"]) == 1
     assert m["name"] == "subdir"  # Input name should not be carried over - presumably it names the raw data

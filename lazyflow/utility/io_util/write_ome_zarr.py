@@ -2,6 +2,7 @@ import dataclasses
 import logging
 from collections import OrderedDict as ODict
 from functools import partial
+from pathlib import Path
 from typing import List, Tuple, Dict, OrderedDict, Optional, Literal
 
 import numpy
@@ -204,9 +205,6 @@ def _create_empty_zarrays(
     for scale_key, scaling in output_scalings.items():
         scale_path = f"{internal_path}/{scale_key}" if internal_path else scale_key
         scaled_shape = _scale_tagged_shape(export_shape, scaling).values()
-        if contains_array(store, scale_path):
-            logger.warning(f"Deleting existing dataset at {external_path}/{scale_path}.")
-            del store[scale_path]
         zarrays[scale_key] = zarr.creation.zeros(
             scaled_shape, store=store, path=scale_path, chunks=chunk_shape, dtype=export_dtype
         )
@@ -407,6 +405,12 @@ def write_ome_zarr(
     progress_signal: OrderedSignal,
     compute_downscales: bool = False,
 ):
+    if Path(PathComponents(export_path).externalPath).exists():
+        raise FileExistsError(
+            "Aborting because export path already exists. Please delete it manually if you intended to overwrite it. "
+            "Appending to an existing OME-Zarr store is not yet implemented."
+            f"\nPath: {PathComponents(export_path).externalPath}."
+        )
     op_reorder = OpReorderAxes(parent=image_source_slot.operator)
     op_reorder.AxisOrder.setValue("tczyx")
     try:
