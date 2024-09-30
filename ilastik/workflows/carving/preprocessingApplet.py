@@ -36,13 +36,7 @@ class PreprocessingApplet(StandardApplet):
         self._title = title
 
         self.writeprotected = False
-        self._enabledWriteprotect = True
         self._enabledDS = True
-
-    def enableWriteprotect(self, value):
-        if self._enabledWriteprotect != value:
-            self._enabledWriteprotect = value
-            self._gui.enableWriteprotect(value)
 
     def enableDownstream(self, ed):
         if self._workflow._headless:
