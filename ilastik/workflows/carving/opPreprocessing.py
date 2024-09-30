@@ -314,6 +314,7 @@ class OpPreprocessing(Operator):
 
         self.hasUnsavedData = False  # read by preprocessingSerializer
         self._dirty = False  # to avoid generating new MST unless user has changed settings
+        self.deserialized = False
 
         self.cachedSigma = None  # keep settings of last preprocess execute
         self.cachedFilter = None  # for saving in project file

@@ -35,7 +35,6 @@ class PreprocessingApplet(StandardApplet):
         self._gui = None
         self._title = title
 
-        self.writeprotected = False
         self._enabledDS = True
 
     def enableDownstream(self, ed):
@@ -55,7 +54,7 @@ class PreprocessingApplet(StandardApplet):
         opPre = self.topLevelOperator.getLane(laneIndex)
         self._gui = PreprocessingGui(self, opPre)
 
-        if self.writeprotected:
+        if opPre.deserialized:
             self._gui.setWriteprotect()
 
         self.enableDownstream(self._enabledDS)
