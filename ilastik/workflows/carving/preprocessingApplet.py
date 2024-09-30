@@ -57,7 +57,7 @@ class PreprocessingApplet(StandardApplet):
         if opPre.deserialized:
             self._gui.setWriteprotect()
 
-        self.enableDownstream(self._enabledDS)
+        self._gui.enableWriteprotect(self._enabledDS)
 
         return self._gui
 
