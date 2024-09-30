@@ -43,10 +43,7 @@ class PreprocessingApplet(StandardApplet):
             return
         from .preprocessingGui import PreprocessingGui
 
-        if ed and not self._enabledDS:  # enable Downstream
-            self._enabledDS = True
-        if not ed and self._enabledDS:  # disable Downstream
-            self._enabledDS = False
+        self._enabledDS = ed
         if isinstance(
             self._gui, PreprocessingGui
         ):  # if the gui is already set up, apply enabling to write-protect checkbox
