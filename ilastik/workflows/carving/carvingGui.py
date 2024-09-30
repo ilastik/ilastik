@@ -150,7 +150,13 @@ class CarvingGui(LabelingGui):
 
         self.labelingDrawerUi.namesButton.clicked.connect(self.onShowObjectNames)
         if hasattr(self.labelingDrawerUi, "exportAllMeshesButton"):
-            self.labelingDrawerUi.exportAllMeshesButton.clicked.connect(self._exportAllObjectMeshes)
+            # Mesh export only works for 3D. Disable for now until we implement a 2D workaround.
+            input_data_shape = self.topLevelOperatorView.InputData.meta.getTaggedShape()
+            if "z" in input_data_shape and input_data_shape["z"] > 1:
+                self.labelingDrawerUi.exportAllMeshesButton.clicked.connect(self._exportAllObjectMeshes)
+            else:
+                self.labelingDrawerUi.exportAllMeshesButton.setEnabled(False)
+                self.labelingDrawerUi.exportAllMeshesButton.setToolTip("Not available for 2D images")
 
         self.labelingDrawerUi.labelListView.allowDelete = False
         self._labelControlUi.labelListModel.allowRemove(False)
@@ -411,10 +417,14 @@ class CarvingGui(LabelingGui):
                     showAction = submenu.addAction("Show 3D %s" % name)
                     showAction.triggered.connect(partial(onShow3D, name))
 
-            # Export mesh
-
-            exportAction = submenu.addAction("Export mesh for %s" % name)
-            exportAction.triggered.connect(partial(self._onContextMenuExportMesh, name))
+            # Export mesh (only works for 3D. Do not offer for 2D until we have a workaround)
+            input_data_shape = op.InputData.meta.getTaggedShape()
+            if "z" in input_data_shape and input_data_shape["z"] > 1:
+                exportAction = submenu.addAction(f"Export mesh for {name}")
+                exportAction.triggered.connect(partial(self._onContextMenuExportMesh, name))
+            else:
+                exportAction = submenu.addAction("(Mesh export not available for 2D)")
+                exportAction.setEnabled(False)
 
             menu.addMenu(submenu)
 
