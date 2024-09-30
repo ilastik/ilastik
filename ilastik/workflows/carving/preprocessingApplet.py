@@ -35,28 +35,8 @@ class PreprocessingApplet(StandardApplet):
         self._gui = None
         self._title = title
 
-        self.writeprotected = False
-        self._enabledWriteprotect = True
-        self._enabledDS = True
-
-    def enableWriteprotect(self, value):
-        if self._enabledWriteprotect != value:
-            self._enabledWriteprotect = value
-            self._gui.enableWriteprotect(value)
-
-    def enableDownstream(self, ed):
-        if self._workflow._headless:
-            return
-        from .preprocessingGui import PreprocessingGui
-
-        if ed and not self._enabledDS:  # enable Downstream
-            self._enabledDS = True
-        if not ed and self._enabledDS:  # disable Downstream
-            self._enabledDS = False
-        if isinstance(
-            self._gui, PreprocessingGui
-        ):  # if the gui is already set up, apply enabling to write-protect checkbox
-            self._gui.enableWriteprotect(ed)
+    def anyLaneReady(self):
+        return any([opPre.cachedResult[0] is not None for opPre in self.topLevelOperator.innerOperators])
 
     def createSingleLaneGui(self, laneIndex):
         from .preprocessingGui import PreprocessingGui
@@ -64,10 +44,8 @@ class PreprocessingApplet(StandardApplet):
         opPre = self.topLevelOperator.getLane(laneIndex)
         self._gui = PreprocessingGui(self, opPre)
 
-        if self.writeprotected:
+        if opPre.deserialized:
             self._gui.setWriteprotect()
-
-        self.enableDownstream(self._enabledDS)
 
         return self._gui
 

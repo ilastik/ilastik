@@ -314,6 +314,7 @@ class OpPreprocessing(Operator):
 
         self.hasUnsavedData = False  # read by preprocessingSerializer
         self._dirty = False  # to avoid generating new MST unless user has changed settings
+        self.deserialized = False
 
         self.cachedSigma = None  # keep settings of last preprocess execute
         self.cachedFilter = None  # for saving in project file
@@ -408,7 +409,6 @@ class OpPreprocessing(Operator):
 
         self.hasUnsavedData = True
         self._dirty = False
-        self.enableDownstream(True)
 
         self.cachedResult = result
 
@@ -432,8 +432,3 @@ class OpPreprocessing(Operator):
             self.cachedResult = [None]
 
         self._dirty = True
-        self.enableDownstream(False)
-
-    def enableDownstream(self, ed):
-        """set enable of carving applet to ed"""
-        self.applet.enableDownstream(ed)

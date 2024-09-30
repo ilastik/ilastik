@@ -147,15 +147,13 @@ class CarvingWorkflow(Workflow):
         # Special input-input connection: WriteSeeds metadata must mirror the input data
         opCarvingLane.WriteSeeds.connect(opCarvingLane.InputData)
 
-        self.preprocessingApplet.enableDownstream(False)
-
     def handleAppletStateUpdateRequested(self):
         # If no data, nothing else is ready.
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         input_ready = len(opDataSelection.ImageGroup) > 0
 
         # If preprocessing isn't configured yet, don't allow carving
-        preprocessed_data_ready = input_ready and self.preprocessingApplet._enabledDS
+        preprocessed_data_ready = input_ready and self.preprocessingApplet.anyLaneReady()
 
         # Enable each applet as appropriate
         self._shell.setAppletEnabled(self.preprocessingApplet, input_ready)
