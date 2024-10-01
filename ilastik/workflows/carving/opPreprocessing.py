@@ -409,7 +409,6 @@ class OpPreprocessing(Operator):
 
         self.hasUnsavedData = True
         self._dirty = False
-        self.applet.enableDownstream(True)
 
         self.cachedResult = result
 
@@ -433,4 +432,3 @@ class OpPreprocessing(Operator):
             self.cachedResult = [None]
 
         self._dirty = True
-        self.applet.enableDownstream(False)

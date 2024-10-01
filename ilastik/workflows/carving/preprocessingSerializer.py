@@ -108,7 +108,6 @@ class PreprocessingSerializer(AppletSerializer):
             opPre.deserialized = True
 
             opPre.PreprocessedData.setDirty()
-            opPre.applet.enableDownstream(True)
 
     def isDirty(self):
         return any(op.hasUnsavedData for op in self._o.innerOperators)

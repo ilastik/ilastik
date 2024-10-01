@@ -163,9 +163,6 @@ class PreprocessingGui(QMainWindow):
         self.drawer.reduceToSpin.setEnabled(not iswriteprotect)
         self.drawer.doAggloCheckBox.setEnabled(not iswriteprotect)
 
-    def enableWriteprotect(self, ew):
-        self.drawer.writeprotectBox.setEnabled(ew)
-
     def setWriteprotect(self):
         self.drawer.writeprotectBox.setChecked(True)
 
