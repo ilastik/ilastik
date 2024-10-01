@@ -409,7 +409,7 @@ class OpPreprocessing(Operator):
 
         self.hasUnsavedData = True
         self._dirty = False
-        self.enableDownstream(True)
+        self.applet.enableDownstream(True)
 
         self.cachedResult = result
 
@@ -433,8 +433,4 @@ class OpPreprocessing(Operator):
             self.cachedResult = [None]
 
         self._dirty = True
-        self.enableDownstream(False)
-
-    def enableDownstream(self, ed):
-        """set enable of carving applet to ed"""
-        self.applet.enableDownstream(ed)
+        self.applet.enableDownstream(False)
