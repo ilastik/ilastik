@@ -120,6 +120,10 @@ jobs:
         run: |
           set VOLUMINA_SHOW_3D_WIDGET=0
           conda mambabuild --test --override-channels ^
-            -c .\pkgs -c pytorch -c nvidia -c ilastik-forge -c conda-forge ^
-            .\pkgs\noarch\%ILASTIK_PACKAGE_NAME%
-
+            -c ./pkgs -c pytorch -c nvidia -c ilastik-forge -c conda-forge ^
+            ./pkgs/noarch/%ILASTIK_PACKAGE_NAME%
+        # HACK: due to a bug in conda-build need to point to
+        # libarchive explicitly.
+        # https://github.com/conda/conda/issues/12563#issuecomment-1494264704
+        env:
+          LIBARCHIVE: C:\Miniconda\Library\bin\archive.dll
