@@ -101,7 +101,7 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
         self._scales = {scale["key"]: scale for scale in self._json_info["scales"]}
         self.n_channels = self._json_info["num_channels"]
         scale_shapes = [
-            OrderedDict(zip("czyx", [self.n_channels] + scale["size"])) for scale in self._json_info["scales"]
+            OrderedDict(zip("czyx", [self.n_channels] + scale["size"][::-1])) for scale in self._json_info["scales"]
         ]
         scale_metadata = OrderedDict(zip(self._scales.keys(), scale_shapes))
 
