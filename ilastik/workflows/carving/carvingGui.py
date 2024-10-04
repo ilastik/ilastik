@@ -150,7 +150,13 @@ class CarvingGui(LabelingGui):
 
         self.labelingDrawerUi.namesButton.clicked.connect(self.onShowObjectNames)
         if hasattr(self.labelingDrawerUi, "exportAllMeshesButton"):
-            self.labelingDrawerUi.exportAllMeshesButton.clicked.connect(self._exportAllObjectMeshes)
+            # Mesh export only works for 3D. Disable for now until we implement a 2D workaround.
+            input_data_shape = self.topLevelOperatorView.InputData.meta.getTaggedShape()
+            if "z" in input_data_shape and input_data_shape["z"] > 1:
+                self.labelingDrawerUi.exportAllMeshesButton.clicked.connect(self._exportAllObjectMeshes)
+            else:
+                self.labelingDrawerUi.exportAllMeshesButton.setEnabled(False)
+                self.labelingDrawerUi.exportAllMeshesButton.setToolTip("Not available for 2D images")
 
         self.labelingDrawerUi.labelListView.allowDelete = False
         self._labelControlUi.labelListModel.allowRemove(False)
