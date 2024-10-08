@@ -81,7 +81,7 @@ class TestOpExportSlot(object):
         finally:
             opRead.cleanUp()
 
-    def test_ome_zarr_without_internal_path(self):
+    def test_ome_zarr(self):
         data = numpy.random.random((90, 100)).astype(numpy.float32)
         data = vigra.taggedView(data, vigra.defaultAxistags("yx"))
 
@@ -93,14 +93,12 @@ class TestOpExportSlot(object):
         opExport.Input.connect(opPiper.Output)
         opExport.OutputFormat.setValue("single-scale OME-Zarr")
         opExport.OutputFilenameFormat.setValue(self._tmpdir + "/test_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}")
-        opExport.OutputInternalPath.setValue("")  # Overwrite the slot's default "exported_data"
         opExport.CoordinateOffset.setValue((10, 20))
 
         assert opExport.ExportPath.ready()
-        export_path_components = PathComponents(opExport.ExportPath.value)
         expected_export_path = Path(self._tmpdir) / "test_export_x20-120_y10-100.zarr"
-        assert Path(export_path_components.externalPath) == expected_export_path
-        assert export_path_components.internalPath is None
+        assert Path(opExport.ExportPath.value) == expected_export_path
+
         opExport.run_export()
 
         opRead = OpInputDataReader(graph=graph)
@@ -147,8 +145,7 @@ class TestOpExportSlot(object):
             }
         ]
         # Expected written meta is the same as input, but tczyx, only with the respective scale,
-        # and with "exported_data" as the name (internal path is mandatory due to
-        # OpExportData.OutputInternalPath having default="exported_data")
+        # and with no name
         expected_meta_s0 = [
             {
                 "axes": [
@@ -168,10 +165,9 @@ class TestOpExportSlot(object):
                             {"scale": [1.0, 1.0, 1.0, 0.2, 0.2], "type": "scale"},
                             {"translation": [0.0, 0.0, 0.0, 0.0, 0.0], "type": "translation"},
                         ],
-                        "path": "exported_data/s0",
+                        "path": "s0",
                     }
                 ],
-                "name": "exported_data",
                 "version": "0.4",
             }
         ]
@@ -194,10 +190,9 @@ class TestOpExportSlot(object):
                             {"scale": [1.0, 1.0, 1.0, 1.4, 1.4], "type": "scale"},
                             {"translation": [0.0, 0.0, 0.0, 7.62, 8.49], "type": "translation"},
                         ],
-                        "path": "exported_data/s1",
+                        "path": "s1",
                     }
                 ],
-                "name": "exported_data",
                 "version": "0.4",
             }
         ]

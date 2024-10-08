@@ -199,23 +199,6 @@ def tiny_5d_vigra_array_piper(graph):
     return op
 
 
-def test_write_new_ome_zarr_with_name_on_disc(tmp_path, tiny_5d_vigra_array_piper):
-    export_path = tmp_path / "test.zarr/predictions/first_attempt"
-    progress = mock.Mock()
-    write_ome_zarr(str(export_path), tiny_5d_vigra_array_piper.Output, progress)
-
-    assert export_path.exists()
-    group = zarr.open(str(tmp_path / "test.zarr"))
-    assert "multiscales" in group.attrs
-    m = group.attrs["multiscales"][0]
-    assert all(key in m for key in ("datasets", "axes", "version", "name"))
-    assert m["version"] == "0.4"
-    assert m["name"] == "predictions/first_attempt"
-    assert [a["name"] for a in m["axes"]] == ["t", "c", "z", "y", "x"]
-    assert all(dataset["path"] in group for dataset in m["datasets"])
-    assert all(dataset["path"][0] != "/" in group for dataset in m["datasets"])
-
-
 def test_do_not_overwrite(tmp_path, tiny_5d_vigra_array_piper):
     original_data_array = tiny_5d_vigra_array_piper.Output.value
     data_array2 = vigra.VigraArray((1, 1, 3, 3, 3), axistags=vigra.defaultAxistags("tczyx"))
@@ -226,24 +209,20 @@ def test_do_not_overwrite(tmp_path, tiny_5d_vigra_array_piper):
     write_ome_zarr(str(export_path), source_op.Output, progress)
 
     with pytest.raises(FileExistsError):
-        write_ome_zarr(str(export_path / "copy"), source_op.Output, progress)
-    group = zarr.open(str(export_path))
-    assert "copy" not in group, "should not append to existing store"
-    m = group.attrs["multiscales"][0]
-    assert m["datasets"][0]["path"] == "s0"
+        write_ome_zarr(str(export_path), source_op.Output, progress)
 
     source_op.Input.setValue(data_array2)
     with pytest.raises(FileExistsError):
         write_ome_zarr(str(export_path), source_op.Output, progress)
     # should not overwrite existing array
+    group = zarr.open(str(export_path))
     numpy.testing.assert_array_equal(group["s0"], original_data_array)
 
 
 def test_match_input_scale_key_and_factors(tmp_path, tiny_5d_vigra_array_piper):
     """If the source slot has scale metadata, the export should match the scale name to the input.
     Scaling metadata should be relative to the input's raw data."""
-    store_path = tmp_path / "test.zarr"
-    export_path = store_path / "subdir"
+    export_path = tmp_path / "test.zarr"
     source_op = tiny_5d_vigra_array_piper
     progress = mock.Mock()
     input_axes = ["t", "z", "y", "x"]
@@ -261,12 +240,12 @@ def test_match_input_scale_key_and_factors(tmp_path, tiny_5d_vigra_array_piper):
 
     write_ome_zarr(str(export_path), source_op.Output, progress)
 
-    group = zarr.open(str(store_path))
+    group = zarr.open(str(export_path))
     assert "multiscales" in group.attrs
     m = group.attrs["multiscales"][0]
     assert "datasets" in m and "path" in m["datasets"][0]
     assert len(m["datasets"]) == 1
-    assert m["datasets"][0]["path"] == "subdir/matching_scale"
+    assert m["datasets"][0]["path"] == "matching_scale"
     assert m["datasets"][0]["coordinateTransformations"] == expected_matching_scale_transform
 
 
@@ -275,8 +254,7 @@ def test_port_ome_zarr_metadata_from_input(tmp_path, tiny_5d_vigra_array_piper):
     If there is OME-Zarr specific additional metadata (even unused in ilastik),
     the export should write metadata that describe the pyramid as a whole, and those that
     describe the written scale."""
-    store_path = tmp_path / "test.zarr"
-    export_path = store_path / "subdir"
+    export_path = tmp_path / "test.zarr"
     source_op = tiny_5d_vigra_array_piper
     progress = mock.Mock()
     multiscales: multiscaleStore.Multiscales = OrderedDict(
@@ -330,12 +308,12 @@ def test_port_ome_zarr_metadata_from_input(tmp_path, tiny_5d_vigra_array_piper):
 
     write_ome_zarr(str(export_path), source_op.Output, progress)
 
-    group = zarr.open(str(store_path))
+    group = zarr.open(str(export_path))
     assert "multiscales" in group.attrs
     m = group.attrs["multiscales"][0]
     assert "datasets" in m and "path" in m["datasets"][0]
     assert len(m["datasets"]) == 1
-    assert m["name"] == "subdir"  # Input name should not be carried over - presumably it names the raw data
+    assert "name" not in m  # Input name should not be carried over - presumably it names the raw data
     assert m["axes"] == [
         {"name": "t", "type": "time", "unit": "second"},
         {"name": "c", "type": "channel"},
@@ -344,5 +322,5 @@ def test_port_ome_zarr_metadata_from_input(tmp_path, tiny_5d_vigra_array_piper):
         {"name": "x", "type": "space", "unit": "micrometer"},
     ]  # Axis units should be carried over
     assert m["coordinateTransformations"] == expected_multiscale_transform
-    assert m["datasets"][0]["path"] == "subdir/matching_scale"
+    assert m["datasets"][0]["path"] == "matching_scale"
     assert m["datasets"][0]["coordinateTransformations"] == expected_matching_scale_transform

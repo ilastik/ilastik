@@ -122,24 +122,20 @@ def _match_or_create_scalings(
 
 
 def _create_empty_zarrays(
-    export_path: str,
+    abs_export_path: str,
     export_dtype,
     chunk_shape: Shape,
     export_shape: TaggedShape,
     output_scalings: ScalingsByScaleKey,
-) -> Tuple[OrderedDict[str, zarr.Array], OrderedDict[str, ImageMetadata]]:
-    pc = PathComponents(export_path)
-    external_path = pc.externalPath
-    internal_path = pc.internalPath.lstrip("/") if pc.internalPath else None
-    store = FSStore(external_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
+) -> Tuple[OrderedDict[str, zarr.Array], OrderedDict[str, ImageMetadata]]:  #
+    store = FSStore(abs_export_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
     zarrays = ODict()
     meta = ODict()
     for scale_key, scaling in output_scalings.items():
-        scale_path = f"{internal_path}/{scale_key}" if internal_path else scale_key
         zarrays[scale_key] = zarr.creation.zeros(
-            export_shape.values(), store=store, path=scale_path, chunks=chunk_shape, dtype=export_dtype
+            export_shape.values(), store=store, path=scale_key, chunks=chunk_shape, dtype=export_dtype
         )
-        meta[scale_key] = ImageMetadata(scale_path, scaling, {})
+        meta[scale_key] = ImageMetadata(scale_key, scaling, {})
 
     return zarrays, meta
 
@@ -276,15 +272,12 @@ def _get_datasets_meta(
 
 
 def _write_ome_zarr_and_ilastik_metadata(
-    export_path: str,
+    abs_export_path: str,
     export_meta: OrderedDict[str, ImageMetadata],
     scalings_relative_to_raw_input: Optional[ScalingsByScaleKey],
     input_ome_meta: Optional[OMEZarrMultiscaleMeta],
     ilastik_meta: Dict,
 ):
-    pc = PathComponents(export_path)
-    external_path = pc.externalPath
-    multiscale_name = pc.internalPath.lstrip("/") if pc.internalPath else None
     ilastik_signature = {"name": "ilastik", "version": ilastik_version, "ome_zarr_exporter_version": 1}
     export_axiskeys = [tag.key for tag in ilastik_meta["axistags"]]
 
@@ -293,8 +286,6 @@ def _write_ome_zarr_and_ilastik_metadata(
     ome_zarr_multiscale_meta = {"axes": axes, "datasets": datasets, "version": "0.4"}
 
     # Optional fields
-    if multiscale_name:
-        ome_zarr_multiscale_meta["name"] = multiscale_name
     if input_ome_meta and input_ome_meta.multiscale_transformations:
         transforms_axis_matched = []
         for transform in input_ome_meta.multiscale_transformations:
@@ -311,7 +302,7 @@ def _write_ome_zarr_and_ilastik_metadata(
             )
         ome_zarr_multiscale_meta["coordinateTransformations"] = transforms_axis_matched
 
-    store = FSStore(external_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
+    store = FSStore(abs_export_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
     root = zarr.group(store, overwrite=False)
     root.attrs["_creator"] = ilastik_signature
     root.attrs["multiscales"] = [ome_zarr_multiscale_meta]
@@ -321,11 +312,17 @@ def _write_ome_zarr_and_ilastik_metadata(
 
 
 def write_ome_zarr(export_path: str, image_source_slot: Slot, progress_signal: OrderedSignal):
-    if Path(PathComponents(export_path).externalPath).exists():
+    pc = PathComponents(export_path)
+    if pc.internalPath:
+        raise ValueError(
+            f'Internal paths are not supported by OME-Zarr export. Received internal path: "{pc.internalPath}"'
+        )
+    abs_export_path = pc.externalPath
+    if Path(abs_export_path).exists():
         raise FileExistsError(
             "Aborting because export path already exists. Please delete it manually if you intended to overwrite it. "
             "Appending to an existing OME-Zarr store is not yet implemented."
-            f"\nPath: {PathComponents(export_path).externalPath}."
+            f"\nPath: {abs_export_path}."
         )
     op_reorder = OpReorderAxes(parent=image_source_slot.operator)
     op_reorder.AxisOrder.setValue("tczyx")
@@ -341,7 +338,7 @@ def write_ome_zarr(export_path: str, image_source_slot: Slot, progress_signal: O
         chunk_shape = _get_chunk_shape(export_shape, export_dtype)
         export_scalings, scalings_relative_to_raw_input = _match_or_create_scalings(input_scales, export_shape)
         zarrays, export_meta = _create_empty_zarrays(
-            export_path, export_dtype, chunk_shape, export_shape, export_scalings
+            abs_export_path, export_dtype, chunk_shape, export_shape, export_scalings
         )
 
         requester = BigRequestStreamer(reordered_source, roiFromShape(reordered_source.meta.shape))
@@ -351,7 +348,7 @@ def write_ome_zarr(export_path: str, image_source_slot: Slot, progress_signal: O
 
         progress_signal(95)
         _write_ome_zarr_and_ilastik_metadata(
-            export_path,
+            abs_export_path,
             export_meta,
             scalings_relative_to_raw_input,
             input_ome_meta,

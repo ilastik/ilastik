@@ -153,7 +153,6 @@ class OpExportSlot(Operator):
             "compressed hdf5",
             "n5",
             "compressed n5",
-            "single-scale OME-Zarr",
         )
         if self.OutputFormat.value in hierarchical_formats and self.OutputInternalPath.value != "":
             path_format += "/" + self.OutputInternalPath.value
