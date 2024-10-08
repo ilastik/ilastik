@@ -23,6 +23,7 @@ import os
 import traceback
 from collections import OrderedDict
 from functools import partial
+from typing import Optional, Tuple
 
 import numpy
 import yaml
@@ -54,6 +55,7 @@ from PyQt5.QtWidgets import (
     QStackedWidget,
     QVBoxLayout,
     QWidget,
+    QSpinBox,
 )
 from tiktorch.configkeys import NUM_ITERATIONS_DONE, NUM_ITERATIONS_MAX, TRAINING
 from tiktorch.types import ModelState
@@ -64,6 +66,8 @@ from ilastik.applets.labeling.labelingGui import LabelingGui, Tool
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
+from lazyflow.operators.tiktorch.classifier import InputParameterizedShape, ModelSession
+from . import OpNNClassification
 
 from .tiktorchController import ALLOW_TRAINING, TiktorchOperatorModel
 
@@ -335,6 +339,61 @@ class CheckpointWidget(QWidget):
             self.load_clicked.emit(QPersistentModelIndex(idx))
 
 
+class BlockParamConfig(QWidget):
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent=parent)
+        self.layout = QVBoxLayout()
+        self.recommended_shape_label = QLabel()
+        self.layout.addWidget(QLabel("Parameterized shape detected"))
+        self.layout.addWidget(QLabel("minShape + factor*step = totalShape"))
+        self.spatial_axes = QLabel()
+        self.layout.addWidget(self.spatial_axes)
+        self.layout.addSpacing(10)
+        self.layout.addWidget(QLabel("Recommended:"))
+        self.layout.addWidget(self.recommended_shape_label)
+
+        self.config_layout = QHBoxLayout()
+        self.min_shape_label = QLabel()
+        self.step_shape_label = QLabel()
+        self.plus = QLabel("+")
+        self.multiply = QLabel("*")
+        self.equal = QLabel("=")
+        self.block_param_spinbox = QSpinBox()
+        self.block_param_spinbox.setMinimum(0)
+        self.block_param_spinbox.valueChanged.connect(self._block_param_multiplier_changed)
+        self.total_shape = QLabel()
+        self.config_layout.addWidget(self.min_shape_label)
+        self.config_layout.addWidget(self.plus)
+        self.config_layout.addWidget(self.block_param_spinbox)
+        self.config_layout.addWidget(self.multiply)
+        self.config_layout.addWidget(self.step_shape_label)
+        self.config_layout.addWidget(self.equal)
+        self.config_layout.addWidget(self.total_shape)
+        self.config_layout.addStretch(1)
+
+        self.layout.addSpacing(10)
+        self.layout.addWidget(QLabel("Custom:"))
+        self.layout.addLayout(self.config_layout)
+        self.setLayout(self.layout)
+
+        self._shape: Optional[InputParameterizedShape] = None
+
+    def set_shapes(self, paramShape: InputParameterizedShape):
+        self._shape = paramShape
+        self.spatial_axes.setText(f'Spatial axes: {",".join(paramShape.spatial_axes)}')
+        self.recommended_shape_label.setText(str(paramShape))
+        self.min_shape_label.setText(f"{paramShape.min_shape.spatial_sizes}")
+        self.step_shape_label.setText(f"{paramShape.steps.spatial_sizes}")
+        self.block_param_spinbox.setValue(paramShape.multiplier)
+
+    def _block_param_multiplier_changed(self, value: int):
+        self.total_shape.setText(str(self._shape.get_total_shape(value).spatial_sizes))
+
+    @property
+    def multiplier(self) -> int:
+        return self.block_param_spinbox.value()
+
+
 class NNClassGui(LabelingGui):
     """
     LayerViewerGui class for Neural Network Classification
@@ -420,6 +479,16 @@ class NNClassGui(LabelingGui):
         ]:
             widget.setEnabled(enabled)
             widget.setVisible(enabled)
+        self.labelingDrawerUi.blockParamConfig.setVisible(False)
+
+    @threadRouted
+    def _setup_block_param_config(self):
+        model_session: ModelSession = self.topLevelOperatorView.ModelSession.value
+        if not model_session.is_input_shape_parameterized():
+            return
+        input_shape: InputParameterizedShape = model_session.input_shape
+        self.labelingDrawerUi.blockParamConfig.setVisible(True)
+        self.labelingDrawerUi.blockParamConfig.set_shapes(input_shape)
 
     def _get_model_state(self):
         factory = self.topLevelOperatorView.ClassifierFactory[:].wait()[0]
@@ -448,7 +517,7 @@ class NNClassGui(LabelingGui):
             data=self.topLevelOperatorView.Checkpoints.value,
         )
 
-    def __init__(self, parentApplet, topLevelOperatorView, labelingDrawerUiPath=None):
+    def __init__(self, parentApplet, topLevelOperatorView: OpNNClassification, labelingDrawerUiPath=None):
         labelSlots = LabelingGui.LabelingSlots()
         labelSlots.labelInput = topLevelOperatorView.LabelInputs
         labelSlots.labelOutput = topLevelOperatorView.LabelImages
@@ -638,6 +707,10 @@ class NNClassGui(LabelingGui):
 
         return layers
 
+    def is_model_parameterized(self) -> bool:
+        model_session_slot = self.topLevelOperatorView.ModelSession
+        return model_session_slot.ready() and model_session_slot.value.is_input_shape_parameterized()
+
     def toggleLivePrediction(self, checked):
         logger.debug("toggle live prediction mode to %r", checked)
         self.labelingDrawerUi.livePrediction.setEnabled(False)
@@ -645,8 +718,13 @@ class NNClassGui(LabelingGui):
         # If we're changing modes, enable/disable our controls and other applets accordingly
         if self.livePrediction != checked:
             if checked:
+                if self.is_model_parameterized():
+                    multiplier = self.labelingDrawerUi.blockParamConfig.multiplier
+                    self.topLevelOperatorView.opBlockShape.BlockParamMultiplier.setValue(multiplier)
                 self.updatePredictions()
 
+            if self.is_model_parameterized():
+                self.labelingDrawerUi.blockParamConfig.block_param_spinbox.setDisabled(checked)
             self.livePrediction = checked
             self.labelingDrawerUi.livePrediction.setChecked(checked)
             self.set_live_predict_icon(checked)
@@ -802,6 +880,7 @@ class NNClassGui(LabelingGui):
             self.minLabelNumber = num_classes
             self.maxLabelNumber = num_classes
             self.updateAllLayers()
+            self._setup_block_param_config()
 
         self.parentApplet.appletStateUpdateRequested()
 
