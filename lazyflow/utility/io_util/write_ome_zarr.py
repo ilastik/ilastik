@@ -51,85 +51,16 @@ def _get_chunk_shape(tagged_image_shape: TaggedShape, dtype) -> Shape:
     return chunk_shape
 
 
-def _compute_new_scaling_factors(
-    original_tagged_shape: TaggedShape, chunk_shape: Shape, compute_downscales: bool
-) -> List[OrderedScaling]:
-    """
-    Computes scaling "factors".
-    Technically they are divisors for the shape (factor 2.0 means half the shape).
-    Downscaling is done by a factor of 2 in all spatial dimensions until:
-    - the dataset would be less than 4 x chunk size (2MiB)
-    - an axis that started non-singleton would become singleton
-    Returns list of scaling factor dicts by axis, starting with original scale.
-    The scaling level that meets one of the exit conditions is excluded.
-    Raises if more than 20 scales are computed (sanity).
-    """
-    assert len(chunk_shape) == len(original_tagged_shape), "Chunk shape and tagged shape must have same length"
-    original_scale = ODict([(a, 1.0) for a in original_tagged_shape.keys()])
-    scalings = [original_scale]
-    if not compute_downscales:
-        return scalings
-    sanity_limit = 20
-    for i in range(sanity_limit):
-        if i == sanity_limit:
-            raise ValueError(f"Too many scales computed, limit={sanity_limit}. Please report this to the developers.")
-        new_scaling = ODict(
-            [
-                (a, 2.0 ** (i + 1)) if a in SPATIAL_AXES and original_tagged_shape[a] > 1 else (a, 1.0)
-                for a in original_tagged_shape.keys()
-            ]
-        )
-        new_shape = _scale_tagged_shape(original_tagged_shape, new_scaling)
-        if _is_less_than_4_chunks(new_shape, chunk_shape) or _reduces_any_axis_to_singleton(
-            new_shape.values(), original_tagged_shape.values()
-        ):
-            break
-        raise NotImplementedError("See _apply_scaling_method()")  # scalings.append(new_scaling)
-    return scalings
-
-
-def _reduces_any_axis_to_singleton(new_shape: Shape, original_shape: Shape):
-    return any(new <= 1 < orig for new, orig in zip(new_shape, original_shape))
-
-
-def _is_less_than_4_chunks(new_shape: TaggedShape, chunk_shape: Shape):
-    spatial_shape = [s for a, s in new_shape.items() if a in SPATIAL_AXES]
-    return numpy.prod(spatial_shape) < 4 * numpy.prod(chunk_shape)
-
-
-def _scale_tagged_shape(original_tagged_shape: TaggedShape, scaling: OrderedScaling) -> TaggedShape:
-    assert all(s > 0 for s in scaling.values()), f"Invalid scaling: {scaling}"
-    return ODict(
-        [
-            (a, _round_like_scaling_method(s / scaling[a]) if a in scaling else s)
-            for a, s in original_tagged_shape.items()
-        ]
-    )
-
-
-def _round_like_scaling_method(value: float) -> int:
-    """For calculating scaled shape after applying the scaling method.
-    Different scaling methods round differently, so we need to match that.
-    E.g. scaling by stepwise downsampling like image[::2, ::2] always rounds up,
-    while e.g. skimage.transform.rescale rounds mathematically like standard round()."""
-    return int(value)
-
-
-def _get_input_multiscales_matching_export(
-    input_scales: multiscaleStore.Multiscales, export_shape: TaggedShape, compute_downscales: bool
+def _get_input_multiscale_matching_export(
+    input_scales: multiscaleStore.Multiscales, export_shape: TaggedShape
 ) -> multiscaleStore.Multiscales:
-    """Filter for multiscales entry that matches source image, plus lower scales if compute_downscales is True."""
+    """Filter for multiscales entry that matches source image."""
     matching_scales = []
-    # Multiscales is ordered from highest to lowest resolution, so start collecting once match found
-    match_found = False
+    # Multiscales is ordered from highest to lowest resolution
     for key, scale_shape in input_scales.items():
         if all(scale_shape[a] == export_shape[a] or a == "c" for a in scale_shape.keys()):
-            match_found = True
             matching_scales.append((key, scale_shape))
-            if not compute_downscales:
-                break
-        elif match_found:
-            matching_scales.append((key, scale_shape))
+            break
     assert len(matching_scales) > 0, "Should be impossible, input must be one of the scales"
     return ODict(matching_scales)
 
@@ -147,7 +78,8 @@ def _scale_shapes_to_factors(
         common_axes = [a for a in scale_shape.keys() if a in base_shape.keys()]
         scale_values = [scale_shape[a] for a in common_axes]
         base_values = [base_shape[a] for a in common_axes]
-        # This scale's scaling relative to base_shape; cf note on scaling "factors" in _compute_new_scaling_factors
+        # This scale's scaling relative to base_shape.
+        # Scaling "factors" are technically divisors for the shape (factor 2.0 means half the shape).
         relative_factors = {a: base / s for a, s, base in zip(common_axes, scale_values, base_values)}
         # Account for scale_shape maybe being the result of rounding while downscaling base_shape
         rounded = {a: float(round(f)) for a, f in relative_factors.items()}
@@ -165,7 +97,7 @@ def _scale_shapes_to_factors(
 
 
 def _match_or_create_scalings(
-    input_scales: multiscaleStore.Multiscales, export_shape: TaggedShape, chunk_shape, compute_downscales: bool
+    input_scales: multiscaleStore.Multiscales, export_shape: TaggedShape
 ) -> Tuple[ScalingsByScaleKey, Optional[ScalingsByScaleKey]]:
     """
     Determine scale keys and scaling factors for export.
@@ -174,7 +106,7 @@ def _match_or_create_scalings(
     """
     if input_scales:
         # Source image is already multiscale, match its scales
-        filtered_input_scales = _get_input_multiscales_matching_export(input_scales, export_shape, compute_downscales)
+        filtered_input_scales = _get_input_multiscale_matching_export(input_scales, export_shape)
         factors_relative_to_export = _scale_shapes_to_factors(filtered_input_scales, export_shape, export_shape.keys())
         scalings_relative_to_export = ODict(zip(filtered_input_scales.keys(), factors_relative_to_export))
         # Factors relative to raw scale are used later to provide correct scaling metadata
@@ -183,7 +115,7 @@ def _match_or_create_scalings(
         scalings_relative_to_raw = ODict(zip(filtered_input_scales.keys(), factors_relative_to_raw))
     else:
         # Compute new scale levels
-        factors = _compute_new_scaling_factors(export_shape, chunk_shape, compute_downscales)
+        factors = [ODict([(a, 1.0) for a in export_shape.keys()])]
         scalings_relative_to_export = ODict(zip([f"s{i}" for i in range(len(factors))], factors))
         scalings_relative_to_raw = None
     return scalings_relative_to_export, scalings_relative_to_raw
@@ -204,30 +136,19 @@ def _create_empty_zarrays(
     meta = ODict()
     for scale_key, scaling in output_scalings.items():
         scale_path = f"{internal_path}/{scale_key}" if internal_path else scale_key
-        scaled_shape = _scale_tagged_shape(export_shape, scaling).values()
         zarrays[scale_key] = zarr.creation.zeros(
-            scaled_shape, store=store, path=scale_path, chunks=chunk_shape, dtype=export_dtype
+            export_shape.values(), store=store, path=scale_path, chunks=chunk_shape, dtype=export_dtype
         )
         meta[scale_key] = ImageMetadata(scale_path, scaling, {})
 
     return zarrays, meta
 
 
-def _apply_scaling_method(
-    data: numpy.typing.NDArray, current_block_roi: Tuple[List[int], List[int]], scaling: OrderedScaling
-) -> Tuple[numpy.typing.NDArray, Tuple[List[int], List[int]]]:
-    """Downscaling tbd, need to investigate whether blockwise scaling is feasible.
-    May have to restructure the flow instead and potentially do export blockwise, then scaling afterwards."""
-    raise NotImplementedError()
-
-
 def _scale_and_write_block(scales: ScalingsByScaleKey, zarrays: OrderedDict[str, zarr.Array], roi, data):
     assert scales.keys() == zarrays.keys()
     for scale_key_, scaling_ in scales.items():
         if scaling_["x"] > 1.0 or scaling_["y"] > 1.0:
-            logger.info(f"Scale {scale_key_}: Applying {scaling_=} to {roi=}")
-            scaled_data, scaled_roi = _apply_scaling_method(data, roi, scaling_)
-            slicing = roiToSlice(*scaled_roi)
+            raise NotImplementedError("Downscaling is not yet implemented.")
         else:
             slicing = roiToSlice(*roi)
             scaled_data = data
@@ -399,12 +320,7 @@ def _write_ome_zarr_and_ilastik_metadata(
         _write_to_dataset_attrs(ilastik_meta, za)
 
 
-def write_ome_zarr(
-    export_path: str,
-    image_source_slot: Slot,
-    progress_signal: OrderedSignal,
-    compute_downscales: bool = False,
-):
+def write_ome_zarr(export_path: str, image_source_slot: Slot, progress_signal: OrderedSignal):
     if Path(PathComponents(export_path).externalPath).exists():
         raise FileExistsError(
             "Aborting because export path already exists. Please delete it manually if you intended to overwrite it. "
@@ -423,9 +339,7 @@ def write_ome_zarr(
         input_ome_meta = reordered_source.meta.get("ome_zarr_meta")
 
         chunk_shape = _get_chunk_shape(export_shape, export_dtype)
-        export_scalings, scalings_relative_to_raw_input = _match_or_create_scalings(
-            input_scales, export_shape, chunk_shape, compute_downscales
-        )
+        export_scalings, scalings_relative_to_raw_input = _match_or_create_scalings(input_scales, export_shape)
         zarrays, export_meta = _create_empty_zarrays(
             export_path, export_dtype, chunk_shape, export_shape, export_scalings
         )

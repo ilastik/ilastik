@@ -11,7 +11,7 @@ from lazyflow.operators import OpArrayPiper
 from lazyflow.roi import roiToSlice
 from lazyflow.utility.io_util import multiscaleStore
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrMultiscaleMeta
-from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr, _compute_new_scaling_factors, _apply_scaling_method
+from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr
 
 
 @pytest.mark.parametrize(
@@ -32,7 +32,7 @@ def test_metadata_integrity(tmp_path, graph, shape, axes):
     source_op.Input.setValue(data_array)
     progress = mock.Mock()
 
-    write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=True)
+    write_ome_zarr(str(export_path), source_op.Output, progress)
 
     expected_axiskeys = "tczyx"
     assert export_path.exists()
@@ -68,6 +68,7 @@ def test_metadata_integrity(tmp_path, graph, shape, axes):
     assert all([key in discovered_keys for key in group.keys()]), "store contains undocumented subpaths"
 
 
+@pytest.mark.skip("To be implemented after releasing single-scale export")
 @pytest.mark.parametrize(
     "data_shape,scaling_on",
     [
@@ -201,7 +202,7 @@ def tiny_5d_vigra_array_piper(graph):
 def test_write_new_ome_zarr_with_name_on_disc(tmp_path, tiny_5d_vigra_array_piper):
     export_path = tmp_path / "test.zarr/predictions/first_attempt"
     progress = mock.Mock()
-    write_ome_zarr(str(export_path), tiny_5d_vigra_array_piper.Output, progress, compute_downscales=True)
+    write_ome_zarr(str(export_path), tiny_5d_vigra_array_piper.Output, progress)
 
     assert export_path.exists()
     group = zarr.open(str(tmp_path / "test.zarr"))
@@ -222,10 +223,10 @@ def test_do_not_overwrite(tmp_path, tiny_5d_vigra_array_piper):
     export_path = tmp_path / "test.zarr"
     source_op = tiny_5d_vigra_array_piper
     progress = mock.Mock()
-    write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=True)
+    write_ome_zarr(str(export_path), source_op.Output, progress)
 
     with pytest.raises(FileExistsError):
-        write_ome_zarr(str(export_path / "copy"), source_op.Output, progress, compute_downscales=True)
+        write_ome_zarr(str(export_path / "copy"), source_op.Output, progress)
     group = zarr.open(str(export_path))
     assert "copy" not in group, "should not append to existing store"
     m = group.attrs["multiscales"][0]
@@ -233,7 +234,7 @@ def test_do_not_overwrite(tmp_path, tiny_5d_vigra_array_piper):
 
     source_op.Input.setValue(data_array2)
     with pytest.raises(FileExistsError):
-        write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=True)
+        write_ome_zarr(str(export_path), source_op.Output, progress)
     # should not overwrite existing array
     numpy.testing.assert_array_equal(group["s0"], original_data_array)
 
@@ -258,7 +259,7 @@ def test_match_input_scale_key_and_factors(tmp_path, tiny_5d_vigra_array_piper):
     # Exported array is 5d, so 5 scaling entries expected even though source multiscales to match are 4d
     expected_matching_scale_transform = [{"type": "scale", "scale": [1.0, 1.0, 3.0, 3.0, 3.0]}]
 
-    write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=False)
+    write_ome_zarr(str(export_path), source_op.Output, progress)
 
     group = zarr.open(str(store_path))
     assert "multiscales" in group.attrs
@@ -327,7 +328,7 @@ def test_port_ome_zarr_metadata_from_input(tmp_path, tiny_5d_vigra_array_piper):
         }
     )
 
-    write_ome_zarr(str(export_path), source_op.Output, progress, compute_downscales=False)
+    write_ome_zarr(str(export_path), source_op.Output, progress)
 
     group = zarr.open(str(store_path))
     assert "multiscales" in group.attrs

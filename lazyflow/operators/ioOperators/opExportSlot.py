@@ -90,7 +90,6 @@ class OpExportSlot(Operator):
         FormatInfo("n5", "n5", 0, 5),
         FormatInfo("compressed n5", "n5", 0, 5),
         FormatInfo("single-scale OME-Zarr", "zarr", 0, 5),
-        FormatInfo("multi-scale OME-Zarr", "zarr", 0, 5),
         FormatInfo("numpy", "npy", 0, 5),
         FormatInfo("dvid", "", 2, 5),
         FormatInfo("blockwise hdf5", "json", 0, 5),
@@ -108,7 +107,6 @@ class OpExportSlot(Operator):
         export_impls["n5"] = ("n5", self._export_h5n5)
         export_impls["compressed n5"] = ("n5", partial(self._export_h5n5, True))
         export_impls["single-scale OME-Zarr"] = ("zarr", self._export_ome_zarr)
-        export_impls["multi-scale OME-Zarr"] = ("zarr", partial(self._export_ome_zarr, True))
         export_impls["numpy"] = ("npy", self._export_npy)
         export_impls["dvid"] = ("", self._export_dvid)
         export_impls["blockwise hdf5"] = ("json", self._export_blockwise_hdf5)
@@ -156,7 +154,6 @@ class OpExportSlot(Operator):
             "n5",
             "compressed n5",
             "single-scale OME-Zarr",
-            "multi-scale OME-Zarr",
         )
         if self.OutputFormat.value in hierarchical_formats and self.OutputInternalPath.value != "":
             path_format += "/" + self.OutputInternalPath.value
@@ -414,12 +411,10 @@ class OpExportSlot(Operator):
             opExport.cleanUp()
             self.progressSignal(100)
 
-    def _export_ome_zarr(self, compute_downscales: bool = False):
-        if compute_downscales:
-            raise NotImplementedError()
+    def _export_ome_zarr(self):
         self.progressSignal(0)
         try:
-            write_ome_zarr(self.ExportPath.value, self.Input, self.progressSignal, compute_downscales)
+            write_ome_zarr(self.ExportPath.value, self.Input, self.progressSignal)
         finally:
             self.progressSignal(100)
 
@@ -468,7 +463,6 @@ class FormatValidity(object):
         "n5": ALL_DTYPES,
         "compressed n5": ALL_DTYPES,
         "single-scale OME-Zarr": ALL_DTYPES,
-        "multi-scale OME-Zarr": ALL_DTYPES,
     }
 
     # { extension : (min_ndim, max_ndim) }
@@ -490,7 +484,6 @@ class FormatValidity(object):
         "n5": (0, 5),
         "compressed n5": (0, 5),
         "single-scale OME-Zarr": (0, 5),
-        "multi-scale OME-Zarr": (0, 5),
     }
 
     # { extension : [allowed_num_channels] }
@@ -512,7 +505,6 @@ class FormatValidity(object):
         "n5": (),  # ditto
         "compressed n5": (),  # ditto
         "single-scale OME-Zarr": (),
-        "multi-scale OME-Zarr": (),
     }
 
     @classmethod
