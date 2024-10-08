@@ -222,7 +222,7 @@ class ObjectClassificationGui(LabelingGui):
     def menus(self):
         m = QMenu("&Export", self.volumeEditorWidget)
         # m.addAction("Export Object Information").triggered.connect(self.show_export_dialog)
-        if ilastik_config.getboolean("ilastik", "debug"):
+        if ilastik_config.ilastik.debug:
             m.addAction("Export All Label Info").triggered.connect(self.exportLabelInfo)
             m.addAction("Import New Label Info").triggered.connect(self.importLabelInfo)
         return [m] if len(m.actions()) > 0 else []

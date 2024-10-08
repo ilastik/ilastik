@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -20,13 +20,18 @@
 ###############################################################################
 
 import configparser
+import logging
 import os
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Annotated, List, Mapping, Optional, Union
 
 import appdirs
+from annotated_types import Ge, Le
+from pydantic import AfterValidator, BaseModel, Field, PlainSerializer, ConfigDict, model_validator
+
+logger = logging.getLogger(__name__)
 
 """
 ilastik will read settings from ilastik.ini
@@ -43,6 +48,70 @@ debug: false
 plugin_directories: ~/.ilastik/plugins,
 logging_config: ~/custom_ilastik_logging_config.json
 """
+
+
+@dataclass
+class Increment:
+    increment: int
+
+
+class _ConfigBase(BaseModel):
+    model_config = ConfigDict(extra="ignore", use_attribute_docstrings=True)
+
+
+class IlastikSection(_ConfigBase):
+
+    plugin_directories: str = "~/.ilastik/plugins,"
+    """Comma-separated list of paths to search for Object Classification / Tracking Feature plugins."""
+
+    output_filename_format: str = "{dataset_dir}/{nickname}_{result_type}"
+    """Default export filename, supports magic placeholders."""
+
+    output_format: str = "compressed hdf5"
+    """Default export format - consult documentation for allowed values."""
+
+    logging_config: str = ""
+    """Json file with logging configuration."""
+
+    debug: Annotated[
+        bool,
+        AfterValidator(bool),
+        PlainSerializer(str, return_type=str, when_used="always"),
+    ] = Field(default=False)
+    """Enable debug mode (for developers only)."""
+
+    hbp: Annotated[
+        bool,
+        AfterValidator(bool),
+        PlainSerializer(str, return_type=str, when_used="always"),
+    ] = Field(default=False)
+    """Enable legacy hbp mode. If checked, the VoxelSegmentationWorkflow will be visible."""
+
+
+class LazyflowSection(_ConfigBase):
+    threads: Annotated[
+        int,
+        Ge(-1),
+        Le(4000),
+        Increment(1),
+    ] = Field(default=-1)
+    """
+        Set the number of threads for ilastik. -1 means that ilastik determines number of threads automatically,
+        0 will run synchronously (for dev only).
+    """
+    total_ram_mb: Annotated[
+        int,
+        Ge(0),
+        Le(1024 * 8000),
+        Increment(100),
+    ] = Field(default=0)
+    """Limit amount of RAM (in MB) for ilastik. 0 means no-limit."""
+
+
+class IlastikPreferences(_ConfigBase):
+    ilastik: IlastikSection = IlastikSection()
+    lazyflow: LazyflowSection = LazyflowSection()
+
 
 default_config = """
 [ilastik]
@@ -63,25 +132,36 @@ class RuntimeCfg:
     preferred_cuda_device_id: Optional[str] = None
 
 
-cfg: configparser.ConfigParser = configparser.ConfigParser()
+cfg: IlastikPreferences = IlastikPreferences()
 cfg_path: Optional[Path] = None
 runtime_cfg: RuntimeCfg = RuntimeCfg()
 
 
-def _init(path: Union[None, str, bytes, os.PathLike]) -> None:
+def _init(path: Union[str, bytes, os.PathLike]) -> None:
     """Initialize module variables."""
-    config_path = Path(path) if path is not None else None
+    config_path = Path(path)
 
-    config = configparser.ConfigParser()
-    config.read_string(default_config)
-    if config_path is not None:
-        config.read(config_path)
+    if config_path.is_file():
+        logger.info(f"Loading configuration from {config_path!s}.")
+        _cfg = configparser.ConfigParser()
+        _cfg.read_string(config_path.read_text())
+
+        flat_dict = {}
+        for k, v in _cfg.items():
+            if not isinstance(v, Mapping):
+                flat_dict[k] = v
+            else:
+                flat_dict[k] = {sk: sv for sk, sv in v.items()}
+
+        config = IlastikPreferences.model_validate(flat_dict)
+    else:
+        config = IlastikPreferences()
 
     global cfg, cfg_path
     cfg, cfg_path = config, config_path
 
 
-def _get_default_config_path() -> Optional[Path]:
+def _get_default_config_path() -> Path:
     """Return a default, valid config path, or None if none of the default paths are valid."""
     old = Path.home() / ".ilastikrc"
     new = Path(appdirs.user_config_dir(appname="ilastik", appauthor=False)) / "ilastik.ini"
@@ -93,10 +173,8 @@ def _get_default_config_path() -> Optional[Path]:
             DeprecationWarning,
         )
         return old
-    elif new.is_file():
-        return new
     else:
-        return None
+        return new
 
 
 def init_ilastik_config(path: Union[None, str, bytes, os.PathLike] = None) -> None:
@@ -109,3 +187,8 @@ def init_ilastik_config(path: Union[None, str, bytes, os.PathLike] = None) -> No
 
 
 init_ilastik_config()
+
+
+if __name__ == "__main__":
+
+    print(cfg)

@@ -231,7 +231,7 @@ class AppletSerializer(ABC):
             raise RuntimeError("Could not find external data: " + path)
 
         options = QFileDialog.Options()
-        if ilastik_config.getboolean("ilastik", "debug"):
+        if ilastik_config.ilastik.debug:
             options |= QFileDialog.DontUseNativeDialog
         fileName, _filter = QFileDialog.getOpenFileName(None, "repair files", path, filt, options=options)
         if not fileName:
