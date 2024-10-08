@@ -569,45 +569,6 @@ class SerialBlockSlot(SerialSlot):
                 self.inslot[index][slicing] = blockArray
 
 
-class SerialHdf5BlockSlot(SerialBlockSlot):
-    def _serialize(self, group, name, slot):
-        mygroup = group.create_group(name)
-        num = len(self.blockslot)
-        for index in range(num):
-            subname = self.subname.format(index)
-            subgroup = mygroup.create_group(subname)
-            cleanBlockRois = self.blockslot[index].value
-            for roi in cleanBlockRois:
-                # The protocol for hdf5 slots is that they create appropriately
-                #  named datasets within the subgroup that we provide via writeInto()
-                req = self.slot[index](*roi)
-                req.writeInto(subgroup)
-                req.wait()
-
-    def _deserialize(self, mygroup, slot):
-        num = len(mygroup)
-        if len(self.inslot) < num:
-            self.inslot.resize(num)
-
-        # Annoyingly, some applets store their groups with names like, img0,img1,img2,..,img9,img10,img11
-        # which means that sorted() needs a special key to avoid sorting img10 before img2
-        # We have to find the index and sort according to its numerical value.
-        index_capture = re.compile(r"[^0-9]*(\d*).*")
-
-        def extract_index(s):
-            return int(index_capture.match(s).groups()[0])
-
-        for index, t in enumerate(sorted(list(mygroup.items()), key=lambda k_v1: extract_index(k_v1[0]))):
-            groupName, labelGroup = t
-            assert extract_index(groupName) == index, "subgroup extraction order should be numerical order!"
-            for blockRoiString, blockDataset in list(labelGroup.items()):
-                blockRoi = convertStringToList(blockRoiString)
-                roiShape = TinyVector(blockRoi[1]) - TinyVector(blockRoi[0])
-                assert roiShape == blockDataset.shape
-
-                self.inslot[index][roiToSlice(*blockRoi)] = blockDataset
-
-
 class SerialClassifierSlot(SerialSlot):
     """For saving a classifier.  Here we assume the classifier is stored in the ."""
 
