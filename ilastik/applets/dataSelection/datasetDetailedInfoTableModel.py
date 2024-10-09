@@ -223,9 +223,9 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         datasetInfo = datasetSlot.value
         if not datasetInfo.scales:
             return {}
-        # Reverse the scale list:
         # Multiscale datasets always list scales from original (largest) to most-downscaled (smallest).
-        # We want to display them in the opposite order.
+        # We display them in reverse order so that the default loaded scale (the smallest)
+        # is the first option in the drop-down box
         return {
             key: _dims_to_display_string(tagged_shape, datasetInfo.axiskeys)
             for key, tagged_shape in reversed(datasetInfo.scales.items())

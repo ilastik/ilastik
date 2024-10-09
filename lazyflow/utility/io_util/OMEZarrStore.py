@@ -127,7 +127,10 @@ def _get_zarr_cache_max_size() -> int:
     return math.floor(caches_max * permissible_fraction_max)
 
 
-def scale_key_from_path(scale_path):
+def scale_key_from_path(scale_path: str):
+    """Paths in this context are web-paths, i.e. URI components.
+    Backslashes would technically be valid characters in scale keys.
+    Please make sure not to accidentally pass Windows paths here..."""
     return scale_path.split("/")[-1]
 
 

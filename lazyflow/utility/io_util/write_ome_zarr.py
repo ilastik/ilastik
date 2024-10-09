@@ -1,3 +1,24 @@
+###############################################################################
+#   lazyflow: data flow based lazy parallel computation framework
+#
+#       Copyright (C) 2011-2024, the ilastik developers
+#                                <team@ilastik.org>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the Lesser GNU General Public License
+# as published by the Free Software Foundation; either version 2.1
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Lesser General Public License for more details.
+#
+# See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
+# GNU Lesser General Public License version 2.1 and 3 respectively.
+# This information is also available on the ilastik web site at:
+# 		   http://ilastik.org/license/
+###############################################################################
 import dataclasses
 import logging
 from collections import OrderedDict as ODict
@@ -7,7 +28,7 @@ from typing import List, Tuple, Dict, OrderedDict, Optional, Literal
 
 import numpy
 import zarr
-from zarr.storage import FSStore, contains_array
+from zarr.storage import FSStore
 
 from ilastik import __version__ as ilastik_version
 from lazyflow.operators import OpReorderAxes
