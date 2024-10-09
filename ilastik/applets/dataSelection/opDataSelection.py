@@ -128,7 +128,7 @@ class DatasetInfo(ABC):
         self.legacy_datasetId = self.generate_id()
         self.working_scale = working_scale
         self.scale_locked = scale_locked
-        self.scales = OrderedDict()  # {scale_key: scale_dimensions}, see MultiscaleStore.multiscales
+        self.scales = OrderedDict()  # {scale_key: tagged_scale_shape}, see MultiscaleStore.multiscales
 
     @property
     def shape5d(self) -> Shape5D:

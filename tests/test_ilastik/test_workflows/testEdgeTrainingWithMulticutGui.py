@@ -272,7 +272,7 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
         self.exec_in_shell(impl)
 
     @pytest.mark.skipif(
-        platform.system() == "Windows" and os.environ.get("APPVEYOR"), reason="Test hangs on Appveyor ci"
+        platform.system() == "Windows", reason="Test hangs, some issue with threading in self.waitForViews"
     )
     @pytest.mark.skipif(
         platform.system() == "Darwin",
@@ -344,7 +344,7 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
         self.exec_in_shell(impl)
 
     @pytest.mark.skipif(
-        platform.system() == "Windows" and os.environ.get("APPVEYOR"), reason="Test hangs on Appveyor ci"
+        platform.system() == "Windows", reason="Test hangs, some issue with threading in self.waitForViews"
     )
     def test_05_train_rf_from_gt(self):
         """
@@ -414,7 +414,7 @@ class TestEdgeTrainingWithMulticutGui(ShellGuiTestCaseBase):
         self.exec_in_shell(impl)
 
     @pytest.mark.skipif(
-        platform.system() == "Windows" and os.environ.get("APPVEYOR"), reason="Test hangs on Appveyor ci"
+        platform.system() == "Windows", reason="Test hangs, some issue with threading in self.waitForViews"
     )
     def test_06_multicut_rf(self):
         """
