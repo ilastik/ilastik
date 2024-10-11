@@ -90,6 +90,10 @@ class TestOpExportSlot(object):
         opExport.OutputFormat.setValue("single-scale OME-Zarr")
         opExport.OutputFilenameFormat.setValue(self._tmpdir + "/test_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}")
         opExport.CoordinateOffset.setValue((10, 20))
+        expected_transformations = [
+            {"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0, 1.0]},
+            {"type": "translation", "translation": [0.0, 0.0, 0.0, 10.0, 20.0]},
+        ]
 
         assert opExport.ExportPath.ready()
         expected_export_path = Path(self._tmpdir) / "test_export_x20-120_y10-100.zarr"
@@ -103,6 +107,11 @@ class TestOpExportSlot(object):
             expected_data = data.view(numpy.ndarray).reshape((1, 1, 1) + data.shape)  # OME-Zarr always tczyx
             read_data = opRead.Output[:].wait()
             numpy.testing.assert_array_equal(read_data, expected_data)
+            written_file = z5py.ZarrFile(str(expected_export_path), "r")
+            assert (
+                written_file.attrs["multiscales"][0]["datasets"][0]["coordinateTransformations"]
+                == expected_transformations
+            )
         finally:
             opRead.cleanUp()
 

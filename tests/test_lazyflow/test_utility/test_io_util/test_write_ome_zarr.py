@@ -32,7 +32,7 @@ def test_metadata_integrity(tmp_path, graph, shape, axes):
     source_op.Input.setValue(data_array)
     progress = mock.Mock()
 
-    write_ome_zarr(str(export_path), source_op.Output, progress)
+    write_ome_zarr(str(export_path), source_op.Output, None, progress)
 
     expected_axiskeys = "tczyx"
     assert export_path.exists()
@@ -206,14 +206,14 @@ def test_do_not_overwrite(tmp_path, tiny_5d_vigra_array_piper):
     export_path = tmp_path / "test.zarr"
     source_op = tiny_5d_vigra_array_piper
     progress = mock.Mock()
-    write_ome_zarr(str(export_path), source_op.Output, progress)
+    write_ome_zarr(str(export_path), source_op.Output, None, progress)
 
     with pytest.raises(FileExistsError):
-        write_ome_zarr(str(export_path), source_op.Output, progress)
+        write_ome_zarr(str(export_path), source_op.Output, None, progress)
 
     source_op.Input.setValue(data_array2)
     with pytest.raises(FileExistsError):
-        write_ome_zarr(str(export_path), source_op.Output, progress)
+        write_ome_zarr(str(export_path), source_op.Output, None, progress)
     # should not overwrite existing array
     group = zarr.open(str(export_path))
     numpy.testing.assert_array_equal(group["s0"], original_data_array)
@@ -234,11 +234,12 @@ def test_match_input_scale_key_and_factors(tmp_path, tiny_5d_vigra_array_piper):
         ]
     )
     source_op.Output.meta.scales = multiscales
+    source_op.Output.meta.active_scale = "matching_scale"
     # Scale metadata should be relative to raw scale, even if the export was not scaled
     # Exported array is 5d, so 5 scaling entries expected even though source multiscales to match are 4d
     expected_matching_scale_transform = [{"type": "scale", "scale": [1.0, 1.0, 3.0, 3.0, 3.0]}]
 
-    write_ome_zarr(str(export_path), source_op.Output, progress)
+    write_ome_zarr(str(export_path), source_op.Output, None, progress)
 
     group = zarr.open(str(export_path))
     assert "multiscales" in group.attrs
@@ -253,22 +254,29 @@ def test_port_ome_zarr_metadata_from_input(tmp_path, tiny_5d_vigra_array_piper):
     """If the source slot has scale metadata, the export should match the scale name to the input.
     If there is OME-Zarr specific additional metadata (even unused in ilastik),
     the export should write metadata that describe the pyramid as a whole, and those that
-    describe the written scale."""
+    describe the written scale.
+    If there is a CoordinateOffset (i.e. the user has restricted a ROI in the export settings),
+    this should be written to the multiscale's coordinateTransformations - and correctly combined
+    with the input's coordinateTransformations (multiplied by scale to convert pixel offset to physical units,
+    and added to the input's translation)."""
     export_path = tmp_path / "test.zarr"
     source_op = tiny_5d_vigra_array_piper
     progress = mock.Mock()
     multiscales: multiscaleStore.Multiscales = OrderedDict(
         [
-            ("raw_scale", OrderedDict([("t", 2), ("c", 2), ("z", 10), ("y", 10), ("x", 10)])),
-            ("matching_scale", OrderedDict([("t", 2), ("c", 2), ("z", 5), ("y", 5), ("x", 5)])),
-            ("downscale", OrderedDict([("t", 2), ("c", 2), ("z", 2), ("y", 2), ("x", 2)])),
+            ("raw_scale", OrderedDict([("t", 2), ("z", 17), ("y", 17), ("x", 17)])),
+            ("matching_scale", OrderedDict([("t", 2), ("z", 9), ("y", 9), ("x", 9)])),
+            ("downscale", OrderedDict([("t", 2), ("z", 5), ("y", 5), ("x", 5)])),
         ]
     )
+    # The tiny_5d_array is 5x5x5; in this test it represents a subregion of source matching_scale after a 4/4/4 offset
+    export_offset = (0, 0, 4, 4, 4)
     source_op.Output.meta.scales = multiscales
+    source_op.Output.meta.active_scale = "matching_scale"
     expected_multiscale_transform = [{"type": "scale", "scale": [0.1, 1.0, 1.0, 1.0, 1.0]}]
     expected_matching_scale_transform = [
         {"type": "scale", "scale": [1.0, 1.0, 2.0, 2.0, 2.0]},
-        {"type": "translation", "translation": [0.1, 0.0, 3.2, 1.0, 1.0]},
+        {"type": "translation", "translation": [0.1, 0.0, 11.2, 9.0, 9.0]},  # input translation + (offset*input scale)
     ]
     source_op.Output.meta.ome_zarr_meta = OMEZarrMultiscaleMeta.from_multiscale_spec(
         {
@@ -306,7 +314,7 @@ def test_port_ome_zarr_metadata_from_input(tmp_path, tiny_5d_vigra_array_piper):
         }
     )
 
-    write_ome_zarr(str(export_path), source_op.Output, progress)
+    write_ome_zarr(str(export_path), source_op.Output, export_offset, progress)
 
     group = zarr.open(str(export_path))
     assert "multiscales" in group.attrs

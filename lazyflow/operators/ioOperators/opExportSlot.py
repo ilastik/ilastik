@@ -412,8 +412,9 @@ class OpExportSlot(Operator):
 
     def _export_ome_zarr(self):
         self.progressSignal(0)
+        offset_meta = self.CoordinateOffset.value if self.CoordinateOffset.ready() else None
         try:
-            write_ome_zarr(self.ExportPath.value, self.Input, self.progressSignal)
+            write_ome_zarr(self.ExportPath.value, self.Input, offset_meta, self.progressSignal)
         finally:
             self.progressSignal(100)
 

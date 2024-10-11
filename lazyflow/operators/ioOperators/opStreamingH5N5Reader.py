@@ -168,6 +168,7 @@ class OpStreamingH5N5Reader(Operator):
             ]
             scales: Multiscales = OrderedDict(zip(scale_keys, scale_tagged_shapes))
             self.OutputImage.meta.scales = scales
+            self.OutputImage.meta.active_scale = scale_key_from_path(internalPath)
             self.OutputImage.meta.lowest_scale = scale_keys[-1]
             self.OutputImage.meta.ome_zarr_meta = OMEZarrMultiscaleMeta.from_multiscale_spec(multiscale_spec)
 
