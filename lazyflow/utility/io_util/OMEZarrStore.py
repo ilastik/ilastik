@@ -18,13 +18,13 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import dataclasses
+from dataclasses import dataclass
 import json
 import logging
 import math
 import os
 from collections import OrderedDict
-from typing import Dict, List, Optional, Union, Literal
+from typing import Dict, List, Optional, Union, Literal, Tuple
 from urllib.parse import unquote_to_bytes
 
 import jsonschema
@@ -42,27 +42,87 @@ logger = logging.getLogger(__name__)
 OME_ZARR_V_0_4_KWARGS = dict(dimension_separator="/", normalize_keys=False)
 OME_ZARR_V_0_1_KWARGS = dict(dimension_separator=".")
 
-# {
-#   "type": "scale" OR "translation",
-#   "scale": List[float] OR "translation": List[float] OR "path": str
-# }
-OMEZarrCoordinateTransformation = Dict[str, Union[str, List[float]]]
+
+class InvalidTransformationError(ValueError):
+    pass
 
 
-def _remove_transforms_with_path(
-    coordinate_transformations: Optional[List[OMEZarrCoordinateTransformation]],
-) -> Optional[List[OMEZarrCoordinateTransformation]]:
+@dataclass(frozen=True)
+class OMEZarrCoordinateTransformation:
+    """Used by OME-Zarr export to adjust export metadata according to input."""
+
+    type: Literal["scale", "translation"]
+    values: Optional[List[float]]
+
+    @classmethod
+    def from_json(cls, json_data: Dict) -> "OMEZarrCoordinateTransformation":
+        """Expected dicts look like
+        {
+          "type": Literal["scale", "translation"]
+          and EITHER "scale": List[number] OR "translation": List[number]
+        }
+        Unfortunately, the spec is internally inconsistent, so there is a chance that we may encounter
+        a coordinateTransformation with a "path" key instead of "scale" or "translation"; and possibly
+        coordinateTransformations with "type": "identity".
+        Afaik, none of the more popular converters/writers do this.
+        """
+        if (
+            json_data["type"] not in ("scale", "translation")
+            or ("scale" not in json_data and "translation" not in json_data)
+            or "path" in json_data
+        ):
+            raise InvalidTransformationError()
+        # Could raise KeyError for real nonsense like {"type": "scale", "translation": [0, 0]}
+        return cls(type=json_data["type"], values=json_data[json_data["type"]])
+
+
+TransformationsOrError = Union[
+    Tuple[OMEZarrCoordinateTransformation, Optional[OMEZarrCoordinateTransformation]], InvalidTransformationError
+]
+
+
+def _validate_transforms(
+    coordinate_transformations: Optional[List[Dict[str, Union[str, List[float]]]]],
+) -> Optional[TransformationsOrError]:
     """
-    coordinateTransformations may provide a path to transformation data in binary format, instead
-    of specifying floats for each axis. We don't know of any commonly used tool that writes such data,
-    so there is no way to know what to do with this.
+    Resolves the OME-Zarr spec's inconsistency in the coordinateTransformations field.
+    Avoids raising errors because valid metadata are not required to load and work with the data.
+    Distinguishes between None and invalid transformations so that caller can warn on the latter.
+    Returns:
+    - None if input was None (allowed for multiscale_transformations)
+    - Tuple of scale transform and optionally translation transform if valid
+    - InvalidTransformationError if invalid (e.g. not None but also no scale transform present)
+    Inattentive writers might produce invalid transforms, depending on what part of the spec they read.
+    The Transformations spec [1] allows for "identity" transforms and arbitrary numbers of transforms,
+    but the Multiscales spec [2] only allows exactly one "scale", optionally followed by one "translation"
+    transform.
+    The "official" validator's schema [3] implements neither of these rules exactly :) It instead allows
+    for exactly one "scale" transform, plus an arbitrary number of "translation" transforms, in any order.
+    But this plus the example at the start of the OME-Zarr spec make it clear enough indicator that
+    "one scale + one optional translation" is the convention, and all public datasets conform to this.
+    To be graceful, we'll accept the first scale and translation.
+    [1] https://ngff.openmicroscopy.org/latest/index.html#trafo-md
+    [2] https://ngff.openmicroscopy.org/latest/index.html#multiscale-md
+    [3] https://github.com/ome/ngff/blob/1383ce6218539baf9fe4350c46d992f2dbfe7af1/0.4/schemas/image.schema#L167
     """
     if coordinate_transformations is None:
         return None
-    return [transform for transform in coordinate_transformations if "path" not in transform]
+    if not isinstance(coordinate_transformations, list):
+        return InvalidTransformationError()
+    scale_transform = translation_transform = None
+    for t in coordinate_transformations:
+        try:
+            transform = OMEZarrCoordinateTransformation.from_json(t)
+        except (InvalidTransformationError, KeyError):
+            continue
+        if scale_transform is None and transform.type == "scale":
+            scale_transform = transform
+        if translation_transform is None and transform.type == "translation":
+            translation_transform = transform
+    return scale_transform, translation_transform if scale_transform else InvalidTransformationError()
 
 
-@dataclasses.dataclass
+@dataclass(frozen=True)
 class OMEZarrMultiscaleMeta:
     """
     Specifically for metadata that ilastik does _not_ use internally.
@@ -71,8 +131,8 @@ class OMEZarrMultiscaleMeta:
 
     axis_units: OrderedDict[Literal["t", "c", "z", "y", "x"], Optional[str]]  # { axis_key: axis_unit }
     multiscale_name: Optional[str]
-    multiscale_transformations: Optional[List[OMEZarrCoordinateTransformation]]
-    dataset_transformations: OrderedDict[str, List[OMEZarrCoordinateTransformation]]  # { scale_key: transformations }
+    multiscale_transformations: Optional[TransformationsOrError]
+    dataset_transformations: OrderedDict[str, TransformationsOrError]  # { scale_key: transformations }
 
     @classmethod
     def from_multiscale_spec(cls, multiscale_spec) -> "OMEZarrMultiscaleMeta":
@@ -81,15 +141,16 @@ class OMEZarrMultiscaleMeta:
             axis_units = OrderedDict([(a["name"], a.get("unit")) for a in multiscale_spec["axes"]])
         else:
             axis_units = OrderedDict([(tag.key, None) for tag in get_axistags_from_spec(multiscale_spec)])
+        invalid_transformations = []  # Ensure dataset transformations are never None (either valid or error)
         return cls(
             axis_units=axis_units,
             multiscale_name=multiscale_spec.get("name"),
-            multiscale_transformations=_remove_transforms_with_path(multiscale_spec.get("coordinateTransformations")),
+            multiscale_transformations=_validate_transforms(multiscale_spec.get("coordinateTransformations")),
             dataset_transformations=OrderedDict(
                 [
                     (
                         scale_key_from_path(scale["path"]),
-                        _remove_transforms_with_path(scale.get("coordinateTransformations", [])),
+                        _validate_transforms(scale.get("coordinateTransformations", invalid_transformations)),
                     )
                     for scale in multiscale_spec["datasets"]
                 ]

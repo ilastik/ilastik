@@ -40,6 +40,7 @@ from lazyflow.utility.io_util.OMEZarrStore import (
     OME_ZARR_V_0_4_KWARGS,
     OMEZarrMultiscaleMeta,
     OMEZarrCoordinateTransformation,
+    InvalidTransformationError,
 )
 
 logger = logging.getLogger(__name__)
@@ -161,7 +162,7 @@ def _create_empty_zarrays(
         zarrays[scale_key] = zarr.creation.zeros(
             export_shape.values(), store=store, path=scale_key, chunks=chunk_shape, dtype=export_dtype
         )
-        meta[scale_key] = ImageMetadata(scale_key, scaling, {})
+        meta[scale_key] = ImageMetadata(scale_key, scaling, ODict())
 
     return zarrays, meta
 
@@ -179,29 +180,29 @@ def _scale_and_write_block(scales: ScalingsByScaleKey, zarrays: OrderedDict[str,
 
 
 def _get_input_raw_absolute_scaling(input_ome_meta: Optional[OMEZarrMultiscaleMeta]) -> Optional[OrderedScaling]:
-    input_scale = None
-    if input_ome_meta:
-        raw_transforms = next(iter(input_ome_meta.dataset_transformations.values()))
-        # Spec requires that if any, first must be scale
-        if len(raw_transforms) > 0:
-            input_scale = raw_transforms[0]
-    if input_scale is None or "scale" not in input_scale:
+    if not input_ome_meta:
         return None
-    return ODict(zip(input_ome_meta.axis_units.keys(), input_scale["scale"]))
+    raw_transforms = next(iter(input_ome_meta.dataset_transformations.values()))
+    if isinstance(raw_transforms, InvalidTransformationError):
+        return None
+    raw_scale, _ = raw_transforms
+    return ODict(zip(input_ome_meta.axis_units.keys(), raw_scale.values))
 
 
 def _get_input_dataset_transformations(
     input_ome_meta: Optional[OMEZarrMultiscaleMeta], scale_key: str
 ) -> Tuple[Optional[OMEZarrCoordinateTransformation], Optional[OMEZarrCoordinateTransformation]]:
-    input_scale = None
-    input_translation = None
+    input_scale = input_translation = None
     if input_ome_meta and input_ome_meta.dataset_transformations.get(scale_key):
         input_transforms = input_ome_meta.dataset_transformations[scale_key]
-        # Spec requires that if any, first must be scale, second may be translation
-        if len(input_transforms) > 0:
-            input_scale = input_transforms[0]
-        if len(input_transforms) > 1:
-            input_translation = input_transforms[1]
+        if isinstance(input_transforms, InvalidTransformationError):
+            logger.warning(
+                "The input OME-Zarr dataset contained invalid pixel resolution or crop "
+                f'position metadata for scale "{scale_key}". '
+                "The exported data should be fine, but please check its metadata."
+            )
+            return None, None
+        input_scale, input_translation = input_transforms
     return input_scale, input_translation
 
 
@@ -211,9 +212,9 @@ def _update_export_scaling_from_input(
     input_scale: Optional[OMEZarrCoordinateTransformation],
     scale_key: str,
 ) -> OrderedScaling:
-    if not input_scale or "scale" not in input_scale:
+    if input_scale is None:
         return absolute_scaling
-    input_scaling = ODict(zip(input_axiskeys, input_scale["scale"]))
+    input_scaling = ODict(zip(input_axiskeys, input_scale.values))
     if any([input_scaling[a] != absolute_scaling[a] for a in SPATIAL_AXES if a in input_scaling]):
         # This shouldn't happen
         logger.warning(
@@ -279,8 +280,8 @@ def _get_total_offset(
         reordered_export_offset = ODict(
             [(a, export_offset[a] * absolute_scaling[a] if a in export_offset else 0.0) for a in export_axiskeys]
         )
-    if input_translation and "translation" in input_translation:
-        tagged_translation = ODict(zip(input_axiskeys, input_translation["translation"]))
+    if input_translation:
+        tagged_translation = ODict(zip(input_axiskeys, input_translation.values))
         reordered_input_translation = ODict(
             [(a, tagged_translation[a] if a in tagged_translation else 0.0) for a in export_axiskeys]
         )
@@ -334,6 +335,34 @@ def _get_datasets_meta(
     return datasets
 
 
+def _get_multiscale_transformations(
+    input_ome_meta: Optional[OMEZarrMultiscaleMeta], export_axiskeys: List[Literal["t", "c", "z", "y", "x"]]
+) -> Optional[List[Dict]]:
+    """Extracts multiscale transformations from input OME-Zarr metadata, if available.
+    Returns None or the transformations adjusted to export axes as OME-Zarr conforming dicts."""
+    if input_ome_meta and isinstance(input_ome_meta.multiscale_transformations, tuple):
+        transforms_axis_matched = []
+        for transform in input_ome_meta.multiscale_transformations:
+            if transform is None:
+                continue
+            tagged_transform = ODict(zip(input_ome_meta.axis_units.keys(), transform.values))
+            default_value = 0.0 if transform.type == "translation" else 1.0
+            transforms_axis_matched.append(
+                {
+                    "type": transform.type,
+                    transform.type: [
+                        tagged_transform[a] if a in tagged_transform else default_value for a in export_axiskeys
+                    ],
+                }
+            )
+        return transforms_axis_matched
+    elif input_ome_meta and input_ome_meta.multiscale_transformations is not None:
+        logger.warning(
+            "The input OME-Zarr dataset contained invalid pixel resolution or crop position metadata. "
+            "The exported data should be fine, but please check its metadata."
+        )
+
+
 def _write_ome_zarr_and_ilastik_metadata(
     abs_export_path: str,
     export_meta: OrderedDict[str, ImageMetadata],
@@ -349,22 +378,9 @@ def _write_ome_zarr_and_ilastik_metadata(
     datasets = _get_datasets_meta(export_meta, input_ome_meta, scalings_relative_to_raw_input, export_offset)
     ome_zarr_multiscale_meta = {"axes": axes, "datasets": datasets, "version": "0.4"}
 
-    # Optional fields
-    if input_ome_meta and input_ome_meta.multiscale_transformations:
-        transforms_axis_matched = []
-        for transform in input_ome_meta.multiscale_transformations:
-            transform_type = transform["type"]
-            tagged_transform = ODict(zip(input_ome_meta.axis_units.keys(), transform[transform_type]))
-            default_value = 0.0 if transform_type == "translation" else 1.0
-            transforms_axis_matched.append(
-                {
-                    "type": transform_type,
-                    transform_type: [
-                        tagged_transform[a] if a in tagged_transform else default_value for a in export_axiskeys
-                    ],
-                }
-            )
-        ome_zarr_multiscale_meta["coordinateTransformations"] = transforms_axis_matched
+    multiscale_transformations = _get_multiscale_transformations(input_ome_meta, export_axiskeys)
+    if multiscale_transformations:
+        ome_zarr_multiscale_meta["coordinateTransformations"] = multiscale_transformations
 
     store = FSStore(abs_export_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
     root = zarr.group(store, overwrite=False)
