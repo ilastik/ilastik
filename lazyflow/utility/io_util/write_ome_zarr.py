@@ -46,8 +46,9 @@ from lazyflow.utility.io_util.OMEZarrStore import (
 logger = logging.getLogger(__name__)
 
 Shape = Tuple[int, ...]
-TaggedShape = OrderedDict[str, int]  # { axis: size }
-OrderedScaling = OrderedTranslation = OrderedDict[str, float]  # { axis: scaling }
+Axiskey = Literal["t", "z", "y", "x", "c"]
+TaggedShape = OrderedDict[Axiskey, int]  # { axis: size }
+OrderedScaling = OrderedTranslation = OrderedDict[Axiskey, float]  # { axis: scaling }
 ScalingsByScaleKey = OrderedDict[str, OrderedScaling]  # { scale_key: { axis: scaling } }
 
 SPATIAL_AXES = ["z", "y", "x"]
@@ -90,7 +91,7 @@ def _get_input_multiscale_matching_export(
 def _multiscale_shapes_to_factors(
     multiscales: multiscaleStore.Multiscales,
     base_shape: TaggedShape,
-    output_axiskeys: List[Literal["t", "c", "z", "y", "x"]],
+    output_axiskeys: List[Axiskey],
 ) -> List[OrderedScaling]:
     """Multiscales and base_shape may have arbitrary axes.
     Output are scaling factors relative to base_shape, with axes output_axiskeys.
@@ -208,7 +209,7 @@ def _get_input_dataset_transformations(
 
 def _update_export_scaling_from_input(
     absolute_scaling: OrderedScaling,
-    input_axiskeys: Optional[List[Literal["t", "c", "z", "y", "x"]]],
+    input_axiskeys: Optional[List[Axiskey]],
     input_scale: Optional[OMEZarrCoordinateTransformation],
     scale_key: str,
 ) -> OrderedScaling:
@@ -265,7 +266,7 @@ def _get_total_offset(
     absolute_scaling: OrderedScaling,
     image: ImageMetadata,
     export_offset: TaggedShape,
-    input_axiskeys: Optional[List[Literal["t", "c", "z", "y", "x"]]],
+    input_axiskeys: Optional[List[Axiskey]],
     input_translation: Optional[OMEZarrCoordinateTransformation],
 ) -> OrderedTranslation:
     # Translation may be a total of scale offset, export offset, and input offset (depending on availability)
@@ -336,7 +337,7 @@ def _get_datasets_meta(
 
 
 def _get_multiscale_transformations(
-    input_ome_meta: Optional[OMEZarrMultiscaleMeta], export_axiskeys: List[Literal["t", "c", "z", "y", "x"]]
+    input_ome_meta: Optional[OMEZarrMultiscaleMeta], export_axiskeys: List[Axiskey]
 ) -> Optional[List[Dict]]:
     """Extracts multiscale transformations from input OME-Zarr metadata, if available.
     Returns None or the transformations adjusted to export axes as OME-Zarr conforming dicts."""
