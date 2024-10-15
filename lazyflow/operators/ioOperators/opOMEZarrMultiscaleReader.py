@@ -59,11 +59,14 @@ class OpOMEZarrMultiscaleReader(Operator):
         self.Output.meta.dtype = self._store.dtype
         self.Output.meta.axistags = self._store.axistags
         self.Output.meta.scales = self._store.multiscales
+        self.Output.meta.active_scale = active_scale  # Used by export to correlate export with input scale
         # To feed back to DatasetInfo and hence the project file
         self.Output.meta.lowest_scale = self._store.lowest_resolution_key
         # Many public OME-Zarr datasets are chunked as full xy slices,
         # so orthoviews lead to downloading the entire dataset.
         self.Output.meta.prefer_2d = True
+        # Add OME-Zarr metadata to slot so that it can be ported over to an export
+        self.Output.meta.ome_zarr_meta = self._store.ome_meta_for_export
 
     def execute(self, slot, subindex, roi, result):
         scale = self.Scale.value if self.Scale.ready() and self.Scale.value else self._store.lowest_resolution_key

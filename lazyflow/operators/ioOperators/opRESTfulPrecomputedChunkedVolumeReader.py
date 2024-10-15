@@ -63,6 +63,7 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
         self.Output.meta.dtype = numpy.dtype(self._volume_object.dtype).type
         self.Output.meta.axistags = self._volume_object.axistags
         self.Output.meta.scales = self._volume_object.multiscales
+        self.Output.meta.active_scale = active_scale  # Used by export to correlate export with input scale
         # To feed back to DatasetInfo and hence the project file
         self.Output.meta.lowest_scale = self._volume_object.lowest_resolution_key
 

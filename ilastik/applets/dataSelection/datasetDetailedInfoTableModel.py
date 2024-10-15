@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from typing import List, Dict
+from typing import Dict
 
 from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
 from ilastik.utility import bind
@@ -37,11 +37,10 @@ class DatasetColumn:
     NumColumns = 6
 
 
-def _dims_to_display_string(dimensions: List[int], axiskeys: str) -> str:
-    """Generate labels to put into the scale combobox.
-    Scale dimensions must be in xyz and will be reordered to match axiskeys."""
-    input_axes = dict(zip("xyz", dimensions))
-    reordered_dimensions = [input_axes[axis] for axis in axiskeys if axis in input_axes]
+def _dims_to_display_string(dimensions: Dict[str, int], axiskeys: str) -> str:
+    """Generate labels to put into the scale combobox / to display in the table.
+    XYZ dimensions will be reordered to match axiskeys."""
+    reordered_dimensions = [dimensions[axis] for axis in axiskeys if axis in "xyz"]
     return ", ".join(str(size) for size in reordered_dimensions)
 
 
@@ -224,7 +223,13 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         datasetInfo = datasetSlot.value
         if not datasetInfo.scales:
             return {}
-        return {key: _dims_to_display_string(dims, datasetInfo.axiskeys) for key, dims in datasetInfo.scales.items()}
+        # Multiscale datasets always list scales from original (largest) to most-downscaled (smallest).
+        # We display them in reverse order so that the default loaded scale (the smallest)
+        # is the first option in the drop-down box
+        return {
+            key: _dims_to_display_string(tagged_shape, datasetInfo.axiskeys)
+            for key, tagged_shape in reversed(datasetInfo.scales.items())
+        }
 
     def is_scale_locked(self, laneIndex) -> bool:
         datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]

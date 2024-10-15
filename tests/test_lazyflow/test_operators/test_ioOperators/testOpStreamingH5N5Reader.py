@@ -63,11 +63,11 @@ def test_reader_loads_data_with_axistags(graph, h5n5_file, data):
         vigra.AxisInfo("c", vigra.AxisType.Channels),
         vigra.AxisInfo("t", vigra.AxisType.Time),
     )
-    h5n5_file.create_group("volume").create_dataset("tagged_data", data=data)
-    h5n5_file["volume/tagged_data"].attrs["axistags"] = axistags.toJSON()
+    h5n5_file.create_group("volume").create_dataset("data", data=data)
+    h5n5_file["volume/data"].attrs["axistags"] = axistags.toJSON()
     op = OpStreamingH5N5Reader(graph=graph)
     op.H5N5File.setValue(h5n5_file)
-    op.InternalPath.setValue("volume/tagged_data")
+    op.InternalPath.setValue("volume/data")
 
     assert op.OutputImage.meta.shape == data.shape
     assert op.OutputImage.meta.axistags == axistags
