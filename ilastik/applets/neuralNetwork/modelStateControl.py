@@ -118,8 +118,8 @@ class ModelSourceEdit(QTextEdit):
                 model_source=model_source,
                 model_name=getattr(model_info, "name", "n/a"),
                 model_description=getattr(model_info, "description", "n/a"),
-                fmt_input_shape="".join(model_info.inputs[0].axes),
-                fmt_output_shape="".join(model_info.outputs[0].axes),
+                fmt_input_shape=",".join(axis.id for axis in model_info.inputs[0].axes),
+                fmt_output_shape=",".join(axis.id for axis in model_info.outputs[0].axes),
             )
         )
         self._model_source = model_source
@@ -276,7 +276,7 @@ class ModelStateControl(QWidget):
     def onModelInfoRequested(self):
         # Note: bioimageio imports are delayed as to prevent https request to
         # github and bioimage.io on ilastik startup
-        from bioimageio.core import load_raw_resource_description
+        from bioimageio.spec import load_model_description
 
         model_uri = self.modelSourceEdit.getModelSource().strip()
         if not model_uri:
@@ -285,7 +285,7 @@ class ModelStateControl(QWidget):
         if not model_uri:
             return
 
-        model_info = load_raw_resource_description(model_uri)
+        model_info = load_model_description(model_uri, perform_io_checks=False, format_version="latest")
 
         self.modelSourceEdit.setModelInfo(model_uri, model_info)
         # check model is broadly compatible with ilastik
@@ -297,7 +297,7 @@ class ModelStateControl(QWidget):
                 QMessageBox.information(
                     self,
                     "Model incompatible",
-                    f"Model incompatible, reasons:\n\n{reasons}.\nPlease select a different model.",
+                    f"Model incompatible, reasons :\n\n{reasons}.\nPlease select a different model.",
                 )
                 reasons_log = " - ".join(r["reason"] for r in compatibility_checks if r)
                 logger.debug(f"Incompatible model from {model_uri}. Reasons: {reasons_log}")
@@ -331,6 +331,7 @@ class ModelStateControl(QWidget):
     @staticmethod
     def _check_model_compatible(model_info):
         """General checks whether ilastik will be able to show results of the network"""
+        from ilastik.utility.bioimageio_utils import AxisUtils
 
         checks = []
         # currently we only support a single input:
@@ -349,16 +350,15 @@ class ModelStateControl(QWidget):
             )
 
         output_spec = model_info.outputs[0]
-        # we need at least twp spacial axes, and a channel axes in the output
-        if "c" not in output_spec.axes:
+        # we need at least two spacial axes, and a channel axes in the output
+        if not AxisUtils.is_channel_axis_included(output_spec):
             checks.append(
                 {
                     "reason": "ilastik only supports models with a channel axis in the outputs. No channel axis found in output."
                 }
             )
 
-        spacial_axes_in_output = [ax for ax in output_spec.axes if ax in "xyz"]
-        if len(spacial_axes_in_output) < 2:
+        if AxisUtils.num_spatial_axis(output_spec) < 2:
             checks.append(
                 {
                     "reason": f"ilastik needs at least two spacial (xyz) axes in the output to show an image. Only found {output_spec.axes}."

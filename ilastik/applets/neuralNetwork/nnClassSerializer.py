@@ -90,13 +90,13 @@ class BioimageIOModelSlot(SerialSlot):
 
     @staticmethod
     def _getValue(subgroup, slot):
-        from bioimageio.spec import load_raw_resource_description
+        from bioimageio.spec import load_description
 
         try:
             model = BIOModelData(
                 modelUri=subgroup.attrs["modelUri"],
                 binary=subgroup[()].tobytes(),
-                rawDescription=load_raw_resource_description(json.loads(subgroup.attrs["rawDescription"])),
+                rawDescription=load_description(json.loads(subgroup.attrs["rawDescription"]), perform_io_checks=False),
                 hashVal=subgroup.attrs["hashVal"],
             )
         except KeyError as e:

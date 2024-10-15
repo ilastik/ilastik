@@ -21,12 +21,14 @@
 ###############################################################################
 from typing import List
 
+SessionId = str
+
 
 class IConnection:
     def get_devices(self):
         raise NotImplementedError
 
-    def create_model_session(self, model_str: bytes, devices: List[str]):
+    def create_model_session_with_id(self, upload_id: str, devices: List[str]) -> SessionId:
         raise NotImplementedError
 
 
