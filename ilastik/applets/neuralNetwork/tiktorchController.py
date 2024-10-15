@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+from __future__ import annotations
 import dataclasses
 import enum
 import json
@@ -25,9 +26,10 @@ import logging
 from hashlib import blake2b
 from typing import Dict, List, Sequence, Union, TYPE_CHECKING
 
+from lazyflow.operators.tiktorch.classifier import ModelSession
+
 if TYPE_CHECKING:
-    from bioimageio.spec.shared.raw_nodes import ImplicitOutputShape
-    from bioimageio.spec.shared.raw_nodes import ResourceDescription as RawResourceDescription
+    from bioimageio.spec import ModelDescr
 
 from lazyflow.operators.tiktorch import IConnectionFactory
 
@@ -36,36 +38,6 @@ logger = logging.getLogger(__name__)
 # When implementing training, check code that accesses this flag -
 # used to hide "unused" gui elements
 ALLOW_TRAINING = False
-
-
-def tagged_input_shapes(raw_spec: "RawResourceDescription") -> Dict[str, Dict[str, int]]:
-    # Note: bioimageio imports are delayed as to prevent https request to
-    # github and bioimage.io on ilastik startup
-    from bioimageio.spec.shared.raw_nodes import ParametrizedInputShape
-
-    def min_shape(shape):
-        return shape.min if isinstance(shape, ParametrizedInputShape) else shape
-
-    return {inp.name: dict(zip(inp.axes, min_shape(inp.shape))) for inp in raw_spec.inputs}
-
-
-def explicit_tagged_shape(axes: Sequence[str], shape: "ImplicitOutputShape", *, ref: Dict[str, int]) -> Dict[str, int]:
-    return {axis: int(ref[axis] * scale + 2 * offset) for axis, scale, offset in zip(axes, shape.scale, shape.offset)}
-
-
-def tagged_output_shapes(raw_spec: "RawResourceDescription") -> Dict[str, Dict[str, int]]:
-    # Note: bioimageio imports are delayed as to prevent https request to
-    # github and bioimage.io on ilastik startup
-    from bioimageio.spec.shared.raw_nodes import ImplicitOutputShape
-
-    inputs = tagged_input_shapes(raw_spec)
-    outputs = {}
-    for out in raw_spec.outputs:
-        if isinstance(out.shape, ImplicitOutputShape):
-            outputs[out.name] = explicit_tagged_shape(out.axes, out.shape, ref=inputs[out.shape.reference_tensor])
-        else:
-            outputs[out.name] = dict(zip(out.axes, out.shape))
-    return outputs
 
 
 @dataclasses.dataclass
@@ -86,7 +58,7 @@ class BIOModelData:
     # model zip
     binary: bytes
     # rdf raw description as a dict
-    rawDescription: "RawResourceDescription"
+    rawDescription: ModelDescr
     # hash of the raw description
     hashVal: str = ""
 
@@ -105,15 +77,16 @@ class BIOModelData:
     def raw_model_description_to_string(rawModelDescription):
         # Note: bioimageio imports are delayed as to prevent https request to
         # github and bioimage.io on ilastik startup
-        from bioimageio.spec import serialize_raw_resource_description_to_dict
 
-        return json.dumps(
-            serialize_raw_resource_description_to_dict(rawModelDescription), separators=(",", ":"), sort_keys=True
-        )
+        return rawModelDescription.json()
 
     @property
     def numClasses(self):
-        return list(tagged_output_shapes(self.rawDescription).values())[0]["c"]
+        from ilastik.utility.bioimageio_utils import AxisUtils
+
+        assert len(self.rawDescription.outputs) == 1
+        output = self.rawDescription.outputs[0]
+        return AxisUtils.get_channel_axis_strict(output).size
 
     @property
     def name(self):
@@ -223,6 +196,7 @@ class TiktorchController:
 
     def uploadModel(self, *, progressCallback=None, cancelToken=None):
         """Initialize model on tiktorch server"""
+
         srvConfig = self._model.serverConfig
 
         connection = self.connectionFactory.ensure_connection(srvConfig)
@@ -233,7 +207,10 @@ class TiktorchController:
             if cancelToken.cancelled:
                 return None
 
-            session = connection.create_model_session(uploadId, [d.id for d in srvConfig.devices if d.enabled])
+            session_id = connection.create_model_session_with_id(
+                uploadId, [d.id for d in srvConfig.devices if d.enabled]
+            )
+            session = ModelSession(session_id, self._model.modelData.rawDescription, connection)
             info = ModelInfo(session.name, session.known_classes, session.has_training)
             # TODO: Move to main thread
             self._model.setSession(session)

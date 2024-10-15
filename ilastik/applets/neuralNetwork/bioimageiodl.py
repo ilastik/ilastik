@@ -1,8 +1,7 @@
-import pathlib
-from io import BytesIO
-from zipfile import ZIP_DEFLATED
+import io
 
 from PyQt5.QtCore import QThread, pyqtSignal
+from bioimageio.spec import get_resource_package_content
 from tqdm.auto import tqdm as std_tqdm
 
 from functools import partial
@@ -11,6 +10,10 @@ import logging
 logger = logging.getLogger(__file__)
 
 BIOIMAGEIO_WEIGHTS_PRIORITY = ["torchscript", "pytorch_state_dict", "tensorflow_saved_model_bundle"]
+
+
+class DownloadCancelled(Exception):
+    pass
 
 
 class TqdmExt(std_tqdm):
@@ -23,7 +26,6 @@ class TqdmExt(std_tqdm):
         if self._cancellation_token and self._cancellation_token.cancelled:
             # Note: bioimageio imports are delayed as to prevent https request to
             # github and bioimage.io on ilastik startup
-            from bioimageio.spec.shared import DownloadCancelled
 
             raise DownloadCancelled()
 
@@ -51,42 +53,34 @@ class BioImageDownloader(QThread):
         try:
             # Note: bioimageio imports are delayed as to prevent https request to
             # github and bioimage.io on ilastik startup
-            from bioimageio.core import load_raw_resource_description
-            from bioimageio.core.resource_io.io_ import make_zip
-            from bioimageio.spec import get_resource_package_content
-            from bioimageio.spec.shared import resolve_source, raw_nodes, DownloadCancelled
+            from bioimageio.spec import load_description, save_bioimageio_package_to_stream
+            from bioimageio.spec.common import HttpUrl
+            from bioimageio.spec._internal.io import download
 
             logger.debug(f"Downloading model from {self._model_uri}")
-            raw_rd = load_raw_resource_description(self._model_uri)
-            package_content = get_resource_package_content(raw_rd, weights_priority_order=BIOIMAGEIO_WEIGHTS_PRIORITY)
+            rd = load_description(self._model_uri, perform_io_checks=False)
+            package_content = get_resource_package_content(rd, weights_priority_order=BIOIMAGEIO_WEIGHTS_PRIORITY)
 
-            local_package_content = {}
             for k, v in TqdmExt(
                 package_content.items(),
                 callback=lambda n, total, **kwargs: self.progress0.emit(int(n / total * 100)),
                 cancellation_token=self._cancellation_token,
             ):
-                if isinstance(v, raw_nodes.URI):
+                if isinstance(v, HttpUrl):
                     self.currentUri.emit(str(v.path.split("/")[-1]))
-                    v = resolve_source(
+                    download(
                         v,
-                        raw_rd.root_path,
-                        pbar=partial(
+                        progressbar=partial(
                             TqdmExt,
                             callback=lambda n, total, **kwargs: self.progress1.emit(int(n / total * 100)),
                             cancellation_token=self._cancellation_token,
                         ),
                     )
-                elif isinstance(v, pathlib.Path):
-                    v = raw_rd.root_path / v
 
-                local_package_content[k] = v
+            model_bytes = io.BytesIO()
+            save_bioimageio_package_to_stream(rd, output_stream=model_bytes)
 
-            with BytesIO() as package_file:
-                make_zip(package_file, local_package_content, compression=ZIP_DEFLATED, compression_level=1)
-                model_bytes = package_file.getvalue()
-
-            self.dataAvailable.emit(model_bytes)
+            self.dataAvailable.emit(model_bytes.getvalue())
         except DownloadCancelled:
             return
         except Exception as e:
