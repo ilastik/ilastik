@@ -59,7 +59,7 @@ class BioImageDownloader(QThread):
 
             logger.debug(f"Downloading model from {self._model_uri}")
             rd = load_description(self._model_uri, perform_io_checks=False)
-            package_content = get_resource_package_content(rd, weights_priority_order=BIOIMAGEIO_WEIGHTS_PRIORITY)
+            package_content = get_resource_package_content(rd)
 
             for k, v in TqdmExt(
                 package_content.items(),
@@ -70,17 +70,18 @@ class BioImageDownloader(QThread):
                     self.currentUri.emit(str(v.path.split("/")[-1]))
                     download(
                         v,
-                        progressbar=partial(
-                            TqdmExt,
+                        progressbar=TqdmExt(
+                            total=1,  # hack: it will be set later by HTTPDownloader, but it is needed for a valid tqdm
                             callback=lambda n, total, **kwargs: self.progress1.emit(int(n / total * 100)),
                             cancellation_token=self._cancellation_token,
                         ),
                     )
 
-            model_bytes = io.BytesIO()
-            save_bioimageio_package_to_stream(rd, output_stream=model_bytes)
+            # this can take time, use a progress dialog
+            model_binary = io.BytesIO()
+            save_bioimageio_package_to_stream(rd, output_stream=model_binary)
 
-            self.dataAvailable.emit(model_bytes.getvalue())
+            self.dataAvailable.emit(model_binary.getvalue())
         except DownloadCancelled:
             return
         except Exception as e:

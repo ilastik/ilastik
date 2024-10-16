@@ -85,18 +85,18 @@ class BioimageIOModelSlot(SerialSlot):
             ds = group.create_dataset(name, data=np.void(value.binary))
             ds.attrs["name"] = value.name
             ds.attrs["modelUri"] = value.modelUri
-            ds.attrs["rawDescription"] = BIOModelData.raw_model_description_to_string(value.rawDescription)
             ds.attrs["hashVal"] = value.hashVal
 
     @staticmethod
     def _getValue(subgroup, slot):
         from bioimageio.spec import load_description
 
+        model_uri = subgroup.attrs["modelUri"]
         try:
             model = BIOModelData(
-                modelUri=subgroup.attrs["modelUri"],
+                modelUri=model_uri,
                 binary=subgroup[()].tobytes(),
-                rawDescription=load_description(json.loads(subgroup.attrs["rawDescription"]), perform_io_checks=False),
+                rawDescription=load_description(model_uri, perform_io_checks=False),
                 hashVal=subgroup.attrs["hashVal"],
             )
         except KeyError as e:

@@ -54,8 +54,8 @@ logger = logging.getLogger(__name__)
 
 
 class ModelSession:
-    def __init__(self, session_id, model_descr: ModelDescr, factory):
-        self.__session_id = session_id
+    def __init__(self, session, model_descr: ModelDescr, factory):
+        self.__session = session
         self.__model_descr = model_descr
         self.__factory = factory
 
@@ -213,7 +213,7 @@ class ModelSession:
         self.tikTorchClient.remove_data("training", to_remove)
 
     def close(self):
-        self.tiktorchClient.CloseModelSession(self.__session_id)
+        self.tiktorchClient.CloseModelSession(self.__session)
 
     def predict(
         self, tensors: Sequence[numpy.ndarray], rois: Sequence[numpy.ndarray], axistags: Sequence[AxisTags]
@@ -270,7 +270,7 @@ class ModelSession:
             resp = self.tiktorchClient.Predict.future(
                 inference_pb2.PredictRequest(
                     tensors=pb_tensors,
-                    modelSessionId=self.__session_id,
+                    modelSessionId=self.__session.id,
                 )
             )
             resp.add_done_callback(lambda o: current_rq._wake_up())
@@ -369,11 +369,11 @@ class Connection(_base.IConnection):
 
         return map_future(result, lambda res: res.id)
 
-    def create_model_session_with_id(self, upload_id: str, devices: Sequence[str]) -> str:
+    def create_model_session_with_id(self, upload_id: str, devices: Sequence[str]):
         session_id = self._client.CreateModelSession(
             inference_pb2.CreateModelSessionRequest(model_uri=f"upload://{upload_id}", deviceIds=devices)
         )
-        return session_id.id
+        return session_id
 
 
 class TiktorchConnectionFactory(_base.IConnectionFactory):

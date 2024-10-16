@@ -21,6 +21,7 @@
 from __future__ import annotations
 import dataclasses
 import enum
+import io
 import json
 import logging
 from hashlib import blake2b
@@ -201,8 +202,6 @@ class TiktorchController:
 
         connection = self.connectionFactory.ensure_connection(srvConfig)
 
-        modelData = self._model.modelData
-
         def _createModelFromUpload(uploadId: str):
             if cancelToken.cancelled:
                 return None
@@ -216,7 +215,7 @@ class TiktorchController:
             self._model.setSession(session)
             return info
 
-        result = connection.upload(modelData.binary, progress_cb=progressCallback, cancel_token=cancelToken)
+        result = connection.upload(self._model.modelData.binary, progress_cb=progressCallback, cancel_token=cancelToken)
         return result.map(_createModelFromUpload)
 
     def closeSession(self):
