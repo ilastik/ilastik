@@ -18,10 +18,7 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from __future__ import division
-from builtins import range
 import sys
-import warnings
 import tempfile
 import unittest
 
@@ -32,7 +29,6 @@ import h5py
 from lazyflow.graph import Graph
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
-from ilastik.applets import objectExtraction
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification
 from ilastik.applets.blockwiseObjectClassification import OpBlockwiseObjectClassification
@@ -209,6 +205,8 @@ class TestOpBlockwiseObjectClassification(unittest.TestCase):
 
         opObjectClassification.SelectedFeatures.setValue(self.testingFeatures)
         opObjectClassification.ComputedFeatureNames.connect(self.objExtraction.Features)
+
+        opObjectClassification.FreezePredictions.setValue(False)
 
         # STEP 2: simulate labeling
 
