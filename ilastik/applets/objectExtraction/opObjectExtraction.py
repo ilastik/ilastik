@@ -236,12 +236,12 @@ class OpObjectCenterImage(Operator):
 
     """
 
-    BinaryImage = InputSlot()
+    SegmentationImage = InputSlot()
     RegionCenters = InputSlot(rtype=List, stype=Opaque)
     Output = OutputSlot()
 
     def setupOutputs(self):
-        self.Output.meta.assignFrom(self.BinaryImage.meta)
+        self.Output.meta.assignFrom(self.SegmentationImage.meta)
 
     @staticmethod
     def __contained_in_subregion(roi, coords):
@@ -260,7 +260,7 @@ class OpObjectCenterImage(Operator):
 
         result[:] = 0
         ndim = 3
-        taggedShape = self.BinaryImage.meta.getTaggedShape()
+        taggedShape = self.SegmentationImage.meta.getTaggedShape()
         if "z" not in taggedShape or taggedShape["z"] == 1:
             ndim = 2
         for t in range(roi.start[0], roi.stop[0]):
@@ -293,8 +293,8 @@ class OpObjectCenterImage(Operator):
                 assert b - 1 == a, "List roi must be contiguous"
                 a = b
                 T += 1
-            time_index = self.BinaryImage.meta.axistags.index("t")
-            stop = numpy.asarray(self.BinaryImage.meta.shape, dtype=numpy.int64)
+            time_index = self.SegmentationImage.meta.axistags.index("t")
+            stop = numpy.asarray(self.SegmentationImage.meta.shape, dtype=numpy.int64)
             start = numpy.zeros_like(stop)
             stop[time_index] = T
             start[time_index] = t
@@ -313,7 +313,8 @@ class OpObjectExtraction(Operator):
     name = "Object Extraction"
 
     RawImage = InputSlot()
-    BinaryImage = InputSlot()
+    SegmentationImage = InputSlot()  # binary or label image
+
     Atlas = InputSlot(optional=True)
     BackgroundLabels = InputSlot(optional=True)
 
@@ -349,9 +350,12 @@ class OpObjectExtraction(Operator):
     #
     # BackgroundLabels               LabelImage
     #                 \             /
-    # BinaryImage ---> OpLabelVolume ---> opRegFeats ---> opRegFeatsAdaptOutput ---> RegionFeatures
+    # SegmentationImage ---> EnsureConsecutiveLabels ---> opRegFeats ---> opRegFeatsAdaptOutput ---> RegionFeatures
     #                                   /                                     \
-    # RawImage--------------------------                      BinaryImage ---> opObjectCenterImage --> opCenterCache --> ObjectCenterImage
+    # RawImage--------------------------                      LabelImage ---> opObjectCenterImage --> opCenterCache --> ObjectCenterImage
+    #
+    # EnsureConsecutiveLabels should be customized via `_create_label_volume_op`,
+    # enabling different segmentation input types: binary, and label image.
 
     def __init__(self, *args, **kwargs):
 
@@ -381,7 +385,7 @@ class OpObjectExtraction(Operator):
 
         self._opRegFeatsAdaptOutput.Input.connect(self._opRegFeats.Output)
 
-        self._opObjectCenterImage.BinaryImage.connect(self.BinaryImage)
+        self._opObjectCenterImage.SegmentationImage.connect(self._opLabelVolume.CachedOutput)
         self._opObjectCenterImage.RegionCenters.connect(self._opRegFeatsAdaptOutput.Output)
 
         self._opCenterCache = OpCompressedCache(parent=self)
@@ -395,9 +399,8 @@ class OpObjectExtraction(Operator):
         self.BlockwiseRegionFeatures.connect(self._opRegFeats.Output)
         self.CleanLabelBlocks.connect(self._opLabelVolume.CleanBlocks)
 
-        # As soon as input data is available, check its constraints
         self.RawImage.notifyReady(self._checkConstraints)
-        self.BinaryImage.notifyReady(self._checkConstraints)
+        self.SegmentationImage.notifyReady(self._checkConstraints)
 
     def _checkConstraints(self, *args):
         if self.RawImage.ready() and self.BinaryImage.ready():

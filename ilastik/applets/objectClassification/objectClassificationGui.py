@@ -559,7 +559,6 @@ class ObjectClassificationGui(LabelingGui):
         # Base class provides the label layer and the raw layer
         layers = super(ObjectClassificationGui, self).setupLayers()
 
-        binarySlot = self.op.BinaryImages
         atlas_slot = self.op.Atlas
         segmentedSlot = self.op.SegmentationImages
         # This is just for colors
@@ -671,10 +670,10 @@ class ObjectClassificationGui(LabelingGui):
             )
             layers.append(uncertaintyLayer)
 
-        if binarySlot.ready():
+        if segmentedSlot.ready():
             # white foreground on transparent background, even for labeled images
             binct = [0, QColor(255, 255, 255, 255).rgba()]
-            binaryimagesrc = createDataSource(binarySlot)
+            binaryimagesrc = createDataSource(segmentedSlot)
             binLayer = ColortableLayer(binaryimagesrc, binct)
             binLayer.name = "Binary image"
             binLayer.visible = True
