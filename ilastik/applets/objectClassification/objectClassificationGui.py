@@ -266,7 +266,7 @@ class ObjectClassificationGui(LabelingGui):
         self._labelAssistDialog = None
 
         self._undoStack = self.editor._undoStack
-        fn = self.op.BinaryImages.notifyDirty(lambda *_, **__: self._undoStack.clear())
+        fn = self.op.SegmentationImages.notifyDirty(lambda *_, **__: self._undoStack.clear())
         self.__cleanup_fns.append(fn)
 
     def menus(self):
@@ -610,7 +610,6 @@ class ObjectClassificationGui(LabelingGui):
         # Base class provides the label layer and the raw layer
         layers = super(ObjectClassificationGui, self).setupLayers()
 
-        binarySlot = self.op.BinaryImages
         atlas_slot = self.op.Atlas
         segmentedSlot = self.op.SegmentationImages
         # This is just for colors
@@ -722,11 +721,10 @@ class ObjectClassificationGui(LabelingGui):
             )
             layers.append(uncertaintyLayer)
 
-        if binarySlot.ready():
+        if segmentedSlot.ready():
             # white foreground on transparent background, even for labeled images
-            binct = [QColor(255, 255, 255, 255).rgba()] * 65536
-            binct[0] = 0
-            binaryimagesrc = createDataSource(binarySlot)
+            binct = [0, QColor(255, 255, 255, 255).rgba()]
+            binaryimagesrc = createDataSource(segmentedSlot)
             binLayer = ColortableLayer(binaryimagesrc, binct)
             binLayer.name = "Binary image"
             binLayer.visible = True

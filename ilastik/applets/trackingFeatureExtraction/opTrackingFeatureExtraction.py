@@ -188,7 +188,7 @@ class OpTrackingFeatureExtraction(Operator):
 
         # connect internal operators
         self._objectExtraction.RawImage.connect(self.RawImage)
-        self._objectExtraction.BinaryImage.connect(self.BinaryImage)
+        self._objectExtraction.SegmentationImage.connect(self.BinaryImage)
         self._objectExtraction.BypassModeEnabled.connect(self.BypassModeEnabled)
         self._objectExtraction.Features.connect(self.FeatureNamesVigra)
         self._objectExtraction.RegionFeaturesCacheInput.connect(self.RegionFeaturesCacheInputVigra)

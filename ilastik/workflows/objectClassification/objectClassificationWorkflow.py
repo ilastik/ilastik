@@ -291,7 +291,7 @@ class ObjectClassificationWorkflow(Workflow):
         pass
 
     def connectLane(self, laneIndex):
-        rawslot, binaryslot = self.connectInputs(laneIndex)
+        rawslot, segmentation_slot = self.connectInputs(laneIndex)
         atlas_slot = self.createAtlasSourceSlot(laneIndex)
 
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
@@ -302,11 +302,10 @@ class ObjectClassificationWorkflow(Workflow):
         opBlockwiseObjectClassification = self.blockwiseObjectClassificationApplet.topLevelOperator.getLane(laneIndex)
 
         opObjExtraction.RawImage.connect(rawslot)
-        opObjExtraction.BinaryImage.connect(binaryslot)
+        opObjExtraction.SegmentationImage.connect(segmentation_slot)
         opObjExtraction.Atlas.connect(atlas_slot)
 
         opObjClassification.RawImages.connect(rawslot)
-        opObjClassification.BinaryImages.connect(binaryslot)
         opObjClassification.Atlas.connect(atlas_slot)
 
         opObjClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
@@ -331,7 +330,7 @@ class ObjectClassificationWorkflow(Workflow):
         opBlockwiseObjectClassification = self.blockwiseObjectClassificationApplet.topLevelOperator.getLane(laneIndex)
 
         opBlockwiseObjectClassification.RawImage.connect(opObjClassification.RawImages)
-        opBlockwiseObjectClassification.BinaryImage.connect(opObjClassification.BinaryImages)
+        opBlockwiseObjectClassification.SegmentationImage.connect(segmentation_slot)
         opBlockwiseObjectClassification.Classifier.connect(opObjClassification.Classifier)
         opBlockwiseObjectClassification.LabelsCount.connect(opObjClassification.NumLabels)
         opBlockwiseObjectClassification.SelectedFeatures.connect(opObjClassification.SelectedFeatures)
