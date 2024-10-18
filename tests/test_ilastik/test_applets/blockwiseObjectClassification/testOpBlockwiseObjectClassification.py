@@ -296,7 +296,7 @@ class TestOpBlockwiseObjectClassification(unittest.TestCase):
         opBlockwise = OpBlockwiseObjectClassification(graph=self.graph)
 
         opBlockwise.RawImage.connect(self.classifier.RawImages[0])
-        opBlockwise.BinaryImage.connect(self.classifier.BinaryImages[0])
+        opBlockwise.SegmentationImage.connect(self.objExtraction.LabelImage)
         opBlockwise.Classifier.connect(self.classifier.Classifier)
         opBlockwise.LabelsCount.connect(self.classifier.NumLabels)
         opBlockwise.SelectedFeatures.connect(self.classifier.SelectedFeatures)
