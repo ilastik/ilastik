@@ -4,9 +4,15 @@ Eventually it could be integrated to the bioimageio packages.
 """
 
 from __future__ import annotations
+
+import pathlib
+import tempfile
+
 import numpy as np
 from typing import Union, List, Optional
 from collections import OrderedDict
+
+from bioimageio.spec import load_description
 from bioimageio.spec.model.v0_5 import (
     TensorDescr,
     ChannelAxis,
@@ -21,6 +27,7 @@ from bioimageio.spec.model.v0_5 import (
     OutputAxis,
     WithHalo,
     OutputTensorDescr,
+    InvalidDescr,
 )
 
 TaggedShape = OrderedDict[str, int]
@@ -30,13 +37,21 @@ VIGRA_TO_SPEC = {"b": "batch", "t": "time", "y": "y", "x": "x", "z": "z", "c": "
 SPEC_TO_VIGRA = {spec: vigra for vigra, spec in VIGRA_TO_SPEC.items()}
 
 
+def get_model_descr_from_model_bytes(model_bytes: bytes) -> ModelDescr:
+    with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as _tmp_file:
+        _tmp_file.write(model_bytes)
+        temp_file_path = pathlib.Path(_tmp_file.name)
+    model_descr = load_description(temp_file_path, format_version="latest")
+    if isinstance(model_descr, InvalidDescr):
+        raise ValueError(f"Failed to load valid model descriptor {model_descr.validation_summary}")
+    return model_descr
+
+
 class AxisUtils:
     def __init__(self, specs: List[TensorDescr]):
         self._specs = specs
 
     def realize_size_reference(self, size: SizeReference) -> AnyAxis:
-        if size.offset != 0:
-            raise NotImplementedError
         ref_tensor = self.get_spec(size.tensor_id)
         return self.get_axis(ref_tensor, size.axis_id)
 

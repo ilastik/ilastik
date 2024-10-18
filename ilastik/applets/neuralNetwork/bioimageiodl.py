@@ -77,7 +77,7 @@ class BioImageDownloader(QThread):
                         ),
                     )
 
-            # this can take time, use a progress dialog
+            # this can take time, use a progress dialog or a busy cursor
             model_binary = io.BytesIO()
             save_bioimageio_package_to_stream(rd, output_stream=model_binary)
 

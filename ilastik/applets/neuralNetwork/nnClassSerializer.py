@@ -89,14 +89,15 @@ class BioimageIOModelSlot(SerialSlot):
 
     @staticmethod
     def _getValue(subgroup, slot):
-        from bioimageio.spec import load_description
+        from ilastik.utility.bioimageio_utils import get_model_descr_from_model_bytes
 
+        binary = subgroup[()].tobytes()
         model_uri = subgroup.attrs["modelUri"]
         try:
             model = BIOModelData(
                 modelUri=model_uri,
-                binary=subgroup[()].tobytes(),
-                rawDescription=load_description(model_uri, perform_io_checks=False),
+                binary=binary,
+                rawDescription=get_model_descr_from_model_bytes(binary),
                 hashVal=subgroup.attrs["hashVal"],
             )
         except KeyError as e:

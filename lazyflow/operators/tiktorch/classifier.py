@@ -43,8 +43,6 @@ from . import _base
 
 if TYPE_CHECKING:
     from bioimageio.spec.model.v0_5 import (
-        InputAxis,
-        OutputAxis,
         ModelDescr,
         InputTensorDescr,
         OutputTensorDescr,
