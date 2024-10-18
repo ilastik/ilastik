@@ -81,6 +81,7 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
         self.Output.meta.assignFrom(self.Input.meta)
         self.CleanBlocks.meta.shape = (1,)
         self.CleanBlocks.meta.dtype = object  # it's a list
+        self.CleanBlocks.meta.block_tags = self.Input.meta.axistags
 
     def execute(self, slot, subindex, roi, result):
         if slot is self.Output:

@@ -25,17 +25,18 @@ import pickle
 import re
 import tempfile
 import warnings
-from typing import Any, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 
 import h5py
 import numpy
+import numpy.typing as npt
 
 from ilastik import Project
 from ilastik.utility.commandLineProcessing import convertStringToList
 from ilastik.utility.maybe import maybe
 from lazyflow.operators.valueProviders import OpValueCache
 from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
-from lazyflow.slot import OutputSlot, Slot
+from lazyflow.slot import InputSlot, OutputSlot, Slot
 from lazyflow.utility import timeLogged
 
 from . import jsonSerializerRegistry
@@ -53,7 +54,7 @@ from .serializerUtils import (
 logger = logging.getLogger(__name__)
 
 
-class SerialSlot(object):
+class SerialSlot:
     """Implements the logic for serializing a slot."""
 
     def __init__(
@@ -915,3 +916,242 @@ class JSONSerialSlot(SerialSlot):
         result = self._registry.deserialize(self._obj_class, jsonData)
         self.inslot.setValue(result)
         self.dirty = False
+
+
+class SerialRelabeledDataSlot(SerialSlot):
+    """
+    Implements serialization for `OpRelabelConsecutive`, that produces
+    two synchronized cached values: A relabeled image, and a relabel dictionary
+
+    Data Layout in hdf5:
+
+    name (group)
+    |_ subname000 (group, for each image lane)
+      |_ block0000 (group), for each block)
+        |    Attrs: serialization_key, serialization_axistags
+        |_ array (ds)
+        |      Attrs: axistags, blockSlice
+        |_ dict (ds)
+        |_...
+
+    """
+
+    def __init__(
+        self,
+        slot: OutputSlot,
+        inslot: InputSlot,
+        blockslot: OutputSlot,
+        name: Optional[str] = None,
+        subname: Optional[str] = None,
+        depends: Optional[List[Slot]] = None,
+        selfdepends: bool = True,
+        compression_level=2,
+    ):
+        """
+        :param slot: Slot(level=2) to read the blocks from, expects full blocks (block slicings from blockslot)
+        :param inslot: Slot to write the data to
+        :param blockslot: provides non-zero blocks.
+        :param name: group name for the serialized data for this slot
+        :param subname: group name or the individual image lanes (expects decimal format string)
+
+
+        """
+        assert isinstance(slot, OutputSlot), "slot is of wrong type: '{}' is not an OutputSlot".format(slot.name)
+        super().__init__(slot, inslot=inslot, name=name, subname=subname, depends=depends, selfdepends=selfdepends)
+        self.blockslot = blockslot
+        self._bind(slot)
+        self.compression_level = compression_level
+
+    def shouldSerialize(self, group):
+        """
+        Implementation follows the one in SerialBlockSlot
+        """
+        logger.debug("Checking whether to serialize BlockSlot: {}".format(self.name))
+
+        if self.dirty:
+            logger.debug('BlockSlot "' + self.name + '" appears to be dirty. Should serialize.')
+            return True
+        # SerialSlot interchanges self.name and name when they frequently are the same thing. It is not clear if using
+        # self.name would be acceptable here or whether name should be an input to shouldSerialize or if there should be
+        # a _shouldSerialize method, which takes the name.
+        if self.name not in group:
+            logger.debug(
+                'Missing "'
+                + self.name
+                + '" in group "'
+                + repr(group)
+                + '" belonging to BlockSlot "'
+                + self.name
+                + '". Should serialize.'
+            )
+            return True
+        else:
+            logger.debug(
+                'Found "' + self.name + '" in group "' + repr(group) + '" belonging to BlockSlot "' + self.name + '".'
+            )
+
+        # Just because the group was serialized doesn't mean that the relevant data was.
+        mygroup = group[self.name]
+        num = len(self.blockslot)
+        for index in range(num):
+            subname = self.subname.format(index)
+            # Check to se if each subname has been created as a group
+            if subname not in mygroup:
+                logger.debug(
+                    'Missing "'
+                    + subname
+                    + '" from "'
+                    + repr(mygroup)
+                    + '" belonging to BlockSlot "'
+                    + self.name
+                    + '". Should serialize.'
+                )
+                return True
+            else:
+                logger.debug(
+                    'Found "' + subname + '" from "' + repr(mygroup) + '" belonging to BlockSlot "' + self.name + '".'
+                )
+
+            subgroup = mygroup[subname]
+
+            nonZeroBlocks = self.blockslot[index].value
+            for blockIndex in range(len(nonZeroBlocks)):
+                blockName = "block{:04d}".format(blockIndex)
+
+                if blockName not in subgroup:
+                    logger.debug('Missing "' + blockName + '" from "' + repr(subgroup) + '". Should serialize.')
+                    return True
+                else:
+                    logger.debug(
+                        'Found "'
+                        + blockName
+                        + '" from "'
+                        + repr(subgroup)
+                        + '" belonging to BlockSlot "'
+                        + self.name
+                        + '".'
+                    )
+
+        logger.debug(
+            'Everything belonging to BlockSlot "' + self.name + '" appears to be in order. Should not serialize.'
+        )
+        return False
+
+    @timeLogged(logger, logging.DEBUG)
+    def _serialize(self, group, name, slot):
+        logger.debug("Serializing BlockSlot: {}".format(self.name))
+        mygroup = group.create_group(name)
+        num = len(self.blockslot)
+        compression_options = {}
+        if self.compression_level:
+            compression_options = {"compression_opts": self.compression_level, "compression": "gzip"}
+        for index in range(num):
+            subname = self.subname.format(index)
+            subgroup = mygroup.create_group(subname)
+            nonZeroBlocks = self.blockslot[index].value
+            block_keys = self.blockslot[index].meta.block_tags.keys()
+            slot_keys = self.slot[index].meta.axistags.keys()
+            assert all(k in block_keys for k in slot_keys), f"incompatible slot/cache keys {block_keys=} {slot_keys=}"
+
+            block_tags = self.blockslot[index].meta.block_tags
+
+            for blockIndex, slicing in enumerate(nonZeroBlocks):
+                if not isinstance(slicing[0], slice):
+                    slicing = roiToSlice(*slicing)
+
+                # the indexing in the joint slot is likely different than
+                # the blocks in the cache. For the RelabelOp it is indexed
+                # by whole time slices
+                serial_slot_slicing = tuple([slicing[block_keys.index(k)] for k in slot_keys])
+                data = self.slot[index][serial_slot_slicing].wait()
+                assert len(data) == 1, f"Expecting exactly one tuple, got {len(data)=}"
+
+                block_array, block_dict = data[0]
+                blockName = "block{:04d}".format(blockIndex)
+
+                block_group = subgroup.create_group(blockName)
+
+                # If we have a masked array, convert it to a structured array so that h5py can handle it.
+                if slot[index].meta.has_mask:
+                    mygroup.attrs["meta.has_mask"] = True
+
+                    ma_group = block_group.create_group("masked_array")
+
+                    ma_group.create_dataset("data", data=block_array.data, **compression_options)
+
+                    ma_group.create_dataset("mask", data=block_array.mask, compression="gzip", compression_opts=2)
+                    ma_group.create_dataset("fill_value", data=block_array.fill_value)
+                    ma_group.attrs["blockSlice"] = slicingToString(slicing)
+                    ma_group.attrs["axistags"] = block_tags.toJSON()
+
+                else:
+                    ds = block_group.create_dataset("array", data=block_array, **compression_options)
+                    ds.attrs["blockSlice"] = slicingToString(slicing)
+                    ds.attrs["axistags"] = block_tags.toJSON()
+
+                blockDictName = "dict"
+                block_dict_array = numpy.array(list(block_dict.items()))
+                block_group.create_dataset(blockDictName, data=block_dict_array, **compression_options)
+                block_group.attrs["serialization_key"] = slicingToString(serial_slot_slicing)
+                block_group.attrs["serialization_axistags"] = self.slot[index].meta.axistags.toJSON()
+
+    def reshape_datablock_and_slicing_for_input(
+        self, block: numpy.ndarray, slicing: List[slice], slot: Slot, project: Project
+    ) -> Tuple[numpy.ndarray, List[slice]]:
+        """Reshapes a block of data and its corresponding slicing relative to the whole data into a shape that is
+        adequate for deserialization (in), i.e., the shape expected by the slot being deserialized"""
+        return block, slicing
+
+    @timeLogged(logger, logging.DEBUG)
+    def _deserialize(self, mygroup, slot):
+        logger.debug("Deserializing BlockSlot: {}".format(self.name))
+        num = len(mygroup)
+        if len(self.inslot) < num:
+            self.inslot.resize(num)
+        # Annoyingly, some applets store their groups with names like, img0,img1,img2,..,img9,img10,img11
+        # which means that sorted() needs a special key to avoid sorting img10 before img2
+        # We have to find the index and sort according to its numerical value.
+        index_capture = re.compile(r"[^0-9]*(\d*).*")
+
+        def extract_index(s):
+            return int(index_capture.match(s).groups()[0])
+
+        for lane_index, t in enumerate(sorted(list(mygroup.items()), key=lambda k_v: extract_index(k_v[0]))):
+            _, lane_group = t
+            for block_group in list(lane_group.values()):
+                serialization_slicing = stringToSlicing(block_group.attrs["serialization_key"])
+                # slicing = stringToSlicing(block_group.attrs["blockSlice"])
+
+                assert "dict" in block_group, f"'dict' not found in {block_group.name=}: {list(block_group.keys())=}"
+                assert (
+                    "array" in block_group or "masked_array" in block_group
+                ), f"'array' not found in {block_group.name=}: {list(block_group.keys())=}"
+
+                # If it is suppose to be a masked array,
+                # deserialize the pieces and rebuild the masked array.
+                assert slot[lane_index].meta.has_mask == mygroup.attrs.get("meta.has_mask"), (
+                    "The slot and stored data have different values for"
+                    + " `has_mask`. They are"
+                    + " `bool(slot[lane_index].meta.has_mask)`="
+                    + repr(bool(slot[lane_index].meta.has_mask))
+                    + " and"
+                    + ' `mygroup.attrs.get("meta.has_mask", False)`='
+                    + repr(mygroup.attrs.get("meta.has_mask", False))
+                    + ". Please fix this to proceed with deserialization."
+                )
+                if slot[lane_index].meta.has_mask:
+                    assert "masked_array" in block_group
+                    blockArray = numpy.ma.masked_array(
+                        block_group["masked_array/data"][()],
+                        mask=block_group["masked_array/mask"][()],
+                        fill_value=block_group["masked_array/fill_value"][()],
+                        shrink=False,
+                    )
+                else:
+                    assert "array" in block_group
+                    blockArray = block_group["array"][...]
+
+                block_dict = dict(block_group["dict"][:])
+
+                # serial_slot_slicing =
+                self.inslot[lane_index][serialization_slicing] = (blockArray, block_dict)
