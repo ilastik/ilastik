@@ -123,7 +123,6 @@ class TestWithCube(unittest.TestCase):
         opExtract.Features.setValue(self.features)
 
         opPredict.RawImages.setValues([self.rawimg])
-        opPredict.BinaryImages.setValues([self.binimg])
         opPredict.SegmentationImages.resize(1)
         opPredict.SegmentationImages[0].connect(opExtract.LabelImage)
         opPredict.ObjectFeatures.resize(1)
@@ -194,7 +193,6 @@ class TestWithCube(unittest.TestCase):
         opExtract.Features.setValue(self.features)
 
         opPredict.RawImages.setValues([self.rawimg])
-        opPredict.BinaryImages.setValues([self.binimg])
         opPredict.SegmentationImages.resize(1)
         opPredict.SegmentationImages[0].connect(opExtract.LabelImage)
         opPredict.ObjectFeatures.resize(1)
@@ -210,7 +208,6 @@ class TestWithCube(unittest.TestCase):
         opExtractT.Features.setValue(self.features)
 
         opPredictT.RawImages.setValues([self.rawimgt])
-        opPredictT.BinaryImages.setValues([self.binimgt])
         opPredictT.SegmentationImages.resize(1)
         opPredictT.SegmentationImages[0].connect(opExtractT.LabelImage)
         opPredictT.ObjectFeatures.resize(1)
@@ -330,7 +327,6 @@ class TestWithCube(unittest.TestCase):
         segimg = vigra.taggedView(segimg, "txyzc")
 
         opPredict.RawImages.setValues([self.rawimg, self.rawimg, self.rawimg])
-        opPredict.BinaryImages.setValues([self.binimg, self.binimg, self.binimg])
         opPredict.SegmentationImages.setValues([segimg, segimg, segimg])
 
         opPredict.ObjectFeatures.setValues([feats, feats, feats])

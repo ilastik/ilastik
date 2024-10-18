@@ -443,7 +443,6 @@ class TestMaxLabel(unittest.TestCase):
 
         self.op = OpObjectClassification(graph=g)
         self.op.RawImages.setValues([rawimg])
-        self.op.BinaryImages.setValues([binimg])
         self.op.SegmentationImages.setValues([segmimg])
         self.op.ObjectFeatures.setValues([self.featureArrays])
         self.op.ComputedFeatureNames.setValue(self.features)
@@ -506,13 +505,13 @@ class TestFullOperator(unittest.TestCase):
         assert self.extrOp.RegionFeatures.ready()
 
         self.classOp = OpObjectClassification(graph=g)
-        self.classOp.BinaryImages.setValues([binimg])
-        self.classOp.SegmentationImages.setValues([segimg])
         self.classOp.RawImages.setValues([rawimg])
+        self.classOp.SegmentationImages.setValues([binimg])
         self.classOp.LabelInputs.setValues([labels])
         self.classOp.ObjectFeatures.connect(self.extrOp.RegionFeatures)
         self.classOp.ComputedFeatureNames.connect(self.extrOp.Features)
         self.classOp.SelectedFeatures.setValue(sel_features)
+        assert self.classOp.Classifier.ready()
 
     def test(self):
         self.assertTrue(self.classOp.Predictions.ready(), "Prediction slot of OpObjectClassification wasn't ready.")

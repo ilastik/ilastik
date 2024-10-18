@@ -196,10 +196,6 @@ class TestOpBlockwiseObjectClassification(unittest.TestCase):
         opObjectClassification.RawImages.resize(1)
         opObjectClassification.RawImages[0].connect(self.rawSource.Output)
 
-        # threshold images, i.e. cubes with intensity 1
-        opObjectClassification.BinaryImages.resize(1)
-        opObjectClassification.BinaryImages.connect(self.binarySource.Output)
-
         # segmentation images from object extraction
         opObjectClassification.SegmentationImages.resize(1)
         opObjectClassification.SegmentationImages[0].connect(self.objExtraction.LabelImage)
