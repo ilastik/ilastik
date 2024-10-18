@@ -24,6 +24,7 @@ import shutil
 import tempfile
 import unittest
 from copy import deepcopy
+from unittest import mock
 
 import h5py
 import numpy
@@ -44,6 +45,7 @@ from ilastik.applets.base.appletSerializer import (
     SerialListSlot,
     SerialObjectFeatureNamesSlot,
     SerialSlot,
+    SerialRelabeledDataSlot,
     jsonSerializerRegistry,
 )
 from ilastik.applets.base.appletSerializer.slotSerializer import SerialClassifierFactorySlot
@@ -52,6 +54,7 @@ from lazyflow.classifiers.sklearnLazyflowClassifier import SklearnLazyflowClassi
 from lazyflow.classifiers.vigraRfLazyflowClassifier import VigraRfLazyflowClassifierFactory
 from lazyflow.graph import Graph, InputSlot, Operator, OperatorWrapper, Slot
 from lazyflow.operators import OpCompressedUserLabelArray
+from lazyflow.operators.opRelabelConsecutive import OpRelabelConsecutive
 from lazyflow.rtype import List
 from lazyflow.slot import OutputSlot
 from lazyflow.stype import Opaque
@@ -803,6 +806,86 @@ class TestSerialBlockSlot2(unittest.TestCase):
 
         assert (result_1.mask == data_1.mask).all()
         assert (result_2.mask == data_2.mask).all()
+
+        os.remove(h5_filepath)
+        shutil.rmtree(tmp_dir)
+
+
+class OpRelabelOpMultilane(OperatorWrapper, OpRelabelConsecutive):  # type: ignore
+    """To help with typing"""
+
+    pass
+
+
+class TestSerialRelabeledDataSlot(unittest.TestCase):
+    def _init_objects(self):
+        data = vigra.taggedView(2 * numpy.arange(0, 180, dtype=numpy.uint8).reshape((2, 10, 9)), "tyx").withAxes(
+            "tzyxc"
+        )
+
+        opRelabel: OpRelabelOpMultilane = OperatorWrapper(OpRelabelConsecutive, graph=Graph())  # type: ignore
+
+        opRelabel.Input.resize(1)
+        opRelabel.Input[0].setValue(data)
+
+        # This will serialize/deserialize data to the h5 file.
+        slotSerializer = SerialRelabeledDataSlot(
+            opRelabel.SerializationOutput,
+            opRelabel.SerializationInput,
+            opRelabel.CleanBlocks,
+            name="relabel",
+            subname="lane{:03d}",
+        )
+        return opRelabel, slotSerializer
+
+    def testBasic1(self):
+        tmp_dir = tempfile.mkdtemp()
+        h5_filepath = os.path.join(tmp_dir, "serial_relabeled_data_test.h5")
+
+        opRelabel_write, slotSerializer_write = self._init_objects()
+        # request output to load the cache
+        with mock.patch("vigra.analysis.relabelConsecutive", wraps=vigra.analysis.relabelConsecutive) as relabel_mock:
+            relabeled_data_ref = opRelabel_write.CachedOutput[0][:].wait()
+            assert relabel_mock.call_count == 2
+            relabel_mock.reset_mock()
+            read_dict_ref = opRelabel_write.RelabelDict[0][:].wait()
+            relabel_mock.assert_not_called()
+
+        with h5py.File(h5_filepath, "w") as f:
+            label_group = f.create_group("test")
+            slotSerializer_write.serialize(label_group)
+
+        # first check if the expected data is in the file
+        with h5py.File(h5_filepath, "r") as f:
+            g = f["test"]
+            assert "relabel" in g, f"{list(g.keys())}"
+            assert "lane000" in g["relabel"], f"{list(g['relabel'].keys())}"
+            lane_group = f["test/relabel/lane000"]
+            assert len(lane_group) == 2
+            assert "block0000" in lane_group
+            assert "block0001" in lane_group
+
+            for block_group in lane_group.values():
+                assert "array" in block_group
+                assert "dict" in block_group
+                assert len(block_group["dict"]) == 90
+                assert block_group["array"].shape == (1, 1, 10, 9, 1)
+
+        # now if deserialization leads to the expected values:
+        opRelabel_read, slotSerializer_read = self._init_objects()
+
+        with mock.patch("vigra.analysis.relabelConsecutive", wraps=vigra.analysis.relabelConsecutive) as relabel_mock:
+            with h5py.File(h5_filepath, "r") as f:
+                label_group = f["test"]
+                slotSerializer_read.deserialize(label_group)
+
+            read_output = opRelabel_read.CachedOutput[0][:].wait()
+            read_dict = opRelabel_read.RelabelDict[0][:].wait()
+
+            relabel_mock.assert_not_called()
+
+        numpy.testing.assert_array_equal(read_output, relabeled_data_ref)
+        numpy.testing.assert_array_equal(read_dict, read_dict_ref)
 
         os.remove(h5_filepath)
         shutil.rmtree(tmp_dir)
