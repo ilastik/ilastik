@@ -784,9 +784,16 @@ class ObjectClassificationGui(LabelingGui):
             else:
                 label = "none"
             print("label:          {}".format(label))
+            feats = self.op.ObjectFeatures[t].wait()[t]
+
+            if "OriginalObjectID" in feats.get(default_features_key, {}):
+                print(f"OriginalObjectID: {feats[default_features_key]['OriginalObjectID'][obj][0]}")
+
+            if "AtlasMapping" in feats.get(default_features_key, {}):
+                print(f"AtlasMapping:     {feats[default_features_key]['AtlasMapping'][obj][0]}")
 
             print("features:")
-            feats = self.op.ObjectFeatures([t]).wait()[t]
+
             selected = self.op.SelectedFeatures([]).wait()
             for plugin in sorted(feats.keys()):
                 if plugin == default_features_key or plugin not in selected:
