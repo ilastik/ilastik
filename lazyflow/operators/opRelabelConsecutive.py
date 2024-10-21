@@ -69,6 +69,9 @@ class OpRelabelConsecutive(Operator):
     SerializationInput = InputSlot(optional=True)
     SerializationOutput = OutputSlot()
 
+    # total dummy slot, there because OpObjectExtraction expects this interface
+    BypassModeEnabled = InputSlot(value=False)
+
     supportedDtypes = [numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64]
 
     def __init__(self, *args, **kwargs):

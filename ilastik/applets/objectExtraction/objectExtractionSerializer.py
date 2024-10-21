@@ -21,16 +21,18 @@
 import logging
 from typing import Optional
 
-import numpy
-
+from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction, OpObjectExtractionFromLabels
 from lazyflow.roi import roiToSlice
+import numpy
+import numpy.typing as npt
 
 from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
-    deleteIfPresent,
-    SerialSlot,
     SerialBlockSlot,
     SerialObjectFeatureNamesSlot,
+    SerialRelabeledDataSlot,
+    SerialSlot,
+    deleteIfPresent,
 )
 from ilastik.plugins.manager import pluginManager
 from ilastik.utility.commandLineProcessing import convertStringToList
@@ -113,7 +115,7 @@ class SerialObjectFeaturesSlot(SerialSlot):
 
 
 class ObjectExtractionSerializer(AppletSerializer):
-    def __init__(self, operator, projectFileGroupName):
+    def __init__(self, operator: OpObjectExtraction, projectFileGroupName: str):
         slots = [
             SerialBlockSlot(
                 operator.LabelImage,
@@ -155,3 +157,37 @@ class ObjectExtractionSerializer(AppletSerializer):
                 f"Could not find feature plugins {missing_features} that were used when creating this project. "
                 "Install missing feature plugins to load this project file."
             )
+
+
+class ObjectExtractionFromLabelsSerializer(AppletSerializer):
+
+    @staticmethod
+    def transform_to_h5(slot_val) -> npt.NDArray[numpy.uint32]:
+        assert len(slot_val) == 1, f"Expected single length array entry for mapping dictionary, got {len(slot_val)=}."
+        assert isinstance(slot_val[0], dict), f"Expected dict, got {type(slot_val[0])=}."
+        return numpy.array(slot_val[0].items())
+
+    @staticmethod
+    def transform_from_h5(val: npt.NDArray[numpy.uint32]) -> npt.NDArray:
+        return numpy.array([dict(val)])
+
+    def __init__(self, operator: OpObjectExtractionFromLabels, projectFileGroupName: str):
+        slots = [
+            SerialRelabeledDataSlot(
+                slot=operator.RelabelCacheOutput,
+                inslot=operator.RelabelCacheInput,
+                blockslot=operator.CleanLabelBlocks,
+                name="RelabelData",
+                subname="ImageLane{:03d}",
+                selfdepends=False,
+            ),
+            SerialObjectFeatureNamesSlot(operator.Features),
+            SerialObjectFeaturesSlot(
+                operator.BlockwiseRegionFeatures,
+                operator.RegionFeaturesCacheInput,
+                operator.RegionFeaturesCleanBlocks,
+                name="RegionFeatures",
+            ),
+        ]
+
+        super().__init__(projectFileGroupName, slots=slots)
