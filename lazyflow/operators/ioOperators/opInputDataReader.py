@@ -37,9 +37,8 @@ from lazyflow.operators.ioOperators import (
     OpRESTfulPrecomputedChunkedVolumeReader,
     OpImageReader,
 )
-from lazyflow.utility.io_util.OMEZarrStore import scale_key_from_path
 from lazyflow.utility.jsonConfig import JsonConfigParser
-from lazyflow.utility.pathHelpers import lsH5N5, isUrl, isRelative, splitPath, PathComponents
+from lazyflow.utility.pathHelpers import lsH5N5, isRelative, splitPath, PathComponents
 from .opOMEZarrMultiscaleReader import OpOMEZarrMultiscaleReader
 
 from .opStreamingUfmfReader import OpStreamingUfmfReader
@@ -134,7 +133,7 @@ class OpInputDataReader(Operator):
         FilePath: Optional[str] = None,
         SequenceAxis: Optional[str] = None,
         SubVolumeRoi: Optional[Tuple[int, int]] = None,
-        ActiveScale: Optional[InputSlot] = None,
+        ActiveScale: Optional[str] = None,
         *args,
         **kwargs,
     ):
@@ -307,7 +306,7 @@ class OpInputDataReader(Operator):
         reader = OpOMEZarrMultiscaleReader(parent=self, metadata_only_mode=self.parent is None)
         if path.internalPath:
             # Headless/batch
-            reader.Scale.setValue(scale_key_from_path(path.internalPath.lstrip("/")))
+            reader.Scale.setValue(path.internalPath.lstrip("/"))
         else:
             reader.Scale.connect(self.ActiveScale)
         reader.BaseUri.setValue(path.externalPath)

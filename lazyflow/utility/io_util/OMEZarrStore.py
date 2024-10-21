@@ -200,7 +200,7 @@ class OMEZarrMultiscaleMeta:
             dataset_transformations=OrderedDict(
                 [
                     (
-                        scale_key_from_path(scale["path"]),
+                        scale["path"],
                         _validate_transforms(scale.get("coordinateTransformations", invalid_transformations)),
                     )
                     for scale in multiscale_spec["datasets"]
@@ -248,13 +248,6 @@ def _get_zarr_cache_max_size() -> int:
     # Should see if we can implement a managed cache on top of this and use cacheMemoryManager to share the global pool.
     permissible_fraction_max = 0.125
     return math.floor(caches_max * permissible_fraction_max)
-
-
-def scale_key_from_path(scale_path: str):
-    """Paths in this context are web-paths, i.e. URI components.
-    Backslashes would technically be valid characters in scale keys.
-    Please make sure not to accidentally pass Windows paths here..."""
-    return scale_path.split("/")[-1]
 
 
 def _fetch_and_validate_ome_zarr_spec(uri: str) -> OME_ZARR_SPEC:
@@ -337,10 +330,9 @@ class OMEZarrStore(MultiscaleStore):
             datasets = datasets[:1]  # One scale is enough to get dtype
         for scale in datasets:  # OME-Zarr spec requires datasets ordered from high to low resolution
             with Timer() as timer:
-                scale_path = scale["path"]
-                scale_key = scale_key_from_path(scale_path)
+                scale_key = scale["path"]
                 # Loading a ZarrArray at this path is necessary to obtain the scale dimensions for the GUI
-                zarray = ZarrArray(store=self._store, path=scale_path)
+                zarray = ZarrArray(store=self._store, path=scale_key)
                 dtype = zarray.dtype.type
                 scale_metadata[scale_key] = OrderedDict(zip([tag.key for tag in axistags], zarray.shape))
                 self._scale_data[scale_key] = {

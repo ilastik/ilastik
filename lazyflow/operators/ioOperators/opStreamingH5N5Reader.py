@@ -37,7 +37,6 @@ from lazyflow.utility.helpers import get_default_axisordering, bigintprod
 from lazyflow.utility.io_util.OMEZarrStore import (
     get_axistags_for_dataset as get_ome_zarr_axistags,
     OMEZarrMultiscaleMeta,
-    scale_key_from_path,
     get_multiscale_for_dataset,
 )
 from lazyflow.utility.io_util.multiscaleStore import Multiscales
@@ -148,14 +147,14 @@ class OpStreamingH5N5Reader(Operator):
         if isinstance(self._h5N5File, z5py.ZarrFile):
             # Add OME-Zarr metadata to slot so that it can be ported over to an export
             multiscale_spec = get_multiscale_for_dataset(self._h5N5File.attrs, internalPath.lstrip("/"))
-            scale_keys = [scale_key_from_path(dataset["path"]) for dataset in multiscale_spec["datasets"]]
+            scale_keys = [dataset["path"] for dataset in multiscale_spec["datasets"]]
             scale_tagged_shapes = [
                 OrderedDict(zip(axistags.keys(), self._h5N5File[dataset["path"]].shape))
                 for dataset in multiscale_spec["datasets"]
             ]
             scales: Multiscales = OrderedDict(zip(scale_keys, scale_tagged_shapes))
             self.OutputImage.meta.scales = scales
-            self.OutputImage.meta.active_scale = scale_key_from_path(internalPath)
+            self.OutputImage.meta.active_scale = internalPath
             self.OutputImage.meta.lowest_scale = scale_keys[-1]
             self.OutputImage.meta.ome_zarr_meta = OMEZarrMultiscaleMeta.from_multiscale_spec(multiscale_spec)
 
