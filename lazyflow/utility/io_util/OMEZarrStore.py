@@ -107,7 +107,7 @@ def _validate_transforms(
     """
     if coordinate_transformations is None:
         return None
-    if not isinstance(coordinate_transformations, list):
+    if not isinstance(coordinate_transformations, list) or not coordinate_transformations:
         return InvalidTransformationError()
     scale_transform = translation_transform = None
     for t in coordinate_transformations:
@@ -119,7 +119,7 @@ def _validate_transforms(
             scale_transform = transform
         if translation_transform is None and transform.type == "translation":
             translation_transform = transform
-    return scale_transform, translation_transform if scale_transform else InvalidTransformationError()
+    return (scale_transform, translation_transform) if scale_transform else InvalidTransformationError()
 
 
 @dataclass(frozen=True)
