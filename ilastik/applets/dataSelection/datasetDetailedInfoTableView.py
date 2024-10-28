@@ -19,8 +19,8 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from past.utils import old_div
-from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QUrl, QObject, QEvent, QTimer
-from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QUrl, QObject, QEvent, QRect
+from PyQt5.QtGui import QIcon, QFontMetrics
 from PyQt5.QtWidgets import (
     QTableView,
     QHeaderView,
@@ -32,6 +32,7 @@ from PyQt5.QtWidgets import (
     QItemDelegate,
     QComboBox,
     QStyledItemDelegate,
+    QStyle,
     QMessageBox,
 )
 
@@ -184,6 +185,45 @@ class InlineAddButtonDelegate(QItemDelegate):
         super().paint(painter, option, index)
 
 
+class ScaleOptionDelegate(QStyledItemDelegate):
+    """Elides text within the combobox options to make sure that the last two words
+    (i.e. the dataset size number and the unit, like '353 KB') are always visible."""
+
+    @staticmethod
+    def _elide_text(text, font_metrics, width):
+        # Elide words as: "First ... Last Two", adding from the right as width allos
+        words = text.split()
+        if len(words) <= 3 or font_metrics.width(text) <= width:  # Use default eliding
+            return font_metrics.elidedText(text, Qt.ElideMiddle, width)
+        last_two_words = " ".join(words[-2:])
+        middle_words = ""
+        test_text = f"{words[0]} ... {last_two_words}"
+        for word in reversed(words[1:-2]):
+            middle_words = f"{word} {middle_words}"
+            new_test_text = f"{words[0]} ... {middle_words}{last_two_words}"
+            if font_metrics.width(new_test_text) > width:
+                break
+            test_text = new_test_text
+        return test_text
+
+    def paint(self, painter, option, index):
+        """Paint the combobox options with custom text eliding."""
+        painter.save()
+        painter.setFont(option.font)
+        font_metrics = QFontMetrics(option.font)
+        text = index.data()
+        # Mimic default left padding
+        padded_rect = QRect(option.rect)
+        padded_rect.setLeft(option.rect.left() + 3)
+        if option.state & (QStyle.State_Selected | QStyle.State_MouseOver):
+            # Make sure the selected / hovered option gets the default highlight
+            painter.fillRect(option.rect, option.palette.highlight())
+            painter.setPen(option.palette.highlightedText().color())
+        elided_text = self._elide_text(text, font_metrics, padded_rect.width())
+        painter.drawText(padded_rect, Qt.AlignLeft | Qt.AlignVCenter, elided_text)
+        painter.restore()
+
+
 class ScaleComboBoxDelegate(QStyledItemDelegate):
     def paint(self, painter, option, index):
         scales = index.model().get_scale_options(index.row())
@@ -199,6 +239,7 @@ class ScaleComboBoxDelegate(QStyledItemDelegate):
         if not scale_options:
             return None
         combo = QComboBox(parent)
+        combo.setItemDelegate(ScaleOptionDelegate(combo))
         for scale_key, scale in scale_options.items():
             combo.addItem(scale, scale_key)
         combo.currentIndexChanged.connect(partial(self.on_combo_selected, index))
