@@ -254,7 +254,7 @@ class OpStreamingH5N5SequenceReaderS(Operator):
         pathComponents = [PathComponents(p.strip()) for p in pathStrings]
         assert len(pathComponents) > 0
 
-        known_exts = OpStreamingH5N5Reader.H5EXTS + OpStreamingH5N5Reader.N5EXTS + OpStreamingH5N5Reader.ZARREXTS
+        known_exts = OpStreamingH5N5Reader.H5EXTS + OpStreamingH5N5Reader.N5EXTS
         if not all(p.extension in known_exts for p in pathComponents):
             raise OpStreamingH5N5SequenceReaderS.WrongFileTypeError(globString)
 

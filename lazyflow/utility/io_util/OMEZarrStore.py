@@ -233,12 +233,7 @@ def _axistags_from_multiscale(multiscale: OME_ZARR_MULTISCALE) -> vigra.AxisTags
     return vigra.defaultAxistags("".join(axis_keys))
 
 
-def get_axistags_for_dataset(ome_spec: OME_ZARR_SPEC, dataset_subpath: str) -> vigra.AxisTags:
-    multiscale = get_multiscale_for_dataset(ome_spec, dataset_subpath)
-    return _axistags_from_multiscale(multiscale)
-
-
-def get_multiscale_for_dataset(ome_spec: OME_ZARR_SPEC, dataset_subpath: str) -> OME_ZARR_MULTISCALE:
+def _get_multiscale_for_dataset(ome_spec: OME_ZARR_SPEC, dataset_subpath: str) -> OME_ZARR_MULTISCALE:
     for multiscale in ome_spec["multiscales"]:
         if any(d["path"] == dataset_subpath for d in multiscale["datasets"]):
             return multiscale
@@ -346,7 +341,7 @@ class OMEZarrStore(MultiscaleStore):
             )
             logger.warning(warn)
         multiscale_spec = (
-            get_multiscale_for_dataset(self._ome_spec, selected_scale)
+            _get_multiscale_for_dataset(self._ome_spec, selected_scale)
             if selected_scale
             else self._ome_spec["multiscales"][0]
         )

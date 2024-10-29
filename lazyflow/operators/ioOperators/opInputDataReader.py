@@ -19,6 +19,8 @@
 # This information is also available on the ilastik web site at:
 #          http://ilastik.org/license/
 ###############################################################################
+from pathlib import Path
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedArrayCache, OpMetadataInjector, OpSubRegion
 from .opNpyFileReader import OpNpyFileReader
@@ -38,7 +40,7 @@ from lazyflow.operators.ioOperators import (
     OpImageReader,
 )
 from lazyflow.utility.jsonConfig import JsonConfigParser
-from lazyflow.utility.pathHelpers import lsH5N5, isRelative, splitPath, PathComponents
+from lazyflow.utility.pathHelpers import lsH5N5, isRelative, splitPath, PathComponents, isUrl
 from .opOMEZarrMultiscaleReader import OpOMEZarrMultiscaleReader
 
 from .opStreamingUfmfReader import OpStreamingUfmfReader
@@ -80,7 +82,7 @@ class OpInputDataReader(Operator):
     category = "Input"
 
     videoExts = ["ufmf", "mmf"]
-    h5_n5_Exts = ["h5", "hdf5", "ilp", "n5", "zarr"]
+    h5_n5_Exts = ["h5", "hdf5", "ilp", "n5"]
     n5Selection = [
         "json",
         "zgroup",
@@ -295,9 +297,10 @@ class OpInputDataReader(Operator):
             return ([], None)
 
     def _attemptOpenAsOmeZarrUri(self, filePath):
-        # Local file system paths with .zarr are handled in _attemptOpenAsH5N5
         if PathComponents(filePath).extension != ".zarr":
             return ([], None)
+        if not isUrl(filePath):
+            filePath = Path(filePath).as_uri()
         if not (filePath.startswith("http") or filePath.startswith("file")):
             return ([], None)
         # DatasetInfo instantiates a standalone OpInputDataReader to obtain laneShape and dtype.
