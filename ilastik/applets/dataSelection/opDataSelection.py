@@ -850,11 +850,7 @@ class OpDataSelection(Operator):
             if data_provider.meta.scales:
                 datasetInfo.laneShape = data_provider.meta.shape
                 datasetInfo.scales = data_provider.meta.scales
-                datasetInfo.working_scale = self.ActiveScale.value
-                if datasetInfo.working_scale == DEFAULT_SCALE_KEY:
-                    # datasetInfo.working_scale may be saved to the project file, so we want a real key here
-                    # if we didn't already load one from the file.
-                    datasetInfo.working_scale = data_provider.meta.lowest_scale
+                datasetInfo.working_scale = data_provider.meta.active_scale
 
             output_order = self._get_output_axis_order(data_provider)
             # Export applet assumes this OpReorderAxes exists.
