@@ -296,20 +296,15 @@ class OpInputDataReader(Operator):
 
     def _attemptOpenAsOmeZarrUri(self, filePath):
         # Local file system paths with .zarr are handled in _attemptOpenAsH5N5
-        path = PathComponents(filePath)
-        if path.extension != ".zarr":
+        if PathComponents(filePath).extension != ".zarr":
             return ([], None)
         if not (filePath.startswith("http") or filePath.startswith("file")):
             return ([], None)
         # DatasetInfo instantiates a standalone OpInputDataReader to obtain laneShape and dtype.
         # We pass this down to the loader so that it can avoid loading scale metadata unnecessarily.
         reader = OpOMEZarrMultiscaleReader(parent=self, metadata_only_mode=self.parent is None)
-        if path.internalPath:
-            # Headless/batch
-            reader.Scale.setValue(path.internalPath.lstrip("/"))
-        else:
-            reader.Scale.connect(self.ActiveScale)
-        reader.BaseUri.setValue(path.externalPath)
+        reader.Scale.connect(self.ActiveScale)
+        reader.Uri.setValue(filePath)
         return [reader], reader.Output
 
     def _attemptOpenAsRESTfulPrecomputedChunkedVolume(self, filePath):
