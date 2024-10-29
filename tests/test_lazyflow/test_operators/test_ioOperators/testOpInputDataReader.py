@@ -294,11 +294,22 @@ class TestOpInputDataReaderWithOMEZarr:
     PathTuple = Tuple[str, str, str]  # container root, raw scale, downscale
 
     @pytest.fixture(
+        ids=[
+            "typical",
+            "with_dataset_name",
+            "ngff_zarr_layout",
+            "typical_labels",
+            "labels_with_dataset_name",
+            "labels_inverted_layout",
+        ],
         params=[
-            ("some.zarr", "s0", "s1"),  # most typical
-            ("some.zarr", "correct/s0", "correct/s1"),  # dataset name for some reason
-            ("some.zarr", "s0/correct", "s1/correct"),  # typical ngff_zarr output
-        ]
+            ("some.zarr", "s0", "s1"),
+            ("some.zarr", "correct/s0", "correct/s1"),
+            ("some.zarr", "s0/correct", "s1/correct"),
+            ("some.zarr/labels/nuclei", "s0", "s1"),
+            ("some.zarr/labels/nuclei", "correct/s0", "correct/s1"),
+            ("some.zarr/labels/nuclei", "s0/correct", "s1/correct"),
+        ],
     )
     def ome_zarr_store_on_disc(
         self, tmp_path, request, monkeypatch
@@ -426,6 +437,25 @@ class TestOpInputDataReaderWithOMEZarr:
 
         assert loaded_data.shape == (3, 100, 100)
         assert numpy.count_nonzero(loaded_data) > 10000
+
+    def test_load_from_file_uri_without_parent(self, tmp_path, graph, ome_zarr_store_on_disc):
+        paths, expected_multiscales, expected_additional_meta = ome_zarr_store_on_disc
+        zarr_dir, path0, path1 = paths
+        # Request downscale because with no parent, the reader defaults to loading only the first scale
+        raw_data_path = tmp_path / zarr_dir / path1
+        reader = OpInputDataReader(graph=graph)
+        reader.FilePath.setValue(raw_data_path.as_uri())
+
+        assert path1 in reader.Output.meta.scales
+        assert path0 not in reader.Output.meta.scales
+        assert reader.Output.meta.scales[path1] == expected_multiscales[path1]
+        assert reader.Output.meta.ome_zarr_meta == expected_additional_meta
+
+        loaded_data = reader.Output[:].wait()
+
+        assert loaded_data.shape == (3, 50, 50)
+        assert numpy.count_nonzero(loaded_data) > 5000
+
 
     def test_load_from_file_uri_via_slot(self, tmp_path, graph, ome_zarr_store_on_disc):
         paths, expected_multiscales, expected_additional_meta = ome_zarr_store_on_disc
