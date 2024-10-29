@@ -210,9 +210,11 @@ class TestOpExportSlot(object):
         file.create_dataset("s1", data=downscale)
         file.attrs["multiscales"] = input_meta
 
+        noop = Operator(graph=Graph())  # parent so that OpInputDataReader doesn't drop into single-scale mode
+
         # Raw scale first
         export_path = self._tmpdir + "/test_export1.zarr"
-        with Pipeline(graph=Graph()) as pipeline:
+        with Pipeline(parent=noop) as pipeline:
             pipeline.add(OpInputDataReader, FilePath=input_path + "/s0")
             opExport = pipeline.add(
                 OpExportSlot, OutputFormat="single-scale OME-Zarr", OutputFilenameFormat=export_path
@@ -225,7 +227,7 @@ class TestOpExportSlot(object):
 
         # Same thing for the second scale
         export_path = self._tmpdir + "/test_export2.zarr"
-        with Pipeline(graph=Graph()) as pipeline:
+        with Pipeline(parent=noop) as pipeline:
             pipeline.add(OpInputDataReader, FilePath=input_path + "/s1")
             opExport = pipeline.add(
                 OpExportSlot, OutputFormat="single-scale OME-Zarr", OutputFilenameFormat=export_path
@@ -236,9 +238,7 @@ class TestOpExportSlot(object):
             written_file = z5py.ZarrFile(export_path, "r")
             assert written_file.attrs["multiscales"] == expected_meta_s1
 
-        # Another time, but give path as URI to go through OMEZarrMultiscaleReader
-        # OpInputDataReader then needs a parent to avoid the multiscale reader going into single-scale mode
-        noop = Operator(graph=Graph())
+        # Another time, but give path as URI
         export_path = self._tmpdir + "/test_export3.zarr"
         with Pipeline(parent=noop) as pipeline:
             pipeline.add(OpInputDataReader, FilePath=Path(input_path).as_uri(), ActiveScale="s1")

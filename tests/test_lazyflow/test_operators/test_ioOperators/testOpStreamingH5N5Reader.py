@@ -29,11 +29,9 @@ import z5py
 from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
 
 
-@pytest.fixture(params=["test.h5", "test.n5", "test.zarr"])
+@pytest.fixture(params=["test.h5", "test.n5"])
 def h5n5_file(request, tmp_path):
     file = OpStreamingH5N5Reader.get_h5_n5_file(str(tmp_path / request.param))
-    if request.param == "test.zarr":
-        file.attrs["multiscales"] = [{"datasets": [{"path": "volume/data"}]}]
     yield file
     file.close()
 
@@ -72,89 +70,3 @@ def test_reader_loads_data_with_axistags(graph, h5n5_file, data):
     assert op.OutputImage.meta.shape == data.shape
     assert op.OutputImage.meta.axistags == axistags
     numpy.testing.assert_array_equal(op.OutputImage.value, data)
-
-
-@pytest.fixture(
-    ids=["v0.4", "v0.4 custom", "v0.3", "v0.3 multiple datasets", "v0.1/v0.2"],
-    params=[
-        (  # Tuple[OME-Zarr_multiscale_spec, expected_axiskeys]
-            [  # Not fully OME-Zarr compliant spec; just the axes
-                {
-                    "datasets": [{"path": "volume/ome_data"}],
-                    "axes": [  # Conventional order
-                        {"type": "time", "name": "t", "unit": "sec"},
-                        {"type": "channel", "name": "c"},
-                        {"type": "space", "name": "z", "unit": "pixel"},
-                        {"type": "space", "name": "y", "unit": "pixel"},
-                        {"type": "space", "name": "x", "unit": "pixel"},
-                    ],
-                }
-            ],
-            ["t", "c", "z", "y", "x"],
-        ),
-        (
-            [
-                {
-                    "datasets": [{"path": "volume/ome_data"}],
-                    "axes": [  # v0.4 requires leading t and c, but xyz may be arbitrarily ordered
-                        {"type": "time", "name": "t", "unit": "sec"},
-                        {"type": "channel", "name": "c"},
-                        {"type": "space", "name": "x", "unit": "pixel"},
-                        {"type": "space", "name": "y", "unit": "pixel"},
-                        {"type": "space", "name": "z", "unit": "pixel"},
-                    ],
-                }
-            ],
-            ["t", "c", "x", "y", "z"],
-        ),
-        ([{"datasets": [{"path": "volume/ome_data"}], "axes": ["t", "c", "z", "y", "x"]}], ["t", "c", "z", "y", "x"]),
-        (
-            [  # Multiple multiscales tested on v0.3 because it's more compact :)
-                {"datasets": [{"path": "somewhere/else"}], "axes": ["t", "c", "z", "y", "x"]},
-                {"datasets": [{"path": "volume/ome_data"}], "axes": ["t", "c", "y", "x", "z"]},
-            ],
-            ["t", "c", "y", "x", "z"],
-        ),
-        ([{"datasets": [{"path": "volume/ome_data"}]}], ["t", "c", "z", "y", "x"]),
-    ],
-)
-def ome_zarr_params(request, tmp_path, data) -> (z5py.ZarrFile, List[str]):
-    """Sets up a Zarr-file with relevant OME-Zarr metadata, returns file handle and expected axis keys"""
-    spec, expected_axiskeys = request.param
-    file = OpStreamingH5N5Reader.get_h5_n5_file(str(tmp_path / "test.zarr"))
-    file.attrs["multiscales"] = spec
-    file.create_group("volume").create_dataset("ome_data", data=data)
-    yield file, expected_axiskeys
-    file.close()
-
-
-def test_reader_loads_ome_zarr_axes(graph, ome_zarr_params, data):
-    ome_zarr_file, expected_axes = ome_zarr_params
-    op = OpStreamingH5N5Reader(graph=graph)
-    op.H5N5File.setValue(ome_zarr_file)
-    op.InternalPath.setValue("volume/ome_data")
-
-    assert op.OutputImage.meta.shape == data.shape
-    assert op.OutputImage.meta.axistags.keys() == expected_axes
-    numpy.testing.assert_array_equal(op.OutputImage.value, data)
-
-
-@pytest.mark.parametrize(
-    "attrs",
-    [
-        {},
-        {"axes": "xyz"},
-        {"multiscales": [{"datasets": []}]},  # Empty datasets
-        {"multiscales": [{"datasets": [{"path": "s0"}]}]},  # Valid OME-Zarr but no meta for this dataset
-    ],
-)
-def test_reader_raises_on_invalid_meta(tmp_path, graph, data, attrs):
-    file = OpStreamingH5N5Reader.get_h5_n5_file(str(tmp_path / "test.zarr"))
-    for k, v in attrs.items():
-        file.attrs[k] = v
-    file.create_group("volume").create_dataset("ome_data", data=data)
-
-    op = OpStreamingH5N5Reader(graph=graph)
-    op.H5N5File.setValue(file)
-    with pytest.raises(ValueError, match="Could not find axis information"):
-        op.InternalPath.setValue("volume/ome_data")

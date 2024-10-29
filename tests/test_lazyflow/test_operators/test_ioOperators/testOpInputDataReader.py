@@ -370,8 +370,6 @@ class TestOpInputDataReaderWithOMEZarr:
         image_scaled = image_original[:, ::2, ::2]
         chunks = tuple(chunk_size)
 
-        zarr.group(zarr.DirectoryStore(str(zarr_dir)))  # writes .zgroup metadata
-        zarr.group(zarr.DirectoryStore(str(zarr_dir.parent)))  # writes .zgroup metadata
         zarr.array(
             image_original,
             chunks=chunks,
@@ -400,13 +398,18 @@ class TestOpInputDataReaderWithOMEZarr:
 
         return request.param, expected_multiscales, expected_additional_meta
 
-    def test_load_from_file_path(self, tmp_path, graph, ome_zarr_store_on_disc):
+    @pytest.fixture
+    def parent(self, graph):
+        # provide a noop parent so that OpInputDataReader doesn't drop into single-scale mode
+        return Operator(graph=graph)
+
+    def test_load_from_file_path(self, tmp_path, parent, ome_zarr_store_on_disc):
         paths, expected_multiscales, expected_additional_meta = ome_zarr_store_on_disc
         zarr_dir, path0, _ = paths
         # Request raw scale to test that the full path is used.
         # The loader implementation defaults to loading the lowest resolution (last scale).
         raw_data_path = tmp_path / zarr_dir / path0
-        reader = OpInputDataReader(graph=graph)
+        reader = OpInputDataReader(parent=parent)
         reader.FilePath.setValue(str(raw_data_path))
         reader.WorkingDirectory.setValue(str(zarr_dir))
 
@@ -418,15 +421,13 @@ class TestOpInputDataReaderWithOMEZarr:
         assert loaded_data.shape == (3, 100, 100)
         assert numpy.count_nonzero(loaded_data) > 10000
 
-    def test_load_from_file_uri(self, tmp_path, graph, ome_zarr_store_on_disc):
+    def test_load_from_file_uri(self, tmp_path, parent, ome_zarr_store_on_disc):
         paths, expected_multiscales, expected_additional_meta = ome_zarr_store_on_disc
         zarr_dir, path0, _ = paths
         # Request raw scale to test that the full path is used.
         # The loader implementation defaults to loading the lowest resolution (last scale).
         raw_data_path = tmp_path / zarr_dir / path0
-        # provide a parent so that OpInputDataReader doesn't drop into single-scale mode
-        noop = Operator(graph=graph)
-        reader = OpInputDataReader(parent=noop)
+        reader = OpInputDataReader(parent=parent)
         reader.FilePath.setValue(raw_data_path.as_uri())
         reader.WorkingDirectory.setValue(str(zarr_dir))
 
@@ -456,14 +457,11 @@ class TestOpInputDataReaderWithOMEZarr:
         assert loaded_data.shape == (3, 50, 50)
         assert numpy.count_nonzero(loaded_data) > 5000
 
-
-    def test_load_from_file_uri_via_slot(self, tmp_path, graph, ome_zarr_store_on_disc):
+    def test_load_from_file_uri_via_slot(self, tmp_path, parent, ome_zarr_store_on_disc):
         paths, expected_multiscales, expected_additional_meta = ome_zarr_store_on_disc
         zarr_subdir, path0, _ = paths
         zarr_dir = tmp_path / zarr_subdir
-        # provide a parent so that OpInputDataReader doesn't drop into single-scale mode
-        noop = Operator(graph=graph)
-        reader = OpInputDataReader(parent=noop, ActiveScale=path0)
+        reader = OpInputDataReader(parent=parent, ActiveScale=path0)
         reader.FilePath.setValue(zarr_dir.as_uri())
         reader.WorkingDirectory.setValue(zarr_dir)
 

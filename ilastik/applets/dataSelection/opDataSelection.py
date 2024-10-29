@@ -302,8 +302,6 @@ class DatasetInfo(ABC):
                         # z5py.file doesn't check metadata cleanly:
                         # `metadata.get('n5') # AttributeError: 'NoneType' object has no attribute 'get'
                         raise ValueError(f'N5 metadata at "{path}" has incompatible format') from e
-                elif cls.pathIsZarr(path):
-                    f = z5py.ZarrFile(path)
                 else:
                     raise ValueError(f"{path} is not an 'n5' or 'h5' file")
                 internal_paths |= set(globH5N5(f, glob_str))
@@ -325,12 +323,8 @@ class DatasetInfo(ABC):
         return PathComponents(Path(path).as_posix()).extension in [".n5"]
 
     @classmethod
-    def pathIsZarr(cls, path: Path) -> bool:
-        return PathComponents(Path(path).as_posix()).extension in [".zarr"]
-
-    @classmethod
     def fileHasInternalPaths(cls, path: str) -> bool:
-        return cls.pathIsHdf5(path) or cls.pathIsN5(path) or cls.pathIsNpz(path) or cls.pathIsZarr(path)
+        return cls.pathIsHdf5(path) or cls.pathIsN5(path) or cls.pathIsNpz(path)
 
     @classmethod
     def getPossibleInternalPathsFor(cls, file_path: Path, min_ndim=2, max_ndim=5) -> List[str]:
@@ -345,9 +339,6 @@ class DatasetInfo(ABC):
                 f.visititems(accumulateInternalPaths)
         elif cls.pathIsN5(file_path):
             with z5py.N5File(file_path, mode="r+") as f:
-                f.visititems(accumulateInternalPaths)
-        elif cls.pathIsZarr(file_path):
-            with z5py.ZarrFile(file_path, mode="r+") as f:
                 f.visititems(accumulateInternalPaths)
 
         return datasetNames
@@ -703,11 +694,8 @@ class FilesystemDatasetInfo(DatasetInfo):
     def isN5(self) -> bool:
         return any(self.pathIsN5(ep) for ep in self.external_paths)
 
-    def isZarr(self) -> bool:
-        return any(self.pathIsZarr(ep) for ep in self.external_paths)
-
     def is_hierarchical(self):
-        return self.isHdf5() or self.isNpz() or self.isN5() or self.isZarr()
+        return self.isHdf5() or self.isNpz() or self.isN5()
 
     def is_in_filesystem(self) -> bool:
         return True
