@@ -53,17 +53,18 @@ class OpOMEZarrMultiscaleReader(Operator):
         if self._store is not None and self._store.base_uri in self.Uri.value:
             # Must not set Output.meta here, because downstream ilastik can't handle changing lane shape
             return
-        selected_scale = self.Scale.value if self.Scale.ready() else None
+        # self.Scale is not ready when coming through instantiate_dataset_info -> MultiscaleUrlDatasetInfo.__init__
+        # it's ready but == DEFAULT_SCALE_KEY when coming through OpDataSelection after first loading the dataset
+        # it's ready and != DEFAULT_SCALE_KEY after selecting a scale in the GUI
+        selected_scale = self.Scale.value if self.Scale.ready() and self.Scale.value != DEFAULT_SCALE_KEY else None
         self._store = OMEZarrStore(self.Uri.value, selected_scale, single_scale_mode=self._load_only_one_scale)
         active_scale = selected_scale or self._store.scale_sub_path or self._store.lowest_resolution_key
         self.Output.meta.shape = self._store.get_shape(active_scale)
         self.Output.meta.dtype = self._store.dtype
         self.Output.meta.axistags = self._store.axistags
         self.Output.meta.scales = self._store.multiscales
-        # Also used by export to correlate export with input scale
+        # Used to correlate export with input scale, to feed back to DatasetInfo, and in execute
         self.Output.meta.active_scale = active_scale
-        # To feed back to DatasetInfo and hence the project file
-        self.Output.meta.lowest_scale = self._store.lowest_resolution_key
         # Many public OME-Zarr datasets are chunked as full xy slices,
         # so orthoviews lead to downloading the entire dataset.
         self.Output.meta.prefer_2d = True
