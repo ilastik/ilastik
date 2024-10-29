@@ -561,7 +561,13 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
     @property
     def default_output_dir(self) -> Path:
         if self.url.startswith("file:"):
-            return uri_to_Path(self.url).absolute().parent
+            if self.working_scale != DEFAULT_SCALE_KEY and self.working_scale in self.url:
+                # self.url points directly to a scale, move to root
+                # so that root.parent is outside the multiscale store
+                multiscale_root = self.url[: self.url.index(self.working_scale)].rstrip("/")
+            else:
+                multiscale_root = self.url
+            return uri_to_Path(multiscale_root).absolute().parent
         return super().default_output_dir
 
     def to_json_data(self) -> Dict:
