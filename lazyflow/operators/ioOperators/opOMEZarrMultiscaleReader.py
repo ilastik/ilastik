@@ -39,7 +39,7 @@ class OpOMEZarrMultiscaleReader(Operator):
 
     name = "OpOMEZarrMultiscaleReader"
 
-    Uri = InputSlot()  # May point either to an OME-Zarr multiscale root, or to a specific scale
+    Uri = InputSlot()  # May point to any path within an OME-Zarr group
     Scale = InputSlot(optional=True)  # Selected through GUI
 
     Output = OutputSlot()

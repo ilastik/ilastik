@@ -170,8 +170,8 @@ class MultiscaleDatasetBrowser(QDialog):
             elif isinstance(e, ConnectionError):
                 msg = "Connection error, please check that the server is online and the URL is correct."
             else:
-                msg = "Error while trying to read a dataset at this address."
-            msg += f"\n\nFull error message:\n{e}"
+                msg = "Couldn't load a multiscale dataset at this address."
+            msg += f"\n\nMore detail:\n{e}"
             logger.error(e, exc_info=True)
             self.result_text_box.setText(msg)
             return
