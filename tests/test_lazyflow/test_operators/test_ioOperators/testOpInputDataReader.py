@@ -40,6 +40,7 @@ from lazyflow.utility.io_util.OMEZarrStore import (
     OME_ZARR_V_0_4_KWARGS,
     OMEZarrMultiscaleMeta,
     InvalidTransformationError,
+    NotAnOMEZarrMultiscale,
 )
 from lazyflow.utility.io_util.multiscaleStore import Multiscales
 
@@ -301,14 +302,16 @@ class TestOpInputDataReaderWithOMEZarr:
             "typical_labels",
             "labels_with_dataset_name",
             "labels_inverted_layout",
+            "typical_well_fov",
         ],
         params=[
             ("some.zarr", "s0", "s1"),
             ("some.zarr", "correct/s0", "correct/s1"),
             ("some.zarr", "s0/correct", "s1/correct"),
-            ("some.zarr/labels/nuclei", "s0", "s1"),
+            ("some.zarr/labels/nuclei", "s0", "s1"),  # labels (./labels/name/scales)
             ("some.zarr/labels/nuclei", "correct/s0", "correct/s1"),
             ("some.zarr/labels/nuclei", "s0/correct", "s1/correct"),
+            ("some.zarr/A/1/0", "s0", "s1"),  # well (./row/column/field-of-view/scales)
         ],
     )
     def ome_zarr_store_on_disc(
@@ -472,3 +475,45 @@ class TestOpInputDataReaderWithOMEZarr:
 
         assert loaded_data.shape == (3, 100, 100)
         assert numpy.count_nonzero(loaded_data) > 10000
+
+    def test_load_labels_options(self, tmp_path, parent):
+        labels_zattrs = {"labels": ["nuclei", "Cells"]}  # case-sensitive
+        labels_dir = tmp_path / "some.zarr/labels"
+        labels_dir.mkdir(parents=True, exist_ok=True)
+        (labels_dir / ".zattrs").write_text(json.dumps(labels_zattrs))
+
+        reader = OpInputDataReader(parent=parent)
+        expected_uris = [(labels_dir / "nuclei").as_uri(), (labels_dir / "Cells").as_uri()]
+        with pytest.raises(NotAnOMEZarrMultiscale) as e:
+            reader.FilePath.setValue(str(labels_dir))
+        assert "Available label URLs" in str(e.value), str(e.value)
+        assert all(expected in str(e.value) for expected in expected_uris), str(e.value)
+
+    def test_load_well_options(self, tmp_path, parent):
+        # sub-path within well not expected in real data, but should be able to handle it
+        well_zattrs = {"well": {"images": [{"path": "suB/0"}, {"path": "suB/1"}]}}
+        well_dir = tmp_path / "some.zarr/A/1"
+        well_dir.mkdir(parents=True, exist_ok=True)
+        (well_dir / ".zattrs").write_text(json.dumps(well_zattrs))
+
+        reader = OpInputDataReader(parent=parent)
+        expected_uris = [(well_dir / "suB/0").as_uri(), (well_dir / "suB/1").as_uri()]
+        requested_uri = (well_dir / "suB").as_uri()
+        with pytest.raises(NotAnOMEZarrMultiscale) as e:
+            reader.FilePath.setValue(str(requested_uri))
+        assert "Available acquisition URLs" in str(e.value), str(e.value)
+        assert all(expected in str(e.value) for expected in expected_uris), str(e.value)
+
+    def test_load_plate_options(self, tmp_path, parent):
+        plate_zattrs = {"plate": {"wells": [{"path": "A/1"}, {"path": "B/2"}]}}
+        plate_dir = tmp_path / "some.zarr"
+        plate_dir.mkdir(parents=True, exist_ok=True)
+        (plate_dir / ".zattrs").write_text(json.dumps(plate_zattrs))
+
+        reader = OpInputDataReader(parent=parent)
+        expected_uris = [(plate_dir / "A/1").as_uri(), (plate_dir / "B/2").as_uri()]
+        requested_uri = (plate_dir / "A").as_uri()
+        with pytest.raises(NotAnOMEZarrMultiscale) as e:
+            reader.FilePath.setValue(str(requested_uri))
+        assert "Available well URLs" in str(e.value), str(e.value)
+        assert all(expected in str(e.value) for expected in expected_uris), str(e.value)
