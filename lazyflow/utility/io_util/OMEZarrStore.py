@@ -31,6 +31,7 @@ import jsonschema
 import vigra
 from aiohttp import ClientConnectorError
 from zarr.core import Array as ZarrArray
+from zarr.errors import ArrayNotFoundError
 from zarr.storage import FSStore, LRUStoreCache
 
 from lazyflow import rtype
@@ -237,7 +238,7 @@ def _get_multiscale_for_dataset(ome_spec: OME_ZARR_SPEC, dataset_subpath: str) -
     for multiscale in ome_spec["multiscales"]:
         if any(d["path"] == dataset_subpath for d in multiscale["datasets"]):
             return multiscale
-    raise KeyError(f"Could not find metadata entry for sub-path {dataset_subpath} in metadata:\n{ome_spec}.")
+    raise KeyError(f"Could not find metadata entry for sub-path {dataset_subpath}.")
 
 
 def _get_zarr_cache_max_size() -> int:
@@ -340,14 +341,21 @@ class OMEZarrStore(MultiscaleStore):
                 f"\nReceived metadata:\n{self._ome_spec}"
             )
             logger.warning(warn)
-        multiscale_spec = (
-            _get_multiscale_for_dataset(self._ome_spec, selected_scale)
-            if selected_scale
-            else self._ome_spec["multiscales"][0]
-        )
-        axistags = _axistags_from_multiscale(multiscale_spec)
-        datasets = multiscale_spec["datasets"]
-        if multiscale_spec["version"] == "0.1":
+        try:
+            self._multiscale_spec = (
+                _get_multiscale_for_dataset(self._ome_spec, selected_scale)
+                if selected_scale
+                else self._ome_spec["multiscales"][0]
+            )
+        except KeyError:
+            raise ValueError(
+                f'Found multiscale store, but could not find metadata for "{selected_scale}" inside it.'
+                f"\n\nMultiscale store found at: {self.base_uri}"
+                f"\n\nFull metadata: {self._ome_spec}"
+            )
+        axistags = _axistags_from_multiscale(self._multiscale_spec)
+        datasets = self._multiscale_spec["datasets"]
+        if self._multiscale_spec["version"] == "0.1":
             uncached_store = FSStore(self.base_uri, mode="r", **OME_ZARR_V_0_1_KWARGS)
         else:
             uncached_store = FSStore(self.base_uri, mode="r", **OME_ZARR_V_0_4_KWARGS)
@@ -365,7 +373,14 @@ class OMEZarrStore(MultiscaleStore):
             with Timer() as timer:
                 scale_key = scale["path"]
                 # Loading a ZarrArray at this path is necessary to obtain the scale dimensions for the GUI
-                zarray = ZarrArray(store=self._store, path=scale_key)
+                try:
+                    zarray = ZarrArray(store=self._store, path=scale_key)
+                except ArrayNotFoundError as e:
+                    raise ValueError(
+                        f"Malformed OME-Zarr store at {self.base_uri}: "
+                        f'Metadata points to a nonexistent array at sub-path "{scale_key}".'
+                        f"\nTrying to load multiscale:\n{self._multiscale_spec}"
+                    ) from e
                 dtype = zarray.dtype.type
                 scale_metadata[scale_key] = OrderedDict(zip([tag.key for tag in axistags], zarray.shape))
                 self._scale_data[scale_key] = {
@@ -374,7 +389,7 @@ class OMEZarrStore(MultiscaleStore):
                     "shape": zarray.shape,
                 }
                 logger.info(f"Initializing scale {scale_key} took {timer.seconds()*1000} ms.")
-        self.ome_meta_for_export = OMEZarrMultiscaleMeta.from_multiscale_spec(multiscale_spec)
+        self.ome_meta_for_export = OMEZarrMultiscaleMeta.from_multiscale_spec(self._multiscale_spec)
         super().__init__(
             dtype=dtype,
             axistags=axistags,
