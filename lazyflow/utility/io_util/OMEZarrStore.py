@@ -263,15 +263,25 @@ def _unescape_and_get_store(uri: str, mode="r", **kwargs) -> FSStore:
     return FSStore(uri, mode=mode, **kwargs)
 
 
-def _check_non_multiscale_specs(spec: Dict, uri: str):
+def _check_non_multiscale_specs(spec: Dict, uri: str, sort_uri: Optional[str] = None):
+    """
+    Checks if spec might be labels, plate or well OME-Zarr metadata.
+    Raises NotAnOMEZarrMultiscale with suggestions for the user if so.
+    :param uri: Required to assemble full URIs to suggest to the user
+    :param sort_uri: Used to sort suggestions so that URIs containing `sort_uri` come first.
+    """
     # labels, well and plate zattrs each point to a list of multiscales the user can choose from
     if "labels" in spec:
         if not isinstance(spec["labels"], list) or len(spec["labels"]) < 1:
             raise NotAnOMEZarrMultiscale(
                 f"Found OME-Zarr labels metadata, but it was empty.\nAt URL: {uri}\nFound: {spec}"
             )
+        sub_paths = [f"{uri}/{label}" for label in spec["labels"]]
+        if sort_uri:
+            sub_paths.sort(key=lambda x: sort_uri not in x)
         raise NotAnOMEZarrMultiscale(
-            "Available label URLs:\n" + "\n".join(f"{uri}/{label}" for label in spec["labels"])
+            "This URL points to a labels directory. Please try one of the following label URLs:\n"
+            + "\n".join(sub_paths)
         )
 
     if "well" in spec and "images" in spec["well"]:
@@ -281,8 +291,12 @@ def _check_non_multiscale_specs(spec: Dict, uri: str):
                 f"Found OME-Zarr well metadata, but it was malformed (no images, or images without path)."
                 f"\nAt URL: {uri}\nFound: {spec}"
             )
+        sub_paths = [f"{uri}/{image['path']}" for image in images]
+        if sort_uri:
+            sub_paths.sort(key=lambda x: sort_uri not in x)
         raise NotAnOMEZarrMultiscale(
-            "Available acquisition URLs in this well:\n" + "\n".join(f"{uri}/{image['path']}" for image in images)
+            "This URL points to a well directory. Please try one of the following acquisition URLs:\n"
+            + "\n".join(sub_paths)
         )
 
     if "plate" in spec and "wells" in spec["plate"]:
@@ -292,11 +306,18 @@ def _check_non_multiscale_specs(spec: Dict, uri: str):
                 f"Found OME-Zarr plate metadata, but it was malformed (no wells, or wells without path)."
                 f"\nAt URL: {uri}\nFound: {spec}"
             )
-        raise NotAnOMEZarrMultiscale("Available well URLs:\n" + "\n".join(f"{uri}/{well['path']}" for well in wells))
+        sub_paths = [f"{uri}/{well['path']}" for well in wells]
+        if sort_uri:
+            sub_paths.sort(key=lambda x: sort_uri not in x)
+        raise NotAnOMEZarrMultiscale(
+            "This URL points to a plate directory. Please try one of the following well URLs:\n" + "\n".join(sub_paths)
+        )
 
 
-def _fetch_and_validate_ome_zarr_spec(uri: str) -> OME_ZARR_SPEC:
-    """Fetch uri/.zattrs and validate it against OME-Zarr spec."""
+def _fetch_and_validate_ome_zarr_spec(uri: str, sort_uri: Optional[str] = None) -> OME_ZARR_SPEC:
+    """Fetch uri/.zattrs and validate it against OME-Zarr spec.
+    :param sort_uri: If the spec at `uri` is not multiscale but plate, well or labels,
+        the URIs in the response text are reordered to first show those including `uri`."""
     store = _unescape_and_get_store(uri)
     try:
         with Timer() as timer:
@@ -314,7 +335,7 @@ def _fetch_and_validate_ome_zarr_spec(uri: str) -> OME_ZARR_SPEC:
             raise e
 
     # Found .zattrs, but what kind of .zattrs?
-    _check_non_multiscale_specs(spec, uri)
+    _check_non_multiscale_specs(spec, uri, sort_uri)
 
     try:
         jsonschema.validate(spec, MULTISCALE_SCHEMA)
@@ -345,7 +366,7 @@ def _introspect_for_multiscales_root(uri: str) -> Tuple[OME_ZARR_SPEC, str, Opti
             uri_to_parent = "/".join(uri.split("/")[: -(i + 1)])
             try:
                 return (
-                    _fetch_and_validate_ome_zarr_spec(uri_to_parent),
+                    _fetch_and_validate_ome_zarr_spec(uri_to_parent, uri),
                     uri_to_parent,
                     uri[len(uri_to_parent) :].lstrip("/"),
                 )
