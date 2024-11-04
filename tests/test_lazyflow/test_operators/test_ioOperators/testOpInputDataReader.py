@@ -486,7 +486,7 @@ class TestOpInputDataReaderWithOMEZarr:
         expected_uris = [(labels_dir / "nuclei").as_uri(), (labels_dir / "Cells").as_uri()]
         with pytest.raises(NotAnOMEZarrMultiscale) as e:
             reader.FilePath.setValue(str(labels_dir))
-        assert "Available label URLs" in str(e.value), str(e.value)
+        assert "labels directory" in str(e.value), str(e.value)
         assert all(expected in str(e.value) for expected in expected_uris), str(e.value)
 
     def test_load_well_options(self, tmp_path, parent):
@@ -501,7 +501,7 @@ class TestOpInputDataReaderWithOMEZarr:
         requested_uri = (well_dir / "suB").as_uri()
         with pytest.raises(NotAnOMEZarrMultiscale) as e:
             reader.FilePath.setValue(str(requested_uri))
-        assert "Available acquisition URLs" in str(e.value), str(e.value)
+        assert "well directory" in str(e.value), str(e.value)
         assert all(expected in str(e.value) for expected in expected_uris), str(e.value)
 
     def test_load_plate_options(self, tmp_path, parent):
@@ -515,5 +515,5 @@ class TestOpInputDataReaderWithOMEZarr:
         requested_uri = (plate_dir / "A").as_uri()
         with pytest.raises(NotAnOMEZarrMultiscale) as e:
             reader.FilePath.setValue(str(requested_uri))
-        assert "Available well URLs" in str(e.value), str(e.value)
+        assert "plate directory" in str(e.value), str(e.value)
         assert all(expected in str(e.value) for expected in expected_uris), str(e.value)
