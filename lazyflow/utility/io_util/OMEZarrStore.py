@@ -76,14 +76,14 @@ class OMEZarrCoordinateTransformation:
         return cls(type=json_data["type"], values=json_data[json_data["type"]])
 
 
-TransformationsOrError = Union[
-    Tuple[OMEZarrCoordinateTransformation, Optional[OMEZarrCoordinateTransformation]], InvalidTransformationError
-]
+# tuple(scale_transform, Optional[translation_transform])
+ValidTransformations = Tuple[OMEZarrCoordinateTransformation, Optional[OMEZarrCoordinateTransformation]]
+TransformationsOrError = Union[ValidTransformations, InvalidTransformationError]
 
 
 def _validate_transforms(
     coordinate_transformations: Optional[List[Dict[str, Union[str, List[float]]]]],
-) -> Optional[TransformationsOrError]:
+) -> Union[None, ValidTransformations, InvalidTransformationError]:
     """
     Resolves the OME-Zarr spec's inconsistency in the coordinateTransformations field.
     Avoids raising errors because valid metadata are not required to load and work with the data.
@@ -98,7 +98,7 @@ def _validate_transforms(
     transform.
     The "official" validator's schema [3] implements neither of these rules exactly :) It instead allows
     for exactly one "scale" transform, plus an arbitrary number of "translation" transforms, in any order.
-    But this plus the example at the start of the OME-Zarr spec make it clear enough indicator that
+    But this, plus the example at the start of the OME-Zarr spec, make a clear enough indicator that
     "one scale + one optional translation" is the convention, and all public datasets conform to this.
     To be graceful, we'll accept the first scale and translation.
     [1] https://ngff.openmicroscopy.org/latest/index.html#trafo-md
@@ -107,7 +107,7 @@ def _validate_transforms(
     """
     if coordinate_transformations is None:
         return None
-    if not isinstance(coordinate_transformations, list):
+    if not isinstance(coordinate_transformations, list) or not coordinate_transformations:
         return InvalidTransformationError()
     scale_transform = translation_transform = None
     for t in coordinate_transformations:
@@ -119,7 +119,7 @@ def _validate_transforms(
             scale_transform = transform
         if translation_transform is None and transform.type == "translation":
             translation_transform = transform
-    return scale_transform, translation_transform if scale_transform else InvalidTransformationError()
+    return (scale_transform, translation_transform) if scale_transform else InvalidTransformationError()
 
 
 @dataclass(frozen=True)
