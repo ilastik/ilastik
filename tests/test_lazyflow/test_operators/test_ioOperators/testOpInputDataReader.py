@@ -288,8 +288,8 @@ class TestOpInputDataReaderWithOMEZarr:
         - scales of one multiscale distributed across several zgroups
             (a typical output of ngff_zarr in its current version)
     - Dataset location given as path vs. as URI
-    - Scale selection via /direct/path/to.zarr/scale (headless, API, batch)
-    - Scale selection via ActiveScale inputslot (GUI, currently only works with URI not path)
+    - Scale selection via /direct/path/to.zarr/scale
+    - Scale selection via ActiveScale inputslot
     """
 
     PathTuple = Tuple[str, str, str]  # container root, raw scale, downscale
@@ -459,6 +459,22 @@ class TestOpInputDataReaderWithOMEZarr:
 
         assert loaded_data.shape == (3, 50, 50)
         assert numpy.count_nonzero(loaded_data) > 5000
+
+    def test_load_from_file_path_via_slot(self, tmp_path, parent, ome_zarr_store_on_disc):
+        paths, expected_multiscales, expected_additional_meta = ome_zarr_store_on_disc
+        zarr_subdir, path0, _ = paths
+        zarr_dir = tmp_path / zarr_subdir
+        reader = OpInputDataReader(parent=parent, ActiveScale=path0)
+        reader.FilePath.setValue(str(zarr_dir))
+        reader.WorkingDirectory.setValue(zarr_dir)
+
+        assert reader.Output.meta.scales == expected_multiscales
+        assert reader.Output.meta.ome_zarr_meta == expected_additional_meta
+
+        loaded_data = reader.Output[:].wait()
+
+        assert loaded_data.shape == (3, 100, 100)
+        assert numpy.count_nonzero(loaded_data) > 10000
 
     def test_load_from_file_uri_via_slot(self, tmp_path, parent, ome_zarr_store_on_disc):
         paths, expected_multiscales, expected_additional_meta = ome_zarr_store_on_disc
