@@ -203,15 +203,12 @@ def test_h5_stack_via_star_file_glob_and_stared_internal_path(h5_stack_dir, empt
     assert info.filePath == expected_filepath
 
 
-@pytest.fixture(params=["n5", "zarr"])
-def z5_stack_dir(request, stack_path):
-    sub_path = stack_path / request.param  # Include param so tests can find out which case they are running
+@pytest.fixture
+def z5_stack_dir(stack_path):
+    sub_path = stack_path / "n5"
     for i in range(3):
-        with z5py.File(str(sub_path / f"2d_apoptotic_binary_{i}.{request.param}"), "w") as f:
+        with z5py.File(str(sub_path / f"2d_apoptotic_binary_{i}.n5"), "w") as f:
             raw = (numpy.random.rand(1, 10, 20, 1, 1) * 255).astype(numpy.uint8)
-            # Provide OME-NGFF metadata (shouldn't interfere with N5, reader enforces for Zarr)
-            f.attrs["multiscales"] = [{"datasets": [{"path": "volume/data"}], "axes": "zyxct", "version": "0.3"}]
-            f.create_group("volume")  # Needed for zarr (see z5py#231)
             f.create_dataset("volume/data", data=raw)
     return sub_path
 

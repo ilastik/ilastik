@@ -28,6 +28,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.utility.helpers import bigintprod
 from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
+from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -57,15 +58,20 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
         # Create a RESTfulPrecomputedChunkedVolume object to handle
         self._volume_object = RESTfulPrecomputedChunkedVolume(self.BaseUrl.value)
 
-        active_scale = self.Scale.value if self.Scale.ready() else self._volume_object.lowest_resolution_key
+        # self.Scale is not ready when coming through MultiscaleUrlDatasetInfo.__init__
+        # it's ready but == DEFAULT_SCALE_KEY when coming through OpDataSelection after first loading the dataset
+        # it's ready and != DEFAULT_SCALE_KEY after selecting a scale in the GUI
+        active_scale = (
+            self.Scale.value
+            if self.Scale.ready() and self.Scale.value != DEFAULT_SCALE_KEY
+            else self._volume_object.lowest_resolution_key
+        )
         self.chunk_size = self._volume_object.get_chunk_size(active_scale)
         self.Output.meta.shape = tuple(self._volume_object.get_shape(active_scale))
         self.Output.meta.dtype = numpy.dtype(self._volume_object.dtype).type
         self.Output.meta.axistags = self._volume_object.axistags
         self.Output.meta.scales = self._volume_object.multiscales
         self.Output.meta.active_scale = active_scale  # Used by export to correlate export with input scale
-        # To feed back to DatasetInfo and hence the project file
-        self.Output.meta.lowest_scale = self._volume_object.lowest_resolution_key
 
     @staticmethod
     def get_intersecting_blocks(blockshape, roi, shape):

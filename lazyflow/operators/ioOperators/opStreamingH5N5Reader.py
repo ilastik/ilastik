@@ -34,17 +34,11 @@ import os
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import Timer
 from lazyflow.utility.helpers import get_default_axisordering, bigintprod
-from lazyflow.utility.io_util.OMEZarrStore import (
-    get_axistags_from_spec as get_ome_zarr_axistags,
-    OMEZarrMultiscaleMeta,
-    scale_key_from_path,
-)
-from lazyflow.utility.io_util.multiscaleStore import Multiscales
 
 logger = logging.getLogger(__name__)
 
 
-def _find_or_infer_axistags(file: Union[h5py.File, z5py.N5File, z5py.ZarrFile], internalPath: str) -> vigra.AxisTags:
+def _find_or_infer_axistags(file: Union[h5py.File, z5py.N5File], internalPath: str) -> vigra.AxisTags:
     assert internalPath in file, "Existence of dataset must be checked earlier"
     with contextlib.suppress(KeyError):
         # Look for ilastik-style axistags property.
@@ -54,40 +48,15 @@ def _find_or_infer_axistags(file: Union[h5py.File, z5py.N5File, z5py.ZarrFile], 
         if "?" not in axisorder:
             return axistags
 
-    if isinstance(file, z5py.ZarrFile):
-        try:
-            # Look for OME-Zarr metadata (found at store root, not in dataset)
-            # OME-Zarr stores with more than one multiscale don't exist in public, but the spec allows it
-            multiscale_index = _multiscale_index_for_path(file.attrs["multiscales"], internalPath)
-            return get_ome_zarr_axistags(file.attrs["multiscales"][multiscale_index])
-        except KeyError as e:
-            msg = (
-                f"Could not find axis information according to OME-Zarr standard "
-                f"for dataset {internalPath} in {file.filename}. "
-                f"Zarr is only supported with OME-format metadata."
-            )
-            raise ValueError(msg) from e
-
-    if not isinstance(file, z5py.ZarrFile):
-        with contextlib.suppress(KeyError):
-            # Look for metadata at dataset level (Neuroglancer-style N5 ["x", "y", "z"])
-            axisorder = "".join(reversed(file[internalPath].attrs["axes"])).lower()
-            return vigra.defaultAxistags(axisorder)
+    with contextlib.suppress(KeyError):
+        # Look for metadata at dataset level (Neuroglancer-style N5 ["x", "y", "z"])
+        axisorder = "".join(reversed(file[internalPath].attrs["axes"])).lower()
+        return vigra.defaultAxistags(axisorder)
 
     # Infer from shape
     axisorder = get_default_axisordering(file[internalPath].shape)
     logger.info(f"Could not find stored axistags. Inferred {axisorder} from dataset shape.")
     return vigra.defaultAxistags(str(axisorder))
-
-
-def _multiscale_index_for_path(multiscales_spec, internalPath: str):
-    multiscale_index = None
-    for i, scale in enumerate(multiscales_spec):
-        if any(d.get("path", "") == internalPath.lstrip("/") for d in scale.get("datasets", [])):
-            multiscale_index = i
-    if multiscale_index is None:
-        raise KeyError("no spec for dataset path")
-    return multiscale_index
 
 
 class OpStreamingH5N5Reader(Operator):
@@ -109,7 +78,6 @@ class OpStreamingH5N5Reader(Operator):
 
     H5EXTS = [".h5", ".hdf5", ".ilp"]
     N5EXTS = [".n5"]
-    ZARREXTS = [".zarr"]
 
     class DatasetReadError(Exception):
         def __init__(self, internalPath):
@@ -157,21 +125,6 @@ class OpStreamingH5N5Reader(Operator):
         if chunks:
             self.OutputImage.meta.ideal_blockshape = chunks
 
-        if isinstance(self._h5N5File, z5py.ZarrFile):
-            # Add OME-Zarr metadata to slot so that it can be ported over to an export
-            multiscales_meta = self._h5N5File.attrs["multiscales"]
-            multiscale_spec = multiscales_meta[_multiscale_index_for_path(multiscales_meta, internalPath)]
-            scale_keys = [scale_key_from_path(dataset["path"]) for dataset in multiscale_spec["datasets"]]
-            scale_tagged_shapes = [
-                OrderedDict(zip(axistags.keys(), self._h5N5File[dataset["path"]].shape))
-                for dataset in multiscale_spec["datasets"]
-            ]
-            scales: Multiscales = OrderedDict(zip(scale_keys, scale_tagged_shapes))
-            self.OutputImage.meta.scales = scales
-            self.OutputImage.meta.active_scale = scale_key_from_path(internalPath)
-            self.OutputImage.meta.lowest_scale = scale_keys[-1]
-            self.OutputImage.meta.ome_zarr_meta = OMEZarrMultiscaleMeta.from_multiscale_spec(multiscale_spec)
-
     def execute(self, slot, subindex, roi, result):
         t = time.time()
         assert self._h5N5File is not None
@@ -214,5 +167,3 @@ class OpStreamingH5N5Reader(Operator):
             return z5py.N5File(filepath, mode)
         elif ext in OpStreamingH5N5Reader.H5EXTS:
             return h5py.File(filepath, mode)
-        elif ext in OpStreamingH5N5Reader.ZARREXTS:
-            return z5py.ZarrFile(filepath, mode)
