@@ -135,7 +135,7 @@ outputs:
         - pytest-qt
         # need to help mamba here a bit
         - ilastik-pytorch-version-helper-cpu
-        - pytorch 2.*
+        - pytorch 2.*,!=2.5.0
 
       imports:
         - ilastik
@@ -168,7 +168,7 @@ outputs:
       run:
         - python 3.9.*
         - ilastik-core {{ setup_py_data.version }}
-        - pytorch >=1.6,!=2.4.1
+        - pytorch >=1.6,!=2.4.1,!=2.5.0
         - tiktorch
         - torchvision
         - pytorch-cuda

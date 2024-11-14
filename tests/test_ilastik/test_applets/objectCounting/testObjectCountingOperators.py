@@ -344,7 +344,6 @@ class TestOpMean(unittest.TestCase):
 #
 #         self.op = OpObjectClassification(graph = g)
 #         self.op.RawImages.setValues([rawimg])
-#         self.op.BinaryImages.setValues([binimg])
 #         self.op.SegmentationImages.setValues([segmimg])
 #         self.op.ObjectFeatures.setValues([self.featureArrays])
 #         self.op.ComputedFeatureNames.setValue(self.features)
@@ -391,7 +390,6 @@ class TestOpMean(unittest.TestCase):
 #         assert self.extrOp.RegionFeatures.ready()
 #
 #         self.classOp = OpObjectClassification(graph=g)
-#         self.classOp.BinaryImages.setValues([binimg])
 #         self.classOp.SegmentationImages.setValues([segimg])
 #         self.classOp.RawImages.setValues([rawimg])
 #         self.classOp.LabelInputs.setValues([labels])

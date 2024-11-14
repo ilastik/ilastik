@@ -30,3 +30,4 @@ from .slotSerializer import SerialListSlot as SerialListSlot
 from .slotSerializer import SerialObjectFeatureNamesSlot as SerialObjectFeatureNamesSlot
 from .slotSerializer import SerialPickleableSlot as SerialPickleableSlot
 from .slotSerializer import SerialSlot as SerialSlot
+from .slotSerializer import SerialRelabeledDataSlot as SerialRelabeledDataSlot

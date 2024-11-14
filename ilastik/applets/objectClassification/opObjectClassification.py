@@ -82,7 +82,7 @@ class TableExporter(ExportingOperator):
             return None, None
 
     def format_path(self, lane_index: int, path_format_string: str) -> str:
-        """ Takes the format string for the output file, fills in the most important placeholders, and returns it """
+        """Takes the format string for the output file, fills in the most important placeholders, and returns it"""
         assert self._path_formatter_factory is not None, "Path formatter factory is not set"
 
         path_formatter = self._path_formatter_factory.for_lane(lane_index)
@@ -167,8 +167,6 @@ class TableExporter(ExportingOperator):
             )
 
             # Object features
-            computed_names = self._op.ComputedFeatureNames.value
-
             export_file.add_columns(
                 "table", self._op.ObjectFeatures[lane_index], Mode.IlastikFeatureTable, {"selection": selected_features}
             )
@@ -207,7 +205,6 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     ###############
     # Input slots #
     ###############
-    BinaryImages = InputSlot(level=1)  # for visualization
     RawImages = InputSlot(level=1)  # for visualization
     Atlas = InputSlot(level=1, optional=True)  # for visualization
     SegmentationImages = InputSlot(level=1)  # connected components
@@ -271,6 +268,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
     # Use a slot for storing the export settings in the project file.
     ExportSettings = OutputSlot()
+
     # Override functions ExportingOperator mixin
     def execute(self, slot, subindex, roi, result):
         assert slot is self.ExportSettings, "Should be no need to execute this slot: {}".format(slot.name)

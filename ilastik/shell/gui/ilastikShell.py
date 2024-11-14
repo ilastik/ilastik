@@ -622,6 +622,7 @@ class IlastikShell(QMainWindow):
                 "workflows": [
                     "Object Classification (from prediction image)",
                     "Object Classification (from binary image)",
+                    "Object Classification (from label image)",
                 ],
                 "expanded": True,
             },
