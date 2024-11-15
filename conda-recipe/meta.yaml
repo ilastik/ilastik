@@ -116,7 +116,7 @@ outputs:
       run:
         - python 3.9.*
         - ilastik-core {{ setup_py_data.version }}
-        - pytorch >=1.6,!=2.4.1
+        - pytorch >=1.6,<2.4.1
         - tiktorch
         - torchvision
         - volumina
@@ -168,7 +168,7 @@ outputs:
       run:
         - python 3.9.*
         - ilastik-core {{ setup_py_data.version }}
-        - pytorch >=1.6,!=2.4.1
+        - pytorch >=1.6,<2.4.1
         - tiktorch
         - torchvision
         - pytorch-cuda
