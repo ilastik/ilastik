@@ -52,11 +52,11 @@ from PyQt5.QtWidgets import (
     QToolButton,
     QVBoxLayout,
     QHBoxLayout,
-    QSizePolicy,
     QLabel,
     QDialog,
     QSpinBox,
     QDialogButtonBox,
+    QTextEdit,
 )
 
 # lazyflow
@@ -67,6 +67,7 @@ import lazyflow.tools.schematic
 from lazyflow.operators import cacheMemoryManager
 from lazyflow.utility import timeLogged, isUrl
 from lazyflow.request import Request
+from lazyflow import USER_LOGLEVEL
 
 # volumina
 from volumina.utility import preferences, ShortcutManagerDlg, ShortcutManager
@@ -109,11 +110,6 @@ except:
 logger = logging.getLogger(__name__)
 
 
-# ===----------------------------------------------------------------------------------------------------------------===
-# === ShellActions                                                                                                   ===
-# ===----------------------------------------------------------------------------------------------------------------===
-
-
 class ShellActions:
     """
     The shell provides the applet constructors with access to his GUI actions.
@@ -128,11 +124,6 @@ class ShellActions:
         self.importProjectAction = None
         self.closeAction = None
         self.quitAction = None
-
-
-# ===----------------------------------------------------------------------------------------------------------------===
-# === MemoryWidget                                                                                                   ===
-# ===----------------------------------------------------------------------------------------------------------------===
 
 
 class MemoryWidget(QWidget):
@@ -160,9 +151,88 @@ class MemoryWidget(QWidget):
         self.label.setText("Cached Data: %1.1f MB" % (bytes / (1024.0**2.0)))
 
 
-# ===----------------------------------------------------------------------------------------------------------------===
-# === ProgressDisplayManager                                                                                         ===
-# ===----------------------------------------------------------------------------------------------------------------===
+class LogWindow(QTextEdit):
+    """Window/Widget that shows the log history"""
+
+    def __init__(self, data, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._setup_ui(data)
+
+    def _jump_to_end(self):
+        self.verticalScrollBar().setValue(self.verticalScrollBar().maximum())
+
+    def _setup_ui(self, data):
+        self.setWindowTitle("Log")
+        font = QFont("Monospace")
+        font.setStyleHint(QFont.Monospace)
+        self.setLineWrapMode(QTextEdit.NoWrap)
+        self.setFont(font)
+        self.setMinimumWidth(800)
+        self.setText("\n".join(data))
+        self.setReadOnly(True)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._jump_to_end()
+
+    def appendMessage(self, msg: str):
+        self.append(msg)
+        self._jump_to_end()
+
+
+class LogBar(QLabel):
+    """Log widget for the status bar"""
+
+    textAdded = pyqtSignal(str)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._history = []
+        self.log_widget: LogWindow | None = None
+        self.setToolTip("Double click for history.")
+        self._setup_logging()
+
+    def _setup_logging(self):
+        s = logging.StreamHandler(stream=self)
+        s.setLevel(logging.INFO)
+        s.formatter = logging.Formatter("%(asctime)s -- %(message)s")
+
+        def _filter(record):
+            if record.levelno == USER_LOGLEVEL:
+                return True
+
+            return False
+
+        s.addFilter(_filter)
+
+        r = logging.getLogger("root")
+        r.addHandler(s)
+
+    def mouseDoubleClickEvent(self, event):
+        if self.log_widget is None:
+            self.log_widget = LogWindow(self._history)
+            self.textAdded.connect(self.log_widget.appendMessage)
+
+        self.log_widget.show()
+        self.log_widget.raise_()
+
+    def cleanUp(self):
+        self._history = []
+        self.setText("")
+        if self.log_widget is not None:
+            self.log_widget.clear()
+
+    def write(self, text):
+        text = text.rstrip("\n")
+        self._history.append(text)
+        short_log = "--".join(text.split("--")[1::]).strip()
+        self.setText(short_log)
+        self.textAdded.emit(text)
+
+    def flush(self):
+        # only needed to adhere to the stream interface
+        # everything is written immediately on write
+        pass
 
 
 class ProgressDisplayManager(QObject):
@@ -186,6 +256,9 @@ class ProgressDisplayManager(QObject):
         self.progressBar = QProgressBar()
         self.statusBar.addWidget(self.progressBar)
         self.progressBar.setHidden(True)
+
+        self.logBar = LogBar()
+        self.statusBar.addPermanentWidget(self.logBar)
 
         self.requestStatus = QLabel()
         self.requestTimer = QTimer()
@@ -229,6 +302,7 @@ class ProgressDisplayManager(QObject):
                 self._removeApplet(index, app)
         self.memoryWidget.cleanUp()
         self.progressBar.hide()
+        self.logBar.cleanUp()
 
     def _removeApplet(self, index, app):
         app.progressSignal.clean()
@@ -286,10 +360,6 @@ class ProgressDisplayManager(QObject):
             self.progressBar.setHidden(False)
             self.progressBar.setValue(totalPercentage)
 
-
-# ===----------------------------------------------------------------------------------------------------------------===
-# === IlastikShell                                                                                                   ===
-# ===----------------------------------------------------------------------------------------------------------------===
 
 # Style for flat buttons with no borders that are highlighted when hovered or pressed.
 FLAT_BUTTON_STYLE = r"""
@@ -1700,6 +1770,9 @@ class IlastikShell(QMainWindow):
                 self.projectDisplayManager = None  # Destroy display manager
                 # Ensure that it was really destroyed
                 assert old() is None, "There shouldn't be extraneous references to the project display manager!"
+
+            if self.progressDisplayManager:
+                self.progressDisplayManager.cleanUp()
 
             self.projectManager.cleanUp()
             self.projectManager = None  # Destroy project manager

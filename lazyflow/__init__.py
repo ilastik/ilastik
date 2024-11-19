@@ -23,6 +23,11 @@ import z5py
 import json
 import numpy as np
 
+# This level can be used to issue user-facing log messages
+# log messages at this level get special treatment in ilastik:
+# those are shown in the status bar
+USER_LOGLEVEL = 23
+
 from . import utility
 from . import request
 from . import classifiers

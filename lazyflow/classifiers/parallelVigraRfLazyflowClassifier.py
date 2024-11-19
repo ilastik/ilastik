@@ -30,6 +30,7 @@ import vigra
 import h5py
 import random
 
+from lazyflow import USER_LOGLEVEL
 from lazyflow.utility import Timer
 from lazyflow.request import Request, RequestPool, RequestLock
 from .lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
@@ -105,7 +106,7 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         tree_counts[:] = (tree_count for tree_count in tree_counts if tree_count != 0)
 
         # Save for future reference
-        known_labels = numpy.unique(y)
+        known_labels, label_counts = numpy.unique(y, return_counts=True)
 
         X = numpy.asarray(X, numpy.float32)
         y = numpy.asarray(y, numpy.uint32)
@@ -151,7 +152,10 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
 
             oobs = self._train_forests(forests, X, y)
 
-        logger.info("Training complete. Average OOB: {}".format(numpy.average(oobs)))
+        logger.log(
+            USER_LOGLEVEL,
+            f"Training complete. Labels counts: ({', '.join(map(str, label_counts))}). Average OOB: {numpy.average(oobs):.3f}",
+        )
         return ParallelVigraRfLazyflowClassifier(forests, oobs, known_labels, feature_names, named_importances)
 
     @staticmethod
@@ -159,7 +163,7 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         """
         Train all RFs (in parallel), and return the oobs.
         """
-        oobs = [None] * len(forests)
+        oobs = [0.0] * len(forests)
 
         def store_oob_results(i, oob):
             oobs[i] = oob
@@ -172,7 +176,7 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
                 req.notify_finished(partial(store_oob_results, i))
                 pool.add(req)
             pool.wait()
-        logger.info("Training took, {} seconds".format(train_timer.seconds()))
+        logger.log(USER_LOGLEVEL, f"Training took, {train_timer.seconds():.3f} seconds")
         return oobs
 
     @staticmethod
@@ -183,7 +187,7 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
 
         Returns: oobs and importances
         """
-        oobs = [None] * len(forests)
+        oobs = [0.0] * len(forests)
         importances = [None] * len(forests)
 
         def store_training_results(i, training_results):
