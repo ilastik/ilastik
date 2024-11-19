@@ -1,7 +1,7 @@
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
-#       Copyright (C) 2011-2016, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -19,20 +19,6 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-from __future__ import division
-from __future__ import absolute_import
-from future import standard_library
-
-standard_library.install_aliases()
-from builtins import map
-from builtins import zip
-from builtins import range
-
-import sys
-
-if sys.version_info.major >= 3:
-    unicode = str
-
 import os
 import tempfile
 from functools import partial
@@ -448,7 +434,7 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
 
         try:
             feature_names = list(h5py_group["feature_names"][:])
-            feature_names = list(map(unicode, feature_names))
+            feature_names = list(map(str, feature_names))
         except KeyError:
             # Older projects don't store feature names.
             feature_names = None
