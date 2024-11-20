@@ -69,7 +69,7 @@ def test_construct(dlg: PreferencesDialog):
         (("section1", "booly", True), ("section2", "booly", True)),
     ],
 )
-def test_bool_options(qtbot, dlg: PreferencesDialog, checkstates):
+def test_bool_options(dlg: PreferencesDialog, checkstates):
     for section_name, option_name, value in checkstates:
         dlg.model.setValue(section_name, option_name, value)
 
@@ -85,7 +85,7 @@ def test_bool_options(qtbot, dlg: PreferencesDialog, checkstates):
         (("section1", "stringy", "12345"),),
     ],
 )
-def test_text_options(qtbot, dlg: PreferencesDialog, textstates):
+def test_text_options(dlg: PreferencesDialog, textstates):
     for section_name, option_name, value in textstates:
         dlg.model.setValue(section_name, option_name, value)
 
@@ -101,7 +101,7 @@ def test_text_options(qtbot, dlg: PreferencesDialog, textstates):
         (("section1", "numerical", -1), ("section2", "numerical", 123)),
     ],
 )
-def test_num_options(qtbot, dlg: PreferencesDialog, numstates):
+def test_num_options(dlg: PreferencesDialog, numstates):
     for section_name, option_name, value in numstates:
         dlg.model.setValue(section_name, option_name, value)
 
@@ -109,7 +109,7 @@ def test_num_options(qtbot, dlg: PreferencesDialog, numstates):
         assert dlg.options2widgets[(section_name, option_name)].value() == value
 
 
-def test_reset_to_defaults(qtbot, dlg: PreferencesDialog):
+def test_reset_to_defaults(dlg: PreferencesDialog):
     dlg.options2widgets[("section1", "stringy")].setText("changed!")
     dlg.options2widgets[("section2", "booly")].setChecked(True)
 
@@ -122,13 +122,13 @@ def test_reset_to_defaults(qtbot, dlg: PreferencesDialog):
     assert not dlg.model.getValue("section2", "booly")
 
 
-def test_save_defaults(qtbot, patch_config: Path, dlg: PreferencesDialog):
+def test_save_defaults(patch_config: Path, dlg: PreferencesDialog):
     dlg.model.saveConfig()
     assert patch_config.exists()
     assert patch_config.read_text() == ""
 
 
-def test_save_only_changed_values(qtbot, patch_config: Path, dlg: PreferencesDialog):
+def test_save_only_changed_values(patch_config: Path, dlg: PreferencesDialog):
     dlg.options2widgets[("section1", "stringy")].setText("changed!")
     dlg.options2widgets[("section2", "numerical")].setValue(42)
     dlg.model.saveConfig()

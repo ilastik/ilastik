@@ -25,34 +25,18 @@ import os
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated, List, Mapping, Optional, Union
+from typing import Annotated, List, Optional, Union
 
 import appdirs
 from annotated_types import Ge, Le
-from pydantic import AfterValidator, BaseModel, Field, PlainSerializer, ConfigDict, model_validator
+from pydantic import AfterValidator, BaseModel, Field, PlainSerializer, ConfigDict
 
 logger = logging.getLogger(__name__)
-
-"""
-ilastik will read settings from ilastik.ini
-which should be located at
-
-* windows: C:\\Users\\<USERNAME>\\AppData\\Local\\ilastik
-* osx: /Users/<USERNAME>/Library/Caches/ilastik
-* linux: /home/<USERNAME>/.config/ilastik
-
-Example:
-
-[ilastik]
-debug: false
-plugin_directories: ~/.ilastik/plugins,
-logging_config: ~/custom_ilastik_logging_config.json
-"""
 
 
 @dataclass
 class Increment:
-    increment: int
+    inc: int
 
 
 class _ConfigBase(BaseModel):
@@ -109,21 +93,29 @@ class LazyflowSection(_ConfigBase):
 
 
 class IlastikPreferences(_ConfigBase):
+    """
+    ilastik will read settings from ilastik.ini
+    which should be located at
+
+    * windows: C:\\Users\\<USERNAME>\\AppData\\Local\\ilastik
+    * osx: /Users/<USERNAME>/Library/Caches/ilastik
+    * linux: /home/<USERNAME>/.config/ilastik
+
+    Example (default configuration):
+
+        [ilastik]
+        debug: false
+        plugin_directories: ~/.ilastik/plugins,
+        output_filename_format: {dataset_dir}/{nickname}_{result_type}
+        output_format: compressed hdf5
+
+        [lazyflow]
+        threads: -1
+        total_ram_mb: 0
+    """
+
     ilastik: IlastikSection = IlastikSection()
     lazyflow: LazyflowSection = LazyflowSection()
-
-
-default_config = """
-[ilastik]
-debug: false
-plugin_directories: ~/.ilastik/plugins,
-output_filename_format: {dataset_dir}/{nickname}_{result_type}
-output_format: compressed hdf5
-
-[lazyflow]
-threads: -1
-total_ram_mb: 0
-"""
 
 
 @dataclass
@@ -145,15 +137,7 @@ def _init(path: Union[str, bytes, os.PathLike]) -> None:
         logger.info(f"Loading configuration from {config_path!s}.")
         _cfg = configparser.ConfigParser()
         _cfg.read_string(config_path.read_text())
-
-        flat_dict = {}
-        for k, v in _cfg.items():
-            if not isinstance(v, Mapping):
-                flat_dict[k] = v
-            else:
-                flat_dict[k] = {sk: sv for sk, sv in v.items()}
-
-        config = IlastikPreferences.model_validate(flat_dict)
+        config = IlastikPreferences.model_validate(_cfg)
     else:
         config = IlastikPreferences()
 

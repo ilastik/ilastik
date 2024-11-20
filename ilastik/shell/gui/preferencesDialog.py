@@ -118,7 +118,7 @@ class PreferencesDialog(QDialog):
                 elif isinstance(arg, Le):
                     widget.setMaximum(int(arg.le))
                 elif isinstance(arg, Increment):
-                    widget.setSingleStep(arg.increment)
+                    widget.setSingleStep(arg.inc)
 
             widget.setValue(val)
             widget.setAlignment(Qt.AlignRight)
@@ -133,7 +133,7 @@ class PreferencesDialog(QDialog):
             )
 
         else:
-            raise ValueError(f"Unexpected value type {type(value)=}")
+            raise ValueError(f"Unexpected value type {type(val)=}")
 
         return widget
 
