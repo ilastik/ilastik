@@ -42,12 +42,12 @@ def _dims_to_display_string(dimensions: Dict[str, int], axiskeys: str, dtype: ty
     """Generate labels to put into the scale combobox / to display in the table.
     XYZ dimensions will be reordered to match axiskeys."""
     reordered_dimensions = [dimensions[axis] for axis in axiskeys if axis in "xyz"]
-    shape_string = "x".join(str(size) for size in reordered_dimensions)
+    shape_string = " / ".join(str(size) for size in reordered_dimensions)
     scale_file_size = bigintprod(reordered_dimensions) * dtype().nbytes
     size_labels = {1e15: "PB", 1e12: "TB", 1e9: "GB", 1e6: "MB", 1e3: "KB", 1: "B"}
     size_factor = [f for f in size_labels.keys() if scale_file_size >= f][0]
-    size_string = f" ({scale_file_size / size_factor:.1f} {size_labels[size_factor]})"
-    return shape_string + size_string
+    size_string = f"{scale_file_size / size_factor:.1f} {size_labels[size_factor]}"
+    return f"{size_string} ({shape_string})"
 
 
 @rowOfButtonsProxy
