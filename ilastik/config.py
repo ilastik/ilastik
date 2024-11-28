@@ -29,9 +29,22 @@ from typing import Annotated, List, Optional, Union
 
 import appdirs
 from annotated_types import Ge, Le
-from pydantic import AfterValidator, BaseModel, Field, PlainSerializer, ConfigDict
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    Field,
+    PlainSerializer,
+    ConfigDict,
+    WrapValidator,
+    ValidatorFunctionWrapHandler,
+    ValidationInfo,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def strip_whitespace(v: str, _handler: ValidatorFunctionWrapHandler, _info: ValidationInfo) -> str:
+    return v.strip()
 
 
 @dataclass
@@ -45,17 +58,17 @@ class _ConfigBase(BaseModel):
 
 class IlastikSection(_ConfigBase):
 
-    plugin_directories: str = "~/.ilastik/plugins,"
+    plugin_directories: Annotated[str, WrapValidator(strip_whitespace)] = "~/.ilastik/plugins,"
     """Comma-separated list of paths to search for Object Classification / Tracking Feature plugins."""
 
-    output_filename_format: str = "{dataset_dir}/{nickname}_{result_type}"
+    output_filename_format: Annotated[str, WrapValidator(strip_whitespace)] = "{dataset_dir}/{nickname}_{result_type}"
     """Default export filename, supports magic placeholders."""
 
-    output_format: str = "compressed hdf5"
+    output_format: Annotated[str, WrapValidator(strip_whitespace)] = "compressed hdf5"
     """Default export format - consult documentation for allowed values."""
 
-    logging_config: str = ""
-    """Json file with logging configuration."""
+    logging_config: Annotated[str, WrapValidator(strip_whitespace)] = ""
+    """Path to JSON file with logging configuration."""
 
     debug: Annotated[
         bool,
