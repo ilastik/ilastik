@@ -294,7 +294,7 @@ class OpRelabelConsecutive5D(OpUnblockedArrayCache):
             if slot is self.Output:
                 assert (out.shape == roi_shape).all(), f"{out.shape=} != {roi_shape=}"
             elif slot is self.RelabelDict:
-                assert out.shape == (1,)
+                assert out.shape == (1,), f"{out.shape=}"
 
         # Get lock for this block (create first if necessary)
         with self._lock:
@@ -450,15 +450,16 @@ class OpRelabelConsecutive5D(OpUnblockedArrayCache):
         t_index = self.Input.meta.getAxisKeys().index("t")
         assert t_index >= 0
 
-        def single_t_slice_dict(full_block_roi):
-            self._execute_RelabelDict_impl(
-                full_block_roi, result[slice(full_block_roi[0][t_index], full_block_roi[1][t_index])]
-            )
+        def single_t_slice_dict(full_block_roi, result_block):
+            self._execute_RelabelDict_impl(full_block_roi, result_block)
 
         full_block_rois = getIntersectingRois(self.Input.meta.shape, self._blockshape, request_roi, False)
+        t_offset = full_block_rois[0][0][t_index]
+
         pool = RequestPool()
         for full_block_roi in full_block_rois:
-            req = Request(partial(single_t_slice_dict, self._standardize_roi(*full_block_roi)))
+            result_block = result[slice(full_block_roi[0][t_index] - t_offset, full_block_roi[1][t_index] - t_offset)]
+            req = Request(partial(single_t_slice_dict, self._standardize_roi(*full_block_roi), result_block))
             pool.add(req)
         pool.wait()
 

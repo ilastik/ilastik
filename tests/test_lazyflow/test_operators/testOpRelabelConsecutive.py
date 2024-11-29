@@ -171,6 +171,33 @@ def test_time_slice_blocking_output(relabel_mock: MagicMock, oprelabel, labels_t
     np.testing.assert_array_equal(relabeled_data.view(np.ndarray).max(axis=(1, 2)), [89, 89, 89])
 
 
+@pytest.mark.parametrize(
+    "time_slice",
+    [
+        slice(0, 1),
+        slice(1, 2),
+        slice(2, 3),
+        slice(0, 3),
+        slice(1, 3),
+    ],
+)
+@patch("vigra.analysis.relabelConsecutive", wraps=vigra.analysis.relabelConsecutive)
+def test_time_slicing_dict(relabel_mock: MagicMock, oprelabel, labels_t, time_slice):
+    oprelabel.Input.setValue(labels_t)
+    relabel_dict = oprelabel.RelabelDict[time_slice].wait()
+
+    n_call_expected = time_slice.stop - time_slice.start
+    assert relabel_mock.call_count == n_call_expected
+
+    assert len(relabel_dict) == n_call_expected
+
+    for i, dct in zip(range(time_slice.start, time_slice.stop), relabel_dict):
+        assert len(dct) == 90
+        ref_dict = {((i * 90) + k) * 2: k for k in range(1, 90)}
+        ref_dict[0] = 0
+        assert dct == ref_dict
+
+
 @patch("vigra.analysis.relabelConsecutive", wraps=vigra.analysis.relabelConsecutive)
 def test_sub_roi_request(relabel_mock: MagicMock, oprelabel, labels_t):
     oprelabel.Input.setValue(labels_t)
@@ -181,20 +208,6 @@ def test_sub_roi_request(relabel_mock: MagicMock, oprelabel, labels_t):
     assert relabeled_data.shape == (1, 2, 3)
     expected_data = [[[0, 1, 2], [10, 11, 12]]]
     np.testing.assert_array_equal(relabeled_data, expected_data)
-
-
-@patch("vigra.analysis.relabelConsecutive", wraps=vigra.analysis.relabelConsecutive)
-def test_time_slice_blocking_dict(relabel_mock: MagicMock, oprelabel, labels_t):
-    oprelabel.Input.setValue(labels_t)
-
-    relabeled_dict = oprelabel.RelabelDict[:].wait()
-    assert relabel_mock.call_count == 3
-
-    for i, dct in enumerate(relabeled_dict):
-        assert len(dct) == 90
-        ref_dict = {((i * 90) + k) * 2: k for k in range(1, 90)}
-        ref_dict[0] = 0
-        assert dct == ref_dict
 
 
 def test_serialization_output(oprelabel: OpRelabelConsecutive, labels):
