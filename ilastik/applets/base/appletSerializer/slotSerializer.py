@@ -25,17 +25,15 @@ import pickle
 import re
 import tempfile
 import warnings
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import h5py
 import numpy
-import numpy.typing as npt
 
 from ilastik import Project
-from ilastik.utility.commandLineProcessing import convertStringToList
 from ilastik.utility.maybe import maybe
 from lazyflow.operators.valueProviders import OpValueCache
-from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
+from lazyflow.roi import roiToSlice, sliceToRoi
 from lazyflow.slot import InputSlot, OutputSlot, Slot
 from lazyflow.utility import timeLogged
 

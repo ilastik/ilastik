@@ -25,8 +25,6 @@ import numpy.typing as npt
 import pytest
 import vigra
 
-# from lazyflow.operators import OpRelabelConsecutive
-from lazyflow.operators import opRelabelConsecutive
 from lazyflow.operators.opRelabelConsecutive import OpRelabelConsecutive
 from lazyflow.roi import sliceToRoi
 
@@ -64,7 +62,7 @@ def test_preserve_axistags(oprelabel, labels, axistags):
 def test_simple(oprelabel: OpRelabelConsecutive, labels: vigra.VigraArray):
     oprelabel.Input.setValue(labels)
     expected = labels // 2
-    relabeled: npt.ArrayLike = oprelabel.CachedOutput[:].wait()
+    relabeled: npt.NDArray = oprelabel.CachedOutput[:].wait()
     np.testing.assert_array_equal(relabeled, expected)
     mapping = oprelabel.RelabelDict[:].wait()[0]
 

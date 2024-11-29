@@ -31,7 +31,7 @@ import vigra
 from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.operators.generic import OpPixelOperator
 from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.operators.opUnblockedArrayCache import OpUnblockedArrayCache
+from lazyflow.operators.opUnblockedArrayCache import OpUnblockedArrayCache, RoiTuple
 from lazyflow.request.request import Request, RequestLock, RequestPool
 from lazyflow.roi import getIntersectingRois, roiToSlice
 from lazyflow.rtype import SubRegion
@@ -40,8 +40,8 @@ from lazyflow.utility.helpers import get_ram_per_element
 
 logger = logging.getLogger(__name__)
 
-RoiTuple = Tuple[Tuple[int, ...], Tuple[int, ...]]
-Roi5D = Tuple[Tuple[int, int, int, int, int], Tuple[int, int, int, int, int]]
+
+RoiTuple5D = Tuple[Tuple[int, int, int, int, int], Tuple[int, int, int, int, int]]
 
 
 class OpRelabelConsecutive(Operator):
@@ -219,7 +219,7 @@ class OpRelabelConsecutive5D(OpUnblockedArrayCache):
         else:
             assert False, "Unknown output slot: {}".format(slot.name)
 
-    def _expand_t_based_roi(self, t_roi: Tuple[Tuple[int], Tuple[int]]) -> Roi5D:
+    def _expand_t_based_roi(self, t_roi: Tuple[Tuple[int], Tuple[int]]) -> RoiTuple5D:
         """
         Returns the full 5D roi for a single time slice
         """
@@ -232,15 +232,6 @@ class OpRelabelConsecutive5D(OpUnblockedArrayCache):
         input_roi_stop = tuple(v if k != "t" else t_roi[1][0] for k, v in tagged_shape.items())
 
         return self._standardize_roi(input_roi_start, input_roi_stop)
-
-    def _standardize_roi(
-        self, start: Union[npt.NDArray, Tuple[int, ...]], stop: Union[npt.NDArray, Tuple[int, ...]]
-    ) -> RoiTuple:
-        # We use rois as dict keys.
-        # For comparison purposes, all rois in the dict keys are assumed to be tuple-of-tuples-of-int
-        start = tuple(map(int, start))
-        stop = tuple(map(int, stop))
-        return (start, stop)
 
     def _execute_RelabelDict_impl(self, request_roi, result):
         # here we have to modify the roi, append the block shape
@@ -283,7 +274,6 @@ class OpRelabelConsecutive5D(OpUnblockedArrayCache):
                 # Data is already in the cache. Just extract it.
                 assert request_roi == block_roi
                 result[0] = (self._block_data[block_roi], self._block_dicts[block_roi])
-                return
 
     def _fetch_and_store_block(self, block_roi, out, slot):
         """
