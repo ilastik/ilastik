@@ -295,16 +295,14 @@ class OpRelabelConsecutive5D(OpUnblockedArrayCache):
         # Handle identical simultaneous requests for the same block
         # without preventing parallel requests for different blocks.
         with block_lock:
-            if slot is self.Output:
-                if block_roi in self._block_data:
-                    # Extra [:] here is in case we are decompressing from a chunkedarray
-                    self.Output.stype.copy_data(out, self._block_data[block_roi][:])
-                    return
+            if slot is self.Output and block_roi in self._block_data:
+                # Extra [:] here is in case we are decompressing from a chunkedarray
+                self.Output.stype.copy_data(out, self._block_data[block_roi][:])
+                return
 
-            if slot is self.RelabelDict:
-                if block_roi in self._block_dicts:
-                    out[:] = self._block_dicts[block_roi]
-                    return
+            if slot is self.RelabelDict and block_roi in self._block_dicts:
+                out[:] = self._block_dicts[block_roi]
+                return
 
             req = self.Input(*block_roi)
 
