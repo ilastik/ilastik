@@ -49,7 +49,12 @@ def strip_whitespace(v: str, _handler: ValidatorFunctionWrapHandler, _info: Vali
 
 @dataclass
 class Increment:
+    """Configure Options for UI - increment for spinbox"""
+
     inc: int
+
+
+ADVANCED = object()  # Annotate advanced options that can be hidden from the UI
 
 
 class _ConfigBase(BaseModel):
@@ -58,7 +63,7 @@ class _ConfigBase(BaseModel):
 
 class IlastikSection(_ConfigBase):
 
-    plugin_directories: Annotated[str, WrapValidator(strip_whitespace)] = "~/.ilastik/plugins,"
+    plugin_directories: Annotated[str, WrapValidator(strip_whitespace), ADVANCED] = "~/.ilastik/plugins,"
     """Comma-separated list of paths to search for Object Classification / Tracking Feature plugins."""
 
     output_filename_format: Annotated[str, WrapValidator(strip_whitespace)] = "{dataset_dir}/{nickname}_{result_type}"
@@ -67,13 +72,14 @@ class IlastikSection(_ConfigBase):
     output_format: Annotated[str, WrapValidator(strip_whitespace)] = "compressed hdf5"
     """Default export format - consult documentation for allowed values."""
 
-    logging_config: Annotated[str, WrapValidator(strip_whitespace)] = ""
+    logging_config: Annotated[str, WrapValidator(strip_whitespace), ADVANCED] = ""
     """Path to JSON file with logging configuration."""
 
     debug: Annotated[
         bool,
         AfterValidator(bool),
         PlainSerializer(str, return_type=str, when_used="always"),
+        ADVANCED,
     ] = Field(default=False)
     """Enable debug mode (for developers only)."""
 
@@ -81,6 +87,7 @@ class IlastikSection(_ConfigBase):
         bool,
         AfterValidator(bool),
         PlainSerializer(str, return_type=str, when_used="always"),
+        ADVANCED,
     ] = Field(default=False)
     """Enable legacy hbp mode. If checked, the VoxelSegmentationWorkflow will be visible."""
 

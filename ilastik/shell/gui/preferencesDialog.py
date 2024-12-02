@@ -25,7 +25,8 @@ import sys
 from typing import Tuple, Union
 
 from annotated_types import Ge, Le
-from PyQt5.QtCore import QObject, pyqtSignal, Qt
+from pydantic import BaseModel
+from PyQt5.QtCore import QObject, Qt, QTimer, pyqtSignal
 from PyQt5.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -36,14 +37,15 @@ from PyQt5.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QSizePolicy,
+    QSpacerItem,
     QSpinBox,
     QVBoxLayout,
     QWidget,
 )
-from pydantic import BaseModel
 
-from ilastik.config import IlastikPreferences, Increment
 import ilastik.config as iconfig
+from ilastik.config import ADVANCED, IlastikPreferences, Increment
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +103,7 @@ class PreferencesDialog(QDialog):
 
     def _widget_for_type(
         self, val: Union[int, str, bool], typehint, section, option
-    ) -> Tuple[QLabel, Union[QLineEdit, QSpinBox, QCheckBox]]:
+    ) -> Tuple[Union[QLineEdit, QSpinBox, QCheckBox], bool]:
 
         if isinstance(val, bool):
             widget = QCheckBox()
@@ -135,11 +137,19 @@ class PreferencesDialog(QDialog):
         else:
             raise ValueError(f"Unexpected value type {type(val)=}")
 
-        return widget
+        advanced = False
+
+        for arg in typehint:
+            if arg == ADVANCED:
+                advanced = True
+                break
+
+        return widget, advanced
 
     def initUI(self):
         self._main_layout = QVBoxLayout()
 
+        self._advanced_options = []
         for section_name, section_info in self.model.getSections().items():
 
             assert issubclass(section_info.annotation, BaseModel)
@@ -151,16 +161,30 @@ class PreferencesDialog(QDialog):
             for option_name in self.model.getOptions(section_name):
                 value = self.model.getValue(section_name, option_name)
                 field_meta = self.model.getOptionField(section_name, option_name)
-                val_widget = self._widget_for_type(value, field_meta.metadata, section_name, option_name)
+                val_widget, adv = self._widget_for_type(value, field_meta.metadata, section_name, option_name)
+
                 label = QLabel(option_name)
                 val_widget.setToolTip(field_meta.description)
+                if adv:
+                    self._advanced_options += [val_widget, label]
+
                 layout.addRow(label, val_widget)
                 self.options2widgets[(section_name, option_name)] = val_widget
 
             groupbox.setLayout(layout)
             self._main_layout.addWidget(groupbox)
 
+        self._update_advanced_view(True)
+
         self._main_layout.addWidget(QLabel("Note: please restart ilastik after modifying any settings."))
+
+        # adv_chbox_layout = QHBoxLayout()
+        self._adv_checkbox = QCheckBox("Show advanced options")
+        self._adv_checkbox.setTristate(False)
+        self._adv_checkbox.stateChanged.connect(lambda x: self._update_advanced_view(x != 2))
+
+        self._main_layout.addWidget(self._adv_checkbox)
+        self._main_layout.addSpacerItem(QSpacerItem(0, 0, vPolicy=QSizePolicy.Expanding))
         self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.resetButton = QPushButton("Reset to Defaults")
         self.buttonBox.addButton(self.resetButton, QDialogButtonBox.ResetRole)
@@ -172,6 +196,12 @@ class PreferencesDialog(QDialog):
         self._main_layout.addWidget(self.buttonBox)
         self.setLayout(self._main_layout)
         self.setMinimumWidth(500)
+
+    def _update_advanced_view(self, hide_advanced=True):
+        for widget in self._advanced_options:
+            widget.setVisible(not hide_advanced)
+
+        QTimer.singleShot(0, self.adjustSize)
 
     def updateValue(self, section: str, option: str):
         value = self.model.getValue(section, option)

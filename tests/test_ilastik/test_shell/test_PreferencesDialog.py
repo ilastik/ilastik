@@ -7,7 +7,7 @@ from annotated_types import Ge, Le
 from pydantic import BaseModel
 
 from ilastik.config import Increment
-from ilastik.shell.gui.preferencesDialog import PreferencesDialog, PreferencesModel
+from ilastik.shell.gui.preferencesDialog import ADVANCED, PreferencesDialog, PreferencesModel
 
 
 class Section1(BaseModel):
@@ -27,6 +27,8 @@ class Section2(BaseModel):
 
     booly: bool = False
     """docstring for bool"""
+
+    bool_advanced: Annotated[bool, ADVANCED] = False
 
 
 class ConfigBase(BaseModel):
@@ -134,3 +136,9 @@ def test_save_only_changed_values(patch_config: Path, dlg: PreferencesDialog):
     dlg.model.saveConfig()
     assert patch_config.exists()
     assert patch_config.read_text() == "[section1]\nstringy = changed!\n\n[section2]\nnumerical = 42\n\n"
+
+
+def test_show_hide_advanced_opts(dlg: PreferencesDialog):
+    assert not dlg.options2widgets["section2", "bool_advanced"].isVisible()
+    dlg._adv_checkbox.setChecked(True)
+    assert dlg.options2widgets["section2", "bool_advanced"].isVisible()
