@@ -23,6 +23,7 @@ from typing import Dict
 from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
+from lazyflow.utility.helpers import bigintprod
 from .opDataSelection import DatasetInfo
 from .dataLaneSummaryTableModel import rowOfButtonsProxy
 
@@ -37,11 +38,16 @@ class DatasetColumn:
     NumColumns = 6
 
 
-def _dims_to_display_string(dimensions: Dict[str, int], axiskeys: str) -> str:
+def _dims_to_display_string(dimensions: Dict[str, int], axiskeys: str, dtype: type) -> str:
     """Generate labels to put into the scale combobox / to display in the table.
     XYZ dimensions will be reordered to match axiskeys."""
     reordered_dimensions = [dimensions[axis] for axis in axiskeys if axis in "xyz"]
-    return ", ".join(str(size) for size in reordered_dimensions)
+    shape_string = " / ".join(str(size) for size in reordered_dimensions)
+    scale_file_size = bigintprod(reordered_dimensions) * dtype().nbytes
+    size_labels = {1e15: "PB", 1e12: "TB", 1e9: "GB", 1e6: "MB", 1e3: "KB", 1: "B"}
+    size_factor = [f for f in size_labels.keys() if scale_file_size >= f][0]
+    size_string = f"{scale_file_size / size_factor:.1f} {size_labels[size_factor]}"
+    return f"{size_string} ({shape_string})"
 
 
 @rowOfButtonsProxy
@@ -208,7 +214,9 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             return str(datasetInfo.drange or "")
         if index.column() == DatasetColumn.Scale:
             if datasetInfo.scales:
-                return _dims_to_display_string(datasetInfo.scales[datasetInfo.working_scale], datasetInfo.axiskeys)
+                return _dims_to_display_string(
+                    datasetInfo.scales[datasetInfo.working_scale], datasetInfo.axiskeys, datasetInfo.laneDtype
+                )
             return UninitializedDisplayData[index.column()]
 
         raise NotImplementedError(f"Unknown column: row={index.row()}, column={index.column()}")
@@ -227,7 +235,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         # We display them in reverse order so that the default loaded scale (the smallest)
         # is the first option in the drop-down box
         return {
-            key: _dims_to_display_string(tagged_shape, datasetInfo.axiskeys)
+            key: _dims_to_display_string(tagged_shape, datasetInfo.axiskeys, datasetInfo.laneDtype)
             for key, tagged_shape in reversed(datasetInfo.scales.items())
         }
 

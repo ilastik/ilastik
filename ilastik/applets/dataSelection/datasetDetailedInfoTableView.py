@@ -184,6 +184,12 @@ class InlineAddButtonDelegate(QItemDelegate):
         super().paint(painter, option, index)
 
 
+class ElideRightDelegate(QStyledItemDelegate):
+    def paint(self, painter, option, index):
+        option.textElideMode = Qt.ElideRight
+        super().paint(painter, option, index)
+
+
 class ScaleComboBoxDelegate(QStyledItemDelegate):
     def paint(self, painter, option, index):
         scales = index.model().get_scale_options(index.row())
@@ -199,6 +205,7 @@ class ScaleComboBoxDelegate(QStyledItemDelegate):
         if not scale_options:
             return None
         combo = QComboBox(parent)
+        combo.setItemDelegate(ElideRightDelegate(combo))
         for scale_key, scale in scale_options.items():
             combo.addItem(scale, scale_key)
         combo.currentIndexChanged.connect(partial(self.on_combo_selected, index))
@@ -371,6 +378,7 @@ class DatasetDetailedInfoTableView(QTableView):
         self.setSpan(lastRow, 0, 1, model.columnCount())
 
         self.setColumnWidth(DatasetColumn.TaggedShape, 215)
+        self.setColumnWidth(DatasetColumn.Scale, 250)
         self.horizontalHeader().setSectionResizeMode(DatasetColumn.Nickname, QHeaderView.Interactive)
         self.horizontalHeader().setSectionResizeMode(DatasetColumn.Location, QHeaderView.Interactive)
         self.horizontalHeader().setSectionResizeMode(DatasetColumn.InternalID, QHeaderView.Interactive)
