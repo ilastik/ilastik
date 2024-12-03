@@ -55,7 +55,7 @@ def startShellGui(workflow_cmdline_args, preinit_funcs, postinit_funcs):
     if "ubuntu" in platform_str or "fedora" in platform_str or "debian" in platform_str:
         QApplication.setAttribute(Qt.AA_X11InitThreads, True)
 
-    if ilastik.config.cfg.getboolean("ilastik", "debug"):
+    if ilastik.config.cfg.ilastik.debug:
         QApplication.setAttribute(Qt.AA_DontUseNativeMenuBar, True)
 
     app = QApplication(["ilastik"])
@@ -110,7 +110,7 @@ def launchShell(workflow_cmdline_args, preinit_funcs, postinit_funcs):
 
     assert QApplication.instance().thread() == shell.thread()
 
-    if ilastik.config.cfg.getboolean("ilastik", "debug"):
+    if ilastik.config.cfg.ilastik.debug:
         # In debug mode, we always start with the same size window.
         # This is critical for recorded test cases.
         shell.resize(1000, 750)

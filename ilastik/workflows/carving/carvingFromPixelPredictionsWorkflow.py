@@ -36,7 +36,7 @@ from .preprocessingApplet import PreprocessingApplet
 
 import ilastik.config
 
-if ilastik.config.cfg.getboolean("ilastik", "debug"):
+if ilastik.config.cfg.ilastik.debug:
 
     class CarvingFromPixelPredictionsWorkflow(Workflow):
 

@@ -106,7 +106,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         return self._drawer
 
     def menus(self):
-        debug_mode = ilastik_config.getboolean("ilastik", "debug")
+        debug_mode = ilastik_config.ilastik.debug
         return [self.volumeEditorWidget.getViewMenu(debug_mode)]
 
     def viewerControlWidget(self):
