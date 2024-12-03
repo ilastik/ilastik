@@ -1,11 +1,8 @@
 from pathlib import Path
 import os
-import shutil
 import tempfile
 import threading
-import time
 import queue
-import sys
 import warnings
 import platform
 import itertools
@@ -358,3 +355,24 @@ def cacheMemoryManager(monkeypatch):
     mem_manager = _CacheMemoryManager()
     monkeypatch.setattr(lazyflow.operators.cacheMemoryManager, "_cache_memory_manager", mem_manager)
     return mem_manager
+
+
+@pytest.fixture()
+def reliable_vigra_train_rf_seed(monkeypatch):
+    """
+    Can be used in test functions that involve invoking
+    `vigra.learning.RandomForest.learnRF` along the way. This will set
+    the randomSeed parameter in that function to 42.
+    Relies on `learnRF` being called only with parameters trainData and trainLabels.
+    """
+    import vigra
+
+    _learn_orig = vigra.learning.RandomForest.learnRF
+    randomSeed = 42
+
+    # Note: can't use a partial there, the function doesn't like kwargs
+    monkeypatch.setattr(
+        vigra.learning.RandomForest,
+        "learnRF",
+        lambda self, trainData, trainLabels: _learn_orig(self, trainData, trainLabels, randomSeed),
+    )

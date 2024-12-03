@@ -21,7 +21,7 @@
 import json
 import os
 import shutil
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from unittest import mock
 from unittest.mock import Mock
 
@@ -874,11 +874,20 @@ class TestOpDataSelection_PrecomputedChunks:
         return op
 
     def test_load_precomputed_chunks_over_http(self, op):
+        # Default scale should be lowest resolution
         loaded_scale0 = op.Image[:].wait()
         numpy.testing.assert_allclose(loaded_scale0, self.IMAGE_SCALED.reshape((1, 1, 1, 10, 12)))
 
+        assert op.Image.meta.scales == OrderedDict(
+            [
+                ("800_800_70", OrderedDict([("c", 1), ("z", 1), ("y", 20), ("x", 24)])),
+                ("1600_1600_70", OrderedDict([("c", 1), ("z", 1), ("y", 10), ("x", 12)])),
+            ]
+        )
+
+        # Switch to original unscaled resolution (first in the list, see multiscaleStore.multiscales)
         scale_keys = list(op.Image.meta.scales.keys())
-        op.ActiveScale.setValue(scale_keys[1])
+        op.ActiveScale.setValue(scale_keys[0])
         loaded_scale1 = op.Image[:].wait()
         numpy.testing.assert_allclose(loaded_scale1, self.IMAGE_ORIGINAL.reshape((1, 1, 1, 20, 24)))
 
@@ -974,11 +983,20 @@ class TestOpDataSelection_OMEZarr:
         return op
 
     def test_ome_zarr_loads_via_FSStore_and_ZarrArray(self, op, mock_ome_zarr_data):
+        # Default scale should be lowest resolution
         loaded_scale0 = op.Image[:].wait()
         numpy.testing.assert_allclose(loaded_scale0, self.IMAGE_SCALED.reshape((1, 1, 1, 10, 12)))
 
+        assert op.Image.meta.scales == OrderedDict(
+            [
+                ("s0", OrderedDict([("z", 1), ("y", 20), ("x", 24)])),
+                ("s1", OrderedDict([("z", 1), ("y", 10), ("x", 12)])),
+            ]
+        )
+
+        # Switch to original unscaled resolution (first in the list, see multiscaleStore.multiscales)
         scale_keys = list(op.Image.meta.scales.keys())
-        op.ActiveScale.setValue(scale_keys[1])
+        op.ActiveScale.setValue(scale_keys[0])
         loaded_scale1 = op.Image[:].wait()
         numpy.testing.assert_allclose(loaded_scale1, self.IMAGE_ORIGINAL.reshape((1, 1, 1, 20, 24)))
 

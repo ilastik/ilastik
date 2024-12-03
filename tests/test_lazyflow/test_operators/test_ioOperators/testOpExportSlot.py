@@ -1,9 +1,7 @@
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -24,14 +22,15 @@ from builtins import object
 import os
 import tempfile
 import shutil
-import platform
+from pathlib import Path
 
 import numpy
 import vigra
+import z5py
 
 from lazyflow.graph import Graph
-from lazyflow.utility import PathComponents
-from lazyflow.roi import roiFromShape
+from lazyflow.operator import Operator
+from lazyflow.utility import PathComponents, Pipeline
 from lazyflow.operators.operators import OpArrayPiper
 from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -77,6 +76,180 @@ class TestOpExportSlot(object):
             assert (read_data == expected_data).all(), "Read data didn't match exported data!"
         finally:
             opRead.cleanUp()
+
+    def test_ome_zarr(self):
+        data = numpy.random.random((90, 100)).astype(numpy.float32)
+        data = vigra.taggedView(data, vigra.defaultAxistags("yx"))
+
+        graph = Graph()
+        opPiper = OpArrayPiper(graph=graph)
+        opPiper.Input.setValue(data)
+
+        opExport = OpExportSlot(graph=graph)
+        opExport.Input.connect(opPiper.Output)
+        opExport.OutputFormat.setValue("single-scale OME-Zarr")
+        opExport.OutputFilenameFormat.setValue(self._tmpdir + "/test_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}")
+        opExport.CoordinateOffset.setValue((10, 20))
+        expected_transformations = [
+            {"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0, 1.0]},
+            {"type": "translation", "translation": [0.0, 0.0, 0.0, 10.0, 20.0]},
+        ]
+
+        assert opExport.ExportPath.ready()
+        expected_export_path = Path(self._tmpdir) / "test_export_x20-120_y10-100.zarr"
+        assert Path(opExport.ExportPath.value) == expected_export_path
+
+        opExport.run_export()
+
+        opRead = OpInputDataReader(graph=graph)
+        try:
+            opRead.FilePath.setValue(str(expected_export_path / "s0"))
+            expected_data = data.view(numpy.ndarray).reshape((1, 1, 1) + data.shape)  # OME-Zarr always tczyx
+            read_data = opRead.Output[:].wait()
+            numpy.testing.assert_array_equal(read_data, expected_data)
+            written_file = z5py.ZarrFile(str(expected_export_path), "r")
+            assert (
+                written_file.attrs["multiscales"][0]["datasets"][0]["coordinateTransformations"]
+                == expected_transformations
+            )
+        finally:
+            opRead.cleanUp()
+
+    def test_ome_zarr_roundtrip(self):
+        """Ensure that loading an OME-Zarr dataset and then re-exporting one of
+        its scales produces the same data and metadata."""
+        input_meta = [
+            {
+                "name": "input.zarr",
+                "type": "sample",
+                "version": "0.4",
+                "axes": [
+                    {"type": "space", "name": "y", "unit": "nanometer"},
+                    {"type": "space", "name": "x", "unit": "nanometer"},
+                ],
+                "datasets": [
+                    {
+                        "path": "s0",
+                        "coordinateTransformations": [
+                            {"scale": [0.2, 0.2], "type": "scale"},
+                            {"translation": [0.0, 0.0], "type": "translation"},
+                        ],
+                    },
+                    {
+                        "path": "s1",
+                        "coordinateTransformations": [
+                            {"scale": [1.4, 1.4], "type": "scale"},
+                            {"translation": [7.62, 8.49], "type": "translation"},
+                        ],
+                    },
+                ],
+                "coordinateTransformations": [
+                    {"scale": [1.0, 1.0], "type": "scale"},
+                    {"translation": [0.0, 0.0], "type": "translation"},
+                ],
+            }
+        ]
+        # Expected written meta is the same as input, but tczyx, only with the respective scale,
+        # and with no name
+        expected_meta_s0 = [
+            {
+                "axes": [
+                    {"name": "t", "type": "time"},
+                    {"name": "c", "type": "channel"},
+                    {"name": "z", "type": "space"},
+                    {"name": "y", "type": "space", "unit": "nanometer"},
+                    {"name": "x", "type": "space", "unit": "nanometer"},
+                ],
+                "coordinateTransformations": [
+                    {"scale": [1.0, 1.0, 1.0, 1.0, 1.0], "type": "scale"},
+                    {"translation": [0.0, 0.0, 0.0, 0.0, 0.0], "type": "translation"},
+                ],
+                "datasets": [
+                    {
+                        "coordinateTransformations": [
+                            {"scale": [1.0, 1.0, 1.0, 0.2, 0.2], "type": "scale"},
+                            {"translation": [0.0, 0.0, 0.0, 0.0, 0.0], "type": "translation"},
+                        ],
+                        "path": "s0",
+                    }
+                ],
+                "version": "0.4",
+            }
+        ]
+        expected_meta_s1 = [
+            {
+                "axes": [
+                    {"name": "t", "type": "time"},
+                    {"name": "c", "type": "channel"},
+                    {"name": "z", "type": "space"},
+                    {"name": "y", "type": "space", "unit": "nanometer"},
+                    {"name": "x", "type": "space", "unit": "nanometer"},
+                ],
+                "coordinateTransformations": [
+                    {"scale": [1.0, 1.0, 1.0, 1.0, 1.0], "type": "scale"},
+                    {"translation": [0.0, 0.0, 0.0, 0.0, 0.0], "type": "translation"},
+                ],
+                "datasets": [
+                    {
+                        "coordinateTransformations": [
+                            {"scale": [1.0, 1.0, 1.0, 1.4, 1.4], "type": "scale"},
+                            {"translation": [0.0, 0.0, 0.0, 7.62, 8.49], "type": "translation"},
+                        ],
+                        "path": "s1",
+                    }
+                ],
+                "version": "0.4",
+            }
+        ]
+
+        input_path = self._tmpdir + "/input.zarr"
+        file = z5py.ZarrFile(input_path, "w")
+        data = numpy.random.random((89, 99)).astype(numpy.float32)
+        downscale = data[::7, ::7]
+        file.create_dataset("s0", data=data)
+        file.create_dataset("s1", data=downscale)
+        file.attrs["multiscales"] = input_meta
+
+        # Raw scale first
+        export_path = self._tmpdir + "/test_export1.zarr"
+        with Pipeline(graph=Graph()) as pipeline:
+            pipeline.add(OpInputDataReader, FilePath=input_path + "/s0")
+            opExport = pipeline.add(
+                OpExportSlot, OutputFormat="single-scale OME-Zarr", OutputFilenameFormat=export_path
+            )
+            opExport.run_export()
+
+            assert os.path.exists(export_path)
+            written_file = z5py.ZarrFile(export_path, "r")
+            assert written_file.attrs["multiscales"] == expected_meta_s0
+
+        # Same thing for the second scale
+        export_path = self._tmpdir + "/test_export2.zarr"
+        with Pipeline(graph=Graph()) as pipeline:
+            pipeline.add(OpInputDataReader, FilePath=input_path + "/s1")
+            opExport = pipeline.add(
+                OpExportSlot, OutputFormat="single-scale OME-Zarr", OutputFilenameFormat=export_path
+            )
+            opExport.run_export()
+
+            assert os.path.exists(export_path)
+            written_file = z5py.ZarrFile(export_path, "r")
+            assert written_file.attrs["multiscales"] == expected_meta_s1
+
+        # Another time, but give path as URI to go through OMEZarrMultiscaleReader
+        # OpInputDataReader then needs a parent to avoid the multiscale reader going into single-scale mode
+        noop = Operator(graph=Graph())
+        export_path = self._tmpdir + "/test_export3.zarr"
+        with Pipeline(parent=noop) as pipeline:
+            pipeline.add(OpInputDataReader, FilePath=Path(input_path).as_uri(), ActiveScale="s1")
+            opExport = pipeline.add(
+                OpExportSlot, OutputFormat="single-scale OME-Zarr", OutputFilenameFormat=export_path
+            )
+            opExport.run_export()
+
+            assert os.path.exists(export_path)
+            written_file = z5py.ZarrFile(export_path, "r")
+            assert written_file.attrs["multiscales"] == expected_meta_s1
 
     def testBasic_Npy(self):
         data = numpy.random.random((100, 100)).astype(numpy.float32)

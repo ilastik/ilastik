@@ -31,6 +31,7 @@ from PyQt5.QtWidgets import QApplication
 
 import h5py
 import numpy
+import pytest
 
 from ilastik.workflows import ObjectClassificationWorkflowPrediction
 from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
@@ -364,6 +365,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
+    @pytest.mark.usefixtures("reliable_vigra_train_rf_seed")
     def test_05_live_update_mode(self):
         def impl():
             shell = self.shell

@@ -21,9 +21,6 @@ from __future__ import absolute_import
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-import faulthandler
-
-faulthandler.enable()  # noqa
 import z5py
 import json
 import numpy as np
