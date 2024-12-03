@@ -70,7 +70,6 @@ class TestMissingValueHandling(unittest.TestCase):
         g = Graph()
         self.op = OpObjectClassification(graph=g)
         self.op.RawImages.setValues([self.rawimg])
-        self.op.BinaryImages.setValues([self.binimg])
         self.op.SegmentationImages.setValues([self.segmimg])
         self.op.ObjectFeatures.setValues([self.featureArrays])
         self.op.ComputedFeatureNames.setValue(self.features)

@@ -332,7 +332,7 @@ class TestFeatureSelection(unittest.TestCase):
         }
 
         self.extrOp = OpObjectExtraction(graph=g)
-        self.extrOp.BinaryImage.setValue(binimg)
+        self.extrOp.SegmentationImage.setValue(binimg)
         self.extrOp.RawImage.setValue(rawimg)
         self.extrOp.Features.setValue(features)
 
@@ -443,7 +443,6 @@ class TestMaxLabel(unittest.TestCase):
 
         self.op = OpObjectClassification(graph=g)
         self.op.RawImages.setValues([rawimg])
-        self.op.BinaryImages.setValues([binimg])
         self.op.SegmentationImages.setValues([segmimg])
         self.op.ObjectFeatures.setValues([self.featureArrays])
         self.op.ComputedFeatureNames.setValue(self.features)
@@ -500,19 +499,19 @@ class TestFullOperator(unittest.TestCase):
         }
 
         self.extrOp = OpObjectExtraction(graph=g)
-        self.extrOp.BinaryImage.setValue(binimg)
+        self.extrOp.SegmentationImage.setValue(binimg)
         self.extrOp.RawImage.setValue(rawimg)
         self.extrOp.Features.setValue(features)
         assert self.extrOp.RegionFeatures.ready()
 
         self.classOp = OpObjectClassification(graph=g)
-        self.classOp.BinaryImages.setValues([binimg])
-        self.classOp.SegmentationImages.setValues([segimg])
         self.classOp.RawImages.setValues([rawimg])
+        self.classOp.SegmentationImages.setValues([binimg])
         self.classOp.LabelInputs.setValues([labels])
         self.classOp.ObjectFeatures.connect(self.extrOp.RegionFeatures)
         self.classOp.ComputedFeatureNames.connect(self.extrOp.Features)
         self.classOp.SelectedFeatures.setValue(sel_features)
+        assert self.classOp.Classifier.ready()
 
     def test(self):
         self.assertTrue(self.classOp.Predictions.ready(), "Prediction slot of OpObjectClassification wasn't ready.")
