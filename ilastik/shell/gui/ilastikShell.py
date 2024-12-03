@@ -29,7 +29,7 @@ import numbers
 import platform
 import threading
 import warnings
-from typing import List, Type, Optional
+from typing import Optional, Type, Union
 
 # SciPy
 import numpy
@@ -151,8 +151,8 @@ class MemoryWidget(QWidget):
         self.label.setText("Cached Data: %1.1f MB" % (bytes / (1024.0**2.0)))
 
 
-class LogWindow(QTextEdit):
-    """Window/Widget that shows the log history"""
+class NotificationsWindow(QTextEdit):
+    """Window/Widget that shows a history of notifications to users"""
 
     def __init__(self, data, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -180,15 +180,19 @@ class LogWindow(QTextEdit):
         self._jump_to_end()
 
 
-class LogBar(QLabel):
-    """Log widget for the status bar"""
+class NotificationsBar(QLabel):
+    """Notifications widget for the status bar
+
+    The notification status bar / NotificationsWindow combo shows messages that
+    are emitted with `lazyflow.USER_LOGLEVEL`.
+    """
 
     textAdded = pyqtSignal(str)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._history = []
-        self.log_widget: LogWindow | None = None
+        self.notifications_widget: Union[NotificationsWindow, None] = None
         self.setToolTip("Double click for history.")
         self._setup_logging()
 
@@ -209,18 +213,18 @@ class LogBar(QLabel):
         r.addHandler(s)
 
     def mouseDoubleClickEvent(self, event):
-        if self.log_widget is None:
-            self.log_widget = LogWindow(self._history)
-            self.textAdded.connect(self.log_widget.appendMessage)
+        if self.notifications_widget is None:
+            self.notifications_widget = NotificationsWindow(self._history)
+            self.textAdded.connect(self.notifications_widget.appendMessage)
 
-        self.log_widget.show()
-        self.log_widget.raise_()
+        self.notifications_widget.show()
+        self.notifications_widget.raise_()
 
     def cleanUp(self):
         self._history = []
         self.setText("")
-        if self.log_widget is not None:
-            self.log_widget.clear()
+        if self.notifications_widget is not None:
+            self.notifications_widget.clear()
 
     def write(self, text):
         text = text.rstrip("\n")
@@ -257,7 +261,7 @@ class ProgressDisplayManager(QObject):
         self.statusBar.addWidget(self.progressBar)
         self.progressBar.setHidden(True)
 
-        self.logBar = LogBar()
+        self.logBar = NotificationsBar()
         self.statusBar.addPermanentWidget(self.logBar)
 
         self.requestStatus = QLabel()
