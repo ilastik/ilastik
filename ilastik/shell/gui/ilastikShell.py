@@ -195,6 +195,7 @@ class NotificationsBar(QLabel):
         self.notifications_widget: Union[NotificationsWindow, None] = None
         self.setToolTip("Double click for history.")
         self._setup_logging()
+        self.setContentsMargins(10, 0, 10, 0)
 
     def _setup_logging(self):
         s = logging.StreamHandler(stream=self)
@@ -222,9 +223,13 @@ class NotificationsBar(QLabel):
 
     def cleanUp(self):
         self._history = []
-        self.setText("")
+        self.clear()
         if self.notifications_widget is not None:
             self.notifications_widget.clear()
+
+    def clear(self):
+        """Clear displayed text"""
+        self.setText("")
 
     def write(self, text):
         text = text.rstrip("\n")
@@ -1281,6 +1286,9 @@ class IlastikShell(QMainWindow):
             self.showViewerControlWidget(applet_index)
             self.showMenus(applet_index)
             self.refreshAppletDrawer(applet_index)
+
+            # clear NotificatioinsBar
+            self.progressDisplayManager.logBar.clear()
 
             self._refreshDrawerRecursionGuard = False
 
