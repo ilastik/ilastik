@@ -323,16 +323,11 @@ def _fetch_and_validate_ome_zarr_spec(uri: str, sort_uri: Optional[str] = None) 
         with Timer() as timer:
             spec = json.loads(store[".zattrs"])
             logger.info(f"Reading OME-Zarr metadata from {uri}/.zattrs took {timer.seconds()*1000} ms.")
-    except Exception as e:
+    except KeyError as e:
         # Connection problems on FSSpec side raise a ClientConnectorError wrapped in a KeyError
         if isinstance(e.__context__, ClientConnectorError):
             raise ConnectionError(f"Could not connect to {e.__context__.host}:{e.__context__.port}.") from e
-        elif isinstance(e, KeyError):
-            raise NoOMEZarrMetaFound(
-                f"Expected an OME-Zarr store, but could not find metadata at {uri}/.zattrs."
-            ) from e
-        else:
-            raise e
+        raise NoOMEZarrMetaFound(f"Expected an OME-Zarr store, but could not find metadata at {uri}/.zattrs.") from e
 
     # Found .zattrs, but what kind of .zattrs?
     _check_non_multiscale_specs(spec, uri, sort_uri)
@@ -371,6 +366,8 @@ def _introspect_for_multiscales_root(uri: str) -> Tuple[OME_ZARR_SPEC, str, Opti
                     uri[len(uri_to_parent) :].lstrip("/"),
                 )
             except NoOMEZarrMetaFound:
+                if ".zarr" in parent:
+                    break
                 continue
         raise  # If no OME-Zarr meta found at URI or any parent, raise the original exception
 
