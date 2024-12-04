@@ -263,6 +263,39 @@ def _unescape_and_get_store(uri: str, mode="r", **kwargs) -> FSStore:
     return FSStore(uri, mode=mode, **kwargs)
 
 
+def _parse_ome_zarr_labels(spec: Dict, uri: str) -> List[str]:
+    if "labels" not in spec:
+        raise ValueError("not a labels spec")
+    labels = spec["labels"]
+    if not isinstance(labels, list) or len(labels) < 1:
+        raise NotAnOMEZarrMultiscale(f"Found OME-Zarr labels metadata, but it was empty.\nAt URL: {uri}\nFound: {spec}")
+    return [f"{uri}/{label}" for label in labels]
+
+
+def _parse_ome_zarr_well(spec: Dict, uri: str) -> List[str]:
+    if "well" not in spec or "images" not in spec["well"]:
+        raise ValueError("not a well spec")
+    images = spec["well"]["images"]
+    if not isinstance(images, list) or len(images) < 1 or any("path" not in image for image in images):
+        raise NotAnOMEZarrMultiscale(
+            f"Found OME-Zarr well metadata, but it was malformed (no images, or images without path)."
+            f"\nAt URL: {uri}\nFound: {spec}"
+        )
+    return [f"{uri}/{image['path']}" for image in images]
+
+
+def _parse_ome_zarr_plate(spec: Dict, uri: str) -> List[str]:
+    if "plate" not in spec or "wells" not in spec["plate"]:
+        raise ValueError("not a plate spec")
+    wells = spec["plate"]["wells"]
+    if not isinstance(wells, list) or len(wells) < 1 or any("path" not in well for well in wells):
+        raise NotAnOMEZarrMultiscale(
+            f"Found OME-Zarr plate metadata, but it was malformed (no wells, or wells without path)."
+            f"\nAt URL: {uri}\nFound: {spec}"
+        )
+    return [f"{uri}/{well['path']}" for well in wells]
+
+
 def _check_non_multiscale_specs(spec: Dict, uri: str, sort_uri: Optional[str] = None):
     """
     Checks if spec might be labels, plate or well OME-Zarr metadata.
@@ -271,47 +304,39 @@ def _check_non_multiscale_specs(spec: Dict, uri: str, sort_uri: Optional[str] = 
     :param sort_uri: Used to sort suggestions so that URIs containing `sort_uri` come first.
     """
     # labels, well and plate zattrs each point to a list of multiscales the user can choose from
-    if "labels" in spec:
-        if not isinstance(spec["labels"], list) or len(spec["labels"]) < 1:
-            raise NotAnOMEZarrMultiscale(
-                f"Found OME-Zarr labels metadata, but it was empty.\nAt URL: {uri}\nFound: {spec}"
-            )
-        sub_paths = [f"{uri}/{label}" for label in spec["labels"]]
-        if sort_uri:
-            sub_paths.sort(key=lambda x: sort_uri not in x)
-        raise NotAnOMEZarrMultiscale(
-            "This URL points to a labels directory. Please try one of the following label URLs:\n"
-            + "\n".join(sub_paths)
-        )
+    sub_paths = []
+    spec_type = item_type = ""
 
-    if "well" in spec and "images" in spec["well"]:
-        images = spec["well"]["images"]
-        if not isinstance(images, list) or len(images) < 1 or any("path" not in image for image in images):
-            raise NotAnOMEZarrMultiscale(
-                f"Found OME-Zarr well metadata, but it was malformed (no images, or images without path)."
-                f"\nAt URL: {uri}\nFound: {spec}"
-            )
-        sub_paths = [f"{uri}/{image['path']}" for image in images]
-        if sort_uri:
-            sub_paths.sort(key=lambda x: sort_uri not in x)
-        raise NotAnOMEZarrMultiscale(
-            "This URL points to a well directory. Please try one of the following acquisition URLs:\n"
-            + "\n".join(sub_paths)
-        )
+    try:
+        sub_paths = _parse_ome_zarr_labels(spec, uri)
+        spec_type = "labels"
+        item_type = "label"
+    except ValueError:
+        pass
 
-    if "plate" in spec and "wells" in spec["plate"]:
-        wells = spec["plate"]["wells"]
-        if not isinstance(wells, list) or len(wells) < 1 or any("path" not in well for well in wells):
-            raise NotAnOMEZarrMultiscale(
-                f"Found OME-Zarr plate metadata, but it was malformed (no wells, or wells without path)."
-                f"\nAt URL: {uri}\nFound: {spec}"
-            )
-        sub_paths = [f"{uri}/{well['path']}" for well in wells]
-        if sort_uri:
-            sub_paths.sort(key=lambda x: sort_uri not in x)
-        raise NotAnOMEZarrMultiscale(
-            "This URL points to a plate directory. Please try one of the following well URLs:\n" + "\n".join(sub_paths)
-        )
+    try:
+        sub_paths = _parse_ome_zarr_well(spec, uri)
+        spec_type = "well"
+        item_type = "acquisition"
+    except ValueError:
+        pass
+
+    try:
+        sub_paths = _parse_ome_zarr_plate(spec, uri)
+        spec_type = "plate"
+        item_type = "well"
+    except ValueError:
+        pass
+
+    if not sub_paths:
+        return
+
+    if sort_uri:
+        sub_paths.sort(key=lambda x: sort_uri not in x)
+    raise NotAnOMEZarrMultiscale(
+        f"This URL points to a {spec_type} directory. "
+        f"Please try one of the following {item_type} URLs:\n" + "\n".join(sub_paths)
+    )
 
 
 def _fetch_and_validate_ome_zarr_spec(uri: str, sort_uri: Optional[str] = None) -> OME_ZARR_SPEC:
@@ -356,17 +381,19 @@ def _introspect_for_multiscales_root(uri: str) -> Tuple[OME_ZARR_SPEC, str, Opti
     try:
         return _fetch_and_validate_ome_zarr_spec(uri), uri, None
     except NoOMEZarrMetaFound:
-        parent_dirs = uri.split("/")[:-1]
-        for i, parent in enumerate(reversed(parent_dirs)):
-            uri_to_parent = "/".join(uri.split("/")[: -(i + 1)])
+        i = len(uri)
+        while i > 0:
+            i = uri.rfind("/", 0, i)
+            uri_to_parent = uri[:i]
+            sub_uri = uri[i + 1 :]
             try:
                 return (
                     _fetch_and_validate_ome_zarr_spec(uri_to_parent, uri),
                     uri_to_parent,
-                    uri[len(uri_to_parent) :].lstrip("/"),
+                    sub_uri,
                 )
             except NoOMEZarrMetaFound:
-                if ".zarr" in parent:
+                if ".zarr" in uri_to_parent.split("/")[-1]:
                     break
                 continue
         raise  # If no OME-Zarr meta found at URI or any parent, raise the original exception
