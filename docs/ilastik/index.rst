@@ -20,12 +20,3 @@ Contents:
    plugin_system
    dependencies
    testing
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
