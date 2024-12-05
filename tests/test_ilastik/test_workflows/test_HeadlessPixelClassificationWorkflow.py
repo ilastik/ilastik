@@ -246,6 +246,14 @@ def ome_zarr_store_on_disc(tmp_path) -> str:
     chunk_size = [3, 64, 64]
     zattrs = {
         "multiscales": [
+            {  # Additional multiscales entry to test that the correct one (the other one) is used
+                "version": "0.4",
+                "axes": [
+                    {"type": "space", "name": "y"},
+                    {"type": "space", "name": "x"},
+                ],
+                "datasets": [{"path": "wrong/s0"}],
+            },
             {
                 "name": "some.zarr",
                 "type": "Sample",
@@ -272,7 +280,7 @@ def ome_zarr_store_on_disc(tmp_path) -> str:
                     },
                 ],
                 "coordinateTransformations": [],
-            }
+            },
         ]
     }
     (zarr_dir / ".zattrs").write_text(json.dumps(zattrs))

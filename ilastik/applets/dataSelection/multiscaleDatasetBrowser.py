@@ -170,19 +170,18 @@ class MultiscaleDatasetBrowser(QDialog):
             elif isinstance(e, ConnectionError):
                 msg = "Connection error, please check that the server is online and the URL is correct."
             else:
-                msg = "Error while trying to read a dataset at this address."
-            msg += f"\n\nFull error message:\n{e}"
+                msg = "Couldn't load a multiscale dataset at this address."
+            msg += f"\n\nMore detail:\n{e}"
             logger.error(e, exc_info=True)
             self.result_text_box.setText(msg)
             return
 
         self.selected_uri = uri
+        scale_info_text = "\n".join(
+            [f"  - {key}: {' / '.join(map(str, shape.values()))}" for key, shape in rv.multiscales.items()]
+        )
         self.result_text_box.setText(
-            f"URL: {self.selected_uri}\n"
-            f"Data format: {rv.NAME}\n"
-            f"Number of scales: {len(rv.multiscales)}\n"
-            f"Raw dataset shape: {rv.get_shape(rv.highest_resolution_key)}\n"
-            f"Lowest scale shape: {rv.get_shape(rv.lowest_resolution_key)}\n"
+            f"URL: {self.selected_uri}\nData format: {rv.NAME}\nAvailable scales:\n" + scale_info_text
         )
         # This check-button might have been triggered by pressing Enter.
         # The timer prevents triggering the now enabled OK button by the same keypress.
