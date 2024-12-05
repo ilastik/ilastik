@@ -743,38 +743,19 @@ class NNClassGui(LabelingGui):
         """Check if spec is compatible with project data"""
         # Note: bioimageio imports are delayed as to prevent https request to
         # github and bioimage.io on ilastik startup
-        from bioimageio.spec.shared.raw_nodes import ParametrizedInputShape
+        from ilastik.utility import bioimageio_utils
 
-        def _minimum_tagged_shape(input_spec):
-            axes = input_spec.axes
-            input_shape = input_spec.shape
-            if isinstance(input_shape, list):
-                assert len(input_shape) == len(axes)
-                return {k: v for k, v in zip(axes, input_shape)}
-            elif isinstance(input_shape, ParametrizedInputShape):
-                assert len(input_shape.min) == len(input_shape.step) == len(axes)
-                return {k: v for k, v in zip(axes, input_shape.min)}
-            else:
-                raise ValueError(f"Unexpected input shape of type {type(input_shape)}")
-
-        input_spec = model_info.inputs[0]
+        assert len(model_info.inputs) == 1
 
         # should probably do all input images?
         input_data_shape = self.topLevelOperatorView.InputImages.meta.getTaggedShape()
-        input_model_shape = _minimum_tagged_shape(input_spec)
+        try:
+            validator = bioimageio_utils.InputValidator(model_info.inputs)
+            validator.check_single_image_min_shape(model_info.inputs[0].id, input_data_shape)
+        except ValueError as e:
+            return {"reason": f"{e}"}
 
-        incompatible_shapes = {}
-        for dim, shape in input_model_shape.items():
-            # we are fine with singletons
-            if shape > 1 and input_data_shape.get(dim, 0) < shape:
-                incompatible_shapes[dim] = shape
-
-        if incompatible_shapes:
-            return {
-                "reason": f"Model expects data to have a minimum size along the following axes {incompatible_shapes}"
-            }
-        else:
-            return {}
+        return {}
 
     def _onModelStateChanged(self, state):
         self.labelingDrawerUi.liveTraining.setVisible(False)
