@@ -110,6 +110,7 @@ class ObjectClassificationGui(LabelingGui):
     _knime_exporter = None
 
     def __init__(self, parentApplet, op):
+        self.parentApplet = parentApplet
         self.isInitialized = False  # Need this flag in objectClassificationApplet where initialization is terminated with label selection
         self.__cleanup_fns = []
         # Tell our base class which slots to monitor
@@ -270,6 +271,7 @@ class ObjectClassificationGui(LabelingGui):
 
         self.labelMode = not val
         self.op.FreezePredictions.setValue(not val)
+        self.parentApplet.appletStateUpdateRequested()
 
     @pyqtSlot()
     def handleInteractiveModeClicked(self):
