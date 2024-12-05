@@ -105,10 +105,9 @@ class PreprocessingSerializer(AppletSerializer):
             opPre.cachedResult = numpy.array([mst])
 
             opPre._dirty = False
-            opPre.applet.writeprotected = True
+            opPre.deserialized = True
 
             opPre.PreprocessedData.setDirty()
-            opPre.enableDownstream(True)
 
     def isDirty(self):
         return any(op.hasUnsavedData for op in self._o.innerOperators)
