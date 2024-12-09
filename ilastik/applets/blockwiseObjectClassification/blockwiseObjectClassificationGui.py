@@ -99,10 +99,10 @@ class BlockwiseObjectClassificationGui(LayerViewerGui):
 
             layers.append(predictLayer)
 
-        binarySlot = self.topLevelOperatorView.BinaryImage
-        if binarySlot.ready():
+        segmentedSlot = self.topLevelOperatorView.SegmentationImage
+        if segmentedSlot.ready():
             ct_binary = [QColor(0, 0, 0, 0).rgba(), QColor(255, 255, 255, 255).rgba()]
-            binaryLayer = ColortableLayer(createDataSource(binarySlot), ct_binary)
+            binaryLayer = ColortableLayer(createDataSource(segmentedSlot), ct_binary)
             binaryLayer.name = "Binary Image"
             layers.append(binaryLayer)
 

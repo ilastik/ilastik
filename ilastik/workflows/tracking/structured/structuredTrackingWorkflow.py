@@ -265,7 +265,7 @@ class StructuredTrackingWorkflowBase(Workflow):
         op5Binary.Input.connect(binarySrc)
 
         opObjExtraction.RawImage.connect(op5Raw.Output)
-        opObjExtraction.BinaryImage.connect(op5Binary.Output)
+        opObjExtraction.SegmentationImage.connect(op5Binary.Output)
 
         opTrackingFeatureExtraction.RawImage.connect(op5Raw.Output)
         opTrackingFeatureExtraction.BinaryImage.connect(op5Binary.Output)
@@ -277,20 +277,17 @@ class StructuredTrackingWorkflowBase(Workflow):
         opTrackingFeatureExtraction.FeatureNamesDivision.setValue(feature_dict_division)
 
         if self.divisionDetectionApplet:
-            opDivDetection.BinaryImages.connect(op5Binary.Output)
             opDivDetection.RawImages.connect(op5Raw.Output)
             opDivDetection.SegmentationImages.connect(opTrackingFeatureExtraction.LabelImage)
             opDivDetection.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesAll)
             opDivDetection.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesAll)
 
-        opCellClassification.BinaryImages.connect(op5Binary.Output)
         opCellClassification.RawImages.connect(op5Raw.Output)
         opCellClassification.SegmentationImages.connect(opTrackingFeatureExtraction.LabelImage)
         opCellClassification.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesAll)
         opCellClassification.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesNoDivisions)
 
         opAnnotations.RawImage.connect(op5Raw.Output)
-        opAnnotations.BinaryImage.connect(op5Binary.Output)
         opAnnotations.LabelImage.connect(opObjExtraction.LabelImage)
         opAnnotations.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
         opAnnotations.ComputedFeatureNames.connect(opObjExtraction.Features)

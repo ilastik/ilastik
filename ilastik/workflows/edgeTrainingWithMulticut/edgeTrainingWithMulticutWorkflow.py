@@ -32,7 +32,7 @@ from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
 from lazyflow.graph import Graph
-from lazyflow.operators import OpRelabelConsecutive, OpBlockedArrayCache, OpSimpleStacker
+from lazyflow.operators import OpRelabelConsecutive, OpSimpleStacker
 from lazyflow.operators.generic import OpConvertDtype, OpPixelOperator
 from lazyflow.operators.valueProviders import OpPrecomputedInput
 
@@ -93,7 +93,6 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         self.edgeTrainingWithMulticutApplet = EdgeTrainingWithMulticutApplet(
             self, "Training and Multicut", "Training and Multicut"
         )
-        opEdgeTrainingWithMulticut = self.edgeTrainingWithMulticutApplet.topLevelOperator
 
         # -- DataExport applet
         #
@@ -149,7 +148,7 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         Overridden from Workflow base class.
         Called immediately before a new lane is added to the workflow.
         """
-        opEdgeTrainingWithMulticut = self.edgeTrainingWithMulticutApplet.topLevelOperator
+        opEdgeTrainingWithMulticut: OpEdgeTrainingWithMulticut = self.edgeTrainingWithMulticutApplet.topLevelOperator
         opClassifierCache = opEdgeTrainingWithMulticut.opEdgeTraining.opClassifierCache
 
         # When the new lane is added, dirty notifications will propagate throughout the entire graph.
@@ -215,10 +214,6 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         opRelabelGroundtruth = OpRelabelConsecutive(parent=self)
         opRelabelGroundtruth.Input.connect(opConvertGroundtruth.Output)
 
-        opGroundtruthCache = OpBlockedArrayCache(parent=self)
-        opGroundtruthCache.CompressionEnabled.setValue(True)
-        opGroundtruthCache.Input.connect(opRelabelGroundtruth.Output)
-
         # watershed inputs
         opWsdt.RawData.connect(opDataSelection.ImageGroup[self.DATA_ROLE_RAW])
         opWsdt.Input.connect(opNormalizeProbabilities.Output)
@@ -256,7 +251,7 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         )  # Used for visualization only
         opEdgeTrainingWithMulticut.VoxelData.connect(opStackRawAndVoxels.Output)
         opEdgeTrainingWithMulticut.Superpixels.connect(opSuperpixelsSelect.Output)
-        opEdgeTrainingWithMulticut.GroundtruthSegmentation.connect(opGroundtruthCache.Output)
+        opEdgeTrainingWithMulticut.GroundtruthSegmentation.connect(opRelabelGroundtruth.CachedOutput)
         opEdgeTrainingWithMulticut.WatershedSelectedInput.connect(opWsdt.SelectedInput)
 
         def _invalidate_cache_on_sp_change(*args, **kwargs):

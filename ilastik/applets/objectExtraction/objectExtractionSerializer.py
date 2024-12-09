@@ -21,24 +21,27 @@
 import logging
 
 import numpy
-
-from lazyflow.roi import roiToSlice
+import numpy.typing as npt
 
 from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
-    deleteIfPresent,
-    SerialSlot,
     SerialBlockSlot,
     SerialObjectFeatureNamesSlot,
+    SerialRelabeledDataSlot,
+    SerialSlot,
+    deleteIfPresent,
 )
 from ilastik.utility.commandLineProcessing import convertStringToList
+from lazyflow.roi import roiToSlice
+
+from .opObjectExtraction import OpObjectExtraction, OpObjectExtractionFromLabels
 
 logger = logging.getLogger(__name__)
 
 
 class SerialObjectFeaturesSlot(SerialSlot):
     def __init__(self, slot, inslot, blockslot, name=None, subname=None, default=None, depends=None, selfdepends=True):
-        super(SerialObjectFeaturesSlot, self).__init__(slot, inslot, name, subname, default, depends, selfdepends)
+        super().__init__(slot, inslot, name, subname, default, depends, selfdepends)
 
         self.blockslot = blockslot
         self._bind(slot)
@@ -95,7 +98,7 @@ class SerialObjectFeaturesSlot(SerialSlot):
 
 
 class ObjectExtractionSerializer(AppletSerializer):
-    def __init__(self, operator, projectFileGroupName):
+    def __init__(self, operator: OpObjectExtraction, projectFileGroupName: str):
         slots = [
             SerialBlockSlot(
                 operator.LabelImage,
@@ -116,4 +119,38 @@ class ObjectExtractionSerializer(AppletSerializer):
             ),
         ]
 
-        super(ObjectExtractionSerializer, self).__init__(projectFileGroupName, slots=slots)
+        super().__init__(projectFileGroupName, slots=slots)
+
+
+class ObjectExtractionFromLabelsSerializer(AppletSerializer):
+
+    @staticmethod
+    def transform_to_h5(slot_val) -> npt.NDArray[numpy.uint32]:
+        assert len(slot_val) == 1, f"Expected single length array entry for mapping dictionary, got {len(slot_val)=}."
+        assert isinstance(slot_val[0], dict), f"Expected dict, got {type(slot_val[0])=}."
+        return numpy.array(slot_val[0].items())
+
+    @staticmethod
+    def transform_from_h5(val: npt.NDArray[numpy.uint32]) -> npt.NDArray:
+        return numpy.array([dict(val)])
+
+    def __init__(self, operator: OpObjectExtractionFromLabels, projectFileGroupName: str):
+        slots = [
+            SerialRelabeledDataSlot(
+                slot=operator.RelabelCacheOutput,
+                inslot=operator.RelabelCacheInput,
+                blockslot=operator.CleanLabelBlocks,
+                name="RelabelData",
+                subname="ImageLane{:03d}",
+                selfdepends=False,
+            ),
+            SerialObjectFeatureNamesSlot(operator.Features),
+            SerialObjectFeaturesSlot(
+                operator.BlockwiseRegionFeatures,
+                operator.RegionFeaturesCacheInput,
+                operator.RegionFeaturesCleanBlocks,
+                name="RegionFeatures",
+            ),
+        ]
+
+        super().__init__(projectFileGroupName, slots=slots)
