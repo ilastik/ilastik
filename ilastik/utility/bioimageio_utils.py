@@ -210,12 +210,21 @@ class InputValidator:
         We assume that op image readers use `vigra.defaultAxis` to assign axis tags ('t','y','x','x','c').
 
         When comparing the shapes, we neglect the order.
+        Furthermore, a model that does not have a z-axis, or a time axis will be compatible with data that
+        has those axes -> model can be applied per time / through z.
         """
         spec_shape = self._utils.convert_vigra_default_axes_to_spec_explicit_size(target_vigra_shape)
         input_spec = self._utils.get_spec(tensor_id)
 
         dims_spec = sorted(tuple(axis.id for axis in input_spec.axes))
         dims_target = sorted(tuple(spec_shape.keys()))
+
+        if "z" in dims_target and "z" not in dims_spec:
+            dims_target.remove("z")
+
+        if "time" in dims_target and "time" not in dims_spec:
+            dims_target.remove("time")
+
         if dims_spec != dims_target:
             raise ValueError(f"Incompatible axes names, got {dims_target} expected {dims_spec}")
 
