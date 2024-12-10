@@ -28,8 +28,9 @@ import numpy
 import numpy.typing as npt
 import vigra
 
-from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.operators.generic import OpPixelOperator
+from lazyflow.operators.opLabelBase import OpLabelBase
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.opUnblockedArrayCache import OpUnblockedArrayCache, RoiTuple
 from lazyflow.request.request import Request, RequestLock, RequestPool
@@ -44,7 +45,7 @@ logger = logging.getLogger(__name__)
 RoiTuple5D = Tuple[Tuple[int, int, int, int, int], Tuple[int, int, int, int, int]]
 
 
-class OpRelabelConsecutive(Operator):
+class OpRelabelConsecutive(OpLabelBase):
     """
     Operator for relabeling label images in a consecutive manner
 
@@ -57,20 +58,14 @@ class OpRelabelConsecutive(Operator):
     * `Input` is always reordered to `tzyxc`
     """
 
-    Input = InputSlot()
     StartLabel = InputSlot(value=1)
 
-    CachedOutput = OutputSlot()
     RelabelDict = OutputSlot()
 
-    CleanBlocks = OutputSlot()
     CompressionEnabled = InputSlot(value=False)
 
     SerializationInput = InputSlot(optional=True)
     SerializationOutput = OutputSlot()
-
-    # total dummy slot, there because OpObjectExtraction expects this interface
-    BypassModeEnabled = InputSlot(value=False)
 
     supportedDtypes = [numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64]
 
@@ -135,8 +130,6 @@ class OpRelabelConsecutive5D(OpUnblockedArrayCache):
     """
 
     StartLabel = InputSlot(value=1)
-    BypassModeEnabled = InputSlot(value=False)
-
     RelabelDict = OutputSlot()
 
     SerializationInput = InputSlot(optional=True)  # expects inputs in the form of tuple(RelabeledArray, RelabelDict)
@@ -304,6 +297,8 @@ class OpRelabelConsecutive5D(OpUnblockedArrayCache):
                 out[:] = self._block_dicts[block_roi]
                 return
 
+            # f(block_roi, out)
+            # can relabelConsecutive can only handle up to 3D - so need to iterate after all
             req = self.Input(*block_roi)
 
             block_data = vigra.taggedView(req.wait(), axistags=self.Input.meta.axistags)
@@ -452,8 +447,6 @@ class OpRelabelConsecutive5D(OpUnblockedArrayCache):
         pool.wait()
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot == self.BypassModeEnabled:
-            return
         super().propagateDirty(slot, subindex, roi)
 
     def _memory_for_block(self, block_key: RoiTuple):

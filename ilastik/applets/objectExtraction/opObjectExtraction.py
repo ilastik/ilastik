@@ -26,17 +26,17 @@ from collections.abc import Iterable
 from functools import partial
 from typing import Dict, Optional
 
-# SciPy
 import numpy
-import vigra.analysis
+import vigra
 
 # lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators.opRelabelConsecutive import OpRelabelConsecutive
 from lazyflow.request import Request, RequestPool
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List, SubRegion
 from lazyflow.roi import roiToSlice
+from lazyflow.operators.opLabelBase import OpLabelBase
+from lazyflow.operators.opRelabelConsecutive import OpRelabelConsecutive
 from lazyflow.operators import OpLabelVolume, OpCompressedCache, OpBlockedArrayCache
 from itertools import groupby, count
 
@@ -420,7 +420,7 @@ class OpObjectExtractionBase(Operator, ABC):
         pass
 
     @abstractmethod
-    def _create_label_volume_op(self) -> Operator:
+    def _create_label_volume_op(self) -> OpLabelBase:
         """Setup operator that provides label image slots
 
         Returns:
@@ -463,7 +463,7 @@ class OpObjectExtraction(OpObjectExtractionBase):
     Computes object features and object center images.
     """
 
-    def _create_label_volume_op(self):
+    def _create_label_volume_op(self) -> OpLabelBase:
         opLabelVolume = OpLabelVolume(parent=self)
         opLabelVolume.name = "OpObjectExtraction._opLabelVolume"
 
