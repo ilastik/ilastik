@@ -57,8 +57,7 @@ from PyQt5.QtWidgets import (
 )
 from tiktorch.configkeys import NUM_ITERATIONS_DONE, NUM_ITERATIONS_MAX, TRAINING
 from tiktorch.types import ModelState
-from volumina.api import AlphaModulatedLayer, GrayscaleLayer, LazyflowSource
-from volumina.utility import preferences
+from volumina.api import AlphaModulatedLayer, LazyflowSource
 
 from ilastik.applets.labeling.labelingGui import LabelingGui, Tool
 from ilastik.shell.gui.iconMgr import ilastikIcons
@@ -356,15 +355,15 @@ class NNClassGui(LabelingGui):
         """
         The gui should stop updating all data views and should clean up any resources it created
         """
+        super(NNClassGui, self).stopAndCleanUp()
+
         try:
             logger.info("Closing session.")
-            self.tiktorchController.closeSession()
+            self.labelingDrawerUi.modelStateControl.cleanUp()
         except:
             pass
         for fn in self.__cleanup_fns:
             fn()
-
-        super(NNClassGui, self).stopAndCleanUp()
 
     def menus(self):
         """

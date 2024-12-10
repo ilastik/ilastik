@@ -28,7 +28,7 @@ from ilastik.widgets.progressDialog import BarId, PercentProgressDialog
 from lazyflow.cancel_token import CancellationTokenSource
 
 from .bioimageiodl import BioImageDownloader
-from .tiktorchController import TiktorchOperatorModel
+from .tiktorchController import TiktorchController, TiktorchOperatorModel
 
 logger = logging.getLogger(__file__)
 
@@ -196,10 +196,13 @@ class ModelStateControl(QWidget):
         layout.addLayout(bottom_layout)
         self.setLayout(layout)
 
-    def setTiktorchController(self, tiktorchController):
+    def cleanUp(self):
+        self._tiktorchModel.removeListener(self._onTiktorchStateChange)
+
+    def setTiktorchController(self, tiktorchController: TiktorchController):
         self._tiktorchController = tiktorchController
 
-    def setTiktorchModel(self, tiktorchModel):
+    def setTiktorchModel(self, tiktorchModel: TiktorchOperatorModel):
         self._tiktorchModel = tiktorchModel
         self._tiktorchModel.registerListener(self._onTiktorchStateChange)
         self.modelSourceEdit.modelDeleted.connect(self._tiktorchModel.clear)
