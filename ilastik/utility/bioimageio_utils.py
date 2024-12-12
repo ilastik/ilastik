@@ -5,11 +5,12 @@ Eventually it could be integrated to the bioimageio packages.
 
 from __future__ import annotations
 
+from functools import partial
 import pathlib
 import tempfile
 
 import numpy as np
-from typing import Union, List, Optional
+from typing import Callable, Union, List, Optional
 from collections import OrderedDict
 
 from bioimageio.spec import load_description
@@ -25,6 +26,7 @@ from bioimageio.spec.model.v0_5 import (
     AxisId,
     InputAxis,
     OutputAxis,
+    TensorDescrBase,
     WithHalo,
     OutputTensorDescr,
     InvalidDescr,
@@ -48,7 +50,7 @@ def get_model_descr_from_model_bytes(model_bytes: bytes) -> ModelDescr:
 
 
 class AxisUtils:
-    def __init__(self, specs: List[TensorDescr]):
+    def __init__(self, specs: List[TensorDescrBase]):
         self._specs = specs
 
     def realize_size_reference(self, size: SizeReference) -> AnyAxis:
@@ -77,10 +79,6 @@ class AxisUtils:
     def is_3d(self, tensor_id: str) -> bool:
         spec = self.get_spec(tensor_id)
         return self.num_spatial_axis(spec) == 3
-
-    @staticmethod
-    def is_axis_dynamic(axis: AnyAxis) -> bool:
-        return not isinstance(axis, BatchAxis) and not isinstance(axis, ChannelAxis)
 
     @staticmethod
     def is_axis_spatial(axis: AnyAxis) -> bool:
@@ -130,53 +128,87 @@ class AxisUtils:
 
 
 class InputAxisUtils(AxisUtils):
+
+    MIN_SIZE_2D = 512
+    MIN_SIZE_3D = 64
+
     def __init__(self, tensors: List[InputTensorDescr]):
         super().__init__(tensors)
 
     def get_best_tile_shape(self, tensor_id: str) -> TaggedShape:
         """Hack: pick a bigger shape than min shape
 
-        Some models come with super tiny minimal shapes, that make the processing
-        too slow. While dryrun is not implemented, we'll "guess" a sensible shape
+        Axes in the spec don't necessarily come with a defined size (e.g.
+        Parametrized size). This function determines a fixed size for each axis.
+
+        In addition, this function also imposes a minimal size in case of
+        parametrized sizes to avoid non-optimal (too small) tiles.
+        While dryrun is not implemented, we'll "guess" a sensible shape
         and hope it will fit into memory.
+
+        This function finds the factor n such that at least one size of the tensor
+        will be MIN_SIZE_2D/3D
+
+        Ignores batch axis (this returns the shape for a tile).
         """
-
-        MIN_SIZE_2D = 512
-        MIN_SIZE_3D = 64
-
         if self.is_2d(tensor_id):
-            target_size = MIN_SIZE_2D
+            target_size = self.MIN_SIZE_2D
         elif self.is_3d(tensor_id):
-            target_size = MIN_SIZE_3D
+            target_size = self.MIN_SIZE_3D
         else:
             raise ValueError
 
-        spec = self.get_spec(tensor_id)
-        best_axes: OrderedDict[str, int | ParameterizedSize] = OrderedDict()
-        for axis in spec.axes:
-            if not self.is_axis_dynamic(axis):
-                continue
+        # get all axes without batch axis
+        spec_axes = [ax for ax in self.get_spec(tensor_id).axes if not isinstance(ax, BatchAxis)]
+
+        sized_axes: OrderedDict[str, int] = OrderedDict()
+
+        size_funcs: OrderedDict[str, Callable[[int], int]] = OrderedDict()
+        factors: list[int] = []
+
+        # functions to determine the final shape, will be used as partials
+        # with only the factor `n` undefined
+        def param_size(min_, step, n) -> int:
+            return int(min_ + n * step)
+
+        def const_size(sz, _n) -> int:
+            return sz
+
+        # find the ideal factor for each axis and a function of to determine the size
+        for axis in spec_axes:
 
             axis_name = SPEC_TO_VIGRA[axis.id]
             axis_size = axis.size
 
             if isinstance(axis_size, SizeReference):
-                ref_size = self.realize_size_reference(axis_size)
                 n = 0
+                ref_size = self.realize_size_reference(axis_size)
                 explicit_size = axis_size.get_size(axis, ref_size, n)
                 if isinstance(ref_size.size, ParameterizedSize):
                     while explicit_size < target_size:
                         n += 1
                         explicit_size = axis_size.get_size(axis, ref_size, n)
-                best_axes[axis_name] = int(explicit_size)
+                factors.append(n)
+                size_funcs[axis_name] = partial(axis_size.get_size, axis, ref_size)
             elif isinstance(axis_size, ParameterizedSize):
-                factor = np.ceil((target_size - axis_size.min) / axis_size.step)
-                best_axes[axis_name] = int(axis_size.min + factor * axis_size.step)
+                size_diff = target_size - axis_size.min
+                if size_diff > 0:
+                    factor = np.ceil(size_diff / axis_size.step)
+                else:
+                    factor = 0
+                size_funcs[axis_name] = partial(param_size, axis_size.min, axis_size.step)
+                factors.append(factor)
             elif isinstance(axis_size, int):
-                best_axes[axis_name] = axis_size
+                size_funcs[axis_name] = partial(const_size, axis_size)
             else:
                 raise NotImplementedError
-        return best_axes
+
+        # if all sizes are fixed, factors might be empty
+        min_factor = min(factors) if factors else None
+        for k, f in size_funcs.items():
+            sized_axes[k] = f(min_factor)
+
+        return sized_axes
 
 
 class OutputAxisUtils(AxisUtils):
