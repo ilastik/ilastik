@@ -109,19 +109,6 @@ class ModelSession:
 
         return ["".join([SPEC_TO_VIGRA[axis.id] for axis in self.input_descr.axes])]
 
-    def get_output_shapes(self) -> Dict[str, Sequence[Dict[str, int]]]:
-        """Get output shapes for all model output
-
-        shape = shape(reference_input_tensor) * scale + 2 * offset
-
-        linked via index to `output_names`
-
-        Update:
-            - why 2*offset
-            - it being used only for self.known_classes, which needs only the channel element of the output tensor descr
-        """
-        raise NotImplementedError
-
     @property
     def has_training(self) -> bool:
         return False
