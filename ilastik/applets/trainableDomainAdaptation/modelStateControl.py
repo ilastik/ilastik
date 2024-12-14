@@ -1,5 +1,7 @@
 import logging
 
+import requests
+
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QComboBox, QHBoxLayout, QLabel, QToolButton, QVBoxLayout
 
@@ -10,7 +12,7 @@ logger = logging.getLogger(__file__)
 
 
 class BioImageModelCombo(QComboBox):
-    collections_url = "https://raw.githubusercontent.com/bioimage-io/collection-bioimage-io/gh-pages/collection.json"
+    collections_url = "https://uk1s3.embassy.ebi.ac.uk/public-datasets/bioimage.io/collection.json"
     _SELECT_FILE = object()
     _REMOVE_FILE = object()
 
@@ -71,13 +73,16 @@ class BioImageModelCombo(QComboBox):
 
     def refresh(self):
         # do this in the background, indicate busyness
-        from bioimageio.spec.shared import BIOIMAGEIO_COLLECTION, BIOIMAGEIO_COLLECTION_ERROR
+        resp = requests.get(self.collections_url)
 
         self.clear()
 
-        if BIOIMAGEIO_COLLECTION is None:
-            logger.error(f"Error fetching models from bioimage.io: {BIOIMAGEIO_COLLECTION_ERROR}")
+        if resp.status_code != 200:
+            self.addItem("error fetching model list", {})
+            logger.error(f"Error fetching model list from {self.collections_url}: {resp.status_code=}")
             return
+
+        BIOIMAGEIO_COLLECTION = resp.json()
 
         self.addItem("choose model..", {})
         self.insertSeparator(1)

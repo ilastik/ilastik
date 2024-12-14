@@ -59,7 +59,7 @@ outputs:
         - python-elf >=0.4.8
         - scikit-image
         - scikit-learn
-        - tifffile
+        - tifffile >=2022
         # build 1.11.1=*_1028 on cf is the first to be compatible with numpy>1.19
         # need to bump this manually until there is a true version bump in vigra
         - vigra
@@ -68,9 +68,10 @@ outputs:
         - zarr 2.*
       run_constrained:
         - mkl <2024.1.0
-        - tiktorch 24.9.0*
+        - tiktorch 24.12.0
         - volumina >=1.3.10
-        - sphericaltexture >=0.0.4
+        # TODO: sphericaltexture 0.1.1 currently times out in the tests
+        - sphericaltexture 0.0.4
         # pyshtools 4.10 conflicts with pytorch via openmp on windows
         - pyshtools >=4.12
 

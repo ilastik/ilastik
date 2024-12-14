@@ -73,11 +73,10 @@ class LocalWorkflow(_NNWorkflowBase):
         self._applets.append(self.nnClassificationApplet)
 
     def cleanUp(self):
+        super().cleanUp()
         self.nnClassificationApplet.tiktorchController.closeSession()
         if self._launcher._process:
             self._launcher.stop()
-
-        super().cleanUp()
 
     def _setup_classifier_op_for_batch(self):
         # nothing to do for local workflow

@@ -13,7 +13,7 @@ dependencies:
   - fastfilters
   - future
   - greenlet
-  - grpcio 1.41.*
+  - grpcio 1.49.1
   - h5py
   - hytra
   - ilastik-feature-selection
@@ -37,7 +37,7 @@ dependencies:
   - scikit-learn
   # for python 3.7 compatible environment use
   # tiffile >2020.9.22,<=2021.11.2
-  - tifffile
+  - tifffile >=2022
   # build 1.11.1=*_1028 on cf is the first to be compatible with numpy>1.19
   # need to bump this manually until there is a true version bump in vigra
   - vigra 1.11.1=*_1033
@@ -54,7 +54,7 @@ dependencies:
   - pytorch <2.4.1  # >=2.4 can clash with pyshtools on win; 2.2.2 newest available on osx
   - cpuonly  # comment out for pytorch with cuda
   # - pytorch-cuda=11.3  # uncomment for pytorch with cuda, specify cuda version
-  - tiktorch 24.9.0*
+  - tiktorch 24.12.0
   # mamba does not "respect" track_features, which is the idea behind cpuonly,
   # with ilastik-pytorch-version-helper-cpu we help mamba on linux and windows
   # to install a cpu-build
@@ -63,7 +63,8 @@ dependencies:
 
   # Third-party object feature plugins
   - sphericaltexture_plugin
-  - sphericaltexture >=0.0.4
+  # TODO: sphericaltexture 0.1.1 currently times out in the tests
+  - sphericaltexture 0.0.4
   - pyshtools >=4.12  # If >=4.13 becomes available for win, might be able to unpin pytorch
 
   # dev-only dependencies
