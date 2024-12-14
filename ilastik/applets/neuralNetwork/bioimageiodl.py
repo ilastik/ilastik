@@ -58,7 +58,7 @@ class BioImageDownloader(QThread):
             from bioimageio.spec._internal.io import download
 
             logger.debug(f"Downloading model from {self._model_uri}")
-            rd = load_description(self._model_uri, perform_io_checks=False)
+            rd = load_description(self._model_uri, format_version="latest", perform_io_checks=False)
             package_content = get_resource_package_content(rd)
 
             for k, v in TqdmExt(
