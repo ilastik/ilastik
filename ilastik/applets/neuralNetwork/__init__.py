@@ -19,4 +19,5 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 from .nnClassApplet import *
+from .nnTrainingClassApplet import *
 from .nnClassificationDataExportApplet import NNClassificationDataExportApplet

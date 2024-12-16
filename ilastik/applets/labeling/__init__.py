@@ -23,3 +23,7 @@ from __future__ import absolute_import
 from .labelingApplet import LabelingApplet
 from .labelingSingleLaneApplet import LabelingSingleLaneApplet
 from .opLabeling import OpLabelingTopLevel, OpLabelingSingleLane
+import os
+from pathlib import Path
+
+LABELING_DIR = Path(os.path.dirname(__file__))

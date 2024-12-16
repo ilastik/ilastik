@@ -763,6 +763,7 @@ class IlastikShell(QMainWindow):
                     "AutocontextTwoStage",
                     "Neural Network Classification (Local)",
                     "Neural Network Classification (Remote)",
+                    "Neural Network Training Classification (Local) (beta)",
                     "Trainable Domain Adaptation (Local) (beta)",
                     "Carving",
                     "Edge Training With Multicut",

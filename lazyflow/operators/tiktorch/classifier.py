@@ -21,6 +21,7 @@
 ###############################################################################
 from __future__ import annotations
 import logging
+from pathlib import Path
 import socket
 import numpy
 import warnings
@@ -29,13 +30,22 @@ from typing import Callable, Dict, Iterable, Sequence, Tuple, Union, TYPE_CHECKI
 
 import xarray
 import grpc
+import yaml
 
 from lazyflow.request import Request
 from lazyflow.roi import roiToSlice
 from lazyflow.futures_utils import MappableFuture, map_future
 
 from tiktorch import converters
-from tiktorch.proto import data_store_pb2, data_store_pb2_grpc, inference_pb2, inference_pb2_grpc
+from tiktorch.proto import (
+    training_pb2,
+    training_pb2_grpc,
+    data_store_pb2,
+    data_store_pb2_grpc,
+    inference_pb2,
+    inference_pb2_grpc,
+    utils_pb2,
+)
 
 from vigra import AxisTags
 
@@ -52,44 +62,44 @@ logger = logging.getLogger(__name__)
 
 
 class ModelSession:
-    def __init__(self, session, model_descr: ModelDescr, factory):
-        self.__session = session
-        self.__model_descr = model_descr
-        self.__factory = factory
+    def __init__(self, session, model_descr: ModelDescr, factory: Connections):
+        self._session = session
+        self._model_descr = model_descr
+        self._factory = factory
 
     @property
     def tiktorchClient(self):
-        return self.__factory._client
+        return self._factory._client
 
     def create_and_train_pixelwise(self, *args, **kwargs):
-        self.__factory.create_and_train_pixelwise(*args, **kwargs)
+        self._factory.create_and_train_pixelwise(*args, **kwargs)
         return self
 
     @property
     def name(self) -> str:
-        return self.__model_descr.name
+        return self._model_descr.name
 
     @property
     def input_descr(self) -> InputTensorDescr:
-        inputs = self.__model_descr.inputs
+        inputs = self._model_descr.inputs
         assert len(inputs) == 1
         return inputs[0]
 
     @property
     def output_descr(self) -> OutputTensorDescr:
-        outputs = self.__model_descr.outputs
+        outputs = self._model_descr.outputs
         assert len(outputs) == 1
         return outputs[0]
 
     @property
     def input_names(self) -> Sequence[str]:
         """Get names/ids for all model inputs"""
-        return [tensor.id for tensor in self.__model_descr.inputs]
+        return [tensor.id for tensor in self._model_descr.inputs]
 
     @property
     def output_names(self) -> Sequence[str]:
         """Get names/ids for all model outputs"""
-        return [tensor.id for tensor in self.__model_descr.outputs]
+        return [tensor.id for tensor in self._model_descr.outputs]
 
     @property
     def input_axes(self) -> List[str]:
@@ -113,7 +123,7 @@ class ModelSession:
     def has_training(self) -> bool:
         return False
 
-    def get_halos(self, axes: Union[str, AxisTags] = "zyx") -> Dict[str, Tuple[int]]:
+    def get_halos(self, axes: Union[str, AxisTags] = "zyx") -> Dict[str, Tuple[int, ...]]:
         """Get halo sizes for all model outputs
 
         linked to `output_names` via keys in returned dict
@@ -127,7 +137,7 @@ class ModelSession:
 
         if isinstance(axes, AxisTags):
             axes = "".join(axes.keys())
-        axis_utils = OutputAxisUtils.from_model_descr(self.__model_descr)
+        axis_utils = OutputAxisUtils.from_model_descr(self._model_descr)
         default_axes = defaultdict(lambda: 0, axis_utils.get_halos(self.output_descr.id))
         return {str(self.output_descr.id): tuple(default_axes[axis] for axis in axes)}
 
@@ -147,7 +157,7 @@ class ModelSession:
 
         if isinstance(axes, AxisTags):
             axes = "".join(axes.keys())
-        axis_utils = InputAxisUtils(self.__model_descr.inputs)
+        axis_utils = InputAxisUtils(self._model_descr.inputs)
         explicit_shape = axis_utils.get_best_tile_shape(self.input_descr.id)
         logger.warning(f"Best tile estimated {explicit_shape}")
         default_axes = defaultdict(lambda: 1, explicit_shape)
@@ -198,7 +208,7 @@ class ModelSession:
         self.tikTorchClient.remove_data("training", to_remove)
 
     def close(self):
-        self.tiktorchClient.CloseModelSession(self.__session)
+        self.tiktorchClient.CloseModelSession(self._session)
 
     def predict(
         self, tensors: Sequence[numpy.ndarray], rois: Sequence[numpy.ndarray], axistags: Sequence[AxisTags]
@@ -246,16 +256,18 @@ class ModelSession:
             for t, at, ati in zip(tensors, axistags, input_axes)
         ]
 
+        tensor_id = self.input_names[0]  # we support one tensor input models
+
         try:
             current_rq = Request._current_request()
             pb_tensors = [
-                converters.numpy_to_pb_tensor(self.input_descr.id, t, axistags=self.input_axes_spec_format)
+                converters.numpy_to_pb_tensor(tensor_id, t, axistags=self.input_axes_spec_format)
                 for t in reordered_tensors
             ]
             resp = self.tiktorchClient.Predict.future(
-                inference_pb2.PredictRequest(
+                utils_pb2.PredictRequest(
                     tensors=pb_tensors,
-                    modelSessionId=self.__session.id,
+                    modelSessionId=self._session,
                 )
             )
             resp.add_done_callback(lambda o: current_rq._wake_up())
@@ -283,6 +295,93 @@ class ModelSession:
 
         logger.debug(f"result without halo {shapes_wo_halo}. Now result has shape: ({[r.shape for r in results]}).")
         return results
+
+
+class UnetConfig:
+    def __init__(self, yaml_config_str: str):
+        # config should be a class, not a hardcoded yaml config
+        # should this be provided by tiktorch?
+        self._yaml_config_str = yaml_config_str
+        self._yaml_config = yaml.safe_load(yaml_config_str)
+
+    def get_num_in_classes(self) -> int:
+        # todo
+        return self._yaml_config["model"]["in_channels"]
+
+    def get_num_out_classes(self) -> int:
+        return self._yaml_config["model"]["out_channels"]
+
+
+class ModelUnetSession(ModelSession):
+    def __init__(self, factory, session: training_pb2.TrainingSessionId, unet_config: UnetConfig):
+        # for now attempt to skip model_descr and override methods that are dependent on it
+        super().__init__(session=session, factory=factory, model_descr=None)
+        self._unet_config = unet_config
+
+    @property
+    def unet_config(self) -> UnetConfig:
+        return self._unet_config
+
+    @property
+    def output_axes(self):
+        # pytorch 3d unet always returns b, c, z, y, x
+        return ["bczyx"]
+
+    @property
+    def input_axes(self):
+        # pytorch 3d unet accepts b, c, z, y, x
+        return ["bczyx"]
+
+    @property
+    def output_names(self):
+        return ["output"]
+
+    @property
+    def input_names(self):
+        return ["input"]
+
+    @property
+    def input_axes_spec_format(self) -> List[str]:
+        return ["b", "c", "z", "y", "x"]
+
+    def get_input_shapes(self, axes: Union[str, AxisTags] = "itzyxc"):
+        # what input shapes 3d unet expects? Isn't size invariant as long as it is a power of 2?
+        # for now return that all shapes are valid by setting the minimum valid shape to 1
+        in_channels_num = self._unet_config.get_num_in_classes()
+        return {self.input_names[0]: [tuple(256 if axis != "c" else in_channels_num for axis in axes)]}
+
+    def get_output_shapes(self):
+        # ?
+        raise NotImplementedError
+
+    def get_halos(self, axes: Union[str, AxisTags] = "zyx"):
+        """
+        get halos from pytorch 3d unet config?
+        """
+        return {self.output_names[0]: tuple(0 if axis != "c" else 0 for axis in axes)}
+
+    @property
+    def known_classes(self) -> Sequence[int]:
+        return list(range(1, self._unet_config.get_num_out_classes() + 1))
+
+    def start_training(self):
+        res = self.tiktorchClient.Start.future(self._session)
+        res.result()
+
+    def resume_training(self):
+        res = self.tiktorchClient.Resume.future(self._session)
+        res.result()
+
+    def pause_training(self):
+        res = self.tiktorchClient.Pause.future(self._session)
+        res.result()
+
+    def close(self):
+        self.tiktorchClient.CloseTrainerSession(self._session)
+
+    def export(self, file_path: Path):
+        export_request = training_pb2.ExportRequest(modelSessionId=self._session, filePath=str(file_path))
+        self.tiktorchClient.Export(export_request)
 
 
 def reorder_axes(
@@ -334,7 +433,7 @@ class Connection(_base.IConnection):
         self._upload_client = upload_client
 
     def get_devices(self):
-        resp = self._client.ListDevices(inference_pb2.Empty())
+        resp = self._client.ListDevices(utils_pb2.Empty())
         return [(d.id, d.id) for d in resp.devices]
 
     def upload(self, content: bytes, *, progress_cb: Callable[[int], None], cancel_token=None) -> MappableFuture[str]:
@@ -359,6 +458,26 @@ class Connection(_base.IConnection):
             inference_pb2.CreateModelSessionRequest(model_uri=f"upload://{upload_id}", deviceIds=devices)
         )
         return session_id
+
+
+class TrainingConnection(_base.IConnection):
+    UPLOAD_CHUNK_SIZE = 1 * 1024 * 1024  # 1mb
+
+    def __init__(self, client: training_pb2_grpc.TrainingStub):
+        self._client = client
+
+    def get_devices(self):
+        resp = self._client.ListDevices(utils_pb2.Empty())
+        return [(d.id, d.id) for d in resp.devices]
+
+    def init_training(self, unet_config: UnetConfig) -> training_pb2.TrainingSessionId:
+        # todo: set devices
+        init_request = training_pb2.TrainingConfig(yaml_content=unet_config._yaml_config_str)
+        session_id = self._client.Init(init_request)
+        return session_id
+
+
+Connections = Union[Connection, TrainingConnection]
 
 
 class TiktorchConnectionFactory(_base.IConnectionFactory):
@@ -414,3 +533,23 @@ class TiktorchConnectionFactory(_base.IConnectionFactory):
                 self.launcher.stop()
             except AttributeError:
                 pass
+
+
+class TiktorchUnetConnectionFactory(TiktorchConnectionFactory):
+    def ensure_connection(self, config) -> TrainingConnection:
+        if self._connection:
+            return self._connection
+
+        _100_MB = 100 * 1024 * 1024
+        server_config = config
+        host, port = server_config.address.split(":")
+        addr = socket.gethostbyname(host)
+        logger.debug("Trying to connect to tiktorch server using %s(%s):%s", host, addr, port),
+        self._chan = grpc.insecure_channel(
+            f"{addr}:{port}",
+            options=[("grpc.max_send_message_length", _100_MB), ("grpc.max_receive_message_length", _100_MB)],
+        )
+        client = training_pb2_grpc.TrainingStub(self._chan)
+        self._devices = [d.id for d in server_config.devices if d.enabled]
+        self._connection = TrainingConnection(client)
+        return self._connection
