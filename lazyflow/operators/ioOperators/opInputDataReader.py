@@ -19,6 +19,8 @@
 # This information is also available on the ilastik web site at:
 #          http://ilastik.org/license/
 ###############################################################################
+from pathlib import Path
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedArrayCache, OpMetadataInjector, OpSubRegion
 from .opNpyFileReader import OpNpyFileReader
@@ -38,7 +40,7 @@ from lazyflow.operators.ioOperators import (
     OpImageReader,
 )
 from lazyflow.utility.jsonConfig import JsonConfigParser
-from lazyflow.utility.pathHelpers import lsH5N5, isUrl, isRelative, splitPath, PathComponents
+from lazyflow.utility.pathHelpers import lsH5N5, isRelative, splitPath, PathComponents, isUrl
 from .opOMEZarrMultiscaleReader import OpOMEZarrMultiscaleReader
 
 from .opStreamingUfmfReader import OpStreamingUfmfReader
@@ -80,7 +82,7 @@ class OpInputDataReader(Operator):
     category = "Input"
 
     videoExts = ["ufmf", "mmf"]
-    h5_n5_Exts = ["h5", "hdf5", "ilp", "n5", "zarr"]
+    h5_n5_Exts = ["h5", "hdf5", "ilp", "n5"]
     n5Selection = [
         "json",
         "zgroup",
@@ -133,7 +135,7 @@ class OpInputDataReader(Operator):
         FilePath: Optional[str] = None,
         SequenceAxis: Optional[str] = None,
         SubVolumeRoi: Optional[Tuple[int, int]] = None,
-        ActiveScale: Optional[InputSlot] = None,
+        ActiveScale: Optional[str] = None,
         *args,
         **kwargs,
     ):
@@ -295,21 +297,17 @@ class OpInputDataReader(Operator):
             return ([], None)
 
     def _attemptOpenAsOmeZarrUri(self, filePath):
-        # Local file system paths with .zarr are handled in _attemptOpenAsH5N5
-        path = PathComponents(filePath)
-        if path.extension != ".zarr":
+        if PathComponents(filePath).extension != ".zarr":
             return ([], None)
+        if not isUrl(filePath):
+            filePath = Path(filePath).as_uri()
         if not (filePath.startswith("http") or filePath.startswith("file")):
             return ([], None)
         # DatasetInfo instantiates a standalone OpInputDataReader to obtain laneShape and dtype.
         # We pass this down to the loader so that it can avoid loading scale metadata unnecessarily.
         reader = OpOMEZarrMultiscaleReader(parent=self, metadata_only_mode=self.parent is None)
-        if path.internalPath and self.parent:
-            # Headless/batch
-            reader.Scale.setValue(path.internalPath.lstrip("/"))
-        else:
-            reader.Scale.connect(self.ActiveScale)
-        reader.BaseUri.setValue(path.externalPath)
+        reader.Scale.connect(self.ActiveScale)
+        reader.Uri.setValue(filePath)
         return [reader], reader.Output
 
     def _attemptOpenAsRESTfulPrecomputedChunkedVolume(self, filePath):

@@ -23,6 +23,7 @@ import logging
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore
+from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +39,8 @@ class OpOMEZarrMultiscaleReader(Operator):
 
     name = "OpOMEZarrMultiscaleReader"
 
-    BaseUri = InputSlot()
-    Scale = InputSlot(optional=True)
+    Uri = InputSlot()  # May point to any path within an OME-Zarr group
+    Scale = InputSlot(optional=True)  # Selected through GUI
 
     Output = OutputSlot()
 
@@ -49,19 +50,21 @@ class OpOMEZarrMultiscaleReader(Operator):
         self._store = None
 
     def setupOutputs(self):
-        if self._store is not None and self._store.uri == self.BaseUri.value:
-            # Must not set Output.meta here.
+        if self._store is not None and self._store.base_uri in self.Uri.value:
+            # Must not set Output.meta here, because downstream ilastik can't handle changing lane shape
             return
-
-        self._store = OMEZarrStore(self.BaseUri.value, self._load_only_one_scale)
-        active_scale = self.Scale.value if self.Scale.ready() else self._store.lowest_resolution_key
+        # self.Scale is not ready when coming through instantiate_dataset_info -> MultiscaleUrlDatasetInfo.__init__
+        # it's ready but == DEFAULT_SCALE_KEY when coming through OpDataSelection after first loading the dataset
+        # it's ready and != DEFAULT_SCALE_KEY after selecting a scale in the GUI
+        selected_scale = self.Scale.value if self.Scale.ready() and self.Scale.value != DEFAULT_SCALE_KEY else None
+        self._store = OMEZarrStore(self.Uri.value, selected_scale, single_scale_mode=self._load_only_one_scale)
+        active_scale = selected_scale or self._store.scale_sub_path or self._store.lowest_resolution_key
         self.Output.meta.shape = self._store.get_shape(active_scale)
         self.Output.meta.dtype = self._store.dtype
         self.Output.meta.axistags = self._store.axistags
         self.Output.meta.scales = self._store.multiscales
-        self.Output.meta.active_scale = active_scale  # Used by export to correlate export with input scale
-        # To feed back to DatasetInfo and hence the project file
-        self.Output.meta.lowest_scale = self._store.lowest_resolution_key
+        # Used to correlate export with input scale, to feed back to DatasetInfo, and in execute
+        self.Output.meta.active_scale = active_scale
         # Many public OME-Zarr datasets are chunked as full xy slices,
         # so orthoviews lead to downloading the entire dataset.
         self.Output.meta.prefer_2d = True
@@ -69,8 +72,7 @@ class OpOMEZarrMultiscaleReader(Operator):
         self.Output.meta.ome_zarr_meta = self._store.ome_meta_for_export
 
     def execute(self, slot, subindex, roi, result):
-        scale = self.Scale.value if self.Scale.ready() and self.Scale.value else self._store.lowest_resolution_key
-        result[...] = self._store.request(roi, scale)
+        result[...] = self._store.request(roi, self.Output.meta.active_scale)
         return result
 
     def propagateDirty(self, slot, subindex, roi):

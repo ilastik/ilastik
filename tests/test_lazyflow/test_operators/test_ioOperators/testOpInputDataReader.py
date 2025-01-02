@@ -1,6 +1,3 @@
-from builtins import range
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -23,6 +20,8 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 from lazyflow.operators.ioOperators import OpInputDataReader
+from lazyflow.operator import Operator
+import json
 import os
 import numpy
 import vigra
@@ -31,8 +30,19 @@ import tempfile
 import shutil
 import h5py
 import pytest
+import zarr
 
+from collections import OrderedDict
+from typing import Tuple, List
 from PIL import Image
+
+from lazyflow.utility.io_util.OMEZarrStore import (
+    OME_ZARR_V_0_4_KWARGS,
+    OMEZarrMultiscaleMeta,
+    InvalidTransformationError,
+    NotAnOMEZarrMultiscale,
+)
+from lazyflow.utility.io_util.multiscaleStore import Multiscales
 
 
 class TestOpInputDataReader(object):
@@ -267,3 +277,256 @@ class TestOpInputDataReader(object):
             assert (all_data == a[10:50, 20:70, 30:90]).all()
         finally:
             opReader.cleanUp()
+
+
+class TestOpInputDataReaderWithOMEZarr:
+    """
+    Extends end-to-end test in test_HeadlessPixelClassificationWorkflow
+    with additional test cases:
+    - OME-Zarr store with
+        - multiple multiscales entries (though no such stores exist or are expected)
+        - scales of one multiscale distributed across several zgroups
+            (a typical output of ngff_zarr in its current version)
+    - Dataset location given as path vs. as URI
+    - Scale selection via /direct/path/to.zarr/scale
+    - Scale selection via ActiveScale inputslot
+    """
+
+    PathTuple = Tuple[str, str, str]  # container root, raw scale, downscale
+
+    @pytest.fixture(
+        ids=[
+            "typical",
+            "with_dataset_name",
+            "ngff_zarr_layout",
+            "typical_labels",
+            "labels_with_dataset_name",
+            "labels_inverted_layout",
+            "typical_well_fov",
+        ],
+        params=[
+            ("some.zarr", "s0", "s1"),
+            ("some.zarr", "correct/s0", "correct/s1"),
+            ("some.zarr", "s0/correct", "s1/correct"),
+            ("some.zarr/labels/nuclei", "s0", "s1"),  # labels (./labels/name/scales)
+            ("some.zarr/labels/nuclei", "correct/s0", "correct/s1"),
+            ("some.zarr/labels/nuclei", "s0/correct", "s1/correct"),
+            ("some.zarr/A/1/0", "s0", "s1"),  # well (./row/column/field-of-view/scales)
+        ],
+    )
+    def ome_zarr_store_on_disc(
+        self, tmp_path, request, monkeypatch
+    ) -> Tuple[PathTuple, List[numpy.array], Multiscales, OMEZarrMultiscaleMeta]:
+        """Sets up a zarr store of a random image at raw scale and a downscale.
+        Returns dataset paths, datasets, and the metadata expected on the
+        reader's output slot."""
+        subdir, path0, path1 = request.param
+        zarr_dir = tmp_path / subdir
+        zarr_dir.mkdir(parents=True, exist_ok=True)
+
+        dataset_shape = [3, 100, 100]  # cyx - to match the 2d3c project
+        scaled_shape = [3, 50, 50]
+        chunk_size = [3, 64, 64]
+        correct_multiscale_zattrs = {
+            "name": "some.zarr",
+            "type": "Sample",
+            "version": "0.4",
+            "axes": [
+                {"type": "space", "name": "c"},
+                {"type": "space", "name": "y", "unit": "pixel"},
+                {"type": "space", "name": "x", "unit": "pixel"},
+            ],
+            "datasets": [
+                {
+                    "path": path0,
+                    "coordinateTransformations": [
+                        {"scale": [1.0 for _ in dataset_shape], "type": "scale"},
+                        {"translation": [0.0 for _ in dataset_shape], "type": "translation"},
+                    ],
+                },
+                {
+                    "path": path1,
+                    "coordinateTransformations": [
+                        {"scale": [2.0 for _ in scaled_shape], "type": "scale"},
+                        {"translation": [0.0 for _ in scaled_shape], "type": "translation"},
+                    ],
+                },
+            ],
+            "coordinateTransformations": [],
+        }
+        full_zattrs = {
+            "multiscales": [
+                {  # Additional multiscales entry to test that the correct one (the other one) is used
+                    "version": "0.4",
+                    "axes": [
+                        {"type": "space", "name": "y"},
+                        {"type": "space", "name": "x"},
+                    ],
+                    "datasets": [{"path": "wrong/s0"}],
+                },
+                correct_multiscale_zattrs,
+            ]
+        }
+        (zarr_dir / ".zattrs").write_text(json.dumps(full_zattrs))
+
+        image_original = numpy.random.randint(0, 256, dataset_shape, dtype=numpy.uint16)
+        image_scaled = image_original[:, ::2, ::2]
+        chunks = tuple(chunk_size)
+
+        zarr.array(
+            image_original,
+            chunks=chunks,
+            store=zarr.DirectoryStore(str(zarr_dir / path0)),
+            **OME_ZARR_V_0_4_KWARGS,
+        )
+        zarr.array(
+            image_scaled,
+            chunks=chunks,
+            store=zarr.DirectoryStore(str(zarr_dir / path1)),
+            **OME_ZARR_V_0_4_KWARGS,
+        )
+
+        expected_images = [image_original, image_scaled]
+        # Scales metadata for GUI
+        expected_multiscales = OrderedDict(
+            [
+                (path0, OrderedDict(zip("cyx", dataset_shape))),
+                (path1, OrderedDict(zip("cyx", scaled_shape))),
+            ]
+        )
+        # Singleton the error so that OMEZarrMultiscaleMeta objects can be eq compared
+        err_placeholder = InvalidTransformationError()
+        monkeypatch.setattr(InvalidTransformationError, "__new__", lambda _: err_placeholder)
+        # OME-Zarr metadata for export
+        expected_additional_meta = OMEZarrMultiscaleMeta.from_multiscale_spec(correct_multiscale_zattrs)
+
+        return request.param, expected_images, expected_multiscales, expected_additional_meta
+
+    @pytest.fixture
+    def parent(self, graph):
+        # provide a noop parent so that OpInputDataReader doesn't drop into single-scale mode
+        return Operator(graph=graph)
+
+    def test_load_from_file_path(self, tmp_path, parent, ome_zarr_store_on_disc):
+        paths, expected_images, expected_multiscales, expected_additional_meta = ome_zarr_store_on_disc
+        zarr_dir, path0, _ = paths
+        # Request raw scale to test that the full path is used.
+        # The loader implementation defaults to loading the lowest resolution (last scale).
+        raw_data_path = tmp_path / zarr_dir / path0
+        reader = OpInputDataReader(parent=parent)
+        reader.FilePath.setValue(str(raw_data_path))
+        reader.WorkingDirectory.setValue(str(zarr_dir))
+
+        assert reader.Output.meta.scales == expected_multiscales
+        assert reader.Output.meta.ome_zarr_meta == expected_additional_meta
+
+        loaded_data = reader.Output[:].wait()
+
+        numpy.testing.assert_array_equal(loaded_data, expected_images[0])
+
+    def test_load_from_file_uri(self, tmp_path, parent, ome_zarr_store_on_disc):
+        paths, expected_images, expected_multiscales, expected_additional_meta = ome_zarr_store_on_disc
+        zarr_dir, path0, _ = paths
+        # Request raw scale to test that the full path is used.
+        # The loader implementation defaults to loading the lowest resolution (last scale).
+        raw_data_path = tmp_path / zarr_dir / path0
+        reader = OpInputDataReader(parent=parent)
+        reader.FilePath.setValue(raw_data_path.as_uri())
+        reader.WorkingDirectory.setValue(str(zarr_dir))
+
+        assert reader.Output.meta.scales == expected_multiscales
+        assert reader.Output.meta.ome_zarr_meta == expected_additional_meta
+
+        loaded_data = reader.Output[:].wait()
+
+        numpy.testing.assert_array_equal(loaded_data, expected_images[0])
+
+    def test_load_from_file_uri_without_parent(self, tmp_path, graph, ome_zarr_store_on_disc):
+        paths, expected_images, expected_multiscales, expected_additional_meta = ome_zarr_store_on_disc
+        zarr_dir, path0, path1 = paths
+        # Request downscale to test that the full path is used.
+        # Without parent, the loader defaults to loading the first scale (highest resolution).
+        raw_data_path = tmp_path / zarr_dir / path1
+        reader = OpInputDataReader(graph=graph)
+        reader.FilePath.setValue(raw_data_path.as_uri())
+
+        assert path1 in reader.Output.meta.scales
+        assert path0 not in reader.Output.meta.scales
+        assert reader.Output.meta.scales[path1] == expected_multiscales[path1]
+        assert reader.Output.meta.ome_zarr_meta == expected_additional_meta
+
+        loaded_data = reader.Output[:].wait()
+
+        numpy.testing.assert_array_equal(loaded_data, expected_images[1])
+
+    def test_load_from_file_path_via_slot(self, tmp_path, parent, ome_zarr_store_on_disc):
+        paths, expected_images, expected_multiscales, expected_additional_meta = ome_zarr_store_on_disc
+        zarr_subdir, path0, _ = paths
+        zarr_dir = tmp_path / zarr_subdir
+        reader = OpInputDataReader(parent=parent, ActiveScale=path0)
+        reader.FilePath.setValue(str(zarr_dir))
+        reader.WorkingDirectory.setValue(zarr_dir)
+
+        assert reader.Output.meta.scales == expected_multiscales
+        assert reader.Output.meta.ome_zarr_meta == expected_additional_meta
+
+        loaded_data = reader.Output[:].wait()
+
+        numpy.testing.assert_array_equal(loaded_data, expected_images[0])
+
+    def test_load_from_file_uri_via_slot(self, tmp_path, parent, ome_zarr_store_on_disc):
+        paths, expected_images, expected_multiscales, expected_additional_meta = ome_zarr_store_on_disc
+        zarr_subdir, path0, _ = paths
+        zarr_dir = tmp_path / zarr_subdir
+        reader = OpInputDataReader(parent=parent, ActiveScale=path0)
+        reader.FilePath.setValue(zarr_dir.as_uri())
+        reader.WorkingDirectory.setValue(zarr_dir)
+
+        assert reader.Output.meta.scales == expected_multiscales
+        assert reader.Output.meta.ome_zarr_meta == expected_additional_meta
+
+        loaded_data = reader.Output[:].wait()
+
+        numpy.testing.assert_array_equal(loaded_data, expected_images[0])
+
+    def test_load_labels_options(self, tmp_path, parent):
+        labels_zattrs = {"labels": ["nuclei", "Cells"]}  # case-sensitive
+        labels_dir = tmp_path / "some.zarr/labels"
+        labels_dir.mkdir(parents=True, exist_ok=True)
+        (labels_dir / ".zattrs").write_text(json.dumps(labels_zattrs))
+
+        reader = OpInputDataReader(parent=parent)
+        expected_uris = [(labels_dir / "nuclei").as_uri(), (labels_dir / "Cells").as_uri()]
+        with pytest.raises(NotAnOMEZarrMultiscale) as e:
+            reader.FilePath.setValue(str(labels_dir))
+        assert "labels directory" in str(e.value), str(e.value)
+        assert all(expected in str(e.value) for expected in expected_uris), str(e.value)
+
+    def test_load_well_options(self, tmp_path, parent):
+        # sub-path within well not expected in real data, but should be able to handle it
+        well_zattrs = {"well": {"images": [{"path": "suB/0"}, {"path": "suB/1"}]}}
+        well_dir = tmp_path / "some.zarr/A/1"
+        well_dir.mkdir(parents=True, exist_ok=True)
+        (well_dir / ".zattrs").write_text(json.dumps(well_zattrs))
+
+        reader = OpInputDataReader(parent=parent)
+        expected_uris = [(well_dir / "suB/0").as_uri(), (well_dir / "suB/1").as_uri()]
+        requested_uri = (well_dir / "suB").as_uri()
+        with pytest.raises(NotAnOMEZarrMultiscale) as e:
+            reader.FilePath.setValue(str(requested_uri))
+        assert "well directory" in str(e.value), str(e.value)
+        assert all(expected in str(e.value) for expected in expected_uris), str(e.value)
+
+    def test_load_plate_options(self, tmp_path, parent):
+        plate_zattrs = {"plate": {"wells": [{"path": "A/1"}, {"path": "B/2"}]}}
+        plate_dir = tmp_path / "some.zarr"
+        plate_dir.mkdir(parents=True, exist_ok=True)
+        (plate_dir / ".zattrs").write_text(json.dumps(plate_zattrs))
+
+        reader = OpInputDataReader(parent=parent)
+        expected_uris = [(plate_dir / "A/1").as_uri(), (plate_dir / "B/2").as_uri()]
+        requested_uri = (plate_dir / "A").as_uri()
+        with pytest.raises(NotAnOMEZarrMultiscale) as e:
+            reader.FilePath.setValue(str(requested_uri))
+        assert "plate directory" in str(e.value), str(e.value)
+        assert all(expected in str(e.value) for expected in expected_uris), str(e.value)

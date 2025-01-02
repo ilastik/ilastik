@@ -24,13 +24,14 @@ import logging
 import math
 import os
 from collections import OrderedDict
-from typing import Dict, List, Optional, Union, Literal, Tuple
+from typing import Dict, List, Optional, Union, Literal, Tuple, Any
 from urllib.parse import unquote_to_bytes
 
 import jsonschema
 import vigra
 from aiohttp import ClientConnectorError
 from zarr.core import Array as ZarrArray
+from zarr.errors import ArrayNotFoundError
 from zarr.storage import FSStore, LRUStoreCache
 
 from lazyflow import rtype
@@ -41,6 +42,65 @@ logger = logging.getLogger(__name__)
 
 OME_ZARR_V_0_4_KWARGS = dict(dimension_separator="/", normalize_keys=False)
 OME_ZARR_V_0_1_KWARGS = dict(dimension_separator=".")
+
+OME_ZARR_DATASET = Dict[Literal["path", "coordinateTransformations"], Any]  # single dataset (= scale)
+OME_ZARR_MULTISCALE = Dict[  # single multiscales entry of a json-validated OME-Zarr zattrs (any version)
+    # The spec allows for multiple multiscales, but in practice we only ever see one.
+    Literal["axes", "datasets", "version", "coordinateTransformations", "name"],
+    Union[List[Dict], List[OME_ZARR_DATASET], str],
+]
+OME_ZARR_SPEC = Dict[Literal["multiscales"], List[OME_ZARR_MULTISCALE]]  # json-validated OME-Zarr zattrs (any version)
+MULTISCALE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "multiscales": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "object",
+                "properties": {
+                    "axes": {
+                        "type": "array",
+                        "minItems": 2,
+                        "maxItems": 5,
+                        "items": {
+                            "oneOf": [
+                                {"type": "string"},
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "name": {"type": "string"},
+                                    },
+                                    "required": ["name"],
+                                },
+                            ]
+                        },
+                    },
+                    "datasets": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                            "type": "object",
+                            "properties": {"path": {"type": "string"}},
+                            "required": ["path"],
+                        },
+                    },
+                    "version": {"type": "string"},
+                },
+                "required": ["datasets", "version"],
+            },
+        },
+    },
+    "required": ["multiscales"],
+}
+
+
+class NoOMEZarrMetaFound(ValueError):
+    pass
+
+
+class NotAnOMEZarrMultiscale(ValueError):
+    pass
 
 
 class InvalidTransformationError(ValueError):
@@ -135,12 +195,12 @@ class OMEZarrMultiscaleMeta:
     dataset_transformations: OrderedDict[str, TransformationsOrError]  # { scale_key: transformations }
 
     @classmethod
-    def from_multiscale_spec(cls, multiscale_spec) -> "OMEZarrMultiscaleMeta":
+    def from_multiscale_spec(cls, multiscale_spec: OME_ZARR_MULTISCALE) -> "OMEZarrMultiscaleMeta":
         if "axes" in multiscale_spec and "name" in multiscale_spec["axes"][0]:
             # In v0.4 OME-Zarr attrs, we might also receive units for each axis
             axis_units = OrderedDict([(a["name"], a.get("unit")) for a in multiscale_spec["axes"]])
         else:
-            axis_units = OrderedDict([(tag.key, None) for tag in get_axistags_from_spec(multiscale_spec)])
+            axis_units = OrderedDict([(tag.key, None) for tag in _axistags_from_multiscale(multiscale_spec)])
         invalid_transformations = []  # Ensure dataset transformations are never None (either valid or error)
         return cls(
             axis_units=axis_units,
@@ -149,7 +209,7 @@ class OMEZarrMultiscaleMeta:
             dataset_transformations=OrderedDict(
                 [
                     (
-                        scale_key_from_path(scale["path"]),
+                        scale["path"],
                         _validate_transforms(scale.get("coordinateTransformations", invalid_transformations)),
                     )
                     for scale in multiscale_spec["datasets"]
@@ -158,10 +218,9 @@ class OMEZarrMultiscaleMeta:
         )
 
 
-def get_axistags_from_spec(validated_ome_spec: Dict) -> vigra.AxisTags:
-    # We assume the spec is already `jsonschema.validate`d to be a Dict according to OME schema
-    if "axes" in validated_ome_spec:
-        ome_axes = validated_ome_spec["axes"]
+def _axistags_from_multiscale(multiscale: OME_ZARR_MULTISCALE) -> vigra.AxisTags:
+    if "axes" in multiscale:
+        ome_axes = multiscale["axes"]
         if "name" in ome_axes[0]:
             # v0.4: spec["axes"] requires name, recommends type and unit; like:
             # [
@@ -179,6 +238,13 @@ def get_axistags_from_spec(validated_ome_spec: Dict) -> vigra.AxisTags:
     return vigra.defaultAxistags("".join(axis_keys))
 
 
+def _get_multiscale_for_dataset(ome_spec: OME_ZARR_SPEC, dataset_subpath: str) -> OME_ZARR_MULTISCALE:
+    for multiscale in ome_spec["multiscales"]:
+        if any(d["path"] == dataset_subpath for d in multiscale["datasets"]):
+            return multiscale
+    raise KeyError(f"Could not find metadata entry for sub-path {dataset_subpath}.")
+
+
 def _get_zarr_cache_max_size() -> int:
     caches_max = Memory.getAvailableRamCaches()
     # Given that the only benefit of this cache is to prevent downloading the same file repeatedly for multiple
@@ -188,129 +254,220 @@ def _get_zarr_cache_max_size() -> int:
     return math.floor(caches_max * permissible_fraction_max)
 
 
-def scale_key_from_path(scale_path: str):
-    """Paths in this context are web-paths, i.e. URI components.
-    Backslashes would technically be valid characters in scale keys.
-    Please make sure not to accidentally pass Windows paths here..."""
-    return scale_path.split("/")[-1]
+def _unescape_and_get_store(uri: str, mode="r", **kwargs) -> FSStore:
+    if uri.startswith("file:"):
+        # Zarr's FSStore implementation doesn't unescape file URLs before piping them to
+        # the file system. We do it here the same way as in pathHelpers.uri_to_Path.
+        # Primarily this is to deal with spaces in Windows paths (encoded as %20).
+        uri = os.fsdecode(unquote_to_bytes(uri))
+    return FSStore(uri, mode=mode, **kwargs)
+
+
+def _parse_ome_zarr_labels(spec: Dict, uri: str) -> List[str]:
+    if "labels" not in spec:
+        raise ValueError("not a labels spec")
+    labels = spec["labels"]
+    if not isinstance(labels, list) or len(labels) < 1:
+        raise NotAnOMEZarrMultiscale(f"Found OME-Zarr labels metadata, but it was empty.\nAt URL: {uri}\nFound: {spec}")
+    return [f"{uri}/{label}" for label in labels]
+
+
+def _parse_ome_zarr_well(spec: Dict, uri: str) -> List[str]:
+    if "well" not in spec or "images" not in spec["well"]:
+        raise ValueError("not a well spec")
+    images = spec["well"]["images"]
+    if not isinstance(images, list) or len(images) < 1 or any("path" not in image for image in images):
+        raise NotAnOMEZarrMultiscale(
+            f"Found OME-Zarr well metadata, but it was malformed (no images, or images without path)."
+            f"\nAt URL: {uri}\nFound: {spec}"
+        )
+    return [f"{uri}/{image['path']}" for image in images]
+
+
+def _parse_ome_zarr_plate(spec: Dict, uri: str) -> List[str]:
+    if "plate" not in spec or "wells" not in spec["plate"]:
+        raise ValueError("not a plate spec")
+    wells = spec["plate"]["wells"]
+    if not isinstance(wells, list) or len(wells) < 1 or any("path" not in well for well in wells):
+        raise NotAnOMEZarrMultiscale(
+            f"Found OME-Zarr plate metadata, but it was malformed (no wells, or wells without path)."
+            f"\nAt URL: {uri}\nFound: {spec}"
+        )
+    return [f"{uri}/{well['path']}" for well in wells]
+
+
+def _check_non_multiscale_specs(spec: Dict, uri: str, sort_uri: Optional[str] = None):
+    """
+    Checks if spec might be labels, plate or well OME-Zarr metadata.
+    Raises NotAnOMEZarrMultiscale with suggestions for the user if so.
+    :param uri: Required to assemble full URIs to suggest to the user
+    :param sort_uri: Used to sort suggestions so that URIs containing `sort_uri` come first.
+    """
+    # labels, well and plate zattrs each point to a list of multiscales the user can choose from
+    sub_paths = []
+    spec_type = item_type = ""
+
+    try:
+        sub_paths = _parse_ome_zarr_labels(spec, uri)
+        spec_type = "labels"
+        item_type = "label"
+    except ValueError:
+        pass
+
+    try:
+        sub_paths = _parse_ome_zarr_well(spec, uri)
+        spec_type = "well"
+        item_type = "acquisition"
+    except ValueError:
+        pass
+
+    try:
+        sub_paths = _parse_ome_zarr_plate(spec, uri)
+        spec_type = "plate"
+        item_type = "well"
+    except ValueError:
+        pass
+
+    if not sub_paths:
+        return
+
+    if sort_uri:
+        sub_paths.sort(key=lambda x: sort_uri not in x)
+    raise NotAnOMEZarrMultiscale(
+        f"This URL points to a {spec_type} directory. "
+        f"Please try one of the following {item_type} URLs:\n" + "\n".join(sub_paths)
+    )
+
+
+def _fetch_and_validate_ome_zarr_spec(uri: str, sort_uri: Optional[str] = None) -> OME_ZARR_SPEC:
+    """Fetch uri/.zattrs and validate it against OME-Zarr spec.
+    :param sort_uri: If the spec at `uri` is not multiscale but plate, well or labels,
+        the URIs in the response text are reordered to first show those including `uri`."""
+    store = _unescape_and_get_store(uri)
+    try:
+        with Timer() as timer:
+            spec = json.loads(store[".zattrs"])
+            logger.info(f"Reading OME-Zarr metadata from {uri}/.zattrs took {timer.seconds()*1000} ms.")
+    except KeyError as e:
+        # Connection problems on FSSpec side raise a ClientConnectorError wrapped in a KeyError
+        if isinstance(e.__context__, ClientConnectorError):
+            raise ConnectionError(f"Could not connect to {e.__context__.host}:{e.__context__.port}.") from e
+        raise NoOMEZarrMetaFound(f"Expected an OME-Zarr store, but could not find metadata at {uri}/.zattrs.") from e
+
+    # Found .zattrs, but what kind of .zattrs?
+    _check_non_multiscale_specs(spec, uri, sort_uri)
+
+    try:
+        jsonschema.validate(spec, MULTISCALE_SCHEMA)
+    except jsonschema.ValidationError as e:
+        err_msg = (
+            "Metadata for this store did not match OME-Zarr spec, "
+            "or reports no multiscale datasets. Details below."
+            f"\nMetadata read from {uri}/.zattrs."
+            f"\n\nProblematic metadata entry: {e.json_path}"
+            f"\nProblem: {e.message}"
+            f"\nRequired properties: {e.schema}"
+            f"\nFull metadata received:\n{spec}"
+        )
+        raise NoOMEZarrMetaFound(err_msg)
+    return spec
+
+
+def _introspect_for_multiscales_root(uri: str) -> Tuple[OME_ZARR_SPEC, str, Optional[str]]:
+    """URI may point to an OME-Zarr multiscale root or to a specific scale.
+    Try to find OME-Zarr spec first at URI, then search parent directories.
+    Returns spec and root URI of the validated multiscales spec, and scale sub-URI (if any)"""
+    uri = uri.rstrip("/")
+    try:
+        return _fetch_and_validate_ome_zarr_spec(uri), uri, None
+    except NoOMEZarrMetaFound:
+        i = len(uri)
+        while i > 0:
+            i = uri.rfind("/", 0, i)
+            uri_to_parent = uri[:i]
+            sub_uri = uri[i + 1 :]
+            try:
+                return (
+                    _fetch_and_validate_ome_zarr_spec(uri_to_parent, uri),
+                    uri_to_parent,
+                    sub_uri,
+                )
+            except NoOMEZarrMetaFound:
+                if ".zarr" in uri_to_parent.split("/")[-1]:
+                    break
+                continue
+        raise  # If no OME-Zarr meta found at URI or any parent, raise the original exception
 
 
 class OMEZarrStore(MultiscaleStore):
     """
     Adapter class to handle communication with a source serving a dataset in OME-Zarr format.
 
-    :param uri: URI of the OME-Zarr store.
+    :param uri: Address of the multiscale root, or a specific scale.
+    :param target_scale:
+        In case a store has multiple multiscales, this determines which multiscale to use.
+        In single_scale_mode, this also determines which scale to load.
+        If uri points to a specific scale, but target_scale is also given, target_scale is used.
     :param single_scale_mode:
         If True, only the first scale is loaded to determine the dtype. Used to shorten init time
         when DatasetInfo instantiates a standalone OpInputDataReader to get lane shape and dtype.
     """
 
     NAME = "OME-Zarr"
-    URI_HINT = 'URL contains "zarr"'
+    URI_HINT = 'URL contains ".zarr"'
 
-    spec_schema = {
-        "type": "object",
-        "properties": {
-            "multiscales": {
-                "type": "array",
-                "minItems": 1,
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "axes": {
-                            "type": "array",
-                            "minItems": 2,
-                            "maxItems": 5,
-                            "items": {
-                                "oneOf": [
-                                    {"type": "string"},
-                                    {
-                                        "type": "object",
-                                        "properties": {
-                                            "name": {"type": "string"},
-                                        },
-                                        "required": ["name"],
-                                    },
-                                ]
-                            },
-                        },
-                        "datasets": {
-                            "type": "array",
-                            "minItems": 1,
-                            "items": {
-                                "type": "object",
-                                "properties": {"path": {"type": "string"}},
-                                "required": ["path"],
-                            },
-                        },
-                        "version": {"type": "string"},
-                    },
-                    "required": ["datasets", "version"],
-                },
-            },
-        },
-        "required": ["multiscales"],
-    }
-
-    def __init__(self, uri: str = "", single_scale_mode: bool = False):
-        if uri.startswith("file:"):
-            # Zarr's FSStore implementation doesn't unescape file URLs before piping them to
-            # the file system. We do it here the same way as in pathHelpers.uri_to_Path.
-            # Primarily this is to deal with spaces in Windows paths (encoded as %20).
-            uri = os.fsdecode(unquote_to_bytes(uri))
-        with Timer() as timer:
-            self.uri = uri
-            uncached_store = FSStore(self.uri, mode="r", **OME_ZARR_V_0_4_KWARGS)
-            try:
-                self.ome_spec = json.loads(uncached_store[".zattrs"])
-            except Exception as e:
-                # Connection problems on FSSpec side raise a ClientConnectorError wrapped in a KeyError
-                if isinstance(e.__context__, ClientConnectorError):
-                    raise ConnectionError(f"Could not connect to {e.__context__.host}:{e.__context__.port}.") from e
-                elif isinstance(e, KeyError):
-                    raise ValueError("Expected a Zarr store, but could not find .zattrs file at the address.") from e
-                else:
-                    raise e
-            if self.ome_spec.get("multiscales", [{}])[0].get("version") == "0.1":
-                uncached_store = FSStore(self.uri, mode="r", **OME_ZARR_V_0_1_KWARGS)
-            # There is an additional block cache in front of OpOMEZarrMultiscaleReader, so e.g. when
-            # the user scrolls across z back and forth, this does not trigger requests to the store.
-            # But blocks can be misaligned with file size in the store. This cache can prevent downloading
-            # the same file repeatedly for multipled blocks.
-            self._store = LRUStoreCache(uncached_store, max_size=_get_zarr_cache_max_size())
-            logger.info(f"Initializing OME-Zarr store at {uri} took {timer.seconds()*1000} ms.")
-        try:
-            jsonschema.validate(self.ome_spec, self.spec_schema)
-        except jsonschema.ValidationError as e:
-            err_msg = (
-                "Metadata for this store did not match OME-Zarr spec, "
-                "or reports no multiscale datasets. Details below."
-                f"\n\nProblematic metadata entry: {e.json_path}"
-                f"\nProblem: {e.message}"
-                f"\nRequired properties: {e.schema}"
-                f"\nFull metadata received:\n{self.ome_spec}"
-            )
-            raise ValueError(err_msg)
-        if len(self.ome_spec["multiscales"]) > 1:
+    def __init__(self, uri: str, target_scale: Optional[str] = None, single_scale_mode: bool = False):
+        self._ome_spec, self.base_uri, self.scale_sub_path = _introspect_for_multiscales_root(uri)
+        selected_scale = target_scale or self.scale_sub_path
+        if len(self._ome_spec["multiscales"]) > 1 and not selected_scale:
             warn = (
-                f"The OME-Zarr store contains more than one multiscale dataset. "
-                f"The first dataset will be used.\nReceived metadata:\n{self.ome_spec}"
+                "The OME-Zarr store contains more than one multiscale dataset. "
+                "The first multiscale will be used."
+                "\nYou can select another multiscale by entering a URL pointing "
+                "directly to one of its dataset paths."
+                f"\nReceived metadata:\n{self._ome_spec}"
             )
             logger.warning(warn)
-        multiscale_spec = self.ome_spec["multiscales"][0]
-        axistags = get_axistags_from_spec(multiscale_spec)
-        datasets = multiscale_spec["datasets"]
+        try:
+            self._multiscale_spec = (
+                _get_multiscale_for_dataset(self._ome_spec, selected_scale)
+                if selected_scale
+                else self._ome_spec["multiscales"][0]
+            )
+        except KeyError:
+            raise ValueError(
+                f'Found multiscale store, but could not find metadata for "{selected_scale}" inside it.'
+                f"\n\nMultiscale store found at: {self.base_uri}"
+                f"\n\nFull metadata: {self._ome_spec}"
+            )
+        axistags = _axistags_from_multiscale(self._multiscale_spec)
+        datasets = self._multiscale_spec["datasets"]
+        if self._multiscale_spec["version"] == "0.1":
+            uncached_store = _unescape_and_get_store(self.base_uri, **OME_ZARR_V_0_1_KWARGS)
+        else:
+            uncached_store = _unescape_and_get_store(self.base_uri, **OME_ZARR_V_0_4_KWARGS)
+        # There is an additional block cache in front of OpOMEZarrMultiscaleReader, so e.g. when
+        # the user scrolls across z back and forth, this does not trigger requests to the store.
+        # But blocks can be misaligned with file size in the store. This cache can prevent downloading
+        # the same file repeatedly for multiple blocks.
+        self._store = LRUStoreCache(uncached_store, max_size=_get_zarr_cache_max_size())
         dtype = None
         scale_metadata = OrderedDict()  # Becomes slot metadata -> must be serializable (no ZarrArray allowed)
         self._scale_data = {}
-        if single_scale_mode:
-            datasets = datasets[:1]  # One scale is enough to get dtype
+        if single_scale_mode:  # One scale is enough to get dtype
+            datasets = [d for d in datasets if d["path"] == selected_scale] if selected_scale else datasets[:1]
         for scale in datasets:  # OME-Zarr spec requires datasets ordered from high to low resolution
             with Timer() as timer:
-                scale_path = scale["path"]
-                scale_key = scale_key_from_path(scale_path)
+                scale_key = scale["path"]
                 # Loading a ZarrArray at this path is necessary to obtain the scale dimensions for the GUI
-                zarray = ZarrArray(store=self._store, path=scale_path)
+                try:
+                    zarray = ZarrArray(store=self._store, path=scale_key)
+                except ArrayNotFoundError as e:
+                    raise ValueError(
+                        f"Malformed OME-Zarr store at {self.base_uri}: "
+                        f'Metadata points to a nonexistent array at sub-path "{scale_key}".'
+                        f"\nTrying to load multiscale:\n{self._multiscale_spec}"
+                    ) from e
                 dtype = zarray.dtype.type
                 scale_metadata[scale_key] = OrderedDict(zip([tag.key for tag in axistags], zarray.shape))
                 self._scale_data[scale_key] = {
@@ -319,7 +476,7 @@ class OMEZarrStore(MultiscaleStore):
                     "shape": zarray.shape,
                 }
                 logger.info(f"Initializing scale {scale_key} took {timer.seconds()*1000} ms.")
-        self.ome_meta_for_export = OMEZarrMultiscaleMeta.from_multiscale_spec(multiscale_spec)
+        self.ome_meta_for_export = OMEZarrMultiscaleMeta.from_multiscale_spec(self._multiscale_spec)
         super().__init__(
             dtype=dtype,
             axistags=axistags,
@@ -330,7 +487,7 @@ class OMEZarrStore(MultiscaleStore):
 
     @staticmethod
     def is_uri_compatible(uri: str) -> bool:
-        return "zarr" in uri
+        return ".zarr" in uri
 
     def get_chunk_size(self, scale_key=DEFAULT_SCALE_KEY):
         scale_key = scale_key if scale_key != DEFAULT_SCALE_KEY else self.lowest_resolution_key
