@@ -1,3 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2025, the ilastik developers
+#                                <team@ilastik.org>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
+#
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#          http://ilastik.org/license.html
+###############################################################################
 """
 A collection of utilities for the bioimageio spec and core.
 Eventually it could be integrated to the bioimageio packages.
@@ -8,38 +28,49 @@ from __future__ import annotations
 from functools import partial
 import pathlib
 import tempfile
+from typing_extensions import TypeGuard, assert_never
 
 import numpy as np
-from typing import Callable, Union, List, Optional
+from typing import Callable, Sequence, Union, List, Literal, Mapping, Optional
 from collections import OrderedDict
 
-from bioimageio.spec import load_description
+from bioimageio.spec import ResourceDescr, load_description
 from bioimageio.spec.model.v0_5 import (
-    TensorDescr,
-    ChannelAxis,
-    SpaceAxisBase,
-    InputTensorDescr,
-    BatchAxis,
-    SizeReference,
-    ParameterizedSize,
-    ModelDescr,
     AxisId,
+    BatchAxis,
+    ChannelAxis,
+    DataDependentSize,
     InputAxis,
-    OutputAxis,
-    TensorDescrBase,
-    WithHalo,
-    OutputTensorDescr,
+    InputTensorDescr,
     InvalidDescr,
+    ModelDescr,
+    OutputAxis,
+    OutputTensorDescr,
+    ParameterizedSize,
+    SizeReference,
+    SpaceAxisBase,
+    TensorDescr,
+    WithHalo,
 )
 
-TaggedShape = OrderedDict[str, int]
+SPEC_AXES_KEYS = Literal["batch", "time", "y", "x", "z", "channel"]
+VIGRA_AXES_KEYS = Literal["b", "t", "y", "x", "z", "c"]
+
+TaggedShape = OrderedDict[VIGRA_AXES_KEYS, int]
 AnyAxis = Union[InputAxis, OutputAxis]
 
-VIGRA_TO_SPEC = {"b": "batch", "t": "time", "y": "y", "x": "x", "z": "z", "c": "channel"}
-SPEC_TO_VIGRA = {spec: vigra for vigra, spec in VIGRA_TO_SPEC.items()}
+VIGRA_TO_SPEC: Mapping[VIGRA_AXES_KEYS, SPEC_AXES_KEYS] = {
+    "b": "batch",
+    "t": "time",
+    "y": "y",
+    "x": "x",
+    "z": "z",
+    "c": "channel",
+}
+SPEC_TO_VIGRA: Mapping[SPEC_AXES_KEYS, VIGRA_AXES_KEYS] = {spec: vigra for vigra, spec in VIGRA_TO_SPEC.items()}
 
 
-def get_model_descr_from_model_bytes(model_bytes: bytes) -> ModelDescr:
+def get_model_descr_from_model_bytes(model_bytes: bytes) -> ResourceDescr:
     with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as _tmp_file:
         _tmp_file.write(model_bytes)
         temp_file_path = pathlib.Path(_tmp_file.name)
@@ -50,12 +81,14 @@ def get_model_descr_from_model_bytes(model_bytes: bytes) -> ModelDescr:
 
 
 class AxisUtils:
-    def __init__(self, specs: List[TensorDescrBase]):
+    def __init__(self, specs: Sequence[TensorDescr]):
         self._specs = specs
 
     def realize_size_reference(self, size: SizeReference) -> AnyAxis:
         ref_tensor = self.get_spec(size.tensor_id)
-        return self.get_axis(ref_tensor, size.axis_id)
+        axis = self.get_axis(ref_tensor, size.axis_id)
+        assert axis
+        return axis
 
     def get_spec(self, tensor_id: str) -> TensorDescr:
         specs = [spec for spec in self._specs if tensor_id == spec.id]
@@ -96,14 +129,20 @@ class AxisUtils:
 
     @staticmethod
     def get_channel_axis(tensor: TensorDescr) -> Optional[ChannelAxis]:
-        return AxisUtils.get_axis(
+        channel_axis = AxisUtils.get_axis(
             tensor, axis_id=AxisId("channel")
         )  # todo: CHANNEL_AXIS_ID from spec same as BATCH_AXIS_ID
 
+        if channel_axis:
+            if not isinstance(channel_axis, ChannelAxis):
+                raise ValueError(f"Channel axis not of required Axis type `ChannelAxis`. Got {type(channel_axis)}.")
+        return channel_axis
+
     @staticmethod
     def get_channel_axis_strict(tensor: TensorDescr) -> ChannelAxis:
-        assert AxisUtils.is_channel_axis_included(tensor)
-        return AxisUtils.get_channel_axis(tensor)
+        channel_axis = AxisUtils.get_channel_axis(tensor)
+        assert channel_axis
+        return channel_axis
 
     @staticmethod
     def is_channel_axis_included(tensor: TensorDescr) -> bool:
@@ -116,6 +155,14 @@ class AxisUtils:
     @staticmethod
     def is_vigra_default_axes(source: TaggedShape) -> bool:
         return all(axis in "tyzxc" for axis in source.keys())
+
+    @staticmethod
+    def is_expected_bioimageio_axis_str(axis_key: str) -> TypeGuard[SPEC_AXES_KEYS]:
+        return axis_key in SPEC_TO_VIGRA
+
+    @staticmethod
+    def is_expected_vigra_axis_str(axis_key: str) -> TypeGuard[VIGRA_AXES_KEYS]:
+        return axis_key in VIGRA_TO_SPEC
 
     @staticmethod
     def convert_vigra_default_axes_to_spec_explicit_size(source: TaggedShape) -> TaggedShape:
@@ -132,7 +179,7 @@ class InputAxisUtils(AxisUtils):
     MIN_SIZE_2D = 512
     MIN_SIZE_3D = 64
 
-    def __init__(self, tensors: List[InputTensorDescr]):
+    def __init__(self, tensors: Sequence[InputTensorDescr]):
         super().__init__(tensors)
 
     def get_best_tile_shape(self, tensor_id: str) -> TaggedShape:
@@ -161,28 +208,29 @@ class InputAxisUtils(AxisUtils):
         # get all axes without batch axis
         spec_axes = [ax for ax in self.get_spec(tensor_id).axes if not isinstance(ax, BatchAxis)]
 
-        sized_axes: OrderedDict[str, int] = OrderedDict()
+        sized_axes: OrderedDict[VIGRA_AXES_KEYS, int] = OrderedDict()
 
-        size_funcs: OrderedDict[str, Callable[[int], int]] = OrderedDict()
+        size_funcs: OrderedDict[VIGRA_AXES_KEYS, Union[int, Callable[[int], int]]] = OrderedDict()
         factors: list[int] = []
 
         # functions to determine the final shape, will be used as partials
         # with only the factor `n` undefined
-        def param_size(min_, step, n) -> int:
+        def param_size(min_, step, n: int) -> int:
             return int(min_ + n * step)
-
-        def const_size(sz, _n) -> int:
-            return sz
 
         # find the ideal factor for each axis and a function of to determine the size
         for axis in spec_axes:
+            # FIXME: cannot properly enforce axis.id type here
+            axis_id = str(axis.id)
+            assert AxisUtils.is_expected_bioimageio_axis_str(axis_id)
 
-            axis_name = SPEC_TO_VIGRA[axis.id]
+            axis_name = SPEC_TO_VIGRA[axis_id]
             axis_size = axis.size
 
             if isinstance(axis_size, SizeReference):
                 n = 0
                 ref_size = self.realize_size_reference(axis_size)
+                assert not isinstance(ref_size, BatchAxis)
                 explicit_size = axis_size.get_size(axis, ref_size, n)
                 if isinstance(ref_size.size, ParameterizedSize):
                     while explicit_size < target_size:
@@ -198,15 +246,27 @@ class InputAxisUtils(AxisUtils):
                     factor = 0
                 size_funcs[axis_name] = partial(param_size, axis_size.min, axis_size.step)
                 factors.append(factor)
+            elif isinstance(axis_size, DataDependentSize):
+                raise NotImplementedError()
             elif isinstance(axis_size, int):
-                size_funcs[axis_name] = partial(const_size, axis_size)
+                size_funcs[axis_name] = axis_size
             else:
-                raise NotImplementedError
+                assert_never(axis_size)
 
         # if all sizes are fixed, factors might be empty
         min_factor = min(factors) if factors else None
-        for k, f in size_funcs.items():
-            sized_axes[k] = f(min_factor)
+        if min_factor is not None:
+            for k, f in size_funcs.items():
+                if isinstance(f, int):
+                    sized_axes[k] = f
+                else:
+                    sized_axes[k] = f(min_factor)
+        else:
+            for k, f in size_funcs.items():
+                if isinstance(f, int):
+                    sized_axes[k] = f
+                else:
+                    raise ValueError("If size is not an integer, factor needs to be not None.")
 
         return sized_axes
 
@@ -214,7 +274,7 @@ class InputAxisUtils(AxisUtils):
 class OutputAxisUtils(AxisUtils):
     @classmethod
     def from_model_descr(cls, model_descr: ModelDescr):
-        return OutputAxisUtils(model_descr.inputs + model_descr.outputs)
+        return OutputAxisUtils(tuple(model_descr.inputs) + tuple(model_descr.outputs))
 
     def get_halos(self, tensor_id: str) -> TaggedShape:
         assert self.is_output_tensor(tensor_id)
@@ -223,7 +283,9 @@ class OutputAxisUtils(AxisUtils):
         for axis in spec.axes:
             if not self.is_axis_spatial(axis):
                 continue
-            axis_name = SPEC_TO_VIGRA[axis.id]
+            axis_id = str(axis.id)
+            assert AxisUtils.is_expected_bioimageio_axis_str(axis_id)
+            axis_name = SPEC_TO_VIGRA[axis_id]
             if isinstance(axis, WithHalo):
                 halos[axis_name] = axis.halo
             else:
@@ -261,18 +323,22 @@ class InputValidator:
             raise ValueError(f"Incompatible axes names, got {dims_target} expected {dims_spec}")
 
         for axis in input_spec.axes:
-            if isinstance(axis, BatchAxis) and axis.size is None:
+            if isinstance(axis, BatchAxis):
                 continue
             if isinstance(axis.size, ParameterizedSize):
                 min_size = axis.size.min
             elif isinstance(axis.size, SizeReference):
                 ref_axis = self._utils.realize_size_reference(axis.size)
+                assert not isinstance(ref_axis, BatchAxis)
                 min_size = axis.size.get_size(axis, ref_axis, 0)
             elif isinstance(axis.size, int):
                 min_size = axis.size
             else:
                 raise ValueError(f"Unexpected size {axis.size} of axis {axis}")
 
-            target_axis_size = spec_shape[axis.id]
+            axis_id = str(axis.id)
+            assert AxisUtils.is_expected_vigra_axis_str(axis_id)
+
+            target_axis_size = spec_shape[axis_id]
             if target_axis_size < min_size:
                 raise ValueError(f"Incompatible axis {axis}: {target_axis_size} < {min_size}")
