@@ -79,6 +79,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: conda-incubator/setup-miniconda@v3
+        if: matrix.os != 'windows-latest'
         with:
           auto-update-conda: true
           auto-activate-base: true
@@ -86,6 +87,19 @@ jobs:
           channel-priority: strict
           miniforge-version: latest
           conda-solver: libmamba
+      - uses: conda-incubator/setup-miniconda@v3
+        # we need to skip cleanup on windows currently, because it takes
+        # hours and stalls CI that way (run-post: false)
+        # ref: https://github.com/conda-incubator/setup-miniconda/issues/380
+        if: matrix.os == 'windows-latest'
+        with:
+          auto-update-conda: true
+          auto-activate-base: true
+          activate-environment: ""
+          channel-priority: strict
+          miniforge-version: latest
+          conda-solver: libmamba
+          run-post: false
       - name: install xvfb/deps
         if: matrix.os == 'ubuntu-latest'
         run: |
