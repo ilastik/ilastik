@@ -102,8 +102,22 @@ def test_get_best_tile_shape_single_tensor(mock_min_tile_sizes, axes, expected_d
     assert tile_shape == expected_dict
 
 
-def test_get_best_tile_shape_size_ref(mock_min_tile_sizes):
-    descr1 = MockTensorDescr("ref", axes=[SpaceInputAxis(size=ParameterizedSize(min=10, step=2), id=AxisId("x"))])
+@pytest.mark.parametrize(
+    "axes, expected_dict",
+    (
+        (
+            [SpaceInputAxis(size=10, id=AxisId("x"))],
+            OrderedDict({"x": 10, "y": 11}),
+        ),
+        (
+            [SpaceInputAxis(size=ParameterizedSize(min=10, step=2), id=AxisId("x"))],
+            OrderedDict({"x": MOCK_MIN_SIZE_2D, "y": 11}),
+        ),
+    ),
+    ids=["Fixed-2D", "Mixed-2D"],
+)
+def test_get_best_tile_shape_size_ref(mock_min_tile_sizes, axes, expected_dict):
+    descr1 = MockTensorDescr("ref", axes=axes)
     descr2 = MockTensorDescr(
         "test",
         [
@@ -114,5 +128,4 @@ def test_get_best_tile_shape_size_ref(mock_min_tile_sizes):
     )
     ut = ilastik.utility.bioimageio_utils.InputAxisUtils([descr1, descr2])  # type: ignore
     tile_shape = ut.get_best_tile_shape("test")
-
-    assert tile_shape == OrderedDict({"x": MOCK_MIN_SIZE_2D, "y": 11})
+    assert tile_shape == expected_dict
