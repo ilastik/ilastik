@@ -38,12 +38,8 @@ test_script:
   - cmd: set VOLUMINA_SHOW_3D_WIDGET=0
   - cmd: pytest --run-legacy-gui
 
-after_test:
-  # don't cache the test environment to get clean builds every time
-  - ps: Remove-Item -Path $env:MINIFORGE\envs\$env:ENV_NAME -Recurse -Force
-
 cache:
-  - C:\Miniforge -> appveyor.yml, dev\environment-dev.yml
+  - C:\Miniforge\pkgs -> appveyor.yml, dev\environment-dev.yml
 
 # on_finish:
 #  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))

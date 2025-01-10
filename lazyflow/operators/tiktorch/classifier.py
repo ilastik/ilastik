@@ -19,12 +19,13 @@
 # This information is also available on the ilastik web site at:
 #          http://ilastik.org/license/
 ###############################################################################
+from __future__ import annotations
 import logging
 import socket
 import numpy
 import warnings
 from collections import defaultdict
-from typing import Callable, Dict, Iterable, Sequence, Tuple, Union
+from typing import Callable, Dict, Iterable, Sequence, Tuple, Union, TYPE_CHECKING, List
 
 import xarray
 import grpc
@@ -40,42 +41,20 @@ from vigra import AxisTags
 
 from . import _base
 
+if TYPE_CHECKING:
+    from bioimageio.spec.model.v0_5 import (
+        ModelDescr,
+        InputTensorDescr,
+        OutputTensorDescr,
+    )
+
 logger = logging.getLogger(__name__)
 
 
-def enforce_min_shape(min_shape, step, axes) -> Tuple[int, ...]:
-    """Hack: pick a bigger shape than min shape
-
-    Some models come with super tiny minimal shapes, that make the processing
-    too slow. While dryrun is not implemented, we'll "guess" a sensible shape
-    and hope it will fit into memory.
-    """
-    MIN_SIZE_2D = 512
-    MIN_SIZE_3D = 64
-
-    assert len(min_shape) == len(step) == len(axes)
-
-    spacial_increments = sum(i != 0 for i, a in zip(step, axes) if a in "xyz")
-    if spacial_increments > 2:
-        target_size = MIN_SIZE_3D
-    else:
-        target_size = MIN_SIZE_2D
-
-    factors = [
-        int(numpy.ceil((target_size - s) / i)) for s, i, a in zip(min_shape, step, axes) if (a in "xyz") and (i != 0)
-    ]
-    # we assume shape is "large" enough if one of the axes is larger than min_size
-    if any(f <= 0 for f in factors):
-        return min_shape
-
-    # choose the smallest increment to make at least one size >= target_size
-    m = min([x for x in factors])
-    return tuple([int(s + i * m) for s, i in zip(min_shape, step)])
-
-
 class ModelSession:
-    def __init__(self, session, factory):
+    def __init__(self, session, model_descr: ModelDescr, factory):
         self.__session = session
+        self.__model_descr = model_descr
         self.__factory = factory
 
     @property
@@ -88,98 +67,51 @@ class ModelSession:
 
     @property
     def name(self) -> str:
-        return self.__session.name
+        return self.__model_descr.name
+
+    @property
+    def input_descr(self) -> InputTensorDescr:
+        inputs = self.__model_descr.inputs
+        assert len(inputs) == 1
+        return inputs[0]
+
+    @property
+    def output_descr(self) -> OutputTensorDescr:
+        outputs = self.__model_descr.outputs
+        assert len(outputs) == 1
+        return outputs[0]
 
     @property
     def input_names(self) -> Sequence[str]:
         """Get names/ids for all model inputs"""
-        return self.__session.inputNames
+        return [tensor.id for tensor in self.__model_descr.inputs]
 
     @property
     def output_names(self) -> Sequence[str]:
         """Get names/ids for all model outputs"""
-        return self.__session.outputNames
+        return [tensor.id for tensor in self.__model_descr.outputs]
 
     @property
-    def input_axes(self) -> Sequence[str]:
-        """Get axes for all model inputs
+    def input_axes(self) -> List[str]:
+        """Get axes for all model inputs"""
+        from ilastik.utility.bioimageio_utils import SPEC_TO_VIGRA
 
-        linked via index to `input_names`
-        """
-        return self.__session.inputAxes
+        return ["".join([SPEC_TO_VIGRA[axis.id] for axis in self.input_descr.axes])]
 
     @property
-    def output_axes(self) -> Sequence[str]:
-        """Get axes for all model inputs
+    def input_axes_spec_format(self) -> List[str]:
+        return [axis.id for axis in self.input_descr.axes]
 
-        linked via index to `output_names`
-        """
-        return self.__session.outputAxes
+    @property
+    def output_axes(self) -> List[str]:
+        """Get axes for all model inputs"""
+        from ilastik.utility.bioimageio_utils import SPEC_TO_VIGRA
 
-    def get_output_shapes(self) -> Dict[str, Sequence[Dict[str, int]]]:
-        """Get output shapes for all model output
-
-        shape = shape(reference_input_tensor) * scale + 2 * offset
-
-        linked via index to `output_names`
-        """
-        # get input shapes for all possible axes that ilastik can understand
-        input_shapes = self.get_input_shapes(axes="itzyxc")
-
-        # for now, from the possible input shapes select the largest (last)
-        max_input_shapes = {k: in_shape[-1] for k, in_shape in input_shapes.items()}
-
-        max_input_shapes_dicts = {}
-        for input_name, input_shape in max_input_shapes.items():
-            max_input_shapes_dicts[input_name] = {name: size for name, size in zip("itzyxc", input_shape)}
-
-        result = {}
-        output_shapes = self.__session.outputShapes
-        output_names = self.output_names
-        assert len(output_shapes) == 1, "Currently only single output shapes are supported."
-
-        for output_name, shape in zip(output_names, output_shapes):
-            if shape.shapeType == 0:
-                # explicit shape
-                output_shape_by_name = {d.name: d.size for d in shape.shape.namedInts}
-                result[output_name] = [output_shape_by_name]
-            elif shape.shapeType == 1:
-                # parametrized shape
-                # HACK: need to determine min shape same way as prediction_pipeline
-                reference_tensor = shape.referenceTensor
-                assert (
-                    reference_tensor in max_input_shapes_dicts
-                ), f"Reference tensor for output {output_name} not found in input shapes {input_shapes.keys()}."
-                offset_size_by_name = defaultdict(lambda: 0, {d.name: d.size for d in shape.offset.namedFloats})
-                scale_size_by_name = defaultdict(lambda: 1.0, {d.name: d.size for d in shape.scale.namedFloats})
-                output_shape_by_name = {}
-                for dim in shape.scale.namedFloats:
-                    if dim.name == "b":
-                        continue
-                    output_shape_by_name[dim.name] = int(
-                        max_input_shapes_dicts[reference_tensor][dim.name] * scale_size_by_name[dim.name]
-                        + 2 * offset_size_by_name[dim.name]
-                    )
-                result[output_name] = [output_shape_by_name]
-            else:
-                raise ValueError(f"Cannot work with shapes of shapeType {shape.shapeType}.")
-
-        # sanity check:
-        for output_name in output_names:
-            res = result[output_name][0]
-            axes = "".join(res.keys())
-            halo = self.get_halos(axes=axes)[output_name]
-            shape_after_halo = [res[axkey] - 2 * axhalo for axkey, axhalo in zip(axes, halo)]
-            if not all(x > 0 for x in shape_after_halo):
-                logger.warning(
-                    f"Network configuration problem detected - output {output_name} shape - 2*halo invalid:{shape_after_halo}."
-                )
-
-        return result
+        return ["".join([SPEC_TO_VIGRA[axis.id] for axis in self.input_descr.axes])]
 
     @property
     def has_training(self) -> bool:
-        return self.__session.hasTraining
+        return False
 
     def get_halos(self, axes: Union[str, AxisTags] = "zyx") -> Dict[str, Tuple[int]]:
         """Get halo sizes for all model outputs
@@ -191,16 +123,15 @@ class ModelSession:
             list of shapes is returned. Linked to `input_names` via keys in
             returned dict.
         """
+        from ilastik.utility.bioimageio_utils import OutputAxisUtils
+
         if isinstance(axes, AxisTags):
             axes = "".join(axes.keys())
-        halos = {}
-        for output_name, output_shape in zip(self.__session.outputNames, self.__session.outputShapes):
-            halo_size_by_name = {d.name: d.size for d in output_shape.halo.namedInts}
-            halos[output_name] = tuple([halo_size_by_name.get(axis, 0) for axis in axes])
+        axis_utils = OutputAxisUtils.from_model_descr(self.__model_descr)
+        default_axes = defaultdict(lambda: 0, axis_utils.get_halos(self.output_descr.id))
+        return {str(self.output_descr.id): tuple(default_axes[axis] for axis in axes)}
 
-        return halos
-
-    def get_input_shapes(self, axes: Union[str, AxisTags] = "itzyxc") -> Dict[str, Sequence[Tuple[int]]]:
+    def get_input_shapes(self, axes: Union[str, AxisTags] = "itzyxc") -> Dict[str, Sequence[Tuple[int, ...]]]:
         """Get input shapes for all model inputs
 
         Note: for parametrized input shapes we try to do something sensible with
@@ -212,29 +143,15 @@ class ModelSession:
             of shapes is returned. Linked to `input_names` via keys in returned
             dict.
         """
+        from ilastik.utility.bioimageio_utils import InputAxisUtils
+
         if isinstance(axes, AxisTags):
             axes = "".join(axes.keys())
-        result = {}
-
-        for input_name, shape in zip(self.input_names, self.__session.inputShapes):
-            dim_size_by_name = defaultdict(lambda: 1, {d.name: d.size for d in shape.shape.namedInts})
-            if shape.shapeType == 0:
-                # explicit shape
-                result[input_name] = [tuple([dim_size_by_name[axis] for axis in axes])]
-            elif shape.shapeType == 1:
-                # parametrized shape
-                # HACK: need to determine min shape same way as prediction_pipeline
-                dim_step_by_name = defaultdict(lambda: 0, {d.name: d.size for d in shape.stepShape.namedInts})
-                shape_dims = "".join(d.name for d in shape.shape.namedInts)
-                min_shape = enforce_min_shape(
-                    [dim_size_by_name[x] for x in shape_dims], [dim_step_by_name[x] for x in shape_dims], shape_dims
-                )
-                min_shape_by_name = defaultdict(lambda: 1, {name: size for name, size in zip(shape_dims, min_shape)})
-                result[input_name] = [tuple(min_shape_by_name[axis] for axis in axes)]
-            else:
-                raise ValueError(f"Cannot work with shapes of shapeType {shape.shapeType}.")
-
-        return result
+        axis_utils = InputAxisUtils(self.__model_descr.inputs)
+        explicit_shape = axis_utils.get_best_tile_shape(self.input_descr.id)
+        logger.warning(f"Best tile estimated {explicit_shape}")
+        default_axes = defaultdict(lambda: 1, explicit_shape)
+        return {str(self.input_descr.id): [tuple(default_axes[axis] for axis in axes)]}
 
     @property
     def training_shape(self) -> Tuple[int, ...]:
@@ -246,13 +163,12 @@ class ModelSession:
         """
         FIXME: assumes first output is the segmentation output
         """
-        output_shapes = self.get_output_shapes()
+        from ilastik.utility.bioimageio_utils import AxisUtils
+
+        # output_shapes = self.get_output_shapes()
         # there could be multiple output shapes per output in the future (with implicit output shapes)
-        output_names = self.output_names
-        assert len(output_names) == 1, "Currently only single output shapes are supported."
-        output_shape = output_shapes[output_names[0]][0]
-        assert "c" in output_shape, "Channel Axis needed in output shape."
-        return list(range(1, int(output_shape["c"]) + 1))
+        channel_axis = AxisUtils.get_channel_axis_strict(self.output_descr).size
+        return list(range(1, channel_axis + 1))
 
     @property
     def num_classes(self) -> int:
@@ -332,11 +248,13 @@ class ModelSession:
 
         try:
             current_rq = Request._current_request()
+            pb_tensors = [
+                converters.numpy_to_pb_tensor(self.input_descr.id, t, axistags=self.input_axes_spec_format)
+                for t in reordered_tensors
+            ]
             resp = self.tiktorchClient.Predict.future(
                 inference_pb2.PredictRequest(
-                    tensors=[
-                        converters.numpy_to_pb_tensor(t, axistags=at) for t, at in zip(reordered_tensors, input_axes)
-                    ],
+                    tensors=pb_tensors,
                     modelSessionId=self.__session.id,
                 )
             )
@@ -436,11 +354,11 @@ class Connection(_base.IConnection):
 
         return map_future(result, lambda res: res.id)
 
-    def create_model_session(self, upload_id: str, devices: Sequence[str]):
-        session = self._client.CreateModelSession(
+    def create_model_session_with_id(self, upload_id: str, devices: Sequence[str]):
+        session_id = self._client.CreateModelSession(
             inference_pb2.CreateModelSessionRequest(model_uri=f"upload://{upload_id}", deviceIds=devices)
         )
-        return ModelSession(session, self)
+        return session_id
 
 
 class TiktorchConnectionFactory(_base.IConnectionFactory):

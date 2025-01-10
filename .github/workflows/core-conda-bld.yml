@@ -28,7 +28,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -yy libgl1-mesa-dev xvfb curl
       - name: install common conda dependencies
-        run: conda install -n base -c conda-forge boa setuptools_scm -y
+        run: conda install -n base -c conda-forge conda-build setuptools_scm -y
       - uses: actions/cache@v4
         with:
           path: |
@@ -44,7 +44,7 @@ jobs:
         shell: bash -l {0}
         run: |
           mkdir -p ./pkgs/noarch
-          conda mambabuild -c conda-forge conda-recipe --no-test --output-folder ./pkgs
+          conda-build -c conda-forge conda-recipe --no-test --output-folder ./pkgs
 
   test-conda-packages:
     needs: [conda-noarch-build]
@@ -79,6 +79,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: conda-incubator/setup-miniconda@v3
+        if: matrix.os != 'windows-latest'
         with:
           auto-update-conda: true
           auto-activate-base: true
@@ -86,13 +87,26 @@ jobs:
           channel-priority: strict
           miniforge-version: latest
           conda-solver: libmamba
+      - uses: conda-incubator/setup-miniconda@v3
+        # we need to skip cleanup on windows currently, because it takes
+        # hours and stalls CI that way (run-post: false)
+        # ref: https://github.com/conda-incubator/setup-miniconda/issues/380
+        if: matrix.os == 'windows-latest'
+        with:
+          auto-update-conda: true
+          auto-activate-base: true
+          activate-environment: ""
+          channel-priority: strict
+          miniforge-version: latest
+          conda-solver: libmamba
+          run-post: false
       - name: install xvfb/deps
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -yy mesa-utils libgl1-mesa-dev xvfb curl
       - name: install common conda dependencies
-        run: conda install -n base -c conda-forge boa setuptools_scm -y
+        run: conda install -n base -c conda-forge conda-build setuptools_scm -y
       - uses: actions/cache@v4
         with:
           path: |
@@ -104,14 +118,14 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         shell: bash -l {0}
         run: |
-          xvfb-run --server-args="-screen 0 1024x768x24" conda mambabuild --test --override-channels \
+          xvfb-run --server-args="-screen 0 1024x768x24" conda-build --test --override-channels \
             -c ./pkgs -c pytorch -c nvidia -c ilastik-forge -c conda-forge \
             ./pkgs/noarch/${ILASTIK_PACKAGE_NAME}
       - name: osx test
         if: matrix.os == 'macos-latest'
         shell: bash -l {0}
         run: |
-          VOLUMINA_SHOW_3D_WIDGET=0 conda mambabuild --test --override-channels \
+          VOLUMINA_SHOW_3D_WIDGET=0 conda-build --test --override-channels \
             -c ./pkgs -c pytorch -c nvidia -c ilastik-forge -c conda-forge \
             ./pkgs/noarch/${ILASTIK_PACKAGE_NAME}
       - name: windows test
@@ -119,7 +133,7 @@ jobs:
         shell: cmd /C CALL {0}
         run: |
           set VOLUMINA_SHOW_3D_WIDGET=0
-          conda mambabuild --test --override-channels ^
+          conda build --test --override-channels ^
             -c ./pkgs -c pytorch -c nvidia -c ilastik-forge -c conda-forge ^
             ./pkgs/noarch/%ILASTIK_PACKAGE_NAME%
         # HACK: due to a bug in conda-build need to point to

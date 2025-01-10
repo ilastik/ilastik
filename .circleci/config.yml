@@ -58,7 +58,7 @@ jobs:
         command: >
             conda config --set always_yes yes --set changeps1 no --set channel_priority strict &&
             conda update -n base -c conda-forge --all &&
-            conda install -n base -c conda-forge conda-build boa
+            conda install -n base -c conda-forge conda-build
     - run:
         name: install apt dependencies
         command: >
