@@ -56,7 +56,8 @@ from bioimageio.spec.model.v0_5 import (
 SPEC_AXES_KEYS = Literal["batch", "time", "y", "x", "z", "channel"]
 VIGRA_AXES_KEYS = Literal["b", "t", "y", "x", "z", "c"]
 
-TaggedShape = OrderedDict[VIGRA_AXES_KEYS, int]
+TaggedShapeVigra = OrderedDict[VIGRA_AXES_KEYS, int]
+TaggedShapeSpec = OrderedDict[SPEC_AXES_KEYS, int]
 AnyAxis = Union[InputAxis, OutputAxis]
 
 VIGRA_TO_SPEC: Mapping[VIGRA_AXES_KEYS, SPEC_AXES_KEYS] = {
@@ -153,7 +154,7 @@ class AxisUtils:
         return sum(isinstance(axis, SpaceAxisBase) for axis in tensor.axes)
 
     @staticmethod
-    def is_vigra_default_axes(source: TaggedShape) -> bool:
+    def is_vigra_default_axes(source: TaggedShapeVigra) -> bool:
         return all(axis in "tyzxc" for axis in source.keys())
 
     @staticmethod
@@ -165,7 +166,7 @@ class AxisUtils:
         return axis_key in VIGRA_TO_SPEC
 
     @staticmethod
-    def convert_vigra_default_axes_to_spec_explicit_size(source: TaggedShape) -> TaggedShape:
+    def convert_vigra_default_axes_to_spec_explicit_size(source: TaggedShapeVigra) -> TaggedShapeSpec:
         assert AxisUtils.is_vigra_default_axes(source)
         spec = OrderedDict()
         spec["batch"] = None
@@ -182,7 +183,7 @@ class InputAxisUtils(AxisUtils):
     def __init__(self, tensors: Sequence[InputTensorDescr]):
         super().__init__(tensors)
 
-    def get_best_tile_shape(self, tensor_id: str) -> TaggedShape:
+    def get_best_tile_shape(self, tensor_id: str) -> TaggedShapeVigra:
         """Hack: pick a bigger shape than min shape
 
         Axes in the spec don't necessarily come with a defined size (e.g.
@@ -276,7 +277,7 @@ class OutputAxisUtils(AxisUtils):
     def from_model_descr(cls, model_descr: ModelDescr):
         return OutputAxisUtils(tuple(model_descr.inputs) + tuple(model_descr.outputs))
 
-    def get_halos(self, tensor_id: str) -> TaggedShape:
+    def get_halos(self, tensor_id: str) -> TaggedShapeVigra:
         assert self.is_output_tensor(tensor_id)
         spec = self.get_spec(tensor_id)
         halos = OrderedDict()
@@ -297,7 +298,7 @@ class InputValidator:
     def __init__(self, specs: List[InputTensorDescr]):
         self._utils = InputAxisUtils(specs)
 
-    def check_single_image_min_shape(self, tensor_id: str, target_vigra_shape: TaggedShape):
+    def check_single_image_min_shape(self, tensor_id: str, target_vigra_shape: TaggedShapeVigra):
         """
         Check if image shape is smaller than the minimum that the model can support.
 
@@ -337,7 +338,9 @@ class InputValidator:
                 raise ValueError(f"Unexpected size {axis.size} of axis {axis}")
 
             axis_id = str(axis.id)
-            assert AxisUtils.is_expected_vigra_axis_str(axis_id)
+            assert AxisUtils.is_expected_bioimageio_axis_str(
+                axis_id
+            ), f"Axis {axis_id} not an expected bioimage io axis string {SPEC_TO_VIGRA.keys()}."
 
             target_axis_size = spec_shape[axis_id]
             if target_axis_size < min_size:
