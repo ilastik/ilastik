@@ -7,61 +7,61 @@ on:
     branches: [ main ]
 
 jobs:
-  conda-noarch-build:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: conda-incubator/setup-miniconda@v3
-        with:
-          auto-update-conda: true
-          auto-activate-base: true
-          activate-environment: ""
-          channel-priority: strict
-          miniforge-version: latest
-          conda-solver: libmamba
-      - name: install xvfb/deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -yy libgl1-mesa-dev xvfb curl
-      - name: install common conda dependencies
-        run: conda install -n base -c conda-forge conda-build setuptools_scm -y
-      - uses: actions/cache@v4
-        with:
-          path: |
-            pkgs/noarch
-            pkgs/channeldata.json
-          key: ${{ github.sha }}-packages
-      - id: version
-        shell: bash -l {0}
-        run: |
-          vers=$( python setup.py --version )
-          echo "version=${vers}" >> $GITHUB_OUTPUT
-      - name: linux conda build test
-        shell: bash -l {0}
-        run: |
-          mkdir -p ./pkgs/noarch
-          conda-build -c conda-forge conda-recipe --no-test --output-folder ./pkgs
+  # conda-noarch-build:
+  #   runs-on: ubuntu-latest
+  #   outputs:
+  #     version: ${{ steps.version.outputs.version }}
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #     - uses: conda-incubator/setup-miniconda@v3
+  #       with:
+  #         auto-update-conda: true
+  #         auto-activate-base: true
+  #         activate-environment: ""
+  #         channel-priority: strict
+  #         miniforge-version: latest
+  #         conda-solver: libmamba
+  #     - name: install xvfb/deps
+  #       run: |
+  #         sudo apt-get update
+  #         sudo apt-get install -yy libgl1-mesa-dev xvfb curl
+  #     - name: install common conda dependencies
+  #       run: conda install -n base -c conda-forge conda-build setuptools_scm -y
+  #     - uses: actions/cache@v4
+  #       with:
+  #         path: |
+  #           pkgs/noarch
+  #           pkgs/channeldata.json
+  #         key: ${{ github.sha }}-packages
+  #     - id: version
+  #       shell: bash -l {0}
+  #       run: |
+  #         vers=$( python setup.py --version )
+  #         echo "version=${vers}" >> $GITHUB_OUTPUT
+  #     - name: linux conda build test
+  #       shell: bash -l {0}
+  #       run: |
+  #         mkdir -p ./pkgs/noarch
+  #         conda-build -c conda-forge conda-recipe --no-test --output-folder ./pkgs
 
   test-conda-packages:
-    needs: [conda-noarch-build]
+    # needs: [conda-noarch-build]
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os: [windows-latest]
         ilastik_variant: ["ilastik-core", "ilastik", "ilastik-gpu"]
-        exclude:
-          - os: macos-latest
-            ilastik_variant: "ilastik-gpu"
+        # exclude:
+        #   - os: macos-latest
+        #     ilastik_variant: "ilastik-gpu"
         include:
           - ilastik_variant: "ilastik-core"
             build_prefix: "py_"
     runs-on: ${{ matrix.os }}
-    env:
-      ILASTIK_PACKAGE_NAME: ${{ matrix.ilastik_variant }}-${{ needs.conda-noarch-build.outputs.version }}-${{ matrix.build_prefix }}0.tar.bz2
+    # env:
+    #   ILASTIK_PACKAGE_NAME: ${{ matrix.ilastik_variant }}-${{ needs.conda-noarch-build.outputs.version }}-${{ matrix.build_prefix }}0.tar.bz2
     steps:
       # necessary on windows: https://github.com/actions/cache/issues/591#issuecomment-845132253
       - name: "Use GNU tar instead BSD tar"
@@ -107,6 +107,26 @@ jobs:
           sudo apt-get install -yy mesa-utils libgl1-mesa-dev xvfb curl
       - name: install common conda dependencies
         run: conda install -n base -c conda-forge conda-build setuptools_scm -y
+      - name: windows debug -1
+        if: matrix.os == 'windows-latest'
+        shell: cmd /C CALL {0}
+        run: conda --help
+      - name: windows debug 0
+        if: matrix.os == 'windows-latest'
+        shell: cmd /C CALL {0}
+        run: dir C:\Users\runneradmin\miniconda3\condabin
+      - name: windows debug 1
+        if: matrix.os == 'windows-latest'
+        shell: cmd /C CALL {0}
+        run: where conda
+      - name: windows debug 2
+        if: matrix.os == 'windows-latest'
+        shell: cmd /C CALL {0}
+        run: echo %PATH%
+      - name: windows debug 3
+        if: matrix.os == 'windows-latest'
+        shell: cmd /C CALL {0}
+        run: where conda-build
       - uses: actions/cache@v4
         with:
           path: |
