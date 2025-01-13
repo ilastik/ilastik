@@ -24,7 +24,7 @@ dependencies:
   - marching_cubes
   - ndstructs
   - nifty
-  - pandas
+  - pandas 2.*
   - psutil
   - pydantic 2.*
   - pyopengl

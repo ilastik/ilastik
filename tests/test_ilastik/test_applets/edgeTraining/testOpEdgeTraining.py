@@ -1,24 +1,22 @@
 import numpy as np
-import pandas as pd
+import pytest
 
 from ilastikrag.util import generate_random_voronoi
 
-from lazyflow.graph import Graph
 from ilastik.applets.edgeTraining import OpEdgeTraining
 
-import logging
 
-logger = logging.getLogger("tests.test_applets.edgeTraining")
+@pytest.fixture
+def superpixels():
+    superpixels = generate_random_voronoi((100, 100, 100), 100)
+    superpixels = superpixels.insertChannelAxis()
+    return superpixels
 
 
-class TestOpEdgeTraining(object):
-    def testBasic(self):
-        superpixels = generate_random_voronoi((100, 100, 100), 100)
-        superpixels = superpixels.insertChannelAxis()
-
+class TestOpEdgeTraining:
+    def testBasic(self, graph, superpixels):
         voxel_data = superpixels.astype(np.float32)
 
-        graph = Graph()
         multilane_op = OpEdgeTraining(graph=graph)
         multilane_op.VoxelData.resize(1)  # resizes all level-1 slots.
         op_view = multilane_op.getLane(0)
@@ -57,3 +55,62 @@ class TestOpEdgeTraining(object):
         # ON
         assert edge_prob_dict[edge_C] > 0.5, "Expected > 0.5, got {}".format(edge_prob_dict[edge_C])
         assert edge_prob_dict[edge_D] > 0.5, "Expected > 0.5, got {}".format(edge_prob_dict[edge_D])
+
+    def test_multi_lane(self, graph, superpixels):
+        voxel_data = superpixels.astype(np.float32)
+
+        multilane_op = OpEdgeTraining(graph=graph)
+        multilane_op.VoxelData.resize(2)  # resizes all level-1 slots.
+
+        op_lane0 = multilane_op.getLane(0)
+        op_lane1 = multilane_op.getLane(1)
+        lanes = [op_lane0, op_lane1]
+
+        for lane_op in lanes:
+            lane_op.VoxelData.setValue(voxel_data, extra_meta={"channel_names": ["Grayscale"]})
+            lane_op.Superpixels.setValue(superpixels)
+            lane_op.WatershedSelectedInput.setValue(voxel_data)
+        multilane_op.TrainRandomForest.setValue(True)
+
+        multilane_op.FeatureNames.setValue({"Grayscale": ["standard_edge_mean", "standard_edge_count"]})
+
+        assert op_lane0.Rag.ready()
+        assert op_lane1.Rag.ready()
+
+        # Pick some edges to label
+        rag0 = op_lane0.Rag.value
+        rag1 = op_lane1.Rag.value
+        edge_00 = tuple(rag0.edge_ids[0])
+        edge_01 = tuple(rag0.edge_ids[1])
+        edge_12 = tuple(rag1.edge_ids[2])
+        edge_13 = tuple(rag1.edge_ids[3])
+
+        labels0 = {edge_00: 1, edge_01: 1}
+        labels1 = {edge_12: 2, edge_13: 2}
+
+        op_lane0.EdgeLabelsDict.setValue(labels0)
+        multilane_op.FreezeClassifier.setValue(False)
+
+        for lane_op in lanes:
+            assert lane_op.EdgeProbabilities.ready()
+            assert lane_op.EdgeProbabilitiesDict.ready()
+            assert lane_op.NaiveSegmentation.ready()
+
+        op_lane1.EdgeLabelsDict.setValue(labels1)
+
+        for lane_op in lanes:
+            assert lane_op.EdgeProbabilities.ready()
+            assert lane_op.EdgeProbabilitiesDict.ready()
+            assert lane_op.NaiveSegmentation.ready()
+
+        edge_prob_dict0 = op_lane0.EdgeProbabilitiesDict.value
+
+        # OFF
+        assert edge_prob_dict0[edge_00] < 0.5, "Expected < 0.5, got {}".format(edge_prob_dict0[edge_00])
+        assert edge_prob_dict0[edge_01] < 0.5, "Expected < 0.5, got {}".format(edge_prob_dict0[edge_01])
+
+        edge_prob_dict1 = op_lane1.EdgeProbabilitiesDict.value
+
+        # ON
+        assert edge_prob_dict1[edge_12] > 0.5, "Expected > 0.5, got {}".format(edge_prob_dict1[edge_12])
+        assert edge_prob_dict1[edge_13] > 0.5, "Expected > 0.5, got {}".format(edge_prob_dict1[edge_13])
