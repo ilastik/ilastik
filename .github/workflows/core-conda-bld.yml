@@ -61,7 +61,7 @@ jobs:
             build_prefix: "py_"
     runs-on: ${{ matrix.os }}
     env:
-      ILASTIK_PACKAGE_NAME: ${{ matrix.ilastik_variant }}-${{ needs.conda-noarch-build.outputs.version }}-${{ matrix.build_prefix }}0.tar.bz2
+      ILASTIK_PACKAGE_NAME: ${{ matrix.ilastik_variant }}-${{ needs.conda-noarch-build.outputs.version }}-${{ matrix.build_prefix }}0.conda
     steps:
       # necessary on windows: https://github.com/actions/cache/issues/591#issuecomment-845132253
       - name: "Use GNU tar instead BSD tar"
