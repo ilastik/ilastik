@@ -154,7 +154,7 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
 
         logger.log(
             USER_LOGLEVEL,
-            f"Training complete. Labels counts: ({', '.join(map(str, label_counts))}). Average OOB: {numpy.average(oobs):.3f}",
+            f"Training complete. Label counts: ({', '.join(map(str, label_counts))}). Average OOB: {numpy.average(oobs):.3f}",
         )
         return ParallelVigraRfLazyflowClassifier(forests, oobs, known_labels, feature_names, named_importances)
 

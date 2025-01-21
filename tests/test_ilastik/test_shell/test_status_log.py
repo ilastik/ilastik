@@ -1,7 +1,6 @@
 import logging
 
 import pytest
-from PyQt5.QtCore import Qt
 
 from ilastik.shell.gui.ilastikShell import NotificationsBar, NotificationsWindow
 from lazyflow import USER_LOGLEVEL
@@ -10,12 +9,13 @@ logger = logging.getLogger("root")
 
 
 @pytest.fixture
-def log_bar(qtbot):
-    log_bar = NotificationsBar()
-    qtbot.addWidget(log_bar)
-    with qtbot.waitExposed(log_bar):
-        log_bar.show()
-    return log_bar
+def notifications_bar(qtbot):
+    notifications_bar = NotificationsBar()
+    qtbot.addWidget(notifications_bar)
+    qtbot.addWidget(notifications_bar.notifications_widget)
+    with qtbot.waitExposed(notifications_bar):
+        notifications_bar.show()
+    return notifications_bar
 
 
 @pytest.fixture
@@ -41,47 +41,51 @@ def test_log_window_scroll_to_last(qtbot):
     assert log_win.verticalScrollBar().value() == log_win.verticalScrollBar().maximum()
 
 
-def test_print_message(log_bar: NotificationsBar, enable_log):
-    assert log_bar.text() == ""
+def test_print_message(notifications_bar: NotificationsBar, enable_log):
+    assert notifications_bar.text() == ""
 
     some_text = "ilastik logbar"
     logger.log(USER_LOGLEVEL, some_text)
-    assert log_bar.text() == some_text
+    assert notifications_bar.text() == some_text
 
 
-def test_double_click_opens_window(log_bar: NotificationsBar, qtbot):
-    qtbot.mouseDClick(log_bar, Qt.MouseButton.LeftButton)
+def test_double_click_opens_window(notifications_bar, qtbot):
+    with qtbot.waitExposed(notifications_bar.notifications_widget):
+        notifications_bar.mouseDoubleClickEvent(_event=None)
 
-    assert isinstance(log_bar.notifications_widget, NotificationsWindow)
-
-
-def test_reopen_shows_same_window(log_bar: NotificationsBar, qtbot):
-    qtbot.mouseDClick(log_bar, Qt.MouseButton.LeftButton)
-
-    assert isinstance(log_bar.notifications_widget, NotificationsWindow)
-
-    original_id = id(log_bar.notifications_widget)
-
-    qtbot.mouseDClick(log_bar, Qt.MouseButton.LeftButton)
-    with qtbot.waitExposed(log_bar.notifications_widget):
-        pass
-    assert id(log_bar.notifications_widget) == original_id
+    assert isinstance(notifications_bar.notifications_widget, NotificationsWindow)
 
 
-def test_clear(log_bar: NotificationsBar, qtbot, enable_log):
-    assert log_bar.text() == ""
+def test_reopen_shows_same_window(notifications_bar: NotificationsBar, qtbot):
+    with qtbot.waitExposed(notifications_bar.notifications_widget):
+        notifications_bar.mouseDoubleClickEvent(_event=None)
+
+    assert isinstance(notifications_bar.notifications_widget, NotificationsWindow)
+
+    original_id = id(notifications_bar.notifications_widget)
+    notifications_bar.notifications_widget.close()
+
+    with qtbot.waitExposed(notifications_bar.notifications_widget):
+        notifications_bar.mouseDoubleClickEvent(_event=None)
+
+    assert id(notifications_bar.notifications_widget) == original_id
+
+
+def test_clear(notifications_bar: NotificationsBar, qtbot, enable_log):
+    assert notifications_bar.text() == ""
 
     for i in range(42):
         logger.log(USER_LOGLEVEL, f"msg {i}")
 
-    assert log_bar.text() == "msg 41"
+    assert notifications_bar.text() == "msg 41"
 
-    qtbot.mouseDClick(log_bar, Qt.MouseButton.LeftButton)
+    with qtbot.waitExposed(notifications_bar.notifications_widget):
+        notifications_bar.mouseDoubleClickEvent(_event=None)
 
-    log_history = log_bar.notifications_widget.toPlainText()
+    log_history = notifications_bar.notifications_widget.toPlainText()
     assert len(log_history.split("\n")) == 42
 
-    log_bar.cleanUp()
+    notifications_bar.cleanUp()
 
-    assert log_bar.text() == ""
-    assert log_bar.notifications_widget.toPlainText() == ""
+    assert notifications_bar.text() == ""
+    assert notifications_bar.notifications_widget.toPlainText() == ""

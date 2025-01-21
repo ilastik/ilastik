@@ -154,15 +154,16 @@ class MemoryWidget(QWidget):
 class NotificationsWindow(QTextEdit):
     """Window/Widget that shows a history of notifications to users"""
 
-    def __init__(self, data, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, data, parent=None):
+        super().__init__(parent)
+        self.setWindowFlag(True)
         self._setup_ui(data)
 
     def _jump_to_end(self):
         self.verticalScrollBar().setValue(self.verticalScrollBar().maximum())
 
     def _setup_ui(self, data):
-        self.setWindowTitle("Log")
+        self.setWindowTitle("Notifications History")
         font = QFont("Monospace")
         font.setStyleHint(QFont.Monospace)
         self.setLineWrapMode(QTextEdit.NoWrap)
@@ -195,6 +196,8 @@ class NotificationsBar(QLabel):
         self.notifications_widget: Union[NotificationsWindow, None] = None
         self.setToolTip("Double click for history.")
         self._setup_logging()
+        self.notifications_widget = NotificationsWindow(data=self._history, parent=self)
+        self.textAdded.connect(self.notifications_widget.appendMessage)
         self.setContentsMargins(10, 0, 10, 0)
 
     def _setup_logging(self):
@@ -213,11 +216,7 @@ class NotificationsBar(QLabel):
         r = logging.getLogger("root")
         r.addHandler(s)
 
-    def mouseDoubleClickEvent(self, event):
-        if self.notifications_widget is None:
-            self.notifications_widget = NotificationsWindow(self._history)
-            self.textAdded.connect(self.notifications_widget.appendMessage)
-
+    def mouseDoubleClickEvent(self, _event):
         self.notifications_widget.show()
         self.notifications_widget.raise_()
 
@@ -266,8 +265,8 @@ class ProgressDisplayManager(QObject):
         self.statusBar.addWidget(self.progressBar)
         self.progressBar.setHidden(True)
 
-        self.logBar = NotificationsBar()
-        self.statusBar.addPermanentWidget(self.logBar)
+        self.notificationsBar = NotificationsBar()
+        self.statusBar.addPermanentWidget(self.notificationsBar)
 
         self.requestStatus = QLabel()
         self.requestTimer = QTimer()
@@ -311,7 +310,7 @@ class ProgressDisplayManager(QObject):
                 self._removeApplet(index, app)
         self.memoryWidget.cleanUp()
         self.progressBar.hide()
-        self.logBar.cleanUp()
+        self.notificationsBar.cleanUp()
 
     def _removeApplet(self, index, app):
         app.progressSignal.clean()
@@ -1288,7 +1287,7 @@ class IlastikShell(QMainWindow):
             self.refreshAppletDrawer(applet_index)
 
             # clear NotificatioinsBar
-            self.progressDisplayManager.logBar.clear()
+            self.progressDisplayManager.notificationsBar.clear()
 
             self._refreshDrawerRecursionGuard = False
 
