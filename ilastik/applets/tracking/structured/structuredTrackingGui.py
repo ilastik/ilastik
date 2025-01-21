@@ -144,7 +144,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._allowedTimeoutInputRegEx = re.compile("^[0-9]*$")
         self._drawer.timeoutBox.textChanged.connect(self._onTimeoutBoxChanged)
 
-        if not ilastik_config.getboolean("ilastik", "debug"):
+        if not ilastik_config.ilastik.debug:
 
             def checkboxAssertHandler(checkbox, assertEnabled=True):
                 if checkbox.isChecked() == assertEnabled:

@@ -54,6 +54,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 # This is a mixin that can be added to any LayerViewerGui subclass
 # See MulticutGui (bottom of this file) for the standalone version.
 class MulticutGuiMixin:
@@ -121,7 +122,7 @@ class MulticutGuiMixin:
         self.beta_box = beta_box
 
         # Beta parameter only modifiable in debug mode
-        dbg = ilastik_config.getboolean("ilastik", "debug")
+        dbg = ilastik_config.ilastik.debug
         if dbg:
             drawer_layout.addLayout(beta_layout)
 
@@ -347,7 +348,7 @@ class MulticutGuiMixin:
         self.topLevelOperatorView.FreezeCache.setValue(True)
 
     def create_multicut_disagreement_layer(self):
-        if not ilastik_config.getboolean("ilastik", "debug"):
+        if not ilastik_config.ilastik.debug:
             return None
 
         ActionInfo = ShortcutManager.ActionInfo

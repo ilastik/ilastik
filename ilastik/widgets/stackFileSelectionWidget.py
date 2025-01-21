@@ -124,7 +124,7 @@ class StackFileSelectionWidget(QDialog):
             defaultDirectory = os.path.expanduser("~")
 
         options = QFileDialog.Options(QFileDialog.ShowDirsOnly)
-        if ilastik.config.cfg.getboolean("ilastik", "debug"):
+        if ilastik.config.cfg.ilastik.debug:
             options |= QFileDialog.DontUseNativeDialog
 
         # Launch the "Open File" dialog
@@ -259,7 +259,7 @@ class StackFileSelectionWidget(QDialog):
             defaultDirectory = os.path.expanduser("~")
 
         options = QFileDialog.Options(QFileDialog.ShowDirsOnly)
-        if ilastik.config.cfg.getboolean("ilastik", "debug"):
+        if ilastik.config.cfg.ilastik.debug:
             options |= QFileDialog.DontUseNativeDialog
 
         h5exts = [x.lstrip(".") for x in OpStreamingH5N5SequenceReaderM.H5EXTS]
@@ -269,7 +269,7 @@ class StackFileSelectionWidget(QDialog):
         extensions.extend(OpInputDataReader.n5Selection)
         filt = "Image files (" + " ".join("*." + x for x in extensions) + ")"
         options = QFileDialog.Options()
-        if ilastik.config.cfg.getboolean("ilastik", "debug"):
+        if ilastik.config.cfg.ilastik.debug:
             options |= QFileDialog.DontUseNativeDialog
         fileNames, _filter = QFileDialog.getOpenFileNames(
             self, "Select Images for Stack", defaultDirectory, filt, options=options

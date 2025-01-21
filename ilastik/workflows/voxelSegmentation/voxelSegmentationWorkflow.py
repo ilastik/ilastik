@@ -250,7 +250,7 @@ class VoxelSegmentationWorkflow(Workflow):
         opTrainingFeatures.InputImage.connect(opData.Image)
         opClassify.InputImages.connect(opData.Image)
 
-        if ilastik_config.getboolean("ilastik", "debug"):
+        if ilastik_config.ilastik.debug:
             opClassify.PredictionMasks.connect(opData.ImageGroup[self.DATA_ROLE_PREDICTION_MASK])
 
         # Feature Images -> Classification Op (for training, prediction)
