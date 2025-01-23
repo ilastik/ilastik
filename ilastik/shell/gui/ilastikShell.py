@@ -215,6 +215,7 @@ class NotificationsBar(QLabel):
 
         r = logging.getLogger("root")
         r.addHandler(s)
+        self._s = s
 
     def mouseDoubleClickEvent(self, _event):
         self.notifications_widget.show()
@@ -241,6 +242,14 @@ class NotificationsBar(QLabel):
         # only needed to adhere to the stream interface
         # everything is written immediately on write
         pass
+
+    def __dtor__(self):
+        """Called via SIP when cpp destructor is running"""
+        try:
+            r = logging.getLogger("root")
+            r.removeHandler(self._s)
+        except:
+            pass
 
 
 class ProgressDisplayManager(QObject):
