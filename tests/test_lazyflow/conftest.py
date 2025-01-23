@@ -1,10 +1,29 @@
-import os
-
 import pytest
 import pathlib
 
+import lazyflow
 from lazyflow.operator import format_operator_stack
 from lazyflow.graph import Graph
+
+
+@pytest.fixture(scope="module")
+def disabled_cache_manager():
+    """
+    Some tests rely on cache being persistent. On smaller machines it can
+    happen that cache is cleaned up during a test. By disabling the automatic
+    cleanup we ensure reproducible cache hits.
+    """
+    cache_manager = lazyflow.operators.cacheMemoryManager._cache_memory_manager
+    cache_manager.disable()
+    yield cache_manager
+    cache_manager.enable()
+
+
+@pytest.fixture(scope="function", autouse=True)
+def ensure_clean_cache(disabled_cache_manager):
+    """Clean cache before after test"""
+    yield
+    disabled_cache_manager._cleanup()
 
 
 @pytest.hookimpl()
