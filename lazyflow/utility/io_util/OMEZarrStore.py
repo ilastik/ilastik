@@ -352,6 +352,14 @@ def _fetch_and_validate_ome_zarr_spec(uri: str, sort_uri: Optional[str] = None) 
         # Connection problems on FSSpec side raise a ClientConnectorError wrapped in a KeyError
         if isinstance(e.__context__, ClientConnectorError):
             raise ConnectionError(f"Could not connect to {e.__context__.host}:{e.__context__.port}.") from e
+        try:
+            # Metadata file is called zarr.json since OME-Zarr v0.5 (zarr v3)
+            # When we support v0.5, zarr.json should be the first attempt and .zattrs the fallback
+            meta = json.loads(store["zarr.json"])
+            version = meta["attributes"]["ome"]["version"]
+            raise NotImplementedError(f"This OME-Zarr store is version {version}. ilastik does not support this yet.")
+        except KeyError:
+            pass  # Raise the original error from .zattrs attempt
         raise NoOMEZarrMetaFound(f"Expected an OME-Zarr store, but could not find metadata at {uri}/.zattrs.") from e
 
     # Found .zattrs, but what kind of .zattrs?
