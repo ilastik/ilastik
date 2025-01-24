@@ -40,6 +40,8 @@ from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SC
 
 logger = logging.getLogger(__name__)
 
+ZARR_EXT = ".zarr"
+
 OME_ZARR_V_0_4_KWARGS = dict(dimension_separator="/", normalize_keys=False)
 OME_ZARR_V_0_1_KWARGS = dict(dimension_separator=".")
 
@@ -352,6 +354,14 @@ def _fetch_and_validate_ome_zarr_spec(uri: str, sort_uri: Optional[str] = None) 
         # Connection problems on FSSpec side raise a ClientConnectorError wrapped in a KeyError
         if isinstance(e.__context__, ClientConnectorError):
             raise ConnectionError(f"Could not connect to {e.__context__.host}:{e.__context__.port}.") from e
+        try:
+            # Metadata file is called zarr.json since OME-Zarr v0.5 (zarr v3)
+            # When we support v0.5, zarr.json should be the first attempt and .zattrs the fallback
+            meta = json.loads(store["zarr.json"])
+            version = meta["attributes"]["ome"]["version"]
+            raise NotImplementedError(f"This OME-Zarr store is version {version}. ilastik does not support this yet.")
+        except KeyError:
+            pass  # Raise the original error from .zattrs attempt
         raise NoOMEZarrMetaFound(f"Expected an OME-Zarr store, but could not find metadata at {uri}/.zattrs.") from e
 
     # Found .zattrs, but what kind of .zattrs?
@@ -381,6 +391,9 @@ def _introspect_for_multiscales_root(uri: str) -> Tuple[OME_ZARR_SPEC, str, Opti
     try:
         return _fetch_and_validate_ome_zarr_spec(uri), uri, None
     except NoOMEZarrMetaFound:
+        if ZARR_EXT in uri.split("/")[-1]:
+            raise
+        # Try to find OME-Zarr spec in parent directories
         i = len(uri)
         while i > 0:
             i = uri.rfind("/", 0, i)
@@ -393,7 +406,7 @@ def _introspect_for_multiscales_root(uri: str) -> Tuple[OME_ZARR_SPEC, str, Opti
                     sub_uri,
                 )
             except NoOMEZarrMetaFound:
-                if ".zarr" in uri_to_parent.split("/")[-1]:
+                if ZARR_EXT in uri_to_parent.split("/")[-1]:
                     break
                 continue
         raise  # If no OME-Zarr meta found at URI or any parent, raise the original exception
@@ -414,7 +427,7 @@ class OMEZarrStore(MultiscaleStore):
     """
 
     NAME = "OME-Zarr"
-    URI_HINT = 'URL contains ".zarr"'
+    URI_HINT = f'URL contains "{ZARR_EXT}"'
 
     def __init__(self, uri: str, target_scale: Optional[str] = None, single_scale_mode: bool = False):
         self._ome_spec, self.base_uri, self.scale_sub_path = _introspect_for_multiscales_root(uri)
@@ -487,7 +500,7 @@ class OMEZarrStore(MultiscaleStore):
 
     @staticmethod
     def is_uri_compatible(uri: str) -> bool:
-        return ".zarr" in uri
+        return ZARR_EXT in uri
 
     def get_chunk_size(self, scale_key=DEFAULT_SCALE_KEY):
         scale_key = scale_key if scale_key != DEFAULT_SCALE_KEY else self.lowest_resolution_key
