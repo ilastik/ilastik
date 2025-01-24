@@ -391,6 +391,9 @@ def _introspect_for_multiscales_root(uri: str) -> Tuple[OME_ZARR_SPEC, str, Opti
     try:
         return _fetch_and_validate_ome_zarr_spec(uri), uri, None
     except NoOMEZarrMetaFound:
+        if ZARR_EXT in uri.split("/")[-1]:
+            raise
+        # Try to find OME-Zarr spec in parent directories
         i = len(uri)
         while i > 0:
             i = uri.rfind("/", 0, i)
