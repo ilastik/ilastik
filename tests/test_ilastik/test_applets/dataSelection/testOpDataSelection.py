@@ -969,7 +969,13 @@ class TestOpDataSelection_OMEZarr:
         images = {"s0": self.IMAGE_ORIGINAL, "s1": self.IMAGE_SCALED}
         monkeypatch.setattr(zarr.Array, "__getitem__", lambda _self, slicing: images[_self.path][slicing])
 
-    @pytest.fixture(params=["https://localhost:8000/dataset.zarr", "s3://some-bucket/dataset.zarr"])
+    @pytest.fixture(
+        params=[
+            "https://localhost:8000/dataset.zarr",
+            "s3://some-bucket/dataset.zarr",
+            "https://s3.selfhoster.com/bucket/dataset.zarr",
+        ]
+    )
     def datasetInfo(self, request, monkeypatch, mock_ome_zarr_metadata):
         return MultiscaleUrlDatasetInfo(url=request.param)
 

@@ -28,8 +28,9 @@ from typing import Dict, List, Optional, Union, Literal, Tuple, Any
 from urllib.parse import unquote_to_bytes
 
 import jsonschema
+import s3fs
 import vigra
-from aiohttp import ClientConnectorError
+from aiohttp import ClientConnectorError, ClientResponseError
 from zarr.core import Array as ZarrArray
 from zarr.errors import ArrayNotFoundError
 from zarr.storage import FSStore, LRUStoreCache
@@ -256,13 +257,42 @@ def _get_zarr_cache_max_size() -> int:
     return math.floor(caches_max * permissible_fraction_max)
 
 
-def _unescape_and_get_store(uri: str, mode="r", **kwargs) -> FSStore:
+def _ensure_connection_and_get_store(uri: str, mode="r", **kwargs) -> FSStore:
     if uri.startswith("file:"):
         # Zarr's FSStore implementation doesn't unescape file URLs before piping them to
         # the file system. We do it here the same way as in pathHelpers.uri_to_Path.
         # Primarily this is to deal with spaces in Windows paths (encoded as %20).
         uri = os.fsdecode(unquote_to_bytes(uri))
-    return FSStore(uri, mode=mode, **kwargs)
+    store = FSStore(uri, mode=mode, **kwargs)
+    try:
+        store["test"]
+        # Any error not handled here is either a successful connection (404 for "test"), or an unknown problem
+    except KeyError as e:
+        # FSStore wraps some errors in KeyError (FileNotFoundError even double-wrapped)
+        if isinstance(e.__context__, ClientConnectorError):
+            raise ConnectionError(f"Could not connect to {e.__context__.host}:{e.__context__.port}.") from e
+    except ClientResponseError as e:
+        if not (e.status == 403 and uri.startswith("https://")):
+            raise
+        # 403 indicates we need authentication; FSStore maps https: to HTTPFileSystem, which cannot authenticate
+        split_bucket = uri.split("/", 4)
+        if len(split_bucket) < 5:  # Does not follow S3 pattern (https://s3.server.org/bucket/file)
+            raise ConnectionError(
+                f"Server refused permission to read {uri}.\nIt seems authentication is required, but ilastik does not support this kind of server yet."
+            ) from e
+        base_uri_inc_bucket = "/".join(split_bucket[:4])
+        sub_uri = split_bucket[4]
+        fs = s3fs.S3FileSystem(anon=False, endpoint_url=base_uri_inc_bucket)
+        store = FSStore(sub_uri, fs=fs, **kwargs)
+        try:
+            store["test"]
+        except KeyError as ke:
+            if isinstance(ke.__context__, PermissionError):
+                # This probably is an S3-compatible store, but auth rejected/not found.
+                raise ConnectionError(
+                    f"Server refused permission to read {uri}.\nCheck your S3 credentials setup."
+                ) from ke
+    return store
 
 
 def _parse_ome_zarr_labels(spec: Dict, uri: str) -> List[str]:
@@ -345,15 +375,12 @@ def _fetch_and_validate_ome_zarr_spec(uri: str, sort_uri: Optional[str] = None) 
     """Fetch uri/.zattrs and validate it against OME-Zarr spec.
     :param sort_uri: If the spec at `uri` is not multiscale but plate, well or labels,
         the URIs in the response text are reordered to first show those including `uri`."""
-    store = _unescape_and_get_store(uri)
+    store = _ensure_connection_and_get_store(uri)
     try:
         with Timer() as timer:
             spec = json.loads(store[".zattrs"])
             logger.info(f"Reading OME-Zarr metadata from {uri}/.zattrs took {timer.seconds()*1000} ms.")
     except KeyError as e:
-        # Connection problems on FSSpec side raise a ClientConnectorError wrapped in a KeyError
-        if isinstance(e.__context__, ClientConnectorError):
-            raise ConnectionError(f"Could not connect to {e.__context__.host}:{e.__context__.port}.") from e
         try:
             # Metadata file is called zarr.json since OME-Zarr v0.5 (zarr v3)
             # When we support v0.5, zarr.json should be the first attempt and .zattrs the fallback
@@ -456,9 +483,9 @@ class OMEZarrStore(MultiscaleStore):
         axistags = _axistags_from_multiscale(self._multiscale_spec)
         datasets = self._multiscale_spec["datasets"]
         if self._multiscale_spec["version"] == "0.1":
-            uncached_store = _unescape_and_get_store(self.base_uri, **OME_ZARR_V_0_1_KWARGS)
+            uncached_store = _ensure_connection_and_get_store(self.base_uri, **OME_ZARR_V_0_1_KWARGS)
         else:
-            uncached_store = _unescape_and_get_store(self.base_uri, **OME_ZARR_V_0_4_KWARGS)
+            uncached_store = _ensure_connection_and_get_store(self.base_uri, **OME_ZARR_V_0_4_KWARGS)
         # There is an additional block cache in front of OpOMEZarrMultiscaleReader, so e.g. when
         # the user scrolls across z back and forth, this does not trigger requests to the store.
         # But blocks can be misaligned with file size in the store. This cache can prevent downloading
