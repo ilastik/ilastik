@@ -903,7 +903,6 @@ class TestOpDataSelection_OMEZarr:
     CHUNK_SIZE_ZYX = (1, 16, 16)
     IMAGE_SCALED = numpy.random.randint(0, 256, SHAPE_SCALED_ZYX, dtype=numpy.uint16)
     IMAGE_ORIGINAL = numpy.random.randint(0, 256, SHAPE_ORIGINAL_ZYX, dtype=numpy.uint16)
-    MOCK_DATASET_URL = "https://localhost:8000/dataset.zarr"
     S1ZARRAY = {
         "zarr_format": 2,
         "shape": list(SHAPE_SCALED_ZYX),
@@ -970,9 +969,9 @@ class TestOpDataSelection_OMEZarr:
         images = {"s0": self.IMAGE_ORIGINAL, "s1": self.IMAGE_SCALED}
         monkeypatch.setattr(zarr.Array, "__getitem__", lambda _self, slicing: images[_self.path][slicing])
 
-    @pytest.fixture
-    def datasetInfo(self, monkeypatch, mock_ome_zarr_metadata):
-        return MultiscaleUrlDatasetInfo(url=self.MOCK_DATASET_URL)
+    @pytest.fixture(params=["https://localhost:8000/dataset.zarr", "s3://some-bucket/dataset.zarr"])
+    def datasetInfo(self, request, monkeypatch, mock_ome_zarr_metadata):
+        return MultiscaleUrlDatasetInfo(url=request.param)
 
     @pytest.fixture
     def op(self, graph, monkeypatch, datasetInfo):
@@ -1024,7 +1023,7 @@ class TestOpDataSelection_OMEZarr:
         monkeypatch.setattr(zarr.Array, "__init__", track_instances)
 
         # Make sure that instantiating a DatasetInfo does not load more than one scale into a zarr.Array
-        _ = MultiscaleUrlDatasetInfo(url=self.MOCK_DATASET_URL)
+        _ = MultiscaleUrlDatasetInfo(url="https://some.url.com/dataset.zarr")
         assert zarr.Array.instance_counter == 1
 
 

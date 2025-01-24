@@ -301,7 +301,7 @@ class OpInputDataReader(Operator):
             return ([], None)
         if not isUrl(filePath):
             filePath = Path(filePath).as_uri()
-        if not (filePath.startswith("http") or filePath.startswith("file")):
+        if not any(filePath.startswith(scheme) for scheme in ["http", "file", "s3"]):
             return ([], None)
         # DatasetInfo instantiates a standalone OpInputDataReader to obtain laneShape and dtype.
         # We pass this down to the loader so that it can avoid loading scale metadata unnecessarily.

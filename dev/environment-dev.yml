@@ -52,6 +52,7 @@ dependencies:
   - zarr 2.*
   - aiohttp
   - fsspec
+  - s3fs
 
   # Deep learning dependencies (neural net workflow, trainable domain adaptation)
   # can be changed to request gpu versions
