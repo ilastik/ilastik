@@ -608,6 +608,7 @@ class OpCarving(Operator):
             self._opMstCache.Input.disconnect()
             self._mst = self.MST.value
             self._opMstCache.Input.setValue(self._mst)
+            self._updateDoneSegmentation()
 
             if self.has_seeds:
                 fgVoxels, bgVoxels = self.get_label_voxels()
