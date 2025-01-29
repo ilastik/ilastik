@@ -1,6 +1,10 @@
 channels:
   - pytorch
 #  - nvidia  # uncomment for pytorch with cuda
+  # ilastik-forge/label/patched contains patched versions of pyshtools
+  # with certain dependencies removed that made solving the ilastik
+  # environment impossible / extremely inflexible
+  - ilastik-forge/label/patched
   - ilastik-forge
   - conda-forge
   - nodefaults
