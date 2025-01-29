@@ -149,7 +149,7 @@ class OpCarving(Operator):
             self._pmap = f["/data"][numpy.newaxis, :, :, :, numpy.newaxis]
 
         self._setCurrObjectName("")
-        self._updateCanObjectBeSaved()
+        self._update_gui_flags()
 
         # keep track of a set of object names that have changed since
         # the last serialization of this object to disk
@@ -194,7 +194,7 @@ class OpCarving(Operator):
         if self._mst is not None:
             self._mst.clearSeed(label_value)
         self.opLabelArray.DeleteLabel.setValue(-1)
-        self._updateCanObjectBeSaved()
+        self._update_gui_flags()
 
     def _clearLabels(self):
         # clear the labels
@@ -232,24 +232,17 @@ class OpCarving(Operator):
                 self._done_seg_lut[objectSupervoxels] = self._mst.object_names[name]
         logger.info(f"building the 'done' luts took {timer.seconds()} seconds")
 
-    def _updateCanObjectBeSaved(self):
-        if self._mst is None:
-            self.CanObjectBeSaved.setValue(False)
-            return
-
-        self._updateCanRunSegmentation()
-        has_segmentation = numpy.any(self._mst.hasSeg)
-        self.CanObjectBeSaved.setValue(has_segmentation and self.CanRunSegmentation.value)
-
-    def _updateCanRunSegmentation(self):
+    def _update_gui_flags(self):
         if self._mst is None:
             self.CanRunSegmentation.setValue(False)
+            self.CanObjectBeSaved.setValue(False)
             return
 
         nodeSeeds = self._mst.gridSegmentor.getNodeSeeds()
         has_bg_seeds = numpy.any(nodeSeeds == Labels.BACKGROUND)
         has_fg_seeds = numpy.any(nodeSeeds == Labels.FOREGROUND)
         self.CanRunSegmentation.setValue(has_bg_seeds and has_fg_seeds)
+        self.CanObjectBeSaved.setValue(self._mst.hasSeg)
 
     def setupOutputs(self):
         self.Segmentation.meta.assignFrom(self.InputData.meta)
@@ -300,7 +293,7 @@ class OpCarving(Operator):
         self.Trigger.setDirty(slice(None))
         self._setCurrObjectName("")
         self._updateDoneSegmentation()
-        self._updateCanObjectBeSaved()
+        self._update_gui_flags()
 
     def restore_and_get_labels_for_object(self, name):
         """
@@ -330,7 +323,7 @@ class OpCarving(Operator):
         self._mst.setResulFgObj(fgNodes[0])
 
         self._setCurrObjectName(name)
-        self._updateCanObjectBeSaved()
+        self._update_gui_flags()
 
         self._updateDoneSegmentation()
         return (fgVoxelsSeedPos, bgVoxelsSeedPos)
@@ -365,7 +358,7 @@ class OpCarving(Operator):
         # The entire segmentation layer needs to be refreshed now.
         self.Segmentation.setDirty()
         self.DoneSegmentation.setDirty()
-        self._updateCanObjectBeSaved()
+        self._update_gui_flags()
 
     def set_labels_into_WriteSeeds_input(self, fgVoxels, bgVoxels):
         fg_bounding_box_start = numpy.array(list(map(numpy.min, fgVoxels)))
@@ -438,7 +431,7 @@ class OpCarving(Operator):
         logger.info("save: len = {}".format(len(objects)))
         self.AllObjectNames.meta.shape = (len(objects),)
 
-        self._updateCanObjectBeSaved()
+        self._update_gui_flags()
 
     def get_label_voxels(self):
         # the voxel coordinates of fg and bg labels
@@ -569,7 +562,7 @@ class OpCarving(Operator):
             logger.info(f"Writing seeds to MST took {timer.seconds()} seconds")
 
         self.has_seeds = True
-        self._updateCanObjectBeSaved()
+        self._update_gui_flags()
 
     def propagateDirty(self, slot, subindex, roi):
         if (
@@ -602,7 +595,7 @@ class OpCarving(Operator):
 
             self.Segmentation.setDirty(slice(None))
             self.DoneSegmentation.setDirty(slice(None))
-            self._updateCanObjectBeSaved()
+            self._update_gui_flags()
 
         elif slot == self.MST:
             self._opMstCache.Input.disconnect()
