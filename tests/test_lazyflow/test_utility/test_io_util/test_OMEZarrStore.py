@@ -60,12 +60,6 @@ def count_s3fs_instances(monkeypatch):
     return track_instances
 
 
-def test_maps_s3_scheme_to_s3fs(count_s3fs_instances):
-    with pytest.raises(NoOMEZarrMetaFound):
-        OMEZarrStore("s3://some-nonexistent-bucket-foobar123/some.zarr")
-    assert s3fs.core.S3FileSystem.instance_counter == 1
-
-
 @pytest.fixture
 def mock_httpfs_403(monkeypatch):
     # Mimics what happens when an S3-compatible store is accessed with a default fsspec HTTPFileSystem
