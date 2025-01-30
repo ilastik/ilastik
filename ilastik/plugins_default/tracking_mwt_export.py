@@ -18,7 +18,7 @@ class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
     exportsToFile = True
 
     def checkFilesExist(self, filename):
-        """ Check whether the files we want to export are already present """
+        """Check whether the files we want to export are already present"""
         return os.path.exists(filename + ".outline")
 
     def export(self, filename, hypothesesGraph, pluginExportContext):
@@ -56,7 +56,7 @@ class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
             for idx in vigra.analysis.unique(frame):
                 nodeId = (t, idx)
 
-                if hypothesesGraph.hasNode(nodeId) and "lineageId" in hypothesesGraph._graph.node[nodeId]:
+                if hypothesesGraph.hasNode(nodeId) and "lineageId" in hypothesesGraph._graph.nodes[nodeId]:
                     if t in summaryDict:
                         summaryDict[t]["objectsNumber"] += 1
                         summaryDict[t]["validObjectsNumber"] += 1
@@ -98,7 +98,7 @@ class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
                 frameSingleLabel[frame == idx] = 1
 
                 # Find contours using skimage marching squares
-                contours = measure._find_contours.find_contours(frameSingleLabel, 0)
+                contours = measure.find_contours(frameSingleLabel, 0)
 
                 # Save contours to dictionary
                 if idx in contoursDict:
@@ -159,8 +159,8 @@ class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
 
                 nodeId = (t, idx)
 
-                if hypothesesGraph.hasNode(nodeId) and "lineageId" in hypothesesGraph._graph.node[nodeId]:
-                    lineageId = hypothesesGraph._graph.node[nodeId]["lineageId"]
+                if hypothesesGraph.hasNode(nodeId) and "lineageId" in hypothesesGraph._graph.nodes[nodeId]:
+                    lineageId = hypothesesGraph._graph.nodes[nodeId]["lineageId"]
 
                     contour = contoursDict[idx][t]
 
