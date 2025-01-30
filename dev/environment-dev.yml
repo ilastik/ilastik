@@ -1,6 +1,10 @@
 channels:
   - pytorch
 #  - nvidia  # uncomment for pytorch with cuda
+  # ilastik-forge/label/patched contains patched versions of pyshtools
+  # with certain dependencies removed that made solving the ilastik
+  # environment impossible / extremely inflexible
+  - ilastik-forge/label/patched
   - ilastik-forge
   - conda-forge
   - nodefaults
@@ -40,7 +44,7 @@ dependencies:
   - tifffile >=2022
   # build 1.11.1=*_1028 on cf is the first to be compatible with numpy>1.19
   # need to bump this manually until there is a true version bump in vigra
-  - vigra 1.11.1=*_1033
+  - vigra 1.11.1=*_1038
   # xarray versions not compatible with numpy 1.21, 2023.08.0 might be, but lost trust
   # 2023.10.1 correctly pins numpy to 1.22 and up
   - xarray !=2023.8.0,!=2023.9.0,!=2023.10.0

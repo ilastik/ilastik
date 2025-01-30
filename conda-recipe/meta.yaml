@@ -26,7 +26,7 @@ outputs:
         - setuptools_scm
       run:
         - python >=3.7
-        - numpy >1.12
+        - numpy >1.12,<1.23
         # aiohttp to enable zarr.storage.FSStore
         - aiohttp
         - appdirs
@@ -61,7 +61,7 @@ outputs:
         - tifffile >=2022
         # build 1.11.1=*_1028 on cf is the first to be compatible with numpy>1.19
         # need to bump this manually until there is a true version bump in vigra
-        - vigra
+        - vigra 1.11.1=*_1038
         - xarray !=2023.8.0,!=2023.9.0,!=2023.10.0
         - z5py
         - zarr 2.*
