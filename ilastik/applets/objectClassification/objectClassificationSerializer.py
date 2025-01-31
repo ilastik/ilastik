@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -18,8 +18,6 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import warnings
-
 from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
     SerialSlot,
@@ -28,20 +26,6 @@ from ilastik.applets.base.appletSerializer import (
     SerialListSlot,
     SerialPickleableSlot,
 )
-
-
-class SerialDictSlotWithoutDeserialization(SerialDictSlot):
-    def __init__(self, slot, mainOperator, **kwargs):
-        super(SerialDictSlotWithoutDeserialization, self).__init__(slot, **kwargs)
-        self.mainOperator = mainOperator
-
-    def serialize(self, group):
-        # if self.slot.ready() and self.mainOperator._predict_enabled:
-        return SerialDictSlot.serialize(self, group)
-
-    def deserialize(self, group):
-        # Do not deserialize this slot
-        pass
 
 
 class ObjectClassificationSerializer(AppletSerializer):
