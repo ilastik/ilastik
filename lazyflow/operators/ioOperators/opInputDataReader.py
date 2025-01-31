@@ -100,6 +100,9 @@ class OpInputDataReader(Operator):
         h5_n5_Exts + n5Selection + npyExts + npzExts + rawExts + vigraImpexExts + blockwiseExts + videoExts + klbExts
     )
 
+    supported_ome_zarr_schemes = ["http:", "https:", "file:", "s3:"]
+    precomputed_protocol = "precomputed://"
+
     if _supports_dvid:
         dvidExts = ["dvidvol"]
         SupportedExtensions += dvidExts
@@ -301,7 +304,7 @@ class OpInputDataReader(Operator):
             return ([], None)
         if not isUrl(filePath):
             filePath = Path(filePath).as_uri()
-        if not any(filePath.startswith(scheme) for scheme in ["http", "file", "s3"]):
+        if not any(filePath.startswith(scheme) for scheme in self.supported_ome_zarr_schemes):
             return ([], None)
         # DatasetInfo instantiates a standalone OpInputDataReader to obtain laneShape and dtype.
         # We pass this down to the loader so that it can avoid loading scale metadata unnecessarily.
@@ -311,7 +314,7 @@ class OpInputDataReader(Operator):
         return [reader], reader.Output
 
     def _attemptOpenAsRESTfulPrecomputedChunkedVolume(self, filePath):
-        if not filePath.lower().startswith("precomputed://"):
+        if not filePath.lower().startswith(self.precomputed_protocol):
             return ([], None)
         reader = OpRESTfulPrecomputedChunkedVolumeReader(parent=self)
         reader.Scale.connect(self.ActiveScale)

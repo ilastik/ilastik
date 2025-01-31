@@ -31,7 +31,7 @@ import jsonschema
 import s3fs
 import vigra
 from aiohttp import ClientConnectorError, ClientResponseError
-from botocore.exceptions import NoCredentialsError
+from botocore.exceptions import NoCredentialsError, EndpointConnectionError
 from zarr.core import Array as ZarrArray
 from zarr.errors import ArrayNotFoundError
 from zarr.storage import FSStore, LRUStoreCache
@@ -261,13 +261,17 @@ def _get_zarr_cache_max_size() -> int:
 def _try_authenticated_aws_s3(uri, kwargs, mode, test_path) -> Optional[FSStore]:
     authenticated_store = FSStore(uri, mode=mode, anon=False, **kwargs)
     try:
-        authenticated_store[test_path]
+        logger.debug(f"Trying to access path={test_path} at uri={uri} with S3FS credentials.")
+        _ = authenticated_store[test_path]
     except NoCredentialsError:
         logger.warning(
             "AWS S3 credentials are not set up. Will continue without authentication and assume "
             "the bucket is public.\n"
             "If this bucket may be private, please check your credentials are set up for S3FS."
         )
+    except EndpointConnectionError as ece:
+        if "169.254.169.254" in str(ece):
+            pass  # Happens when s3fs tries and fails token authentication, no need to feed back to user
     except KeyError as ke:
         if isinstance(ke.__context__.__context__, FileNotFoundError):
             # Even if .zattrs isn't here, we still managed to access the bucket
@@ -277,7 +281,9 @@ def _try_authenticated_aws_s3(uri, kwargs, mode, test_path) -> Optional[FSStore]
             )
             return authenticated_store
     else:
+        logger.info("Successfully authenticated with S3.")
         return authenticated_store
+    logger.info("Tried to authenticate with S3FS credentials but failed. Continuing without authentication.")
     return None
 
 
@@ -293,7 +299,8 @@ def _try_authenticated_s3_compatible(uri, kwargs, e, test_path) -> FSStore:
     fs = s3fs.S3FileSystem(anon=False, endpoint_url=base_uri_inc_bucket)
     store = FSStore(sub_uri, fs=fs, **kwargs)
     try:
-        store[test_path]
+        logger.debug(f"Trying path={sub_uri}/{test_path} in bucket={base_uri_inc_bucket} with S3FS credentials.")
+        _ = store[test_path]
     except (KeyError, NoCredentialsError) as ee:
         if isinstance(ee.__context__, PermissionError) or isinstance(ee, NoCredentialsError):
             # This probably is an S3-compatible store, but auth rejected/not found.
@@ -301,6 +308,9 @@ def _try_authenticated_s3_compatible(uri, kwargs, e, test_path) -> FSStore:
                 f"Server refused permission to read {uri}.\n"
                 f"Please ensure you have access to this bucket and your credentials are set up for S3FS."
             ) from ee
+    logger.info(
+        "Server requires authentication and seems to have accepted S3FS credentials. Continuing with authenticated store."
+    )
     return store
 
 
@@ -431,7 +441,10 @@ def _fetch_and_validate_ome_zarr_spec(uri: str, sort_uri: Optional[str] = None) 
             raise NotImplementedError(f"This OME-Zarr store is version {version}. ilastik does not support this yet.")
         except KeyError:
             pass  # Raise the original error from .zattrs attempt
-        raise NoOMEZarrMetaFound(f"Expected an OME-Zarr store, but could not find metadata at {uri}/.zattrs.") from e
+        raise NoOMEZarrMetaFound(
+            f"Expected an OME-Zarr store, but could not find metadata at {uri}/.zattrs.\n"
+            "If this is a private S3 or S3-compatible store, please check your credentials are set up for S3FS."
+        ) from e
 
     # Found .zattrs, but what kind of .zattrs?
     _check_non_multiscale_specs(spec, uri, sort_uri)

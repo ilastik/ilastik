@@ -57,7 +57,7 @@ outputs:
         # previous versions would set thread limits globally with side effects
         - python-elf >=0.4.8
         # s3fs allows zarr.storage.FSStore to read s3:// URIs
-        - s3fs
+        - s3fs >=2022.8.2
         - scikit-image
         - scikit-learn
         - tifffile >=2022
