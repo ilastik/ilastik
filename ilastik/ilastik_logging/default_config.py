@@ -188,6 +188,7 @@ def get_default_config(
             "py.warnings": {"level": "WARN", "handlers": warnings_module_handlers, "propagate": False},
             "PyQt5": {"level": "INFO"},
             "requests": {"level": "WARN"},  # Lots of messages at INFO
+            "botocore.httpchecksum": {"level": "WARN"},
             "wsdt": {"level": "INFO"},
             "OpenGL": {"level": "INFO"},
             "yapsy": {"level": "INFO"},
