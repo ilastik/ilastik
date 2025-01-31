@@ -18,7 +18,7 @@ class TrackingContoursBodyPartsPlugin(TrackingExportFormatPlugin):
     exportsToFile = True
 
     def checkFilesExist(self, filename):
-        """ Check whether the files we want to export are already present """
+        """Check whether the files we want to export are already present"""
         return os.path.exists(filename + ".contours")
 
     def export(self, filename, hypothesesGraph, pluginExportContext):
@@ -56,19 +56,18 @@ class TrackingContoursBodyPartsPlugin(TrackingExportFormatPlugin):
 
             rawFrame = rawImageSlot[roi].wait()
 
-            frame = labelImageSlot[roi].wait()
-            frame = frame.squeeze()
+            frame = labelImageSlot[roi].wait().squeeze()
 
             for idx in vigra.analysis.unique(frame):
                 nodeId = (t, idx)
 
-                if hypothesesGraph.hasNode(nodeId) and "lineageId" in hypothesesGraph._graph.node[nodeId]:
+                if hypothesesGraph.hasNode(nodeId) and "lineageId" in hypothesesGraph._graph.nodes[nodeId]:
                     # Generate frame with single label idx
                     frameSingleLabel = np.zeros(frame.shape).astype(np.uint8)
                     frameSingleLabel[frame == idx] = 1
 
                     # Find contours using skimage marching squares
-                    contours = measure._find_contours.find_contours(frameSingleLabel, 0)
+                    contours = measure.find_contours(frameSingleLabel, 0)
 
                     # Doing a very stupid slow convolution to sum the head probabilities for each xy point on the contour.
                     headProbs = []
@@ -82,13 +81,13 @@ class TrackingContoursBodyPartsPlugin(TrackingExportFormatPlugin):
                                     and coord[1] + j >= 0
                                     and coord[1] + j < rawFrame.shape[2]
                                 ):
-                                    prob += rawFrame[0, coord[0] + i, coord[1] + j, 0, 2]
+                                    prob += rawFrame[0, int(coord[0]) + i, int(coord[1]) + j, 0, 2]
                         headProbs.append(prob)
 
                     headInd = np.argmax(headProbs)
 
                     # Save contours and head index to dicts
-                    lineageId = hypothesesGraph._graph.node[nodeId]["lineageId"]
+                    lineageId = hypothesesGraph._graph.nodes[nodeId]["lineageId"]
 
                     if t in contoursDict:
                         contoursDict[t][lineageId] = contours[0]
