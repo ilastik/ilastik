@@ -1,10 +1,7 @@
-from __future__ import absolute_import
-from __future__ import division
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -92,7 +89,7 @@ class OpFilter(Operator):
         result_view = result[0, :, :, :, 0]
 
         logger.info("input volume shape: %r" % (volume.shape,))
-        logger.info("input volume size: %r MB", (old_div(volume.nbytes, 1024 ** 2),))
+        logger.info("input volume size: %r MB", (old_div(volume.nbytes, 1024**2),))
         fvol = numpy.asarray(volume, numpy.float32)
 
         # Choose filter selected by user
@@ -317,6 +314,7 @@ class OpPreprocessing(Operator):
 
         self.hasUnsavedData = False  # read by preprocessingSerializer
         self._dirty = False  # to avoid generating new MST unless user has changed settings
+        self.deserialized = False
 
         self.cachedSigma = None  # keep settings of last preprocess execute
         self.cachedFilter = None  # for saving in project file
@@ -411,7 +409,6 @@ class OpPreprocessing(Operator):
 
         self.hasUnsavedData = True
         self._dirty = False
-        self.enableDownstream(True)
 
         self.cachedResult = result
 
@@ -435,8 +432,3 @@ class OpPreprocessing(Operator):
             self.cachedResult = [None]
 
         self._dirty = True
-        self.enableDownstream(False)
-
-    def enableDownstream(self, ed):
-        """set enable of carving applet to ed"""
-        self.applet.enableDownstream(ed)

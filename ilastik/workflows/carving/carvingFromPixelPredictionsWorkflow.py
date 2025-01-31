@@ -146,5 +146,3 @@ if ilastik.config.cfg.getboolean("ilastik", "debug"):
 
             opCarvingLane.MST.connect(opPreprocessing.PreprocessedData)
             opCarvingLane.UncertaintyType.setValue("none")
-
-            self.preprocessingApplet.enableDownstream(False)

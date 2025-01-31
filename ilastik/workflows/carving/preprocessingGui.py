@@ -1,9 +1,7 @@
-from __future__ import absolute_import
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2024, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -164,9 +162,6 @@ class PreprocessingGui(QMainWindow):
         self.drawer.sizeRegularizerSpin.setEnabled(not iswriteprotect)
         self.drawer.reduceToSpin.setEnabled(not iswriteprotect)
         self.drawer.doAggloCheckBox.setEnabled(not iswriteprotect)
-
-    def enableWriteprotect(self, ew):
-        self.drawer.writeprotectBox.setEnabled(ew)
 
     def setWriteprotect(self):
         self.drawer.writeprotectBox.setChecked(True)
