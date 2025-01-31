@@ -19,15 +19,58 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
+import asyncio
+from unittest import mock
+
+import fsspec.implementations.http
 import pytest
+import s3fs
+from aiohttp import ClientResponseError
 
-from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore
+from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore, NoOMEZarrMetaFound
 
 
-def test_OMEZarrStore_handles_wrapped_connection_error():
+def test_handles_wrapped_connection_error(monkeypatch):
     # zarr.storage.FSStore raises a ClientConnectorError wrapped in a KeyError
     # when the web connection fails. We handle this by re-raising as ConnectionError.
     # Check that it hasn't changed in the zarr library.
-    nonsense_host = "nonexistent-address.zarr.foobar123"
-    with pytest.raises(ConnectionError, match=nonsense_host):
-        OMEZarrStore(f"https://{nonsense_host}")
+    f = asyncio.Future()
+    f.set_result("{}")
+    monkeypatch.setattr(fsspec.implementations.http.HTTPFileSystem, "_cat_file", lambda _, __: f)
+    with pytest.raises(NoOMEZarrMetaFound):
+        OMEZarrStore(f"https://nonexistent-address.zarr.foobar123")
+
+
+@pytest.fixture
+def count_s3fs_instances(monkeypatch):
+    # Simply patching __init__ with a mock is iffy because fsspec does custom imports
+    s3fs.core.S3FileSystem.instance_counter = 0
+    s3fs_init = s3fs.core.S3FileSystem.__init__
+
+    def track_instances(*args, **kwargs):
+        s3fs.core.S3FileSystem.instance_counter += 1
+        return s3fs_init(*args, **kwargs)
+
+    monkeypatch.setattr(s3fs.core.S3FileSystem, "__init__", track_instances)
+    # Prevent actually sending web requests
+    f = asyncio.Future()
+    f.set_result("{}")
+    monkeypatch.setattr(s3fs.core.S3FileSystem, "_cat_file", lambda _, __: f)
+
+    return track_instances
+
+
+@pytest.fixture
+def mock_httpfs_403(monkeypatch):
+    # Mimics what happens when an S3-compatible store is accessed with a default fsspec HTTPFileSystem
+    # E.g. when passing "https://s3.embl.de/bucket/file" to zarr.storage.FSStore
+    def raise_403(_, __):
+        raise ClientResponseError(status=403, request_info=mock.Mock(), history=mock.Mock())
+
+    monkeypatch.setattr(fsspec.implementations.http.HTTPFileSystem, "_cat_file", raise_403)
+
+
+def test_maps_https_scheme_to_s3fs_on_403(count_s3fs_instances, mock_httpfs_403):
+    with pytest.raises(NoOMEZarrMetaFound):
+        OMEZarrStore(f"https://localhost/bucket/some.zarr")
+    assert s3fs.core.S3FileSystem.instance_counter == 1

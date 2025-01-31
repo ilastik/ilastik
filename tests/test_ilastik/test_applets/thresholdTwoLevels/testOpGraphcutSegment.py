@@ -25,7 +25,7 @@ import numpy as np
 import vigra
 import pytest
 
-from numpy.testing.utils import assert_array_equal, assert_array_almost_equal, assert_array_less
+from numpy.testing import assert_array_equal
 
 from lazyflow.graph import Graph
 from lazyflow.operators.opArrayPiper import OpArrayPiper

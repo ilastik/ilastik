@@ -28,8 +28,10 @@ from typing import Dict, List, Optional, Union, Literal, Tuple, Any
 from urllib.parse import unquote_to_bytes
 
 import jsonschema
+import s3fs
 import vigra
-from aiohttp import ClientConnectorError
+from aiohttp import ClientConnectorError, ClientResponseError
+from botocore.exceptions import NoCredentialsError, EndpointConnectionError
 from zarr.core import Array as ZarrArray
 from zarr.errors import ArrayNotFoundError
 from zarr.storage import FSStore, LRUStoreCache
@@ -256,13 +258,93 @@ def _get_zarr_cache_max_size() -> int:
     return math.floor(caches_max * permissible_fraction_max)
 
 
-def _unescape_and_get_store(uri: str, mode="r", **kwargs) -> FSStore:
+def _try_authenticated_aws_s3(uri, kwargs, mode, test_path) -> Optional[FSStore]:
+    authenticated_store = FSStore(uri, mode=mode, anon=False, **kwargs)
+    try:
+        logger.debug(f"Trying to access path={test_path} at uri={uri} with S3FS credentials.")
+        _ = authenticated_store[test_path]
+    except NoCredentialsError:
+        logger.warning(
+            "AWS S3 credentials are not set up. Will continue without authentication and assume "
+            "the bucket is public.\n"
+            "If this bucket may be private, please check your credentials are set up for S3FS."
+        )
+    except EndpointConnectionError as ece:
+        if "169.254.169.254" in str(ece):
+            pass  # Happens when s3fs tries and fails token authentication, no need to feed back to user
+    except KeyError as ke:
+        if isinstance(ke.__context__.__context__, FileNotFoundError):
+            # Even if .zattrs isn't here, we still managed to access the bucket
+            logger.warning(
+                "S3 credentials found, continuing with authentication. "
+                "This may prevent access if the dataset is actually public."
+            )
+            return authenticated_store
+    else:
+        logger.info("Successfully authenticated with S3.")
+        return authenticated_store
+    logger.info("Tried to authenticate with S3FS credentials but failed. Continuing without authentication.")
+    return None
+
+
+def _try_authenticated_s3_compatible(uri, kwargs, e, test_path) -> FSStore:
+    split_bucket = uri.split("/", 4)
+    if len(split_bucket) < 5:  # Does not follow S3 pattern (https://s3.server.org/bucket/file)
+        raise ConnectionError(
+            f"Server refused permission to read {uri}.\n"
+            "It seems authentication is required, but ilastik does not support this kind of server yet."
+        ) from e
+    base_uri_inc_bucket = "/".join(split_bucket[:4])
+    sub_uri = split_bucket[4]
+    fs = s3fs.S3FileSystem(anon=False, endpoint_url=base_uri_inc_bucket)
+    store = FSStore(sub_uri, fs=fs, **kwargs)
+    try:
+        logger.debug(f"Trying path={sub_uri}/{test_path} in bucket={base_uri_inc_bucket} with S3FS credentials.")
+        _ = store[test_path]
+    except (KeyError, NoCredentialsError) as ee:
+        if isinstance(ee.__context__, PermissionError) or isinstance(ee, NoCredentialsError):
+            # This probably is an S3-compatible store, but auth rejected/not found.
+            raise ConnectionError(
+                f"Server refused permission to read {uri}.\n"
+                f"Please ensure you have access to this bucket and your credentials are set up for S3FS."
+            ) from ee
+    logger.info(
+        "Server requires authentication and seems to have accepted S3FS credentials. Continuing with authenticated store."
+    )
+    return store
+
+
+def _ensure_connection_and_get_store(uri: str, mode="r", **kwargs) -> FSStore:
+    test_path = ".zattrs"
     if uri.startswith("file:"):
         # Zarr's FSStore implementation doesn't unescape file URLs before piping them to
         # the file system. We do it here the same way as in pathHelpers.uri_to_Path.
         # Primarily this is to deal with spaces in Windows paths (encoded as %20).
         uri = os.fsdecode(unquote_to_bytes(uri))
-    return FSStore(uri, mode=mode, **kwargs)
+    if uri.startswith("s3:"):
+        # s3fs.S3FileSystem defaults to anon=False, but we want to try anon=True first
+        store = FSStore(uri, anon=True, mode=mode, **kwargs)
+    else:
+        # Non-S3 don't like to be called with anon keyword
+        store = FSStore(uri, mode=mode, **kwargs)
+    try:
+        store[test_path]
+        # Any error not handled here is either a successful connection (even 404), or an unknown problem
+    except (KeyError, ClientResponseError) as e:
+        # FSStore wraps some errors in KeyError (FileNotFoundError even double-wrapped)
+        if isinstance(e.__context__, ClientConnectorError):
+            raise ConnectionError(f"Could not connect to {e.__context__.host}:{e.__context__.port}.") from e
+        if isinstance(e.__context__, PermissionError) and uri.startswith("s3:"):
+            # Depending on bucket setup, AWS S3 may respond with "PermissionError: Access Denied"
+            # even if the bucket is public (but the .zattrs file is not at this URI).
+            # So test if authentication is set up, but continue with the unauthenticated store if not.
+            authenticated_store = _try_authenticated_aws_s3(uri, kwargs, mode, test_path)
+            if authenticated_store is not None:
+                store = authenticated_store
+        if isinstance(e, ClientResponseError) and e.status == 403:
+            # Server requires authentication. Try if it's an S3-compatible store.
+            store = _try_authenticated_s3_compatible(uri, kwargs, e, test_path)
+    return store
 
 
 def _parse_ome_zarr_labels(spec: Dict, uri: str) -> List[str]:
@@ -345,15 +427,12 @@ def _fetch_and_validate_ome_zarr_spec(uri: str, sort_uri: Optional[str] = None) 
     """Fetch uri/.zattrs and validate it against OME-Zarr spec.
     :param sort_uri: If the spec at `uri` is not multiscale but plate, well or labels,
         the URIs in the response text are reordered to first show those including `uri`."""
-    store = _unescape_and_get_store(uri)
+    store = _ensure_connection_and_get_store(uri)
     try:
         with Timer() as timer:
             spec = json.loads(store[".zattrs"])
             logger.info(f"Reading OME-Zarr metadata from {uri}/.zattrs took {timer.seconds()*1000} ms.")
     except KeyError as e:
-        # Connection problems on FSSpec side raise a ClientConnectorError wrapped in a KeyError
-        if isinstance(e.__context__, ClientConnectorError):
-            raise ConnectionError(f"Could not connect to {e.__context__.host}:{e.__context__.port}.") from e
         try:
             # Metadata file is called zarr.json since OME-Zarr v0.5 (zarr v3)
             # When we support v0.5, zarr.json should be the first attempt and .zattrs the fallback
@@ -362,7 +441,10 @@ def _fetch_and_validate_ome_zarr_spec(uri: str, sort_uri: Optional[str] = None) 
             raise NotImplementedError(f"This OME-Zarr store is version {version}. ilastik does not support this yet.")
         except KeyError:
             pass  # Raise the original error from .zattrs attempt
-        raise NoOMEZarrMetaFound(f"Expected an OME-Zarr store, but could not find metadata at {uri}/.zattrs.") from e
+        raise NoOMEZarrMetaFound(
+            f"Expected an OME-Zarr store, but could not find metadata at {uri}/.zattrs.\n"
+            "If this is a private S3 or S3-compatible store, please check your credentials are set up for S3FS."
+        ) from e
 
     # Found .zattrs, but what kind of .zattrs?
     _check_non_multiscale_specs(spec, uri, sort_uri)
@@ -456,9 +538,9 @@ class OMEZarrStore(MultiscaleStore):
         axistags = _axistags_from_multiscale(self._multiscale_spec)
         datasets = self._multiscale_spec["datasets"]
         if self._multiscale_spec["version"] == "0.1":
-            uncached_store = _unescape_and_get_store(self.base_uri, **OME_ZARR_V_0_1_KWARGS)
+            uncached_store = _ensure_connection_and_get_store(self.base_uri, **OME_ZARR_V_0_1_KWARGS)
         else:
-            uncached_store = _unescape_and_get_store(self.base_uri, **OME_ZARR_V_0_4_KWARGS)
+            uncached_store = _ensure_connection_and_get_store(self.base_uri, **OME_ZARR_V_0_4_KWARGS)
         # There is an additional block cache in front of OpOMEZarrMultiscaleReader, so e.g. when
         # the user scrolls across z back and forth, this does not trigger requests to the store.
         # But blocks can be misaligned with file size in the store. This cache can prevent downloading
