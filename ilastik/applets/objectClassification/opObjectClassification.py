@@ -82,7 +82,7 @@ class TableExporter(ExportingOperator):
             return None, None
 
     def format_path(self, lane_index: int, path_format_string: str) -> str:
-        """ Takes the format string for the output file, fills in the most important placeholders, and returns it """
+        """Takes the format string for the output file, fills in the most important placeholders, and returns it"""
         assert self._path_formatter_factory is not None, "Path formatter factory is not set"
 
         path_formatter = self._path_formatter_factory.for_lane(lane_index)
@@ -230,7 +230,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     SuggestedLabelNames = InputSlot(stype=Opaque, value=[])
     LabelInputs = InputSlot(stype=Opaque, rtype=List, optional=True, level=1)
 
-    FreezePredictions = InputSlot(stype="bool", value=False)
+    FreezePredictions = InputSlot(stype="bool", value=True)
     EnableLabelTransfer = InputSlot(stype="bool", value=False)
 
     # for reading from disk
@@ -271,6 +271,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
     # Use a slot for storing the export settings in the project file.
     ExportSettings = OutputSlot()
+
     # Override functions ExportingOperator mixin
     def execute(self, slot, subindex, roi, result):
         assert slot is self.ExportSettings, "Should be no need to execute this slot: {}".format(slot.name)
