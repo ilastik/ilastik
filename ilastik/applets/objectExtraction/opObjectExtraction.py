@@ -661,6 +661,7 @@ class OpRegionFeatures(Operator):
 
         def compute_for_one_plugin(plugin_name, feature_dict):
             plugin_inner = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
+            assert plugin_inner, f"object features plugin {plugin_name} missing!"
             global_features[plugin_name] = plugin_inner.plugin_object.compute_global(image, labels, feature_dict, axes)
 
         for plugin_name, feature_dict in feature_names.items():

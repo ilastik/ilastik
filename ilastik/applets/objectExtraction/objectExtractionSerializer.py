@@ -31,9 +31,15 @@ from ilastik.applets.base.appletSerializer import (
     SerialBlockSlot,
     SerialObjectFeatureNamesSlot,
 )
+from ilastik.plugins.manager import pluginManager
 from ilastik.utility.commandLineProcessing import convertStringToList
 
+
 logger = logging.getLogger(__name__)
+
+
+class UnsatisfyableObjectFeaturesError(BaseException):
+    pass
 
 
 class SerialObjectFeaturesSlot(SerialSlot):
@@ -117,3 +123,23 @@ class ObjectExtractionSerializer(AppletSerializer):
         ]
 
         super(ObjectExtractionSerializer, self).__init__(projectFileGroupName, slots=slots)
+
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath, headless=False):
+        """Post-process slot deserialization"""
+        # make sure all deserialized, selected features can be computed
+        selected_features_slot = self.serialSlots[1].slot
+        if not selected_features_slot.ready():
+            return
+        # {"feature_plugin": {"feature_name": {feature_details ...}}}
+        selected_features_dict = selected_features_slot.value
+        missing_features = []
+        for plugin_name in selected_features_dict.keys():
+            plugin_inner = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
+            if not plugin_inner:
+                missing_features.append(plugin_name)
+
+        if missing_features:
+            raise UnsatisfyableObjectFeaturesError(
+                f"Could not find feature plugins {missing_features} that were used when creating this project. "
+                "Install missing feature plugins to load this project file."
+            )
