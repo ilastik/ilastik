@@ -22,11 +22,9 @@ class TrainableDomainAdaptationGui(PixelClassificationGui):
         self._drawer = self._labelControlUi
         self.liveNNPrediction = False
         self.__cleanup_fns = []
-        self._init_channel_selector_ui()
         self._init_nn_prediction_ui()
+        self._init_channel_selector_ui()
 
-        self.invalidatePredictionsTimer = QTimer()
-        self.invalidatePredictionsTimer.timeout.connect(self.updateNNPredictions)
         self.tiktorchModel.registerListener(self._onModelStateChanged)
 
         self.labelingDrawerUi.liveUpdateButton.toggled.connect(self.toggleLiveNNPrediction)
@@ -54,6 +52,7 @@ class TrainableDomainAdaptationGui(PixelClassificationGui):
         populate_channel_menu()
         self.__cleanup_fns.append(self.topLevelOperatorView.LabelNames.notifyDirty(populate_channel_menu))
 
+        # the loaded model requires xx channels
         channel_selector.setToolTip("Select Channels for NN input")
         channel_selection_layout = QHBoxLayout()
         channel_selection_layout.addWidget(QLabel("Select Channels"))
