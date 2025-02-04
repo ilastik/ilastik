@@ -424,35 +424,32 @@ class ObjectClassificationWorkflow(Workflow):
         self._shell.setAppletEnabled(self.objectClassificationApplet, cumulated_readyness)
 
         opObjectClassification = self.objectClassificationApplet.topLevelOperator
-        invalid_classifier = (
-            not live_update_active
-            and opObjectClassification.classifier_cache.Output.ready()
-            and opObjectClassification.classifier_cache.Output.value is None
+        valid_classifier = (
+            opObjectClassification.classifier_cache.Output.ready()
+            and opObjectClassification.classifier_cache.Output.value is not None
         )
 
         opDataExport = self.dataExportApplet.topLevelOperator
 
         predictions_ready = (
             object_features_ready
-            and not invalid_classifier
+            and valid_classifier
             and len(opDataExport.Inputs) > 0
             and opDataExport.Inputs[0][self.ExportNames.OBJECT_PREDICTIONS].ready()
             and (TinyVector(opDataExport.Inputs[0][self.ExportNames.OBJECT_PREDICTIONS].meta.shape) > 0).all()
         )
 
-        object_classification_ready = predictions_ready and not invalid_classifier
+        object_classification_ready = predictions_ready and valid_classifier
 
         cumulated_readyness = cumulated_readyness and object_classification_ready
-        self._shell.setAppletEnabled(self.dataExportApplet, cumulated_readyness and not live_update_active)
+        self._shell.setAppletEnabled(self.dataExportApplet, cumulated_readyness)
 
         if self.batch:
             object_prediction_ready = True  # TODO is that so?
             cumulated_readyness = cumulated_readyness and object_prediction_ready
 
-            self._shell.setAppletEnabled(
-                self.blockwiseObjectClassificationApplet, cumulated_readyness and not live_update_active
-            )
-            self._shell.setAppletEnabled(self.batchProcessingApplet, cumulated_readyness and not live_update_active)
+            self._shell.setAppletEnabled(self.blockwiseObjectClassificationApplet, cumulated_readyness)
+            self._shell.setAppletEnabled(self.batchProcessingApplet, cumulated_readyness)
 
         # Lastly, check for certain "busy" conditions, during which we
         # should prevent the shell from closing the project.
