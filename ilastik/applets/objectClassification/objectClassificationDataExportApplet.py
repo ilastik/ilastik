@@ -1,9 +1,7 @@
-from __future__ import absolute_import
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -51,8 +49,9 @@ class ObjectClassificationDataExportApplet(DataExportApplet):
             # Gui is a special subclass of the generic gui
             from .objectClassificationDataExportGui import ObjectClassificationDataExportGui
 
-            self._gui = ObjectClassificationDataExportGui(self, self.topLevelOperator)
-            self._gui.set_exporting_operator(self._tableExporter)
+            self._gui = ObjectClassificationDataExportGui(
+                self, self.topLevelOperator, table_exporter=self._tableExporter
+            )
         return self._gui
 
     def post_process_lane_export(self, lane_index):

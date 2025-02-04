@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -18,11 +18,11 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QPushButton
 from PyQt5.QtGui import QColor
 
 
+from ilastik.applets.objectClassification.opObjectClassification import TableExporter
 from volumina.api import createDataSource, ColortableLayer, AlphaModulatedLayer
 from volumina import colortables
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
@@ -35,14 +35,11 @@ class ObjectClassificationDataExportGui(DataExportGui, ExportingGui):
     A subclass of the generic data export gui that creates custom layer viewers.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, table_exporter: TableExporter, **kwargs):
         super(ObjectClassificationDataExportGui, self).__init__(*args, **kwargs)
-        self._exporting_operator = None
+        self._exporting_operator: TableExporter = table_exporter
 
-    def set_exporting_operator(self, op):
-        self._exporting_operator = op
-
-    def get_exporting_operator(self):
+    def get_exporting_operator(self, lane: int = 0):
         return self._exporting_operator
 
     def createLayerViewer(self, opLane):
