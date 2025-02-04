@@ -152,7 +152,6 @@ class ExportingGui(object):
         """
         # Late imports here, so we don't accidentally import PyQt during headless mode.
         from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
-        from ilastik.widgets.progressDialog import ProgressDialog
 
         dimensions = self.get_raw_shape()
         feature_names = self.get_feature_names()

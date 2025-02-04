@@ -29,13 +29,13 @@ import re
 from operator import mul
 from functools import reduce
 
-FILE_TYPES = ["h5", "csv"]
+FILE_TYPES = ["csv", "h5"]
 REQ_MSG = " (REQUIRED)"
 RAW_LAYER_SIZE_LIMIT = 1000000
 ALLOWED_EXTENSIONS = ["hdf5", "hd5", "h5", "csv"]
 DEFAULT_REQUIRED_FEATURES = ["Count", "Coord<Minimum>", "Coord<Maximum>", "RegionCenter"]
 DIALOG_FILTERS = {"h5": "HDF 5 (*.h5 *.hd5 *.hdf5)", "csv": "CSV (*.csv)", "any": "Any (*.*)"}
-DEFAULT_EXPORT_PATH = "{dataset_dir}/{nickname}.h5"
+DEFAULT_EXPORT_PATH = "{dataset_dir}/{nickname}.csv"
 
 
 class ExportObjectInfoDialog(QDialog):
@@ -94,8 +94,8 @@ class ExportObjectInfoDialog(QDialog):
         extension = filename.rsplit(".", 1)[1].lower()
         idx = ALLOWED_EXTENSIONS.index(extension)
         if idx < 3:
-            return 0  # file type "h5"
-        return 1  # file type "csv"
+            return 1  # file type "h5"
+        return 0  # file type "csv"
 
     def checked_features(self):
         """
@@ -149,7 +149,7 @@ class ExportObjectInfoDialog(QDialog):
             self.ui.exportPath.setText(text)
 
     def _setup_settings(self, initial_settings):
-        """Load previously active settinitial_settingsings.
+        """Load previously active initial_settings.
 
         Args:
             initial_settings (dict): Dictionary with settings values, see
