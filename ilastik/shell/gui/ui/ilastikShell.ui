@@ -215,9 +215,9 @@
                 </spacer>
                </item>
                <item>
-                <widget class="QLabel" name="twitterLinkLabel">
+                <widget class="QLabel" name="bskyLinkLabel">
                  <property name="text">
-                  <string notr="true">&lt;a href=&quot;https://twitter.com/ilastik_team&quot;&gt;@ilastik_team&lt;/a&gt;</string>
+                  <string notr="true">&lt;a href=&quot;https://bsky.app/profile/ilastik-team.bsky.social&quot;&gt;@ilastik-team&lt;/a&gt;</string>
                  </property>
                  <property name="alignment">
                   <set>Qt::AlignCenter</set>
