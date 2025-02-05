@@ -32,7 +32,7 @@
       <property name="currentIndex">
        <number>0</number>
       </property>
-      <widget class="QWidget" name="startupPage">
+      <widget class="StartupContainer" name="startupPage">
        <layout class="QVBoxLayout" name="verticalLayout_5">
         <item>
          <layout class="QVBoxLayout" name="verticallayout">
@@ -649,6 +649,11 @@
    <extends>QToolBox</extends>
    <header>ilastik.widgets.appletDrawerToolBox</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>StartupContainer</class>
+   <extends>QWidget</extends>
+   <header>ilastik.shell.gui.ilastikShell</header>
   </customwidget>
  </customwidgets>
  <resources/>

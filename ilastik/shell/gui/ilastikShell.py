@@ -1,7 +1,7 @@
 # ##############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -396,6 +396,51 @@ FLAT_BUTTON_STYLE = r"""
 """
 
 
+class StartupContainer(QWidget):
+    """Container widget for startup page that allows drag-n-dropping project files.
+
+    included via `ilastik/shell/gui/ui/ilastikShell.ui`
+    """
+
+    ilpDropped = pyqtSignal(str)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setAcceptDrops(True)
+
+    def dropEvent(self, a0):
+        if a0 is None:
+            return
+        mimedata = a0.mimeData()
+        if mimedata is None:
+            return
+        urls = mimedata.urls()
+        assert len(urls) == 1, f"Drag and drop should only ever get a single path, got {len(urls)}"
+        url = urls[0].toLocalFile()
+        assert url.endswith(
+            ".ilp"
+        ), f"Drag and drop should should only ever receive files that end in '.ilp', got {url}"
+        self.ilpDropped.emit(url)
+
+    def dragEnterEvent(self, a0):
+        if a0 is None:
+            return
+        mimedata = a0.mimeData()
+        if mimedata is None:
+            return
+        # Only accept drag-and-drop events that consist of urls to local .ilp files.
+        if not mimedata.hasUrls():
+            return
+        urls = mimedata.urls()
+
+        if len(urls) != 1:
+            return
+
+        url = urls[0]
+        if url.isLocalFile() and url.fileName().endswith(".ilp"):
+            a0.acceptProposedAction()
+
+
 @ShellABC.register
 class IlastikShell(QMainWindow):
     """
@@ -690,6 +735,8 @@ class IlastikShell(QMainWindow):
         self.startscreen.browseFilesButton.clicked.connect(self.onOpenProjectActionTriggered)
 
         self._populateWorkflows()
+
+        self.startscreen.startupPage.ilpDropped.connect(self.openProjectFile)
 
     def _populateWorkflows(self):
         wf_startup_menu_order = {
