@@ -217,7 +217,7 @@ class ModelStateControl(QWidget):
             self.modelControlButton.setIcon(QIcon(ilastikIcons.GoNext))
             self.modelControlButton.setToolTip("Check and activate the model")
             self.modelControlButton.setEnabled(True)
-            self.modelControlButton.clicked.connect(self.onModelInfoRequested)
+            self.modelControlButton.clicked.connect(self._try_open_model)
             self.modelSourceEdit.setEmptyState()
 
         elif state is TiktorchOperatorModel.State.ModelDataAvailable:
@@ -235,6 +235,10 @@ class ModelStateControl(QWidget):
             self.modelControlButton.setEnabled(True)
             modelData = self._tiktorchModel.modelData
             self.modelSourceEdit.setReadyState(modelData.modelUri, modelData.rawDescription)
+
+    def _try_open_model(self):
+        model_uri = self.modelSourceEdit.getModelSource().strip()
+        self.onModelInfoRequested(model_uri=model_uri)
 
     def _setAndUploadModel(self, modelUri, rawDescription, modelBinary):
         self._setModel(modelUri, rawDescription, modelBinary)
@@ -276,12 +280,11 @@ class ModelStateControl(QWidget):
         except Exception as e:
             self._showErrorMessage(e)
 
-    def onModelInfoRequested(self):
+    def onModelInfoRequested(self, model_uri=""):
         # Note: bioimageio imports are delayed as to prevent https request to
         # github and bioimage.io on ilastik startup
         from bioimageio.spec import load_model_description
 
-        model_uri = self.modelSourceEdit.getModelSource().strip()
         if not model_uri:
             # try select file from file chooser
             model_uri = self.getModelToOpen(self)
