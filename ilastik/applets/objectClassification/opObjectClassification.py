@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -18,7 +18,9 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+from typing import Tuple
 import numpy
+import numpy.typing as npt
 import time
 import itertools
 from collections import defaultdict, OrderedDict
@@ -556,6 +558,20 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         return has_labels
 
     def assignObjectLabel(self, imageIndex, coordinate, assignedLabel):
+        """Legacy function to keep compatibility with tests
+
+        Function was split into `updateObjectLabel` and `commitObjectLabel` to
+        allow for undo/redo.
+        """
+        try:
+            new_labels, _old_label, dirty_key = self.updateObjectLabel(imageIndex, coordinate)
+        except IndexError:
+            return
+        time_index, object_index = dirty_key
+        new_labels[time_index][object_index] = assignedLabel
+        self.commitObjectLabel(imageIndex, new_labels, dirty_key)
+
+    def updateObjectLabel(self, imageIndex, coordinate):
         """
         Update the assigned label of the object located at the given coordinate.
         Does nothing if no object resides at the given coordinate.
@@ -571,7 +587,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
         objIndex = arr.flat[0]
         if objIndex == 0:  # background; FIXME: do not hardcode
-            return
+            raise IndexError("Background label selected")
         timeCoord = coordinate[0]
         labelslot = self.LabelInputs[imageIndex]
         labelsdict = labelslot.value
@@ -582,10 +598,10 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             newLabels = numpy.zeros((objIndex + 1))
             newLabels[:nobjects] = labels[:]
             labels = newLabels
-        labels[objIndex] = assignedLabel
+        old_label = labels[objIndex]
         labelsdict[timeCoord] = labels
-        labelslot.setValue(labelsdict)
-        labelslot.setDirty([(timeCoord, objIndex)])
+        dirty_key = (timeCoord, objIndex)
+        return labelsdict, old_label, dirty_key
 
         # Fill the cache of label bounding boxes, if it was empty
         # FIXME: TRANSFER LABELS:
@@ -604,6 +620,11 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     #             bboxes["Coord<Minimum>"] = mins
     #             bboxes["Coord<Maximum>"] = maxs
     #             self._labelBBoxes[imageIndex][timeCoord]=bboxes
+
+    def commitObjectLabel(self, imageIndex: int, labelsdict: dict[int, npt.NDArray], dirty_key: Tuple[int, int]):
+        labelslot = self.LabelInputs[imageIndex]
+        labelslot.setValue(labelsdict)
+        labelslot.setDirty([dirty_key])
 
     def triggerTransferLabelsAll(self):
         """Triggers deletion of labels on all lanes
