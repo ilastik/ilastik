@@ -415,11 +415,32 @@ class StartupContainer(QWidget):
         if mimedata is None:
             return
         urls = mimedata.urls()
-        assert len(urls) == 1, f"Drag and drop should only ever get a single path, got {len(urls)}"
+
+        if len(urls) > 1:
+            QMessageBox.information(
+                self,
+                "Cannot open more than one 'ilp' file",
+                (
+                    "You were trying to open an ilastik project file via drag and drop. "
+                    "However, you gave more than a single file.\n\n"
+                    "Please try again using only a single file with the '.ilp' file extension."
+                ),
+            )
+            return
+
         url = urls[0].toLocalFile()
-        assert url.endswith(
-            ".ilp"
-        ), f"Drag and drop should should only ever receive files that end in '.ilp', got {url}"
+        if not url.endswith(".ilp"):
+            QMessageBox.information(
+                self,
+                f"Cannot open {url}",
+                (
+                    "You were trying to open an ilastik project file via drag and drop. "
+                    "However, you gave a single file that seems not to be an ilastik project file. "
+                    f"Got {url}.\n\n"
+                    "Please try again using only a single file with the '.ilp' file extension instead."
+                ),
+            )
+            return
         self.ilpDropped.emit(url)
 
     def dragEnterEvent(self, a0):
@@ -433,11 +454,7 @@ class StartupContainer(QWidget):
             return
         urls = mimedata.urls()
 
-        if len(urls) != 1:
-            return
-
-        url = urls[0]
-        if url.isLocalFile() and url.fileName().endswith(".ilp"):
+        if all(url.isLocalFile() for url in urls):
             a0.acceptProposedAction()
 
 
