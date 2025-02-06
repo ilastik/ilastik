@@ -449,7 +449,7 @@ class StartupContainer(QWidget):
         mimedata = a0.mimeData()
         if mimedata is None:
             return
-        # Only accept drag-and-drop events that consist of urls to local .ilp files.
+        # Only accept drag-and-drop events that consist of urls to local files.
         if not mimedata.hasUrls():
             return
         urls = mimedata.urls()
