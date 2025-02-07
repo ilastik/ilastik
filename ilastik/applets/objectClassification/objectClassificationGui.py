@@ -780,7 +780,7 @@ class ObjectClassificationGui(LabelingGui):
 
     def _updateObjLabel(self, imageIndex, pos5d, label):
         try:
-            new_labels, old_label, dirty_key = self.topLevelOperatorView.updateObjectLabel(imageIndex, pos5d)
+            new_labels, old_label, dirty_key = self.topLevelOperatorView.prepareObjectLabels(imageIndex, pos5d)
         except IndexError:
             return
 

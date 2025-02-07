@@ -534,7 +534,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
                 self._needLabelTransfer = True
 
     @classmethod
-    def containsLabels(self, labels: dict) -> bool:
+    def containsLabels(cls, labels: dict) -> bool:
         """Check whether a certain lane really contains user labels
 
         Labels are initialized with [0., 0.], per timepoint, this function just
@@ -557,24 +557,12 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         has_labels = any(True for (_, val) in labels.items() if not (len(val) == 2 and numpy.allclose(val, 0)))
         return has_labels
 
-    def assignObjectLabel(self, imageIndex, coordinate, assignedLabel):
-        """Legacy function to keep compatibility with tests
-
-        Function was split into `updateObjectLabel` and `commitObjectLabel` to
-        allow for undo/redo.
+    def prepareObjectLabels(self, imageIndex, coordinate) -> Tuple[dict[int, npt.NDArray], float, Tuple[int, int]]:
         """
-        try:
-            new_labels, _old_label, dirty_key = self.updateObjectLabel(imageIndex, coordinate)
-        except IndexError:
-            return
-        time_index, object_index = dirty_key
-        new_labels[time_index][object_index] = assignedLabel
-        self.commitObjectLabel(imageIndex, new_labels, dirty_key)
+        Prepare label list for updating the object label at the given coordinate
 
-    def updateObjectLabel(self, imageIndex, coordinate):
-        """
-        Update the assigned label of the object located at the given coordinate.
-        Does nothing if no object resides at the given coordinate.
+        Determines first the id of the object and then expands the length of the
+        label array if necessary.
         """
         segmentationShape = self.SegmentationImagesOut[imageIndex].meta.shape
         assert len(coordinate) == len(

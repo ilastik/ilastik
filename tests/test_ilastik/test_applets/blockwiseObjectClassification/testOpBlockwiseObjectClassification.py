@@ -186,6 +186,12 @@ class TestOpBlockwiseObjectClassification(unittest.TestCase):
 
         opObjectClassification = OpObjectClassification(graph=self.graph)
 
+        def assign_object_label(img_index, coord5d, label):
+            new_labels, _old_label, dirty_key = opObjectClassification.prepareObjectLabels(img_index, coord5d)
+            time_index, object_index = dirty_key
+            new_labels[time_index][object_index] = label
+            opObjectClassification.commitObjectLabel(img_index, new_labels, dirty_key)
+
         # STEP 1: connect the operator
 
         # raw image data, i.e. cubes with intensity 1 or 1/2
@@ -228,7 +234,7 @@ class TestOpBlockwiseObjectClassification(unittest.TestCase):
             assert raw_5d[coord] == 255, "Input data error: expected this pixel to be white, but it was {}".format(
                 raw_5d[coord]
             )
-            opObjectClassification.assignObjectLabel(0, coord, 1)
+            assign_object_label(0, coord, 1)
 
         # small & gray: label 1
         small_gray_coords = [(0, 10, 10, 10, 0), (0, 10, 30, 10, 0), (0, 10, 10, 30, 0)]
@@ -236,7 +242,7 @@ class TestOpBlockwiseObjectClassification(unittest.TestCase):
             assert raw_5d[coord] == 255 // 2, "Input data error: expected this pixel to be gray, but it was {}".format(
                 raw_5d[coord]
             )
-            opObjectClassification.assignObjectLabel(0, coord, 1)
+            assign_object_label(0, coord, 1)
 
         # small & white: label 2
         small_white_coords = [(0, 70, 10, 10, 0), (0, 70, 30, 10, 0), (0, 70, 10, 30, 0)]
@@ -244,7 +250,7 @@ class TestOpBlockwiseObjectClassification(unittest.TestCase):
             assert raw_5d[coord] == 255, "Input data error: expected this pixel to be white, but it was {}".format(
                 raw_5d[coord]
             )
-            opObjectClassification.assignObjectLabel(0, coord, 2)
+            assign_object_label(0, coord, 2)
 
         # big & gray: label 2
         big_gray_coords = [(0, 0, 0, 0, 0), (0, 0, 20, 0, 0), (0, 0, 0, 20, 0)]
@@ -252,7 +258,7 @@ class TestOpBlockwiseObjectClassification(unittest.TestCase):
             assert raw_5d[coord] == 255 // 2, "Input data error: expected this pixel to be gray, but it was {}".format(
                 raw_5d[coord]
             )
-            opObjectClassification.assignObjectLabel(0, coord, 2)
+            assign_object_label(0, coord, 2)
 
         assert opObjectClassification.SegmentationImages[0].ready()
         assert opObjectClassification.NumLabels.value == 2, "Wrong number of labels: {}".format(
