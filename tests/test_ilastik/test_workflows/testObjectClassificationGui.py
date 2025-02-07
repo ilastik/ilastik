@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2018, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -290,7 +290,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
-    def test_04_do_labeling(self):
+    def test_040_do_labeling(self):
         """
         Label some objects
         """
@@ -361,6 +361,61 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
                 expected_labels[obj] = lp.label + 1
 
             numpy.testing.assert_array_equal(label_list, expected_labels)
+
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
+
+    def test_041_undo_redo_labeling(self):
+        """
+        Label some objects
+        """
+
+        def impl():
+            shell = self.shell
+            workflow = shell.projectManager.workflow
+            object_classification_applet = workflow.objectClassificationApplet
+            gui = object_classification_applet.getMultiLaneGui()
+            op_object_classification = object_classification_applet.topLevelOperator.getLane(0)
+
+            # activate the object classification applet
+            shell.setSelectedAppletDrawer(3)
+            # let the gui catch up
+            QApplication.processEvents()
+
+            # Do our tests at position 0, 0, 0
+            current_gui = gui.currentGui()
+            current_gui.editor.posModel.slicingPos = (0, 0, 0)
+
+            assert current_gui._labelControlUi.liveUpdateButton.isChecked() is False
+            assert current_gui._labelControlUi.labelListModel.rowCount() == 2, "Got {} rows".format(
+                current_gui._labelControlUi.labelListModel.rowCount()
+            )
+
+            label_list_orig = op_object_classification.LabelInputs[0].wait()[0]
+            assert label_list_orig[19] == 2.0
+            assert label_list_orig[14] == 2.0
+
+            current_gui._undoStack.undo()
+
+            assert label_list_orig[19] == 0.0
+            assert label_list_orig[14] == 2.0
+
+            current_gui._undoStack.undo()
+            assert label_list_orig[19] == 0.0
+            assert label_list_orig[14] == 0.0
+
+            current_gui._undoStack.redo()
+            assert label_list_orig[19] == 0.0
+            assert label_list_orig[14] == 2.0
+
+            current_gui._undoStack.redo()
+            assert label_list_orig[19] == 2.0
+            assert label_list_orig[14] == 2.0
+
+            QApplication.processEvents()
+
+            label_list_final = op_object_classification.LabelInputs[0].wait()[0]
+            numpy.testing.assert_array_equal(label_list_orig, label_list_final)
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)

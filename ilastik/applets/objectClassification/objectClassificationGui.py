@@ -25,6 +25,7 @@ from PyQt5.QtCore import pyqtSlot, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QFileDialog, QTableWidget, QTableWidgetItem, QGridLayout, QProgressBar
 
+from ilastik.applets.objectClassification.opObjectClassification import InvalidObjectIndex
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
 import os
@@ -32,6 +33,7 @@ import copy
 import vigra
 
 import numpy
+import numpy.typing as npt
 import weakref
 from functools import partial
 
@@ -43,6 +45,8 @@ from ilastik.plugins.manager import pluginManager
 from lazyflow.request import Request, RequestPool
 
 import logging
+
+from lazyflow.slot import InputSlot
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +84,47 @@ class FeatureSubSelectionDialog(FeatureSelectionDialog):
         self.ui.label.setVisible(False)
         self.ui.label_2.setVisible(False)
         self.ui.label_z.setVisible(False)
+
+
+class LabelObjectCommand(QUndoCommand):
+    """Redo/Undo for object labelings
+
+    Note: the undo is not 100% true: In object classification the labeling dictionary
+    is somewhat sparse - it will only contain entries up to the labeled object with
+    the highest object id. The undo here will not revert the potential increase
+    in dictionary size.
+    Clearing a label in object classification will also not touch the length of
+    this label array, so that's in a way consistent.
+    """
+
+    def __init__(
+        self,
+        parent=None,
+        *,
+        slot: InputSlot,
+        labelsdict: dict[int, npt.NDArray],
+        old_value: int,
+        new_value: int,
+        dirty_key,
+    ):
+        super().__init__(parent)
+        self.__labels = labelsdict
+        self.__old_value = old_value
+        self.__new_value = new_value
+        self.__dirty_key = dirty_key
+        self.__slot = slot
+
+    def _update_label(self, value):
+        time_index, object_index = self.__dirty_key
+        self.__labels[time_index][object_index] = value
+        self.__slot.setValue(self.__labels)
+        self.__slot.setDirty(self.__dirty_key)
+
+    def redo(self):
+        self._update_label(self.__new_value)
+
+    def undo(self):
+        self._update_label(self.__old_value)
 
 
 class ObjectClassificationGui(LabelingGui):
@@ -219,6 +264,10 @@ class ObjectClassificationGui(LabelingGui):
         self.checkEnableButtons()
 
         self._labelAssistDialog = None
+
+        self._undoStack = self.editor._undoStack
+        fn = self.op.BinaryImages.notifyDirty(lambda *_, **__: self._undoStack.clear())
+        self.__cleanup_fns.append(fn)
 
     def menus(self):
         m = QMenu("&Export", self.volumeEditorWidget)
@@ -730,6 +779,22 @@ class ObjectClassificationGui(LabelingGui):
         arr = slot[slicing].wait()
         return arr.flat[0]
 
+    def _updateObjLabel(self, imageIndex, pos5d, label):
+        try:
+            new_labels, old_label, dirty_key = self.topLevelOperatorView.prepareObjectLabels(imageIndex, pos5d)
+        except InvalidObjectIndex:
+            return
+
+        self._undoStack.push(
+            LabelObjectCommand(
+                slot=self.topLevelOperatorView.LabelInputs,
+                labelsdict=new_labels,
+                old_value=old_label,
+                new_value=label,
+                dirty_key=dirty_key,
+            )
+        )
+
     def onClick(self, layer, pos5d, pos):
         """Extracts the object index that was clicked on and updates
         that object's label.
@@ -748,7 +813,7 @@ class ObjectClassificationGui(LabelingGui):
         ), "Need to update onClick() if the operator no longer expects volumina axis order.  Operator wants: {}".format(
             operatorAxisOrder
         )
-        self.topLevelOperatorView.assignObjectLabel(imageIndex, pos5d, label)
+        self._updateObjLabel(imageIndex, pos5d, label)
 
     def handleEditorRightClick(self, position5d, globalWindowCoordinate):
         layer = self.getLayer("Labels")
@@ -831,7 +896,7 @@ class ObjectClassificationGui(LabelingGui):
         elif action.text() == clearlabel:
             topLevelOp = self.topLevelOperatorView.viewed_operator()
             imageIndex = topLevelOp.LabelInputs.index(self.topLevelOperatorView.LabelInputs)
-            self.topLevelOperatorView.assignObjectLabel(imageIndex, position5d, 0)
+            self._updateObjLabel(imageIndex, position5d, 0)
 
         # todo: remove old
         elif self.applet.connected_to_knime:
@@ -852,7 +917,7 @@ class ObjectClassificationGui(LabelingGui):
                 return
             topLevelOp = self.topLevelOperatorView.viewed_operator()
             imageIndex = topLevelOp.LabelInputs.index(self.topLevelOperatorView.LabelInputs)
-            self.topLevelOperatorView.assignObjectLabel(imageIndex, position5d, label + 1)
+            self._updateObjLabel(imageIndex, position5d, label + 1)
 
     def setVisible(self, visible):
         super(ObjectClassificationGui, self).setVisible(visible)
