@@ -660,7 +660,7 @@ class OpConservationTracking(Operator):
                     for idx in idxs
                     if idx > 0
                     and hypothesesGraph.hasNode((time, idx))
-                    and hypothesesGraph._graph.node[(time, idx)]["value"] > 1
+                    and hypothesesGraph._graph.nodes[(time, idx)]["value"] > 1
                 ]
 
         # Map labels to corresponding lineage IDs
