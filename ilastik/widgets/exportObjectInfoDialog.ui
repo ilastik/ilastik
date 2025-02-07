@@ -80,12 +80,12 @@
         <widget class="QComboBox" name="fileFormat">
          <item>
           <property name="text">
-           <string>HDF ( .h5 )</string>
+           <string>CSV ( .csv )</string>
           </property>
          </item>
          <item>
           <property name="text">
-           <string>CSV ( .csv )</string>
+           <string>HDF ( .h5 )</string>
           </property>
          </item>
         </widget>
@@ -205,6 +205,9 @@
          <property name="maximum">
           <number>200</number>
          </property>
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
         </widget>
        </item>
        <item row="2" column="0">
@@ -215,6 +218,9 @@
          <property name="text">
           <string>Add margin around ROIs</string>
          </property>
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
         </widget>
        </item>
        <item row="0" column="0" colspan="2">
@@ -224,6 +230,9 @@
          </property>
          <property name="text">
           <string>Include whole raw image instead of regions of interest (ROIs)</string>
+         </property>
+         <property name="enabled">
+          <bool>false</bool>
          </property>
         </widget>
        </item>

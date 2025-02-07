@@ -18,13 +18,8 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
-import os
 import numpy
-import numpy.lib.recfunctions as rfn
-import vigra
 import time
-import warnings
 import itertools
 from collections import defaultdict, OrderedDict
 from functools import partial
@@ -36,14 +31,12 @@ from lazyflow.operators import OpValueCache, OpSlicedBlockedArrayCache, OpMultiA
 from lazyflow.operatorWrapper import OperatorWrapper
 from lazyflow.request import Request, RequestPool, RequestLock
 
-from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory, ParallelVigraRfLazyflowClassifier
+from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
 
 from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWrapper
 from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default
 from ilastik.utility.exportingOperator import ExportingOperator
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
-from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
-from ilastik.applets.dataExport.opDataExport import DataExportPathFormatter
 
 
 from ilastik.applets.base.applet import DatasetConstraintError
