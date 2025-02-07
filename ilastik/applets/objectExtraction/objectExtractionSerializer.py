@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -19,6 +19,7 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import logging
+from typing import Optional
 
 import numpy
 
@@ -33,6 +34,7 @@ from ilastik.applets.base.appletSerializer import (
 )
 from ilastik.plugins.manager import pluginManager
 from ilastik.utility.commandLineProcessing import convertStringToList
+from lazyflow.slot import InputSlot, OutputSlot
 
 
 logger = logging.getLogger(__name__)
@@ -43,7 +45,17 @@ class UnsatisfyableObjectFeaturesError(BaseException):
 
 
 class SerialObjectFeaturesSlot(SerialSlot):
-    def __init__(self, slot, inslot, blockslot, name=None, subname=None, default=None, depends=None, selfdepends=True):
+    def __init__(
+        self,
+        slot: OutputSlot,
+        inslot: InputSlot,
+        blockslot: OutputSlot,
+        name: Optional[str] = None,
+        subname=None,
+        default=None,
+        depends=None,
+        selfdepends=True,
+    ):
         super(SerialObjectFeaturesSlot, self).__init__(slot, inslot, name, subname, default, depends, selfdepends)
 
         self.blockslot = blockslot
