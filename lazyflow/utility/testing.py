@@ -21,15 +21,17 @@
 ###############################################################################
 import threading
 from dataclasses import dataclass
-from typing import Any, Mapping, Optional, Tuple
+from typing import Any, Literal, Mapping, Optional, Tuple
 
 import numpy as np
+import numpy.typing as npt
 import vigra
 
 from lazyflow.graph import Graph, MetaDict
 from lazyflow.operator import InputSlot, Operator, OutputSlot
 
 # Some tools to aid automated testing
+
 
 # check that two label images have the same meaning
 # (label images can differ in the actual labels, but cannot differ in their
@@ -147,11 +149,12 @@ _missing = object()
 
 @dataclass
 class SlotDesc:
-    dtype: Optional[np.dtype] = None
+    dtype: Optional[npt.DTypeLike] = None
     shape: Tuple[int, ...] = (1,)
     axistags: Optional[str] = None
-    level: int = 0
+    level: Literal[0, 1] = 0
     data: Any = _missing
+    typ_: Literal["input", "output"] = "output"
 
     def __post_init__(self):
         if self.level not in [0, 1]:
@@ -217,10 +220,12 @@ def build_multi_output_mock_op(slot_data: SlotData, graph: Graph, n_lanes: int =
       n_lanes: number of lanes - level 1 slots are resized to that number.
 
     """
+    slot_type = {"input": InputSlot, "output": OutputSlot}
+
     MultiOutputMockOp = type(
         "MultiOutputMockOp",
         (MutliOutputMockOpBase,),
-        {slot_name: OutputSlot(level=slot_descr.level) for slot_name, slot_descr in slot_data.items()},
+        {slot_name: slot_type[slot_descr.typ_](level=slot_descr.level) for slot_name, slot_descr in slot_data.items()},
     )
     op = MultiOutputMockOp(slot_data, n_lanes, graph=graph)
 

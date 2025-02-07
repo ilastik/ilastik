@@ -77,7 +77,9 @@ def init_user_mode_excepthook():
 
             root_exc = root_cause(exc_value)
 
-            msg = f"{exc_value!r}\n\nwith root cause:\n\n{root_exc!r}\n\n"
+            msg = f"{exc_value!r}\n\n"
+            if root_exc != exc_value:
+                msg += f"with root cause:\n\n{root_exc!r}\n\n"
 
             logfile_path = get_logfile_path()
             if logfile_path:

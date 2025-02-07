@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -19,6 +19,7 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import logging
+from typing import Optional
 
 import numpy
 
@@ -31,13 +32,30 @@ from ilastik.applets.base.appletSerializer import (
     SerialBlockSlot,
     SerialObjectFeatureNamesSlot,
 )
+from ilastik.plugins.manager import pluginManager
 from ilastik.utility.commandLineProcessing import convertStringToList
+from lazyflow.slot import InputSlot, OutputSlot
+
 
 logger = logging.getLogger(__name__)
 
 
+class UnsatisfyableObjectFeaturesError(BaseException):
+    pass
+
+
 class SerialObjectFeaturesSlot(SerialSlot):
-    def __init__(self, slot, inslot, blockslot, name=None, subname=None, default=None, depends=None, selfdepends=True):
+    def __init__(
+        self,
+        slot: OutputSlot,
+        inslot: InputSlot,
+        blockslot: OutputSlot,
+        name: Optional[str] = None,
+        subname=None,
+        default=None,
+        depends=None,
+        selfdepends=True,
+    ):
         super(SerialObjectFeaturesSlot, self).__init__(slot, inslot, name, subname, default, depends, selfdepends)
 
         self.blockslot = blockslot
@@ -117,3 +135,23 @@ class ObjectExtractionSerializer(AppletSerializer):
         ]
 
         super(ObjectExtractionSerializer, self).__init__(projectFileGroupName, slots=slots)
+
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath, headless=False):
+        """Post-process slot deserialization"""
+        # make sure all deserialized, selected features can be computed
+        selected_features_slot = self.serialSlots[1].slot
+        if not selected_features_slot.ready():
+            return
+        # {"feature_plugin": {"feature_name": {feature_details ...}}}
+        selected_features_dict = selected_features_slot.value
+        missing_features = []
+        for plugin_name in selected_features_dict.keys():
+            plugin_inner = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
+            if not plugin_inner:
+                missing_features.append(plugin_name)
+
+        if missing_features:
+            raise UnsatisfyableObjectFeaturesError(
+                f"Could not find feature plugins {missing_features} that were used when creating this project. "
+                "Install missing feature plugins to load this project file."
+            )
