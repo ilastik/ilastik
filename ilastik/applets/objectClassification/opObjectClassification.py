@@ -51,6 +51,10 @@ logger = logging.getLogger(__name__)
 MISSING_VALUE = 0
 
 
+class InvalidObjectIndex(BaseException):
+    pass
+
+
 class TableExporter(ExportingOperator):
     def __init__(self, op):
         self._op = op
@@ -575,7 +579,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
         objIndex = arr.flat[0]
         if objIndex == 0:  # background; FIXME: do not hardcode
-            raise IndexError("Background label selected")
+            raise InvalidObjectIndex("Background label selected")
         timeCoord = coordinate[0]
         labelslot = self.LabelInputs[imageIndex]
         labelsdict = labelslot.value

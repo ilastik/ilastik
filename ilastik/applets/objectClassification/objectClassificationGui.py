@@ -25,6 +25,7 @@ from PyQt5.QtCore import pyqtSlot, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QFileDialog, QTableWidget, QTableWidgetItem, QGridLayout, QProgressBar
 
+from ilastik.applets.objectClassification.opObjectClassification import InvalidObjectIndex
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
 import os
@@ -781,7 +782,7 @@ class ObjectClassificationGui(LabelingGui):
     def _updateObjLabel(self, imageIndex, pos5d, label):
         try:
             new_labels, old_label, dirty_key = self.topLevelOperatorView.prepareObjectLabels(imageIndex, pos5d)
-        except IndexError:
+        except InvalidObjectIndex:
             return
 
         self._undoStack.push(
