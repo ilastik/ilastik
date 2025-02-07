@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -19,6 +19,7 @@
 #           http://ilastik.org/license.html
 ###############################################################################
 import os
+from pathlib import Path
 
 import numpy as np
 import h5py
@@ -65,6 +66,14 @@ class TestConservationTrackingHeadless(object):
         2  # Number of tracks that have their "parent" set, meaning they are children of a division
     )
 
+    REFERENCE_COUNTOUR_FILE = os.path.join(input_data_path, "smallVideo_Contours_reference.outline")
+    EXPECTED_COUNTOUR_FILE = os.path.join(input_data_path, "smallVideo-data_Contours.outline")
+
+    REFERENCE_MWT_BLOBS_FILE = os.path.join(input_data_path, "smallVideo_Multi-Worm-Tracker_reference.blobs")
+    REFERENCE_MWT_SUMMARY_FILE = os.path.join(input_data_path, "smallVideo_Multi-Worm-Tracker_reference.summary")
+    EXPECTED_MWT_BLOBS_FILE = os.path.join(input_data_path, "smallVideo-data_Multi-Worm-Tracker.blobs")
+    EXPECTED_MWT_SUMMARY_FILE = os.path.join(input_data_path, "smallVideo-data_Multi-Worm-Tracker.summary")
+
     @classmethod
     def setup_class(cls):
         if (
@@ -84,7 +93,13 @@ class TestConservationTrackingHeadless(object):
 
     @classmethod
     def teardown_class(cls):
-        removeFiles = [cls.EXPECTED_TRACKING_RESULT_FILE, cls.EXPECTED_CSV_FILE]
+        removeFiles = [
+            cls.EXPECTED_TRACKING_RESULT_FILE,
+            cls.EXPECTED_CSV_FILE,
+            cls.EXPECTED_COUNTOUR_FILE,
+            cls.EXPECTED_MWT_BLOBS_FILE,
+            cls.EXPECTED_MWT_SUMMARY_FILE,
+        ]
 
         # Clean up: Delete any test files we generated
         for f in removeFiles:
@@ -266,3 +281,33 @@ class TestConservationTrackingHeadless(object):
         for f in files:
             assert os.path.exists(f)
             os.remove(f)
+
+    def testContourExport(self):
+        args = self.ILASTIK_MAIN_DEFAULT_ARGS + ["--export_source=Plugin", "--export_plugin=Contours"]
+
+        sys.argv = ["ilastik.py"]  # Clear the existing commandline args so it looks like we're starting fresh.
+        sys.argv += args
+
+        # Start up the ilastik.py entry script as if we had launched it from the command line
+        self.ilastik_startup.main()
+        assert os.path.exists(self.EXPECTED_COUNTOUR_FILE)
+        assert Path(self.EXPECTED_COUNTOUR_FILE).read_text().split("\n") == Path(
+            self.REFERENCE_COUNTOUR_FILE
+        ).read_text().split("\n")
+
+    def testContourMWTExport(self):
+        args = self.ILASTIK_MAIN_DEFAULT_ARGS + ["--export_source=Plugin", "--export_plugin=Multi-Worm-Tracker"]
+
+        sys.argv = ["ilastik.py"]  # Clear the existing commandline args so it looks like we're starting fresh.
+        sys.argv += args
+
+        # Start up the ilastik.py entry script as if we had launched it from the command line
+        self.ilastik_startup.main()
+        assert os.path.exists(self.EXPECTED_MWT_BLOBS_FILE)
+        assert os.path.exists(self.EXPECTED_MWT_SUMMARY_FILE)
+        assert Path(self.EXPECTED_MWT_BLOBS_FILE).read_text().split("\n") == Path(
+            self.REFERENCE_MWT_BLOBS_FILE
+        ).read_text().split("\n")
+        assert Path(self.EXPECTED_MWT_SUMMARY_FILE).read_text().split("\n") == Path(
+            self.REFERENCE_MWT_SUMMARY_FILE
+        ).read_text().split("\n")
