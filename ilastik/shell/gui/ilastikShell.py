@@ -1,7 +1,7 @@
 # ##############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -396,6 +396,68 @@ FLAT_BUTTON_STYLE = r"""
 """
 
 
+class StartupContainer(QWidget):
+    """Container widget for startup page that allows drag-n-dropping project files.
+
+    included via `ilastik/shell/gui/ui/ilastikShell.ui`
+    """
+
+    ilpDropped = pyqtSignal(str)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setAcceptDrops(True)
+
+    def dropEvent(self, a0):
+        if a0 is None:
+            return
+        mimedata = a0.mimeData()
+        if mimedata is None:
+            return
+        urls = mimedata.urls()
+
+        if len(urls) > 1:
+            QMessageBox.information(
+                self,
+                "Cannot open more than one 'ilp' file",
+                (
+                    "You were trying to open an ilastik project file via drag and drop. "
+                    "However, you gave more than a single file.\n\n"
+                    "Please try again using only a single file with the '.ilp' file extension."
+                ),
+            )
+            return
+
+        url = urls[0].toLocalFile()
+        if not url.endswith(".ilp"):
+            QMessageBox.information(
+                self,
+                f"Cannot open {url}",
+                (
+                    "You were trying to open an ilastik project file via drag and drop. "
+                    "However, you gave a single file that seems not to be an ilastik project file. "
+                    f"Got {url}.\n\n"
+                    "Please try again using only a single file with the '.ilp' file extension instead."
+                ),
+            )
+            return
+        self.ilpDropped.emit(url)
+
+    def dragEnterEvent(self, a0):
+        if a0 is None:
+            return
+        mimedata = a0.mimeData()
+        if mimedata is None:
+            return
+        # Only accept drag-and-drop events that consist of urls to local files.
+        if not mimedata.hasUrls():
+            return
+        urls = mimedata.urls()
+
+        if all(url.isLocalFile() for url in urls):
+            a0.acceptProposedAction()
+
+
 @ShellABC.register
 class IlastikShell(QMainWindow):
     """
@@ -690,6 +752,8 @@ class IlastikShell(QMainWindow):
         self.startscreen.browseFilesButton.clicked.connect(self.onOpenProjectActionTriggered)
 
         self._populateWorkflows()
+
+        self.startscreen.startupPage.ilpDropped.connect(self.openProjectFile)
 
     def _populateWorkflows(self):
         wf_startup_menu_order = {
