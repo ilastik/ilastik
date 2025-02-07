@@ -1,7 +1,7 @@
 import logging
 import weakref
 from typing import Callable, Dict, List, Optional, Union
-import numpy
+import numpy.typing as npt
 from ndstructs import Slice5D
 from functools import partial
 import argparse
@@ -114,7 +114,7 @@ class BatchProcessingApplet(Applet):
         lane_configs: List[Dict[str, Optional[DatasetInfo]]],
         export_to_array: bool = False,
         export_function: Optional[Callable] = None,
-    ) -> Union[List[str], List[numpy.array]]:
+    ) -> Union[List[str], List[npt.NDArray]]:
         """Run the export for each dataset listed in role_data_dict
 
         For each dataset:
@@ -136,11 +136,18 @@ class BatchProcessingApplet(Applet):
 
         Returns:
             list containing either strings of paths to exported files,
-              or numpy.arrays (depending on export_to_array)
+              or numpy arrays (depending on export_to_array)
         """
         assert not (export_to_array and export_function)
         if not export_function:
             export_function = self.do_export_to_array if export_to_array else self.do_normal_export
+
+        try:
+            self.dataExportApplet.prepare_for_entire_export()
+        except:
+            self.dataExportApplet.post_process_entire_export()
+            raise
+
         self.progressSignal(0)
         try:
             results = []
@@ -158,10 +165,12 @@ class BatchProcessingApplet(Applet):
                     progress_callback=partial(lerpProgressSignal, global_progress_start, global_progress_end),
                 )
                 results.append(result)
-            self.dataExportApplet.post_process_entire_export()
             return results
         finally:
-            self.progressSignal(100)
+            try:
+                self.dataExportApplet.post_process_entire_export()
+            finally:
+                self.progressSignal(100)
 
     def do_normal_export(self, opDataExport):
         logger.info(f"Exporting to {opDataExport.ExportPath.value}")
@@ -179,16 +188,15 @@ class BatchProcessingApplet(Applet):
     def export_dataset(
         self,
         lane_config: Dict[str, DatasetInfo],
-        export_function: Optional[Callable[[OpDataExport], Union[str, numpy.array]]] = None,
+        export_function: Optional[Callable[[OpDataExport], Union[str, npt.NDArray]]] = None,
         progress_callback: Optional[Callable[[int], None]] = None,
-    ) -> Union[str, numpy.array]:
+    ) -> Union[str, npt.NDArray]:
         """
         Configures a lane using the paths specified in the paths from role_inputs and runs the workflow.
         """
         export_function = export_function or self.do_normal_export
 
         # Call customization hook
-        self.dataExportApplet.prepare_for_entire_export()
         self.dataSelectionApplet.pushLane(lane_config)
         try:
             # Call customization hook

@@ -23,6 +23,7 @@ import argparse
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import os
+from typing import Union
 
 import numpy
 
@@ -100,19 +101,16 @@ class DataExportApplet(Applet):
     # The following functions act as hooks for subclasses to override or clients to
     # monkey-patch for custom behavior before/during/after an export is performed.
     # (The GUI and/or batch applet will call them at the appropriate time.)
-    def prepare_for_entire_export(self):
+    def prepare_for_entire_export(self) -> None:
         """Called before the entire export process starts"""
-        pass
 
-    def prepare_lane_for_export(self, lane_index):
+    def prepare_lane_for_export(self, lane_index: int) -> None:
         """Called before each lane is exported."""
-        pass
 
-    def post_process_lane_export(self, lane_index):
+    def post_process_lane_export(self, lane_index: int, checkOverwriteFiles: bool = False) -> Union[None, bool]:
         """Called immediately after each lane is exported."""
-        pass
 
-    def post_process_entire_export(self):
+    def post_process_entire_export(self) -> None:
         """Called after the entire export process finishes."""
 
     @classmethod
