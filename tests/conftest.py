@@ -206,7 +206,7 @@ def qapplication():
     if "ubuntu" in platform_str or "fedora" in platform_str:
         app.setAttribute(Qt.AA_X11InitThreads, True)
 
-    if ilastik.config.cfg.getboolean("ilastik", "debug"):
+    if ilastik.config.cfg.ilastik.debug:
         app.setAttribute(Qt.AA_DontUseNativeMenuBar, True)
 
     return app

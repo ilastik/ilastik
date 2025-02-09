@@ -19,7 +19,6 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import os
-import sys
 import logging
 import logging.config
 import json
@@ -30,16 +29,14 @@ from functools import partial
 
 logger = logging.getLogger(__name__)
 
-import ilastik
+from ilastik.config import cfg
 
 
 def updateFromConfigFile():
     # Import changes from a file
 
-    configFilePath = None
-    try:
-        configFilePath = ilastik.config.cfg.get("ilastik", "logging_config")
-    except:
+    configFilePath = cfg.ilastik.logging_config
+    if configFilePath == "":
         configFilePath = os.path.split(__file__)[0] + "/logging_config.json"
 
     configFilePath = os.path.expanduser(configFilePath)

@@ -34,7 +34,7 @@ from ilastik.config import cfg
 from .types import ObjectFeaturesPlugin, TrackingExportFormatPlugin
 
 # these directories are searched for plugins
-plugin_paths = cfg.get("ilastik", "plugin_directories")
+plugin_paths = cfg.ilastik.plugin_directories
 plugin_paths = list(os.path.expanduser(d) for d in plugin_paths.split(",") if len(d) > 0)
 plugin_paths.append(os.path.join(os.path.split(os.path.split(__file__)[0])[0], "plugins_default"))
 

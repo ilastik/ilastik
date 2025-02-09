@@ -84,7 +84,7 @@ def get_default_config(
 ):
     root_log_level = "INFO"
 
-    if ilastik_config.getboolean("ilastik", "debug"):
+    if ilastik_config.ilastik.debug:
         root_log_level = "DEBUG"
 
     if output_mode == OutputMode.CONSOLE:
@@ -240,7 +240,7 @@ def init(format_prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, l
     warnings.filterwarnings("ignore", message=".*to-Python converter for .*opengm.*", category=RuntimeWarning)
 
     # Hide all other python converter warnings unless we're in debug mode.
-    if not ilastik_config.getboolean("ilastik", "debug"):
+    if not ilastik_config.ilastik.debug:
         warnings.filterwarnings(
             "ignore", message=".*to-Python converter for .*second conversion method ignored.*", category=RuntimeWarning
         )
