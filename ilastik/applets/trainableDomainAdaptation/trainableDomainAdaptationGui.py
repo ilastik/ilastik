@@ -1,12 +1,33 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2025, the ilastik developers
+#                                <team@ilastik.org>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
+#
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#          http://ilastik.org/license.html
+###############################################################################
 import logging
 from functools import partial
+from typing import Sequence
 
-import sip
-from PyQt5.QtCore import Qt, QTimer, pyqtSlot
+from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QAction, QColorDialog, QFileDialog, QHBoxLayout, QLabel, QMenu, QPushButton
+from PyQt5.QtWidgets import QAction, QColorDialog, QFileDialog, QHBoxLayout, QLabel, QMenu, QPushButton, QActionGroup
 from volumina.api import AlphaModulatedLayer, LazyflowSource
 from volumina.colortables import default16_new
+import sip
 
 from ilastik.applets.pixelClassification.pixelClassificationGui import PixelClassificationGui
 
@@ -14,6 +35,75 @@ from ilastik.applets.pixelClassification.suggestFeaturesDialog import SuggestFea
 from .modelStateControl import EnhancerModelStateControl
 
 logger = logging.getLogger(__name__)
+
+
+class ConfigurableChannelSelector(QPushButton):
+    channelSelectionFinalized = pyqtSignal(list)
+
+    def __init__(self, options: Sequence[str], *args, n_options=1, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._channel_menu = QMenu(self)
+        self._channel_menu.installEventFilter(self)
+        self.setMenu(self._channel_menu)
+        self.update_options(options, n_options)
+
+    def onChannelSelectionClicked(self, a0):
+        self._update_channel_selector_txt()
+
+    def _update_channel_selector_txt(self):
+        selected_actions = [action for action in self._channel_menu.actions() if action.isChecked()]
+        if len(selected_actions) == 0:
+            txt = "Select a channel..."
+        elif len(selected_actions) == 1:
+            txt = selected_actions[0].text()
+        else:
+            txt = ", ".join(action.text() for action in selected_actions)
+
+        self.setText(txt)
+
+    def _is_empty_selection(self):
+        if any(action.isChecked() for action in self._channel_menu.actions()):
+            return False
+
+        return True
+
+    def _is_configured(self):
+        selected_actions = [action for action in self._channel_menu.actions() if action.isChecked()]
+        if len(selected_actions) == self._n_options:
+            return True
+
+        return False
+
+    def _emit_updated(self):
+        if self._is_configured() or self._is_empty_selection():
+            idx = [i for i, action in enumerate(self._channel_actions) if action.isChecked()]
+            self.channelSelectionFinalized.emit(idx)
+
+    def update_options(self, options: Sequence[str], n_options: int = 1):
+        assert n_options <= len(options)
+        self._channel_menu.clear()
+        self._action_group = QActionGroup(self)
+        if n_options == 1:
+            self._action_group.setExclusionPolicy(QActionGroup.ExclusionPolicy.ExclusiveOptional)
+        else:
+            self._action_group.setExclusionPolicy(QActionGroup.ExclusionPolicy.None_)
+
+        self._action_group.triggered.connect(self.onChannelSelectionClicked)
+        self._action_group.triggered.connect(self._emit_updated)
+
+        self._channel_actions = []
+        self._n_options = n_options
+
+        for label_name in options:
+            action = QAction(label_name, self._channel_menu)
+            action.setCheckable(True)
+            self._channel_menu.addAction(action)
+            self._channel_actions.append(action)
+            self._action_group.addAction(action)
+
+        self._update_channel_selector_txt()
+        self._emit_updated()
 
 
 class TrainableDomainAdaptationGui(PixelClassificationGui):
