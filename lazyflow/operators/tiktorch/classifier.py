@@ -20,8 +20,10 @@
 #          http://ilastik.org/license/
 ###############################################################################
 from __future__ import annotations
+from copy import deepcopy
 import logging
 from pathlib import Path
+import re
 import socket
 import numpy
 import warnings
@@ -311,6 +313,15 @@ class UnetConfig:
     def get_num_out_classes(self) -> int:
         return self._yaml_config["model"]["out_channels"]
 
+    def get_checkpoint_dir(self) -> Path:
+        return Path(self._yaml_config["trainer"]["checkpoint_dir"])
+
+    def resume_with_checkpoint(self, checkpoint_path: Path) -> UnetConfig:
+        new_config = deepcopy(self._yaml_config)
+        new_config["trainer"]["resume"] = str(checkpoint_path)
+        new_yaml_config_str = yaml.dump(new_config)
+        return UnetConfig(new_yaml_config_str)
+
 
 class ModelUnetSession(ModelSession):
     def __init__(self, factory, session: training_pb2.TrainingSessionId, unet_config: UnetConfig):
@@ -346,7 +357,6 @@ class ModelUnetSession(ModelSession):
 
     def get_input_shapes(self, axes: Union[str, AxisTags] = "itzyxc"):
         # what input shapes 3d unet expects? Isn't size invariant as long as it is a power of 2?
-        # for now return that all shapes are valid by setting the minimum valid shape to 1
         in_channels_num = self._unet_config.get_num_in_classes()
         return {self.input_names[0]: [tuple(256 if axis != "c" else in_channels_num for axis in axes)]}
 
@@ -375,6 +385,10 @@ class ModelUnetSession(ModelSession):
     def pause_training(self):
         res = self.tiktorchClient.Pause.future(self._session)
         res.result()
+
+    def save_checkpoint(self, file_path: Path):
+        save_request = training_pb2.SaveRequest(modelSessionId=self._session, filePath=str(file_path))
+        self.tiktorchClient.Save(save_request)
 
     def close(self):
         self.tiktorchClient.CloseTrainerSession(self._session)

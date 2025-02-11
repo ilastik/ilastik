@@ -155,7 +155,6 @@ class _NNWorkflowBase(Workflow):
         """
         connects the operators for different lanes, each lane has a laneIndex starting at 0
         """
-        opDataNonLane = self.dataSelectionApplet.topLevelOperator
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opNNclassify = self.nnClassificationApplet.topLevelOperator.getLane(laneIndex)
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)

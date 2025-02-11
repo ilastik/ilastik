@@ -48,7 +48,7 @@
       <item>
        <layout class="QVBoxLayout" name="verticalLayout_4">
         <item>
-         <widget class="QListView" name="checkpointList"/>
+         <widget class="QListWidget" name="checkpointList"/>
         </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_3">

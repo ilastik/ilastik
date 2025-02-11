@@ -20,39 +20,28 @@
 ###############################################################################
 import logging
 import os
+from pathlib import Path
+import time
 import traceback
 from functools import partial
 
 import numpy
-import yaml
 from PyQt5 import uic
 from PyQt5.QtCore import (
-    QModelIndex,
-    QPersistentModelIndex,
-    QStringListModel,
     Qt,
     QTimer,
-    pyqtSignal,
     pyqtSlot,
 )
 from PyQt5.QtGui import QColor, QIcon
 from PyQt5.QtWidgets import (
     QAction,
     QColorDialog,
-    QComboBox,
-    QDesktopWidget,
-    QDialog,
-    QFileDialog,
-    QGridLayout,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QMenu,
     QMessageBox,
-    QPushButton,
     QStackedWidget,
-    QVBoxLayout,
     QWidget,
+    QToolButton,
+    QListWidget,
+    QAbstractItemView,
 )
 from ilastik.applets.neuralNetwork.unetStateControl import busy_cursor
 from ilastik.applets.labeling import LABELING_DIR
@@ -71,269 +60,104 @@ from .tiktorchController import TiktorchUnetController, TiktorchUnetOperatorMode
 logger = logging.getLogger(__name__)
 
 
-def _listReplace(old, new):
-    if len(old) > len(new):
-        return new + old[len(new) :]
-    else:
-        return new
-
-
-class ParameterDlg(QDialog):
-    """
-    simple window for setting parameters
-    """
-
-    def __init__(self, parent):
-        self.hparams = None
-
-        super(QDialog, self).__init__(parent=parent)
-
-        self.optimizer_combo = QComboBox(self)
-        self.optimizer_combo.addItem("Adam")
-        self.optimizer_kwargs_textbox = QLineEdit()
-        self.optimizer_kwargs_textbox.setPlaceholderText(
-            "e.g. for Adam: {'lr': 0.0003, 'weight_decay':0.0001, amsgrad: True}"
-        )
-
-        self.criterion_combo = QComboBox(self)
-        self.criterion_combo.addItem("BCEWithLogitsLoss")
-        self.criterion_kwargs_textbox = QLineEdit()
-        self.criterion_kwargs_textbox.setPlaceholderText("e.g.: {'reduce': False}")
-
-        self.batch_size_textbox = QLineEdit()
-        self.batch_size_textbox.setPlaceholderText("default: 1")
-
-        grid = QGridLayout()
-        grid.setSpacing(10)
-
-        grid.addWidget(QLabel("Optimizer"), 1, 0)
-        grid.addWidget(self.optimizer_combo, 1, 1)
-
-        grid.addWidget(QLabel("Optimizer keyword arguments"), 2, 0)
-        grid.addWidget(self.optimizer_kwargs_textbox, 2, 1)
-
-        grid.addWidget(QLabel("Criterion"), 3, 0)
-        grid.addWidget(self.criterion_combo, 3, 1)
-
-        grid.addWidget(QLabel("Criterion keyword arguments"), 4, 0)
-        grid.addWidget(self.criterion_kwargs_textbox, 4, 1)
-
-        grid.addWidget(QLabel("Batch size"), 5, 0)
-        grid.addWidget(self.batch_size_textbox, 5, 1)
-
-        okButton = QPushButton("OK")
-        okButton.clicked.connect(self.readParameters)
-        cancelButton = QPushButton("Cancel")
-        cancelButton.clicked.connect(self.close)
-
-        hbox = QHBoxLayout()
-        hbox.addStretch(1)
-        hbox.addWidget(okButton)
-        hbox.addWidget(cancelButton)
-
-        vbox = QVBoxLayout()
-        vbox.addLayout(grid)
-        vbox.addLayout(hbox)
-
-        self.setLayout(vbox)
-
-        # self.resize(480, 200)
-        self.setFixedSize(600, 200)
-        self.center()
-
-        self.setWindowTitle("Hyperparameter Settings")
-        self.show()
-
-    def center(self):
-        qr = self.frameGeometry()
-        cp = QDesktopWidget().availableGeometry().center()
-        qr.moveCenter(cp)
-
-        self.move(qr.topLeft())
-
-    def readParameters(self):
-        optimizer = self.optimizer_combo.currentText()
-        optimizer_kwargs = yaml.load(self.optimizer_kwargs_textbox.text())
-        if optimizer_kwargs is None:
-            optimizer_kwargs = dict(lr=0.0003, weight_decay=0.0001, amsgrad=True)
-            optimizer = "Adam"
-        criterion = self.criterion_combo.currentText()
-        criterion_kwargs = yaml.load(self.criterion_kwargs_textbox.text())
-        if criterion_kwargs is None:
-            criterion_kwargs = dict(reduce=False)
-            criterion = "BCEWithLogitsLoss"
-        batch_size = int(self.batch_size_textbox.text()) if len(self.batch_size_textbox.text()) > 0 else 1
-
-        self.hparams = dict(
-            optimizer_kwargs=optimizer_kwargs,
-            optimizer_name=optimizer,
-            criterion_kwargs=criterion_kwargs,
-            criterion_name=criterion,
-            batch_size=batch_size,
-        )
-
-        self.close()
-
-
-class ValidationDlg(QDialog):
-    """
-    Settings for choosing the validation set
-    """
-
-    def __init__(self, parent):
-        self.valid_params = None
-
-        super(QDialog, self).__init__(parent=parent)
-
-        self.validation_size = QComboBox(self)
-        self.validation_size.addItem("10%")
-        self.validation_size.addItem("20%")
-        self.validation_size.addItem("30%")
-        self.validation_size.addItem("40%")
-
-        self.orientation = QComboBox(self)
-        self.orientation.addItem("Top - Left")
-        self.orientation.addItem("Top - Right")
-        self.orientation.addItem("Top - Mid")
-        self.orientation.addItem("Mid - Left")
-        self.orientation.addItem("Mid - Right")
-        self.orientation.addItem("Mid - Mid")
-        self.orientation.addItem("Bottom - Left")
-        self.orientation.addItem("Bottom - Right")
-        self.orientation.addItem("Bottom - Mid")
-
-        grid = QGridLayout()
-        grid.setSpacing(10)
-
-        grid.addWidget(QLabel("Validation Set Size"), 1, 0)
-        grid.addWidget(self.validation_size, 1, 1)
-
-        grid.addWidget(QLabel("Orientation"), 2, 0)
-        grid.addWidget(self.orientation, 2, 1)
-
-        okButton = QPushButton("OK")
-        okButton.clicked.connect(self.readParameters)
-        cancelButton = QPushButton("Cancel")
-        cancelButton.clicked.connect(self.close)
-
-        hbox = QHBoxLayout()
-        hbox.addStretch(1)
-        hbox.addWidget(okButton)
-        hbox.addWidget(cancelButton)
-
-        vbox = QVBoxLayout()
-        vbox.addLayout(grid)
-        vbox.addLayout(hbox)
-
-        self.setLayout(vbox)
-
-        self.center()
-
-        self.setWindowTitle("Validation Set Settings")
-        self.show()
-
-    def center(self):
-        qr = self.frameGeometry()
-        cp = QDesktopWidget().availableGeometry().center()
-        qr.moveCenter(cp)
-
-        self.move(qr.topLeft())
-
-    def readParameters(self):
-        percentage = self.validation_size.currentText()[:-1]
-        orientation = self.orientation.currentText()
-        self.valid_params = dict(percentage=percentage, orientation=orientation)
-
-        self.close()
-
-
-class CheckpointManager:
-    def __init__(self, widget, get_state, load_state, added, data):
-        self._checkpoint_by_idx = {}
-
-        self._get_state = get_state
-        self._load_state = load_state
-        self._added = added
-
-        self._widget = widget
-        self._widget.add_clicked.connect(self._add)
-        self._widget.remove_clicked.connect(self._remove)
-        self._widget.load_clicked.connect(self._load)
-
-        self._load_data(data)
-        self._count = 0
-
-    def setData(self, data):
-        self._load_data(data)
-
-    def _load_data(self, data):
-        self._widget.clear()
-        self._checkpoint_by_idx = {}
-        for entry in data:
-            idx = self._widget.add_item(entry["name"])
-            self._checkpoint_by_idx[idx] = entry
-
-    def _add(self):
-        state = self._get_state()
-        self._count += 1
-        name = f"{self._count}: Epoch: {state.epoch}. Loss: {state.loss}"
-
-        idx = self._widget.add_item(name)
-        self._checkpoint_by_idx[idx] = {"name": name, "state": state}
-        self._added(self._checkpoint_by_idx.values())
-
-    def _remove(self, removed_idx):
-        del self._checkpoint_by_idx[removed_idx]
-        self._widget.remove_item(removed_idx)
-
-    def _load(self, load_idx):
-        if load_idx.isValid():
-            val = self._checkpoint_by_idx[load_idx]
-            self._load_state(val["state"])
-
-
 class CheckpointWidget(QWidget):
-    add_clicked = pyqtSignal()
-    remove_clicked = pyqtSignal(QPersistentModelIndex)
-    load_clicked = pyqtSignal(QPersistentModelIndex)
-
-    def __init__(self, *, parent, add, remove, load, view):
+    def __init__(
+        self,
+        *,
+        parent: QWidget,
+        add: QToolButton,
+        remove: QToolButton,
+        load: QToolButton,
+        view: QListWidget,
+    ):
         super().__init__(parent=parent)
-
         self._add_btn = add
         self._remove_btn = remove
         self._load_btn = load
-        self._view = view
+        self._list = view
+        self._list.setSelectionMode(QAbstractItemView.SingleSelection)
 
-        self._model = QStringListModel()
-        self._view.setModel(self._model)
+        self._add_btn.clicked.connect(self._on_add)
+        self._remove_btn.clicked.connect(self._on_remove)
+        self._load_btn.clicked.connect(self._on_load)
 
-        self._add_btn.clicked.connect(self.add_clicked)
-        self._remove_btn.clicked.connect(self._remove_click)
-        self._load_btn.clicked.connect(self._load_click)
+    def setup(self, tiktorch_controller: TiktorchUnetController, tiktorch_model: TiktorchUnetOperatorModel):
+        self._tiktorch_controller = tiktorch_controller
+        self._tiktorch_model = tiktorch_model
+        self._checkpoint_dir = self._tiktorch_model.session.unet_config.get_checkpoint_dir()
+
+        assert self._checkpoint_dir.exists()
+        self._refresh_checkpoint_list()
 
     def clear(self):
-        self._model.setStringList([])
+        self._list.clear()
 
-    def add_item(self, name: str) -> QPersistentModelIndex:
-        self._model.insertRow(0)
-        m_idx = self._model.index(0)
-        self._model.setData(m_idx, name)
-        return QPersistentModelIndex(m_idx)
+    def _refresh_checkpoint_list(self):
+        self.clear()
+        checkpoints = sorted(os.listdir(self._checkpoint_dir))
+        for checkpoint in checkpoints:
+            if checkpoint.endswith(".pt") or checkpoint.endswith(".pytorch"):
+                self._list.addItem(checkpoint)
 
-    def remove_item(self, idx: QModelIndex):
-        if idx.isValid():
-            self._model.removeRow(idx.row())
+    def _on_add(self):
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        checkpoint_name = f"{timestamp}.pt"
+        checkpoint_path = self._checkpoint_dir / checkpoint_name
 
-    def _remove_click(self):
-        idx = self._view.selectionModel().currentIndex()
-        if idx.isValid():
-            self.remove_clicked.emit(QPersistentModelIndex(idx))
+        try:
+            self._save(checkpoint_path)
+            QMessageBox.information(self, "Checkpoint Saved", f"Checkpoint saved as '{checkpoint_name}'.")
+            self._refresh_checkpoint_list()
+        except Exception as e:
+            QMessageBox.critical(self, "Error Saving Checkpoint", f"An error occurred: {e}")
 
-    def _load_click(self):
-        idx = self._view.selectionModel().currentIndex()
-        if idx.isValid():
-            self.load_clicked.emit(QPersistentModelIndex(idx))
+    @busy_cursor
+    def _save(self, checkpoint_path: Path):
+        self._tiktorch_model.session.save_checkpoint(checkpoint_path)
+
+    def _on_remove(self):
+        selected_items = self._list.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self, "No Selection", "Please select a checkpoint to remove.")
+            return
+
+        assert len(selected_items) == 1, "Single selection"
+        item = selected_items[0]
+
+        checkpoint_name = item.text()
+        checkpoint_path = os.path.join(self._checkpoint_dir, checkpoint_name)
+
+        try:
+            os.remove(checkpoint_path)
+            QMessageBox.information(self, "Checkpoint Removed", f"Checkpoint '{checkpoint_name}' has been removed.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error Removing Checkpoint", f"An error occurred: {e}")
+
+        self._refresh_checkpoint_list()
+
+    def _on_load(self):
+        selected_items = self._list.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self, "No Selection", "Please select a checkpoint to load.")
+            return
+
+        assert len(selected_items) == 1, "Single selection"
+        item = selected_items[0]
+
+        checkpoint_name = item.text()
+        checkpoint_path = self._checkpoint_dir / checkpoint_name
+
+        try:
+            self._reload(checkpoint_path)
+            QMessageBox.information(self, "Checkpoint Loaded", f"Checkpoint '{checkpoint_name}' has been loaded.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error Loading Checkpoint", f"An error occurred: {e}")
+
+    @busy_cursor
+    def _reload(self, checkpoint_path: Path):
+        updated_unet_config = self._tiktorch_model.session.unet_config.resume_with_checkpoint(checkpoint_path)
+        self._tiktorch_controller.closeSession()
+        self._tiktorch_controller.initTraining(updated_unet_config)
 
 
 class NNTrainingClassGui(LayerViewerGui):
@@ -386,14 +210,6 @@ class NNTrainingClassGui(LayerViewerGui):
             load=self._drawer.loadCheckpoint,
             view=self._drawer.checkpointList,
         )
-        self.topLevelOperatorView.Checkpoints.notifyDirty(self.checkpoints_dirty)
-        self.checkpoint_mng = CheckpointManager(
-            self.checkpoint_widget,
-            self._get_model_state,
-            self._load_checkpoint,
-            self._added,
-            data=self.topLevelOperatorView.Checkpoints.value,
-        )
 
     def __init__(self, parentApplet, topLevelOperatorView):
         self.parentApplet = parentApplet
@@ -432,8 +248,6 @@ class NNTrainingClassGui(LayerViewerGui):
             lambda checked: self._handleToolButtonClicked(checked, Tool.Navigation)
         )
 
-        self._initCheckpointActions()
-
         self.liveTraining = False
         self.livePrediction = False
 
@@ -454,10 +268,17 @@ class NNTrainingClassGui(LayerViewerGui):
         self.invalidatePredictionsTimer = QTimer()
         self.invalidatePredictionsTimer.timeout.connect(self._timer_update)
 
+        self._initCheckpointActions()
         self._has_training_started = False
         self._on_start_stop_training(False)
 
     def _on_start_stop_training(self, started_training: bool):
+        self._drawer.checkpoints.setEnabled(started_training)
+        if started_training:
+            self.checkpoint_widget.setup(tiktorch_controller=self.tiktorchController, tiktorch_model=self.tiktorchModel)
+        else:
+            self.checkpoint_widget.clear()
+
         self._drawer.unetStateControl.export.setEnabled(started_training)
 
         # disable live predictions by default
@@ -730,10 +551,6 @@ class NNTrainingClassGui(LayerViewerGui):
         QMessageBox.critical(
             self, "ilastik detected a problem with your model", f"Failed to initialize model:\n {type(exc)} {exc}"
         )
-
-
-    def _load_checkpoint(self, model_state: ModelState):
-        self.topLevelOperatorView.set_model_state(model_state)
 
     def _update_rendering(self):
         if not self.render:
