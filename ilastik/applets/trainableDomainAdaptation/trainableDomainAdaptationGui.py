@@ -20,7 +20,7 @@
 ###############################################################################
 import logging
 from functools import partial
-from typing import Sequence
+from typing import List, Sequence
 
 from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QColor
@@ -44,8 +44,8 @@ class ConfigurableChannelSelector(QPushButton):
         super().__init__(*args, **kwargs)
 
         self._channel_menu = QMenu(self)
-        self._channel_menu.installEventFilter(self)
         self.setMenu(self._channel_menu)
+        self._channel_actions: List[QAction] = []
         self.update_options(options, n_options)
 
     def onChannelSelectionClicked(self, a0):
@@ -80,8 +80,7 @@ class ConfigurableChannelSelector(QPushButton):
             idx = [i for i, action in enumerate(self._channel_actions) if action.isChecked()]
             self.channelSelectionFinalized.emit(idx)
 
-    def update_options(self, options: Sequence[str], n_options: int = 1):
-        assert n_options <= len(options)
+    def update_options(self, options: Sequence[str], n_options: int = 1, try_keep_checkmark_status=True):
         self._channel_menu.clear()
         self._action_group = QActionGroup(self)
         if n_options == 1:
@@ -92,7 +91,7 @@ class ConfigurableChannelSelector(QPushButton):
         self._action_group.triggered.connect(self.onChannelSelectionClicked)
         self._action_group.triggered.connect(self._emit_updated)
 
-        self._channel_actions = []
+        checkmark_status = [item.isChecked() for item in self._channel_actions]
         self._n_options = n_options
 
         for label_name in options:
@@ -101,6 +100,18 @@ class ConfigurableChannelSelector(QPushButton):
             self._channel_menu.addAction(action)
             self._channel_actions.append(action)
             self._action_group.addAction(action)
+
+        self._update_channel_selector_txt()
+        self._emit_updated()
+
+    def set_selection(self, selection: Sequence[int]):
+        if max(selection) < len(self.channel_actions):
+            raise ValueError(
+                f"Trying to select channels outside the available range {selection=} {len(self.channel_actions)=}."
+            )
+
+        for idx, action in enumerate(self._channel_actions):
+            action.setChecked(idx in selection)
 
         self._update_channel_selector_txt()
         self._emit_updated()
@@ -122,25 +133,10 @@ class TrainableDomainAdaptationGui(PixelClassificationGui):
     def _init_channel_selector_ui(self):
         drawer = self._drawer
 
-        channel_selector = QPushButton()
-        self.channel_menu = QMenu(self)  # Must retain menus (in self) or else they get deleted.
-        channel_selector.setMenu(self.channel_menu)
-        channel_selector.clicked.connect(channel_selector.showMenu)
+        channel_selector = ConfigurableChannelSelector(options=self.topLevelOperatorView.LabelNames.value)
 
-        def populate_channel_menu(*args):
-            if sip.isdeleted(channel_selector):
-                return
-            self.channel_menu.clear()
-            self.channel_actions = []
-            for label_name in self.topLevelOperatorView.LabelNames.value:
-                action = QAction(label_name, self.channel_menu)
-                action.setCheckable(True)
-                self.channel_menu.addAction(action)
-                self.channel_actions.append(action)
-                action.toggled.connect(self.onChannelSelectionClicked)
-
-        populate_channel_menu()
-        self.__cleanup_fns.append(self.topLevelOperatorView.LabelNames.notifyDirty(populate_channel_menu))
+        self._channel_selector = channel_selector
+        channel_selector.channelSelectionFinalized.connect(self.onChannelSelectionClicked)
 
         # the loaded model requires xx channels
         channel_selector.setToolTip("Select Channels for NN input")
@@ -148,17 +144,9 @@ class TrainableDomainAdaptationGui(PixelClassificationGui):
         channel_selection_layout.addWidget(QLabel("Select Channels"))
         channel_selection_layout.addWidget(channel_selector)
         drawer.verticalLayout.addLayout(channel_selection_layout)
-        self._channel_selector = channel_selector
 
-        def _update_channel_selector_txt(_slot, _roi):
-            label_data = self.labelListData
-            selected_idx = self.topLevelOperatorView.SelectedChannels.value
-            selected_channels = ", ".join(label_data[i].name for i in selected_idx)
-            self._channel_selector.setText(selected_channels)
-
-        self.__cleanup_fns.append(self.topLevelOperatorView.LabelNames.notifyDirty(_update_channel_selector_txt))
+        self.__cleanup_fns.append(self.topLevelOperatorView.LabelNames.notifyDirty(self.onLabelNamesChanged))
         self.__cleanup_fns.append(self.topLevelOperatorView.SelectedChannels.notifyDirty(_update_channel_selector_txt))
-        _update_channel_selector_txt(self.topLevelOperatorView.SelectedChannels, ())
 
     @classmethod
     def getModelToOpen(cls, parent_window, defaultDirectory):
@@ -208,9 +196,12 @@ class TrainableDomainAdaptationGui(PixelClassificationGui):
         #  be used now that there are features selected)
         self.parentApplet.appletStateUpdateRequested()
 
-    def onChannelSelectionClicked(self, *args):
-        channel_selections = [i for i, ch in enumerate(self.channel_actions) if ch.isChecked()]
-        self.topLevelOperatorView.SelectedChannels.setValue(channel_selections)
+    def onLabelNamesChanged(self):
+        label_data = self.labelListData
+        self._channel_selector.update_options([label.name for label in label_data])
+
+    def onChannelSelectionClicked(self, selection=Sequence[int]):
+        self.topLevelOperatorView.SelectedChannels.setValue(selection)
 
     def stopAndCleanUp(self):
         for fn in self.__cleanup_fns:
