@@ -60,11 +60,11 @@ def test_emit_updated_signal(widget, qtbot):
 
 def test_update_options(widget):
     # check "init" state from fixture
-    assert len(widget._channel_actions) == 4
+    assert len(widget._channel_menu.actions()) == 4
     assert widget._n_options == 1
 
     widget.update_options(["A", "B", "C"], n_options=2)
-    assert len(widget._channel_actions) == 3
+    assert len(widget._channel_menu.actions()) == 3
     assert widget._n_options == 2
 
 
