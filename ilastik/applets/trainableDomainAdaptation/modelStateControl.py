@@ -3,7 +3,7 @@ import logging
 import requests
 
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QComboBox, QHBoxLayout, QLabel, QToolButton, QVBoxLayout
+from PyQt5.QtWidgets import QComboBox, QHBoxLayout, QSizePolicy, QToolButton
 
 from ilastik.applets.neuralNetwork.modelStateControl import ModelStateControl, display_template
 from ilastik.utility.gui import ThreadRouter, silent_qobject
@@ -107,24 +107,19 @@ class EnhancerModelStateControl(ModelStateControl):
         self.threadRouter = ThreadRouter(self)
         self._preDownloadChecks = set()
 
-        layout = QVBoxLayout()
+        layout = QHBoxLayout()
 
         self.modelSourceEdit = BioImageModelCombo(self)
-        self.statusLabel = QLabel(self)
-        self.statusLabel.setText("status...")
+        self.modelSourceEdit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+
         self.modelControlButton = QToolButton(self)
         self.modelControlButton.setText("...")
         self.modelControlButton.setToolTip("Click here to check model details, initialize, or un-initialize the model")
-        self.statusLabel.setVisible(False)
 
-        top_layout = QHBoxLayout()
-        top_layout.addWidget(self.modelSourceEdit)
-        top_layout.addWidget(self.modelControlButton)
+        layout = QHBoxLayout()
+        layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.modelSourceEdit)
+        layout.addWidget(self.modelControlButton)
 
-        bottom_layout = QHBoxLayout()
-        bottom_layout.addWidget(self.statusLabel)
-        bottom_layout.addStretch()
-
-        layout.addLayout(top_layout)
-        layout.addLayout(bottom_layout)
         self.setLayout(layout)
