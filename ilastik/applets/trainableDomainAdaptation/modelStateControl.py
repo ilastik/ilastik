@@ -17,7 +17,7 @@ class BioImageModelCombo(QComboBox):
     _REMOVE_FILE = object()
 
     modelDeleted = pyqtSignal()
-    modelOpenFromFile = pyqtSignal()
+    modelOpenFromFile = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -52,7 +52,8 @@ class BioImageModelCombo(QComboBox):
             self.modelDeleted.emit()
         elif item_data == BioImageModelCombo._SELECT_FILE:
             logger.debug("open model from file")
-            self.modelOpenFromFile.emit()
+            self.setCurrentText("choose model...")
+            self.modelOpenFromFile.emit("")
 
     def setModelDataAvailableState(self, model_source, model_info):
         idx = self.findText(model_info.name)
@@ -84,7 +85,7 @@ class BioImageModelCombo(QComboBox):
 
         BIOIMAGEIO_COLLECTION = resp.json()
 
-        self.addItem("choose model..", {})
+        self.addItem("choose model...", {})
         self.insertSeparator(1)
 
         for model in BIOIMAGEIO_COLLECTION["collection"]:
