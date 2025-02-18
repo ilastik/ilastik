@@ -1,8 +1,8 @@
-from lazyflow.operators import OpMultiChannelSelector
 import numpy
+import pytest
 import vigra
 
-import pytest
+from lazyflow.operators import OpArrayPiper, OpMultiChannelSelector
 
 
 @pytest.fixture
@@ -19,14 +19,35 @@ def test_raises_channel_not_last(graph):
         op.Input.setValue(vdata)
 
 
-def test_raises_selected_channel_not_in_data(graph):
+def test_notready_if_selected_channel_not_in_data(graph):
     data = numpy.random.randint(0, 256, (10, 5, 1), dtype="uint8")
     vdata = vigra.taggedView(data, "yxc")
 
     op = OpMultiChannelSelector(graph=graph)
     op.Input.setValue(vdata)
-    with pytest.raises(ValueError):
-        op.SelectedChannels.setValue([1])
+    op.SelectedChannels.setValue([1])
+
+    assert not op.Output.ready()
+
+
+def test_unready_if_selected_channel_not_in_data(graph):
+    data = numpy.random.randint(0, 256, (10, 5, 2), dtype="uint8")
+    vdata = vigra.taggedView(data, "yxc")
+
+    op_piper = OpArrayPiper(graph=graph)
+
+    op = OpMultiChannelSelector(graph=graph)
+    op.Input.connect(op_piper.Output)
+    op.SelectedChannels.setValue([1])
+    op_piper.Input.setValue(vdata)
+
+    assert op.Output.ready()
+
+    data = numpy.random.randint(0, 256, (10, 5, 1), dtype="uint8")
+    vdata = vigra.taggedView(data, "yxc")
+    op_piper.Input.setValue(vdata)
+
+    assert not op.Output.ready()
 
 
 def test_trivial_operation(graph):
