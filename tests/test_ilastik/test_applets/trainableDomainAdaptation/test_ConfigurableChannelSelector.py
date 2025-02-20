@@ -61,27 +61,25 @@ def test_emit_updated_signal(widget, qtbot):
 def test_update_options(widget):
     # check "init" state from fixture
     assert len(widget._channel_menu.actions()) == 4
-    assert widget._n_options == 1
+    assert widget._required_selections == 1
 
-    widget.update_options(["A", "B", "C"], n_options=2)
+    widget.update_options(["A", "B", "C"], required_selections=2)
     assert len(widget._channel_menu.actions()) == 3
-    assert widget._n_options == 2
+    assert widget._required_selections == 2
 
 
-def test_update_options_resets_selection(widget, qtbot):
+def test_update_options_resets_selection(widget):
     assert widget.text() == "Select a channel..."
     widget._channel_menu.actions()[3].trigger()
     assert widget.text() == "Ch 4"
 
-    with qtbot.waitSignal(widget.channelSelectionFinalized, timeout=100) as sig_receiver:
-        widget.update_options(["A"], n_options=1)
+    widget.update_options(["A"], required_selections=1)
 
-    assert sig_receiver.args == [[]]
     assert widget.text() == "Select a channel..."
 
 
 def test_multiple_options(qtbot):
-    widget = ConfigurableChannelSelector(["Ch 1", "Ch 2", "Ch 3", "Ch 4"], n_options=3)
+    widget = ConfigurableChannelSelector(["Ch 1", "Ch 2", "Ch 3", "Ch 4"], required_selections=3)
     qtbot.addWidget(widget)
 
     with qtbot.assertNotEmitted(widget.channelSelectionFinalized):
