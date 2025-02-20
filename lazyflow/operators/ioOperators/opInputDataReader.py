@@ -41,6 +41,7 @@ from lazyflow.operators.ioOperators import (
 )
 from lazyflow.utility.jsonConfig import JsonConfigParser
 from lazyflow.utility.pathHelpers import lsH5N5, isRelative, splitPath, PathComponents, isUrl
+from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore
 from .opOMEZarrMultiscaleReader import OpOMEZarrMultiscaleReader
 
 from .opStreamingUfmfReader import OpStreamingUfmfReader
@@ -100,7 +101,6 @@ class OpInputDataReader(Operator):
         h5_n5_Exts + n5Selection + npyExts + npzExts + rawExts + vigraImpexExts + blockwiseExts + videoExts + klbExts
     )
 
-    supported_ome_zarr_schemes = ["http:", "https:", "file:", "s3:"]
     precomputed_protocol = "precomputed://"
 
     if _supports_dvid:
@@ -300,11 +300,9 @@ class OpInputDataReader(Operator):
             return ([], None)
 
     def _attemptOpenAsOmeZarrUri(self, filePath):
-        if PathComponents(filePath).extension != ".zarr":
-            return ([], None)
         if not isUrl(filePath):
             filePath = Path(filePath).as_uri()
-        if not any(filePath.startswith(scheme) for scheme in self.supported_ome_zarr_schemes):
+        if not OMEZarrStore.is_uri_compatible(filePath):
             return ([], None)
         # DatasetInfo instantiates a standalone OpInputDataReader to obtain laneShape and dtype.
         # We pass this down to the loader so that it can avoid loading scale metadata unnecessarily.
