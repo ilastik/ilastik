@@ -38,7 +38,6 @@ from PyQt5.QtWidgets import (
 )
 from volumina.api import AlphaModulatedLayer, LazyflowSource
 from volumina.colortables import default16_new
-import sip
 
 from ilastik.applets.pixelClassification.pixelClassificationGui import PixelClassificationGui
 
@@ -52,15 +51,18 @@ logger = logging.getLogger(__name__)
 class ConfigurableChannelSelector(QPushButton):
     channelSelectionFinalized = pyqtSignal(list)
 
-    def __init__(self, options: Sequence[str], *args, n_options=1, **kwargs):
+    def __init__(self, options: Sequence[str], *args, required_selections=1, **kwargs):
         super().__init__(*args, **kwargs)
 
         self._channel_menu = QMenu(self)
         self.setMenu(self._channel_menu)
-        self.update_options(options, n_options)
+        self.update_options(options, required_selections)
 
     def onChannelSelectionClicked(self, a0):
         self._update_channel_selector_txt()
+        if self._is_configured() or self._is_empty_selection():
+            idx = [i for i, action in enumerate(self._channel_menu.actions()) if action.isChecked()]
+            self.channelSelectionFinalized.emit(idx)
 
     def _update_channel_selector_txt(self):
         selected_actions = [action for action in self._channel_menu.actions() if action.isChecked()]
@@ -81,27 +83,22 @@ class ConfigurableChannelSelector(QPushButton):
 
     def _is_configured(self):
         selected_actions = [action for action in self._channel_menu.actions() if action.isChecked()]
-        if len(selected_actions) == self._n_options:
+        if len(selected_actions) == self._required_selections:
             return True
 
         return False
 
-    def _emit_updated(self):
-        if self._is_configured() or self._is_empty_selection():
-            idx = [i for i, action in enumerate(self._channel_menu.actions()) if action.isChecked()]
-            self.channelSelectionFinalized.emit(idx)
-
-    def update_options(self, options: Sequence[str], n_options: int = 1, selection=None):
+    def update_options(self, options: Sequence[str], required_selections: int = 1, selection=None):
         self._channel_menu.clear()
         self._action_group = QActionGroup(self)
         if selection is None:
             selection = []
-        if n_options == 1:
+        if required_selections == 1:
             self._action_group.setExclusionPolicy(QActionGroup.ExclusionPolicy.ExclusiveOptional)
         else:
             self._action_group.setExclusionPolicy(QActionGroup.ExclusionPolicy.None_)
 
-        self._n_options = n_options
+        self._required_selections = required_selections
 
         for label_name in options:
             action = QAction(label_name, self._channel_menu)
@@ -110,11 +107,13 @@ class ConfigurableChannelSelector(QPushButton):
             self._action_group.addAction(action)
 
         self._action_group.triggered.connect(self.onChannelSelectionClicked)
-        self._action_group.triggered.connect(self._emit_updated)
 
         self.set_selection(selection)
 
     def set_selection(self, selection: Sequence[int]):
+        """
+        Intended for synchronization with slot value
+        """
         if selection and max(selection) >= len(self._channel_menu.actions()):
             raise ValueError(
                 f"Trying to select channels outside the available range {selection=} {len(self._channel_menu.actions())=}."
@@ -124,7 +123,6 @@ class ConfigurableChannelSelector(QPushButton):
             action.setChecked(idx in selection)
 
         self._update_channel_selector_txt()
-        self._emit_updated()
 
 
 class TrainableDomainAdaptationGui(PixelClassificationGui):
