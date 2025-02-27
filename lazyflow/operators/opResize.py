@@ -23,7 +23,7 @@ import logging
 from typing import Union, Iterable
 
 import numpy as np
-from skimage import transform as sk_transform
+from scipy import ndimage as scipy_ndimage
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import enlargeRoiForHalo, roiToSlice
@@ -34,10 +34,14 @@ logger = logging.getLogger(__name__)
 
 class OpResize(Operator):
     """
-    Presents scikit-image.transform.resize as a lazyflow operator,
+    Reimplements scikit-image.transform.resize as a lazyflow operator,
     handling in particular the halo for antialiasing in the context of subregions.
 
-    Resizes input image to desired output size.
+    The gaussian filter for antialiasing is run with custom sigmas that are negligibly larger
+    than the scikit-image default at scaling factors <2, and smaller at scaling factors >2.
+    This should reduce the required halo sizes and possibly maintain more information
+    (remains to be tested).
+
     Cannot resize along channel axis (would be nonsense).
     Time is treated like space axes, so resize along t at your own risk.
     """
@@ -66,17 +70,14 @@ class OpResize(Operator):
     def execute(self, slot, subindex, roi, result):
         """Roi is scaled: The requester is asking for (a subportion of) the scaled image.
         Need to reverse scaling of roi and pad that with halo to request sufficient subregion
-        of raw image for antialiasing. Then resize that raw image with halo. Then crop
-        the scaled halo."""
+        of raw image for antialiasing. Then apply the gaussian filter for antialiasing,
+        remove the halo, and scale the blurred image."""
         assert slot is self.ResizedImage, "Unknown output slot"
-        downsampling_factors = self._get_scaling_factors()
-        assert all(f >= 1 for f in downsampling_factors), "Upsampling not supported yet"
-        # @haesleinhuepf sigmas for antialiasing (cf BioImageAnalysisNotebooks downscaling and denoising).
-        # skimage.transform.resize does np.maximum(0, (downsampling_factors - 1) / 2) instead,
-        # but this seems to cause bigger artifacts at block boundaries.
-        antialiasing_sigmas = tuple(f / 4 for f in downsampling_factors)
-        axes_to_pad = downsampling_factors > 1
-        raw_roi = self._reverse_roi_scaling(roi, downsampling_factors)
+        downscaling_factors = self._get_scaling_factors()
+        assert all(f >= 1 for f in downscaling_factors), "Upscaling not supported yet"
+        antialiasing_sigmas = np.array([f / 4 for f in downscaling_factors])
+        axes_to_pad = downscaling_factors > 1
+        raw_roi = self._reverse_roi_scaling(roi, downscaling_factors)
         raw_roi_with_halo, raw_result_roi = enlargeRoiForHalo(
             raw_roi[0],
             raw_roi[1],
@@ -85,20 +86,12 @@ class OpResize(Operator):
             enlarge_axes=axes_to_pad,
             return_result_roi=True,
         )
-        raw_image_with_halo = self.RawImage[roiToSlice(*raw_roi_with_halo)].wait()
-        scaled_roi_with_halo = self._scale_roi(raw_roi_with_halo, downsampling_factors)
-        scaled_image = sk_transform.resize(
-            raw_image_with_halo,
-            scaled_roi_with_halo[1] - scaled_roi_with_halo[0],
-            anti_aliasing=True,
-            anti_aliasing_sigma=antialiasing_sigmas,
-            preserve_range=True,
-        )
-        scaled_result_roi = self._scale_roi(raw_result_roi, downsampling_factors)
-        assert np.all(
-            scaled_result_roi[1] - scaled_result_roi[0] == roi.stop - roi.start
-        ), "Scaled image shape does not match requested shape"
-        result[...] = scaled_image[roiToSlice(*scaled_result_roi)]
+        raw_image_with_halo = self.RawImage[roiToSlice(*raw_roi_with_halo)].wait().astype(np.float64)
+        filtered_with_halo = scipy_ndimage.gaussian_filter(raw_image_with_halo, antialiasing_sigmas, mode="mirror")
+        filtered = filtered_with_halo[roiToSlice(*raw_result_roi)]
+        zoom_factors = [1 / f for f in downscaling_factors]
+        scaled_image = scipy_ndimage.zoom(filtered, zoom_factors, grid_mode=True, mode="mirror", order=1)
+        result[...] = scaled_image
 
     def propagateDirty(self, slot, subindex, roi):
         # roi is on RawImage scale here (unscaled). Would technically need to scale it to ResizedImage scale,
@@ -117,6 +110,10 @@ class OpResize(Operator):
 
     @staticmethod
     def _scale_roi(roi: Union[np.typing.NDArray, SubRegion], factors: Iterable[float]) -> np.typing.NDArray:
+        """
+        Returns roi as numpy.ndarray[start, stop] instead of SubRegion to be independent of slot.
+        np.round matches behavior of skimage.transform.resize when rounding resized image shape.
+        """
         start = roi.start if isinstance(roi, SubRegion) else roi[0]
         stop = roi.stop if isinstance(roi, SubRegion) else roi[1]
         scaled_shape = np.round(np.divide(stop - start, factors)).astype(int)
