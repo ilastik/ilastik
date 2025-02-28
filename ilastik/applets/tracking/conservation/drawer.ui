@@ -765,10 +765,13 @@
        <item row="5" column="1" colspan="2">
         <widget class="QSpinBox" name="from_size">
          <property name="maximum">
-          <number>100000</number>
+          <number>2147483647</number>
          </property>
          <property name="value">
           <number>3</number>
+         </property>
+         <property name="toolTip">
+          <string>Min object area/volume in pixels. Cannot be higher than the max value of a 32-bit integer (2147483647).</string>
          </property>
         </widget>
        </item>
@@ -778,10 +781,13 @@
        <item row="5" column="3">
         <widget class="QSpinBox" name="to_size">
          <property name="maximum">
-          <number>100000000</number>
+          <number>2147483647</number>
          </property>
          <property name="value">
-          <number>100000</number>
+          <number>1000000</number>
+         </property>
+         <property name="toolTip">
+          <string>Max object area/volume in pixels. Cannot be higher than the max value of a 32-bit integer (2147483647).</string>
          </property>
         </widget>
        </item>
