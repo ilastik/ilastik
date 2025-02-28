@@ -32,7 +32,7 @@ import logging
 import pathlib
 
 from requests.exceptions import SSLError, ConnectionError
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, QEvent
 from PyQt5.QtWidgets import (
     QComboBox,
     QDialog,
@@ -76,6 +76,9 @@ def _validate_uri(text: str) -> str:
 
 
 class MultiscaleDatasetBrowser(QDialog):
+
+    EXAMPLE_URI = "https://data.ilastik.org/2d_cells_apoptotic_1channel.zarr"
+
     def __init__(self, history=None, parent=None):
         super().__init__(parent)
         self._history = history or []
@@ -95,9 +98,16 @@ class MultiscaleDatasetBrowser(QDialog):
         self.combo = QComboBox(self)
         self.combo.setEditable(True)
         self.combo.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
-        self.combo.addItem("")
+
         for item in self._history:
-            self.combo.addItem(item)
+            self.combo.addItem(item, item)
+
+        self.combo.insertSeparator(len(self._history))
+
+        self.combo.lineEdit().setPlaceholderText("Enter path/URL or choose from history - or double click for example.")
+        self.combo.setCurrentIndex(-1)
+        # enable double click to paste example
+        self.combo.lineEdit().installEventFilter(self)
 
         combo_label = QLabel(self)
         combo_label.setText("Dataset address: ")
@@ -136,6 +146,13 @@ class MultiscaleDatasetBrowser(QDialog):
         self.combo.lineEdit().textChanged.connect(update_ok_button)
         main_layout.addWidget(self.qbuttons)
         self.setLayout(main_layout)
+
+    def eventFilter(self, obj, event):
+        if obj == self.combo.lineEdit():
+            if event.type() == QEvent.MouseButtonDblClick:
+                self.combo.lineEdit().setText(self.EXAMPLE_URI)
+
+        return super().eventFilter(obj, event)
 
     def _validate_text_input(self, _event):
         self.selected_uri = None
