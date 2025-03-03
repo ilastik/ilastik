@@ -131,11 +131,8 @@ class TrainableDomainAdaptationGui(PixelClassificationGui):
         self._drawer = self._labelControlUi
         self.liveNNPrediction = False
         self.__cleanup_fns = []
-        self._init_channel_selector_ui()
-        self._init_nn_prediction_ui()
+        self._init_tda_ui()
 
-        self.invalidatePredictionsTimer = QTimer()
-        self.invalidatePredictionsTimer.timeout.connect(self.updateNNPredictions)
         self.tiktorchModel.registerListener(self._onModelStateChanged)
 
         self.labelingDrawerUi.liveUpdateButton.toggled.connect(self.toggleLiveNNPrediction)

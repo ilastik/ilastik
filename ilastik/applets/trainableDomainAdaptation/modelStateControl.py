@@ -52,6 +52,9 @@ class BioImageModelCombo(QComboBox):
             self.modelDeleted.emit()
         elif item_data == BioImageModelCombo._SELECT_FILE:
             logger.debug("open model from file")
+            with silent_qobject(self):
+                self.setCurrentIndex(0)
+
             self.modelOpenFromFile.emit()
 
     def setModelDataAvailableState(self, model_source, model_info):
@@ -101,7 +104,7 @@ class EnhancerModelStateControl(ModelStateControl):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.modelSourceEdit.modelOpenFromFile.connect(self.onModelInfoRequested)
+        self.modelSourceEdit.modelOpenFromFile.connect(self._open_model_from_dialog)
 
     def _setup_ui(self):
         self.threadRouter = ThreadRouter(self)
