@@ -217,7 +217,7 @@ class ModelStateControl(QWidget):
             self.modelControlButton.setIcon(QIcon(ilastikIcons.GoNext))
             self.modelControlButton.setToolTip("Check and activate the model")
             self.modelControlButton.setEnabled(True)
-            self.modelControlButton.clicked.connect(self.onModelInfoRequested)
+            self.modelControlButton.clicked.connect(self._try_open_model)
             self.modelSourceEdit.setEmptyState()
 
         elif state is TiktorchOperatorModel.State.ModelDataAvailable:
@@ -276,17 +276,53 @@ class ModelStateControl(QWidget):
         except Exception as e:
             self._showErrorMessage(e)
 
-    def onModelInfoRequested(self):
+    def _model_uri_from_dialog(self) -> str:
+        """
+        opens a QFileDialog for importing files
+        """
+        # open dialog in recent model folder if possible
+        folder = preferences.get("DataSelection", "recent model", os.path.expanduser("~"))
+
+        # get folder from user
+        model_uri = QFileDialog.getOpenFileName(self, "Select Model", folder, "Models (*.tmodel *.zip)")[0]
+
+        if not model_uri:
+            return ""
+
+        return model_uri
+
+    def _model_uri_from_ui_edit(self) -> str:
+        try:
+            model_uri = self.modelSourceEdit.getModelSource().strip()
+        except AttributeError:
+            model_uri = ""
+
+        return model_uri
+
+    def _open_model_from_dialog(self):
+        model_uri = self._model_uri_from_dialog()
+        if model_uri:
+            self._open_model(model_uri)
+
+    def _open_model_from_ui_edit(self):
+        model_uri = self._model_uri_from_ui_edit()
+        if model_uri:
+            self._open_model(model_uri)
+
+    def _try_open_model(self):
+        model_uri = self._model_uri_from_ui_edit()
+        if not model_uri:
+            model_uri = self._model_uri_from_dialog()
+
+        if not model_uri:
+            return
+
+        self._open_model(model_uri)
+
+    def _open_model(self, model_uri: str):
         # Note: bioimageio imports are delayed as to prevent https request to
         # github and bioimage.io on ilastik startup
         from bioimageio.spec import load_model_description
-
-        model_uri = self.modelSourceEdit.getModelSource().strip()
-        if not model_uri:
-            # try select file from file chooser
-            model_uri = self.getModelToOpen(self)
-        if not model_uri:
-            return
 
         model_info = load_model_description(model_uri, perform_io_checks=False, format_version="latest")
 
@@ -396,14 +432,3 @@ class ModelStateControl(QWidget):
         return self._check_model_compatible(model_info) + [
             pre_check(model_info) for pre_check in self._preDownloadChecks
         ]
-
-    @classmethod
-    def getModelToOpen(cls, parent_window):
-        """
-        opens a QFileDialog for importing files
-        """
-        # open dialog in recent model folder if possible
-        folder = preferences.get("DataSelection", "recent model", os.path.expanduser("~"))
-
-        # get folder from user
-        return QFileDialog.getOpenFileName(parent_window, "Select Model", folder, "Models (*.tmodel *.zip)")[0]
