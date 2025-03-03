@@ -21,13 +21,18 @@
 from __future__ import annotations
 import dataclasses
 import enum
-import io
-import json
 import logging
 from hashlib import blake2b
-from typing import Dict, List, Sequence, Union, TYPE_CHECKING
+from typing import List, TYPE_CHECKING
 
-from lazyflow.operators.tiktorch.classifier import ModelSession
+from ilastik.applets.neuralNetwork.opNNclass import OpNNTrainingClassification
+from lazyflow.operators.tiktorch.classifier import (
+    ModelSession,
+    ModelUnetSession,
+    TiktorchUnetConnectionFactory,
+    TrainingConnection,
+    UnetConfig,
+)
 
 if TYPE_CHECKING:
     from bioimageio.spec import ModelDescr
@@ -147,7 +152,7 @@ class TiktorchOperatorModel:
         self._operator.NumClasses.disconnect()
         self._operator.BIOModel.setValue(bioModelData)
 
-    def setSession(self, session):
+    def setSession(self, session: ModelSession):
         self._operator.NumClasses.disconnect()
         self._operator.ModelSession.setValue(session)
         self._operator.NumClasses.setValue(self.modelData.numClasses)
@@ -223,3 +228,48 @@ class TiktorchController:
         self._model.clearSession()
         if session:
             session.close()
+
+
+class TiktorchUnetOperatorModel:
+    def __init__(self, operator: OpNNTrainingClassification):
+        self._operator = operator
+
+    @property
+    def serverConfig(self):
+        return self._operator.ServerConfig.value
+
+    @property
+    def session(self) -> ModelUnetSession:
+        if not self._operator.ModelSession.ready():
+            raise ValueError(f"ModelUnetSession is not ready")
+        return self._operator.ModelSession.value
+
+    def clearSession(self):
+        if self._operator.ModelSession.ready():
+            self.session.close()
+        self._operator.ModelSession.setValue(None)
+        self._operator.NumClasses.setValue(None)
+
+    def setSession(self, session: ModelUnetSession):
+        self._operator.NumClasses.disconnect()
+        self._operator.ModelSession.setValue(session)
+        self._operator.NumClasses.setValue(session.unet_config.get_num_out_classes())
+
+
+class TiktorchUnetController:
+    def __init__(self, model: TiktorchUnetOperatorModel, connectionFactory: TiktorchUnetConnectionFactory) -> None:
+        self.connectionFactory = connectionFactory
+        self._model = model
+
+    def initTraining(self, unet_config: UnetConfig):
+        """Initialize model on tiktorch server"""
+        srvConfig = self._model.serverConfig
+        connection: TrainingConnection = self.connectionFactory.ensure_connection(srvConfig)
+        server_devices = [d.id for d in srvConfig.devices if d.enabled]
+        # todo: configure devices
+        session = connection.init_training(unet_config)
+        model_unet_session = ModelUnetSession(session=session, factory=connection, unet_config=unet_config)
+        self._model.setSession(session=model_unet_session)
+
+    def closeSession(self):
+        self._model.clearSession()

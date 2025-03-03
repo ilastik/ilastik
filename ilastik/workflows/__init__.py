@@ -142,6 +142,7 @@ try:
     if ilastik.config.runtime_cfg.tiktorch_executable:
         WORKFLOW_CLASSES += [
             neuralNetwork.LocalWorkflow,
+            neuralNetwork.LocalTrainingWorkflow,
             trainableDomainAdaptation.LocalTrainableDomainAdaptationWorkflow,
         ]
 
