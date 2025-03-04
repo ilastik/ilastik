@@ -601,7 +601,7 @@ class ObjectClassificationWorkflow(Workflow):
 
 class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
     workflowName = "Object Classification (from pixel classification)"
-    workflowDisplayName = "Pixel Classification + Object Classification"
+    workflowDisplayName = "Pixel Classification + Object Classification (deprecated)"
 
     @property
     def ExportNames(self):
@@ -614,6 +614,17 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
     def __init__(self, *args, **kwargs):
         self.stored_pixel_classifier = None
         super().__init__(*args, **kwargs)
+        warnings.warn(
+            "The Pixel Classification + Object Classification workflow is deprecated and will be removed. Please use Pixel Classification and Object Classification as separate workflows.",
+            UserWarning,
+        )
+
+    @property
+    def data_instructions(self):
+        return (
+            super().data_instructions
+            + "This workflow is no longer maintained and will be removed in ilastik 1.5.0. We recommend using Pixel Classification and Object classification as separate workflows."
+        )
 
     @property
     def exportsArgParser(self):
