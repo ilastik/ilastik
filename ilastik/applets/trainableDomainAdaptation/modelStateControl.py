@@ -83,8 +83,9 @@ class BioImageModelCombo(QComboBox):
             # from file
             with silent_qobject(self) as silent_self:
                 silent_self.insertItem(1, model_info.name, model_info)
-        else:
-            self.setCurrentText(self.itemText(idx))
+            idx = 1
+
+        self.setCurrentText(self.itemText(idx))
 
         model = self.model()
         assert model
