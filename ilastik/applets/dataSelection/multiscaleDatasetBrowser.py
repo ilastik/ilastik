@@ -37,7 +37,7 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
-    QHBoxLayout,
+    QGridLayout,
     QLabel,
     QPushButton,
     QSizePolicy,
@@ -76,6 +76,9 @@ def _validate_uri(text: str) -> str:
 
 
 class MultiscaleDatasetBrowser(QDialog):
+
+    EXAMPLE_URI = "https://data.ilastik.org/2d_cells_apoptotic_1channel.zarr"
+
     def __init__(self, history=None, parent=None):
         super().__init__(parent)
         self._history = history or []
@@ -95,20 +98,30 @@ class MultiscaleDatasetBrowser(QDialog):
         self.combo = QComboBox(self)
         self.combo.setEditable(True)
         self.combo.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
-        self.combo.addItem("")
+
         for item in self._history:
-            self.combo.addItem(item)
+            self.combo.addItem(item, item)
+
+        self.combo.lineEdit().setPlaceholderText("Enter path/URL or choose from history...")
+        self.combo.setCurrentIndex(-1)
 
         combo_label = QLabel(self)
         combo_label.setText("Dataset address: ")
-        combo_layout = QHBoxLayout()
+
+        example_button = QPushButton(self)
+        example_button.setText("Add example")
+        example_button.setToolTip("Add url to '2d_cells_apoptotic_1channel` example from the ilastik website.")
+        example_button.pressed.connect(lambda: self.combo.lineEdit().setText(self.EXAMPLE_URI))
+
+        combo_layout = QGridLayout()
         chk_button = QPushButton(self)
         chk_button.setText("Check")
         chk_button.clicked.connect(self._validate_text_input)
         self.combo.lineEdit().returnPressed.connect(chk_button.click)
-        combo_layout.addWidget(combo_label)
-        combo_layout.addWidget(self.combo)
-        combo_layout.addWidget(chk_button)
+        combo_layout.addWidget(combo_label, 0, 0)
+        combo_layout.addWidget(self.combo, 0, 1)
+        combo_layout.addWidget(chk_button, 0, 2)
+        combo_layout.addWidget(example_button, 1, 0)
 
         main_layout.addLayout(combo_layout)
 
