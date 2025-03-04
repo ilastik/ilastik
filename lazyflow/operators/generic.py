@@ -37,6 +37,7 @@ from lazyflow.request import RequestPool
 
 from typing import Tuple
 
+
 # Utility functions
 def axisTagsToString(axistags):
     res = []
@@ -810,14 +811,11 @@ class OpMultiChannelSelector(Operator):
 
         channel_axis = -1
 
+        max_channel = self.Input.meta.getTaggedShape()["c"]
         selected_channels: Tuple[int] = self.SelectedChannels.value
-        if len(selected_channels) == 0:
+        if len(selected_channels) == 0 or any(x >= max_channel for x in selected_channels):
             self.Output.meta.NOTREADY = True
             return
-
-        max_channel = self.Input.meta.getTaggedShape()["c"]
-        if any(x >= max_channel for x in selected_channels):
-            raise ValueError(f"Input has only {max_channel} channels, channel-selector {selected_channels}")
 
         self.Output.meta.assignFrom(self.Input.meta)
 

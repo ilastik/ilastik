@@ -1,9 +1,29 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2025, the ilastik developers
+#                                <team@ilastik.org>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
+#
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#          http://ilastik.org/license.html
+###############################################################################
 import logging
 
 import requests
 
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QComboBox, QHBoxLayout, QLabel, QToolButton, QVBoxLayout
+from PyQt5.QtWidgets import QComboBox, QHBoxLayout, QSizePolicy, QToolButton
 
 from ilastik.applets.neuralNetwork.modelStateControl import ModelStateControl, display_template
 from ilastik.utility.gui import ThreadRouter, silent_qobject
@@ -52,6 +72,9 @@ class BioImageModelCombo(QComboBox):
             self.modelDeleted.emit()
         elif item_data == BioImageModelCombo._SELECT_FILE:
             logger.debug("open model from file")
+            with silent_qobject(self):
+                self.setCurrentIndex(0)
+
             self.modelOpenFromFile.emit()
 
     def setModelDataAvailableState(self, model_source, model_info):
@@ -62,6 +85,12 @@ class BioImageModelCombo(QComboBox):
                 silent_self.insertItem(1, model_info.name, model_info)
         else:
             self.setCurrentText(self.itemText(idx))
+
+        model = self.model()
+        assert model
+        for idx in range(1, self.count()):
+            model.item(idx).setEnabled(False)
+
         self.setItemText(0, "remove model")
         self.setItemData(0, BioImageModelCombo._REMOVE_FILE)
 
@@ -101,30 +130,25 @@ class EnhancerModelStateControl(ModelStateControl):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.modelSourceEdit.modelOpenFromFile.connect(self.onModelInfoRequested)
+        self.modelSourceEdit.modelOpenFromFile.connect(self._open_model_from_dialog)
 
     def _setup_ui(self):
         self.threadRouter = ThreadRouter(self)
         self._preDownloadChecks = set()
 
-        layout = QVBoxLayout()
+        layout = QHBoxLayout()
 
         self.modelSourceEdit = BioImageModelCombo(self)
-        self.statusLabel = QLabel(self)
-        self.statusLabel.setText("status...")
+        self.modelSourceEdit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+
         self.modelControlButton = QToolButton(self)
         self.modelControlButton.setText("...")
         self.modelControlButton.setToolTip("Click here to check model details, initialize, or un-initialize the model")
-        self.statusLabel.setVisible(False)
 
-        top_layout = QHBoxLayout()
-        top_layout.addWidget(self.modelSourceEdit)
-        top_layout.addWidget(self.modelControlButton)
+        layout = QHBoxLayout()
+        layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.modelSourceEdit)
+        layout.addWidget(self.modelControlButton)
 
-        bottom_layout = QHBoxLayout()
-        bottom_layout.addWidget(self.statusLabel)
-        bottom_layout.addStretch()
-
-        layout.addLayout(top_layout)
-        layout.addLayout(bottom_layout)
         self.setLayout(layout)
