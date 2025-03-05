@@ -21,6 +21,7 @@
 import json
 import logging
 import os
+import platform
 import subprocess
 import sys
 import tempfile
@@ -59,6 +60,20 @@ class LocalServerLauncher:
         self._process = None
         self._conn_data = None
 
+    @property
+    def _proc_env(self):
+        """Modified env for tiktorch server subprocess"""
+        env = os.environ.copy()
+        if platform.system().lower() == "darwin" and platform.machine().lower() == "arm64":
+            # pytorch versions up to the 2.6 don't support all operations (esp 3d) on MPS
+            # this env variable allows falling back to CPU for those networks instead of failing
+            # see for current status https://github.com/pytorch/pytorch/issues/141287
+            if "PYTORCH_ENABLE_MPS_FALLBACK" not in env:
+                env["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+                logging.info(f"Added 'PYTORCH_ENABLE_MPS_FALLBACK=1' to tiktorch env.")
+
+        return env
+
     def start(self):
         if self._process:
             raise RuntimeError(f"Local server is already running (pid:{self._process.pid})")
@@ -69,7 +84,7 @@ class LocalServerLauncher:
             conn_param_path = os.path.join(conn_dir, "conn.json")
             cmd = self._executable_path + ["--port", "0", "--addr", "127.0.0.1", "--connection-file", conn_param_path]
 
-            self._process = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr)
+            self._process = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr, env=self._proc_env)
             try:
                 wait(lambda: os.path.exists(conn_param_path), max_wait=60)
             except RuntimeError:
