@@ -47,7 +47,7 @@ class LocalTrainableDomainAdaptationWorkflow(_NNWorkflowBase):
     """
 
     auto_register = True
-    workflowName = "Trainable Domain Adaptation (Local) (beta)"
+    workflowName = "Trainable Domain Adaptation (Local)"
     workflowDescription = "Allows to apply bioimage.io shallow2deep models on your data using bundled tiktorch"
 
     @enum.unique
