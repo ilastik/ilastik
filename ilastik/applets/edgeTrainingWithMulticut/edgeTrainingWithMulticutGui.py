@@ -20,7 +20,7 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingMixin, LayerView
 
         self.train_edge_clf_box = QCheckBox(
             text="Train edge classifier",
-            toolTip="Manually select features and train a random forest classifier on them, to predict boundary probabilities. If left unchecked, training will be skiped, and probabilities will be calculated based on the mean probability along edges. This produces good results for clear boundaries.",
+            toolTip="Manually select features and train a random forest classifier on them, to predict boundary probabilities. If left unchecked, training will be skipped, and probabilities will be calculated based on the mean probability along edges. This produces good results for clear boundaries.",
             checked=False,
         )
 

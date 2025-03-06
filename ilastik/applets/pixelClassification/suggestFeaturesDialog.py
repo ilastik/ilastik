@@ -539,7 +539,7 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
 
     def _add_segmentation_layer(self, data, name=None, visible=False):
         """
-        adds a segementation layer to the layerstack
+        adds a segmentation layer to the layerstack
 
         :param data: numpy array (2D) containing the data
         :param name: name of layer
@@ -706,7 +706,7 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
             elif "Hessian" in channel_name:
                 featureID = "HessianOfGaussianEigenvalues"
             else:
-                raise Exception("Unkown feature encountered!")
+                raise Exception("Unknown feature encountered!")
 
             col_position_in_matrix = scales.index(scale)
             row_position_in_matrix = featureIDs.index(featureID)
@@ -840,7 +840,7 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
             are requesting a new feature set. The way this is prevented here is by simply retrieving the FeatureLabelMatrix
             once each time the dialog is opened and manually writing it into the inputSlot of the feature selection
             operators. This is possible because the FeatureLabelMatrix cannot change from within the SuggestFeaturesDialog
-            (it contians feature values and the corresponding labels of all labeled voxels and all features. The labels
+            (it contains feature values and the corresponding labels of all labeled voxels and all features. The labels
             cannot be modified from within this dialog)
             """
             if not self._initialized_feature_matrix:

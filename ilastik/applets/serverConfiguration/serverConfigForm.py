@@ -221,7 +221,7 @@ class DeviceListWidgetItem(QListWidgetItem):
         self.setText(f"{id} ({name})")
         self.setCheckState(Qt.Unchecked)
         # Negation of Qt.ItemIsUserCheckable so we would be able to toggle check state on line click
-        # otherwise it will immidiatelly uncheck
+        # otherwise it will immediately uncheck
         self.setFlags(self.flags() & (~Qt.ItemIsUserCheckable))
 
     def __repr__(self) -> str:

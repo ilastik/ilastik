@@ -194,7 +194,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     OpObjectTrain and OpObjectPredict.
 
     Also transfers existing labels if the upstream object segmentation
-    changes. The transfer is conservative: labels only get transfered
+    changes. The transfer is conservative: labels only get transferred
     from an old object to a new object if they overlap sufficiently,
     and the label does not overlap with other objects.
 

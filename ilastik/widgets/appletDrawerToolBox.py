@@ -47,7 +47,7 @@ class AppletBarManager(QObject):
     """
     This class controls interaction between IlastikShell and AppletDrawerToolBox
     Some items are not meant to be displayed for user (interactive attribute),
-    but they still need to be tracked, to provide convinient interface
+    but they still need to be tracked, to provide convenient interface
     """
 
     appletActivated = pyqtSignal(int)

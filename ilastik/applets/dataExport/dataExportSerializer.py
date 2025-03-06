@@ -88,7 +88,7 @@ class DataExportSerializer(AppletSerializer):
 
     def deserializeFromHdf5(self, *args):
         """
-        Overriden from the base class so we can use the special TransactionSlot to
+        Overridden from the base class so we can use the special TransactionSlot to
         speed up the otherwise SLOW process of configuring so many optional slots.
         """
         # Disconnect the transaction slot to prevent setupOutput() calls while we do this.

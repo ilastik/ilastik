@@ -617,7 +617,7 @@ class LabelingGui(LayerViewerGui):
             # If necessary, tell the brushing model to stop erasing
             if self.editor.brushingModel.erasing:
                 self.editor.brushingModel.disableErasing()
-            # display a curser that is static while moving arrow
+            # display a cursor that is static while moving arrow
             self.editor.brushingModel.setBrushSize(1)
             self._gui_setThresholding()
             self.setCursor(Qt.ArrowCursor)
@@ -1020,7 +1020,7 @@ class LabelingGui(LayerViewerGui):
         """
         in some workflows it makes no sense to have less than two labels.
         This setting forces to have always at least two labels.
-        If there are exaclty two, they will be made unremovable
+        If there are exactly two, they will be made unremovable
         """
         self._addNewLabel()
         self._addNewLabel()

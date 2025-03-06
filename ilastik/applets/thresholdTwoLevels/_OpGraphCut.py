@@ -191,7 +191,7 @@ def segmentGC(pred, beta):
     unary_fids = gm.addFunctions(functions)
     gm.addFactors(unary_fids, np.arange(0, numVar))
 
-    # add one binary function (potts fuction)
+    # add one binary function (potts function)
     potts = opengm.PottsFunction([2, 2], 0.0, beta)
     binary_fid = gm.addFunction(potts)
 

@@ -94,7 +94,7 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
 
             def handleDatasetInfoChanged(slot):
                 # Get the row of this slot
-                assert slot.subindex, f"BUG: Excpected nested slot {slot}"
+                assert slot.subindex, f"BUG: Expected nested slot {slot}"
                 laneIndex = slot.subindex[0]
                 # FIXME: For now, we update the whole row.
                 #        Later, update only the columns that correspond to this dataset.

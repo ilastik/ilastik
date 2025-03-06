@@ -71,7 +71,7 @@
          <property name="toolTip">
           <string>Unix path name pattern: 
   * matches 0 or more characters, ? matches any 1 character. 
-  Seperate multiple patterns by a semicolon (;). 
+  Separate multiple patterns by a semicolon (;). 
 Examples:
   Linux/Mac: 
     /home/me/data/stack_*.jpg

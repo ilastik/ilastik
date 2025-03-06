@@ -209,7 +209,7 @@ class EdgeTrainingSerializer(AppletSerializer):
         if
           * run in gui mode - in headless this is irrelevant, because:
             * if a classifier was trained, the connections are correct,
-            * if there was no classifier involved (multicut on edge probabilties)
+            * if there was no classifier involved (multicut on edge probabilities)
               then previous lanes are not accessed
           * serialized with version 0.1, and multiple lanes present
         """
