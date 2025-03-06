@@ -47,7 +47,10 @@ class LocalTrainableDomainAdaptationWorkflow(_NNWorkflowBase):
     """
 
     auto_register = True
+
     workflowName = "Trainable Domain Adaptation (Local)"
+    workflowDisplayName = "Trainable Domain Adaptation (Local)"
+
     workflowDescription = "Allows to apply bioimage.io shallow2deep models on your data using bundled tiktorch"
 
     @enum.unique
@@ -243,3 +246,17 @@ class LocalTrainableDomainAdaptationWorkflow(_NNWorkflowBase):
         opNNClassification = self.nnClassificationApplet.topLevelOperator
         opNNClassification.FreezePredictions.setValue(self._freeze_val)
         self._freeze_val = None
+
+
+class LocalTrainableDomainAdaptationWorkflowLegacy(LocalTrainableDomainAdaptationWorkflow):
+    """
+    Compatibility class for projects files that were created with
+    ilastik 1.4.1rc2 and lower.
+
+    Note the different `workflowName` attribute.
+    """
+
+    auto_register = False
+
+    workflowName = "Trainable Domain Adaptation (Local) (beta)"
+    workflowDisplayName = "Trainable Domain Adaptation (Local) (beta)"

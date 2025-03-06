@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -143,6 +141,7 @@ try:
         WORKFLOW_CLASSES += [
             neuralNetwork.LocalWorkflow,
             trainableDomainAdaptation.LocalTrainableDomainAdaptationWorkflow,
+            trainableDomainAdaptation.LocalTrainableDomainAdaptationWorkflowLegacy,
         ]
 
 except ImportError as e:
