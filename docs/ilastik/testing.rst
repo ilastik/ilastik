@@ -15,7 +15,7 @@ To run all the non-gui tests in one go, use pytest:
    $ pytest --capture=no
    
 .. note:: ilastik and lazyflow make extensive use of the python logger.
-   Unfortunately, it may result in a lot of unecessary output for failed tests.
+   Unfortunately, it may result in a lot of unnecessary output for failed tests.
    Use the ``--capture=no`` option to disable logger output.
 
 Sometimes it's convenient to run the test scripts one at a time.  A convenience script for that is included in the tests directory:

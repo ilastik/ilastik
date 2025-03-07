@@ -104,7 +104,7 @@ Top-level Operators
 
 Everything an applet does is centered around the applet's top-level operator.  
 It is typically the keeper of all state associated with the applet.
-The top-level operators that the workflow and shell see must be capbable of handling multiple image lanes.
+The top-level operators that the workflow and shell see must be capable of handling multiple image lanes.
 That is, they must adhere to the :py:class:`MultiLaneOperatorABC<ilastik.utility.MultiLaneOperatorABC>`.
 If your applet inherits from :py:class:`StandardApplet<ilastik.applets.base.standardApplet.StandardApplet>`,
 then your single-lane top-level operator can be automatically adapted to the multi-lane interface.

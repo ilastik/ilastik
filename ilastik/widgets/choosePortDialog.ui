@@ -28,7 +28,7 @@
     <widget class="QLabel" name="message">
      <property name="text">
       <string>Choose port for the message server
-( 0 for automatic assignement )</string>
+( 0 for automatic assignment)</string>
      </property>
     </widget>
    </item>

@@ -59,7 +59,7 @@
    <item row="0" column="3">
     <widget class="QPushButton" name="OnesButton">
      <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial weights are chosen &lt;span style=&quot; font-weight:600;&quot;&gt;uniformly&lt;/span&gt; (normalized all ones vector). Usefull for detecting effect of small changes in the training on the tracking result.&lt;/pre&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial weights are chosen &lt;span style=&quot; font-weight:600;&quot;&gt;uniformly&lt;/span&gt; (normalized all ones vector). Useful for detecting effect of small changes in the training on the tracking result.&lt;/pre&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="styleSheet">
       <string notr="true"/>
@@ -462,7 +462,7 @@
    <item row="0" column="2">
     <widget class="QPushButton" name="RandomButton">
      <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial weights are chosen &lt;span style=&quot; font-weight:600;&quot;&gt;randomly&lt;/span&gt; on the interval (0,1). This option is usefull in testing the dependency of the convereged vector on the choice of the initial weights values.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial weights are chosen &lt;span style=&quot; font-weight:600;&quot;&gt;randomly&lt;/span&gt; on the interval (0,1). This option is useful in testing the dependency of the convereged vector on the choice of the initial weights values.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
       <string>Random</string>
@@ -935,7 +935,7 @@
    <item row="1" column="0" colspan="2">
     <widget class="QLabel" name="DetectionLabel">
      <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The weight to &lt;span style=&quot; font-weight:600;&quot;&gt;balance detection probabilities&lt;/span&gt; against division and transition probabilities. Higer values than for division and transition probabilities will favor detections over divisions and transitions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The weight to &lt;span style=&quot; font-weight:600;&quot;&gt;balance detection probabilities&lt;/span&gt; against division and transition probabilities. Higher values than for division and transition probabilities will favor detections over divisions and transitions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
       <string>Detection</string>
@@ -945,7 +945,7 @@
    <item row="2" column="0" colspan="2">
     <widget class="QLabel" name="DivisionLabel">
      <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The weight to &lt;span style=&quot; font-weight:600;&quot;&gt;balance division probabilities&lt;/span&gt; against detection and transition probabilities. Higer values than for detection and transition probabilities will favor divisions over detections and transitions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The weight to &lt;span style=&quot; font-weight:600;&quot;&gt;balance division probabilities&lt;/span&gt; against detection and transition probabilities. Higher values than for detection and transition probabilities will favor divisions over detections and transitions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
       <string>Division</string>

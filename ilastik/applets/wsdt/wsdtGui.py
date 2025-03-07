@@ -146,7 +146,7 @@ class WsdtGui(LayerViewerGui):
         min_size_box.setMinimum(0)
         min_size_box.setMaximum(1000000)
         configure_update_handlers(min_size_box.valueChanged, op.MinSize)
-        min_size_box.setToolTip("Mininum size of the watershed segments")
+        min_size_box.setToolTip("Minimum size of the watershed segments")
         drawer_layout.addLayout(control_layout("Min Boundary Size", min_size_box))
         self.min_size_box = min_size_box
 

@@ -844,7 +844,7 @@ class OpDataSelection(Operator):
             data_provider = datasetInfo.get_provider_slot(parent=self)
             if "x" not in data_provider.meta.axistags or "y" not in data_provider.meta.axistags:
                 raise DatasetConstraintError(
-                    "DataSelection", "Data must always have at leaset the axes x and y for ilastik to work."
+                    "DataSelection", "Data must always have at least the axes x and y for ilastik to work."
                 )
 
             role_name = self.RoleName.value

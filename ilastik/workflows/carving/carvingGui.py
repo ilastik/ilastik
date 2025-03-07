@@ -482,7 +482,7 @@ class CarvingGui(LabelingGui):
         """
         mst = self.topLevelOperatorView.MST.value
         if not list(mst.object_lut.keys()):
-            QMessageBox.critical(self, "Can't Export", "You have no saved objets, so there are no meshes to export.")
+            QMessageBox.critical(self, "Can't Export", "You have no saved objects, so there are no meshes to export.")
             return
 
         recent_dir = preferences.get("carving", "recent export mesh directory")

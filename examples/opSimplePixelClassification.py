@@ -85,7 +85,7 @@ class OpSimplePixelClassification(Operator):
 
     def setupOutputs(self):
         """
-        There are no OutputSlots that need setup, (our only OutputSlot will be implictly
+        There are no OutputSlots that need setup, (our only OutputSlot will be implicitly
         configured because it is directly connected to one of our internal operators).
 
         But there is still a little work to do: choose block shapes for our internal caches.

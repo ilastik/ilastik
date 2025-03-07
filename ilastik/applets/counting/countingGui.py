@@ -1034,7 +1034,7 @@ class CountingGui(LabelingGui):
             # If necessary, tell the brushing model to stop erasing
             if self.editor.brushingModel.erasing:
                 self.editor.brushingModel.disableErasing()
-            # display a curser that is static while moving arrow
+            # display a cursor that is static while moving arrow
             self.editor.brushingModel.setBrushSize(1)
             self._gui_setThresholding()
             self.setCursor(Qt.ArrowCursor)

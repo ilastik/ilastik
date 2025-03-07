@@ -529,7 +529,7 @@ class NewAutocontextWorkflowBase(Workflow):
 
     def distribute_labels_from_current_stage(self):
         """
-        Distrubute labels from the currently viewed stage across all other stages.
+        Distribute labels from the currently viewed stage across all other stages.
         """
         # Late import.
         # (Don't import PyQt in headless mode.)
