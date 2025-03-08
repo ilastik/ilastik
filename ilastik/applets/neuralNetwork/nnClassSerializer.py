@@ -33,6 +33,7 @@ from ilastik.applets.base.appletSerializer import (
     SerialSlot,
     jsonSerializerRegistry,
 )
+from ilastik.applets.neuralNetwork.opNNclass import OpNNTrainingClassification
 
 from .tiktorchController import BIOModelData, ModelInfo
 
@@ -125,6 +126,19 @@ class NNClassificationSerializer(AppletSerializer):
                 shrink_to_bb=True,
             ),
             BioimageIOModelSlot(topLevelOperator.BIOModel),
+        ]
+
+        super().__init__(projectFileGroupName, slots)
+
+
+class NNTrainingClassificationSerializer(AppletSerializer):
+    def __init__(self, topLevelOperator: OpNNTrainingClassification, projectFileGroupName):
+        self.VERSION = 1
+
+        # todo: serialize unet config
+
+        slots = [
+            # SerialSlot(topLevelOperator.UnetConfig),
         ]
 
         super().__init__(projectFileGroupName, slots)

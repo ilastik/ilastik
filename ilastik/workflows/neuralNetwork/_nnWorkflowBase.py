@@ -162,6 +162,7 @@ class _NNWorkflowBase(Workflow):
         # Input Image ->  Classification Op (for display)
         opNNclassify.InputImages.connect(opData.Image)
         opNNclassify.OverlayImages.connect(opData.ImageGroup[self.DATA_ROLE_OVERLAY])
+
         # Data Export connections
         opDataExport.RawData.connect(opData.ImageGroup[self.DATA_ROLE_RAW])
         opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[self.DATA_ROLE_RAW])

@@ -265,6 +265,7 @@ def getAvailableWorkflows() -> Iterator[Tuple[Type[Workflow], str, str]]:
         if isinstance(workflow_cls.workflowName, str):
             if workflow_cls.workflowDisplayName is None:
                 workflow_cls.workflowDisplayName = workflow_cls.workflowName
+            wname = workflow_cls.workflowName
             return workflow_cls, workflow_cls.workflowName, workflow_cls.workflowDisplayName
         else:
             originalName = workflow_cls.__name__

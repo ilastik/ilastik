@@ -25,7 +25,6 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow import stype
 from lazyflow.operators import OpMultiArraySlicer2, OpValueCache, OpBlockedArrayCache
 from lazyflow.operators.tiktorch import (
-    OpTikTorchTrainClassifierBlocked,
     OpTikTorchClassifierPredict,
 )
 from lazyflow.operators.tiktorch.classifier import ModelSession
@@ -35,6 +34,9 @@ from ilastik.utility import OpMultiLaneWrapper
 from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline, DatasetConstraintError
 
 import logging
+
+from lazyflow.operators.tiktorch.operators import OpTikTorchTrainClassifierBlocked
+
 
 logger = logging.getLogger(__name__)
 
@@ -329,6 +331,163 @@ class OpNNClassification(Operator):
     def clearLabel(self, label_value):
         for laneIndex in range(len(self.InputImages)):
             self.getLane(laneIndex).opLabelPipeline.opLabelArray.clearLabel(label_value)
+
+
+class OpNNTrainingClassification(Operator):
+    name = "OpNNTrainingClassification"
+    category = "Top-level"
+
+    # Graph inputs
+    InputImages = InputSlot(level=1)  # one image per lane
+    OverlayImages = InputSlot(level=1, optional=True)
+    ServerConfig = InputSlot(stype=stype.Opaque, nonlane=True)
+
+    NumClasses = InputSlot()
+    FreezePredictions = InputSlot(stype="bool", value=False, nonlane=True)
+    ModelSession = InputSlot()
+
+    Classifier = OutputSlot()
+    PredictionProbabilities = OutputSlot(level=1)
+    PredictionProbabilityChannels = OutputSlot(level=2)  # Classification predictions, enumerated by channel
+    CachedPredictionProbabilities = OutputSlot(level=1)
+
+    def setupOutputs(self):
+        if self.opBlockShape.BlockShapeInference.ready():
+            self.opPredictionPipeline.BlockShape.connect(self.opBlockShape.BlockShapeInference)
+
+    def cleanUp(self):
+        try:
+            if self.ModelSession.ready():
+                self.ModelSession.value.close()
+        except Exception as e:
+            logger.warning(e)
+
+    def __init__(self, *args, connectionFactory, **kwargs):
+        """
+        Instantiate all internal operators and connect them together.
+        """
+        super(OpNNTrainingClassification, self).__init__(*args, **kwargs)
+        self._connectionFactory = connectionFactory
+        #
+        # Default values for some input slots
+        self.FreezePredictions.setValue(True)
+
+        self._binary_model = None
+
+        self.opBlockShape = OpMultiLaneWrapper(OpBlockShape, parent=self)
+        self.opBlockShape.RawImage.connect(self.InputImages)
+        self.opBlockShape.ModelSession.connect(self.ModelSession)
+
+        # CLASSIFIER CACHE
+        # This cache stores exactly one object: the classifier itself.
+        self.classifier_cache = OpValueCache(parent=self)
+        self.classifier_cache.name = "OpNetworkClassification.classifier_cache"
+        self.classifier_cache.inputs["fixAtCurrent"].connect(self.FreezePredictions)
+        self.Classifier.connect(self.classifier_cache.Output)
+
+        # Hook up the prediction pipeline inputs
+        self.opPredictionPipeline = OpMultiLaneWrapper(OpPredictionPipeline, parent=self)
+        self.opPredictionPipeline.RawImage.connect(self.InputImages)
+        # self.opPredictionPipeline.Classifier.connect(self.classifier_cache.Output)
+        self.opPredictionPipeline.NumClasses.connect(self.NumClasses)
+        self.opPredictionPipeline.Classifier.connect(self.ModelSession)
+        self.opPredictionPipeline.FreezePredictions.connect(self.FreezePredictions)
+
+        self.PredictionProbabilities.connect(self.opPredictionPipeline.PredictionProbabilities)
+        self.CachedPredictionProbabilities.connect(self.opPredictionPipeline.CachedPredictionProbabilities)
+        self.PredictionProbabilityChannels.connect(self.opPredictionPipeline.PredictionProbabilityChannels)
+
+        def inputResizeHandler(slot, oldsize, newsize):
+            if newsize == 0:
+                self.PredictionProbabilities.resize(0)
+                self.CachedPredictionProbabilities.resize(0)
+
+        self.InputImages.notifyResized(inputResizeHandler)
+
+        def handleNewInputImage(multislot, index, *args):
+            def handleInputReady(slot):
+                self._checkConstraints(index)
+
+            multislot[index].notifyReady(handleInputReady)
+
+        self.InputImages.notifyInserted(handleNewInputImage)
+
+        # All input multi-slots should be kept in sync
+        # Output multi-slots will auto-sync via the graph
+        multiInputs = [s for s in list(self.inputs.values()) if s.level >= 1]
+        for s1 in multiInputs:
+            for s2 in multiInputs:
+                if s1 != s2:
+
+                    def insertSlot(a, b, position, finalsize):
+                        a.insertSlot(position, finalsize)
+
+                    s1.notifyInserted(partial(insertSlot, s2))
+
+                    def removeSlot(a, b, position, finalsize):
+                        a.removeSlot(position, finalsize)
+
+                    s1.notifyRemoved(partial(removeSlot, s2))
+
+    def _checkConstraints(self, laneIndex):
+        """
+        Ensure that all input images have the same number of channels.
+        """
+        if not self.InputImages[laneIndex].ready():
+            return
+
+        thisLaneTaggedShape = self.InputImages[laneIndex].meta.getTaggedShape()
+
+        # Find a different lane and use it for comparison
+        validShape = thisLaneTaggedShape
+        for i, slot in enumerate(self.InputImages):
+            if slot.ready() and i != laneIndex:
+                validShape = slot.meta.getTaggedShape()
+                break
+
+        if "t" in thisLaneTaggedShape:
+            del thisLaneTaggedShape["t"]
+        if "t" in validShape:
+            del validShape["t"]
+
+        if validShape["c"] != thisLaneTaggedShape["c"]:
+            raise DatasetConstraintError(
+                "Pixel Classification with CNNs",
+                "All input images must have the same number of channels.  "
+                "Your new image has {} channel(s), but your other images have {} channel(s).".format(
+                    thisLaneTaggedShape["c"], validShape["c"]
+                ),
+            )
+
+        if len(validShape) != len(thisLaneTaggedShape):
+            raise DatasetConstraintError(
+                "Pixel Classification with CNNs",
+                "All input images must have the same dimensionality.  "
+                "Your new image has {} dimensions (including channel), but your other images have {} dimensions.".format(
+                    len(thisLaneTaggedShape), len(validShape)
+                ),
+            )
+
+    def setInSlot(self, slot, subindex, roi, value):
+        # Nothing to do here: All inputs that support __setitem__
+        #   are directly connected to internal operators.
+        pass
+
+    def propagateDirty(self, slot, subindex, roi):
+        # Nothing to do here: All outputs are directly connected to
+        #  internal operators that handle their own dirty propagation.
+        self.PredictionProbabilityChannels.setDirty(slice(None))
+
+    def addLane(self, laneIndex):
+        numLanes = len(self.InputImages)
+        assert numLanes == laneIndex, f"Image lanes must be appended. {numLanes}, {laneIndex})"
+        self.InputImages.resize(numLanes + 1)
+
+    def removeLane(self, laneIndex, finalLength):
+        self.InputImages.removeSlot(laneIndex, finalLength)
+
+    def getLane(self, laneIndex):
+        return OperatorSubView(self, laneIndex)
 
 
 class OpBlockShape(Operator):
