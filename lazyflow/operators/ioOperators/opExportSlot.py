@@ -77,7 +77,11 @@ class OpExportSlot(Operator):
     FormatSelectionErrorMsg = OutputSlot()
 
     # Filter out formats that are not supported by vigra
-    _2d_exts = [ext for ext in vigra.impex.listExtensions().split() if ext not in {"xv", "exr"}]
+    unsupported_vigra_formats = {"xv", "exr"}
+    _2d_exts = []
+    for ext in vigra.impex.listExtensions().split():
+        if ext not in unsupported_vigra_formats:
+            _2d_exts.append(ext)
 
     # List all supported formats
     # Only FormatInfo.name is used (to generate help text for a cmd parameter, DataExportApplet)
