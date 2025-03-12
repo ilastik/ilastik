@@ -612,14 +612,18 @@ class IlastikShell(QMainWindow):
         self.onNewProjectActionTriggered(workflow_class)
 
     def getWorkflow(self, w: Optional[str] = None) -> Type[Workflow]:
-        listOfItems = [workflowDisplayName for _, __, workflowDisplayName in getAvailableWorkflows()]
+        listOfItems = [
+            workflowDisplayName
+            for wf_class, __, workflowDisplayName in getAvailableWorkflows()
+            if getattr(wf_class, "show_in_startup_menu", True)
+        ]
         if w is not None and w in listOfItems:
             cur = listOfItems.index(w)
         else:
             cur = 0
 
         res, ok = QInputDialog.getItem(
-            self, "Workflow Selection", "Select a workflow which should open the file.", listOfItems, cur, False
+            self, "Workflow Selection", "Select a workflow which should open the file.", sorted(listOfItems), cur, False
         )
 
         if ok:
