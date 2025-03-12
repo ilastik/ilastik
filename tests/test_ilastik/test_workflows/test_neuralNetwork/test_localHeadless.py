@@ -54,11 +54,9 @@ def test_nn_local_fails_with_old_project_file(project_path_140b30v4: pathlib.Pat
     sys.argv.extend(args)
 
     with mock.patch("ilastik.config.runtime_cfg.tiktorch_executable", new=tiktorch_executable_path):
-        with mock.patch("ilastik.workflows.WORKFLOW_CLASSES", new=[LocalWorkflow]):
-            parsed_args, workflow_cmdline_args = app.parse_known_args()
-
-            with pytest.raises(ValueError):
-                _ = app.main(parsed_args=parsed_args, workflow_cmdline_args=workflow_cmdline_args, init_logging=False)
+        parsed_args, workflow_cmdline_args = app.parse_known_args()
+        with pytest.raises(ValueError):
+            _ = app.main(parsed_args=parsed_args, workflow_cmdline_args=workflow_cmdline_args, init_logging=False)
 
 
 def test_nn_local(project_path_141b22v5: pathlib.Path, data_path, tmp_path, tiktorch_executable_path):
@@ -88,13 +86,12 @@ def test_nn_local(project_path_141b22v5: pathlib.Path, data_path, tmp_path, tikt
     sys.argv.extend(args)
 
     with mock.patch("ilastik.config.runtime_cfg.tiktorch_executable", new=tiktorch_executable_path):
-        with mock.patch("ilastik.workflows.WORKFLOW_CLASSES", new=[LocalWorkflow]):
-            parsed_args, workflow_cmdline_args = app.parse_known_args()
-            shell = app.main(parsed_args=parsed_args, workflow_cmdline_args=workflow_cmdline_args, init_logging=False)
+        parsed_args, workflow_cmdline_args = app.parse_known_args()
+        shell = app.main(parsed_args=parsed_args, workflow_cmdline_args=workflow_cmdline_args, init_logging=False)
 
-            shell.closeCurrentProject()
+        shell.closeCurrentProject()
 
-            # NN model does (normalized input (scale linear gain 1/256) * -1 + 1
-            output_ref = load_h5_ds(input_file, "data")[..., numpy.newaxis] * (1 / 256) * -1 + 1
-            output = load_h5_ds(output_file, "exported_data")
-            numpy.testing.assert_array_almost_equal(output, output_ref)
+        # NN model does (normalized input (scale linear gain 1/256) * -1 + 1
+        output_ref = load_h5_ds(input_file, "data")[..., numpy.newaxis] * (1 / 256) * -1 + 1
+        output = load_h5_ds(output_file, "exported_data")
+        numpy.testing.assert_array_almost_equal(output, output_ref)

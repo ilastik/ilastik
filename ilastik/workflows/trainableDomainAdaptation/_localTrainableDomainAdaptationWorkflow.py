@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2023, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -46,7 +46,7 @@ class LocalTrainableDomainAdaptationWorkflow(_NNWorkflowBase):
     supplied. If it cannot be found, workflow is not available.
     """
 
-    auto_register = True
+    show_in_startup_menu = True
 
     workflowName = "Trainable Domain Adaptation (Local)"
     workflowDisplayName = "Trainable Domain Adaptation (Local)"
@@ -256,7 +256,7 @@ class LocalTrainableDomainAdaptationWorkflowLegacy(LocalTrainableDomainAdaptatio
     Note the different `workflowName` attribute.
     """
 
-    auto_register = False
+    show_in_startup_menu = False
 
     workflowName = "Trainable Domain Adaptation (Local) (beta)"
     workflowDisplayName = "Trainable Domain Adaptation (Local) (beta)"

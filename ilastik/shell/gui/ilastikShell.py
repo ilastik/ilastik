@@ -793,6 +793,7 @@ class IlastikShell(QMainWindow):
         wfs = {
             wf_name: (wf_class, wf_name, wf_display_name)
             for wf_class, wf_name, wf_display_name in getAvailableWorkflows()
+            if getattr(wf_class, "show_in_startup_menu", True)
         }
         explicit_wf_names = {
             wf_name
