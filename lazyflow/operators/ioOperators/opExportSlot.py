@@ -76,7 +76,8 @@ class OpExportSlot(Operator):
     ExportPath = OutputSlot()
     FormatSelectionErrorMsg = OutputSlot()
 
-    _2d_exts = vigra.impex.listExtensions().split()
+    # Vigra supports some file formats that Ilastik doesn't handle, so we exclude "xv" and "exr" extensions.
+    _2d_exts = [ext for ext in vigra.impex.listExtensions().split() if ext not in {"xv", "exr"}]
 
     # List all supported formats
     # Only FormatInfo.name is used (to generate help text for a cmd parameter, DataExportApplet)
