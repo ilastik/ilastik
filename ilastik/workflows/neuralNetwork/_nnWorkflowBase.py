@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2021, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -47,7 +47,7 @@ class _NNWorkflowBase(Workflow):
     connect to remotely running tiktorch server managed by user
     """
 
-    auto_register = False
+    show_in_startup_menu = False
     workflowName = "Neural Network Classification (BASE)"
     workflowDescription = "Base class for NN Classification workflows"
 

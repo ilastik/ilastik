@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2021, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -37,7 +37,7 @@ class RemoteWorkflow(_NNWorkflowBase):
     connect to remotely running tiktorch server managed by user
     """
 
-    auto_register = True
+    show_in_startup_menu = True
     workflowName = "Neural Network Classification (Remote)"
     workflowDescription = "Allows to apply bioimage.io models on your data using remotely running tiktorch server"
 

@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2021, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -40,7 +40,7 @@ class LocalWorkflow(_NNWorkflowBase):
     supplied. If it cannot be found, workflow is not available.
     """
 
-    auto_register = False
+    show_in_startup_menu = True
     workflowName = "Neural Network Classification (Local)"
     workflowDescription = "Allows to apply bioimage.io models on your data using bundled tiktorch"
 

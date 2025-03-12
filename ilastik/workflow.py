@@ -1,9 +1,7 @@
-from __future__ import absolute_import
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -38,8 +36,8 @@ class Workflow(Operator):
 
     name = "Workflow (base class)"
     workflowDisplayName = None  # override in your own workflow if you need it different from name
-    #: Should workflow be automatically added to start widget
-    auto_register = True
+    #: Should workflow added to start widget
+    show_in_startup_menu = True
 
     @abstractproperty
     def applets(self):
@@ -280,14 +278,6 @@ def getAvailableWorkflows() -> Iterator[Tuple[Type[Workflow], str, str]]:
 
             return workflow_cls, wname, workflow_cls.workflowDisplayName
 
-    # All explicitly registered workflows should be displayed
-    for W in workflows.WORKFLOW_CLASSES:
-        if W.__name__ in alreadyListed:
-            continue
-        alreadyListed.add(W.__name__)
-
-        yield _makeWorkflowTuple(W)
-
     for W in all_subclasses(Workflow):
         if W.__name__ in alreadyListed:
             continue
@@ -299,8 +289,7 @@ def getAvailableWorkflows() -> Iterator[Tuple[Type[Workflow], str, str]]:
         except:
             isbase = False
 
-        should_register = getattr(W, "auto_register", True)
-        if isbase or not should_register:
+        if isbase:
             continue
 
         yield _makeWorkflowTuple(W)

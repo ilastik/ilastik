@@ -1,9 +1,7 @@
-from __future__ import absolute_import
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -24,21 +22,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-WORKFLOW_CLASSES = []
-
 import ilastik.config
 
 from .pixelClassification import PixelClassificationWorkflow
 
-WORKFLOW_CLASSES += [PixelClassificationWorkflow]
 
 from .newAutocontext.newAutocontextWorkflow import AutocontextTwoStage
 
-WORKFLOW_CLASSES += [AutocontextTwoStage]
 if ilastik.config.cfg.getboolean("ilastik", "debug"):
     from .newAutocontext.newAutocontextWorkflow import AutocontextThreeStage, AutocontextFourStage
-
-    WORKFLOW_CLASSES += [AutocontextThreeStage, AutocontextFourStage]
 
 
 try:
@@ -47,19 +39,11 @@ try:
         ObjectClassificationWorkflowPrediction,
         ObjectClassificationWorkflowBinary,
     )
-
-    WORKFLOW_CLASSES += [
-        ObjectClassificationWorkflowPixel,
-        ObjectClassificationWorkflowPrediction,
-        ObjectClassificationWorkflowBinary,
-    ]
 except ImportError as e:
     logger.warning("Failed to import object workflow; check dependencies: " + str(e))
 
 try:
     from .tracking.manual.manualTrackingWorkflow import ManualTrackingWorkflow
-
-    WORKFLOW_CLASSES += [ManualTrackingWorkflow]
 except (ImportError, AttributeError) as e:
     logger.warning("Failed to import tracking workflow; check pgmlink dependency: " + str(e))
 
@@ -72,13 +56,6 @@ try:
         AnimalConservationTrackingWorkflowFromBinary,
         AnimalConservationTrackingWorkflowFromPrediction,
     )
-
-    WORKFLOW_CLASSES += [
-        ConservationTrackingWorkflowFromBinary,
-        ConservationTrackingWorkflowFromPrediction,
-        AnimalConservationTrackingWorkflowFromBinary,
-        AnimalConservationTrackingWorkflowFromPrediction,
-    ]
 except ImportError as e:
     logger.warning(
         "Failed to import automatic tracking workflow (conservation tracking). For this workflow, see the installation"
@@ -90,8 +67,6 @@ try:
         StructuredTrackingWorkflowFromBinary,
         StructuredTrackingWorkflowFromPrediction,
     )
-
-    WORKFLOW_CLASSES += [StructuredTrackingWorkflowFromBinary, StructuredTrackingWorkflowFromPrediction]
 except ImportError as e:
     logger.warning(
         "Failed to import structured learning tracking workflow. For this workflow, see the installation"
@@ -99,51 +74,32 @@ except ImportError as e:
     )
 try:
     from .carving.carvingWorkflow import CarvingWorkflow
-
-    WORKFLOW_CLASSES += [CarvingWorkflow]
 except ImportError as e:
     logger.warning("Failed to import carving workflow; check vigra dependency: " + str(e))
 
-# try:
-#     import multicut
-# except ImportError as e:
-#     logger.warning("Failed to import multicut workflow; check dependencies: " + str(e))
-
 try:
     from .edgeTrainingWithMulticut import EdgeTrainingWithMulticutWorkflow
-
-    WORKFLOW_CLASSES += [EdgeTrainingWithMulticutWorkflow]
 except ImportError as e:
     logger.warning("Failed to import 'Edge Training With Multicut' workflow; check dependencies: " + str(e))
 
 try:
     from .counting import CountingWorkflow
-
-    WORKFLOW_CLASSES += [CountingWorkflow]
 except ImportError as e:
     logger.warning("Failed to import counting workflow; check dependencies: " + str(e))
 
 from .examples.dataConversion.dataConversionWorkflow import DataConversionWorkflow
 
-WORKFLOW_CLASSES += [DataConversionWorkflow]
-
 if ilastik.config.cfg.getboolean("ilastik", "hbp", fallback=False):
     from .voxelSegmentation import VoxelSegmentationWorkflow
 
-    WORKFLOW_CLASSES += [VoxelSegmentationWorkflow]
-
 # network classification, check whether required modules are available:
 try:
-    from . import neuralNetwork
-    from . import trainableDomainAdaptation
-
-    WORKFLOW_CLASSES += [neuralNetwork.RemoteWorkflow]
-    logger.debug(ilastik.config.runtime_cfg)
     if ilastik.config.runtime_cfg.tiktorch_executable:
-        WORKFLOW_CLASSES += [
-            neuralNetwork.LocalWorkflow,
-            trainableDomainAdaptation.LocalTrainableDomainAdaptationWorkflow,
-        ]
+        from .neuralNetwork import LocalWorkflow
+        from .trainableDomainAdaptation import LocalTrainableDomainAdaptationWorkflow
+        from .trainableDomainAdaptation import LocalTrainableDomainAdaptationWorkflowLegacy
+
+        logger.debug(ilastik.config.runtime_cfg)
 
 except ImportError as e:
     logger.warning("Failed to import NeuralNet workflow; check dependencies: " + str(e), exc_info=1)
