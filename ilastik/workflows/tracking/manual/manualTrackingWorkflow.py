@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -124,7 +124,7 @@ class ManualTrackingWorkflow(Workflow):
         opDataExport.Inputs[0].connect(opTracking.TrackImage)
         opDataExport.Inputs[1].connect(opTracking.LabelImage)
         opDataExport.RawData.connect(op5Raw.Output)
-        opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[0])
+        opDataExport.RawDatasetInfo.connect(opData.DatasetGroupOut[0])
 
     def post_process_lane_export(self, lane_index):
         # FIXME: This probably only works for the non-blockwise export slot.
@@ -133,7 +133,7 @@ class ManualTrackingWorkflow(Workflow):
             lane_index
         ).get_table_export_settings()
         if settings:
-            raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][0].value
+            raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroupOut[lane_index][0].value
             if raw_dataset_info.is_in_filesystem():
                 filename_suffix = raw_dataset_info.nickname
             else:

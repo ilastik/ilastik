@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2024, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -88,7 +88,7 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
         self._op = topLevelOperator
 
         def handleNewLane(multislot, laneIndex):
-            assert multislot is self._op.DatasetGroup
+            assert multislot is self._op.DatasetGroupOut
             self.beginInsertRows(QModelIndex(), laneIndex, laneIndex)
             self.endInsertRows()
 
@@ -105,23 +105,23 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
             def handleNewDatasetInserted(mslot, index):
                 mslot[index].notifyDirty(bind(handleDatasetInfoChanged))
 
-            for laneIndex, datasetMultiSlot in enumerate(self._op.DatasetGroup):
+            for laneIndex, datasetMultiSlot in enumerate(self._op.DatasetGroupOut):
                 datasetMultiSlot.notifyInserted(bind(handleNewDatasetInserted))
                 for roleIndex, datasetSlot in enumerate(datasetMultiSlot):
                     handleNewDatasetInserted(datasetMultiSlot, roleIndex)
 
-        self._op.DatasetGroup.notifyInserted(bind(handleNewLane))
+        self._op.DatasetGroupOut.notifyInserted(bind(handleNewLane))
 
         def handleLaneRemoved(multislot, laneIndex):
-            assert multislot is self._op.DatasetGroup
+            assert multislot is self._op.DatasetGroupOut
             self.beginRemoveRows(QModelIndex(), laneIndex, laneIndex)
             self.endRemoveRows()
 
-        self._op.DatasetGroup.notifyRemoved(bind(handleLaneRemoved))
+        self._op.DatasetGroupOut.notifyRemoved(bind(handleLaneRemoved))
 
         # Any lanes that already exist must be added now.
-        for laneIndex, slot in enumerate(self._op.DatasetGroup):
-            handleNewLane(self._op.DatasetGroup, laneIndex)
+        for laneIndex, slot in enumerate(self._op.DatasetGroupOut):
+            handleNewLane(self._op.DatasetGroupOut, laneIndex)
 
     def columnCount(self, parent=QModelIndex()):
         if not self._op.DatasetRoles.ready():
@@ -162,15 +162,15 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
         roleIndex = (index.column() - LaneColumn.NumColumns) // DatasetInfoColumn.NumColumns
         datasetInfoIndex = (index.column() - LaneColumn.NumColumns) % DatasetInfoColumn.NumColumns
 
-        datasetSlot = self._op.DatasetGroup[laneIndex][roleIndex]
+        datasetSlot = self._op.DatasetGroupOut[laneIndex][roleIndex]
         if not datasetSlot.ready():
             return ""
 
         UninitializedDisplayData = {DatasetInfoColumn.Name: "<please select>"}
 
-        datasetSlot = self._op.DatasetGroup[laneIndex][roleIndex]
+        datasetSlot = self._op.DatasetGroupOut[laneIndex][roleIndex]
         if datasetSlot.ready():
-            datasetInfo = self._op.DatasetGroup[laneIndex][roleIndex].value
+            datasetInfo = self._op.DatasetGroupOut[laneIndex][roleIndex].value
         else:
             return UninitializedDisplayData[datasetInfoIndex]
 

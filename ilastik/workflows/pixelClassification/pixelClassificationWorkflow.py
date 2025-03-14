@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -259,7 +259,7 @@ class PixelClassificationWorkflow(Workflow):
 
         # Data Export connections
         opDataExport.RawData.connect(opData.ImageGroup[self.Roles.RAW_DATA])
-        opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[self.Roles.RAW_DATA])
+        opDataExport.RawDatasetInfo.connect(opData.DatasetGroupOut[self.Roles.RAW_DATA])
         opDataExport.ConstraintDataset.connect(opData.ImageGroup[self.Roles.RAW_DATA])
         opDataExport.Inputs.resize(len(self.ExportNames))
         opDataExport.Inputs[self.ExportNames.PROBABILITIES].connect(opClassify.HeadlessPredictionProbabilities)

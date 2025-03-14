@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -165,7 +165,7 @@ class CountingWorkflow(Workflow):
         opDataExport.Inputs.resize(1)
         opDataExport.Inputs[0].connect(opCounting.HeadlessPredictionProbabilities)
         opDataExport.RawData.connect(opData.ImageGroup[0])
-        opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[0])
+        opDataExport.RawDatasetInfo.connect(opData.DatasetGroupOut[0])
 
     def onProjectLoaded(self, projectManager):
         """

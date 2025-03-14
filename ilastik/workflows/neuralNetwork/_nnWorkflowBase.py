@@ -164,7 +164,7 @@ class _NNWorkflowBase(Workflow):
         opNNclassify.OverlayImages.connect(opData.ImageGroup[self.DATA_ROLE_OVERLAY])
         # Data Export connections
         opDataExport.RawData.connect(opData.ImageGroup[self.DATA_ROLE_RAW])
-        opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[self.DATA_ROLE_RAW])
+        opDataExport.RawDatasetInfo.connect(opData.DatasetGroupOut[self.DATA_ROLE_RAW])
         opDataExport.Inputs.resize(len(self.ExportNames))
         opDataExport.Inputs[self.ExportNames.PROBABILITIES].connect(opNNclassify.PredictionProbabilities)
 

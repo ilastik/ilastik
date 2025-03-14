@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2024, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -65,43 +65,43 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         self._currently_inserting = False
         self._currently_removing = False
 
-        self._op.DatasetGroup.notifyInsert(self.prepareForNewLane)  # pre
-        self._op.DatasetGroup.notifyInserted(self.handleNewLane)  # post
+        self._op.DatasetGroupOut.notifyInsert(self.prepareForNewLane)  # pre
+        self._op.DatasetGroupOut.notifyInserted(self.handleNewLane)  # post
 
-        self._op.DatasetGroup.notifyRemove(self.handleLaneRemove)  # pre
-        self._op.DatasetGroup.notifyRemoved(self.handleLaneRemoved)  # post
+        self._op.DatasetGroupOut.notifyRemove(self.handleLaneRemove)  # pre
+        self._op.DatasetGroupOut.notifyRemoved(self.handleLaneRemoved)  # post
 
         # Any lanes that already exist must be added now.
-        for laneIndex, slot in enumerate(self._op.DatasetGroup):
-            self.prepareForNewLane(self._op.DatasetGroup, laneIndex)
-            self.handleNewLane(self._op.DatasetGroup, laneIndex)
+        for laneIndex, slot in enumerate(self._op.DatasetGroupOut):
+            self.prepareForNewLane(self._op.DatasetGroupOut, laneIndex)
+            self.handleNewLane(self._op.DatasetGroupOut, laneIndex)
 
     @threadRouted
     def prepareForNewLane(self, multislot, laneIndex, *args):
-        assert multislot is self._op.DatasetGroup
+        assert multislot is self._op.DatasetGroupOut
         self.beginInsertRows(QModelIndex(), laneIndex, laneIndex)
         self._currently_inserting = True
 
     @threadRouted
     def handleNewLane(self, multislot, laneIndex, *args):
-        assert multislot is self._op.DatasetGroup
+        assert multislot is self._op.DatasetGroupOut
         self.endInsertRows()
         self._currently_inserting = False
 
-        for laneIndex, datasetMultiSlot in enumerate(self._op.DatasetGroup):
+        for laneIndex, datasetMultiSlot in enumerate(self._op.DatasetGroupOut):
             datasetMultiSlot.notifyInserted(bind(self.handleNewDatasetInserted))
             if self._roleIndex < len(datasetMultiSlot):
                 self.handleNewDatasetInserted(datasetMultiSlot, self._roleIndex)
 
     @threadRouted
     def handleLaneRemove(self, multislot, laneIndex, *args):
-        assert multislot is self._op.DatasetGroup
+        assert multislot is self._op.DatasetGroupOut
         self.beginRemoveRows(QModelIndex(), laneIndex, laneIndex)
         self._currently_removing = True
 
     @threadRouted
     def handleLaneRemoved(self, multislot, laneIndex, *args):
-        assert multislot is self._op.DatasetGroup
+        assert multislot is self._op.DatasetGroupOut
         self.endRemoveRows()
         self._currently_removing = False
 
@@ -121,7 +121,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             slot[self._roleIndex].notifyDisconnect(bind(self.handleDatasetInfoChanged))
 
     def isEditable(self, row):
-        return self._op.DatasetGroup[row][self._roleIndex].ready()
+        return self._op.DatasetGroupOut[row][self._roleIndex].ready()
 
     def getNumRoles(self):
         # Return the number of possible roles in the workflow
@@ -133,7 +133,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         return DatasetColumn.NumColumns
 
     def rowCount(self, parent=QModelIndex()):
-        return len(self._op.DatasetGroup)
+        return len(self._op.DatasetGroupOut)
 
     def data(self, index, role=Qt.DisplayRole):
         if role == Qt.DisplayRole or role == Qt.ToolTipRole:
@@ -168,7 +168,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             return section + 1
 
     def isEmptyRow(self, index):
-        return not self._op.DatasetGroup[index][self._roleIndex].ready()
+        return not self._op.DatasetGroupOut[index][self._roleIndex].ready()
 
     def _getDisplayRoleData(self, index):
         laneIndex = index.row()
@@ -182,10 +182,10 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             DatasetColumn.Scale: "",
         }
 
-        if len(self._op.DatasetGroup) <= laneIndex or len(self._op.DatasetGroup[laneIndex]) <= self._roleIndex:
+        if len(self._op.DatasetGroupOut) <= laneIndex or len(self._op.DatasetGroupOut[laneIndex]) <= self._roleIndex:
             return UninitializedDisplayData[index.column()]
 
-        datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
+        datasetSlot = self._op.DatasetGroupOut[laneIndex][self._roleIndex]
 
         # Default
         if not datasetSlot.ready():
@@ -223,7 +223,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
     def get_scale_options(self, laneIndex) -> Dict[str, str]:
         try:
-            datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
+            datasetSlot = self._op.DatasetGroupOut[laneIndex][self._roleIndex]
         except IndexError:  # This can happen during "Save Project As"
             return {}
         if not datasetSlot.ready():
@@ -240,7 +240,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         }
 
     def is_scale_locked(self, laneIndex) -> bool:
-        datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
+        datasetSlot = self._op.DatasetGroupOut[laneIndex][self._roleIndex]
         if not datasetSlot.ready():
             return False
         datasetInfo = datasetSlot.value

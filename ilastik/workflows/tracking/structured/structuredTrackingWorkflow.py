@@ -1,9 +1,7 @@
-from __future__ import print_function
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -324,7 +322,7 @@ class StructuredTrackingWorkflowBase(Workflow):
         opDataTrackingExport.Inputs[1].connect(opStructuredTracking.MergerOutput)
         opDataTrackingExport.Inputs[2].connect(opStructuredTracking.RelabeledImage)
         opDataTrackingExport.RawData.connect(op5Raw.Output)
-        opDataTrackingExport.RawDatasetInfo.connect(opData.DatasetGroup[0])
+        opDataTrackingExport.RawDatasetInfo.connect(opData.DatasetGroupOut[0])
 
     def prepare_lane_for_export(self, lane_index):
         import logging
