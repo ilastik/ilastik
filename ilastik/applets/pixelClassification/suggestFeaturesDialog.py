@@ -844,9 +844,15 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
             cannot be modified from within this dialog)
             """
             if not self._initialized_feature_matrix:
-                self.featureLabelMatrix_all_features = (
-                    self.opFeatureMatrixCaches.LabelAndFeatureMatrix.value
-                )  # FIXME: why is this initialized?
+                self.featureLabelMatrix_all_features = self.opFeatureMatrixCaches.LabelAndFeatureMatrix.value
+                if self.featureLabelMatrix_all_features is None or self.featureLabelMatrix_all_features.size == 0:
+                    QMessageBox.warning(
+                        self,
+                        "No Labeled Data Found",
+                        "Feature selection cannot proceed because no labeled data is available.\n\n"
+                        "Please add annotations before running 'Suggest Features'.",
+                    )
+                    return
                 self.opFilterFeatureSelection.FeatureLabelMatrix.setValue(self.featureLabelMatrix_all_features)
                 self.opFilterFeatureSelection.FeatureLabelMatrix.resize(1)
                 self.opFilterFeatureSelection.setupOutputs()
