@@ -2,6 +2,7 @@ import math
 from unittest import mock
 
 import numpy
+import pytest
 import vigra
 from skimage.transform import resize as sk_resize
 
@@ -28,43 +29,68 @@ def test_resize_matches_skimage(graph):
     numpy.testing.assert_array_equal(op_resized, sk_resized)
 
 
-def test_resize_handles_blocks(graph):
-    arr = numpy.indices((8, 8)).sum(0)
-    data = vigra.taggedView(arr, "yx").astype(numpy.float64)
-    scaling_target_shape = (7, 7)
-    scaling_block_shape = (2, 3)  # Tiny blocks to exacerbate rounding and halo errors
-    expected_n_blocks = math.ceil(scaling_target_shape[0] / scaling_block_shape[0]) * math.ceil(
-        scaling_target_shape[1] / scaling_block_shape[1]
-    )
+@pytest.mark.parametrize(
+    "raw_shape,scaled_shape,axes,block_shape",
+    [
+        ((11, 11), (5, 5), "yx", (3, 3)),  # Tiny blocks
+        ((9, 9), (8, 8), "yx", (1, 1)),  # Pixelwise
+        ((15, 10), (9, 3), "yx", (4, 6)),  # Anisotropic
+    ],
+)
+def test_resize_handles_blocks(graph, raw_shape, scaled_shape, axes, block_shape):
+    arr = numpy.indices(raw_shape).sum(0)
+    data = vigra.taggedView(arr, axes).astype(numpy.float64)
+    expected_n_blocks = math.ceil(scaled_shape[0] / block_shape[0]) * math.ceil(scaled_shape[1] / block_shape[1])
 
     op = OpResize(graph=graph)
     op.RawImage.setValue(data)
-    op.TargetShape.setValue(scaling_target_shape)
+    op.TargetShape.setValue(scaled_shape)
 
     split_op = OpSplitRequestsBlockwise(True, graph=graph)
     split_op.Input.connect(op.ResizedImage)
-    split_op.BlockShape.setValue(scaling_block_shape)
+    split_op.BlockShape.setValue(block_shape)
 
     with mock.patch.object(OpResize, "execute", wraps=op.execute) as mock_execute:
         op_resized_block = split_op.Output[:].wait()
         assert mock_execute.call_count == expected_n_blocks, "blocks not split as expected"
 
-    sk_resized = sk_resize(data, scaling_target_shape, anti_aliasing=True, preserve_range=True)
+    sk_resized = sk_resize(data, scaled_shape, anti_aliasing=True, preserve_range=True)
     op_resized = op.ResizedImage[:].wait()
-    diff = op_resized - sk_resized
-    diff_block = op_resized_block - sk_resized
-    import tifffile
 
-    tifffile.imwrite(f"C:/Users/root/Code/ilastik-group/sample-data/1orig.tif", data)
-    tifffile.imwrite(f"C:/Users/root/Code/ilastik-group/sample-data/2skscaled.tif", sk_resized)
-    tifffile.imwrite(f"C:/Users/root/Code/ilastik-group/sample-data/3opscaled.tif", op_resized)
-    tifffile.imwrite(f"C:/Users/root/Code/ilastik-group/sample-data/4opblockscaled.tif", op_resized_block)
-    tifffile.imwrite(f"C:/Users/root/Code/ilastik-group/sample-data/5diff-sk-op.tif", diff)
-    tifffile.imwrite(f"C:/Users/root/Code/ilastik-group/sample-data/6diff-sk-opblock.tif", diff_block)
-    numpy.testing.assert_allclose(op_resized, sk_resized, rtol=0.06)  # Higher tolerance due to different antialiasing
-    numpy.testing.assert_allclose(
-        op_resized_block, op_resized, rtol=0.01
-    )  # Lower tolerance for block-splitting artifacts
+    # Different antialiasing, see test_resize_matches_skimage - with float image need some tolerance
+    numpy.testing.assert_allclose(op_resized, sk_resized, rtol=0.06)
+    numpy.testing.assert_allclose(op_resized_block, op_resized)  # Block-splitting artifacts not tolerated
+
+
+def test_resize_dask():
+    import dask
+    from dask.array import map_overlap
+    from ngff_zarr.methods._itkwasm import _itkwasm_blur_and_downsample
+    from ngff_zarr.methods._support import _compute_sigma
+    from itkwasm_downsample import gaussian_kernel_radius
+    import itkwasm
+    import tifffile
+    import numpy
+
+    arr = numpy.indices((8, 8)).sum(0)
+    scaling_block_shape = (2, 3)  # Tiny blocks to exacerbate rounding and halo errors
+    shrink_factors = [8 / 7, 8 / 7]
+    mockblock = itkwasm.image_from_array(numpy.ones(scaling_block_shape), is_vector=False)
+    kernel_radius = gaussian_kernel_radius(size=mockblock.size, sigma=_compute_sigma(shrink_factors))
+    dask_resized = map_overlap(
+        _itkwasm_blur_and_downsample,
+        dask.array.from_array(arr.astype(numpy.float64)),
+        shrink_factors=shrink_factors,
+        kernel_radius=kernel_radius,
+        smoothing="gaussian",
+        is_vector=False,
+        dtype=arr.dtype,
+        depth=dict(enumerate(numpy.flip(kernel_radius))),  # overlap is in tzyx
+        boundary="nearest",
+        trim=False,  # Overlapped region is trimmed in blur_and_downsample to output size
+        chunks=scaling_block_shape,
+    ).compute()
+    tifffile.imwrite(f"C:/Users/root/Code/ilastik-group/sample-data/7ngffscaled.tif", dask_resized)
 
 
 def test_anisotropic_scaling(graph):
