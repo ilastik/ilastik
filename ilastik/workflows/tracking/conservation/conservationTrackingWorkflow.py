@@ -296,7 +296,7 @@ class ConservationTrackingWorkflowBase(Workflow):
         opDataExport.Inputs[1].connect(opTracking.MergerOutput)
         opDataExport.Inputs[2].connect(opTracking.RelabeledImage)
         opDataExport.RawData.connect(op5Raw.Output)
-        opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[0])
+        opDataExport.RawDatasetInfo.connect(opData.DatasetGroupOut[0])
 
     def prepare_lane_for_export(self, lane_index):
         if not self.fromBinary:

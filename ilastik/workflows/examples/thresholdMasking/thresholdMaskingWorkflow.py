@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -71,7 +71,7 @@ class ThresholdMaskingWorkflow(Workflow):
 
         # Data Export connections
         opDataExport.RawData.connect(opDataSelection.ImageGroup[self.DATA_ROLE_RAW])
-        opDataExport.RawDatasetInfo.connect(opDataSelection.DatasetGroup[self.DATA_ROLE_RAW])
+        opDataExport.RawDatasetInfo.connect(opDataSelection.DatasetGroupOut[self.DATA_ROLE_RAW])
         opDataExport.Inputs.resize(len(self.EXPORT_NAMES))
         opDataExport.Inputs[0].connect(opThresholdMasking.Output)
         opDataExport.Inputs[1].connect(opThresholdMasking.InvertedOutput)

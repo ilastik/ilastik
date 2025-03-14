@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2024, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -315,7 +315,7 @@ class ObjectClassificationWorkflow(Workflow):
 
         # Data Export connections
         opDataExport.RawData.connect(opData.ImageGroup[self.InputImageRoles.RAW_DATA])
-        opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[self.InputImageRoles.RAW_DATA])
+        opDataExport.RawDatasetInfo.connect(opData.DatasetGroupOut[self.InputImageRoles.RAW_DATA])
         opDataExport.Inputs.resize(len(self.ExportNames))
         opDataExport.Inputs[self.ExportNames.OBJECT_PREDICTIONS].connect(opObjClassification.UncachedPredictionImages)
         opDataExport.Inputs[self.ExportNames.OBJECT_PROBABILITIES].connect(opObjClassification.ProbabilityChannelImage)

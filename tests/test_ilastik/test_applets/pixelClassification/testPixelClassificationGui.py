@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -159,26 +159,28 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         opDataSelection = workflow.dataSelectionApplet.topLevelOperator
         # opens multi dataset file and expects second dialog to choose inner path
         self.add_file(self.tmp_h5_multiple_dataset, "/test_group_3d/test_data_3d")
-        with wait_slot_ready(opDataSelection.get_lane(0).DatasetGroup[0]):
+        with wait_slot_ready(opDataSelection.get_lane(0).DatasetGroupOut[0]):
             assert (
-                opDataSelection.get_lane(0).DatasetGroup[0].value.nickname
+                opDataSelection.get_lane(0).DatasetGroupOut[0].value.nickname
                 == "multiple_datasets-test_group_3d-test_data_3d"
             )
         self.remove_first_dataset()
 
         # opens multi dataset file and expects inner path to be picked automatically
         self.add_file(self.tmp_h5_multiple_dataset)
-        with wait_slot_ready(opDataSelection.get_lane(0).DatasetGroup[0]):
+        with wait_slot_ready(opDataSelection.get_lane(0).DatasetGroupOut[0]):
             assert (
-                opDataSelection.get_lane(0).DatasetGroup[0].value.nickname
+                opDataSelection.get_lane(0).DatasetGroupOut[0].value.nickname
                 == "multiple_datasets-test_group_3d-test_data_3d"
             )
         self.remove_first_dataset()
 
         # opens single dataset file and expects inner path to be picked automatically
         self.add_file(self.tmp_h5_single_dataset)
-        with wait_slot_ready(opDataSelection.get_lane(0).DatasetGroup[0]):
-            assert opDataSelection.get_lane(0).DatasetGroup[0].value.nickname == "single_dataset-test_group-test_data"
+        with wait_slot_ready(opDataSelection.get_lane(0).DatasetGroupOut[0]):
+            assert (
+                opDataSelection.get_lane(0).DatasetGroupOut[0].value.nickname == "single_dataset-test_group-test_data"
+            )
         self.remove_first_dataset()
 
     def test_1_NewProject(self):

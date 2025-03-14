@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -271,7 +271,7 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
 
         # DataExport inputs
         opDataExport.RawData.connect(opDataSelection.ImageGroup[self.DATA_ROLE_RAW])
-        opDataExport.RawDatasetInfo.connect(opDataSelection.DatasetGroup[self.DATA_ROLE_RAW])
+        opDataExport.RawDatasetInfo.connect(opDataSelection.DatasetGroupOut[self.DATA_ROLE_RAW])
         opDataExport.Inputs.resize(len(self.EXPORT_NAMES))
         opDataExport.Inputs[0].connect(opEdgeTrainingWithMulticut.Output)
         for slot in opDataExport.Inputs:

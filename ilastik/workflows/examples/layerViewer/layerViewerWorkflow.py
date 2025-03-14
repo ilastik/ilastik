@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -83,7 +83,7 @@ class LayerViewerWorkflow(Workflow):
             opLayerViewerView.OtherInput[i].connect(role_output)
 
         opDataExportView.RawData.connect(opDataSelectionView.ImageGroup[0])
-        opDataExportView.RawDatasetInfo.connect(opDataSelectionView.DatasetGroup[0])
+        opDataExportView.RawDatasetInfo.connect(opDataSelectionView.DatasetGroupOut[0])
         opDataExportView.WorkingDirectory.connect(opDataSelectionView.WorkingDirectory)
 
         opDataExportView.Inputs.resize(len(ROLES))

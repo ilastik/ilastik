@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -148,7 +148,7 @@ class DataConversionWorkflow(Workflow):
         # Now connect the operators together for this lane.
         # Most workflows would have more to do here, but this workflow is super simple:
         # We just connect input to export
-        opDataExportView.RawDatasetInfo.connect(opDataSelectionView.DatasetGroup[RAW_DATA_ROLE_INDEX])
+        opDataExportView.RawDatasetInfo.connect(opDataSelectionView.DatasetGroupOut[RAW_DATA_ROLE_INDEX])
         opDataExportView.Inputs.resize(1)
         opDataExportView.Inputs[RAW_DATA_ROLE_INDEX].connect(opDataSelectionView.ImageGroup[RAW_DATA_ROLE_INDEX])
 

@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2024, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -28,10 +28,11 @@ from pathlib import Path
 from typing import Dict, List, Set, Union, Optional
 
 import h5py
+import sip
 from PyQt5 import uic
 from PyQt5.QtWidgets import QDialog, QMessageBox, QStackedWidget, QWidget
 from vigra import AxisTags
-from volumina.utility import preferences, ShortcutManager
+from volumina.utility import preferences
 
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
@@ -131,7 +132,7 @@ class DataSelectionGui(QWidget):
     ###########################################
     ###########################################
 
-    class UserCancelledError(Exception):
+    class UserCancelledError(BaseException):
         # This exception type is raised when the user cancels the
         #  addition of dataset files in the middle of the process somewhere.
         # It isn't an error -- it's used for control flow.
@@ -217,13 +218,19 @@ class DataSelectionGui(QWidget):
 
     @threadRouted
     def _update_add_button_status(self, viewer):
+        print("update status")
+        if sip.isdeleted(viewer):
+            return
         if self._max_lanes:
             opTop = self.topLevelOperator
             status = len(opTop.DatasetGroup) < self._max_lanes
             viewer.setEnabled(status)
 
+        print("end update status")
+
     @threadRouted
     def _update_summary_buttons_status(self, *args):
+        print("upd summary")
         if self._max_lanes:
             opTop = self.topLevelOperator
             status = len(opTop.DatasetGroup) < self._max_lanes
@@ -233,6 +240,7 @@ class DataSelectionGui(QWidget):
                 except RuntimeError:
                     # FIXME: Button might be deleted due to a bug (https://github.com/ilastik/ilastik/issues/2380)
                     logger.debug("Summary button seems to be deleted, cannot execute callback")
+        print("end summary")
 
     def _initTableViews(self):
         self.fileInfoTabWidget.setTabText(0, "Summary")
@@ -438,7 +446,7 @@ class DataSelectionGui(QWidget):
         return firstNewLane
 
     def getNumLanes(self) -> int:
-        return len(self.topLevelOperator.DatasetGroup)
+        return len(self.topLevelOperator.DatasetGroupOut)
 
     def getInfoSlots(self, roleIndex: int):
         return [self.topLevelOperator.DatasetGroup[laneIndex][roleIndex] for laneIndex in range(self.getNumLanes())]
@@ -480,6 +488,7 @@ class DataSelectionGui(QWidget):
 
         def revert():
             for slot, original_info in zip(info_slots, original_infos):
+                slot.disconnect()
                 if original_info is not None:
                     slot.setValue(original_info)
 
@@ -494,14 +503,18 @@ class DataSelectionGui(QWidget):
                         QMessageBox.warning(self, "Incompatible dataset", str(e))
                         info_editor = DatasetInfoEditorWidget(self, [new_info], self.serializer)
                         if info_editor.exec_() == QDialog.Rejected:
+                            print("reject")
                             revert()
                             return False
                         new_info = info_editor.edited_infos[0]
+                        print("loopy")
             return True
         except Exception as e:
+            print("reverting")
             revert()
             raise e
         finally:
+            print("updatestate")
             self.parentApplet.appletStateUpdateRequested()
 
     def _determineLaneRange(self, infos: List[DatasetInfo], startingLaneNum=None):
