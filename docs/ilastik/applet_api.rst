@@ -20,7 +20,7 @@ Image Lanes
 -----------
 
 .. note:: This section explains how multi-image support is implemented in ilastik.
-   Most beginning developers don't need to sweat the details here.  Simple workflows can be designed with the assumption that only one image lane will be active.  
+   Most beginner developers don't need to sweat the details here.  Simple workflows can be designed with the assumption that only one image lane will be active.  
    The :py:class:`StandardApplet<ilastik.applets.base.standardApplet.StandardApplet>` base class handles multi-image support for you.
 
 Workflows in ilastik are designed to work with an arbitrary number of input images.
@@ -146,7 +146,7 @@ In the following figure, the areas of the GUI are labeled according to the termi
    :scale: 100  %
    :alt: ilastik-shell screenshot
 
-An applet GUI is responsible for providing the widgets for each of the areas labeled above except for the "Current Image Menu", which is 
+An applet GUI is responsible for providing the widgets for each of the areas labelled above, except for the "Current Image Menu", which is 
 created by the shell.  Additionally, Applet GUIs provide any menu items that should be shown when an applet is being viewed by the user.
 
 .. currentmodule:: ilastik.applets.base.appletGuiInterface
