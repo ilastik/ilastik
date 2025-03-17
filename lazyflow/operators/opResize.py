@@ -75,7 +75,8 @@ class OpResize(Operator):
         downscaling_factors = self._get_scaling_factors()
         midpoint_shift = self.get_data_space_shift()
         assert all(f >= 1 for f in downscaling_factors), "Upscaling not supported yet"
-        antialiasing_sigmas = np.array([f / 4 for f in downscaling_factors])
+        # antialiasing_sigmas = np.array([f / 4 for f in downscaling_factors])
+        antialiasing_sigmas = np.maximum(0, (downscaling_factors - 1) / 2)
         axes_to_pad = downscaling_factors > 1
         raw_roi = self._reverse_roi_scaling(roi, downscaling_factors, midpoint_shift)
         raw_roi_with_halo = enlargeRoiForHalo(
