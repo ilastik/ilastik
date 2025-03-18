@@ -51,17 +51,20 @@ class OpResize(Operator):
     ResizedImage = OutputSlot()
 
     def setupOutputs(self):
+        if self.TargetShape.value == self.RawImage.meta.shape:
+            # Shortcut: no resizing needed
+            self.ResizedImage.connect(self.RawImage)
         input_axiskeys = self.RawImage.meta.getAxisKeys()
         assert len(input_axiskeys) == len(
             self.TargetShape.value
         ), f"Input image ({self.RawImage.meta.shape}) and target shape ({self.TargetShape.value}) must have same axes"
         assert (
             "c" not in input_axiskeys
-            or self.TargetShape.value[input_axiskeys.index("c")] == self.RawImage.meta.getTaggedShape["c"]
+            or self.TargetShape.value[input_axiskeys.index("c")] == self.RawImage.meta.getTaggedShape()["c"]
         ), "Cannot resize along channel axis"
         if (
             "t" in input_axiskeys
-            and self.TargetShape.value[input_axiskeys.index("t")] != self.RawImage.meta.getTaggedShape["t"]
+            and self.TargetShape.value[input_axiskeys.index("t")] != self.RawImage.meta.getTaggedShape()["t"]
         ):
             logger.warning("Resizing along time axis. Are you sure this is what you want?")
         self.ResizedImage.meta.assignFrom(self.RawImage.meta)
