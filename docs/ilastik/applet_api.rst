@@ -112,18 +112,18 @@ then your single-lane top-level operator can be automatically adapted to the mul
 The applet GUI and the applet serializers both make changes to the top-level operator and listen for changes made to the top-level operator.
 Here's an example timeline, showing a typical sequence of interactions.
 
-1) The shell is launched with a blank workflow
-    * All slots are connected, but none have any data
-2) The shell loads a project file
-    * Calls each serializer to read settings from the project file and apply them to the appropriate slots of the top-level operator
+1) The shell is launched with a blank workflow.
+    * All slots are connected, but none of them have any data.
+2) The shell loads a project file.
+    * Calls each serializer to read settings from the project file and apply them to the appropriate slots of the top-level operator.
 3) The GUI responds to the changes made to the top-level operator by updating the GUI appearance.
     * Widgets in the applet drawer for the applet are updated with the current operator slot values.
 4) The user changes a setting in the GUI, which in turn changes a slot value on the applet's top-level operator.
     * The changes are propagated downstream from the top-level operator, possibly resulting in an update in the central widget.
     * The applet serializer also notices the change, and makes a note that the serializer is "dirty".
 5) Step 4 is repeated as the user experiments with the workflow options.
-6) The user selects "Save Project"
-    * The shell determines which serializers have work to do by calling isDirty()
+6) The user selects "Save Project".
+    * The shell determines which serializers have work to do by calling isDirty().
     * The shell calls serializeToHdf5 on the dirty serializers, causing them to save the current state of the corresponding top-level operators to the project file.
 7) Repeat step 4 as the user experiments with more workflow options.
 8) The user attempts to close the project.
