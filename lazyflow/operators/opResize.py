@@ -20,9 +20,9 @@
 #          http://ilastik.org/license/
 ###############################################################################
 import logging
-from typing import Sequence
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy import ndimage as scipy_ndimage
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -71,16 +71,19 @@ class OpResize(Operator):
         self.ResizedImage.meta.shape = self.TargetShape.value
 
     def execute(self, slot, subindex, roi, result):
-        """Roi is scaled: The requester is asking for (a subportion of) the scaled image.
-        Need to reverse scaling of roi and pad that with halo to request sufficient subregion
-        of raw image for antialiasing."""
+        """
+        Roi is scaled: The requester is asking for (a subportion of) the scaled image.
+        - Reverse scaling of roi
+        - Pad with halo to request sufficient subregion of raw image for antialiasing
+        - Compute scaled coordinates of source pixels within the padded blurred raw subregion
+        - Use map_coordinates to interpolate values at those source coordinates
+        """
         assert slot is self.ResizedImage, "Unknown output slot"
         downscaling_factors = self._get_scaling_factors()
-        midpoint_shift = self.get_data_space_shift()
         assert all(f >= 1 for f in downscaling_factors), "Upscaling not supported yet"
         antialiasing_sigmas = np.array([f / 4 for f in downscaling_factors])
         axes_to_pad = downscaling_factors > 1
-        raw_roi = self._reverse_roi_scaling(roi, downscaling_factors, midpoint_shift)
+        raw_roi = self._reverse_roi_scaling(roi, downscaling_factors)
         raw_roi_with_halo = enlargeRoiForHalo(
             raw_roi[0],
             raw_roi[1],
@@ -92,19 +95,17 @@ class OpResize(Operator):
         raw = self.RawImage[roiToSlice(*raw_roi_with_halo_rounded)].wait().astype(np.float64)
         filtered = scipy_ndimage.gaussian_filter(raw, antialiasing_sigmas, mode="mirror")
         result_roi_within_filtered = raw_roi - raw_roi_with_halo_rounded[0]
-        scaled_source_coords = np.meshgrid(
+        n_source_pixels = roi.stop - roi.start
+        source_coords_starts = result_roi_within_filtered[0]
+        source_coords_stops = result_roi_within_filtered[1] - downscaling_factors
+        scaled_source_grid = np.meshgrid(
             *(
-                np.linspace(start, stop - scale, shape)
-                for start, stop, shape, scale in zip(
-                    result_roi_within_filtered[0],
-                    result_roi_within_filtered[1],
-                    roi.stop - roi.start,
-                    downscaling_factors,
-                )
+                np.linspace(start, stop, n)
+                for start, stop, n in zip(source_coords_starts, source_coords_stops, n_source_pixels)
             ),
             indexing="ij",
         )
-        scaled = scipy_ndimage.map_coordinates(filtered, scaled_source_coords, order=1, mode="mirror")
+        scaled = scipy_ndimage.map_coordinates(filtered, scaled_source_grid, order=1, mode="mirror")
         result[...] = scaled
 
     def propagateDirty(self, slot, subindex, roi):
@@ -112,7 +113,7 @@ class OpResize(Operator):
         # but should be unnecessary because the entire scaled image needs to be recomputed anyway.
         self.ResizedImage.setDirty(slice(None))
 
-    def _get_scaling_factors(self):
+    def _get_scaling_factors(self) -> NDArray:
         """
         Scaling factors are the inverse of zoom factors in the scipy.ndimage sense.
         E.g. 2 if the output shape is half the input shape (rather than 0.5).
@@ -122,27 +123,28 @@ class OpResize(Operator):
         shape_out = self.ResizedImage.meta.shape
         return np.divide(shape_in, shape_out)
 
-    def get_data_space_shift(self) -> np.typing.NDArray:
+    @staticmethod
+    def _get_first_pixel_shift(s: NDArray) -> NDArray:
         """
-        Compute the offset of the first scaled pixel relative to the first raw pixel,
-        such that the scaled image is centered within the raw image.
+        Compute the offset of the first pixel on scale s from the raw scale origin.
+        E.g. on scale 3, each pixel accounts for +-1.5 of the data space from its
+        position. The data space begins at -0.5, therefore the first scale-3 pixel
+        is positioned at coordinate 1.0 and accounts for -0.5 to 2.5
+        (which is the same data space that three scale-1, i.e. raw pixels account for).
+        This fixes the infamous "half-pixel offset", block boundary and rounding errors,
+        and enables handling arbitrary fractional scales.
         """
-        downscaling_factors = self._get_scaling_factors()
-        # Total space between first and last pixel
-        raw_size = np.array(self.RawImage.meta.shape) - 1
-        # Scaled pixels each account for downscaling_factors space inbetween them
-        scaled_size = (np.array(self.ResizedImage.meta.shape) - 1) * downscaling_factors
-        return (raw_size - scaled_size) / 2
+        return s / 2 - 0.5
 
     @staticmethod
-    def _reverse_roi_scaling(roi: SubRegion, factors: Sequence[float], shift: Sequence[float]) -> np.typing.NDArray:
+    def _reverse_roi_scaling(roi: SubRegion, factors: NDArray) -> NDArray:
         """
         Given the roi is requested at the target scale, compute the corresponding roi at the raw scale.
         The scaled roi's bounds can be outside the raw image shape.
         Returns roi as numpy.ndarray[start, stop] instead of SubRegion to be independent of slot.
         """
-        assert len(factors) == len(shift) == len(roi.start) == len(roi.stop), "Dimensions must match"
+        assert len(factors) == len(roi.start) == len(roi.stop), "Dimensions must match"
         raw_shape = np.multiply(roi.stop - roi.start, factors)
-        raw_start = np.multiply(roi.start, factors) + shift
+        raw_start = np.multiply(roi.start, factors) + OpResize._get_first_pixel_shift(factors)
         raw_stop = raw_start + raw_shape
         return np.array([raw_start, raw_stop])
