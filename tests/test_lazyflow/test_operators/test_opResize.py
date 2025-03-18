@@ -78,38 +78,3 @@ def test_raises_on_c_scaling(graph):
     op.RawImage.setValue(data)
     with pytest.raises(AssertionError):
         op.TargetShape.setValue((10, 10, 2))
-
-
-def test_resize_dask():
-    import dask
-    from dask.array import map_overlap
-    from ngff_zarr.methods._itkwasm import _itkwasm_blur_and_downsample
-    from ngff_zarr.methods._support import _compute_sigma
-    from itkwasm_downsample import gaussian_kernel_radius
-    import itkwasm
-    import tifffile
-    import numpy
-
-    arr = numpy.indices((8, 8)).sum(0)
-    scaling_block_shape = (2, 3)  # Tiny blocks to exacerbate rounding and halo errors
-    shrink_factors = [8 / 7, 8 / 7]
-    mockblock = itkwasm.image_from_array(numpy.ones(scaling_block_shape), is_vector=False)
-    kernel_radius = gaussian_kernel_radius(size=mockblock.size, sigma=_compute_sigma(shrink_factors))
-    dask_resized = map_overlap(
-        _itkwasm_blur_and_downsample,
-        dask.array.from_array(arr.astype(numpy.float64)),
-        shrink_factors=shrink_factors,
-        kernel_radius=kernel_radius,
-        smoothing="gaussian",
-        is_vector=False,
-        dtype=arr.dtype,
-        depth=dict(enumerate(numpy.flip(kernel_radius))),  # overlap is in tzyx
-        boundary="nearest",
-        trim=False,  # Overlapped region is trimmed in blur_and_downsample to output size
-        chunks=scaling_block_shape,
-    ).compute()
-    tifffile.imwrite(f"C:/Users/root/Code/ilastik-group/sample-data/7ngffscaled.tif", dask_resized)
-
-
-def test_anisotropic_scaling(graph):
-    pass
