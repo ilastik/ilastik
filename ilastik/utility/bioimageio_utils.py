@@ -343,5 +343,11 @@ class InputValidator:
             ), f"Axis {axis_id} not an expected bioimage io axis string {SPEC_TO_VIGRA.keys()}."
 
             target_axis_size = spec_shape[axis_id]
-            if target_axis_size < min_size:
-                raise ValueError(f"Incompatible axis {axis}: {target_axis_size} < {min_size}")
+            if isinstance(axis, ChannelAxis):
+                if target_axis_size != min_size:
+                    raise ValueError(
+                        f"Incompatible axis {axis}: Number of channels in data: {target_axis_size} != Number of channels expected by model: {min_size}"
+                    )
+            else:
+                if target_axis_size < min_size:
+                    raise ValueError(f"Incompatible axis {axis}: {target_axis_size} < {min_size}")
