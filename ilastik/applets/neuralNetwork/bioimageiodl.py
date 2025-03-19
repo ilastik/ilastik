@@ -1,15 +1,14 @@
 import io
 
 from PyQt5.QtCore import QThread, pyqtSignal
-from bioimageio.spec import get_resource_package_content
+from bioimageio.spec import ValidationContext, get_resource_package_content
 from tqdm.auto import tqdm as std_tqdm
 
-from functools import partial
 import logging
 
 logger = logging.getLogger(__file__)
 
-BIOIMAGEIO_WEIGHTS_PRIORITY = ["torchscript", "pytorch_state_dict", "tensorflow_saved_model_bundle"]
+BIOIMAGEIO_WEIGHTS_PRIORITY = ("torchscript", "pytorch_state_dict")
 
 
 class DownloadCancelled(Exception):
@@ -59,7 +58,9 @@ class BioImageDownloader(QThread):
 
             logger.debug(f"Downloading model from {self._model_uri}")
             rd = load_description(self._model_uri, format_version="latest", perform_io_checks=False)
-            package_content = get_resource_package_content(rd)
+
+            with ValidationContext(perform_io_checks=False):
+                package_content = get_resource_package_content(rd, weights_priority_order=BIOIMAGEIO_WEIGHTS_PRIORITY)
 
             for k, v in TqdmExt(
                 package_content.items(),
@@ -67,7 +68,8 @@ class BioImageDownloader(QThread):
                 cancellation_token=self._cancellation_token,
             ):
                 if isinstance(v, HttpUrl):
-                    self.currentUri.emit(str(v.path.split("/")[-1]))
+                    assert v.path
+                    self.currentUri.emit(v.path.split("/")[-1])
                     download(
                         v,
                         progressbar=TqdmExt(
