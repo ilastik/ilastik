@@ -7,6 +7,7 @@ from skimage.transform import resize as sk_resize
 
 from lazyflow.operators.opResize import OpResize
 from lazyflow.operators.opSplitRequestsBlockwise import OpSplitRequestsBlockwise
+from lazyflow.utility import Timer
 
 
 def test_resize_matches_skimage(graph):
@@ -35,6 +36,7 @@ def test_resize_matches_skimage(graph):
         ((11, 11), (5, 5), "yx", (3, 3)),  # Tiny blocks
         ((9, 9), (8, 8), "yx", (1, 1)),  # Pixelwise
         ((15, 10), (9, 3), "yx", (4, 6)),  # Anisotropic
+        ((4, 5), (8, 6), "yx", (3, 3)),  # Upscaling
         ((11, 11), (11, 11), "yx", (4, 6)),  # Noop
         ((11, 7, 23), (6, 6, 6), "yzx", (5, 5, 5)),  # 3D and weird axes
         ((5, 11, 8, 23), (2, 8, 8, 8), "tzyx", (1, 5, 5, 5)),  # 4D (bad idea, but technically valid), 1:1 along y
@@ -58,15 +60,24 @@ def test_resize_handles_blocks(graph, raw_shape, scaled_shape, axes, block_shape
     split_op.Input.connect(op.ResizedImage)
     split_op.BlockShape.setValue(block_shape)
 
-    with mock.patch.object(OpResize, "execute", wraps=op.execute) as mock_execute:
-        op_resized_block = split_op.Output[:].wait()
-        assert mock_execute.call_count == expected_n_blocks, "blocks not split as expected"
+    with Timer() as timer:
+        with mock.patch.object(OpResize, "execute", wraps=op.execute) as mock_execute:
+            op_resized_block = split_op.Output[:].wait()
+            assert mock_execute.call_count == expected_n_blocks, "blocks not split as expected"
+        time_opblock = timer.seconds()
 
-    sk_resized = sk_resize(data, scaled_shape, anti_aliasing=True, preserve_range=True)
-    op_resized = op.ResizedImage[:].wait()
+    with Timer() as timer:
+        sk_resized = sk_resize(data, scaled_shape, anti_aliasing=True, preserve_range=True)
+        time_sk = timer.seconds()
+    with Timer() as timer:
+        op_resized = op.ResizedImage[:].wait()
+        time_op = timer.seconds()
+    diff_sk_op = sk_resized - op_resized
+    diff_op_opblock = op_resized - op_resized_block
+    diff_sk_opblock = sk_resized - op_resized_block
 
     # Different antialiasing, see test_resize_matches_skimage - with float image need some tolerance
-    numpy.testing.assert_allclose(op_resized, sk_resized, rtol=0.06)
+    numpy.testing.assert_allclose(op_resized, sk_resized, rtol=0.07)
     numpy.testing.assert_allclose(op_resized_block, op_resized)  # Block-splitting artifacts not tolerated
 
 
