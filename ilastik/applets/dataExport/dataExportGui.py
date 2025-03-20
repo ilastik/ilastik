@@ -150,6 +150,10 @@ class DataExportGui(QWidget):
             if subslot.ready():
                 self.updateTableForSlot(subslot)
 
+        self.topLevelOperator.OutputFormat.notifyDirty(
+            lambda *args: [self.updateTableForSlot(slot) for slot in self.topLevelOperator.ExportPath]
+        )
+
         @threadRoutedWithRouter(self.threadRouter)
         def handleLaneRemoved(multislot, index, finalLength):
             if self.batchOutputTableWidget.rowCount() <= finalLength:
