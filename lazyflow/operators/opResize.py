@@ -32,6 +32,20 @@ from lazyflow.rtype import SubRegion
 logger = logging.getLogger(__name__)
 
 
+def ceil_roi(roi: NDArray) -> NDArray:
+    """
+    Expand roi to nearest integer
+    """
+    return np.array([np.floor(roi[0]), np.ceil(roi[1])])
+
+
+def floor_roi(roi: NDArray) -> NDArray:
+    """
+    Shrink roi to nearest integer
+    """
+    return np.array([np.ceil(roi[0]), np.floor(roi[1])])
+
+
 class OpResize(Operator):
     """
     Reimplements scikit-image.transform.resize as a lazyflow operator,
@@ -74,30 +88,36 @@ class OpResize(Operator):
         """
         Roi is scaled: The requester is asking for (a subportion of) the scaled image.
         - Reverse scaling of roi
-        - Pad with halo to request sufficient subregion of raw image for antialiasing
+        - Pad with halo to request sufficient subregion of raw image for antialiasing and interpolation
         - Compute scaled coordinates of source pixels within the padded blurred raw subregion
         - Use map_coordinates to interpolate values at those source coordinates
         """
         assert slot is self.ResizedImage, "Unknown output slot"
-        downscaling_factors = self._get_scaling_factors()
-        assert all(f >= 1 for f in downscaling_factors), "Upscaling not supported yet"
-        antialiasing_sigmas = np.array([f / 4 for f in downscaling_factors])
-        axes_to_pad = downscaling_factors > 1
-        raw_roi = self._reverse_roi_scaling(roi, downscaling_factors)
-        raw_roi_with_halo = enlargeRoiForHalo(
+        factors = self._get_scaling_factors()
+        interpolation_order = 1
+        padding_for_order1_interpolation = 2
+        axes_to_pad = np.not_equal(factors, 1)
+        # Antialiasing only for downscale (f > 1), not identity or upscale
+        antialiasing_sigmas = np.array([f / 4 if f > 1 else 0 for f in factors])
+        raw_roi = self._reverse_roi_scaling(roi, factors)
+        raw_roi_antialiasing_halo = enlargeRoiForHalo(
             raw_roi[0],
             raw_roi[1],
             self.RawImage.meta.shape,
             sigma=antialiasing_sigmas,
             enlarge_axes=axes_to_pad,
         )
-        raw_roi_with_halo_rounded = np.array([np.floor(raw_roi_with_halo[0]), np.ceil(raw_roi_with_halo[1])])
-        raw = self.RawImage[roiToSlice(*raw_roi_with_halo_rounded)].wait().astype(np.float64)
+        raw_roi_interpolation_halo = self._extend_halo_to_minimum(
+            raw_roi_antialiasing_halo, padding_for_order1_interpolation, axes_to_pad, raw_roi
+        )
+        # Round and clip to raw image bounds
+        raw_roi_final_halo = np.minimum(self.RawImage.meta.shape, np.maximum(0, ceil_roi(raw_roi_interpolation_halo)))
+        raw = self.RawImage[roiToSlice(*raw_roi_final_halo)].wait().astype(np.float64)
         filtered = scipy_ndimage.gaussian_filter(raw, antialiasing_sigmas, mode="mirror")
-        result_roi_within_filtered = raw_roi - raw_roi_with_halo_rounded[0]
+        result_roi_within_filtered = raw_roi - raw_roi_final_halo[0]
         n_source_pixels = roi.stop - roi.start
         source_coords_starts = result_roi_within_filtered[0]
-        source_coords_stops = result_roi_within_filtered[1] - downscaling_factors
+        source_coords_stops = result_roi_within_filtered[1] - factors
         scaled_source_grid = np.meshgrid(
             *(
                 np.linspace(start, stop, n)
@@ -105,7 +125,7 @@ class OpResize(Operator):
             ),
             indexing="ij",
         )
-        scaled = scipy_ndimage.map_coordinates(filtered, scaled_source_grid, order=1, mode="mirror")
+        scaled = scipy_ndimage.map_coordinates(filtered, scaled_source_grid, order=interpolation_order, mode="mirror")
         result[...] = scaled
 
     def propagateDirty(self, slot, subindex, roi):
@@ -122,6 +142,24 @@ class OpResize(Operator):
         shape_in = self.RawImage.meta.shape
         shape_out = self.ResizedImage.meta.shape
         return np.divide(shape_in, shape_out)
+
+    @staticmethod
+    def _extend_halo_to_minimum(
+        roi_with_halo: NDArray, minimum: int, axes_to_extend: NDArray, original_roi: NDArray
+    ) -> NDArray:
+        """
+        Extend an existing halo on `roi_with_halo` to `minimum` along axes in `axes_to_extend`.
+        `original_roi` required to determine how much halo was already present.
+        """
+        assert len(roi_with_halo[0]) == len(axes_to_extend) == len(original_roi[0]), "Dimensions must match"
+        min_halo = np.zeros_like(roi_with_halo) + minimum
+        min_halo[0] = min_halo[0] * -1
+        existing_halo = roi_with_halo - original_roi
+        required_padding = min_halo - existing_halo
+        # Avoid negative if halo was already larger than minimum
+        required_padding[0] = np.minimum(0, required_padding[0])
+        required_padding[1] = np.maximum(0, required_padding[1])
+        return roi_with_halo + required_padding * axes_to_extend
 
     @staticmethod
     def _get_first_pixel_shift(s: NDArray) -> NDArray:
