@@ -32,7 +32,7 @@ def test_resize_matches_skimage(graph):
 @pytest.mark.parametrize(
     "raw_shape,scaled_shape,axes,block_shape",
     [
-        ((5, 256, 256, 256, 3), (5, 128, 128, 128, 3), "tzyxc", (1, 50, 50, 50, 3)),  # Realistic use case
+        ((4, 160, 160, 160, 3), (4, 80, 80, 80, 3), "tzyxc", (1, 50, 50, 50, 3)),  # Realistic use case
         ((11, 11), (5, 5), "yx", (3, 3)),  # Tiny blocks
         ((9, 9), (8, 8), "yx", (1, 1)),  # Pixelwise
         ((15, 10), (9, 3), "yx", (4, 6)),  # Anisotropic
@@ -60,21 +60,12 @@ def test_resize_handles_blocks(graph, raw_shape, scaled_shape, axes, block_shape
     split_op.Input.connect(op.ResizedImage)
     split_op.BlockShape.setValue(block_shape)
 
-    with Timer() as timer:
-        with mock.patch.object(OpResize, "execute", wraps=op.execute) as mock_execute:
-            op_resized_block = split_op.Output[:].wait()
-            assert mock_execute.call_count == expected_n_blocks, "blocks not split as expected"
-        time_opblock = timer.seconds()
+    with mock.patch.object(OpResize, "execute", wraps=op.execute) as mock_execute:
+        op_resized_block = split_op.Output[:].wait()
+        assert mock_execute.call_count == expected_n_blocks, "blocks not split as expected"
 
-    with Timer() as timer:
-        sk_resized = sk_resize(data, scaled_shape, anti_aliasing=True, preserve_range=True)
-        time_sk = timer.seconds()
-    with Timer() as timer:
-        op_resized = op.ResizedImage[:].wait()
-        time_op = timer.seconds()
-    diff_sk_op = sk_resized - op_resized
-    diff_op_opblock = op_resized - op_resized_block
-    diff_sk_opblock = sk_resized - op_resized_block
+    sk_resized = sk_resize(data, scaled_shape, anti_aliasing=True, preserve_range=True)
+    op_resized = op.ResizedImage[:].wait()
 
     # Different antialiasing, see test_resize_matches_skimage - with float image need some tolerance
     numpy.testing.assert_allclose(op_resized, sk_resized, rtol=0.07)
