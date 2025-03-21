@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2024, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -792,6 +792,9 @@ class OpDataSelection(Operator):
     # Outputs
     Image = OutputSlot()  # : The output image
     AllowLabels = OutputSlot(stype="bool")  # : A bool indicating whether or not this image can be used for training
+    DatasetOut = OutputSlot(
+        stype="object"
+    )  # Connected to self.Dataset only if no dataset constraints are violated, for UI
 
     ImageName = OutputSlot(stype="string")  # : The name of the output image
 
@@ -838,6 +841,7 @@ class OpDataSelection(Operator):
 
     def setupOutputs(self):
         self._clean_up_all_children()
+        self.DatasetOut.disconnect()
         datasetInfo: DatasetInfo = self.Dataset.value
 
         try:
@@ -866,8 +870,10 @@ class OpDataSelection(Operator):
             if self.Image.meta.nickname is not None:
                 datasetInfo.nickname = self.Image.meta.nickname
             self.ImageName.setValue(datasetInfo.nickname)
+            self.DatasetOut.connect(self.Dataset)
 
         except:
+            self.DatasetOut.disconnect()
             self._clean_up_all_children()
             raise
 
@@ -919,6 +925,8 @@ class OpDataSelectionGroup(Operator):
     Image = OutputSlot()  # Alias for ImageGroup[0]
 
     AllowLabels = OutputSlot(stype="bool")  # Taken from dataset in first role (usually Raw Data)
+
+    DatasetGroupOut = OutputSlot(stype="object", level=1)  # Valid Dataset information, for UI
 
     # Must be the LAST slot declared in this class.
     # When the shell detects that this slot has been resized,
@@ -984,6 +992,7 @@ class OpDataSelectionGroup(Operator):
             self._opDatasets.ProjectDataGroup.connect(self.ProjectDataGroup)
             self._opDatasets.WorkingDirectory.connect(self.WorkingDirectory)
             self._opDatasets.ActiveScale.connect(self.ActiveScaleGroup)
+            self.DatasetGroupOut.connect(self._opDatasets.DatasetOut)
 
         for role_index, opDataSelection in enumerate(self._opDatasets):
             opDataSelection.RoleName.setValue(self._roles[role_index])
