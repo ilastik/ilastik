@@ -16,10 +16,10 @@ could be represented like this:
     
       output = OutputSlot(stype=ArrayLike) # define an outputslot
 
-The above operator justs specifies its inputs and outputs, the actual definition
+The above operator just specifies its inputs and outputs, the actual definition
 of the **computation** is still missing. When another operator or the user requests
 the result of a computation from the operator, its **execute** method is called.
-The methods receives as arguments the outputs slot that was queried and the requested
+The method receives as arguments the outputs slot that was queried and the requested
 region of interest:
   
   
@@ -33,7 +33,7 @@ region of interest:
     
       def execute(self, slot, subindex, roi, result):
         # the following two lines query the inputs of the
-        # operator for the specififed region of interest
+        # operator for the specified region of interest
     
         a = self.inputA.get(roi).wait()
         b = self.inputB.get(roi).wait()
@@ -184,7 +184,7 @@ case of ndarray slots.
 
 
 When writing an **operator** the programmer must implement the **setupOutputs** method of the
-Operator. This method is called once all neccessary inputs for the operator have been connected
+Operator. This method is called once all necessary inputs for the operator have been connected
 (or have been provided directly via **setValue**).
 
 A simple example for the SumOperator is given below:

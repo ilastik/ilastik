@@ -338,7 +338,7 @@ Suppose an exception is raised in r1.  The following series of diagrams highligh
    :scale: 100  %
    :alt: request dependency diagram
 
-.. note:: We are missing an optimzation opportunity here.  In the example above, one of the right-most requests
+.. note:: We are missing an optimization opportunity here.  In the example above, one of the right-most requests
 		  never sees the exception.  
 		  That's expected behavior, since that request did not fail.  But after the exception is propagated 
 		  through the request "call" stacks, the request is not needed any more.  To save CPU cycles, we 

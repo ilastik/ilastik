@@ -9,7 +9,7 @@ lazyflow developer documentation
 Lazyflow is a python library for multithreaded computations.
 Data dependencies are expressed as a data flow graph which is evaluated
 in a lazy manner.
-I.e. when the user requests a result or a small part of a result only the computations neccessary to 
+I.e. when the user requests a result or a small part of a result only the computations necessary to 
 produce the requested part of the result are carried out.
 
 Contents:

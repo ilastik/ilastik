@@ -86,7 +86,7 @@ Labeling
 Standard Applets
 ================
 
-These applets are likely to be re-used in many, if not most, worklows.
+These applets are likely to be re-used in many, if not most, workflows.
 
 Data Selection
 --------------
@@ -156,7 +156,7 @@ available to downstream applets.
 The available features are provided by a plugin system. Each plugin
 reports the names of the features it supports, and handles the actual
 calculation. The GUI queries all plugins for the features they provide
-and present them to the user. The user selects some features, and the
+and presents them to the user. The user selects some features, and the
 selection is sent to the operator, which calls the appropriate plugins
 and aggregates the results. A detailed example of a user-defined plugin 
 with object features can be found in the $ILASTIK/examples directory. 
