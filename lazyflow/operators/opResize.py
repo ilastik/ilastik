@@ -20,6 +20,7 @@
 #          http://ilastik.org/license/
 ###############################################################################
 import logging
+from typing import List
 
 import numpy as np
 from numpy.typing import NDArray
@@ -99,6 +100,7 @@ class OpResize(Operator):
         axes_to_pad = np.not_equal(downscaling_factors, 1)
         # Antialiasing only for downscale (f > 1), not identity or upscale
         antialiasing_sigmas = np.array([f / 4 if f > 1 else 0 for f in downscaling_factors])
+
         raw_roi = self._reverse_roi_scaling(roi, downscaling_factors)
         raw_roi_antialiasing_halo = enlargeRoiForHalo(
             raw_roi[0],
@@ -110,23 +112,36 @@ class OpResize(Operator):
         raw_roi_interpolation_halo = self._extend_halo_to_minimum(
             raw_roi_antialiasing_halo, padding_for_order1_interpolation, axes_to_pad, raw_roi
         )
-        # Round and clip to raw image bounds
-        raw_roi_final_halo = np.minimum(self.RawImage.meta.shape, np.maximum(0, ceil_roi(raw_roi_interpolation_halo)))
+        raw_roi_final_halo = np.clip(ceil_roi(raw_roi_interpolation_halo), 0, self.RawImage.meta.shape)
+
         raw = self.RawImage[roiToSlice(*raw_roi_final_halo)].wait().astype(np.float64)
         filtered = scipy_ndimage.gaussian_filter(raw, antialiasing_sigmas, mode="mirror")
-        result_roi_within_filtered = raw_roi - raw_roi_final_halo[0]
+
         n_source_pixels = roi.stop - roi.start
+        result_roi_within_filtered = raw_roi - raw_roi_final_halo[0]
         source_coords_starts = result_roi_within_filtered[0]
         source_coords_stops = result_roi_within_filtered[1] - downscaling_factors
-        scaled_source_grid = np.meshgrid(
-            *(
-                np.linspace(start, stop, n)
-                for start, stop, n in zip(source_coords_starts, source_coords_stops, n_source_pixels)
-            ),
-            indexing="ij",
-        )
-        scaled = scipy_ndimage.map_coordinates(filtered, scaled_source_grid, order=interpolation_order, mode="mirror")
-        result[...] = scaled
+        if "c" not in self.RawImage.meta.getAxisKeys():
+            scaled_source_grid = self._roi_to_coord_grid(source_coords_starts, source_coords_stops, n_source_pixels)
+            result[...] = scipy_ndimage.map_coordinates(
+                filtered, scaled_source_grid, order=interpolation_order, mode="mirror"
+            )
+            return
+
+        # Split channels and interpolate each separately. Not faster but less RAM.
+        channel_axis = self.ResizedImage.meta.getAxisKeys().index("c")
+        n_channels = self.ResizedImage.meta.getTaggedShape()["c"]
+        n_source_pixels[channel_axis] = 1
+        source_coords_starts[channel_axis] = 1
+        source_coords_stops[channel_axis] = 1
+        scaled_source_grid = self._roi_to_coord_grid(source_coords_starts, source_coords_stops, n_source_pixels)
+        filtered_split = np.split(filtered, n_channels, axis=channel_axis)
+        for c in range(n_channels):
+            channel_slicing = [slice(None)] * len(downscaling_factors)
+            channel_slicing[channel_axis] = slice(c, c + 1)
+            result[channel_slicing] = scipy_ndimage.map_coordinates(
+                filtered_split[c], scaled_source_grid, order=interpolation_order, mode="mirror"
+            )
 
     def propagateDirty(self, slot, subindex, roi):
         # roi is on RawImage scale here (unscaled). Would technically need to scale it to ResizedImage scale,
@@ -142,6 +157,18 @@ class OpResize(Operator):
         shape_in = self.RawImage.meta.shape
         shape_out = self.ResizedImage.meta.shape
         return np.divide(shape_in, shape_out)
+
+    @staticmethod
+    def _roi_to_coord_grid(starts: NDArray, stops: NDArray, steps: NDArray) -> List[NDArray]:
+        """
+        Converts roi ([starts, stops]) to grids of `steps` pixel coordinates within the roi.
+        Meshgrid returns a list of one coordinate grid per axis.
+        """
+        assert len(starts) == len(stops) == len(steps), "Dimensions must match"
+        return np.meshgrid(
+            *(np.linspace(start, stop, n) for start, stop, n in zip(starts, stops, steps)),
+            indexing="ij",
+        )
 
     @staticmethod
     def _extend_halo_to_minimum(
