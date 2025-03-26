@@ -235,74 +235,66 @@ class DataExportGui(QWidget):
         self.initViewerStack()
         self.splitter.setSizes([150, 850])
 
-    # List of all valid file extensions that ilastik might export.
     VALID_EXPORT_EXTENSIONS = {
-        ".tiff",
-        ".tif",
         ".h5",
-        ".png",
-        ".jpg",
-        ".jpeg",
-        ".bmp",
-        ".npy",
-        ".csv",
-        ".tsv",
-        ".xlsx",
         ".hdf5",
+        ".n5",
+        ".zarr",
+        ".npy",
+        ".bmp",
+        ".gif",
+        ".hdr",
+        ".jpeg",
+        ".jpg",
+        ".pbm",
+        ".pgm",
+        ".ppm",
+        ".ras",
+        ".tif",
+        ".tiff",
+        ".json",
     }
 
     def showContextMenu(self, pos):
         """Handles right-click menu in the export file list."""
         menu = QMenu(self)
 
-        # Determine which cell in the table was clicked
         row = self.batchOutputTableWidget.rowAt(pos.y())
-        col = self.batchOutputTableWidget.columnAt(pos.x())
+        exportPathItem = self.batchOutputTableWidget.item(row, Column.ExportLocation)
+        exportPath = exportPathItem.text() if exportPathItem else ""
 
-        # Only show the option if the user clicked in the 'Export Location' column
-        if col == Column.ExportLocation:
-            openFolderAction = menu.addAction("Open Export Folder")
-            openFolderAction.triggered.connect(lambda: self.openExportFolder(row))
+        if exportPath:
+            exportPath = PathComponents(exportPath).externalPath
+            exportPath = Path(exportPath).resolve() if exportPath else None
 
-        # Show the context menu at the correct position
+        isValidPath = bool(exportPath) and exportPath.exists()
+
+        openFolderAction = menu.addAction("Open Export Folder")
+        openFolderAction.triggered.connect(lambda: self.openExportFolder(row))
+        openFolderAction.setEnabled(isValidPath)
+
         menu.exec_(self.batchOutputTableWidget.mapToGlobal(pos))
 
     def openExportFolder(self, row):
-        """Opens the parent folder of the exported file, handling all supported formats."""
-        # Get the export path from the selected row
-        exportPath = self.batchOutputTableWidget.item(row, Column.ExportLocation).text()
+        """Opens the parent folder of the exported file, handling image paths with internal ones."""
 
-        if not exportPath:
-            # If there's no export path, let the user know something's wrong
+        exportPathItem = self.batchOutputTableWidget.item(row, Column.ExportLocation)
+        if not exportPathItem:
             QMessageBox.warning(self, "Empty Path", "No export path available.")
             return
 
-        print("Export Path:", exportPath)
-
-        # Convert to a proper Path object and normalize it
+        exportPath = PathComponents(exportPathItem.text()).externalPath
         exportPath = Path(exportPath).resolve()
-        print("Normalized Export Path:", exportPath)
 
-        # Split the path into parts (directories and filenames)
-        parts = list(exportPath.parts)
+        if not exportPath:
+            QMessageBox.warning(self, "Invalid Path", "Could not determine a valid export path.")
+            return
 
-        # Find where in the path a valid export file appears
-        export_file_indices = [i for i, part in enumerate(parts) if Path(part).suffix in self.VALID_EXPORT_EXTENSIONS]
-
-        if export_file_indices:
-            # Extract everything up to the export file's parent directory
-            parentDirectory = Path(*parts[: export_file_indices[0]])
-        else:
-            # If we couldn't find a valid export file, fall back to the original path
-            parentDirectory = exportPath
-
-        print("Corrected Parent Directory:", parentDirectory)
+        parentDirectory = exportPath.parent if exportPath.is_file() else exportPath
 
         if parentDirectory.exists():
-            # Open the parent folder in the system's default file explorer
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(parentDirectory)))
         else:
-            # Let the user know if the path doesn't exist
             QMessageBox.warning(
                 self, "Invalid Path", f"The export path does not exist or is invalid: {parentDirectory}"
             )
