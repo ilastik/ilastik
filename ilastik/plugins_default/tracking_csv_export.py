@@ -11,7 +11,7 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
     exportsToFile = True
 
     def checkFilesExist(self, filename):
-        """ Check whether the files we want to export are already present """
+        """Check whether the files we want to export are already present"""
         return os.path.exists(filename + ".csv")
 
     def export(self, filename, hypothesesGraph, pluginExportContext):
@@ -25,6 +25,24 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
 
         :returns: True on success, False otherwise
         """
+
+    def importFromCSV(self, filename):
+        """
+        Import tracking data from a CSV file.
+        :param filename: string of the FILE to read the CSV data from
+        :returns: A dictionary containing the imported data
+        """
+        if not os.path.exists(filename):
+            raise FileNotFoundError(f"The file '{filename}' does not exist.")
+
+        # Read the CSV file
+        data = np.genfromtxt(filename, delimiter=",", names=True, dtype=None, encoding="utf-8")
+
+        # Convert the structured array into a dictionary for easier processing
+        importedData = {col: data[col] for col in data.dtype.names}
+
+        return importedData
+
         features = pluginExportContext.objectFeaturesSlot(
             []
         ).wait()  # this is a dict of structure: {frame: {category: {featureNames}}}
