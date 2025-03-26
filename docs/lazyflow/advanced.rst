@@ -7,7 +7,7 @@ In this section, we'll discuss some of lazyflow's advanced features, including m
 Simple Binary Operator
 ======================
 
-To motivate this discussion, let start by considering this simple example operator::
+To motivate this discussion, let's start by considering this simple example operator::
 
     class OpSum(Operator):
         InputA = InputSlot()
@@ -114,7 +114,7 @@ After connection:
    :scale: 100  %
    :alt: After connecting multi-slots
 
-When two multi-slots are connected, their subslots are internally connected to eachother.  For clarity, those connections aren't typicaly shown in graphical diagrams.  
+When two multi-slots are connected, their subslots are internally connected to each other.  For clarity, those connections aren't typically shown in graphical diagrams.  
 When you see two connected multi-slots, you can imagine their subslot connections looking like this:
 
 .. figure:: images/multi_connect_detail.svg
