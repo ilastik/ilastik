@@ -366,7 +366,7 @@ class FeatureSelectionDialog(QDialog):
                         if feature_item.checkState(0) == Qt.Checked:
                             featnames.append(feature_item.feature_id)
                 else:
-                    if child.checkState(0) == Qt.Checked:
+                    if child.checkState(0) in (Qt.Checked, Qt.PartiallyChecked):
                         featnames.append(child.feature_id)
 
             if len(featnames) > 0:
