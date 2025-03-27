@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2024, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -31,7 +31,7 @@ import h5py
 from PyQt5 import uic
 from PyQt5.QtWidgets import QDialog, QMessageBox, QStackedWidget, QWidget
 from vigra import AxisTags
-from volumina.utility import preferences, ShortcutManager
+from volumina.utility import preferences
 
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
@@ -131,7 +131,7 @@ class DataSelectionGui(QWidget):
     ###########################################
     ###########################################
 
-    class UserCancelledError(Exception):
+    class UserCancelledError(BaseException):
         # This exception type is raised when the user cancels the
         #  addition of dataset files in the middle of the process somewhere.
         # It isn't an error -- it's used for control flow.
@@ -438,7 +438,7 @@ class DataSelectionGui(QWidget):
         return firstNewLane
 
     def getNumLanes(self) -> int:
-        return len(self.topLevelOperator.DatasetGroup)
+        return len(self.topLevelOperator.DatasetGroupOut)
 
     def getInfoSlots(self, roleIndex: int):
         return [self.topLevelOperator.DatasetGroup[laneIndex][roleIndex] for laneIndex in range(self.getNumLanes())]
@@ -482,6 +482,8 @@ class DataSelectionGui(QWidget):
             for slot, original_info in zip(info_slots, original_infos):
                 if original_info is not None:
                     slot.setValue(original_info)
+                else:
+                    slot.disconnect()
 
         try:
             for new_info, info_slot in zip(new_infos, info_slots):
