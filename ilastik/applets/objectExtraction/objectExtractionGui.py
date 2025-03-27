@@ -231,7 +231,7 @@ class FeatureSelectionDialog(QDialog):
                             child.setCheckState(0, val)
                 
     @staticmethod 
-    def updateParentState(item):
+    def updateParentCheckState(item):
         """Update parent checkbox state based on children's states"""
         if item.parent() is None:
             return
