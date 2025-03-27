@@ -247,7 +247,7 @@ class FeatureSelectionDialog(QDialog):
             parent.setCheckState(0, Qt.PartiallyChecked)
         
         # Recursively update parents up the tree
-        FeatureSelectionDialog.updateParentState(parent)
+        FeatureSelectionDialog.updateParentCheckState(parent)
 
     def updateTree(self, item, col):
         # Clicking on the CheckBox OR Text of a QTreeWidgetItem should change the check.
@@ -426,8 +426,7 @@ class FeatureSelectionDialog(QDialog):
             plugin.setCheckState(0, Qt.Checked)
             FeatureSelectionDialog.recursiveCheckChildren(plugin, Qt.Checked, exclude_location=True)
 
-            # Update parent states after modifying children
-            self.updateParentState(plugin)
+            self.updateParentCheckState(plugin)
 
             # Update counter and tooltip
             checked_count = 0
@@ -437,7 +436,7 @@ class FeatureSelectionDialog(QDialog):
                     checked_count += 1
 
 
-            self.countChecked[pluginName] = self.countAll[pluginName]
+            self.countChecked[pluginName] = checked_count
             self.updateToolTip(plugin)
 
     def _setAll(self, val: Qt.CheckState):
