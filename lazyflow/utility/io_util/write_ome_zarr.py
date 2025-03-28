@@ -32,16 +32,18 @@ from zarr.storage import FSStore
 
 from ilastik import __version__ as ilastik_version
 from lazyflow.operators import OpReorderAxes
+from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
+from lazyflow.operators.opResize import OpResize
 from lazyflow.roi import determineBlockShape, roiFromShape, roiToSlice
 from lazyflow.slot import Slot
 from lazyflow.utility import OrderedSignal, PathComponents, BigRequestStreamer
-from lazyflow.utility.io_util import multiscaleStore
 from lazyflow.utility.io_util.OMEZarrStore import (
     OME_ZARR_V_0_4_KWARGS,
     OMEZarrMultiscaleMeta,
     OMEZarrCoordinateTransformation,
     InvalidTransformationError,
 )
+from lazyflow.utility.io_util.multiscaleStore import Multiscales
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +54,7 @@ OrderedScaling = OrderedTranslation = OrderedDict[Axiskey, float]  # { axis: sca
 ScalingsByScaleKey = OrderedDict[str, OrderedScaling]  # { scale_key: { axis: scaling } }
 
 SPATIAL_AXES = ["z", "y", "x"]
+SINGE_SCALE_DEFAULT_KEY = "s0"
 
 
 @dataclasses.dataclass
@@ -74,9 +77,7 @@ def _get_chunk_shape(tagged_image_shape: TaggedShape, dtype) -> Shape:
     return chunk_shape
 
 
-def _get_input_multiscale_matching_export(
-    input_scales: multiscaleStore.Multiscales, input_scale_key: str
-) -> multiscaleStore.Multiscales:
+def _get_input_multiscale_matching_export(input_scales: Multiscales, input_scale_key: str) -> Multiscales:
     """Filter for multiscales entry that matches source image."""
     matching_scales = []
     # Multiscales is ordered from highest to lowest resolution
@@ -89,7 +90,7 @@ def _get_input_multiscale_matching_export(
 
 
 def _multiscale_shapes_to_factors(
-    multiscales: multiscaleStore.Multiscales,
+    multiscales: Multiscales,
     base_shape: TaggedShape,
     output_axiskeys: List[Axiskey],
 ) -> List[OrderedScaling]:
@@ -120,15 +121,19 @@ def _multiscale_shapes_to_factors(
 
 
 def _match_or_create_scalings(
-    input_scales: multiscaleStore.Multiscales, input_scale_key: str, export_shape: TaggedShape
+    export_shape: TaggedShape,
+    target_scales: Optional[Multiscales],
+    input_scales: Optional[Multiscales],
+    input_scale_key: str,
 ) -> Tuple[ScalingsByScaleKey, Optional[ScalingsByScaleKey]]:
     """
-    Determine scale keys and scaling factors for export.
+    Determine scale keys for export and scaling factors for metadata.
     The second optional return value are the input's scaling factors relative to its raw scale
-    (needed to provide correct metadata for the exported scale(s), which may exclude the original raw).
+    (needed in case the exported scales don't include the original raw scale).
     """
-    if input_scales:
-        # Source image is already multiscale, match its scales
+    if input_scales and target_scales:  # Multiscale input to multiscale output
+        raise NotImplementedError("todo: implement multiscale export from multiscale input")
+    elif input_scales:  # Multiscale input to single-scale output
         filtered_input_scales = _get_input_multiscale_matching_export(input_scales, input_scale_key)
         # The export might be a crop of the source scale it corresponds to (the first one in the filtered list).
         # Need the full shape of that scale as the base for scaling factors.
@@ -141,10 +146,14 @@ def _match_or_create_scalings(
         raw_shape = next(iter(input_scales.values()))
         factors_relative_to_raw = _multiscale_shapes_to_factors(filtered_input_scales, raw_shape, export_shape.keys())
         scalings_relative_to_raw = ODict(zip(filtered_input_scales.keys(), factors_relative_to_raw))
-    else:
-        # Compute new scale levels
-        factors = [ODict([(a, 1.0) for a in export_shape.keys()])]
-        scalings_relative_to_export = ODict(zip([f"s{i}" for i in range(len(factors))], factors))
+    else:  # Single-scale input
+        if target_scales:
+            factors = _multiscale_shapes_to_factors(target_scales, export_shape, export_shape.keys())
+            scalings_relative_to_export = ODict(zip(target_scales.keys(), factors))
+        else:
+            scalings_relative_to_export = ODict(
+                {SINGE_SCALE_DEFAULT_KEY: ODict([(a, 1.0) for a in export_shape.keys()])}
+            )
         scalings_relative_to_raw = None
     return scalings_relative_to_export, scalings_relative_to_raw
 
@@ -154,30 +163,17 @@ def _create_empty_zarrays(
     export_dtype,
     chunk_shape: Shape,
     export_shape: TaggedShape,
-    output_scalings: ScalingsByScaleKey,
-) -> Tuple[OrderedDict[str, zarr.Array], OrderedDict[str, ImageMetadata]]:  #
+    target_scales: Optional[Multiscales],
+) -> OrderedDict[str, zarr.Array]:
     store = FSStore(abs_export_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
     zarrays = ODict()
-    meta = ODict()
-    for scale_key, scaling in output_scalings.items():
+    scales = target_scales or ODict({SINGE_SCALE_DEFAULT_KEY: export_shape})
+    for scale_key, scale_shape in scales.items():
         zarrays[scale_key] = zarr.creation.zeros(
-            export_shape.values(), store=store, path=scale_key, chunks=chunk_shape, dtype=export_dtype
+            scale_shape.values(), store=store, path=scale_key, chunks=chunk_shape, dtype=export_dtype
         )
-        meta[scale_key] = ImageMetadata(scale_key, scaling, ODict())
 
-    return zarrays, meta
-
-
-def _scale_and_write_block(scales: ScalingsByScaleKey, zarrays: OrderedDict[str, zarr.Array], roi, data):
-    assert scales.keys() == zarrays.keys()
-    for scale_key_, scaling_ in scales.items():
-        if scaling_["x"] > 1.0 or scaling_["y"] > 1.0:
-            raise NotImplementedError("Downscaling is not yet implemented.")
-        else:
-            slicing = roiToSlice(*roi)
-            scaled_data = data
-        logger.info(f"Scale {scale_key_}: Writing data with shape={scaled_data.shape} to {slicing=}")
-        zarrays[scale_key_][slicing] = scaled_data
+    return zarrays
 
 
 def _get_input_raw_absolute_scaling(input_ome_meta: Optional[OMEZarrMultiscaleMeta]) -> Optional[OrderedScaling]:
@@ -393,7 +389,11 @@ def _write_ome_zarr_and_ilastik_metadata(
 
 
 def write_ome_zarr(
-    export_path: str, image_source_slot: Slot, export_offset: Optional[Shape], progress_signal: OrderedSignal
+    export_path: str,
+    image_source_slot: Slot,
+    progress_signal: OrderedSignal,
+    export_offset: Optional[Shape],
+    target_scales: Optional[Multiscales] = None,
 ):
     pc = PathComponents(export_path)
     if pc.internalPath:
@@ -418,22 +418,69 @@ def write_ome_zarr(
         progress_signal(25)
         export_shape = reordered_source.meta.getTaggedShape()
         export_dtype = reordered_source.meta.dtype
-        input_scales = reordered_source.meta.scales if "scales" in reordered_source.meta else None
-        input_scale_key = reordered_source.meta.active_scale if "scales" in reordered_source.meta else None
+        input_scales = reordered_source.meta.get("scales")
+        input_scale_key = reordered_source.meta.get("active_scale")
         input_ome_meta = reordered_source.meta.get("ome_zarr_meta")
 
         chunk_shape = _get_chunk_shape(export_shape, export_dtype)
         export_scalings, scalings_relative_to_raw_input = _match_or_create_scalings(
-            input_scales, input_scale_key, export_shape
+            export_shape, target_scales, input_scales, input_scale_key
         )
-        zarrays, export_meta = _create_empty_zarrays(
-            abs_export_path, export_dtype, chunk_shape, export_shape, export_scalings
-        )
+        zarrays = _create_empty_zarrays(abs_export_path, export_dtype, chunk_shape, export_shape, target_scales)
 
-        requester = BigRequestStreamer(reordered_source, roiFromShape(reordered_source.meta.shape))
-        requester.resultSignal.subscribe(partial(_scale_and_write_block, export_scalings, zarrays))
-        requester.progressSignal.subscribe(progress_signal)
-        requester.execute()
+        export_meta = ODict([(k, ImageMetadata(k, v, ODict())) for k, v in export_scalings.items()])
+
+        def _write_block(zarray: zarr.Array, roi, data):
+            slicing = roiToSlice(*roi)
+            logger.info(f"Writing data with shape={data.shape} to {slicing=}")
+            zarray[slicing] = data
+
+        if not target_scales:
+            assert len(zarrays) == 1, "Should only have one zarray for single-scale export"
+            first_zarray = list(zarrays.values())[0]
+            requester = BigRequestStreamer(reordered_source, roiFromShape(reordered_source.meta.shape))
+            requester.resultSignal.subscribe(partial(_write_block, first_zarray))
+            requester.progressSignal.subscribe(progress_signal)
+            requester.execute()
+        else:
+            combined_scaling_mag = {key: numpy.prod(list(scale.values())) for key, scale in export_scalings.items()}
+
+            # Upscales/raw - uncached (maybe this helps keep unscaled computation cache warm)
+            upscale_mags = {k: v for k, v in combined_scaling_mag.items() if v <= 1.0}
+            for upscale_key, _ in reversed(sorted(upscale_mags.items(), key=lambda x: x[1])):
+                logger.info(f"Exporting computation outputs to scale path '{upscale_key}'")
+                op_scale = OpResize(parent=image_source_slot.operator)
+                op_scale.RawImage.connect(reordered_source)
+                op_scale.TargetShape.setValue(tuple(target_scales[upscale_key].values()))
+                requester = BigRequestStreamer(op_scale.ResizedImage, roiFromShape(op_scale.ResizedImage.meta.shape))
+                requester.resultSignal.subscribe(partial(_write_block, zarrays[upscale_key]))
+                requester.progressSignal.subscribe(progress_signal)
+                requester.execute()
+                op_scale.cleanUp()
+
+            # Downscales - cached to avoid recomputation
+            downscale_mags = {k: v for k, v in combined_scaling_mag.items() if v > 1.0}
+            ops_to_clean = []
+            prev_slot = reordered_source
+            for downscale_key, _ in sorted(downscale_mags.items(), key=lambda x: x[1]):
+                logger.info(f"Exporting downscale to scale path '{downscale_key}'")
+                op_scale = OpResize(parent=image_source_slot.operator)
+                op_scale.RawImage.connect(prev_slot)
+                op_scale.TargetShape.setValue(tuple(target_scales[downscale_key].values()))
+                ops_to_clean.append(op_scale)
+                op_cache = OpBlockedArrayCache(parent=image_source_slot.operator)
+                op_cache.Input.connect(op_scale.ResizedImage)
+                op_cache.BlockShape.setValue(chunk_shape)
+                ops_to_clean.append(op_cache)
+                requester = BigRequestStreamer(
+                    op_cache.Output, roiFromShape(op_cache.Output.meta.shape), blockshape=chunk_shape
+                )
+                requester.resultSignal.subscribe(partial(_write_block, zarrays[downscale_key]))
+                requester.progressSignal.subscribe(progress_signal)
+                requester.execute()
+                prev_slot = op_cache.Output
+            for op in reversed(ops_to_clean):
+                op.cleanUp()
 
         progress_signal(95)
         _write_ome_zarr_and_ilastik_metadata(
