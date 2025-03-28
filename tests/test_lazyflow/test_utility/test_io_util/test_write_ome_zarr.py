@@ -1,4 +1,3 @@
-import math
 from collections import OrderedDict
 from unittest import mock
 
@@ -15,16 +14,26 @@ from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr
 
 
 @pytest.mark.parametrize(
-    "shape, axes",
+    "shape, axes, target_scales",
     [
-        ((1, 128, 127, 10, 1), "txyzc"),  # ilastik default order
-        ((1, 1, 3, 26, 25), "tczyx"),  # OME-Zarr convention
-        ((256, 255), "yx"),
-        ((10, 126, 125), "zyx"),
-        ((124, 123, 3), "yxc"),
+        ((1, 128, 127, 10, 1), "txyzc", None),  # ilastik default order
+        ((1, 1, 3, 26, 25), "tczyx", None),  # OME-Zarr convention
+        ((256, 255), "yx", None),
+        ((10, 126, 125), "zyx", None),
+        ((124, 123, 3), "yxc", None),
+        (
+            (21, 23, 3),
+            "yxc",
+            OrderedDict(
+                [
+                    ("raw", OrderedDict([("t", 1), ("c", 3), ("z", 1), ("y", 21), ("x", 23)])),
+                    ("scaled", OrderedDict([("t", 1), ("c", 3), ("z", 1), ("y", 10), ("x", 12)])),
+                ]
+            ),
+        ),
     ],
 )
-def test_metadata_integrity(tmp_path, graph, shape, axes):
+def test_metadata_integrity(tmp_path, graph, shape, axes, target_scales):
     data_array = vigra.VigraArray(shape, axistags=vigra.defaultAxistags(axes))
     data_array[...] = numpy.indices(shape).sum(0)
     export_path = tmp_path / "test.zarr"
@@ -32,7 +41,7 @@ def test_metadata_integrity(tmp_path, graph, shape, axes):
     source_op.Input.setValue(data_array)
     progress = mock.Mock()
 
-    write_ome_zarr(str(export_path), source_op.Output, None, progress)
+    write_ome_zarr(str(export_path), source_op.Output, progress, None, target_scales=target_scales)
 
     expected_axiskeys = "tczyx"
     assert export_path.exists()
@@ -43,12 +52,14 @@ def test_metadata_integrity(tmp_path, graph, shape, axes):
     assert all([value is not None for value in written_meta.values()])  # Should not write None anywhere
     assert written_meta["version"] == "0.4"
     assert [a["name"] for a in written_meta["axes"]] == list(expected_axiskeys)
-    tagged_shape = dict(zip(data_array.axistags.keys(), data_array.shape))
-    original_shape_reordered = [tagged_shape[a] if a in tagged_shape else 1 for a in expected_axiskeys]
+    expected_len_datasets = 1 if target_scales is None else len(target_scales)
+    assert len(written_meta["datasets"]) == expected_len_datasets, "not all specified scales written"
 
     discovered_keys = []
-    for dataset in written_meta["datasets"]:
+    for i, dataset in enumerate(written_meta["datasets"]):
         assert dataset["path"] in group
+        if target_scales is not None:
+            assert dataset["path"] == list(target_scales.keys())[i]
         discovered_keys.append(dataset["path"])
         written_array = group[dataset["path"]]
         assert written_array.fill_value is not None, "FIJI and z5py don't open zarrays without a fill_value"
@@ -59,12 +70,24 @@ def test_metadata_integrity(tmp_path, graph, shape, axes):
             transform for transform in dataset["coordinateTransformations"] if transform["type"] == "scale"
         ]
         assert len(reported_scalings) == 1
-        expected_shape = tuple(
-            math.ceil(orig / reported)
-            for orig, reported in zip(original_shape_reordered, reported_scalings[0]["scale"])
+        if target_scales:
+            assert dataset["path"] in target_scales, "unexpected scale key written"
+            target_shape_reordered = tuple(target_scales[dataset["path"]].values())
+        else:
+            tagged_target_shape = dict(zip(data_array.axistags.keys(), data_array.shape))
+            target_shape_reordered = tuple(
+                tagged_target_shape[a] if a in tagged_target_shape else 1 for a in expected_axiskeys
+            )
+        tagged_original_shape = dict(zip(data_array.axistags.keys(), data_array.shape))
+        original_shape_reordered = [
+            tagged_original_shape[a] if a in tagged_original_shape else 1 for a in expected_axiskeys
+        ]
+        expected_shape_per_meta = tuple(
+            round(shape / scale) for shape, scale in zip(original_shape_reordered, reported_scalings[0]["scale"])
         )
-        assert written_array.shape == expected_shape
-        assert numpy.count_nonzero(written_array) > numpy.prod(expected_shape) / 2, "did not write actual data"
+        assert written_array.shape == target_shape_reordered, "failed to scale dataset as specified"
+        assert written_array.shape == expected_shape_per_meta, "scaling metadata does not match written shape"
+        assert numpy.count_nonzero(written_array) > numpy.prod(expected_shape_per_meta) / 2, "did not write actual data"
     assert all([key in discovered_keys for key in group.keys()]), "store contains undocumented subpaths"
 
 
@@ -206,14 +229,14 @@ def test_do_not_overwrite(tmp_path, tiny_5d_vigra_array_piper):
     export_path = tmp_path / "test.zarr"
     source_op = tiny_5d_vigra_array_piper
     progress = mock.Mock()
-    write_ome_zarr(str(export_path), source_op.Output, None, progress)
+    write_ome_zarr(str(export_path), source_op.Output, progress, None)
 
     with pytest.raises(FileExistsError):
-        write_ome_zarr(str(export_path), source_op.Output, None, progress)
+        write_ome_zarr(str(export_path), source_op.Output, progress, None)
 
     source_op.Input.setValue(data_array2)
     with pytest.raises(FileExistsError):
-        write_ome_zarr(str(export_path), source_op.Output, None, progress)
+        write_ome_zarr(str(export_path), source_op.Output, progress, None)
     # should not overwrite existing array
     group = zarr.open(str(export_path))
     numpy.testing.assert_array_equal(group["s0"], original_data_array)
@@ -239,7 +262,7 @@ def test_match_input_scale_key_and_factors(tmp_path, tiny_5d_vigra_array_piper):
     # Exported array is 5d, so 5 scaling entries expected even though source multiscales to match are 4d
     expected_matching_scale_transform = [{"type": "scale", "scale": [1.0, 1.0, 3.0, 3.0, 3.0]}]
 
-    write_ome_zarr(str(export_path), source_op.Output, None, progress)
+    write_ome_zarr(str(export_path), source_op.Output, progress, None)
 
     group = zarr.open(str(export_path))
     assert "multiscales" in group.attrs
@@ -314,7 +337,7 @@ def test_port_ome_zarr_metadata_from_input(tmp_path, tiny_5d_vigra_array_piper):
         }
     )
 
-    write_ome_zarr(str(export_path), source_op.Output, export_offset, progress)
+    write_ome_zarr(str(export_path), source_op.Output, progress, export_offset)
 
     group = zarr.open(str(export_path))
     assert "multiscales" in group.attrs

@@ -418,12 +418,18 @@ class OpExportSlot(Operator):
         self.progressSignal(0)
         offset_meta = self.CoordinateOffset.value if self.CoordinateOffset.ready() else None
         try:
-            write_ome_zarr(self.ExportPath.value, self.Input, offset_meta, self.progressSignal)
+            write_ome_zarr(self.ExportPath.value, self.Input, self.progressSignal, offset_meta)
         finally:
             self.progressSignal(100)
 
     def _export_ome_zarr_multiscale(self):
-        pass
+        self.progressSignal(0)
+        offset_meta = self.CoordinateOffset.value if self.CoordinateOffset.ready() else None
+        target_scales = self.Input.meta.get("scales") or "generate"
+        try:
+            write_ome_zarr(self.ExportPath.value, self.Input, self.progressSignal, offset_meta, target_scales)
+        finally:
+            self.progressSignal(100)
 
 
 np = numpy
