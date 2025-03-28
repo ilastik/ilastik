@@ -18,8 +18,8 @@ def test_configure_table_export_sets_filename():
         table_exporter=mock_exporter
     )
 
-    # Patch the QFileDialog.getSaveFileName to simulate user selection
-    with patch("ilastik.applets.objectClassification.objectClassificationDataExportGui.QFileDialog.getSaveFileName") as mock_dialog:
+    #Corrected patch target
+    with patch("PyQt5.QtWidgets.QFileDialog.getSaveFileName") as mock_dialog:
         mock_dialog.return_value = ("/path/to/image_features.csv", "CSV Files (*.csv)")
 
         # Run the method
@@ -43,12 +43,11 @@ def test_configure_table_export_handles_missing_input_image_name():
         table_exporter=mock_exporter
     )
 
-    # Patch QFileDialog to simulate user selecting file even when default is blank
-    with patch("ilastik.applets.objectClassification.objectClassificationDataExportGui.QFileDialog.getSaveFileName") as mock_dialog:
+    # Corrected patch target
+    with patch("PyQt5.QtWidgets.QFileDialog.getSaveFileName") as mock_dialog:
         mock_dialog.return_value = ("/user/selected/path.csv", "CSV Files (*.csv)")
 
         gui.configure_table_export()
 
         # Should still set the value even though default_filename was ""
         mock_exporter.OutputFilenameFormat.setValue.assert_called_once_with("/user/selected/path.csv")
-
