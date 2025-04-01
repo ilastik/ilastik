@@ -22,12 +22,12 @@ from bioimageio.spec.model.v0_5 import (
 from lazyflow.operators.tiktorch.classifier import ModelSession
 
 import pytest
-from tiktorch.proto import inference_pb2
+from tiktorch.proto import utils_pb2
 
 
 @pytest.fixture
 def pb_session():
-    return inference_pb2.ModelSession(id="1")
+    return utils_pb2.ModelSession(id="1")
 
 
 @pytest.fixture
