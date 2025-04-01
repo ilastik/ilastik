@@ -40,7 +40,7 @@ def test_resize_matches_skimage(graph):
         ((11, 11), (11, 11), "yx", (4, 6)),  # Noop
         ((11, 7, 23), (6, 6, 6), "yzx", (5, 5, 5)),  # 3D and weird axes
         ((5, 11, 8, 23), (2, 8, 8, 8), "tzyx", (1, 5, 5, 5)),  # 4D (bad idea, but technically valid), 1:1 along y
-        ((10, 10, 3), (5, 5, 3), "yxc", (3, 3, 3)),  # c allowed to be present but not scaled
+        ((10, 10, 3), (5, 5, 3), "yxc", (3, 3, 2)),  # c allowed to be present but not scaled
     ],
 )
 def test_resize_handles_blocks(graph, raw_shape, scaled_shape, axes, block_shape):

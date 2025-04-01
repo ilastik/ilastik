@@ -130,8 +130,8 @@ class OpResize(Operator):
 
         # Split channels and interpolate each separately. Not faster but less RAM.
         channel_axis = self.ResizedImage.meta.getAxisKeys().index("c")
-        n_channels = self.ResizedImage.meta.getTaggedShape()["c"]
-        n_source_pixels[channel_axis] = 1
+        n_channels = n_source_pixels[channel_axis]
+        n_source_pixels[channel_axis] = 1  # Will be 1 after splitting
         source_coords_starts[channel_axis] = 1
         source_coords_stops[channel_axis] = 1
         scaled_source_grid = self._roi_to_coord_grid(source_coords_starts, source_coords_stops, n_source_pixels)
