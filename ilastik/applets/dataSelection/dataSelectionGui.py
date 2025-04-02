@@ -18,8 +18,6 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-# Python
-import itertools
 import logging
 import os
 import threading
@@ -29,7 +27,8 @@ from typing import Dict, List, Set, Union, Optional
 
 import h5py
 from PyQt5 import uic
-from PyQt5.QtWidgets import QDialog, QMessageBox, QStackedWidget, QWidget
+from PyQt5.QtWidgets import QDialog, QMessageBox, QStackedWidget, QWidget, QApplication
+from PyQt5.QtCore import Qt
 from vigra import AxisTags
 from volumina.utility import preferences
 
@@ -405,25 +404,26 @@ class DataSelectionGui(QWidget):
         self.addFileNames(paths, startingLaneNum, roleIndex)
 
     def addFileNames(self, paths: Optional[List[Path]], startingLaneNum: Optional[int], roleIndex: int):
-        if paths is None:
-            paths = []
+        if not paths:
+            return
 
-        # startlingLaneNum == -1 if dragged onto the empty table.
-        if startingLaneNum is not None and startingLaneNum >= 0:
-            lane_indices = itertools.count(startingLaneNum)
-        else:
-            lane_indices = itertools.repeat(startingLaneNum)
-
-        for path, lane_index in zip(paths, lane_indices):
+        infos = []
+        for path in paths:
             try:
                 full_path = self._get_dataset_full_path(path, roleIndex=roleIndex)
                 info = self.instantiate_dataset_info(url=str(full_path), role=roleIndex)
-                self.addLanes([info], roleIndex=roleIndex, startingLaneNum=lane_index)
+                infos.append(info)
             except DataSelectionGui.UserCancelledError:
                 pass
-            except Exception as ex:
-                log_exception(logger)
-                QMessageBox.critical(self, "Error loading file", str(ex))
+
+        try:
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            self.addLanes(infos, roleIndex=roleIndex, startingLaneNum=startingLaneNum)
+        except Exception as ex:
+            log_exception(logger)
+            QMessageBox.critical(self, "Error loading file", str(ex))
+        finally:
+            QApplication.restoreOverrideCursor()
 
     def _findFirstEmptyLane(self, roleIndex):
         opTop = self.topLevelOperator
