@@ -1,23 +1,17 @@
 channels:
-  - pytorch
-#  - nvidia  # uncomment for pytorch with cuda
-  # ilastik-forge/label/patched contains patched versions of pyshtools
-  # with certain dependencies removed that made solving the ilastik
-  # environment impossible / extremely inflexible
   - ilastik-forge/label/patched
   - ilastik-forge
   - conda-forge
-  - nodefaults
 dependencies:
-  - python 3.9.*
-  - numpy 1.22.*
+  - python 3.11.*
+  - numpy 1.*
   - appdirs
   - cachetools
   - dpct
   - fastfilters
   - future
   - greenlet
-  - grpcio 1.49.1
+  - grpcio >=1.49.1
   - h5py
   - hytra
   - ilastik-feature-selection
@@ -44,7 +38,7 @@ dependencies:
   - tifffile >=2022
   # build 1.11.1=*_1028 on cf is the first to be compatible with numpy>1.19
   # need to bump this manually until there is a true version bump in vigra
-  - vigra 1.11.1=*_1038
+  - vigra 1.12.1
   # xarray versions not compatible with numpy 1.21, 2023.08.0 might be, but lost trust
   # 2023.10.1 correctly pins numpy to 1.22 and up
   - xarray !=2023.8.0,!=2023.9.0,!=2023.10.0
@@ -56,14 +50,14 @@ dependencies:
 
   # Deep learning dependencies (neural net workflow, trainable domain adaptation)
   # can be changed to request gpu versions
-  - pytorch <2.4.1  # >=2.4 can clash with pyshtools on win; 2.2.2 newest available on osx
-  - cpuonly  # comment out for pytorch with cuda
+  - pytorch 2.6.*  # >=2.4 can clash with pyshtools on win; 2.2.2 newest available on osx
+  # - cpuonly  # comment out for pytorch with cuda
   # - pytorch-cuda=11.3  # uncomment for pytorch with cuda, specify cuda version
   - tiktorch 25.4.0
   # mamba does not "respect" track_features, which is the idea behind cpuonly,
   # with ilastik-pytorch-version-helper-cpu we help mamba on linux and windows
   # to install a cpu-build
-  - ilastik-pytorch-version-helper-cpu  # comment out for pytorch with cuda
+  # - ilastik-pytorch-version-helper-cpu  # comment out for pytorch with cuda
 
 
   # Third-party object feature plugins
@@ -84,4 +78,4 @@ dependencies:
   # - mkl 2021.*  # [osx]
 
   # must be commented out on arm-64 native (no mkl!)
-  - mkl <2024.1.0  # [linux] until pytorch is compatible with the current version
+  # - mkl <2024.1.0  # [linux] until pytorch is compatible with the current version

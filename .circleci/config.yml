@@ -8,7 +8,7 @@ jobs:
     environment:
       ILASTIK_ROOT: /root/ilastik
     docker:
-    - image: condaforge/mambaforge
+    - image: condaforge/miniforge3
     steps:
     - checkout
     - run:
