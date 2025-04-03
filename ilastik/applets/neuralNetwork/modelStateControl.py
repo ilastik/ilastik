@@ -336,7 +336,7 @@ class ModelStateControl(QWidget):
                 QMessageBox.information(
                     self,
                     "Model incompatible",
-                    f"Model incompatible, reasons :\n\n{reasons}.\nPlease select a different model.",
+                    f"Model incompatible, reasons:\n\n{reasons}.\nPlease select a different model.",
                 )
                 reasons_log = " - ".join(r["reason"] for r in compatibility_checks if r)
                 logger.debug(f"Incompatible model from {model_uri}. Reasons: {reasons_log}")

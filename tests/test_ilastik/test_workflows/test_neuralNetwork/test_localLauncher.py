@@ -6,7 +6,7 @@ from unittest import mock
 
 from ilastik.workflows.neuralNetwork._localLauncher import LocalServerLauncher
 
-from tiktorch.proto.inference_pb2 import Empty
+from tiktorch.proto.utils_pb2 import Empty
 from tiktorch.proto.inference_pb2_grpc import FlightControlStub
 
 
