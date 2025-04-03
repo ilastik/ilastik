@@ -35,7 +35,7 @@ from lazyflow.roi import roiToSlice
 from lazyflow.futures_utils import MappableFuture, map_future
 
 from tiktorch import converters
-from tiktorch.proto import data_store_pb2, data_store_pb2_grpc, inference_pb2, inference_pb2_grpc
+from tiktorch.proto import data_store_pb2, data_store_pb2_grpc, inference_pb2, inference_pb2_grpc, utils_pb2
 
 from vigra import AxisTags
 
@@ -253,9 +253,9 @@ class ModelSession:
                 for t in reordered_tensors
             ]
             resp = self.tiktorchClient.Predict.future(
-                inference_pb2.PredictRequest(
+                utils_pb2.PredictRequest(
+                    modelSessionId=utils_pb2.ModelSession(id=self.__session.id),
                     tensors=pb_tensors,
-                    modelSessionId=self.__session.id,
                 )
             )
             resp.add_done_callback(lambda o: current_rq._wake_up())
@@ -334,7 +334,7 @@ class Connection(_base.IConnection):
         self._upload_client = upload_client
 
     def get_devices(self):
-        resp = self._client.ListDevices(inference_pb2.Empty())
+        resp = self._client.ListDevices(utils_pb2.Empty())
         return [(d.id, d.id) for d in resp.devices]
 
     def upload(self, content: bytes, *, progress_cb: Callable[[int], None], cancel_token=None) -> MappableFuture[str]:
