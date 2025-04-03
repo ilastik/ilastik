@@ -2,19 +2,13 @@ Copyright ilastik developers
 
 This repository contains two previously separate projects: ilastik and lazyflow.
 
-The  function lazyflow.utility.pathHelpers.uri_to_Path is a copy
-of the Python 3.13 function pathlib.Path.from_uri, originally
-copied from the following location. Python code is licensed
-under the Python Software Foundation License (see LICENSE.Python).
-https://github.com/python/cpython/blob/7ca74a760a5d3cdf48159f003d4db7c2778e9261/Lib/pathlib/_local.py#L862
-
 Respective licenses for ilastik and lazyflow follow:
 
 ====
 
   ilastik: interactive learning and segmentation toolkit
 
-      Copyright (C) 2011-2020, the ilastik developers
+      Copyright (C) 2011-2025, the ilastik developers
                                <team@ilastik.org>
 
 This program is free software; you can redistribute it and/or
@@ -69,7 +63,7 @@ this exception.
 
   lazyflow: data flow based lazy parallel computation framework
 
-      Copyright (C) 2011-2020, the ilastik developers
+      Copyright (C) 2011-2025, the ilastik developers
                                <team@ilastik.org>
 
 This program is free software; you can redistribute it and/or
@@ -84,3 +78,11 @@ GNU Lesser General Public License for more details.
 
 See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 GNU Lesser General Public License version 2.1 and 3 respectively.
+
+====
+
+The  function lazyflow.utility.pathHelpers.uri_to_Path is a copy
+of the Python 3.13 function pathlib.Path.from_uri, originally
+copied from the following location. Python code is licensed
+under the Python Software Foundation License (see LICENSE.Python).
+https://github.com/python/cpython/blob/7ca74a760a5d3cdf48159f003d4db7c2778e9261/Lib/pathlib/_local.py#L862
