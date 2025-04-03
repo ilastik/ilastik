@@ -20,6 +20,8 @@
 ###############################################################################
 from PyQt5.QtWidgets import QPushButton
 from PyQt5.QtGui import QColor
+import os
+from PyQt5.QtWidgets import QFileDialog
 
 
 from ilastik.applets.objectClassification.opObjectClassification import TableExporter
@@ -64,6 +66,26 @@ class ObjectClassificationDataExportGui(DataExportGui, ExportingGui):
         super(ObjectClassificationDataExportGui, self)._initAppletDrawerUic()
         btn = QPushButton("Configure Feature Table Export", clicked=self.configure_table_export)
         self.drawer.exportSettingsGroupBox.layout().addWidget(btn)
+    
+
+
+    def configure_table_export(self):
+        try:
+            input_path = self.topLevelOperatorView.InputImageName.value
+            base, ext = os.path.splitext(input_path)
+            default_filename = f"{base}_features{ext}"
+        except Exception:
+            default_filename = ""
+
+        file_path, _filter = QFileDialog.getSaveFileName(
+            parent=self,
+            caption="Export Feature Table",
+            directory=default_filename,
+        )
+
+        if file_path:
+            self._exporting_operator.OutputFilenameFormat.setValue(file_path)
+
 
 
 class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
