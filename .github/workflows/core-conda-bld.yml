@@ -119,14 +119,14 @@ jobs:
         shell: bash -l {0}
         run: |
           xvfb-run --server-args="-screen 0 1024x768x24" conda-build --test --override-channels \
-            -c ./pkgs -c pytorch -c nvidia -c ilastik-forge -c conda-forge \
+            -c ./pkgs -c ilastik-forge -c conda-forge \
             ./pkgs/noarch/${ILASTIK_PACKAGE_NAME}
       - name: osx test
         if: matrix.os == 'macos-latest'
         shell: bash -l {0}
         run: |
           VOLUMINA_SHOW_3D_WIDGET=0 conda-build --test --override-channels \
-            -c ./pkgs -c pytorch -c nvidia -c ilastik-forge -c conda-forge \
+            -c ./pkgs -c ilastik-forge -c conda-forge \
             ./pkgs/noarch/${ILASTIK_PACKAGE_NAME}
       - name: windows test
         if: matrix.os == 'windows-latest'
@@ -134,7 +134,7 @@ jobs:
         run: |
           set VOLUMINA_SHOW_3D_WIDGET=0
           conda build --test --override-channels ^
-            -c ./pkgs -c pytorch -c nvidia -c ilastik-forge/label/patched -c ilastik-forge -c conda-forge ^
+            -c ./pkgs -c ilastik-forge/label/patched -c ilastik-forge -c conda-forge ^
             ./pkgs/noarch/%ILASTIK_PACKAGE_NAME%
         # HACK: due to a bug in conda-build need to point to
         # libarchive explicitly.
