@@ -44,7 +44,7 @@ import ilastik
 class LicenseDialog(QDialog):
     LICENSE_SHORT = dedent(
         """
-        <p>Copyright © 2011-2022, the ilastik developers <team@ilastik.org></p>
+        <p>Copyright © 2011-2025, the ilastik developers <team@ilastik.org></p>
         <p>
         This program is free software; you can redistribute it and/or
         modify it under the terms of the GNU General Public License
