@@ -39,6 +39,10 @@ from PyQt5.QtWidgets import (
     QMessageBox,
 )
 from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import QUrl, Qt
+from PyQt5.QtWidgets import QMenu
+from PyQt5.QtGui import QDesktopServices
+from pathlib import Path
 
 from lazyflow.graph import Slot
 
@@ -223,10 +227,77 @@ class DataExportGui(QWidget):
 
         # Set up handlers
         self.batchOutputTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
+        # Handle the right-click event
+        self.batchOutputTableWidget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.batchOutputTableWidget.customContextMenuRequested.connect(self.showContextMenu)
 
         # Set up the viewer area
         self.initViewerStack()
         self.splitter.setSizes([150, 850])
+
+    VALID_EXPORT_EXTENSIONS = {
+        ".h5",
+        ".hdf5",
+        ".n5",
+        ".zarr",
+        ".npy",
+        ".bmp",
+        ".gif",
+        ".hdr",
+        ".jpeg",
+        ".jpg",
+        ".pbm",
+        ".pgm",
+        ".ppm",
+        ".ras",
+        ".tif",
+        ".tiff",
+        ".json",
+    }
+
+    def showContextMenu(self, pos):
+        """Handles right-click menu in the export file list."""
+        menu = QMenu(self)
+
+        row = self.batchOutputTableWidget.rowAt(pos.y())
+        exportPathItem = self.batchOutputTableWidget.item(row, Column.ExportLocation)
+        exportPath = exportPathItem.text() if exportPathItem else ""
+
+        if exportPath:
+            exportPath = PathComponents(exportPath).externalPath
+            exportPath = Path(exportPath).resolve() if exportPath else None
+
+        isValidPath = bool(exportPath) and exportPath.exists()
+
+        openFolderAction = menu.addAction("Open Export Folder")
+        openFolderAction.triggered.connect(lambda: self.openExportFolder(row))
+        openFolderAction.setEnabled(isValidPath)
+
+        menu.exec_(self.batchOutputTableWidget.mapToGlobal(pos))
+
+    def openExportFolder(self, row):
+        """Opens the parent folder of the exported file, handling image paths with internal ones."""
+
+        exportPathItem = self.batchOutputTableWidget.item(row, Column.ExportLocation)
+        if not exportPathItem:
+            QMessageBox.warning(self, "Empty Path", "No export path available.")
+            return
+
+        exportPath = PathComponents(exportPathItem.text()).externalPath
+        exportPath = Path(exportPath).resolve()
+
+        if not exportPath:
+            QMessageBox.warning(self, "Invalid Path", "Could not determine a valid export path.")
+            return
+
+        parentDirectory = exportPath.parent if exportPath.is_file() else exportPath
+
+        if parentDirectory.exists():
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(parentDirectory)))
+        else:
+            QMessageBox.warning(
+                self, "Invalid Path", f"The export path does not exist or is invalid: {parentDirectory}"
+            )
 
     def initViewerStack(self):
         self.layerViewerGuis = {}
