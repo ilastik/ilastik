@@ -616,7 +616,7 @@ class OpInputDataReader(Operator):
         # This logs the pixel dimensions of .tiff images
         with TiffFile(filePath) as tif:
             metadata = tif.imagej_metadata
-            if metadata:
+            if metadata is not None and "resolution" in metadata.keys() and "units" in metadata.keys():
                 pixel_dimensions = metadata.get("scales")
                 units = metadata.get("units")
             else:
@@ -630,7 +630,7 @@ class OpInputDataReader(Operator):
         opCache.fixAtCurrent.setValue(False)
         opCache.BlockShape.setValue(page_shape)
         opCache.Input.connect(opReader.Output)
-        if metadata.get("scales") is not None and metadata.get("units") is not None:
+        if pixel_dimensions is not None and units is not None:
             opCache.Output.meta.resolution = tuple(pixel_dimensions.split(","))
             opCache.Output.meta.units = tuple(units.split(","))
 
