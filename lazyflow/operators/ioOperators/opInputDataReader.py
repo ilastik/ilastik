@@ -619,6 +619,9 @@ class OpInputDataReader(Operator):
             if metadata:
                 pixel_dimensions = metadata.get("scales")
                 units = metadata.get("units")
+            else:
+                pixel_dimensions = None
+                units = None
 
         page_shape = opReader.Output.meta.ideal_blockshape
 
@@ -627,8 +630,9 @@ class OpInputDataReader(Operator):
         opCache.fixAtCurrent.setValue(False)
         opCache.BlockShape.setValue(page_shape)
         opCache.Input.connect(opReader.Output)
-        opCache.Output.meta.resolution = tuple(pixel_dimensions.split(","))
-        opCache.Output.meta.units = tuple(units.split(","))
+        if metadata.get("scales") is not None and metadata.get("units") is not None:
+            opCache.Output.meta.resolution = tuple(pixel_dimensions.split(","))
+            opCache.Output.meta.units = tuple(units.split(","))
 
         return ([opReader, opCache], opCache.Output)
 
