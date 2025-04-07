@@ -31,6 +31,9 @@ from ilastik.applets.pixelClassification.opPixelClassification import OpPixelCla
 
 logger = logging.getLogger(__name__)
 
+traceLogger = logging.getLogger("TRACE." + __name__)
+traceLogger.setLevel(logging.DEBUG)
+
 import numpy as np
 
 from ilastik.config import cfg as ilastik_config
@@ -239,6 +242,12 @@ class NewAutocontextWorkflowBase(Workflow):
         Overridden from Workflow base class.
         Called immediately after a new lane is added to the workflow and initialized.
         """
+        # Log pixel dimensions and units (if applicable)
+        opData = self.dataSelectionApplet.topLevelOperator.getLane(0)
+        if opData.Image.meta.resolution and opData.Image.meta.units:
+            traceLogger.debug("Pixel Dimensions: " + (" ".join(map(str, opData.Image.meta.resolution))))
+            traceLogger.debug("Dimension Units: " + (" ".join(map(str, opData.Image.meta.units))))
+
         # Restore classifier we saved in prepareForNewLane() (if any)
         if self.stored_classifers:
             for pcApplet, classifier in zip(self.pcApplets, self.stored_classifers):

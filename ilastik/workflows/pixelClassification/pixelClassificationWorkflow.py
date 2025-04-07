@@ -42,6 +42,9 @@ from ilastik.utility import SlotNameEnum
 from lazyflow.graph import Graph
 from lazyflow.roi import TinyVector, fullSlicing
 
+traceLogger = logging.getLogger("TRACE." + __name__)
+traceLogger.setLevel(logging.DEBUG)
+
 
 class PixelClassificationWorkflow(Workflow):
     workflowName = "Pixel Classification"
@@ -233,6 +236,13 @@ class PixelClassificationWorkflow(Workflow):
         Overridden from Workflow base class.
         Called immediately after a new lane is added to the workflow and initialized.
         """
+
+        # Log pixel dimensions and units (if applicable)
+        opData = self.dataSelectionApplet.topLevelOperator.getLane(0)
+        if opData.Image.meta.resolution and opData.Image.meta.units:
+            traceLogger.debug("Pixel Dimensions: " + (" ".join(map(str, opData.Image.meta.resolution))))
+            traceLogger.debug("Dimension Units: " + (" ".join(map(str, opData.Image.meta.units))))
+
         # Restore classifier we saved in prepareForNewLane() (if any)
         if self.stored_classifier:
             self.pcApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifier)
