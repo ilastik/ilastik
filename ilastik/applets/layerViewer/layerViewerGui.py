@@ -152,6 +152,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         self._initialized = False
         self._need_update = True
         self.__cleanup_fns = []
+        self._layer_toggle_mode = 0 
 
         self.threadRouter = ThreadRouter(self)  # For using @threadRouted
 
@@ -551,6 +552,35 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
             for layer in self.layerstack:
                 layer.visible = False
             self.getLayerByName(raw_layer_name).visible = True
+    
+    def cycle_layer_visibility(self):
+        """
+        Cycle between:
+        0: Raw only
+        1: Raw + Uncertainty
+        2: Raw + Probabilities (all channels)
+        """
+        # Hide all layers
+        for layer in self.layerstack:
+            layer.visible = False
+
+        # Raw layer is always visible
+        raw_layer = self.getLayerByName("Raw Data")
+        if raw_layer:
+            raw_layer.visible = True
+
+        if self._layer_toggle_mode == 1:
+            uncertainty_layer = self.getLayerByName("Uncertainty")
+            if uncertainty_layer:
+                uncertainty_layer.visible = True
+
+        elif self._layer_toggle_mode == 2:
+            for layer in self.layerstack:
+                if "Probabilities" in layer.name:
+                    layer.visible = True
+
+        self._layer_toggle_mode = (self._layer_toggle_mode + 1) % 3
+
 
     @threadRouted
     def setViewerPos(self, pos, setTime=False, setChannel=False):
@@ -618,6 +648,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
 
         if self.__viewerControlWidget is not None:
             self.__viewerControlWidget.setupConnections(model)
+        ShortcutManager().register("Cycle Layer Visibility", Qt.ShiftModifier | Qt.Key_I, self.cycle_layer_visibility)
 
     def initAppletDrawerUi(self):
         """
