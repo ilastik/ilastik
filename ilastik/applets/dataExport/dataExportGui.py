@@ -235,26 +235,6 @@ class DataExportGui(QWidget):
         self.initViewerStack()
         self.splitter.setSizes([150, 850])
 
-    VALID_EXPORT_EXTENSIONS = {
-        ".h5",
-        ".hdf5",
-        ".n5",
-        ".zarr",
-        ".npy",
-        ".bmp",
-        ".gif",
-        ".hdr",
-        ".jpeg",
-        ".jpg",
-        ".pbm",
-        ".pgm",
-        ".ppm",
-        ".ras",
-        ".tif",
-        ".tiff",
-        ".json",
-    }
-
     def showContextMenu(self, pos):
         """Handles right-click menu in the export file list."""
         menu = QMenu(self)
@@ -279,16 +259,9 @@ class DataExportGui(QWidget):
         """Opens the parent folder of the exported file, handling image paths with internal ones."""
 
         exportPathItem = self.batchOutputTableWidget.item(row, Column.ExportLocation)
-        if not exportPathItem:
-            QMessageBox.warning(self, "Empty Path", "No export path available.")
-            return
 
         exportPath = PathComponents(exportPathItem.text()).externalPath
         exportPath = Path(exportPath).resolve()
-
-        if not exportPath:
-            QMessageBox.warning(self, "Invalid Path", "Could not determine a valid export path.")
-            return
 
         parentDirectory = exportPath.parent if exportPath.is_file() else exportPath
 
