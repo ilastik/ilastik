@@ -247,7 +247,8 @@ class DataExportGui(QWidget):
             exportPath = PathComponents(exportPath).externalPath
             exportPath = Path(exportPath).resolve() if exportPath else None
 
-        isValidPath = bool(exportPath) and exportPath.exists()
+        exportDir = self._get_export_dir(row)
+        isValidPath = exportDir.exists() if exportDir else False
 
         openFolderAction = menu.addAction("Open Export Folder")
         openFolderAction.triggered.connect(lambda: self.openExportFolder(row))
@@ -256,21 +257,25 @@ class DataExportGui(QWidget):
         menu.exec_(self.batchOutputTableWidget.mapToGlobal(pos))
 
     def openExportFolder(self, row):
-        """Opens the parent folder of the exported file, handling image paths with internal ones."""
+        exportDir = self._get_export_dir(row)
 
-        exportPathItem = self.batchOutputTableWidget.item(row, Column.ExportLocation)
-
-        exportPath = PathComponents(exportPathItem.text()).externalPath
-        exportPath = Path(exportPath).resolve()
-
-        parentDirectory = exportPath.parent if exportPath.is_file() else exportPath
-
-        if parentDirectory.exists():
-            QDesktopServices.openUrl(QUrl.fromLocalFile(str(parentDirectory)))
+        if exportDir and exportDir.exists():
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(exportDir)))
         else:
-            QMessageBox.warning(
-                self, "Invalid Path", f"The export path does not exist or is invalid: {parentDirectory}"
-            )
+            QMessageBox.warning(self, "Invalid Path", f"The export path does not exist or is invalid: {exportDir}")
+
+    def _get_export_dir(self, row):
+        """Returns the parent directory of the export path, or None if invalid."""
+        exportPathItem = self.batchOutputTableWidget.item(row, Column.ExportLocation)
+        if not exportPathItem:
+            return None
+
+        try:
+            exportPath = Path(PathComponents(exportPathItem.text()).externalPath).resolve()
+        except Exception:
+            return None
+
+        return exportPath.parent
 
     def initViewerStack(self):
         self.layerViewerGuis = {}
