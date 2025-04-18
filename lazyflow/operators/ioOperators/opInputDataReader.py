@@ -251,7 +251,6 @@ class OpInputDataReader(Operator):
             self.opInjector.Metadata.setValue({})
 
         # Directly connect our own output to the internal output
-        traceLogger.debug(self.internalOutput.meta.resolution)
         self.Output.connect(self.opInjector.Output)
 
     def _attemptOpenAsKlb(self, filePath):

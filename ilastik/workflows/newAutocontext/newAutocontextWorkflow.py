@@ -244,7 +244,6 @@ class NewAutocontextWorkflowBase(Workflow):
         """
         # Log pixel dimensions and units (if applicable)
         for image in range(start, end):
-            traceLogger.debug(image)
             opData = self.dataSelectionApplet.topLevelOperator.getLane(image)
             if opData.Image.meta.resolution and opData.Image.meta.units:
                 traceLogger.debug("Pixel Dimensions: " + (" ".join(map(str, opData.Image.meta.resolution))))
