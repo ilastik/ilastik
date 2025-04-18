@@ -237,16 +237,18 @@ class NewAutocontextWorkflowBase(Workflow):
             else:
                 self.stored_classifers = []
 
-    def handleNewLanesAdded(self):
+    def handleNewLanesAdded(self, start, end):
         """
         Overridden from Workflow base class.
         Called immediately after a new lane is added to the workflow and initialized.
         """
         # Log pixel dimensions and units (if applicable)
-        opData = self.dataSelectionApplet.topLevelOperator.getLane(0)
-        if opData.Image.meta.resolution and opData.Image.meta.units:
-            traceLogger.debug("Pixel Dimensions: " + (" ".join(map(str, opData.Image.meta.resolution))))
-            traceLogger.debug("Dimension Units: " + (" ".join(map(str, opData.Image.meta.units))))
+        for image in range(start, end):
+            traceLogger.debug(image)
+            opData = self.dataSelectionApplet.topLevelOperator.getLane(image)
+            if opData.Image.meta.resolution and opData.Image.meta.units:
+                traceLogger.debug("Pixel Dimensions: " + (" ".join(map(str, opData.Image.meta.resolution))))
+                traceLogger.debug("Dimension Units: " + (" ".join(map(str, opData.Image.meta.units))))
 
         # Restore classifier we saved in prepareForNewLane() (if any)
         if self.stored_classifers:

@@ -467,7 +467,7 @@ class DataSelectionGui(QWidget):
             # if only adding new lanes, notify the workflow
             if startingLaneNum >= originalNumLanes:
                 workflow = self.parentApplet.topLevelOperator.parent
-                workflow.handleNewLanesAdded()
+                workflow.handleNewLanesAdded(startingLaneNum, endingLaneNum + 1)
 
             # Notify the workflow that something that could affect applet readyness has occurred.
             self.parentApplet.appletStateUpdateRequested()

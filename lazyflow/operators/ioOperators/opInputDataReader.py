@@ -616,7 +616,7 @@ class OpInputDataReader(Operator):
         # This logs the pixel dimensions of .tiff images
         with TiffFile(filePath) as tif:
             metadata = tif.imagej_metadata
-            if metadata is not None and "resolution" in metadata.keys() and "units" in metadata.keys():
+            if metadata is not None and "scales" in metadata.keys() and "units" in metadata.keys():
                 pixel_dimensions = metadata.get("scales")
                 units = metadata.get("units")
             else:
