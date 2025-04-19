@@ -83,6 +83,7 @@ class NewAutocontextWorkflowBase(Workflow):
         )
         self.stored_classifers = []
         self._applets = []
+        self.lanes = []
         self._workflow_cmdline_args = workflow_cmdline_args
 
         # Parse workflow-specific command-line args
@@ -243,11 +244,12 @@ class NewAutocontextWorkflowBase(Workflow):
         Called immediately after a new lane is added to the workflow and initialized.
         """
         # Log pixel dimensions and units (if applicable)
-        for image in range(start, end):
+        for image in self.lanes:
             opData = self.dataSelectionApplet.topLevelOperator.getLane(image)
             if opData.Image.meta.resolution and opData.Image.meta.units:
                 traceLogger.debug("Pixel Dimensions: " + (" ".join(map(str, opData.Image.meta.resolution))))
                 traceLogger.debug("Dimension Units: " + (" ".join(map(str, opData.Image.meta.units))))
+        self.lanes = []
 
         # Restore classifier we saved in prepareForNewLane() (if any)
         if self.stored_classifers:

@@ -79,6 +79,9 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         )
         self._applets = []
 
+        # Lane list for metadata extraction
+        self.lanes = []
+
         # -- DataSelection applet
         #
         self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", forceAxisOrder=["zyxc", "yxc"])
@@ -172,11 +175,12 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         opClassifierCache = opEdgeTrainingWithMulticut.opEdgeTraining.opClassifierCache
 
         # Log pixel dimensions and units (if applicable)
-        for image in range(start, end):
+        for image in self.lanes:
             opData = self.dataSelectionApplet.topLevelOperator.getLane(image)
             if opData.Image.meta.resolution and opData.Image.meta.units:
                 traceLogger.debug("Pixel Dimensions: " + (" ".join(map(str, opData.Image.meta.resolution))))
                 traceLogger.debug("Dimension Units: " + (" ".join(map(str, opData.Image.meta.units))))
+        self.lanes = []
 
         # Restore classifier we saved in prepareForNewLane() (if any)
         if self.stored_classifier:

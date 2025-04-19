@@ -76,6 +76,9 @@ class CountingWorkflow(Workflow):
         role_names = ["Raw Data"]
         opDataSelection.DatasetRoles.setValue(role_names)
 
+        # Lane list for metadata extraction
+        self.lanes = []
+
         self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections")
 
         self.countingApplet = CountingApplet(workflow=self)
@@ -145,11 +148,12 @@ class CountingWorkflow(Workflow):
         Called immediately after a new lane is added to the workflow and initialized.
         """
         # Log pixel dimensions and units (if applicable)
-        for image in range(start, end):
+        for image in self.lanes:
             opData = self.dataSelectionApplet.topLevelOperator.getLane(image)
             if opData.Image.meta.resolution and opData.Image.meta.units:
                 traceLogger.debug("Pixel Dimensions: " + (" ".join(map(str, opData.Image.meta.resolution))))
                 traceLogger.debug("Dimension Units: " + (" ".join(map(str, opData.Image.meta.units))))
+        self.lanes = []
 
         # Restore classifier we saved in prepareForNewLane() (if any)
         if self.stored_classifier is not None:
