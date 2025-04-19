@@ -142,7 +142,7 @@ class CountingWorkflow(Workflow):
         else:
             self.stored_classifier = None
 
-    def handleNewLanesAdded(self, start, end):
+    def handleNewLanesAdded(self):
         """
         Overridden from Workflow base class.
         Called immediately after a new lane is added to the workflow and initialized.
