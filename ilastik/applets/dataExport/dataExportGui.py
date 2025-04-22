@@ -137,7 +137,12 @@ class DataExportGui(QWidget):
             multislot[index].notifyReady(bind(self.updateTableForSlot))
             if multislot[index].ready():
                 self.updateTableForSlot(multislot[index])
-
+            
+            @threadRoutedWithRouter(self.threadRouter)
+            def _update_export_path(slot):
+                self.updateTableForSlot(slot)
+            
+            multislot[index].notifyDirty(bind(_update_export_path))
             multislot[index].notifyUnready(self._updateExportButtons)
             multislot[index].notifyReady(self._updateExportButtons)
 
@@ -149,10 +154,6 @@ class DataExportGui(QWidget):
             handleNewDataset(self.topLevelOperator.ExportPath, i)
             if subslot.ready():
                 self.updateTableForSlot(subslot)
-
-        self.topLevelOperator.OutputFormat.notifyDirty(
-            lambda *args: [self.updateTableForSlot(slot) for slot in self.topLevelOperator.ExportPath]
-        )
 
         @threadRoutedWithRouter(self.threadRouter)
         def handleLaneRemoved(multislot, index, finalLength):
