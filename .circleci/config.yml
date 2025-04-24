@@ -8,7 +8,7 @@ jobs:
     environment:
       ILASTIK_ROOT: /root/ilastik
     docker:
-    - image: condaforge/mambaforge
+    - image: condaforge/miniforge3
     steps:
     - checkout
     - run:
@@ -37,6 +37,8 @@ jobs:
       ON_CIRCLE_CI: 1
       TEST_ENV_NAME: test-env
       VOLUMINA_SHOW_3D_WIDGET: 0
+      # Needed to have the apt dependencies install without interaction -> stop/timeout
+      DEBIAN_FRONTEND: noninteractive
     docker:
     - image: condaforge/miniforge3
     steps:
