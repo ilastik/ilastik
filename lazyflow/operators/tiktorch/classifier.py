@@ -149,7 +149,7 @@ class ModelSession:
             axes = "".join(axes.keys())
         axis_utils = InputAxisUtils(self.__model_descr.inputs)
         explicit_shape = axis_utils.get_best_tile_shape(self.input_descr.id)
-        logger.warning(f"Best tile estimated {explicit_shape}")
+        logger.debug(f"Best tile estimated {explicit_shape}")
         default_axes = defaultdict(lambda: 1, explicit_shape)
         return {str(self.input_descr.id): [tuple(default_axes[axis] for axis in axes)]}
 
