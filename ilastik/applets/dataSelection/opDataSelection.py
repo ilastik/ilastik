@@ -107,6 +107,9 @@ class DatasetInfo(ABC):
         drange: Tuple[Number, Number] = None,
         working_scale: str = DEFAULT_SCALE_KEY,
         scale_locked: bool = False,
+        #Dual-scale support
+        #label_scale: Optional[str] = None,
+        #compute_scale: Optional[str] = None,
     ):
         if axistags and len(axistags) != len(laneShape):
             raise UnsuitedAxistagsException(axistags, laneShape)
@@ -129,6 +132,9 @@ class DatasetInfo(ABC):
         self.working_scale = working_scale
         self.scale_locked = scale_locked
         self.scales = OrderedDict()  # {scale_key: tagged_scale_shape}, see MultiscaleStore.multiscales
+        # Dual-scale support
+        #self.label_scale = label_scale  # coarse (annotation) scale key
+        #self.compute_scale = compute_scale  # fine (compute) scale key
 
     @property
     def shape5d(self) -> Shape5D:
@@ -179,6 +185,9 @@ class DatasetInfo(ABC):
             "location": self.legacy_location.encode("utf-8"),  # legacy support
             "filePath": self.effective_path.encode("utf-8"),  # legacy support
             "datasetId": self.legacy_datasetId.encode("utf-8"),  # legacy support
+            # Dual-scale fields
+            #"label_scale": (self.label_scale.encode("utf-8") if self.label_scale is not None else None),
+            #"compute_scale": (self.compute_scale.encode("utf-8") if self.compute_scale is not None else None),
             "__class__": self.__class__.__name__.encode("utf-8"),
         }
 
@@ -222,6 +231,11 @@ class DatasetInfo(ABC):
                     params["working_scale"] = scales[saved_scale]["key"]
         if "scale_locked" in data:
             params["scale_locked"] = bool(data["scale_locked"][()])
+        # Dual-scale support: read label_scale & compute_scale if present
+        #if "label_scale" in data:
+        #   params["label_scale"] = data["label_scale"][()].decode("utf-8")
+        #if "compute_scale" in data:
+        #    params["compute_scale"] = data["compute_scale"][()].decode("utf-8")
         return cls(**params)
 
     def is_in_filesystem(self) -> bool:
