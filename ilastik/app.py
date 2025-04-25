@@ -134,8 +134,7 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
     if init_logging:
         _init_logging(parsed_args)  # Initialize logging before anything else
 
-    this_path = os.path.dirname(__file__)
-    ilastik_dir = os.path.abspath(os.path.join(this_path, "..%s.." % os.path.sep))
+    executable_location = Path(sys.executable).parent
     _import_h5py_with_utf8_encoding()
     _update_hbp_mode(parsed_args)
     _update_tiktorch_executable_location(parsed_args)
@@ -180,9 +179,9 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
     _init_excepthooks(parsed_args)
 
     if ilastik_config.getboolean("ilastik", "debug"):
-        message = f"Starting ilastik in debug mode from {ilastik_dir}"
+        message = f"Starting ilastik in debug mode from {executable_location}"
     else:
-        message = f"Starting ilastik from {ilastik_dir}"
+        message = f"Starting ilastik from {executable_location}"
     logger.info(message)
     print(message)  # always print the startup message
 
