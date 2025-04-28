@@ -281,11 +281,11 @@ def test_match_raw_input_scale_metadata_multi_scale_export(tmp_path, tiny_5d_vig
     # The tiny_5d_array is 5x5x5; in this test it represents a subregion of source_scale after a 3/3/3 offset
     export_offset = (0, 0, 3, 3, 3)
     multiscales: multiscaleStore.Multiscales = OrderedDict(
-        [
-            ("upscale", OrderedDict([("t", 2), ("z", 34), ("y", 34), ("x", 34)])),
-            ("raw_scale", OrderedDict([("t", 2), ("z", 17), ("y", 17), ("x", 17)])),
-            ("source_scale", OrderedDict([("t", 2), ("z", 8), ("y", 8), ("x", 8)])),
-            ("downscale", OrderedDict([("t", 2), ("z", 4), ("y", 4), ("x", 4)])),
+        [  # Include c to make sure export metadata ignores it as it should
+            ("upscale", OrderedDict([("t", 2), ("z", 34), ("y", 34), ("x", 34), ("c", 3)])),
+            ("raw_scale", OrderedDict([("t", 2), ("z", 17), ("y", 17), ("x", 17), ("c", 3)])),
+            ("source_scale", OrderedDict([("t", 2), ("z", 8), ("y", 8), ("x", 8), ("c", 3)])),
+            ("downscale", OrderedDict([("t", 2), ("z", 4), ("y", 4), ("x", 4), ("c", 3)])),
         ]
     )
     source_op.Output.meta.scales = multiscales
@@ -335,18 +335,17 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
     * Additional metadata should be carried over (axis units, multiscale transformations)
     * Offset should be computed based on the source scale's translation and scale
     """
-    # TODO: Are there any edge cases with channels that could occur?
     export_path = tmp_path / "test_multi_to_multi.zarr"
     source_op = tiny_5d_vigra_array_piper
     progress = mock.Mock()
     # The tiny_5d_array is 5x5x5; in this test it represents a subregion of source_scale after a 3/3/3 offset
     export_offset = (0, 0, 3, 3, 3)
     multiscales: multiscaleStore.Multiscales = OrderedDict(
-        [
-            ("upscale", OrderedDict([("t", 2), ("z", 34), ("y", 34), ("x", 34)])),
-            ("raw_scale", OrderedDict([("t", 2), ("z", 17), ("y", 17), ("x", 17)])),
-            ("source_scale", OrderedDict([("t", 2), ("z", 8), ("y", 8), ("x", 8)])),
-            ("downscale", OrderedDict([("t", 2), ("z", 4), ("y", 4), ("x", 4)])),
+        [  # Include c to make sure export metadata ignores it as it should
+            ("upscale", OrderedDict([("t", 2), ("z", 34), ("y", 34), ("x", 34), ("c", 3)])),
+            ("raw_scale", OrderedDict([("t", 2), ("z", 17), ("y", 17), ("x", 17), ("c", 3)])),
+            ("source_scale", OrderedDict([("t", 2), ("z", 8), ("y", 8), ("x", 8), ("c", 3)])),
+            ("downscale", OrderedDict([("t", 2), ("z", 4), ("y", 4), ("x", 4), ("c", 3)])),
         ]
     )
     source_op.Output.meta.scales = multiscales
