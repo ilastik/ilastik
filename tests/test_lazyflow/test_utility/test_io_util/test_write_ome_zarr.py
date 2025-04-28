@@ -302,19 +302,11 @@ def test_match_raw_input_scale_metadata_multi_scale_export(tmp_path, tiny_5d_vig
     )
     # Expected output scaling: source scale * target scaling relative to source
     s = 34 / 8  # source scale = base shape / uncropped source shape
-    upscale = [1.0, 1.0, s * 5 / 13, s * 5 / 12, s * 5 / 12]  # cropped source shape / target shape
+    expected_upscale = [1.0, 1.0, s * 5 / 13, s * 5 / 12, s * 5 / 12]  # cropped source shape / target shape
     # 2px would be the result of scaling 5px by 2.0.
     # The scaling implementation in OpResize is precise though, so metadata should not be rounded.
-    downscale = [1.0, 1.0, s * 5 / 2, s * 5 / 2, s * 5 / 2]
-    translation = [0.0, 0.0, s * 3, s * 3, s * 3]  # offset in pixels * source scaling; reordered to export axes
-    expected_upscale_transform = [
-        {"type": "scale", "scale": upscale},
-        {"type": "translation", "translation": translation},
-    ]
-    expected_downscale_transform = [
-        {"type": "scale", "scale": downscale},
-        {"type": "translation", "translation": translation},
-    ]
+    expected_downscale = [1.0, 1.0, s * 5 / 2, s * 5 / 2, s * 5 / 2]
+    expected_translation = [0.0, 0.0, s * 3, s * 3, s * 3]  # offset in pixels * source scaling
 
     write_ome_zarr(str(export_path), source_op.Output, progress, export_offset, target_scales)
 
@@ -324,9 +316,14 @@ def test_match_raw_input_scale_metadata_multi_scale_export(tmp_path, tiny_5d_vig
     assert "datasets" in m and "path" in m["datasets"][0]
     assert len(m["datasets"]) == 2
     assert m["datasets"][0]["path"] == "weird_upscale"
-    assert m["datasets"][0]["coordinateTransformations"] == expected_upscale_transform
+    # The factor calculations come out unequal at 1e-16
+    upscale_transforms = m["datasets"][0]["coordinateTransformations"]
+    numpy.testing.assert_allclose(upscale_transforms[0]["scale"], expected_upscale, atol=1e-15)
+    numpy.testing.assert_allclose(upscale_transforms[1]["translation"], expected_translation, atol=1e-15)
     assert m["datasets"][1]["path"] == "downscale"
-    assert m["datasets"][1]["coordinateTransformations"] == expected_downscale_transform
+    downscale_transforms = m["datasets"][1]["coordinateTransformations"]
+    numpy.testing.assert_allclose(downscale_transforms[0]["scale"], expected_downscale, atol=1e-15)
+    numpy.testing.assert_allclose(downscale_transforms[1]["translation"], expected_translation, atol=1e-15)
 
 
 def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array_piper):
