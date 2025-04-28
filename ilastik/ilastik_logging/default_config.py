@@ -212,8 +212,9 @@ def init(format_prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, l
         output_mode = OutputMode.CONSOLE
 
     if output_mode != OutputMode.CONSOLE:
-        os.makedirs(os.path.dirname(logfile_path), exist_ok=True)
-        _delete_old_session_logs(log_dir=Path(logfile_path).parent)
+        log_dir = Path(logfile_path).parent
+        log_dir.mkdir(parents=True, exist_ok=True)
+        _delete_old_session_logs(log_dir=log_dir)
 
     # Preserve pre-existing handlers
     original_root_handlers = list(logging.getLogger().handlers)
