@@ -20,8 +20,7 @@
 ###############################################################################
 # pyright: strict
 from collections import OrderedDict
-from pathlib import Path
-from typing import Annotated, Dict, List, Literal, Optional, Tuple, Type
+from typing import Annotated, Dict, List, Optional, Tuple
 
 import annotated_types
 import numpy
@@ -32,7 +31,6 @@ from ilastik.applets.base.appletSerializer.legacyClassifiers import (
     deserialize_classifier,
     deserialize_classifier_factory,
 )
-from ilastik.applets.base.appletSerializer.serializerUtils import deserialize_string_from_h5
 from ilastik.experimental.parser._h5helpers import (
     deserialize_arraylike_from_h5,
     deserialize_axistags_from_h5,
@@ -111,7 +109,18 @@ class FeatureMatrix(BaseModel):
     )
 
 
-class Classifier(BaseModel):
+class ClassifierBase(BaseModel):
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+    classifier: Annotated[
+        LazyflowVectorwiseClassifierABC,
+        BeforeValidator(deserialize_classifier),
+    ] = Field(alias="ClassifierForests")
+    label_names: List[str] = Field(alias="LabelNames")
+
+
+class Classifier(ClassifierBase):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
     )
@@ -119,12 +128,27 @@ class Classifier(BaseModel):
     classifier_factory: Annotated[
         LazyflowVectorwiseClassifierFactoryABC, BeforeValidator(deserialize_classifier_factory)
     ] = Field(alias="ClassifierFactory")
-    classifier: Annotated[
-        LazyflowVectorwiseClassifierABC,
-        BeforeValidator(deserialize_classifier),
-    ] = Field(alias="ClassifierForests")
-    label_names: List[str] = Field(alias="LabelNames")
 
-    @property
-    def label_count(self) -> int:
-        return len(self.label_names)
+
+class ObjectClassificationClassifier(ClassifierBase):
+    pass
+
+
+class SmootherSigma(BaseModel):
+    x: Annotated[float, BeforeValidator(deserialize_arraylike_from_h5)]
+    y: Annotated[float, BeforeValidator(deserialize_arraylike_from_h5)]
+    z: Annotated[float, BeforeValidator(deserialize_arraylike_from_h5)]
+
+
+class ThresholdTwoLevels(BaseModel):
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+    min_size: Annotated[int, BeforeValidator(deserialize_arraylike_from_h5)] = Field(alias="MinSize")
+    max_size: Annotated[int, BeforeValidator(deserialize_arraylike_from_h5)] = Field(alias="MaxSize")
+    sigmas: SmootherSigma = Field(alias="SmootherSigma")
+    low_threshold: Annotated[float, BeforeValidator(deserialize_arraylike_from_h5)] = Field(alias="LowThreshold")
+    high_threshold: Annotated[float, BeforeValidator(deserialize_arraylike_from_h5)] = Field(alias="HighThreshold")
+    threshold_operator: Annotated[int, BeforeValidator(deserialize_arraylike_from_h5)] = Field(alias="CurOperator")
+    channel: Annotated[int, BeforeValidator(deserialize_arraylike_from_h5)] = Field(alias="Channel")
+    core_channel: Annotated[int, BeforeValidator(deserialize_arraylike_from_h5)] = Field(alias="CoreChannel")

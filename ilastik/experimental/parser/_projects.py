@@ -37,3 +37,16 @@ class AutocontextProject(BaseModel):
     classifier_stage1: types.Classifier = Field(alias="PixelClassification")
     feature_matrix_stage2: types.FeatureMatrix = Field(alias="FeatureSelections01")
     classifier_stage2: types.Classifier = Field(alias="PixelClassification01")
+
+
+class _ObjectClassificationProjectBase(BaseModel):
+    input_data: types.InputData = Field(alias="Input Data")
+    classifier: types.ObjectClassificationClassifier = Field(alias="ObjectClassification")
+
+
+class ObjectClassificationFromSegmentationProject(_ObjectClassificationProjectBase):
+    pass
+
+
+class ObjectClassificationFromProbabilitiesProject(_ObjectClassificationProjectBase):
+    threshdolding: types.ThresholdTwoLevels = Field(alias="ThresholdTwoLevels")
