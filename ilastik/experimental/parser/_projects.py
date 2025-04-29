@@ -41,6 +41,7 @@ class AutocontextProject(BaseModel):
 
 class _ObjectClassificationProjectBase(BaseModel):
     input_data: types.InputData = Field(alias="Input Data")
+    object_extraction: types.ObjectExtraction = Field(alias="ObjectExtraction")
     classifier: types.ObjectClassificationClassifier = Field(alias="ObjectClassification")
 
 

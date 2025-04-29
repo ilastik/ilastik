@@ -31,6 +31,7 @@ from ilastik.applets.base.appletSerializer.legacyClassifiers import (
     deserialize_classifier,
     deserialize_classifier_factory,
 )
+from ilastik.applets.base.appletSerializer.serializerUtils import deserialize_string_from_h5
 from ilastik.experimental.parser._h5helpers import (
     deserialize_arraylike_from_h5,
     deserialize_axistags_from_h5,
@@ -39,6 +40,7 @@ from ilastik.experimental.parser._h5helpers import (
 from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
 NDShape = Annotated[Tuple[int, ...], annotated_types.Len(2, 6)]
+OCMargin = Annotated[Tuple[int, ...], annotated_types.Len(2, 3)]
 LaneName = Annotated[str, StringConstraints(pattern=r"lane\d{4}")]
 
 
@@ -152,3 +154,32 @@ class ThresholdTwoLevels(BaseModel):
     threshold_operator: Annotated[int, BeforeValidator(deserialize_arraylike_from_h5)] = Field(alias="CurOperator")
     channel: Annotated[int, BeforeValidator(deserialize_arraylike_from_h5)] = Field(alias="Channel")
     core_channel: Annotated[int, BeforeValidator(deserialize_arraylike_from_h5)] = Field(alias="CoreChannel")
+
+
+class ObjectFeature(BaseModel):
+    # TODO:
+    # pydantic.errors.PydanticSchemaGenerationError:
+    #    Unable to generate pydantic-core schema for numpy.ndarray[typing.Any, numpy.dtype[numpy.bool_]].
+    # Set `arbitrary_types_allowed=True` in the model_config to ignore this error or implement
+    # `__get_pydantic_core_schema__` on your type to fully support it.
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+    advanced: Annotated[numpy.bool_, BeforeValidator(deserialize_arraylike_from_h5)]
+    detailtext: Annotated[str, BeforeValidator(deserialize_string_from_h5)]
+    displaytext: Annotated[str, BeforeValidator(deserialize_string_from_h5)]
+    tooltip: Annotated[str, BeforeValidator(deserialize_string_from_h5)]
+    group: Optional[Annotated[str, BeforeValidator(deserialize_string_from_h5)]] = None
+    margin: Optional[
+        Annotated[
+            OCMargin, BeforeValidator(lambda x: tuple(x.tolist())), BeforeValidator(deserialize_arraylike_from_h5)
+        ]
+    ] = None
+
+
+class ObjectExtraction(BaseModel):
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+    feature_plugins: Dict[str, Dict[str, ObjectFeature]] = Field(alias="Features")
