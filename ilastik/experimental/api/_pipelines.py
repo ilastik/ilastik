@@ -19,6 +19,7 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 # pyright: strict
+from abc import ABC, abstractmethod
 import warnings
 from typing import Literal, Union
 
@@ -35,7 +36,13 @@ from lazyflow.operators.classifierOperators import OpClassifierPredict
 from lazyflow.operators.generic import OpMultiArrayStacker, OpPixelOperator
 
 
-class PixelClassificationPipeline:
+class Pipeline(ABC):
+    @abstractmethod
+    @classmethod
+    def from_ilp_file(cls, path: str) -> "Pipeline": ...
+
+
+class PixelClassificationPipeline(Pipeline):
     """
     Pipeline for accessing trained Pixel Classification classifiers from Python
 
@@ -139,7 +146,7 @@ class PixelClassificationPipeline:
         return xarray.DataArray(probabilities, dims=tuple(self._predict_op.PMaps.meta.axistags.keys()))
 
 
-class AutocontextPipeline:
+class AutocontextPipeline(Pipeline):
     """
     Pipeline for accessing trained Autocontext classifiers from Python
 
