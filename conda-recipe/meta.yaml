@@ -1,4 +1,6 @@
 {% set setup_py_data = load_setup_py_data(setup_file='../setup.py', from_recipe_dir=True) %}
+{% set build_no = 1 %}
+
 
 package:
   name: ilastik-package-meta-recipe
@@ -12,7 +14,7 @@ outputs:
   - name: ilastik-core
 
     build:
-      number: 0
+      number: {{ build_no }}
       noarch: python
       script_env:
         - SETUPTOOLS_SCM_PRETEND_VERSION={{ setup_py_data.version }}
@@ -111,6 +113,7 @@ outputs:
 
   - name: ilastik
     build:
+      number: {{ build_no }}
       noarch: python
       entry_points:
         - ilastik = ilastik_scripts.ilastik_startup:main
@@ -163,6 +166,7 @@ outputs:
 
   - name: ilastik-gpu
     build:
+      number: {{ build_no }}
       noarch: python
       entry_points:
         - ilastik = ilastik_scripts.ilastik_startup:main
