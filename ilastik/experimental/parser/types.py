@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Annotated, Dict, List, Literal, Optional, Tuple, Type
 
 import annotated_types
+import h5py
 import numpy
 import numpy.typing as npt
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, StringConstraints
@@ -42,6 +43,48 @@ from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVector
 
 NDShape = Annotated[Tuple[int, ...], annotated_types.Len(2, 6)]
 LaneName = Annotated[str, StringConstraints(pattern=r"lane\d{4}")]
+
+RELATIVE_CLASS = "RelativeFilesystemDatasetInfo"
+ABSOLUTE_CLASS = "FilesystemDatasetInfo"
+
+
+class ILPLocationAware(BaseModel):
+    def model_post_init(self, __context):
+        self._ilp_file = __context["ilp_file"]
+
+    @property
+    def ilp(self):
+        return self._ilp_file
+
+
+class ILPBase(BaseModel):
+    def model_dump_hdf5(
+        self,
+        h5group: h5py.Group,
+        *,
+        mode: Literal["hdf5"] = "hdf5",
+        include=None,
+        exclude=None,
+        exclude_unset: bool = False,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
+        round_trip: bool = False,
+        warnings: bool = True,
+    ) -> h5py.Group:
+        python_model = super().model_dump(
+            mode="python",
+            include=include,
+            exclude=exclude,
+            by_alias=True,
+            exclude_unset=exclude_unset,
+            exclude_defaults=exclude_defaults,
+            exclude_none=exclude_none,
+            round_trip=round_trip,
+            warnings=warnings,
+        )
+
+        write_level(h5group, python_model)
+        return h5group
 
 
 class VigraAxisTags(BaseModel):
