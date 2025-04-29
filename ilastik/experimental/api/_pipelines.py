@@ -277,6 +277,44 @@ class AutocontextPipeline(Pipeline):
         return self._get_probabilities(raw_data, stage=2)
 
 
+class ObjectClassifcationFromSegmentationPipeline(Pipeline):
+
+    @classmethod
+    def from_ilp_file(cls, path: str) -> "ObjectClassifcationFromSegmentationPipeline":
+        """
+        Create an Autocontext Pipeline instance from a trained project.ilp file
+
+        Args:
+            path: Path to the ilp file
+
+        Returns:
+            AutocontextPipeline instance configured with trained classifier
+        """
+        with h5py.File(path, "r") as f:
+            project = parser.AutocontextProject.model_validate(f)
+
+        return cls(project)
+
+
+class ObjectClassifcationFromPredictionPipeline(Pipeline):
+
+    @classmethod
+    def from_ilp_file(cls, path: str) -> "ObjectClassifcationFromPredictionPipeline":
+        """
+        Create an Autocontext Pipeline instance from a trained project.ilp file
+
+        Args:
+            path: Path to the ilp file
+
+        Returns:
+            AutocontextPipeline instance configured with trained classifier
+        """
+        with h5py.File(path, "r") as f:
+            project = parser.AutocontextProject.model_validate(f)
+
+        return cls(project)
+
+
 def ensure_channel_axis(axis_order):
     if "c" not in axis_order:
         return axis_order + "c"
