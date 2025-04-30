@@ -19,17 +19,15 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-import os
-import collections
 import contextlib
+import os
+from collections import OrderedDict, namedtuple
 from functools import partial
 
 import numpy
 import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import roiFromShape
-from lazyflow.utility import OrderedSignal, format_known_keys, PathComponents, mkdir_p, isUrl
 from lazyflow.operators.ioOperators import (
     OpH5N5WriterBigDataset,
     OpStreamingH5N5Reader,
@@ -40,7 +38,9 @@ from lazyflow.operators.ioOperators import (
     OpExportMultipageTiffSequence,
     OpExportToArray,
 )
-from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr
+from lazyflow.roi import roiFromShape
+from lazyflow.utility import OrderedSignal, format_known_keys, PathComponents, mkdir_p, isUrl
+from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr, get_chunk_shape, OME_ZARR_AXES, SPATIAL_AXES
 
 try:
     from lazyflow.operators.ioOperators import OpExportDvidVolume
@@ -51,7 +51,7 @@ except ImportError as ex:
         raise
     _supports_dvid = False
 
-FormatInfo = collections.namedtuple("FormatInfo", ("name", "extension", "min_dim", "max_dim"))
+FormatInfo = namedtuple("FormatInfo", ("name", "extension", "min_dim", "max_dim"))
 
 
 class OpExportSlot(Operator):
@@ -72,9 +72,9 @@ class OpExportSlot(Operator):
     CoordinateOffset = InputSlot(
         optional=True
     )  # Add an offset to the roi coordinates in the export path (useful if Input is a subregion of a larger dataset)
-    TargetScales = InputSlot(optional=True)  # Target scales for multi-scale OME-Zarr export
 
     ExportPath = OutputSlot()
+    TargetScales = OutputSlot()  # Target scales for multi-scale OME-Zarr export
     FormatSelectionErrorMsg = OutputSlot()
 
     # Vigra supports some file formats that Ilastik doesn't handle, so we exclude "xv" and "exr" extensions.
@@ -136,9 +136,17 @@ class OpExportSlot(Operator):
         if self.OutputFormat.value in ("hdf5", "compressed hdf5") and self.OutputInternalPath.value == "":
             self.ExportPath.meta.NOTREADY = True
 
+        if self.OutputFormat.value == "multi-scale OME-Zarr":
+            self.TargetScales.meta.shape = (1,)
+            self.TargetScales.meta.dtype = object
+        else:
+            self.TargetScales.meta.NOTREADY = True
+
     def execute(self, slot, subindex, roi, result):
         if slot == self.ExportPath:
             return self._executeExportPath(result)
+        elif slot == self.TargetScales:
+            return self._executeTargetScales(result)
         else:
             assert False, "Unknown output slot: {}".format(slot.name)
 
@@ -177,6 +185,32 @@ class OpExportSlot(Operator):
             optional_replacements[key + "_stop"] = stop
         formatted_path = format_known_keys(path_format, optional_replacements, strict=False)
         result[0] = formatted_path
+        return result
+
+    def _executeTargetScales(self, result):
+        # Generate default scaling: scale down by factor of 2 in all spatial dimensions,
+        # stopping if the result would fit in one chunk.
+        input_shape = self.Input.meta.getTaggedShape()
+        unscaled = OrderedDict([(a, input_shape[a] if a in input_shape else 1) for a in OME_ZARR_AXES])
+        chunk_shape_tagged = OrderedDict(zip(OME_ZARR_AXES, get_chunk_shape(unscaled, self.Input.meta.dtype)))
+        scales_items = [("s0", unscaled)]
+        sanity_limit = 42
+        for i in range(1, sanity_limit):
+            scale_key = f"s{i}"
+            scale_factor = 2**i
+            scaled_shape = []
+            for axis, size in unscaled.items():
+                if axis in SPATIAL_AXES:
+                    scaled_shape.append(max(int(size // scale_factor), 1))
+                else:
+                    scaled_shape.append(size)
+            scaled_shape_tagged = OrderedDict(zip(OME_ZARR_AXES, scaled_shape))
+            if all(scaled_shape_tagged[axis] <= chunk_shape_tagged[axis] for axis in SPATIAL_AXES):
+                break  # No point writing scales that fit into one chunk
+            item = (scale_key, scaled_shape_tagged)
+            scales_items.append(item)
+        scales = OrderedDict(scales_items)
+        result[0] = scales
         return result
 
     def _updateFormatSelectionErrorMsg(self, *args):
