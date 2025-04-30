@@ -430,3 +430,4 @@ def write_ome_zarr(
     finally:
         for op in reversed(ops_to_clean):
             op.cleanUp()
+        logger.log(USER_LOGLEVEL, "")
