@@ -52,11 +52,12 @@ TaggedShape = OrderedDict[Axiskey, int]  # { axis: size }
 OrderedScaling = OrderedTranslation = OrderedDict[Axiskey, float]  # { axis: scaling }
 ScalingsByScaleKey = OrderedDict[str, OrderedScaling]  # { scale_key: { axis: scaling } }
 
+OME_ZARR_AXES = "tczyx"
 SPATIAL_AXES = ["z", "y", "x"]
 SINGE_SCALE_DEFAULT_KEY = "s0"
 
 
-def _get_chunk_shape(tagged_image_shape: TaggedShape, dtype) -> Shape:
+def get_chunk_shape(tagged_image_shape: TaggedShape, dtype) -> Shape:
     """Determine chunk shape for OME-Zarr storage. 1 for t and c,
     ilastik default rules for zyx, with a target of 512KB per chunk."""
     if isinstance(dtype, numpy.dtype):  # Extract raw type class
@@ -352,7 +353,7 @@ def write_ome_zarr(
         ODict(zip(image_source_slot.meta.getAxisKeys(), export_offset)) if export_offset else None
     )
     op_reorder = OpReorderAxes(parent=image_source_slot.operator)
-    op_reorder.AxisOrder.setValue("tczyx")
+    op_reorder.AxisOrder.setValue(OME_ZARR_AXES)
     ops_to_clean = [op_reorder]
     try:
         op_reorder.Input.connect(image_source_slot)
@@ -368,7 +369,7 @@ def write_ome_zarr(
             single_target_key = input_scale_key if input_scale_key else SINGE_SCALE_DEFAULT_KEY
             target_scales = Multiscales({single_target_key: export_shape})
 
-        chunk_shape = _get_chunk_shape(export_shape, export_dtype)
+        chunk_shape = get_chunk_shape(export_shape, export_dtype)
         zarrays = _create_empty_zarrays(abs_export_path, export_dtype, chunk_shape, target_scales)
 
         export_scalings = _multiscales_to_scalings(target_scales, export_shape, export_shape.keys())
