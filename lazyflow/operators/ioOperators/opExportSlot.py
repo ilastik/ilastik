@@ -72,6 +72,7 @@ class OpExportSlot(Operator):
     CoordinateOffset = InputSlot(
         optional=True
     )  # Add an offset to the roi coordinates in the export path (useful if Input is a subregion of a larger dataset)
+    TargetScales = InputSlot(optional=True)  # Target scales for multi-scale OME-Zarr export
 
     ExportPath = OutputSlot()
     FormatSelectionErrorMsg = OutputSlot()
@@ -423,9 +424,10 @@ class OpExportSlot(Operator):
             self.progressSignal(100)
 
     def _export_ome_zarr_multiscale(self):
+        assert self.TargetScales.ready(), "export target scales must be configured for multi-scale export"
         self.progressSignal(0)
+        target_scales = self.TargetScales.value
         offset_meta = self.CoordinateOffset.value if self.CoordinateOffset.ready() else None
-        target_scales = self.Input.meta.get("scales") or "generate"
         try:
             write_ome_zarr(self.ExportPath.value, self.Input, self.progressSignal, offset_meta, target_scales)
         finally:
