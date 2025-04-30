@@ -189,7 +189,7 @@ class OpExportSlot(Operator):
 
     def _executeTargetScales(self, result):
         # Generate default scaling: scale down by factor of 2 in all spatial dimensions,
-        # stopping if the result would fit in one chunk.
+        # until the whole image fits into one chunk (and include this last scale level).
         input_shape = self.Input.meta.getTaggedShape()
         unscaled = OrderedDict([(a, input_shape[a] if a in input_shape else 1) for a in OME_ZARR_AXES])
         chunk_shape_tagged = OrderedDict(zip(OME_ZARR_AXES, get_chunk_shape(unscaled, self.Input.meta.dtype)))
@@ -205,10 +205,10 @@ class OpExportSlot(Operator):
                 else:
                     scaled_shape.append(size)
             scaled_shape_tagged = OrderedDict(zip(OME_ZARR_AXES, scaled_shape))
-            if all(scaled_shape_tagged[axis] <= chunk_shape_tagged[axis] for axis in SPATIAL_AXES):
-                break  # No point writing scales that fit into one chunk
             item = (scale_key, scaled_shape_tagged)
             scales_items.append(item)
+            if all(scaled_shape_tagged[axis] <= chunk_shape_tagged[axis] for axis in SPATIAL_AXES):
+                break
         scales = OrderedDict(scales_items)
         result[0] = scales
         return result
