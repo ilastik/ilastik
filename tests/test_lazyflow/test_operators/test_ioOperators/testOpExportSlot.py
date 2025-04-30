@@ -118,9 +118,9 @@ class TestOpExportSlot(object):
             opRead.cleanUp()
 
     def test_ome_zarr_multi_scale(self):
-        """Ensure multi-scale export generates one downscale for 750x750."""
-        # Chunk size is 358x357 in for square 2D, so smallest that would generate a downscale is 718x718
-        data = numpy.random.random((750, 750)).astype(numpy.float32)
+        """Ensure multi-scale export generates one downscale for 400x400."""
+        # Chunk size is 358x357 for square 2D, so 400x400 is larger, and 200x200 is one chunk.
+        data = numpy.random.random((400, 400)).astype(numpy.float32)
         data = vigra.taggedView(data, vigra.defaultAxistags("yx"))
 
         graph = Graph()
@@ -134,14 +134,14 @@ class TestOpExportSlot(object):
         opExport.CoordinateOffset.setValue((10, 20))
 
         assert opExport.ExportPath.ready()
-        expected_export_path = Path(self._tmpdir) / "test_export_x20-770_y10-760.zarr"
+        expected_export_path = Path(self._tmpdir) / "test_export_x20-420_y10-410.zarr"
         assert Path(opExport.ExportPath.value) == expected_export_path
 
         assert opExport.TargetScales.ready()
         expected_scales: multiscaleStore.Multiscales = OrderedDict(
             {
-                "s0": OrderedDict(zip("tczyx", (1, 1, 1, 750, 750))),
-                "s1": OrderedDict(zip("tczyx", (1, 1, 1, 375, 375))),
+                "s0": OrderedDict(zip("tczyx", (1, 1, 1, 400, 400))),
+                "s1": OrderedDict(zip("tczyx", (1, 1, 1, 200, 200))),
             }
         )
         assert opExport.TargetScales.value == expected_scales
