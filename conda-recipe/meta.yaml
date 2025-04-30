@@ -117,7 +117,7 @@ outputs:
     requirements:
       run:
         - python 3.9.*
-        - ilastik-core {{ setup_py_data.version }}
+        - {{ pin_subpackage("ilastik-core", exact=True) }}
         - pytorch >=1.6,<2.4.1
         - tiktorch
         - torchvision
@@ -169,7 +169,7 @@ outputs:
     requirements:
       run:
         - python 3.9.*
-        - ilastik-core {{ setup_py_data.version }}
+        - {{ pin_subpackage("ilastik-core", exact=True) }}
         - pytorch >=1.6,<2.4.1
         - tiktorch
         - torchvision
