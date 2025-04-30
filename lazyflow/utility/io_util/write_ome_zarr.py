@@ -99,6 +99,8 @@ def _create_empty_zarrays(
     chunk_shape: Shape,
     target_scales: Multiscales,
 ) -> OrderedDict[str, zarr.Array]:
+    # TODO: Create the empty array only at the start of writing the respective scale.
+    # In case of an error, the data as far as it got may still be usable.
     store = FSStore(abs_export_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
     zarrays = ODict()
     for scale_key, scale_shape in target_scales.items():
@@ -379,9 +381,9 @@ def write_ome_zarr(
             scale_type = "upscaled data" if v < 1.0 else "unscaled data"
             logger.log(USER_LOGLEVEL, f"Exporting {scale_type} to scale path '{upscale_key}'")
             op_scale = OpResize(parent=image_source_slot.operator)
-            op_scale.RawImage.connect(reordered_source)
-            op_scale.TargetShape.setValue(tuple(target_scales[upscale_key].values()))
             try:
+                op_scale.RawImage.connect(reordered_source)
+                op_scale.TargetShape.setValue(tuple(target_scales[upscale_key].values()))
                 requester = BigRequestStreamer(op_scale.ResizedImage, roiFromShape(op_scale.ResizedImage.meta.shape))
                 requester.resultSignal.subscribe(partial(_write_block, zarrays[upscale_key]))
                 requester.progressSignal.subscribe(progress_signal)
@@ -395,13 +397,13 @@ def write_ome_zarr(
         for downscale_key, _ in sorted(downscale_mags.items(), key=lambda x: x[1]):
             logger.log(USER_LOGLEVEL, f"Exporting downscale to scale path '{downscale_key}'")
             op_scale = OpResize(parent=image_source_slot.operator)
-            op_scale.RawImage.connect(prev_slot)
-            op_scale.TargetShape.setValue(tuple(target_scales[downscale_key].values()))
             ops_to_clean.append(op_scale)
             op_cache = OpBlockedArrayCache(parent=image_source_slot.operator)
+            ops_to_clean.append(op_cache)
+            op_scale.RawImage.connect(prev_slot)
+            op_scale.TargetShape.setValue(tuple(target_scales[downscale_key].values()))
             op_cache.Input.connect(op_scale.ResizedImage)
             op_cache.BlockShape.setValue(chunk_shape)
-            ops_to_clean.append(op_cache)
             requester = BigRequestStreamer(
                 op_cache.Output, roiFromShape(op_cache.Output.meta.shape), blockshape=chunk_shape
             )
