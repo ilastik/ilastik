@@ -310,7 +310,7 @@ def _write_ome_zarr_and_ilastik_metadata(
     input_ome_meta: Optional[OMEZarrMultiscaleMeta],
     ilastik_meta: Dict,
 ):
-    ilastik_signature = {"name": "ilastik", "version": ilastik_version, "ome_zarr_exporter_version": 1}
+    ilastik_signature = {"name": "ilastik", "version": ilastik_version, "ome_zarr_exporter_version": 2}
     export_axiskeys = list(next(iter(export_scalings.values())).keys())
 
     axes = _get_axes_meta(export_axiskeys, input_ome_meta)
