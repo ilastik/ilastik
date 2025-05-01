@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from typing import List, Union, Iterable
 from unittest import mock
 
 import numpy
@@ -9,7 +10,15 @@ import zarr
 from lazyflow.operators import OpArrayPiper
 from lazyflow.utility.io_util import multiscaleStore
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrMultiscaleMeta
-from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr
+from lazyflow.utility.io_util.write_ome_zarr import (
+    write_ome_zarr,
+    generate_default_target_scales,
+    match_target_scales_to_input,
+)
+
+
+def tagged_shape(axes: Union[str, List[str]], shape: Iterable[int]):
+    return OrderedDict(zip(axes, shape))
 
 
 @pytest.mark.parametrize(
@@ -25,15 +34,15 @@ from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr
             "yxc",
             OrderedDict(
                 [
-                    ("raw", OrderedDict([("t", 1), ("c", 3), ("z", 1), ("y", 21), ("x", 23)])),
-                    ("scaled", OrderedDict([("t", 1), ("c", 3), ("z", 1), ("y", 10), ("x", 12)])),
+                    ("raw", tagged_shape("tczyx", (1, 3, 1, 21, 23))),
+                    ("scaled", tagged_shape("tczyx", (1, 3, 1, 10, 12))),
                 ]
             ),
         ),
         (
             (21, 23, 3),
             "yxc",
-            OrderedDict({"s0": OrderedDict([("t", 1), ("c", 3), ("z", 1), ("y", 10), ("x", 12)])}),
+            OrderedDict({"s0": tagged_shape("tczyx", (1, 3, 1, 10, 12))}),
         ),
     ],
 )
@@ -133,9 +142,9 @@ def test_match_input_scale_metadata_single_scale_export(tmp_path, tiny_5d_vigra_
     input_axes = ["t", "z", "y", "x"]
     multiscales: multiscaleStore.Multiscales = OrderedDict(
         [
-            ("raw_scale", OrderedDict(zip(input_axes, (2, 15, 15, 15)))),
-            ("matching_scale", OrderedDict(zip(input_axes, (2, 5, 5, 5)))),
-            ("downscale", OrderedDict(zip(input_axes, (2, 2, 2, 2)))),
+            ("raw_scale", tagged_shape(input_axes, (2, 15, 15, 15))),
+            ("matching_scale", tagged_shape(input_axes, (2, 5, 5, 5))),
+            ("downscale", tagged_shape(input_axes, (2, 2, 2, 2))),
         ]
     )
     source_op.Output.meta.scales = multiscales
@@ -166,9 +175,9 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
     progress = mock.Mock()
     multiscales: multiscaleStore.Multiscales = OrderedDict(
         [
-            ("raw_scale", OrderedDict([("t", 2), ("z", 17), ("y", 17), ("x", 17)])),
-            ("matching_scale", OrderedDict([("t", 2), ("z", 9), ("y", 9), ("x", 9)])),
-            ("downscale", OrderedDict([("t", 2), ("z", 5), ("y", 5), ("x", 5)])),
+            ("raw_scale", tagged_shape("tzyx", (2, 17, 17, 17))),
+            ("matching_scale", tagged_shape("tzyx", (2, 9, 9, 9))),
+            ("downscale", tagged_shape("tzyx", (2, 5, 5, 5))),
         ]
     )
     # The tiny_5d_array is 5x5x5; in this test it represents a subregion of source matching_scale after a 4/4/4 offset
@@ -246,13 +255,13 @@ def test_scale_resized_export_relative_base(tmp_path, tiny_5d_vigra_array_piper)
     input_axes = ["c", "z", "y", "x"]  # Neuroglancer Precomputed axes for a change
     input_scales: multiscaleStore.Multiscales = OrderedDict(
         [
-            ("raw_scale", OrderedDict(zip(input_axes, (2, 15, 15, 15)))),
-            ("downscale", OrderedDict(zip(input_axes, (2, 5, 5, 5)))),
+            ("raw_scale", tagged_shape(input_axes, (2, 15, 15, 15))),
+            ("downscale", tagged_shape(input_axes, (2, 5, 5, 5))),
         ]
     )
     target_scales: multiscaleStore.Multiscales = OrderedDict(
         [
-            ("resized_scale", OrderedDict(zip(["t", "c", "z", "y", "x"], (2, 2, 10, 10, 10)))),
+            ("resized_scale", tagged_shape("tczyx", (2, 2, 10, 10, 10))),
         ]
     )
     source_op.Output.meta.scales = input_scales
@@ -282,10 +291,10 @@ def test_match_raw_input_scale_metadata_multi_scale_export(tmp_path, tiny_5d_vig
     export_offset = (0, 0, 3, 3, 3)
     multiscales: multiscaleStore.Multiscales = OrderedDict(
         [  # Include c to make sure export metadata ignores it as it should
-            ("upscale", OrderedDict([("t", 2), ("z", 34), ("y", 34), ("x", 34), ("c", 3)])),
-            ("raw_scale", OrderedDict([("t", 2), ("z", 17), ("y", 17), ("x", 17), ("c", 3)])),
-            ("source_scale", OrderedDict([("t", 2), ("z", 8), ("y", 8), ("x", 8), ("c", 3)])),
-            ("downscale", OrderedDict([("t", 2), ("z", 4), ("y", 4), ("x", 4), ("c", 3)])),
+            ("upscale", tagged_shape("tzyxc", (2, 34, 34, 34, 3))),
+            ("raw_scale", tagged_shape("tzyxc", (2, 17, 17, 17, 3))),
+            ("source_scale", tagged_shape("tzyxc", (2, 8, 8, 8, 3))),
+            ("downscale", tagged_shape("tzyxc", (2, 4, 4, 4, 3))),
         ]
     )
     source_op.Output.meta.scales = multiscales
@@ -296,8 +305,8 @@ def test_match_raw_input_scale_metadata_multi_scale_export(tmp_path, tiny_5d_vig
     # Also make up-scaling factors anisotropic and non-integer for good measure.
     target_scales: multiscaleStore.Multiscales = OrderedDict(
         [
-            ("weird_upscale", OrderedDict(zip(["t", "c", "z", "y", "x"], (2, 2, 13, 12, 12)))),
-            ("downscale", OrderedDict(zip(["t", "c", "z", "y", "x"], (2, 2, 2, 2, 2)))),
+            ("weird_upscale", tagged_shape("tczyx", (2, 2, 13, 12, 12))),
+            ("downscale", tagged_shape("tczyx", (2, 2, 2, 2, 2))),
         ]
     )
     # Expected output scaling: source scale * target scaling relative to source
@@ -339,10 +348,10 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
     export_offset = (0, 0, 3, 3, 3)
     multiscales: multiscaleStore.Multiscales = OrderedDict(
         [  # Include c to make sure export metadata ignores it as it should
-            ("upscale", OrderedDict([("t", 2), ("z", 34), ("y", 34), ("x", 34), ("c", 3)])),
-            ("raw_scale", OrderedDict([("t", 2), ("z", 17), ("y", 17), ("x", 17), ("c", 3)])),
-            ("source_scale", OrderedDict([("t", 2), ("z", 8), ("y", 8), ("x", 8), ("c", 3)])),
-            ("downscale", OrderedDict([("t", 2), ("z", 4), ("y", 4), ("x", 4), ("c", 3)])),
+            ("upscale", tagged_shape("tzyxc", (2, 34, 34, 34, 3))),
+            ("raw_scale", tagged_shape("tzyxc", (2, 17, 17, 17, 3))),
+            ("source_scale", tagged_shape("tzyxc", (2, 8, 8, 8, 3))),
+            ("downscale", tagged_shape("tzyxc", (2, 4, 4, 4, 3))),
         ]
     )
     source_op.Output.meta.scales = multiscales
@@ -390,8 +399,8 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
     )
     target_scales: multiscaleStore.Multiscales = OrderedDict(
         [
-            ("weird_upscale", OrderedDict(zip(["t", "c", "z", "y", "x"], (2, 2, 13, 12, 12)))),
-            ("downscale", OrderedDict(zip(["t", "c", "z", "y", "x"], (2, 2, 2, 2, 2)))),
+            ("weird_upscale", tagged_shape("tczyx", (2, 2, 13, 12, 12))),
+            ("downscale", tagged_shape("tczyx", (2, 2, 2, 2, 2))),
         ]
     )
     expected_multiscale_transform = [{"type": "scale", "scale": [0.1, 1.0, 1.0, 1.0, 1.0]}]
@@ -428,3 +437,98 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
     assert m["datasets"][0]["coordinateTransformations"] == expected_upscale_transform
     assert m["datasets"][1]["path"] == "downscale"
     assert m["datasets"][1]["coordinateTransformations"] == expected_downscale_transform
+
+
+@pytest.mark.parametrize(
+    "shape,expected_shapes",
+    [
+        (  # Edge case
+            tagged_shape("yx", (1, 1)),
+            OrderedDict([("s0", tagged_shape("tczyx", (1, 1, 1, 1, 1)))]),
+        ),
+        (  # 2d below scaling threshold (chunk size defaults to 358x358 for 2d square 32bit)
+            tagged_shape("yx", (350, 350)),
+            OrderedDict([("s0", tagged_shape("tczyx", (1, 1, 1, 350, 350)))]),
+        ),
+        (  # 3d above scaling threshold (chunk size defaults to 51x50x50 for 3d cube 32bit)
+            tagged_shape("zyx", (60, 60, 60)),
+            OrderedDict(
+                [
+                    ("s0", tagged_shape("tczyx", (1, 1, 60, 60, 60))),
+                    ("s1", tagged_shape("tczyx", (1, 1, 30, 30, 30))),
+                ]
+            ),
+        ),
+        (  # Multiple scales 2d
+            tagged_shape("yx", (4000, 4000)),
+            OrderedDict(
+                [
+                    ("s0", tagged_shape("tczyx", (1, 1, 1, 4000, 4000))),
+                    ("s1", tagged_shape("tczyx", (1, 1, 1, 2000, 2000))),
+                    ("s2", tagged_shape("tczyx", (1, 1, 1, 1000, 1000))),
+                    ("s3", tagged_shape("tczyx", (1, 1, 1, 500, 500))),
+                    ("s4", tagged_shape("tczyx", (1, 1, 1, 250, 250))),
+                ]
+            ),
+        ),
+        (  # 2d + c + t in odd order
+            tagged_shape("cytx", (3, 700, 10, 700)),
+            OrderedDict(
+                [
+                    ("s0", tagged_shape("tczyx", (10, 3, 1, 700, 700))),
+                    ("s1", tagged_shape("tczyx", (10, 3, 1, 350, 350))),
+                ]
+            ),
+        ),
+    ],
+)
+def test_generate_default_target_scales(shape, expected_shapes):
+    generated_shapes = generate_default_target_scales(shape, numpy.float32)
+    assert generated_shapes == expected_shapes
+
+
+@pytest.mark.parametrize(
+    "shape, input_scales, expected_shapes",
+    [
+        (  # Simple: match input scales in OME-Zarr order
+            tagged_shape("yx", (1, 1)),
+            OrderedDict([("s0", tagged_shape("yx", (2, 2))), ("source_scale", tagged_shape("yx", (1, 1)))]),
+            OrderedDict(
+                [
+                    ("s0", tagged_shape("tczyx", (1, 1, 1, 2, 2))),
+                    ("source_scale", tagged_shape("tczyx", (1, 1, 1, 1, 1))),
+                ]
+            ),
+        ),
+        (  # Input no channels + default scaling would create different scales than input has
+            tagged_shape("yxc", (500, 500, 3)),
+            OrderedDict([("s0", tagged_shape("yx", (1100, 1100))), ("source_scale", tagged_shape("yx", (500, 500)))]),
+            OrderedDict(
+                [
+                    ("s0", tagged_shape("tczyx", (1, 3, 1, 1100, 1100))),
+                    ("source_scale", tagged_shape("tczyx", (1, 3, 1, 500, 500))),
+                ]
+            ),
+        ),
+        (  # Default scaling would not scale the input + export is cropped + source is middle scale
+            tagged_shape("zyxc", (16, 16, 16, 3)),
+            OrderedDict(
+                [
+                    ("0", tagged_shape("czyx", (2, 75, 75, 75))),
+                    ("source_scale", tagged_shape("czyx", (2, 25, 25, 25))),
+                    ("2", tagged_shape("czyx", (2, 8, 8, 8))),
+                ]
+            ),
+            OrderedDict(
+                [
+                    ("0", tagged_shape("tczyx", (1, 3, 48, 48, 48))),
+                    ("source_scale", tagged_shape("tczyx", (1, 3, 16, 16, 16))),
+                    ("2", tagged_shape("tczyx", (1, 3, 5, 5, 5))),
+                ]
+            ),
+        ),
+    ],
+)
+def test_match_target_scales_to_input(shape, input_scales, expected_shapes):
+    generated_shapes = match_target_scales_to_input(shape, input_scales, "source_scale")
+    assert generated_shapes == expected_shapes

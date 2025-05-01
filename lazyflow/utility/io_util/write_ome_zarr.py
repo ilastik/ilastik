@@ -23,7 +23,7 @@ import logging
 from collections import OrderedDict as ODict
 from functools import partial
 from pathlib import Path
-from typing import List, Tuple, Dict, OrderedDict, Optional, Literal, Iterable, Any
+from typing import List, Tuple, Dict, OrderedDict, Optional, Literal, Iterable, Any, Union
 
 import numpy
 import zarr
@@ -52,12 +52,64 @@ TaggedShape = OrderedDict[Axiskey, int]  # { axis: size }
 OrderedScaling = OrderedTranslation = OrderedDict[Axiskey, float]  # { axis: scaling }
 ScalingsByScaleKey = OrderedDict[str, OrderedScaling]  # { scale_key: { axis: scaling } }
 
-OME_ZARR_AXES = "tczyx"
-SPATIAL_AXES = ["z", "y", "x"]
+OME_ZARR_AXES: List[Axiskey] = ["t", "c", "z", "y", "x"]
+SPATIAL_AXES: List[Axiskey] = ["z", "y", "x"]
 SINGE_SCALE_DEFAULT_KEY = "s0"
 
 
-def get_chunk_shape(tagged_image_shape: TaggedShape, dtype) -> Shape:
+def match_target_scales_to_input(export_shape: TaggedShape, input_scales: Multiscales, input_key: str):
+    input_original_shape = input_scales[input_key]
+    scales_items = []
+    if all(a not in input_original_shape or export_shape[a] == input_original_shape[a] for a in export_shape.keys()):
+        # Export shape is unmodified from its source scale - then all other scales shapes should be identical.
+        # Target scales need to be OME-Zarr though, and number of channels must be from export.
+        for scale_key, input_scale_shape in input_scales.items():
+            reordered_shape = _reorder(input_scale_shape, OME_ZARR_AXES, 1)
+            if "c" in reordered_shape and "c" in export_shape:
+                reordered_shape["c"] = export_shape["c"]
+            reordered_item = (scale_key, reordered_shape)
+            scales_items.append(reordered_item)
+    else:
+        # Export shape is modified (cropped).
+        # Get source multiscale's scaling factors relative to the (uncropped) input shape and compute cropped scale
+        # shapes from that.
+        input_scalings = _multiscales_to_scalings(input_scales, input_original_shape, input_original_shape.keys())
+        for scale_key, scale_factors in input_scalings.items():
+            scaled_shape = ODict([(a, int(size / scale_factors[a])) for a, size in export_shape.items()])
+            target_shape = _reorder(scaled_shape, OME_ZARR_AXES, 1)
+            target_item = (scale_key, target_shape)
+            scales_items.append(target_item)
+    return ODict(scales_items)
+
+
+def generate_default_target_scales(unscaled_shape: TaggedShape, dtype) -> Multiscales:
+    unscaled = _reorder(unscaled_shape, OME_ZARR_AXES, 1)
+    chunk_shape_tagged = ODict(zip(OME_ZARR_AXES, _get_chunk_shape(unscaled, dtype)))
+    scales_items = []
+    sanity_limit = 42
+    for i in range(0, sanity_limit):
+        scale_key = f"s{i}"
+        scale_factor = 2**i
+        scaled_shape = []
+        for axis, size in unscaled.items():
+            if axis in SPATIAL_AXES:
+                scaled_shape.append(max(int(size // scale_factor), 1))
+            else:
+                scaled_shape.append(size)
+        scaled_shape_tagged = ODict(zip(OME_ZARR_AXES, scaled_shape))
+        item = (scale_key, scaled_shape_tagged)
+        scales_items.append(item)
+        if all(scaled_shape_tagged[axis] <= chunk_shape_tagged[axis] for axis in SPATIAL_AXES):
+            break
+    return ODict(scales_items)
+
+
+def _reorder(shape: Dict, axes: Iterable[Axiskey], default_value: Union[int, float]) -> TaggedShape:
+    """Reorder a tagged shape to `axes`, using `default_value` for axes missing in `shape`."""
+    return ODict([(a, shape[a] if a in shape else default_value) for a in axes])
+
+
+def _get_chunk_shape(tagged_image_shape: TaggedShape, dtype) -> Shape:
     """Determine chunk shape for OME-Zarr storage. 1 for t and c,
     ilastik default rules for zyx, with a target of 512KB per chunk."""
     if isinstance(dtype, numpy.dtype):  # Extract raw type class
@@ -152,10 +204,10 @@ def _get_input_transforms_reordered(
             )
             return None, None
         input_scale = dict(zip(input_axiskeys, input_transforms[0].values))
-        reordered_scale = ODict([(a, input_scale[a] if a in input_scale else 1.0) for a in axes])
+        reordered_scale = _reorder(input_scale, axes, 1.0)
         if input_transforms[1] is not None:
             input_translation = dict(zip(input_axiskeys, input_transforms[1].values))
-            reordered_translation = ODict([(a, input_translation[a] if a in input_translation else 0.0) for a in axes])
+            reordered_translation = _reorder(input_translation, axes, 0.0)
     return reordered_scale, reordered_translation
 
 
@@ -217,9 +269,7 @@ def _combine_offsets(
         # otherwise to relative input scale if available (Precomputed).
         # Also match export axis order.
         input_scaling_rel = input_scaling_rel if input_scaling_rel else ODict()
-        reordered_input_scaling_rel = ODict(
-            (a, input_scaling_rel[a] if a in input_scaling_rel else 1.0) for a in export_axiskeys
-        )
+        reordered_input_scaling_rel = _reorder(input_scaling_rel, export_axiskeys, 1.0)
         input_scaling_abs = input_scaling_abs if input_scaling_abs else reordered_input_scaling_rel
         assert list(input_scaling_abs.keys()) == export_axiskeys
         reordered_export_offset = ODict(
@@ -353,7 +403,7 @@ def write_ome_zarr(
         ODict(zip(image_source_slot.meta.getAxisKeys(), export_offset)) if export_offset else None
     )
     op_reorder = OpReorderAxes(parent=image_source_slot.operator)
-    op_reorder.AxisOrder.setValue(OME_ZARR_AXES)
+    op_reorder.AxisOrder.setValue("".join(OME_ZARR_AXES))
     ops_to_clean = [op_reorder]
     try:
         op_reorder.Input.connect(image_source_slot)
@@ -369,7 +419,7 @@ def write_ome_zarr(
             single_target_key = input_scale_key if input_scale_key else SINGE_SCALE_DEFAULT_KEY
             target_scales = Multiscales({single_target_key: export_shape})
 
-        chunk_shape = get_chunk_shape(export_shape, export_dtype)
+        chunk_shape = _get_chunk_shape(export_shape, export_dtype)
         zarrays = _create_empty_zarrays(abs_export_path, export_dtype, chunk_shape, target_scales)
 
         export_scalings = _multiscales_to_scalings(target_scales, export_shape, export_shape.keys())

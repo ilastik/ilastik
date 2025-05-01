@@ -21,7 +21,7 @@
 ###############################################################################
 import contextlib
 import os
-from collections import OrderedDict, namedtuple
+from collections import namedtuple
 from functools import partial
 
 import numpy
@@ -40,7 +40,11 @@ from lazyflow.operators.ioOperators import (
 )
 from lazyflow.roi import roiFromShape
 from lazyflow.utility import OrderedSignal, format_known_keys, PathComponents, mkdir_p, isUrl
-from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr, get_chunk_shape, OME_ZARR_AXES, SPATIAL_AXES
+from lazyflow.utility.io_util.write_ome_zarr import (
+    write_ome_zarr,
+    generate_default_target_scales,
+    match_target_scales_to_input,
+)
 
 try:
     from lazyflow.operators.ioOperators import OpExportDvidVolume
@@ -191,25 +195,11 @@ class OpExportSlot(Operator):
         # Generate default scaling: scale down by factor of 2 in all spatial dimensions,
         # until the whole image fits into one chunk (and include this last scale level).
         input_shape = self.Input.meta.getTaggedShape()
-        unscaled = OrderedDict([(a, input_shape[a] if a in input_shape else 1) for a in OME_ZARR_AXES])
-        chunk_shape_tagged = OrderedDict(zip(OME_ZARR_AXES, get_chunk_shape(unscaled, self.Input.meta.dtype)))
-        scales_items = [("s0", unscaled)]
-        sanity_limit = 42
-        for i in range(1, sanity_limit):
-            scale_key = f"s{i}"
-            scale_factor = 2**i
-            scaled_shape = []
-            for axis, size in unscaled.items():
-                if axis in SPATIAL_AXES:
-                    scaled_shape.append(max(int(size // scale_factor), 1))
-                else:
-                    scaled_shape.append(size)
-            scaled_shape_tagged = OrderedDict(zip(OME_ZARR_AXES, scaled_shape))
-            item = (scale_key, scaled_shape_tagged)
-            scales_items.append(item)
-            if all(scaled_shape_tagged[axis] <= chunk_shape_tagged[axis] for axis in SPATIAL_AXES):
-                break
-        scales = OrderedDict(scales_items)
+        dtype = self.Input.meta.dtype
+        if self.Input.meta.get("scales"):
+            scales = match_target_scales_to_input(input_shape, self.Input.meta.scales, self.Input.meta.active_scale)
+        else:
+            scales = generate_default_target_scales(input_shape, dtype)
         result[0] = scales
         return result
 
