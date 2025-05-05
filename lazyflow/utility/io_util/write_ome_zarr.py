@@ -414,6 +414,7 @@ def write_ome_zarr(
         input_scales = reordered_source.meta.get("scales")
         input_scale_key = reordered_source.meta.get("active_scale")
         input_ome_meta = reordered_source.meta.get("ome_zarr_meta")
+        interpolation_order = reordered_source.meta.get("appropriate_interpolation_order", 1)
 
         if target_scales is None:  # single-scale export
             single_target_key = input_scale_key if input_scale_key else SINGE_SCALE_DEFAULT_KEY
@@ -431,7 +432,7 @@ def write_ome_zarr(
         for upscale_key, v in reversed(sorted(upscale_mags.items(), key=lambda x: x[1])):
             scale_type = "upscaled data" if v < 1.0 else "unscaled data"
             logger.log(USER_LOGLEVEL, f"Exporting {scale_type} to scale path '{upscale_key}'")
-            op_scale = OpResize(parent=image_source_slot.operator)
+            op_scale = OpResize(parent=image_source_slot.operator, InterpolationOrder=interpolation_order)
             try:
                 op_scale.RawImage.connect(reordered_source)
                 op_scale.TargetShape.setValue(tuple(target_scales[upscale_key].values()))
@@ -447,7 +448,7 @@ def write_ome_zarr(
         prev_slot = reordered_source
         for downscale_key, _ in sorted(downscale_mags.items(), key=lambda x: x[1]):
             logger.log(USER_LOGLEVEL, f"Exporting downscale to scale path '{downscale_key}'")
-            op_scale = OpResize(parent=image_source_slot.operator)
+            op_scale = OpResize(parent=image_source_slot.operator, InterpolationOrder=interpolation_order)
             ops_to_clean.append(op_scale)
             op_cache = OpBlockedArrayCache(parent=image_source_slot.operator)
             ops_to_clean.append(op_cache)

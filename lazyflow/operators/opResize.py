@@ -63,7 +63,12 @@ class OpResize(Operator):
 
     RawImage = InputSlot()
     TargetShape = InputSlot()  # Tuple[int, ...]
+    InterpolationOrder = InputSlot(value=1)  # 0 (nearest-neighbor) and 1 (linear) supported
     ResizedImage = OutputSlot()
+
+    def __init__(self, InterpolationOrder=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.InterpolationOrder.setOrConnectIfAvailable(InterpolationOrder)
 
     def setupOutputs(self):
         if self.TargetShape.value == self.RawImage.meta.shape:
@@ -95,11 +100,16 @@ class OpResize(Operator):
         """
         assert slot is self.ResizedImage, "Unknown output slot"
         factors = self._get_scaling_factors()
-        interpolation_order = 1
-        padding_for_order1_interpolation = 2
+        interpolation_order = self.InterpolationOrder.value
+        required_min_padding = {0: 0, 1: 2}
+        # If higher-order interpolation is desired, need to figure out required padding
+        assert interpolation_order in required_min_padding, "supports only order 0 (nearest-neighbor) or 1 (linear)"
         axes_to_pad = np.not_equal(factors, 1)
         # Antialiasing only for downscale (f > 1), not identity or upscale
-        antialiasing_sigmas = np.array([f / 4 if f > 1 else 0 for f in factors])
+        if interpolation_order > 0:
+            antialiasing_sigmas = np.array([f / 4 if f > 1 else 0 for f in factors])
+        else:
+            antialiasing_sigmas = np.zeros_like(factors)
 
         raw_roi = self._reverse_roi_scaling(roi, factors)
         raw_roi_antialiasing_halo = enlargeRoiForHalo(
@@ -110,7 +120,7 @@ class OpResize(Operator):
             enlarge_axes=axes_to_pad,
         )
         raw_roi_interpolation_halo = self._extend_halo_to_minimum(
-            raw_roi_antialiasing_halo, padding_for_order1_interpolation, axes_to_pad, raw_roi
+            raw_roi_antialiasing_halo, required_min_padding[interpolation_order], axes_to_pad, raw_roi
         )
         raw_roi_final_halo = np.clip(ceil_roi(raw_roi_interpolation_halo), 0, self.RawImage.meta.shape)
 
