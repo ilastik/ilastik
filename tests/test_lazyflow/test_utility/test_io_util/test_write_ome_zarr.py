@@ -439,6 +439,45 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
     assert m["datasets"][1]["coordinateTransformations"] == expected_downscale_transform
 
 
+def test_respects_interpolation_order(tmp_path, tiny_5d_vigra_array_piper):
+    """
+    Image source slots may specify what interpolation order to use for resizing.
+    E.g. order 0 (nearest-neighbor) is appropriate for binary or segmentation images.
+    Default is order 1 (linear interpolation), appropriate for raw data.
+    """
+    export_path = tmp_path
+    source_op = tiny_5d_vigra_array_piper
+    progress = mock.Mock()
+    target_scales: multiscaleStore.Multiscales = OrderedDict(
+        [
+            ("0", tagged_shape("tczyx", (2, 2, 5, 5, 5))),
+            ("1", tagged_shape("tczyx", (2, 2, 2, 2, 2))),
+        ]
+    )
+    # Data expected for channel 0 with the example dataset and nearest-neighbor interpolation
+    expected_downscale_c0 = numpy.array(
+        [[[[3.0, 5.0], [5.0, 7.0]], [[5.0, 7.0], [7.0, 9.0]]], [[[4.0, 6.0], [6.0, 8.0]], [[6.0, 8.0], [8.0, 10.0]]]]
+    )
+
+    write_ome_zarr(str(export_path / "test_default_interp.zarr"), source_op.Output, progress, None, target_scales)
+
+    source_op.Output.meta.appropriate_interpolation_order = 0
+
+    write_ome_zarr(str(export_path / "test_interp_0.zarr"), source_op.Output, progress, None, target_scales)
+
+    group_default = zarr.open(str(export_path / "test_default_interp.zarr"))
+    group_order0 = zarr.open(str(export_path / "test_interp_0.zarr"))
+    data_default_unscaled = group_default["0"][:]
+    data_order0_unscaled = group_order0["0"][:]
+    numpy.testing.assert_array_equal(data_default_unscaled, data_order0_unscaled), "unscaled data should be identical"
+    data_default_scaled = group_default["1"][:]
+    data_order0_scaled = group_order0["1"][:]
+    numpy.testing.assert_array_equal(data_order0_scaled[0, :], expected_downscale_c0)
+    diff = numpy.abs(data_default_scaled - data_order0_scaled)
+    assert numpy.all(diff > 0), "all data points in NN-interpolation should be different from linear interpolation"
+    assert numpy.all(diff < 1), "all data points in NN-interpolation should be within 1 of linear interpolation"
+
+
 @pytest.mark.parametrize(
     "shape,expected_shapes",
     [

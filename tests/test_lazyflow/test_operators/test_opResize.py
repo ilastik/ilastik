@@ -72,6 +72,23 @@ def test_resize_handles_blocks(graph, raw_shape, scaled_shape, axes, block_shape
     numpy.testing.assert_allclose(op_resized_block, op_resized)  # Block-splitting artifacts not tolerated
 
 
+def test_interpolation_order(graph):
+    """1 is default, test 0."""
+    arr = numpy.indices((25, 25)).sum(0)
+    data = vigra.taggedView(arr, "yx")
+
+    op = OpResize(graph=graph)
+    op.RawImage.setValue(data)
+    op.TargetShape.setValue((5, 5))
+    op.InterpolationOrder.setValue(0)
+
+    op_resized = op.ResizedImage[:].wait()
+
+    sk_resized = sk_resize(data, (5, 5), order=0, preserve_range=True).astype(numpy.uint8)
+
+    numpy.testing.assert_array_equal(op_resized, sk_resized)
+
+
 def test_raises_on_c_scaling(graph):
     arr = numpy.random.randint(0, 256, (10, 10, 3), dtype="uint8")
     data = vigra.taggedView(arr, "yxc")
