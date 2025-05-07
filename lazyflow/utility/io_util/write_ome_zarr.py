@@ -351,9 +351,23 @@ def _get_multiscale_transformations(
         )
 
 
+def _get_scaling_method_metadata(export_scalings: ScalingsByScaleKey, interpolation_order: int) -> Optional[Dict]:
+    combined_scaling_mag = [numpy.prod(list(scale.values())) for scale in export_scalings.values()]
+    if all(numpy.isclose(m, 1.0) for m in combined_scaling_mag):
+        return None
+    metadata = {
+        "description": "ilastik's lazyflow.operators.opResize.OpResize is a lazy implementation of skimage.transform.resize.",
+        "method": "skimage.transform.resize",
+        "version": "0.24.0",
+        "kwargs": {"order": interpolation_order, "anti_aliasing": True, "preserve_range": True},
+    }
+    return metadata
+
+
 def _write_ome_zarr_and_ilastik_metadata(
     abs_export_path: str,
     export_scalings: ScalingsByScaleKey,
+    interpolation_order: int,
     export_offset: Optional[TaggedShape],
     input_scales: Optional[Multiscales],
     input_scale_key: Optional[str],
@@ -370,6 +384,10 @@ def _write_ome_zarr_and_ilastik_metadata(
     multiscale_transformations = _get_multiscale_transformations(input_ome_meta, export_axiskeys)
     if multiscale_transformations:
         ome_zarr_multiscale_meta["coordinateTransformations"] = multiscale_transformations
+
+    scaling_meta = _get_scaling_method_metadata(export_scalings, interpolation_order)
+    if scaling_meta:
+        ome_zarr_multiscale_meta["metadata"] = scaling_meta
 
     store = FSStore(abs_export_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
     root = zarr.group(store, overwrite=False)
@@ -468,6 +486,7 @@ def write_ome_zarr(
         _write_ome_zarr_and_ilastik_metadata(
             abs_export_path,
             export_scalings,
+            interpolation_order,
             export_offset,
             input_scales,
             input_scale_key,
