@@ -40,6 +40,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+traceLogger = logging.getLogger("TRACE." + __name__)
+traceLogger.setLevel(logging.DEBUG)
+
 
 class EdgeTrainingWithMulticutWorkflow(Workflow):
     workflowName = "Edge Training With Multicut"
@@ -75,6 +78,9 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
             shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs
         )
         self._applets = []
+
+        # Lane list for metadata extraction
+        self.lanes = []
 
         # -- DataSelection applet
         #
@@ -167,6 +173,14 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         """
         opEdgeTrainingWithMulticut = self.edgeTrainingWithMulticutApplet.topLevelOperator
         opClassifierCache = opEdgeTrainingWithMulticut.opEdgeTraining.opClassifierCache
+
+        # Log pixel dimensions and units (if applicable)
+        for image in self.lanes:
+            opData = self.dataSelectionApplet.topLevelOperator.getLane(image)
+            if opData.Image.meta.resolution and opData.Image.meta.units:
+                traceLogger.debug("Pixel Dimensions: " + (" ".join(map(str, opData.Image.meta.resolution))))
+                traceLogger.debug("Dimension Units: " + (" ".join(map(str, opData.Image.meta.units))))
+        self.lanes = []
 
         # Restore classifier we saved in prepareForNewLane() (if any)
         if self.stored_classifier:

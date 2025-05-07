@@ -35,6 +35,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+traceLogger = logging.getLogger("TRACE." + __name__)
+traceLogger.setLevel(logging.DEBUG)
+
 
 class CountingWorkflow(Workflow):
     workflowName = "Cell Density Counting"
@@ -72,6 +75,9 @@ class CountingWorkflow(Workflow):
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         role_names = ["Raw Data"]
         opDataSelection.DatasetRoles.setValue(role_names)
+
+        # Lane list for metadata extraction
+        self.lanes = []
 
         self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections")
 
@@ -141,6 +147,14 @@ class CountingWorkflow(Workflow):
         Overridden from Workflow base class.
         Called immediately after a new lane is added to the workflow and initialized.
         """
+        # Log pixel dimensions and units (if applicable)
+        for image in self.lanes:
+            opData = self.dataSelectionApplet.topLevelOperator.getLane(image)
+            if opData.Image.meta.resolution and opData.Image.meta.units:
+                traceLogger.debug("Pixel Dimensions: " + (" ".join(map(str, opData.Image.meta.resolution))))
+                traceLogger.debug("Dimension Units: " + (" ".join(map(str, opData.Image.meta.units))))
+        self.lanes = []
+
         # Restore classifier we saved in prepareForNewLane() (if any)
         if self.stored_classifier is not None:
             self.countingApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifier)
