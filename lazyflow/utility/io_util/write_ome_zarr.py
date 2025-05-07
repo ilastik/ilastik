@@ -146,22 +146,17 @@ def _multiscales_to_scalings(
     return ODict(zip(multiscales.keys(), factors))
 
 
-def _create_empty_zarrays(
+def _create_empty_zarray(
     abs_export_path: str,
-    export_dtype,
+    scale_key: str,
+    scale_shape: Shape,
     chunk_shape: Shape,
-    target_scales: Multiscales,
-) -> OrderedDict[str, zarr.Array]:
-    # TODO: Create the empty array only at the start of writing the respective scale.
-    # In case of an error, the data as far as it got may still be usable.
+    export_dtype,
+) -> zarr.Array:
+    assert len(chunk_shape) == len(scale_shape), "chunk and image shape must have same dimensions"
     store = FSStore(abs_export_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
-    zarrays = ODict()
-    for scale_key, scale_shape in target_scales.items():
-        zarrays[scale_key] = zarr.creation.zeros(
-            scale_shape.values(), store=store, path=scale_key, chunks=chunk_shape, dtype=export_dtype
-        )
-
-    return zarrays
+    zarray = zarr.creation.zeros(scale_shape, store=store, path=scale_key, chunks=chunk_shape, dtype=export_dtype)
+    return zarray
 
 
 def _write_block(zarray: zarr.Array, roi, data):
@@ -439,7 +434,6 @@ def write_ome_zarr(
             target_scales = Multiscales({single_target_key: export_shape})
 
         chunk_shape = _get_chunk_shape(export_shape, export_dtype)
-        zarrays = _create_empty_zarrays(abs_export_path, export_dtype, chunk_shape, target_scales)
 
         export_scalings = _multiscales_to_scalings(target_scales, export_shape, export_shape.keys())
         combined_scaling_mag = {key: numpy.prod(list(scale.values())) for key, scale in export_scalings.items()}
@@ -452,10 +446,12 @@ def write_ome_zarr(
             logger.log(USER_LOGLEVEL, f"Exporting {scale_type} to scale path '{upscale_key}'")
             op_scale = OpResize(parent=image_source_slot.operator, InterpolationOrder=interpolation_order)
             try:
+                target_shape = tuple(target_scales[upscale_key].values())
                 op_scale.RawImage.connect(reordered_source)
-                op_scale.TargetShape.setValue(tuple(target_scales[upscale_key].values()))
+                op_scale.TargetShape.setValue(target_shape)
                 requester = BigRequestStreamer(op_scale.ResizedImage, roiFromShape(op_scale.ResizedImage.meta.shape))
-                requester.resultSignal.subscribe(partial(_write_block, zarrays[upscale_key]))
+                zarray = _create_empty_zarray(abs_export_path, upscale_key, target_shape, chunk_shape, export_dtype)
+                requester.resultSignal.subscribe(partial(_write_block, zarray))
                 requester.progressSignal.subscribe(progress_signal)
                 requester.execute()
             finally:
@@ -465,19 +461,21 @@ def write_ome_zarr(
         downscale_mags = {k: v for k, v in combined_scaling_mag.items() if v > 1.0}
         prev_slot = reordered_source
         for downscale_key, _ in sorted(downscale_mags.items(), key=lambda x: x[1]):
+            target_shape = tuple(target_scales[downscale_key].values())
             logger.log(USER_LOGLEVEL, f"Exporting downscale to scale path '{downscale_key}'")
             op_scale = OpResize(parent=image_source_slot.operator, InterpolationOrder=interpolation_order)
             ops_to_clean.append(op_scale)
             op_cache = OpBlockedArrayCache(parent=image_source_slot.operator)
             ops_to_clean.append(op_cache)
             op_scale.RawImage.connect(prev_slot)
-            op_scale.TargetShape.setValue(tuple(target_scales[downscale_key].values()))
+            op_scale.TargetShape.setValue(target_shape)
             op_cache.Input.connect(op_scale.ResizedImage)
             op_cache.BlockShape.setValue(chunk_shape)
             requester = BigRequestStreamer(
                 op_cache.Output, roiFromShape(op_cache.Output.meta.shape), blockshape=chunk_shape
             )
-            requester.resultSignal.subscribe(partial(_write_block, zarrays[downscale_key]))
+            zarray = _create_empty_zarray(abs_export_path, downscale_key, target_shape, chunk_shape, export_dtype)
+            requester.resultSignal.subscribe(partial(_write_block, zarray))
             requester.progressSignal.subscribe(progress_signal)
             requester.execute()
             prev_slot = op_cache.Output
