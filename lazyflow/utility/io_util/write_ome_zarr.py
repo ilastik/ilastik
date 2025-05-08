@@ -58,14 +58,18 @@ SINGE_SCALE_DEFAULT_KEY = "s0"
 
 
 def match_target_scales_to_input(export_shape: TaggedShape, input_scales: Multiscales, input_key: str):
-    input_original_shape = input_scales[input_key]
+    def _eq_shape_permissive(test: TaggedShape, ref: TaggedShape) -> bool:
+        """Check if two shapes are equal, but allow reference shape to be missing axes, and ignore channel."""
+        return all(a not in ref or a == "c" or test[a] == ref[a] for a in test.keys())
+
+    source_scale_shape = input_scales[input_key]
     scales_items = []
-    if all(a not in input_original_shape or export_shape[a] == input_original_shape[a] for a in export_shape.keys()):
+    if _eq_shape_permissive(export_shape, source_scale_shape):
         # Export shape is unmodified from its source scale - then all other scales shapes should be identical.
         # Target scales need to be OME-Zarr though, and number of channels must be from export.
         for scale_key, input_scale_shape in input_scales.items():
             reordered_shape = _reorder(input_scale_shape, OME_ZARR_AXES, 1)
-            if "c" in reordered_shape and "c" in export_shape:
+            if "c" in export_shape:
                 reordered_shape["c"] = export_shape["c"]
             reordered_item = (scale_key, reordered_shape)
             scales_items.append(reordered_item)
@@ -73,10 +77,12 @@ def match_target_scales_to_input(export_shape: TaggedShape, input_scales: Multis
         # Export shape is modified (cropped).
         # Get source multiscale's scaling factors relative to the (uncropped) input shape and compute cropped scale
         # shapes from that.
-        input_scalings = _multiscales_to_scalings(input_scales, input_original_shape, input_original_shape.keys())
+        input_scalings = _multiscales_to_scalings(input_scales, source_scale_shape, source_scale_shape.keys())
         for scale_key, scale_factors in input_scalings.items():
-            scaled_shape = ODict([(a, int(size / scale_factors[a])) for a, size in export_shape.items()])
+            scaled_shape = ODict([(a, int(size / scale_factors[a])) for a, size in export_shape.items() if a != "c"])
             target_shape = _reorder(scaled_shape, OME_ZARR_AXES, 1)
+            if "c" in export_shape:
+                target_shape["c"] = export_shape["c"]
             target_item = (scale_key, target_shape)
             scales_items.append(target_item)
     return ODict(scales_items)
