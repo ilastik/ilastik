@@ -80,6 +80,8 @@ def run_headless_pixel_classification(
     input_axes: str = "",
     output_format: str = "hdf5",
     ignore_training_axistags: bool = False,
+    export_source: str = "",
+    export_dtype: str = "",
 ):
     assert project.exists()
     if isinstance(raw_data, Path):
@@ -100,6 +102,12 @@ def run_headless_pixel_classification(
 
     if ignore_training_axistags:
         subprocess_args.append("--ignore_training_axistags")
+
+    if export_source:
+        subprocess_args.append(f"--export_source={export_source}")
+
+    if export_dtype:
+        subprocess_args.append(f"--export_dtype={export_dtype}")
 
     if num_distributed_workers:
         os.environ["OMPI_ALLOW_RUN_AS_ROOT"] = "1"
@@ -364,3 +372,38 @@ def test_headless_from_ome_zarr_http_uri(
         assert exported.shape == (2, 100, 100)
         # Make sure the raw data was actually loaded (zarr fills chunks that fail to load with 0)
         assert numpy.count_nonzero(exported) > 10000
+
+
+def test_headless_ome_zarr_multiscale_export(testdir, tmp_path, sample_projects_dir):
+    """
+    Ensure that multiscale export works, generates scales,
+    and uses nearest-neighbor interpolation for Simple Segmentation export.
+    Implemented via `appropriate_interpolation_order` meta flag (0 = nearest neighbor, 1 = linear, default linear).
+    """
+    ilp_path = sample_projects_dir / "PixelClassification2d.ilp"
+    # Use the original training data so that the simple segmentation contains both 1s and 2s
+    raw_2d_path: Path = sample_projects_dir / "inputdata" / "2d.h5"
+    output_path = tmp_path / "out_2d.zarr"
+
+    run_headless_pixel_classification(
+        testdir,
+        project=ilp_path,
+        raw_data=raw_2d_path,
+        output_filename_format=str(output_path),
+        ignore_training_axistags=True,
+        output_format="multi-scale OME-Zarr",
+        export_source="simple segmentation",
+        export_dtype="float32",  # Segmentation is uint8 by default, force float to expose interpolated values
+    )
+
+    assert output_path.exists()
+    group = zarr.open(str(output_path))
+    assert len(group.keys()) == 3
+    scaled_data = group["s1"]
+    assert scaled_data.shape == (1, 1, 1, 512, 672)
+    numpy.testing.assert_array_equal(
+        scaled_data.astype(numpy.uint8),
+        scaled_data,
+        "Scaled segmentation contained fractional values. Check that interpolation uses nearest-neighbor.",
+    )
+    assert group.attrs["multiscales"][0]["metadata"]["kwargs"]["order"] == 0, "interpolation misreported"
