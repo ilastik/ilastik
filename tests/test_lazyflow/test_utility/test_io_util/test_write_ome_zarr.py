@@ -549,6 +549,18 @@ def test_generate_default_target_scales(shape, expected_shapes):
                 ]
             ),
         ),
+        (  # Different number of channels in in put and export; input downscale was ceil-rounded (i.e. not like ilastik does)
+            tagged_shape("yxc", (500, 500, 3)),
+            OrderedDict(
+                [("s0", tagged_shape("cyx", (2, 999, 999))), ("source_scale", tagged_shape("cyx", (2, 500, 500)))]
+            ),
+            OrderedDict(
+                [
+                    ("s0", tagged_shape("tczyx", (1, 3, 1, 999, 999))),
+                    ("source_scale", tagged_shape("tczyx", (1, 3, 1, 500, 500))),
+                ]
+            ),
+        ),
         (  # Default scaling would not scale the input + export is cropped + source is middle scale
             tagged_shape("zyxc", (16, 16, 16, 3)),
             OrderedDict(
