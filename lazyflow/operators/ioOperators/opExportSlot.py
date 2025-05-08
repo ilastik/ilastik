@@ -259,6 +259,8 @@ class OpExportSlot(Operator):
         return FormatValidity.check(self.Input.meta.getTaggedShape(), self.Input.meta.dtype, output_format)
 
     def propagateDirty(self, slot, subindex, roi):
+        if slot in (self.CoordinateOffset, self.Input):
+            self.TargetScales.setDirty()
         if slot == self.OutputFormat or slot == self.OutputFilenameFormat:
             self.ExportPath.setDirty()
         if slot == self.OutputFormat:
