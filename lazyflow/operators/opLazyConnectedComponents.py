@@ -380,11 +380,11 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
                 extendingLabels = np.array([b for a, b in zip(myLabels, otherLabels) if a in actualLabels]).astype(
                     myLabels.dtype
                 )
-                extendingLabels = np.sort(vigra.analysis.unique(extendingLabels)).astype(_LABEL_TYPE)
 
                 # add the neighbour to our processing queue only if it actually
                 # shares objects
                 if extendingLabels.size > 0:
+                    extendingLabels = np.sort(vigra.analysis.unique(extendingLabels)).astype(_LABEL_TYPE)
                     # check if already in queue
                     found = False
                     for i in range(len(chunksToProcess)):
@@ -740,7 +740,7 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
         m = {np.uint8: 1, np.uint16: 2, np.uint32: 4, np.uint64: 8}
         nStoredChunks = self._isFinal.sum()
         nChunks = self._isFinal.size
-        cachedMB = self._cache.data_bytes / 1024.0 ** 2
+        cachedMB = self._cache.data_bytes / 1024.0**2
         rawMB = self._cache.size * m[_LABEL_TYPE]
         logger.debug("Currently stored chunks: {}/{} ({:.1f} MB)".format(nStoredChunks, nChunks, cachedMB))
 
