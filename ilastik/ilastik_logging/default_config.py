@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import appdirs
+import platformdirs
 import os
 import re
 import logging.config
@@ -34,12 +34,12 @@ SESSION_FILEHANDLER_NAME = "session_file"
 SESSION_LOGFILE_NAME = "log_%Y%m%d_%H%M%S.txt"
 SESSION_LOGFILE_NAME_PATTERN = re.compile(r"^log_\d{8}_\d{6}\.txt$")  # For deleting old ones, must correspond to _NAME
 SESSION_LOGFILE_PATH = os.path.join(
-    appdirs.user_log_dir(appname="ilastik", appauthor=False), datetime.now().strftime(SESSION_LOGFILE_NAME)
+    platformdirs.user_log_dir(appname="ilastik", appauthor=False), datetime.now().strftime(SESSION_LOGFILE_NAME)
 )
 KEEP_SESSION_LOGS = 10
 DEFAULT_FILEHANDLER_NAME = "rotating_file"
 DEFAULT_LOG_NAME = "log.txt"
-DEFAULT_LOGFILE_PATH = os.path.join(appdirs.user_log_dir(appname="ilastik", appauthor=False), DEFAULT_LOG_NAME)
+DEFAULT_LOGFILE_PATH = os.path.join(platformdirs.user_log_dir(appname="ilastik", appauthor=False), DEFAULT_LOG_NAME)
 
 
 class OutputMode(object):

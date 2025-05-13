@@ -124,7 +124,7 @@ class ArrayLike(SlotType):
         if self.slot.meta.has_mask:
             storage_mask = numpy.zeros(storage.shape, dtype=bool)
             storage_fill_value = None
-            if issubclass(storage.dtype.type, (numpy.bool8, numpy.integer)):
+            if issubclass(storage.dtype.type, (numpy.bool_, numpy.integer)):
                 storage_fill_value = storage.dtype.type(0)
             elif issubclass(storage.dtype.type, numpy.floating):
                 storage_fill_value = storage.dtype.type(numpy.nan)
