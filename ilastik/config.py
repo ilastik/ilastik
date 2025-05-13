@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Union
 
-import appdirs
+import platformdirs
 
 """
 ilastik will read settings from ilastik.ini
@@ -84,7 +84,7 @@ def _init(path: Union[None, str, bytes, os.PathLike]) -> None:
 def _get_default_config_path() -> Optional[Path]:
     """Return a default, valid config path, or None if none of the default paths are valid."""
     old = Path.home() / ".ilastikrc"
-    new = Path(appdirs.user_config_dir(appname="ilastik", appauthor=False)) / "ilastik.ini"
+    new = Path(platformdirs.user_config_dir(appname="ilastik", appauthor=False)) / "ilastik.ini"
 
     if old.is_file():
         warnings.warn(

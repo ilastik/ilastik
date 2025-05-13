@@ -29,7 +29,6 @@ outputs:
         - numpy >1.12,<1.27
         # aiohttp to enable zarr.storage.FSStore
         - aiohttp
-        - appdirs
         - cachetools
         - certifi
         - dpct
@@ -50,6 +49,7 @@ outputs:
         - ndstructs
         - nifty
         - pandas 2.*
+        - platformdirs
         - psutil
         - pydantic 2.*
         - pyopengl
