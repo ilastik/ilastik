@@ -6,7 +6,6 @@ channels:
 dependencies:
   - python 3.11.*
   - numpy 1.*
-  - appdirs
   - cachetools
   - dpct
   - fastfilters
@@ -24,6 +23,7 @@ dependencies:
   - ndstructs
   - nifty
   - pandas 2.*
+  - platformdirs
   - psutil
   - pydantic 2.*
   - pyopengl
