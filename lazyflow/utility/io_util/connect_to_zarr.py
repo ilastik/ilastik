@@ -1,19 +1,81 @@
 import logging
 import os
+from asyncio import TimeoutError as asyncio_TimeoutError
 from typing import Optional
 from urllib.parse import unquote_to_bytes
 
 import s3fs
-from aiohttp import ClientResponseError, ClientConnectorError
+from aiohttp import ClientResponseError, ClientConnectorError, ServerDisconnectedError
 from botocore.exceptions import NoCredentialsError, EndpointConnectionError
+from fsspec.asyn import sync_wrapper
+from fsspec.implementations.http import HTTPFileSystem as fsspecHTTPfs
 from zarr.storage import FSStore
-
 
 logger = logging.getLogger(__name__)
 
 
+class RetryingFSStore(FSStore):
+    """
+    aiohttp.client.ClientSession retries GET requests once by default already,
+    but we want to insist harder.
+    """
+
+    n_retries = 3  # ClientSession will try twice for every n_retries
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sync_exists = sync_wrapper(self._exists_with_retry, obj=self.fs)  # mimic fsspec sync patching
+
+    def __getitem__(self, key):
+        if not isinstance(self.fs, fsspecHTTPfs):
+            return super().__getitem__(key)
+        for i in range(self.n_retries):
+            logger.debug(f"Attempt {i+1} of {self.n_retries} getting {key}")
+            try:
+                return super().__getitem__(key)
+            except (ServerDisconnectedError, asyncio_TimeoutError) as e:
+                if i == self.n_retries - 1:
+                    raise
+                logger.debug(f"Attempt {i+1} failed with {e}. Retrying.")
+                continue
+
+    async def _exists_with_retry(self, path):
+        # fsspec.http.HTTPFileSystem._exists, bug-fixed (no hiding errors by returning False). See __contains__.
+        kw = self.fs.kwargs.copy()
+        for i in range(self.n_retries):
+            logger.debug(f"Attempt {i+1} of {self.n_retries} checking existence of {path}")
+            try:
+                logger.debug(path)
+                session = await self.fs.set_session()
+                r = await session.get(self.fs.encode_url(path), **kw)
+                async with r:
+                    return r.status < 400
+            except (ServerDisconnectedError, asyncio_TimeoutError) as e:
+                if i == self.n_retries - 1:
+                    raise
+                logger.debug(f"Attempt {i+1} failed with {e}. Retrying.")
+                continue
+
+    def __contains__(self, key):
+        """
+        Override the implementation in zarr.storage.FSStore.__contains__.
+        This is because it defers to self.map.__contains__ -> self.fs.isfile.
+        In case self.fs is an fsspec.implementations.http.HTTPFileSystem,
+        this calls HTTPFileSystem._isfile -> HTTPFileSystem._exists,
+        which catches aiohttp.ClientError (the base class of all aiohttp errors) and returns False.
+        We want to retry on such errors instead.
+        """
+        if not isinstance(self.fs, fsspecHTTPfs):
+            return super().__contains__(key)
+        # from zarr.storage.FSStore.__contains__
+        key = self._normalize_key(key)
+        # from zarr.mapping.FSMap.__contains__
+        path = self.map._key_to_str(key)  # noqa
+        return self.sync_exists(path)
+
+
 def _try_authenticated_aws_s3(uri, kwargs, mode, test_path) -> Optional[FSStore]:
-    authenticated_store = FSStore(uri, mode=mode, anon=False, **kwargs)
+    authenticated_store = RetryingFSStore(uri, mode=mode, anon=False, **kwargs)
     try:
         logger.debug(f"Trying to access path={test_path} at uri={uri} with S3FS credentials.")
         _ = authenticated_store[test_path]
@@ -51,7 +113,7 @@ def _try_authenticated_s3_compatible(uri, kwargs, e, test_path) -> FSStore:
     base_uri_inc_bucket = "/".join(split_bucket[:4])
     sub_uri = split_bucket[4]
     fs = s3fs.S3FileSystem(anon=False, endpoint_url=base_uri_inc_bucket)
-    store = FSStore(sub_uri, fs=fs, **kwargs)
+    store = RetryingFSStore(sub_uri, fs=fs, **kwargs)
     try:
         logger.debug(f"Trying path={sub_uri}/{test_path} in bucket={base_uri_inc_bucket} with S3FS credentials.")
         _ = store[test_path]
@@ -77,10 +139,10 @@ def ensure_connection_and_get_store(uri: str, mode="r", **kwargs) -> FSStore:
         uri = os.fsdecode(unquote_to_bytes(uri))
     if uri.startswith("s3:"):
         # s3fs.S3FileSystem defaults to anon=False, but we want to try anon=True first
-        store = FSStore(uri, anon=True, mode=mode, **kwargs)
+        store = RetryingFSStore(uri, anon=True, mode=mode, **kwargs)
     else:
         # Non-S3 don't like to be called with anon keyword
-        store = FSStore(uri, mode=mode, **kwargs)
+        store = RetryingFSStore(uri, mode=mode, **kwargs)
     try:
         store[test_path]
         # Any error not handled here is either a successful connection (even 404), or an unknown problem

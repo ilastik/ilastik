@@ -37,7 +37,6 @@ import s3fs
 import zarr
 from aiohttp import ClientResponseError
 
-from lazyflow.rtype import Roi
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore, NoOMEZarrMetaFound, OME_ZARR_V_0_4_KWARGS
 
 
@@ -184,13 +183,14 @@ def test_handles_slow_connection(tmp_path, graph, ome_zarr_store_on_disc, slow_o
 @pytest.fixture
 def dropping_ome_zarr_server(tmp_path, ome_zarr_store_on_disc) -> str:
     class DroppingHTTPRequestHandler(SimpleHTTPRequestHandler):
-        request_count = 0
+        request_count = 1  # Class variable because a new handler instance is created for each request
 
         def do_GET(self):
-            # Drop every other request, requiring retry to achieve anything
-            if self.request_count % 2 != 0:
+            # aiohttp.client.ClientSession._request retries once on ServerDisconnectedError already,
+            # so need to be worse than dropping every other request to provoke our own retrying.
+            if DroppingHTTPRequestHandler.request_count % 4 == 0:
                 super().do_GET()
-            self.request_count += 1
+            DroppingHTTPRequestHandler.request_count += 1
 
     server, thread = run_server_in_separate_thread(DroppingHTTPRequestHandler, tmp_path)
 
