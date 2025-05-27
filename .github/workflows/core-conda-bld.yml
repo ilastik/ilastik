@@ -23,6 +23,7 @@ jobs:
           channel-priority: strict
           miniforge-version: latest
           conda-solver: libmamba
+          conda-remove-defaults: "true"
       - name: install xvfb/deps
         run: |
           sudo apt-get update
@@ -90,6 +91,7 @@ jobs:
           channel-priority: strict
           miniforge-version: latest
           conda-solver: libmamba
+          conda-remove-defaults: "true"
       - uses: conda-incubator/setup-miniconda@v3
         # we need to skip cleanup on windows currently, because it takes
         # hours and stalls CI that way (run-post: false)
@@ -102,6 +104,7 @@ jobs:
           channel-priority: strict
           miniforge-version: latest
           conda-solver: libmamba
+          conda-remove-defaults: "true"
           run-post: false
       - name: install xvfb/deps
         if: matrix.os == 'ubuntu-latest'
