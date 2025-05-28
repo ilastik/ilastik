@@ -573,6 +573,7 @@ class OMEZarrStore(MultiscaleStore):
                 logger.info(f"Initializing scale {scale_key} took {timer.seconds()*1000} ms.")
         self.ome_meta_for_export = OMEZarrMultiscaleMeta.from_multiscale_spec(self._multiscale_spec)
         super().__init__(
+            uri=uri,
             dtype=dtype,
             axistags=axistags,
             multiscales=scale_metadata,

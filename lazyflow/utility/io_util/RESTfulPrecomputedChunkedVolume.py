@@ -106,6 +106,7 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
         scale_metadata = OrderedDict(zip(self._scales.keys(), scale_shapes))
 
         super().__init__(
+            uri=volume_url,
             dtype=dtype,
             axistags=axistags,
             multiscales=scale_metadata,
