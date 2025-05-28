@@ -40,7 +40,13 @@ def test_license_dlg_default_license(qtbot, tmp_path):
         with mock.patch("PyQt5.QtWidgets.QMessageBox.warning", mock_error_msg):
             qtbot.mouseClick(dlg._show_details_btn, Qt.MouseButton.LeftButton)
 
-    mock_open.assert_called_once_with(license_text)
+    mock_open.assert_called_once()
+    args, kwargs = mock_open.call_args
+    assert not args
+    assert kwargs["title"] == LicenseDialog.LICENSE_TITLE
+    assert kwargs["license_text"] == license_text
+    assert isinstance(kwargs["parent"], LicenseDialog)
+
     mock_error_msg.assert_not_called()
 
 
@@ -57,7 +63,13 @@ def test_license_dlg_default_3rdp_license(qtbot, tmp_path):
         with mock.patch("PyQt5.QtWidgets.QMessageBox.warning", mock_error_msg):
             qtbot.mouseClick(dlg._show_3rd_party_btn, Qt.MouseButton.LeftButton)
 
-    mock_open.assert_called_once_with(license_text)
+    mock_open.assert_called_once()
+    args, kwargs = mock_open.call_args
+    assert not args
+    assert kwargs["title"] == LicenseDialog.LICENSE_3RD_PARTY_TITLE
+    assert kwargs["license_text"] == license_text
+    assert isinstance(kwargs["parent"], LicenseDialog)
+
     mock_error_msg.assert_not_called()
 
 
