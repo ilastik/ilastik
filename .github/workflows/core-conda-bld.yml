@@ -23,6 +23,7 @@ jobs:
           channel-priority: strict
           miniforge-version: latest
           conda-solver: libmamba
+          conda-remove-defaults: "true"
       - name: install xvfb/deps
         run: |
           sudo apt-get update
@@ -59,9 +60,12 @@ jobs:
         include:
           - ilastik_variant: "ilastik-core"
             build_prefix: "py_"
+          - ilastik_variant: "ilastik-gpu"
+            cuda_version: "12.6"
     runs-on: ${{ matrix.os }}
     env:
       ILASTIK_PACKAGE_NAME: ${{ matrix.ilastik_variant }}-${{ needs.conda-noarch-build.outputs.version }}-${{ matrix.build_prefix }}0.conda
+      CONDA_OVERRIDE_CUDA: ${{ matrix.cuda_version }}
     steps:
       # necessary on windows: https://github.com/actions/cache/issues/591#issuecomment-845132253
       - name: "Use GNU tar instead BSD tar"
@@ -87,6 +91,7 @@ jobs:
           channel-priority: strict
           miniforge-version: latest
           conda-solver: libmamba
+          conda-remove-defaults: "true"
       - uses: conda-incubator/setup-miniconda@v3
         # we need to skip cleanup on windows currently, because it takes
         # hours and stalls CI that way (run-post: false)
@@ -99,6 +104,7 @@ jobs:
           channel-priority: strict
           miniforge-version: latest
           conda-solver: libmamba
+          conda-remove-defaults: "true"
           run-post: false
       - name: install xvfb/deps
         if: matrix.os == 'ubuntu-latest'
@@ -119,14 +125,14 @@ jobs:
         shell: bash -l {0}
         run: |
           xvfb-run --server-args="-screen 0 1024x768x24" conda-build --test --override-channels \
-            -c ./pkgs -c pytorch -c nvidia -c ilastik-forge -c conda-forge \
+            -c ./pkgs -c conda-forge -c ilastik-forge \
             ./pkgs/noarch/${ILASTIK_PACKAGE_NAME}
       - name: osx test
         if: matrix.os == 'macos-latest'
         shell: bash -l {0}
         run: |
           VOLUMINA_SHOW_3D_WIDGET=0 conda-build --test --override-channels \
-            -c ./pkgs -c pytorch -c nvidia -c ilastik-forge -c conda-forge \
+            -c ./pkgs -c conda-forge -c ilastik-forge \
             ./pkgs/noarch/${ILASTIK_PACKAGE_NAME}
       - name: windows test
         if: matrix.os == 'windows-latest'
@@ -134,7 +140,7 @@ jobs:
         run: |
           set VOLUMINA_SHOW_3D_WIDGET=0
           conda build --test --override-channels ^
-            -c ./pkgs -c pytorch -c nvidia -c ilastik-forge/label/patched -c ilastik-forge -c conda-forge ^
+            -c ./pkgs -c ilastik-forge/label/patched-2 -c conda-forge -c ilastik-forge ^
             ./pkgs/noarch/%ILASTIK_PACKAGE_NAME%
         # HACK: due to a bug in conda-build need to point to
         # libarchive explicitly.
