@@ -43,6 +43,7 @@ class MultiscaleStore(metaclass=ABCMeta):
 
     def __init__(
         self,
+        uri: str,
         dtype: numpy.dtype,
         axistags: vigra.AxisTags,
         multiscales: Multiscales,
@@ -50,6 +51,7 @@ class MultiscaleStore(metaclass=ABCMeta):
         highest_resolution_key: str,
     ):
         """
+        :param uri: Location where this store was initialized (as passed to __init__).
         :param dtype: The dataset's numpy dtype.
         :param axistags: vigra.AxisTags describing the dataset's axes.
         :param multiscales: Dict of scales for GUI and OME-Zarr export, {key: tagged shape}
@@ -61,6 +63,7 @@ class MultiscaleStore(metaclass=ABCMeta):
             This acts as the default scale after load until the user selects a different one.
         :param highest_resolution_key: Used to infer the maximum dataset size, and for legacy HBP-mode projects.
         """
+        self.uri = uri
         self.dtype = dtype
         self.axistags = axistags
         self.multiscales = multiscales
