@@ -2,7 +2,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2022, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -19,8 +19,6 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import os
-import webbrowser
 from functools import partial
 from pathlib import Path
 from textwrap import dedent
@@ -29,16 +27,38 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (
     QDialog,
+    QDialogButtonBox,
     QHBoxLayout,
     QLabel,
     QMessageBox,
     QPushButton,
     QSizePolicy,
-    QSpacerItem,
+    QTextBrowser,
     QVBoxLayout,
 )
 
 import ilastik
+
+
+class LongLicenseDialog(QDialog):
+    def __init__(self):
+        super().__init__(parent=None)
+        layout = QVBoxLayout(self)
+        textbrowser = QTextBrowser(parent=self)
+        textbrowser.setMinimumSize(600, 480)
+
+        button = QDialogButtonBox(QDialogButtonBox.Ok)
+        button.accepted.connect(self.accept)
+        layout.addWidget(textbrowser)
+        layout.addWidget(button)
+        self.textbrowser = textbrowser
+
+    @classmethod
+    def show_license(cls, license_text: str):
+        dlg = cls()
+        dlg.textbrowser.setPlainText(license_text)
+
+        dlg.exec()
 
 
 class LicenseDialog(QDialog):
@@ -103,7 +123,7 @@ class LicenseDialog(QDialog):
 
         def show_license(_checked, license_path: Path, error_message: str):
             if license_path.is_file():
-                webbrowser.open(license_path.as_uri())
+                LongLicenseDialog.show_license(license_path.read_text())
             else:
                 # parent, title, text
                 QMessageBox.warning(self, "License file not found!", error_message)

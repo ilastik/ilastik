@@ -32,14 +32,15 @@ def test_license_dlg_default_license(qtbot, tmp_path):
         dlg = get_dlg(qtbot)
 
     license_path = tmp_path / "LICENSE.txt"
-    license_path.touch()
+    license_text = "Hello License"
+    license_path.write_text(license_text)
     mock_open = mock.Mock()
     mock_error_msg = mock.Mock()
-    with mock.patch("webbrowser.open", mock_open):
+    with mock.patch("ilastik.shell.gui.licenseDialog.LongLicenseDialog.show_license", mock_open):
         with mock.patch("PyQt5.QtWidgets.QMessageBox.warning", mock_error_msg):
             qtbot.mouseClick(dlg._show_details_btn, Qt.MouseButton.LeftButton)
 
-    mock_open.assert_called_once_with(license_path.as_uri())
+    mock_open.assert_called_once_with(license_text)
     mock_error_msg.assert_not_called()
 
 
@@ -48,14 +49,15 @@ def test_license_dlg_default_3rdp_license(qtbot, tmp_path):
         dlg = get_dlg(qtbot)
 
     license_path = tmp_path / "THIRDPARTY_LICENSES.txt"
-    license_path.touch()
+    license_text = "Hello License - third-party"
+    license_path.write_text(license_text)
     mock_open = mock.Mock()
     mock_error_msg = mock.Mock()
-    with mock.patch("webbrowser.open", mock_open):
+    with mock.patch("ilastik.shell.gui.licenseDialog.LongLicenseDialog.show_license", mock_open):
         with mock.patch("PyQt5.QtWidgets.QMessageBox.warning", mock_error_msg):
             qtbot.mouseClick(dlg._show_3rd_party_btn, Qt.MouseButton.LeftButton)
 
-    mock_open.assert_called_once_with(license_path.as_uri())
+    mock_open.assert_called_once_with(license_text)
     mock_error_msg.assert_not_called()
 
 
@@ -65,7 +67,7 @@ def test_license_dlg_license_notfound(qtbot):
 
     mock_open = mock.Mock()
     mock_error_msg = mock.Mock()
-    with mock.patch("webbrowser.open", mock_open):
+    with mock.patch("ilastik.shell.gui.licenseDialog.LongLicenseDialog.show_license", mock_open):
         with mock.patch("PyQt5.QtWidgets.QMessageBox.warning", mock_error_msg):
             qtbot.mouseClick(dlg._show_details_btn, Qt.MouseButton.LeftButton)
 
@@ -80,7 +82,7 @@ def test_license_dlg_3rdp_license_notfound(qtbot, mock_license):
 
     mock_open = mock.Mock()
     mock_error_msg = mock.Mock()
-    with mock.patch("webbrowser.open", mock_open):
+    with mock.patch("ilastik.shell.gui.licenseDialog.LongLicenseDialog.show_license", mock_open):
         with mock.patch("PyQt5.QtWidgets.QMessageBox.warning", mock_error_msg):
             qtbot.mouseClick(dlg._show_3rd_party_btn, Qt.MouseButton.LeftButton)
 
