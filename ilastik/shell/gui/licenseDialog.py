@@ -2,7 +2,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2022, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -19,8 +19,6 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import os
-import webbrowser
 from functools import partial
 from pathlib import Path
 from textwrap import dedent
@@ -29,16 +27,40 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (
     QDialog,
+    QDialogButtonBox,
     QHBoxLayout,
     QLabel,
     QMessageBox,
     QPushButton,
     QSizePolicy,
-    QSpacerItem,
+    QTextBrowser,
     QVBoxLayout,
+    QWidget,
 )
 
 import ilastik
+
+
+class LongLicenseDialog(QDialog):
+    def __init__(self, parent):
+        super().__init__(parent)
+        layout = QVBoxLayout(self)
+        textbrowser = QTextBrowser(parent=self)
+        textbrowser.setMinimumSize(600, 480)
+
+        button = QDialogButtonBox(QDialogButtonBox.Ok)
+        button.accepted.connect(self.accept)
+        layout.addWidget(textbrowser)
+        layout.addWidget(button)
+        self.textbrowser = textbrowser
+
+    @classmethod
+    def show_license(cls, *, license_text: str, title: str, parent: QWidget):
+        dlg = cls(parent)
+        dlg.setWindowTitle(title)
+        dlg.textbrowser.setPlainText(license_text)
+
+        dlg.exec()
 
 
 class LicenseDialog(QDialog):
@@ -69,6 +91,8 @@ class LicenseDialog(QDialog):
         License information is available on the the ilastik web site at https://ilastik.org/license.html.
         """
     )
+    LICENSE_TITLE = "ilastik license"
+
     LICENSE_3RD_PARTY_ERROR = dedent(
         """
         Cannot find third party license file. This is expected when running ilastik from source in conda.
@@ -77,9 +101,11 @@ class LicenseDialog(QDialog):
         """
     )
 
+    LICENSE_3RD_PARTY_TITLE = "ilastik third party licenses"
+
     def __init__(self, parent=None):
         super().__init__(parent=parent)
-
+        self.setWindowTitle("ilastik - main license dialog")
         ilastik_path = Path(ilastik.__file__).parent
 
         # files copied during release process
@@ -101,21 +127,26 @@ class LicenseDialog(QDialog):
         header_layout.addWidget(logo)
         header_layout.addWidget(short_license_label, 1)
 
-        def show_license(_checked, license_path: Path, error_message: str):
+        def show_license(license_path: Path, error_message: str, title: str):
             if license_path.is_file():
-                webbrowser.open(license_path.as_uri())
+                LongLicenseDialog.show_license(license_text=license_path.read_text(), title=title, parent=self)
             else:
                 # parent, title, text
                 QMessageBox.warning(self, "License file not found!", error_message)
 
         show_details_btn = QPushButton("Show full license")
         show_details_btn.clicked.connect(
-            partial(show_license, license_path=license_path, error_message=self.LICENSE_ERROR)
+            partial(show_license, license_path=license_path, error_message=self.LICENSE_ERROR, title=self.LICENSE_TITLE)
         )
         self._show_details_btn = show_details_btn
         show_3rd_party_btn = QPushButton("Show third party licenses")
         show_3rd_party_btn.clicked.connect(
-            partial(show_license, license_path=license_3rd_party_path, error_message=self.LICENSE_3RD_PARTY_ERROR)
+            partial(
+                show_license,
+                license_path=license_3rd_party_path,
+                error_message=self.LICENSE_3RD_PARTY_ERROR,
+                title=self.LICENSE_3RD_PARTY_TITLE,
+            )
         )
         self._show_3rd_party_btn = show_3rd_party_btn
         btnbox = QHBoxLayout()
