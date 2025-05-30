@@ -129,7 +129,9 @@ class LicenseDialog(QDialog):
 
         def show_license(license_path: Path, error_message: str, title: str):
             if license_path.is_file():
-                LongLicenseDialog.show_license(license_text=license_path.read_text(), title=title, parent=self)
+                LongLicenseDialog.show_license(
+                    license_text=license_path.read_text(encoding="utf-8"), title=title, parent=self
+                )
             else:
                 # parent, title, text
                 QMessageBox.warning(self, "License file not found!", error_message)
