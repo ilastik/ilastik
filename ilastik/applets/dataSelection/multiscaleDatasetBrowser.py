@@ -176,7 +176,7 @@ class MultiscaleDatasetBrowser(QDialog):
         try:
             uri = _validate_uri(text)
         except ValueError as e:
-            self.result_text_box.setText(str(e))
+            self.display_error(str(e))
             return
         if uri != text:
             self.combo.lineEdit().setText(uri)
@@ -191,7 +191,7 @@ class MultiscaleDatasetBrowser(QDialog):
         else:
             store_types = [OMEZarrStore, RESTfulPrecomputedChunkedVolume]
             supported_formats = "\n".join(f"<li>{s.NAME} ({s.URI_HINT})</li>" for s in store_types)
-            self.result_text_box.setHtml(
+            self.display_error(
                 f"<p>Address does not look like any supported format.</p>"
                 f"<p>Supported formats:</p>"
                 f"<ul>{supported_formats}</ul>"
@@ -213,6 +213,7 @@ class MultiscaleDatasetBrowser(QDialog):
     def display_error(self, msg):
         self._set_inputs_enabled(True)
         self.result_text_box.setText(msg)
+        self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)
 
     def display_success(self, store: MultiscaleStore):
         self._set_inputs_enabled(True)
