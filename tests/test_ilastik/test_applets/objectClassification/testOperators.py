@@ -388,7 +388,7 @@ class TestOpBadObjectsToWarningMessage(unittest.TestCase):
 
         # valid format, bad features existent
         self.op.BadObjects.setValue({"objects": {1: {0: [1, 2]}}, "feats": set()})
-        self.assertNotEquals(self.op.WarningMessage.value, {})
+        self.assertNotEqual(self.op.WarningMessage.value, {})
         notimemsg = self.op.WarningMessage.value
 
         # valid format, bad features existent
