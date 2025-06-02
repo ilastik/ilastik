@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2024, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -18,21 +18,13 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-"""
-Depending on the demand this might get reworked into a real "browser". Right now
-this will only be used to punch in the url and do some validation. Naming of the
-file is just to reflect the similar function as dvidDataSelectionBrowser.
-
-Todos:
-  - check whether can me somehow merged with dvidDataSelctionBrowser
-
-"""
-
 import logging
 import pathlib
+from functools import partial
+from time import perf_counter
+from typing import Callable
 
-from requests.exceptions import SSLError, ConnectionError
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import pyqtSignal, QThread
 from PyQt5.QtWidgets import (
     QComboBox,
     QDialog,
@@ -44,10 +36,12 @@ from PyQt5.QtWidgets import (
     QTextBrowser,
     QVBoxLayout,
 )
+from requests.exceptions import SSLError, ConnectionError
 
 from lazyflow.utility import isUrl
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore
 from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
+from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore
 from lazyflow.utility.pathHelpers import uri_to_Path
 
 logger = logging.getLogger(__name__)
@@ -75,12 +69,37 @@ def _validate_uri(text: str) -> str:
     return text
 
 
+class CheckRemoteStoreWorker(QThread):
+    success = pyqtSignal(object)  # returns MultiscaleStore
+    error = pyqtSignal(str)  # returns error message
+
+    def __init__(self, parent, store_init: Callable):
+        super().__init__(parent)
+        self.store_init = store_init
+
+    def run(self):
+        try:
+            store = self.store_init()
+            self.success.emit(store)
+        except Exception as e:
+            if isinstance(e, SSLError):
+                msg = "SSL error, please check that you are using the correct protocol (http/https)."
+            elif isinstance(e, ConnectionError):
+                msg = "Connection error, please check that the server is online and the URL is correct."
+            else:
+                msg = "Couldn't load a multiscale dataset at this address."
+            msg += f"\n\nMore detail:\n{e}"
+            logger.error(e, exc_info=True)
+            self.error.emit(msg)
+
+
 class MultiscaleDatasetBrowser(QDialog):
 
     EXAMPLE_URI = "https://data.ilastik.org/2d_cells_apoptotic_1channel.zarr"
 
     def __init__(self, history=None, parent=None):
         super().__init__(parent)
+        self._worker_start_time = 0
         self._history = history or []
         self.selected_uri = None  # Return value read by the caller after the dialog is closed
 
@@ -108,20 +127,20 @@ class MultiscaleDatasetBrowser(QDialog):
         combo_label = QLabel(self)
         combo_label.setText("Dataset address: ")
 
-        example_button = QPushButton(self)
-        example_button.setText("Add example")
-        example_button.setToolTip("Add url to '2d_cells_apoptotic_1channel` example from the ilastik website.")
-        example_button.pressed.connect(lambda: self.combo.lineEdit().setText(self.EXAMPLE_URI))
+        self.example_button = QPushButton(self)
+        self.example_button.setText("Add example")
+        self.example_button.setToolTip("Add url to '2d_cells_apoptotic_1channel` example from the ilastik website.")
+        self.example_button.pressed.connect(lambda: self.combo.lineEdit().setText(self.EXAMPLE_URI))
 
         combo_layout = QGridLayout()
-        chk_button = QPushButton(self)
-        chk_button.setText("Check")
-        chk_button.clicked.connect(self._validate_text_input)
-        self.combo.lineEdit().returnPressed.connect(chk_button.click)
+        self.check_button = QPushButton(self)
+        self.check_button.setText("Check")
+        self.check_button.clicked.connect(self._validate_text_input)
+        self.combo.lineEdit().returnPressed.connect(self.check_button.click)
         combo_layout.addWidget(combo_label, 0, 0)
         combo_layout.addWidget(self.combo, 0, 1)
-        combo_layout.addWidget(chk_button, 0, 2)
-        combo_layout.addWidget(example_button, 1, 0)
+        combo_layout.addWidget(self.check_button, 0, 2)
+        combo_layout.addWidget(self.example_button, 1, 0)
 
         main_layout.addLayout(combo_layout)
 
@@ -151,54 +170,75 @@ class MultiscaleDatasetBrowser(QDialog):
         self.setLayout(main_layout)
 
     def _validate_text_input(self, _event):
+        self._set_inputs_enabled(False)
         self.selected_uri = None
         text = self.combo.currentText().strip()
         try:
             uri = _validate_uri(text)
         except ValueError as e:
-            self.result_text_box.setText(str(e))
+            self.display_error(str(e))
             return
         if uri != text:
             self.combo.lineEdit().setText(uri)
         logger.debug(f"Entered URL: {uri}")
-        try:
-            # Ask each store type if it likes the URL to avoid web requests during instantiation attempts.
-            if OMEZarrStore.is_uri_compatible(uri):
-                rv = OMEZarrStore(uri)
-            elif RESTfulPrecomputedChunkedVolume.is_uri_compatible(uri):
-                rv = RESTfulPrecomputedChunkedVolume(volume_url=uri)
-            else:
-                store_types = [OMEZarrStore, RESTfulPrecomputedChunkedVolume]
-                supported_formats = "\n".join(f"<li>{s.NAME} ({s.URI_HINT})</li>" for s in store_types)
-                self.result_text_box.setHtml(
-                    f"<p>Address does not look like any supported format.</p>"
-                    f"<p>Supported formats:</p>"
-                    f"<ul>{supported_formats}</ul>"
-                )
-                return
-        except Exception as e:
-            self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)
-            if isinstance(e, SSLError):
-                msg = "SSL error, please check that you are using the correct protocol (http/https)."
-            elif isinstance(e, ConnectionError):
-                msg = "Connection error, please check that the server is online and the URL is correct."
-            else:
-                msg = "Couldn't load a multiscale dataset at this address."
-            msg += f"\n\nMore detail:\n{e}"
-            logger.error(e, exc_info=True)
-            self.result_text_box.setText(msg)
+        # Ask each store type if it likes the URL to avoid web requests during instantiation attempts.
+        if OMEZarrStore.is_uri_compatible(uri):
+            StoreTypeMatchingUri = OMEZarrStore
+            worker = CheckRemoteStoreWorker(self, partial(OMEZarrStore, uri))
+        elif RESTfulPrecomputedChunkedVolume.is_uri_compatible(uri):
+            StoreTypeMatchingUri = RESTfulPrecomputedChunkedVolume
+            worker = CheckRemoteStoreWorker(self, partial(RESTfulPrecomputedChunkedVolume, volume_url=uri))
+        else:
+            store_types = [OMEZarrStore, RESTfulPrecomputedChunkedVolume]
+            supported_formats = "\n".join(f"<li>{s.NAME} ({s.URI_HINT})</li>" for s in store_types)
+            self.display_error(
+                f"<p>Address does not look like any supported format.</p>"
+                f"<p>Supported formats:</p>"
+                f"<ul>{supported_formats}</ul>"
+            )
             return
-
-        self.selected_uri = uri
-        scale_info_text = "\n".join(
-            [f"  - {key}: {' / '.join(map(str, shape.values()))}" for key, shape in rv.multiscales.items()]
-        )
         self.result_text_box.setText(
-            f"URL: {self.selected_uri}\nData format: {rv.NAME}\nAvailable scales:\n" + scale_info_text
+            f"Trying to load {StoreTypeMatchingUri.NAME} at {uri}.\nThis could take a while if the server or connection is slow."
         )
-        # This check-button might have been triggered by pressing Enter.
-        # The timer prevents triggering the now enabled OK button by the same keypress.
-        QTimer.singleShot(0, lambda: self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(True))
+        worker.success.connect(self.display_success)
+        worker.error.connect(self.display_error)
+        self._worker_start_time = perf_counter()
+        worker.start()
+
+    def _set_inputs_enabled(self, enabled):
+        self.example_button.setEnabled(enabled)
+        self.check_button.setEnabled(enabled)
+        self.combo.setEnabled(enabled)
+
+    def display_error(self, msg):
+        self._set_inputs_enabled(True)
+        self.result_text_box.setText(msg)
+        self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)
+
+    def display_success(self, store: MultiscaleStore):
+        self._set_inputs_enabled(True)
+        self.selected_uri = store.uri
+        time_to_finish = perf_counter() - self._worker_start_time
+        time_text = f"Finished check in {time_to_finish:.2f} seconds."
+        if time_to_finish > 3:
+            time_text += (
+                "</p><p>This was <b>very</b> slow. "
+                "If you add this dataset to your project, you may experience long delays. "
+                "The ilastik documentation contains some performance tips that might be helpful.</p>"
+            )
+        scale_info_html = "\n".join(
+            [
+                f"<li>Scale \"{key}\", shape: {' / '.join(map(str, shape.values()))}</li>"
+                for key, shape in store.multiscales.items()
+            ]
+        )
+        self.result_text_box.setHtml(
+            f"<p>{time_text}<br>"
+            f"URL: {self.selected_uri}<br>"
+            f"Data format: {store.NAME}<br>"
+            f"Available scales:</p><ol>{scale_info_html}</ol>"
+        )
+        self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(True)
 
 
 if __name__ == "__main__":
