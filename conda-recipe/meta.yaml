@@ -61,8 +61,6 @@ outputs:
         - scikit-image
         - scikit-learn
         - tifffile >=2022
-        # build 1.11.1=*_1028 on cf is the first to be compatible with numpy>1.19
-        # need to bump this manually until there is a true version bump in vigra
         - vigra 1.12.1
         - xarray !=2023.8.0,!=2023.9.0,!=2023.10.0
         - z5py

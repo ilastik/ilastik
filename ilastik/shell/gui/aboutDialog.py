@@ -91,7 +91,7 @@ class AboutDialog(QDialog):
         self.setLayout(main_layout)
         self.setStyleSheet(f"AboutDialog {{background-color: {QApplication.palette().light().color().name()}; }}")
         self.setWindowTitle("About ilastik")
-        self.setFixedSize(splash_pixmap.width() * 3.0, splash_pixmap.height() * 1.25)
+        self.setFixedSize(int(splash_pixmap.width() * 3.0), int(splash_pixmap.height() * 1.25))
 
     @classmethod
     def createAndShowModal(cls, parent=None):
