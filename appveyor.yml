@@ -27,7 +27,7 @@ install:
   - cmd: conda install -n base -c conda-forge setuptools_scm
   - |
     conda env create --name %ENV_NAME% --file dev\environment-dev.yml
-    conda install --name %ENV_NAME% --freeze-installed -c ilastik-forge -c conda-forge volumina
+    conda install --name %ENV_NAME% --freeze-installed -c conda-forge -c ilastik-forge volumina
     conda run -n %ENV_NAME% pip install -e .
   - conda clean -p
 

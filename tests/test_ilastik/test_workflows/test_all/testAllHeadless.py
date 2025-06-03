@@ -34,8 +34,12 @@ from ilastik.workflow import getAvailableWorkflows
 from ilastik.shell.projectManager import ProjectManager
 
 import logging
+import pytest
 
 logger = logging.getLogger(__name__)
+
+
+WORKFLOW_LIST = list(getAvailableWorkflows())
 
 
 def generate_project_file_name(temp_dir, workflow_name):
@@ -46,14 +50,10 @@ def generate_project_file_name(temp_dir, workflow_name):
 class TestHeadlessWorkflowStartupProjectCreation(object):
     """Start a headless shell and create a project for each workflow"""
 
-    @classmethod
-    def setup_class(cls):
-        cls.workflow_list = list(getAvailableWorkflows())
-
-    def test_workflow_creation_headless(self):
+    @pytest.mark.parametrize("workflow_class_tuple", WORKFLOW_LIST, ids=[x[1] for x in WORKFLOW_LIST])
+    def test_workflow_creation_headless(self, workflow_class_tuple):
         with tempfile.TemporaryDirectory() as temp_dir:
-            for wf in self.workflow_list:
-                yield self.start_workflow_create_project_headless, wf, temp_dir
+            self.start_workflow_create_project_headless(workflow_class_tuple, temp_dir)
 
     def start_workflow_create_project_headless(self, workflow_class_tuple, temp_dir):
         """Tests project file creation via the command line
@@ -80,10 +80,10 @@ class TestHeadlessWorkflowStartupProjectCreation(object):
         # now check if the project file has been created:
         assert os.path.exists(project_file), f"Project File {project_file} creation not successful"
 
-    def test_workflow_loading_headless(self):
+    @pytest.mark.parametrize("workflow_class_tuple", WORKFLOW_LIST, ids=[x[1] for x in WORKFLOW_LIST])
+    def test_workflow_loading_headless(self, workflow_class_tuple):
         with tempfile.TemporaryDirectory() as temp_dir:
-            for wf in self.workflow_list:
-                yield self.start_workflow_load_project_headless, wf, temp_dir
+            self.start_workflow_load_project_headless(workflow_class_tuple, temp_dir)
 
     def create_project_file(self, workflow_class, project_file_name):
         newProjectFile = ProjectManager.createBlankProjectFile(project_file_name, workflow_class, [])

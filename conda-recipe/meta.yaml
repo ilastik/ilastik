@@ -20,16 +20,15 @@ outputs:
         - python -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv
     requirements:
       host:
-        - python >=3.7
+        - python >=3.9
         - pip
         - setuptools >=40.0
         - setuptools_scm
       run:
-        - python >=3.7
-        - numpy >1.12,<1.23
+        - python >=3.9
+        - numpy >1.12,<1.27
         # aiohttp to enable zarr.storage.FSStore
         - aiohttp
-        - appdirs
         - cachetools
         - certifi
         - dpct
@@ -50,6 +49,7 @@ outputs:
         - ndstructs
         - nifty
         - pandas 2.*
+        - platformdirs
         - psutil
         - pydantic 2.*
         - pyopengl
@@ -61,16 +61,13 @@ outputs:
         - scikit-image
         - scikit-learn
         - tifffile >=2022
-        # build 1.11.1=*_1028 on cf is the first to be compatible with numpy>1.19
-        # need to bump this manually until there is a true version bump in vigra
-        - vigra 1.11.1=*_1038
+        - vigra 1.12.1
         - xarray !=2023.8.0,!=2023.9.0,!=2023.10.0
         - z5py
         - zarr 2.*
       run_constrained:
-        - mkl <2024.1.0
         - tiktorch 25.4.0
-        - volumina >=1.3.10
+        - volumina >=1.3.16
         # TODO: sphericaltexture 0.1.1 currently times out in the tests
         - sphericaltexture 0.0.4
         # pyshtools 4.10 conflicts with pytorch via openmp on windows
@@ -92,6 +89,7 @@ outputs:
         - pytest.ini
 
       requires:
+        - python 3.11
         - pytest >4
         - pytest-qt
         - volumina
@@ -116,9 +114,9 @@ outputs:
         - ilastik = ilastik_scripts.ilastik_startup:main
     requirements:
       run:
-        - python 3.9.*
+        - python 3.11.*
         - {{ pin_subpackage("ilastik-core", exact=True) }}
-        - pytorch >=1.6,<2.4.1
+        - pytorch >=2
         - tiktorch
         - torchvision
         - volumina
@@ -135,8 +133,6 @@ outputs:
       requires:
         - pytest >4
         - pytest-qt
-        # need to help mamba here a bit
-        - ilastik-pytorch-version-helper-cpu
         - pytorch 2.*
 
       imports:
@@ -168,12 +164,12 @@ outputs:
         - ilastik = ilastik_scripts.ilastik_startup:main
     requirements:
       run:
-        - python 3.9.*
+        - python 3.11.*
         - {{ pin_subpackage("ilastik-core", exact=True) }}
-        - pytorch >=1.6,<2.4.1
+        - pytorch >=2
+        - pytorch *=*cuda*
         - tiktorch
         - torchvision
-        - pytorch-cuda
         - volumina
         # Third-party object feature plugins
         - sphericaltexture_plugin
@@ -189,7 +185,6 @@ outputs:
         - pytest >4
         - pytest-qt
         - pytorch 2.*
-        - pytorch-cuda 11.*
 
       imports:
         - ilastik
