@@ -99,6 +99,7 @@ jobs:
     - codecov/upload:
         files: cov.json
         token: CODECOV_TOKEN
+        verbose: true
 
     - save_cache:
         name: store dependency cache
