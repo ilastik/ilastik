@@ -89,9 +89,6 @@ except ImportError as e:
 
 from .examples.dataConversion.dataConversionWorkflow import DataConversionWorkflow
 
-if ilastik.config.cfg.getboolean("ilastik", "hbp", fallback=False):
-    from .voxelSegmentation import VoxelSegmentationWorkflow
-
 # network classification, check whether required modules are available:
 try:
     if ilastik.config.runtime_cfg.tiktorch_executable:
