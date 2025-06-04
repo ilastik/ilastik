@@ -69,8 +69,12 @@ import os
 import re
 import logging
 from typing import Tuple, Optional
+from tifffile import TiffFile
 
 from lazyflow.utility.io_util.multiprocessHdf5File import MultiProcessHdf5File
+
+traceLogger = logging.getLogger("TRACE." + __name__)
+traceLogger.setLevel(logging.DEBUG)
 
 
 class OpInputDataReader(Operator):
@@ -608,6 +612,16 @@ class OpInputDataReader(Operator):
         opReader = OpTiffReader(parent=self)
         opReader.Filepath.setValue(filePath)
 
+        # This logs the pixel dimensions of .tiff images
+        with TiffFile(filePath) as tif:
+            metadata = tif.imagej_metadata
+            if metadata is not None and "scales" in metadata.keys() and "units" in metadata.keys():
+                pixel_dimensions = metadata.get("scales")
+                units = metadata.get("units")
+            else:
+                pixel_dimensions = None
+                units = None
+
         page_shape = opReader.Output.meta.ideal_blockshape
 
         # Cache the pages we read
@@ -615,6 +629,9 @@ class OpInputDataReader(Operator):
         opCache.fixAtCurrent.setValue(False)
         opCache.BlockShape.setValue(page_shape)
         opCache.Input.connect(opReader.Output)
+        if pixel_dimensions is not None and units is not None:
+            opCache.Output.meta.resolution = tuple(pixel_dimensions.split(","))
+            opCache.Output.meta.units = tuple(units.split(","))
 
         return ([opReader, opCache], opCache.Output)
 

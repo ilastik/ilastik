@@ -42,6 +42,9 @@ from .voxelSegmentationApplet import VoxelSegmentationApplet
 
 logger = logging.getLogger(__name__)
 
+traceLogger = logging.getLogger("TRACE." + __name__)
+traceLogger.setLevel(logging.DEBUG)
+
 
 class VoxelSegmentationWorkflow(Workflow):
     workflowName = "Voxel Segmentation Workflow"
@@ -152,6 +155,9 @@ class VoxelSegmentationWorkflow(Workflow):
 
         self.featureSelectionApplet = self.createFeatureSelectionApplet()
 
+        # Lane list for metadata extraction
+        self.lanes = []
+
         # TODO rename pcApplet
         self.pcApplet = self.createVoxelSegmentationApplet()
         opClassify = self.pcApplet.topLevelOperator
@@ -232,6 +238,14 @@ class VoxelSegmentationWorkflow(Workflow):
         Overridden from Workflow base class.
         Called immediately after a new lane is added to the workflow and initialized.
         """
+        # Log pixel dimensions and units (if applicable)
+        for image in self.lanes:
+            opData = self.dataSelectionApplet.topLevelOperator.getLane(image)
+            if opData.Image.meta.resolution and opData.Image.meta.units:
+                traceLogger.debug("Pixel Dimensions: " + (" ".join(map(str, opData.Image.meta.resolution))))
+                traceLogger.debug("Dimension Units: " + (" ".join(map(str, opData.Image.meta.units))))
+        self.lanes = []
+
         # Restore classifier we saved in prepareForNewLane() (if any)
         if self.stored_classifier:
             self.pcApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifier)

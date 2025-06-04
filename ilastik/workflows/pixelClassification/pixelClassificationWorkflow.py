@@ -42,6 +42,9 @@ from ilastik.utility import SlotNameEnum
 from lazyflow.graph import Graph
 from lazyflow.roi import TinyVector, fullSlicing
 
+traceLogger = logging.getLogger("TRACE." + __name__)
+traceLogger.setLevel(logging.DEBUG)
+
 
 class PixelClassificationWorkflow(Workflow):
     workflowName = "Pixel Classification"
@@ -76,6 +79,7 @@ class PixelClassificationWorkflow(Workflow):
             shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs
         )
         self.stored_classifier = None
+        self.lanes = []
         self._applets = []
         self._workflow_cmdline_args = workflow_cmdline_args
         # Parse workflow-specific command-line args
@@ -227,12 +231,22 @@ class PixelClassificationWorkflow(Workflow):
             self.stored_classifier = opPixelClassification.classifier_cache.Output.value
         else:
             self.stored_classifier = None
+        self.lanes.append(laneIndex)
 
     def handleNewLanesAdded(self):
         """
         Overridden from Workflow base class.
         Called immediately after a new lane is added to the workflow and initialized.
         """
+
+        # Log pixel dimensions and units (if applicable)
+        for image in self.lanes:
+            opData = self.dataSelectionApplet.topLevelOperator.getLane(image)
+            if opData.Image.meta.resolution and opData.Image.meta.units:
+                traceLogger.debug("Pixel Dimensions: " + (" ".join(map(str, opData.Image.meta.resolution))))
+                traceLogger.debug("Dimension Units: " + (" ".join(map(str, opData.Image.meta.units))))
+        self.lanes = []
+
         # Restore classifier we saved in prepareForNewLane() (if any)
         if self.stored_classifier:
             self.pcApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifier)
