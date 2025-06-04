@@ -81,10 +81,9 @@ class OpFormattedDataExport(Operator):
 
     ConvertedImage = OutputSlot()  # Not yet re-ordered
     ImageToExport = OutputSlot()  # Preview of the pre-processed image that will be exported
-    ExportPath = OutputSlot()  # Location of the saved file after export is complete.
-    FormatSelectionErrorMsg = (
-        OutputSlot()
-    )  # True or False depending on whether or not the currently selected format can support the current export data.
+    ExportPath = OutputSlot()  # Location of the saved file after export is complete
+    TargetScales = OutputSlot()  # Scaling parameter for multi-scale OME-Zarr
+    FormatSelectionErrorMsg = OutputSlot()  # bool, True if currently selected format can support the export data
 
     ALL_FORMATS = OpExportSlot.ALL_FORMATS
 
@@ -128,6 +127,7 @@ class OpFormattedDataExport(Operator):
         self._opExportSlot.OutputFormat.connect(self.OutputFormat)
 
         self.ExportPath.connect(self._opExportSlot.ExportPath)
+        self.TargetScales.connect(self._opExportSlot.TargetScales)
         self.FormatSelectionErrorMsg.connect(self._opExportSlot.FormatSelectionErrorMsg)
         self.progressSignal = self._opExportSlot.progressSignal
 
