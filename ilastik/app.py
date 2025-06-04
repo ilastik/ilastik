@@ -64,7 +64,11 @@ def _argparser() -> argparse.ArgumentParser:
     ap.add_argument(
         "--exit_on_failure", help="Immediately call exit(1) if an unhandled exception occurs.", action="store_true"
     )
-    ap.add_argument("--hbp", help="Enable HBP-specific functionality.", action="store_true")
+    ap.add_argument(
+        "--hbp",
+        help="Deprecated - use ilastik versions 1.4.1, or 1.4.0 to enable HBP-specific functionality.",
+        action="store_true",
+    )
     ap.add_argument("--tiktorch_executable", help="Specify path to tiktorch server executable", default=None)
     ap.add_argument(
         "--nn_device", help="Local device to run Neural Networks on. Examples: 'cpu', 'cuda:0'.", default=None
@@ -134,9 +138,12 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
     if init_logging:
         _init_logging(parsed_args)  # Initialize logging before anything else
 
+    # Support for the hbp mode was deprecated after 1.4.1
+    _check_hbp_mode(parsed_args)
+
     executable_location = Path(sys.executable).parent
     _import_h5py_with_utf8_encoding()
-    _update_hbp_mode(parsed_args)
+
     _update_tiktorch_executable_location(parsed_args)
     runtime_cfg.preferred_cuda_device_id = parsed_args.nn_device
 
@@ -254,10 +261,12 @@ def _update_debug_mode(parsed_args):
         parsed_args.debug = True
 
 
-def _update_hbp_mode(parsed_args):
-    """enable HBP-specific functionality"""
+def _check_hbp_mode(parsed_args):
+    """check use of deprecarted hbp mode"""
     if parsed_args.hbp:
-        ilastik_config.set("ilastik", "hbp", "true")
+        msg = "The `--hbp` option is deprecated and ignored. Use ilastik 1.4.0, or 1.4.1 to enable this functionality."
+        logger.error(msg)
+        sys.exit(-1)
 
 
 def _update_tiktorch_executable_location(parsed_args):
