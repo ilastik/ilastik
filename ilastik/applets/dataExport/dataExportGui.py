@@ -39,6 +39,10 @@ from PyQt5.QtWidgets import (
     QMessageBox,
 )
 from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import QUrl, Qt
+from PyQt5.QtWidgets import QMenu
+from PyQt5.QtGui import QDesktopServices
+from pathlib import Path
 
 from lazyflow.graph import Slot
 
@@ -223,10 +227,55 @@ class DataExportGui(QWidget):
 
         # Set up handlers
         self.batchOutputTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
+        # Handle the right-click event
+        self.batchOutputTableWidget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.batchOutputTableWidget.customContextMenuRequested.connect(self.showContextMenu)
 
         # Set up the viewer area
         self.initViewerStack()
         self.splitter.setSizes([150, 850])
+
+    def showContextMenu(self, pos):
+        """Handles right-click menu in the export file list."""
+        menu = QMenu(self)
+
+        row = self.batchOutputTableWidget.rowAt(pos.y())
+        exportPathItem = self.batchOutputTableWidget.item(row, Column.ExportLocation)
+        exportPath = exportPathItem.text() if exportPathItem else ""
+
+        if exportPath:
+            exportPath = PathComponents(exportPath).externalPath
+            exportPath = Path(exportPath).resolve() if exportPath else None
+
+        exportDir = self._get_export_dir(row)
+        isValidPath = exportDir.exists() if exportDir else False
+
+        openFolderAction = menu.addAction("Open Export Folder")
+        openFolderAction.triggered.connect(lambda: self.openExportFolder(row))
+        openFolderAction.setEnabled(isValidPath)
+
+        menu.exec_(self.batchOutputTableWidget.mapToGlobal(pos))
+
+    def openExportFolder(self, row):
+        exportDir = self._get_export_dir(row)
+
+        if exportDir and exportDir.exists():
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(exportDir)))
+        else:
+            QMessageBox.warning(self, "Invalid Path", f"The export path does not exist or is invalid: {exportDir}")
+
+    def _get_export_dir(self, row):
+        """Returns the parent directory of the export path, or None if invalid."""
+        exportPathItem = self.batchOutputTableWidget.item(row, Column.ExportLocation)
+        if not exportPathItem:
+            return None
+
+        try:
+            exportPath = Path(PathComponents(exportPathItem.text()).externalPath).resolve()
+        except Exception:
+            return None
+
+        return exportPath.parent
 
     def initViewerStack(self):
         self.layerViewerGuis = {}
