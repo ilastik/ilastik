@@ -440,6 +440,7 @@ class OpObjectExtractionFromLabels(OpObjectExtractionBase):
         self._opRegFeats.ObjectIDMapping.connect(self._opLabelVolume.RelabelDict)
         self._opLabelVolume.SerializationInput.connect(self.RelabelCacheInput)
         self.RelabelCacheOutput.connect(self._opLabelVolume.SerializationOutput)
+        self.RelabelDict.connect(self._opLabelVolume.RelabelDict)
 
     def _create_label_volume_op(self):
         opLabelVolume = OpRelabelConsecutive(parent=self)
