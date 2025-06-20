@@ -59,7 +59,8 @@ outputs:
         # s3fs allows zarr.storage.FSStore to read s3:// URIs
         - s3fs >=2022.8.2
         - scikit-image
-        - scikit-learn
+        # There seems to be a problem with scikit-learn 1.7.0, test testContourMWTExport breaks
+        - scikit-learn <=1.6.1
         - tifffile >=2022
         - vigra 1.12.1
         - xarray !=2023.8.0,!=2023.9.0,!=2023.10.0
