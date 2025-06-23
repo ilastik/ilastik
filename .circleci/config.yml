@@ -1,4 +1,8 @@
 version: 2.1
+
+orbs:
+  codecov: codecov/codecov@5.4.3
+
 jobs:
   checkout_ilastik:
     resource_class: medium
@@ -91,12 +95,10 @@ jobs:
             DISPLAY: :42
         command: >
             cd ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
-            conda run --live-stream -n ${TEST_ENV_NAME} pytest -v -s --run-legacy-gui --cov-report=xml --cov=lazyflow --cov=ilastik --junitxml=test-results/junit.xml
-    - run:
-        name: upload codecov results
-        command: cd ${ILASTIK_ROOT}/ilastik-meta/ilastik && bash <(curl -s https://codecov.io/bash)
-    - store_test_results:
-        path: test-results
+            conda run --live-stream -n ${TEST_ENV_NAME} pytest -v -s --run-legacy-gui --cov-report=json:cov.json --cov=lazyflow --cov=ilastik
+    - codecov/upload:
+        files: cov.json
+
     - save_cache:
         name: store dependency cache
         key: v1.4.15-dep-{{ .Branch }}-{{ epoch }}
