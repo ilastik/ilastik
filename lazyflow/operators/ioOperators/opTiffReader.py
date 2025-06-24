@@ -28,6 +28,7 @@ import vigra
 from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.roi import roiToSlice
 from lazyflow.utility.helpers import get_default_axisordering
+from lazyflow.utility import resolution
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,46 @@ class OpTiffReader(Operator):
         self._filepath = None
         self._page_shape = None
         self._non_page_shape = None
+
+    def checkUnits(self, metadata):
+        for unit in range(len(metadata["units"].split(","))):
+            if metadata["axes"].split(",")[unit].lower() == "channel":
+                continue
+            if metadata["units"].split(",")[unit].lower() not in ["km", "m", "cm", "mm", "μm", "nm", "pm", "sec"]:
+                return False
+        return True
+
+    def populatePixelResolution(self, axes):
+        vigaxes = vigra.defaultAxistags(axes)
+        tempaxes = resolution.unitTags(vigaxes)
+
+        with tifffile.TiffFile(self._filepath, mode="r") as f:
+            metadata = f.imagej_metadata
+            if (
+                metadata is not None
+                and metadata["scales"] is not None
+                and metadata["units"] is not None
+                and metadata["axes"] is not None
+                and self.checkUnits(metadata)
+            ):
+                axeslist = [i.lower() for i in metadata["axes"].split(",")]
+                pixel_dimensions = [float(i) for i in metadata["scales"].split(",")]
+                units = [i.lower() for i in metadata["units"].split(",")]
+                for index in range(len(axeslist)):
+                    axis = axeslist[index]
+                    dimensions = pixel_dimensions[index]
+                    unit = units[index]
+                    if axis == "channel":
+                        tempaxes.setResolution("c", dimensions)
+                        tempaxes.setUnitTag("c", unit)
+                    elif axis == "time":
+                        tempaxes.setResolution("t", dimensions)
+                        tempaxes.setUnitTag("t", unit)
+                    else:
+                        tempaxes.setResolution(axis, dimensions)
+                        tempaxes.setUnitTag(axis, unit)
+                return tempaxes
+        return resolution.unitTags(vigra.defaultAxistags(axes))
 
     def setupOutputs(self):
         self._filepath = self.Filepath.value
@@ -97,7 +138,7 @@ class OpTiffReader(Operator):
             self._non_page_shape = shape[: -len(self._page_shape)]
 
         self.Output.meta.shape = shape
-        self.Output.meta.axistags = vigra.defaultAxistags(axes)
+        self.Output.meta.axistags = self.populatePixelResolution(axes)
         self.Output.meta.dtype = numpy.dtype(dtype_code).type
 
         blockshape = defaultdict(lambda: 1, zip(self._page_axes, self._page_shape))
