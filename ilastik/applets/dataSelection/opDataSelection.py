@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+import ast
 from abc import abstractmethod, ABC
 import glob
 import os
@@ -48,6 +49,7 @@ from ilastik.workflow import Workflow
 from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import DEFAULT_SCALE_KEY
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
 from lazyflow.utility.helpers import get_default_axisordering
+from lazyflow.utility.resolution import unitTags
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators import OpMissingDataSource
 from lazyflow.operators.ioOperators import OpH5N5WriterBigDataset
@@ -167,6 +169,7 @@ class DatasetInfo(ABC):
     def to_json_data(self) -> Dict:
         return {
             "axistags": self.axistags.toJSON().encode("utf-8"),
+            "units": (str(self.axistags.unit_tags)).encode("utf-8"),
             "shape": self.laneShape,
             "allowLabels": self.allowLabels,
             "subvolume_roi": self.subvolume_roi,
@@ -193,10 +196,14 @@ class DatasetInfo(ABC):
             }
         )
         if "axistags" in data:
-            params["axistags"] = AxisTags.fromJSON(data["axistags"][()].decode("utf-8"))
+            tags = unitTags(AxisTags.fromJSON(data["axistags"][()].decode("utf-8")))
+            if "units" in data:
+                tags.unit_tags = ast.literal_eval(data["units"][()].decode("utf-8"))
+
+            params["axistags"] = tags
         elif "axisorder" in data:  # legacy support
             axisorder = data["axisorder"][()].decode("utf-8")
-            params["axistags"] = vigra.defaultAxistags(axisorder)
+            params["axistags"] = unitTags(vigra.defaultAxistags(axisorder))
 
         if "subvolume_roi" in data:
             params["subvolume_roi"] = tuple(data["subvolume_roi"][()])
