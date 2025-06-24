@@ -87,7 +87,6 @@ class OpExportMultipageTiff(Operator):
             "SignificantBits": 8,
         }
 
-        # map axis keys to relevant metadata keys
         size_trans = {"x": "PhysicalSizeX", "y": "PhysicalSizeY", "z": "PhysicalSizeZ", "t": "TimeIncrement"}
         unit_trans = {
             "x": "PhysicalSizeXUnit",

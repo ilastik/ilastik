@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+from collections import defaultdict
 import logging
 import xml.etree.ElementTree as ET
 from collections import defaultdict
