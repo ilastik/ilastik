@@ -105,7 +105,8 @@ class OpResize(Operator):
         # If higher-order interpolation is desired, need to figure out required padding
         assert interpolation_order in required_min_padding, "supports only order 0 (nearest-neighbor) or 1 (linear)"
         axes_to_pad = np.not_equal(factors, 1)
-        # Antialiasing only for downscale (f > 1), not identity or upscale
+        # Antialiasing only for downscale (f > 1), not identity or upscale.
+        # This also ensures that we never run a gaussian across channels (since scaling along c is forbidden).
         if interpolation_order > 0:
             antialiasing_sigmas = np.array([f / 4 if f > 1 else 0 for f in factors])
         else:

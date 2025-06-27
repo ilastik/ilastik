@@ -97,3 +97,19 @@ def test_raises_on_c_scaling(graph):
     op.RawImage.setValue(data)
     with pytest.raises(AssertionError):
         op.TargetShape.setValue((10, 10, 2))
+
+
+def test_antialiasing_does_not_filter_across_channel(graph):
+    arr = numpy.random.randint(0, 256, (10, 10, 3), dtype="uint8")
+    arr[:, :, 1] = 1
+    arr[:, :, 2] = 0
+    data = vigra.taggedView(arr, "yxc")
+
+    op = OpResize(graph=graph)
+    op.RawImage.setValue(data)
+    op.TargetShape.setValue((5, 5, 3))
+
+    resized = op.ResizedImage[:].wait()
+
+    numpy.testing.assert_array_equal(resized[:, :, 1], 1)
+    numpy.testing.assert_array_equal(resized[:, :, 2], 0)
