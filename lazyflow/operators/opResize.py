@@ -20,7 +20,8 @@
 #          http://ilastik.org/license/
 ###############################################################################
 import logging
-from typing import List
+from enum import IntEnum
+from typing import List, Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -54,21 +55,31 @@ class OpResize(Operator):
 
     The gaussian filter for antialiasing is run with custom sigmas that are negligibly larger
     than the scikit-image default at scaling factors <2, and smaller at scaling factors >2.
-    This should reduce the required halo sizes and possibly maintain more information
-    (remains to be tested).
+    This should save some computation cost for large scaling steps. Cf. GitHub #3037.
 
     Cannot resize along channel axis (would be nonsense).
     Time is treated like space axes, so resize along t at your own risk.
     """
 
+    class Interpolation(IntEnum):
+        NEAREST = 0
+        LINEAR = 1
+
+    required_min_padding = {  # minimum pixels of halo required for accurate interpolation
+        Interpolation.NEAREST: 0,
+        Interpolation.LINEAR: 2,
+    }
+
     RawImage = InputSlot()
     TargetShape = InputSlot()  # Tuple[int, ...]
-    InterpolationOrder = InputSlot(value=1)  # 0 (nearest-neighbor) and 1 (linear) supported
+    InterpolationOrder = InputSlot(value=Interpolation.LINEAR)
     ResizedImage = OutputSlot()
 
     def __init__(self, InterpolationOrder=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.InterpolationOrder.setOrConnectIfAvailable(InterpolationOrder)
+        self.scaling_factors: Union[NDArray, None] = None  # one factor per axis. Factor 2.0 = downscale to half size
+        self.antialiasing_sigmas: Union[NDArray, None] = None  # one sigma per axis
 
     def setupOutputs(self):
         if self.TargetShape.value == self.RawImage.meta.shape:
@@ -90,6 +101,26 @@ class OpResize(Operator):
         self.ResizedImage.meta.assignFrom(self.RawImage.meta)
         self.ResizedImage.meta.shape = self.TargetShape.value
 
+        # Scaling factors are the inverse of zoom factors in the scipy.ndimage sense.
+        # E.g. 2 if the output shape is half the input shape (rather than 0.5).
+        shape_in = self.RawImage.meta.shape
+        shape_out = self.ResizedImage.meta.shape
+        self.scaling_factors = np.divide(shape_in, shape_out)
+
+        interpolation_order = self.InterpolationOrder.value
+        # If higher-order interpolation is desired, need to figure out required padding
+        assert (
+            interpolation_order in self.required_min_padding
+        ), "supports only order 0 (nearest-neighbor) or 1 (linear)"
+
+        if interpolation_order > 0:
+            # Antialiasing only for downscale (f > 1), not identity or upscale.
+            # This also ensures that we never run a gaussian across channels (since scaling along c is forbidden).
+            self.antialiasing_sigmas = np.array([f / 4 if f > 1 else 0 for f in self.scaling_factors])
+        else:
+            # No antialiasing for nearest-neighbor interpolation
+            self.antialiasing_sigmas = np.zeros_like(self.scaling_factors)
+
     def execute(self, slot, subindex, roi, result):
         """
         Roi is scaled: The requester is asking for (a subportion of) the scaled image.
@@ -99,19 +130,11 @@ class OpResize(Operator):
         - Use map_coordinates to interpolate values at those source coordinates
         """
         assert slot is self.ResizedImage, "Unknown output slot"
-        factors = self._get_scaling_factors()
-        interpolation_order = self.InterpolationOrder.value
-        required_min_padding = {0: 0, 1: 2}
-        # If higher-order interpolation is desired, need to figure out required padding
-        assert interpolation_order in required_min_padding, "supports only order 0 (nearest-neighbor) or 1 (linear)"
-        axes_to_pad = np.not_equal(factors, 1)
-        # Antialiasing only for downscale (f > 1), not identity or upscale.
-        # This also ensures that we never run a gaussian across channels (since scaling along c is forbidden).
-        if interpolation_order > 0:
-            antialiasing_sigmas = np.array([f / 4 if f > 1 else 0 for f in factors])
-        else:
-            antialiasing_sigmas = np.zeros_like(factors)
 
+        factors = self.scaling_factors
+        antialiasing_sigmas = self.antialiasing_sigmas
+        interpolation_order = self.InterpolationOrder.value
+        axes_to_pad = np.not_equal(self.scaling_factors, 1)
         raw_roi = self._reverse_roi_scaling(roi, factors)
         raw_roi_antialiasing_halo = enlargeRoiForHalo(
             raw_roi[0],
@@ -121,19 +144,19 @@ class OpResize(Operator):
             enlarge_axes=axes_to_pad,
         )
         raw_roi_interpolation_halo = self._extend_halo_to_minimum(
-            raw_roi_antialiasing_halo, required_min_padding[interpolation_order], axes_to_pad, raw_roi
+            raw_roi_antialiasing_halo, self.required_min_padding[interpolation_order], axes_to_pad, raw_roi
         )
         raw_roi_final_halo = np.clip(ceil_roi(raw_roi_interpolation_halo), 0, self.RawImage.meta.shape)
 
         raw = self.RawImage[roiToSlice(*raw_roi_final_halo)].wait().astype(np.float64)
         filtered = scipy_ndimage.gaussian_filter(raw, antialiasing_sigmas, mode="mirror")
 
-        n_source_pixels = roi.stop - roi.start
+        roi_shape = roi.stop - roi.start
         result_roi_within_filtered = raw_roi - raw_roi_final_halo[0]
         source_coords_starts = result_roi_within_filtered[0]
         source_coords_stops = result_roi_within_filtered[1] - factors
         if "c" not in self.RawImage.meta.getAxisKeys():
-            scaled_source_grid = self._roi_to_coord_grid(source_coords_starts, source_coords_stops, n_source_pixels)
+            scaled_source_grid = self._roi_to_coord_grid(source_coords_starts, source_coords_stops, roi_shape)
             result[...] = scipy_ndimage.map_coordinates(
                 filtered, scaled_source_grid, order=interpolation_order, mode="mirror"
             )
@@ -141,15 +164,16 @@ class OpResize(Operator):
 
         # Split channels and interpolate each separately. Not faster but less RAM.
         channel_axis = self.ResizedImage.meta.getAxisKeys().index("c")
-        n_channels = n_source_pixels[channel_axis]
-        n_source_pixels[channel_axis] = 1  # Will be 1 after splitting
+        n_channels = roi_shape[channel_axis]
+        roi_shape[channel_axis] = 1  # Will be 1 after splitting
         source_coords_starts[channel_axis] = 1
         source_coords_stops[channel_axis] = 1
-        scaled_source_grid = self._roi_to_coord_grid(source_coords_starts, source_coords_stops, n_source_pixels)
+        scaled_source_grid = self._roi_to_coord_grid(source_coords_starts, source_coords_stops, roi_shape)
         filtered_split = np.split(filtered, n_channels, axis=channel_axis)
         for c in range(n_channels):
             channel_slicing = [slice(None)] * len(factors)
             channel_slicing[channel_axis] = slice(c, c + 1)
+            channel_slicing = tuple(channel_slicing)
             result[channel_slicing] = scipy_ndimage.map_coordinates(
                 filtered_split[c], scaled_source_grid, order=interpolation_order, mode="mirror"
             )
@@ -158,16 +182,6 @@ class OpResize(Operator):
         # roi is on RawImage scale here (unscaled). Would technically need to scale it to ResizedImage scale,
         # but should be unnecessary because the entire scaled image needs to be recomputed anyway.
         self.ResizedImage.setDirty(slice(None))
-
-    def _get_scaling_factors(self) -> NDArray:
-        """
-        Scaling factors are the inverse of zoom factors in the scipy.ndimage sense.
-        E.g. 2 if the output shape is half the input shape (rather than 0.5).
-        """
-        assert self.ResizedImage.ready(), "Must not be called when unready"
-        shape_in = self.RawImage.meta.shape
-        shape_out = self.ResizedImage.meta.shape
-        return np.divide(shape_in, shape_out)
 
     @staticmethod
     def _roi_to_coord_grid(starts: NDArray, stops: NDArray, steps: NDArray) -> List[NDArray]:
@@ -189,6 +203,8 @@ class OpResize(Operator):
         Extend an existing halo on `roi_with_halo` to `minimum` along axes in `axes_to_extend`.
         `original_roi` required to determine how much halo was already present.
         """
+        if minimum == 0:
+            return roi_with_halo
         assert len(roi_with_halo[0]) == len(axes_to_extend) == len(original_roi[0]), "Dimensions must match"
         min_halo = np.zeros_like(roi_with_halo) + minimum
         min_halo[0] = min_halo[0] * -1

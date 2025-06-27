@@ -7,7 +7,6 @@ from skimage.transform import resize as sk_resize
 
 from lazyflow.operators.opResize import OpResize
 from lazyflow.operators.opSplitRequestsBlockwise import OpSplitRequestsBlockwise
-from lazyflow.utility import Timer
 
 
 def test_resize_matches_skimage(graph):
@@ -69,7 +68,7 @@ def test_resize_handles_blocks(graph, raw_shape, scaled_shape, axes, block_shape
 
     # Different antialiasing, see test_resize_matches_skimage - with float image need some tolerance
     numpy.testing.assert_allclose(op_resized, sk_resized, rtol=0.07)
-    numpy.testing.assert_allclose(op_resized_block, op_resized)  # Block-splitting artifacts not tolerated
+    numpy.testing.assert_allclose(op_resized_block, op_resized, rtol=1e-15)  # Block-splitting artifacts not tolerated
 
 
 def test_interpolation_order(graph):
