@@ -86,6 +86,8 @@ class OpReorderAxes(Operator):
         output_shape = []
         def_output_tags = vigra.defaultAxistags(str(output_order))
         output_tags = lazyflow.utility.resolution.unitTags(def_output_tags)
+        if not isinstance(input_tags, lazyflow.utility.resolution.unitTags):
+            input_tags = lazyflow.utility.resolution.unitTags(input_tags)
         ideal_blockshape = []
         max_blockshape = []
         for a in output_order:
