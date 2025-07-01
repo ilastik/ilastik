@@ -25,6 +25,7 @@ import tempfile
 from collections import namedtuple
 from enum import IntEnum
 from pathlib import Path
+from typing import Union
 
 import h5py
 import numpy
@@ -40,9 +41,15 @@ from ilastik.workflows.objectClassification.objectClassificationWorkflow import 
 from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 
 
-def read_h5_ds(file_path: Path, dataset: str) -> npt.ArrayLike:
+def read_h5_ds(file_path: Union[str, Path], dataset: str) -> npt.ArrayLike:
     with h5py.File(file_path, "r") as f:
         return f[dataset][()]
+
+
+def read_csv_table(file_path: str):
+    with open(file_path, "r") as f:
+        csv_data = list(csv.DictReader(f))
+    return csv_data
 
 
 class TestObjectClassificationWorkflowLabels(ShellGuiTestCaseBase):
@@ -357,6 +364,7 @@ class TestObjectClassificationWorkflowLabels(ShellGuiTestCaseBase):
             op_object_export.OutputFilenameFormat.setValue(self.output_file)
             op_object_export.OutputFormat.setValue("hdf5")
             op_object_export.OutputInternalPath.setValue("exported_data")
+            op_object_export.InputSelection.setValue(workflow.ExportNames.OBJECT_PROBABILITIES)
 
             # here is some awkwardness of the csv output, which will alter the
             # table name: some_name.csv -> some_name_test_data_table.csv
@@ -391,7 +399,7 @@ class TestObjectClassificationWorkflowLabels(ShellGuiTestCaseBase):
 
         self.exec_in_shell(impl)
 
-    def test_08_check_csv(self):
+    def test_08_check_csv_labelid_mapping(self):
         """
         Open the csv files and verify that relabel mapping is correct.
         """
@@ -406,16 +414,42 @@ class TestObjectClassificationWorkflowLabels(ShellGuiTestCaseBase):
 
             for lane_index, expected_dict in zip(range(2), (self.expected_relabeling_0, self.expected_relabeling_1)):
                 nickname = op_data_selection.getLane(lane_index).get_dataset_info("Raw Data").nickname
-                table_name = csv_out.format(nickname=nickname)
-                with open(table_name, "r") as f:
-                    csv_data = list(csv.DictReader(f))
-                    assert csv_data
+                csv_data = read_csv_table(csv_out.format(nickname=nickname))
+                assert csv_data
 
                 for row in csv_data:
                     t = int(row["timestep"])
                     original_oid = int(row["original_oid"])
                     ilastik_oid = int(row["labelimage_oid"])
                     assert expected_dict[t][original_oid] == ilastik_oid, row
+
+        self.exec_in_shell(impl)
+
+    def test_09_check_obj_probabilities(self):
+        def impl():
+            shell = self.shell
+            workflow = shell.projectManager.workflow
+            op_data_selection = workflow.dataSelectionApplet.topLevelOperator
+            base, ext = os.path.splitext(self.table_csv_file)
+            csv_out = f"{base}_table{ext}"
+
+            for lane_index in range(2):
+                nickname = op_data_selection.getLane(lane_index).get_dataset_info("Raw Data").nickname
+                image_path = self.output_file.format(nickname=nickname)
+                assert Path(image_path).exists()
+                img = read_h5_ds(image_path, "exported_data")
+                res_dtype = img.dtype
+                assert img.sum() > 0, "Probabilities should not be all zero"
+                assert numpy.unique(img).size > 1, "There should be various probability values, not just one"
+                csv_data = read_csv_table(csv_out.format(nickname=nickname))
+                for row in csv_data:
+                    # compare center of the object has the same value as table entry
+                    t = int(row["timestep"])
+                    x = int(float(row["Center of the object_0"]))
+                    y = int(float(row["Center of the object_1"]))
+                    prob0 = res_dtype.type(row["Probability of Label 1"])
+                    prob1 = res_dtype.type(row["Probability of Label 2"])
+                    numpy.testing.assert_almost_equal(img[t, y, x, :], [prob0, prob1])
 
         self.exec_in_shell(impl)
 
