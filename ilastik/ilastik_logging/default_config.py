@@ -76,7 +76,14 @@ def _delete_old_session_logs(*, log_dir: Path):
         [child for child in log_dir.iterdir() if re.match(SESSION_LOGFILE_NAME_PATTERN, child.name)], reverse=True
     )
     for log_file in log_files[KEEP_SESSION_LOGS:]:
-        log_file.unlink()
+        try:
+            log_file.unlink()
+        except OSError as e:
+            print(
+                f"(Warning) There was an error while trying to delete an old log file. "
+                f"Please consider checking what's up with the file if this keeps happening. "
+                f"Problematic file: {log_file} Error: {e}"
+            )
 
 
 def get_default_config(
