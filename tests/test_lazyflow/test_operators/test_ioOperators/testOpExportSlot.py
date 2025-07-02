@@ -119,7 +119,8 @@ class TestOpExportSlot(object):
 
     def test_ome_zarr_multi_scale(self):
         """Ensure multi-scale export generates one downscale for 400x400."""
-        # Chunk size is 358x357 for square 2D, so 400x400 is larger, and 200x200 is one chunk.
+        # Chunk size is 358x357 for square 2D (by BigRequestStreamer default),
+        # so 400x400 is larger, and 200x200 is one chunk.
         data = numpy.random.random((400, 400)).astype(numpy.float32)
         data = vigra.taggedView(data, vigra.defaultAxistags("yx"))
 
@@ -152,7 +153,7 @@ class TestOpExportSlot(object):
         try:
             for i, scale in enumerate(["s0", "s1"]):
                 opRead.FilePath.setValue(str(expected_export_path / scale))
-                expected_data = data.view(numpy.ndarray).reshape((1, 1, 1) + data.shape)  # OME-Zarr always tczyx
+                expected_data = data.withAxes("tczyx")  # OME-Zarr always tczyx
                 read_data = opRead.Output[:].wait()
                 if scale == "s0":  # only assert written data at raw scale here (scaling covered in OpResize)
                     numpy.testing.assert_array_equal(read_data, expected_data)

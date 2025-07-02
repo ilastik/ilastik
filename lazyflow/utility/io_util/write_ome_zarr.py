@@ -89,6 +89,10 @@ def match_target_scales_to_input(export_shape: TaggedShape, input_scales: Multis
 
 
 def generate_default_target_scales(unscaled_shape: TaggedShape, dtype) -> Multiscales:
+    """
+    Default target scales are isotropic 2x downscaling along x, y and z if present.
+    The smallest scale included is just small enough for the entire image to fit into one chunk (per t and c).
+    """
     unscaled = _reorder(unscaled_shape, OME_ZARR_AXES, 1)
     chunk_shape_tagged = ODict(zip(OME_ZARR_AXES, _get_chunk_shape(unscaled, dtype)))
     scales_items = []
@@ -110,7 +114,9 @@ def generate_default_target_scales(unscaled_shape: TaggedShape, dtype) -> Multis
     return ODict(scales_items)
 
 
-def _reorder(shape: Dict, axes: Iterable[Axiskey], default_value: Union[int, float]) -> TaggedShape:
+def _reorder(
+    shape: Dict[Axiskey, Union[int, float]], axes: Iterable[Axiskey], default_value: Union[int, float]
+) -> TaggedShape:
     """Reorder a tagged shape to `axes`, using `default_value` for axes missing in `shape`."""
     return ODict([(a, shape[a] if a in shape else default_value) for a in axes])
 
@@ -138,7 +144,7 @@ def _multiscales_to_scalings(
     Scale factor 1.0 for axes not present in scale or base shape, and for channel."""
     factors = []
     for scale_shape in multiscales.values():
-        common_axes = [a for a in scale_shape.keys() if a in base_shape.keys()]
+        common_axes = [a for a in scale_shape if a in base_shape]
         scale_values = [scale_shape[a] for a in common_axes]
         base_values = [base_shape[a] for a in common_axes]
         # This scale's scaling relative to base_shape.
@@ -159,6 +165,7 @@ def _create_empty_zarray(
     chunk_shape: Shape,
     export_dtype,
 ) -> zarr.Array:
+    """Creates folders and zarr-internal (not OME) metadata files."""
     assert len(chunk_shape) == len(scale_shape), "chunk and image shape must have same dimensions"
     store = FSStore(abs_export_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
     zarray = zarr.creation.zeros(scale_shape, store=store, path=scale_key, chunks=chunk_shape, dtype=export_dtype)
@@ -192,7 +199,11 @@ def _get_axes_meta(export_axiskeys, input_ome_meta):
 
 def _get_input_transforms_reordered(
     input_ome_meta: Optional[OMEZarrMultiscaleMeta], scale_key: str, axes: Iterable[Axiskey]
-) -> Tuple[Optional[OrderedScaling], Optional[OrderedTranslation]]:
+) -> Tuple[Union[OrderedScaling, None], Union[OrderedTranslation, None]]:
+    """
+    Returns (None, None) if input transformations at `scale_key` invalid or not present,
+    otherwise (scale_transform, translation_transform | None).
+    """
     reordered_scale = reordered_translation = None
     if input_ome_meta and input_ome_meta.dataset_transformations.get(scale_key):
         input_axiskeys = input_ome_meta.axis_units.keys() if input_ome_meta else None
@@ -403,7 +414,7 @@ def write_ome_zarr(
     export_path: str,
     image_source_slot: Slot,
     progress_signal: OrderedSignal,
-    export_offset: Optional[Shape],
+    export_offset: Union[Shape, None],
     target_scales: Optional[Multiscales] = None,
 ):
     pc = PathComponents(export_path)

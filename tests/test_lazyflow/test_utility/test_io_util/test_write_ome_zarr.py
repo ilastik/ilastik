@@ -47,8 +47,7 @@ def tagged_shape(axes: Union[str, List[str]], shape: Iterable[int]):
     ],
 )
 def test_metadata_match_ome_zarr_spec(tmp_path, graph, shape, axes, target_scales):
-    data_array = vigra.VigraArray(shape, axistags=vigra.defaultAxistags(axes))
-    data_array[...] = numpy.indices(shape).sum(0)
+    data_array = vigra.taggedView(numpy.random.randint(0, 255, shape, dtype="uint8"), axes)
     export_path = tmp_path / "test.zarr"
     source_op = OpArrayPiper(graph=graph)
     source_op.Input.setValue(data_array)
@@ -61,8 +60,9 @@ def test_metadata_match_ome_zarr_spec(tmp_path, graph, shape, axes, target_scale
     group = zarr.open(str(export_path))
     assert "multiscales" in group.attrs
     written_meta = group.attrs["multiscales"][0]
-    assert all([key in written_meta for key in ("datasets", "axes", "version")])  # Keys required by spec
-    assert all([value is not None for value in written_meta.values()])  # Should not write None anywhere
+    required_keys = ("datasets", "axes", "version")  # version not required by spec but by us
+    assert all([key in written_meta for key in required_keys])
+    assert all(written_meta.values()), "Should not write empty values anywhere"
     assert written_meta["version"] == "0.4"
     assert [a["name"] for a in written_meta["axes"]] == list(expected_axiskeys)
     expected_len_datasets = 1 if target_scales is None else len(target_scales)
