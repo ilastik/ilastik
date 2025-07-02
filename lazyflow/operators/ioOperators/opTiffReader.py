@@ -62,6 +62,7 @@ class OpTiffReader(Operator):
         self._page_shape = None
         self._non_page_shape = None
 
+    """ We want to implement this in workflows, not here.
     def checkUnits(self, metadata):
         for unit in range(len(metadata["units"].split(","))):
             if metadata["axes"].split(",")[unit].lower() == "channel":
@@ -69,38 +70,63 @@ class OpTiffReader(Operator):
             if metadata["units"].split(",")[unit].lower() not in ["km", "m", "cm", "mm", "μm", "nm", "pm", "sec"]:
                 return False
         return True
+    """
 
     def populatePixelResolution(self, axes):
         vigaxes = vigra.defaultAxistags(axes)
         tempaxes = resolution.unitTags(vigaxes)
 
         with tifffile.TiffFile(self._filepath, mode="r") as f:
-            metadata = f.imagej_metadata
-            if (
-                metadata is not None
-                and metadata["scales"] is not None
-                and metadata["units"] is not None
-                and metadata["axes"] is not None
-                and self.checkUnits(metadata)
-            ):
-                axeslist = [i.lower() for i in metadata["axes"].split(",")]
-                pixel_dimensions = [float(i) for i in metadata["scales"].split(",")]
-                units = [i.lower() for i in metadata["units"].split(",")]
-                for index in range(len(axeslist)):
-                    axis = axeslist[index]
-                    dimensions = pixel_dimensions[index]
-                    unit = units[index]
-                    if axis == "channel":
-                        tempaxes.setResolution("c", dimensions)
-                        tempaxes.setUnitTag("c", unit)
-                    elif axis == "time":
-                        tempaxes.setResolution("t", dimensions)
-                        tempaxes.setUnitTag("t", unit)
-                    else:
-                        tempaxes.setResolution(axis, dimensions)
-                        tempaxes.setUnitTag(axis, unit)
-                return tempaxes
-        return resolution.unitTags(vigra.defaultAxistags(axes))
+            ij_meta = f.imagej_metadata
+            if ij_meta:
+                meta = f.pages[0].tags
+
+                tempaxes.setResolution("x", meta.get("XResolution").value[1] / meta.get("XResolution").value[0])
+                if "unit" in ij_meta.keys():
+                    tempaxes.setUnitTag(
+                        "x",
+                        ij_meta["unit"]
+                        .encode("utf-8")
+                        .decode("unicode_escape")
+                        .encode("utf-16", "surrogatepass")
+                        .decode("utf-16"),
+                    )
+
+                tempaxes.setResolution("y", meta.get("YResolution").value[1] / meta.get("YResolution").value[0])
+                if "yunit" in ij_meta.keys():
+                    tempaxes.setUnitTag(
+                        "y",
+                        ij_meta["yunit"]
+                        .encode("utf-8")
+                        .decode("unicode_escape")
+                        .encode("utf-16", "surrogatepass")
+                        .decode("utf-16"),
+                    )
+
+                if "z" in axes:
+                    tempaxes.setResolution("z", ij_meta["spacing"])
+                    if "zunit" in ij_meta.keys():
+                        tempaxes.setUnitTag(
+                            "z",
+                            ij_meta["zunit"]
+                            .encode("utf-8")
+                            .decode("unicode_escape")
+                            .encode("utf-16", "surrogatepass")
+                            .decode("utf-16"),
+                        )
+
+                if "t" in axes:
+                    tempaxes.setResolution("t", ij_meta["finterval"])
+                    if "tunit" in ij_meta.keys():
+                        tempaxes.setUnitTag(
+                            "t",
+                            ij_meta["tunit"]
+                            .encode("utf-8")
+                            .decode("unicode_escape")
+                            .encode("utf-16", "surrogatepass")
+                            .decode("utf-16"),
+                        )
+            return tempaxes
 
     def setupOutputs(self):
         self._filepath = self.Filepath.value
