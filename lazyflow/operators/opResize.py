@@ -21,13 +21,13 @@
 ###############################################################################
 import logging
 from enum import IntEnum
-from typing import List, Union
+from typing import List, Union, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy import ndimage as scipy_ndimage
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot, Slot
 from lazyflow.roi import enlargeRoiForHalo, roiToSlice
 from lazyflow.rtype import SubRegion
 
@@ -71,15 +71,25 @@ class OpResize(Operator):
     }
 
     RawImage = InputSlot()
-    TargetShape = InputSlot()  # Tuple[int, ...]
+    TargetShape = InputSlot()
     InterpolationOrder = InputSlot(value=Interpolation.LINEAR)
     ResizedImage = OutputSlot()
 
-    def __init__(self, InterpolationOrder=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.InterpolationOrder.setOrConnectIfAvailable(InterpolationOrder)
+    def __init__(
+        self,
+        parent=None,
+        graph=None,
+        RawImage: Slot = None,
+        TargetShape: Union[Tuple[int, ...], Slot, None] = None,
+        InterpolationOrder: Union[Interpolation, Slot, None] = None,
+        **kwargs,
+    ):
+        super().__init__(parent=parent, graph=graph, **kwargs)
         self.scaling_factors: Union[NDArray, None] = None  # one factor per axis. Factor 2.0 = downscale to half size
         self.antialiasing_sigmas: Union[NDArray, None] = None  # one sigma per axis
+        self.RawImage.setOrConnectIfAvailable(RawImage)
+        self.TargetShape.setOrConnectIfAvailable(TargetShape)
+        self.InterpolationOrder.setOrConnectIfAvailable(InterpolationOrder)
 
     def setupOutputs(self):
         if self.TargetShape.value == self.RawImage.meta.shape:
