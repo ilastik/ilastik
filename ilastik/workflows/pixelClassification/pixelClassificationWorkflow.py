@@ -27,6 +27,8 @@ import argparse
 import itertools
 import logging
 
+from lazyflow.utility.resolution import unitTags
+
 logger = logging.getLogger(__name__)
 
 import numpy
@@ -41,6 +43,9 @@ from ilastik.utility import SlotNameEnum
 
 from lazyflow.graph import Graph
 from lazyflow.roi import TinyVector, fullSlicing
+
+traceLogger = logging.getLogger("TRACE." + __name__)
+traceLogger.setLevel(logging.DEBUG)
 
 
 class PixelClassificationWorkflow(Workflow):
@@ -77,6 +82,7 @@ class PixelClassificationWorkflow(Workflow):
         )
         self.stored_classifier = None
         self._applets = []
+        self.lanes = []
         self._workflow_cmdline_args = workflow_cmdline_args
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
@@ -227,6 +233,7 @@ class PixelClassificationWorkflow(Workflow):
             self.stored_classifier = opPixelClassification.classifier_cache.Output.value
         else:
             self.stored_classifier = None
+        self.lanes.append(int(laneIndex))
 
     def handleNewLanesAdded(self):
         """
@@ -238,6 +245,15 @@ class PixelClassificationWorkflow(Workflow):
             self.pcApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifier)
             # Release reference
             self.stored_classifier = None
+        for lane in self.lanes:
+            opData = self.dataSelectionApplet.topLevelOperator.getLane(lane)
+            if opData.Image.meta.axistags:
+                for item in opData.Image.meta.original_axistags:
+                    traceLogger.debug(item)
+                    if item.key in opData.Image.meta.axistags.unit_tags.keys():
+                        traceLogger.debug(opData.Image.meta.axistags.unit_tags[item.key])
+                        traceLogger.debug(item.resolution)
+        self.lanes = []
 
     def connectLane(self, laneIndex):
         # Get a handle to each operator
