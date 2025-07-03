@@ -23,6 +23,7 @@ import logging
 
 import numpy
 import tifffile
+import xml.etree.ElementTree as ET
 import vigra
 
 from lazyflow.graph import InputSlot, Operator, OutputSlot
@@ -78,6 +79,7 @@ class OpTiffReader(Operator):
 
         with tifffile.TiffFile(self._filepath, mode="r") as f:
             ij_meta = f.imagej_metadata
+            ome_meta = f.ome_metadata
             if ij_meta:
                 meta = f.pages[0].tags
 
@@ -126,6 +128,29 @@ class OpTiffReader(Operator):
                             .encode("utf-16", "surrogatepass")
                             .decode("utf-16"),
                         )
+            elif ome_meta:
+                xml = ET.fromstring(ome_meta)
+                ns = {"ome": "http://www.openmicroscopy.org/Schemas/OME/2016-06"}
+                image = xml.find("ome:Image", ns)
+                pixels = image.find("ome:Pixels", ns)
+                if pixels:
+                    size_trans_0 = {"x": "PhysicalSizeX", "y": "PhysicalSizeY"}
+                    size_trans_1 = {"z": "PhysicalSizeZ", "t": "TimeIncrement"}
+                    unit_trans_0 = {
+                        "x": "PhysicalSizeXUnit",
+                        "y": "PhysicalSizeYUnit",
+                        "z": "PhysicalSizeZUnit",
+                        "t": "TimeIncrementUnit",
+                    }
+
+                    for axis in axes:
+                        if axis.lower() == "c":
+                            continue
+                        if axis.lower() in size_trans_0.keys():
+                            tempaxes.setResolution(axis, float(pixels.attrib.get(size_trans_0[axis], 0)))
+                        else:
+                            tempaxes.setResolution(axis, float(pixels.attrib.get(size_trans_1[axis], 1)))
+                        tempaxes.setUnitTag(axis, pixels.attrib.get(unit_trans_0[axis], None))
             return tempaxes
 
     def setupOutputs(self):
