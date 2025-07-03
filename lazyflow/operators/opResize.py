@@ -41,13 +41,6 @@ def ceil_roi(roi: NDArray) -> NDArray:
     return np.array([np.floor(roi[0]), np.ceil(roi[1])])
 
 
-def floor_roi(roi: NDArray) -> NDArray:
-    """
-    Shrink roi to nearest integer
-    """
-    return np.array([np.ceil(roi[0]), np.floor(roi[1])])
-
-
 class OpResize(Operator):
     """
     Reimplements scikit-image.transform.resize as a lazyflow operator,
