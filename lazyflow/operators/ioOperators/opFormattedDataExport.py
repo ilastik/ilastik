@@ -26,6 +26,8 @@ from builtins import zip
 import os
 import collections
 import warnings
+from functools import partial
+
 import numpy
 from typing import Tuple
 from pathlib import Path
@@ -39,9 +41,24 @@ from lazyflow.roi import roiFromShape
 from lazyflow.operators.generic import OpSubRegion, OpPixelOperator
 from lazyflow.operators.valueProviders import OpMetadataInjector
 from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.utility.pathHelpers import PathComponents
 
 from .opExportSlot import OpExportSlot
+
+
+def normalize(minVal, maxVal, outputMinVal, outputMaxVal, target_dtype, a):
+    numerator = numpy.float64(outputMaxVal) - numpy.float64(outputMinVal)
+    denominator = numpy.float64(maxVal) - numpy.float64(minVal)
+    if denominator != 0.0:
+        frac = numpy.float32(numerator / denominator)
+    else:
+        # Denominator was zero.  The user is probably just temporarily changing the values.
+        frac = numpy.float32(0.0)
+    if numpy.issubdtype(a.dtype, numpy.floating) and numpy.issubdtype(target_dtype, numpy.integer):
+        # Float to int: Round to avoid truncation
+        result = numpy.rint(outputMinVal + (a - minVal) * frac).astype(target_dtype)
+    else:
+        result = (outputMinVal + (a - minVal) * frac).astype(target_dtype)
+    return result
 
 
 class OpFormattedDataExport(Operator):
@@ -195,18 +212,8 @@ class OpFormattedDataExport(Operator):
             #  which transforms the drange correctly in this case.
             self._opDrangeInjection.Metadata.setValue({"drange": (minVal, maxVal)})
 
-            def normalize(a):
-                numerator = numpy.float64(outputMaxVal) - numpy.float64(outputMinVal)
-                denominator = numpy.float64(maxVal) - numpy.float64(minVal)
-                if denominator != 0.0:
-                    frac = numpy.float32(numerator / denominator)
-                else:
-                    # Denominator was zero.  The user is probably just temporarily changing the values.
-                    frac = numpy.float32(0.0)
-                result = numpy.asarray(outputMinVal + (a - minVal) * frac, export_dtype)
-                return result
-
-            self._opNormalizeAndConvert.Function.setValue(normalize)
+            normalize_func = partial(normalize, minVal, maxVal, outputMinVal, outputMaxVal, export_dtype)
+            self._opNormalizeAndConvert.Function.setValue(normalize_func)
 
             # The OpPixelOperator sets the drange correctly using the function we give it.
             output_drange = self._opNormalizeAndConvert.Output.meta.drange
