@@ -83,7 +83,10 @@ class OpTiffReader(Operator):
             if ij_meta:
                 meta = f.pages[0].tags
 
-                tempaxes.setResolution("x", meta.get("XResolution").value[1] / meta.get("XResolution").value[0])
+                if meta.get("XResolution").value[0] != 0:
+                    tempaxes.setResolution("x", meta.get("XResolution").value[1] / meta.get("XResolution").value[0])
+                else:
+                    tempaxes.setResolution("x", 0)
                 if "unit" in ij_meta.keys():
                     tempaxes.setUnitTag(
                         "x",
@@ -94,7 +97,10 @@ class OpTiffReader(Operator):
                         .decode("utf-16"),
                     )
 
-                tempaxes.setResolution("y", meta.get("YResolution").value[1] / meta.get("YResolution").value[0])
+                if meta.get("YResolution").value[0] != 0:
+                    tempaxes.setResolution("y", meta.get("YResolution").value[1] / meta.get("YResolution").value[0])
+                else:
+                    tempaxes.setResolution("y", 0)
                 if "yunit" in ij_meta.keys():
                     tempaxes.setUnitTag(
                         "y",
