@@ -41,6 +41,8 @@ from .opDataSelection import (
 )
 from .dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
 
+from lazyflow.utility.resolution import unitTags
+
 
 class RoleMismatchException(Exception):
     pass
@@ -162,7 +164,7 @@ class DataSelectionApplet(Applet):
             default=False,
         )
 
-        def parse_input_axes(raw_input_axes: str) -> List[Optional[vigra.AxisTags]]:
+        def parse_input_axes(raw_input_axes: str) -> List[Optional[unitTags]]:
             input_axes = [axes.strip() for axes in raw_input_axes.split(",")]
             if len(input_axes) > len(role_names):
                 raise ValueError("Specified input axes exceed number of data roles ({role_names})")
@@ -239,7 +241,7 @@ class DataSelectionApplet(Applet):
         return role_name.lower().replace(" ", "_").replace("-", "_")
 
     def create_dataset_info(
-        self, url: Union[Path, str], axistags: Optional[vigra.AxisTags] = None, sequence_axis: str = "z"
+        self, url: Union[Path, str], axistags: Optional[unitTags] = None, sequence_axis: str = "z"
     ) -> DatasetInfo:
         url = str(url)
         if isUrl(url):
@@ -264,11 +266,19 @@ class DataSelectionApplet(Applet):
     def create_lane_configs(
         self,
         role_inputs: Dict[str, List[str]],
-        input_axes: Sequence[Optional[vigra.AxisTags]] = (),
+        input_axes: Sequence[Optional[unitTags]] = (),
         preconvert_stacks: bool = False,
         ignore_training_axistags: bool = False,
         stack_along: str = "z",
     ) -> List[Dict[str, DatasetInfo]]:
+        for tags in input_axes:
+            raw_tags = self.get_lane(-1).get_axistags()["Raw Data"]
+            tags.setUnitDict(raw_tags.getUnitDict())
+            axislist = [tag.key for tag in tags]
+            for axis in axislist:
+                if tags[axis].typeFlags.name == "Space":
+                    tags[axis].resolution = raw_tags[axis].resolution
+
         if not input_axes or not any(input_axes):
             if ignore_training_axistags or self.num_lanes == 0:
                 input_axes = [None] * len(self.role_names)

@@ -34,6 +34,7 @@ import os
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import Timer
 from lazyflow.utility.helpers import get_default_axisordering, bigintprod
+from lazyflow.utility.resolution import unitTags
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ def _find_or_infer_axistags(file: Union[h5py.File, z5py.N5File], internalPath: s
     with contextlib.suppress(KeyError):
         # Look for ilastik-style axistags property.
         axistagsJson = file[internalPath].attrs["axistags"]
-        axistags = vigra.AxisTags.fromJSON(axistagsJson)
+        axistags = unitTags.fromJSON(axistagsJson)
         axisorder = "".join(tag.key for tag in axistags)
         if "?" not in axisorder:
             return axistags
