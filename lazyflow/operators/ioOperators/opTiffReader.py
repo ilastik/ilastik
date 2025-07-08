@@ -156,7 +156,17 @@ class OpTiffReader(Operator):
                             tempaxes.setResolution(axis, float(pixels.attrib.get(size_trans_0[axis], 0)))
                         else:
                             tempaxes.setResolution(axis, float(pixels.attrib.get(size_trans_1[axis], 1)))
-                        tempaxes.setUnitTag(axis, pixels.attrib.get(unit_trans_0[axis], None))
+                        unit = pixels.attrib.get(unit_trans_0[axis], None)
+                        if unit:
+                            tempaxes.setUnitTag(
+                                axis,
+                                unit.encode("utf-8")
+                                .decode("unicode_escape")
+                                .encode("utf-16", "surrogatepass")
+                                .decode("utf-16"),
+                            )
+                        else:
+                            tempaxes.setUnitTag(axis, None)
             return tempaxes
 
     def setupOutputs(self):
