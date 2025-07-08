@@ -105,9 +105,12 @@ class OpExportMultipageTiff(Operator):
             if unit == "c":
                 continue
             meta_dict[size_trans[unit]] = self._opReorderAxes.Output.meta.axistags[unit].resolution
-            meta_dict[unit_trans[unit]] = (
-                self._opReorderAxes.Output.meta.axistags.getUnitTag(unit).encode("unicode_escape").decode("ascii")
-            )
+            if self._opReorderAxes.Output.meta.axistags.getUnitTag(unit) is not None:
+                meta_dict[unit_trans[unit]] = (
+                    self._opReorderAxes.Output.meta.axistags.getUnitTag(unit).encode("unicode_escape").decode("ascii")
+                )
+            else:
+                meta_dict[unit_trans[unit]] = None
 
         with tifffile.TiffWriter(self.Filepath.value, byteorder="<", ome=True) as writer:
             writer.write(
