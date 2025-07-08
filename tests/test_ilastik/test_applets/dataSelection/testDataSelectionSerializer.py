@@ -35,6 +35,8 @@ from ilastik.applets.dataSelection.opDataSelection import (
 from ilastik.applets.dataSelection.opDataSelection import ProjectInternalDatasetInfo, FilesystemDatasetInfo
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 
+from lazyflow.utility.resolution import unitTags
+
 
 import logging
 
@@ -78,7 +80,7 @@ def test06(serializer, internal_datasetinfo, empty_project_file, graph):
     # Check axistags attribute
     assert "axistags" in dataset.attrs
     axistags_json = empty_project_file[internal_datasetinfo.inner_path].attrs["axistags"]
-    axistags = vigra.AxisTags.fromJSON(axistags_json)
+    axistags = unitTags.fromJSON(axistags_json)
 
     originalShape = serializer.topLevelOperator.Image[0].meta.shape
     originalAxisTags = serializer.topLevelOperator.Image[0].meta.axistags
