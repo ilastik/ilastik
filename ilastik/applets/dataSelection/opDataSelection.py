@@ -169,7 +169,6 @@ class DatasetInfo(ABC):
     def to_json_data(self) -> Dict:
         return {
             "axistags": self.axistags.toJSON().encode("utf-8"),
-            "units": (str(self.axistags.unit_tags)).encode("utf-8"),
             "shape": self.laneShape,
             "allowLabels": self.allowLabels,
             "subvolume_roi": self.subvolume_roi,
@@ -196,9 +195,7 @@ class DatasetInfo(ABC):
             }
         )
         if "axistags" in data:
-            tags = unitTags(AxisTags.fromJSON(data["axistags"][()].decode("utf-8")))
-            if "units" in data:
-                tags.unit_tags = ast.literal_eval(data["units"][()].decode("utf-8"))
+            tags = unitTags.fromJSON(data["axistags"][()].decode("utf-8"))
 
             params["axistags"] = tags
         elif "axisorder" in data:  # legacy support
