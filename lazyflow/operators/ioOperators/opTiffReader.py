@@ -83,11 +83,13 @@ class OpTiffReader(Operator):
             if ij_meta:
                 meta = f.pages[0].tags
 
+                # TIFF format stores resolution values as Rational tuples (numerator, denominator)
                 if meta.get("XResolution").value[0] != 0:
                     tempaxes.setResolution("x", meta.get("XResolution").value[1] / meta.get("XResolution").value[0])
                 else:
                     tempaxes.setResolution("x", 0)
                 if "unit" in ij_meta.keys():
+                    # encoding is necessary to read non-ASCII characters
                     tempaxes.setUnitTag(
                         "x",
                         ij_meta["unit"]
@@ -134,6 +136,7 @@ class OpTiffReader(Operator):
                             .encode("utf-16", "surrogatepass")
                             .decode("utf-16"),
                         )
+            # Look for OME-TIFF metadata (possible in FIJI hyperstacks)
             elif ome_meta:
                 xml = ET.fromstring(ome_meta)
                 ns = {"ome": "http://www.openmicroscopy.org/Schemas/OME/2016-06"}

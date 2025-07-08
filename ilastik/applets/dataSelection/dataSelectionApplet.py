@@ -271,6 +271,8 @@ class DataSelectionApplet(Applet):
         ignore_training_axistags: bool = False,
         stack_along: str = "z",
     ) -> List[Dict[str, DatasetInfo]]:
+
+        # obtain pixel sizes from lanes and populate export axes
         for tags in input_axes:
             if tags is not None and self.num_lanes > 0:
                 raw_tags = self.get_lane(-1).get_axistags()["Raw Data"]

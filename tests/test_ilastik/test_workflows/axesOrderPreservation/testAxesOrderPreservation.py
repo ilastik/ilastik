@@ -317,6 +317,7 @@ class TestAxesOrderPreservation(object):
                 opReaderResult.Output.meta.getAxisKeys()
             )
 
+        # check for preservation of pixel sizes, if specified
         if units is not None:
             for unit_set in units.keys():
                 assert res[unit_set] == opReaderResult.Output.meta.axistags[unit_set].resolution

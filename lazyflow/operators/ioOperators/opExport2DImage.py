@@ -87,6 +87,7 @@ class OpExport2DImage(Operator):
         vigra.impex.writeImage(data, self.Filepath.value)
         extension = os.path.splitext(self.Filepath.value)[1][1:]
 
+        # now write any pixel sizes
         if extension in ["tif", "tiff"] and self.Input.meta.axistags.unit_tags is not None:
             with tifffile.TiffFile(self.Filepath.value) as tif:
                 olddata = tif.asarray()
