@@ -272,12 +272,13 @@ class DataSelectionApplet(Applet):
         stack_along: str = "z",
     ) -> List[Dict[str, DatasetInfo]]:
         for tags in input_axes:
-            raw_tags = self.get_lane(-1).get_axistags()["Raw Data"]
-            tags.setUnitDict(raw_tags.getUnitDict())
-            axislist = [tag.key for tag in tags]
-            for axis in axislist:
-                if tags[axis].typeFlags.name == "Space":
-                    tags[axis].resolution = raw_tags[axis].resolution
+            if tags is not None and self.num_lanes > 0:
+                raw_tags = self.get_lane(-1).get_axistags()["Raw Data"]
+                tags.setUnitDict(raw_tags.getUnitDict())
+                axislist = [tag.key for tag in tags]
+                for axis in axislist:
+                    if tags[axis].typeFlags.name == "Space":
+                        tags[axis].resolution = raw_tags[axis].resolution
 
         if not input_axes or not any(input_axes):
             if ignore_training_axistags or self.num_lanes == 0:
