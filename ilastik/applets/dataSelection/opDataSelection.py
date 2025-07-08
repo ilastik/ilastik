@@ -18,7 +18,6 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-import ast
 from abc import abstractmethod, ABC
 import glob
 import os
@@ -196,7 +195,6 @@ class DatasetInfo(ABC):
         )
         if "axistags" in data:
             tags = unitTags.fromJSON(data["axistags"][()].decode("utf-8"))
-
             params["axistags"] = tags
         elif "axisorder" in data:  # legacy support
             axisorder = data["axisorder"][()].decode("utf-8")

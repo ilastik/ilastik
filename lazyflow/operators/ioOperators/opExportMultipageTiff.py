@@ -95,7 +95,6 @@ class OpExportMultipageTiff(Operator):
             "t": "TimeIncrementUnit",
         }
 
-        # Initialize empty meta fields
         for axis in "".join(self._opReorderAxes.Output.meta.getAxisKeys()):
             if axis in size_trans:
                 meta_dict[size_trans[axis]] = None

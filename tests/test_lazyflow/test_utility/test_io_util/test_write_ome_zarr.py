@@ -54,7 +54,6 @@ def test_metadata_integrity(tmp_path, graph, shape, axes):
         written_array = group[dataset["path"]]
         assert written_array.fill_value is not None, "FIJI and z5py don't open zarrays without a fill_value"
         assert "axistags" in written_array.attrs, f"no axistags for {dataset['path']}"
-        r = unitTags.fromJSON(written_array.attrs["axistags"])
         assert unitTags.fromJSON(written_array.attrs["axistags"]) == unitTags(vigra.defaultAxistags(expected_axiskeys))
         assert all([value is not None for value in written_array.attrs.values()])  # Should not write None anywhere
         reported_scalings = [

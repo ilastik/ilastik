@@ -49,17 +49,19 @@ class unitTags(vigra.AxisTags):
 
     @staticmethod
     def fromJSON(json_str):
+
         data = json.loads(json_str)
         axes = "".join([axis["key"] for axis in data["axes"]])
         tags = unitTags(vigra.defaultAxistags(axes))
+
         for axiskey, selectedaxis in zip(axes, data["axes"]):
             tags.setResolution(axiskey, selectedaxis.get("resolution", 0))
             tags.setUnitTag(axiskey, selectedaxis.get("unit", None))
             tags.setDescription(axiskey, selectedaxis.get("description", ""))
+
         return tags
 
     def __copy__(self):
-        # Create a new instance of UnitTags and copy the attributes
         new = type(self)(self)
         new.unit_tags = self.unit_tags
         return new

@@ -44,9 +44,6 @@ from ilastik.utility import SlotNameEnum
 from lazyflow.graph import Graph
 from lazyflow.roi import TinyVector, fullSlicing
 
-traceLogger = logging.getLogger("TRACE." + __name__)
-traceLogger.setLevel(logging.DEBUG)
-
 
 class PixelClassificationWorkflow(Workflow):
     workflowName = "Pixel Classification"
@@ -246,13 +243,7 @@ class PixelClassificationWorkflow(Workflow):
             # Release reference
             self.stored_classifier = None
         for lane in self.lanes:
-            opData = self.dataSelectionApplet.topLevelOperator.getLane(lane)
-            if opData.Image.meta.axistags:
-                for item in opData.Image.meta.original_axistags:
-                    traceLogger.debug(item)
-                    if item.key in opData.Image.meta.axistags.unit_tags.keys():
-                        traceLogger.debug(opData.Image.meta.axistags.unit_tags[item.key])
-                        traceLogger.debug(item.resolution)
+            opData = self.dataSelectionApplet.topLevelOperator.getLane(lane)  # handle passed-through pixel sizes here
         self.lanes = []
 
     def connectLane(self, laneIndex):

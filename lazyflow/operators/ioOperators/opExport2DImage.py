@@ -86,6 +86,7 @@ class OpExport2DImage(Operator):
 
         vigra.impex.writeImage(data, self.Filepath.value)
         extension = os.path.splitext(self.Filepath.value)[1][1:]
+
         if extension in ["tif", "tiff"] and self.Input.meta.axistags.unit_tags is not None:
             with tifffile.TiffFile(self.Filepath.value) as tif:
                 olddata = tif.asarray()
@@ -99,12 +100,14 @@ class OpExport2DImage(Operator):
                     x = (self.Input.meta.axistags.getUnitTag("x").encode("unicode_escape").decode("ascii"),)
                 if self.Input.meta.axistags.getUnitTag("y"):
                     y = (self.Input.meta.axistags.getUnitTag("y").encode("unicode_escape").decode("ascii"),)
+
                 imagej_metadata = {
                     "spacing": 1.0,  # this is equal to the z-axis and gets handled differently in non-2d images
                     "unit": x,
                     "yunit": y,
                     "axes": axes,
                 }
+
                 tifffile.imwrite(
                     self.Filepath.value,
                     data,

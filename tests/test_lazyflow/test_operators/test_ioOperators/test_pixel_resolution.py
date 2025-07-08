@@ -72,24 +72,20 @@ def test_write(image_path, checktags, hyperstack, inputdata_dir):
     else:
         with tifffile.TiffFile(in_path) as tif:
             images = tif.asarray()
-
             ij_meta = tif.imagej_metadata
-            ome_meta = tif.ome_metadata
-            if ij_meta:
-                sizeC = ij_meta.get("channels", 1)
-                sizeZ = ij_meta.get("slices", 1)
-                sizeT = ij_meta.get("frames", 1)
 
-                # ImageJ saves in TZCYX order by default (time, z, channel, y, x)
-                axes = ""
-                if sizeT > 1:
-                    axes += "T"
-                if sizeZ > 1:
-                    axes += "Z"
-                if sizeC > 1:
-                    axes += "C"
-                axes += "YX"
-                # meta = tif.pages[0].tags
+            axes = ""
+            sizeC = ij_meta.get("channels", 1)
+            sizeZ = ij_meta.get("slices", 1)
+            sizeT = ij_meta.get("frames", 1)
+            if sizeT > 1:
+                axes += "T"
+            if sizeZ > 1:
+                axes += "Z"
+            if sizeC > 1:
+                axes += "C"
+            axes += "YX"
+
             meta_dict = {
                 "axes": axes,
                 "SignificantBits": 8,
@@ -102,8 +98,6 @@ def test_write(image_path, checktags, hyperstack, inputdata_dir):
                 "z": "PhysicalSizeZUnit",
                 "t": "TimeIncrementUnit",
             }
-
-            # Initialize empty meta fields
             for axis in axes:
                 axis = axis.lower()
                 if axis in size_trans:
@@ -126,6 +120,8 @@ def test_write(image_path, checktags, hyperstack, inputdata_dir):
                 metadata=meta_dict,
                 shape=images.shape,
             )
+
+    # read written file
     op = OpTiffReader(graph=Graph())
     op.Filepath.setValue(out_path)
     assert op.Output.ready()

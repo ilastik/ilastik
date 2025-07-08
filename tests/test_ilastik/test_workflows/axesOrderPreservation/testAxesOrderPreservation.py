@@ -216,7 +216,7 @@ class TestAxesOrderPreservation(object):
     @pytest.mark.parametrize(
         "dims, input_axes, units, res",
         [
-            ("2d_units", "yx", {"x": "cm", "y": "nm"}, {"x": 5.0, "y": 6.000024000096}),
+            ("2d_units", "yx", {"x": "cm", "y": "nm"}, {"x": 5, "y": 6}),
             ("2d", "xy", None, None),
             ("2d", "yx", None, None),
             ("2d", "cxy", None, None),
@@ -284,11 +284,13 @@ class TestAxesOrderPreservation(object):
 
         # Input args
         args.append("--input_axes={}".format(input_axes))
+
         if units is not None:  # we assume for now that unit tests use TIFFs/OME-TIFFs
             dims_extracted = dims.split("_")[0]
             input_source_path = os.path.join(self.PROJECT_FILE_BASE, "inputdata", "{}.tif".format(dims_extracted))
         else:
             input_source_path = os.path.join(self.PROJECT_FILE_BASE, "inputdata", "{}.h5".format(dims))
+
         input_path = self.create_input(input_source_path, input_axes)
         args.append(input_path)
 
@@ -319,6 +321,7 @@ class TestAxesOrderPreservation(object):
             for unit_set in units.keys():
                 assert res[unit_set] == opReaderResult.Output.meta.axistags[unit_set].resolution
                 assert units[unit_set] == opReaderResult.Output.meta.axistags.getUnitTag(unit_set)
+
         self.compare_results(opReaderResult, compare_path, input_axes, max_mse=0.001)
 
     @pytest.mark.parametrize(
