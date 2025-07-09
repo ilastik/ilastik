@@ -71,7 +71,7 @@ import logging
 from typing import Tuple, Optional
 
 from lazyflow.utility.io_util.multiprocessHdf5File import MultiProcessHdf5File
-from lazyflow.utility.resolution import unitTags
+from lazyflow.utility.resolution import UnitAxisTags
 
 
 class OpInputDataReader(Operator):
@@ -245,8 +245,8 @@ class OpInputDataReader(Operator):
             self.opInjector.Metadata.setValue({"ram_usage_per_requested_pixel": ram_per_pixel})
         else:
             # Nothing to add
-            if not isinstance(self.internalOutput.meta.axistags, unitTags):
-                self.opInjector.Metadata.setValue({"axistags": unitTags(self.internalOutput.meta.axistags)})
+            if not isinstance(self.internalOutput.meta.axistags, UnitAxisTags):
+                self.opInjector.Metadata.setValue({"axistags": UnitAxisTags(self.internalOutput.meta.axistags)})
             self.opInjector.Metadata.setValue({})
 
         # Directly connect our own output to the internal output

@@ -24,7 +24,7 @@ from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from lazyflow.utility.helpers import bigintprod
-from lazyflow.utility.resolution import unitTags
+from lazyflow.utility.resolution import UnitAxisTags
 from .opDataSelection import DatasetInfo
 from .dataLaneSummaryTableModel import rowOfButtonsProxy
 
@@ -225,7 +225,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
         if index.column() == DatasetColumn.PixelSizes:
             axistags = getattr(datasetInfo, "axistags", None)
-            if axistags is not None and type(axistags) is unitTags:
+            if axistags is not None and type(axistags) is UnitAxisTags:
                 axes, resolutions, units = [], [], []
                 for axis in axistags.getUnitDict().keys():
                     axes.append(axis)

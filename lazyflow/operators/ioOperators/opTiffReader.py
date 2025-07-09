@@ -18,18 +18,19 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from collections import defaultdict
 import logging
+import xml.etree.ElementTree as ET
+from collections import defaultdict
+from typing import Dict, Union
 
 import numpy
 import tifffile
-import xml.etree.ElementTree as ET
 import vigra
 
 from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.roi import roiToSlice
 from lazyflow.utility.helpers import get_default_axisordering
-from lazyflow.utility import resolution
+from lazyflow.utility.resolution import UnitAxisInfo, UnitAxisTags
 
 logger = logging.getLogger(__name__)
 
@@ -73,31 +74,29 @@ class OpTiffReader(Operator):
         return True
     """
 
-    def populatePixelResolution(self, axes):
-        vigaxes = vigra.defaultAxistags(axes)
-        tempaxes = resolution.unitTags(vigaxes)
+    def make_axistags(self, axiskeys: str):
+        axisinfos: Dict[str, Union[UnitAxisInfo, vigra.AxisInfo]] = {}
 
         with tifffile.TiffFile(self._filepath, mode="r") as f:
             ij_meta = f.imagej_metadata
             ome_meta = f.ome_metadata
+            if not ij_meta and not ome_meta:
+                return vigra.defaultAxistags(axiskeys)
             if ij_meta:
                 meta = f.pages[0].tags
 
                 # TIFF format stores resolution values as Rational tuples (numerator, denominator)
-                if meta.get("XResolution").value[0] != 0:
-                    tempaxes.setResolution("x", meta.get("XResolution").value[1] / meta.get("XResolution").value[0])
-                else:
-                    tempaxes.setResolution("x", 0)
                 if "unit" in ij_meta.keys():
-                    # encoding is necessary to read non-ASCII characters
+                    info = UnitAxisInfo(key="x", )
                     tempaxes.setUnitTag(
                         "x",
-                        ij_meta["unit"]
-                        .encode("utf-8")
-                        .decode("unicode_escape")
-                        .encode("utf-16", "surrogatepass")
-                        .decode("utf-16"),
-                    )
+                        self.decode_non_ascii(ij_meta["unit"]),
+                        )
+                xres = meta.get("XResolution")
+                if xres.value[0] != 0:
+                    tempaxes.setResolution("x", xres.value[1] / xres.value[0])
+                else:
+                    tempaxes.setResolution("x", 0)
 
                 if meta.get("YResolution").value[0] != 0:
                     tempaxes.setResolution("y", meta.get("YResolution").value[1] / meta.get("YResolution").value[0])
@@ -106,14 +105,10 @@ class OpTiffReader(Operator):
                 if "yunit" in ij_meta.keys():
                     tempaxes.setUnitTag(
                         "y",
-                        ij_meta["yunit"]
-                        .encode("utf-8")
-                        .decode("unicode_escape")
-                        .encode("utf-16", "surrogatepass")
-                        .decode("utf-16"),
+                        decode_non_ascii(ij_meta["yunit"]),
                     )
 
-                if "z" in axes:
+                if "z" in axiskeys:
                     tempaxes.setResolution("z", ij_meta["spacing"])
                     if "zunit" in ij_meta.keys():
                         tempaxes.setUnitTag(
@@ -125,7 +120,7 @@ class OpTiffReader(Operator):
                             .decode("utf-16"),
                         )
 
-                if "t" in axes:
+                if "t" in axiskeys:
                     tempaxes.setResolution("t", ij_meta["finterval"])
                     if "tunit" in ij_meta.keys():
                         tempaxes.setUnitTag(
@@ -152,7 +147,7 @@ class OpTiffReader(Operator):
                         "t": "TimeIncrementUnit",
                     }
 
-                    for axis in axes:
+                    for axis in axiskeys:
                         if axis.lower() == "c":
                             continue
                         if axis.lower() in size_trans_0.keys():
@@ -170,7 +165,10 @@ class OpTiffReader(Operator):
                             )
                         else:
                             tempaxes.setUnitTag(axis, None)
-            return tempaxes
+            return UnitAxisTags([axisinfos[key] for key in axiskeys])
+
+    def decode_non_ascii(self, raw_string: str):
+        return raw_string.encode("utf-8").decode("unicode_escape").encode("utf-16", "surrogatepass").decode("utf-16")
 
     def setupOutputs(self):
         self._filepath = self.Filepath.value
@@ -208,7 +206,7 @@ class OpTiffReader(Operator):
             self._non_page_shape = shape[: -len(self._page_shape)]
 
         self.Output.meta.shape = shape
-        self.Output.meta.axistags = self.populatePixelResolution(axes)
+        self.Output.meta.axistags = self.make_axistags(axes)
         self.Output.meta.dtype = numpy.dtype(dtype_code).type
 
         blockshape = defaultdict(lambda: 1, zip(self._page_axes, self._page_shape))

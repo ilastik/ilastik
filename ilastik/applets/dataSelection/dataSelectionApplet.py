@@ -41,7 +41,7 @@ from .opDataSelection import (
 )
 from .dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
 
-from lazyflow.utility.resolution import unitTags
+from lazyflow.utility.resolution import UnitAxisTags
 
 
 class RoleMismatchException(Exception):
@@ -164,7 +164,7 @@ class DataSelectionApplet(Applet):
             default=False,
         )
 
-        def parse_input_axes(raw_input_axes: str) -> List[Optional[unitTags]]:
+        def parse_input_axes(raw_input_axes: str) -> List[Optional[UnitAxisTags]]:
             input_axes = [axes.strip() for axes in raw_input_axes.split(",")]
             if len(input_axes) > len(role_names):
                 raise ValueError("Specified input axes exceed number of data roles ({role_names})")
@@ -241,7 +241,7 @@ class DataSelectionApplet(Applet):
         return role_name.lower().replace(" ", "_").replace("-", "_")
 
     def create_dataset_info(
-        self, url: Union[Path, str], axistags: Optional[unitTags] = None, sequence_axis: str = "z"
+        self, url: Union[Path, str], axistags: Optional[UnitAxisTags] = None, sequence_axis: str = "z"
     ) -> DatasetInfo:
         url = str(url)
         if isUrl(url):
@@ -266,7 +266,7 @@ class DataSelectionApplet(Applet):
     def create_lane_configs(
         self,
         role_inputs: Dict[str, List[str]],
-        input_axes: Sequence[Optional[unitTags]] = (),
+        input_axes: Sequence[Optional[UnitAxisTags]] = (),
         preconvert_stacks: bool = False,
         ignore_training_axistags: bool = False,
         stack_along: str = "z",

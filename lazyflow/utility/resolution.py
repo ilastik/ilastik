@@ -1,6 +1,8 @@
 import vigra
 import json
 
+from vigra import AxisType
+
 """
 Subclass of VIGRA Axistags that handles an extra "units" field, allowing storage
 and interpretation of pixel size data.
@@ -46,35 +48,13 @@ fromJSON(json_string)
 """
 
 
-class resAxisInfo(vigra.AxisInfo):
-    def __init__(self, key, resolution, unit, description):
-        super().__init__(key, resolution, description)
-        self.units = unit
+class UnitAxisInfo(vigra.AxisInfo):
+    def __init__(self, key="?", typeFlags=AxisType.UnknownAxisType, resolution=0.0, description="", unit=""):
+        super().__init__(key, typeFlags, resolution, description)
+        self.unit = unit
 
 
-class unitTags(vigra.AxisTags):
-    def __init__(self, axes=""):
-        super().__init__(axes)
-        self.unit_tags = {}
-
-    def getUnitTag(self, axis):
-        if axis in self.unit_tags.keys():
-            return self.unit_tags[axis]
-        else:
-            return None
-
-    def getUnitDict(self):
-        return self.unit_tags
-
-    def setUnitDict(self, dict):
-        self.unit_tags = dict
-
-    def setUnitTag(self, axis, tag):
-        self.unit_tags[axis] = tag
-
-    def defaultUnitTags(axes):
-        return unitTags(vigra.defaultAxistags(axes))
-
+class UnitAxisTags(vigra.AxisTags):
     def toJSON(self):
         return json.dumps(
             {
@@ -84,7 +64,7 @@ class unitTags(vigra.AxisTags):
                         "type": str(tag.typeFlags),
                         "description": tag.description,
                         "resolution": tag.resolution,
-                        "unit": self.getUnitTag(tag.key),
+                        "unit": tag.unit if isinstance(tag, UnitAxisInfo) else "",
                     }
                     for tag in self
                 ]
@@ -93,17 +73,12 @@ class unitTags(vigra.AxisTags):
 
     @staticmethod
     def fromJSON(json_str):
-
         data = json.loads(json_str)
-        axes = "".join([axis["key"] for axis in data["axes"]])
-        tags = unitTags(vigra.defaultAxistags(axes))
 
-        for axiskey, selectedaxis in zip(axes, data["axes"]):
-            tags.setResolution(axiskey, selectedaxis.get("resolution", 0))
-            tags.setUnitTag(axiskey, selectedaxis.get("unit", None))
-            tags.setDescription(axiskey, selectedaxis.get("description", ""))
+        if all(info["unit"] == "" for info in data["axes"]):
+            return super().fromJSON(json_str)
 
-        return tags
+        return UnitAxisTags([UnitAxisInfo(**info_dict) for info_dict in data["axes"]])
 
     def __copy__(self):
         new = type(self)(self)

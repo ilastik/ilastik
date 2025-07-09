@@ -27,7 +27,7 @@ import argparse
 import itertools
 import logging
 
-from lazyflow.utility.resolution import unitTags
+from lazyflow.utility.resolution import UnitAxisTags
 
 logger = logging.getLogger(__name__)
 

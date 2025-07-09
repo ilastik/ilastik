@@ -27,7 +27,7 @@ import configparser
 import json
 from typing import Optional
 import vigra
-from lazyflow.utility.resolution import unitTags
+from lazyflow.utility.resolution import UnitAxisTags
 
 
 class OptionalFlagAction(argparse.Action):
@@ -134,4 +134,4 @@ def parse_axiskeys(axiskeys: str, dataset_dims: int = 0) -> Optional[vigra.AxisT
         raise ValueError(f"Repeated axis keys: {axiskeys}")
     if not set("xy").issubset(set(axiskeys)):
         raise ValueError(f"x and y need to be present. Provided value was {axiskeys}")
-    return unitTags(vigra.defaultAxistags(axiskeys))
+    return UnitAxisTags(vigra.defaultAxistags(axiskeys))
