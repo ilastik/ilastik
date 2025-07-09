@@ -394,7 +394,7 @@ class ProjectInternalDatasetInfo(DatasetInfo):
         if "axistags" in self.dataset.attrs:
             default_tags = unitTags.fromJSON(self.dataset.attrs["axistags"])
         else:
-            default_tags = vigra.defaultAxistags(get_default_axisordering(self.dataset.shape))
+            default_tags = unitTags(vigra.defaultAxistags(get_default_axisordering(self.dataset.shape)))
         super().__init__(
             default_tags=default_tags,
             laneShape=self.dataset.shape,
