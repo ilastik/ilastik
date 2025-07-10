@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 class OpSingleBlockObjectPrediction(Operator):
     RawImage = InputSlot()
-    BinaryImage = InputSlot()
+    SegmentationImage = InputSlot()
 
     SelectedFeatures = InputSlot(rtype=List, stype=Opaque)
 
@@ -63,13 +63,13 @@ class OpSingleBlockObjectPrediction(Operator):
 
     # Schematic:
     #
-    # RawImage -----> opRawSubRegion ------                        _______________________
-    #                                      \                      /                       \
-    # BinaryImage --> opBinarySubRegion --> opExtract --(features)--> opPredict --(map)--> opPredictionImage --via execute()--> PredictionImage
-    #                                      /         \               /                    /
-    #                 SelectedFeatures-----           \   Classifier                     /
-    #                                                  \                                /
-    #                                                   (labels)---------------------------> opProbabilityChannelsToImage
+    # RawImage -----> opRawSubRegion ------                             _______________________
+    #                                      \                           /                       \
+    # SegmentationImage --> opSegmentationSubRegion --> opExtract --(features)--> opPredict --(map)--> opPredictionImage --via execute()--> PredictionImage
+    #                                      /                 \               /            /
+    #                 SelectedFeatures-----                   \    Classifier            /
+    #                                                          \                        /
+    #                                                            (labels)----------------> opProbabilityChannelsToImage
 
     # +----------------------------------------------------------------+
     # | input_shape = RawImage.meta.shape                              |
@@ -110,14 +110,14 @@ class OpSingleBlockObjectPrediction(Operator):
         self.block_roi = block_roi  # In global coordinates
         self._halo_padding = halo_padding
 
-        self._opBinarySubRegion = OpSubRegion(parent=self)
-        self._opBinarySubRegion.Input.connect(self.BinaryImage)
+        self._opSegmentationSubRegion = OpSubRegion(parent=self)
+        self._opSegmentationSubRegion.Input.connect(self.SegmentationImage)
 
         self._opRawSubRegion = OpSubRegion(parent=self)
         self._opRawSubRegion.Input.connect(self.RawImage)
 
         self._opExtract = OpObjectExtraction(parent=self)
-        self._opExtract.BinaryImage.connect(self._opBinarySubRegion.Output)
+        self._opExtract.SegmentationImage.connect(self._opSegmentationSubRegion.Output)
         self._opExtract.RawImage.connect(self._opRawSubRegion.Output)
         self._opExtract.Features.connect(self.SelectedFeatures)
         self.BlockwiseRegionFeatures.connect(self._opExtract.BlockwiseRegionFeatures)
@@ -164,14 +164,14 @@ class OpSingleBlockObjectPrediction(Operator):
 
         self._opRawSubRegion.Roi.setValue((halo_start, halo_stop))
 
-        # Binary image has only 1 channel.  Adjust halo subregion.
-        assert self.BinaryImage.meta.getTaggedShape()["c"] == 1
-        c_index = self.BinaryImage.meta.axistags.channelIndex
-        binary_halo_roi = numpy.array(self._halo_roi)
-        binary_halo_roi[:, c_index] = (0, 1)  # Binary has only 1 channel.
-        binary_halo_start, binary_halo_stop = list(map(tuple, binary_halo_roi))
+        # Segmentation image has only 1 channel.  Adjust halo subregion.
+        assert self.SegmentationImage.meta.getTaggedShape()["c"] == 1
+        c_index = self.SegmentationImage.meta.axistags.channelIndex
+        segmentation_halo_roi = numpy.array(self._halo_roi)
+        segmentation_halo_roi[:, c_index] = (0, 1)  # Binary has only 1 channel.
+        segmentation_halo_start, segmentation_halo_stop = list(map(tuple, segmentation_halo_roi))
 
-        self._opBinarySubRegion.Roi.setValue((binary_halo_start, binary_halo_stop))
+        self._opSegmentationSubRegion.Roi.setValue((segmentation_halo_start, segmentation_halo_stop))
 
         self.PredictionImage.meta.assignFrom(self._opPredictionImage.Output.meta)
         self.PredictionImage.meta.shape = tuple(numpy.subtract(self.block_roi[1], self.block_roi[0]))
@@ -252,7 +252,7 @@ class OpBlockwiseObjectClassification(Operator):
     """
 
     RawImage = InputSlot()
-    BinaryImage = InputSlot()
+    SegmentationImage = InputSlot()
     Classifier = InputSlot()
     LabelsCount = InputSlot()
     SelectedFeatures = InputSlot(rtype=List, stype=Opaque)
@@ -270,15 +270,17 @@ class OpBlockwiseObjectClassification(Operator):
 
     def setupOutputs(self):
         # Check for preconditions.
-        if self.RawImage.ready() and self.BinaryImage.ready():
+        if self.RawImage.ready() and self.SegmentationImage.ready():
             rawTaggedShape = self.RawImage.meta.getTaggedShape()
-            binTaggedShape = self.BinaryImage.meta.getTaggedShape()
+            binTaggedShape = self.SegmentationImage.meta.getTaggedShape()
             rawTaggedShape["c"] = None
             binTaggedShape["c"] = None
             if dict(rawTaggedShape) != dict(binTaggedShape):
                 msg = (
                     "Raw data and other data must have equal dimensions (different channels are okay).\n"
-                    "Your datasets have shapes: {} and {}".format(self.RawImage.meta.shape, self.BinaryImage.meta.shape)
+                    "Your datasets have shapes: {} and {}".format(
+                        self.RawImage.meta.shape, self.SegmentationImage.meta.shape
+                    )
                 )
                 raise DatasetConstraintError("Blockwise Object Classification", msg)
 
@@ -297,9 +299,9 @@ class OpBlockwiseObjectClassification(Operator):
         self.PredictionImage.meta.ideal_blockshape = block_shape
 
         raw_ruprp = self.RawImage.meta.ram_usage_per_requested_pixel
-        binary_ruprp = self.BinaryImage.meta.ram_usage_per_requested_pixel
+        segmentation_ruprp = self.SegmentationImage.meta.ram_usage_per_requested_pixel
         try:
-            prediction_ruprp = max(raw_ruprp, binary_ruprp)
+            prediction_ruprp = max(raw_ruprp, segmentation_ruprp)
         except Exception:
             prediction_ruprp = None
 
@@ -427,7 +429,7 @@ class OpBlockwiseObjectClassification(Operator):
             # Instantiate pipeline
             opBlockPipeline = OpSingleBlockObjectPrediction(block_roi, halo_padding, parent=self)
             opBlockPipeline.RawImage.connect(self.RawImage)
-            opBlockPipeline.BinaryImage.connect(self.BinaryImage)
+            opBlockPipeline.SegmentationImage.connect(self.SegmentationImage)
             opBlockPipeline.Classifier.connect(self.Classifier)
             opBlockPipeline.LabelsCount.connect(self.LabelsCount)
             opBlockPipeline.SelectedFeatures.connect(self.SelectedFeatures)

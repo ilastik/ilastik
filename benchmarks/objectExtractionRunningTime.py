@@ -56,6 +56,7 @@ FEATURES = {
     }
 }
 
+
 # Cleanup functions (used in vigra_objfeats.py)
 def cleanup_key(k):
     return k.replace(" ", "")
@@ -207,7 +208,7 @@ class ObjectExtractionTimeComparison(object):
         # Object extraction
         self.opObjectExtraction = OpObjectExtraction(graph=g)
         self.opObjectExtraction.RawImage.connect(self.op5Raw.Output)
-        self.opObjectExtraction.BinaryImage.connect(self.op5Binary.Output)
+        self.opObjectExtraction.SegmentationImage.connect(self.op5Binary.Output)
         self.opObjectExtraction.Features.setValue(FEATURES)
 
         # Simplified object features operator (No overhead)

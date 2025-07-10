@@ -166,8 +166,6 @@ class TableExporter(ExportingOperator):
             )
 
             # Object features
-            computed_names = self._op.ComputedFeatureNames.value
-
             export_file.add_columns(
                 "table", self._op.ObjectFeatures[lane_index], Mode.IlastikFeatureTable, {"selection": selected_features}
             )
@@ -206,7 +204,6 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     ###############
     # Input slots #
     ###############
-    BinaryImages = InputSlot(level=1)  # for visualization
     RawImages = InputSlot(level=1)  # for visualization
     Atlas = InputSlot(level=1, optional=True)  # for visualization
     SegmentationImages = InputSlot(level=1)  # connected components

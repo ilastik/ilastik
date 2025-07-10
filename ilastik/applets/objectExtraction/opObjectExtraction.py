@@ -19,15 +19,15 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Python
+from abc import ABC, abstractmethod
 from copy import copy, deepcopy
 import collections
 from collections.abc import Iterable
 from functools import partial
-from typing import Dict
+from typing import Dict, Optional
 
-# SciPy
 import numpy
-import vigra.analysis
+import vigra
 
 # lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -35,6 +35,8 @@ from lazyflow.request import Request, RequestPool
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List, SubRegion
 from lazyflow.roi import roiToSlice
+from lazyflow.operators.opLabelBase import OpLabelBase
+from lazyflow.operators.opRelabelConsecutive import OpRelabelConsecutive
 from lazyflow.operators import OpLabelVolume, OpCompressedCache, OpBlockedArrayCache
 from itertools import groupby, count
 
@@ -118,6 +120,7 @@ class OpCachedRegionFeatures(Operator):
 
     RawImage = InputSlot()
     Atlas = InputSlot(optional=True)
+    ObjectIDMapping = InputSlot(optional=True)
     LabelImage = InputSlot()
     CacheInput = InputSlot(optional=True)
     Features = InputSlot(rtype=List, stype=Opaque)
@@ -140,6 +143,7 @@ class OpCachedRegionFeatures(Operator):
         self._opRegionFeatures = OpRegionFeatures(parent=self)
         self._opRegionFeatures.RawVolume.connect(self.RawImage)
         self._opRegionFeatures.Atlas.connect(self.Atlas)
+        self._opRegionFeatures.ObjectIDMapping.connect(self.ObjectIDMapping)
         self._opRegionFeatures.LabelVolume.connect(self.LabelImage)
         self._opRegionFeatures.Features.connect(self.Features)
 
@@ -236,12 +240,12 @@ class OpObjectCenterImage(Operator):
 
     """
 
-    BinaryImage = InputSlot()
+    SegmentationImage = InputSlot()
     RegionCenters = InputSlot(rtype=List, stype=Opaque)
     Output = OutputSlot()
 
     def setupOutputs(self):
-        self.Output.meta.assignFrom(self.BinaryImage.meta)
+        self.Output.meta.assignFrom(self.SegmentationImage.meta)
 
     @staticmethod
     def __contained_in_subregion(roi, coords):
@@ -260,7 +264,7 @@ class OpObjectCenterImage(Operator):
 
         result[:] = 0
         ndim = 3
-        taggedShape = self.BinaryImage.meta.getTaggedShape()
+        taggedShape = self.SegmentationImage.meta.getTaggedShape()
         if "z" not in taggedShape or taggedShape["z"] == 1:
             ndim = 2
         for t in range(roi.start[0], roi.stop[0]):
@@ -293,8 +297,8 @@ class OpObjectCenterImage(Operator):
                 assert b - 1 == a, "List roi must be contiguous"
                 a = b
                 T += 1
-            time_index = self.BinaryImage.meta.axistags.index("t")
-            stop = numpy.asarray(self.BinaryImage.meta.shape, dtype=numpy.int64)
+            time_index = self.SegmentationImage.meta.axistags.index("t")
+            stop = numpy.asarray(self.SegmentationImage.meta.shape, dtype=numpy.int64)
             start = numpy.zeros_like(stop)
             stop[time_index] = T
             start[time_index] = t
@@ -303,17 +307,10 @@ class OpObjectCenterImage(Operator):
             self.Output.setDirty(roi)
 
 
-class OpObjectExtraction(Operator):
-    """The top-level operator for the object extraction applet.
-
-    Computes object features and object center images.
-
-    """
-
-    name = "Object Extraction"
-
+class OpObjectExtractionBase(Operator, ABC):
     RawImage = InputSlot()
-    BinaryImage = InputSlot()
+    SegmentationImage = InputSlot()  # binary or label image
+
     Atlas = InputSlot(optional=True)
     BackgroundLabels = InputSlot(optional=True)
 
@@ -328,6 +325,7 @@ class OpObjectExtraction(Operator):
 
     LabelImage = OutputSlot()
     ObjectCenterImage = OutputSlot()
+    RelabelDict = OutputSlot()
 
     # the computed features.
     # dict[time_slice][plugin_name][feature_name] = feature_value
@@ -341,6 +339,8 @@ class OpObjectExtraction(Operator):
 
     CleanLabelBlocks = OutputSlot()
     LabelImageCacheInput = InputSlot()
+    RelabelCacheInput = InputSlot(optional=True)
+    RelabelCacheOutput = OutputSlot()
 
     RegionFeaturesCacheInput = InputSlot(optional=True)
     RegionFeaturesCleanBlocks = OutputSlot()
@@ -349,28 +349,22 @@ class OpObjectExtraction(Operator):
     #
     # BackgroundLabels               LabelImage
     #                 \             /
-    # BinaryImage ---> OpLabelVolume ---> opRegFeats ---> opRegFeatsAdaptOutput ---> RegionFeatures
+    # SegmentationImage ---> EnsureConsecutiveLabels ---> opRegFeats ---> opRegFeatsAdaptOutput ---> RegionFeatures
     #                                   /                                     \
-    # RawImage--------------------------                      BinaryImage ---> opObjectCenterImage --> opCenterCache --> ObjectCenterImage
+    # RawImage--------------------------                      LabelImage ---> opObjectCenterImage --> opCenterCache --> ObjectCenterImage
+    #
+    # EnsureConsecutiveLabels should be customized via `_create_label_volume_op`,
+    # enabling different segmentation input types: binary, and label image.
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, parent=None, graph=None):
 
-        super(OpObjectExtraction, self).__init__(*args, **kwargs)
+        super().__init__(parent, graph)
 
-        # internal operators
-        # TODO BinaryImage is not binary in some workflows, could be made more
-        # efficient
-        self._opLabelVolume = OpLabelVolume(parent=self)
-        self._opLabelVolume.name = "OpObjectExtraction._opLabelVolume"
+        self._opLabelVolume = self._create_label_volume_op()
+
         self._opRegFeats = OpCachedRegionFeatures(parent=self)
         self._opRegFeatsAdaptOutput = OpAdaptTimeListRoi(parent=self)
         self._opObjectCenterImage = OpObjectCenterImage(parent=self)
-
-        # connect internal operators
-        self._opLabelVolume.Input.connect(self.BinaryImage)
-        self._opLabelVolume.Background.connect(self.BackgroundLabels)
-        self._opLabelVolume.BypassModeEnabled.connect(self.BypassModeEnabled)
-
         self._opRegFeats.RawImage.connect(self.RawImage)
         self._opRegFeats.LabelImage.connect(self._opLabelVolume.CachedOutput)
         self._opRegFeats.Features.connect(self.Features)
@@ -381,7 +375,7 @@ class OpObjectExtraction(Operator):
 
         self._opRegFeatsAdaptOutput.Input.connect(self._opRegFeats.Output)
 
-        self._opObjectCenterImage.BinaryImage.connect(self.BinaryImage)
+        self._opObjectCenterImage.SegmentationImage.connect(self._opLabelVolume.CachedOutput)
         self._opObjectCenterImage.RegionCenters.connect(self._opRegFeatsAdaptOutput.Output)
 
         self._opCenterCache = OpCompressedCache(parent=self)
@@ -395,27 +389,91 @@ class OpObjectExtraction(Operator):
         self.BlockwiseRegionFeatures.connect(self._opRegFeats.Output)
         self.CleanLabelBlocks.connect(self._opLabelVolume.CleanBlocks)
 
-        # As soon as input data is available, check its constraints
         self.RawImage.notifyReady(self._checkConstraints)
-        self.BinaryImage.notifyReady(self._checkConstraints)
+        self.SegmentationImage.notifyReady(self._checkConstraints)
 
-    def _checkConstraints(self, *args):
-        if self.RawImage.ready() and self.BinaryImage.ready():
+    def _checkConstraints(self, *_):
+        if self.RawImage.ready() and self.SegmentationImage.ready():
             rawTaggedShape = self.RawImage.meta.getTaggedShape()
-            binTaggedShape = self.BinaryImage.meta.getTaggedShape()
+            segTaggedShape = self.SegmentationImage.meta.getTaggedShape()
             rawTaggedShape["c"] = None
-            binTaggedShape["c"] = None
-            if dict(rawTaggedShape) != dict(binTaggedShape):
-                logger.info(
-                    "Raw data and other data must have equal dimensions (different channels are okay).\n"
-                    "Your datasets have shapes: {} and {}".format(self.RawImage.meta.shape, self.BinaryImage.meta.shape)
-                )
-
+            segTaggedShape["c"] = None
+            if dict(rawTaggedShape) != dict(segTaggedShape):
                 msg = (
-                    "Raw data and other data must have equal dimensions (different channels are okay).\n"
-                    "Your datasets have shapes: {} and {}".format(self.RawImage.meta.shape, self.BinaryImage.meta.shape)
+                    "Raw data and label data must have equal dimensions (different channels are okay)."
+                    f"Your datasets have shapes: {self.RawImage.meta.shape} and {self.SegmentationImage.meta.shape}."
                 )
+                logger.info(msg)
                 raise DatasetConstraintError("Object Extraction", msg)
+
+    def setInSlot(self, slot, subindex, roi, value):
+        assert slot in [
+            self.RegionFeaturesCacheInput,
+            self.LabelImageCacheInput,
+            self.RelabelCacheInput,
+        ], "Invalid slot for setInSlot(): {}".format(slot.name)
+
+    def execute(self, slot, subindex, roi, result):
+        assert False, "Shouldn't get here."
+
+    def propagateDirty(self, inputSlot, subindex, roi):
+        pass
+
+    @abstractmethod
+    def _create_label_volume_op(self) -> OpLabelBase:
+        """Setup operator that provides label image slots
+
+        Returns:
+            label_operator: Operator with
+              CachedOutput
+              CleanLabelBlocks
+
+        """
+        ...
+
+
+class OpObjectExtractionFromLabels(OpObjectExtractionBase):
+
+    def __init__(self, parent=None, graph=None):
+        super().__init__(parent, graph)
+        self._opLabelVolume: OpRelabelConsecutive
+        self._opRegFeats.ObjectIDMapping.connect(self._opLabelVolume.RelabelDict)
+        self._opLabelVolume.SerializationInput.connect(self.RelabelCacheInput)
+        self.RelabelCacheOutput.connect(self._opLabelVolume.SerializationOutput)
+        self.RelabelDict.connect(self._opLabelVolume.RelabelDict)
+
+    def _create_label_volume_op(self):
+        opLabelVolume = OpRelabelConsecutive(parent=self)
+        opLabelVolume.name = "OpObjectExtraction._opLabelVolume[OpRelabelConsecutive]"
+
+        opLabelVolume.Input.connect(self.SegmentationImage)
+
+        return opLabelVolume
+
+    def setupOutputs(self):
+        taggedShape = self.RawImage.meta.getTaggedShape()
+        for k in list(taggedShape.keys()):
+            if k == "t" or k == "c":
+                taggedShape[k] = 1
+        self._opCenterCache.BlockShape.setValue(tuple(taggedShape.values()))
+
+
+class OpObjectExtraction(OpObjectExtractionBase):
+    """The top-level operator for the object extraction applet.
+
+    Computes object features and object center images.
+    """
+
+    def _create_label_volume_op(self) -> OpLabelBase:
+        opLabelVolume = OpLabelVolume(parent=self)
+        opLabelVolume.name = "OpObjectExtraction._opLabelVolume"
+
+        opLabelVolume.Input.connect(self.SegmentationImage)
+        opLabelVolume.Background.connect(self.BackgroundLabels)
+        # TODO: investigate if Bypassing the cache in headless is a good idea at all!
+        opLabelVolume.BypassModeEnabled.connect(self.BypassModeEnabled)
+
+        return opLabelVolume
 
     def setupOutputs(self):
         # Setup LabelImageCacheInput for the serialization of the compressed cache
@@ -425,23 +483,7 @@ class OpObjectExtraction(Operator):
         for k in list(taggedShape.keys()):
             if k == "t" or k == "c":
                 taggedShape[k] = 1
-            # else:
-            #     taggedShape[k] = 256
         self._opCenterCache.blockShape.setValue(tuple(taggedShape.values()))
-
-    def execute(self, slot, subindex, roi, result):
-        assert False, "Shouldn't get here."
-
-    def propagateDirty(self, inputSlot, subindex, roi):
-        pass
-
-    def setInSlot(self, slot, subindex, roi, value):
-        assert (
-            slot == self.RegionFeaturesCacheInput or slot == self.LabelImageCacheInput
-        ), "Invalid slot for setInSlot(): {}".format(slot.name)
-        # Nothing to do here.
-        # Our Input slots are directly fed into the cache,
-        #  so all calls to __setitem__ are forwarded automatically
 
 
 class OpRegionFeatures(Operator):
@@ -469,6 +511,7 @@ class OpRegionFeatures(Operator):
 
     RawVolume = InputSlot()
     Atlas = InputSlot(optional=True)
+    ObjectIDMapping = InputSlot(optional=True)
     LabelVolume = InputSlot()
     Features = InputSlot(rtype=List, stype=Opaque)
 
@@ -476,7 +519,9 @@ class OpRegionFeatures(Operator):
 
     def setupOutputs(self):
         if self.LabelVolume.meta.axistags != self.RawVolume.meta.axistags:
-            raise Exception("raw and label axis tags do not match")
+            raise Exception(
+                f"raw and label axis tags do not match ({self.RawVolume.meta.axistags} != {self.LabelVolume.meta.axistags})."
+            )
 
         taggedOutputShape = self.LabelVolume.meta.getTaggedShape()
         taggedRawShape = self.RawVolume.meta.getTaggedShape()
@@ -521,6 +566,11 @@ class OpRegionFeatures(Operator):
             else:
                 atlasVolume = None
 
+            if self.ObjectIDMapping.ready():
+                object_id_mapping = self.ObjectIDMapping[s[t_ind]].wait()[0]
+            else:
+                object_id_mapping = None
+
             # Get results
             rawVolume = raw_req.wait()
             labelVolume = label_req.wait()
@@ -531,7 +581,7 @@ class OpRegionFeatures(Operator):
             # Convert to 4D (preserve axis order)
             rawVolume = rawVolume.withAxes(*axes4d)
             labelVolume = labelVolume.withAxes(*axes4d)
-            acc = self._extract(rawVolume, labelVolume, atlasVolume)
+            acc = self._extract(rawVolume, labelVolume, atlasVolume, object_id_mapping)
 
             # Copy into the result
             result[res_t_ind] = acc
@@ -606,7 +656,7 @@ class OpRegionFeatures(Operator):
         axes = {tag.key: idx for idx, tag in enumerate(atlasImage.axistags)}
         num_center_points = len(region_centers)
         num_channels_in_atlas = atlasImage.shape[axes["c"]] if "c" in axes else 1
-        atlas_mapping = numpy.zeros(num_center_points * num_channels_in_atlas)
+        atlas_mapping = numpy.zeros(num_center_points * num_channels_in_atlas, dtype=atlasImage.dtype)
         atlas_mapping = atlas_mapping.reshape(num_center_points, num_channels_in_atlas)
         for obj_idx, center_coords in enumerate(region_centers):
             rounded_coords = center_coords.round().astype(numpy.uint64)
@@ -622,7 +672,9 @@ class OpRegionFeatures(Operator):
             atlas_mapping[obj_idx] = atlas_value
         return atlas_mapping
 
-    def _extract(self, image, labels, atlas=None) -> Dict[str, Dict[str, numpy.ndarray]]:
+    def _extract(
+        self, image, labels, atlas=None, object_id_mapping: Optional[dict[int, int]] = None
+    ) -> Dict[str, Dict[str, numpy.ndarray]]:
         """
         Returns a dictionary of features, with the following structure:
             dict[plugin_name][feature_name] = feature_value
@@ -689,6 +741,12 @@ class OpRegionFeatures(Operator):
         if atlas is not None:
             extrafeats["AtlasMapping"] = self._createAtlasMapping(extrafeats["RegionCenter"], atlas)
 
+        if object_id_mapping is not None:
+            rev_mapping = {v: k for k, v in object_id_mapping.items()}
+            extrafeats["original_oid"] = numpy.expand_dims(
+                numpy.vectorize(rev_mapping.get)(numpy.arange(1, extrafeats["Count"].shape[0] + 1)), axis=-1
+            )
+
         extrafeats = dict((k.replace(" ", ""), v) for k, v in extrafeats.items())
 
         # index in those have an -1 offset to object ids
@@ -753,7 +811,7 @@ class OpRegionFeatures(Operator):
         all_features[default_features_key] = extrafeats
 
         # reshape all features
-        for pfeats in all_features.values():
+        for plugin_name, pfeats in all_features.items():
             for key, value in pfeats.items():
                 if value.shape[0] != nobj:
                     raise Exception(
@@ -762,10 +820,12 @@ class OpRegionFeatures(Operator):
 
                 # because object classification operator expects nobj to
                 # include background. FIXME: we should change that assumption.
-                value = numpy.vstack((numpy.zeros(value.shape[1]), value))
-                value = value.astype(numpy.float32)  # turn Nones into numpy.NaNs
+                value = numpy.vstack((numpy.zeros(value.shape[1], dtype=value.dtype), value))
 
-                assert value.dtype == numpy.float32
+                #
+                if plugin_name != default_features_key and key not in ["original_oid", "AtlasMapping"]:
+                    value = value.astype(numpy.float32)  # turn Nones into numpy.NaNs
+
                 assert value.shape[0] == nobj + 1
                 assert value.ndim == 2
 
