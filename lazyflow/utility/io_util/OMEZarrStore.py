@@ -261,7 +261,7 @@ def _get_zarr_cache_max_size() -> int:
 def _try_authenticated_aws_s3(uri, kwargs, mode, test_path) -> Optional[FSStore]:
     authenticated_store = FSStore(uri, mode=mode, anon=False, **kwargs)
     try:
-        logger.debug(f"Trying to access path={test_path} at uri={uri} with S3FS credentials.")
+        logger.info(f"Trying AWS S3 with S3FS credentials, path={test_path} at uri={uri}.")
         _ = authenticated_store[test_path]
     except NoCredentialsError:
         logger.warning(
@@ -299,14 +299,21 @@ def _try_authenticated_s3_compatible(uri, kwargs, e, test_path) -> FSStore:
     fs = s3fs.S3FileSystem(anon=False, endpoint_url=base_uri_inc_bucket)
     store = FSStore(sub_uri, fs=fs, **kwargs)
     try:
-        logger.debug(f"Trying path={sub_uri}/{test_path} in bucket={base_uri_inc_bucket} with S3FS credentials.")
+        logger.info(
+            f"Trying S3-compatible server with S3FS credentials, path={sub_uri}/{test_path} in bucket={base_uri_inc_bucket}."
+        )
         _ = store[test_path]
     except (KeyError, NoCredentialsError) as ee:
-        if isinstance(ee.__context__, PermissionError) or isinstance(ee, NoCredentialsError):
-            # This probably is an S3-compatible store, but auth rejected/not found.
+        # This probably is an S3-compatible store, but auth rejected/not found.
+        if isinstance(ee.__context__, PermissionError):
             raise ConnectionError(
-                f"Server refused permission to read {uri}.\n"
-                f"Please ensure you have access to this bucket and your credentials are set up for S3FS."
+                f"Authentication probably succeeded but server refused permission to read {uri}.\n"
+                f'Did you enter the right URL? On some servers, this means the requested file "{test_path}" doesn\'t exist.'
+            ) from ee
+        if isinstance(ee, NoCredentialsError):
+            raise ConnectionError(
+                f"Authentication failed when trying to read {uri}.\n"
+                "Please ensure your credentials for S3FS/Boto are set up correctly."
             ) from ee
     logger.info(
         "Server requires authentication and seems to have accepted S3FS credentials. Continuing with authenticated store."
