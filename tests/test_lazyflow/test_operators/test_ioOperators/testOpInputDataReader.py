@@ -37,12 +37,12 @@ from typing import Tuple, List
 from PIL import Image
 
 from lazyflow.utility.io_util.OMEZarrStore import (
-    OME_ZARR_V_0_4_KWARGS,
     OMEZarrMultiscaleMeta,
     InvalidTransformationError,
     NotAnOMEZarrMultiscale,
 )
 from lazyflow.utility.io_util.multiscaleStore import Multiscales
+from lazyflow.utility.io_util.write_ome_zarr import OME_ZARR_V_0_4_KWARGS
 
 
 class TestOpInputDataReader(object):
