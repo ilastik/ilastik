@@ -37,7 +37,6 @@ from lazyflow.slot import Slot
 from lazyflow.utility import OrderedSignal, PathComponents, BigRequestStreamer
 from lazyflow.utility.io_util import multiscaleStore
 from lazyflow.utility.io_util.OMEZarrStore import (
-    OME_ZARR_V_0_4_KWARGS,
     OMEZarrMultiscaleMeta,
     OMEZarrCoordinateTransformation,
     InvalidTransformationError,
@@ -52,6 +51,7 @@ OrderedScaling = OrderedTranslation = OrderedDict[Axiskey, float]  # { axis: sca
 ScalingsByScaleKey = OrderedDict[str, OrderedScaling]  # { scale_key: { axis: scaling } }
 
 SPATIAL_AXES = ["z", "y", "x"]
+OME_ZARR_V_0_4_KWARGS = dict(dimension_separator="/")
 
 
 @dataclasses.dataclass
