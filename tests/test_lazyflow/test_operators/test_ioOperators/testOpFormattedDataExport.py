@@ -34,6 +34,28 @@ from lazyflow.roi import roiToSlice
 from lazyflow.operators.ioOperators import OpInputDataReader, OpFormattedDataExport
 
 
+@pytest.mark.parametrize(
+    "target_dtype", [numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64, numpy.float32, numpy.float64]
+)
+def test_normalize_rounds_float_imprecision(target_dtype):
+    """
+    Special case when normalizing float probabilities from 0.0 ... 1.0 to int range 0 ... 100
+    Probabilities are integer percentages (0.00, 0.01, 0.02 etc.), so there are 101 unique values
+    from 0.0 to 1.0. They should map to 101 unique values from 0 to 100 regardless of output dtype.
+
+    Doing maths may introduce float imprecision:
+    list((np.arange(0, 101, dtype=np.float64) / 100 * 100.0)[[29, 57, 58]])
+    [28.999999999999996, 56.99999999999999, 57.99999999999999]
+    Simply casting to integer dtypes converts these to 28, 56 and 57 respectively, instead of 29, 57 and 58.
+    """
+    probabilities = numpy.arange(0, 101, dtype=numpy.float64) / 100
+    normalized = normalize(probabilities, drange_in=(0.0, 1.0), drange_out=(0, 100), dtype_out=target_dtype)
+    assert len(numpy.unique(probabilities)) == len(
+        numpy.unique(normalized)
+    ), "Expected 101 values before and after normalization"
+    numpy.testing.assert_array_equal(numpy.round(probabilities * 100), numpy.round(normalized))
+
+
 class TestOpFormattedDataExport(object):
     @classmethod
     def setup_class(cls):
@@ -143,24 +165,3 @@ class TestOpFormattedDataExport(object):
             assert (numpy.abs(difference_from_expected) <= 1).all(), "Read data didn't match exported data!"
         finally:
             opRead.cleanUp()
-
-    @pytest.mark.parametrize(
-        "target_dtype", [numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64, numpy.float32, numpy.float64]
-    )
-    def testNormalizeRoundsFloatImprecision(self, target_dtype):
-        """
-        Special case when normalizing float probabilities from 0.0 ... 1.0 to int range 0 ... 100
-        Probabilities are integer percentages (0.00, 0.01, 0.02 etc.), so there are 101 unique values
-        from 0.0 to 1.0. They should map to 101 unique values from 0 to 100 regardless of output dtype.
-
-        Doing maths may introduce float imprecision:
-        list((np.arange(0, 101, dtype=np.float64) / 100 * 100.0)[[29, 57, 58]])
-        [28.999999999999996, 56.99999999999999, 57.99999999999999]
-        Simply casting to integer dtypes converts these to 28, 56 and 57 respectively, instead of 29, 57 and 58.
-        """
-        probabilities = numpy.arange(0, 101, dtype=numpy.float64) / 100
-        normalized = normalize(0.0, 1.0, 0, 100, target_dtype, probabilities)
-        assert len(numpy.unique(probabilities)) == len(
-            numpy.unique(normalized)
-        ), "Expected 101 values before and after normalization"
-        numpy.testing.assert_array_equal(numpy.round(probabilities * 100), numpy.round(normalized))

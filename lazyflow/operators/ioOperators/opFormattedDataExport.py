@@ -29,7 +29,7 @@ import warnings
 from functools import partial
 
 import numpy
-from typing import Tuple
+from typing import Tuple, TypeVar, Type
 from pathlib import Path
 
 import z5py
@@ -44,20 +44,34 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 from .opExportSlot import OpExportSlot
 
+DTYPE_IN = TypeVar("DTYPE_IN")
+DTYPE_OUT = TypeVar("DTYPE_OUT")
 
-def normalize(minVal, maxVal, outputMinVal, outputMaxVal, target_dtype, a):
-    numerator = numpy.float64(outputMaxVal) - numpy.float64(outputMinVal)
-    denominator = numpy.float64(maxVal) - numpy.float64(minVal)
-    if denominator != 0.0:
-        frac = numpy.float32(numerator / denominator)
+
+def normalize(
+    a: numpy.typing.NDArray,
+    *,
+    drange_in: Tuple[DTYPE_IN, DTYPE_IN],
+    drange_out: Tuple[DTYPE_OUT, DTYPE_OUT],
+    dtype_out: Type[DTYPE_OUT],
+) -> numpy.typing.NDArray:
+    """
+    Re-normalize a number array `a` from data range `drange_in` to data range `drange_out`
+    and convert it to `dtype_out`.
+    """
+    min_in, max_in = drange_in
+    min_out, max_out = drange_out
+    spread_in = numpy.float64(max_in) - numpy.float64(min_in)
+    spread_out = numpy.float64(max_out) - numpy.float64(min_out)
+    if numpy.isclose(spread_in, 0.0):
+        spread_ratio = numpy.float32(0.0)  # avoid division by zero
     else:
-        # Denominator was zero.  The user is probably just temporarily changing the values.
-        frac = numpy.float32(0.0)
-    if numpy.issubdtype(a.dtype, numpy.floating) and numpy.issubdtype(target_dtype, numpy.integer):
+        spread_ratio = numpy.float32(spread_out / spread_in)
+    if numpy.issubdtype(a.dtype, numpy.floating) and numpy.issubdtype(dtype_out, numpy.integer):
         # Float to int: Round to avoid truncation
-        result = numpy.rint(outputMinVal + (a - minVal) * frac).astype(target_dtype)
+        result = numpy.rint(min_out + (a - min_in) * spread_ratio).astype(dtype_out)
     else:
-        result = (outputMinVal + (a - minVal) * frac).astype(target_dtype)
+        result = (min_out + (a - min_in) * spread_ratio).astype(dtype_out)
     return result
 
 
@@ -212,7 +226,9 @@ class OpFormattedDataExport(Operator):
             #  which transforms the drange correctly in this case.
             self._opDrangeInjection.Metadata.setValue({"drange": (minVal, maxVal)})
 
-            normalize_func = partial(normalize, minVal, maxVal, outputMinVal, outputMaxVal, export_dtype)
+            normalize_func = partial(
+                normalize, drange_in=(minVal, maxVal), drange_out=(outputMinVal, outputMaxVal), dtype_out=export_dtype
+            )
             self._opNormalizeAndConvert.Function.setValue(normalize_func)
 
             # The OpPixelOperator sets the drange correctly using the function we give it.
