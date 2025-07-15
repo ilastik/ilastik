@@ -33,7 +33,6 @@ fromJSON(json_string)
 """
 
 
-
 class UnitAxisInfo(vigra.AxisInfo):
     def __init__(self, key="?", typeFlags=AxisType.UnknownAxisType, resolution=0.0, description="", unit=""):
         if (

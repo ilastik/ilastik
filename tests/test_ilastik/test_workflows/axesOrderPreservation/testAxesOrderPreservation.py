@@ -274,6 +274,7 @@ class TestAxesOrderPreservation(object):
         # args.append('--output_format=png sequence')
         args.append("--export_source=Simple Segmentation")
         args.append("--output_filename_format=" + output_path)
+
         args.append("--output_format=hdf5")
         args.append("--export_dtype=uint8")
         # args.append("--output_axis_order=")
