@@ -27,6 +27,7 @@ import vigra
 import tifffile
 
 from lazyflow.graph import Operator, InputSlot
+from lazyflow.utility.resolution import UnitAxisTags
 
 from .opExportToArray import OpExportToArray
 
@@ -88,7 +89,7 @@ class OpExport2DImage(Operator):
         extension = os.path.splitext(self.Filepath.value)[1][1:]
 
         # now write any pixel sizes
-        if extension in ["tif", "tiff"] and self.Input.meta.axistags.unit_tags is not None:
+        if extension in ["tif", "tiff"] and type(self.Input.meta.axistags) is UnitAxisTags:
             with tifffile.TiffFile(self.Filepath.value) as tif:
                 olddata = tif.asarray()
                 data = olddata.squeeze()
@@ -97,10 +98,10 @@ class OpExport2DImage(Operator):
                 axes = "YX"
                 if tagged_shape["c"] > 1:
                     axes = "CYX"
-                if self.Input.meta.axistags.getUnitTag("x"):
-                    x = (self.Input.meta.axistags.getUnitTag("x").encode("unicode_escape").decode("ascii"),)
-                if self.Input.meta.axistags.getUnitTag("y"):
-                    y = (self.Input.meta.axistags.getUnitTag("y").encode("unicode_escape").decode("ascii"),)
+                if self.Input.meta.axistags["x"].unit:
+                    x = (self.Input.meta.axistags["x"].unit.encode("unicode_escape").decode("ascii"),)
+                if self.Input.meta.axistags["y"].unit:
+                    y = (self.Input.meta.axistags["x"].unit.encode("unicode_escape").decode("ascii"),)
 
                 imagej_metadata = {
                     "spacing": 1.0,  # this is equal to the z-axis and gets handled differently in non-2d images

@@ -100,17 +100,14 @@ class OpExportMultipageTiff(Operator):
             if axis in size_trans:
                 meta_dict[size_trans[axis]] = None
                 meta_dict[unit_trans[axis]] = None
-
-        for unit in self._opReorderAxes.Output.meta.axistags.unit_tags.keys():
-            if unit == "c":
-                continue
-            meta_dict[size_trans[unit]] = self._opReorderAxes.Output.meta.axistags[unit].resolution
-            if self._opReorderAxes.Output.meta.axistags.getUnitTag(unit) is not None:
-                meta_dict[unit_trans[unit]] = (
-                    self._opReorderAxes.Output.meta.axistags.getUnitTag(unit).encode("unicode_escape").decode("ascii")
-                )
-            else:
-                meta_dict[unit_trans[unit]] = None
+            if axis != "c":
+                meta_dict[size_trans[axis]] = self._opReorderAxes.Output.meta.axistags[axis].resolution
+                if self._opReorderAxes.Output.meta.axistags[axis] != "":
+                    meta_dict[unit_trans[axis]] = (
+                        self._opReorderAxes.Output.meta.axistags[axis].unit.encode("unicode_escape").decode("ascii")
+                    )
+                else:
+                    meta_dict[unit_trans[axis]] = None
 
         with tifffile.TiffWriter(self.Filepath.value, byteorder="<", ome=True) as writer:
             writer.write(

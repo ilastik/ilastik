@@ -321,7 +321,7 @@ class TestAxesOrderPreservation(object):
         if units is not None:
             for unit_set in units.keys():
                 assert res[unit_set] == opReaderResult.Output.meta.axistags[unit_set].resolution
-                assert units[unit_set] == opReaderResult.Output.meta.axistags.getUnitTag(unit_set)
+                assert units[unit_set] == opReaderResult.Output.meta.axistags[unit_set].unit
 
         self.compare_results(opReaderResult, compare_path, input_axes, max_mse=0.001)
 

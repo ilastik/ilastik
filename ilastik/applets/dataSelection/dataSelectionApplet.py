@@ -273,14 +273,13 @@ class DataSelectionApplet(Applet):
     ) -> List[Dict[str, DatasetInfo]]:
 
         # obtain pixel sizes from lanes and populate export axes
-        for tags in input_axes:
-            if tags is not None and self.num_lanes > 0:
+        for tagset in input_axes:
+            if tagset is not None and self.num_lanes > 0:
                 raw_tags = self.get_lane(-1).get_axistags()["Raw Data"]
-                tags.setUnitDict(raw_tags.getUnitDict())
-                axislist = [tag.key for tag in tags]
-                for axis in axislist:
-                    if tags[axis].typeFlags.name == "Space":
-                        tags[axis].resolution = raw_tags[axis].resolution
+                tagset._unit_dict = raw_tags._unit_dict.copy()
+                for axis in tagset.keys():
+                    tagset.setUnit(axis, raw_tags[axis].unit)
+                    tagset.setResolution(axis, raw_tags[axis].resolution)
 
         if not input_axes or not any(input_axes):
             if ignore_training_axistags or self.num_lanes == 0:

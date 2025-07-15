@@ -198,7 +198,7 @@ class DatasetInfo(ABC):
             params["axistags"] = tags
         elif "axisorder" in data:  # legacy support
             axisorder = data["axisorder"][()].decode("utf-8")
-            params["axistags"] = UnitAxisTags(vigra.defaultAxistags(axisorder))
+            params["axistags"] = UnitAxisTags.defaultUnitAxisTags(axisorder)
 
         if "subvolume_roi" in data:
             params["subvolume_roi"] = tuple(data["subvolume_roi"][()])
@@ -394,7 +394,7 @@ class ProjectInternalDatasetInfo(DatasetInfo):
         if "axistags" in self.dataset.attrs:
             default_tags = UnitAxisTags.fromJSON(self.dataset.attrs["axistags"])
         else:
-            default_tags = UnitAxisTags(vigra.defaultAxistags(get_default_axisordering(self.dataset.shape)))
+            default_tags = UnitAxisTags.defaultUnitAxisTags(get_default_axisordering(self.dataset.shape))
         super().__init__(
             default_tags=default_tags,
             laneShape=self.dataset.shape,

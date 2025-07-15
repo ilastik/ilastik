@@ -74,65 +74,66 @@ class OpTiffReader(Operator):
         return True
     """
 
-    def make_axistags(self, axiskeys: str):
-        axisinfos: Dict[str, Union[UnitAxisInfo, vigra.AxisInfo]] = {}
+    def make_axistags(self, axiskeys: str, ij_meta, ome_meta):
+        if not ij_meta and not ome_meta:
+            return vigra.defaultAxistags(axiskeys)
 
+        axisinfos: Dict[str, Union[UnitAxisInfo, vigra.AxisInfo]] = {}
         with tifffile.TiffFile(self._filepath, mode="r") as f:
-            ij_meta = f.imagej_metadata
-            ome_meta = f.ome_metadata
-            if not ij_meta and not ome_meta:
-                return vigra.defaultAxistags(axiskeys)
             if ij_meta:
                 meta = f.pages[0].tags
 
                 # TIFF format stores resolution values as Rational tuples (numerator, denominator)
                 if "unit" in ij_meta.keys():
-                    info = UnitAxisInfo(key="x", )
-                    tempaxes.setUnitTag(
-                        "x",
-                        self.decode_non_ascii(ij_meta["unit"]),
-                        )
-                xres = meta.get("XResolution")
-                if xres.value[0] != 0:
-                    tempaxes.setResolution("x", xres.value[1] / xres.value[0])
-                else:
-                    tempaxes.setResolution("x", 0)
 
-                if meta.get("YResolution").value[0] != 0:
-                    tempaxes.setResolution("y", meta.get("YResolution").value[1] / meta.get("YResolution").value[0])
-                else:
-                    tempaxes.setResolution("y", 0)
-                if "yunit" in ij_meta.keys():
-                    tempaxes.setUnitTag(
-                        "y",
-                        decode_non_ascii(ij_meta["yunit"]),
+                    res = self.get_tiff_res(meta.get("XResolution", (0, 0)))
+                    x_unit = ij_meta.get("unit", "")
+                    axisinfos["x"] = UnitAxisInfo(
+                        key="x",
+                        typeFlags=vigra.AxisType.Space,
+                        resolution=res,
+                        description="",
+                        unit=self.decode_non_ascii(x_unit) if x_unit else "",
                     )
 
-                if "z" in axiskeys:
-                    tempaxes.setResolution("z", ij_meta["spacing"])
-                    if "zunit" in ij_meta.keys():
-                        tempaxes.setUnitTag(
-                            "z",
-                            ij_meta["zunit"]
-                            .encode("utf-8")
-                            .decode("unicode_escape")
-                            .encode("utf-16", "surrogatepass")
-                            .decode("utf-16"),
+                    res = self.get_tiff_res(meta.get("YResolution", (0, 0)))
+                    y_unit = ij_meta.get("yunit", "")
+                    axisinfos["y"] = UnitAxisInfo(
+                        key="y",
+                        typeFlags=vigra.AxisType.Space,
+                        resolution=res,
+                        description="",
+                        unit=self.decode_non_ascii(y_unit) if y_unit else "",
+                    )
+                    if "z" in axiskeys:
+                        res = ij_meta.get("spacing", 0)
+                        z_unit = ij_meta.get("zunit", "")
+                        axisinfos["z"] = UnitAxisInfo(
+                            key="z",
+                            typeFlags=vigra.AxisType.Space,
+                            resolution=res,
+                            description="",
+                            unit=self.decode_non_ascii(z_unit) if z_unit else "",
                         )
 
-                if "t" in axiskeys:
-                    tempaxes.setResolution("t", ij_meta["finterval"])
-                    if "tunit" in ij_meta.keys():
-                        tempaxes.setUnitTag(
-                            "t",
-                            ij_meta["tunit"]
-                            .encode("utf-8")
-                            .decode("unicode_escape")
-                            .encode("utf-16", "surrogatepass")
-                            .decode("utf-16"),
+                    if "t" in axiskeys:
+                        res = ij_meta.get("finterval", 0)
+                        t_unit = ij_meta.get("tunit", "")
+                        axisinfos["t"] = UnitAxisInfo(
+                            key="t",
+                            typeFlags=vigra.AxisType.Time,
+                            resolution=res,
+                            description="",
+                            unit=self.decode_non_ascii(t_unit) if t_unit else "",
                         )
+
+                    if "c" in axiskeys:
+                        axisinfos["c"] = UnitAxisInfo(
+                            key="c", typeFlags=vigra.AxisType.Channels, resolution=0.0, description="", unit=None
+                        )
+
             # Look for OME-TIFF metadata (possible in FIJI hyperstacks)
-            elif ome_meta:
+            else:
                 xml = ET.fromstring(ome_meta)
                 ns = {"ome": "http://www.openmicroscopy.org/Schemas/OME/2016-06"}
                 image = xml.find("ome:Image", ns)
@@ -149,30 +150,56 @@ class OpTiffReader(Operator):
 
                     for axis in axiskeys:
                         if axis.lower() == "c":
-                            continue
+                            axisinfos[axis] = UnitAxisInfo(
+                                key=axis, typeFlags=vigra.AxisType.Channels, resolution=0, description="", unit=""
+                            )
                         if axis.lower() in size_trans_0.keys():
-                            tempaxes.setResolution(axis, float(pixels.attrib.get(size_trans_0[axis], 0)))
-                        else:
-                            tempaxes.setResolution(axis, float(pixels.attrib.get(size_trans_1[axis], 1)))
-                        unit = pixels.attrib.get(unit_trans_0[axis], None)
-                        if unit:
-                            tempaxes.setUnitTag(
-                                axis,
-                                unit.encode("utf-8")
-                                .decode("unicode_escape")
-                                .encode("utf-16", "surrogatepass")
-                                .decode("utf-16"),
+                            unit_value = pixels.attrib.get(unit_trans_0[axis], "")
+                            default_unit = ""
+                            axisinfos[axis] = UnitAxisInfo(
+                                key=axis,
+                                typeFlags=vigra.AxisType.Space,
+                                resolution=float(pixels.attrib.get(size_trans_0[axis], 0)),
+                                description="",
+                                unit=self.decode_non_ascii(unit_value) if unit_value else default_unit,
                             )
                         else:
-                            tempaxes.setUnitTag(axis, None)
+                            if axis.lower() == "t":
+                                unit_value = pixels.attrib.get(unit_trans_0[axis], "")
+                                axisinfos[axis] = UnitAxisInfo(
+                                    key=axis,
+                                    typeFlags=vigra.AxisType.Time,
+                                    resolution=float(pixels.attrib.get(size_trans_1[axis], 0)),
+                                    description="",
+                                    unit=self.decode_non_ascii(unit_value) if unit_value else "",
+                                )
+                            if axis.lower() == "z":
+                                unit_value = pixels.attrib.get(unit_trans_0[axis], "")
+                                axisinfos[axis] = UnitAxisInfo(
+                                    key=axis,
+                                    typeFlags=vigra.AxisType.Space,
+                                    resolution=float(pixels.attrib.get(size_trans_1[axis], 0)),
+                                    description="",
+                                    unit=self.decode_non_ascii(unit_value) if unit_value else "",
+                                )
             return UnitAxisTags([axisinfos[key] for key in axiskeys])
 
     def decode_non_ascii(self, raw_string: str):
         return raw_string.encode("utf-8").decode("unicode_escape").encode("utf-16", "surrogatepass").decode("utf-16")
 
+    def get_tiff_res(self, frac):
+        if frac.value[0] != 0:
+            resolution = frac.value[1] / frac.value[0]
+            if abs(resolution - round(resolution)) < 0.001:
+                resolution = round(resolution)
+            return resolution
+        return 0
+
     def setupOutputs(self):
         self._filepath = self.Filepath.value
         with tifffile.TiffFile(self._filepath, mode="r") as tiff_file:
+            ij_meta = tiff_file.imagej_metadata
+            ome_meta = tiff_file.ome_metadata
             series = tiff_file.series[0]
             if len(tiff_file.series) > 1:
                 raise UnsupportedTiffError(
@@ -206,7 +233,7 @@ class OpTiffReader(Operator):
             self._non_page_shape = shape[: -len(self._page_shape)]
 
         self.Output.meta.shape = shape
-        self.Output.meta.axistags = self.make_axistags(axes)
+        self.Output.meta.axistags = self.make_axistags(axes, ij_meta, ome_meta)
         self.Output.meta.dtype = numpy.dtype(dtype_code).type
 
         blockshape = defaultdict(lambda: 1, zip(self._page_axes, self._page_shape))

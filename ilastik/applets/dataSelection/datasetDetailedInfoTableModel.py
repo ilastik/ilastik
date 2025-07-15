@@ -227,14 +227,15 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             axistags = getattr(datasetInfo, "axistags", None)
             if axistags is not None and type(axistags) is UnitAxisTags:
                 axes, resolutions, units = [], [], []
-                for axis in axistags.getUnitDict().keys():
-                    axes.append(axis)
-                    resolutions.append(axistags[axis].resolution)
-                    unit = axistags.getUnitTag(axis)
-                    if unit is not None:
-                        units.append(unit)
-                    else:
-                        units.append("None")
+                for axis in axistags.getAxisKeys():
+                    if axis.typeFlags == "Space" or axis.typeFlags == "Time":
+                        axes.append(axis)
+                        resolutions.append(axistags[axis].resolution)
+                        unit = axistags[axis].unit
+                        if unit is not None:
+                            units.append(unit)
+                        else:
+                            units.append("None")
                 return str(", ".join(f"{ax}: {res} {un}" for ax, res, un in zip(axes, resolutions, units)))
             return ""
 
