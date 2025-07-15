@@ -27,6 +27,8 @@ import argparse
 import itertools
 import logging
 
+from lazyflow.utility.resolution import UnitAxisTags
+
 logger = logging.getLogger(__name__)
 
 import numpy
@@ -77,6 +79,7 @@ class PixelClassificationWorkflow(Workflow):
         )
         self.stored_classifier = None
         self._applets = []
+        self.lanes = []
         self._workflow_cmdline_args = workflow_cmdline_args
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
@@ -227,6 +230,7 @@ class PixelClassificationWorkflow(Workflow):
             self.stored_classifier = opPixelClassification.classifier_cache.Output.value
         else:
             self.stored_classifier = None
+        self.lanes.append(int(laneIndex))
 
     def handleNewLanesAdded(self):
         """
@@ -238,6 +242,9 @@ class PixelClassificationWorkflow(Workflow):
             self.pcApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifier)
             # Release reference
             self.stored_classifier = None
+        for lane in self.lanes:
+            opData = self.dataSelectionApplet.topLevelOperator.getLane(lane)  # handle passed-through pixel sizes here
+        self.lanes = []
 
     def connectLane(self, laneIndex):
         # Get a handle to each operator

@@ -34,6 +34,7 @@ import os
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import Timer
 from lazyflow.utility.helpers import get_default_axisordering, bigintprod
+from lazyflow.utility.resolution import UnitAxisTags
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ def _find_or_infer_axistags(file: Union[h5py.File, z5py.N5File], internalPath: s
     with contextlib.suppress(KeyError):
         # Look for ilastik-style axistags property.
         axistagsJson = file[internalPath].attrs["axistags"]
-        axistags = vigra.AxisTags.fromJSON(axistagsJson)
+        axistags = UnitAxisTags.fromJSON(axistagsJson)
         axisorder = "".join(tag.key for tag in axistags)
         if "?" not in axisorder:
             return axistags
@@ -51,12 +52,12 @@ def _find_or_infer_axistags(file: Union[h5py.File, z5py.N5File], internalPath: s
     with contextlib.suppress(KeyError):
         # Look for metadata at dataset level (Neuroglancer-style N5 ["x", "y", "z"])
         axisorder = "".join(reversed(file[internalPath].attrs["axes"])).lower()
-        return vigra.defaultAxistags(axisorder)
+        return UnitAxisTags.defaultUnitAxisTags(axisorder)
 
     # Infer from shape
     axisorder = get_default_axisordering(file[internalPath].shape)
     logger.info(f"Could not find stored axistags. Inferred {axisorder} from dataset shape.")
-    return vigra.defaultAxistags(str(axisorder))
+    return UnitAxisTags.defaultUnitAxisTags(str(axisorder))
 
 
 class OpStreamingH5N5Reader(Operator):
