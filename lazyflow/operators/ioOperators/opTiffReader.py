@@ -31,7 +31,7 @@ import vigra
 from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.roi import roiToSlice
 from lazyflow.utility.helpers import get_default_axisordering
-from lazyflow.utility.resolution import UnitAxisInfo, UnitAxisTags
+from lazyflow.utility.pixelSize import UnitAxisInfo, UnitAxisTags
 
 logger = logging.getLogger(__name__)
 

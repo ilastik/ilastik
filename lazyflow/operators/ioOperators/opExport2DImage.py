@@ -27,7 +27,7 @@ import vigra
 import tifffile
 
 from lazyflow.graph import Operator, InputSlot
-from lazyflow.utility.resolution import UnitAxisTags
+from lazyflow.utility.pixelSize import UnitAxisTags
 
 from .opExportToArray import OpExportToArray
 
