@@ -1,5 +1,6 @@
 from builtins import map
 from builtins import zip
+from lazyflow.utility.pixelSize import UnitAxisTags
 
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
@@ -55,7 +56,7 @@ class OpReorderAxes(Operator):
             return
         output_order = "".join(self.AxisOrder.value)
         input_order = self.Input.meta.getAxisKeys()
-        input_tags = self.Input.meta.axistags
+        input_tags = UnitAxisTags(self.Input.meta.axistags)
         tagged_input_shape = self.Input.meta.getTaggedShape()
 
         tagged_ideal_blockshape = None
@@ -83,14 +84,19 @@ class OpReorderAxes(Operator):
 
         # Determine output shape/axistags
         output_shape = []
-        output_tags = vigra.defaultAxistags(str(output_order))
+        output_tags = UnitAxisTags.defaultUnitAxisTags(str(output_order))
+        output_tags._unit_dict = input_tags._unit_dict.copy()
+        if not isinstance(input_tags, UnitAxisTags):
+            input_tags = UnitAxisTags(input_tags)
         ideal_blockshape = []
         max_blockshape = []
         for a in output_order:
             if a in input_order:
                 output_shape.append(tagged_input_shape[a])
                 # Preserve full AxisInfo for retained axes
-                output_tags[a] = input_tags[a]
+                # output_tags[a] = input_tags[a]
+                output_tags.setUnit(a, input_tags[a].unit)
+                output_tags.setResolution(a, input_tags[a].resolution)
 
                 if tagged_ideal_blockshape:
                     ideal_blockshape.append(tagged_ideal_blockshape[a])
