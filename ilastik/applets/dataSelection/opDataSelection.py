@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+import ast
 from abc import abstractmethod, ABC
 import glob
 import os
@@ -48,6 +49,7 @@ from ilastik.workflow import Workflow
 from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import DEFAULT_SCALE_KEY
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
 from lazyflow.utility.helpers import get_default_axisordering
+from lazyflow.utility.pixelSize import UnitAxisTags
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators import OpMissingDataSource
 from lazyflow.operators.ioOperators import OpH5N5WriterBigDataset
@@ -193,10 +195,11 @@ class DatasetInfo(ABC):
             }
         )
         if "axistags" in data:
-            params["axistags"] = AxisTags.fromJSON(data["axistags"][()].decode("utf-8"))
+            tags = UnitAxisTags.fromJSON(data["axistags"][()].decode("utf-8"))
+            params["axistags"] = tags
         elif "axisorder" in data:  # legacy support
             axisorder = data["axisorder"][()].decode("utf-8")
-            params["axistags"] = vigra.defaultAxistags(axisorder)
+            params["axistags"] = UnitAxisTags.defaultUnitAxisTags(axisorder)
 
         if "subvolume_roi" in data:
             params["subvolume_roi"] = tuple(data["subvolume_roi"][()])
@@ -390,9 +393,9 @@ class ProjectInternalDatasetInfo(DatasetInfo):
         self.project_file = project_file
         self.dataset = project_file[inner_path]
         if "axistags" in self.dataset.attrs:
-            default_tags = vigra.AxisTags.fromJSON(self.dataset.attrs["axistags"])
+            default_tags = UnitAxisTags.fromJSON(self.dataset.attrs["axistags"])
         else:
-            default_tags = vigra.defaultAxistags(get_default_axisordering(self.dataset.shape))
+            default_tags = UnitAxisTags.defaultUnitAxisTags(get_default_axisordering(self.dataset.shape))
         super().__init__(
             default_tags=default_tags,
             laneShape=self.dataset.shape,
