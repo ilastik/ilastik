@@ -1,7 +1,7 @@
 import pytest
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpTiffReader
-from lazyflow.utility.resolution import UnitAxisTags
+from lazyflow.utility.pixelSize import UnitAxisTags
 import tifffile
 import pathlib
 
