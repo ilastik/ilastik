@@ -27,6 +27,7 @@ import vigra
 import numpy
 
 import pytest
+from vigra import AxisType
 
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
 from lazyflow.request.request import RequestError
@@ -37,6 +38,8 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 # Use logging instead of print statements ...
 import logging
+
+from lazyflow.utility.pixelSize import UnitAxisTags, UnitAxisInfo
 
 logger = logging.getLogger(__name__)
 
@@ -264,3 +267,24 @@ class TestOpReorderAxes(unittest.TestCase):
 
         with pytest.raises(RequestError):
             req.wait()
+
+    def test_preserve_unit_axistags(self):
+        source_op = OpArrayProvider(graph=self.graph)
+        data = numpy.random.randint(0, 255, (100, 100))
+        data = vigra.taggedView(data, vigra.defaultAxistags("yx"))
+        source_op.Input.setValue(data)
+        axes = [
+            UnitAxisInfo(key="x", typeFlags=AxisType.Space, resolution=13.0, unit="nm"),
+            UnitAxisInfo(key="y", typeFlags=AxisType.Space, resolution=5.0, unit="pizzas"),
+        ]
+        source_op.Output.meta.axistags = UnitAxisTags(axes)
+        self.operator.Input.connect(source_op.Output)
+        assert isinstance(self.operator.Output.meta.axistags, UnitAxisTags)
+        assert (
+            self.operator.Output.meta.axistags["x"] == axes[0]
+        )  # we can't use "is" because reordered axis is a new object
+        assert self.operator.Output.meta.axistags["y"] == axes[1]
+        assert self.operator.Output.meta.axistags["x"].unit == "nm"
+        assert self.operator.Output.meta.axistags["y"].unit == "pizzas"
+        assert self.operator.Output.meta.axistags["x"].resolution == 13.0
+        assert self.operator.Output.meta.axistags["y"].resolution == 5.0
