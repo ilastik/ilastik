@@ -24,7 +24,7 @@ from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from lazyflow.utility.helpers import bigintprod
-from lazyflow.utility.resolution import UnitAxisTags
+from lazyflow.utility.pixelSize import UnitAxisTags
 from .opDataSelection import DatasetInfo
 from .dataLaneSummaryTableModel import rowOfButtonsProxy
 
