@@ -1,8 +1,36 @@
+from typing import Dict, Union
+
 import vigra
 import json
 
-from typing import Dict, Union
 from vigra import AxisType
+
+"""
+Subclass of VIGRA Axistags that handles an extra "units" field within UnitAxisInfo (subclass of AxisInfo), allowing storage
+and interpretation of pixel size data.
+
+Methods
+-------
+
+defaultUnitAxisTags(axes)
+    Returns the default unitTags for the specified axes.
+    :param axes: String of axis keys (e.g. "txyc")
+    :type axes: str
+    :return: unitAxisTags object
+    :rtype: unitAxisTags
+
+toJSON()
+    Converts the UnitTags object to a JSON-formatted string.
+    :return: JSON string representation of the UnitTags object
+    :rtype: str
+
+fromJSON(json_string)
+    Converts a JSON string into a unitTags object.
+    :param json_string: JSON string representation of the unitTags object
+    :type json_string: str
+    :return: unitTags object
+    :rtype: unitTags
+"""
 
 
 class UnitAxisInfo(vigra.AxisInfo):
@@ -79,6 +107,70 @@ class UnitAxisTags(vigra.AxisTags):
         for axis in def_axes.keys():
             in_info = def_axes[axis]
             axis_infos.append(UnitAxisInfo(axis, in_info.typeFlags, in_info.resolution, in_info.description, ""))
+
+        return UnitAxisTags(axis_infos)
+
+    @staticmethod
+    def mapTypeFlag(flag):
+        if flag == "Space":
+            return 2
+        elif flag == "Time":
+            return 8
+        elif flag == "Channels":
+            return 1
+        else:
+            return 0
+
+    def toJSON(self):
+        return json.dumps(
+            {
+                "axes": [
+                    {
+                        "key": tag.key,
+                        "typeFlags": UnitAxisTags.mapTypeFlag(str(tag.typeFlags)),
+                        "resolution": tag.resolution,
+                        "description": tag.description,
+                        "unit": tag.unit if isinstance(tag, UnitAxisInfo) else "",
+                    }
+                    for tag in self
+                ]
+            }
+        )
+
+    @staticmethod
+    def fromJSON(json_str):
+        data = json.loads(json_str)
+
+        axis_type_map = {
+            "Space": AxisType.Space,
+            "Time": AxisType.Time,
+            "Frequency": AxisType.Frequency,
+            "Angle": AxisType.Angle,
+            "Channels": AxisType.Channels,
+            "Edge": AxisType.Edge,
+            "UnknownAxisType": AxisType.UnknownAxisType,
+        }
+        axis_infos = []
+        for info_dict in data["axes"]:
+            key = info_dict["key"]
+            type_str = info_dict.get("typeFlags", "UnknownAxisType")
+            try:
+                type_int = int(type_str)
+                if type_int == 2:
+                    type_flags = AxisType.Space
+                elif type_int == 8:
+                    type_flags = AxisType.Time
+                elif type_int == 1:
+                    type_flags = AxisType.Channels
+            except ValueError:
+                # i.e. not in integer format
+                type_flags = axis_type_map.get(type_str, AxisType.UnknownAxisType)
+
+            resolution = info_dict.get("resolution", 0.0)
+            description = info_dict.get("description", "")
+            unit = info_dict.get("unit", "")
+
+            axis_infos.append(UnitAxisInfo(key, type_flags, resolution, description, unit))
 
         return UnitAxisTags(axis_infos)
 
