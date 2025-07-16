@@ -24,6 +24,7 @@ from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from lazyflow.utility.helpers import bigintprod
+from lazyflow.utility.resolution import UnitAxisTags
 from .opDataSelection import DatasetInfo
 from .dataLaneSummaryTableModel import rowOfButtonsProxy
 
@@ -35,7 +36,8 @@ class DatasetColumn:
     TaggedShape = 3
     Scale = 4
     Range = 5
-    NumColumns = 6
+    PixelSizes = 6
+    NumColumns = 7
 
 
 def _dims_to_display_string(dimensions: Dict[str, int], axiskeys: str, dtype: type) -> str:
@@ -162,6 +164,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
                 DatasetColumn.TaggedShape: "Shape",
                 DatasetColumn.Range: "Data Range",
                 DatasetColumn.Scale: "Resolution Level",
+                DatasetColumn.PixelSizes: "Pixel Sizes",
             }
             return InfoColumnNames[section]
         elif orientation == Qt.Vertical:
@@ -180,6 +183,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             DatasetColumn.TaggedShape: "",
             DatasetColumn.Range: "",
             DatasetColumn.Scale: "",
+            DatasetColumn.PixelSizes: "",
         }
 
         if len(self._op.DatasetGroupOut) <= laneIndex or len(self._op.DatasetGroupOut[laneIndex]) <= self._roleIndex:
@@ -218,6 +222,22 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
                     datasetInfo.scales[datasetInfo.working_scale], datasetInfo.axiskeys, datasetInfo.laneDtype
                 )
             return UninitializedDisplayData[index.column()]
+
+        if index.column() == DatasetColumn.PixelSizes:
+            axistags = getattr(datasetInfo, "axistags", None)
+            if axistags is not None and type(axistags) is UnitAxisTags:
+                axes, resolutions, units = [], [], []
+                for axis in axistags.getAxisKeys():
+                    if axis.typeFlags == "Space" or axis.typeFlags == "Time":
+                        axes.append(axis)
+                        resolutions.append(axistags[axis].resolution)
+                        unit = axistags[axis].unit
+                        if unit is not None:
+                            units.append(unit)
+                        else:
+                            units.append("None")
+                return str(", ".join(f"{ax}: {res} {un}" for ax, res, un in zip(axes, resolutions, units)))
+            return ""
 
         raise NotImplementedError(f"Unknown column: row={index.row()}, column={index.column()}")
 
