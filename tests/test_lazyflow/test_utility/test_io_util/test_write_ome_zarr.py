@@ -485,16 +485,16 @@ def test_respects_interpolation_order(tmp_path, tiny_5d_vigra_array_piper):
             tagged_shape("yx", (1, 1)),
             OrderedDict([("s0", tagged_shape("tczyx", (1, 1, 1, 1, 1)))]),
         ),
-        (  # 2d below scaling threshold (chunk size defaults to 358x358 for 2d square 32bit)
-            tagged_shape("yx", (350, 350)),
-            OrderedDict([("s0", tagged_shape("tczyx", (1, 1, 1, 350, 350)))]),
+        (  # 2d below scaling threshold (chunk size defaults to 506x505 for 2d square 32bit)
+            tagged_shape("yx", (500, 500)),
+            OrderedDict([("s0", tagged_shape("tczyx", (1, 1, 1, 500, 500)))]),
         ),
-        (  # 3d above scaling threshold (chunk size defaults to 51x50x50 for 3d cube 32bit)
-            tagged_shape("zyx", (60, 60, 60)),
+        (  # 3d above scaling threshold (chunk size defaults to 63x65x63 for 3d cube 32bit)
+            tagged_shape("zyx", (65, 65, 65)),
             OrderedDict(
                 [
-                    ("s0", tagged_shape("tczyx", (1, 1, 60, 60, 60))),
-                    ("s1", tagged_shape("tczyx", (1, 1, 30, 30, 30))),
+                    ("s0", tagged_shape("tczyx", (1, 1, 65, 65, 65))),
+                    ("s1", tagged_shape("tczyx", (1, 1, 32, 32, 32))),
                 ]
             ),
         ),
@@ -506,7 +506,6 @@ def test_respects_interpolation_order(tmp_path, tiny_5d_vigra_array_piper):
                     ("s1", tagged_shape("tczyx", (1, 1, 1, 2000, 2000))),
                     ("s2", tagged_shape("tczyx", (1, 1, 1, 1000, 1000))),
                     ("s3", tagged_shape("tczyx", (1, 1, 1, 500, 500))),
-                    ("s4", tagged_shape("tczyx", (1, 1, 1, 250, 250))),
                 ]
             ),
         ),

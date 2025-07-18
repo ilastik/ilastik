@@ -121,14 +121,16 @@ def _reorder(
 
 def _get_chunk_shape(tagged_image_shape: TaggedShape, dtype) -> Shape:
     """Determine chunk shape for OME-Zarr storage. 1 for t and c,
-    ilastik default rules for zyx, with a target of 512KB per chunk."""
+    ilastik default rules for zyx, with a max of 1MB uncompressed per chunk.
+    This results in (y: 506 x: 505) for 32-bit 2D and (z: 63 y: 64 x: 63) for 32-bit 3D."""
+    target_max_size = 1_024_000.0  # 1MB
     if isinstance(dtype, numpy.dtype):  # Extract raw type class
         dtype = dtype.type
     dtype_bytes = dtype().nbytes
     tagged_maxshape = tagged_image_shape.copy()
     tagged_maxshape["t"] = 1
     tagged_maxshape["c"] = 1
-    chunk_shape = determineBlockShape(list(tagged_maxshape.values()), 512_000.0 / dtype_bytes)  # 512KB chunk size
+    chunk_shape = determineBlockShape(list(tagged_maxshape.values()), target_max_size / dtype_bytes)
     return chunk_shape
 
 
