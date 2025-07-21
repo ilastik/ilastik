@@ -12,6 +12,7 @@ from lazyflow.roi import roiToSlice
 from lazyflow.utility.io_util import multiscaleStore
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrMultiscaleMeta
 from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr
+from lazyflow.utility.pixelSize import UnitAxisTags
 
 
 @pytest.mark.parametrize(
@@ -53,7 +54,9 @@ def test_metadata_integrity(tmp_path, graph, shape, axes):
         written_array = group[dataset["path"]]
         assert written_array.fill_value is not None, "FIJI and z5py don't open zarrays without a fill_value"
         assert "axistags" in written_array.attrs, f"no axistags for {dataset['path']}"
-        assert vigra.AxisTags.fromJSON(written_array.attrs["axistags"]) == vigra.defaultAxistags(expected_axiskeys)
+        assert UnitAxisTags.fromJSON(written_array.attrs["axistags"]) == UnitAxisTags.defaultUnitAxisTags(
+            expected_axiskeys
+        )
         assert all([value is not None for value in written_array.attrs.values()])  # Should not write None anywhere
         reported_scalings = [
             transform for transform in dataset["coordinateTransformations"] if transform["type"] == "scale"
