@@ -117,7 +117,10 @@ class OpExport2DImage(Operator):
                     data,
                     imagej=True,
                     metadata=imagej_metadata,
-                    resolution=(self.Input.meta.axistags["x"].resolution, self.Input.meta.axistags["y"].resolution),
+                    resolution=(
+                        1 / self.Input.meta.axistags["x"].resolution,
+                        1 / self.Input.meta.axistags["y"].resolution,
+                    ),
                 )
 
 
