@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+import json
 from abc import abstractmethod, ABC
 import glob
 import os
@@ -107,6 +108,7 @@ class DatasetInfo(ABC):
         drange: Tuple[Number, Number] = None,
         working_scale: str = DEFAULT_SCALE_KEY,
         scale_locked: bool = False,
+        axis_units: str,
     ):
         if axistags and len(axistags) != len(laneShape):
             raise UnsuitedAxistagsException(axistags, laneShape)
@@ -114,6 +116,7 @@ class DatasetInfo(ABC):
             raise InconsistentAxisMetaException(default_tags, laneShape)
         self.default_tags = default_tags
         self.axistags = axistags or default_tags
+        self.axis_units = axis_units
         self.laneShape = laneShape
         self.laneDtype = laneDtype
         if isinstance(self.laneDtype, numpy.dtype):
@@ -140,7 +143,7 @@ class DatasetInfo(ABC):
         pass
 
     def get_provider_slot(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
-        metadata = {"display_mode": self.display_mode, "axistags": self.axistags}
+        metadata = {"display_mode": self.display_mode, "axistags": self.axistags, "axis_units": self.axis_units}
 
         if self.drange is not None:
             metadata["drange"] = self.drange
@@ -148,6 +151,8 @@ class DatasetInfo(ABC):
             metadata["drange"] = (0, 255)
         if self.normalizeDisplay is not None:
             metadata["normalizeDisplay"] = self.normalizeDisplay
+        if self.axis_units is not None:
+            metadata["axis_units"] = json.loads(self.axis_units)
         if self.subvolume_roi is not None:
             metadata["subvolume_roi"] = self.subvolume_roi
 
@@ -166,6 +171,7 @@ class DatasetInfo(ABC):
 
     def to_json_data(self) -> Dict:
         return {
+            "axis_units": self.axis_units,
             "axistags": self.axistags.toJSON().encode("utf-8"),
             "shape": self.laneShape,
             "allowLabels": self.allowLabels,
@@ -198,6 +204,8 @@ class DatasetInfo(ABC):
             axisorder = data["axisorder"][()].decode("utf-8")
             params["axistags"] = vigra.defaultAxistags(axisorder)
 
+        if "axis_units" in data and data.get("axis_units"):
+            params["axis_units"] = data["axis_units"][()].decode("utf-8")
         if "subvolume_roi" in data:
             params["subvolume_roi"] = tuple(data["subvolume_roi"][()])
         if "normalizeDisplay" in data:
@@ -393,12 +401,19 @@ class ProjectInternalDatasetInfo(DatasetInfo):
             default_tags = vigra.AxisTags.fromJSON(self.dataset.attrs["axistags"])
         else:
             default_tags = vigra.defaultAxistags(get_default_axisordering(self.dataset.shape))
+        if "axis_units" in info_kwargs:
+            axis_units = info_kwargs.pop("axis_units")
+        elif "axis_units" in self.dataset.attrs:
+            axis_units = json.dumps(json.loads(self.dataset.attrs["axis_units"]))
+        else:
+            axis_units = json.dumps({tag: "" for tag in default_tags.keys()})
         super().__init__(
             default_tags=default_tags,
             laneShape=self.dataset.shape,
             laneDtype=self.dataset.dtype,
             nickname=nickname or os.path.split(self.inner_path)[-1],
             project_file=project_file,
+            axis_units=axis_units,
             **info_kwargs,
         )
         self.legacy_datasetId = Path(inner_path).name
@@ -451,15 +466,29 @@ class ProjectInternalDatasetInfo(DatasetInfo):
 
 
 class PreloadedArrayDatasetInfo(DatasetInfo):
-    def __init__(self, *, preloaded_array: numpy.ndarray, axistags: AxisTags = None, nickname: str = "", **info_kwargs):
+    def __init__(
+        self,
+        *,
+        preloaded_array: numpy.ndarray,
+        axistags: AxisTags = None,
+        nickname: str = "",
+        axis_units=None,
+        **info_kwargs,
+    ):
         self.preloaded_array = vigra.taggedView(
             preloaded_array, axistags or get_default_axisordering(preloaded_array.shape)
         )
+        if "axis_units" in info_kwargs:
+            axis_units = info_kwargs.pop("axis_units")
+        elif not axis_units:
+            axis_units = json.dumps({tag: "" for tag in axistags.keys()})
+
         super().__init__(
             nickname=nickname or "preloaded-{}-array".format(self.preloaded_array.dtype.name),
             default_tags=self.preloaded_array.axistags,
             laneShape=preloaded_array.shape,
             laneDtype=preloaded_array.dtype,
+            axis_units=axis_units,
             **info_kwargs,
         )
 
@@ -533,11 +562,17 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         self.url = url
         op_reader = OpInputDataReader(graph=Graph(), FilePath=self.url)
         meta = op_reader.Output.meta.copy()
+        if "axis_units" in info_kwargs:
+            axis_units = info_kwargs.pop("axis_units")
+        else:
+            unit_dict = meta.get("axis_units") or {tag: "" for tag in meta.axistags.keys()}
+            axis_units = json.dumps(unit_dict)
         super().__init__(
             default_tags=meta.axistags,
             nickname=nickname or self._nickname_from_url(url),
             laneShape=meta.shape,
             laneDtype=meta.dtype,
+            axis_units=axis_units,
             **info_kwargs,
         )
 
@@ -656,6 +691,11 @@ class FilesystemDatasetInfo(DatasetInfo):
         )
         meta = op_reader.Output.meta.copy()
         op_reader.cleanUp()
+        if "axis_units" in info_kwargs:
+            self.axis_units = info_kwargs.pop("axis_units")
+        else:
+            unit_dict = meta.get("axis_units") or {tag: "" for tag in meta.axistags.keys()}
+            self.axis_units = json.dumps(unit_dict)
 
         super().__init__(
             default_tags=meta.axistags,
@@ -664,6 +704,7 @@ class FilesystemDatasetInfo(DatasetInfo):
             laneDtype=meta.dtype,
             drange=drange or meta.get("drange"),
             project_file=project_file,
+            axis_units=self.axis_units,
             **info_kwargs,
         )
 
