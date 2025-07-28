@@ -18,7 +18,12 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+from itertools import zip_longest
+from typing import Dict, List
+
+import numpy
 import pytest
+import vigra
 
 from ilastik.applets.labeling.connectBlockedLabels import (
     Block,
@@ -28,8 +33,29 @@ from ilastik.applets.labeling.connectBlockedLabels import (
     Neighbourhood,
     Region,
     SpatialAxesKeys,
+    add_tagged_coords,
+    connect_regions,
     extract_annotations,
 )
+
+
+@pytest.mark.parametrize(
+    "c1, c2, res",
+    [
+        pytest.param({}, {}, {}, id="empty"),
+        pytest.param({"a": 1.0}, {"a": 2.0, "b": 5.0}, {"a": 3.0}, id="extra_key_is_fine"),
+    ],
+)
+def test_add_tagged_coordinates(c1: Dict[str, float], c2: Dict[str, float], res: Dict[str, float]):
+    ret = add_tagged_coords(c1, c2)
+    assert ret == res
+
+
+def test_add_tagged_coordinates_raises():
+    c1 = {"a": 5.0}
+    c2 = {"b": 1.0}
+    with pytest.raises(ValueError):
+        _ret = add_tagged_coords(c1, c2)
 
 
 def test_region_construction_raises_on_axistags_slices_mismatch():
@@ -133,19 +159,65 @@ def test_block_no_region_at_boundary_2d(boundary: BoundaryDescrRelative):
 @pytest.mark.parametrize(
     "boundary, expected_regions",
     [
-        ({"x": BlockBoundary.START, "y": BlockBoundary.NONE}, 3),
-        ({"x": BlockBoundary.STOP, "y": BlockBoundary.NONE}, 3),
-        ({"x": BlockBoundary.NONE, "y": BlockBoundary.START}, 3),
-        ({"x": BlockBoundary.NONE, "y": BlockBoundary.STOP}, 3),
-        ({"x": BlockBoundary.START, "y": BlockBoundary.START}, 1),
-        ({"x": BlockBoundary.STOP, "y": BlockBoundary.START}, 1),
-        ({"x": BlockBoundary.START, "y": BlockBoundary.STOP}, 1),
-        ({"x": BlockBoundary.STOP, "y": BlockBoundary.STOP}, 1),
+        pytest.param(
+            {"x": BlockBoundary.START, "y": BlockBoundary.NONE},
+            [
+                Region(axistags="xy", slices=(slice(0, 9, None), slice(1, 2, None)), label=1),
+                Region(axistags="xy", slices=(slice(0, 3, None), slice(0, 2, None)), label=3),
+                Region(axistags="xy", slices=(slice(0, 3, None), slice(4, 10, None)), label=6),
+            ],
+            id="left",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.STOP, "y": BlockBoundary.NONE},
+            [
+                Region(axistags="xy", slices=(slice(1, 10, None), slice(1, 2, None)), label=1),
+                Region(axistags="xy", slices=(slice(5, 10, None), slice(0, 4, None)), label=4),
+                Region(axistags="xy", slices=(slice(1, 10, None), slice(5, 10, None)), label=7),
+            ],
+            id="right",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.NONE, "y": BlockBoundary.START},
+            [
+                Region(axistags="xy", slices=(slice(3, 6, None), slice(0, 4, None)), label=2),
+                Region(axistags="xy", slices=(slice(0, 3, None), slice(0, 2, None)), label=3),
+                Region(axistags="xy", slices=(slice(5, 10, None), slice(0, 4, None)), label=4),
+            ],
+            id="top",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.NONE, "y": BlockBoundary.STOP},
+            [
+                Region(axistags="xy", slices=(slice(2, 4, None), slice(1, 10, None)), label=42),
+                Region(axistags="xy", slices=(slice(0, 3, None), slice(4, 10, None)), label=6),
+                Region(axistags="xy", slices=(slice(1, 10, None), slice(5, 10, None)), label=7),
+            ],
+            id="bottom",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.START, "y": BlockBoundary.START},
+            [Region(axistags="xy", slices=(slice(0, 3, None), slice(0, 2, None)), label=3)],
+            id="top-left",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.STOP, "y": BlockBoundary.START},
+            [Region(axistags="xy", slices=(slice(5, 10, None), slice(0, 4, None)), label=4)],
+            id="top-right",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.START, "y": BlockBoundary.STOP},
+            [Region(axistags="xy", slices=(slice(0, 3, None), slice(4, 10, None)), label=6)],
+            id="bottom-left",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.STOP, "y": BlockBoundary.STOP},
+            [Region(axistags="xy", slices=(slice(1, 10, None), slice(5, 10, None)), label=7)],
+            id="bottom_right",
+        ),
     ],
-    ids=["left", "right", "top", "bottom", "top-left", "top-right", "bottom-left", "bottom_right"],
 )
-def test_block_boundary_regions_2d(boundary: BoundaryDescrRelative, expected_regions):
-    # TODO: test that the correct regions are returned!
+def test_block_boundary_regions_2d(boundary: BoundaryDescrRelative, expected_regions: List[Region]):
     axistags = "xy"
 
     r_left = Region(axistags=axistags, slices=(slice(0, 9), slice(1, 2)), label=1)
@@ -165,25 +237,68 @@ def test_block_boundary_regions_2d(boundary: BoundaryDescrRelative, expected_reg
         regions=(r_left, r_right, r_top, r_bottom, r_topleft, r_topright, r_bottomleft, r_bottomright),
     )
 
-    assert len(list(block.boundary_regions(boundary))) == expected_regions
+    assert list(block.boundary_regions(boundary)) == expected_regions
 
 
 @pytest.mark.parametrize(
     "boundary, label, expected_regions",
     [
-        ({"x": BlockBoundary.START, "y": BlockBoundary.NONE}, 1, 1),
-        ({"x": BlockBoundary.STOP, "y": BlockBoundary.NONE}, 1, 1),
-        ({"x": BlockBoundary.NONE, "y": BlockBoundary.START}, 2, 2),
-        ({"x": BlockBoundary.NONE, "y": BlockBoundary.STOP}, 42, 1),
-        ({"x": BlockBoundary.START, "y": BlockBoundary.START}, 2, 1),
-        ({"x": BlockBoundary.STOP, "y": BlockBoundary.START}, 4, 1),
-        ({"x": BlockBoundary.START, "y": BlockBoundary.STOP}, 6, 1),
-        ({"x": BlockBoundary.STOP, "y": BlockBoundary.STOP}, 7, 1),
+        pytest.param(
+            {"x": BlockBoundary.START, "y": BlockBoundary.NONE},
+            1,
+            [Region(axistags="xy", slices=(slice(0, 9, None), slice(1, 2, None)), label=1)],
+            id="left",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.STOP, "y": BlockBoundary.NONE},
+            1,
+            [Region(axistags="xy", slices=(slice(1, 10, None), slice(1, 2, None)), label=1)],
+            id="right",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.NONE, "y": BlockBoundary.START},
+            2,
+            [
+                Region(axistags="xy", slices=(slice(3, 6, None), slice(0, 4, None)), label=2),
+                Region(axistags="xy", slices=(slice(0, 3, None), slice(0, 2, None)), label=2),
+            ],
+            id="top",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.NONE, "y": BlockBoundary.STOP},
+            42,
+            [Region(axistags="xy", slices=(slice(2, 4, None), slice(1, 10, None)), label=42)],
+            id="bottom",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.START, "y": BlockBoundary.START},
+            2,
+            [Region(axistags="xy", slices=(slice(0, 3, None), slice(0, 2, None)), label=2)],
+            id="top-left",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.STOP, "y": BlockBoundary.START},
+            4,
+            [Region(axistags="xy", slices=(slice(5, 10, None), slice(0, 4, None)), label=4)],
+            id="top-right",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.START, "y": BlockBoundary.STOP},
+            6,
+            [Region(axistags="xy", slices=(slice(0, 3, None), slice(4, 10, None)), label=6)],
+            id="bottom-left",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.STOP, "y": BlockBoundary.STOP},
+            7,
+            [Region(axistags="xy", slices=(slice(1, 10, None), slice(5, 10, None)), label=7)],
+            id="bottom_right",
+        ),
     ],
-    ids=["left", "right", "top", "bottom", "top-left", "top-right", "bottom-left", "bottom_right"],
 )
-def test_block_boundary_regions_per_label_2d(boundary, label, expected_regions):
-    # TODO: test that the correct regions are returned!
+def test_block_boundary_regions_per_label_2d(
+    boundary: BoundaryDescrRelative, label: int, expected_regions: List[Region]
+):
     axistags = "xy"
 
     r_left = Region(axistags=axistags, slices=(slice(0, 9), slice(1, 2)), label=1)
@@ -197,10 +312,87 @@ def test_block_boundary_regions_per_label_2d(boundary, label, expected_regions):
     r_bottomleft = Region(axistags=axistags, slices=(slice(0, 3), slice(4, 10)), label=6)
     r_bottomright = Region(axistags=axistags, slices=(slice(1, 10), slice(5, 10)), label=7)
 
-    b = Block(
+    block = Block(
         axistags=axistags,
         slices=(slice(10, 20), slice(20, 30)),
         regions=(r_left, r_right, r_top, r_bottom, r_topleft, r_topright, r_bottomleft, r_bottomright),
     )
 
-    assert len(list(b.boundary_regions(boundary, label=label))) == expected_regions
+    assert list(block.boundary_regions(boundary, label=label)) == expected_regions
+
+
+def test_extract_annotations():
+    axistags = "yx"
+
+    data = numpy.zeros((100, 100), dtype="uint32")
+    data[0:1, :] = 1
+    data[3:7, 3:5] = 2
+    data[8:9, 8:10] = 1
+
+    labels_data = vigra.taggedView(data, axistags=axistags)
+
+    regions = extract_annotations(labels_data=labels_data)
+
+    assert len(regions) == 3
+    assert len([r for r in regions if r.label == 1]) == 2
+    assert len([r for r in regions if r.label == 2]) == 1
+
+    r_2 = next((r for r in regions if r.label == 2))
+    assert all(a == b for a, b in zip_longest(r_2.axistags, axistags))
+    assert r_2.tagged_slicing["x"] == slice(3, 5)
+    assert r_2.tagged_slicing["y"] == slice(3, 7)
+
+
+def test_connect_label_blocks():
+    """
+     ___ ___
+    | a | b |
+     --- ---
+    |   | c |
+     --- ---
+    """
+    axistags = "yx"
+    axistags_s = [SpatialAxesKeys(x) for x in axistags]
+
+    block_a_data = numpy.zeros((100, 80), dtype="uint32")
+    block_b_data = numpy.zeros_like(block_a_data)
+    block_c_data = numpy.zeros_like(block_a_data)
+
+    block_a_data[0:5, 2:60] = 1  # no connection between block_a_data and block_b_data
+    block_b_data[10:, 6:8] = 1  # label to boundary, but not connected to block_c_data
+    block_b_data[80:, 48:50] = 2  # label to boundary, with opposing label 1 in block_c_data
+    block_c_data[:10, 48:65] = 1  # so no connection
+    block_b_data[50:, 63:65] = 1  # label connecting blocks b and c
+
+    block_a_data = vigra.taggedView(block_a_data, axistags=axistags)
+    block_b_data = vigra.taggedView(block_b_data, axistags=axistags)
+    block_c_data = vigra.taggedView(block_c_data, axistags=axistags)
+
+    block_a = Block(
+        axistags=axistags_s,
+        slices=(slice(100, 200), slice(80, 160)),
+        regions=extract_annotations(block_a_data),
+    )
+    block_b = Block(
+        axistags=axistags_s,
+        slices=(slice(100, 200), slice(160, 240)),
+        regions=extract_annotations(block_b_data),
+    )
+    block_c = Block(
+        axistags=axistags_s,
+        slices=(slice(200, 300), slice(160, 240)),
+        regions=extract_annotations(block_c_data),
+    )
+
+    block_dict = {bl.block_start: bl for bl in [block_a, block_b, block_c]}
+
+    regions_dict = connect_regions(block_dict)
+
+    assert len(regions_dict) == 5
+    assert len([k for k, v in regions_dict.items() if k == v]) == 4
+
+    merged_region = next(k for k, v in regions_dict.items() if k != v)
+
+    parent_region = regions_dict[merged_region]
+
+    assert merged_region.label == parent_region.label == 1

@@ -22,6 +22,9 @@ from dataclasses import dataclass
 from enum import IntEnum, StrEnum
 from typing import Dict, Iterator, List, Optional, Sequence, Tuple, Union
 
+import vigra
+from vigra.analysis import extractRegionFeatures
+
 from lazyflow.utility.io_util.write_ome_zarr import SPATIAL_AXES
 
 
@@ -256,9 +259,120 @@ class Block:
 
 
 def add_tagged_coords(t1: Dict[str, float], t2: Dict[str, float]) -> Dict[str, float]:
-    assert set(t1.keys()).issubset(set(t2.keys())), f"{list(t1.keys())=}, {list(t2.keys())=}"
+    if not set(t1.keys()).issubset(set(t2.keys())):
+        raise ValueError(
+            f"First argument keys {list(t1.keys())=} must be a subset of second argument keys {list(t2.keys())=}!"
+        )
     return {k: t1[k] + t2[k] for k in t1.keys()}
 
 
 def _is_unbound(sl: slice) -> bool:
     return sl.start is None or sl.stop is None
+
+
+def extract_annotations(labels_data: vigra.VigraArray) -> Tuple[Region, ...]:
+    """Wrap connected components in a label array in Regions
+
+    Args:
+      labels_data: integer valued VigraArray with axistags. Note: only spatial
+        axistags (x, y, z) are allowed. 0 values are considered background. Arrays
+        are casted to`uint32` for labeling, potentially lossy coming from `uint64`.
+
+    Returns:
+      Tuple of connected components wrapped in Region objects
+    """
+    axistags = [a.key for a in labels_data.axistags]
+    assert len(axistags) in [2, 3]
+    assert all(k in SPATIAL_AXES for k in axistags)
+
+    if len(axistags) == 3:
+        connected_components = vigra.analysis.labelVolumeWithBackground(
+            labels_data.astype("uint32"),
+            neighborhood=26,
+        )
+    else:
+        connected_components = vigra.analysis.labelImageWithBackground(
+            labels_data.astype("uint32"),
+            neighborhood=8,
+        )
+    feats = extractRegionFeatures(
+        labels_data.astype("float32"),
+        connected_components,
+        ignoreLabel=0,
+        features=["RegionCenter", "Coord<Maximum>", "Coord<Minimum>", "Minimum"],
+    )
+
+    # shape: (n_objs, ndim), we +1 the maximum bounding box value to make it
+    # compatible with slice objects, where the stop is exclusive
+    # first object is ignored -> background object.
+    max_bb = feats["Coord<Maximum>"][1:].astype("uint32") + 1
+    min_bb = feats["Coord<Minimum>"][1:].astype("uint32")
+
+    slices: list[Tuple[slice, ...]] = []
+    for min_, max_ in zip(min_bb, max_bb):
+        slices.append(tuple(slice(mi, ma) for mi, ma in zip(min_, max_)))
+
+    # we pass the label image as "image", so minimum will be the same label
+    labels = feats["Minimum"][1:].astype("uint32")
+
+    spatial_at = [at for at in axistags if at in SPATIAL_AXES]
+    regions = tuple(Region(axistags=spatial_at, slices=sl, label=label) for sl, label in zip(slices, labels))
+
+    return regions
+
+
+def connect_regions(block_dict: Dict[Tuple[int, ...], Block]) -> Dict[Region, Region]:
+    """
+    Connect regions between a sparse blocking
+    """
+    regions_dict: Dict[Region, Region] = {}  # region_world: region_world, updated with anchor as value
+
+    def get_anchor(region):
+        if region not in regions_dict:
+            return region
+
+        current = region
+        while True:
+            anchor = regions_dict[current]
+            if anchor == current:
+                return anchor
+            current = anchor
+
+    for block in block_dict.values():
+        for region in block.regions:
+            region_world = block.region_in_world(region)
+            if region_world not in regions_dict:
+                regions_dict[region_world] = region_world
+
+        for boundary, region in block.boundary_regions_positive():
+            region_world = block.region_in_world(region)
+            block_start = block.neighbour_start_coordinates(boundary)
+            if block_start not in block_dict:
+                continue
+
+            neighbour_block = block_dict[block_start]
+            boundary_in_neighbour = {k: _INVERTED_BOUNDARIES[v] for k, v in boundary.items()}
+            for reg in neighbour_block.boundary_regions(boundary_in_neighbour, label=region.label):
+                neighbour_region_world = neighbour_block.region_in_world(reg)
+                if check_overlap(region_world, neighbour_region_world):
+                    anchor_neighbour = get_anchor(neighbour_region_world)
+                    anchor_reg = get_anchor(region_world)
+
+                    regions_dict[anchor_neighbour] = anchor_reg
+
+    return regions_dict
+
+
+def check_overlap(region_a: Region, region_b: Region) -> bool:
+    """Check bounding box overlap"""
+    assert region_a.axistags == region_b.axistags
+
+    overlap = True
+    for k, v in region_a.tagged_slicing.items():
+
+        if k not in SPATIAL_AXES:
+            continue
+        if not (v.stop >= region_b.tagged_slicing[k].start and region_b.tagged_slicing[k].stop >= v.start):
+            return False
+
+    return overlap
