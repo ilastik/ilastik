@@ -18,7 +18,11 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+from itertools import zip_longest
+
+import numpy
 import pytest
+import vigra
 
 from ilastik.applets.labeling.connectBlockedLabels import (
     Block,
@@ -27,6 +31,7 @@ from ilastik.applets.labeling.connectBlockedLabels import (
     Neighbourhood,
     Region,
     SpatialAxesKeys,
+    connect_regions,
     extract_annotations,
 )
 
@@ -175,10 +180,87 @@ def test_block_boundary_regions_per_label_2d(boundary, label, expected_regions):
     r_bottomleft = Region(axistags=axistags, slices=(slice(0, 3), slice(4, 10)), label=6)
     r_bottomright = Region(axistags=axistags, slices=(slice(1, 10), slice(5, 10)), label=7)
 
-    b = Block(
+    block = Block(
         axistags=axistags,
         slices=(slice(10, 20), slice(20, 30)),
         regions=(r_left, r_right, r_top, r_bottom, r_topleft, r_topright, r_bottomleft, r_bottomright),
     )
 
-    assert len(list(b.boundary_regions(boundary, label=label))) == expected_regions
+    assert len(list(block.boundary_regions(boundary, label=label))) == expected_regions
+
+
+def test_extract_annotations():
+    axistags = "yx"
+
+    data = numpy.zeros((100, 100), dtype="uint32")
+    data[0:1, :] = 1
+    data[3:7, 3:5] = 2
+    data[8:9, 8:10] = 1
+
+    labels_data = vigra.taggedView(data, axistags=axistags)
+
+    regions = extract_annotations(labels_data=labels_data)
+
+    assert len(regions) == 3
+    assert len([r for r in regions if r.label == 1]) == 2
+    assert len([r for r in regions if r.label == 2]) == 1
+
+    r_2 = next((r for r in regions if r.label == 2))
+    assert all(a == b for a, b in zip_longest(r_2.axistags, axistags))
+    assert r_2.tagged_slicing["x"] == slice(3, 5)
+    assert r_2.tagged_slicing["y"] == slice(3, 7)
+
+
+def test_connect_label_blocks():
+    """
+     ___ ___
+    | a | b |
+     --- ---
+    |   | c |
+     --- ---
+    """
+    axistags = "yx"
+    axistags_s = [SpatialAxesKeys(x) for x in axistags]
+
+    block_a_data = numpy.zeros((100, 80), dtype="uint32")
+    block_b_data = numpy.zeros_like(block_a_data)
+    block_c_data = numpy.zeros_like(block_a_data)
+
+    block_a_data[0:5, 2:60] = 1  # no connection between block_a_data and block_b_data
+    block_b_data[10:, 6:8] = 1  # label to boundary, but not connected to block_c_data
+    block_b_data[80:, 48:50] = 2  # label to boundary, with opposing label 1 in block_c_data
+    block_c_data[:10, 48:65] = 1  # so no connection
+    block_b_data[50:, 63:65] = 1  # label connecting blocks b and c
+
+    block_a_data = vigra.taggedView(block_a_data, axistags=axistags)
+    block_b_data = vigra.taggedView(block_b_data, axistags=axistags)
+    block_c_data = vigra.taggedView(block_c_data, axistags=axistags)
+
+    block_a = Block(
+        axistags=axistags_s,
+        slices=(slice(100, 200), slice(80, 160)),
+        regions=extract_annotations(block_a_data),
+    )
+    block_b = Block(
+        axistags=axistags_s,
+        slices=(slice(100, 200), slice(160, 240)),
+        regions=extract_annotations(block_b_data),
+    )
+    block_c = Block(
+        axistags=axistags_s,
+        slices=(slice(200, 300), slice(160, 240)),
+        regions=extract_annotations(block_c_data),
+    )
+
+    block_dict = {bl.block_start: bl for bl in [block_a, block_b, block_c]}
+
+    regions_dict = connect_regions(block_dict)
+
+    assert len(regions_dict) == 5
+    assert len([k for k, v in regions_dict.items() if k == v]) == 4
+
+    merged_region = next(k for k, v in regions_dict.items() if k != v)
+
+    parent_region = regions_dict[merged_region]
+
+    assert merged_region.label == parent_region.label == 1
