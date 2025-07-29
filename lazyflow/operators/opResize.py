@@ -157,6 +157,8 @@ class OpResize(Operator):
         roi_shape = roi.stop - roi.start
         result_roi_within_filtered = raw_roi - raw_roi_final_halo[0]
         source_coords_starts = result_roi_within_filtered[0]
+        # Convert roi's exclusive stop to meshgrid's inclusive stop.
+        # Basically stop-1, but 1 scaled, hence stop-factor.
         source_coords_stops = result_roi_within_filtered[1] - factors
         if "c" not in self.RawImage.meta.getAxisKeys():
             scaled_source_grid = self._roi_to_coord_grid(source_coords_starts, source_coords_stops, roi_shape)
