@@ -29,6 +29,8 @@ import numpy
 # import IPython
 import vigra
 
+from lazyflow.operators.opResize import OpResize
+
 # lazyflow
 from lazyflow.roi import determineBlockShape
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
@@ -524,7 +526,7 @@ class OpArgmaxChannel(Operator):
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.dtype = numpy.uint8  # Assumes no more than 255 channels
         self.Output.meta.shape = self.Input.meta.shape[:-1] + (1,)
-        self.Output.meta.appropriate_interpolation_order = 0
+        self.Output.meta.appropriate_interpolation_order = OpResize.Interpolation.NEAREST
         assert self.Input.meta.getAxisKeys()[-1] == "c"
         assert self.Input.meta.shape[-1] <= 255
 
