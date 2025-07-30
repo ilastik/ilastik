@@ -13,7 +13,8 @@ from lazyflow.utility.io_util.OMEZarrStore import OMEZarrMultiscaleMeta
 from lazyflow.utility.io_util.write_ome_zarr import (
     write_ome_zarr,
     generate_default_target_scales,
-    match_target_scales_to_input,
+    _match_target_scales_to_input,
+    match_target_scales_to_input_excluding_upscales,
 )
 
 
@@ -580,5 +581,66 @@ def test_generate_default_target_scales(shape, expected_shapes):
     ],
 )
 def test_match_target_scales_to_input(shape, input_scales, expected_shapes):
-    generated_shapes = match_target_scales_to_input(shape, input_scales, "source_scale")
+    generated_shapes = _match_target_scales_to_input(shape, input_scales, "source_scale")
+    assert generated_shapes == expected_shapes
+
+
+@pytest.mark.parametrize(
+    "shape, input_scales, expected_shapes",
+    [
+        (  # Simple: match input scales in original order, even if ilastik default would not downscale
+            tagged_shape("yx", (4, 4)),
+            OrderedDict(
+                [
+                    ("source_scale", tagged_shape("yx", (4, 4))),
+                    ("s2", tagged_shape("yx", (2, 2))),
+                    ("s3", tagged_shape("yx", (1, 1))),
+                ]
+            ),
+            OrderedDict(
+                [
+                    ("source_scale", tagged_shape("tczyx", (1, 1, 1, 4, 4))),
+                    ("s2", tagged_shape("tczyx", (1, 1, 1, 2, 2))),
+                    ("s3", tagged_shape("tczyx", (1, 1, 1, 1, 1))),
+                ]
+            ),
+        ),
+        (  # Input had no channels + ilastik default _would_ downscale
+            tagged_shape("yxc", (1000, 1000, 3)),
+            OrderedDict([("source_scale", tagged_shape("yx", (1000, 1000)))]),
+            OrderedDict([("source_scale", tagged_shape("tczyx", (1, 3, 1, 1000, 1000)))]),
+        ),
+        (  # Different number of channels in input and export; input downscale was ceil-rounded (i.e. not like ilastik does)
+            tagged_shape("yxc", (531, 531, 3)),
+            OrderedDict(
+                [("source_scale", tagged_shape("cyx", (2, 531, 531))), ("s2", tagged_shape("cyx", (2, 266, 266)))]
+            ),
+            OrderedDict(
+                [
+                    ("source_scale", tagged_shape("tczyx", (1, 3, 1, 531, 531))),
+                    ("s2", tagged_shape("tczyx", (1, 3, 1, 266, 266))),
+                ]
+            ),
+        ),
+        (  # Export is cropped + source is middle scale (upscales should be excluded)
+            tagged_shape("zyxc", (16, 16, 16, 3)),
+            OrderedDict(
+                [
+                    ("0", tagged_shape("czyx", (2, 225, 225, 225))),
+                    ("1", tagged_shape("czyx", (2, 75, 75, 75))),
+                    ("source_scale", tagged_shape("czyx", (2, 25, 25, 25))),
+                    ("4", tagged_shape("czyx", (2, 8, 8, 8))),
+                ]
+            ),
+            OrderedDict(
+                [
+                    ("source_scale", tagged_shape("tczyx", (1, 3, 16, 16, 16))),
+                    ("4", tagged_shape("tczyx", (1, 3, 5, 5, 5))),
+                ]
+            ),
+        ),
+    ],
+)
+def test_match_target_scales_to_input_excluding_upscales(shape, input_scales, expected_shapes):
+    generated_shapes = match_target_scales_to_input_excluding_upscales(shape, input_scales, "source_scale")
     assert generated_shapes == expected_shapes

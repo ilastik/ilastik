@@ -57,7 +57,19 @@ SPATIAL_AXES: List[Axiskey] = ["z", "y", "x"]
 SINGE_SCALE_DEFAULT_KEY = "s0"
 
 
-def match_target_scales_to_input(export_shape: TaggedShape, input_scales: Multiscales, input_key: str):
+def match_target_scales_to_input_excluding_upscales(
+    export_shape: TaggedShape, input_scales: Multiscales, input_key: str
+) -> Multiscales:
+    """We assume people don't generally want to upscale lower-resolution segmentations to raw scale."""
+    # Since Multiscales is ordered largest-to-smallest, simply drop matching scales before input_key.
+    all_matching_scales = _match_target_scales_to_input(export_shape, input_scales, input_key)
+    assert input_key in all_matching_scales
+    start = list(all_matching_scales.keys()).index(input_key)
+    keep_scales = list(all_matching_scales.keys())[start:]
+    return ODict((k, all_matching_scales[k]) for k in keep_scales)
+
+
+def _match_target_scales_to_input(export_shape: TaggedShape, input_scales: Multiscales, input_key: str) -> Multiscales:
     def _eq_shape_permissive(test: TaggedShape, ref: TaggedShape) -> bool:
         """Check if two shapes are equal, but allow reference shape to be missing axes, and ignore channel."""
         return all(a not in ref or a == "c" or test[a] == ref[a] for a in test.keys())

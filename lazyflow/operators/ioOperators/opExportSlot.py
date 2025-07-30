@@ -43,7 +43,7 @@ from lazyflow.utility import OrderedSignal, format_known_keys, PathComponents, m
 from lazyflow.utility.io_util.write_ome_zarr import (
     write_ome_zarr,
     generate_default_target_scales,
-    match_target_scales_to_input,
+    match_target_scales_to_input_excluding_upscales,
 )
 
 try:
@@ -195,12 +195,11 @@ class OpExportSlot(Operator):
     def _get_target_scales(self):
         input_shape = self.Input.meta.getTaggedShape()
         dtype = self.Input.meta.dtype
-        if self.Input.meta.get("scales"):
-            # Source is multiscale - match export scales to input scales
-            scales = match_target_scales_to_input(input_shape, self.Input.meta.scales, self.Input.meta.active_scale)
+        if self.Input.meta.get("scales"):  # Input is multiscale
+            scales = match_target_scales_to_input_excluding_upscales(
+                input_shape, self.Input.meta.scales, self.Input.meta.active_scale
+            )
         else:
-            # Generate default scaling: scale down by factor of 2 in all spatial dimensions,
-            # until the whole image fits into one chunk (and include this last scale level).
             scales = generate_default_target_scales(input_shape, dtype)
         return scales
 
