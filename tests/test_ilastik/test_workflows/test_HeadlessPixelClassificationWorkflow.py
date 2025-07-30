@@ -1,23 +1,22 @@
 import http.server
 import json
+import logging
+import os
+import shutil
 import socket
+import tempfile
 import threading
 import time
 from functools import partial
 from pathlib import Path
-import shutil
-import logging
-import tempfile
-import os
 from typing import Dict, Optional, Union, Tuple
 
-import pytest
-import numpy
-import vigra
 import h5py
-import z5py
-import zipfile
+import numpy
 import psutil
+import pytest
+import vigra
+import z5py
 import zarr
 
 from lazyflow.utility.io_util.OMEZarrStore import OME_ZARR_V_0_4_KWARGS
@@ -33,25 +32,6 @@ try:
     MPI_DEPENDENCIES_MET = bool(shutil.which("mpiexec"))
 except ImportError:
     MPI_DEPENDENCIES_MET = False
-
-
-@pytest.fixture
-def sample_projects_dir(tmp_path: Path) -> Path:
-    test_data_path = Path(__file__).parent.parent / "data"
-    sample_projects_zip_path = test_data_path / "test_projects.zip"
-    sample_data_dir_path = test_data_path / "inputdata"
-
-    projects_archive = zipfile.ZipFile(sample_projects_zip_path, mode="r")
-    projects_archive.extractall(path=tmp_path)
-
-    shutil.copytree(sample_data_dir_path, tmp_path / "inputdata")
-
-    return tmp_path
-
-
-@pytest.fixture
-def pixel_classification_ilp_2d3c(sample_projects_dir: Path) -> Path:
-    return sample_projects_dir / "PixelClassification2d3c.ilp"
 
 
 def create_h5(data: numpy.ndarray, axiskeys: str) -> Path:
