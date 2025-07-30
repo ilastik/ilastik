@@ -86,17 +86,13 @@ class ObjectClassificationWorkflow(Workflow):
     workflowName = "Object Classification Workflow Base"
     defaultAppletIndex = 0  # show DataSelection by default
 
-    @property
-    def ExportNames(self):
-        @enum.unique
-        class ExportNames(SlotNameEnum):
-            OBJECT_PREDICTIONS = enum.auto()
-            OBJECT_PROBABILITIES = enum.auto()
-            BLOCKWISE_OBJECT_PREDICTIONS = enum.auto()
-            BLOCKWISE_OBJECT_PROBABILITIES = enum.auto()
-            OBJECT_IDENTITIES = enum.auto()
-
-        return ExportNames
+    @enum.unique
+    class ExportNames(SlotNameEnum):
+        OBJECT_PREDICTIONS = enum.auto()
+        OBJECT_PROBABILITIES = enum.auto()
+        BLOCKWISE_OBJECT_PREDICTIONS = enum.auto()
+        BLOCKWISE_OBJECT_PROBABILITIES = enum.auto()
+        OBJECT_IDENTITIES = enum.auto()
 
     class InputImageRoles(SlotNameEnum):
         RAW_DATA = enum.auto()

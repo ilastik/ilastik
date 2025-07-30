@@ -21,6 +21,8 @@
 ###############################################################################
 import sys
 
+from .opResize import OpResize
+
 if sys.version_info.major >= 3:
     unicode = str
 
@@ -260,6 +262,7 @@ class OpLabelingABC(with_metaclass(ABCMeta, Operator)):
         # setup meta for Output
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.dtype = self.labelType
+        self.Output.meta.appropriate_interpolation_order = OpResize.Interpolation.NEAREST
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.BypassModeEnabled:

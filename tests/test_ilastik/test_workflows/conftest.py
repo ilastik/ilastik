@@ -23,3 +23,8 @@ def sample_projects_dir(tmp_path_factory) -> Path:
 @pytest.fixture
 def pixel_classification_ilp_2d3c(sample_projects_dir: Path) -> Path:
     return sample_projects_dir / "PixelClassification2d3c.ilp"
+
+
+@pytest.fixture
+def object_classification_from_predictions_ilp_2d3c(sample_projects_dir: Path) -> Path:
+    return sample_projects_dir / "ObjectClassification2d3c_wPred.ilp"
