@@ -5,8 +5,9 @@ from pathlib import Path
 import pytest
 
 
-@pytest.fixture
-def sample_projects_dir(tmp_path: Path) -> Path:
+@pytest.fixture(scope="module")
+def sample_projects_dir(tmp_path_factory) -> Path:
+    tmp_path = tmp_path_factory.mktemp("test_projects")
     test_data_path = Path(__file__).parent.parent / "data"
     sample_projects_zip_path = test_data_path / "test_projects.zip"
     sample_data_dir_path = test_data_path / "inputdata"
