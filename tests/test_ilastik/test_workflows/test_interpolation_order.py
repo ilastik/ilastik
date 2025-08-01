@@ -21,7 +21,12 @@
 import pytest
 
 from ilastik.shell.headless.headlessShell import HeadlessShell
-from ilastik.workflows import PixelClassificationWorkflow, AutocontextTwoStage, ObjectClassificationWorkflowPrediction
+from ilastik.workflows import (
+    PixelClassificationWorkflow,
+    AutocontextTwoStage,
+    ObjectClassificationWorkflowPrediction,
+    CountingWorkflow,
+)
 from lazyflow.operators.opResize import OpResize
 from lazyflow.utility.io_util.write_ome_zarr import INTERPOLATION_ORDER_DEFAULT
 
@@ -171,3 +176,21 @@ def test_interpolation_order_structured_tracking(tracking_learning_workflow, exp
 
     assert "appropriate_interpolation_order" in export_slot_meta
     assert export_slot_meta.appropriate_interpolation_order == OpResize.Interpolation.NEAREST
+
+
+@pytest.fixture
+def cell_density_counting_workflow(cell_density_counting_ilp_2d3c):
+    shell = HeadlessShell()
+    shell.openProjectFile(projectFilePath=str(cell_density_counting_ilp_2d3c))
+    return shell.projectManager.workflow
+
+
+def test_interpolation_order_cell_density_counting(cell_density_counting_workflow: CountingWorkflow):
+    op_data_export = cell_density_counting_workflow.dataExportApplet.topLevelOperator
+    op_data_export.InputSelection.setValue(0)  # only has Probabilities
+    export_slot_meta = op_data_export.ImageToExport[0].meta
+
+    assert (
+        "appropriate_interpolation_order" not in export_slot_meta
+        or export_slot_meta.appropriate_interpolation_order == OpResize.Interpolation.LINEAR
+    )
