@@ -21,7 +21,7 @@
 import pytest
 
 from ilastik.shell.headless.headlessShell import HeadlessShell
-from ilastik.workflows import PixelClassificationWorkflow, ObjectClassificationWorkflowPrediction
+from ilastik.workflows import PixelClassificationWorkflow, AutocontextTwoStage, ObjectClassificationWorkflowPrediction
 from lazyflow.operators.opResize import OpResize
 from lazyflow.utility.io_util.write_ome_zarr import INTERPOLATION_ORDER_DEFAULT
 
@@ -49,6 +49,44 @@ def pc_workflow(pixel_classification_ilp_2d3c):
 )
 def test_interpolation_order_pc(pc_workflow, export_source, expected_order):
     op_data_export = pc_workflow.dataExportApplet.topLevelOperator
+    op_data_export.InputSelection.setValue(export_source)
+    export_slot_meta = op_data_export.ImageToExport[0].meta
+    default_is_expected = expected_order == INTERPOLATION_ORDER_DEFAULT
+
+    assert (
+        "appropriate_interpolation_order" in export_slot_meta or default_is_expected
+    ), "interpolation order meta only allowed to be absent if default interpolation is appropriate"
+    if "appropriate_interpolation_order" in export_slot_meta:
+        assert export_slot_meta.appropriate_interpolation_order == expected_order
+
+
+@pytest.fixture
+def autocontext_workflow(autocontext_ilp_2d3c):
+    shell = HeadlessShell()
+    shell.openProjectFile(projectFilePath=str(autocontext_ilp_2d3c))
+    return shell.projectManager.workflow
+
+
+@pytest.mark.parametrize(
+    "export_source,expected_order",
+    [
+        (0, OpResize.Interpolation.LINEAR),  # Probabilities Stage 1
+        (1, OpResize.Interpolation.NEAREST),  # Simple Segmentation Stage 1
+        (2, OpResize.Interpolation.LINEAR),  # Uncertainty Stage 1
+        (3, OpResize.Interpolation.LINEAR),  # Features Stage 1
+        (4, OpResize.Interpolation.NEAREST),  # Labels Stage 1
+        (5, OpResize.Interpolation.LINEAR),  # Input Stage 1
+        (6, OpResize.Interpolation.LINEAR),  # Probabilities Stage 2
+        (7, OpResize.Interpolation.NEAREST),  # Simple Segmentation Stage 2
+        (8, OpResize.Interpolation.LINEAR),  # Uncertainty Stage 2
+        (9, OpResize.Interpolation.LINEAR),  # Features Stage 2
+        (10, OpResize.Interpolation.NEAREST),  # Labels Stage 2
+        (11, OpResize.Interpolation.LINEAR),  # Input Stage 2
+        (12, OpResize.Interpolation.LINEAR),  # Probabilities All Stages
+    ],
+)
+def test_interpolation_order_autocontext(autocontext_workflow: AutocontextTwoStage, export_source, expected_order):
+    op_data_export = autocontext_workflow.dataExportApplet.topLevelOperator
     op_data_export.InputSelection.setValue(export_source)
     export_slot_meta = op_data_export.ImageToExport[0].meta
     default_is_expected = expected_order == INTERPOLATION_ORDER_DEFAULT
