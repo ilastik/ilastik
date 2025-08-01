@@ -28,3 +28,8 @@ def pixel_classification_ilp_2d3c(sample_projects_dir: Path) -> Path:
 @pytest.fixture
 def object_classification_from_predictions_ilp_2d3c(sample_projects_dir: Path) -> Path:
     return sample_projects_dir / "ObjectClassification2d3c_wPred.ilp"
+
+
+@pytest.fixture
+def object_classification_from_labels_ilp_2d3c(sample_projects_dir: Path) -> Path:
+    return sample_projects_dir / "ObjectClassification2d3c_wLabels.ilp"

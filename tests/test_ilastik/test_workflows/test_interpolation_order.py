@@ -60,10 +60,15 @@ def test_interpolation_order_pc(pc_workflow, export_source, expected_order):
         assert export_slot_meta.appropriate_interpolation_order == expected_order
 
 
-@pytest.fixture
-def oc_workflow(object_classification_from_predictions_ilp_2d3c):
+@pytest.fixture(params=["predictions", "labels"])
+def oc_workflow(request, object_classification_from_predictions_ilp_2d3c, object_classification_from_labels_ilp_2d3c):
+    project = (
+        object_classification_from_predictions_ilp_2d3c
+        if request.param == "predictions"
+        else object_classification_from_labels_ilp_2d3c
+    )
     shell = HeadlessShell()
-    shell.openProjectFile(projectFilePath=str(object_classification_from_predictions_ilp_2d3c))
+    shell.openProjectFile(projectFilePath=str(project))
     return shell.projectManager.workflow
 
 

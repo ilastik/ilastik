@@ -32,6 +32,7 @@ from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.operators.generic import OpPixelOperator
 from lazyflow.operators.opLabelBase import OpLabelBase
 from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.operators.opResize import OpResize
 from lazyflow.operators.opUnblockedArrayCache import OpUnblockedArrayCache, RoiTuple
 from lazyflow.request.request import Request, RequestLock, RequestPool
 from lazyflow.roi import getIntersectingRois, roiToSlice
@@ -88,10 +89,6 @@ class OpRelabelConsecutive(OpLabelBase):
         self.SerializationOutput.connect(self._opRelabelConsecutive.SerializationOutput)
 
     def setupOutputs(self):
-        tagged_input = self._opReorder5D.Output.meta.getTaggedShape()
-        tagged_blockshape = {k: v for k, v in tagged_input.items()}
-        tagged_blockshape["t"] = 1
-
         input_dtype = self.Input.meta.dtype
 
         if input_dtype == numpy.uint16:
@@ -158,6 +155,7 @@ class OpRelabelConsecutive5D(OpUnblockedArrayCache):
     def setupOutputs(self):
         # setup Output and CleanBlocks via OpUnblockedArrayCache
         super().setupOutputs()
+        self.Output.meta.appropriate_interpolation_order = OpResize.Interpolation.NEAREST
 
         tagged_shape = self.Input.meta.getTaggedShape()
         assert all(k in tagged_shape for k in "tzyxc"), f"Expected 5D input, got {tagged_shape=}"
