@@ -4,6 +4,7 @@ import numpy as np
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedArrayCache, OpValueCache
+from lazyflow.operators.opResize import OpResize
 from lazyflow.utility import Timer
 
 import nifty
@@ -86,6 +87,7 @@ class OpProjectNodeLabeling(Operator):
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Superpixels.meta)
         self.Output.meta.display_mode = "random-colortable"
+        self.Output.meta.appropriate_interpolation_order = OpResize.Interpolation.NEAREST
 
     def execute(self, slot, subindex, roi, result):
         mapping_index_array = self.NodeLabels.value
@@ -268,7 +270,7 @@ def solve(edge_ids, edge_weights, node_count, solver_method):
         )
         solver = legacy_nifty_fm_greedy_solver
     elif solver_method in LEGACY_SOLVER_NAMES:
-        ValueError(
+        raise ValueError(
             f"Multicut solver method {solver_method} not supported anymore. Please run the project in ilastik 1.3.3post3, or change the solver method in debug mode."
         )
     else:

@@ -99,3 +99,19 @@ def test_interpolation_order_oc(oc_workflow, export_source, expected_order):
     ), "interpolation order meta only allowed to be absent if default interpolation is appropriate"
     if "appropriate_interpolation_order" in export_slot_meta:
         assert export_slot_meta.appropriate_interpolation_order == expected_order
+
+
+@pytest.fixture
+def mc_workflow(multicut_ilp_3d1c):
+    shell = HeadlessShell()
+    shell.openProjectFile(projectFilePath=str(multicut_ilp_3d1c))
+    return shell.projectManager.workflow
+
+
+def test_interpolation_order_multicut(mc_workflow):
+    op_data_export = mc_workflow.dataExportApplet.topLevelOperator
+    op_data_export.InputSelection.setValue(0)  # there's only Multicut Segmentation
+    export_slot_meta = op_data_export.ImageToExport[0].meta
+
+    assert "appropriate_interpolation_order" in export_slot_meta
+    assert export_slot_meta.appropriate_interpolation_order == OpResize.Interpolation.NEAREST
