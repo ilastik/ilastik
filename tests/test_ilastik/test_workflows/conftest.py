@@ -38,3 +38,8 @@ def object_classification_from_labels_ilp_2d3c(sample_projects_dir: Path) -> Pat
 @pytest.fixture
 def multicut_ilp_3d1c(sample_projects_dir: Path) -> Path:
     return sample_projects_dir / "Boundary-basedSegmentationwMulticut3d1c.ilp"
+
+
+@pytest.fixture
+def tracking_with_learning_from_predictions_ilp_5t2d(sample_projects_dir: Path) -> Path:
+    return sample_projects_dir / "TrackingwLearning5t2d_wPred.ilp"

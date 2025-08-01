@@ -115,3 +115,21 @@ def test_interpolation_order_multicut(mc_workflow):
 
     assert "appropriate_interpolation_order" in export_slot_meta
     assert export_slot_meta.appropriate_interpolation_order == OpResize.Interpolation.NEAREST
+
+
+@pytest.fixture
+def tracking_learning_workflow(tracking_with_learning_from_predictions_ilp_5t2d):
+    shell = HeadlessShell()
+    shell.openProjectFile(projectFilePath=str(tracking_with_learning_from_predictions_ilp_5t2d))
+    return shell.projectManager.workflow
+
+
+@pytest.mark.parametrize("export_source", range(3))  # ["Tracking-Result", "Merger-Result", "Object-Identities"]
+def test_interpolation_order_structured_tracking(tracking_learning_workflow, export_source):
+    op_data_export = tracking_learning_workflow.dataExportTrackingApplet.topLevelOperator
+    op_data_export.SelectedExportSource.setValue(export_source)
+    op_data_export.InputSelection.setValue(export_source)
+    export_slot_meta = op_data_export.ImageToExport[0].meta
+
+    assert "appropriate_interpolation_order" in export_slot_meta
+    assert export_slot_meta.appropriate_interpolation_order == OpResize.Interpolation.NEAREST
