@@ -41,6 +41,7 @@ from .opReorderAxes import OpReorderAxes
 from .opBlockedArrayCache import OpBlockedArrayCache
 from .opLazyConnectedComponents import OpLazyConnectedComponents
 from .generic import OpPixelOperator
+from lazyflow.operators.opLabelBase import OpLabelBase
 from future.utils import with_metaclass
 
 logger = logging.getLogger(__name__)
@@ -50,14 +51,20 @@ logger = logging.getLogger(__name__)
 #
 # This operator computes the connected component labeling of the input volume.
 # The labeling is computed **seperately** per time slice and per channel.
-class OpLabelVolume(Operator):
+class OpLabelVolume(OpLabelBase):
 
     name = "OpLabelVolume"
 
-    ## provide the volume to label here
-    # (arbitrary shape, dtype could be restricted, see the implementations
-    # property supportedDtypes below)
-    Input = InputSlot()
+    Output = OutputSlot()
+    """Labeled volume with Axistags and shape are the same as on the Input,
+    dtype is an integer datatype.
+    This slot operates on a what-you-request-is-what-you-get basis, if you
+    request a subregion only that subregion will be considered for labeling
+    and no internal caches are used. If you want consistent labels for
+    subsequent requests, use CachedOutput instead.
+    This slot will be set dirty by time and channel if the background or the
+    input changes for the respective time-channel-slice.
+    """
 
     ## provide labels that are treated as background
     # the shape of the background labels must match the shape of the volume in
@@ -79,31 +86,6 @@ class OpLabelVolume(Operator):
     #
     # A change here deletes all previously cached results.
     Method = InputSlot(value="vigra")
-
-    ## Labeled volume
-    # Axistags and shape are the same as on the Input, dtype is an integer
-    # datatype.
-    # This slot operates on a what-you-request-is-what-you-get basis, if you
-    # request a subregion only that subregion will be considered for labeling
-    # and no internal caches are used. If you want consistent labels for
-    # subsequent requests, use CachedOutput instead.
-    # This slot will be set dirty by time and channel if the background or the
-    # input changes for the respective time-channel-slice.
-    Output = OutputSlot()
-
-    ## Cached label image
-    # Axistags and shape are the same as on the Input, dtype is an integer
-    # datatype.
-    # This slot extends the ROI to the full xyz volume (c and t are unaffected)
-    # and computes the labeling for the whole volume. As long as the input does
-    # not get dirty, subsequent requests to this slot guarantee consistent
-    # labelings. The internal cache in use is an OpCompressedCache.
-    # This slot will be set dirty by time and channel if the background or the
-    # input changes for the respective time-channel-slice.
-    CachedOutput = OutputSlot()
-
-    # cache access, see OpCompressedCache
-    CleanBlocks = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super(OpLabelVolume, self).__init__(*args, **kwargs)

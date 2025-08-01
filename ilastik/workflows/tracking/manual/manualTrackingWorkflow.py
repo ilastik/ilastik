@@ -112,7 +112,7 @@ class ManualTrackingWorkflow(Workflow):
         op5Binary.Input.connect(opTwoLevelThreshold.CachedOutput)
 
         opObjExtraction.RawImage.connect(op5Raw.Output)
-        opObjExtraction.BinaryImage.connect(op5Binary.Output)
+        opObjExtraction.SegmentationImage.connect(op5Binary.Output)
 
         opTracking.RawImage.connect(op5Raw.Output)
         opTracking.BinaryImage.connect(op5Binary.Output)

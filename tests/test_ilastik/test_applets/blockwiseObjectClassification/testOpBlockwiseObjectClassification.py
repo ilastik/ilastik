@@ -172,7 +172,7 @@ class TestOpBlockwiseObjectClassification(unittest.TestCase):
         opObjectExtraction = OpObjectExtraction(graph=self.graph)
 
         opObjectExtraction.RawImage.connect(self.rawSource.Output)
-        opObjectExtraction.BinaryImage.connect(self.binarySource.Output)
+        opObjectExtraction.SegmentationImage.connect(self.binarySource.Output)
         opObjectExtraction.BackgroundLabels.setValue([0])
         opObjectExtraction.Features.setValue(self.testingFeatures)
 
@@ -197,10 +197,6 @@ class TestOpBlockwiseObjectClassification(unittest.TestCase):
         # raw image data, i.e. cubes with intensity 1 or 1/2
         opObjectClassification.RawImages.resize(1)
         opObjectClassification.RawImages[0].connect(self.rawSource.Output)
-
-        # threshold images, i.e. cubes with intensity 1
-        opObjectClassification.BinaryImages.resize(1)
-        opObjectClassification.BinaryImages.connect(self.binarySource.Output)
 
         # segmentation images from object extraction
         opObjectClassification.SegmentationImages.resize(1)
@@ -300,7 +296,7 @@ class TestOpBlockwiseObjectClassification(unittest.TestCase):
         opBlockwise = OpBlockwiseObjectClassification(graph=self.graph)
 
         opBlockwise.RawImage.connect(self.classifier.RawImages[0])
-        opBlockwise.BinaryImage.connect(self.classifier.BinaryImages[0])
+        opBlockwise.SegmentationImage.connect(self.objExtraction.LabelImage)
         opBlockwise.Classifier.connect(self.classifier.Classifier)
         opBlockwise.LabelsCount.connect(self.classifier.NumLabels)
         opBlockwise.SelectedFeatures.connect(self.classifier.SelectedFeatures)

@@ -1,5 +1,3 @@
-from builtins import map
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -25,17 +23,23 @@ from builtins import map
 import time
 import collections
 from itertools import starmap
+from typing import Tuple, Union
+
 import numpy
+import numpy.typing as npt
 import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.opCache import ManagedBlockedCache
 from lazyflow.request import RequestLock
-from lazyflow.roi import getIntersection, roiFromShape, roiToSlice, containing_rois, sliceToRoi
+from lazyflow.roi import getIntersection, roiFromShape, roiToSlice, containing_rois
 
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+RoiTuple = Tuple[Tuple[int, ...], Tuple[int, ...]]
 
 
 class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
@@ -70,7 +74,9 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
         # Now that we're initialized, it's safe to register with the memory manager
         self.registerWithMemoryManager()
 
-    def _standardize_roi(self, start, stop):
+    def _standardize_roi(
+        self, start: Union[npt.NDArray, Tuple[int, ...]], stop: Union[npt.NDArray, Tuple[int, ...]]
+    ) -> RoiTuple:
         # We use rois as dict keys.
         # For comparison purposes, all rois in the dict keys are assumed to be tuple-of-tuples-of-int
         start = tuple(map(int, start))
@@ -81,6 +87,7 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
         self.Output.meta.assignFrom(self.Input.meta)
         self.CleanBlocks.meta.shape = (1,)
         self.CleanBlocks.meta.dtype = object  # it's a list
+        self.CleanBlocks.meta.block_tags = self.Input.meta.axistags
 
     def execute(self, slot, subindex, roi, result):
         if slot is self.Output:

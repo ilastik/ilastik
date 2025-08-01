@@ -29,7 +29,7 @@ import warnings
 import numpy
 import h5py
 
-from ilastik.applets.dataExport import opDataExport
+from ilastik.applets.objectExtraction.objectExtractionApplet import ObjectExtractionAppletFromLabels
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
@@ -143,7 +143,7 @@ class ObjectClassificationWorkflow(Workflow):
             self._applets.append(self.fillMissingSlicesApplet)
 
         # our main applets
-        self.objectExtractionApplet = ObjectExtractionApplet(workflow=self, name="Object Feature Selection")
+        self.objectExtractionApplet = self._createObjectExtractionApplet()
         self.objectClassificationApplet = ObjectClassificationApplet(workflow=self)
         self._tableExporter = TableExporter(self.objectClassificationApplet.topLevelOperator)
         self.dataExportApplet = ObjectClassificationDataExportApplet(
@@ -206,6 +206,9 @@ class ObjectClassificationWorkflow(Workflow):
         opData = self.dataSelectionApplet.topLevelOperator
         opData.DatasetRoles.setValue(self.InputImageRoles.asDisplayNameList())
         self._applets.append(self.dataSelectionApplet)
+
+    def _createObjectExtractionApplet(self):
+        return ObjectExtractionApplet(workflow=self, name="Object Feature Selection")
 
     @property
     def exportsArgParser(self):
@@ -287,7 +290,7 @@ class ObjectClassificationWorkflow(Workflow):
         pass
 
     def connectLane(self, laneIndex):
-        rawslot, binaryslot = self.connectInputs(laneIndex)
+        rawslot, segmentation_slot = self.connectInputs(laneIndex)
         atlas_slot = self.createAtlasSourceSlot(laneIndex)
 
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
@@ -298,11 +301,10 @@ class ObjectClassificationWorkflow(Workflow):
         opBlockwiseObjectClassification = self.blockwiseObjectClassificationApplet.topLevelOperator.getLane(laneIndex)
 
         opObjExtraction.RawImage.connect(rawslot)
-        opObjExtraction.BinaryImage.connect(binaryslot)
+        opObjExtraction.SegmentationImage.connect(segmentation_slot)
         opObjExtraction.Atlas.connect(atlas_slot)
 
         opObjClassification.RawImages.connect(rawslot)
-        opObjClassification.BinaryImages.connect(binaryslot)
         opObjClassification.Atlas.connect(atlas_slot)
 
         opObjClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
@@ -327,7 +329,7 @@ class ObjectClassificationWorkflow(Workflow):
         opBlockwiseObjectClassification = self.blockwiseObjectClassificationApplet.topLevelOperator.getLane(laneIndex)
 
         opBlockwiseObjectClassification.RawImage.connect(opObjClassification.RawImages)
-        opBlockwiseObjectClassification.BinaryImage.connect(opObjClassification.BinaryImages)
+        opBlockwiseObjectClassification.SegmentationImage.connect(segmentation_slot)
         opBlockwiseObjectClassification.Classifier.connect(opObjClassification.Classifier)
         opBlockwiseObjectClassification.LabelsCount.connect(opObjClassification.NumLabels)
         opBlockwiseObjectClassification.SelectedFeatures.connect(opObjClassification.SelectedFeatures)
@@ -790,6 +792,41 @@ class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
         input_ready = self._inputReady()
 
         super(ObjectClassificationWorkflowBinary, self).handleAppletStateUpdateRequested(upstream_ready=input_ready)
+
+
+class ObjectClassificationWorkflowLabels(ObjectClassificationWorkflow):
+    workflowName = "Object Classification (from label image)"
+    workflowDisplayName = "Object Classification [Inputs: Raw Data, Label Image]"
+
+    class InputImageRoles(SlotNameEnum):
+        RAW_DATA = enum.auto()
+        LABEL_IMAGE = enum.auto()
+        ATLAS = enum.auto()
+
+    @property
+    def data_instructions(self):
+        return (
+            super().data_instructions
+            + f'Use the "{self.InputImageRoles.LABEL_IMAGE.displayName}" tab to load your label image(s).'
+        )
+
+    def connectInputs(self, laneIndex):
+        opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        canonicalRawDataSlot = self.createRawDataSourceSlot(laneIndex)
+        canonicalSegmentationSlot = self.toDefaultAxisOrder(opData.ImageGroup[self.InputImageRoles.LABEL_IMAGE])
+        return canonicalRawDataSlot, canonicalSegmentationSlot
+
+    def handleAppletStateUpdateRequested(self):
+        """
+        Overridden from Workflow base class
+        Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
+        """
+        input_ready = self._inputReady()
+
+        super().handleAppletStateUpdateRequested(upstream_ready=input_ready)
+
+    def _createObjectExtractionApplet(self):
+        return ObjectExtractionAppletFromLabels(workflow=self, name="Object Feature Selection")
 
 
 class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):

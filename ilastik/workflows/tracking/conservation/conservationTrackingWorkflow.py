@@ -267,13 +267,11 @@ class ConservationTrackingWorkflowBase(Workflow):
         opObjExtraction.BinaryImage.connect(op5Binary.Output)
 
         if self.divisionDetectionApplet:
-            opDivDetection.BinaryImages.connect(op5Binary.Output)
             opDivDetection.RawImages.connect(op5Raw.Output)
             opDivDetection.SegmentationImages.connect(opObjExtraction.LabelImage)
             opDivDetection.ObjectFeatures.connect(opObjExtraction.RegionFeaturesAll)
             opDivDetection.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNamesAll)
 
-        opCellClassification.BinaryImages.connect(op5Binary.Output)
         opCellClassification.RawImages.connect(op5Raw.Output)
         opCellClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
         opCellClassification.ObjectFeatures.connect(opObjExtraction.RegionFeaturesVigra)

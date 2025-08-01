@@ -129,7 +129,7 @@ class TestPlugins(unittest.TestCase):
         # self.op.Features.setValue(FEATURES)
         bm = binaryImage()
         bm = bm[:, :, :, 0:1, :]
-        self.op.BinaryImage.setValue(bm)
+        self.op.SegmentationImage.setValue(bm)
 
     def test_plugins(self):
         self.op.Features.setValue(self.Features_standard)
