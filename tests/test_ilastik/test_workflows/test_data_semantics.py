@@ -27,11 +27,10 @@ from ilastik.workflows import (
     ObjectClassificationWorkflowPrediction,
     CountingWorkflow,
 )
-from lazyflow.operators.opResize import OpResize
-from lazyflow.utility.io_util.write_ome_zarr import INTERPOLATION_ORDER_DEFAULT
+from lazyflow.utility.data_semantics import ImageTypes
 
 """
-Ensure interpolation order is appropriate in all workflows for all available export sources.
+Ensure image semantics metadata is correctly carried into export slots
 """
 
 
@@ -43,26 +42,26 @@ def pc_workflow(pixel_classification_ilp_2d3c):
 
 
 @pytest.mark.parametrize(
-    "export_source,expected_order",
+    "export_source,expected_semantics",
     [
-        (PixelClassificationWorkflow.ExportNames.PROBABILITIES, OpResize.Interpolation.LINEAR),
-        (PixelClassificationWorkflow.ExportNames.SIMPLE_SEGMENTATION, OpResize.Interpolation.NEAREST),
-        (PixelClassificationWorkflow.ExportNames.UNCERTAINTY, OpResize.Interpolation.LINEAR),
-        (PixelClassificationWorkflow.ExportNames.FEATURES, OpResize.Interpolation.LINEAR),
-        (PixelClassificationWorkflow.ExportNames.LABELS, OpResize.Interpolation.NEAREST),
+        (PixelClassificationWorkflow.ExportNames.PROBABILITIES, ImageTypes.Intensities),
+        (PixelClassificationWorkflow.ExportNames.SIMPLE_SEGMENTATION, ImageTypes.Labels),
+        (PixelClassificationWorkflow.ExportNames.UNCERTAINTY, ImageTypes.Intensities),
+        (PixelClassificationWorkflow.ExportNames.FEATURES, ImageTypes.Intensities),
+        (PixelClassificationWorkflow.ExportNames.LABELS, ImageTypes.Labels),
     ],
 )
-def test_interpolation_order_pc(pc_workflow, export_source, expected_order):
+def test_pixel_classification(pc_workflow, export_source, expected_semantics):
     op_data_export = pc_workflow.dataExportApplet.topLevelOperator
     op_data_export.InputSelection.setValue(export_source)
     export_slot_meta = op_data_export.ImageToExport[0].meta
-    default_is_expected = expected_order == INTERPOLATION_ORDER_DEFAULT
+    default_is_expected = expected_semantics == ImageTypes.Intensities
 
     assert (
-        "appropriate_interpolation_order" in export_slot_meta or default_is_expected
+        "data_semantics" in export_slot_meta or default_is_expected
     ), "interpolation order meta only allowed to be absent if default interpolation is appropriate"
-    if "appropriate_interpolation_order" in export_slot_meta:
-        assert export_slot_meta.appropriate_interpolation_order == expected_order
+    if "data_semantics" in export_slot_meta:
+        assert export_slot_meta.data_semantics == expected_semantics
 
 
 @pytest.fixture
@@ -73,34 +72,34 @@ def autocontext_workflow(autocontext_ilp_2d3c):
 
 
 @pytest.mark.parametrize(
-    "export_source,expected_order",
+    "export_source,expected_semantics",
     [
-        (0, OpResize.Interpolation.LINEAR),  # Probabilities Stage 1
-        (1, OpResize.Interpolation.NEAREST),  # Simple Segmentation Stage 1
-        (2, OpResize.Interpolation.LINEAR),  # Uncertainty Stage 1
-        (3, OpResize.Interpolation.LINEAR),  # Features Stage 1
-        (4, OpResize.Interpolation.NEAREST),  # Labels Stage 1
-        (5, OpResize.Interpolation.LINEAR),  # Input Stage 1
-        (6, OpResize.Interpolation.LINEAR),  # Probabilities Stage 2
-        (7, OpResize.Interpolation.NEAREST),  # Simple Segmentation Stage 2
-        (8, OpResize.Interpolation.LINEAR),  # Uncertainty Stage 2
-        (9, OpResize.Interpolation.LINEAR),  # Features Stage 2
-        (10, OpResize.Interpolation.NEAREST),  # Labels Stage 2
-        (11, OpResize.Interpolation.LINEAR),  # Input Stage 2
-        (12, OpResize.Interpolation.LINEAR),  # Probabilities All Stages
+        (0, ImageTypes.Intensities),  # Probabilities Stage 1
+        (1, ImageTypes.Labels),  # Simple Segmentation Stage 1
+        (2, ImageTypes.Intensities),  # Uncertainty Stage 1
+        (3, ImageTypes.Intensities),  # Features Stage 1
+        (4, ImageTypes.Labels),  # Labels Stage 1
+        (5, ImageTypes.Intensities),  # Input Stage 1
+        (6, ImageTypes.Intensities),  # Probabilities Stage 2
+        (7, ImageTypes.Labels),  # Simple Segmentation Stage 2
+        (8, ImageTypes.Intensities),  # Uncertainty Stage 2
+        (9, ImageTypes.Intensities),  # Features Stage 2
+        (10, ImageTypes.Labels),  # Labels Stage 2
+        (11, ImageTypes.Intensities),  # Input Stage 2
+        (12, ImageTypes.Intensities),  # Probabilities All Stages
     ],
 )
-def test_interpolation_order_autocontext(autocontext_workflow: AutocontextTwoStage, export_source, expected_order):
+def test_autocontext(autocontext_workflow: AutocontextTwoStage, export_source, expected_semantics):
     op_data_export = autocontext_workflow.dataExportApplet.topLevelOperator
     op_data_export.InputSelection.setValue(export_source)
     export_slot_meta = op_data_export.ImageToExport[0].meta
-    default_is_expected = expected_order == INTERPOLATION_ORDER_DEFAULT
+    default_is_expected = expected_semantics == ImageTypes.Intensities
 
     assert (
-        "appropriate_interpolation_order" in export_slot_meta or default_is_expected
+        "data_semantics" in export_slot_meta or default_is_expected
     ), "interpolation order meta only allowed to be absent if default interpolation is appropriate"
-    if "appropriate_interpolation_order" in export_slot_meta:
-        assert export_slot_meta.appropriate_interpolation_order == expected_order
+    if "data_semantics" in export_slot_meta:
+        assert export_slot_meta.data_semantics == expected_semantics
 
 
 @pytest.fixture(params=["predictions", "labels"])
@@ -116,32 +115,26 @@ def oc_workflow(request, object_classification_from_predictions_ilp_2d3c, object
 
 
 @pytest.mark.parametrize(
-    "export_source,expected_order",
+    "export_source,expected_semantics",
     [
-        (ObjectClassificationWorkflowPrediction.ExportNames.OBJECT_PREDICTIONS, OpResize.Interpolation.NEAREST),
-        (ObjectClassificationWorkflowPrediction.ExportNames.OBJECT_PROBABILITIES, OpResize.Interpolation.LINEAR),
-        (
-            ObjectClassificationWorkflowPrediction.ExportNames.BLOCKWISE_OBJECT_PREDICTIONS,
-            OpResize.Interpolation.NEAREST,
-        ),
-        (
-            ObjectClassificationWorkflowPrediction.ExportNames.BLOCKWISE_OBJECT_PROBABILITIES,
-            OpResize.Interpolation.LINEAR,
-        ),
-        (ObjectClassificationWorkflowPrediction.ExportNames.OBJECT_IDENTITIES, OpResize.Interpolation.NEAREST),
+        (ObjectClassificationWorkflowPrediction.ExportNames.OBJECT_PREDICTIONS, ImageTypes.Labels),
+        (ObjectClassificationWorkflowPrediction.ExportNames.OBJECT_PROBABILITIES, ImageTypes.Intensities),
+        (ObjectClassificationWorkflowPrediction.ExportNames.BLOCKWISE_OBJECT_PREDICTIONS, ImageTypes.Labels),
+        (ObjectClassificationWorkflowPrediction.ExportNames.BLOCKWISE_OBJECT_PROBABILITIES, ImageTypes.Intensities),
+        (ObjectClassificationWorkflowPrediction.ExportNames.OBJECT_IDENTITIES, ImageTypes.Labels),
     ],
 )
-def test_interpolation_order_oc(oc_workflow, export_source, expected_order):
+def test_object_classification(oc_workflow, export_source, expected_semantics):
     op_data_export = oc_workflow.dataExportApplet.topLevelOperator
     op_data_export.InputSelection.setValue(export_source)
     export_slot_meta = op_data_export.ImageToExport[0].meta
-    default_is_expected = expected_order == INTERPOLATION_ORDER_DEFAULT
+    default_is_expected = expected_semantics == ImageTypes.Intensities
 
     assert (
-        "appropriate_interpolation_order" in export_slot_meta or default_is_expected
+        "data_semantics" in export_slot_meta or default_is_expected
     ), "interpolation order meta only allowed to be absent if default interpolation is appropriate"
-    if "appropriate_interpolation_order" in export_slot_meta:
-        assert export_slot_meta.appropriate_interpolation_order == expected_order
+    if "data_semantics" in export_slot_meta:
+        assert export_slot_meta.data_semantics == expected_semantics
 
 
 @pytest.fixture
@@ -151,13 +144,13 @@ def mc_workflow(multicut_ilp_3d1c):
     return shell.projectManager.workflow
 
 
-def test_interpolation_order_multicut(mc_workflow):
+def test_multicut(mc_workflow):
     op_data_export = mc_workflow.dataExportApplet.topLevelOperator
     op_data_export.InputSelection.setValue(0)  # there's only Multicut Segmentation
     export_slot_meta = op_data_export.ImageToExport[0].meta
 
-    assert "appropriate_interpolation_order" in export_slot_meta
-    assert export_slot_meta.appropriate_interpolation_order == OpResize.Interpolation.NEAREST
+    assert "data_semantics" in export_slot_meta
+    assert export_slot_meta.data_semantics == ImageTypes.Labels
 
 
 @pytest.fixture
@@ -168,14 +161,14 @@ def tracking_learning_workflow(tracking_with_learning_from_predictions_ilp_5t2d)
 
 
 @pytest.mark.parametrize("export_source", range(3))  # ["Tracking-Result", "Merger-Result", "Object-Identities"]
-def test_interpolation_order_structured_tracking(tracking_learning_workflow, export_source):
+def test_structured_tracking(tracking_learning_workflow, export_source):
     op_data_export = tracking_learning_workflow.dataExportTrackingApplet.topLevelOperator
     op_data_export.SelectedExportSource.setValue(export_source)
     op_data_export.InputSelection.setValue(export_source)
     export_slot_meta = op_data_export.ImageToExport[0].meta
 
-    assert "appropriate_interpolation_order" in export_slot_meta
-    assert export_slot_meta.appropriate_interpolation_order == OpResize.Interpolation.NEAREST
+    assert "data_semantics" in export_slot_meta
+    assert export_slot_meta.data_semantics == ImageTypes.Labels
 
 
 @pytest.fixture
@@ -185,12 +178,9 @@ def cell_density_counting_workflow(cell_density_counting_ilp_2d3c):
     return shell.projectManager.workflow
 
 
-def test_interpolation_order_cell_density_counting(cell_density_counting_workflow: CountingWorkflow):
+def test_cell_density_counting(cell_density_counting_workflow: CountingWorkflow):
     op_data_export = cell_density_counting_workflow.dataExportApplet.topLevelOperator
     op_data_export.InputSelection.setValue(0)  # only has Probabilities
     export_slot_meta = op_data_export.ImageToExport[0].meta
 
-    assert (
-        "appropriate_interpolation_order" not in export_slot_meta
-        or export_slot_meta.appropriate_interpolation_order == OpResize.Interpolation.LINEAR
-    )
+    assert "data_semantics" not in export_slot_meta or export_slot_meta.data_semantics == ImageTypes.Intensities

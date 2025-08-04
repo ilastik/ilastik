@@ -7,6 +7,7 @@ from skimage.transform import resize as sk_resize
 
 from lazyflow.operators.opResize import OpResize
 from lazyflow.operators.opSplitRequestsBlockwise import OpSplitRequestsBlockwise
+from lazyflow.utility.data_semantics import ImageTypes
 
 
 def test_resize_matches_skimage(graph):
@@ -86,6 +87,13 @@ def test_interpolation_order(graph):
     sk_resized = sk_resize(data, (5, 5), order=0, preserve_range=True).astype(numpy.uint8)
 
     numpy.testing.assert_array_equal(op_resized, sk_resized)
+
+
+@pytest.mark.parametrize("image_type", ImageTypes)
+def test_semantics_to_interpolation_covers_all_types(image_type: ImageTypes):
+    assert (
+        image_type in OpResize.semantics_to_interpolation
+    ), f'specify appropriate interpolation order for "{image_type}" data semantics'
 
 
 def test_raises_on_c_scaling(graph):

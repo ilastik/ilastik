@@ -30,6 +30,7 @@ from scipy import ndimage as scipy_ndimage
 from lazyflow.graph import Operator, InputSlot, OutputSlot, Slot
 from lazyflow.roi import enlargeRoiForHalo, roiToSlice
 from lazyflow.rtype import SubRegion
+from lazyflow.utility.data_semantics import ImageTypes
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,11 @@ class OpResize(Operator):
     class Interpolation(IntEnum):
         NEAREST = 0
         LINEAR = 1
+
+    semantics_to_interpolation = {
+        ImageTypes.Intensities: Interpolation.LINEAR,
+        ImageTypes.Labels: Interpolation.NEAREST,
+    }
 
     required_min_padding = {  # minimum pixels of halo required for accurate interpolation
         Interpolation.NEAREST: 0,

@@ -8,6 +8,7 @@ import vigra
 import zarr
 
 from lazyflow.operators import OpArrayPiper
+from lazyflow.utility.data_semantics import ImageTypes
 from lazyflow.utility.io_util import multiscaleStore
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrMultiscaleMeta
 from lazyflow.utility.io_util.write_ome_zarr import (
@@ -442,9 +443,10 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
 
 def test_respects_interpolation_order(tmp_path, tiny_5d_vigra_array_piper):
     """
-    Image source slots may specify what interpolation order to use for resizing.
-    E.g. order 0 (nearest-neighbor) is appropriate for binary or segmentation images.
-    Default is order 1 (linear interpolation), appropriate for raw data.
+    Image source slots may specify `data_semantics` of the image data they produce.
+    This affects how the image should be interpolated when downsampling
+    E.g. order 0 (nearest-neighbor) is appropriate for labels, binary or segmentation images.
+    Default is order 1 (linear interpolation), appropriate for raw data or probabilities.
     """
     export_path = tmp_path
     source_op = tiny_5d_vigra_array_piper
@@ -462,7 +464,7 @@ def test_respects_interpolation_order(tmp_path, tiny_5d_vigra_array_piper):
 
     write_ome_zarr(str(export_path / "test_default_interp.zarr"), source_op.Output, progress, None, target_scales)
 
-    source_op.Output.meta.appropriate_interpolation_order = 0
+    source_op.Output.meta.data_semantics = ImageTypes.Labels
 
     write_ome_zarr(str(export_path / "test_interp_0.zarr"), source_op.Output, progress, None, target_scales)
 

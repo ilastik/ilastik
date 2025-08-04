@@ -27,12 +27,12 @@ from collections import defaultdict, OrderedDict
 from functools import partial
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators.opResize import OpResize
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
 from lazyflow.operators import OpValueCache, OpSlicedBlockedArrayCache, OpMultiArrayStacker
 from lazyflow.operatorWrapper import OperatorWrapper
 from lazyflow.request import Request, RequestPool, RequestLock
+from lazyflow.utility.data_semantics import ImageTypes
 
 from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
 
@@ -1176,7 +1176,7 @@ class OpObjectPredict(Operator):
         self.Predictions.meta.dtype = object
         self.Predictions.meta.axistags = None
         self.Predictions.meta.mapping_dtype = numpy.uint8
-        self.Predictions.meta.appropriate_interpolation_order = OpResize.Interpolation.NEAREST
+        self.Predictions.meta.data_semantics = ImageTypes.Labels
 
         self.UncertaintyEstimate.meta.shape = self.Features.meta.shape
         self.UncertaintyEstimate.meta.dtype = object
@@ -1378,13 +1378,13 @@ class OpRelabelSegmentation(Operator):
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Image.meta)
         self.Output.meta.dtype = self.ObjectMap.meta.mapping_dtype
-        # ObjectMap determines interpolation, but the meta property isn't implemented throughout ilastik
-        if "appropriate_interpolation_order" in self.ObjectMap.meta:
-            self.Output.meta.appropriate_interpolation_order = self.ObjectMap.meta.appropriate_interpolation_order
-        elif "appropriate_interpolation_order" in self.Output.meta:
+        # ObjectMap determines data semantics, but the meta property isn't implemented throughout ilastik
+        if "data_semantics" in self.ObjectMap.meta:
+            self.Output.meta.data_semantics = self.ObjectMap.meta.data_semantics
+        elif "data_semantics" in self.Output.meta:
             # Have to remove if Image had it but ObjectMap didn't
             # (this could be deleted if we implement this property consistently)
-            self.Output.meta.pop("appropriate_interpolation_order")
+            self.Output.meta.pop("data_semantics")
 
     def execute(self, slot, subindex, roi, result):
         tStart = time.perf_counter()

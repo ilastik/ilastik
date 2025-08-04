@@ -4,12 +4,12 @@ import numpy as np
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedArrayCache, OpValueCache
-from lazyflow.operators.opResize import OpResize
 from lazyflow.utility import Timer
 
 import nifty
 from elf.segmentation.multicut import get_multicut_solver, get_available_solver_names
 
+from lazyflow.utility.data_semantics import ImageTypes
 from .multicutLegacy import LEGACY_SOLVER_NAMES, legacy_nifty_fm_greedy_solver
 
 
@@ -87,7 +87,7 @@ class OpProjectNodeLabeling(Operator):
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Superpixels.meta)
         self.Output.meta.display_mode = "random-colortable"
-        self.Output.meta.appropriate_interpolation_order = OpResize.Interpolation.NEAREST
+        self.Output.meta.data_semantics = ImageTypes.Labels
 
     def execute(self, slot, subindex, roi, result):
         mapping_index_array = self.NodeLabels.value

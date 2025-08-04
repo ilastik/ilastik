@@ -21,7 +21,6 @@
 ###############################################################################
 import sys
 
-from .opResize import OpResize
 
 if sys.version_info.major >= 3:
     unicode = str
@@ -37,6 +36,7 @@ from lazyflow.operator import Operator
 from lazyflow.slot import InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
 from lazyflow.request import Request, RequestPool
+from lazyflow.utility.data_semantics import ImageTypes
 from .opReorderAxes import OpReorderAxes
 from .opBlockedArrayCache import OpBlockedArrayCache
 from .opLazyConnectedComponents import OpLazyConnectedComponents
@@ -244,7 +244,7 @@ class OpLabelingABC(with_metaclass(ABCMeta, Operator)):
         # setup meta for Output
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.dtype = self.labelType
-        self.Output.meta.appropriate_interpolation_order = OpResize.Interpolation.NEAREST
+        self.Output.meta.data_semantics = ImageTypes.Labels
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.BypassModeEnabled:

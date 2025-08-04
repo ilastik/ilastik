@@ -33,7 +33,6 @@ import vigra
 
 # Lazyflow
 from lazyflow.graph import InputSlot, OutputSlot
-from lazyflow.operators.opResize import OpResize
 from lazyflow.roi import (
     TinyVector,
     getIntersectingBlocks,
@@ -45,6 +44,7 @@ from lazyflow.roi import (
 )
 from lazyflow.operators.opCompressedCache import OpUnmanagedCompressedCache
 from lazyflow.rtype import SubRegion
+from lazyflow.utility.data_semantics import ImageTypes
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +119,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         self.Output.meta.dtype = numpy.uint8
         self.Output.meta.shape = self.Input.meta.shape[:-1] + (1,)
         self.Output.meta.drange = (0, 255)
-        self.Output.meta.appropriate_interpolation_order = OpResize.Interpolation.NEAREST
+        self.Output.meta.data_semantics = ImageTypes.Labels
         self.OutputHdf5.meta.assignFrom(self.Output.meta)
 
         # The Projection2D slot is a strange beast:

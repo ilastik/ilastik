@@ -39,8 +39,8 @@ import itertools
 from lazyflow.operator import Operator, InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
 from lazyflow.operators.opCache import ObservableCache
+from lazyflow.utility.data_semantics import ImageTypes
 from .opReorderAxes import OpReorderAxes
-from .opResize import OpResize
 
 # the lazyflow lock seems to have deadlock issues sometimes
 Lock = HardLock
@@ -282,10 +282,10 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.dtype = _LABEL_TYPE
-        self.Output.meta.appropriate_interpolation_order = OpResize.Interpolation.NEAREST
+        self.Output.meta.data_semantics = ImageTypes.Labels
         self._Output.meta.assignFrom(self._Input.meta)
         self._Output.meta.dtype = _LABEL_TYPE
-        self._Output.meta.appropriate_interpolation_order = OpResize.Interpolation.NEAREST
+        self._Output.meta.data_semantics = ImageTypes.Labels
         if not self.Input.meta.dtype in self.supportedDtypes:
             raise ValueError("Cannot label data type {}".format(self.Input.meta.dtype))
 

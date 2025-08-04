@@ -37,6 +37,7 @@ from lazyflow.operators.opResize import OpResize
 from lazyflow.roi import determineBlockShape, roiFromShape, roiToSlice
 from lazyflow.slot import Slot
 from lazyflow.utility import OrderedSignal, PathComponents, BigRequestStreamer
+from lazyflow.utility.data_semantics import ImageTypes
 from lazyflow.utility.io_util.OMEZarrStore import (
     OME_ZARR_V_0_4_KWARGS,
     OMEZarrMultiscaleMeta,
@@ -55,7 +56,6 @@ ScalingsByScaleKey = OrderedDict[str, OrderedScaling]  # { scale_key: { axis: sc
 OME_ZARR_AXES: List[Axiskey] = ["t", "c", "z", "y", "x"]
 SPATIAL_AXES: List[Axiskey] = ["z", "y", "x"]
 SINGE_SCALE_DEFAULT_KEY = "s0"
-INTERPOLATION_ORDER_DEFAULT = OpResize.Interpolation.LINEAR
 
 
 def match_target_scales_to_input_excluding_upscales(
@@ -457,7 +457,9 @@ def write_ome_zarr(
         input_scales = reordered_source.meta.get("scales")
         input_scale_key = reordered_source.meta.get("active_scale")
         input_ome_meta = reordered_source.meta.get("ome_zarr_meta")
-        interpolation_order = reordered_source.meta.get("appropriate_interpolation_order", INTERPOLATION_ORDER_DEFAULT)
+        interpolation_order = OpResize.semantics_to_interpolation[
+            reordered_source.meta.get("data_semantics", ImageTypes.Intensities)
+        ]
 
         if target_scales is None:  # single-scale export
             single_target_key = input_scale_key if input_scale_key else SINGE_SCALE_DEFAULT_KEY

@@ -358,7 +358,7 @@ def test_headless_ome_zarr_multiscale_export(testdir, tmp_path, sample_projects_
     """
     Ensure that multiscale export works, generates scales,
     and uses nearest-neighbor interpolation for Simple Segmentation export.
-    Implemented via `appropriate_interpolation_order` meta flag (0 = nearest neighbor, 1 = linear, default linear).
+    Based on `slot.meta.data_semantics` and the export mapping them to interpolation order.
     """
     ilp_path = sample_projects_dir / "PixelClassification2d.ilp"
     # Use the original training data so that the simple segmentation contains both 1s and 2s
