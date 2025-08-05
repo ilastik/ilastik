@@ -264,3 +264,24 @@ class TestOpReorderAxes(unittest.TestCase):
 
         with pytest.raises(RequestError):
             req.wait()
+
+    def test_preserve_unit_axistags(self):
+        source_op = OpArrayProvider(graph=self.graph)
+        data = numpy.random.randint(0, 255, (100, 100))
+        data = vigra.taggedView(data, vigra.defaultAxistags("yx"))
+        source_op.Input.setValue(data)
+        axes = vigra.defaultAxistags("xy")
+        axes.setResolution("x", 13.0)
+        axes.setUnit("x", "nm")
+        axes.setUnit("y", "pizzas")
+        axes.setResolution("y", 5.0)
+        source_op.Output.meta.axistags = axes
+        self.operator.Input.connect(source_op.Output)
+        assert (
+            self.operator.Output.meta.axistags["x"] == axes[0]
+        )  # we can't use "is" because reordered axis is a new object
+        assert self.operator.Output.meta.axistags["y"] == axes[1]
+        assert self.operator.Output.meta.axistags["x"].unit == "nm"
+        assert self.operator.Output.meta.axistags["y"].unit == "pizzas"
+        assert self.operator.Output.meta.axistags["x"].resolution == 13.0
+        assert self.operator.Output.meta.axistags["y"].resolution == 5.0
