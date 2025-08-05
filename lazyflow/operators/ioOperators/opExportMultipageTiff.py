@@ -82,13 +82,46 @@ class OpExportMultipageTiff(Operator):
         page_buf = RoiRequestBufferIter(self._opReorderAxes.Output, self._batch_size, iterate_axes="tzc")
         page_buf.progress_signal.subscribe(self.progressSignal)
 
+        meta_dict = {
+            "axes": "".join(k.upper() for k in self._opReorderAxes.Output.meta.getAxisKeys()),
+            "SignificantBits": 8,
+        }
+
+        # map axis keys to relevant metadata keys
+        size_trans = {"x": "PhysicalSizeX", "y": "PhysicalSizeY", "z": "PhysicalSizeZ", "t": "TimeIncrement"}
+        unit_trans = {
+            "x": "PhysicalSizeXUnit",
+            "y": "PhysicalSizeYUnit",
+            "z": "PhysicalSizeZUnit",
+            "t": "TimeIncrementUnit",
+        }
+
+        meta = self._opReorderAxes.Output.meta
+        axistags = meta.axistags
+
+        for axis in "".join(meta.getAxisKeys()):
+            if axis in size_trans:
+                size_key = size_trans[axis]
+                unit_key = unit_trans[axis]
+                meta_dict[size_key] = None
+                meta_dict[unit_key] = None
+
+                if axis != "c":
+                    meta_dict[size_key] = axistags[axis].resolution
+
+                    unit_value = axistags[axis].unit
+                    if unit_value != "":
+                        meta_dict[unit_key] = unit_value.encode("unicode_escape").decode("ascii")
+                    else:
+                        meta_dict[unit_key] = axistags[axis].unit = ""
+
         with tifffile.TiffWriter(self.Filepath.value, byteorder="<", ome=True) as writer:
             writer.write(
                 data=iter(page_buf),
                 shape=self._opReorderAxes.Output.meta.shape,
                 dtype=dtype,
                 software="ilastik",
-                metadata={"axes": "".join(self._opReorderAxes.Output.meta.getAxisKeys())},
+                metadata=meta_dict,
             )
 
     @property
