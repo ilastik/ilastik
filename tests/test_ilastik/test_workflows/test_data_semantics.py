@@ -114,27 +114,19 @@ def oc_workflow(request, object_classification_from_predictions_ilp_2d3c, object
     return shell.projectManager.workflow
 
 
-@pytest.mark.parametrize(
-    "export_source,expected_semantics",
-    [
-        (ObjectClassificationWorkflowPrediction.ExportNames.OBJECT_PREDICTIONS, ImageTypes.Labels),
-        (ObjectClassificationWorkflowPrediction.ExportNames.OBJECT_PROBABILITIES, ImageTypes.Intensities),
-        (ObjectClassificationWorkflowPrediction.ExportNames.BLOCKWISE_OBJECT_PREDICTIONS, ImageTypes.Labels),
-        (ObjectClassificationWorkflowPrediction.ExportNames.BLOCKWISE_OBJECT_PROBABILITIES, ImageTypes.Intensities),
-        (ObjectClassificationWorkflowPrediction.ExportNames.OBJECT_IDENTITIES, ImageTypes.Labels),
-    ],
-)
-def test_object_classification(oc_workflow, export_source, expected_semantics):
+@pytest.mark.parametrize("export_source", ObjectClassificationWorkflowPrediction.ExportNames)
+def test_object_classification(oc_workflow, export_source):
+    """
+    All oc outputs should be treated as labels since they should always correspond to the
+    binary/label object image used as input for the workflow.
+    """
     op_data_export = oc_workflow.dataExportApplet.topLevelOperator
     op_data_export.InputSelection.setValue(export_source)
     export_slot_meta = op_data_export.ImageToExport[0].meta
-    default_is_expected = expected_semantics == ImageTypes.Intensities
 
-    assert (
-        "data_semantics" in export_slot_meta or default_is_expected
-    ), "interpolation order meta only allowed to be absent if default interpolation is appropriate"
+    assert "data_semantics" in export_slot_meta
     if "data_semantics" in export_slot_meta:
-        assert export_slot_meta.data_semantics == expected_semantics
+        assert export_slot_meta.data_semantics == ImageTypes.Labels
 
 
 @pytest.fixture
