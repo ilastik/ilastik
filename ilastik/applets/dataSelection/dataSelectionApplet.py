@@ -269,6 +269,14 @@ class DataSelectionApplet(Applet):
         ignore_training_axistags: bool = False,
         stack_along: str = "z",
     ) -> List[Dict[str, DatasetInfo]]:
+        raw_tags = self.get_lane(-1).get_axistags()["Raw Data"] if self.num_lanes > 0 else None
+        for tagset in input_axes:
+            if not (tagset and raw_tags):
+                continue
+            for axis in tagset.keys():
+                if axis in raw_tags:
+                    tagset.setResolution(axis, raw_tags[axis].resolution)
+                    tagset.setUnit(axis, raw_tags[axis].unit)
         if not input_axes or not any(input_axes):
             if ignore_training_axistags or self.num_lanes == 0:
                 input_axes = [None] * len(self.role_names)
