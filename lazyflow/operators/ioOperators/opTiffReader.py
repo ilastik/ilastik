@@ -24,6 +24,7 @@ import logging
 import numpy
 import tifffile
 import vigra
+import xml.etree.ElementTree as ET
 
 from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.roi import roiToSlice
@@ -64,6 +65,8 @@ class OpTiffReader(Operator):
     def setupOutputs(self):
         self._filepath = self.Filepath.value
         with tifffile.TiffFile(self._filepath, mode="r") as tiff_file:
+            ij_meta = tiff_file.imagej_metadata
+            ome_meta = tiff_file.ome_metadata
             series = tiff_file.series[0]
             if len(tiff_file.series) > 1:
                 raise UnsupportedTiffError(
@@ -99,6 +102,7 @@ class OpTiffReader(Operator):
         self.Output.meta.shape = shape
         self.Output.meta.axistags = vigra.defaultAxistags(axes)
         self.Output.meta.dtype = numpy.dtype(dtype_code).type
+        self.setAxisTags(axes, ij_meta, ome_meta)
 
         blockshape = defaultdict(lambda: 1, zip(self._page_axes, self._page_shape))
         # optimization: reading bigger blockshapes in z means much smoother user experience
@@ -137,6 +141,86 @@ class OpTiffReader(Operator):
                 )
 
                 result[roi_page_ndindex] = page_data[roiToSlice(*roi_within_page)]
+
+    def setAxisTags(self, axes, ij_meta, ome_meta):
+        with tifffile.TiffFile(self._filepath, mode="r") as f:
+            if ij_meta:
+                meta = f.pages[0].tags
+
+                # TIFF format stores resolution values as Rational tuples (numerator, denominator)
+
+                if "x" in axes:
+                    self.Output.meta.axistags.setResolution("x", self.get_tiff_res(meta.get("XResolution", None)))
+                    unit = ij_meta.get("unit", "")
+                    if isinstance(unit, str) and unit.startswith("('") and unit.endswith("',)"):
+                        unit = unit[2:-3]
+                    self.Output.meta.axistags.setUnit("x", (self.decode_non_ascii(unit) if unit else ""))
+
+                if "y" in axes:
+                    self.Output.meta.axistags.setResolution("y", self.get_tiff_res(meta.get("YResolution", None)))
+                    unit = ij_meta.get("yunit", "")
+                    if isinstance(unit, str) and unit.startswith("('") and unit.endswith("',)"):
+                        unit = unit[2:-3]
+                    self.Output.meta.axistags.setUnit("y", (self.decode_non_ascii(unit) if unit else ""))
+
+                if "z" in axes:
+                    self.Output.meta.axistags.setResolution("z", (ij_meta.get("spacing", 0)))
+                    unit = ij_meta.get("zunit", "")
+                    if isinstance(unit, str) and unit.startswith("('") and unit.endswith("',)"):
+                        unit = unit[2:-3]
+                    self.Output.meta.axistags.setUnit("z", (self.decode_non_ascii(unit) if unit else ""))
+
+                if "t" in axes:
+                    self.Output.meta.axistags.setResolution("t", ij_meta.get("finterval", 0))
+                    unit = ij_meta.get("tunit", "")
+                    if isinstance(unit, str) and unit.startswith("('") and unit.endswith("',)"):
+                        unit = unit[2:-3]
+                    self.Output.meta.axistags.setUnit("t", (self.decode_non_ascii(unit) if unit else ""))
+
+            # Look for OME-TIFF metadata (possible in FIJI hyperstacks)
+            elif ome_meta:
+                xml = ET.fromstring(ome_meta)
+                ns = {"ome": "http://www.openmicroscopy.org/Schemas/OME/2016-06"}
+                image = xml.find("ome:Image", ns)
+                pixels = image.find("ome:Pixels", ns)
+                if pixels:
+                    size_trans_0 = {"x": "PhysicalSizeX", "y": "PhysicalSizeY"}
+                    size_trans_1 = {"z": "PhysicalSizeZ", "t": "TimeIncrement"}
+                    unit_trans_0 = {
+                        "x": "PhysicalSizeXUnit",
+                        "y": "PhysicalSizeYUnit",
+                        "z": "PhysicalSizeZUnit",
+                        "t": "TimeIncrementUnit",
+                    }
+
+                    for axis in axes:
+                        if axis.lower() == "c":
+                            continue
+                        elif axis.lower() in size_trans_0.keys():
+                            self.Output.meta.axistags.setResolution(
+                                axis.lower(), float(pixels.attrib.get(size_trans_0[axis], 0))
+                            )
+                            self.Output.meta.axistags.setUnit(
+                                axis.lower(), (self.decode_non_ascii(pixels.attrib.get(unit_trans_0[axis], "")))
+                            )
+                        else:
+                            self.Output.meta.axistags.setResolution(
+                                axis.lower(), float(pixels.attrib.get(size_trans_1[axis], 0))
+                            )
+                            self.Output.meta.axistags.setUnit(
+                                axis.lower(), (self.decode_non_ascii(pixels.attrib.get(unit_trans_0[axis], "")))
+                            )
+
+    def decode_non_ascii(self, raw_string: str):
+        return raw_string.encode("utf-8").decode("unicode_escape").encode("utf-16", "surrogatepass").decode("utf-16")
+
+    def get_tiff_res(self, frac):
+        if frac and frac.value[0] != 0:
+            resolution = frac.value[1] / frac.value[0]
+            if abs(resolution - round(resolution)) < 0.001:
+                resolution = round(resolution)
+            return resolution
+        return 0
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Filepath:
