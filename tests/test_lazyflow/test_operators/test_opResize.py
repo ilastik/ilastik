@@ -60,7 +60,7 @@ def test_resize_matches_skimage(graph):
         ((4, 5), (8, 6), "yx", (3, 3)),  # Upscaling
         ((11, 11), (11, 11), "yx", (4, 6)),  # Noop
         ((11, 7, 23), (6, 6, 6), "yzx", (5, 5, 5)),  # 3D and weird axes
-        ((5, 11, 8, 23), (2, 8, 8, 8), "tzyx", (1, 5, 5, 5)),  # 4D (bad idea, but technically valid), 1:1 along y
+        ((5, 11, 8, 23), (5, 8, 8, 8), "tzyx", (1, 5, 5, 5)),  # 1:1 along t and y
         ((10, 10, 3), (5, 5, 3), "yxc", (3, 3, 2)),  # c allowed to be present but not scaled
     ],
 )

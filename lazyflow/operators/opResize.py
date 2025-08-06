@@ -112,11 +112,10 @@ class OpResize(Operator):
             "c" not in input_axiskeys
             or self.TargetShape.value[input_axiskeys.index("c")] == self.RawImage.meta.getTaggedShape()["c"]
         ), "Cannot resize along channel axis"
-        if (
-            "t" in input_axiskeys
-            and self.TargetShape.value[input_axiskeys.index("t")] != self.RawImage.meta.getTaggedShape()["t"]
-        ):
-            logger.warning("Resizing along time axis. Are you sure this is what you want?")
+        assert (
+            "t" not in input_axiskeys
+            or self.TargetShape.value[input_axiskeys.index("t")] == self.RawImage.meta.getTaggedShape()["t"]
+        ), "Changing frame rate forbidden (write some tests to make sure this works as intended if you want to allow this)"
         self.ResizedImage.meta.assignFrom(self.RawImage.meta)
         self.ResizedImage.meta.shape = self.TargetShape.value
 
