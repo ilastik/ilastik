@@ -1,3 +1,24 @@
+###############################################################################
+#   lazyflow: data flow based lazy parallel computation framework
+#
+#       Copyright (C) 2011-2025, the ilastik developers
+#                                <team@ilastik.org>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the Lesser GNU General Public License
+# as published by the Free Software Foundation; either version 2.1
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Lesser General Public License for more details.
+#
+# See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
+# GNU Lesser General Public License version 2.1 and 3 respectively.
+# This information is also available on the ilastik web site at:
+#          http://ilastik.org/license/
+###############################################################################
 from unittest import mock
 
 import numpy
@@ -73,14 +94,14 @@ def test_resize_handles_blocks(graph, raw_shape, scaled_shape, axes, block_shape
 
 
 def test_interpolation_order(graph):
-    """1 is default, test 0."""
+    """1 (LINEAR) is default, test 0 (NEAREST)."""
     arr = numpy.indices((25, 25)).sum(0)
     data = vigra.taggedView(arr, "yx")
 
     op = OpResize(graph=graph)
     op.RawImage.setValue(data)
     op.TargetShape.setValue((5, 5))
-    op.InterpolationOrder.setValue(0)
+    op.InterpolationOrder.setValue(OpResize.Interpolation.NEAREST)
 
     op_resized = op.ResizedImage[:].wait()
 
@@ -94,6 +115,19 @@ def test_semantics_to_interpolation_covers_all_types(image_type: ImageTypes):
     assert (
         image_type in OpResize.semantics_to_interpolation
     ), f'specify appropriate interpolation order for "{image_type}" data semantics'
+
+
+@pytest.mark.parametrize("order", OpResize.Interpolation)
+def test_min_padding_exists_for_all_interpolations(order: OpResize.Interpolation):
+    """
+    This is mainly about halo required for upscaling. For downscaling, the antialiasing
+    halo was always sufficiently large also for interpolation.
+    Higher interpolation orders require more padding. For orders 0 and 1, the
+    required padding was empirically determined.
+    """
+    assert (
+        order in OpResize.required_min_padding
+    ), f"specify required minimum pixel padding for interpolation of order {order}"
 
 
 def test_raises_on_c_scaling(graph):

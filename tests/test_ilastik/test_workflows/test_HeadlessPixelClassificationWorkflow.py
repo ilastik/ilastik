@@ -373,7 +373,9 @@ def test_headless_ome_zarr_multiscale_export(testdir, tmp_path, sample_projects_
         ignore_training_axistags=True,
         output_format="multi-scale OME-Zarr",
         export_source="simple segmentation",
-        export_dtype="float32",  # Segmentation is uint8 by default, force float to expose interpolated values
+        # Default is uint8 for segmentation, use float so that we can check whether
+        # scaling produced non-integer values (i.e. not nearest-neighbor interpolated)
+        export_dtype="float32",
     )
 
     assert output_path.exists()

@@ -35,9 +35,19 @@ from lazyflow.utility.data_semantics import ImageTypes
 logger = logging.getLogger(__name__)
 
 
-def ceil_roi(roi: NDArray) -> NDArray:
+def expand_roi_to_nearest_integer(roi: NDArray) -> NDArray:
     """
-    Expand roi to nearest integer
+    Like ceil-rounding a bounding-box. This requires flooring the start.
+
+    Simple 1D example with start and stop between 0 and 1:
+
+    >>> expand_roi_to_nearest_integer(np.array([[0.1], [0.9]]))
+    array([[0.],
+           [1.]])
+
+    >>> expand_roi_to_nearest_integer(np.array([[0.5], [0.5]]))
+    array([[0.],
+           [1.]])
     """
     return np.array([np.floor(roi[0]), np.ceil(roi[1])])
 
@@ -117,18 +127,17 @@ class OpResize(Operator):
         self.scaling_factors = np.divide(shape_in, shape_out)
 
         interpolation_order = self.InterpolationOrder.value
-        # If higher-order interpolation is desired, need to figure out required padding
         assert (
             interpolation_order in self.required_min_padding
-        ), "supports only order 0 (nearest-neighbor) or 1 (linear)"
+        ), f"specify required padding for interpolation {interpolation_order} (cf test)"
 
-        if interpolation_order > 0:
+        if interpolation_order == self.Interpolation.NEAREST:
+            # No antialiasing for nearest-neighbor interpolation
+            self.antialiasing_sigmas = np.zeros_like(self.scaling_factors)
+        else:
             # Antialiasing only for downscale (f > 1), not identity or upscale.
             # This also ensures that we never run a gaussian across channels (since scaling along c is forbidden).
             self.antialiasing_sigmas = np.array([f / 4 if f > 1 else 0 for f in self.scaling_factors])
-        else:
-            # No antialiasing for nearest-neighbor interpolation
-            self.antialiasing_sigmas = np.zeros_like(self.scaling_factors)
 
     def execute(self, slot, subindex, roi, result):
         """
@@ -155,7 +164,9 @@ class OpResize(Operator):
         raw_roi_interpolation_halo = self._extend_halo_to_minimum(
             raw_roi_antialiasing_halo, self.required_min_padding[interpolation_order], axes_to_pad, raw_roi
         )
-        raw_roi_final_halo = np.clip(ceil_roi(raw_roi_interpolation_halo), 0, self.RawImage.meta.shape)
+        raw_roi_final_halo = np.clip(
+            expand_roi_to_nearest_integer(raw_roi_interpolation_halo), 0, self.RawImage.meta.shape
+        )
 
         raw = self.RawImage[roiToSlice(*raw_roi_final_halo)].wait().astype(np.float64)
         filtered = scipy_ndimage.gaussian_filter(raw, antialiasing_sigmas, mode="mirror")
