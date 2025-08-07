@@ -19,6 +19,7 @@ import vigra
 import z5py
 import zarr
 
+from ilastik.applets.featureSelection import FeatureSelectionConstraintError
 from lazyflow.utility.io_util.OMEZarrStore import OME_ZARR_V_0_4_KWARGS
 
 logger = logging.getLogger(__name__)
@@ -119,12 +120,13 @@ def test_headless_2d3c_with_permuted_raw_data_axis_from_training_data_raises(
 ):
     """
     default behavior is to try to apply training axistags to the batch data,
-    and therefore fail because raw data' axis (cyx) are not in the expected order (yxc)
+    and therefore fail because raw data axes (cyx) are not in the expected order (yxc).
+    Feature selection error because 3 is too small to compute features when misinterpreting c as y.
     """
     raw_3c100x100y: Path = create_h5(numpy.random.rand(3, 100, 100), axiskeys="cyx")
     output_path = tmp_path / "out_3c100x100y.h5"
 
-    with pytest.raises(FailedHeadlessExecutionException):
+    with pytest.raises(FailedHeadlessExecutionException, match=FeatureSelectionConstraintError.__name__):
         run_headless_pixel_classification(
             testdir,
             project=pixel_classification_ilp_2d3c,
@@ -362,6 +364,7 @@ def test_headless_ome_zarr_multiscale_export(testdir, tmp_path, sample_projects_
     """
     ilp_path = sample_projects_dir / "PixelClassification2d.ilp"
     # Use the original training data so that the simple segmentation contains both 1s and 2s
+    # And use 2d.h5 because it's large enough for the default scaling parameters to actually create a downscale
     raw_2d_path: Path = sample_projects_dir / "inputdata" / "2d.h5"
     output_path = tmp_path / "out_2d.zarr"
 

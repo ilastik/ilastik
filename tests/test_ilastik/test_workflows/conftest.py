@@ -15,7 +15,21 @@ def sample_projects_dir(tmp_path_factory) -> Path:
     projects_archive = zipfile.ZipFile(sample_projects_zip_path, mode="r")
     projects_archive.extractall(path=tmp_path)
 
-    shutil.copytree(sample_data_dir_path, tmp_path / "inputdata")
+    required_files = [
+        "2d.h5",
+        "2d3c.h5",
+        "2d3c_Probabilities.h5",
+        "3d1c.h5",
+        "3d1c_Probabilities.h5",
+        "5t2d_simple.h5",
+        "5t2d_Probabilities_simple.h5",
+    ]
+
+    for f in required_files:
+        source_path = sample_data_dir_path / f
+        target_path = tmp_path / "inputdata" / f
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_path, target_path)
 
     return tmp_path
 
