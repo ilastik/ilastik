@@ -86,7 +86,11 @@ def _match_target_scales_to_input(export_shape: TaggedShape, input_scales: Multi
         input_scalings = _multiscales_to_scalings(input_scales, source_scale_shape, export_shape.keys())
         target_shapes = []
         for scale_key, scale_factors in input_scalings.items():
-            target_shapes.append(ODict([(a, int(size / scale_factors[a])) for a, size in export_shape.items()]))
+            scaled_shape = ODict([(a, int(size / scale_factors[a])) for a, size in export_shape.items()])
+            spatials = [a for a in SPATIAL_AXES if a in scaled_shape]
+            if all(scaled_shape[a] <= 1 for a in spatials):
+                break
+            target_shapes.append(scaled_shape)
         target_scales = ODict(zip(input_scales.keys(), target_shapes))
 
     scales_items = []
