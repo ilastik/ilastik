@@ -1,25 +1,25 @@
 import http.server
 import json
+import logging
+import os
+import shutil
 import socket
+import tempfile
 import threading
 import time
 from functools import partial
 from pathlib import Path
-import shutil
-import logging
-import tempfile
-import os
 from typing import Dict, Optional, Union, Tuple
 
-import pytest
-import numpy
-import vigra
 import h5py
-import z5py
-import zipfile
+import numpy
 import psutil
+import pytest
+import vigra
+import z5py
 import zarr
 
+from ilastik.applets.featureSelection import FeatureSelectionConstraintError
 from lazyflow.utility.io_util.OMEZarrStore import OME_ZARR_V_0_4_KWARGS
 
 logger = logging.getLogger(__name__)
@@ -33,25 +33,6 @@ try:
     MPI_DEPENDENCIES_MET = bool(shutil.which("mpiexec"))
 except ImportError:
     MPI_DEPENDENCIES_MET = False
-
-
-@pytest.fixture
-def sample_projects_dir(tmp_path: Path) -> Path:
-    test_data_path = Path(__file__).parent.parent / "data"
-    sample_projects_zip_path = test_data_path / "test_projects.zip"
-    sample_data_dir_path = test_data_path / "inputdata"
-
-    projects_archive = zipfile.ZipFile(sample_projects_zip_path, mode="r")
-    projects_archive.extractall(path=tmp_path)
-
-    shutil.copytree(sample_data_dir_path, tmp_path / "inputdata")
-
-    return tmp_path
-
-
-@pytest.fixture
-def pixel_classification_ilp_2d3c(sample_projects_dir: Path) -> Path:
-    return sample_projects_dir / "PixelClassification2d3c.ilp"
 
 
 def create_h5(data: numpy.ndarray, axiskeys: str) -> Path:
@@ -80,6 +61,8 @@ def run_headless_pixel_classification(
     input_axes: str = "",
     output_format: str = "hdf5",
     ignore_training_axistags: bool = False,
+    export_source: str = "",
+    export_dtype: str = "",
 ):
     assert project.exists()
     if isinstance(raw_data, Path):
@@ -100,6 +83,12 @@ def run_headless_pixel_classification(
 
     if ignore_training_axistags:
         subprocess_args.append("--ignore_training_axistags")
+
+    if export_source:
+        subprocess_args.append(f"--export_source={export_source}")
+
+    if export_dtype:
+        subprocess_args.append(f"--export_dtype={export_dtype}")
 
     if num_distributed_workers:
         os.environ["OMPI_ALLOW_RUN_AS_ROOT"] = "1"
@@ -131,12 +120,13 @@ def test_headless_2d3c_with_permuted_raw_data_axis_from_training_data_raises(
 ):
     """
     default behavior is to try to apply training axistags to the batch data,
-    and therefore fail because raw data' axis (cyx) are not in the expected order (yxc)
+    and therefore fail because raw data axes (cyx) are not in the expected order (yxc).
+    Feature selection error because 3 is too small to compute features when misinterpreting c as y.
     """
     raw_3c100x100y: Path = create_h5(numpy.random.rand(3, 100, 100), axiskeys="cyx")
     output_path = tmp_path / "out_3c100x100y.h5"
 
-    with pytest.raises(FailedHeadlessExecutionException):
+    with pytest.raises(FailedHeadlessExecutionException, match=FeatureSelectionConstraintError.__name__):
         run_headless_pixel_classification(
             testdir,
             project=pixel_classification_ilp_2d3c,
@@ -364,3 +354,41 @@ def test_headless_from_ome_zarr_http_uri(
         assert exported.shape == (2, 100, 100)
         # Make sure the raw data was actually loaded (zarr fills chunks that fail to load with 0)
         assert numpy.count_nonzero(exported) > 10000
+
+
+def test_headless_ome_zarr_multiscale_export(testdir, tmp_path, sample_projects_dir):
+    """
+    Ensure that multiscale export works, generates scales,
+    and uses nearest-neighbor interpolation for Simple Segmentation export.
+    Based on `slot.meta.data_semantics` and the export mapping them to interpolation order.
+    """
+    ilp_path = sample_projects_dir / "PixelClassification2d.ilp"
+    # Use the original training data so that the simple segmentation contains both 1s and 2s
+    # And use 2d.h5 because it's large enough for the default scaling parameters to actually create a downscale
+    raw_2d_path: Path = sample_projects_dir / "inputdata" / "2d.h5"
+    output_path = tmp_path / "out_2d.zarr"
+
+    run_headless_pixel_classification(
+        testdir,
+        project=ilp_path,
+        raw_data=raw_2d_path,
+        output_filename_format=str(output_path),
+        ignore_training_axistags=True,
+        output_format="multi-scale OME-Zarr",
+        export_source="simple segmentation",
+        # Default is uint8 for segmentation, use float so that we can check whether
+        # scaling produced non-integer values (i.e. not nearest-neighbor interpolated)
+        export_dtype="float32",
+    )
+
+    assert output_path.exists()
+    group = zarr.open(str(output_path))
+    assert len(group.keys()) == 3
+    scaled_data = group["s1"]
+    assert scaled_data.shape == (1, 1, 1, 512, 672)
+    numpy.testing.assert_array_equal(
+        scaled_data.astype(numpy.uint8),
+        scaled_data,
+        "Scaled segmentation contained fractional values. Check that interpolation uses nearest-neighbor.",
+    )
+    assert group.attrs["multiscales"][0]["metadata"]["kwargs"]["order"] == 0, "interpolation misreported"

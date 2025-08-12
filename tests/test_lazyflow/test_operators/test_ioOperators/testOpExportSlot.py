@@ -22,6 +22,7 @@
 import os
 import tempfile
 import shutil
+from collections import OrderedDict
 from pathlib import Path
 
 import numpy
@@ -36,6 +37,7 @@ from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.ioOperators import OpInputDataReader, OpExportSlot, OpStackLoader
 from lazyflow.operators.ioOperators.opTiffSequenceReader import OpTiffSequenceReader
+from lazyflow.utility.io_util import multiscaleStore
 
 
 class TestOpExportSlot(object):
@@ -77,7 +79,7 @@ class TestOpExportSlot(object):
         finally:
             opRead.cleanUp()
 
-    def test_ome_zarr(self):
+    def test_ome_zarr_single_scale(self):
         data = numpy.random.random((90, 100)).astype(numpy.float32)
         data = vigra.taggedView(data, vigra.defaultAxistags("yx"))
 
@@ -112,6 +114,58 @@ class TestOpExportSlot(object):
                 written_file.attrs["multiscales"][0]["datasets"][0]["coordinateTransformations"]
                 == expected_transformations
             )
+        finally:
+            opRead.cleanUp()
+
+    def test_ome_zarr_multi_scale(self):
+        """Ensure multi-scale export generates one downscale for 550x510."""
+        # Chunk size is 506x505 for square 2D (by BigRequestStreamer default),
+        # so 550x510 is larger, and 275x255 is one chunk.
+        data = numpy.random.random((550, 510)).astype(numpy.float32)
+        data = vigra.taggedView(data, vigra.defaultAxistags("yx"))
+
+        graph = Graph()
+        opPiper = OpArrayPiper(graph=graph)
+        opPiper.Input.setValue(data)
+
+        opExport = OpExportSlot(graph=graph)
+        opExport.Input.connect(opPiper.Output)
+        opExport.OutputFormat.setValue("multi-scale OME-Zarr")
+        opExport.OutputFilenameFormat.setValue(self._tmpdir + "/test_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}")
+        opExport.CoordinateOffset.setValue((10, 20))
+
+        assert opExport.ExportPath.ready()
+        expected_export_path = Path(self._tmpdir) / "test_export_x20-530_y10-560.zarr"
+        assert Path(opExport.ExportPath.value) == expected_export_path
+
+        assert opExport.TargetScales.ready()
+        expected_scales: multiscaleStore.Multiscales = OrderedDict(
+            {
+                "s0": OrderedDict(zip("tczyx", (1, 1, 1, 550, 510))),
+                "s1": OrderedDict(zip("tczyx", (1, 1, 1, 275, 255))),
+            }
+        )
+        assert opExport.TargetScales.value == expected_scales
+
+        opExport.run_export()
+
+        opRead = OpInputDataReader(graph=graph)
+        try:
+            for i, scale in enumerate(["s0", "s1"]):
+                opRead.FilePath.setValue(str(expected_export_path / scale))
+                expected_data = data.withAxes("tczyx")  # OME-Zarr always tczyx
+                read_data = opRead.Output[:].wait()
+                if scale == "s0":  # only assert written data at raw scale here (scaling covered in OpResize)
+                    numpy.testing.assert_array_equal(read_data, expected_data)
+                written_file = z5py.ZarrFile(str(expected_export_path), "r")
+                expected_transformations = [
+                    {"type": "scale", "scale": [1.0, 1.0, 1.0, 2.0**i, 2.0**i]},
+                    {"type": "translation", "translation": [0.0, 0.0, 0.0, 10.0, 20.0]},
+                ]
+                assert (
+                    written_file.attrs["multiscales"][0]["datasets"][i]["coordinateTransformations"]
+                    == expected_transformations
+                )
         finally:
             opRead.cleanUp()
 

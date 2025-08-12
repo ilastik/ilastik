@@ -19,17 +19,15 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-import os
-import collections
 import contextlib
+import os
+from collections import namedtuple
 from functools import partial
 
 import numpy
 import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import roiFromShape
-from lazyflow.utility import OrderedSignal, format_known_keys, PathComponents, mkdir_p, isUrl
 from lazyflow.operators.ioOperators import (
     OpH5N5WriterBigDataset,
     OpStreamingH5N5Reader,
@@ -40,7 +38,13 @@ from lazyflow.operators.ioOperators import (
     OpExportMultipageTiffSequence,
     OpExportToArray,
 )
-from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr
+from lazyflow.roi import roiFromShape
+from lazyflow.utility import OrderedSignal, format_known_keys, PathComponents, mkdir_p, isUrl
+from lazyflow.utility.io_util.write_ome_zarr import (
+    write_ome_zarr,
+    generate_default_target_scales,
+    match_target_scales_to_input_excluding_upscales,
+)
 
 try:
     from lazyflow.operators.ioOperators import OpExportDvidVolume
@@ -51,7 +55,7 @@ except ImportError as ex:
         raise
     _supports_dvid = False
 
-FormatInfo = collections.namedtuple("FormatInfo", ("name", "extension", "min_dim", "max_dim"))
+FormatInfo = namedtuple("FormatInfo", ("name", "extension", "min_dim", "max_dim"))
 
 
 class OpExportSlot(Operator):
@@ -74,6 +78,7 @@ class OpExportSlot(Operator):
     )  # Add an offset to the roi coordinates in the export path (useful if Input is a subregion of a larger dataset)
 
     ExportPath = OutputSlot()
+    TargetScales = OutputSlot()  # Target scales for multi-scale OME-Zarr export
     FormatSelectionErrorMsg = OutputSlot()
 
     # Vigra supports some file formats that Ilastik doesn't handle, so we exclude "xv" and "exr" extensions.
@@ -91,6 +96,7 @@ class OpExportSlot(Operator):
         FormatInfo("n5", "n5", 0, 5),
         FormatInfo("compressed n5", "n5", 0, 5),
         FormatInfo("single-scale OME-Zarr", "zarr", 0, 5),
+        FormatInfo("multi-scale OME-Zarr", "zarr", 0, 5),
         FormatInfo("numpy", "npy", 0, 5),
         FormatInfo("dvid", "", 2, 5),
         FormatInfo("blockwise hdf5", "json", 0, 5),
@@ -108,6 +114,7 @@ class OpExportSlot(Operator):
         export_impls["n5"] = ("n5", self._export_h5n5)
         export_impls["compressed n5"] = ("n5", partial(self._export_h5n5, True))
         export_impls["single-scale OME-Zarr"] = ("zarr", self._export_ome_zarr)
+        export_impls["multi-scale OME-Zarr"] = ("zarr", self._export_ome_zarr_multiscale)
         export_impls["numpy"] = ("npy", self._export_npy)
         export_impls["dvid"] = ("", self._export_dvid)
         export_impls["blockwise hdf5"] = ("json", self._export_blockwise_hdf5)
@@ -133,13 +140,23 @@ class OpExportSlot(Operator):
         if self.OutputFormat.value in ("hdf5", "compressed hdf5") and self.OutputInternalPath.value == "":
             self.ExportPath.meta.NOTREADY = True
 
+        if self.OutputFormat.value == "multi-scale OME-Zarr":
+            self.TargetScales.meta.shape = (1,)
+            self.TargetScales.meta.dtype = object
+        else:
+            self.TargetScales.meta.NOTREADY = True
+
     def execute(self, slot, subindex, roi, result):
         if slot == self.ExportPath:
-            return self._executeExportPath(result)
+            result[0] = self._get_export_path()
+            return result
+        elif slot == self.TargetScales:
+            result[0] = self._get_target_scales()
+            return result
         else:
             assert False, "Unknown output slot: {}".format(slot.name)
 
-    def _executeExportPath(self, result):
+    def _get_export_path(self):
         path_format = self.OutputFilenameFormat.value
         file_extension = self._export_impls[self.OutputFormat.value][0]
 
@@ -173,8 +190,18 @@ class OpExportSlot(Operator):
             optional_replacements[key + "_start"] = start
             optional_replacements[key + "_stop"] = stop
         formatted_path = format_known_keys(path_format, optional_replacements, strict=False)
-        result[0] = formatted_path
-        return result
+        return formatted_path
+
+    def _get_target_scales(self):
+        input_shape = self.Input.meta.getTaggedShape()
+        dtype = self.Input.meta.dtype
+        if self.Input.meta.get("scales"):  # Input is multiscale
+            scales = match_target_scales_to_input_excluding_upscales(
+                input_shape, self.Input.meta.scales, self.Input.meta.active_scale
+            )
+        else:
+            scales = generate_default_target_scales(input_shape, dtype)
+        return scales
 
     def _updateFormatSelectionErrorMsg(self, *args):
         error_msg = self._get_format_selection_error_msg()
@@ -198,6 +225,7 @@ class OpExportSlot(Operator):
             "npy",
             "blockwise hdf5",
             "single-scale OME-Zarr",
+            "multi-scale OME-Zarr",
         ):
             return ""
 
@@ -231,6 +259,8 @@ class OpExportSlot(Operator):
         return FormatValidity.check(self.Input.meta.getTaggedShape(), self.Input.meta.dtype, output_format)
 
     def propagateDirty(self, slot, subindex, roi):
+        if slot in (self.CoordinateOffset, self.Input):
+            self.TargetScales.setDirty()
         if slot == self.OutputFormat or slot == self.OutputFilenameFormat:
             self.ExportPath.setDirty()
         if slot == self.OutputFormat:
@@ -265,15 +295,15 @@ class OpExportSlot(Operator):
             export_func = self._export_impls[output_format][1]
         except KeyError as e:
             raise NotImplementedError(f"Unknown export format: {output_format}") from e
-        if not isUrl(self.ExportPath.value):
-            mkdir_p(PathComponents(self.ExportPath.value).externalDirectory)
+        if not isUrl(self._get_export_path()):
+            mkdir_p(PathComponents(self._get_export_path()).externalDirectory)
         export_func()
 
     def _export_h5n5(self, compress=False):
         self.progressSignal(0)
 
         # Create and open the hdf5/n5 file
-        export_components = PathComponents(self.ExportPath.value)
+        export_components = PathComponents(self._get_export_path())
         try:
             with OpStreamingH5N5Reader.get_h5_n5_file(export_components.externalPath, mode="a") as h5N5File:
                 # Create a temporary operator to do the work for us
@@ -305,7 +335,7 @@ class OpExportSlot(Operator):
 
     def _export_npy(self):
         self.progressSignal(0)
-        export_path = self.ExportPath.value
+        export_path = self._get_export_path()
         try:
             opWriter = OpNpyWriter(parent=self)
             opWriter.Filepath.setValue(export_path)
@@ -319,7 +349,7 @@ class OpExportSlot(Operator):
 
     def _export_dvid(self):
         self.progressSignal(0)
-        export_path = self.ExportPath.value
+        export_path = self._get_export_path()
 
         opExport = OpExportDvidVolume(transpose_axes=True, parent=self)
         try:
@@ -337,7 +367,7 @@ class OpExportSlot(Operator):
 
     def _export_2d(self, fmt):
         self.progressSignal(0)
-        export_path = self.ExportPath.value
+        export_path = self._get_export_path()
         opExport = OpExport2DImage(parent=self)
         try:
             opExport.progressSignal.subscribe(self.progressSignal)
@@ -352,7 +382,7 @@ class OpExportSlot(Operator):
 
     def _export_3d_sequence(self, extension):
         self.progressSignal(0)
-        export_path_base, export_path_ext = os.path.splitext(self.ExportPath.value)
+        export_path_base, export_path_ext = os.path.splitext(self._get_export_path())
         export_path_pattern = export_path_base + "." + extension
 
         try:
@@ -375,7 +405,7 @@ class OpExportSlot(Operator):
 
     def _export_multipage_tiff(self):
         self.progressSignal(0)
-        export_path = self.ExportPath.value
+        export_path = self._get_export_path()
         try:
             opExport = OpExportMultipageTiff(parent=self)
             opExport.Filepath.setValue(export_path)
@@ -390,7 +420,7 @@ class OpExportSlot(Operator):
 
     def _export_multipage_tiff_sequence(self):
         self.progressSignal(0)
-        export_path_base, export_path_ext = os.path.splitext(self.ExportPath.value)
+        export_path_base, export_path_ext = os.path.splitext(self._get_export_path())
         export_path_pattern = export_path_base + ".tiff"
 
         try:
@@ -415,7 +445,17 @@ class OpExportSlot(Operator):
         self.progressSignal(0)
         offset_meta = self.CoordinateOffset.value if self.CoordinateOffset.ready() else None
         try:
-            write_ome_zarr(self.ExportPath.value, self.Input, offset_meta, self.progressSignal)
+            write_ome_zarr(self._get_export_path(), self.Input, self.progressSignal, offset_meta)
+        finally:
+            self.progressSignal(100)
+
+    def _export_ome_zarr_multiscale(self):
+        assert self.TargetScales.ready(), "export target scales must be configured for multi-scale export"
+        self.progressSignal(0)
+        target_scales = self._get_target_scales()
+        offset_meta = self.CoordinateOffset.value if self.CoordinateOffset.ready() else None
+        try:
+            write_ome_zarr(self._get_export_path(), self.Input, self.progressSignal, offset_meta, target_scales)
         finally:
             self.progressSignal(100)
 
@@ -464,6 +504,7 @@ class FormatValidity(object):
         "n5": ALL_DTYPES,
         "compressed n5": ALL_DTYPES,
         "single-scale OME-Zarr": ALL_DTYPES,
+        "multi-scale OME-Zarr": ALL_DTYPES,
     }
 
     # { extension : (min_ndim, max_ndim) }
@@ -485,6 +526,7 @@ class FormatValidity(object):
         "n5": (0, 5),
         "compressed n5": (0, 5),
         "single-scale OME-Zarr": (0, 5),
+        "multi-scale OME-Zarr": (0, 5),
     }
 
     # { extension : [allowed_num_channels] }
@@ -506,6 +548,7 @@ class FormatValidity(object):
         "n5": (),  # ditto
         "compressed n5": (),  # ditto
         "single-scale OME-Zarr": (),
+        "multi-scale OME-Zarr": (),
     }
 
     @classmethod
