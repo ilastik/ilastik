@@ -83,7 +83,7 @@ def _match_target_scales_to_input(export_shape: TaggedShape, input_scales: Multi
         # Export shape is modified (cropped).
         # Get source multiscale's scaling factors relative to the (uncropped) input shape and compute cropped scale
         # shapes from that.
-        input_scalings = _multiscales_to_scalings(input_scales, source_scale_shape, source_scale_shape.keys())
+        input_scalings = _multiscales_to_scalings(input_scales, source_scale_shape, export_shape.keys())
         target_shapes = []
         for scale_key, scale_factors in input_scalings.items():
             target_shapes.append(ODict([(a, int(size / scale_factors[a])) for a, size in export_shape.items()]))

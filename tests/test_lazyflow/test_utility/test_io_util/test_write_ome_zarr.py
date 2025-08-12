@@ -641,6 +641,21 @@ def test_match_target_scales_to_input(shape, input_scales, expected_shapes):
                 ]
             ),
         ),
+        (  # Export is cropped + input has no channels
+            tagged_shape("zyxc", (16, 16, 16, 3)),
+            OrderedDict(
+                [
+                    ("source_scale", tagged_shape("zyx", (25, 25, 25))),
+                    ("4", tagged_shape("zyx", (8, 8, 8))),
+                ]
+            ),
+            OrderedDict(
+                [
+                    ("source_scale", tagged_shape("tczyx", (1, 3, 16, 16, 16))),
+                    ("4", tagged_shape("tczyx", (1, 3, 5, 5, 5))),
+                ]
+            ),
+        ),
     ],
 )
 def test_match_target_scales_to_input_excluding_upscales(shape, input_scales, expected_shapes):
