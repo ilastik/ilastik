@@ -34,9 +34,9 @@ class DatasetColumn:
     Location = 1
     InternalID = 2
     TaggedShape = 3
-    Scale = 4
-    Range = 5
-    PixelSizes = 6
+    PixelSize = 4
+    Scale = 5
+    Range = 6
     NumColumns = 7
 
 
@@ -164,7 +164,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
                 DatasetColumn.TaggedShape: "Shape",
                 DatasetColumn.Range: "Data Range",
                 DatasetColumn.Scale: "Resolution Level",
-                DatasetColumn.PixelSizes: "Pixel Sizes",
+                DatasetColumn.PixelSize: "Pixel Size",
             }
             return InfoColumnNames[section]
         elif orientation == Qt.Vertical:
@@ -183,7 +183,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             DatasetColumn.TaggedShape: "",
             DatasetColumn.Range: "",
             DatasetColumn.Scale: "",
-            DatasetColumn.PixelSizes: "",
+            DatasetColumn.PixelSize: "",
         }
 
         if len(self._op.DatasetGroupOut) <= laneIndex or len(self._op.DatasetGroupOut[laneIndex]) <= self._roleIndex:
@@ -223,23 +223,18 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
                 )
             return UninitializedDisplayData[index.column()]
 
-        if index.column() == DatasetColumn.PixelSizes:
-            axistags = getattr(datasetInfo, "axistags", None)
-            axis_units = getattr(datasetInfo, "axis_units", None)
-            if axistags is not None and axis_units is not None:
-                axis_units = json.loads(axis_units)
-                axes, resolutions, units = [], [], []
-                for axis in axistags:
-                    if str(axis.typeFlags) == "Space" or str(axis.typeFlags) == "Time":
-                        axes.append(axis.key)
-                        resolutions.append(axis.resolution)
-                        unit = axis_units[axis.key]
-                        if unit is not None:
-                            units.append(unit)
-                        else:
-                            units.append("None")
-                return str(", ".join(f"{ax}: {res} {un}" for ax, res, un in zip(axes, resolutions, units)))
-            return "None Found"
+        if index.column() == DatasetColumn.PixelSize:
+            if not datasetInfo.axis_units:
+                return UninitializedDisplayData[index.column()]
+            axis_strings = [
+                (
+                    f"{tag.key}: {tag.resolution or '-'}" + f" {datasetInfo.axis_units[tag.key]}"
+                    if datasetInfo.axis_units[tag.key]
+                    else ""
+                )
+                for tag in datasetInfo.axistags
+            ]
+            return ", ".join(axis_strings)
 
         raise NotImplementedError(f"Unknown column: row={index.row()}, column={index.column()}")
 
