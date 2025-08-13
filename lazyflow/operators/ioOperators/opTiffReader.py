@@ -29,6 +29,7 @@ import vigra
 from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.roi import roiToSlice
 from lazyflow.utility.helpers import get_default_axisordering
+from lazyflow.utility.io_util import tiff_encoding
 
 logger = logging.getLogger(__name__)
 
@@ -103,9 +104,7 @@ class OpTiffReader(Operator):
         self.Output.meta.axistags = vigra.defaultAxistags(axes)
         self.Output.meta.dtype = numpy.dtype(dtype_code).type
 
-        self.Output.meta.axis_units = {}
-        for key in axes:
-            self.Output.meta.axis_units[key] = ""
+        self.Output.meta.axis_units = {key: "" for key in axes}
 
         if ij_meta or ome_meta:
             self.setPixelSizes(axes, ij_meta, ome_meta)
@@ -152,36 +151,22 @@ class OpTiffReader(Operator):
         with tifffile.TiffFile(self._filepath, mode="r") as f:
             if ij_meta:
                 meta = f.pages[0].tags
-
-                # TIFF format stores resolution values as Rational tuples (numerator, denominator)
-
-                if "x" in axes:
-                    self.Output.meta.axistags.setResolution("x", self.get_tiff_res(meta.get("XResolution", None)))
-                    unit = ij_meta.get("unit", "")
-                    if isinstance(unit, str) and unit.startswith("('") and unit.endswith("',)"):
-                        unit = unit[2:-3]
-                    self.Output.meta.axis_units["x"] = self.decode_non_ascii(unit) if unit else ""
-
-                if "y" in axes:
-                    self.Output.meta.axistags.setResolution("y", self.get_tiff_res(meta.get("YResolution", None)))
-                    unit = ij_meta.get("yunit", "")
-                    if isinstance(unit, str) and unit.startswith("('") and unit.endswith("',)"):
-                        unit = unit[2:-3]
-                    self.Output.meta.axis_units["y"] = self.decode_non_ascii(unit) if unit else ""
-
-                if "z" in axes:
-                    self.Output.meta.axistags.setResolution("z", (ij_meta.get("spacing", 0)))
-                    unit = ij_meta.get("zunit", "")
-                    if isinstance(unit, str) and unit.startswith("('") and unit.endswith("',)"):
-                        unit = unit[2:-3]
-                    self.Output.meta.axis_units["z"] = self.decode_non_ascii(unit) if unit else ""
-
-                if "t" in axes:
-                    self.Output.meta.axistags.setResolution("t", ij_meta.get("finterval", 0))
-                    unit = ij_meta.get("tunit", "")
-                    if isinstance(unit, str) and unit.startswith("('") and unit.endswith("',)"):
-                        unit = unit[2:-3]
-                    self.Output.meta.axis_units["t"] = self.decode_non_ascii(unit) if unit else ""
+                resolution_keys = {"x": "XResolution", "y": "YResolution", "z": "spacing", "t": "finterval"}
+                unit_keys = {"x": "unit", "y": "yunit", "z": "zunit", "t": "tunit"}
+                for ax in axes:
+                    if ax == "c":
+                        continue
+                    self.Output.meta.axistags.setResolution(
+                        ax,
+                        (
+                            self.get_tiff_res(meta.get(resolution_keys[ax], None))
+                            if ax in "xy"
+                            else ij_meta.get(resolution_keys[ax], 0)
+                        ),
+                    )
+                    # (TIFF format stores resolution values as Rational tuples (numerator, denominator))
+                    unit = self.handle_stringified_tuples(ij_meta.get(unit_keys[ax], ""))
+                    self.Output.meta.axis_units[ax] = tiff_encoding.fromASCII(unit) if unit else ""
 
             # Look for OME-TIFF metadata (possible in FIJI hyperstacks)
             else:
@@ -190,9 +175,8 @@ class OpTiffReader(Operator):
                 image = xml.find("ome:Image", ns)
                 pixels = image.find("ome:Pixels", ns)
                 if pixels:
-                    size_trans_0 = {"x": "PhysicalSizeX", "y": "PhysicalSizeY"}
-                    size_trans_1 = {"z": "PhysicalSizeZ", "t": "TimeIncrement"}
-                    unit_trans_0 = {
+                    size_keys = {"x": "PhysicalSizeX", "y": "PhysicalSizeY", "z": "PhysicalSizeZ", "t": "TimeIncrement"}
+                    unit_keys = {
                         "x": "PhysicalSizeXUnit",
                         "y": "PhysicalSizeYUnit",
                         "z": "PhysicalSizeZUnit",
@@ -202,31 +186,42 @@ class OpTiffReader(Operator):
                     for axis in axes:
                         if axis.lower() == "c":
                             continue
-                        elif axis.lower() in size_trans_0.keys():
+                        elif axis.lower() in size_keys.keys():
                             self.Output.meta.axistags.setResolution(
-                                axis.lower(), float(pixels.attrib.get(size_trans_0[axis], 0))
+                                axis.lower(), float(pixels.attrib.get(size_keys[axis], 0))
                             )
-                            self.Output.meta.axis_units[axis.lower()] = self.decode_non_ascii(
-                                pixels.attrib.get(unit_trans_0[axis], "")
+                            self.Output.meta.axis_units[axis.lower()] = tiff_encoding.fromASCII(
+                                pixels.attrib.get(unit_keys[axis], "")
                             )
                         else:
                             self.Output.meta.axistags.setResolution(
-                                axis.lower(), float(pixels.attrib.get(size_trans_1[axis], 0))
+                                axis.lower(), float(pixels.attrib.get(size_keys[axis], 0))
                             )
-                            self.Output.meta.axis_units[axis.lower()] = self.decode_non_ascii(
-                                pixels.attrib.get(unit_trans_0[axis], "")
+                            self.Output.meta.axis_units[axis.lower()] = tiff_encoding.fromASCII(
+                                pixels.attrib.get(unit_keys[axis], "")
                             )
-
-    def decode_non_ascii(self, raw_string: str):
-        return raw_string.encode("utf-8").decode("unicode_escape").encode("utf-16", "surrogatepass").decode("utf-16")
 
     def get_tiff_res(self, frac):
+        """
+        Rounding is employed for axes with resolutions deviating extremely slightly from integer values.
+        This is because the TIFF standard introduces floating-point precision errors
+        by storing resolutions as numerator/denominator pairs.
+        """
         if frac and frac.value[0] != 0:
             resolution = frac.value[1] / frac.value[0]
-            if abs(resolution - round(resolution)) < 0.001:
+            if abs(resolution - round(resolution)) < 0.00001:
                 resolution = round(resolution)
             return resolution
         return 0
+
+    def handle_stringified_tuples(self, unit):
+        """
+        Necessary because sometimes FIJI units are stored as 1-item tuples,
+        and thus the unit needs to be extracted from the enveloping tuple syntax.
+        """
+        if isinstance(unit, str) and unit.startswith("('") and unit.endswith("',)"):
+            return unit[2:-3]
+        return unit
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Filepath:
