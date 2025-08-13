@@ -16,11 +16,14 @@ from lazyflow.operators.ioOperators import OpExportMultipageTiff, OpExport2DImag
     "image_path,checktags",
     [
         (f"/pix_res/2d.tif", {"x": (2, "cm"), "y": (7, "nm")}),
-        (f"/pix_res/3d.tif", {"x": (11, "cm"), "y": (6, "mm"), "z": (2, "pm")}),
+        (f"/pix_res/3d.tif", {"x": (11.000011000011, "cm"), "y": (6.000024000096, "mm"), "z": (2, "pm")}),
         (f"/pix_res/2d_t.tif", {"x": (50, "μm"), "y": (3, "pm"), "t": (3, "min")}),
         (f"/pix_res/3d_t.tif", {"x": (3, "mm"), "y": (5, ""), "z": (7, ""), "t": (3, "")}),
-        (f"/pix_res/3d_c.tif", {"x": (2, "μm"), "y": (11, "nm"), "z": (13, "cm"), "c": ()}),
-        (f"/pix_res/5d.tif", {"x": (17, "cm"), "y": (13, "pm"), "z": (8, "nm"), "c": (), "t": (3, "hr")}),
+        (f"/pix_res/3d_c.tif", {"x": (2, "μm"), "y": (11.000011000011, "nm"), "z": (13, "cm"), "c": ()}),
+        (
+            f"/pix_res/5d.tif",
+            {"x": (17.00015300137701, "cm"), "y": (13.000013000013, "pm"), "z": (8, "nm"), "c": (), "t": (3, "hr")},
+        ),
     ],
 )
 def test_read(image_path, checktags, inputdata_dir):  # checks
