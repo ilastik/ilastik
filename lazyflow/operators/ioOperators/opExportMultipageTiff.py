@@ -30,7 +30,7 @@ import tifffile
 from lazyflow.graph import InputSlot, Operator
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.utility import OrderedSignal, RoiRequestBufferIter
-
+from lazyflow.utility.io_util import tiff_encoding
 
 logger = logging.getLogger(__name__)
 
@@ -112,9 +112,9 @@ class OpExportMultipageTiff(Operator):
 
                     unit_value = axis_units.get(axis, "")
                     if unit_value != "":
-                        meta_dict[unit_key] = unit_value.encode("unicode_escape").decode("ascii")
+                        meta_dict[unit_key] = tiff_encoding.toASCII(unit_value)
                     else:
-                        meta_dict[unit_key] = axis_units[axis] = ""
+                        meta_dict[unit_key] = ""
 
         with tifffile.TiffWriter(self.Filepath.value, byteorder="<", ome=True) as writer:
             writer.write(
