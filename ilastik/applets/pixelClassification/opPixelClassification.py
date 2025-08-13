@@ -43,6 +43,8 @@ from lazyflow.operators import (
     OpCompressedUserLabelArray,
     OpFeatureMatrixCache,
 )
+from lazyflow.utility.data_semantics import ImageTypes
+
 import ilastik_feature_selection
 import numpy as np
 
@@ -524,6 +526,7 @@ class OpArgmaxChannel(Operator):
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.dtype = numpy.uint8  # Assumes no more than 255 channels
         self.Output.meta.shape = self.Input.meta.shape[:-1] + (1,)
+        self.Output.meta.data_semantics = ImageTypes.Labels
         assert self.Input.meta.getAxisKeys()[-1] == "c"
         assert self.Input.meta.shape[-1] <= 255
 

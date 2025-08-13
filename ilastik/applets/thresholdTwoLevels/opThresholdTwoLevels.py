@@ -38,7 +38,7 @@ from lazyflow.operators import (
 )
 from ilastik.applets.base.applet import DatasetConstraintError
 from lazyflow.operators.generic import OpConvertDtype, OpPixelOperator
-
+from lazyflow.utility.data_semantics import ImageTypes
 
 # local
 from .thresholdingTools import OpAnisotropicGaussianSmoothing5d, select_labels
@@ -260,6 +260,7 @@ class OpLabeledThreshold(Operator):
 
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.dtype = np.uint32
+        self.Output.meta.data_semantics = ImageTypes.Labels
 
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty()

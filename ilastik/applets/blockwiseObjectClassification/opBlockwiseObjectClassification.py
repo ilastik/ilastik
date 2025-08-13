@@ -21,6 +21,7 @@
 # Built-in
 from __future__ import division
 import logging
+from typing import Tuple, Sequence
 
 # Third-party
 import numpy
@@ -176,10 +177,15 @@ class OpSingleBlockObjectPrediction(Operator):
         self.PredictionImage.meta.assignFrom(self._opPredictionImage.Output.meta)
         self.PredictionImage.meta.shape = tuple(numpy.subtract(self.block_roi[1], self.block_roi[0]))
 
-        self.ProbabilityChannelImage.meta.assignFrom(self._opProbabilityChannelStacker.Output.meta)
-        probability_shape = numpy.subtract(self.block_roi[1], self.block_roi[0])
-        probability_shape[-1] = self._opProbabilityChannelStacker.Output.meta.shape[-1]
-        self.ProbabilityChannelImage.meta.shape = tuple(probability_shape)
+        # Output is not ready when trying to load old OC projects
+        # (e.g. ObjectClassification2d_wPred.ilp in test_projects.zip)
+        if self._opProbabilityChannelStacker.Output.ready():
+            self.ProbabilityChannelImage.meta.assignFrom(self._opProbabilityChannelStacker.Output.meta)
+            probability_shape = numpy.subtract(self.block_roi[1], self.block_roi[0])
+            probability_shape[-1] = self._opProbabilityChannelStacker.Output.meta.shape[-1]
+            self.ProbabilityChannelImage.meta.shape = tuple(probability_shape)
+        else:
+            self.ProbabilityChannelImage.meta.NOTREADY = True
 
         # Cache the entire block
         self._opPredictionCache.BlockShape.setValue(self._opPredictionCache.Input.meta.shape)
@@ -287,10 +293,18 @@ class OpBlockwiseObjectClassification(Operator):
         self._block_shape_dict = self.BlockShape3dDict.value
         self._halo_padding_dict = self.HaloPadding3dDict.value
 
-        self.PredictionImage.meta.assignFrom(self.RawImage.meta)
-        self.PredictionImage.meta.dtype = (
-            numpy.uint8
-        )  # Ultimately determined by meta.mapping_dtype from OpRelabelSegmentation
+        # Set up a dummy single block op to get meta, especially channel names, dtype, original_shape and data semantics.
+        # Actual ops for individual blocks are instantiated and set up with appropriate roi/shape during this op's execute.
+        zero_shape = numpy.zeros_like(self.RawImage.meta.shape)
+        dummy_roi = (zero_shape, numpy.ones_like(self.RawImage.meta.shape))
+        dummy_op_single_block = self._setupOpSingleBlockObjectPrediction(dummy_roi, zero_shape)
+        self.PredictionImage.meta.assignFrom(dummy_op_single_block.PredictionImage.meta)
+        self.ProbabilityChannelImage.meta.assignFrom(dummy_op_single_block.PredictionImage.meta)
+        dummy_op_single_block.cleanUp()
+
+        # Carry over relevant meta from RawImage (with modifications)
+        # drange not correct here but this preserves old behavior (not sure if it's important)
+        self.PredictionImage.meta.drange = self.RawImage.meta.drange
         prediction_tagged_shape = self.RawImage.meta.getTaggedShape()
         prediction_tagged_shape["c"] = 1
         self.PredictionImage.meta.shape = tuple(prediction_tagged_shape.values())
@@ -307,8 +321,10 @@ class OpBlockwiseObjectClassification(Operator):
 
         self.PredictionImage.meta.ram_usage_per_requested_pixel = prediction_ruprp
 
-        self.ProbabilityChannelImage.meta.assignFrom(self.RawImage.meta)
         self.ProbabilityChannelImage.meta.dtype = numpy.float32
+        # ideal_blockshape and drange not correct here, preserves old behavior (cf PredictionImage above)
+        self.ProbabilityChannelImage.meta.ideal_blockshape = self.RawImage.meta.ideal_blockshape
+        self.ProbabilityChannelImage.meta.drange = self.RawImage.meta.drange
         prediction_channels_tagged_shape = self.RawImage.meta.getTaggedShape()
         prediction_channels_tagged_shape["c"] = self.LabelsCount.value
         self.ProbabilityChannelImage.meta.shape = tuple(prediction_channels_tagged_shape.values())
@@ -427,17 +443,23 @@ class OpBlockwiseObjectClassification(Operator):
             block_roi = (block_start, block_stop)
 
             # Instantiate pipeline
-            opBlockPipeline = OpSingleBlockObjectPrediction(block_roi, halo_padding, parent=self)
-            opBlockPipeline.RawImage.connect(self.RawImage)
-            opBlockPipeline.SegmentationImage.connect(self.SegmentationImage)
-            opBlockPipeline.Classifier.connect(self.Classifier)
-            opBlockPipeline.LabelsCount.connect(self.LabelsCount)
-            opBlockPipeline.SelectedFeatures.connect(self.SelectedFeatures)
+            opBlockPipeline = self._setupOpSingleBlockObjectPrediction(block_roi, halo_padding)
 
             # Forward dirtyness
             opBlockPipeline.PredictionImage.notifyDirty(bind(self._handleDirtyBlock, block_start))
 
             self._blockPipelines[block_start] = opBlockPipeline
+
+    def _setupOpSingleBlockObjectPrediction(
+        self, block_roi: Tuple[Sequence[int], Sequence[int]], halo_padding: Sequence[int]
+    ):
+        opBlockPipeline = OpSingleBlockObjectPrediction(block_roi, halo_padding, parent=self)
+        opBlockPipeline.RawImage.connect(self.RawImage)
+        opBlockPipeline.SegmentationImage.connect(self.SegmentationImage)
+        opBlockPipeline.Classifier.connect(self.Classifier)
+        opBlockPipeline.LabelsCount.connect(self.LabelsCount)
+        opBlockPipeline.SelectedFeatures.connect(self.SelectedFeatures)
+        return opBlockPipeline
 
     def get_blockshape(self):
         return self._getFullShape(self.BlockShape3dDict.value)

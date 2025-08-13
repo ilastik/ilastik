@@ -1,0 +1,69 @@
+import shutil
+import zipfile
+from pathlib import Path
+
+import pytest
+
+
+@pytest.fixture(scope="session")
+def sample_projects_dir(tmp_path_factory) -> Path:
+    tmp_path = tmp_path_factory.mktemp("test_projects")
+    test_data_path = Path(__file__).parent.parent / "data"
+    sample_projects_zip_path = test_data_path / "test_projects.zip"
+    sample_data_dir_path = test_data_path / "inputdata"
+
+    projects_archive = zipfile.ZipFile(sample_projects_zip_path, mode="r")
+    projects_archive.extractall(path=tmp_path)
+
+    required_files = [
+        "2d.h5",
+        "2d3c.h5",
+        "2d3c_Probabilities.h5",
+        "3d1c.h5",
+        "3d1c_Probabilities.h5",
+        "5t2d_simple.h5",
+        "5t2d_Probabilities_simple.h5",
+    ]
+
+    for f in required_files:
+        source_path = sample_data_dir_path / f
+        target_path = tmp_path / "inputdata" / f
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_path, target_path)
+
+    return tmp_path
+
+
+@pytest.fixture
+def autocontext_ilp_2d3c(sample_projects_dir: Path) -> Path:
+    return sample_projects_dir / "Autocontext2d3c.ilp"
+
+
+@pytest.fixture
+def pixel_classification_ilp_2d3c(sample_projects_dir: Path) -> Path:
+    return sample_projects_dir / "PixelClassification2d3c.ilp"
+
+
+@pytest.fixture
+def object_classification_from_predictions_ilp_2d3c(sample_projects_dir: Path) -> Path:
+    return sample_projects_dir / "ObjectClassification2d3c_wPred.ilp"
+
+
+@pytest.fixture
+def object_classification_from_labels_ilp_2d3c(sample_projects_dir: Path) -> Path:
+    return sample_projects_dir / "ObjectClassification2d3c_wLabels.ilp"
+
+
+@pytest.fixture
+def multicut_ilp_3d1c(sample_projects_dir: Path) -> Path:
+    return sample_projects_dir / "Boundary-basedSegmentationwMulticut3d1c.ilp"
+
+
+@pytest.fixture
+def tracking_with_learning_from_predictions_ilp_5t2d(sample_projects_dir: Path) -> Path:
+    return sample_projects_dir / "TrackingwLearning5t2d_wPred.ilp"
+
+
+@pytest.fixture
+def cell_density_counting_ilp_2d3c(sample_projects_dir: Path) -> Path:
+    return sample_projects_dir / "CellDensityCounting2d3c.ilp"
