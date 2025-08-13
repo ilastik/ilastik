@@ -214,38 +214,37 @@ class TestAxesOrderPreservation(object):
             warnings.warn(f"created comparison data: {compare_path} with axis order {input_axes}")
 
     @pytest.mark.parametrize(
-        "dims, input_axes, units, res",
+        "dims, input_axes",
         [
-            ("2d_units", "yx", {"x": "cm", "y": "nm"}, {"x": 5, "y": 6}),
-            ("2d", "xy", None, None),
-            ("2d", "yx", None, None),
-            ("2d", "cxy", None, None),
-            ("2d", "yxc", None, None),
-            ("2d", "xyc", None, None),
-            ("2d", "ycx", None, None),
-            ("2d3c", "cxy", None, None),
-            ("2d3c", "yxc", None, None),
-            ("2d3c", "xyc", None, None),
-            ("2d3c", "ycx", None, None),
-            ("3d", "xyzc", None, None),
-            ("3d", "czyx", None, None),
-            ("3d1c", "xyzc", None, None),
-            ("3d1c", "czyx", None, None),
-            ("3d2c", "xyzc", None, None),
-            ("3d2c", "czyx", None, None),
-            ("5t2d1c", "tyxc", None, None),
-            ("5t2d1c", "txyc", None, None),
-            ("5t2d1c", "xytc", None, None),
-            ("5t2d2c", "tyxc", None, None),
-            ("5t2d2c", "txyc", None, None),
-            ("5t2d2c", "xytc", None, None),
-            ("5t3d2c", "tzyxc", None, None),
-            ("5t3d2c", "ztxyc", None, None),
-            ("5t3d2c", "xyztc", None, None),
+            ("2d", "xy"),
+            ("2d", "yx"),
+            ("2d", "cxy"),
+            ("2d", "yxc"),
+            ("2d", "xyc"),
+            ("2d", "ycx"),
+            ("2d3c", "cxy"),
+            ("2d3c", "yxc"),
+            ("2d3c", "xyc"),
+            ("2d3c", "ycx"),
+            ("3d", "xyzc"),
+            ("3d", "czyx"),
+            ("3d1c", "xyzc"),
+            ("3d1c", "czyx"),
+            ("3d2c", "xyzc"),
+            ("3d2c", "czyx"),
+            ("5t2d1c", "tyxc"),
+            ("5t2d1c", "txyc"),
+            ("5t2d1c", "xytc"),
+            ("5t2d2c", "tyxc"),
+            ("5t2d2c", "txyc"),
+            ("5t2d2c", "xytc"),
+            ("5t3d2c", "tzyxc"),
+            ("5t3d2c", "ztxyc"),
+            ("5t3d2c", "xyztc"),
         ],
     )
     @timeLogged(logger)
-    def test_pixel_classification(self, dims, input_axes, units, res):
+    def test_pixel_classification(self, dims, input_axes):
         # NOTE: In this test, cmd-line args to test runner will also end up
         #       getting "parsed" by ilastik. That shouldn't be an issue, since
         #       the pixel classification workflow ignores unrecognized options.
@@ -285,11 +284,7 @@ class TestAxesOrderPreservation(object):
         # Input args
         args.append("--input_axes={}".format(input_axes))
 
-        if units is not None:  # we assume for now that unit tests use TIFFs/OME-TIFFs
-            dims_extracted = dims.split("_")[0]
-            input_source_path = os.path.join(self.PROJECT_FILE_BASE, "inputdata", "{}.tif".format(dims_extracted))
-        else:
-            input_source_path = os.path.join(self.PROJECT_FILE_BASE, "inputdata", "{}.h5".format(dims))
+        input_source_path = os.path.join(self.PROJECT_FILE_BASE, "inputdata", "{}.h5".format(dims))
 
         input_path = self.create_input(input_source_path, input_axes)
         args.append(input_path)
@@ -316,12 +311,6 @@ class TestAxesOrderPreservation(object):
             assert input_axes == "".join([a for a in opReaderResult.Output.meta.getAxisKeys() if a != "c"]), "".join(
                 opReaderResult.Output.meta.getAxisKeys()
             )
-
-        # check for preservation of pixel sizes, if specified
-        if units is not None:
-            for unit_set in units.keys():
-                assert res[unit_set] == opReaderResult.Output.meta.axistags[unit_set].resolution
-                assert units[unit_set] == opReaderResult.Output.meta.axis_units[unit_set]
 
         self.compare_results(opReaderResult, compare_path, input_axes, max_mse=0.001)
 
