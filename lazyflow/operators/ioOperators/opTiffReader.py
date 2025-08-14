@@ -194,12 +194,7 @@ class OpTiffReader(Operator):
                                 pixels.attrib.get(unit_keys[axis], "")
                             )
                         else:
-                            self.Output.meta.axistags.setResolution(
-                                axis.lower(), float(pixels.attrib.get(size_keys[axis], 0))
-                            )
-                            self.Output.meta.axis_units[axis.lower()] = tiff_encoding.fromASCII(
-                                pixels.attrib.get(unit_keys[axis], "")
-                            )
+                            continue
 
     def get_tiff_res(self, frac):
         """
@@ -220,7 +215,9 @@ class OpTiffReader(Operator):
         and thus the unit needs to be extracted from the enveloping tuple syntax.
         """
         if isinstance(unit, str) and unit.startswith("('") and unit.endswith("',)"):
-            return unit[2:-3]
+            if len(unit) > 5:
+                return unit[2:-3]
+            return ""
         return unit
 
     def propagateDirty(self, slot, subindex, roi):
