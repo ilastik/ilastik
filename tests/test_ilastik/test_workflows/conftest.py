@@ -17,6 +17,7 @@ def sample_projects_dir(tmp_path_factory) -> Path:
 
     required_files = [
         "2d.h5",
+        "2d.tif",
         "2d3c.h5",
         "2d3c_Probabilities.h5",
         "3d1c.h5",
