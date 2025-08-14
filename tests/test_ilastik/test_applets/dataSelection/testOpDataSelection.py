@@ -22,6 +22,7 @@ import json
 import os
 import shutil
 from collections import defaultdict, OrderedDict
+from typing import Tuple
 from unittest import mock
 from unittest.mock import Mock
 
@@ -35,9 +36,11 @@ from PIL import Image
 
 from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY
 from lazyflow.utility.pathHelpers import PathComponents
-from lazyflow.graph import OperatorWrapper
+from lazyflow.graph import Operator, OperatorWrapper, InputSlot, OutputSlot
+from lazyflow.operators.generic import OpMultiArrayMerger
 from ilastik.applets.dataSelection.opDataSelection import (
     OpMultiLaneDataSelectionGroup,
+    OpDataSelectionGroup,
     OpDataSelection,
     MultiscaleUrlDatasetInfo,
     RelativeFilesystemDatasetInfo,
@@ -897,6 +900,47 @@ class TestOpDataSelection_PrecomputedChunks:
         assert datasetInfo.working_scale == scale_keys[1]
 
 
+class OpShapeChecker(Operator):
+    """A mock op that emulates the checking of shape constraints across roles,
+    like OpObjectExtraction._checkConstraints or the tagged-shape check in OpSimpleStacker (multicut)."""
+
+    Role1 = InputSlot()
+    Role2 = InputSlot()
+    Role3 = InputSlot()
+    Output = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setup_calls = 0
+        self.input_ready_checks = 0
+
+        self.Role1.notifyReady(self._checkConstraints)  # Shape check as in OpObjectExtraction
+        self.Role2.notifyReady(self._checkConstraints)
+
+    def _checkConstraints(self, *_):
+        if self.Role1.ready() and self.Role2.ready():
+            self.input_ready_checks += 1
+            rawTaggedShape = self.Role1.meta.getTaggedShape()
+            segTaggedShape = self.Role2.meta.getTaggedShape()
+            rawTaggedShape["c"] = None
+            segTaggedShape["c"] = None
+            if dict(rawTaggedShape) != dict(segTaggedShape):
+                raise DatasetConstraintError(
+                    "test", f"Mismatching shapes would fail in OpObjectExtraction: {rawTaggedShape} != {segTaggedShape}"
+                )
+
+    def setupOutputs(self):
+        # Shape check as in OpSimpleStacker
+        self.setup_calls += 1
+        shape1 = dict(self.Role1.meta.getTaggedShape())
+        shape2 = dict(self.Role2.meta.getTaggedShape())
+        shape3 = dict(self.Role3.meta.getTaggedShape())
+        if shape1 != shape2 or shape2 != shape3:
+            raise DatasetConstraintError(
+                "test", f"Must not try to set up this op with mismatching input images: {shape1}, {shape2}, {shape3}"
+            )
+
+
 class TestOpDataSelection_OMEZarr:
     SHAPE_SCALED_ZYX = (1, 10, 12)
     SHAPE_ORIGINAL_ZYX = (1, 20, 24)
@@ -1031,6 +1075,59 @@ class TestOpDataSelection_OMEZarr:
         # Make sure that instantiating a DatasetInfo does not load more than one scale into a zarr.Array
         _ = MultiscaleUrlDatasetInfo(url="https://some.url.com/dataset.zarr")
         assert zarr.Array.instance_counter == 1
+
+    @pytest.fixture
+    def op_data_lane(self, graph) -> OpDataSelectionGroup:
+        op_data_lane = OpDataSelectionGroup(graph=graph)
+        op_data_lane.WorkingDirectory.setValue(os.getcwd())
+        op_data_lane.DatasetRoles.setValue(["Raw Data", "Segmentation", "Another Role"])
+        assert len(op_data_lane.DatasetGroup) == 3 and len(op_data_lane.ImageGroup) == 3
+        return op_data_lane
+
+    def test_scale_change_without_transaction_forbidden(self, op_data_lane, mock_ome_zarr_metadata):
+        dataset_info_raw = MultiscaleUrlDatasetInfo(url="https://s3.localhost/rawdata.zarr")
+        dataset_info_segmentation = MultiscaleUrlDatasetInfo(url="https://s3.localhost/segmentation.zarr")
+        dataset_info_other = MultiscaleUrlDatasetInfo(url="https://s3.localhost/sthelse.zarr")
+        op_data_lane.DatasetGroup[0].setValue(dataset_info_raw)
+        op_data_lane.DatasetGroup[1].setValue(dataset_info_segmentation)
+        op_data_lane.DatasetGroup[2].setValue(dataset_info_other)
+
+        with pytest.raises(AssertionError, match="must disconnect"):
+            op_data_lane.ActiveScaleGroup.setValue("s0")
+
+    @pytest.fixture
+    def cross_role_ops(self, op_data_lane, graph) -> Tuple[OpDataSelectionGroup, OpShapeChecker]:
+        """A data selection lane op chained with a shape-checking op that cannot work with inputs of different shapes.
+        This emulates e.g. object classification or multicut."""
+        opSumInputs = OpMultiArrayMerger(graph=graph)  # Problematic op from object classification
+        opSumInputs.MergingFunction.setValue(sum)
+        opSumInputs.Inputs.resize(1)  # Rare kind of op with a level-1 input; unreadiness signalling was buggy here
+        # In OpThresholdTwoLevels, the second data role first goes through a bunch of other ops,
+        # but opSumInputs.Inputs[0] is connected to the output of that chain.
+        opSumInputs.Inputs[0].connect(op_data_lane.ImageGroup[1])
+        op_shape_check = OpShapeChecker(graph=graph)
+        op_shape_check.Role1.connect(op_data_lane.ImageGroup[0])
+        op_shape_check.Role2.connect(opSumInputs.Output)
+        op_shape_check.Role3.connect(op_data_lane.ImageGroup[2])
+        return op_data_lane, op_shape_check
+
+    def test_multiscales_can_be_used_in_multiple_roles(self, cross_role_ops, mock_ome_zarr_metadata):
+        op_data_lane, op_shape_check = cross_role_ops
+        dataset_info_raw = MultiscaleUrlDatasetInfo(url="https://s3.localhost/rawdata.zarr")
+        dataset_info_segmentation = MultiscaleUrlDatasetInfo(url="https://s3.localhost/segmentation.zarr")
+        dataset_info_other = MultiscaleUrlDatasetInfo(url="https://s3.localhost/sthelse.zarr")
+        op_data_lane.DatasetGroup[0].setValue(dataset_info_raw)
+        op_data_lane.DatasetGroup[1].setValue(dataset_info_segmentation)
+        assert op_shape_check.input_ready_checks == 1
+        op_data_lane.DatasetGroup[2].setValue(dataset_info_other)
+        assert op_shape_check.setup_calls == 1, "setting all datasets should set up shape-checking op"
+
+        op_data_lane.ScaleChangeFinished.disconnect()
+        op_data_lane.ActiveScaleGroup.setValue("s0")
+        assert op_shape_check.input_ready_checks == 1  # should not have propagated to shape checker
+        op_data_lane.ScaleChangeFinished.setValue(True)
+        assert op_shape_check.input_ready_checks == 2
+        assert op_shape_check.setup_calls == 2, "changing scale should trigger shape-checking op setup"
 
 
 class TestOpDataSelection_DatasetInfo:

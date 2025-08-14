@@ -718,4 +718,8 @@ class DataSelectionGui(QWidget):
         self.addLanes([MultiscaleUrlDatasetInfo(url=dvid_url, subvolume_roi=subvolume_roi)], roleIndex)
 
     def handleScaleSelected(self, laneIndex, scale_key):
-        self.topLevelOperator.get_lane(laneIndex).ActiveScaleGroup.setValue(scale_key)
+        op_lane = self.topLevelOperator.get_lane(laneIndex)
+        op_lane.ScaleChangeFinished.disconnect()
+        op_lane.ActiveScaleGroup.setValue(scale_key)
+        op_lane.ScaleChangeFinished.setValue(True)
+        self.showDataset(laneIndex)  # Update layer order according to current role tab

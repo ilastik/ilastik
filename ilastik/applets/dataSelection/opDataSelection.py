@@ -45,7 +45,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik import Project
 from ilastik.utility import OpMultiLaneWrapper
 from ilastik.workflow import Workflow
-from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import DEFAULT_SCALE_KEY
+from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
 from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -550,8 +550,9 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         return self.url
 
     def create_data_reader(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
-        scale_input_slot = getattr(parent, "ActiveScale", None)
-        op_reader = OpInputDataReader(parent=parent, graph=graph, FilePath=self.url, ActiveScale=scale_input_slot)
+        op_reader = OpInputDataReader(
+            parent=parent, graph=graph, FilePath=self.url, ActiveScale=parent.ActiveScale.value
+        )
         return op_reader.Output
 
     @property
@@ -787,6 +788,8 @@ class OpDataSelection(Operator):
     ProjectDataGroup = InputSlot(stype="string", optional=True)
     WorkingDirectory = InputSlot(stype="filestring")  # : The filesystem directory where the project file is located
     Dataset = InputSlot(stype="object")  # : A DatasetInfo object
+    # : Transaction slot to prevent setups of error states while changing scale across roles
+    ScaleChangeFinished = InputSlot(stype="bool", value=True)
     ActiveScale = InputSlot(stype="string", optional=True)  # : The currently selected scale (for multiscale data)
 
     # Outputs
@@ -833,7 +836,9 @@ class OpDataSelection(Operator):
         self.Dataset.notifyUnready(self._clean_up_all_children)
         self.Dataset.setOrConnectIfAvailable(Dataset)
 
-    def _clean_up_all_children(self, *args) -> None:
+        self.ScaleChangeFinished.notifyUnready(self._clean_up_all_children)
+
+    def _clean_up_all_children(self, *_) -> None:
         self.Image.disconnect()
         # This relies on self.children being in the same order as the graph.
         for op in reversed(self.children):
@@ -916,8 +921,10 @@ class OpDataSelectionGroup(Operator):
     WorkingDirectory = InputSlot(stype="filestring")
     DatasetRoles = InputSlot(stype="object")
 
-    # Must mark as optional because not all subslots are required.
-    DatasetGroup = InputSlot(stype="object", level=1, optional=True)  # "Group" as in group of slots
+    # Must mark as optional because not all subslots are required. "Group" as in group of slots
+    DatasetGroup = InputSlot(stype="object", level=1, optional=True)
+    # Transaction slot to prevent setups of error states while changing scale across roles
+    ScaleChangeFinished = InputSlot(stype="bool", value=True)
     ActiveScaleGroup = InputSlot(stype="string", level=1, optional=True, value=DEFAULT_SCALE_KEY)
 
     # Outputs
@@ -984,15 +991,18 @@ class OpDataSelectionGroup(Operator):
                 OpDataSelection,
                 parent=self,
                 operator_kwargs={"forceAxisOrder": self._forceAxisOrder},
-                broadcastingSlotNames=["ProjectFile", "ProjectDataGroup", "WorkingDirectory"],
+                broadcastingSlotNames=["ProjectFile", "ProjectDataGroup", "WorkingDirectory", "ScaleChangeFinished"],
             )
             self.ImageGroup.connect(self._opDatasets.Image)
             self._opDatasets.Dataset.connect(self.DatasetGroup)
             self._opDatasets.ProjectFile.connect(self.ProjectFile)
             self._opDatasets.ProjectDataGroup.connect(self.ProjectDataGroup)
             self._opDatasets.WorkingDirectory.connect(self.WorkingDirectory)
+            self._opDatasets.ScaleChangeFinished.connect(self.ScaleChangeFinished)
             self._opDatasets.ActiveScale.connect(self.ActiveScaleGroup)
             self.DatasetGroupOut.connect(self._opDatasets.DatasetOut)
+
+            self.ActiveScaleGroup.notifyDirty(self._ensure_transaction_in_progress)
 
         for role_index, opDataSelection in enumerate(self._opDatasets):
             opDataSelection.RoleName.setValue(self._roles[role_index])
@@ -1015,6 +1025,12 @@ class OpDataSelectionGroup(Operator):
     def propagateDirty(self, slot, subindex, roi):
         # Output slots are directly connected to internal operators
         pass
+
+    def _ensure_transaction_in_progress(self, *_):
+        # Setting scale while the op is fully ready is forbidden.
+        # Doing this will set scale on the internal OpDataSelection for each data role one by one,
+        # causing setupOutputs throughout the workflow with different data roles providing different data shape.
+        assert not self.ScaleChangeFinished.ready(), "must disconnect ScaleChangeFinished first before changing scale"
 
 
 class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):
