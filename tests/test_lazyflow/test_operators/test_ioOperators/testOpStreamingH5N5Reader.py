@@ -19,6 +19,8 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
+import json
+from pathlib import Path
 from typing import List
 
 import numpy
@@ -27,6 +29,7 @@ import vigra
 import z5py
 
 from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
+from tests.test_ilastik.test_workflows.conftest import sample_projects_dir
 
 
 @pytest.fixture(params=["test.h5", "test.n5"])
@@ -69,4 +72,26 @@ def test_reader_loads_data_with_axistags(graph, h5n5_file, data):
 
     assert op.OutputImage.meta.shape == data.shape
     assert op.OutputImage.meta.axistags == axistags
+    numpy.testing.assert_array_equal(op.OutputImage.value, data)
+
+
+def test_reader_loads_axistags(graph, h5n5_file, data):
+    axistags = vigra.AxisTags(
+        vigra.AxisInfo("x", vigra.AxisType.Space),
+        vigra.AxisInfo("y", vigra.AxisType.Space),
+        vigra.AxisInfo("z", vigra.AxisType.Space),
+        vigra.AxisInfo("c", vigra.AxisType.Channels),
+        vigra.AxisInfo("t", vigra.AxisType.Time),
+    )
+    axis_units = {"x": "cm", "y": "nm", "z": "m", "t": "sec"}
+    h5n5_file.create_group("volume").create_dataset("data", data=data)
+    h5n5_file["volume/data"].attrs["axistags"] = axistags.toJSON()
+    h5n5_file["volume/data"].attrs["axis_units"] = json.dumps(axis_units)
+    op = OpStreamingH5N5Reader(graph=graph)
+    op.H5N5File.setValue(h5n5_file)
+    op.InternalPath.setValue("volume/data")
+
+    assert op.OutputImage.meta.shape == data.shape
+    assert op.OutputImage.meta.axistags == axistags
+    assert op.OutputImage.meta.axis_units == axis_units
     numpy.testing.assert_array_equal(op.OutputImage.value, data)
