@@ -108,6 +108,10 @@ class InvalidTransformationError(ValueError):
     pass
 
 
+class ScaleNotFoundError(KeyError):
+    pass
+
+
 @dataclass(frozen=True)
 class OMEZarrCoordinateTransformation:
     """Used by OME-Zarr export to adjust export metadata according to input."""
@@ -534,7 +538,7 @@ class OMEZarrStore(MultiscaleStore):
                 else self._ome_spec["multiscales"][0]
             )
         except KeyError:
-            raise ValueError(
+            raise ScaleNotFoundError(
                 f'Found multiscale store, but could not find metadata for "{selected_scale}" inside it.'
                 f"\n\nMultiscale store found at: {self.base_uri}"
                 f"\n\nFull metadata: {self._ome_spec}"

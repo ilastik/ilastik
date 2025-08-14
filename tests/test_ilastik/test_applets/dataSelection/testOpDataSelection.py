@@ -34,6 +34,8 @@ from pathlib import Path
 import zarr
 from PIL import Image
 
+from lazyflow.utility.io_util.write_ome_zarr import OME_ZARR_V_0_4_KWARGS
+from lazyflow.utility.io_util.OMEZarrStore import ScaleNotFoundError
 from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY
 from lazyflow.utility.pathHelpers import PathComponents
 from lazyflow.graph import Operator, OperatorWrapper, InputSlot, OutputSlot
@@ -1128,6 +1130,133 @@ class TestOpDataSelection_OMEZarr:
         op_data_lane.ScaleChangeFinished.setValue(True)
         assert op_shape_check.input_ready_checks == 2
         assert op_shape_check.setup_calls == 2, "changing scale should trigger shape-checking op setup"
+
+    @pytest.fixture
+    def two_ome_zarrs(self, tmp_path) -> Tuple[Path, Path]:
+        """
+        Sets up a two random OME-Zarr datasets, one with 2 and one with 3 scales.
+        Returns absolute path to the two datasets.
+        The two-scales dataset represents a multiscale segmentation exported
+        from the first downscale of the three-scales dataset.
+        """
+        subdir3 = "scales3.zarr"
+        subdir2 = "scales2.zarr"
+        zarr_dir3 = tmp_path / subdir3
+        zarr_dir2 = tmp_path / subdir2
+        zarr_dir3.mkdir(parents=True, exist_ok=True)
+        zarr_dir2.mkdir(parents=True, exist_ok=True)
+
+        dataset_shape = [2, 3, 4, 100, 100]  # tczyx for good measure
+        chunk_size = [2, 3, 3, 64, 64]
+        axes_json = [
+            {"type": "space", "name": "t"},
+            {"type": "space", "name": "c"},
+            {"type": "space", "name": "z"},
+            {"type": "space", "name": "y"},
+            {"type": "space", "name": "x"},
+        ]
+        zattrs3 = {
+            "multiscales": [
+                {
+                    "name": "some.zarr",
+                    "version": "0.4",
+                    "axes": axes_json,
+                    "datasets": [
+                        {
+                            "path": "s0",
+                            "coordinateTransformations": [
+                                {"scale": [1.0 for _ in dataset_shape], "type": "scale"},
+                            ],
+                        },
+                        {
+                            "path": "s1",
+                            "coordinateTransformations": [
+                                {"scale": [2.0 for _ in dataset_shape], "type": "scale"},
+                            ],
+                        },
+                        {
+                            "path": "s2",
+                            "coordinateTransformations": [
+                                {"scale": [4.0 for _ in dataset_shape], "type": "scale"},
+                            ],
+                        },
+                    ],
+                    "coordinateTransformations": [],
+                },
+            ]
+        }
+        zattrs2 = {
+            "multiscales": [
+                {
+                    "name": "some.zarr",
+                    "version": "0.4",
+                    "axes": axes_json,
+                    "datasets": [  # omit what was the raw scale on the three-scales dataset
+                        {
+                            "path": "s1",
+                            "coordinateTransformations": [
+                                {"scale": [2.0 for _ in dataset_shape], "type": "scale"},
+                            ],
+                        },
+                        {
+                            "path": "s2",
+                            "coordinateTransformations": [
+                                {"scale": [4.0 for _ in dataset_shape], "type": "scale"},
+                            ],
+                        },
+                    ],
+                    "coordinateTransformations": [],
+                },
+            ]
+        }
+        (zarr_dir3 / ".zattrs").write_text(json.dumps(zattrs3))
+        (zarr_dir2 / ".zattrs").write_text(json.dumps(zattrs2))
+
+        image_original = numpy.random.randint(0, 256, dataset_shape, dtype=numpy.uint16)
+        image_scaled = image_original[:, :, :, ::2, ::2]
+        image_scaled2 = image_scaled[:, :, :, ::2, ::2]
+        chunks = tuple(chunk_size)
+        zarr.array(
+            image_original, chunks=chunks, store=zarr.DirectoryStore(str(zarr_dir3 / "s0")), **OME_ZARR_V_0_4_KWARGS
+        )
+        zarr.array(
+            image_scaled, chunks=chunks, store=zarr.DirectoryStore(str(zarr_dir3 / "s1")), **OME_ZARR_V_0_4_KWARGS
+        )
+        zarr.array(
+            image_scaled2, chunks=chunks, store=zarr.DirectoryStore(str(zarr_dir3 / "s2")), **OME_ZARR_V_0_4_KWARGS
+        )
+        zarr.array(
+            image_scaled, chunks=chunks, store=zarr.DirectoryStore(str(zarr_dir2 / "s1")), **OME_ZARR_V_0_4_KWARGS
+        )
+        zarr.array(
+            image_scaled2, chunks=chunks, store=zarr.DirectoryStore(str(zarr_dir2 / "s2")), **OME_ZARR_V_0_4_KWARGS
+        )
+
+        return zarr_dir2, zarr_dir3
+
+    def test_missing_scale_in_other_role_raises(self, cross_role_ops, two_ome_zarrs):
+        """
+        2scales is the "segmentation", 3scales is the "raw data".
+        This mimics the scenario with multiscale export v1:
+        The user runs e.g. pixel classification on the first downscale (s1) of the 3scales raw data and then
+        exports "multi-scale OME-Zarr".
+        The export, 2scales, has no s0 because it was exported from the s1 downscale of 3scales,
+        and the multiscale export doesn't do upscaling to match scales larger than the working scale.
+        """
+        op_data_lane, op_shape_check = cross_role_ops
+        path_zarr_2scales, path_zarr_3scales = two_ome_zarrs
+        dataset_info_raw = MultiscaleUrlDatasetInfo(url=path_zarr_3scales.as_uri())
+        dataset_info_segmentation = MultiscaleUrlDatasetInfo(url=path_zarr_2scales.as_uri())
+        dataset_info_other = MultiscaleUrlDatasetInfo(url=path_zarr_2scales.as_uri())
+        op_data_lane.DatasetGroup[0].setValue(dataset_info_raw)
+        op_data_lane.DatasetGroup[1].setValue(dataset_info_segmentation)
+        op_data_lane.DatasetGroup[2].setValue(dataset_info_other)
+        assert op_shape_check.setup_calls == 1, "setting all datasets should set up shape-checking op"
+
+        with pytest.raises(ScaleNotFoundError):
+            op_data_lane.ScaleChangeFinished.disconnect()
+            op_data_lane.ActiveScaleGroup.setValue("s0")
+            op_data_lane.ScaleChangeFinished.setValue(True)
 
 
 class TestOpDataSelection_DatasetInfo:
