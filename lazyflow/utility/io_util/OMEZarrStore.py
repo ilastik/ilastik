@@ -44,9 +44,6 @@ logger = logging.getLogger(__name__)
 
 ZARR_EXT = ".zarr"
 
-OME_ZARR_V_0_4_KWARGS = dict(dimension_separator="/", normalize_keys=False)
-OME_ZARR_V_0_1_KWARGS = dict(dimension_separator=".")
-
 OME_ZARR_DATASET = Dict[Literal["path", "coordinateTransformations"], Any]  # single dataset (= scale)
 OME_ZARR_MULTISCALE = Dict[  # single multiscales entry of a json-validated OME-Zarr zattrs (any version)
     # The spec allows for multiple multiscales, but in practice we only ever see one.
@@ -258,8 +255,8 @@ def _get_zarr_cache_max_size() -> int:
     return math.floor(caches_max * permissible_fraction_max)
 
 
-def _try_authenticated_aws_s3(uri, kwargs, mode, test_path) -> Optional[FSStore]:
-    authenticated_store = FSStore(uri, mode=mode, anon=False, **kwargs)
+def _try_authenticated_aws_s3(uri, mode, test_path) -> Optional[FSStore]:
+    authenticated_store = FSStore(uri, mode=mode, anon=False)
     try:
         logger.info(f"Trying AWS S3 with S3FS credentials, path={test_path} at uri={uri}.")
         _ = authenticated_store[test_path]
@@ -287,7 +284,7 @@ def _try_authenticated_aws_s3(uri, kwargs, mode, test_path) -> Optional[FSStore]
     return None
 
 
-def _try_authenticated_s3_compatible(uri, kwargs, e, test_path) -> FSStore:
+def _try_authenticated_s3_compatible(uri, e, test_path) -> FSStore:
     split_bucket = uri.split("/", 4)
     if len(split_bucket) < 5:  # Does not follow S3 pattern (https://s3.server.org/bucket/file)
         raise ConnectionError(
@@ -297,7 +294,7 @@ def _try_authenticated_s3_compatible(uri, kwargs, e, test_path) -> FSStore:
     base_uri_inc_bucket = "/".join(split_bucket[:4])
     sub_uri = split_bucket[4]
     fs = s3fs.S3FileSystem(anon=False, endpoint_url=base_uri_inc_bucket)
-    store = FSStore(sub_uri, fs=fs, **kwargs)
+    store = FSStore(sub_uri, fs=fs)
     try:
         logger.info(
             f"Trying S3-compatible server with S3FS credentials, path={sub_uri}/{test_path} in bucket={base_uri_inc_bucket}."
@@ -321,7 +318,7 @@ def _try_authenticated_s3_compatible(uri, kwargs, e, test_path) -> FSStore:
     return store
 
 
-def _ensure_connection_and_get_store(uri: str, mode="r", **kwargs) -> FSStore:
+def _ensure_connection_and_get_store(uri: str, mode="r") -> FSStore:
     test_path = ".zattrs"
     if uri.startswith("file:"):
         # Zarr's FSStore implementation doesn't unescape file URLs before piping them to
@@ -330,10 +327,10 @@ def _ensure_connection_and_get_store(uri: str, mode="r", **kwargs) -> FSStore:
         uri = os.fsdecode(unquote_to_bytes(uri))
     if uri.startswith("s3:"):
         # s3fs.S3FileSystem defaults to anon=False, but we want to try anon=True first
-        store = FSStore(uri, anon=True, mode=mode, **kwargs)
+        store = FSStore(uri, anon=True, mode=mode)
     else:
         # Non-S3 don't like to be called with anon keyword
-        store = FSStore(uri, mode=mode, **kwargs)
+        store = FSStore(uri, mode=mode)
     try:
         store[test_path]
         # Any error not handled here is either a successful connection (even 404), or an unknown problem
@@ -345,12 +342,12 @@ def _ensure_connection_and_get_store(uri: str, mode="r", **kwargs) -> FSStore:
             # Depending on bucket setup, AWS S3 may respond with "PermissionError: Access Denied"
             # even if the bucket is public (but the .zattrs file is not at this URI).
             # So test if authentication is set up, but continue with the unauthenticated store if not.
-            authenticated_store = _try_authenticated_aws_s3(uri, kwargs, mode, test_path)
+            authenticated_store = _try_authenticated_aws_s3(uri, mode, test_path)
             if authenticated_store is not None:
                 store = authenticated_store
         if isinstance(e, ClientResponseError) and e.status == 403:
             # Server requires authentication. Try if it's an S3-compatible store.
-            store = _try_authenticated_s3_compatible(uri, kwargs, e, test_path)
+            store = _try_authenticated_s3_compatible(uri, e, test_path)
     return store
 
 
@@ -544,10 +541,7 @@ class OMEZarrStore(MultiscaleStore):
             )
         axistags = _axistags_from_multiscale(self._multiscale_spec)
         datasets = self._multiscale_spec["datasets"]
-        if self._multiscale_spec["version"] == "0.1":
-            uncached_store = _ensure_connection_and_get_store(self.base_uri, **OME_ZARR_V_0_1_KWARGS)
-        else:
-            uncached_store = _ensure_connection_and_get_store(self.base_uri, **OME_ZARR_V_0_4_KWARGS)
+        uncached_store = _ensure_connection_and_get_store(self.base_uri)
         # There is an additional block cache in front of OpOMEZarrMultiscaleReader, so e.g. when
         # the user scrolls across z back and forth, this does not trigger requests to the store.
         # But blocks can be misaligned with file size in the store. This cache can prevent downloading
