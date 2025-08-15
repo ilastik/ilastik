@@ -474,6 +474,7 @@ class DataSelectionGui(QWidget):
         except Exception as e:
             self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
             QMessageBox.critical(self, "File selection error", str(e))
+            logger.error(e, exc_info=True)
 
     def applyDatasetInfos(self, new_infos: List[DatasetInfo], info_slots: List[Slot]):
         original_infos = []

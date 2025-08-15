@@ -22,7 +22,7 @@ import logging
 import pathlib
 from functools import partial
 from time import perf_counter
-from typing import Callable
+from typing import Type
 
 from PyQt5.QtCore import pyqtSignal, QThread
 from PyQt5.QtWidgets import (
@@ -73,7 +73,7 @@ class CheckRemoteStoreWorker(QThread):
     success = pyqtSignal(object)  # returns MultiscaleStore
     error = pyqtSignal(str)  # returns error message
 
-    def __init__(self, parent, store_init: Callable):
+    def __init__(self, parent, store_init: Type[MultiscaleStore.__init__]):
         super().__init__(parent)
         self.store_init = store_init
 
