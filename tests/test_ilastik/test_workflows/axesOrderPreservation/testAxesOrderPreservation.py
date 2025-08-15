@@ -273,6 +273,7 @@ class TestAxesOrderPreservation(object):
         # args.append('--output_format=png sequence')
         args.append("--export_source=Simple Segmentation")
         args.append("--output_filename_format=" + output_path)
+
         args.append("--output_format=hdf5")
         args.append("--export_dtype=uint8")
         # args.append("--output_axis_order=")
@@ -282,7 +283,9 @@ class TestAxesOrderPreservation(object):
 
         # Input args
         args.append("--input_axes={}".format(input_axes))
+
         input_source_path = os.path.join(self.PROJECT_FILE_BASE, "inputdata", "{}.h5".format(dims))
+
         input_path = self.create_input(input_source_path, input_axes)
         args.append(input_path)
 

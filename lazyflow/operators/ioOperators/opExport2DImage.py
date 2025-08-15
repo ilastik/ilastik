@@ -22,9 +22,11 @@
 import os
 
 import numpy
+import tifffile
 import vigra
 
 from lazyflow.graph import Operator, InputSlot
+from lazyflow.utility.io_util import tiff_encoding
 
 from .opExportToArray import OpExportToArray
 
@@ -82,7 +84,44 @@ class OpExport2DImage(Operator):
             len(data.shape) == 3 and data.axistags.channelIndex < 3
         ), "Image has shape {}, channelIndex is {}".format(data.shape, data.axistags.channelIndex)
 
-        vigra.impex.writeImage(data, self.Filepath.value)
+        extension = os.path.splitext(self.Filepath.value)[1][1:]
+
+        # now write any pixel sizes
+        if (
+            extension in ["tif", "tiff"]
+            and hasattr(self.Input.meta, "axis_units")
+            and any(self.Input.meta.axis_units.items())
+        ):
+            data = data.squeeze()
+            x = None
+            y = None
+            axes = "YX"
+            if tagged_shape["c"] > 1:
+                axes = "CYX"
+            if self.Input.meta.axis_units["x"]:
+                x = tiff_encoding.toASCII(self.Input.meta.axis_units["x"])
+            if self.Input.meta.axis_units["y"]:
+                y = tiff_encoding.toASCII(self.Input.meta.axis_units["y"])
+
+            imagej_metadata = {
+                "spacing": 1.0,  # this is equal to the z-axis and gets handled differently in non-2d images
+                "unit": x,
+                "yunit": y,
+                "axes": axes,
+            }
+
+            tifffile.imwrite(
+                self.Filepath.value,
+                data,
+                imagej=True,
+                metadata=imagej_metadata,
+                resolution=(
+                    1 / self.Input.meta.axistags["x"].resolution,
+                    1 / self.Input.meta.axistags["y"].resolution,
+                ),  # standard tiff convention is to store pixels/space but internally we prefer and use space/pixel
+            )
+        else:
+            vigra.impex.writeImage(data, self.Filepath.value)
 
 
 if __name__ == "__main__":
