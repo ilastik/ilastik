@@ -2,8 +2,10 @@ from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import division
 from builtins import range
+from typing import Any, Dict
 from past.utils import old_div
 import numpy as np
+import numpy.typing as npt
 import os
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
@@ -792,7 +794,22 @@ class OpConservationTracking(Operator):
         traxelstore = ProbabilityGenerator()
 
         logger.info("fetching region features and division probabilities")
-        feats = self.ObjectFeatures(time_range).wait()
+        feats: Dict[int, Dict[str, Dict[str, npt.NDArray]]] = self.ObjectFeatures(time_range).wait()
+
+        # check if any time frames have no objects:
+        def _is_empty_frame(feature_dict: Dict[str, Dict[str, npt.NDArray]]) -> bool:
+            return feature_dict[default_features_key]["RegionCenter"].shape[0] <= 1
+
+        empty_frames = [i for i, f in feats.items() if _is_empty_frame(f)]
+        if empty_frames:
+            raise DatasetConstraintError(
+                "Tracking",
+                f"Empty found {empty_frames} - this is not supported. Try a time selection without these frames included.",
+            )
+
+        for ef in empty_frames:
+            time_range.pop(time_range.index(ef))
+            feats.pop(ef)
 
         if with_div:
             if not self.DivisionProbabilities.ready() or len(self.DivisionProbabilities([0]).wait()[0]) == 0:
