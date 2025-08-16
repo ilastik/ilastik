@@ -496,14 +496,31 @@ class DataExportGui(QWidget):
             userSelection[0] = False
 
     def deleteAllResults(self):
+        table_exporter = getattr(self.parentApplet, "_tableExporter", None)
+        if table_exporter:
+            # Get the settings which should contain the file path
+            settings_tuple = table_exporter.get_table_export_settings()
+            if settings_tuple and settings_tuple[0]:
+                settings = settings_tuple[0]
+                csv_path = settings.get("file path")
+
         for innerOp in self.topLevelOperator:
             operatorView = innerOp
+            # Delete the ilastik file
             pathComp = PathComponents(operatorView.ExportPath.value, operatorView.WorkingDirectory.value)
             if os.path.exists(pathComp.externalPath):
                 os.remove(pathComp.externalPath)
-            # we need to toggle the dirts state in order to enforce a frech dirty signal
-            operatorView.Dirty.setValue(False)
-            operatorView.Dirty.setValue(True)
+
+            # Delete the table/CSV file if we have a table exporter
+            if table_exporter is not None and csv_path:
+                table_path = table_exporter.format_path(0, csv_path)
+                formatted_path = os.path.splitext(table_path)[0] + "_table.csv"
+                if os.path.exists(formatted_path):
+                    os.remove(formatted_path)
+
+        # Update dirty state
+        operatorView.Dirty.setValue(False)
+        operatorView.Dirty.setValue(True)
 
     def showSelectedDataset(self):
         """
