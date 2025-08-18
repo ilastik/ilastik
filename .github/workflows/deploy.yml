@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: conda-deploy
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - uses: conda-incubator/setup-miniconda@v3
