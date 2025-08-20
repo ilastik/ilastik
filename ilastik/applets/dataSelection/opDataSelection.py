@@ -547,8 +547,6 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         self.url = url
         op_reader = OpInputDataReader(graph=Graph(), FilePath=self.url)
         meta = op_reader.Output.meta.copy()
-        if "axis_units" in info_kwargs and meta.get("axis_units", None) is not None:
-            meta.axis_units = info_kwargs.pop("axis_units")
         super().__init__(
             default_tags=meta.axistags,
             nickname=nickname or self._nickname_from_url(url),
