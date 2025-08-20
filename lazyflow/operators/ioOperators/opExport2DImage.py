@@ -107,9 +107,17 @@ class OpExport2DImage(Operator):
                 imagej=True,
                 metadata=imagej_metadata,
                 resolution=(
-                    1 / self.Input.meta.axistags["x"].resolution,
-                    1 / self.Input.meta.axistags["y"].resolution,
-                ),  # standard tiff convention is to store pixels/space but internally we prefer and use space/pixel
+                    (
+                        (1 / self.Input.meta.axistags["x"].resolution)
+                        if self.Input.meta.axistags["x"].resolution != 0
+                        else 0
+                    ),
+                    (
+                        (1 / self.Input.meta.axistags["y"].resolution)
+                        if self.Input.meta.axistags["y"].resolution != 0
+                        else 0
+                    ),
+                ),  # standard ti1 / self.Input.meta.axistags["y"].resolution,ff convention is to store pixels/space but internally we prefer and use space/pixel
             )
         else:
             vigra.impex.writeImage(data, self.Filepath.value)
