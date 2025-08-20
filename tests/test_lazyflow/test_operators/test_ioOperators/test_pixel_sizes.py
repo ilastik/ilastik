@@ -10,7 +10,55 @@ import vigra
 
 from lazyflow.operators import OpArrayPiper
 from lazyflow.operators.ioOperators import OpExportMultipageTiff, OpExport2DImage, OpStreamingH5N5Reader
+from lazyflow.utility.io_util import tiff_encoding
 from ..test_ioOperators.testOpStreamingH5N5Reader import h5n5_file, data
+
+
+def get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units):
+    data = np.random.default_rng(1337).integers(0, 255, shape).astype(np.uint16)
+    tagged_data = vigra.taggedView(data, axes)
+    for axis, res in zip(axes, resolutions):
+        tagged_data.axistags.setResolution(axis, res)
+    op = OpArrayPiper(graph=graph)
+    op.Input.setValue(tagged_data)
+    axis_units_dict = dict(zip(axes, units))
+    if "c" in axis_units_dict:
+        axis_units_dict.pop("c")
+    op.Output.meta.axis_units = axis_units_dict
+    return op
+
+
+@pytest.mark.parametrize("axes, shape, resolutions, units", [
+    (["y", "x"], (2, 3), [6.000024000096, 13], ["", ""]),
+    (["y", "x"], (2, 3), [0.0, 13], ["μm", ""]),
+    (["y", "x"], (2, 3), [0.0, 0.0], ["μm", "mm"]),
+    (["y", "x"], (65, 58), [6.000024000096, 13], ["μm", "mm"]),
+    (["y", "c", "x"], (2, 3, 3), [6.000024000096, 0.0, 13], ["", "", ""]),
+    (["y", "c", "x"], (2, 3, 3), [6.000024000096, 10.0, 13], ["μm", "mistake", "mm"]),
+    (["y", "c", "x"], (2, 3, 3), [0.0, 0.0, 13], ["μm", "", ""]),
+    (["y", "c", "x"], (2, 3, 3), [0.0, 0.0, 0.0], ["μm", "", "mm"]),
+    (["y", "c", "x"], (65, 2, 58), [6.000024000096, 0.0, 13], ["μm", "", "mm"]),
+])
+def test_write_OpExport2DImage(graph, tmp_path, axes, shape, resolutions, units):
+    op_data = get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units)
+    target_path = str(tmp_path / "2d_export.tif")
+    op_writer = OpExport2DImage(graph=graph)
+    op_writer.Input.connect(op_data.Output)
+    op_writer.Filepath.setValue(target_path)
+    op_writer.run_export()
+
+    with tifffile.TiffFile(target_path) as f:
+        written_data = f.asarray()
+        np.testing.assert_array_equal(written_data, op_data.Output.value)
+        assert tiff_encoding.fromASCII(f.imagej_metadata["yunit"]) == units[axes.index("y")]
+        assert tiff_encoding.fromASCII(f.imagej_metadata["unit"]) == units[axes.index("x")]
+        page = f.series[0][0]
+        assert page.axes == "YX"
+        # page.resolution is in xy order
+        assert np.isclose(page.resolution[0], 1 / resolutions[axes.index("x")], atol=1.0e-15)
+        assert np.isclose(page.resolution[1], 1 / resolutions[axes.index("y")], atol=1.0e-15)
+        assert f.imagej_metadata["spacing"] == 1  # z-resolution
+
 
 @pytest.mark.parametrize(
     "image_path,checktags",
