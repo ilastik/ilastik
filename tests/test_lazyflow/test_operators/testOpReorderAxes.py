@@ -265,23 +265,20 @@ class TestOpReorderAxes(unittest.TestCase):
         with pytest.raises(RequestError):
             req.wait()
 
-    def test_preserve_unit_axistags(self):
+    def test_preserve_axis_units(self):
         source_op = OpArrayProvider(graph=self.graph)
-        data = numpy.random.randint(0, 255, (100, 100))
-        data = vigra.taggedView(data, vigra.defaultAxistags("yx"))
+        data = numpy.random.default_rng(1337).integers(0, 255, (3, 4, 5, 6, 7))
+        data = vigra.taggedView(data, vigra.defaultAxistags("yxztc"))
         source_op.Input.setValue(data)
-        axes = vigra.defaultAxistags("xy")
-        axes.setResolution("x", 13.0)
-        axes.setResolution("y", 5.0)
-        source_op.Output.meta.axistags = axes
-        units = {"x": "nm", "y": "pizzas"}
-        source_op.Output.meta.axis_units = units
+        expected_axes = vigra.defaultAxistags("tzyxc")  # default axisorder as of OpReorderAxes.__init__
+        expected_axes.setResolution("x", 13.0)
+        expected_axes.setResolution("y", 1.45e-9)
+        source_op.Output.meta.axistags = expected_axes
+        expected_units = {"x": "nm", "y": "pizzas"}
+        source_op.Output.meta.axis_units = expected_units
         self.operator.Input.connect(source_op.Output)
-        assert (
-            self.operator.Output.meta.axistags["x"] == axes[0]
-        )  # we can't use "is" because reordered axis is a new object
-        assert self.operator.Output.meta.axistags["y"] == axes[1]
-        assert self.operator.Output.meta.axis_units["x"] == "nm"
-        assert self.operator.Output.meta.axis_units["y"] == "pizzas"
-        assert self.operator.Output.meta.axistags["x"].resolution == 13.0
-        assert self.operator.Output.meta.axistags["y"].resolution == 5.0
+
+        assert self.operator.Output.meta.axistags == expected_axes
+        assert self.operator.Output.meta.axis_units == expected_units
+        assert numpy.isclose(self.operator.Output.meta.axistags["x"].resolution, 13.0, atol=1.0e-14)
+        assert numpy.isclose(self.operator.Output.meta.axistags["y"].resolution, 1.45e-9, atol=1.0e-14)
