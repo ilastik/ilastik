@@ -629,6 +629,8 @@ class Slot(object):
                 self.upstream_slot.disconnect()
             return
 
+        oldReady = self.ready()
+
         for slot in self._subSlots:
             slot.disconnect()
 
@@ -646,7 +648,6 @@ class Slot(object):
         self.upstream_slot = None
         had_value = self._value is not None
         self._value = None
-        oldReady = self.meta._ready
         self.meta = MetaDict()
 
         if len(self._subSlots) > 0 and self.operator and not self.operator._cleaningUp:
