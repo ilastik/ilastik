@@ -39,6 +39,8 @@ class OpExport2DImage(Operator):
     Input = InputSlot()  # Allowed to have more than 2 dimensions as long as the others are singletons.
     Filepath = InputSlot()
 
+    supported_dtypes_imagej = [numpy.uint8, numpy.uint16, numpy.float32]
+
     def __init__(self, *args, **kwargs):
         super(OpExport2DImage, self).__init__(*args, **kwargs)
         self._opExportToArray = OpExportToArray(parent=self)
@@ -86,27 +88,16 @@ class OpExport2DImage(Operator):
 
         extension = os.path.splitext(self.Filepath.value)[1][1:]
 
-        # now write any pixel sizes
-        if (
-            extension in ["tif", "tiff"]
-            and hasattr(self.Input.meta, "axis_units")
-            and any(self.Input.meta.axis_units.items())
-        ):
-            data = data.squeeze()
-            x = None
-            y = None
+        # Write metadata (currently only tif, png would be nice to have, bmp/jpg questionable)
+        if extension in ["tif", "tiff"] and data.dtype in self.supported_dtypes_imagej and self.Input.meta.axis_units:
             axes = "YX"
-            if tagged_shape["c"] > 1:
+            if "c" in tagged_shape and tagged_shape["c"] > 1:
                 axes = "CYX"
-            if self.Input.meta.axis_units["x"]:
-                x = tiff_encoding.toASCII(self.Input.meta.axis_units["x"])
-            if self.Input.meta.axis_units["y"]:
-                y = tiff_encoding.toASCII(self.Input.meta.axis_units["y"])
 
             imagej_metadata = {
                 "spacing": 1.0,  # this is equal to the z-axis and gets handled differently in non-2d images
-                "unit": x,
-                "yunit": y,
+                "unit": tiff_encoding.toASCII(self.Input.meta.axis_units["x"]),
+                "yunit": tiff_encoding.toASCII(self.Input.meta.axis_units["y"]),
                 "axes": axes,
             }
 

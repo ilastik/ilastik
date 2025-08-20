@@ -108,7 +108,7 @@ class DatasetInfo(ABC):
         drange: Tuple[Number, Number] = None,
         working_scale: str = DEFAULT_SCALE_KEY,
         scale_locked: bool = False,
-        axis_units={},
+        axis_units: Dict[str, str] = {},  # { axis: physical unit string e.g. "micron" }
     ):
         if axistags and len(axistags) != len(laneShape):
             raise UnsuitedAxistagsException(axistags, laneShape)
@@ -116,10 +116,6 @@ class DatasetInfo(ABC):
             raise InconsistentAxisMetaException(default_tags, laneShape)
         self.default_tags = default_tags
         self.axistags = axistags or default_tags
-        if axis_units is None:
-            axis_units = {}
-        if isinstance(axis_units, str):
-            axis_units = json.loads(axis_units)
         self.axis_units = axis_units
         self.laneShape = laneShape
         self.laneDtype = laneDtype
@@ -173,7 +169,7 @@ class DatasetInfo(ABC):
 
     def to_json_data(self) -> Dict:
         return {
-            "axis_units": json.dumps(self.axis_units),
+            "axis_units": json.dumps(self.axis_units).encode("utf-8"),
             "axistags": self.axistags.toJSON().encode("utf-8"),
             "shape": self.laneShape,
             "allowLabels": self.allowLabels,
@@ -206,7 +202,7 @@ class DatasetInfo(ABC):
             axisorder = data["axisorder"][()].decode("utf-8")
             params["axistags"] = vigra.defaultAxistags(axisorder)
 
-        if "axis_units" in data and data.get("axis_units"):
+        if "axis_units" in data:
             params["axis_units"] = json.loads(data["axis_units"][()].decode("utf-8"))
         if "subvolume_roi" in data:
             params["subvolume_roi"] = tuple(data["subvolume_roi"][()])
