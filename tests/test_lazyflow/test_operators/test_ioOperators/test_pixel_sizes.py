@@ -61,7 +61,50 @@ def test_write_OpExport2DImage(graph, tmp_path, axes, shape, resolutions, units)
 
 
 @pytest.mark.parametrize(
-    "image_path,checktags",
+    "axes, shape, resolutions, units",
+    [
+        (["y", "x"], (65, 58), [6.000024000096, 13], ["μm", "mm"]),
+        (["c", "y", "x"], (2, 65, 58), [0.0, 6.000024000096, 13], ["", "μm", "mm"]),
+        (["z", "y", "x"], (2, 3, 5), [0.54321, 6.000024000096, 13], ["", "", ""]),  # tifffile doesn't work with x smaller 5
+        (["z", "y", "x"], (2, 3, 5), [0.0, 0.0, 13], ["μm", "", "cm"]),
+        (["z", "y", "x"], (2, 3, 5), [0.0, 0.0, 0.0], ["μm", "mm", "cm"]),
+        (["z", "y", "x"], (23, 65, 58), [0.54321, 6.000024000096, 13], ["μm", "mm", "cm"]),
+        (["z", "c", "y", "x"], (3, 2, 3, 5), [0.54321, 0.0, 6.000024000096, 13], ["", "", "", ""]),
+        (["z", "c", "y", "x"], (3, 2, 3, 5), [0.54321, 42, 6.000024000096, 13], ["μm", "mistake", "mm", "micron"]),
+        (["z", "c", "y", "x"], (3, 2, 3, 5), [0.0, 0.0, 0.0, 0.0], ["μm", "", "mm", "microns"]),
+        (["z", "c", "y", "x"], (23, 2, 65, 58), [0.54321, 0.0, 6.000024000096, 13], ["μm", "", "mm", "cm"]),
+        (["t", "z", "y", "x"], (15, 23, 65, 58), [120, 0.54321, 6.000024000096, 13], ["sec", "μm", "mm", "cm"]),
+        (["t", "z", "c", "y", "x"], (6, 2, 3, 3, 5), [120, 0.54321, 0.0, 6.000024000096, 13], ["", "", "", "", ""]),
+        (["t", "z", "c", "y", "x"], (2, 3, 6, 3, 5), [120, 0.54321, 42, 6.000024000096, 13], ["μm", "mm", "mistake", "sec", "micron"]),
+        (["t", "z", "c", "y", "x"], (6, 2, 3, 3, 5), [0.0, 0.0, 0.0, 0.0, 0.0], ["sec", "μm", "", "mm", "microns"]),
+        (["t", "z", "c", "y", "x"], (6, 2, 3, 3, 5), [-120, 0.54321, 0.0, 6.000024000096, 13], ["negative-sec", "μm", "", "mm", "microns"]),
+        (["t", "z", "c", "y", "x"], (15, 23, 2, 65, 58), [120, 0.54321, 0.0, 6.000024000096, 13], ["ms", "μm", "", "mm", "cm"]),
+    ],
+)
+def test_write_OpExportMultipageTiff(graph, tmp_path, axes, shape, resolutions, units):
+    op_data = get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units)
+    out_path = str(tmp_path / "3d_export.tif")
+    export = OpExportMultipageTiff(graph=graph)
+    export.Input.connect(op_data.Output)
+    export.Filepath.setValue(out_path)
+    export.run_export()
+
+    with tifffile.TiffFile(out_path) as f:
+        written_data = f.asarray()
+        np.testing.assert_array_equal(written_data, op_data.Output.value)
+        if "t" in axes:
+            pass  # todo
+        else:
+            pass  # todo
+        # todo - see OpExport2DImage test for reference, need to parse ome-xml here to extract the written values
+
+
+def test_write_OpH5N5WriterBigDataset():
+    pass  # todo
+
+
+@pytest.mark.parametrize(
+    "image_path,expected_meta",
     [
         ("/pix_res/2d.tif", {"x": (2, "cm"), "y": (7, "nm")}),
         ("/pix_res/3d.tif", {"x": (11.000011000011, "cm"), "y": (6.000024000096, "mm"), "z": (2, "pm")}),
@@ -74,163 +117,19 @@ def test_write_OpExport2DImage(graph, tmp_path, axes, shape, resolutions, units)
         ),
     ],
 )
-def test_read_OpTiffReader(image_path, checktags, inputdata_dir):  # checks
-    actual_path = inputdata_dir + image_path
+def test_read_OpTiffReader(image_path, expected_meta, inputdata_dir):
+    file_path = inputdata_dir + image_path
     op = OpTiffReader(graph=Graph())
-    op.Filepath.setValue(actual_path)
+    op.Filepath.setValue(file_path)
     assert op.Output.ready()
-    assert len(op.Output.meta.axistags) == len(checktags)
-    for axis in checktags.keys():
+    assert len(op.Output.meta.axistags) == len(expected_meta)
+    for axis in expected_meta.keys():
+        assert axis in op.Output.meta.axistags
         if axis == "c":
+            assert op.Output.meta.axistags[axis].resolution == 0
+            assert axis not in op.Output.meta.axis_units
             continue
-        (resolution, unit) = checktags[axis]
-        tag = op.Output.meta.axistags[axis]
-        assert tag.resolution == resolution
-        assert op.Output.meta.axis_units[axis] == unit
-
-
-@pytest.mark.parametrize(
-    "image_path,checktags",
-    [
-        (f"3d_c.tif", {"x": (2, "μm"), "y": (11, "nm"), "z": (13, "cm"), "c": (0,)}),
-        (f"3d.tif", {"x": (11, "cm"), "y": (6, "mm"), "z": (2, "pm")}),
-        (f"2d_t.tif", {"x": (50, "μm"), "y": (3, "pm"), "t": (3, "sec")}),
-        (f"3d_t.tif", {"x": (3, "mm"), "y": (5, "mm"), "z": (7, "mm"), "t": (3, "sec")}),
-        (f"5d.tif", {"x": (17, "cm"), "y": (13, "pm"), "z": (8, "mm"), "c": (0,), "t": (3, "sec")}),
-    ],
-)
-def test_write_OpExportMultipageTiff_read_OpTiffReader(image_path, checktags, inputdata_dir):
-    in_path = inputdata_dir + f"/pix_res/" + image_path
-    out_path = inputdata_dir + f"/pix_res/output/"
-    if not os.path.isdir(out_path):
-        os.mkdir(out_path)
-    out_path += image_path
-
-    graph = Graph()
-    with tifffile.TiffFile(in_path) as tif:
-        olddata = tif.asarray()
-        data = olddata.squeeze()
-
-        axes = tif.series[0].axes.lower()
-        if "c" not in axes:
-            axes += "c"
-            data = data[..., np.newaxis]
-        axis_infos = []
-        axis_units = {}
-
-        op_data = OpArrayPiper(graph=Graph())
-        op_data.Input.setValue(data.astype(np.uint8))
-
-        for axis in axes:
-            axis_infos.append(
-                vigra.AxisInfo(
-                    key=axis,
-                    resolution=checktags[axis][0] if axis in checktags else 0,
-                    typeFlags=(
-                        vigra.AxisType.Time
-                        if axis == "t"
-                        else vigra.AxisType.Channels if axis == "c" else vigra.AxisType.Space
-                    ),
-                )
-            )
-            if axis != "c" and axis in checktags:
-                axis_units[axis] = checktags[axis][1]
-        axistags = vigra.AxisTags(axis_infos)
-
-        out_slot = op_data.Output
-        out_slot.meta.axis_units = axis_units
-        out_slot.meta.axistags = axistags
-        out_slot.setDirty()
-
-        export = OpExportMultipageTiff(graph=graph)
-        export.Input.connect(op_data.Output)
-        export.Filepath.setValue(out_path)
-        export.run_export()
-
-    # read written file
-    op = OpTiffReader(graph=Graph())
-    op.Filepath.setValue(out_path)
-    assert op.Output.ready()
-    assert len(op.Output.meta.axistags) == len(checktags)
-    for axis in op.Output.meta.getAxisKeys():
-        if axis == "c":
-            continue
-        resolution = checktags[axis][0]
-        unit = checktags[axis][1]
-        tag = op.Output.meta.axistags[axis]
-        assert tag.resolution == resolution
-        assert op.Output.meta.axis_units[axis] == unit
-
-
-@pytest.mark.parametrize(
-    "image_path,checktags, hyperstack",
-    [
-        ("2d.tif", {"x": (2, "cm"), "y": (7, "nm")}, False),
-        ("3d_c.tif", {"x": (2, "μm"), "y": (11, "nm"), "z": (13, "cm"), "c": (0,)}, True),
-        ("3d.tif", {"x": (11, "cm"), "y": (6, "mm"), "z": (2, "pm")}, True),
-        ("2d_t.tif", {"x": (50, "μm"), "y": (3, "pm"), "t": (3, "sec")}, True),
-        ("3d_t.tif", {"x": (3, "mm"), "y": (5, "mm"), "z": (7, "mm"), "t": (3, "sec")}, True),
-        ("5d.tif", {"x": (17, "cm"), "y": (13, "pm"), "z": (8, "mm"), "c": (0,), "t": (3, "sec")}, True),
-    ],
-)
-def test_write_OpExportMultipageTiff_OpExport2DImage_read_OpTiffReader(image_path, checktags, hyperstack, inputdata_dir):
-    in_path = inputdata_dir + "/pix_res/" + image_path
-    out_path = inputdata_dir + "/pix_res/output/"
-    if not os.path.isdir(out_path):
-        os.mkdir(out_path)
-    out_path += image_path
-
-    graph = Graph()
-    with tifffile.TiffFile(in_path) as tif:
-        olddata = tif.asarray()
-        data = olddata.squeeze()
-
-        axes = tif.series[0].axes.lower()
-        if "c" not in axes:
-            axes += "c"
-            data = data[..., np.newaxis]
-        axis_infos = []
-        axis_units = {}
-
-        op_data = OpArrayPiper(graph=Graph())
-        op_data.Input.setValue(data.astype(np.uint8))
-
-        for axis in axes:
-            axis_infos.append(
-                vigra.AxisInfo(
-                    key=axis,
-                    resolution=checktags[axis][0] if axis in checktags else 0,
-                    typeFlags=(
-                        vigra.AxisType.Time
-                        if axis == "t"
-                        else vigra.AxisType.Channels if axis == "c" else vigra.AxisType.Space
-                    ),
-                )
-            )
-            if axis != "c" and axis in checktags:
-                axis_units[axis] = checktags[axis][1]
-        axistags = vigra.AxisTags(axis_infos)
-
-        out_slot = op_data.Output
-        out_slot.meta.axis_units = axis_units
-        out_slot.meta.axistags = axistags
-        out_slot.setDirty()
-
-        export = OpExportMultipageTiff(graph=graph) if hyperstack else OpExport2DImage(graph=graph)
-        export.Input.connect(op_data.Output)
-        export.Filepath.setValue(out_path)
-        export.run_export()
-
-    # read written file
-    op = OpTiffReader(graph=Graph())
-    op.Filepath.setValue(out_path)
-    assert op.Output.ready()
-    assert len(op.Output.meta.axistags) == len(checktags)
-    for axis in op.Output.meta.getAxisKeys():
-        if axis == "c":
-            continue
-        resolution = checktags[axis][0]
-        unit = checktags[axis][1]
+        (resolution, unit) = expected_meta[axis]
         tag = op.Output.meta.axistags[axis]
         assert tag.resolution == resolution
         assert op.Output.meta.axis_units[axis] == unit
@@ -238,6 +137,7 @@ def test_write_OpExportMultipageTiff_OpExport2DImage_read_OpTiffReader(image_pat
 
 def test_read_OpStreamingH5N5Reader(graph, h5n5_file, data):
     axistags = vigra.defaultAxistags("xyzct")
+    # TODO: resolution numbers
     axis_units = {"x": "cm", "y": "μm", "z": "m", "t": "sec"}
     h5n5_file.create_group("volume").create_dataset("data", data=data)
     h5n5_file["volume/data"].attrs["axistags"] = axistags.toJSON()
@@ -250,3 +150,41 @@ def test_read_OpStreamingH5N5Reader(graph, h5n5_file, data):
     assert op.OutputImage.meta.axistags == axistags
     assert op.OutputImage.meta.axis_units == axis_units
     np.testing.assert_array_equal(op.OutputImage.value, data)
+
+
+def test_write_read_roundtrip_tiff_OpExport2DImage(graph, tmp_path):
+    op_data = get_data_op_with_pixel_size_meta(graph,
+                                               ["c", "y", "x"], (2, 58, 67),
+                                               [0.0, 6.000024000096, 13], ["", "μm", "mm"])
+    out_path = str(tmp_path / "3d_export.tif")
+    export = OpExport2DImage(graph=graph)
+    export.Input.connect(op_data.Output)
+    export.Filepath.setValue(out_path)
+    export.run_export()
+
+    # read written file
+    reader = OpTiffReader(graph=graph)
+    reader.Filepath.setValue(out_path)
+    assert reader.Output.ready()
+
+    expected_meta = {"y": (6.000024000096, "μm"), "x": (13, "mm")}
+    assert len(reader.Output.meta.axistags) == 3
+    for axis in reader.Output.meta.getAxisKeys():
+        if axis == "c":
+            assert op.Output.meta.axistags[axis].resolution == 0
+            assert axis not in op.Output.meta.axis_units
+            continue
+        (resolution, unit) = expected_meta[axis]
+        tag = reader.Output.meta.axistags[axis]
+        # Resolution is represented in tifftags as a Rational.
+        # Ironically, the way the numbers are stored is only precise to 8 decimal places.
+        # Probably tifffile's fault, because the Rational is two 32-bit integers,
+        # but tifffile just puts the uint32 max value into the denominator and basically rescales the numerator.
+        assert np.isclose(tag.resolution, resolution, atol=1e-8)
+        assert reader.Output.meta.axis_units[axis] == unit
+
+def test_write_read_roundtrip_tiff_OpExportMultipageTiff():
+    pass # todo
+
+def test_write_read_roundtrip_h5():
+    pass  # todo
