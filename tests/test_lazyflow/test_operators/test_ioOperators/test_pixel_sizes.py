@@ -14,7 +14,7 @@ from lazyflow.utility.io_util import tiff_encoding
 from ..test_ioOperators.testOpStreamingH5N5Reader import h5n5_file, data
 
 
-def get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units, include_channel=False):
+def get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units):
     data = np.random.default_rng(1337).integers(0, 255, shape).astype(np.uint16)
     tagged_data = vigra.taggedView(data, axes)
     for axis, res in zip(axes, resolutions):
@@ -22,8 +22,6 @@ def get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units, inc
     op = OpArrayPiper(graph=graph)
     op.Input.setValue(tagged_data)
     axis_units_dict = dict(zip(axes, units))
-    if "c" in axis_units_dict and not include_channel:
-        axis_units_dict.pop("c")
     op.Output.meta.axis_units = axis_units_dict
     return op
 
@@ -141,7 +139,7 @@ def test_write_OpExportMultipageTiff(graph, tmp_path, axes, shape, resolutions, 
 
         for axis in axes:
             if axis.lower() == "c":
-                assert "c" not in sizes.keys()
+                assert "c" not in sizes.keys()  # Channel sizes are not written to TIFF
                 continue
             assert tiff_encoding.fromASCII(pixels.attrib.get(sizes[axis][1], "")) == units[axes.index(axis)]
             assert float(pixels.attrib.get(sizes[axis][0], 0)) == resolutions[axes.index(axis)]
@@ -190,7 +188,7 @@ def test_write_OpExportMultipageTiff(graph, tmp_path, axes, shape, resolutions, 
 )
 def test_write_OpH5N5WriterBigDataset(graph, tmp_path, axes, shape, resolutions, units):
 
-    op_data = get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units, True)
+    op_data = get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units)
     file_path = tmp_path / f"3d_image.h5"
     file = h5py.File(file_path, "w")
     group = file.create_group("volume")
@@ -247,7 +245,7 @@ def test_read_OpTiffReader(image_path, expected_meta, inputdata_dir):
     assert len(op.Output.meta.axistags) == len(expected_meta)
     for axis in expected_meta.keys():
         assert axis in op.Output.meta.axistags
-        if axis == "c":
+        if axis == "c":  # Channel sizes are not written to TIFF
             assert op.Output.meta.axistags[axis].resolution == 0
             assert axis not in op.Output.meta.axis_units.keys()
             continue
@@ -259,7 +257,9 @@ def test_read_OpTiffReader(image_path, expected_meta, inputdata_dir):
 
 def test_read_OpStreamingH5N5Reader(graph, h5n5_file, data):
     axistags = vigra.defaultAxistags("xyzct")
-    # TODO: resolution numbers
+    resolutions = [1.0, 2.0, 3.0, 4.0, 5.0]
+    for axis, res in zip(axistags, resolutions):
+        axistags.setResolution(axis.key, res)
     axis_units = {"x": "cm", "y": "μm", "z": "m", "t": "sec"}
     h5n5_file.create_group("volume").create_dataset("data", data=data)
     h5n5_file["volume/data"].attrs["axistags"] = axistags.toJSON()
@@ -325,7 +325,7 @@ def test_write_read_roundtrip_tiff_OpExportMultipageTiff(graph, tmp_path):
     reader.Filepath.setValue(out_path)
     assert reader.Output.ready()
 
-    expected_meta = {"t": (5.0, "sec"), "z": (7.0, "cm"), "c": (0.0, ""), "y": (6.000024000096, "μm"), "x": (13, "mm")}
+    expected_meta = {"t": (5.0, "sec"), "z": (7.0, "cm"), "y": (6.000024000096, "μm"), "x": (13, "mm")}
     assert len(reader.Output.meta.axistags) == 5
     for axis in reader.Output.meta.getAxisKeys():
         if axis == "c":
@@ -348,7 +348,7 @@ def test_write_read_roundtrip_h5(
     units=["", "μm", "mm"],
 ):
 
-    op_data = get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units, True)
+    op_data = get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units)
 
     file_path = tmp_path / f"3d_image.h5"
     file = h5py.File(file_path, "w")
