@@ -186,15 +186,13 @@ class OpTiffReader(Operator):
                     for axis in axes:
                         if axis.lower() == "c":
                             continue
-                        elif axis.lower() in size_keys.keys():
+                        else:
                             self.Output.meta.axistags.setResolution(
                                 axis.lower(), float(pixels.attrib.get(size_keys[axis], 0))
                             )
                             self.Output.meta.axis_units[axis.lower()] = tiff_encoding.fromASCII(
                                 pixels.attrib.get(unit_keys[axis], "")
                             )
-                        else:
-                            continue
 
     def get_tiff_res(self, frac):
         """
