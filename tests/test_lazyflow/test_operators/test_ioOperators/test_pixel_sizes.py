@@ -221,6 +221,7 @@ def test_write_OpH5N5WriterBigDataset(graph, tmp_path, axes, shape, resolutions,
     "image_path,expected_meta",
     [
         ("/pix_res/2d.tif", {"x": (2, "cm"), "y": (7, "nm")}),
+        ("/pix_res/2d_stringified_tuple.tif", {"x": (5, "cm"), "y": (6.000024000096, "nm")}),
         ("/pix_res/3d.tif", {"x": (11.000011000011, "cm"), "y": (6.000024000096, "mm"), "z": (2, "pm")}),
         ("/pix_res/2d_t.tif", {"x": (50, "μm"), "y": (3, "pm"), "t": (3, "min")}),
         ("/pix_res/3d_t.tif", {"x": (3, "mm"), "y": (5, ""), "z": (7, ""), "t": (3, "")}),
