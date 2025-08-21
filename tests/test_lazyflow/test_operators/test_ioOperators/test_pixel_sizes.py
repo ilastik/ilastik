@@ -14,7 +14,7 @@ from lazyflow.utility.io_util import tiff_encoding
 from ..test_ioOperators.testOpStreamingH5N5Reader import h5n5_file, data
 
 
-def get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units):
+def get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units, include_channel=False):
     data = np.random.default_rng(1337).integers(0, 255, shape).astype(np.uint16)
     tagged_data = vigra.taggedView(data, axes)
     for axis, res in zip(axes, resolutions):
@@ -22,8 +22,8 @@ def get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units):
     op = OpArrayPiper(graph=graph)
     op.Input.setValue(tagged_data)
     axis_units_dict = dict(zip(axes, units))
-    # if "c" in axis_units_dict:
-    #    axis_units_dict.pop("c")
+    if "c" in axis_units_dict and not include_channel:
+        axis_units_dict.pop("c")
     op.Output.meta.axis_units = axis_units_dict
     return op
 
@@ -141,6 +141,7 @@ def test_write_OpExportMultipageTiff(graph, tmp_path, axes, shape, resolutions, 
 
         for axis in axes:
             if axis.lower() == "c":
+                assert "c" not in sizes.keys()
                 continue
             assert tiff_encoding.fromASCII(pixels.attrib.get(sizes[axis][1], "")) == units[axes.index(axis)]
             assert float(pixels.attrib.get(sizes[axis][0], 0)) == resolutions[axes.index(axis)]
@@ -189,7 +190,7 @@ def test_write_OpExportMultipageTiff(graph, tmp_path, axes, shape, resolutions, 
 )
 def test_write_OpH5N5WriterBigDataset(graph, tmp_path, axes, shape, resolutions, units):
 
-    op_data = get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units)
+    op_data = get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units, True)
     file_path = tmp_path / f"3d_image.h5"
     file = h5py.File(file_path, "w")
     group = file.create_group("volume")
@@ -212,8 +213,6 @@ def test_write_OpH5N5WriterBigDataset(graph, tmp_path, axes, shape, resolutions,
     axis_units = json.loads(dataset.attrs["axis_units"])
     assert axes == axistags.keys()
     for axis in axes:
-        # if axis.lower() == "c":
-        #    continue
         assert axis_units[axis] == units[axes.index(axis)]
         assert float(axistags[axis].resolution) == resolutions[axes.index(axis)]
 
@@ -246,10 +245,10 @@ def test_read_OpTiffReader(image_path, expected_meta, inputdata_dir):
     assert len(op.Output.meta.axistags) == len(expected_meta)
     for axis in expected_meta.keys():
         assert axis in op.Output.meta.axistags
-        # if axis == "c":
-        #    assert op.Output.meta.axistags[axis].resolution == 0
-        #    assert axis not in op.Output.meta.axis_units
-        #    continue
+        if axis == "c":
+            assert op.Output.meta.axistags[axis].resolution == 0
+            assert axis not in op.Output.meta.axis_units.keys()
+            continue
         (resolution, unit) = expected_meta[axis]
         tag = op.Output.meta.axistags[axis]
         assert tag.resolution == resolution
@@ -291,10 +290,10 @@ def test_write_read_roundtrip_tiff_OpExport2DImage(graph, tmp_path):
     expected_meta = {"c": (0.0, ""), "y": (6.000024000096, "μm"), "x": (13, "mm")}
     assert len(reader.Output.meta.axistags) == 3
     for axis in reader.Output.meta.getAxisKeys():
-        # if axis == "c":
-        #    assert reader.Output.meta.axistags[axis].resolution == 0
-        #    assert axis not in reader.Output.meta.axis_units
-        #    continue
+        if axis == "c":
+            assert reader.Output.meta.axistags[axis].resolution == 0
+            assert axis not in reader.Output.meta.axis_units
+            continue
         (resolution, unit) = expected_meta[axis]
         tag = reader.Output.meta.axistags[axis]
         # Resolution is represented in tifftags as a Rational.
@@ -327,10 +326,10 @@ def test_write_read_roundtrip_tiff_OpExportMultipageTiff(graph, tmp_path):
     expected_meta = {"t": (5.0, "sec"), "z": (7.0, "cm"), "c": (0.0, ""), "y": (6.000024000096, "μm"), "x": (13, "mm")}
     assert len(reader.Output.meta.axistags) == 5
     for axis in reader.Output.meta.getAxisKeys():
-        # if axis == "c":
-        #    assert reader.Output.meta.axistags[axis].resolution == 0
-        #    assert axis not in reader.Output.meta.axis_units
-        #    continue
+        if axis == "c":
+            assert reader.Output.meta.axistags[axis].resolution == 0
+            assert axis not in reader.Output.meta.axis_units
+            continue
         (resolution, unit) = expected_meta[axis]
         tag = reader.Output.meta.axistags[axis]
         # Rounding is not necessary here as ome stores resolution as floats
@@ -347,7 +346,7 @@ def test_write_read_roundtrip_h5(
     units=["", "μm", "mm"],
 ):
 
-    op_data = get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units)
+    op_data = get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units, True)
 
     file_path = tmp_path / f"3d_image.h5"
     file = h5py.File(file_path, "w")
