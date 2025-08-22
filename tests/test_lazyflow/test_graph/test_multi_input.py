@@ -59,3 +59,12 @@ def test_multi_input_sets_output_ready_and_unready(graph):
     assert op.Output.ready()
     op.MultiInput.disconnect()
     assert not op.Output.ready()
+
+
+def test_multi_input_disconnecting_all_subslots_sets_unready(graph):
+    op = OpMultiInput(graph=graph)
+    op.MultiInput.resize(3)
+    op.MultiInput.setValue(True)  # setValue on the top-level slot propagates to all subslots
+    assert op.Output.ready()
+    op.MultiInput[1].disconnect()  # Unreadying any of the subslots should make the top-level input unready
+    assert not op.Output.ready()
