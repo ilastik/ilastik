@@ -18,7 +18,9 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from typing import Dict
+from collections import OrderedDict
+from functools import reduce
+from typing import Dict, List
 
 from qtpy.QtCore import Qt, QAbstractItemModel, QModelIndex
 from ilastik.utility import bind
@@ -221,23 +223,42 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
         raise NotImplementedError(f"Unknown column: row={index.row()}, column={index.column()}")
 
-    def get_scale_options(self, laneIndex) -> Dict[str, str]:
+    def get_scale_options(self, laneIndex) -> OrderedDict[str, str]:
+        """
+        Returns { scale_key : display string }
+        """
         try:
             datasetSlot = self._op.DatasetGroupOut[laneIndex][self._roleIndex]
         except IndexError:  # This can happen during "Save Project As"
-            return {}
+            return OrderedDict()
         if not datasetSlot.ready():
-            return {}
+            return OrderedDict()
         datasetInfo = datasetSlot.value
         if not datasetInfo.scales:
-            return {}
+            return OrderedDict()
         # Multiscale datasets always list scales from original (largest) to most-downscaled (smallest).
         # We display them in reverse order so that the default loaded scale (the smallest)
         # is the first option in the drop-down box
-        return {
-            key: _dims_to_display_string(tagged_shape, datasetInfo.axiskeys, datasetInfo.laneDtype)
-            for key, tagged_shape in reversed(datasetInfo.scales.items())
-        }
+        return OrderedDict(
+            {
+                key: _dims_to_display_string(tagged_shape, datasetInfo.axiskeys, datasetInfo.laneDtype)
+                for key, tagged_shape in reversed(datasetInfo.scales.items())
+            }
+        )
+
+    def get_common_scale_option_indices(self, laneIndex) -> List[int]:
+        """
+        Check all datasets and scales across all roles.
+        Return indices of the options from `get_scale_options` that have matching scales in all other roles.
+        """
+        scale_options = list(self.get_scale_options(laneIndex).keys())
+
+        all_scales = [role_slot.value.scales for role_slot in self._op.DatasetGroupOut[laneIndex] if role_slot.ready()]
+        common_lane_scales = reduce(lambda common, other: common & other.keys(), all_scales)
+        indices_of_common_scales = sorted(
+            list(scale_options.index(common_scale) for common_scale in common_lane_scales)
+        )
+        return indices_of_common_scales
 
     def is_scale_locked(self, laneIndex) -> bool:
         datasetSlot = self._op.DatasetGroupOut[laneIndex][self._roleIndex]
