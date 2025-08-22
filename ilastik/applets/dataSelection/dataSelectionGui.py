@@ -296,6 +296,7 @@ class DataSelectionGui(QWidget):
         if tabIndex < len(self._detailViewerWidgets):
             roleIndex = tabIndex  # If summary tab is moved to the front, change this line.
             detailViewer = self._detailViewerWidgets[roleIndex]
+            detailViewer.refresh_scale_options()
             selectedLanes = detailViewer.selectedLanes
             if selectedLanes:
                 self.showDataset(selectedLanes[0], roleIndex)
