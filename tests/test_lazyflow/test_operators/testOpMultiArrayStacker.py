@@ -398,50 +398,24 @@ class TestOpMultiArrayStacker(unittest.TestCase):
     ## ignore this
     def testNonReady(self):
         n = self.vol.shape[2]
-        op = OpMultiArrayStacker(graph=self.g)
-        op.AxisFlag.setValue("z")
-        op.AxisIndex.setValue(0)
-
-        providers = [OpNonReady(graph=self.g), OpNonReady(graph=self.g)]
-        provider = OperatorWrapper(OpArrayPiper, graph=self.g)
-        provider.Input.resize(n)
+        op_data = OperatorWrapper(OpArrayPiper, graph=self.g)
+        op_data.Input.resize(n)
         vol = self.vol
 
-        op.Images.resize(n)
+        op_stacker = OpMultiArrayStacker(graph=self.g)
+        op_stacker.AxisFlag.setValue("z")
+        op_stacker.AxisIndex.setValue(0)
+        op_stacker.Images.resize(n)
 
         for i in range(n):
-            provider.Input[i].setValue(vol[..., i])
-            providers[i].Input.connect(provider.Output[i])
-            op.Images[i].connect(providers[i].Output)
+            op_data.Input[i].setValue(vol[..., i])
+            op_stacker.Images[i].connect(op_data.Output[i])
 
-        req = op.Output[...]
+        req = op_stacker.Output[...]
         req.notify_failed(lambda *args: None)  # Replace the default handler: dont' show a traceback
         out = req.wait()
 
-        with pytest.raises(RequestError) as exc_info:
-            providers[0].screwWithOutput()
-            req = op.Output[...]
-            req.notify_failed(lambda *args: None)  # Replace the default handler: dont' show a traceback
-            out = req.wait()
-
-        assert is_root_cause(InputSlot.SlotNotReadyError, exc_info.value)
-
-
-class OpNonReady(Operator):
-    Input = InputSlot()
-    Output = OutputSlot()
-
-    def setupOutputs(self):
-        self.Output.meta.assignFrom(self.Input.meta)
-
-    def execute(self, slot, subindex, roi, result):
-        assert self.Output.ready()
-        result[:] = 0
-
-    def propagateDirty(self, slot, subindex, roi):
-        newroi = roi.copy()
-        self.Output.setDirty(roi)
-
-    def screwWithOutput(self):
-        self.Input.disconnect()
-        self.Output.meta.NOTREADY = True
+        with pytest.raises(InputSlot.SlotNotReadyError):
+            # Mock something screwing up and making one of the data providers unready
+            op_data.Input[0].disconnect()
+            req = op_stacker.Output[...]
