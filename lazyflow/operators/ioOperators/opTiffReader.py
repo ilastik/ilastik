@@ -190,9 +190,9 @@ class OpTiffReader(Operator):
                             self.Output.meta.axistags.setResolution(
                                 axis.lower(), float(pixels.attrib.get(size_keys[axis], 0))
                             )
-                            self.Output.meta.axis_units[axis.lower()] = tiff_encoding.fromASCII(
-                                pixels.attrib.get(unit_keys[axis], "")
-                            )
+                            self.Output.meta.axis_units[axis.lower()] = pixels.attrib.get(
+                                unit_keys[axis], ""
+                            )  # OME uses unicode
 
     def get_tiff_res(self, frac):
         """

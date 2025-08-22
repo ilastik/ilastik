@@ -72,41 +72,46 @@ def test_write_OpExport2DImage(graph, tmp_path, axes, shape, resolutions, units)
 @pytest.mark.parametrize(
     "axes, shape, resolutions, units",
     [
-        (["y", "x"], (65, 58), [6.000024000096, 13], ["μm", "mm"]),
-        (["c", "y", "x"], (2, 65, 58), [0.0, 6.000024000096, 13], ["", "μm", "mm"]),
+        (["y", "x"], (65, 58), [6.000024000096, 13], ["µm", "mm"]),
+        (["c", "y", "x"], (2, 65, 58), [0.0, 6.000024000096, 13], ["", "µm", "mm"]),
         (
             ["z", "y", "x"],
             (2, 3, 5),
             [0.54321, 6.000024000096, 13],
-            ["", "", ""],
+            ["pixel", "pixel", "pixel"],
         ),  # tifffile doesn't work with x smaller 5
-        (["z", "y", "x"], (2, 3, 5), [0.0, 0.0, 13], ["μm", "", "cm"]),
-        (["z", "y", "x"], (2, 3, 5), [0.0, 0.0, 0.0], ["μm", "mm", "cm"]),
-        (["z", "y", "x"], (23, 65, 58), [0.54321, 6.000024000096, 13], ["μm", "mm", "cm"]),
-        (["z", "c", "y", "x"], (3, 2, 3, 5), [0.54321, 0.0, 6.000024000096, 13], ["", "", "", ""]),
-        (["z", "c", "y", "x"], (3, 2, 3, 5), [0.54321, 42, 6.000024000096, 13], ["μm", "mistake", "mm", "micron"]),
-        (["z", "c", "y", "x"], (3, 2, 3, 5), [0.0, 0.0, 0.0, 0.0], ["μm", "", "mm", "microns"]),
-        (["z", "c", "y", "x"], (23, 2, 65, 58), [0.54321, 0.0, 6.000024000096, 13], ["μm", "", "mm", "cm"]),
-        (["t", "z", "y", "x"], (15, 23, 65, 58), [120, 0.54321, 6.000024000096, 13], ["sec", "μm", "mm", "cm"]),
-        (["t", "z", "c", "y", "x"], (6, 2, 3, 3, 5), [120, 0.54321, 0.0, 6.000024000096, 13], ["", "", "", "", ""]),
+        (["z", "y", "x"], (2, 3, 5), [0.0, 0.0, 13], ["µm", "pixel", "cm"]),
+        (["z", "y", "x"], (2, 3, 5), [0.0, 0.0, 0.0], ["µm", "mm", "cm"]),
+        (["z", "y", "x"], (23, 65, 58), [0.54321, 6.000024000096, 13], ["µm", "mm", "cm"]),
+        (["z", "c", "y", "x"], (3, 2, 3, 5), [0.54321, 0.0, 6.000024000096, 13], ["pixel", "", "pixel", "pixel"]),
+        (["z", "c", "y", "x"], (3, 2, 3, 5), [0.54321, 42, 6.000024000096, 13], ["µm", "", "mm", "µm"]),
+        (["z", "c", "y", "x"], (3, 2, 3, 5), [0.0, 0.0, 0.0, 0.0], ["µm", "", "mm", "nm"]),
+        (["z", "c", "y", "x"], (23, 2, 65, 58), [0.54321, 0.0, 6.000024000096, 13], ["µm", "", "mm", "cm"]),
+        (["t", "z", "y", "x"], (15, 23, 65, 58), [120, 0.54321, 6.000024000096, 13], ["s", "µm", "mm", "cm"]),
+        (
+            ["t", "z", "c", "y", "x"],
+            (6, 2, 3, 3, 5),
+            [120, 0.54321, 0.0, 6.000024000096, 13],
+            ["pixel", "pixel", "", "pixel", "pixel"],
+        ),
         (
             ["t", "z", "c", "y", "x"],
             (2, 3, 6, 3, 5),
             [120, 0.54321, 42, 6.000024000096, 13],
-            ["μm", "mm", "mistake", "sec", "micron"],
+            ["µm", "mm", "", "ms", "µm"],
         ),
-        (["t", "z", "c", "y", "x"], (6, 2, 3, 3, 5), [0.0, 0.0, 0.0, 0.0, 0.0], ["sec", "μm", "", "mm", "microns"]),
+        (["t", "z", "c", "y", "x"], (6, 2, 3, 3, 5), [0.0, 0.0, 0.0, 0.0, 0.0], ["s", "µm", "", "mm", "µm"]),
         (
             ["t", "z", "c", "y", "x"],
             (6, 2, 3, 3, 5),
             [-120, 0.54321, 0.0, 6.000024000096, 13],
-            ["negative-sec", "μm", "", "mm", "microns"],
+            ["s", "µm", "", "mm", "µm"],
         ),
         (
             ["t", "z", "c", "y", "x"],
             (15, 23, 2, 65, 58),
             [120, 0.54321, 0.0, 6.000024000096, 13],
-            ["ms", "μm", "", "mm", "cm"],
+            ["ms", "µm", "", "mm", "cm"],
         ),
     ],
 )
@@ -141,15 +146,114 @@ def test_write_OpExportMultipageTiff(graph, tmp_path, axes, shape, resolutions, 
             if axis.lower() == "c":
                 assert "c" not in sizes.keys()  # Channel sizes are not written to TIFF
                 continue
-            assert tiff_encoding.fromASCII(pixels.attrib.get(sizes[axis][1], "")) == units[axes.index(axis)]
+            assert pixels.attrib.get(sizes[axis][1], "") == units[axes.index(axis)]
+            assert float(pixels.attrib.get(sizes[axis][0], 0)) == resolutions[axes.index(axis)]
+
+
+@pytest.mark.parametrize(
+    "axes, shape, resolutions, units, converted_units",
+    [
+        (["y", "x"], (65, 58), [6.000024000096, 13], ["µm", "millimeter"], ["µm", "mm"]),
+        (
+            ["c", "y", "x"],
+            (2, 65, 58),
+            [0.0, 6.000024000096, 13],
+            ["", "microns", "millimeters"],
+            ["pixel", "µm", "mm"],
+        ),
+        (
+            ["z", "y", "x"],
+            (2, 3, 5),
+            [0.54321, 6.000024000096, 13],
+            ["", "", ""],
+            ["pixel", "pixel", "pixel"],
+        ),  # tifffile doesn't work with x smaller 5
+        (["z", "y", "x"], (2, 3, 5), [0.0, 0.0, 13], ["km", "", "centimetre"], ["km", "pixel", "pixel"]),
+        (["z", "y", "x"], (2, 3, 5), [0.0, 0.0, 0.0], ["um", "MILLIMETER", "cENtIMETEr"], ["µm", "mm", "cm"]),
+        (
+            ["z", "c", "y", "x"],
+            (3, 2, 3, 5),
+            [0.54321, 0.0, 6.000024000096, 13],
+            ["", "", "", ""],
+            ["pixel", "pixel", "pixel", "pixel"],
+        ),
+        (
+            ["z", "c", "y", "x"],
+            (3, 2, 3, 5),
+            [0.54321, 42, 6.000024000096, 13],
+            ["µm", "mistake", "mm", "micron"],
+            ["µm", "pixel", "mm", "µm"],
+        ),
+        (
+            ["z", "c", "y", "x"],
+            (3, 2, 3, 5),
+            [0.0, 0.0, 0.0, 0.0],
+            ["µm", "", "mm", "microns"],
+            ["µm", "pixel", "mm", "µm"],
+        ),
+        (
+            ["z", "c", "y", "x"],
+            (23, 2, 65, 58),
+            [0.54321, 0.0, 6.000024000096, 13],
+            ["µm", "", "mm", "cm"],
+            ["µm", "pixel", "mm", "cm"],
+        ),
+        (
+            ["t", "z", "y", "x"],
+            (15, 23, 65, 58),
+            [120, 0.54321, 6.000024000096, 13],
+            ["sec", "µm", "mm", "cm"],
+            ["s", "µm", "mm", "cm"],
+        ),
+        (
+            ["t", "z", "c", "y", "x"],
+            (6, 2, 3, 3, 5),
+            [120, 0.54321, 0.0, 6.000024000096, 13],
+            ["", "", "", "", ""],
+            ["pixel", "pixel", "pixel", "pixel", "pixel"],
+        ),
+    ],
+)
+def test_unit_conversion_OpExportMultipageTiff(graph, tmp_path, axes, shape, resolutions, units, converted_units):
+    op_data = get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units)
+    out_path = str(tmp_path / "3d_export.tif")
+    export = OpExportMultipageTiff(graph=graph)
+    export.Input.connect(op_data.Output)
+    export.Filepath.setValue(out_path)
+    export.run_export()
+
+    with tifffile.TiffFile(out_path) as f:
+        written_data = f.asarray()
+        np.testing.assert_array_equal(written_data, op_data.Output.value)
+
+        xml = ET.fromstring(f.ome_metadata)
+        ns = {"ome": "http://www.openmicroscopy.org/Schemas/OME/2016-06"}
+        image = xml.find("ome:Image", ns)
+        pixels = image.find("ome:Pixels", ns)
+        assert image and pixels
+        sizes = {
+            "x": ("PhysicalSizeX", "PhysicalSizeXUnit"),
+            "y": ("PhysicalSizeY", "PhysicalSizeYUnit"),
+            "z": ("PhysicalSizeZ", "PhysicalSizeZUnit"),
+            "t": ("TimeIncrement", "TimeIncrementUnit"),
+        }
+
+        comp_axes = "".join(axes).upper()
+        assert comp_axes == f.series[0].axes
+
+        for axis in axes:
+            if axis.lower() == "c":
+                assert "c" not in sizes.keys()  # Channel sizes are not written to TIFF
+                continue
+            assert pixels.attrib.get(sizes[axis][1], "pixel") == converted_units[axes.index(axis)]
             assert float(pixels.attrib.get(sizes[axis][0], 0)) == resolutions[axes.index(axis)]
 
 
 @pytest.mark.parametrize(
     "axes, shape, resolutions, units",
     [
-        (["y", "x"], (65, 58), [6.000024000096, 13], ["μm", "mm"]),
-        (["c", "y", "x"], (2, 65, 58), [0.0, 6.000024000096, 13], ["", "μm", "mm"]),
+        (["y", "x"], (65, 58), [6.000024000096, 13], ["µm", "mm"]),
+        (["c", "y", "x"], (2, 65, 58), [0.0, 6.000024000096, 13], ["", "µm", "mm"]),
         (
             ["z", "y", "x"],
             (2, 3, 5),
@@ -312,7 +416,7 @@ def test_write_read_roundtrip_tiff_OpExportMultipageTiff(graph, tmp_path):
         ["t", "z", "c", "y", "x"],
         (5, 45, 2, 58, 67),
         [5.0, 7.0, 0.0, 6.000024000096, 13],
-        ["sec", "cm", "", "μm", "mm"],
+        ["seconds", "cm", "", "µm", "mm"],
     )
     out_path = str(tmp_path / "3d_export.tif")
     export = OpExportMultipageTiff(graph=graph)
@@ -325,7 +429,7 @@ def test_write_read_roundtrip_tiff_OpExportMultipageTiff(graph, tmp_path):
     reader.Filepath.setValue(out_path)
     assert reader.Output.ready()
 
-    expected_meta = {"t": (5.0, "sec"), "z": (7.0, "cm"), "y": (6.000024000096, "μm"), "x": (13, "mm")}
+    expected_meta = {"t": (5.0, "s"), "z": (7.0, "cm"), "y": (6.000024000096, "µm"), "x": (13, "mm")}
     assert len(reader.Output.meta.axistags) == 5
     for axis in reader.Output.meta.getAxisKeys():
         if axis == "c":
