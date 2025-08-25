@@ -10,7 +10,7 @@ def toASCII(val):  # encoding is necessary for exporting image metadata
     return val.encode("unicode_escape").decode("ascii")
 
 
-def toOME(val):
+def to_ome(val):
     if val.lower() in ome_units:
         return ome_units[val.lower()]
     return "pixel"
