@@ -115,8 +115,8 @@ class HorizontalMainSplitter(QSplitter):
     """Widget intended for the main GUI elements
 
     Attrs:
-      * mainSplitter: Contains AppletDrawer and ViewerControlstack
-      * appletStack: Contains CentralWidget
+      mainControls: Contains AppletDrawer and ViewerControlstack
+      centralStack: Contains CentralWidget
     """
 
     def __init__(self, parent):
