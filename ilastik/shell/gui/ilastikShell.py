@@ -60,6 +60,7 @@ from PyQt5.QtWidgets import (
 )
 
 # lazyflow
+from ilastik.shell.gui.shellWidgets import HorizontalMainSplitter, MainControls
 from ilastik.widgets.collapsibleWidget import CollapsibleWidget
 from lazyflow.roi import TinyVector
 from lazyflow.graph import Operator
@@ -746,6 +747,16 @@ class IlastikShell(QMainWindow):
 
         self.startscreen.CreateList.setWidget(self.startscreen.VL1.widget())
         self.startscreen.CreateList.setWidgetResizable(True)
+
+        # Expose some attributes of custom widgets on class level
+        self.sideSplitter: HorizontalMainSplitter = self.startscreen.sideSplitter
+        mainControls: MainControls = self.sideSplitter.mainSplitter
+        self.imageSelectionCombo = mainControls.imageSelectionCombo
+        self.appletBar = mainControls.appletBar
+        self.viewerControlStack = mainControls.viewerControlStack
+        self.imageSelectionGroup = mainControls.imageSelectionGroup
+        self.mainSplitter = mainControls
+        self.appletStack = self.sideSplitter.appletStack
 
         self._replaceLogo(localDir)
 

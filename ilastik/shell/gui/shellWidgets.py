@@ -1,0 +1,132 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2025, the ilastik developers
+#                                <team@ilastik.org>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
+#
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#          http://ilastik.org/license.html
+###############################################################################
+from typing import Optional
+
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor, QPalette
+from PyQt5.QtWidgets import (
+    QComboBox,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QSizePolicy,
+    QSplitter,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
+)
+
+from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
+
+
+class CentralWidgetStack(QStackedWidget):
+    """Stacked widget that will contain/show the various central widgets
+
+    usually volumina, sometimes also additional elements, e.g. in DataSelection
+    """
+
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        super().__init__(parent)
+
+        policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        policy.setHorizontalStretch(2)
+        policy.setVerticalStretch(2)
+        self.setSizePolicy(policy)
+
+        self.setMinimumSize(500, 100)
+        self.setBaseSize(500, 100)
+
+        self.setFrameShape(QFrame.NoFrame)
+        self.setFrameShadow(QFrame.Plain)
+        self.setLineWidth(0)
+
+
+class MainControls(QSplitter):
+    """The widget home to the applet drawer and viewer control stack"""
+
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        super().__init__(Qt.Vertical, parent)
+        self.appletBar = AppletDrawerToolBox()
+        appletbar_policy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        appletbar_policy.setHorizontalStretch(0)
+        appletbar_policy.setVerticalStretch(0)
+        self.appletBar.setSizePolicy(appletbar_policy)
+
+        appletBar_pallette = QPalette()
+        appletBar_pallette.setColor(QPalette.Active, QPalette.Highlight, QColor(62, 62, 62, 255))
+        appletBar_pallette.setColor(QPalette.Inactive, QPalette.Highlight, QColor(62, 62, 62, 255))
+        appletBar_pallette.setColor(QPalette.Disabled, QPalette.Highlight, QColor(240, 240, 240, 255))
+        self.appletBar.setPalette(appletBar_pallette)
+        self.appletBar.setLineWidth(2)
+        self.appletBar.setMidLineWidth(2)
+
+        self.imageSelectionGroup = QWidget()
+        imageSelectionGroup_layout = QHBoxLayout()
+        imageSelectionGroup_layout.addWidget(QLabel("Current View:"))
+        self.imageSelectionCombo = QComboBox()
+        imageSelectionCombo_policy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        imageSelectionCombo_policy.setHorizontalStretch(0)
+        imageSelectionCombo_policy.setVerticalStretch(0)
+        self.imageSelectionCombo.setSizePolicy(imageSelectionCombo_policy)
+        imageSelectionGroup_layout.addWidget(self.imageSelectionCombo)
+        self.imageSelectionGroup.setLayout(imageSelectionGroup_layout)
+
+        self.viewerControlStack = QStackedWidget()
+        viewerControlStackpolicy = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
+        viewerControlStackpolicy.setHorizontalStretch(2)
+        viewerControlStackpolicy.setVerticalStretch(2)
+        self.viewerControlStack.setSizePolicy(viewerControlStackpolicy)
+        self.viewerControlStack.setMinimumSize(310, 200)
+        self.viewerControlStack.setBaseSize(0, 0)
+        self.viewerControlStack.setFrameShape(QFrame.NoFrame)
+        self.viewerControlStack.setFrameShadow(QFrame.Plain)
+        self.viewerControlStack.setLineWidth(0)
+
+        verticalLayout = QVBoxLayout()
+        verticalLayout.setSpacing(0)
+        verticalLayout.addWidget(self.imageSelectionGroup)
+        verticalLayout.addWidget(self.viewerControlStack)
+        layoutWidget = QWidget()
+        layoutWidget.setLayout(verticalLayout)
+
+        self.addWidget(self.appletBar)
+        self.addWidget(layoutWidget)
+
+
+class HorizontalMainSplitter(QSplitter):
+    """Widget intended for the main GUI elements
+
+    Attrs:
+      * mainSplitter: Contains AppletDrawer and ViewerControlstack
+      * appletStack: Contains CentralWidget
+    """
+
+    def __init__(self, parent):
+        super().__init__(
+            orientation=Qt.Horizontal,
+            parent=parent,
+        )
+        self.setChildrenCollapsible(False)
+        self.mainSplitter = MainControls()
+        self.appletStack = CentralWidgetStack()
+
+        self.insertWidget(0, self.mainSplitter)
+        self.insertWidget(1, self.appletStack)
