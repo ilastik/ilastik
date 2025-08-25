@@ -230,9 +230,9 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
                 (
                     f"{tag.key}: "
                     + (
-                        f"{tag.resolution} {datasetInfo.axis_units[tag.key]}"
+                        f"{round(tag.resolution, 2)} {datasetInfo.axis_units[tag.key]}"
                         if datasetInfo.axis_units[tag.key] and tag.resolution
-                        else str(tag.resolution) if tag.resolution else datasetInfo.axis_units[tag.key]
+                        else str(round(tag.resolution, 2)) if tag.resolution else datasetInfo.axis_units[tag.key]
                     )
                 )
                 for tag in datasetInfo.axistags
