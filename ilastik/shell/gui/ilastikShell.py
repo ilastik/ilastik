@@ -749,14 +749,15 @@ class IlastikShell(QMainWindow):
         self.startscreen.CreateList.setWidgetResizable(True)
 
         # Expose some attributes of custom widgets on class level
-        self.sideSplitter: HorizontalMainSplitter = self.startscreen.sideSplitter
-        mainControls: MainControls = self.sideSplitter.mainSplitter
-        self.imageSelectionCombo = mainControls.imageSelectionCombo
-        self.appletBar = mainControls.appletBar
-        self.viewerControlStack = mainControls.viewerControlStack
-        self.imageSelectionGroup = mainControls.imageSelectionGroup
-        self.mainSplitter = mainControls
-        self.appletStack = self.sideSplitter.appletStack
+        mainSplitter = self.startscreen.mainSplitter
+        assert isinstance(mainSplitter, HorizontalMainSplitter)
+        self.imageSelectionCombo = mainSplitter.imageSelectionCombo
+        self.appletBar = mainSplitter.appletBar
+        self.viewerControlStack = mainSplitter.viewerControlStack
+        self.imageSelectionGroup = mainSplitter.imageSelectionGroup
+        self.mainControls = self.mainSplitter.mainControls
+        self.centralStack = self.mainSplitter.centralStack
+        self.mainSplitter = mainSplitter
 
         self._replaceLogo(localDir)
 
@@ -911,7 +912,7 @@ class IlastikShell(QMainWindow):
         menu.addMenu(self._createAllocationTrackingSubmenu())
 
         def hideApplets(hideThem):
-            self.mainSplitter.setVisible(not hideThem)
+            self.mainControls.setVisible(not hideThem)
 
         hide = menu.addAction("Hide applets")
         hide.setCheckable(True)
@@ -1234,8 +1235,8 @@ class IlastikShell(QMainWindow):
         self.enableWorkflow = self.projectManager is not None
         self.updateShellProjectDisplay()
         # Default to a 50-50 split
-        totalSplitterHeight = sum(self.sideSplitter.sizes())
-        self.sideSplitter.setSizes([totalSplitterHeight // 2, totalSplitterHeight // 2])
+        totalSplitterHeight = sum(self.mainSplitter.sizes())
+        self.mainSplitter.setSizes([totalSplitterHeight // 2, totalSplitterHeight // 2])
 
     @threadRouted
     def updateShellProjectDisplay(self):
@@ -1394,15 +1395,15 @@ class IlastikShell(QMainWindow):
             centralWidget = self._applets[applet_index].getMultiLaneGui().centralWidget()
             # Replace the placeholder widget, if possible
             if centralWidget is not None:
-                if self.appletStack.indexOf(centralWidget) == -1:
-                    self.appletStack.removeWidget(self.appletStack.widget(applet_index))
-                    self.appletStack.insertWidget(applet_index, centralWidget)
+                if self.centralStack.indexOf(centralWidget) == -1:
+                    self.centralStack.removeWidget(self.centralStack.widget(applet_index))
+                    self.centralStack.insertWidget(applet_index, centralWidget)
                     # For test recording purposes, every gui we add MUST have a unique name
                     centralWidget.setObjectName(
                         "centralWidget_applet_{}_lane_{}".format(applet_index, self.currentImageIndex)
                     )
 
-            self.appletStack.setCurrentIndex(applet_index)
+            self.centralStack.setCurrentIndex(applet_index)
 
     def showViewerControlWidget(self, applet_index):
         if applet_index < len(self._applets):
@@ -1469,7 +1470,7 @@ class IlastikShell(QMainWindow):
             ), "Applet GUIs must conform to the Applet GUI interface."
 
             # Add placeholder widget, since the applet's central widget may not exist yet.
-            self.appletStack.addWidget(QWidget(parent=self))
+            self.centralStack.addWidget(QWidget(parent=self))
 
             # Add a placeholder widget
             self.viewerControlStack.addWidget(QWidget(parent=self))
@@ -1490,7 +1491,7 @@ class IlastikShell(QMainWindow):
             app.shellRequestSignal.clean()
             app.progressSignal.clean()
 
-        self._clearStackedWidget(self.appletStack)
+        self._clearStackedWidget(self.centralStack)
         self._clearStackedWidget(self.viewerControlStack)
 
         # Remove all drawers
@@ -1826,7 +1827,7 @@ class IlastikShell(QMainWindow):
         # switch away from the startup screen to show the loaded project
         self.mainStackedWidget.setCurrentIndex(1)
         # By default, make the splitter control expose a reasonable width of the applet bar
-        self.mainSplitter.setSizes([300, 1])
+        self.mainControls.setSizes([300, 1])
 
         self.progressDisplayManager.cleanUp()
         self.progressDisplayManager.initializeForWorkflow(self.projectManager.workflow)

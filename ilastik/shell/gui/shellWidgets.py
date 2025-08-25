@@ -125,8 +125,13 @@ class HorizontalMainSplitter(QSplitter):
             parent=parent,
         )
         self.setChildrenCollapsible(False)
-        self.mainSplitter = MainControls()
-        self.appletStack = CentralWidgetStack()
+        self.mainControls = MainControls()
+        self.viewerControlStack = self.mainControls.viewerControlStack
+        self.appletBar = self.mainControls.appletBar
+        self.imageSelectionGroup = self.mainControls.imageSelectionGroup
+        self.imageSelectionCombo = self.mainControls.imageSelectionCombo
 
-        self.insertWidget(0, self.mainSplitter)
-        self.insertWidget(1, self.appletStack)
+        self.centralStack = CentralWidgetStack()
+
+        self.insertWidget(0, self.mainControls)
+        self.insertWidget(1, self.centralStack)

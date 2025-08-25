@@ -464,7 +464,7 @@
          <number>0</number>
         </property>
         <item>
-         <widget class="HorizontalMainSplitter" name="sideSplitter"/>
+         <widget class="HorizontalMainSplitter" name="mainSplitter"/>
         </item>
        </layout>
       </widget>
