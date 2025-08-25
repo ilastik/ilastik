@@ -228,11 +228,15 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
                 return UninitializedDisplayData[index.column()]
             axis_strings = [
                 (
-                    f"{tag.key}: {tag.resolution or '-'}" + f" {datasetInfo.axis_units[tag.key]}"
-                    if datasetInfo.axis_units[tag.key]
-                    else ""
+                    f"{tag.key}: "
+                    + (
+                        f"{tag.resolution} {datasetInfo.axis_units[tag.key]}"
+                        if datasetInfo.axis_units[tag.key] and tag.resolution
+                        else str(tag.resolution) if tag.resolution else datasetInfo.axis_units[tag.key]
+                    )
                 )
                 for tag in datasetInfo.axistags
+                if tag.resolution or datasetInfo.axis_units[tag.key]
             ]
             return ", ".join(axis_strings)
 

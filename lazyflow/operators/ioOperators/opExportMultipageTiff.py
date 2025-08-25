@@ -101,7 +101,7 @@ class OpExportMultipageTiff(Operator):
         axis_units = meta.get("axis_units", {})
         pixels = {}
 
-        for axis in "".join(meta.getAxisKeys()):
+        for axis in meta.getAxisKeys():
             if axis in size_trans:
                 size_key = size_trans[axis]
                 unit_key = unit_trans[axis]
@@ -111,7 +111,7 @@ class OpExportMultipageTiff(Operator):
                 if axis != "c":
                     pixels[size_key] = float(axistags[axis].resolution)  # OME uses unicode
                     unit_value = axis_units.get(axis, "")
-                    pixels[unit_key] = str(tiff_encoding.toOME(unit_value))
+                    pixels[unit_key] = str(tiff_encoding.to_ome(unit_value))
         meta_dict["Pixels"] = pixels
 
         with tifffile.TiffWriter(self.Filepath.value, byteorder="<", ome=True) as writer:

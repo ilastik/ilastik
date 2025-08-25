@@ -20,9 +20,6 @@
 # 		   http://ilastik.org/license/
 ###############################################################################
 
-import pathlib
-import tempfile
-
 import numpy
 import vigra
 
