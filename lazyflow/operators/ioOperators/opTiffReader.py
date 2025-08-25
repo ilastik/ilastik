@@ -104,7 +104,7 @@ class OpTiffReader(Operator):
         self.Output.meta.axistags = vigra.defaultAxistags(axes)
         self.Output.meta.dtype = numpy.dtype(dtype_code).type
 
-        self.Output.meta.axis_units = {key: "" for key in axes if key != "c"}
+        self.Output.meta.axis_units = {key: "" for key in axes}
 
         if ij_meta or ome_meta:
             self.setPixelSizes(axes, ij_meta, ome_meta)
@@ -159,14 +159,14 @@ class OpTiffReader(Operator):
                     self.Output.meta.axistags.setResolution(
                         ax,
                         (
-                            self.get_tiff_res(meta.get(resolution_keys[ax], None))
+                            self.round_resolution_to_tiff_precision(meta.get(resolution_keys[ax], None))
                             if ax in "xy"
                             else ij_meta.get(resolution_keys[ax], 0)
                         ),
                     )
                     # (TIFF format stores resolution values as Rational tuples (numerator, denominator))
                     unit = self.handle_stringified_tuples(ij_meta.get(unit_keys[ax], ""))
-                    self.Output.meta.axis_units[ax] = tiff_encoding.fromASCII(unit) if unit else ""
+                    self.Output.meta.axis_units[ax] = tiff_encoding.from_ascii(unit) if unit else ""
 
             # Look for OME-TIFF metadata (possible in FIJI hyperstacks)
             else:
@@ -194,7 +194,7 @@ class OpTiffReader(Operator):
                                 unit_keys[axis], ""
                             )  # OME uses unicode
 
-    def get_tiff_res(self, frac):
+    def round_resolution_to_tiff_precision(self, frac):
         """
         Rounding is employed for axes with resolutions deviating extremely slightly from integer values.
         This is because the TIFF standard introduces floating-point precision errors
@@ -202,7 +202,7 @@ class OpTiffReader(Operator):
         """
         if frac and frac.value[0] != 0:
             resolution = frac.value[1] / frac.value[0]
-            if abs(resolution - round(resolution)) < 0.00001:
+            if abs(resolution - round(resolution)) < 1e-8:
                 resolution = round(resolution)
             return resolution
         return 0

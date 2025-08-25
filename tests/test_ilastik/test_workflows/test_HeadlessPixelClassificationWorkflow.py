@@ -37,16 +37,6 @@ except ImportError:
     MPI_DEPENDENCIES_MET = False
 
 
-@pytest.fixture
-def pixel_classification_ilp_2d3c(sample_projects_dir: Path) -> Path:
-    return sample_projects_dir / "PixelClassification2d3c.ilp"
-
-
-@pytest.fixture
-def pixel_classification_ilp_2d_units(sample_projects_dir: Path) -> Path:
-    return sample_projects_dir / "PixelClassification2d_units.ilp"
-
-
 def create_h5(data: numpy.ndarray, axiskeys: str) -> Path:
     assert len(axiskeys) == len(data.shape)
     path = tempfile.mkstemp()[1] + ".h5"
@@ -412,7 +402,7 @@ def test_headless_pixel_size_preservation(testdir, tmp_path, sample_projects_dir
     Based on 'test_headless_ome_zarr_multiscale_export'
     """
     ilp_path = sample_projects_dir / "PixelClassification2d_units.ilp"
-    raw_2d_path = str(sample_projects_dir / "inputdata" / "2d.tif")
+    raw_2d_path = str(sample_projects_dir / "inputdata" / "2d_with_pixel_sizes.tif")
     output_path = tmp_path / "out_2d_units.h5"
 
     run_headless_pixel_classification(
@@ -428,7 +418,7 @@ def test_headless_pixel_size_preservation(testdir, tmp_path, sample_projects_dir
     opReaderResult = OpInputDataReader(graph=Graph())
     opReaderResult.FilePath.setValue(str(output_path))
 
-    assert round(opReaderResult.Output.meta.axistags["x"].resolution) == 5.0
-    assert round(opReaderResult.Output.meta.axistags["y"].resolution) == 6.0
+    assert numpy.isclose(opReaderResult.Output.meta.axistags["x"].resolution, 5.0, 1e-8)
+    assert numpy.isclose(opReaderResult.Output.meta.axistags["y"].resolution, 6.0, 1e-5)
     assert opReaderResult.Output.meta.axis_units["x"] == "cm"
     assert opReaderResult.Output.meta.axis_units["y"] == "nm"

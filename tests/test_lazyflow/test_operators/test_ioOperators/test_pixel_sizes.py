@@ -51,8 +51,8 @@ def test_write_OpExport2DImage(graph, tmp_path, axes, shape, resolutions, units)
     with tifffile.TiffFile(target_path) as f:
         written_data = f.asarray()
         np.testing.assert_array_equal(written_data, op_data.Output.value)
-        assert tiff_encoding.fromASCII(f.imagej_metadata["yunit"]) == units[axes.index("y")]
-        assert tiff_encoding.fromASCII(f.imagej_metadata["unit"]) == units[axes.index("x")]
+        assert tiff_encoding.from_ascii(f.imagej_metadata["yunit"]) == units[axes.index("y")]
+        assert tiff_encoding.from_ascii(f.imagej_metadata["unit"]) == units[axes.index("x")]
         page = f.series[0][0]
         assert page.axes == "YX"
         # page.resolution is in xy order
@@ -322,12 +322,12 @@ def test_write_OpH5N5WriterBigDataset(graph, tmp_path, axes, shape, resolutions,
 @pytest.mark.parametrize(
     "image_path,expected_meta",
     [
-        ("/pix_res/2d.tif", {"x": (2, "cm"), "y": (7, "nm")}),
+        ("/pix_res/2d.tif", {"x": (2, "cm"), "y": (7.000007000007, "nm")}),
         ("/pix_res/2d_zero_division.tif", {"x": (0, "cm"), "y": (0, "mm")}),
         ("/pix_res/2d_stringified_tuple.tif", {"x": (5, "cm"), "y": (6.000024000096, "nm")}),
         ("/pix_res/3d.tif", {"x": (11.000011000011, "cm"), "y": (6.000024000096, "mm"), "z": (2, "pm")}),
-        ("/pix_res/2d_t.tif", {"x": (50, "μm"), "y": (3, "pm"), "t": (3, "min")}),
-        ("/pix_res/3d_t.tif", {"x": (3, "mm"), "y": (5, ""), "z": (7, ""), "t": (3, "")}),
+        ("/pix_res/2d_t.tif", {"x": (50, "μm"), "y": (3.000003000003, "pm"), "t": (3, "min")}),
+        ("/pix_res/3d_t.tif", {"x": (3.000003000003, "mm"), "y": (5, ""), "z": (7, ""), "t": (3, "")}),
         ("/pix_res/3d_c.tif", {"x": (2, "μm"), "y": (11.000011000011, "nm"), "z": (13, "cm"), "c": (0.0, "")}),
         (
             "/pix_res/5d.tif",
@@ -351,7 +351,6 @@ def test_read_OpTiffReader(image_path, expected_meta, inputdata_dir):
         assert axis in op.Output.meta.axistags
         if axis == "c":  # Channel sizes are not written to TIFF
             assert op.Output.meta.axistags[axis].resolution == 0
-            assert axis not in op.Output.meta.axis_units.keys()
             continue
         (resolution, unit) = expected_meta[axis]
         tag = op.Output.meta.axistags[axis]
@@ -398,7 +397,6 @@ def test_write_read_roundtrip_tiff_OpExport2DImage(graph, tmp_path):
     for axis in reader.Output.meta.getAxisKeys():
         if axis == "c":
             assert reader.Output.meta.axistags[axis].resolution == 0
-            assert axis not in reader.Output.meta.axis_units
             continue
         (resolution, unit) = expected_meta[axis]
         tag = reader.Output.meta.axistags[axis]
@@ -434,7 +432,6 @@ def test_write_read_roundtrip_tiff_OpExportMultipageTiff(graph, tmp_path):
     for axis in reader.Output.meta.getAxisKeys():
         if axis == "c":
             assert reader.Output.meta.axistags[axis].resolution == 0
-            assert axis not in reader.Output.meta.axis_units
             continue
         (resolution, unit) = expected_meta[axis]
         tag = reader.Output.meta.axistags[axis]

@@ -202,8 +202,6 @@ class DatasetInfo(ABC):
             axisorder = data["axisorder"][()].decode("utf-8")
             params["axistags"] = vigra.defaultAxistags(axisorder)
 
-        if "axis_units" in data:
-            params["axis_units"] = json.loads(data["axis_units"][()].decode("utf-8"))
         if "subvolume_roi" in data:
             params["subvolume_roi"] = tuple(data["subvolume_roi"][()])
         if "normalizeDisplay" in data:

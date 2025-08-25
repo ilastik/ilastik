@@ -96,8 +96,8 @@ class OpExport2DImage(Operator):
 
             imagej_metadata = {
                 "spacing": 1.0,  # this is equal to the z-axis and gets handled differently in non-2d images
-                "unit": tiff_encoding.toASCII(self.Input.meta.axis_units["x"]),
-                "yunit": tiff_encoding.toASCII(self.Input.meta.axis_units["y"]),
+                "unit": tiff_encoding.to_ascii(self.Input.meta.axis_units["x"]),
+                "yunit": tiff_encoding.to_ascii(self.Input.meta.axis_units["y"]),
                 "axes": axes,
             }
 
@@ -117,7 +117,7 @@ class OpExport2DImage(Operator):
                         if self.Input.meta.axistags["y"].resolution != 0
                         else 0
                     ),
-                ),  # standard ti1 / self.Input.meta.axistags["y"].resolution,ff convention is to store pixels/space but internally we prefer and use space/pixel
+                ),  # standard tiff convention is to store pixels/space but internally we prefer and use space/pixel
             )
         else:
             vigra.impex.writeImage(data, self.Filepath.value)
