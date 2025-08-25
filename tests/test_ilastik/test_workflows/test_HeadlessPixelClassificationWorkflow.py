@@ -418,7 +418,7 @@ def test_headless_pixel_size_preservation(testdir, tmp_path, sample_projects_dir
     opReaderResult = OpInputDataReader(graph=Graph())
     opReaderResult.FilePath.setValue(str(output_path))
 
-    assert numpy.isclose(opReaderResult.Output.meta.axistags["x"].resolution, 5.0, 1e-8)
-    assert numpy.isclose(opReaderResult.Output.meta.axistags["y"].resolution, 6.0, 1e-5)
+    assert numpy.isclose(opReaderResult.Output.meta.axistags["x"].resolution, 5.0, atol=1e-8)
+    assert numpy.isclose(opReaderResult.Output.meta.axistags["y"].resolution, 6.0, atol=1e-8)
     assert opReaderResult.Output.meta.axis_units["x"] == "cm"
     assert opReaderResult.Output.meta.axis_units["y"] == "nm"

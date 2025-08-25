@@ -668,8 +668,6 @@ class FilesystemDatasetInfo(DatasetInfo):
             graph=Graph(), WorkingDirectory=self.base_dir, FilePath=self.filePath, SequenceAxis=self.sequence_axis
         )
         meta = op_reader.Output.meta.copy()
-        if "axis_units" in info_kwargs:
-            meta.axis_units = info_kwargs.pop("axis_units")
         op_reader.cleanUp()
         super().__init__(
             default_tags=meta.axistags,
