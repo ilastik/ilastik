@@ -641,6 +641,39 @@ def test_match_target_scales_to_input(shape, input_scales, expected_shapes):
                 ]
             ),
         ),
+        (  # Export is cropped + input has no channels
+            tagged_shape("zyxc", (16, 16, 16, 3)),
+            OrderedDict(
+                [
+                    ("source_scale", tagged_shape("zyx", (25, 25, 25))),
+                    ("4", tagged_shape("zyx", (8, 8, 8))),
+                ]
+            ),
+            OrderedDict(
+                [
+                    ("source_scale", tagged_shape("tczyx", (1, 3, 16, 16, 16))),
+                    ("4", tagged_shape("tczyx", (1, 3, 5, 5, 5))),
+                ]
+            ),
+        ),
+        (  # Export is cropped so tiny that matching downscales would be degenerate
+            tagged_shape("zyxc", (10, 7, 5, 3)),
+            OrderedDict(
+                [
+                    ("0", tagged_shape("czyx", (2, 225, 225, 225))),
+                    ("source_scale", tagged_shape("czyx", (2, 75, 75, 75))),
+                    ("2", tagged_shape("czyx", (2, 25, 25, 25))),
+                    ("3", tagged_shape("czyx", (2, 8, 8, 8))),
+                ]
+            ),
+            OrderedDict(
+                [
+                    ("source_scale", tagged_shape("tczyx", (1, 3, 10, 7, 5))),
+                    ("2", tagged_shape("tczyx", (1, 3, 3, 2, 1))),  # Include even if one axis is singleton
+                    # "3" excluded because all axes become singleton (or 0 in case of x)
+                ]
+            ),
+        ),
     ],
 )
 def test_match_target_scales_to_input_excluding_upscales(shape, input_scales, expected_shapes):
