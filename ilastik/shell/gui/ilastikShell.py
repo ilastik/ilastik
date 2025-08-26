@@ -60,7 +60,7 @@ from PyQt5.QtWidgets import (
 )
 
 # lazyflow
-from ilastik.shell.gui.shellWidgets import HorizontalMainSplitter, MainControls
+from ilastik.shell.gui.shellWidgets import HorizontalMainSplitter
 from ilastik.widgets.collapsibleWidget import CollapsibleWidget
 from lazyflow.roi import TinyVector
 from lazyflow.graph import Operator
@@ -498,7 +498,7 @@ class IlastikShell(QMainWindow):
 
         self._memDlg = None  # this will hold the memory usage dialog once created
 
-        self.imageSelectionGroup.setHidden(True)
+        self.mainSplitter.setImageSelectionGroupVisible(False)
 
         self.setAttribute(Qt.WA_AlwaysShowToolTips)
 
@@ -751,12 +751,8 @@ class IlastikShell(QMainWindow):
         # Expose some attributes of custom widgets on class level
         mainSplitter = self.startscreen.mainSplitter
         assert isinstance(mainSplitter, HorizontalMainSplitter)
-        self.imageSelectionCombo = mainSplitter.imageSelectionCombo
         self.appletBar = mainSplitter.appletBar
-        self.viewerControlStack = mainSplitter.viewerControlStack
-        self.imageSelectionGroup = mainSplitter.imageSelectionGroup
-        self.mainControls = self.mainSplitter.mainControls
-        self.centralStack = self.mainSplitter.centralStack
+        self.imageSelectionCombo = mainSplitter.imageSelectionCombo
         self.mainSplitter = mainSplitter
 
         self._replaceLogo(localDir)
@@ -912,7 +908,7 @@ class IlastikShell(QMainWindow):
         menu.addMenu(self._createAllocationTrackingSubmenu())
 
         def hideApplets(hideThem):
-            self.mainControls.setVisible(not hideThem)
+            self.mainSplitter.setMainControlsVisible(not hideThem)
 
         hide = menu.addAction("Hide applets")
         hide.setCheckable(True)
@@ -1384,39 +1380,23 @@ class IlastikShell(QMainWindow):
 
             applet = self._applets[applet_index]
             # Only show the combo if the applet is lane-aware and there is more than one lane loaded.
-            self.imageSelectionGroup.setVisible(
+            self.mainSplitter.setImageSelectionGroupVisible(
                 applet.syncWithImageIndex
                 and self.imageSelectionCombo.count() > 1
                 and self._applets[applet_index].getMultiLaneGui().allowLaneSelectionChange()
             )
 
-    def showCentralWidget(self, applet_index):
+    def showCentralWidget(self, applet_index: int):
         if applet_index < len(self._applets):
             centralWidget = self._applets[applet_index].getMultiLaneGui().centralWidget()
-            # Replace the placeholder widget, if possible
-            if centralWidget is not None:
-                if self.centralStack.indexOf(centralWidget) == -1:
-                    self.centralStack.removeWidget(self.centralStack.widget(applet_index))
-                    self.centralStack.insertWidget(applet_index, centralWidget)
-                    # For test recording purposes, every gui we add MUST have a unique name
-                    centralWidget.setObjectName(
-                        "centralWidget_applet_{}_lane_{}".format(applet_index, self.currentImageIndex)
-                    )
-
-            self.centralStack.setCurrentIndex(applet_index)
+            centralWidget.setObjectName(f"centralWidget_applet_{applet_index}_lane_{self.currentImageIndex}")
+            self.mainSplitter.setActiveCentralWidget(centralWidget)
 
     def showViewerControlWidget(self, applet_index):
         if applet_index < len(self._applets):
             viewerControlWidget = self._applets[applet_index].getMultiLaneGui().viewerControlWidget()
-            # Replace the placeholder widget, if possible
-            if viewerControlWidget is not None:
-                if self.viewerControlStack.indexOf(viewerControlWidget) == -1:
-                    self.viewerControlStack.addWidget(viewerControlWidget)
-                self.viewerControlStack.setCurrentWidget(viewerControlWidget)
-                # For test recording purposes, every gui we add MUST have a unique name
-                viewerControlWidget.setObjectName(
-                    "viewerControls_applet_{}_lane_{}".format(applet_index, self.currentImageIndex)
-                )
+            viewerControlWidget.setObjectName(f"viewerControls_applet_{applet_index}_lane_{self.currentImageIndex}")
+            self.mainSplitter.setActiveViewerControls(viewerControlWidget)
 
     def refreshAppletDrawer(self, applet_index):
         if applet_index < len(self._applets):
@@ -1469,12 +1449,6 @@ class IlastikShell(QMainWindow):
                 app.getMultiLaneGui(), AppletGuiInterface
             ), "Applet GUIs must conform to the Applet GUI interface."
 
-            # Add placeholder widget, since the applet's central widget may not exist yet.
-            self.centralStack.addWidget(QWidget(parent=self))
-
-            # Add a placeholder widget
-            self.viewerControlStack.addWidget(QWidget(parent=self))
-
             self._appletBarMgr.addApplet(applet_index, app)
 
         # Set up handling of GUI commands from this applet
@@ -1491,16 +1465,10 @@ class IlastikShell(QMainWindow):
             app.shellRequestSignal.clean()
             app.progressSignal.clean()
 
-        self._clearStackedWidget(self.centralStack)
-        self._clearStackedWidget(self.viewerControlStack)
+        self.mainSplitter.clearStackedWidgets()
 
         # Remove all drawers
         self._appletBarMgr.removeAll()
-
-    def _clearStackedWidget(self, stackedWidget):
-        for i in reversed(list(range(stackedWidget.count()))):
-            lastWidget = stackedWidget.widget(i)
-            stackedWidget.removeWidget(lastWidget)
 
     def handleShellRequest(self, applet_index, requestAction):
         """
@@ -1826,8 +1794,6 @@ class IlastikShell(QMainWindow):
 
         # switch away from the startup screen to show the loaded project
         self.mainStackedWidget.setCurrentIndex(1)
-        # By default, make the splitter control expose a reasonable width of the applet bar
-        self.mainControls.setSizes([300, 1])
 
         self.progressDisplayManager.cleanUp()
         self.progressDisplayManager.initializeForWorkflow(self.projectManager.workflow)

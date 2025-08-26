@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from typing import Optional
+from typing import Optional, Union
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QPalette
@@ -125,13 +125,49 @@ class HorizontalMainSplitter(QSplitter):
             parent=parent,
         )
         self.setChildrenCollapsible(False)
-        self.mainControls = MainControls()
-        self.viewerControlStack = self.mainControls.viewerControlStack
-        self.appletBar = self.mainControls.appletBar
-        self.imageSelectionGroup = self.mainControls.imageSelectionGroup
-        self.imageSelectionCombo = self.mainControls.imageSelectionCombo
+        self._mainControls = MainControls()
+        self._viewerControlStack = self._mainControls.viewerControlStack
+        self.appletBar = self._mainControls.appletBar
+        self._imageSelectionGroup = self._mainControls.imageSelectionGroup
+        self.imageSelectionCombo = self._mainControls.imageSelectionCombo
 
-        self.centralStack = CentralWidgetStack()
+        self._centralStack = CentralWidgetStack()
 
-        self.insertWidget(0, self.mainControls)
-        self.insertWidget(1, self.centralStack)
+        self.insertWidget(0, self._mainControls)
+        self.insertWidget(1, self._centralStack)
+
+        self._viewerControlPlaceholder = QWidget(self)
+        self._centralWidgetPlaceholder = QWidget(self)
+
+        self.setActiveViewerControls(self._viewerControlPlaceholder)
+        self.setActiveCentralWidget(self._centralWidgetPlaceholder)
+
+    def clearStackedWidgets(self):
+        for stacked_widget in [self._viewerControlStack, self._centralStack]:
+            for i in reversed(list(range(stacked_widget.count()))):
+                lastWidget = stacked_widget.widget(i)
+                stacked_widget.removeWidget(lastWidget)
+
+    @staticmethod
+    def _setActiveStackWidget(stack, widget):
+        if stack.indexOf(widget) == -1:
+            stack.addWidget(widget)
+        stack.setCurrentWidget(widget)
+
+    def setActiveViewerControls(self, viewerControlWidget: Union[QWidget, None]):
+        if viewerControlWidget is None:
+            viewerControlWidget = self._viewerControlPlaceholder
+
+        self._setActiveStackWidget(self._viewerControlStack, viewerControlWidget)
+
+    def setActiveCentralWidget(self, centralWidget: Union[QWidget, None]):
+        if centralWidget is None:
+            centralWidget = self._centralWidgetPlaceholder
+
+        self._setActiveStackWidget(self._centralStack, centralWidget)
+
+    def setMainControlsVisible(self, visible: bool):
+        self._mainControls.setVisible(visible)
+
+    def setImageSelectionGroupVisible(self, visible: bool):
+        self._imageSelectionGroup.setVisible(visible)
