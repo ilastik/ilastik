@@ -459,6 +459,16 @@ class Slot(object):
             self.meta._ready = False
             self._sig_unready(self)
 
+    def _handleSubslotUnready(self, slot):
+        """
+        Only relevant for slots with level > 0:
+        If a subslot became unready, this higher-level slot is now also unready.
+        """
+        if self.ready():
+            return  # Should never happen (should not have called this function if all subslots are still ready)
+        self.meta._ready = False  # Higher-level slots don't track or use self._ready, but just in case.
+        self._sig_unready(self)
+
     def setOrConnect(self, value_or_slot):
         if isinstance(value_or_slot, Slot):
             self.connect(value_or_slot)
@@ -734,6 +744,7 @@ class Slot(object):
             self._debug_logger.debug(f"Inserting slot {position} to {finalsize=}")
 
         slot = self._insertNew(position)
+        slot.notifyUnready(self._handleSubslotUnready)
 
         # New slot inherits our settings
         slot.backpropagate_values = self.backpropagate_values
