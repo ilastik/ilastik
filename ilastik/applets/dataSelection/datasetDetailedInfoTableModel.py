@@ -26,6 +26,7 @@ from qtpy.QtCore import Qt, QAbstractItemModel, QModelIndex
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from lazyflow.utility.helpers import bigintprod
+from lazyflow.utility.io_util.multiscaleStore import Multiscales
 from .opDataSelection import DatasetInfo
 from .dataLaneSummaryTableModel import rowOfButtonsProxy
 
@@ -251,13 +252,36 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         Check all datasets and scales across all roles.
         Return indices of the options from `get_scale_options` that have matching scales in all other roles.
         """
-        scale_options = list(self.get_scale_options(laneIndex).keys())
 
-        all_scales = [role_slot.value.scales for role_slot in self._op.DatasetGroupOut[laneIndex] if role_slot.ready()]
-        common_lane_scales = reduce(lambda common, other: common & other.keys(), all_scales)
-        indices_of_common_scales = sorted(
-            list(scale_options.index(common_scale) for common_scale in common_lane_scales)
-        )
+        def _eq_shapes(test: Dict[str, int], ref: Dict[str, int]) -> bool:
+            """Check if two tagged shapes are equal. Ignore channel. Additional singleton axes are ok."""
+            common_axes = set(test.keys()) & set(ref.keys())
+            extra_axes = set(test.keys()) ^ set(ref.keys())
+            common_match = all(test[a] == ref[a] for a in common_axes if a != "c")
+            extra_are_singleton = all(test.get(a, 1) == 1 and ref.get(a, 1) == 1 for a in extra_axes if a != "c")
+            return common_match and extra_are_singleton
+
+        def shapes_intersection(shapes1: List[Dict[str, int]], shapes2: List[Dict[str, int]]):
+            return [s1 for s1 in shapes1 if any(_eq_shapes(s1, s2) for s2 in shapes2)]
+
+        # Checking if ready etc. shouldn't be necessary here because this should only be called
+        # while building the scale dropdown (by which point everything should be ready).
+        scale_shapes_per_role: List[List[OrderedDict[str, int]]] = [
+            (
+                list(role_slot.value.scales.values())
+                if role_slot.value.scales
+                else [dict(zip(role_slot.value.axistags.keys(), role_slot.value.laneShape))]
+            )
+            for role_slot in self._op.DatasetGroupOut[laneIndex]
+            if role_slot.ready()
+        ]
+        common_scale_shapes = reduce(shapes_intersection, scale_shapes_per_role)
+
+        scale_options: Multiscales = self._op.DatasetGroupOut[laneIndex][self._roleIndex].value.scales
+        indices_of_common_scales = []
+        for i, shape in enumerate(reversed(scale_options.values())):
+            if any(_eq_shapes(shape, common_shape) for common_shape in common_scale_shapes):
+                indices_of_common_scales.append(i)
         return indices_of_common_scales
 
     def is_scale_locked(self, laneIndex) -> bool:
