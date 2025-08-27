@@ -67,7 +67,7 @@ class MainControls(QSplitter):
         self.appletBar = AppletDrawerToolBox()
         appletbar_policy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         appletbar_policy.setHorizontalStretch(0)
-        appletbar_policy.setVerticalStretch(0)
+        appletbar_policy.setVerticalStretch(6)
         self.appletBar.setSizePolicy(appletbar_policy)
 
         appletBar_pallette = QPalette()
@@ -102,10 +102,15 @@ class MainControls(QSplitter):
 
         verticalLayout = QVBoxLayout()
         verticalLayout.setSpacing(0)
+        verticalLayout.setContentsMargins(0, 0, 0, 0)
         verticalLayout.addWidget(self.imageSelectionGroup)
         verticalLayout.addWidget(self.viewerControlStack)
         layoutWidget = QWidget()
         layoutWidget.setLayout(verticalLayout)
+        layout_policy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        layout_policy.setHorizontalStretch(2)
+        layout_policy.setVerticalStretch(5)
+        layoutWidget.setSizePolicy(layout_policy)
 
         self.addWidget(self.appletBar)
         self.addWidget(layoutWidget)

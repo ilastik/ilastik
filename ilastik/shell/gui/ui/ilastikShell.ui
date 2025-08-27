@@ -451,17 +451,8 @@
         <property name="spacing">
          <number>0</number>
         </property>
-        <property name="leftMargin">
-         <number>0</number>
-        </property>
-        <property name="topMargin">
-         <number>0</number>
-        </property>
-        <property name="rightMargin">
-         <number>0</number>
-        </property>
-        <property name="bottomMargin">
-         <number>0</number>
+        <property name="margin">
+         <number>13</number>
         </property>
         <item>
          <widget class="HorizontalMainSplitter" name="mainSplitter"/>
