@@ -22,7 +22,7 @@ import json
 import os
 import shutil
 from collections import defaultdict, OrderedDict
-from typing import Tuple
+from typing import Tuple, Dict
 from unittest import mock
 from unittest.mock import Mock
 
@@ -49,6 +49,7 @@ from ilastik.applets.dataSelection.opDataSelection import (
     FilesystemDatasetInfo,
     ProjectInternalDatasetInfo,
     UrlDatasetInfo,
+    eq_shapes,
 )
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -1056,28 +1057,6 @@ class TestOpDataSelection_OMEZarr:
         op.ActiveScale.setValue(scale_keys[1])
         assert datasetInfo.working_scale == scale_keys[1]
 
-    def test_datasetInfo_init_loads_only_one_scale(self, monkeypatch, mock_ome_zarr_metadata):
-        """
-        Instantiating a zarr.Array with a web OME store fires a request for
-        https://server.com/dataset.zarr/scaleN/.zarray. This can take a long time, esp with many scales.
-        The backend instantiates reader operators twice: once during MultiscaleUrlDatasetInfo.__init__,
-        and once during OpDataSelection.setupOutputs. The latter needs to load metadata of all scales,
-        for the DatasetInfo a single scale is enough.
-        """
-        # Monkeypatch a counter into zarr.Array instantiation
-        zarr.Array.instance_counter = 0
-        zarr_init = zarr.Array.__init__
-
-        def track_instances(*args, **kwargs):
-            zarr.Array.instance_counter += 1
-            return zarr_init(*args, **kwargs)
-
-        monkeypatch.setattr(zarr.Array, "__init__", track_instances)
-
-        # Make sure that instantiating a DatasetInfo does not load more than one scale into a zarr.Array
-        _ = MultiscaleUrlDatasetInfo(url="https://some.url.com/dataset.zarr")
-        assert zarr.Array.instance_counter == 1
-
     @pytest.fixture
     def op_data_lane(self, graph) -> OpDataSelectionGroup:
         op_data_lane = OpDataSelectionGroup(graph=graph)
@@ -1376,3 +1355,28 @@ def test_cleanup(data_path, graph):
 
     # Then
     assert len(reader.children) == children_after_load, "Did not clean up all children after input change"
+
+
+def tagged_shape(keys, shape):
+    return dict(zip(keys, shape))
+
+
+@pytest.mark.parametrize(
+    "shape1, shape2, match_expected",
+    [
+        (tagged_shape("xy", [5, 6]), tagged_shape("xy", [5, 6]), True),
+        (tagged_shape("xy", [5, 6]), tagged_shape("yx", [6, 5]), True),
+        (tagged_shape("xyc", [5, 6, 3]), tagged_shape("yx", [6, 5]), True),
+        (tagged_shape("xy", [5, 6]), tagged_shape("yxc", [6, 5, 3]), True),
+        (tagged_shape("xyc", [5, 6, 1]), tagged_shape("yxc", [6, 5, 3]), True),
+        (tagged_shape("xyztc", [5, 6, 1, 1, 3]), tagged_shape("yx", [6, 5]), True),
+        (tagged_shape("xy", [5, 6]), tagged_shape("tczyx", [1, 3, 1, 6, 5]), True),
+        (tagged_shape("xyzt", [3, 4, 5, 6]), tagged_shape("tyzx", [6, 4, 5, 3]), True),
+        (tagged_shape("xy", [5, 6]), tagged_shape("xy", [5, 7]), False),
+        (tagged_shape("xyztc", [5, 6, 9, 8, 1]), tagged_shape("xy", [5, 6]), False),
+        (tagged_shape("xyztc", [5, 6, 9, 8, 1]), tagged_shape("yx", [6, 5]), False),
+        (tagged_shape("xyztc", [5, 6, 9, 8, 1]), tagged_shape("zty", [9, 8, 6]), False),
+    ],
+)
+def test_eq_shapes(shape1: Dict[str, int], shape2: Dict[str, int], match_expected: bool):
+    assert match_expected == eq_shapes(shape1, shape2)

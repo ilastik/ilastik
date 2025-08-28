@@ -45,7 +45,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik import Project
 from ilastik.utility import OpMultiLaneWrapper
 from ilastik.workflow import Workflow
-from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY
+from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, Multiscales
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
 from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -57,6 +57,15 @@ from lazyflow.graph import Graph, Operator
 def getTypeRange(numpy_type):
     type_info = numpy.iinfo(numpy_type)
     return (type_info.min, type_info.max)
+
+
+def eq_shapes(test: Dict[str, int], ref: Dict[str, int]) -> bool:
+    """Check if two tagged shapes are equal. Ignore channel. Additional singleton axes are ok."""
+    common_axes = set(test.keys()) & set(ref.keys())
+    extra_axes = set(test.keys()) ^ set(ref.keys())
+    common_match = all(test[a] == ref[a] for a in common_axes if a != "c")
+    extra_are_singleton = all(test.get(a, 1) == 1 and ref.get(a, 1) == 1 for a in extra_axes if a != "c")
+    return common_match and extra_are_singleton
 
 
 class CantSaveAsRelativePathsException(Exception):
@@ -98,6 +107,7 @@ class DatasetInfo(ABC):
         laneDtype: type,
         default_tags: AxisTags,  # inferred from dataset or another data lane
         axistags: AxisTags = None,  # given through datasetInfoEditorWidget or cmdline
+        scales: Multiscales = None,
         allowLabels: bool = True,
         subvolume_roi: Tuple = None,
         display_mode: str = "default",
@@ -118,6 +128,7 @@ class DatasetInfo(ABC):
         self.laneDtype = laneDtype
         if isinstance(self.laneDtype, numpy.dtype):
             self.laneDtype = numpy.sctypeDict[self.laneDtype.name]
+        self.scales = scales or OrderedDict()
         self.allowLabels = allowLabels
         self.subvolume_roi = subvolume_roi
         self.drange = drange
@@ -128,7 +139,6 @@ class DatasetInfo(ABC):
         self.legacy_datasetId = self.generate_id()
         self.working_scale = working_scale
         self.scale_locked = scale_locked
-        self.scales = OrderedDict()  # {scale_key: tagged_scale_shape}, see MultiscaleStore.multiscales
 
     @property
     def shape5d(self) -> Shape5D:
@@ -538,6 +548,7 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
             nickname=nickname or self._nickname_from_url(url),
             laneShape=meta.shape,
             laneDtype=meta.dtype,
+            scales=meta.scales,
             **info_kwargs,
         )
 
@@ -550,9 +561,13 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         return self.url
 
     def create_data_reader(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
-        op_reader = OpInputDataReader(
-            parent=parent, graph=graph, FilePath=self.url, ActiveScale=parent.ActiveScale.value
+        assert hasattr(parent, "ActiveScale"), "cannot make a multiscale dataset for consumer without scale"
+        active_scale = (
+            parent.ActiveScale.value
+            if parent.ActiveScale.ready() and parent.ActiveScale.value != DEFAULT_SCALE_KEY
+            else self.working_scale
         )
+        op_reader = OpInputDataReader(parent=parent, graph=graph, FilePath=self.url, ActiveScale=active_scale)
         return op_reader.Output
 
     @property
@@ -582,6 +597,14 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         if "url" not in params:
             params["url"] = group["filePath"][()].decode()
         return super().from_h5_group(group, params)
+
+    def switch_to_scale_with_shape(self, target_shape: Dict[str, int]):
+        for scale, shape in self.scales.items():
+            if eq_shapes(shape, target_shape):
+                self.working_scale = scale
+                self.laneShape = tuple(self.scales[scale].values())
+                return
+        raise DatasetConstraintError("DataSelection", f"No scale matches shape {target_shape}")
 
     @staticmethod
     def _nickname_from_url(url: str) -> str:
