@@ -519,7 +519,7 @@ class OMEZarrStore(MultiscaleStore):
     NAME = "OME-Zarr"
     URI_HINT = f'URL contains "{ZARR_EXT}"'
 
-    def __init__(self, uri: str, target_scale: Optional[str] = None, single_scale_mode: bool = False):
+    def __init__(self, uri: str, target_scale: Optional[str] = None):
         self._ome_spec, self.base_uri, self.scale_sub_path = _introspect_for_multiscales_root(uri)
         selected_scale = target_scale or self.scale_sub_path
         if len(self._ome_spec["multiscales"]) > 1 and not selected_scale:
@@ -554,8 +554,6 @@ class OMEZarrStore(MultiscaleStore):
         dtype = None
         scale_metadata = OrderedDict()  # Becomes slot metadata -> must be serializable (no ZarrArray allowed)
         self._scale_data = {}
-        if single_scale_mode:  # One scale is enough to get dtype
-            datasets = [d for d in datasets if d["path"] == selected_scale] if selected_scale else datasets[:1]
         for scale in datasets:  # OME-Zarr spec requires datasets ordered from high to low resolution
             with Timer() as timer:
                 scale_key = scale["path"]

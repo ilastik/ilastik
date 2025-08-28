@@ -670,6 +670,29 @@ class DataSelectionGui(QWidget):
         preferences.set(PREFERENCES_GROUP, RECENT_URIS_KEY, [uri] + history[:9])
 
         info = self.instantiate_dataset_info(url=uri, role=roleIndex)
+        assert isinstance(info, MultiscaleUrlDatasetInfo)
+
+        is_not_new_lane = laneIndex > -1
+        if is_not_new_lane:
+            # Adding a multiscale to another role: switch to the scale that matches the dataset(s) in other role(s)
+            dataset_group = self.topLevelOperator.get_lane(laneIndex).DatasetGroupOut
+            for other_role_index, role_dataset_slot in enumerate(dataset_group):
+                if not role_dataset_slot.ready() or other_role_index == roleIndex:
+                    continue
+                shape_in_other_lane = dict(
+                    zip(role_dataset_slot.value.axistags.keys(), role_dataset_slot.value.laneShape)
+                )
+                try:
+                    info.switch_to_scale_with_shape(shape_in_other_lane)
+                except DatasetConstraintError:
+                    other_role = self.topLevelOperator.DatasetRoles.value[other_role_index]
+                    QMessageBox.warning(
+                        self,
+                        "Incompatible dataset",
+                        f"None of the scales in the chosen multiscale dataset have the same shape as the dataset in {other_role}.",
+                    )
+                    return
+
         self.addLanes([info], roleIndex=roleIndex, startingLaneNum=laneIndex)
 
     def addDvidVolume(self, roleIndex, laneIndex):
