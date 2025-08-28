@@ -47,6 +47,7 @@ from .opDataSelection import (
     DatasetInfo,
     ProjectInternalDatasetInfo,
     MultiscaleUrlDatasetInfo,
+    eq_shapes,
 )
 from .multiscaleDatasetBrowser import MultiscaleDatasetBrowser
 
@@ -495,18 +496,48 @@ class DataSelectionGui(QWidget):
                         info_slot.setValue(new_info)
                         break
                     except DatasetConstraintError as e:
-                        QMessageBox.warning(self, "Incompatible dataset", str(e))
-                        info_editor = DatasetInfoEditorWidget(self, [new_info], self.serializer)
-                        if info_editor.exec_() == QDialog.Rejected:
-                            revert()
-                            return False
-                        new_info = info_editor.edited_infos[0]
+                        try:
+                            self._switch_scale_in_other_roles_to_match(new_info, info_slot)
+                        except DatasetConstraintError:
+                            QMessageBox.warning(self, "Incompatible dataset", str(e))
+                            info_editor = DatasetInfoEditorWidget(self, [new_info], self.serializer)
+                            if info_editor.exec_() == QDialog.Rejected:
+                                revert()
+                                return False
+                            new_info = info_editor.edited_infos[0]
             return True
         except Exception as e:
             revert()
             raise e
         finally:
             self.parentApplet.appletStateUpdateRequested()
+
+    def _switch_scale_in_other_roles_to_match(self, new_info: DatasetInfo, new_slot: Slot):
+        """
+        Find out which lane this slot belongs to and check if
+        - any other datasets in this lane are multiscale
+        - all of them have a scale that would match `info`
+        If so, switch them to this matching scale.
+        """
+        lane_index = None
+        for i in range(self.getNumLanes()):
+            if new_slot in self.topLevelOperator.DatasetGroup[i]:
+                lane_index = i
+                break
+        assert lane_index is not None, "Bug (please report): Tried to add dataset to slot that doesn't exist"
+        dataset_group = self.topLevelOperator.get_lane(lane_index).DatasetGroupOut
+        other_slots_with_multiscales = [s for s in dataset_group if s is not new_slot and s.ready() and s.value.scales]
+        other_slots_single_scale = [s for s in dataset_group if s is not new_slot and s.ready() and not s.value.scales]
+        new_tagged_shape = dict(zip(new_info.axistags.keys(), new_info.laneShape))
+        other_single_scale_shapes = [
+            dict(zip(slot.value.axistags.keys(), slot.value.laneShape)) for slot in other_slots_single_scale
+        ]
+        if all(eq_shapes(new_tagged_shape, other_shape) for other_shape in other_single_scale_shapes) and all(
+            other_slot.value.has_scale_matching_shape(new_tagged_shape) and not other_slot.value.scale_locked
+            for other_slot in other_slots_with_multiscales
+        ):
+            target_scale = other_slots_with_multiscales[0].value.get_scale_matching_shape(new_tagged_shape)
+            self.handleScaleSelected(lane_index, target_scale)
 
     def _determineLaneRange(self, infos: List[DatasetInfo], startingLaneNum=None):
         """
