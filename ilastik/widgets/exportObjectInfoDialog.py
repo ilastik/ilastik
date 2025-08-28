@@ -20,9 +20,9 @@
 ###############################################################################
 from __future__ import division
 from PyQt5 import uic
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox, QTreeWidgetItem, QTreeWidgetItemIterator
 
 import os.path
 import re

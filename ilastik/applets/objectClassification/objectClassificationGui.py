@@ -18,12 +18,24 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
 from PyQt5 import uic
 from PyQt5.QtCore import pyqtSlot, Qt
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QFileDialog, QTableWidget, QTableWidgetItem, QGridLayout, QProgressBar
+from PyQt5.QtGui import QColor, QIcon
+from PyQt5.QtWidgets import (
+    QAction,
+    QDialog,
+    QFileDialog,
+    QGridLayout,
+    QHeaderView,
+    QMenu,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QTableView,
+    QTableWidget,
+    QTableWidgetItem,
+    QUndoCommand,
+)
 
 from ilastik.applets.objectClassification.opObjectClassification import InvalidObjectIndex
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
