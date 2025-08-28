@@ -22,9 +22,9 @@
 import os
 
 import numpy
-from PyQt5 import uic
-from PyQt5.QtCore import Qt, QEvent
-from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
+from qtpy import uic
+from qtpy.QtCore import Qt, QEvent
+from qtpy.QtWidgets import QDialog, QFileDialog, QMessageBox
 from ilastik.plugins.manager import pluginManager
 
 try:
@@ -248,7 +248,7 @@ class PluginExportOptionsDlg(QDialog):
 # **************************************************************************
 if __name__ == "__main__":
     import vigra
-    from PyQt5.QtWidgets import QApplication
+    from qtpy.QtWidgets import QApplication
     from lazyflow.graph import Graph
     from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
 

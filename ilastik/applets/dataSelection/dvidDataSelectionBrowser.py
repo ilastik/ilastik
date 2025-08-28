@@ -3,9 +3,9 @@ import socket
 import logging
 
 import numpy
-from PyQt5.QtCore import Qt, QEvent
-from PyQt5.QtGui import QMouseEvent
-from PyQt5.QtWidgets import QVBoxLayout, QGroupBox, QSizePolicy, QMessageBox, QDialogButtonBox
+from qtpy.QtCore import Qt, QEvent
+from qtpy.QtGui import QMouseEvent
+from qtpy.QtWidgets import QVBoxLayout, QGroupBox, QSizePolicy, QMessageBox, QDialogButtonBox
 
 from libdvid import DVIDException, ErrMsg, DVIDNodeService
 from libdvid.voxels import VoxelsAccessor, VoxelsMetadata, DVID_BLOCK_WIDTH
@@ -145,7 +145,7 @@ if __name__ == "__main__":
 
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-    from PyQt5.QtWidgets import QApplication
+    from qtpy.QtWidgets import QApplication
 
     app = QApplication([])
     browser = DvidDataSelectionBrowser(

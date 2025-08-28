@@ -28,10 +28,10 @@ from functools import partial
 
 # Third-party
 import numpy
-from PyQt5 import uic
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QIcon
-from PyQt5.QtWidgets import QApplication, QMessageBox, QAction
+from qtpy import uic
+from qtpy.QtCore import Qt
+from qtpy.QtGui import QColor, QIcon
+from qtpy.QtWidgets import QApplication, QMessageBox, QAction
 
 # HCI
 from volumina.api import LazyflowSinkSource, ColortableLayer, GrayscaleLayer

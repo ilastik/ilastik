@@ -18,8 +18,8 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor
+from qtpy.QtCore import Qt
+from qtpy.QtGui import QColor
 
 from lazyflow.operators import OpMultiArraySlicer2
 from volumina.api import createDataSource, ColortableLayer

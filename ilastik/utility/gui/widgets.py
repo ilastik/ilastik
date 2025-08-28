@@ -22,8 +22,8 @@
 from typing import Callable, Iterable, Union
 from contextlib import contextmanager
 
-from PyQt5.QtWidgets import QWidget
-from PyQt5.QtCore import QObject
+from qtpy.QtWidgets import QWidget
+from qtpy.QtCore import QObject
 
 from lazyflow.slot import Slot
 

@@ -24,7 +24,7 @@ import threading
 import logging
 
 from functools import partial, wraps
-from PyQt5.QtCore import QObject, pyqtSignal, Qt
+from qtpy.QtCore import QObject, Signal, Qt
 
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class ThreadRouter(QObject):
     Create an instance of this class called 'threadRouter' to enable the :py:func:`@threadRouted<threadRouted>` decorator for methods of your object.
     """
 
-    routeToParent = pyqtSignal(object)
+    routeToParent = Signal(object)
 
     # The main window of the app should set this to True when the
     #  app is shutting down and thus no gui events should be processed any more.
@@ -105,7 +105,7 @@ threadRouted = threadRoutedWithRouter(None)
 
 if __name__ == "__main__":
     import time
-    from PyQt5.QtWidgets import QApplication
+    from qtpy.QtWidgets import QApplication
 
     class TestObject(QObject):
         def __init__(self):

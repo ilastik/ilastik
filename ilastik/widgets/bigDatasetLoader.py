@@ -29,9 +29,9 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 import os, sys
 
 import numpy as np
-from PyQt5.QtCore import QObject, QRectF, QTime, Qt
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QApplication, QSplitter, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QMainWindow, qApp
+from qtpy.QtCore import QObject, QRectF, QTime, Qt
+from qtpy.QtGui import QColor
+from qtpy.QtWidgets import QApplication, QSplitter, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QMainWindow
 
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
 from volumina.api import createDataSource, ConstantSource
@@ -48,7 +48,7 @@ from volumina.api import ArraySource, LazyflowSinkSource
 from .labelListView import LabelListView, Label
 from .labelListModel import LabelListModel
 
-from PyQt5 import QtCore, QtWidgets, uic
+from qtpy import QtCore, QtWidgets, uic
 
 from .featureDlg import *
 
@@ -68,7 +68,12 @@ class Main(QMainWindow):
         # get the absolute path of the 'ilastik' module
         uic.loadUi("designerElements/MainWindow.ui", self)
 
-        self.actionQuit.triggered.connect(qApp.quit)
+        def _quitApp():
+            qapp = QApplication.instance()
+            if qapp:
+                qapp.quit()
+
+        self.actionQuit.triggered.connect(_quitApp)
 
         def toggleDebugPatches(show):
             self.editor.showDebugPatches = show

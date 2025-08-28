@@ -1,16 +1,16 @@
 import os
-from PyQt5 import uic
-from PyQt5.QtCore import QObject, pyqtSignal, Qt
-from PyQt5.QtWidgets import QDialog, QMessageBox
+from qtpy import uic
+from qtpy.QtCore import QObject, Signal, Qt
+from qtpy.QtWidgets import QDialog, QMessageBox
 from os.path import split as split_path
 import platform
 from enum import IntEnum, auto
 
 
 class ProgressDialog(QDialog):
-    cancel = pyqtSignal()
-    trigger_popup = pyqtSignal(str, str, object, tuple, bool)
-    trigger_update = pyqtSignal(int)
+    cancel = Signal()
+    trigger_popup = Signal(str, str, object, tuple, bool)
+    trigger_update = Signal(int)
 
     def __init__(self, steps, parent=None):
         super(ProgressDialog, self).__init__(parent)
@@ -92,8 +92,8 @@ class BarId(IntEnum):
 
 class PercentProgressDialog(QDialog):
     class _ProgressEmitter(QObject):
-        progress0 = pyqtSignal(int)
-        progress1 = pyqtSignal(int)
+        progress0 = Signal(int)
+        progress1 = Signal(int)
 
         def __call__(self, val, bar: BarId = BarId.bar0):
             if bar == BarId.bar0:
@@ -155,7 +155,7 @@ class PercentProgressDialog(QDialog):
 
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from qtpy.QtWidgets import QApplication
     from time import sleep
 
     app = QApplication([])

@@ -21,8 +21,8 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-from PyQt5.QtGui import QColor, QPixmap, QIcon, QImage
-from PyQt5.QtCore import Qt, pyqtSignal, QModelIndex, QItemSelectionModel
+from qtpy.QtGui import QColor, QPixmap, QIcon, QImage
+from qtpy.QtCore import Qt, Signal, QModelIndex, QItemSelectionModel
 from .listModel import ListModel, ListElement, _NPIXELS
 
 import logging
@@ -31,10 +31,10 @@ logger = logging.getLogger(__name__)
 
 
 class Crop(ListElement):
-    changed = pyqtSignal()
-    colorChanged = pyqtSignal(QColor)
-    pmapColorChanged = pyqtSignal(QColor)
-    roi_4dChanged = pyqtSignal()
+    changed = Signal()
+    colorChanged = Signal(QColor)
+    pmapColorChanged = Signal(QColor)
+    roi_4dChanged = Signal()
 
     def __init__(self, name, roi_4d, color, parent=None, pmapColor=None):
         ListElement.__init__(self, name, parent)
@@ -78,7 +78,7 @@ class Crop(ListElement):
 
 
 class CropListModel(ListModel):
-    cropSelected = pyqtSignal(int)
+    cropSelected = Signal(int)
 
     icon_cache = {}
 

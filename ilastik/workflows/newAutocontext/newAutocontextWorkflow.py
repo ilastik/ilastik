@@ -516,7 +516,7 @@ class NewAutocontextWorkflowBase(Workflow):
         """
         Overridden from Workflow base class
         """
-        from PyQt5.QtWidgets import QMenu
+        from qtpy.QtWidgets import QMenu
 
         autocontext_menu = QMenu("Autocontext Utilities")
         distribute_action = autocontext_menu.addAction("Distribute Labels...")
@@ -533,7 +533,7 @@ class NewAutocontextWorkflowBase(Workflow):
         """
         # Late import.
         # (Don't import PyQt in headless mode.)
-        from PyQt5.QtWidgets import QMessageBox
+        from qtpy.QtWidgets import QMessageBox
 
         current_applet = self._applets[self.shell.currentAppletIndex]
         if current_applet not in self.pcApplets:
@@ -624,7 +624,7 @@ class NewAutocontextWorkflowBase(Workflow):
     def get_label_distribution_settings(source_stage_index, num_stages):
         # Late import.
         # (Don't import PyQt in headless mode.)
-        from PyQt5.QtWidgets import QDialog, QVBoxLayout
+        from qtpy.QtWidgets import QDialog, QVBoxLayout
 
         class LabelDistributionOptionsDlg(QDialog):
             """
@@ -635,8 +635,8 @@ class NewAutocontextWorkflowBase(Workflow):
             def __init__(self, source_stage_index, num_stages, *args, **kwargs):
                 super(LabelDistributionOptionsDlg, self).__init__(*args, **kwargs)
 
-                from PyQt5.QtCore import Qt
-                from PyQt5.QtWidgets import QGroupBox, QCheckBox, QRadioButton, QDialogButtonBox
+                from qtpy.QtCore import Qt
+                from qtpy.QtWidgets import QGroupBox, QCheckBox, QRadioButton, QDialogButtonBox
 
                 self.setWindowTitle("Distributing from Stage {}".format(source_stage_index + 1))
 

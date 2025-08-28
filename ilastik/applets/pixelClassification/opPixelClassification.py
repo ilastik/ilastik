@@ -56,7 +56,7 @@ from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 from ilastik.utility.slottools import DtypeConvertFunction
 
-# from PyQt5.QtCore import pyqtRemoveInputHook, pyqtRestoreInputHook
+# from qtpy.QtCore import pyqtRemoveInputHook, pyqtRestoreInputHook
 
 
 class OpPixelClassification(Operator):

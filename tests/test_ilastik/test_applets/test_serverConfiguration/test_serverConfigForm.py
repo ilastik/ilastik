@@ -1,6 +1,6 @@
 import pytest
 
-from PyQt5.Qt import Qt
+from qtpy.QtCore import Qt
 
 from ilastik.applets.serverConfiguration.serverConfigForm import ServerConfigForm
 from ilastik.applets.serverConfiguration import types

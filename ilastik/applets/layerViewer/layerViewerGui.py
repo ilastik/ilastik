@@ -31,10 +31,10 @@ logger = logging.getLogger(__name__)
 import numpy
 
 # PyQt
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QWidget
-from PyQt5.QtGui import QColor
-from PyQt5 import uic
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtWidgets import QWidget
+from qtpy.QtGui import QColor
+from qtpy import uic
 
 import vigra
 
@@ -93,7 +93,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
     Provides an EMPTY applet drawer widget.  Subclasses should replace it with their own applet drawer.
     """
 
-    layersUpdated = pyqtSignal()
+    layersUpdated = Signal()
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###

@@ -20,8 +20,8 @@
 ###############################################################################
 from builtins import range
 from functools import partial
-from PyQt5.QtWidgets import QFileDialog, QMessageBox, QMenu, QWidgetAction, QLabel
-from PyQt5.QtGui import QColor, QIcon
+from qtpy.QtWidgets import QFileDialog, QMessageBox, QMenu, QWidgetAction, QLabel
+from qtpy.QtGui import QColor, QIcon
 
 
 from volumina.api import createDataSource, ColortableLayer

@@ -2,9 +2,9 @@ import os
 from pathlib import PurePath
 from typing import Iterable, Optional, Union
 
-from PyQt5.QtCore import QSize
-from PyQt5.QtGui import QIcon, QResizeEvent
-from PyQt5.QtWidgets import QPushButton, QSizePolicy, QWidget
+from qtpy.QtCore import QSize
+from qtpy.QtGui import QIcon, QResizeEvent
+from qtpy.QtWidgets import QPushButton, QSizePolicy, QWidget
 
 HORIZONTAL_ELLIPSIS = "\u2026"
 

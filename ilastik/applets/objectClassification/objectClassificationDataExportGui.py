@@ -18,8 +18,8 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt5.QtWidgets import QPushButton
-from PyQt5.QtGui import QColor
+from qtpy.QtWidgets import QPushButton
+from qtpy.QtGui import QColor
 
 
 from ilastik.applets.objectClassification.opObjectClassification import TableExporter

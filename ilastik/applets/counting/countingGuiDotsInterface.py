@@ -30,9 +30,9 @@ from __future__ import absolute_import
 # ===============================================================================
 
 
-from PyQt5.QtGui import QBrush, QColor, QMouseEvent, QPen, QBrush
-from PyQt5.QtCore import Qt, QObject, pyqtSignal, QEvent, QTimer, QPointF
-from PyQt5.QtWidgets import QApplication, QGraphicsEllipseItem
+from qtpy.QtGui import QBrush, QColor, QMouseEvent, QPen, QBrush
+from qtpy.QtCore import Qt, QObject, Signal, QEvent, QTimer, QPointF
+from qtpy.QtWidgets import QApplication, QGraphicsEllipseItem
 
 
 from volumina.api import createDataSource
@@ -85,8 +85,8 @@ class DotSignaller(QObject):
     This class handles the signals of the graphics items
     """
 
-    createdSignal = pyqtSignal(float, float, object)
-    deletedSignal = pyqtSignal(object)
+    createdSignal = Signal(float, float, object)
+    deletedSignal = Signal(object)
 
 
 class QDot(QGraphicsEllipseItem):
@@ -232,10 +232,10 @@ class DotInterpreter(BrushingInterpreter):
 
 
 class DotController(QObject):
-    signalDotAdded = pyqtSignal()
-    signalDotDeleted = pyqtSignal()
-    signalColorChanged = pyqtSignal(QColor)
-    signalRadiusChanged = pyqtSignal(float)
+    signalDotAdded = Signal()
+    signalDotDeleted = Signal()
+    signalColorChanged = Signal(QColor)
+    signalRadiusChanged = Signal(float)
 
     def __init__(self, scene, brushingController=None, radius=30, color=QColor(255, 0, 0)):
         """

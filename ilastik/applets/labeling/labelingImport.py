@@ -31,10 +31,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Qt
-from PyQt5 import uic
-from PyQt5.QtCore import Qt, QEvent
-from PyQt5.QtGui import QValidator, QCloseEvent
-from PyQt5.QtWidgets import (
+from qtpy import uic
+from qtpy.QtCore import Qt, QEvent
+from qtpy.QtGui import QValidator, QCloseEvent
+from qtpy.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QMessageBox,
@@ -551,14 +551,14 @@ class LabelImportOptionsDlg(QDialog):
     def _updatePosition(self):
         writeAxes = self._writeSeedsSlot.meta.getAxisKeys()
 
-        for (k, v) in list(self._insert_position_boxes.items()):
+        for k, v in list(self._insert_position_boxes.items()):
             insertBox, _ = v
             self.imageOffsets[writeAxes.index(k)] = insertBox.value()
 
     def _updateMappingEnabled(self):
         max_labels, _ = self._labelInfo
 
-        for (k, v) in list(self._insert_mapping_boxes.items()):
+        for k, v in list(self._insert_mapping_boxes.items()):
             enabledBox, mapToBox = v
             enabled = enabledBox.isChecked()
             if enabled:
@@ -580,6 +580,6 @@ class LabelImportOptionsDlg(QDialog):
         self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(enableOk)
 
     def _updateMapping(self):
-        for (k, v) in list(self._insert_mapping_boxes.items()):
+        for k, v in list(self._insert_mapping_boxes.items()):
             _, mapToBox = v
             self.labelMapping[k] = mapToBox.value()

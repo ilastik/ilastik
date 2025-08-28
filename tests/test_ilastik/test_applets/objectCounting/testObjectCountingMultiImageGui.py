@@ -32,9 +32,9 @@ import os
 import numpy
 import vigra
 
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtGui import QKeyEvent
-from PyQt5.QtCore import QEvent, Qt
+from qtpy.QtWidgets import QApplication
+from qtpy.QtGui import QKeyEvent
+from qtpy.QtCore import QEvent, Qt
 from ilastik.workflows.counting import CountingWorkflow
 from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 from lazyflow.operators import OpPixelFeaturesPresmoothed
@@ -301,7 +301,6 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
         self.exec_in_shell(impl)
 
     def test_5_AddBox(self):
-
         """
         Add boxes and draw them in the volume editor.
         """
@@ -614,7 +613,6 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
         self.exec_in_shell(impl)
 
     def test_9_CheckDensity(self):
-
         """
         Test if the different operators produce the same density
         """
@@ -655,7 +653,6 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
         self.exec_in_shell(impl)
 
     def test_6_CheckBox(self):
-
         """
         Click on the interactive mode to see if training has been
         sucessful in the second image even if the labels are given

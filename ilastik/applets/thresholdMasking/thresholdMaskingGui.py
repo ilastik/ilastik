@@ -20,8 +20,8 @@
 ###############################################################################
 import os
 
-from PyQt5 import uic
-from PyQt5.QtWidgets import QVBoxLayout, QSpacerItem, QSizePolicy
+from qtpy import uic
+from qtpy.QtWidgets import QVBoxLayout, QSpacerItem, QSizePolicy
 
 from volumina.widgets.thresholdingWidget import ThresholdingWidget
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui

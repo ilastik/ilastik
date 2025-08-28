@@ -21,10 +21,10 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import os
-from PyQt5.QtWidgets import QColorDialog, QVBoxLayout, QPushButton, QDialog, QWidget
-from PyQt5.QtGui import QColor
-from PyQt5.QtCore import Qt, pyqtSignal, QObject, QModelIndex
-from PyQt5 import uic
+from qtpy.QtWidgets import QColorDialog, QVBoxLayout, QPushButton, QDialog, QWidget
+from qtpy.QtGui import QColor
+from qtpy.QtCore import Qt, Signal, QObject, QModelIndex
+from qtpy import uic
 from .cropListModel import CropListModel, Crop
 from .listView import ListView
 
@@ -61,8 +61,8 @@ class ColorDialog(QDialog):
 
 class CropListView(ListView):
 
-    deleteCrop = pyqtSignal(int)
-    colorsChanged = pyqtSignal(QModelIndex)
+    deleteCrop = Signal(int)
+    colorsChanged = Signal(QModelIndex)
 
     def __init__(self, parent=None):
         super(CropListView, self).__init__(parent=parent)

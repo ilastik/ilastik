@@ -27,9 +27,9 @@ import os
 import threading
 from functools import partial
 
-import sip
-from PyQt5 import uic
-from PyQt5.QtWidgets import (
+import qtpy.compat
+from qtpy import uic
+from qtpy.QtWidgets import (
     QApplication,
     QWidget,
     QHeaderView,
@@ -38,7 +38,7 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QMessageBox,
 )
-from PyQt5.QtGui import QIcon
+from qtpy.QtGui import QIcon
 
 from lazyflow.graph import Slot
 
@@ -332,7 +332,7 @@ class DataExportGui(QWidget):
             self.batchOutputTableWidget.selectRow(0)
 
     def setEnabledIfAlive(self, widget, enable):
-        if not sip.isdeleted(widget):
+        if qtpy.compat.isalive(widget):
             widget.setEnabled(enable)
 
     def _updateExportButtons(self, *args):

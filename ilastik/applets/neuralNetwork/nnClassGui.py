@@ -26,18 +26,18 @@ from functools import partial
 
 import numpy
 import yaml
-from PyQt5 import uic
-from PyQt5.QtCore import (
+from qtpy import uic
+from qtpy.QtCore import (
     QModelIndex,
     QPersistentModelIndex,
     QStringListModel,
     Qt,
     QTimer,
-    pyqtSignal,
-    pyqtSlot,
+    Signal,
+    Slot,
 )
-from PyQt5.QtGui import QColor, QIcon
-from PyQt5.QtWidgets import (
+from qtpy.QtGui import QColor, QIcon
+from qtpy.QtWidgets import (
     QAction,
     QColorDialog,
     QComboBox,
@@ -291,9 +291,9 @@ class CheckpointManager:
 
 
 class CheckpointWidget(QWidget):
-    add_clicked = pyqtSignal()
-    remove_clicked = pyqtSignal(QPersistentModelIndex)
-    load_clicked = pyqtSignal(QPersistentModelIndex)
+    add_clicked = Signal()
+    remove_clicked = Signal(QPersistentModelIndex)
+    load_clicked = Signal(QPersistentModelIndex)
 
     def __init__(self, *, parent, add, remove, load, view):
         super().__init__(parent=parent)
@@ -698,7 +698,7 @@ class NNClassGui(LabelingGui):
 
         self.parentApplet.appletStateUpdateRequested()
 
-    @pyqtSlot()
+    @Slot()
     def handleShowPredictionsClicked(self):
         """
         sets the layer visibility when showPredicition is clicked
@@ -708,7 +708,7 @@ class NNClassGui(LabelingGui):
             if "Prediction" in layer.name:
                 layer.visible = checked
 
-    @pyqtSlot()
+    @Slot()
     def updateShowPredictionCheckbox(self):
         """
         updates the showPrediction Checkbox when Predictions were added to the layers
@@ -788,7 +788,7 @@ class NNClassGui(LabelingGui):
     def _load_checkpoint(self, model_state: ModelState):
         self.topLevelOperatorView.set_model_state(model_state)
 
-    @pyqtSlot()
+    @Slot()
     @threadRouted
     def handleLabelSelectionChange(self):
         enabled = False

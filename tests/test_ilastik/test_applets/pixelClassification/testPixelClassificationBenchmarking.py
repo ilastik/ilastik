@@ -24,7 +24,7 @@ import sys
 import numpy
 import pytest
 
-from PyQt5.QtWidgets import QApplication
+from qtpy.QtWidgets import QApplication
 from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 from lazyflow.operators import OpPixelFeaturesPresmoothed

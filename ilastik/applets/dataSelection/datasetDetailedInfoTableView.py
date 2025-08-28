@@ -19,9 +19,9 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from past.utils import old_div
-from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QUrl, QObject, QEvent, QTimer
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import (
+from qtpy.QtCore import Signal, Slot, Qt, QUrl, QObject, QEvent, QTimer
+from qtpy.QtGui import QIcon
+from qtpy.QtWidgets import (
     QTableView,
     QHeaderView,
     QMenu,
@@ -247,19 +247,19 @@ class ScaleComboBoxDelegate(QStyledItemDelegate):
 
 
 class DatasetDetailedInfoTableView(QTableView):
-    dataLaneSelected = pyqtSignal(object)  # Signature: (laneIndex)
-    scaleSelected = pyqtSignal(int, str)  # Signature: (lane_index, scale_key)
+    dataLaneSelected = Signal(object)  # Signature: (laneIndex)
+    scaleSelected = Signal(int, str)  # Signature: (lane_index, scale_key)
 
-    replaceWithFileRequested = pyqtSignal(int)  # Signature: (laneIndex), or (-1) to indicate "append requested"
-    replaceWithStackRequested = pyqtSignal(int)  # Signature: (laneIndex)
-    editRequested = pyqtSignal(object)  # Signature: (lane_index_list)
-    resetRequested = pyqtSignal(object)  # Signature: (lane_index_list)
+    replaceWithFileRequested = Signal(int)  # Signature: (laneIndex), or (-1) to indicate "append requested"
+    replaceWithStackRequested = Signal(int)  # Signature: (laneIndex)
+    editRequested = Signal(object)  # Signature: (lane_index_list)
+    resetRequested = Signal(object)  # Signature: (lane_index_list)
 
-    addFilesRequested = pyqtSignal(int)  # Signature: (lane_index)
-    addStackRequested = pyqtSignal(int)  # Signature: (lane_index)
-    addMultiscaleRequested = pyqtSignal(int)  # Signature: (lane_index)
-    addDvidVolumeRequested = pyqtSignal(int)  # Signature: (lane_index)
-    addFilesRequestedDrop = pyqtSignal(object, int)  # Signature: (filepath_list, lane_index)
+    addFilesRequested = Signal(int)  # Signature: (lane_index)
+    addStackRequested = Signal(int)  # Signature: (lane_index)
+    addMultiscaleRequested = Signal(int)  # Signature: (lane_index)
+    addDvidVolumeRequested = Signal(int)  # Signature: (lane_index)
+    addFilesRequestedDrop = Signal(object, int)  # Signature: (filepath_list, lane_index)
 
     def __init__(self, parent: "DataSelectionGui"):
         super().__init__(parent)
@@ -289,19 +289,19 @@ class DatasetDetailedInfoTableView(QTableView):
         self.horizontalHeader().installEventFilter(event_filter)
         self.verticalHeader().installEventFilter(event_filter)
 
-    @pyqtSlot(int)
+    @Slot(int)
     def handleCellAddFilesEvent(self, button):
         self.addFilesRequested.emit(button.index.row())
 
-    @pyqtSlot(int)
+    @Slot(int)
     def handleCellAddStackEvent(self, button):
         self.addStackRequested.emit(button.index.row())
 
-    @pyqtSlot(int)
+    @Slot(int)
     def handleCellAddDvidVolumeEvent(self, button):
         self.addDvidVolumeRequested.emit(button.index.row())
 
-    @pyqtSlot(int)
+    @Slot(int)
     def handleCellAddMultiscaleDatasetEvent(self, button):
         self.addMultiscaleRequested.emit(button.index.row())
 

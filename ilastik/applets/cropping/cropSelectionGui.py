@@ -27,10 +27,10 @@ import copy
 from functools import partial
 
 import numpy
-from PyQt5 import uic
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QVBoxLayout, QSpacerItem, QSizePolicy
-from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QObject
+from qtpy import uic
+from qtpy.QtGui import QColor
+from qtpy.QtWidgets import QVBoxLayout, QSpacerItem, QSizePolicy
+from qtpy.QtCore import Signal, Slot, Qt, QObject
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.widgets.cropListView import CropListView
@@ -186,7 +186,7 @@ class CropSelectionGui(CroppingGui):
             color.blue(),
         )
 
-    @pyqtSlot()
+    @Slot()
     @threadRouted
     def handleCropSelectionChange(self):
         self._cropControlUi.cropListView.update()

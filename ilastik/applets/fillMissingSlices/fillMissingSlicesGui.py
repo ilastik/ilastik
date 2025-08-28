@@ -24,10 +24,10 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 import os.path
 import sys
 
-from PyQt5.QtWidgets import QWidget, QProgressDialog, QMessageBox, QFileDialog
-from PyQt5.QtCore import Qt, pyqtSignal, QObject, QDir
+from qtpy.QtWidgets import QWidget, QProgressDialog, QMessageBox, QFileDialog
+from qtpy.QtCore import Qt, Signal, QObject, QDir
 
-import PyQt5
+import qtpy
 
 import logging
 from lazyflow.operators.opInterpMissingData import logger as remoteLogger
@@ -51,7 +51,7 @@ class FillMissingSlicesGui(LayerViewerGui):
         """"""
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
-        self._drawer = PyQt5.uic.loadUi(localDir + "/drawer.ui")
+        self._drawer = qtpy.uic.loadUi(localDir + "/drawer.ui")
 
         self._drawer.loadDetectorButton.clicked.connect(self._loadDetectorButtonPressed)
         if hasattr(self._drawer, "loadHistogramsButton"):

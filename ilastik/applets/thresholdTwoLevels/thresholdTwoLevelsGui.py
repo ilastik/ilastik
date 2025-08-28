@@ -30,10 +30,10 @@ from functools import partial
 
 import numpy as np
 
-from PyQt5 import uic
-from PyQt5.QtCore import Qt, QEvent
-from PyQt5.QtGui import QColor, QPixmap, QIcon
-from PyQt5.QtWidgets import QMessageBox
+from qtpy import uic
+from qtpy.QtCore import Qt, QEvent
+from qtpy.QtGui import QColor, QPixmap, QIcon
+from qtpy.QtWidgets import QMessageBox
 
 from volumina.api import createDataSource, AlphaModulatedLayer, ColortableLayer
 from volumina import colortables

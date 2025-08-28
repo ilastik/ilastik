@@ -20,8 +20,8 @@
 ###############################################################################
 from __future__ import division
 from builtins import range
-from PyQt5 import uic, QtWidgets, QtCore
-from PyQt5.QtGui import QColor, QPixmap, QIcon, QTextCursor
+from qtpy import uic, QtWidgets, QtCore
+from qtpy.QtGui import QColor, QPixmap, QIcon, QTextCursor
 
 import sys
 import os
@@ -546,9 +546,9 @@ class AnnotationsGui(LayerViewerGui):
                 else:
                     if parentTrack not in self.topLevelOperatorView.Annotations.value["divisions"].keys():
                         self.topLevelOperatorView.Annotations.value["divisions"][parentTrack] = {}
-                    self.topLevelOperatorView.Annotations.value["divisions"][
-                        parentTrack
-                    ] = self.topLevelOperatorView.divisions[parentTrack]
+                    self.topLevelOperatorView.Annotations.value["divisions"][parentTrack] = (
+                        self.topLevelOperatorView.divisions[parentTrack]
+                    )
         else:
 
             if "labels" not in self.topLevelOperatorView.Annotations.value.keys():
@@ -619,9 +619,9 @@ class AnnotationsGui(LayerViewerGui):
                         if t not in self.topLevelOperatorView.Annotations.value["labels"].keys():
                             self.topLevelOperatorView.Annotations.value["labels"][t] = {}
                         if lab not in self.topLevelOperatorView.Annotations.value["labels"][t].keys():
-                            self.topLevelOperatorView.Annotations.value["labels"][t][
-                                lab
-                            ] = self.topLevelOperatorView.labels[t][lab]
+                            self.topLevelOperatorView.Annotations.value["labels"][t][lab] = (
+                                self.topLevelOperatorView.labels[t][lab]
+                            )
 
                 if (
                     "divisions" in self.topLevelOperatorView.Annotations.value.keys()
@@ -656,9 +656,9 @@ class AnnotationsGui(LayerViewerGui):
                     if oid not in self.topLevelOperatorView.Appearances.value[t].keys():
                         self.topLevelOperatorView.Appearances.value[t][oid] = {}
                     if track not in self.topLevelOperatorView.Appearances.value[t][oid].keys():
-                        self.topLevelOperatorView.Appearances.value[t][oid][
-                            track
-                        ] = self.topLevelOperatorView.appearances[t][oid][track]
+                        self.topLevelOperatorView.Appearances.value[t][oid][track] = (
+                            self.topLevelOperatorView.appearances[t][oid][track]
+                        )
 
         self._setDirty(self.mainOperator.Appearances, list(range(self.mainOperator.TrackImage.meta.shape[0])))
 
@@ -672,9 +672,9 @@ class AnnotationsGui(LayerViewerGui):
                     if oid not in self.topLevelOperatorView.Disappearances.value[t].keys():
                         self.topLevelOperatorView.Disappearances.value[t][oid] = {}
                     if track not in self.topLevelOperatorView.Disappearances.value[t][oid].keys():
-                        self.topLevelOperatorView.Disappearances.value[t][oid][
-                            track
-                        ] = self.topLevelOperatorView.disappearances[t][oid][track]
+                        self.topLevelOperatorView.Disappearances.value[t][oid][track] = (
+                            self.topLevelOperatorView.disappearances[t][oid][track]
+                        )
 
         self._setDirty(self.mainOperator.Disappearances, list(range(self.mainOperator.TrackImage.meta.shape[0])))
 
@@ -1902,9 +1902,9 @@ class AnnotationsGui(LayerViewerGui):
                         if len(div_at):
                             div_at = numpy.array(sorted(div_at, key=lambda a_entry: a_entry[0]))[::-1]
                             ds = tg.create_dataset("Splits", data=div_at[:, :-1], dtype=numpy.uint32, compression=1)
-                            ds.attrs[
-                                "Format"
-                            ] = "ancestor (previous file), descendant (current file), descendant (current file)"
+                            ds.attrs["Format"] = (
+                                "ancestor (previous file), descendant (current file), descendant (current file)"
+                            )
                             ds = tg.create_dataset(
                                 "Splits-Energy", data=div_at[:, -1], dtype=numpy.double, compression=1
                             )

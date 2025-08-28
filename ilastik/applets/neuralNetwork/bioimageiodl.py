@@ -1,6 +1,6 @@
 import io
 
-from PyQt5.QtCore import QThread, pyqtSignal
+from qtpy.QtCore import QThread, Signal
 from bioimageio.spec import ValidationContext, get_resource_package_content
 from tqdm.auto import tqdm as std_tqdm
 
@@ -35,11 +35,11 @@ class TqdmExt(std_tqdm):
 
 
 class BioImageDownloader(QThread):
-    error = pyqtSignal(Exception)
-    progress0 = pyqtSignal(int)
-    currentUri = pyqtSignal(str)
-    progress1 = pyqtSignal(int)
-    dataAvailable = pyqtSignal(bytes)
+    error = Signal(Exception)
+    progress0 = Signal(int)
+    currentUri = Signal(str)
+    progress1 = Signal(int)
+    dataAvailable = Signal(bytes)
 
     def __init__(self, model_uri, cancellation_token, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
