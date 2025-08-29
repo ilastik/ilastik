@@ -44,9 +44,8 @@ class OpOMEZarrMultiscaleReader(Operator):
 
     Output = OutputSlot()
 
-    def __init__(self, metadata_only_mode=False, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._load_only_one_scale = metadata_only_mode
         self._store = None
 
     def setupOutputs(self):
@@ -57,7 +56,7 @@ class OpOMEZarrMultiscaleReader(Operator):
         # it's ready but == DEFAULT_SCALE_KEY when coming through OpDataSelection after first loading the dataset
         # it's ready and != DEFAULT_SCALE_KEY after selecting a scale in the GUI
         selected_scale = self.Scale.value if self.Scale.ready() and self.Scale.value != DEFAULT_SCALE_KEY else None
-        self._store = OMEZarrStore(self.Uri.value, selected_scale, single_scale_mode=self._load_only_one_scale)
+        self._store = OMEZarrStore(self.Uri.value, selected_scale)
         active_scale = selected_scale or self._store.scale_sub_path or self._store.lowest_resolution_key
         self.Output.meta.shape = self._store.get_shape(active_scale)
         self.Output.meta.dtype = self._store.dtype

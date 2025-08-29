@@ -47,6 +47,7 @@ from .opDataSelection import (
     DatasetInfo,
     ProjectInternalDatasetInfo,
     MultiscaleUrlDatasetInfo,
+    eq_shapes,
 )
 from .multiscaleDatasetBrowser import MultiscaleDatasetBrowser
 
@@ -296,6 +297,7 @@ class DataSelectionGui(QWidget):
         if tabIndex < len(self._detailViewerWidgets):
             roleIndex = tabIndex  # If summary tab is moved to the front, change this line.
             detailViewer = self._detailViewerWidgets[roleIndex]
+            detailViewer.refresh_scale_options()
             selectedLanes = detailViewer.selectedLanes
             if selectedLanes:
                 self.showDataset(selectedLanes[0], roleIndex)
@@ -494,18 +496,48 @@ class DataSelectionGui(QWidget):
                         info_slot.setValue(new_info)
                         break
                     except DatasetConstraintError as e:
-                        QMessageBox.warning(self, "Incompatible dataset", str(e))
-                        info_editor = DatasetInfoEditorWidget(self, [new_info], self.serializer)
-                        if info_editor.exec_() == QDialog.Rejected:
-                            revert()
-                            return False
-                        new_info = info_editor.edited_infos[0]
+                        try:
+                            self._switch_scale_in_other_roles_to_match(new_info, info_slot)
+                        except DatasetConstraintError:
+                            QMessageBox.warning(self, "Incompatible dataset", str(e))
+                            info_editor = DatasetInfoEditorWidget(self, [new_info], self.serializer)
+                            if info_editor.exec_() == QDialog.Rejected:
+                                revert()
+                                return False
+                            new_info = info_editor.edited_infos[0]
             return True
         except Exception as e:
             revert()
             raise e
         finally:
             self.parentApplet.appletStateUpdateRequested()
+
+    def _switch_scale_in_other_roles_to_match(self, new_info: DatasetInfo, new_slot: Slot):
+        """
+        Find out which lane this slot belongs to and check if
+        - any other datasets in this lane are multiscale
+        - all of them have a scale that would match `info`
+        If so, switch them to this matching scale.
+        """
+        lane_index = None
+        for i in range(self.getNumLanes()):
+            if new_slot in self.topLevelOperator.DatasetGroup[i]:
+                lane_index = i
+                break
+        assert lane_index is not None, "Bug (please report): Tried to add dataset to slot that doesn't exist"
+        dataset_group = self.topLevelOperator.get_lane(lane_index).DatasetGroupOut
+        other_slots_with_multiscales = [s for s in dataset_group if s is not new_slot and s.ready() and s.value.scales]
+        other_slots_single_scale = [s for s in dataset_group if s is not new_slot and s.ready() and not s.value.scales]
+        new_tagged_shape = dict(zip(new_info.axistags.keys(), new_info.laneShape))
+        other_single_scale_shapes = [
+            dict(zip(slot.value.axistags.keys(), slot.value.laneShape)) for slot in other_slots_single_scale
+        ]
+        if all(eq_shapes(new_tagged_shape, other_shape) for other_shape in other_single_scale_shapes) and all(
+            other_slot.value.has_scale_matching_shape(new_tagged_shape) and not other_slot.value.scale_locked
+            for other_slot in other_slots_with_multiscales
+        ):
+            target_scale = other_slots_with_multiscales[0].value.get_scale_matching_shape(new_tagged_shape)
+            self.handleScaleSelected(lane_index, target_scale)
 
     def _determineLaneRange(self, infos: List[DatasetInfo], startingLaneNum=None):
         """
@@ -669,6 +701,29 @@ class DataSelectionGui(QWidget):
         preferences.set(PREFERENCES_GROUP, RECENT_URIS_KEY, [uri] + history[:9])
 
         info = self.instantiate_dataset_info(url=uri, role=roleIndex)
+        assert isinstance(info, MultiscaleUrlDatasetInfo)
+
+        is_not_new_lane = laneIndex > -1
+        if is_not_new_lane:
+            # Adding a multiscale to another role: switch to the scale that matches the dataset(s) in other role(s)
+            dataset_group = self.topLevelOperator.get_lane(laneIndex).DatasetGroupOut
+            for other_role_index, role_dataset_slot in enumerate(dataset_group):
+                if not role_dataset_slot.ready() or other_role_index == roleIndex:
+                    continue
+                shape_in_other_lane = dict(
+                    zip(role_dataset_slot.value.axistags.keys(), role_dataset_slot.value.laneShape)
+                )
+                try:
+                    info.switch_to_scale_with_shape(shape_in_other_lane)
+                except DatasetConstraintError:
+                    other_role = self.topLevelOperator.DatasetRoles.value[other_role_index]
+                    QMessageBox.warning(
+                        self,
+                        "Incompatible dataset",
+                        f"None of the scales in the chosen multiscale dataset have the same shape as the dataset in {other_role}.",
+                    )
+                    return
+
         self.addLanes([info], roleIndex=roleIndex, startingLaneNum=laneIndex)
 
     def addDvidVolume(self, roleIndex, laneIndex):
@@ -718,4 +773,8 @@ class DataSelectionGui(QWidget):
         self.addLanes([MultiscaleUrlDatasetInfo(url=dvid_url, subvolume_roi=subvolume_roi)], roleIndex)
 
     def handleScaleSelected(self, laneIndex, scale_key):
-        self.topLevelOperator.get_lane(laneIndex).ActiveScaleGroup.setValue(scale_key)
+        op_lane = self.topLevelOperator.get_lane(laneIndex)
+        op_lane.ScaleChangeFinished.disconnect()
+        op_lane.ActiveScaleGroup.setValue(scale_key)
+        op_lane.ScaleChangeFinished.setValue(True)
+        self.showDataset(laneIndex)  # Update layer order according to current role tab
