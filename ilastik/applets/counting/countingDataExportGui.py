@@ -21,8 +21,7 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import os
-from qtpy.QtGui import QColor
-from qtpy.QtWidgets import QMessageBox, QFileDialog
+from qtpy.QtWidgets import QFileDialog
 
 from lazyflow.operators.generic import OpMultiArraySlicer2
 

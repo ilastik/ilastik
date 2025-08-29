@@ -24,8 +24,8 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 import os.path
 import sys
 
-from qtpy.QtWidgets import QWidget, QProgressDialog, QMessageBox, QFileDialog
-from qtpy.QtCore import Qt, Signal, QObject, QDir
+from qtpy.QtWidgets import QFileDialog
+from qtpy.QtCore import QDir
 
 import qtpy
 

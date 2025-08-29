@@ -25,7 +25,7 @@ from functools import partial
 
 from qtpy import uic
 from qtpy.QtCore import Qt, QEvent
-from qtpy.QtWidgets import QDialogButtonBox, QComboBox, QDialog, QFileDialog, QLabel, QMessageBox, QVBoxLayout
+from qtpy.QtWidgets import QDialog, QFileDialog, QMessageBox
 
 import vigra
 

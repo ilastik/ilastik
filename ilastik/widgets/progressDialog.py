@@ -1,6 +1,6 @@
 import os
 from qtpy import uic
-from qtpy.QtCore import QObject, Signal, Qt
+from qtpy.QtCore import QObject, Signal
 from qtpy.QtWidgets import QDialog, QMessageBox
 from os.path import split as split_path
 import platform

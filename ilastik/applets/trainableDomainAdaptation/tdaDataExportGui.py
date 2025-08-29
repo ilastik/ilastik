@@ -29,8 +29,6 @@ from ilastik.applets.neuralNetwork.nnClassificationDataExportGui import (
 )
 from ilastik.workflows.trainableDomainAdaptation import LocalTrainableDomainAdaptationWorkflow
 
-from qtpy.QtGui import QColor
-
 
 class TdaDataExportGui(NNClassificationDataExportGui):
     """

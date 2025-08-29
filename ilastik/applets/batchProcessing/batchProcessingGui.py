@@ -26,7 +26,6 @@ from functools import partial
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QHBoxLayout,
-    QInputDialog,
     QLabel,
     QListWidget,
     QMessageBox,

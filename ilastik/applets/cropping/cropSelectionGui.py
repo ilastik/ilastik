@@ -27,10 +27,9 @@ import copy
 from functools import partial
 
 import numpy
-from qtpy import uic
 from qtpy.QtGui import QColor
 from qtpy.QtWidgets import QVBoxLayout, QSpacerItem, QSizePolicy
-from qtpy.QtCore import Signal, Slot, Qt, QObject
+from qtpy.QtCore import Slot, Qt
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.widgets.cropListView import CropListView

@@ -31,7 +31,7 @@ from __future__ import absolute_import
 
 
 from qtpy.QtGui import QBrush, QColor, QMouseEvent, QPen, QBrush
-from qtpy.QtCore import Qt, QObject, Signal, QEvent, QTimer, QPointF
+from qtpy.QtCore import Qt, QObject, Signal, QEvent
 from qtpy.QtWidgets import QApplication, QGraphicsEllipseItem
 
 

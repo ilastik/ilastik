@@ -21,9 +21,8 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import os
-from qtpy.QtWidgets import QColorDialog, QVBoxLayout, QPushButton, QDialog, QWidget
-from qtpy.QtGui import QColor
-from qtpy.QtCore import Qt, Signal, QObject, QModelIndex
+from qtpy.QtWidgets import QColorDialog, QDialog
+from qtpy.QtCore import Qt, Signal, QModelIndex
 from qtpy import uic
 from .cropListModel import CropListModel, Crop
 from .listView import ListView

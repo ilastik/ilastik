@@ -21,7 +21,6 @@
 from __future__ import division
 from qtpy import uic
 from qtpy.QtCore import Qt
-from qtpy.QtGui import QColor
 from qtpy.QtWidgets import QDialog, QFileDialog, QMessageBox, QTreeWidgetItem, QTreeWidgetItemIterator
 
 import os.path

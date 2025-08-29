@@ -19,7 +19,6 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-from qtpy.QtCore import Qt
 from qtpy.QtGui import QColor
 
 from lazyflow.operators import OpMultiArraySlicer2

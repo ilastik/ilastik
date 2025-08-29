@@ -21,7 +21,7 @@
 from __future__ import division
 from builtins import range
 from functools import partial
-from qtpy import uic, QtWidgets, QtCore
+from qtpy import uic, QtWidgets
 from qtpy.QtGui import QColor, QTextCursor
 
 import os

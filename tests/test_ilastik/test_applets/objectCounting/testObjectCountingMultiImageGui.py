@@ -33,8 +33,6 @@ import numpy
 import vigra
 
 from qtpy.QtWidgets import QApplication
-from qtpy.QtGui import QKeyEvent
-from qtpy.QtCore import QEvent, Qt
 from ilastik.workflows.counting import CountingWorkflow
 from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 from lazyflow.operators import OpPixelFeaturesPresmoothed

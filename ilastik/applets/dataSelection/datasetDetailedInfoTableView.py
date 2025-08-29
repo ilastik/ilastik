@@ -19,7 +19,7 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from past.utils import old_div
-from qtpy.QtCore import Signal, Slot, Qt, QUrl, QObject, QEvent, QTimer
+from qtpy.QtCore import Signal, Slot, Qt, QUrl, QObject, QEvent
 from qtpy.QtGui import QIcon
 from qtpy.QtWidgets import (
     QTableView,

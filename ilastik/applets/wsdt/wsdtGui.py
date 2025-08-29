@@ -26,8 +26,7 @@ import threading
 import numpy as np
 
 import qtpy.compat
-from qtpy.QtCore import Qt
-from qtpy.QtGui import QColor, QPen
+from qtpy.QtGui import QColor
 from qtpy.QtWidgets import (
     QWidget,
     QLabel,
@@ -37,7 +36,6 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QSpacerItem,
     QSizePolicy,
-    QComboBox,
     QPushButton,
     QMenu,
     QAction,

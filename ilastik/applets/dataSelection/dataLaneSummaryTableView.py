@@ -22,8 +22,8 @@ from __future__ import absolute_import
 ###############################################################################
 from builtins import range
 from functools import partial
-from qtpy.QtCore import Signal, Qt, QItemSelection, QItemSelectionModel
-from qtpy.QtWidgets import QTableView, QHeaderView, QMenu, QPushButton, QAction
+from qtpy.QtCore import Signal, Qt
+from qtpy.QtWidgets import QTableView, QMenu, QAction
 
 from .dataLaneSummaryTableModel import DataLaneSummaryTableModel, LaneColumn, DatasetInfoColumn
 from .addFileButton import AddFileButton

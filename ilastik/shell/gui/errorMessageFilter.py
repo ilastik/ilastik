@@ -20,7 +20,6 @@
 ###############################################################################
 import copy
 
-from qtpy import QtCore
 from qtpy.QtCore import QObject, QTimer
 from qtpy.QtWidgets import QMessageBox
 

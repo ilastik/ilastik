@@ -4,7 +4,6 @@ import logging
 
 import numpy
 from qtpy.QtCore import Qt, QEvent
-from qtpy.QtGui import QMouseEvent
 from qtpy.QtWidgets import QVBoxLayout, QGroupBox, QSizePolicy, QMessageBox, QDialogButtonBox
 
 from libdvid import DVIDException, ErrMsg, DVIDNodeService

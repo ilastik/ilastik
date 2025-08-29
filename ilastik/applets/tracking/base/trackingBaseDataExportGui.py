@@ -18,9 +18,7 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QPushButton, QVBoxLayout, QMessageBox
-from qtpy.QtGui import QColor
+from qtpy.QtWidgets import QPushButton, QMessageBox
 from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.plugins.manager import pluginManager
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui

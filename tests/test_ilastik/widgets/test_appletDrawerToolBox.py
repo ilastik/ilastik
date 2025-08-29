@@ -3,8 +3,8 @@ import pytest
 from unittest import mock
 
 from ilastik.widgets import appletDrawerToolBox as at
-from qtpy.QtWidgets import QLabel, QApplication, QFrame, QVBoxLayout, QPushButton, QWidget
-from qtpy.QtCore import QSize, QPropertyAnimation, QRect, QVariantAnimation
+from qtpy.QtWidgets import QLabel, QWidget
+from qtpy.QtCore import QSize
 from qtpy.QtGui import QIcon, QImage
 
 

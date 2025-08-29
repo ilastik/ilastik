@@ -23,7 +23,7 @@ from os import path
 
 from qtpy import uic
 from qtpy.QtCore import Signal
-from qtpy.QtWidgets import QWidget, QButtonGroup
+from qtpy.QtWidgets import QWidget
 
 
 class CropSelectionWidget(QWidget):

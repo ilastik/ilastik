@@ -37,7 +37,6 @@ from qtpy.QtGui import QValidator, QCloseEvent
 from qtpy.QtWidgets import (
     QDialog,
     QDialogButtonBox,
-    QMessageBox,
     QCheckBox,
     QSpinBox,
     QLabel,

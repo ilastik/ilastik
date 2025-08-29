@@ -25,7 +25,6 @@ from functools import partial
 from qtpy import uic
 from qtpy.QtCore import Qt, QEvent
 from qtpy.QtGui import QColor
-from qtpy.QtWidgets import QMessageBox
 
 from volumina.api import createDataSource, ColortableLayer
 from volumina.colortables import create_default_16bit

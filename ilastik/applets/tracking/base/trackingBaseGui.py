@@ -20,7 +20,7 @@
 ###############################################################################
 from builtins import range
 from functools import partial
-from qtpy.QtWidgets import QFileDialog, QMessageBox, QMenu, QWidgetAction, QLabel
+from qtpy.QtWidgets import QMessageBox
 from qtpy.QtGui import QColor, QIcon
 
 

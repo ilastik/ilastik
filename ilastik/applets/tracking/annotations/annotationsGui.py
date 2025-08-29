@@ -20,7 +20,7 @@
 ###############################################################################
 from __future__ import division
 from builtins import range
-from qtpy import uic, QtWidgets, QtCore
+from qtpy import uic, QtWidgets
 from qtpy.QtGui import QColor, QPixmap, QIcon, QTextCursor
 
 import sys

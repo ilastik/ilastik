@@ -1,7 +1,7 @@
 from __future__ import division
 from builtins import range
 from past.utils import old_div
-from qtpy import uic, QtWidgets, QtCore
+from qtpy import uic, QtWidgets
 from qtpy.QtGui import QColor
 
 import os

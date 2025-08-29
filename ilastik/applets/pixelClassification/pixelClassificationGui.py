@@ -33,22 +33,19 @@ from functools import partial
 # Third-party
 import numpy
 from qtpy import uic
-from qtpy.QtCore import Qt, Slot, pyqtRemoveInputHook, pyqtRestoreInputHook, QSize
+from qtpy.QtCore import Qt, Slot, QSize
 from qtpy.QtWidgets import (
     QMessageBox,
     QVBoxLayout,
     QDialogButtonBox,
     QListWidget,
     QListWidgetItem,
-    QApplication,
     QAction,
     QPushButton,
     QLineEdit,
     QDialog,
-    QComboBox,
     QTreeWidget,
     QTreeWidgetItem,
-    QWidget,
     QSizePolicy,
     QMenu,
 )

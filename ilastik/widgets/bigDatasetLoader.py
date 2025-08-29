@@ -29,9 +29,7 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 import os, sys
 
 import numpy as np
-from qtpy.QtCore import QObject, QRectF, QTime, Qt
-from qtpy.QtGui import QColor
-from qtpy.QtWidgets import QApplication, QSplitter, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QMainWindow
+from qtpy.QtWidgets import QApplication, QMainWindow
 
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
 from volumina.api import createDataSource, ConstantSource

@@ -43,7 +43,6 @@ from qtpy.QtWidgets import (
     QComboBox,
     QDesktopWidget,
     QDialog,
-    QFileDialog,
     QGridLayout,
     QHBoxLayout,
     QLabel,
