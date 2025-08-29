@@ -18,8 +18,8 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import QObject, QAbstractTableModel, QItemSelectionModel, Qt, QModelIndex, pyqtSignal
+from qtpy.QtGui import QIcon
+from qtpy.QtCore import QObject, QAbstractTableModel, QItemSelectionModel, Qt, QModelIndex, Signal
 from ilastik.shell.gui.iconMgr import ilastikIcons
 
 import logging
@@ -31,7 +31,7 @@ _XSTART = 8
 
 
 class ListElement(QObject):
-    nameChanged = pyqtSignal(object)
+    nameChanged = Signal(object)
 
     def __init__(self, name, parent=None):
         QObject.__init__(self, parent)
@@ -50,8 +50,8 @@ class ListElement(QObject):
 
 
 class ListModel(QAbstractTableModel):
-    orderChanged = pyqtSignal()
-    elementSelected = pyqtSignal(int)
+    orderChanged = Signal()
+    elementSelected = Signal(int)
 
     class ColumnID(object):
         """

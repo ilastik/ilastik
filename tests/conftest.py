@@ -24,8 +24,8 @@ import z5py
 from PIL import Image as PilImage
 import numpy
 
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import QTimer, Qt
+from qtpy.QtWidgets import QApplication
+from qtpy.QtCore import QTimer, Qt
 from _pytest.main import pytest_runtestloop as _pytest_runtestloop
 
 import ilastik.config

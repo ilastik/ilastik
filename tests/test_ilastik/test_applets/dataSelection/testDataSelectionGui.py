@@ -4,8 +4,8 @@ import os
 from unittest import mock
 
 import pytest
-from PyQt5.QtGui import QStandardItemModel, QStandardItem
-from PyQt5.QtWidgets import QComboBox, QMessageBox
+from qtpy.QtGui import QStandardItemModel, QStandardItem
+from qtpy.QtWidgets import QComboBox, QMessageBox
 
 from ilastik.applets.dataSelection.datasetDetailedInfoTableModel import DatasetColumn
 from ilastik.applets.dataSelection.datasetDetailedInfoTableView import DatasetDetailedInfoTableView

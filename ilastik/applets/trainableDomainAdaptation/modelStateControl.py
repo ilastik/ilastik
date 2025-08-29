@@ -22,8 +22,8 @@ import logging
 
 import requests
 
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QComboBox, QHBoxLayout, QSizePolicy, QToolButton
+from qtpy.QtCore import Signal
+from qtpy.QtWidgets import QComboBox, QHBoxLayout, QSizePolicy, QToolButton
 
 from ilastik.applets.neuralNetwork.modelStateControl import ModelStateControl, display_template
 from ilastik.utility.gui import ThreadRouter, silent_qobject
@@ -36,8 +36,8 @@ class BioImageModelCombo(QComboBox):
     _SELECT_FILE = object()
     _REMOVE_FILE = object()
 
-    modelDeleted = pyqtSignal()
-    modelOpenFromFile = pyqtSignal()
+    modelDeleted = Signal()
+    modelOpenFromFile = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -126,7 +126,7 @@ class BioImageModelCombo(QComboBox):
 
 
 class EnhancerModelStateControl(ModelStateControl):
-    uploadDone = pyqtSignal()
+    uploadDone = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)

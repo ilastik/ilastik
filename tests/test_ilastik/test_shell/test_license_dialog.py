@@ -1,7 +1,7 @@
 import os
 from unittest import mock
 
-from PyQt5.QtCore import Qt
+from qtpy.QtCore import Qt
 from pytest import fixture
 
 from ilastik.shell.gui.licenseDialog import LicenseDialog
@@ -37,7 +37,7 @@ def test_license_dlg_default_license(qtbot, tmp_path):
     mock_open = mock.Mock()
     mock_error_msg = mock.Mock()
     with mock.patch("ilastik.shell.gui.licenseDialog.LongLicenseDialog.show_license", mock_open):
-        with mock.patch("PyQt5.QtWidgets.QMessageBox.warning", mock_error_msg):
+        with mock.patch("qtpy.QtWidgets.QMessageBox.warning", mock_error_msg):
             qtbot.mouseClick(dlg._show_details_btn, Qt.MouseButton.LeftButton)
 
     mock_open.assert_called_once()
@@ -60,7 +60,7 @@ def test_license_dlg_default_3rdp_license(qtbot, tmp_path):
     mock_open = mock.Mock()
     mock_error_msg = mock.Mock()
     with mock.patch("ilastik.shell.gui.licenseDialog.LongLicenseDialog.show_license", mock_open):
-        with mock.patch("PyQt5.QtWidgets.QMessageBox.warning", mock_error_msg):
+        with mock.patch("qtpy.QtWidgets.QMessageBox.warning", mock_error_msg):
             qtbot.mouseClick(dlg._show_3rd_party_btn, Qt.MouseButton.LeftButton)
 
     mock_open.assert_called_once()
@@ -80,7 +80,7 @@ def test_license_dlg_license_notfound(qtbot):
     mock_open = mock.Mock()
     mock_error_msg = mock.Mock()
     with mock.patch("ilastik.shell.gui.licenseDialog.LongLicenseDialog.show_license", mock_open):
-        with mock.patch("PyQt5.QtWidgets.QMessageBox.warning", mock_error_msg):
+        with mock.patch("qtpy.QtWidgets.QMessageBox.warning", mock_error_msg):
             qtbot.mouseClick(dlg._show_details_btn, Qt.MouseButton.LeftButton)
 
     mock_open.assert_not_called()
@@ -95,7 +95,7 @@ def test_license_dlg_3rdp_license_notfound(qtbot, mock_license):
     mock_open = mock.Mock()
     mock_error_msg = mock.Mock()
     with mock.patch("ilastik.shell.gui.licenseDialog.LongLicenseDialog.show_license", mock_open):
-        with mock.patch("PyQt5.QtWidgets.QMessageBox.warning", mock_error_msg):
+        with mock.patch("qtpy.QtWidgets.QMessageBox.warning", mock_error_msg):
             qtbot.mouseClick(dlg._show_3rd_party_btn, Qt.MouseButton.LeftButton)
 
     mock_open.assert_not_called()

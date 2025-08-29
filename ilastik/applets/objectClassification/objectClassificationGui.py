@@ -18,10 +18,10 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt5 import uic
-from PyQt5.QtCore import pyqtSlot, Qt
-from PyQt5.QtGui import QColor, QIcon
-from PyQt5.QtWidgets import (
+from qtpy import uic
+from qtpy.QtCore import Slot, Qt
+from qtpy.QtGui import QColor, QIcon
+from qtpy.QtWidgets import (
     QAction,
     QDialog,
     QFileDialog,
@@ -334,7 +334,7 @@ class ObjectClassificationGui(LabelingGui):
         self.op.FreezePredictions.setValue(not val)
         self.parentApplet.appletStateUpdateRequested()
 
-    @pyqtSlot()
+    @Slot()
     def handleInteractiveModeClicked(self):
         self.interactiveMode = self.labelingDrawerUi.liveUpdateButton.isChecked()
 
@@ -356,11 +356,11 @@ class ObjectClassificationGui(LabelingGui):
                 if "Segmentation" in layer.name:
                     layer.visible = False
 
-    @pyqtSlot()
+    @Slot()
     def handleShowPredictionsClicked(self):
         self.showPredictions = self.labelingDrawerUi.checkShowPredictions.isChecked()
 
-    @pyqtSlot()
+    @Slot()
     def handleSubsetFeaturesClicked(self):
         mainOperator = self.topLevelOperatorView
         computedFeatures = copy.deepcopy(mainOperator.ComputedFeatureNames([]).wait())
@@ -433,13 +433,13 @@ class ObjectClassificationGui(LabelingGui):
             )
         mainOperator.ComputedFeatureNames.setDirty(())
 
-    @pyqtSlot()
+    @Slot()
     def handleLabelAssistClicked(self):
         if self._labelAssistDialog is None:
             self._labelAssistDialog = LabelAssistDialog(self, self.topLevelOperatorView)
         self._labelAssistDialog.show()
 
-    @pyqtSlot()
+    @Slot()
     def checkEnableButtons(self):
         feats_enabled = True
         predict_enabled = True

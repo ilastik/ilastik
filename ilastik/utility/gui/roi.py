@@ -21,7 +21,7 @@
 
 from typing import Sequence
 
-from PyQt5.QtCore import QRect
+from qtpy.QtCore import QRect
 
 
 def roi2rect(start: Sequence[int], stop: Sequence[int], axes: Sequence[str] = ("x", "y")) -> QRect:
@@ -42,15 +42,15 @@ def roi2rect(start: Sequence[int], stop: Sequence[int], axes: Sequence[str] = ("
 
     Examples:
         >>> roi2rect([0, 2, 3], [0, 12, 103], ["spam", "y", "x"])
-        PyQt5.QtCore.QRect(3, 2, 100, 10)
+        qtpy.QtCore.QRect(3, 2, 100, 10)
         >>> roi2rect([0, 12, 103], [0, 2, 3], ["spam", "y", "x"])
-        PyQt5.QtCore.QRect(3, 2, 100, 10)
+        qtpy.QtCore.QRect(3, 2, 100, 10)
         >>> roi2rect([0, 2, 3], [0, 12, 103], ["spam", "y"])  # doctest: +IGNORE_EXCEPTION_DETAIL
         Traceback (most recent call last):
           ...
         ValueError
         >>> roi2rect([1, 2], [8, 9])
-        PyQt5.QtCore.QRect(1, 2, 7, 7)
+        qtpy.QtCore.QRect(1, 2, 7, 7)
     """
     if len(start) != len(stop) != len(axes):
         raise ValueError(f"axes {axes}, start {start}, stop {stop} have different lengths")

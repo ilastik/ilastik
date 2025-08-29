@@ -23,8 +23,8 @@ import threading
 import time
 from typing import Optional
 
-from PyQt5.QtCore import QEventLoop, Qt, QTimer
-from PyQt5.QtWidgets import QApplication
+from qtpy.QtCore import QEventLoop, Qt, QTimer
+from qtpy.QtWidgets import QApplication
 
 
 def wait_until(f, timeout=10):

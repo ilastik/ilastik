@@ -23,10 +23,10 @@ import logging
 import os
 
 from ilastik.widgets.listView import ListView
-from PyQt5 import uic
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QAction, QColorDialog, QDialog, QLabel, QMenu, QPushButton, QVBoxLayout, QWidget
+from qtpy import uic
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtGui import QColor
+from qtpy.QtWidgets import QAction, QColorDialog, QDialog, QLabel, QMenu, QPushButton, QVBoxLayout, QWidget
 
 logger = logging.getLogger(__name__)
 
@@ -126,8 +126,8 @@ class BoxDialog(QDialog):
 
 
 class BoxListView(ListView):
-    importTriggered = pyqtSignal()
-    exportTriggered = pyqtSignal()
+    importTriggered = Signal()
+    exportTriggered = Signal()
 
     def __init__(self, parent=None):
         super(BoxListView, self).__init__(parent=parent)
@@ -250,7 +250,7 @@ if __name__ == "__main__":
     from .boxListModel import BoxListModel, BoxLabel
     import numpy
     import sys
-    from PyQt5.QtWidgets import QApplication
+    from qtpy.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
 

@@ -4,12 +4,12 @@ import re
 import webbrowser
 from functools import partial
 
-from PyQt5.QtCore import QUrl, Qt
-from PyQt5.QtGui import QDesktopServices
+from qtpy.QtCore import QUrl, Qt
+from qtpy.QtGui import QDesktopServices
 
 from ilastik import __version__ as ilastik_version
 from ilastik import ilastik_logging
-from PyQt5.QtWidgets import QApplication, QDialog, QVBoxLayout, QLabel, QTextEdit, QPushButton, QHBoxLayout, QSizePolicy
+from qtpy.QtWidgets import QApplication, QDialog, QVBoxLayout, QLabel, QTextEdit, QPushButton, QHBoxLayout, QSizePolicy
 from urllib.parse import quote
 
 FORUM_URI = "https://forum.image.sc/tag/ilastik"

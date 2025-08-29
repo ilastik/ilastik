@@ -10,7 +10,7 @@ from ilastik.applets.batchProcessing.batchProcessingGui import (
     FileListWidget,
 )
 from ilastik.applets.dataSelection.dataSelectionApplet import RoleMismatchException
-from PyQt5.QtCore import Qt, QUrl
+from qtpy.QtCore import Qt, QUrl
 
 
 def prepare_widget(qtbot, widget):

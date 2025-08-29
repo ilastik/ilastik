@@ -1,7 +1,7 @@
 from unittest import mock
 
 import pytest
-from PyQt5.QtCore import Qt
+from qtpy.QtCore import Qt
 
 from ilastik.widgets.featureTableWidget import FeatureTableWidget, FeatureEntry
 

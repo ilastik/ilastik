@@ -18,8 +18,8 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from PyQt5.QtCore import QAbstractAnimation, QParallelAnimationGroup, QPropertyAnimation, Qt
-from PyQt5.QtWidgets import QToolButton, QVBoxLayout, QWidget
+from qtpy.QtCore import QAbstractAnimation, QParallelAnimationGroup, QPropertyAnimation, Qt
+from qtpy.QtWidgets import QToolButton, QVBoxLayout, QWidget
 
 
 # derived from https://stackoverflow.com/a/37119983

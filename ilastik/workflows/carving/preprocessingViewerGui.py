@@ -21,7 +21,7 @@
 from functools import partial
 import numpy
 
-from PyQt5.QtGui import QColor
+from qtpy.QtGui import QColor
 
 from volumina.api import createDataSource
 from volumina.layer import ColortableLayer

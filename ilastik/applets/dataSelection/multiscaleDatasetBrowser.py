@@ -24,8 +24,8 @@ from functools import partial
 from time import perf_counter
 from typing import Type
 
-from PyQt5.QtCore import pyqtSignal, QThread
-from PyQt5.QtWidgets import (
+from qtpy.QtCore import Signal, QThread
+from qtpy.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
@@ -70,8 +70,8 @@ def _validate_uri(text: str) -> str:
 
 
 class CheckRemoteStoreWorker(QThread):
-    success = pyqtSignal(object)  # returns MultiscaleStore
-    error = pyqtSignal(str)  # returns error message
+    success = Signal(object)  # returns MultiscaleStore
+    error = Signal(str)  # returns error message
 
     def __init__(self, parent, store_init: Type[MultiscaleStore.__init__]):
         super().__init__(parent)
@@ -242,7 +242,7 @@ class MultiscaleDatasetBrowser(QDialog):
 
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from qtpy.QtWidgets import QApplication
 
     app = QApplication([])
 

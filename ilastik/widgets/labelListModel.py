@@ -21,8 +21,8 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-from PyQt5.QtGui import QColor, QPixmap, QIcon, QImage
-from PyQt5.QtCore import Qt, pyqtSignal, QItemSelectionModel
+from qtpy.QtGui import QColor, QPixmap, QIcon, QImage
+from qtpy.QtCore import Qt, Signal, QItemSelectionModel
 from .listModel import ListModel, ListElement, _NPIXELS
 
 
@@ -32,9 +32,9 @@ logger = logging.getLogger(__name__)
 
 
 class Label(ListElement):
-    changed = pyqtSignal()
-    colorChanged = pyqtSignal(QColor)
-    pmapColorChanged = pyqtSignal(QColor)
+    changed = Signal()
+    colorChanged = Signal(QColor)
+    pmapColorChanged = Signal(QColor)
 
     def __init__(self, name, color, parent=None, pmapColor=None):
         ListElement.__init__(self, name, parent)
@@ -67,7 +67,7 @@ class Label(ListElement):
 
 
 class LabelListModel(ListModel):
-    labelSelected = pyqtSignal(int)
+    labelSelected = Signal(int)
 
     icon_cache = {}
 

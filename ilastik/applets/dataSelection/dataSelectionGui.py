@@ -26,9 +26,9 @@ from pathlib import Path
 from typing import Dict, List, Set, Union, Optional
 
 import h5py
-from PyQt5 import uic
-from PyQt5.QtWidgets import QDialog, QMessageBox, QStackedWidget, QWidget, QApplication
-from PyQt5.QtCore import Qt
+from qtpy import uic
+from qtpy.QtWidgets import QDialog, QMessageBox, QStackedWidget, QWidget, QApplication
+from qtpy.QtCore import Qt
 from vigra import AxisTags
 from volumina.utility import preferences
 

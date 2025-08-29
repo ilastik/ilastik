@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from PyQt5.QtWidgets import (
+from qtpy.QtWidgets import (
     QDialogButtonBox,
     QButtonGroup,
     QComboBox,
@@ -31,7 +31,7 @@ from PyQt5.QtWidgets import (
     QCheckBox,
 )
 
-from PyQt5.QtCore import Qt
+from qtpy.QtCore import Qt
 
 from lazyflow.utility import globList
 
@@ -156,7 +156,7 @@ class H5N5StackingDlg(QDialog):
 
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from qtpy.QtWidgets import QApplication
 
     app = QApplication([])
     w = H5N5StackingDlg(list_of_paths=["a/1", "a/2", "a/3", "b/1", "b/2"])

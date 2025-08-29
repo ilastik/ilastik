@@ -60,7 +60,7 @@ class SingleToMultiGuiAdapter(object):
             return self.currentGui().appletDrawer()
 
         if self._imageLaneIndex not in self._tempDrawers:
-            from PyQt5.QtWidgets import QWidget
+            from qtpy.QtWidgets import QWidget
 
             self._tempDrawers[self._imageLaneIndex] = QWidget()
         return self._tempDrawers[self._imageLaneIndex]
@@ -131,10 +131,10 @@ class SingleToMultiGuiAdapter(object):
         for gui in [x for x in self._guis if x]:
             gui.setEnabled(enabled)
         for blank_drawer in list(self._tempDrawers.values()):
-            # Late import here to avoid importing sip in headless mode.
-            import sip
+            # Late import here to avoid importing qtpy in headless mode.
+            import qtpy.compat
 
-            if not sip.isdeleted(blank_drawer):
+            if qtpy.compat.isalive(blank_drawer):
                 blank_drawer.setEnabled(enabled)
 
     def isEnabled(self):

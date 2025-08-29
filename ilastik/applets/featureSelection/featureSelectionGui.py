@@ -25,10 +25,10 @@ import os
 from functools import partial
 
 # PyQt
-from PyQt5 import uic
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QCursor
-from PyQt5.QtWidgets import QApplication, QAbstractItemView, QFileDialog, QMessageBox
+from qtpy import uic
+from qtpy.QtCore import Qt
+from qtpy.QtGui import QCursor
+from qtpy.QtWidgets import QApplication, QAbstractItemView, QFileDialog, QMessageBox
 
 # lazyflow
 import lazyflow.operators.filterOperators as filterOps

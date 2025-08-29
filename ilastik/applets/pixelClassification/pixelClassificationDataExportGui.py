@@ -23,7 +23,7 @@ import warnings
 from ilastik.utility import bind
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 from lazyflow.operators.generic import OpMultiArraySlicer2
-from PyQt5.QtGui import QColor
+from qtpy.QtGui import QColor
 from volumina.api import createDataSource, AlphaModulatedLayer, ColortableLayer
 
 

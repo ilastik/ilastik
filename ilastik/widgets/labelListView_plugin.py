@@ -18,8 +18,8 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt5.QtDesigner import QPyDesignerCustomWidgetPlugin
-from PyQt5.QtGui import QPixmap, QIcon, QColor
+from qtpy.QtDesigner import QPyDesignerCustomWidgetPlugin
+from qtpy.QtGui import QPixmap, QIcon, QColor
 
 from ilastik.widgets.labelListView import LabelListView
 from ilastik.widgets.labelListModel import Label, LabelListModel

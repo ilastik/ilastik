@@ -9,7 +9,7 @@ import uuid
 import h5py
 
 import numpy
-from PyQt5.QtCore import Qt
+from qtpy.QtCore import Qt
 
 from ilastik.applets.dataSelection.datasetInfoEditorWidget import DatasetInfoEditorWidget
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer

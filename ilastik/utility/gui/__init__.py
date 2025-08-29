@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt5.QtWidgets import QApplication
+from qtpy.QtWidgets import QApplication
 
 
 from .roi import roi2rect

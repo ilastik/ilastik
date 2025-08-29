@@ -33,10 +33,10 @@ from ilastik.utility.gui import roi2rect, threadRouted
 from ilastik.widgets.boxListModel import BoxListModel
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.utility import traceLogged
-from PyQt5 import uic
-from PyQt5.QtCore import Qt, pyqtSlot
-from PyQt5.QtGui import QColor, QIcon
-from PyQt5.QtWidgets import QApplication, QFileDialog, QMessageBox
+from qtpy import uic
+from qtpy.QtCore import Qt, Slot
+from qtpy.QtGui import QColor, QIcon
+from qtpy.QtWidgets import QApplication, QFileDialog, QMessageBox
 from volumina.api import ColortableLayer, LazyflowSinkSource, createDataSource
 from volumina.navigationController import NavigationInterpreter
 from volumina.utility import ShortcutManager
@@ -742,7 +742,7 @@ class CountingGui(LabelingGui):
             if layer.name == "Uncertainty":
                 self.uncertaintyLayer = layer
 
-    @pyqtSlot()
+    @Slot()
     @traceLogged(traceLogger)
     def handleShowPredictionsClicked(self):
         checked = self._viewerControlUi.checkShowPredictions.isChecked()
@@ -750,7 +750,7 @@ class CountingGui(LabelingGui):
             if "Prediction" in layer.name:
                 layer.visible = checked
 
-    @pyqtSlot()
+    @Slot()
     @traceLogged(traceLogger)
     def handleShowSegmentationClicked(self):
         checked = self._viewerControlUi.checkShowSegmentation.isChecked()
@@ -758,7 +758,7 @@ class CountingGui(LabelingGui):
             if "Segmentation" in layer.name:
                 layer.visible = checked
 
-    @pyqtSlot()
+    @Slot()
     @traceLogged(traceLogger)
     def updateShowPredictionCheckbox(self):
         predictLayerCount = 0
@@ -776,7 +776,7 @@ class CountingGui(LabelingGui):
         else:
             self._viewerControlUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
 
-    @pyqtSlot()
+    @Slot()
     @traceLogged(traceLogger)
     def updateShowSegmentationCheckbox(self):
         segLayerCount = 0
@@ -794,7 +794,7 @@ class CountingGui(LabelingGui):
         else:
             self._viewerControlUi.checkShowSegmentation.setCheckState(Qt.PartiallyChecked)
 
-    @pyqtSlot()
+    @Slot()
     @threadRouted
     @traceLogged(traceLogger)
     def handleLabelSelectionChange(self):
@@ -810,7 +810,7 @@ class CountingGui(LabelingGui):
         self._viewerControlUi.checkShowPredictions.setEnabled(enabled)
         self._viewerControlUi.checkShowSegmentation.setEnabled(enabled)
 
-    #    @pyqtSlot()
+    #    @Slot()
     #    @traceLogged(traceLogger)
     #    def onSavePredictionsButtonClicked(self):
     #        """

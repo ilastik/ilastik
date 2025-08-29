@@ -32,9 +32,9 @@ from ilastik.utility.gui import roi2rect, silent_qobject
 from ilastik.widgets.boxListModel import BoxLabel
 from lazyflow.operators.generic import OpSubRegion
 from past.utils import old_div
-from PyQt5.QtCore import QEvent, QObject, QPoint, QPointF, QRect, QRectF, Qt, pyqtSignal, pyqtSlot
-from PyQt5.QtGui import QBrush, QColor, QFont, QPen
-from PyQt5.QtWidgets import (
+from qtpy.QtCore import QEvent, QObject, QPoint, QPointF, QRect, QRectF, Qt, Signal, Slot
+from qtpy.QtGui import QBrush, QColor, QFont, QPen
+from qtpy.QtWidgets import (
     QApplication,
     QGraphicsItem,
     QGraphicsRectItem,
@@ -170,10 +170,10 @@ class QGraphicsResizableRectSignaller(QObject):
     Multiple inheritance is not supported for qt-python classes (Qt 4.10)
     """
 
-    signalHasMoved = pyqtSignal(QPointF)  # The resizable rectangle has moved the new position
-    signalSelected = pyqtSignal()
-    signalHasResized = pyqtSignal()
-    colorHasChanged = pyqtSignal(object)
+    signalHasMoved = Signal(QPointF)  # The resizable rectangle has moved the new position
+    signalSelected = Signal()
+    signalHasResized = Signal()
+    colorHasChanged = Signal(object)
 
     def __init__(self, parent=None):
         QObject.__init__(self, parent=parent)
@@ -234,7 +234,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     def fontColor(self):
         return self._fontColor
 
-    @pyqtSlot(int)
+    @Slot(int)
     def setFontColor(self, color):
         self._fontColor = color
         self.textItem.setDefaultTextColor(color)
@@ -244,7 +244,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     def fontSize(self):
         return self._fontSize
 
-    @pyqtSlot(int)
+    @Slot(int)
     def setFontSize(self, s):
         self._fontSize = s
         font = QFont()
@@ -256,7 +256,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     def lineWidth(self):
         return self._lineWidth
 
-    @pyqtSlot(int)
+    @Slot(int)
     def setLineWidth(self, s):
         self._lineWidth = s
         self.updateColor()
@@ -265,12 +265,12 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     def color(self):
         return self._normalColor
 
-    @pyqtSlot(int)
+    @Slot(int)
     def setColor(self, qcolor):
         self._normalColor = qcolor
         self.updateColor()
 
-    @pyqtSlot()
+    @Slot()
     def _setupTextItem(self):
         # Set up the text
         self.textItem = QGraphicsTextItem("", parent=self)
@@ -290,7 +290,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
 
             self._updateTextBottom("shape " + str(self.shape))
 
-    @pyqtSlot(str)
+    @Slot(str)
     def _updateTextBottom(self, string):
         self.textItemBottom.setPlainText(string)
 
@@ -363,7 +363,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         for h in self._resizeHandles:
             h.show()
 
-    @pyqtSlot(int)
+    @Slot(int)
     def setSelected(self, selected):
         QGraphicsRectItem.setSelected(self, selected)
         if self.isSelected():
@@ -372,7 +372,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
             self._hovering = False
         self.updateColor()
 
-    @pyqtSlot()
+    @Slot()
     def updateColor(self):
         color = self.hoverColor if (self._hovering or self.isSelected()) else self._normalColor
         self.setPen(QPen(color, self._lineWidth))
@@ -415,7 +415,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         # FIXME: Implement me
         event.accept()
 
-    @pyqtSlot(str)
+    @Slot(str)
     def updateText(self, string):
 
         self.textItem.setPlainText(string)
@@ -543,7 +543,7 @@ class CoupledRectangleElement(object):
         self._opsub.Input.disconnect()
 
     def getStart(self):
-        """ 5D coordinates of the start position of the subregion """
+        """5D coordinates of the start position of the subregion"""
         rect_start = self._rectItem.topLeftDataPos()
 
         start = [0] * 5
@@ -553,7 +553,7 @@ class CoupledRectangleElement(object):
         return tuple(start)
 
     def getStop(self):
-        """ 5D coordinates of the stop position of the subregion """
+        """5D coordinates of the stop position of the subregion"""
         rect_stop = self._rectItem.bottomRightDataPos()
 
         stop = [1] * 5
@@ -563,7 +563,7 @@ class CoupledRectangleElement(object):
         return tuple(stop)
 
     def getSubRegion(self):
-        """ Gets the sub region of interest in the array input Slot """
+        """Gets the sub region of interest in the array input Slot"""
         start = self.getStart()
         stop = self.getStop()
 
@@ -622,7 +622,7 @@ class CoupledRectangleElement(object):
 
 
 class BoxInterpreter(QObject, InterpreterABC):
-    boxDrawn = pyqtSignal(QRect)
+    boxDrawn = Signal(QRect)
 
     def __init__(self, base: InterpreterABC, posModel: PositionModel, newBoxParent: QWidget):
         """Create new BoxInterpreter.
@@ -699,8 +699,8 @@ class BoxInterpreter(QObject, InterpreterABC):
 
 
 class BoxController(QObject):
-    fixedBoxesChanged = pyqtSignal(dict)
-    viewBoxesChanged = pyqtSignal(dict)
+    fixedBoxesChanged = Signal(dict)
+    viewBoxesChanged = Signal(dict)
 
     def __init__(self, editor, connectionInput, boxListModel):
         """

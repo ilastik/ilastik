@@ -19,8 +19,8 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 import os
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import (
+from qtpy.QtGui import QPixmap
+from qtpy.QtWidgets import (
     QApplication,
     QDialog,
     QDialogButtonBox,
@@ -28,7 +28,7 @@ from PyQt5.QtWidgets import (
     QLabel,
     QVBoxLayout,
 )
-from PyQt5.QtCore import Qt
+from qtpy.QtCore import Qt
 
 
 import ilastik

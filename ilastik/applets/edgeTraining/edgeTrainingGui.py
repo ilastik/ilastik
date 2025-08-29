@@ -23,9 +23,9 @@ from contextlib import contextmanager
 
 import numpy as np
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QPen, QIcon
-from PyQt5.QtWidgets import (
+from qtpy.QtCore import Qt
+from qtpy.QtGui import QColor, QPen, QIcon
+from qtpy.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,

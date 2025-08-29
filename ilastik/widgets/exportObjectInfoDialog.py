@@ -19,10 +19,9 @@
 #                  http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
-from PyQt5 import uic
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox, QTreeWidgetItem, QTreeWidgetItemIterator
+from qtpy import uic
+from qtpy.QtCore import Qt
+from qtpy.QtWidgets import QDialog, QFileDialog, QMessageBox, QTreeWidgetItem, QTreeWidgetItemIterator
 
 import os.path
 import re

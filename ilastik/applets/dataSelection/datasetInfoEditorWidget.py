@@ -29,8 +29,8 @@ from functools import partial
 import numpy
 import vigra
 
-from PyQt5 import uic
-from PyQt5.QtWidgets import QDialog
+from qtpy import uic
+from qtpy.QtWidgets import QDialog
 
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 from .opDataSelection import (

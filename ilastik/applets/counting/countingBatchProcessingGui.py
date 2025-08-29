@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QPushButton, QFileDialog
+from qtpy.QtWidgets import QPushButton, QFileDialog
 from ilastik.applets.batchProcessing.batchProcessingGui import BatchProcessingGui
 
 

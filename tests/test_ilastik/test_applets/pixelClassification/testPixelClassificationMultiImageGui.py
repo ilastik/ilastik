@@ -21,7 +21,7 @@
 from builtins import range
 import os
 import numpy
-from PyQt5.QtWidgets import QApplication
+from qtpy.QtWidgets import QApplication
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 from lazyflow.operators import OpPixelFeaturesPresmoothed

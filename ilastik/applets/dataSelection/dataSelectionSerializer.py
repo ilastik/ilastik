@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 
 def _confirmLoadLegacyProject():
-    from PyQt5.QtWidgets import QMessageBox
+    from qtpy.QtWidgets import QMessageBox
 
     should_load = QMessageBox.warning(
         None,
@@ -270,7 +270,7 @@ class DataSelectionSerializer(AppletSerializer):
             if headless:
                 return (DummyDatasetInfo.from_h5_group(infoGroup), True)
 
-            from PyQt5.QtWidgets import QMessageBox
+            from qtpy.QtWidgets import QMessageBox
             from ilastik.widgets.ImageFileDialog import ImageFileDialog
 
             repaired_paths = []

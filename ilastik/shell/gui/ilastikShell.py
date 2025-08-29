@@ -35,16 +35,15 @@ from typing import Optional, Type, Union
 import numpy
 
 # PyQt
-from PyQt5 import uic
-from PyQt5.QtCore import pyqtSignal, QObject, Qt, QUrl, QTimer
-from PyQt5.QtGui import QKeySequence, QIcon, QFont, QDesktopServices, QPixmap
-from PyQt5.QtWidgets import (
+from qtpy import uic
+from qtpy.QtCore import Signal, QObject, Qt, QUrl, QTimer
+from qtpy.QtGui import QKeySequence, QIcon, QFont, QDesktopServices, QPixmap
+from qtpy.QtWidgets import (
     QMainWindow,
     QWidget,
     QMenu,
     QApplication,
     QPushButton,
-    qApp,
     QFileDialog,
     QMessageBox,
     QProgressBar,
@@ -189,7 +188,7 @@ class NotificationsBar(QLabel):
     are emitted with `lazyflow.USER_LOGLEVEL`.
     """
 
-    textAdded = pyqtSignal(str)
+    textAdded = Signal(str)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -262,7 +261,7 @@ class ProgressDisplayManager(QObject):
     # we forward them through this qt signal.
     # This way we get the benefits of a queued connection without
     #  requiring the applet interface to be dependent on qt.
-    dispatchSignal = pyqtSignal(int, int, "bool")
+    dispatchSignal = Signal(int, int, "bool")
 
     def __init__(self, statusBar):
         """"""
@@ -403,7 +402,7 @@ class StartupContainer(QWidget):
     included via `ilastik/shell/gui/ui/ilastikShell.ui`
     """
 
-    ilpDropped = pyqtSignal(str)
+    ilpDropped = Signal(str)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -465,7 +464,7 @@ class IlastikShell(QMainWindow):
     The GUI's main window.  Simply a standard 'container' GUI for one or more applets.
     """
 
-    currentAppletChanged = pyqtSignal(int, int)  # prev, current
+    currentAppletChanged = Signal(int, int)  # prev, current
 
     def __init__(self, parent=None, workflow_cmdline_args=None, flags=Qt.WindowFlags(0)):
         QMainWindow.__init__(self, parent=parent, flags=flags)
@@ -2029,8 +2028,9 @@ class IlastikShell(QMainWindow):
         self.close()
 
         # For testing purposes, sometimes this function is called even though we don't want to really quit.
-        if quitApp:
-            qApp.quit()
+        qapp = QApplication.instance()
+        if quitApp and qapp:
+            qapp.quit()
 
     def setAllAppletsEnabled(self, enabled):
         for applet in self._applets:

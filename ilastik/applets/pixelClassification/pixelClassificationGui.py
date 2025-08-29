@@ -32,27 +32,24 @@ from functools import partial
 
 # Third-party
 import numpy
-from PyQt5 import uic
-from PyQt5.QtCore import Qt, pyqtSlot, pyqtRemoveInputHook, pyqtRestoreInputHook, QSize
-from PyQt5.QtWidgets import (
+from qtpy import uic
+from qtpy.QtCore import Qt, Slot, QSize
+from qtpy.QtWidgets import (
     QMessageBox,
     QVBoxLayout,
     QDialogButtonBox,
     QListWidget,
     QListWidgetItem,
-    QApplication,
     QAction,
     QPushButton,
     QLineEdit,
     QDialog,
-    QComboBox,
     QTreeWidget,
     QTreeWidgetItem,
-    QWidget,
     QSizePolicy,
     QMenu,
 )
-from PyQt5.QtGui import QColor, QIcon, QCursor
+from qtpy.QtGui import QColor, QIcon, QCursor
 
 
 # HCI
@@ -797,21 +794,21 @@ class PixelClassificationGui(LabelingGui):
         #  be used now that there are features selected)
         self.parentApplet.appletStateUpdateRequested()
 
-    @pyqtSlot()
+    @Slot()
     def handleShowPredictionsClicked(self):
         checked = self._viewerControlUi.checkShowPredictions.isChecked()
         for layer in self.layerstack:
             if "Prediction" in layer.name:
                 layer.visible = checked
 
-    @pyqtSlot()
+    @Slot()
     def handleShowSegmentationClicked(self):
         checked = self._viewerControlUi.checkShowSegmentation.isChecked()
         for layer in self.layerstack:
             if "Segmentation" in layer.name:
                 layer.visible = checked
 
-    @pyqtSlot()
+    @Slot()
     def updateShowPredictionCheckbox(self):
         predictLayerCount = 0
         visibleCount = 0
@@ -828,7 +825,7 @@ class PixelClassificationGui(LabelingGui):
         else:
             self._viewerControlUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
 
-    @pyqtSlot()
+    @Slot()
     def updateShowSegmentationCheckbox(self):
         segLayerCount = 0
         visibleCount = 0

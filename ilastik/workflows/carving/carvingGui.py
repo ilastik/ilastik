@@ -28,9 +28,9 @@ from typing import List
 import numpy
 
 # PyQt
-from PyQt5 import uic
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QMenu, QMessageBox, QFileDialog
+from qtpy import uic
+from qtpy.QtGui import QColor
+from qtpy.QtWidgets import QMenu, QMessageBox, QFileDialog
 
 # lazyflow
 from lazyflow.request import Request

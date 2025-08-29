@@ -22,9 +22,9 @@ import logging
 from functools import partial
 from typing import Sequence
 
-from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import (
+from qtpy.QtCore import Qt, Signal, Slot
+from qtpy.QtGui import QColor
+from qtpy.QtWidgets import (
     QAction,
     QColorDialog,
     QFileDialog,
@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 
 class ConfigurableChannelSelector(QPushButton):
-    channelSelectionFinalized = pyqtSignal(list)
+    channelSelectionFinalized = Signal(list)
 
     def __init__(self, options: Sequence[str], *args, required_selections=1, **kwargs):
         super().__init__(*args, **kwargs)
@@ -291,7 +291,7 @@ class TrainableDomainAdaptationGui(PixelClassificationGui):
     def cancel(self, *args, **kwargs):
         self.cancel_src.cancel()
 
-    @pyqtSlot()
+    @Slot()
     def updateShowPredictionCheckbox(self):
         """
         updates the showPrediction Checkbox when Predictions were added to the layers
@@ -305,7 +305,7 @@ class TrainableDomainAdaptationGui(PixelClassificationGui):
                     break
         self._viewerControlUi.checkShowPredictions.setCheckState(state)
 
-    @pyqtSlot()
+    @Slot()
     def handleShowPredictionsClicked(self):
         checked = self._viewerControlUi.checkShowPredictions.isChecked()
         for layer in self.layerstack:

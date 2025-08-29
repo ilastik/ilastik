@@ -6,9 +6,9 @@ from functools import partial
 from textwrap import dedent
 from typing import Callable, List
 
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import (
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtGui import QIcon
+from qtpy.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
     QLabel,
@@ -38,7 +38,7 @@ class ModelIncompatible(Exception):
 
 
 class ModelControlButtons(QWidget):
-    remove = pyqtSignal()
+    remove = Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -72,7 +72,7 @@ display_template = dedent(
 
 
 class ModelSourceEdit(QTextEdit):
-    modelDeleted = pyqtSignal()
+    modelDeleted = Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -173,7 +173,7 @@ class ModelSourceEdit(QTextEdit):
 
 
 class ModelStateControl(QWidget):
-    uploadDone = pyqtSignal()
+    uploadDone = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)

@@ -23,8 +23,8 @@ import os
 import numpy
 from . import preView
 
-from PyQt5 import uic
-from PyQt5.QtWidgets import QDialog
+from qtpy import uic
+from qtpy.QtWidgets import QDialog
 import qimage2ndarray
 
 
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     import signal
 
     signal.signal(signal.SIGINT, signal.SIG_DFL)
-    from PyQt5.QtWidgets import QApplication
+    from qtpy.QtWidgets import QApplication
     from featureTableWidget import FeatureEntry
 
     app = QApplication(sys.argv)

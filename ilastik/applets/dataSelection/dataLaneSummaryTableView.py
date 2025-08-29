@@ -22,20 +22,20 @@ from __future__ import absolute_import
 ###############################################################################
 from builtins import range
 from functools import partial
-from PyQt5.QtCore import pyqtSignal, Qt, QItemSelection, QItemSelectionModel
-from PyQt5.QtWidgets import QTableView, QHeaderView, QMenu, QPushButton, QAction
+from qtpy.QtCore import Signal, Qt
+from qtpy.QtWidgets import QTableView, QMenu, QAction
 
 from .dataLaneSummaryTableModel import DataLaneSummaryTableModel, LaneColumn, DatasetInfoColumn
 from .addFileButton import AddFileButton
 
 
 class DataLaneSummaryTableView(QTableView):
-    dataLaneSelected = pyqtSignal(int)  # Signature: (laneIndex)
+    dataLaneSelected = Signal(int)  # Signature: (laneIndex)
 
-    addFilesRequested = pyqtSignal(int)  # Signature: (roleIndex)
-    addStackRequested = pyqtSignal(int)  # Signature: (roleIndex)
+    addFilesRequested = Signal(int)  # Signature: (roleIndex)
+    addStackRequested = Signal(int)  # Signature: (roleIndex)
 
-    removeLanesRequested = pyqtSignal(object)  # Signature: (laneIndexes)
+    removeLanesRequested = Signal(object)  # Signature: (laneIndexes)
 
     def __init__(self, parent):
         super(DataLaneSummaryTableView, self).__init__(parent)

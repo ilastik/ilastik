@@ -50,8 +50,8 @@ import os
 import pathlib
 import re
 
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import QSize
+from qtpy.QtGui import QIcon
+from qtpy.QtCore import QSize
 
 
 # *******************************************************************************

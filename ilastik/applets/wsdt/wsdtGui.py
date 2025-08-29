@@ -25,10 +25,9 @@ import threading
 
 import numpy as np
 
-import sip
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QPen
-from PyQt5.QtWidgets import (
+import qtpy.compat
+from qtpy.QtGui import QColor
+from qtpy.QtWidgets import (
     QWidget,
     QLabel,
     QSpinBox,
@@ -37,7 +36,6 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QSpacerItem,
     QSizePolicy,
-    QComboBox,
     QPushButton,
     QMenu,
     QAction,
@@ -114,7 +112,7 @@ class WsdtGui(LayerViewerGui):
         channel_button.clicked.connect(channel_button.showMenu)
 
         def populate_channel_menu(*args):
-            if sip.isdeleted(channel_button):
+            if not qtpy.compat.isalive(channel_button):
                 return
             self.channel_menu.clear()
             self.channel_actions = []

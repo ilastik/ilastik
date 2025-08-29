@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QSpacerItem, QSizePolicy, QCheckBox
-from PyQt5.QtCore import pyqtSignal
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QSpacerItem, QSizePolicy, QCheckBox
+from qtpy.QtCore import Signal
 
 from lazyflow.slot import valueContext
 from ilastik.applets.edgeTraining.edgeTrainingGui import EdgeTrainingMixin
@@ -10,7 +10,7 @@ import ilastik.utility.gui as guiutil
 
 class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingMixin, LayerViewerGui):
 
-    multicutUpdated = pyqtSignal()
+    multicutUpdated = Signal()
 
     def __init__(self, parentApplet, topLevelOperatorView):
         self.__cleanup_fns = []

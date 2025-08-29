@@ -24,9 +24,9 @@ import threading
 
 import numpy as np
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QPen, QIcon
-from PyQt5.QtWidgets import (
+from qtpy.QtCore import Qt
+from qtpy.QtGui import QColor, QPen, QIcon
+from qtpy.QtWidgets import (
     QWidget,
     QLabel,
     QDoubleSpinBox,
@@ -53,6 +53,7 @@ from lazyflow.request import Request
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 # This is a mixin that can be added to any LayerViewerGui subclass
 # See MulticutGui (bottom of this file) for the standalone version.

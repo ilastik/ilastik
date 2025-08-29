@@ -24,8 +24,8 @@ import sys
 import tempfile
 import pytest
 import numpy
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QAction
+from qtpy.QtCore import Qt
+from qtpy.QtWidgets import QApplication, QAction
 from volumina.layer import AlphaModulatedLayer
 from ilastik.widgets.stackFileSelectionWidget import SubvolumeSelectionDlg
 

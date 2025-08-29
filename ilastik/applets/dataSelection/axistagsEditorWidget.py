@@ -3,8 +3,8 @@ from builtins import range
 import copy
 import collections
 
-from PyQt5.QtCore import pyqtSignal, Qt, QEvent
-from PyQt5.QtWidgets import QTableWidget, QDoubleSpinBox, QLineEdit
+from qtpy.QtCore import Signal, Qt, QEvent
+from qtpy.QtWidgets import QTableWidget, QDoubleSpinBox, QLineEdit
 
 import numpy
 import vigra
@@ -13,7 +13,7 @@ RowWidgets = collections.namedtuple("RowWidgets", "resolution_box description_ed
 
 
 class AxistagsEditorWidget(QTableWidget):
-    axistagsUpdated = pyqtSignal()
+    axistagsUpdated = Signal()
 
     def __init__(self, parent=None):
         QTableWidget.__init__(self, parent)
@@ -104,8 +104,8 @@ class AxistagsEditorWidget(QTableWidget):
 
 if __name__ == "__main__":
     from functools import partial
-    from PyQt5.QtCore import QTimer
-    from PyQt5.QtWidgets import QApplication
+    from qtpy.QtCore import QTimer
+    from qtpy.QtWidgets import QApplication
 
     tags = vigra.defaultAxistags("xyzc")
     tags["x"].resolution = 2.0

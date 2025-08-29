@@ -20,7 +20,7 @@
 ###############################################################################
 from functools import wraps
 
-from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
+from qtpy.QtCore import Qt, QAbstractItemModel, QModelIndex
 
 from lazyflow.utility import PathComponents
 from ilastik.utility import bind

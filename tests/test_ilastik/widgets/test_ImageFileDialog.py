@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 from ilastik.widgets.ImageFileDialog import ImageFileDialog
-from PyQt5.QtWidgets import QFileDialog
+from qtpy.QtWidgets import QFileDialog
 from volumina.utility import preferences
 
 

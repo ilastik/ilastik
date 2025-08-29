@@ -38,7 +38,7 @@ from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 import vigra
 from ilastik.applets.counting.countingApplet import CountingApplet
 from lazyflow.utility.timer import Timer, timeLogged
-from PyQt5.QtWidgets import QApplication
+from qtpy.QtWidgets import QApplication
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stdout))

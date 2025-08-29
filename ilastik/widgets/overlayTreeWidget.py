@@ -19,8 +19,8 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-from PyQt5.QtWidgets import QTreeWidgetItem, QTreeWidget, QTreeWidgetItemIterator
-from PyQt5.QtCore import pyqtSignal, Qt, QEvent
+from qtpy.QtWidgets import QTreeWidgetItem, QTreeWidget, QTreeWidgetItemIterator
+from qtpy.QtCore import Signal, Qt, QEvent
 
 
 class OverlayTreeWidgetIter(QTreeWidgetItemIterator):
@@ -49,7 +49,7 @@ class OverlayTreeWidgetItem(QTreeWidgetItem):
 
 
 class OverlayTreeWidget(QTreeWidget):
-    spacePressed = pyqtSignal()
+    spacePressed = Signal()
 
     def __init__(self, parent=None):
         QTreeWidget.__init__(self, parent)
@@ -169,7 +169,7 @@ if __name__ == "__main__":
     import signal
 
     signal.signal(signal.SIGINT, signal.SIG_DFL)
-    from PyQt5.QtWidgets import *
+    from qtpy.QtWidgets import *
 
     app = QApplication(sys.argv)
 

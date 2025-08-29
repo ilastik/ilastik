@@ -19,8 +19,8 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-from PyQt5.QtWidgets import QTableView, QAbstractItemView, QHeaderView, QStackedWidget, QLabel, QSizePolicy
-from PyQt5.QtCore import Qt
+from qtpy.QtWidgets import QTableView, QAbstractItemView, QHeaderView, QStackedWidget, QLabel, QSizePolicy
+from qtpy.QtCore import Qt
 
 import logging
 
@@ -146,7 +146,7 @@ class ListView(QStackedWidget):
         contentH = max(90, contentH)
 
         h = hHeader.height() + contentH + doubleFrame
-        from PyQt5.QtCore import QSize
+        from qtpy.QtCore import QSize
 
         return QSize(w, h)
 

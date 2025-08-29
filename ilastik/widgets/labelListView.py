@@ -21,10 +21,10 @@
 import os
 from functools import partial
 
-from PyQt5 import uic
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QColorDialog, QVBoxLayout, QPushButton, QDialog, QWidget, QMenu, QMessageBox
+from qtpy import uic
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtGui import QColor
+from qtpy.QtWidgets import QColorDialog, QVBoxLayout, QPushButton, QDialog, QWidget, QMenu, QMessageBox
 
 from .labelListModel import LabelListModel, Label
 from .listView import ListView
@@ -61,8 +61,8 @@ class ColorDialog(QDialog):
 
 
 class LabelListView(ListView):
-    clearRequested = pyqtSignal(int, str)  # row, name
-    mergeRequested = pyqtSignal(int, str, int, str)  # from_row, from_name, to_row, to_name
+    clearRequested = Signal(int, str)  # row, name
+    mergeRequested = Signal(int, str, int, str)  # from_row, from_name, to_row, to_name
 
     def __init__(self, parent=None):
         super(LabelListView, self).__init__(parent=parent)
@@ -126,7 +126,7 @@ class LabelListView(ListView):
 if __name__ == "__main__":
     import numpy
     import sys
-    from PyQt5.QtWidgets import QApplication
+    from qtpy.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
 

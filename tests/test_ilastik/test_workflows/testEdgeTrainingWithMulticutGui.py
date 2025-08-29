@@ -14,8 +14,8 @@ import h5py
 import numpy
 import pytest
 from elf.evaluation import mean_segmentation_accuracy
-from PyQt5.QtCore import QTimer
-from PyQt5.QtWidgets import QApplication, QMessageBox
+from qtpy.QtCore import QTimer
+from qtpy.QtWidgets import QApplication, QMessageBox
 
 from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
 from ilastik.workflows.edgeTrainingWithMulticut import EdgeTrainingWithMulticutWorkflow

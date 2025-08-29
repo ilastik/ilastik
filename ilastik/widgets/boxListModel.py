@@ -23,8 +23,8 @@ import logging
 import os
 
 from ilastik.widgets.listModel import _NPIXELS, ListElement, ListModel
-from PyQt5.QtCore import QItemSelectionModel, QModelIndex, Qt, pyqtSignal
-from PyQt5.QtGui import QColor, QIcon, QPixmap
+from qtpy.QtCore import QItemSelectionModel, QModelIndex, Qt, Signal
+from qtpy.QtGui import QColor, QIcon, QPixmap
 
 logger = logging.getLogger(__name__)
 
@@ -35,15 +35,15 @@ logger = logging.getLogger(__name__)
 
 
 class BoxLabel(ListElement):
-    changed = pyqtSignal()
-    existenceChanged = pyqtSignal()
-    densityChanged = pyqtSignal(object)
-    isFixedChanged = pyqtSignal(bool)
+    changed = Signal()
+    existenceChanged = Signal()
+    densityChanged = Signal(object)
+    isFixedChanged = Signal(bool)
 
-    colorChanged = pyqtSignal(QColor)
-    fontSizeChanged = pyqtSignal(int)
-    lineWidthChanged = pyqtSignal(int)
-    fontColorChanged = pyqtSignal(QColor)
+    colorChanged = Signal(QColor)
+    fontSizeChanged = Signal(int)
+    lineWidthChanged = Signal(int)
+    fontColorChanged = Signal(QColor)
 
     def __init__(
         self, name, color, density=0.0, fontsize=12, linewidth=2, fontcolor=QColor(255, 255, 255), parent=None
@@ -163,7 +163,7 @@ class BoxLabel(ListElement):
 
 
 class BoxListModel(ListModel):
-    boxRemoved = pyqtSignal(int)
+    boxRemoved = Signal(int)
 
     class ColumnID(object):
         Color = 0

@@ -18,10 +18,10 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt5.QtWidgets import QTreeWidgetItem, QMessageBox
-from PyQt5.QtGui import QColor, QMouseEvent
-from PyQt5 import uic
-from PyQt5.QtCore import Qt, QEvent
+from qtpy.QtWidgets import QTreeWidgetItem, QMessageBox
+from qtpy.QtGui import QColor, QMouseEvent
+from qtpy import uic
+from qtpy.QtCore import Qt, QEvent
 
 from lazyflow.rtype import SubRegion
 import os
@@ -46,7 +46,7 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 import vigra
 import numpy
 
-from PyQt5.QtWidgets import QDialog, QFileDialog
+from qtpy.QtWidgets import QDialog, QFileDialog
 
 import pickle as pickle
 import threading
@@ -721,7 +721,7 @@ class ObjectExtractionGui(LayerViewerGui):
         logger.debug("Exported object features to file '{}'".format(fname))
 
 
-from PyQt5.QtWidgets import QWidget
+from qtpy.QtWidgets import QWidget
 
 
 class ObjectExtractionGuiNonInteractive(QWidget):
@@ -756,8 +756,8 @@ class ObjectExtractionGuiNonInteractive(QWidget):
 # Quick GUI testing...
 #
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
-    from PyQt5.QtCore import QTimer
+    from qtpy.QtWidgets import QApplication
+    from qtpy.QtCore import QTimer
 
     app = QApplication([])
 

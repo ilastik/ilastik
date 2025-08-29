@@ -22,10 +22,6 @@ import pytest
 import threading
 from functools import partial
 
-from PyQt5.QtCore import Qt, QEvent, QPoint, QTimer, Qt
-from PyQt5.QtWidgets import QApplication, qApp
-from PyQt5.QtGui import QPixmap, QMouseEvent
-
 mainThreadPauseEvent = threading.Event()
 mainFunc = None
 

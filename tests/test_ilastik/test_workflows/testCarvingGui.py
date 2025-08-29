@@ -9,7 +9,7 @@ import tempfile
 import threading
 import zipfile
 
-from PyQt5.QtWidgets import QApplication
+from qtpy.QtWidgets import QApplication
 
 from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
 from ilastik.workflows.carving import CarvingWorkflow
