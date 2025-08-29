@@ -32,8 +32,8 @@ import numpy
 
 # PyQt
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
+from PyQt5.QtWidgets import QWidget
+from PyQt5.QtGui import QColor
 from PyQt5 import uic
 
 import vigra
