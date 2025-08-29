@@ -22,9 +22,11 @@
 import os
 
 import numpy
+import tifffile
 import vigra
 
 from lazyflow.graph import Operator, InputSlot
+from lazyflow.utility.io_util import tiff_encoding
 
 from .opExportToArray import OpExportToArray
 
@@ -36,6 +38,8 @@ class OpExport2DImage(Operator):
 
     Input = InputSlot()  # Allowed to have more than 2 dimensions as long as the others are singletons.
     Filepath = InputSlot()
+
+    supported_dtypes_imagej = [numpy.uint8, numpy.uint16, numpy.float32]
 
     def __init__(self, *args, **kwargs):
         super(OpExport2DImage, self).__init__(*args, **kwargs)
@@ -82,7 +86,41 @@ class OpExport2DImage(Operator):
             len(data.shape) == 3 and data.axistags.channelIndex < 3
         ), "Image has shape {}, channelIndex is {}".format(data.shape, data.axistags.channelIndex)
 
-        vigra.impex.writeImage(data, self.Filepath.value)
+        extension = os.path.splitext(self.Filepath.value)[1][1:]
+
+        # Write metadata (currently only tif, png would be nice to have, bmp/jpg questionable)
+        if extension in ["tif", "tiff"] and data.dtype in self.supported_dtypes_imagej and self.Input.meta.axis_units:
+            axes = "YX"
+            if "c" in tagged_shape and tagged_shape["c"] > 1:
+                axes = "CYX"
+
+            imagej_metadata = {
+                "spacing": 1.0,  # this is equal to the z-axis and gets handled differently in non-2d images
+                "unit": tiff_encoding.to_ascii(self.Input.meta.axis_units["x"]),
+                "yunit": tiff_encoding.to_ascii(self.Input.meta.axis_units["y"]),
+                "axes": axes,
+            }
+
+            tifffile.imwrite(
+                self.Filepath.value,
+                data,
+                imagej=True,
+                metadata=imagej_metadata,
+                resolution=(
+                    (
+                        (1 / self.Input.meta.axistags["x"].resolution)
+                        if self.Input.meta.axistags["x"].resolution != 0
+                        else 0
+                    ),
+                    (
+                        (1 / self.Input.meta.axistags["y"].resolution)
+                        if self.Input.meta.axistags["y"].resolution != 0
+                        else 0
+                    ),
+                ),  # standard tiff convention is to store pixels/space but internally we prefer and use space/pixel
+            )
+        else:
+            vigra.impex.writeImage(data, self.Filepath.value)
 
 
 if __name__ == "__main__":

@@ -20,6 +20,8 @@
 # 		   http://ilastik.org/license/
 ###############################################################################
 from __future__ import division
+
+import json
 from builtins import zip
 from builtins import range
 import os
@@ -645,6 +647,8 @@ class OpH5N5WriterBigDataset(Operator):
                 self.d.dims[index].label = tag.key
         else:  # if n5 dataset, apply neuroglancer's axes tags convention
             self.d.attrs["axes"] = "".join(tag.key for tag in self.Image.meta.axistags)[::-1]
+        if self.Image.meta.axis_units:
+            self.d.attrs["axis_units"] = json.dumps(self.Image.meta.axis_units)
         drange = self.Image.meta.get("drange")
         if drange:
             self.d.attrs["drange"] = drange

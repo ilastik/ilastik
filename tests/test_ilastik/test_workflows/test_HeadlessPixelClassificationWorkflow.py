@@ -20,6 +20,8 @@ import z5py
 import zarr
 
 from ilastik.applets.featureSelection import FeatureSelectionConstraintError
+from lazyflow.graph import Graph
+from lazyflow.operators.ioOperators import OpInputDataReader
 from lazyflow.utility.io_util.write_ome_zarr import OME_ZARR_V_0_4_KWARGS
 
 logger = logging.getLogger(__name__)
@@ -392,3 +394,31 @@ def test_headless_ome_zarr_multiscale_export(testdir, tmp_path, sample_projects_
         "Scaled segmentation contained fractional values. Check that interpolation uses nearest-neighbor.",
     )
     assert group.attrs["multiscales"][0]["metadata"]["kwargs"]["order"] == 0, "interpolation misreported"
+
+
+def test_headless_pixel_size_preservation(testdir, tmp_path, sample_projects_dir):
+    """
+    Ensures pixel sizes are preserved throughout the workflow for Simple Segmentation export.
+    Based on 'test_headless_ome_zarr_multiscale_export'
+    """
+    ilp_path = sample_projects_dir / "PixelClassification2d_units.ilp"
+    raw_2d_path = str(sample_projects_dir / "inputdata" / "2d_with_pixel_sizes.tif")
+    output_path = tmp_path / "out_2d_units.h5"
+
+    run_headless_pixel_classification(
+        testdir,
+        project=ilp_path,
+        raw_data=raw_2d_path,
+        output_filename_format=str(output_path),
+        ignore_training_axistags=True,
+        output_format="hdf5",
+    )
+
+    assert output_path.exists()
+    opReaderResult = OpInputDataReader(graph=Graph())
+    opReaderResult.FilePath.setValue(str(output_path))
+
+    assert numpy.isclose(opReaderResult.Output.meta.axistags["x"].resolution, 5.0, atol=1e-8)
+    assert numpy.isclose(opReaderResult.Output.meta.axistags["y"].resolution, 6.0, atol=1e-8)
+    assert opReaderResult.Output.meta.axis_units["x"] == "cm"
+    assert opReaderResult.Output.meta.axis_units["y"] == "nm"
