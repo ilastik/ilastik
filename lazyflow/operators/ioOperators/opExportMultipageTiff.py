@@ -84,7 +84,6 @@ class OpExportMultipageTiff(Operator):
 
         meta_dict = {
             "axes": "".join(k.upper() for k in self._opReorderAxes.Output.meta.getAxisKeys()),
-            "SignificantBits": 8,
         }
 
         # map axis keys to relevant metadata keys
@@ -109,7 +108,7 @@ class OpExportMultipageTiff(Operator):
                 pixels[unit_key] = None
 
                 if axis != "c":
-                    pixels[size_key] = float(axistags[axis].resolution)  # OME uses unicode
+                    pixels[size_key] = float(axistags[axis].resolution)
                     unit_value = axis_units.get(axis, "")
                     pixels[unit_key] = str(tiff_encoding.to_ome(unit_value))
         meta_dict["Pixels"] = pixels

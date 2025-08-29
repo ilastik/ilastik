@@ -108,7 +108,7 @@ class DatasetInfo(ABC):
         drange: Tuple[Number, Number] = None,
         working_scale: str = DEFAULT_SCALE_KEY,
         scale_locked: bool = False,
-        axis_units: Dict[str, str] = {},  # { axis: physical unit string e.g. "micron" }
+        axis_units: Dict[str, str] = None,  # { axis: physical unit string e.g. "micron" }
     ):
         if axistags and len(axistags) != len(laneShape):
             raise UnsuitedAxistagsException(axistags, laneShape)
@@ -116,7 +116,7 @@ class DatasetInfo(ABC):
             raise InconsistentAxisMetaException(default_tags, laneShape)
         self.default_tags = default_tags
         self.axistags = axistags or default_tags
-        self.axis_units = axis_units
+        self.axis_units = axis_units or {}
         self.laneShape = laneShape
         self.laneDtype = laneDtype
         if isinstance(self.laneDtype, numpy.dtype):

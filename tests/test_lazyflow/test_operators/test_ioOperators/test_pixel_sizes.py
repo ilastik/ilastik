@@ -117,7 +117,7 @@ def test_write_OpExport2DImage(graph, tmp_path, axes, shape, resolutions, units)
 )
 def test_write_OpExportMultipageTiff(graph, tmp_path, axes, shape, resolutions, units):
     op_data = get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units)
-    out_path = str(tmp_path / "3d_export.tif")
+    out_path = str(tmp_path / "multipage_export.tif")
     export = OpExportMultipageTiff(graph=graph)
     export.Input.connect(op_data.Output)
     export.Filepath.setValue(out_path)
@@ -216,7 +216,7 @@ def test_write_OpExportMultipageTiff(graph, tmp_path, axes, shape, resolutions, 
 )
 def test_unit_conversion_OpExportMultipageTiff(graph, tmp_path, axes, shape, resolutions, units, converted_units):
     op_data = get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units)
-    out_path = str(tmp_path / "3d_export.tif")
+    out_path = str(tmp_path / "multipage_export.tif")
     export = OpExportMultipageTiff(graph=graph)
     export.Input.connect(op_data.Output)
     export.Filepath.setValue(out_path)
@@ -416,7 +416,7 @@ def test_write_read_roundtrip_tiff_OpExportMultipageTiff(graph, tmp_path):
         [5.0, 7.0, 0.0, 6.000024000096, 13],
         ["seconds", "cm", "", "µm", "mm"],
     )
-    out_path = str(tmp_path / "3d_export.tif")
+    out_path = str(tmp_path / "multipage_export.tif")
     export = OpExportMultipageTiff(graph=graph)
     export.Input.connect(op_data.Output)
     export.Filepath.setValue(out_path)
