@@ -27,7 +27,7 @@ import sys
 import tempfile
 import zipfile
 
-from PyQt5.QtWidgets import QApplication
+from qtpy.QtWidgets import QApplication
 
 import h5py
 import numpy

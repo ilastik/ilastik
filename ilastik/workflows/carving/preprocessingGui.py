@@ -25,8 +25,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 # PyQt
-from PyQt5 import uic
-from PyQt5.QtWidgets import QMainWindow, QMessageBox
+from qtpy import uic
+from qtpy.QtWidgets import QMainWindow, QMessageBox
 
 # ilastik
 from ilastik.utility import bind, log_exception

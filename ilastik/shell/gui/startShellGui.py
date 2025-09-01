@@ -29,9 +29,9 @@ import signal
 
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-from PyQt5.QtWidgets import QApplication, QSplashScreen
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QPixmap
+from qtpy.QtWidgets import QApplication, QSplashScreen
+from qtpy.QtCore import Qt, QTimer
+from qtpy.QtGui import QPixmap
 
 import ilastik
 import ilastik.config

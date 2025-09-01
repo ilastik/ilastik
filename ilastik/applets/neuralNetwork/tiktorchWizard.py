@@ -19,9 +19,9 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 import os
-from PyQt5 import QtWidgets
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QLineEdit, QFileDialog
+from qtpy import QtWidgets
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtWidgets import QLineEdit, QFileDialog
 
 from tiktorch.build_spec import TikTorchSpec, BuildSpec
 import yaml
@@ -158,7 +158,7 @@ class Page1(QtWidgets.QWizardPage):
 
 
 class ClickableLineEdit(QLineEdit):
-    clicked = pyqtSignal()
+    clicked = Signal()
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:

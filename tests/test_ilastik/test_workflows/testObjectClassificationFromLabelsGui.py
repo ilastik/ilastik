@@ -31,7 +31,7 @@ import h5py
 import numpy
 import numpy.typing as npt
 import pytest
-from PyQt5.QtWidgets import QApplication
+from qtpy.QtWidgets import QApplication
 
 from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
 from ilastik.applets.objectClassification import ObjectClassificationApplet

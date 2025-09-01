@@ -1,5 +1,5 @@
 import pytest
-from PyQt5.QtCore import Qt
+from qtpy.QtCore import Qt
 
 from ilastik.applets.edgeTraining.simpleEdgeFeatureSelection import FeatureGroup, SimpleEdgeFeatureSelection
 

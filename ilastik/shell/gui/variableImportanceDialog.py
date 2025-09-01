@@ -2,10 +2,11 @@ from __future__ import division
 from past.utils import old_div
 import collections
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QDialog, QPushButton, QWidget, QLabel, QTableWidget, QTableWidgetItem, QGridLayout
-from PyQt5.QtGui import QColor
+from qtpy.QtCore import Qt
+from qtpy.QtWidgets import QDialog, QPushButton, QWidget, QLabel, QTableWidget, QTableWidgetItem, QGridLayout
+from qtpy.QtGui import QColor
 import re
+
 
 # Overload QTableWidgetItem class to allow comparisons of float instead of strings
 class QTableWidgetItemWithFloatSorting(QTableWidgetItem):
@@ -89,7 +90,7 @@ class VariableImportanceDialog(QDialog):
 
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from qtpy.QtWidgets import QApplication
 
     named_importances = {
         "feature_1": [1.2, 4.3, 3.1, 4.8],

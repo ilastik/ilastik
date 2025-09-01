@@ -23,9 +23,9 @@ from functools import partial
 from pathlib import Path
 from textwrap import dedent
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import (
+from qtpy.QtCore import Qt
+from qtpy.QtGui import QPixmap
+from qtpy.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QHBoxLayout,

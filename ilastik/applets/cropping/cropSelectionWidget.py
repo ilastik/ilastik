@@ -21,13 +21,13 @@
 ###############################################################################
 from os import path
 
-from PyQt5 import uic
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QWidget, QButtonGroup
+from qtpy import uic
+from qtpy.QtCore import Signal
+from qtpy.QtWidgets import QWidget
 
 
 class CropSelectionWidget(QWidget):
-    valueChanged = pyqtSignal(str, str, int)
+    valueChanged = Signal(str, str, int)
 
     def __init__(self, parent=None):
         QWidget.__init__(self, parent)

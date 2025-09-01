@@ -18,9 +18,9 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt5.QtCore import pyqtSignal, QModelIndex
-from PyQt5.QtWidgets import QMenu, QPushButton
-from PyQt5.QtGui import QIcon
+from qtpy.QtCore import Signal, QModelIndex
+from qtpy.QtWidgets import QMenu, QPushButton
+from qtpy.QtGui import QIcon
 
 # this is used to find the location of the icon file
 import os.path
@@ -47,10 +47,10 @@ class AddFileButton(QPushButton):
         - Add DVID volume
     """
 
-    addFilesRequested = pyqtSignal()
-    addStackRequested = pyqtSignal()
-    addDvidVolumeRequested = pyqtSignal()
-    addMultiscaleDatasetRequested = pyqtSignal()
+    addFilesRequested = Signal()
+    addStackRequested = Signal()
+    addDvidVolumeRequested = Signal()
+    addMultiscaleDatasetRequested = Signal()
 
     def __init__(self, parent, *, index=None, new=False):
         """

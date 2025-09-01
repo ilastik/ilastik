@@ -20,7 +20,7 @@
 ###############################################################################
 from typing import Dict
 
-from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
+from qtpy.QtCore import Qt, QAbstractItemModel, QModelIndex
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from lazyflow.utility.helpers import bigintprod

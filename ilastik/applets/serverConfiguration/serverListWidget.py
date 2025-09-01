@@ -1,7 +1,8 @@
 import typing
 
-from PyQt5.Qt import QIcon, Qt, QModelIndex, QAbstractListModel
-from PyQt5.QtWidgets import QWidget, QComboBox, QToolButton, QHBoxLayout
+from qtpy.QtCore import Qt, QModelIndex, QAbstractListModel
+from qtpy.QtGui import QIcon
+from qtpy.QtWidgets import QWidget, QComboBox, QToolButton, QHBoxLayout
 
 from ilastik.shell.gui.iconMgr import ilastikIcons
 

@@ -19,8 +19,8 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 import enum
-from PyQt5.QtGui import QBrush, QColor, QFont, QIcon, QPainter, QPen, QPixmap, QPolygon, QKeyEvent
-from PyQt5.QtWidgets import (
+from qtpy.QtGui import QBrush, QColor, QFont, QIcon, QPainter, QPen, QPixmap, QPolygon, QKeyEvent
+from qtpy.QtWidgets import (
     QAbstractItemView,
     QApplication,
     QHeaderView,
@@ -30,7 +30,7 @@ from PyQt5.QtWidgets import (
     QTableWidgetItem,
     QTableWidgetSelectionRange,
 )
-from PyQt5.QtCore import QPoint, QRect, QSize, Qt
+from qtpy.QtCore import QPoint, QRect, QSize, Qt
 
 from ilastik.utility.gui import is_qt_dark_mode
 
@@ -858,7 +858,7 @@ class FeatureTableWidget(QTableWidget):
 
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from qtpy.QtWidgets import QApplication
 
     app = QApplication([])
     t = FeatureTableWidget(

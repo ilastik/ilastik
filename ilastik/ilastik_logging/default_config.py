@@ -193,7 +193,7 @@ def get_default_config(
         "loggers": {
             # This logger captures warnings module warnings
             "py.warnings": {"level": "WARN", "handlers": warnings_module_handlers, "propagate": False},
-            "PyQt5": {"level": "INFO"},
+            "qtpy": {"level": "INFO"},
             "requests": {"level": "WARN"},  # Lots of messages at INFO
             "botocore.httpchecksum": {"level": "WARN"},
             "wsdt": {"level": "INFO"},

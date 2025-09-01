@@ -1,6 +1,6 @@
 import pytest
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QLabel
+from qtpy.QtCore import Qt
+from qtpy.QtWidgets import QLabel
 
 from ilastik.widgets.collapsibleWidget import CollapsibleWidget
 

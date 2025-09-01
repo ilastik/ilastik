@@ -18,8 +18,8 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt5.QtCore import QObject, QEvent
-from PyQt5.QtWidgets import QApplication
+from qtpy.QtCore import QObject, QEvent
+from qtpy.QtWidgets import QApplication
 from functools import partial
 
 

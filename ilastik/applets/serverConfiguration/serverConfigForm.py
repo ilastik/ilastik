@@ -3,10 +3,9 @@ import logging
 
 from contextlib import contextmanager
 
-from PyQt5 import uic
-from PyQt5.Qt import Qt, QStringListModel, pyqtProperty, QListWidgetItem, pyqtSignal, QEvent
-from PyQt5.QtCore import QStateMachine, QState, QSignalTransition, pyqtSignal
-from PyQt5.QtWidgets import QWidget, QComboBox, QLabel, QLineEdit, QListWidget, QCheckBox, QMessageBox
+from qtpy import uic
+from qtpy.QtCore import QStateMachine, QState, QSignalTransition, Signal, Qt, QEvent
+from qtpy.QtWidgets import QWidget, QLineEdit, QListWidget, QMessageBox, QListWidgetItem
 
 from . import types
 
@@ -18,7 +17,7 @@ class ServerConfigForm(QWidget):
     nameEdit: QLineEdit
     addressEdit: QLineEdit
     deviceList: QListWidget
-    gotDevices = pyqtSignal()
+    gotDevices = Signal()
 
     UI_FILE = "serverConfigForm.ui"
 

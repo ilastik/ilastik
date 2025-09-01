@@ -219,7 +219,7 @@ class AppletSerializer(ABC):
     def repairFile(self, path, filt=None):
         """get new path to lost file"""
 
-        from PyQt5.QtWidgets import QFileDialog, QMessageBox
+        from qtpy.QtWidgets import QFileDialog, QMessageBox
 
         text = "The file at {} could not be found any more. Do you want to search for it at another directory?".format(
             path
