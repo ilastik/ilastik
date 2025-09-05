@@ -37,25 +37,35 @@ import numpy
 # PyQt
 from qtpy import uic
 from qtpy.QtCore import Signal, QObject, Qt, QUrl, QTimer
-from qtpy.QtGui import QKeySequence, QIcon, QFont, QDesktopServices, QPixmap
+from qtpy.QtGui import (
+    QDesktopServices,
+    QKeySequence,
+    QIcon,
+    QFont,
+    QDesktopServices,
+    QPixmap,
+)
 from qtpy.QtWidgets import (
     QMainWindow,
     QWidget,
     QMenu,
     QApplication,
     QPushButton,
+    QDialogButtonBox,
     QFileDialog,
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
+    QMainWindow,
+    QMenu,
     QMessageBox,
     QProgressBar,
-    QInputDialog,
+    QPushButton,
+    QSpinBox,
+    QTextEdit,
     QToolButton,
     QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QDialog,
-    QSpinBox,
-    QDialogButtonBox,
-    QTextEdit,
+    QWidget,
 )
 
 # lazyflow

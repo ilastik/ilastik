@@ -20,6 +20,10 @@
 ###############################################################################
 from abc import ABCMeta, abstractmethod
 from future.utils import with_metaclass
+from typing import TYPE_CHECKING, List, Union
+
+if TYPE_CHECKING:
+    from qtpy.QtWidgets import QMenu, QWidget
 
 
 def _has_attribute(cls, attr):
@@ -61,30 +65,29 @@ class AppletGuiInterface(with_metaclass(ABCMeta, object)):
         pass
 
     @abstractmethod
-    def centralWidget(self):
+    def centralWidget(self) -> Union["QWidget", None]:
         """
-        Abstract method.  Return the widget that will be displayed in the main viewer area.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def appletDrawer(self):
-        """
-        Abstract method.  Return the drawer widget for this applet.
+        Return the widget that will be displayed in the main viewer area.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def menus(self):
+    def appletDrawer(self) -> Union["QWidget", None]:
         """
-        Abstract method.  Return a list of QMenu widgets to be shown in the menu bar when this applet is visible.
+        Return the drawer widget for this applet.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def viewerControlWidget(self):
+    def menus(self) -> Union[List["QMenu"], None]:
         """
-        Abstract method.
+        Return a list of QMenu widgets to be shown in the menu bar when this applet is visible.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def viewerControlWidget(self) -> Union["QWidget", None]:
+        """
         Return the widget that controls how the content of the central widget is displayed.
         Typically this consists of a layer list control.
         """
@@ -93,15 +96,13 @@ class AppletGuiInterface(with_metaclass(ABCMeta, object)):
     @abstractmethod
     def setEnabled(self, enabled):
         """
-        Abstract method.
         Enable or disable the gui, including applet drawer, central widget, menus, and viewer controls.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def setImageIndex(self, imageIndex):
+    def setImageIndex(self, imageIndex: int):
         """
-        Abstract method.
         Called by the shell when the user has switched the input image he wants to view.
         The GUI should respond by updating the content of the central widget.
         Note: Single-image GUIs do not need to provide this function.
@@ -109,18 +110,16 @@ class AppletGuiInterface(with_metaclass(ABCMeta, object)):
         raise NotImplementedError
 
     @abstractmethod
-    def imageLaneAdded(self, laneIndex):
+    def imageLaneAdded(self, laneIndex: int):
         """
-        Abstract method.
         Called when a new image lane has been added to the workflow, and the GUI should respond appropriately.
         Note: The default GUI provided by StandardApplet overrides this for you.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def imageLaneRemoved(self, laneIndex, finalLength):
+    def imageLaneRemoved(self, laneIndex: int, finalLength: int):
         """
-        Abstract method.
         Called when a new image lane is about to be removed from the workflow, and the GUI should respond appropriately.
         The GUI should clean up any resourecs it owns.
         Note: The default GUI provided by StandardApplet overrides this for you.
@@ -130,15 +129,14 @@ class AppletGuiInterface(with_metaclass(ABCMeta, object)):
     @abstractmethod
     def stopAndCleanUp(self):
         """
-        Abstract method.
         Called when the GUI is about to be destroyed.
         The gui should stop updating all data views and should clean up any resources it created (e.g. orphan operators).
         """
         raise NotImplementedError
 
+    @abstractmethod
     def allowLaneSelectionChange(self):
         """
-        Abstract method.
         Called by the shell to determine if the shell's lane selection combobox should be displayed.
         Return False if your applet GUI handles switching between lanes itself (e.g. DataSelection, DataExport),
         or if the notion of lanes doesn't apply to this applet (e.g. DataSelection, BatchProcessing).
@@ -162,75 +160,3 @@ class AppletGuiInterface(with_metaclass(ABCMeta, object)):
             ]
             return True if _has_attributes(C, requiredMethods) else False
         return NotImplemented
-
-
-if __name__ == "__main__":
-
-    class CustomGui(object):
-        def centralWidget(self):
-            """
-            Return the widget that will be displayed in the main viewer area.
-            """
-            raise NotImplementedError
-
-        def appletDrawer(self):
-            """
-            Return a list of drawer widgets for this applet.
-            """
-            raise NotImplementedError
-
-        def menus(self):
-            """
-            Return a list of QMenu widgets to be shown in the menu bar when this applet is visible.
-            """
-            raise NotImplementedError
-
-        def viewerControlWidget(self):
-            """
-            Return the widget that controls how the content of the central widget is displayed.
-            Typically this consists of a layer list control.
-            """
-            raise NotImplementedError
-
-        def setEnabled(self, enabled):
-            """
-            Abstract method.
-            Enable or disable the gui, including applet drawer, central widget, menus, and viewer controls.
-            """
-            raise NotImplementedError
-
-        def setImageIndex(self, imageIndex):
-            """
-            Called by the shell when the user has switched the input image he wants to view.
-            The GUI should respond by updating the content of the central widget.
-            """
-            raise NotImplementedError
-
-        def laneAdded(self, laneIndex):
-            """
-            Abstract method.
-            Called when a new image lane has been added to the workflow, and the GUI should respond appropriately.
-            Note: The default GUI provided by StandardApplet overrides this for you.
-            """
-            raise NotImplementedError
-
-        def laneRemoved(self, laneIndex, finalLength):
-            """
-            Abstract method.
-            Called when a new image lane is about to be removed from the workflow, and the GUI should respond appropriately.
-            The GUI should clean up any resourecs it owns.
-            Note: The default GUI provided by StandardApplet overrides this for you.
-            """
-            raise NotImplementedError
-
-        def stopAndCleanUp(self):
-            """
-            Abstract method.
-            Called when the GUI is about to be destroyed.
-            The gui should stop updating all data views and should clean up any resources it created (e.g. orphan operators).
-            """
-            raise NotImplementedError
-
-    cg = CustomGui()
-    assert issubclass(type(cg), AppletGuiInterface)
-    assert isinstance(cg, AppletGuiInterface)

@@ -610,7 +610,6 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         In our case, the viewer control GUI consists mainly of a layer list.
         Subclasses should override this if they provide their own viewer control widget.
         """
-        localDir = os.path.split(__file__)[0]
         self.__viewerControlWidget = ViewerControls()
 
         # The editor's layerstack is in charge of which layer movement buttons are enabled

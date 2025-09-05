@@ -1,7 +1,3 @@
-from __future__ import print_function
-from __future__ import absolute_import
-from __future__ import division
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -23,7 +19,6 @@ from __future__ import division
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
-from past.utils import old_div
 import os
 from typing import Optional
 import logging
@@ -49,7 +44,7 @@ from qtpy.QtWidgets import (
     QSizePolicy,
     QMenu,
 )
-from qtpy.QtGui import QColor, QIcon, QCursor
+from qtpy.QtGui import QColor
 
 
 # HCI
@@ -942,6 +937,7 @@ class PixelClassificationGui(LabelingGui):
                 indices = numpy.where(vol != 0)
                 newvolume[indices] = label
 
+        assert self._renderMgr is not None
         self._renderMgr.volume = newvolume
         self._update_colors()
         self._renderMgr.update()
@@ -953,5 +949,6 @@ class PixelClassificationGui(LabelingGui):
             except KeyError:
                 continue
             color = layer.tintColor
-            color = (old_div(color.red(), 255.0), old_div(color.green(), 255.0), old_div(color.blue(), 255.0))
+            color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
+            assert self._renderMgr is not None
             self._renderMgr.setColor(label, color)
