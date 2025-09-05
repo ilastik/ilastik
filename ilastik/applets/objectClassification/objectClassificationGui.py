@@ -281,6 +281,9 @@ class ObjectClassificationGui(LabelingGui):
         fn = self.op.SegmentationImages.notifyDirty(lambda *_, **__: self._undoStack.clear())
         self.__cleanup_fns.append(fn)
 
+    def secondaryControlsWidget(self):
+        return None
+
     def menus(self):
         m = QMenu("&Export", self.volumeEditorWidget)
         # m.addAction("Export Object Information").triggered.connect(self.show_export_dialog)

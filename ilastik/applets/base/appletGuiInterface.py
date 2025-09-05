@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -94,7 +94,14 @@ class AppletGuiInterface(with_metaclass(ABCMeta, object)):
         raise NotImplementedError
 
     @abstractmethod
-    def setEnabled(self, enabled):
+    def secondaryControlsWidget(self) -> Union["QWidget", None]:
+        """
+        Return the widget that allows for more involved interaction with the data specific to the current applet.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def setEnabled(self, enabled: bool):
         """
         Enable or disable the gui, including applet drawer, central widget, menus, and viewer controls.
         """

@@ -23,6 +23,7 @@ from builtins import range
 import os
 from functools import partial
 import logging
+from typing import Union
 from future.utils import with_metaclass
 
 logger = logging.getLogger(__name__)
@@ -56,6 +57,7 @@ from volumina.api import (
 from volumina.volumeEditor import VolumeEditor
 from volumina.utility import ShortcutManager
 from volumina.interpreter import ClickReportingInterpreter
+from volumina.volumeEditorWidget import VolumeEditorWidget
 
 # ilastik
 from ilastik.utility import bind
@@ -112,6 +114,9 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
     def viewerControlWidget(self):
         return self.__viewerControlWidget
 
+    def secondaryControlsWidget(self):
+        return self._secondary_controls
+
     def stopAndCleanUp(self):
         self._stopped = True
 
@@ -147,7 +152,8 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         :param centralWidgetOnly: If True, provide only a central widget without drawer or viewer controls.
         """
         super(LayerViewerGui, self).__init__()
-
+        self.volumeEditorWidget: VolumeEditorWidget
+        self._secondary_controls: Union[QWidget, None] = None
         self._stopped = False
         self._initialized = False
         self._need_update = True

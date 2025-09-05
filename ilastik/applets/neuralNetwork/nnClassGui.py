@@ -350,6 +350,9 @@ class NNClassGui(LabelingGui):
         """
         return self
 
+    def secondaryControlsWidget(self):
+        return None
+
     def stopAndCleanUp(self):
         """
         The gui should stop updating all data views and should clean up any resources it created
