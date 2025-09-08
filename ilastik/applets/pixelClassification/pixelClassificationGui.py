@@ -48,6 +48,7 @@ from qtpy.QtGui import QColor
 
 
 # HCI
+from ilastik.applets.pixelClassification.opPixelClassification import OpPixelClassification
 from volumina.api import createDataSource, AlphaModulatedLayer, GrayscaleLayer, ColortableLayer
 from volumina.utility import ShortcutManager
 
@@ -425,7 +426,7 @@ class PixelClassificationGui(LabelingGui):
     ###########################################
     ###########################################
 
-    def __init__(self, parentApplet, topLevelOperatorView, labelingDrawerUiPath=None):
+    def __init__(self, parentApplet, topLevelOperatorView: OpPixelClassification, labelingDrawerUiPath=None):
         self.parentApplet = parentApplet
         self.isInitialized = (
             False  # need this flag in pixelClassificationApplet where initialization is terminated with label selection
@@ -437,6 +438,7 @@ class PixelClassificationGui(LabelingGui):
             labelEraserValue=topLevelOperatorView.opLabelPipeline.opLabelArray.eraser,
             labelDelete=topLevelOperatorView.opLabelPipeline.DeleteLabel,
             labelNames=topLevelOperatorView.LabelNames,
+            nonzeroLabelBlocks=topLevelOperatorView.NonzeroLabelBlocks,
         )
 
         self.__cleanup_fns = []
@@ -490,6 +492,7 @@ class PixelClassificationGui(LabelingGui):
             lambda *args: self.setLiveUpdateEnabled()
         )
         self.__cleanup_fns.append(unsub_callback)
+
         self.setLiveUpdateEnabled()
 
     def initSuggestFeaturesDialog(self):

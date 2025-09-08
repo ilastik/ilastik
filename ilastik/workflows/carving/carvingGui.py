@@ -75,6 +75,7 @@ class CarvingGui(LabelingGui):
             labelEraserValue=topLevelOperatorView.opLabelArray.EraserLabelValue,
             labelNames=topLevelOperatorView.LabelNames,
             labelDelete=topLevelOperatorView.opLabelArray.DeleteLabel,
+            nonzeroLabelBlocks=topLevelOperatorView.opLabelArray.NonzeroBlocks,
         )
 
         # We provide our own UI file (which adds an extra control for interactive mode)

@@ -62,6 +62,7 @@ class LabelingApplet(StandardApplet):
             labelEraserValue=opLabeling.LabelEraserValue,
             labelDelete=opLabeling.LabelDelete,
             labelNames=opLabeling.LabelNames,
+            nonzeroLabelBlocks=opLabeling.NonzeroLabelBlocks,
         )
 
         return LabelingGui(self, labelingSlots, opLabeling, rawInputSlot=opLabeling.InputImages)

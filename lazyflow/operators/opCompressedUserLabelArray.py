@@ -120,6 +120,11 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         self.Output.meta.shape = self.Input.meta.shape[:-1] + (1,)
         self.Output.meta.drange = (0, 255)
         self.Output.meta.data_semantics = ImageTypes.Labels
+
+        # is_blocked_cache attribute indicates that this cache gives block-wise
+        # updates when written to. Attribute used in LabelExplorerWidget.
+        self.Output.meta.is_blocked_cache = True
+        self.Output.meta.ideal_blockshape = self.BlockShape.value
         self.OutputHdf5.meta.assignFrom(self.Output.meta)
 
         # The Projection2D slot is a strange beast:
