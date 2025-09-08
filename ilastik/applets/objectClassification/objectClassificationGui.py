@@ -62,7 +62,7 @@ from lazyflow.slot import InputSlot
 
 logger = logging.getLogger(__name__)
 
-from ilastik.applets.labeling.labelingGui import LabelingGui
+from ilastik.applets.labeling.labelingGui import LabelingGui, LabelingSlots
 from ilastik.shell.gui.iconMgr import ilastikIcons
 
 import volumina.colortables as colortables
@@ -171,15 +171,13 @@ class ObjectClassificationGui(LabelingGui):
         self.isInitialized = False  # Need this flag in objectClassificationApplet where initialization is terminated with label selection
         self.__cleanup_fns = []
         # Tell our base class which slots to monitor
-        labelSlots = LabelingGui.LabelingSlots()
-        labelSlots.labelInput = op.LabelInputs
-        labelSlots.labelOutput = op.LabelImages
-
-        labelSlots.labelEraserValue = op.Eraser
-        labelSlots.labelDelete = op.DeleteLabel
-
-        labelSlots.maxLabelValue = op.NumLabels
-        labelSlots.labelNames = op.LabelNames
+        labelSlots = LabelingSlots(
+            labelInput=op.LabelInputs,
+            labelOutput=op.LabelImages,
+            labelEraserValue=op.Eraser,
+            labelDelete=op.DeleteLabel,
+            labelNames=op.LabelNames,
+        )
 
         # We provide our own UI file (which adds an extra control for
         # interactive mode) This UI file is copied from

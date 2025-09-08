@@ -47,16 +47,17 @@ class LabelingSingleLaneApplet(StandardApplet):
         return []  # TODO
 
     def createSingleLaneGui(self, imageLaneIndex):
-        from .labelingGui import LabelingGui
+        from .labelingGui import LabelingGui, LabelingSlots
 
         opLabeling = self.topLevelOperator.getLane(imageLaneIndex)
 
-        labelingSlots = LabelingGui.LabelingSlots()
-        labelingSlots.labelInput = opLabeling.LabelInput
-        labelingSlots.labelOutput = opLabeling.LabelImage
-        labelingSlots.labelEraserValue = opLabeling.LabelEraserValue
-        labelingSlots.labelDelete = opLabeling.LabelDelete
-        labelingSlots.labelNames = opLabeling.LabelNames
+        labelingSlots = LabelingSlots(
+            labelInput=opLabeling.LabelInput,
+            labelOutput=opLabeling.LabelImage,
+            labelEraserValue=opLabeling.LabelEraserValue,
+            labelDelete=opLabeling.LabelDelete,
+            labelNames=opLabeling.LabelNames,
+        )
 
         # Special hack for labeling, required by the internal label array operator
         # Normally, it is strange to connect two same-operator input slots together like this.

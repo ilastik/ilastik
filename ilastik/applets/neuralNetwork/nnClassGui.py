@@ -58,7 +58,7 @@ from tiktorch.configkeys import NUM_ITERATIONS_DONE, NUM_ITERATIONS_MAX, TRAININ
 from tiktorch.types import ModelState
 from volumina.api import AlphaModulatedLayer, LazyflowSource
 
-from ilastik.applets.labeling.labelingGui import LabelingGui, Tool
+from ilastik.applets.labeling.labelingGui import LabelingGui, LabelingSlots, Tool
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
@@ -450,12 +450,13 @@ class NNClassGui(LabelingGui):
         )
 
     def __init__(self, parentApplet, topLevelOperatorView, labelingDrawerUiPath=None):
-        labelSlots = LabelingGui.LabelingSlots()
-        labelSlots.labelInput = topLevelOperatorView.LabelInputs
-        labelSlots.labelOutput = topLevelOperatorView.LabelImages
-        labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
-        labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.DeleteLabel
-        labelSlots.labelNames = topLevelOperatorView.LabelNames
+        labelSlots = LabelingSlots(
+            labelInput=topLevelOperatorView.LabelInputs,
+            labelOutput=topLevelOperatorView.LabelImages,
+            labelEraserValue=topLevelOperatorView.opLabelPipeline.opLabelArray.eraser,
+            labelDelete=topLevelOperatorView.opLabelPipeline.DeleteLabel,
+            labelNames=topLevelOperatorView.LabelNames,
+        )
         self.parentApplet = parentApplet
 
         if labelingDrawerUiPath is None:

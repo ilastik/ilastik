@@ -45,7 +45,7 @@ from volumina.view3d.volumeRendering import RenderingManager
 
 # ilastik
 from ilastik.utility import bind
-from ilastik.applets.labeling.labelingGui import LabelingGui
+from ilastik.applets.labeling.labelingGui import LabelingGui, LabelingSlots
 
 
 import logging
@@ -69,13 +69,13 @@ class CarvingGui(LabelingGui):
         self._showSegmentationIn3D = False
         # end: members
 
-        labelingSlots = LabelingGui.LabelingSlots()
-        labelingSlots.labelInput = topLevelOperatorView.WriteSeeds
-        labelingSlots.labelOutput = topLevelOperatorView.opLabelArray.Output
-        labelingSlots.labelEraserValue = topLevelOperatorView.opLabelArray.EraserLabelValue
-        labelingSlots.labelNames = topLevelOperatorView.LabelNames
-        labelingSlots.labelDelete = topLevelOperatorView.opLabelArray.DeleteLabel
-        labelingSlots.maxLabelValue = topLevelOperatorView.opLabelArray.MaxLabelValue
+        labelingSlots = LabelingSlots(
+            labelInput=topLevelOperatorView.WriteSeeds,
+            labelOutput=topLevelOperatorView.opLabelArray.Output,
+            labelEraserValue=topLevelOperatorView.opLabelArray.EraserLabelValue,
+            labelNames=topLevelOperatorView.LabelNames,
+            labelDelete=topLevelOperatorView.opLabelArray.DeleteLabel,
+        )
 
         # We provide our own UI file (which adds an extra control for interactive mode)
         directory = os.path.split(__file__)[0]

@@ -52,15 +52,16 @@ class LabelingApplet(StandardApplet):
         return self._serializableItems
 
     def createSingleLaneGui(self, imageLaneIndex):
-        from .labelingGui import LabelingGui
+        from .labelingGui import LabelingGui, LabelingSlots
 
         opLabeling = self.topLevelOperator.getLane(imageLaneIndex)
 
-        labelingSlots = LabelingGui.LabelingSlots()
-        labelingSlots.labelInput = opLabeling.LabelInputs
-        labelingSlots.labelOutput = opLabeling.LabelImages
-        labelingSlots.labelEraserValue = opLabeling.LabelEraserValue
-        labelingSlots.labelDelete = opLabeling.LabelDelete
-        labelingSlots.labelNames = opLabeling.LabelNames
+        labelingSlots = LabelingSlots(
+            labelInput=opLabeling.LabelInputs,
+            labelOutput=opLabeling.LabelImages,
+            labelEraserValue=opLabeling.LabelEraserValue,
+            labelDelete=opLabeling.LabelDelete,
+            labelNames=opLabeling.LabelNames,
+        )
 
         return LabelingGui(self, labelingSlots, opLabeling, rawInputSlot=opLabeling.InputImages)

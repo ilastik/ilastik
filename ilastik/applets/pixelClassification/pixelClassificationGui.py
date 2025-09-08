@@ -62,7 +62,7 @@ from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted, silent_qobject
 from ilastik.shell.gui.iconMgr import ilastikIcons
-from ilastik.applets.labeling.labelingGui import LabelingGui
+from ilastik.applets.labeling.labelingGui import LabelingGui, LabelingSlots
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, SubvolumeSelectionDlg
 from ilastik.widgets.ImageFileDialog import ImageFileDialog
 from ilastik.shell.gui.variableImportanceDialog import VariableImportanceDialog
@@ -431,12 +431,13 @@ class PixelClassificationGui(LabelingGui):
             False  # need this flag in pixelClassificationApplet where initialization is terminated with label selection
         )
         # Tell our base class which slots to monitor
-        labelSlots = LabelingGui.LabelingSlots()
-        labelSlots.labelInput = topLevelOperatorView.LabelInputs
-        labelSlots.labelOutput = topLevelOperatorView.LabelImages
-        labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
-        labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.DeleteLabel
-        labelSlots.labelNames = topLevelOperatorView.LabelNames
+        labelSlots = LabelingSlots(
+            labelInput=topLevelOperatorView.LabelInputs,
+            labelOutput=topLevelOperatorView.LabelImages,
+            labelEraserValue=topLevelOperatorView.opLabelPipeline.opLabelArray.eraser,
+            labelDelete=topLevelOperatorView.opLabelPipeline.DeleteLabel,
+            labelNames=topLevelOperatorView.LabelNames,
+        )
 
         self.__cleanup_fns = []
 

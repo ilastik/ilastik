@@ -26,7 +26,7 @@ import numpy
 
 from ilastik.applets.counting.countingGuiBoxesInterface import BoxController, BoxInterpreter, Tool
 from ilastik.applets.counting.countingGuiDotsInterface import DotCrosshairController, DotInterpreter
-from ilastik.applets.labeling.labelingGui import LabelingGui
+from ilastik.applets.labeling.labelingGui import LabelingGui, LabelingSlots
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import bind
 from ilastik.utility.gui import roi2rect, threadRouted
@@ -130,13 +130,15 @@ class CountingGui(LabelingGui):
         self.parentApplet = parentApplet
 
         # Tell our base class which slots to monitor
-        labelSlots = LabelingGui.LabelingSlots()
-        labelSlots.labelInput = topLevelOperatorView.LabelInputs
-        labelSlots.labelOutput = topLevelOperatorView.LabelImages
-        labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
-        labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.opLabelArray.deleteLabel
-        labelSlots.maxLabelValue = topLevelOperatorView.MaxLabelValue
-        labelSlots.labelNames = topLevelOperatorView.LabelNames
+        labelSlots = LabelingSlots(
+            labelInput=topLevelOperatorView.LabelInputs,
+            labelOutput=topLevelOperatorView.LabelImages,
+            labelEraserValue=topLevelOperatorView.opLabelPipeline.opLabelArray.eraser,
+            labelDelete=topLevelOperatorView.opLabelPipeline.opLabelArray.deleteLabel,
+            labelNames=topLevelOperatorView.LabelNames,
+        )
+
+        labelSlots.nonzeroLabelBlocks = topLevelOperatorView.NonzeroLabelBlocks
 
         # We provide our own UI file (which adds an extra control for interactive mode)
         labelingDrawerUiPath = os.path.split(__file__)[0] + "/countingDrawer.ui"

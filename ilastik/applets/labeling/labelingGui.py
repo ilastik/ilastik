@@ -21,10 +21,12 @@
 # Built-in
 from builtins import range
 from builtins import filter
+from dataclasses import dataclass
 import os
 import re
 import logging
 from functools import partial
+from typing import Any, Optional, Union
 
 # Third-party
 import numpy
@@ -40,6 +42,7 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.widgets.labelListView import Label
 from ilastik.widgets.labelListModel import LabelListModel
 from volumina import colortables
+from lazyflow.slot import InputSlot, OutputSlot
 
 # ilastik
 from ilastik.utility import bind, log_exception
@@ -54,13 +57,33 @@ logger = logging.getLogger(__name__)
 # ===----------------------------------------------------------------------------------------------------------------===
 
 
-class Tool(object):
+class Tool:
     """Enumerate the types of toolbar buttons."""
 
     Navigation = 0  # Arrow
     Paint = 1
     Erase = 2
     Threshold = 3
+
+
+@dataclass
+class LabelingSlots:
+    """
+    This class serves as the parameter for the LabelingGui constructor.
+    It provides the slots that the labeling GUI uses to source labels to the display and sink labels from the
+    user's mouse clicks.
+    """
+
+    # Slot to insert elements onto
+    labelInput: InputSlot
+    # Slot to read elements from
+    labelOutput: OutputSlot
+    # Slot that determines which label value corresponds to erased values
+    labelEraserValue: InputSlot
+    # Slot that is used to request wholesale label deletion
+    labelDelete: InputSlot
+    # Slot that gives a list of label names
+    labelNames: OutputSlot
 
 
 class LabelingGui(LayerViewerGui):
@@ -121,32 +144,13 @@ class LabelingGui(LayerViewerGui):
         Equivalent to clicking on the (labelIndex+1)'th position in the label widget."""
         self._labelControlUi.labelListModel.select(labelIndex)
 
-    class LabelingSlots(object):
-        """
-        This class serves as the parameter for the LabelingGui constructor.
-        It provides the slots that the labeling GUI uses to source labels to the display and sink labels from the
-        user's mouse clicks.
-        """
-
-        def __init__(self):
-            # Slot to insert elements onto
-            self.labelInput = None  # labelInput.setInSlot(xxx)
-            # Slot to read elements from
-            self.labelOutput = None  # labelOutput.get(roi)
-            # Slot that determines which label value corresponds to erased values
-            self.labelEraserValue = None  # labelEraserValue.setValue(xxx)
-            # Slot that is used to request wholesale label deletion
-            self.labelDelete = None  # labelDelete.setValue(xxx)
-            # Slot that gives a list of label names
-            self.labelNames = None  # labelNames.value
-
     def __init__(
         self,
         parentApplet,
-        labelingSlots,
+        labelingSlots: LabelingSlots,
         topLevelOperatorView,
-        drawerUiPath=None,
-        rawInputSlot=None,
+        drawerUiPath: Optional[str] = None,
+        rawInputSlot: Optional[InputSlot] = None,
         crosshair=True,
         is_3d_widget_visible=False,
     ):
@@ -943,9 +947,7 @@ class LabelingGui(LayerViewerGui):
             labellayer.ref_object = None
 
             labellayer.contexts.append(
-                QAction(
-                    "Import...", None, triggered=partial(import_labeling_layer, labellayer, self._labelingSlots, self)
-                )
+                QAction("Import...", None, triggered=partial(import_labeling_layer, self._labelingSlots, self))
             )
 
             labellayer.shortcutRegistration = (
