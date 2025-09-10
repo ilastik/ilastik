@@ -99,6 +99,10 @@ class UnsuitedAxistagsException(Exception):
         )
 
 
+class TransactionRequiredError(AssertionError):
+    pass
+
+
 class DatasetInfo(ABC):
     def __init__(
         self,
@@ -1062,7 +1066,8 @@ class OpDataSelectionGroup(Operator):
         # Setting scale while the op is fully ready is forbidden.
         # Doing this will set scale on the internal OpDataSelection for each data role one by one,
         # causing setupOutputs throughout the workflow with different data roles providing different data shape.
-        assert not self.ScaleChangeFinished.ready(), "must disconnect ScaleChangeFinished first before changing scale"
+        if self.ScaleChangeFinished.ready():
+            raise TransactionRequiredError("must disconnect ScaleChangeFinished first before changing scale")
 
 
 class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):

@@ -50,6 +50,7 @@ from ilastik.applets.dataSelection.opDataSelection import (
     ProjectInternalDatasetInfo,
     UrlDatasetInfo,
     eq_shapes,
+    TransactionRequiredError,
 )
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -914,7 +915,6 @@ class OpShapeChecker(Operator):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.setup_calls = 0
         self.input_ready_checks = 0
 
         self.Role1.notifyReady(self._checkConstraints)  # Shape check as in OpObjectExtraction
@@ -934,7 +934,6 @@ class OpShapeChecker(Operator):
 
     def setupOutputs(self):
         # Shape check as in OpSimpleStacker
-        self.setup_calls += 1
         shape1 = dict(self.Role1.meta.getTaggedShape())
         shape2 = dict(self.Role2.meta.getTaggedShape())
         shape3 = dict(self.Role3.meta.getTaggedShape())
@@ -1073,7 +1072,7 @@ class TestOpDataSelection_OMEZarr:
         op_data_lane.DatasetGroup[1].setValue(dataset_info_segmentation)
         op_data_lane.DatasetGroup[2].setValue(dataset_info_other)
 
-        with pytest.raises(AssertionError, match="must disconnect"):
+        with pytest.raises(TransactionRequiredError, match="must disconnect"):
             op_data_lane.ActiveScaleGroup.setValue("s0")
 
     @pytest.fixture
@@ -1101,14 +1100,14 @@ class TestOpDataSelection_OMEZarr:
         op_data_lane.DatasetGroup[1].setValue(dataset_info_segmentation)
         assert op_shape_check.input_ready_checks == 1
         op_data_lane.DatasetGroup[2].setValue(dataset_info_other)
-        assert op_shape_check.setup_calls == 1, "setting all datasets should set up shape-checking op"
+        assert op_shape_check._setup_count == 1, "setting all datasets should set up shape-checking op"
 
         op_data_lane.ScaleChangeFinished.disconnect()
         op_data_lane.ActiveScaleGroup.setValue("s0")
         assert op_shape_check.input_ready_checks == 1  # should not have propagated to shape checker
         op_data_lane.ScaleChangeFinished.setValue(True)
         assert op_shape_check.input_ready_checks == 2
-        assert op_shape_check.setup_calls == 2, "changing scale should trigger shape-checking op setup"
+        assert op_shape_check._setup_count == 2, "changing scale should trigger shape-checking op setup"
 
     @pytest.fixture
     def two_ome_zarrs(self, tmp_path) -> Tuple[Path, Path]:
@@ -1230,7 +1229,7 @@ class TestOpDataSelection_OMEZarr:
         op_data_lane.DatasetGroup[0].setValue(dataset_info_raw)
         op_data_lane.DatasetGroup[1].setValue(dataset_info_segmentation)
         op_data_lane.DatasetGroup[2].setValue(dataset_info_other)
-        assert op_shape_check.setup_calls == 1, "setting all datasets should set up shape-checking op"
+        assert op_shape_check._setup_count == 1, "setting all datasets should set up shape-checking op"
 
         with pytest.raises(ScaleNotFoundError):
             op_data_lane.ScaleChangeFinished.disconnect()

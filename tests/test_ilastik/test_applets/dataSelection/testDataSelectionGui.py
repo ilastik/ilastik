@@ -145,7 +145,9 @@ def dataset_table_with_mismatching_roles(
 
 
 def test_scale_select_disables_scale_options_not_available_in_other_roles(
-    dataset_table_with_mismatching_roles, mock_gui, intercept_info_popup
+    dataset_table_with_mismatching_roles: Tuple[DatasetDetailedInfoTableView, List[int], List[int]],
+    mock_gui: mock.Mock,
+    intercept_info_popup: mock.Mock,
 ):
     table, enabled_options, disabled_options = dataset_table_with_mismatching_roles
     table.scaleSelected.connect(mock_gui.handleScaleSelected)

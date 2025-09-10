@@ -710,11 +710,11 @@ class DataSelectionGui(QWidget):
             for other_role_index, role_dataset_slot in enumerate(dataset_group):
                 if not role_dataset_slot.ready() or other_role_index == roleIndex:
                     continue
-                shape_in_other_lane = dict(
+                shape_in_other_role = dict(
                     zip(role_dataset_slot.value.axistags.keys(), role_dataset_slot.value.laneShape)
                 )
                 try:
-                    info.switch_to_scale_with_shape(shape_in_other_lane)
+                    info.switch_to_scale_with_shape(shape_in_other_role)
                 except DatasetConstraintError:
                     other_role = self.topLevelOperator.DatasetRoles.value[other_role_index]
                     QMessageBox.warning(
