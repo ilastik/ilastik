@@ -499,6 +499,7 @@ class DataSelectionGui(QWidget):
                         try:
                             self._switch_scale_in_other_roles_to_match(new_info, info_slot)
                         except DatasetConstraintError:
+                            # Pop up the warning with the original error
                             QMessageBox.warning(self, "Incompatible dataset", str(e))
                             info_editor = DatasetInfoEditorWidget(self, [new_info], self.serializer)
                             if info_editor.exec_() == QDialog.Rejected:
@@ -527,17 +528,29 @@ class DataSelectionGui(QWidget):
         assert lane_index is not None, "Bug (please report): Tried to add dataset to slot that doesn't exist"
         dataset_group = self.topLevelOperator.get_lane(lane_index).DatasetGroupOut
         other_slots_with_multiscales = [s for s in dataset_group if s is not new_slot and s.ready() and s.value.scales]
+        if not other_slots_with_multiscales:
+            raise DatasetConstraintError(
+                "DataSelection", "Can't make this dataset work by switching scale in other roles (no multiscales)"
+            )
         other_slots_single_scale = [s for s in dataset_group if s is not new_slot and s.ready() and not s.value.scales]
         new_tagged_shape = dict(zip(new_info.axistags.keys(), new_info.laneShape))
         other_single_scale_shapes = [
             dict(zip(slot.value.axistags.keys(), slot.value.laneShape)) for slot in other_slots_single_scale
         ]
-        if all(eq_shapes(new_tagged_shape, other_shape) for other_shape in other_single_scale_shapes) and all(
+        matches_other_singles = all(
+            eq_shapes(new_tagged_shape, other_shape) for other_shape in other_single_scale_shapes
+        )
+        matches_other_multis = all(
             other_slot.value.has_scale_matching_shape(new_tagged_shape) and not other_slot.value.scale_locked
             for other_slot in other_slots_with_multiscales
-        ):
+        )
+        if matches_other_singles and matches_other_multis:
             target_scale = other_slots_with_multiscales[0].value.get_scale_matching_shape(new_tagged_shape)
             self.handleScaleSelected(lane_index, target_scale)
+        else:
+            raise DatasetConstraintError(
+                "DataSelection", "Can't make this dataset work by switching scale in other roles (no matching scale)"
+            )
 
     def _determineLaneRange(self, infos: List[DatasetInfo], startingLaneNum=None):
         """
@@ -715,6 +728,7 @@ class DataSelectionGui(QWidget):
                 )
                 try:
                     info.switch_to_scale_with_shape(shape_in_other_role)
+                    info.scale_locked = role_dataset_slot.value.scale_locked
                 except DatasetConstraintError:
                     other_role = self.topLevelOperator.DatasetRoles.value[other_role_index]
                     QMessageBox.warning(
