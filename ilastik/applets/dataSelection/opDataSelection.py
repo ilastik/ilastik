@@ -47,7 +47,7 @@ from ilastik.utility import OpMultiLaneWrapper
 from ilastik.workflow import Workflow
 from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, Multiscales
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
-from lazyflow.utility.helpers import get_default_axisordering
+from lazyflow.utility.helpers import get_default_axisordering, eq_shapes
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators import OpMissingDataSource
 from lazyflow.operators.ioOperators import OpH5N5WriterBigDataset
@@ -57,15 +57,6 @@ from lazyflow.graph import Graph, Operator
 def getTypeRange(numpy_type):
     type_info = numpy.iinfo(numpy_type)
     return (type_info.min, type_info.max)
-
-
-def eq_shapes(test: Dict[str, int], ref: Dict[str, int]) -> bool:
-    """Check if two tagged shapes are equal. Ignore channel. Additional singleton axes are ok."""
-    common_axes = set(test.keys()) & set(ref.keys())
-    extra_axes = set(test.keys()) ^ set(ref.keys())
-    common_match = all(test[a] == ref[a] for a in common_axes if a != "c")
-    extra_are_singleton = all(test.get(a, 1) == 1 and ref.get(a, 1) == 1 for a in extra_axes if a != "c")
-    return common_match and extra_are_singleton
 
 
 class CantSaveAsRelativePathsException(Exception):

@@ -229,7 +229,9 @@ class OpCreateRag(Operator):
     Rag = OutputSlot()
 
     def setupOutputs(self):
-        assert self.Superpixels.meta.dtype == np.uint32
+        assert (
+            self.Superpixels.meta.dtype == np.uint32
+        ), f"Superpixels must be data type uint32. Your image is {self.Superpixels.meta.dtype.__name__}"
         assert self.Superpixels.meta.getAxisKeys()[-1] == "c"
         self.Rag.meta.shape = (1,)
         self.Rag.meta.dtype = object

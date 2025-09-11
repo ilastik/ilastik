@@ -33,6 +33,7 @@ from lazyflow.operators import OpBlockedArrayCache
 
 from lazyflow.request import Request
 
+from lazyflow.utility.helpers import eq_shapes
 from lazyflow.utility.timer import Timer
 from ilastik.applets.base.applet import DatasetConstraintError
 
@@ -351,33 +352,38 @@ class OpPreprocessing(Operator):
         self.WatershedImage.connect(self._opWatershedCache.Output)
 
         self.InputData.notifyReady(self._checkConstraints)
+        self.OverlayData.notifyReady(self._checkConstraints)
 
     def _checkConstraints(self, *args):
-        slot = self.InputData
-        numChannels = slot.meta.getTaggedShape()["c"]
-        if numChannels != 1:
+        input_slot = self.InputData
+        if not input_slot.ready():
+            return
+
+        if input_slot.meta.getTaggedShape()["c"] != 1:
             raise DatasetConstraintError(
                 "Carving",
-                "Input image must have exactly one channel.  "
-                + "You attempted to add a dataset with {} channels".format(numChannels),
+                "Input image must have exactly one channel. "
+                + f"You attempted to add a dataset with {input_slot.meta.getTaggedShape()['c']} channels",
             )
-
-        sh = slot.meta.shape
-        ax = slot.meta.axistags
-        if len(slot.meta.shape) != 5:
-            # Raise a regular exception.  This error is for developers, not users.
-            raise RuntimeError("was expecting a 5D dataset, got shape=%r" % (sh,))
-        if slot.meta.getTaggedShape()["t"] != 1:
+        if input_slot.meta.getTaggedShape()["t"] != 1:
             raise DatasetConstraintError(
                 "Carving",
-                "Input image must not have more than one time slice.  "
-                + "You attempted to add a dataset with {} time slices".format(slot.meta.getTaggedShape()["t"]),
+                "Input image must not have more than one time point. "
+                + f"You attempted to add a dataset with {input_slot.meta.getTaggedShape()['t']} time points",
             )
 
-        for i in range(1, 4):
-            if not ax[i].isSpatial():
-                # This is for developers.  Don't need a user-friendly error.
-                raise RuntimeError("%d-th axis %r is not spatial" % (i, ax[i]))
+        # Errors for developers
+        assert len(input_slot.meta.shape) == 5, f"was expecting a 5D dataset, got shape={input_slot.meta.shape}"
+        assert all(input_slot.meta.axistags[i].isSpatial() for i in range(1, 4)), "2nd to 4th axes must be spatial"
+
+        if self.OverlayData.ready() and not eq_shapes(
+            self.OverlayData.meta.getTaggedShape(), input_slot.meta.getTaggedShape()
+        ):
+            raise DatasetConstraintError(
+                "Carving",
+                "Overlay image must have the same shape as raw data (different channels are ok). "
+                + f"Your raw data has shape={input_slot.meta.shape} but your overlay has shape {self.OverlayData.meta.shape}",
+            )
 
     def setupOutputs(self):
         self.PreprocessedData.meta.shape = (1,)

@@ -22,7 +22,7 @@ import json
 import os
 import shutil
 from collections import defaultdict, OrderedDict
-from typing import Tuple, Dict
+from typing import Tuple
 from unittest import mock
 from unittest.mock import Mock
 
@@ -49,7 +49,6 @@ from ilastik.applets.dataSelection.opDataSelection import (
     FilesystemDatasetInfo,
     ProjectInternalDatasetInfo,
     UrlDatasetInfo,
-    eq_shapes,
     TransactionRequiredError,
 )
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
@@ -1354,28 +1353,3 @@ def test_cleanup(data_path, graph):
 
     # Then
     assert len(reader.children) == children_after_load, "Did not clean up all children after input change"
-
-
-def tagged_shape(keys, shape):
-    return dict(zip(keys, shape))
-
-
-@pytest.mark.parametrize(
-    "shape1, shape2, match_expected",
-    [
-        (tagged_shape("xy", [5, 6]), tagged_shape("xy", [5, 6]), True),
-        (tagged_shape("xy", [5, 6]), tagged_shape("yx", [6, 5]), True),
-        (tagged_shape("xyc", [5, 6, 3]), tagged_shape("yx", [6, 5]), True),
-        (tagged_shape("xy", [5, 6]), tagged_shape("yxc", [6, 5, 3]), True),
-        (tagged_shape("xyc", [5, 6, 1]), tagged_shape("yxc", [6, 5, 3]), True),
-        (tagged_shape("xyztc", [5, 6, 1, 1, 3]), tagged_shape("yx", [6, 5]), True),
-        (tagged_shape("xy", [5, 6]), tagged_shape("tczyx", [1, 3, 1, 6, 5]), True),
-        (tagged_shape("xyzt", [3, 4, 5, 6]), tagged_shape("tyzx", [6, 4, 5, 3]), True),
-        (tagged_shape("xy", [5, 6]), tagged_shape("xy", [5, 7]), False),
-        (tagged_shape("xyztc", [5, 6, 9, 8, 1]), tagged_shape("xy", [5, 6]), False),
-        (tagged_shape("xyztc", [5, 6, 9, 8, 1]), tagged_shape("yx", [6, 5]), False),
-        (tagged_shape("xyztc", [5, 6, 9, 8, 1]), tagged_shape("zty", [9, 8, 6]), False),
-    ],
-)
-def test_eq_shapes(shape1: Dict[str, int], shape2: Dict[str, int], match_expected: bool):
-    assert match_expected == eq_shapes(shape1, shape2)

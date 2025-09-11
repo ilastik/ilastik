@@ -39,6 +39,7 @@ from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.widgets.ImageFileDialog import ImageFileDialog
 from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, SubvolumeSelectionDlg
 from lazyflow.slot import Slot
+from lazyflow.utility.helpers import eq_shapes
 from .dataLaneSummaryTableModel import DataLaneSummaryTableModel
 from .datasetDetailedInfoTableModel import DatasetDetailedInfoTableModel
 from .datasetDetailedInfoTableView import DatasetDetailedInfoTableView
@@ -47,7 +48,6 @@ from .opDataSelection import (
     DatasetInfo,
     ProjectInternalDatasetInfo,
     MultiscaleUrlDatasetInfo,
-    eq_shapes,
 )
 from .multiscaleDatasetBrowser import MultiscaleDatasetBrowser
 

@@ -1,13 +1,15 @@
 import logging
 
-from ilastik.utility import OpMultiLaneWrapper
 from lazyflow import stype
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.operators.generic import OpMultiChannelSelector
+from lazyflow.utility.helpers import eq_shapes
 
+from ilastik.applets.neuralNetwork.opNNclass import DatasetConstraintError
 from ilastik.applets.neuralNetwork.opNNclass import OpBlockShape as OpNNBlockShape
 from ilastik.applets.neuralNetwork.opNNclass import OpPredictionPipeline as OpNNPredictionPipeline
 from ilastik.applets.pixelClassification.opPixelClassification import OpPixelClassification
+from ilastik.utility import OpMultiLaneWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +61,32 @@ class OpTrainableDomainAdaptation(OpPixelClassification):
         self.NNPredictionProbabilities.connect(self.opNNPredictionPipeline.PredictionProbabilities)
         self.CachedNNPredictionProbabilities.connect(self.opNNPredictionPipeline.CachedPredictionProbabilities)
         self.NNPredictionProbabilityChannels.connect(self.opNNPredictionPipeline.PredictionProbabilityChannels)
+
+        def handleNewOverlayImage(multislot, index, *_):
+            def handleOverlayReady(_):
+                self._checkOverlayConstraint(index)
+
+            multislot[index].notifyReady(handleOverlayReady)
+
+        self.OverlayImages.notifyInserted(handleNewOverlayImage)
+
+    def _checkOverlayConstraint(self, laneIndex):
+        """
+        Ensure that overlay shape matches input shape.
+        """
+        if not self.InputImages[laneIndex].ready():
+            return
+
+        thisLaneTaggedShape = self.InputImages[laneIndex].meta.getTaggedShape()
+
+        if self.OverlayImages[laneIndex].ready():
+            if not eq_shapes(self.OverlayImages[laneIndex].meta.getTaggedShape(), thisLaneTaggedShape):
+                raise DatasetConstraintError(
+                    "Pixel Classification with CNNs",
+                    "The overlay image must have the same shape as the corresponding raw image (different channels are ok). "
+                    f"You tried to overlay an image with shape={self.OverlayImages[laneIndex].meta.shape} "
+                    f"onto a raw image with shape={self.InputImages[laneIndex].meta.shape}.",
+                )
 
     def setupOutputs(self):
         super().setupOutputs()

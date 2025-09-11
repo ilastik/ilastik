@@ -25,9 +25,9 @@ from typing import Dict, List
 from qtpy.QtCore import Qt, QAbstractItemModel, QModelIndex
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from lazyflow.utility.helpers import bigintprod
+from lazyflow.utility.helpers import bigintprod, eq_shapes
 from lazyflow.utility.io_util.multiscaleStore import Multiscales
-from .opDataSelection import DatasetInfo, eq_shapes
+from .opDataSelection import DatasetInfo
 from .dataLaneSummaryTableModel import rowOfButtonsProxy
 
 
