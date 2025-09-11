@@ -20,9 +20,9 @@
 ###############################################################################
 from typing import Optional, Union
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QPalette
-from PyQt5.QtWidgets import (
+from qtpy.QtCore import Qt
+from qtpy.QtGui import QColor, QPalette
+from qtpy.QtWidgets import (
     QComboBox,
     QFrame,
     QHBoxLayout,

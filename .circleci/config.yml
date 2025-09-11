@@ -95,7 +95,9 @@ jobs:
             DISPLAY: :42
         command: >
             cd ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
-            conda run --live-stream -n ${TEST_ENV_NAME} pytest -v -s --run-legacy-gui --cov-report=json:cov.json --cov=lazyflow --cov=ilastik
+            source /opt/conda/etc/profile.d/conda.sh &&
+            conda activate ${TEST_ENV_NAME} &&
+            pytest -v -s --run-legacy-gui --cov-report=json:cov.json --cov=lazyflow --cov=ilastik
     - codecov/upload:
         files: cov.json
 
