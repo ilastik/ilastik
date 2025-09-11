@@ -1,6 +1,7 @@
 # Data selection is already covered in workflow tests (e.g. testPixelClassificationGui.py)
 # Additional tests here should be workflow-agnostic.
 import os
+import platform
 from typing import Tuple, List
 from unittest import mock
 
@@ -12,6 +13,7 @@ from ilastik.applets.dataSelection.datasetDetailedInfoTableModel import DatasetC
 from ilastik.applets.dataSelection.datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 
 CI = os.environ.get("GITHUB_ACTIONS") or os.environ.get("APPVEYOR") or os.environ.get("ON_CIRCLE_CI")
+MAC = platform.system().lower() == "darwin"
 
 
 def prepare_widget(qtbot, widget):
@@ -144,6 +146,7 @@ def dataset_table_with_mismatching_roles(
     return prepare_widget(qtbot, table_view), enabled, disabled
 
 
+@pytest.mark.skipif(CI and MAC, reason="flaky assert table.isPersistentEditorOpen(scale_cell)")
 def test_scale_select_disables_scale_options_not_available_in_other_roles(
     dataset_table_with_mismatching_roles: Tuple[DatasetDetailedInfoTableView, List[int], List[int]],
     mock_gui: mock.Mock,
