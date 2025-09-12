@@ -170,3 +170,102 @@ def test_write_read_roundtrip_tiff_OpExportMultipageTiff(graph, tmp_path):
         # Rounding is not necessary here as ome stores resolution as floats
         assert tag.resolution == resolution
         assert reader.Output.meta.axis_units[axis] == unit
+
+
+@pytest.mark.parametrize(
+    "axes, shape, resolutions, units, converted_units",
+    [
+        (["y", "x"], (65, 58), [6.000024000096, 13], ["µm", "millimeter"], ["µm", "mm"]),
+        (
+            ["c", "y", "x"],
+            (2, 65, 58),
+            [0.0, 6.000024000096, 13],
+            ["", "microns", "millimeters"],
+            ["pixel", "µm", "mm"],
+        ),
+        (
+            ["z", "y", "x"],
+            (2, 3, 5),
+            [0.54321, 6.000024000096, 13],
+            ["", "", ""],
+            ["pixel", "pixel", "pixel"],
+        ),  # tifffile doesn't work with x smaller 5
+        (["z", "y", "x"], (2, 3, 5), [0.0, 0.0, 13], ["km", "", "centimetre"], ["km", "pixel", "pixel"]),
+        (["z", "y", "x"], (2, 3, 5), [0.0, 0.0, 0.0], ["um", "MILLIMETER", "cENtIMETEr"], ["µm", "mm", "cm"]),
+        (
+            ["z", "c", "y", "x"],
+            (3, 2, 3, 5),
+            [0.54321, 0.0, 6.000024000096, 13],
+            ["", "", "", ""],
+            ["pixel", "pixel", "pixel", "pixel"],
+        ),
+        (
+            ["z", "c", "y", "x"],
+            (3, 2, 3, 5),
+            [0.54321, 42, 6.000024000096, 13],
+            ["µm", "mistake", "mm", "micron"],
+            ["µm", "pixel", "mm", "µm"],
+        ),
+        (
+            ["z", "c", "y", "x"],
+            (3, 2, 3, 5),
+            [0.0, 0.0, 0.0, 0.0],
+            ["µm", "", "mm", "microns"],
+            ["µm", "pixel", "mm", "µm"],
+        ),
+        (
+            ["z", "c", "y", "x"],
+            (23, 2, 65, 58),
+            [0.54321, 0.0, 6.000024000096, 13],
+            ["µm", "", "mm", "cm"],
+            ["µm", "pixel", "mm", "cm"],
+        ),
+        (
+            ["t", "z", "y", "x"],
+            (15, 23, 65, 58),
+            [120, 0.54321, 6.000024000096, 13],
+            ["sec", "µm", "mm", "cm"],
+            ["s", "µm", "mm", "cm"],
+        ),
+        (
+            ["t", "z", "c", "y", "x"],
+            (6, 2, 3, 3, 5),
+            [120, 0.54321, 0.0, 6.000024000096, 13],
+            ["", "", "", "", ""],
+            ["pixel", "pixel", "pixel", "pixel", "pixel"],
+        ),
+    ],
+)
+def test_unit_conversion_OpExportMultipageTiff(graph, tmp_path, axes, shape, resolutions, units, converted_units):
+    op_data = get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units)
+    out_path = str(tmp_path / "multipage_export.tif")
+    export = OpExportMultipageTiff(graph=graph)
+    export.Input.connect(op_data.Output)
+    export.Filepath.setValue(out_path)
+    export.run_export()
+
+    with tifffile.TiffFile(out_path) as f:
+        written_data = f.asarray()
+        np.testing.assert_array_equal(written_data, op_data.Output.value)
+
+        xml = ET.fromstring(f.ome_metadata)
+        ns = {"ome": "http://www.openmicroscopy.org/Schemas/OME/2016-06"}
+        image = xml.find("ome:Image", ns)
+        pixels = image.find("ome:Pixels", ns)
+        assert image and pixels
+        sizes = {
+            "x": ("PhysicalSizeX", "PhysicalSizeXUnit"),
+            "y": ("PhysicalSizeY", "PhysicalSizeYUnit"),
+            "z": ("PhysicalSizeZ", "PhysicalSizeZUnit"),
+            "t": ("TimeIncrement", "TimeIncrementUnit"),
+        }
+
+        comp_axes = "".join(axes).upper()
+        assert comp_axes == f.series[0].axes
+
+        for axis in axes:
+            if axis.lower() == "c":
+                assert "c" not in sizes.keys()  # Channel sizes are not written to TIFF
+                continue
+            assert pixels.attrib.get(sizes[axis][1], "pixel") == converted_units[axes.index(axis)]
+            assert float(pixels.attrib.get(sizes[axis][0], 0)) == resolutions[axes.index(axis)]
