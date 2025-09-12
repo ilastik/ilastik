@@ -300,7 +300,7 @@ class OpRawSubRegionHelper(Operator):
 
 
 def get_model_op(
-    wrappedOp: "OpMultiLaneWrapper[OpDataExport]",
+    wrappedOp: "OpMultiLaneWrapper[OpDataExport]", selected_lane: int
 ) -> Tuple[Optional[OpFormattedDataExport], Optional[OpSubRegion]]:
     """
     Create a "model operator" that the gui can use.
@@ -309,7 +309,13 @@ def get_model_op(
     settings.  When the user is finished, the model op slot settings can
     be copied over to the 'real' (wrapped) operator slots.
     """
-    if len(wrappedOp) == 0:
+    if len(wrappedOp) < selected_lane or not wrappedOp.InputSelection.ready():
+        return None, None
+
+    export_source = wrappedOp.InputSelection.value
+    export_slot = wrappedOp.Inputs[selected_lane][export_source]
+
+    if not export_slot.ready():
         return None, None
 
     # Use an instance of OpFormattedDataExport, since has the important slots and no others.
@@ -321,29 +327,21 @@ def get_model_op(
             model_slot.setValue(slot.value)
 
     # Choose a roi that can apply to all images in the original operator
-    shape = None
-    axes = None
+    shape = export_slot.meta.shape
+    axes = export_slot.meta.getAxisKeys()
+    dtype = export_slot.meta.dtype
     for lane_multislot in wrappedOp.Inputs:
-        slot = lane_multislot[wrappedOp.InputSelection.value]
+        slot = lane_multislot[export_source]
         if slot.ready():
-            if shape is None:
-                shape = slot.meta.shape
-                axes = slot.meta.getAxisKeys()
-                dtype = slot.meta.dtype
-            else:
-                assert slot.meta.getAxisKeys() == axes, "Can't export multiple slots with different axes."
-                assert slot.meta.dtype == dtype
-                shape = numpy.minimum(slot.meta.shape, shape)
-
-    # If NO slots were ready, then we can't do anything here.
-    if shape is None:
-        return None, None
+            assert slot.meta.getAxisKeys() == axes, "Can't export multiple slots with different axes."
+            assert slot.meta.dtype == dtype
+            shape = numpy.minimum(slot.meta.shape, shape)
 
     # Must provide a 'ready' slot for the gui
     # Use a subregion operator to provide a slot with the meta data we chose.
     opSubRegion = OpSubRegion(parent=wrappedOp.parent)
     opSubRegion.Roi.setValue([(0,) * len(shape), tuple(shape)])
-    opSubRegion.Input.connect(slot)
+    opSubRegion.Input.connect(export_slot)
 
     # (The actual contents of this slot are not important to the settings gui.
     #  It only cares about the metadata.)

@@ -240,7 +240,7 @@ class DataExportGui(QWidget):
         self.showSelectedDataset()
 
     def _chooseSettings(self):
-        opExportModelOp, opSubRegion = get_model_op(self.topLevelOperator)
+        opExportModelOp, opSubRegion = get_model_op(self.topLevelOperator, self.batchOutputTableWidget.currentRow())
         if opExportModelOp is None:
             QMessageBox.information(
                 self,
