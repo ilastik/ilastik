@@ -20,6 +20,8 @@
 ###############################################################################
 import os
 import collections
+from typing import Optional, Tuple
+
 import numpy
 from ndstructs import Slice5D
 
@@ -297,7 +299,9 @@ class OpRawSubRegionHelper(Operator):
         pass  # No need to do anything here.
 
 
-def get_model_op(wrappedOp):
+def get_model_op(
+    wrappedOp: "OpMultiLaneWrapper[OpDataExport]",
+) -> Tuple[Optional[OpFormattedDataExport], Optional[OpSubRegion]]:
     """
     Create a "model operator" that the gui can use.
     The model op is a single (non-wrapped) export operator that the
@@ -308,33 +312,19 @@ def get_model_op(wrappedOp):
     if len(wrappedOp) == 0:
         return None, None
 
-    # These are the slots the export settings gui will manipulate.
-    setting_slots = [
-        wrappedOp.RegionStart,
-        wrappedOp.RegionStop,
-        wrappedOp.InputMin,
-        wrappedOp.InputMax,
-        wrappedOp.ExportMin,
-        wrappedOp.ExportMax,
-        wrappedOp.ExportDtype,
-        wrappedOp.OutputAxisOrder,
-        wrappedOp.OutputFilenameFormat,
-        wrappedOp.OutputInternalPath,
-        wrappedOp.OutputFormat,
-    ]
-
     # Use an instance of OpFormattedDataExport, since has the important slots and no others.
     model_op = OpFormattedDataExport(parent=wrappedOp.parent)
-    for slot in setting_slots:
-        model_inslot = getattr(model_op, slot.name)
+    for slot_name in OpFormattedDataExport.CONFIGURABLE_SETTINGS_SLOTS:
+        slot = getattr(wrappedOp, slot_name)
         if slot.ready():
-            model_inslot.setValue(slot.value)
+            model_slot = getattr(model_op, slot_name)
+            model_slot.setValue(slot.value)
 
     # Choose a roi that can apply to all images in the original operator
     shape = None
     axes = None
-    for multislot in wrappedOp.Inputs:
-        slot = multislot[wrappedOp.InputSelection.value]
+    for lane_multislot in wrappedOp.Inputs:
+        slot = lane_multislot[wrappedOp.InputSelection.value]
         if slot.ready():
             if shape is None:
                 shape = slot.meta.shape

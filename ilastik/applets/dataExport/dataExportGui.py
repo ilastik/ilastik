@@ -254,27 +254,14 @@ class DataExportGui(QWidget):
         settingsDlg = DataExportOptionsDlg(self, opExportModelOp, cfg["ilastik"]["output_filename_format"])
 
         if settingsDlg.exec_() == DataExportOptionsDlg.Accepted:
-            # Copy the settings from our 'model op' into the real op
-            setting_slots = [
-                opExportModelOp.RegionStart,
-                opExportModelOp.RegionStop,
-                opExportModelOp.InputMin,
-                opExportModelOp.InputMax,
-                opExportModelOp.ExportMin,
-                opExportModelOp.ExportMax,
-                opExportModelOp.ExportDtype,
-                opExportModelOp.OutputAxisOrder,
-                opExportModelOp.OutputFilenameFormat,
-                opExportModelOp.OutputInternalPath,
-                opExportModelOp.OutputFormat,
-            ]
-
             # Disconnect the special 'transaction' slot to prevent these
             #  settings from triggering many calls to setupOutputs.
             self.topLevelOperator.TransactionSlot.disconnect()
 
-            for model_slot in setting_slots:
-                real_inslot = getattr(self.topLevelOperator, model_slot.name)
+            # Copy the settings from our 'model op' into the real op
+            for slot_name in opExportModelOp.CONFIGURABLE_SETTINGS_SLOTS:
+                real_inslot = getattr(self.topLevelOperator, slot_name)
+                model_slot = getattr(opExportModelOp, slot_name)
                 if model_slot.ready():
                     real_inslot.setValue(model_slot.value)
                 else:

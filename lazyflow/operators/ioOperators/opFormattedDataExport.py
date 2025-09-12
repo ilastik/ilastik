@@ -116,6 +116,21 @@ class OpFormattedDataExport(Operator):
     TargetScales = OutputSlot()  # Scaling parameter for multi-scale OME-Zarr
     FormatSelectionErrorMsg = OutputSlot()  # bool, True if currently selected format can support the export data
 
+    # This op's slots that are user-configurable through DataExportOptionsDlg
+    CONFIGURABLE_SETTINGS_SLOTS = [
+        "RegionStart",
+        "RegionStop",
+        "InputMin",
+        "InputMax",
+        "ExportMin",
+        "ExportMax",
+        "ExportDtype",
+        "OutputAxisOrder",
+        "OutputFilenameFormat",
+        "OutputInternalPath",
+        "OutputFormat",
+    ]
+
     ALL_FORMATS = OpExportSlot.ALL_FORMATS
 
     # Simplified block diagram:                                          -> ConvertedImage                -> FormatSelectionErrorMsg
