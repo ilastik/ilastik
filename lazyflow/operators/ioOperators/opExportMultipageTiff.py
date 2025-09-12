@@ -30,7 +30,7 @@ import tifffile
 from lazyflow.graph import InputSlot, Operator
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.utility import OrderedSignal, RoiRequestBufferIter
-
+from lazyflow.utility.io_util import tiff_encoding
 
 logger = logging.getLogger(__name__)
 
@@ -82,13 +82,44 @@ class OpExportMultipageTiff(Operator):
         page_buf = RoiRequestBufferIter(self._opReorderAxes.Output, self._batch_size, iterate_axes="tzc")
         page_buf.progress_signal.subscribe(self.progressSignal)
 
+        meta_dict = {
+            "axes": "".join(k.upper() for k in self._opReorderAxes.Output.meta.getAxisKeys()),
+        }
+
+        # map axis keys to relevant metadata keys
+        size_trans = {"x": "PhysicalSizeX", "y": "PhysicalSizeY", "z": "PhysicalSizeZ", "t": "TimeIncrement"}
+        unit_trans = {
+            "x": "PhysicalSizeXUnit",
+            "y": "PhysicalSizeYUnit",
+            "z": "PhysicalSizeZUnit",
+            "t": "TimeIncrementUnit",
+        }
+
+        meta = self._opReorderAxes.Output.meta
+        axistags = meta.axistags
+        axis_units = meta.get("axis_units", {})
+        pixels = {}
+
+        for axis in meta.getAxisKeys():
+            if axis in size_trans:
+                size_key = size_trans[axis]
+                unit_key = unit_trans[axis]
+                pixels[size_key] = None
+                pixels[unit_key] = None
+
+                if axis != "c":
+                    pixels[size_key] = float(axistags[axis].resolution)
+                    unit_value = axis_units.get(axis, "")
+                    pixels[unit_key] = str(tiff_encoding.to_ome(unit_value))
+        meta_dict["Pixels"] = pixels
+
         with tifffile.TiffWriter(self.Filepath.value, byteorder="<", ome=True) as writer:
             writer.write(
                 data=iter(page_buf),
                 shape=self._opReorderAxes.Output.meta.shape,
                 dtype=dtype,
                 software="ilastik",
-                metadata={"axes": "".join(self._opReorderAxes.Output.meta.getAxisKeys())},
+                metadata=meta_dict,
             )
 
     @property
