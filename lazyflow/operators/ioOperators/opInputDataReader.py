@@ -304,9 +304,7 @@ class OpInputDataReader(Operator):
             filePath = Path(filePath).as_uri()
         if not OMEZarrStore.is_uri_compatible(filePath):
             return ([], None)
-        # DatasetInfo instantiates a standalone OpInputDataReader to obtain laneShape and dtype.
-        # We pass this down to the loader so that it can avoid loading scale metadata unnecessarily.
-        reader = OpOMEZarrMultiscaleReader(parent=self, metadata_only_mode=self.parent is None)
+        reader = OpOMEZarrMultiscaleReader(parent=self)
         reader.Scale.connect(self.ActiveScale)
         reader.Uri.setValue(filePath)
         return [reader], reader.Output

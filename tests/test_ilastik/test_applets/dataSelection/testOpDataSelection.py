@@ -22,6 +22,7 @@ import json
 import os
 import shutil
 from collections import defaultdict, OrderedDict
+from typing import Tuple
 from unittest import mock
 from unittest.mock import Mock
 
@@ -33,17 +34,22 @@ from pathlib import Path
 import zarr
 from PIL import Image
 
+from lazyflow.utility.io_util.write_ome_zarr import OME_ZARR_V_0_4_KWARGS
+from lazyflow.utility.io_util.OMEZarrStore import ScaleNotFoundError
 from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY
 from lazyflow.utility.pathHelpers import PathComponents
-from lazyflow.graph import OperatorWrapper
+from lazyflow.graph import Operator, OperatorWrapper, InputSlot, OutputSlot
+from lazyflow.operators.generic import OpMultiArrayMerger
 from ilastik.applets.dataSelection.opDataSelection import (
     OpMultiLaneDataSelectionGroup,
+    OpDataSelectionGroup,
     OpDataSelection,
     MultiscaleUrlDatasetInfo,
     RelativeFilesystemDatasetInfo,
     FilesystemDatasetInfo,
     ProjectInternalDatasetInfo,
     UrlDatasetInfo,
+    TransactionRequiredError,
 )
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -897,6 +903,45 @@ class TestOpDataSelection_PrecomputedChunks:
         assert datasetInfo.working_scale == scale_keys[1]
 
 
+class OpShapeChecker(Operator):
+    """A mock op that emulates the checking of shape constraints across roles,
+    like OpObjectExtraction._checkConstraints or the tagged-shape check in OpSimpleStacker (multicut)."""
+
+    Role1 = InputSlot()
+    Role2 = InputSlot()
+    Role3 = InputSlot()
+    Output = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.input_ready_checks = 0
+
+        self.Role1.notifyReady(self._checkConstraints)  # Shape check as in OpObjectExtraction
+        self.Role2.notifyReady(self._checkConstraints)
+
+    def _checkConstraints(self, *_):
+        if self.Role1.ready() and self.Role2.ready():
+            self.input_ready_checks += 1
+            rawTaggedShape = self.Role1.meta.getTaggedShape()
+            segTaggedShape = self.Role2.meta.getTaggedShape()
+            rawTaggedShape["c"] = None
+            segTaggedShape["c"] = None
+            if dict(rawTaggedShape) != dict(segTaggedShape):
+                raise DatasetConstraintError(
+                    "test", f"Mismatching shapes would fail in OpObjectExtraction: {rawTaggedShape} != {segTaggedShape}"
+                )
+
+    def setupOutputs(self):
+        # Shape check as in OpSimpleStacker
+        shape1 = dict(self.Role1.meta.getTaggedShape())
+        shape2 = dict(self.Role2.meta.getTaggedShape())
+        shape3 = dict(self.Role3.meta.getTaggedShape())
+        if shape1 != shape2 or shape2 != shape3:
+            raise DatasetConstraintError(
+                "test", f"Must not try to set up this op with mismatching input images: {shape1}, {shape2}, {shape3}"
+            )
+
+
 class TestOpDataSelection_OMEZarr:
     SHAPE_SCALED_ZYX = (1, 10, 12)
     SHAPE_ORIGINAL_ZYX = (1, 20, 24)
@@ -1010,27 +1055,185 @@ class TestOpDataSelection_OMEZarr:
         op.ActiveScale.setValue(scale_keys[1])
         assert datasetInfo.working_scale == scale_keys[1]
 
-    def test_datasetInfo_init_loads_only_one_scale(self, monkeypatch, mock_ome_zarr_metadata):
+    @pytest.fixture
+    def op_data_lane(self, graph) -> OpDataSelectionGroup:
+        op_data_lane = OpDataSelectionGroup(graph=graph)
+        op_data_lane.WorkingDirectory.setValue(os.getcwd())
+        op_data_lane.DatasetRoles.setValue(["Raw Data", "Segmentation", "Another Role"])
+        assert len(op_data_lane.DatasetGroup) == 3 and len(op_data_lane.ImageGroup) == 3
+        return op_data_lane
+
+    def test_scale_change_without_transaction_forbidden(self, op_data_lane, mock_ome_zarr_metadata):
+        dataset_info_raw = MultiscaleUrlDatasetInfo(url="https://s3.localhost/rawdata.zarr")
+        dataset_info_segmentation = MultiscaleUrlDatasetInfo(url="https://s3.localhost/segmentation.zarr")
+        dataset_info_other = MultiscaleUrlDatasetInfo(url="https://s3.localhost/sthelse.zarr")
+        op_data_lane.DatasetGroup[0].setValue(dataset_info_raw)
+        op_data_lane.DatasetGroup[1].setValue(dataset_info_segmentation)
+        op_data_lane.DatasetGroup[2].setValue(dataset_info_other)
+
+        with pytest.raises(TransactionRequiredError, match="must disconnect"):
+            op_data_lane.ActiveScaleGroup.setValue("s0")
+
+    @pytest.fixture
+    def cross_role_ops(self, op_data_lane, graph) -> Tuple[OpDataSelectionGroup, OpShapeChecker]:
+        """A data selection lane op chained with a shape-checking op that cannot work with inputs of different shapes.
+        This emulates e.g. object classification or multicut."""
+        opSumInputs = OpMultiArrayMerger(graph=graph)  # Problematic op from object classification
+        opSumInputs.MergingFunction.setValue(sum)
+        opSumInputs.Inputs.resize(1)  # Rare kind of op with a level-1 input; unreadiness signalling was buggy here
+        # In OpThresholdTwoLevels, the second data role first goes through a bunch of other ops,
+        # but opSumInputs.Inputs[0] is connected to the output of that chain.
+        opSumInputs.Inputs[0].connect(op_data_lane.ImageGroup[1])
+        op_shape_check = OpShapeChecker(graph=graph)
+        op_shape_check.Role1.connect(op_data_lane.ImageGroup[0])
+        op_shape_check.Role2.connect(opSumInputs.Output)
+        op_shape_check.Role3.connect(op_data_lane.ImageGroup[2])
+        return op_data_lane, op_shape_check
+
+    def test_multiscales_can_be_used_in_multiple_roles(self, cross_role_ops, mock_ome_zarr_metadata):
+        op_data_lane, op_shape_check = cross_role_ops
+        dataset_info_raw = MultiscaleUrlDatasetInfo(url="https://s3.localhost/rawdata.zarr")
+        dataset_info_segmentation = MultiscaleUrlDatasetInfo(url="https://s3.localhost/segmentation.zarr")
+        dataset_info_other = MultiscaleUrlDatasetInfo(url="https://s3.localhost/sthelse.zarr")
+        op_data_lane.DatasetGroup[0].setValue(dataset_info_raw)
+        op_data_lane.DatasetGroup[1].setValue(dataset_info_segmentation)
+        assert op_shape_check.input_ready_checks == 1
+        op_data_lane.DatasetGroup[2].setValue(dataset_info_other)
+        assert op_shape_check._setup_count == 1, "setting all datasets should set up shape-checking op"
+
+        op_data_lane.ScaleChangeFinished.disconnect()
+        op_data_lane.ActiveScaleGroup.setValue("s0")
+        assert op_shape_check.input_ready_checks == 1  # should not have propagated to shape checker
+        op_data_lane.ScaleChangeFinished.setValue(True)
+        assert op_shape_check.input_ready_checks == 2
+        assert op_shape_check._setup_count == 2, "changing scale should trigger shape-checking op setup"
+
+    @pytest.fixture
+    def two_ome_zarrs(self, tmp_path) -> Tuple[Path, Path]:
         """
-        Instantiating a zarr.Array with a web OME store fires a request for
-        https://server.com/dataset.zarr/scaleN/.zarray. This can take a long time, esp with many scales.
-        The backend instantiates reader operators twice: once during MultiscaleUrlDatasetInfo.__init__,
-        and once during OpDataSelection.setupOutputs. The latter needs to load metadata of all scales,
-        for the DatasetInfo a single scale is enough.
+        Sets up a two random OME-Zarr datasets, one with 2 and one with 3 scales.
+        Returns absolute path to the two datasets.
+        The two-scales dataset represents a multiscale segmentation exported
+        from the first downscale of the three-scales dataset.
         """
-        # Monkeypatch a counter into zarr.Array instantiation
-        zarr.Array.instance_counter = 0
-        zarr_init = zarr.Array.__init__
+        subdir3 = "scales3.zarr"
+        subdir2 = "scales2.zarr"
+        zarr_dir3 = tmp_path / subdir3
+        zarr_dir2 = tmp_path / subdir2
+        zarr_dir3.mkdir(parents=True, exist_ok=True)
+        zarr_dir2.mkdir(parents=True, exist_ok=True)
 
-        def track_instances(*args, **kwargs):
-            zarr.Array.instance_counter += 1
-            return zarr_init(*args, **kwargs)
+        dataset_shape = [2, 3, 4, 100, 100]  # tczyx for good measure
+        chunk_size = [2, 3, 3, 64, 64]
+        axes_json = [
+            {"type": "space", "name": "t"},
+            {"type": "space", "name": "c"},
+            {"type": "space", "name": "z"},
+            {"type": "space", "name": "y"},
+            {"type": "space", "name": "x"},
+        ]
+        zattrs3 = {
+            "multiscales": [
+                {
+                    "name": "some.zarr",
+                    "version": "0.4",
+                    "axes": axes_json,
+                    "datasets": [
+                        {
+                            "path": "s0",
+                            "coordinateTransformations": [
+                                {"scale": [1.0 for _ in dataset_shape], "type": "scale"},
+                            ],
+                        },
+                        {
+                            "path": "s1",
+                            "coordinateTransformations": [
+                                {"scale": [2.0 for _ in dataset_shape], "type": "scale"},
+                            ],
+                        },
+                        {
+                            "path": "s2",
+                            "coordinateTransformations": [
+                                {"scale": [4.0 for _ in dataset_shape], "type": "scale"},
+                            ],
+                        },
+                    ],
+                    "coordinateTransformations": [],
+                },
+            ]
+        }
+        zattrs2 = {
+            "multiscales": [
+                {
+                    "name": "some.zarr",
+                    "version": "0.4",
+                    "axes": axes_json,
+                    "datasets": [  # omit what was the raw scale on the three-scales dataset
+                        {
+                            "path": "s1",
+                            "coordinateTransformations": [
+                                {"scale": [2.0 for _ in dataset_shape], "type": "scale"},
+                            ],
+                        },
+                        {
+                            "path": "s2",
+                            "coordinateTransformations": [
+                                {"scale": [4.0 for _ in dataset_shape], "type": "scale"},
+                            ],
+                        },
+                    ],
+                    "coordinateTransformations": [],
+                },
+            ]
+        }
+        (zarr_dir3 / ".zattrs").write_text(json.dumps(zattrs3))
+        (zarr_dir2 / ".zattrs").write_text(json.dumps(zattrs2))
 
-        monkeypatch.setattr(zarr.Array, "__init__", track_instances)
+        image_original = numpy.random.randint(0, 256, dataset_shape, dtype=numpy.uint16)
+        image_scaled = image_original[:, :, :, ::2, ::2]
+        image_scaled2 = image_scaled[:, :, :, ::2, ::2]
+        chunks = tuple(chunk_size)
+        zarr.array(
+            image_original, chunks=chunks, store=zarr.DirectoryStore(str(zarr_dir3 / "s0")), **OME_ZARR_V_0_4_KWARGS
+        )
+        zarr.array(
+            image_scaled, chunks=chunks, store=zarr.DirectoryStore(str(zarr_dir3 / "s1")), **OME_ZARR_V_0_4_KWARGS
+        )
+        zarr.array(
+            image_scaled2, chunks=chunks, store=zarr.DirectoryStore(str(zarr_dir3 / "s2")), **OME_ZARR_V_0_4_KWARGS
+        )
+        zarr.array(
+            image_scaled, chunks=chunks, store=zarr.DirectoryStore(str(zarr_dir2 / "s1")), **OME_ZARR_V_0_4_KWARGS
+        )
+        zarr.array(
+            image_scaled2, chunks=chunks, store=zarr.DirectoryStore(str(zarr_dir2 / "s2")), **OME_ZARR_V_0_4_KWARGS
+        )
 
-        # Make sure that instantiating a DatasetInfo does not load more than one scale into a zarr.Array
-        _ = MultiscaleUrlDatasetInfo(url="https://some.url.com/dataset.zarr")
-        assert zarr.Array.instance_counter == 1
+        return zarr_dir2, zarr_dir3
+
+    def test_missing_scale_in_other_role_raises(self, cross_role_ops, two_ome_zarrs):
+        """
+        2scales is the "segmentation", 3scales is the "raw data".
+        This mimics the scenario with multiscale export v1:
+        The user runs e.g. pixel classification on the first downscale (s1) of the 3scales raw data and then
+        exports "multi-scale OME-Zarr".
+        The export, 2scales, has no s0 because it was exported from the s1 downscale of 3scales,
+        and the multiscale export doesn't do upscaling to match scales larger than the working scale.
+        """
+        op_data_lane, op_shape_check = cross_role_ops
+        path_zarr_2scales, path_zarr_3scales = two_ome_zarrs
+        dataset_info_raw = MultiscaleUrlDatasetInfo(url=path_zarr_3scales.as_uri())
+        dataset_info_segmentation = MultiscaleUrlDatasetInfo(url=path_zarr_2scales.as_uri())
+        dataset_info_other = MultiscaleUrlDatasetInfo(url=path_zarr_2scales.as_uri())
+        op_data_lane.DatasetGroup[0].setValue(dataset_info_raw)
+        op_data_lane.DatasetGroup[1].setValue(dataset_info_segmentation)
+        op_data_lane.DatasetGroup[2].setValue(dataset_info_other)
+        assert op_shape_check._setup_count == 1, "setting all datasets should set up shape-checking op"
+
+        with pytest.raises(ScaleNotFoundError):
+            op_data_lane.ScaleChangeFinished.disconnect()
+            op_data_lane.ActiveScaleGroup.setValue("s0")
+            op_data_lane.ScaleChangeFinished.setValue(True)
 
 
 class TestOpDataSelection_DatasetInfo:
