@@ -21,6 +21,7 @@
 ###############################################################################
 # Python
 import contextlib
+import json
 import logging
 import time
 from collections import OrderedDict
@@ -105,6 +106,9 @@ class OpStreamingH5N5Reader(Operator):
         self.OutputImage.meta.dtype = dataset.dtype.type
         self.OutputImage.meta.shape = dataset.shape
         self.OutputImage.meta.axistags = axistags
+
+        if "axis_units" in self._h5N5File[internalPath].attrs:
+            self.OutputImage.meta.axis_units = json.loads(self._h5N5File[internalPath].attrs["axis_units"])
 
         # If the dataset specifies a datarange, add it to the slot metadata
         if "drange" in self._h5N5File[internalPath].attrs:
