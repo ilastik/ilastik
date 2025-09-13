@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+import json
 from typing import Dict
 
 from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
@@ -33,9 +34,10 @@ class DatasetColumn:
     Location = 1
     InternalID = 2
     TaggedShape = 3
-    Scale = 4
-    Range = 5
-    NumColumns = 6
+    PixelSize = 4
+    Scale = 5
+    Range = 6
+    NumColumns = 7
 
 
 def _dims_to_display_string(dimensions: Dict[str, int], axiskeys: str, dtype: type) -> str:
@@ -162,6 +164,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
                 DatasetColumn.TaggedShape: "Shape",
                 DatasetColumn.Range: "Data Range",
                 DatasetColumn.Scale: "Resolution Level",
+                DatasetColumn.PixelSize: "Pixel Size",
             }
             return InfoColumnNames[section]
         elif orientation == Qt.Vertical:
@@ -180,6 +183,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             DatasetColumn.TaggedShape: "",
             DatasetColumn.Range: "",
             DatasetColumn.Scale: "",
+            DatasetColumn.PixelSize: "",
         }
 
         if len(self._op.DatasetGroupOut) <= laneIndex or len(self._op.DatasetGroupOut[laneIndex]) <= self._roleIndex:
@@ -218,6 +222,22 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
                     datasetInfo.scales[datasetInfo.working_scale], datasetInfo.axiskeys, datasetInfo.laneDtype
                 )
             return UninitializedDisplayData[index.column()]
+
+        if index.column() == DatasetColumn.PixelSize:
+            if not datasetInfo.axis_units:
+                return UninitializedDisplayData[index.column()]
+            axis_strings = []
+            for tag in datasetInfo.axistags:
+                if tag.key.lower() == "c":
+                    if "c" in datasetInfo.axis_units:
+                        axis_strings.append("c: " + f" {datasetInfo.axis_units['c']}")
+                elif tag.key in datasetInfo.axis_units:
+                    axis_strings.append(
+                        f"{tag.key}: " + f"{round(tag.resolution, 2)} {datasetInfo.axis_units[tag.key]}"
+                    )
+                else:
+                    axis_strings.append(f"{tag.key}: " + f"{round(tag.resolution, 2)}")
+            return ", ".join(axis_strings)
 
         raise NotImplementedError(f"Unknown column: row={index.row()}, column={index.column()}")
 
