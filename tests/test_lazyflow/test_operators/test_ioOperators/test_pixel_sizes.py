@@ -1,11 +1,21 @@
+import json
+import xml.etree.ElementTree as ET
+
+import h5py
+import numpy as np
+import pytest
+import tifffile
+import vigra
+
 from lazyflow.graph import Graph
 from lazyflow.operators import OpArrayPiper
-from lazyflow.operators.ioOperators import OpTiffReader, OpExportMultipageTiff
-import pytest
-import xml.etree.ElementTree as ET
-import numpy as np
-import vigra
-import tifffile
+from lazyflow.operators.ioOperators import (
+    OpTiffReader,
+    OpExportMultipageTiff,
+    OpH5N5WriterBigDataset,
+    OpStreamingH5N5Reader,
+)
+from ..test_ioOperators.testOpStreamingH5N5Reader import h5n5_file, data
 
 
 def get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units):
@@ -82,13 +92,13 @@ def test_read_OpTiffReader(image_path, expected_meta, inputdata_dir):
             ["t", "z", "c", "y", "x"],
             (6, 2, 3, 3, 5),
             [120, 0.54321, 0.0, 6.000024000096, 13],
-            ["pixel", "pixel", "", "pixel", "pixel"],
+            ["frame", "pixel", "", "pixel", "pixel"],
         ),
         (
             ["t", "z", "c", "y", "x"],
             (2, 3, 6, 3, 5),
             [120, 0.54321, 42, 6.000024000096, 13],
-            ["µm", "mm", "", "ms", "µm"],
+            ["min", "mm", "", "mm", "µm"],
         ),
         (["t", "z", "c", "y", "x"], (6, 2, 3, 3, 5), [0.0, 0.0, 0.0, 0.0, 0.0], ["s", "µm", "", "mm", "µm"]),
         (
@@ -190,7 +200,7 @@ def test_write_read_roundtrip_tiff_OpExportMultipageTiff(graph, tmp_path):
             ["", "", ""],
             ["pixel", "pixel", "pixel"],
         ),  # tifffile doesn't work with x smaller 5
-        (["z", "y", "x"], (2, 3, 5), [0.0, 0.0, 13], ["km", "", "centimetre"], ["km", "pixel", "pixel"]),
+        (["z", "y", "x"], (2, 3, 5), [0.0, 0.0, 13], ["km", "", "centimetre"], ["km", "pixel", "cm"]),
         (["z", "y", "x"], (2, 3, 5), [0.0, 0.0, 0.0], ["um", "MILLIMETER", "cENtIMETEr"], ["µm", "mm", "cm"]),
         (
             ["z", "c", "y", "x"],
@@ -232,7 +242,7 @@ def test_write_read_roundtrip_tiff_OpExportMultipageTiff(graph, tmp_path):
             (6, 2, 3, 3, 5),
             [120, 0.54321, 0.0, 6.000024000096, 13],
             ["", "", "", "", ""],
-            ["pixel", "pixel", "pixel", "pixel", "pixel"],
+            ["frame", "pixel", "pixel", "pixel", "pixel"],
         ),
     ],
 )
@@ -269,3 +279,126 @@ def test_unit_conversion_OpExportMultipageTiff(graph, tmp_path, axes, shape, res
                 continue
             assert pixels.attrib.get(sizes[axis][1], "pixel") == converted_units[axes.index(axis)]
             assert float(pixels.attrib.get(sizes[axis][0], 0)) == resolutions[axes.index(axis)]
+
+
+@pytest.mark.parametrize(
+    "axes, shape, resolutions, units",
+    [
+        (["y", "x"], (65, 58), [6.000024000096, 13], ["µm", "mm"]),
+        (["c", "y", "x"], (2, 65, 58), [0.0, 6.000024000096, 13], ["", "µm", "mm"]),
+        (
+            ["z", "y", "x"],
+            (2, 3, 5),
+            [0.54321, 6.000024000096, 13],
+            ["", "", ""],
+        ),  # tifffile doesn't work with x smaller 5
+        (["z", "y", "x"], (2, 3, 5), [0.0, 0.0, 13], ["μm", "", "cm"]),
+        (["z", "y", "x"], (2, 3, 5), [0.0, 0.0, 0.0], ["μm", "mm", "cm"]),
+        (["z", "y", "x"], (23, 65, 58), [0.54321, 6.000024000096, 13], ["μm", "mm", "cm"]),
+        (["z", "c", "y", "x"], (3, 2, 3, 5), [0.54321, 0.0, 6.000024000096, 13], ["", "", "", ""]),
+        (["z", "c", "y", "x"], (3, 2, 3, 5), [0.54321, 42, 6.000024000096, 13], ["μm", "mistake", "mm", "micron"]),
+        (["z", "c", "y", "x"], (3, 2, 3, 5), [0.0, 0.0, 0.0, 0.0], ["μm", "", "mm", "microns"]),
+        (["z", "c", "y", "x"], (23, 2, 65, 58), [0.54321, 0.0, 6.000024000096, 13], ["μm", "", "mm", "cm"]),
+        (["t", "z", "y", "x"], (15, 23, 65, 58), [120, 0.54321, 6.000024000096, 13], ["sec", "μm", "mm", "cm"]),
+        (["t", "z", "c", "y", "x"], (6, 2, 3, 3, 5), [120, 0.54321, 0.0, 6.000024000096, 13], ["", "", "", "", ""]),
+        (
+            ["t", "z", "c", "y", "x"],
+            (2, 3, 6, 3, 5),
+            [120, 0.54321, 42, 6.000024000096, 13],
+            ["μm", "mm", "mistake", "sec", "micron"],
+        ),
+        (["t", "z", "c", "y", "x"], (6, 2, 3, 3, 5), [0.0, 0.0, 0.0, 0.0, 0.0], ["sec", "μm", "", "mm", "microns"]),
+        (
+            ["t", "z", "c", "y", "x"],
+            (6, 2, 3, 3, 5),
+            [-120, 0.54321, 0.0, 6.000024000096, 13],
+            ["negative-sec", "μm", "", "mm", "microns"],
+        ),
+        (
+            ["t", "z", "c", "y", "x"],
+            (15, 23, 2, 65, 58),
+            [120, 0.54321, 0.0, 6.000024000096, 13],
+            ["ms", "μm", "", "mm", "cm"],
+        ),
+    ],
+)
+def test_write_OpH5N5WriterBigDataset(graph, tmp_path, axes, shape, resolutions, units):
+    op_data = get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units)
+    file_path = tmp_path / f"3d_image.h5"
+    file = h5py.File(file_path, "w")
+    group = file.create_group("volume")
+    opWriter = OpH5N5WriterBigDataset(graph=graph)
+    opWriter.h5N5File.setValue(group)
+    opWriter.h5N5Path.setValue("data")
+    opWriter.Image.connect(op_data.Output)
+
+    try:
+        assert opWriter.WriteImage.value  # Trigger write
+    finally:
+        file.close()
+    del file
+
+    file = h5py.File(file_path, "r")
+    dataset = file["volume/data"]
+    assert dataset.attrs["axistags"]
+    assert dataset.attrs["axis_units"]
+    axistags = vigra.AxisTags.fromJSON(dataset.attrs["axistags"])
+    axis_units = json.loads(dataset.attrs["axis_units"])
+    assert axes == axistags.keys()
+    for axis in axes:
+        assert axis_units[axis] == units[axes.index(axis)]
+        assert float(axistags[axis].resolution) == resolutions[axes.index(axis)]
+
+
+def test_read_OpStreamingH5N5Reader(graph, h5n5_file, data):
+    axistags = vigra.defaultAxistags("xyzct")
+    resolutions = [1.0, 2.0, 3.0, 4.0, 5.0]
+    for axis, res in zip(axistags, resolutions):
+        axistags.setResolution(axis.key, res)
+    axis_units = {"x": "cm", "y": "μm", "z": "m", "t": "sec"}
+    h5n5_file.create_group("volume").create_dataset("data", data=data)
+    h5n5_file["volume/data"].attrs["axistags"] = axistags.toJSON()
+    h5n5_file["volume/data"].attrs["axis_units"] = json.dumps(axis_units)
+    op = OpStreamingH5N5Reader(graph=graph)
+    op.H5N5File.setValue(h5n5_file)
+    op.InternalPath.setValue("volume/data")
+
+    assert op.OutputImage.meta.shape == data.shape
+    assert op.OutputImage.meta.axistags == axistags
+    assert op.OutputImage.meta.axis_units == axis_units
+    np.testing.assert_array_equal(op.OutputImage.value, data)
+
+
+def test_write_read_roundtrip_h5(
+    graph,
+    tmp_path,
+    axes=["c", "y", "x"],
+    shape=(2, 58, 67),
+    resolutions=[0.0, 6.000024000096, 13],
+    units=["", "μm", "mm"],
+):
+    op_data = get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units)
+
+    file_path = tmp_path / f"3d_image.h5"
+    file = h5py.File(file_path, "w")
+    group = file.create_group("volume")
+
+    opWriter = OpH5N5WriterBigDataset(graph=graph)
+    opWriter.h5N5File.setValue(group)
+    opWriter.h5N5Path.setValue("data")
+    opWriter.Image.connect(op_data.Output)
+    try:
+        assert opWriter.WriteImage.value
+    finally:
+        file.close()
+    del file
+
+    reader = OpStreamingH5N5Reader(graph=graph)
+    reader.H5N5File.setValue(OpStreamingH5N5Reader.get_h5_n5_file(file_path))
+    reader.InternalPath.setValue("volume/data")
+    meta = reader.OutputImage.meta
+
+    assert meta.getAxisKeys() == axes
+    for axis in axes:
+        assert meta.axistags[axis].resolution == resolutions[axes.index(axis)]
+        assert meta.axis_units[axis] == units[axes.index(axis)]
