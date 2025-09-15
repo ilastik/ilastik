@@ -20,7 +20,8 @@
 ###############################################################################
 import os
 import collections
-from typing import Optional, Tuple
+from collections import OrderedDict
+from typing import Tuple, Union
 
 import numpy
 from ndstructs import Slice5D
@@ -30,7 +31,6 @@ from ilastik.config import cfg
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import PathComponents, getPathVariants, format_known_keys
 from lazyflow.operators.ioOperators import OpFormattedDataExport
-from lazyflow.operators.generic import OpSubRegion
 
 
 class DataExportPathFormatter:
@@ -301,13 +301,16 @@ class OpRawSubRegionHelper(Operator):
 
 def get_model_op(
     wrappedOp: "OpMultiLaneWrapper[OpDataExport]", selected_lane: int
-) -> Tuple[Optional[OpFormattedDataExport], Optional[OpSubRegion]]:
+) -> Union[Tuple[OpFormattedDataExport, OrderedDict[str, int]], Tuple[None, None]]:
     """
     Create a "model operator" that the gui can use.
     The model op is a single (non-wrapped) export operator that the
     gui will manipulate while the user plays around with the export
     settings.  When the user is finished, the model op slot settings can
     be copied over to the 'real' (wrapped) operator slots.
+
+    Also returns the smallest common shape across all data lanes, so that the
+    export settings dialog can restrict subregion inputs accordingly.
     """
     if len(wrappedOp) < selected_lane or not wrappedOp.InputSelection.ready():
         return None, None
@@ -326,6 +329,9 @@ def get_model_op(
             model_slot = getattr(model_op, slot_name)
             model_slot.setValue(slot.value)
 
+    # Connect the non-optional Input last to trigger setupOutputs
+    model_op.Input.connect(export_slot)
+
     # Choose a roi that can apply to all images in the original operator
     shape = export_slot.meta.shape
     axes = export_slot.meta.getAxisKeys()
@@ -337,14 +343,4 @@ def get_model_op(
             assert slot.meta.dtype == dtype
             shape = numpy.minimum(slot.meta.shape, shape)
 
-    # Must provide a 'ready' slot for the gui
-    # Use a subregion operator to provide a slot with the meta data we chose.
-    opSubRegion = OpSubRegion(parent=wrappedOp.parent)
-    opSubRegion.Roi.setValue([(0,) * len(shape), tuple(shape)])
-    opSubRegion.Input.connect(export_slot)
-
-    # (The actual contents of this slot are not important to the settings gui.
-    #  It only cares about the metadata.)
-    model_op.Input.connect(opSubRegion.Output)
-
-    return model_op, opSubRegion  # We return the subregion op, too, so the caller can clean it up.
+    return model_op, OrderedDict(zip(axes, shape))

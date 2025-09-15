@@ -240,7 +240,9 @@ class DataExportGui(QWidget):
         self.showSelectedDataset()
 
     def _chooseSettings(self):
-        opExportModelOp, opSubRegion = get_model_op(self.topLevelOperator, self.batchOutputTableWidget.currentRow())
+        opExportModelOp, exportSubregionMax = get_model_op(
+            self.topLevelOperator, self.batchOutputTableWidget.currentRow()
+        )
         if opExportModelOp is None:
             QMessageBox.information(
                 self,
@@ -251,7 +253,9 @@ class DataExportGui(QWidget):
             )
             return
 
-        settingsDlg = DataExportOptionsDlg(self, opExportModelOp, cfg["ilastik"]["output_filename_format"])
+        settingsDlg = DataExportOptionsDlg(
+            self, opExportModelOp, cfg["ilastik"]["output_filename_format"], exportSubregionMax
+        )
 
         if settingsDlg.exec_() == DataExportOptionsDlg.Accepted:
             # Disconnect the special 'transaction' slot to prevent these
@@ -272,7 +276,6 @@ class DataExportGui(QWidget):
 
             # Discard the temporary model op
             opExportModelOp.cleanUp()
-            opSubRegion.cleanUp()
 
             # Update the gui with the new export paths
             for index, slot in enumerate(self.topLevelOperator.ExportPath):
