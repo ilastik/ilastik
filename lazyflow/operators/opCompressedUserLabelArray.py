@@ -151,14 +151,6 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
 
         self._eraser_magic_value = self.eraser.value
 
-        # Are we being told to delete a label?
-        if self.deleteLabel.ready():
-            new_purge_label = self.deleteLabel.value
-            if self._label_to_purge != new_purge_label:
-                self._label_to_purge = new_purge_label
-                if self._label_to_purge > 0:
-                    self._purge_label(self._label_to_purge, True)
-
     def _purge_label(self, label_to_purge, decrement_remaining, replacement_value=0):
         """
         Scan through all labeled pixels.
@@ -393,8 +385,14 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
                 destination[destination_relative_intersection_slicing] = 0
 
     def propagateDirty(self, slot, subindex, roi):
-        # There should be no way to make the output dirty except via setInSlot()
-        pass
+        # The other way to make the  Output dirty is via setInSlot()
+        if slot is self.deleteLabel and slot.ready():
+            # Are we being told to delete a label?
+            new_purge_label = self.deleteLabel.value
+            if self._label_to_purge != new_purge_label:
+                self._label_to_purge = new_purge_label
+                if self._label_to_purge > 0:
+                    self._purge_label(self._label_to_purge, True)
 
     def setInSlot(self, slot, subindex, roi, new_pixels):
         if slot is self.Input:
