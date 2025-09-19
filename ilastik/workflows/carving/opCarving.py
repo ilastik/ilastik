@@ -388,8 +388,8 @@ class OpCarving(Operator):
             logger.info("Loading seeds....")
             z = numpy.zeros(bounding_box_shape, dtype=dtype)
             logger.info("Allocating seed array took {} seconds".format(timer.seconds()))
-            z[fgVoxels] = Labels.FOREGROUND
-            z[bgVoxels] = Labels.BACKGROUND
+            z[*fgVoxels] = Labels.FOREGROUND
+            z[*bgVoxels] = Labels.BACKGROUND
             self.WriteSeeds[(slice(0, 1),) + bounding_box_slicing + (slice(0, 1),)] = z[
                 numpy.newaxis, :, :, :, numpy.newaxis
             ]
