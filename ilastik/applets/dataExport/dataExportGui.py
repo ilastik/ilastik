@@ -1,10 +1,7 @@
-from __future__ import absolute_import
-from __future__ import division
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -21,10 +18,9 @@ from __future__ import division
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
-from past.utils import old_div
 import os
 import threading
+import shutil
 from functools import partial
 
 import qtpy.compat
@@ -43,7 +39,6 @@ from qtpy.QtGui import QIcon
 from lazyflow.graph import Slot
 
 from ilastik.config import cfg
-
 from ilastik.utility import bind, log_exception
 from lazyflow.utility import PathComponents
 from ilastik.utility.gui import ThreadRouter, threadRouted, ThunkEvent, ThunkEventHandler, threadRoutedWithRouter
@@ -396,7 +391,7 @@ class DataExportGui(QWidget):
             self.progressSignal(1)
 
             def signalFileProgress(slotIndex, percent):
-                self.progressSignal(old_div((100 * slotIndex + percent), len(laneViewList)))
+                self.progressSignal(int((100 * slotIndex + percent) / len(laneViewList)))
 
             # Client hook
             self.parentApplet.prepare_for_entire_export()
@@ -496,12 +491,14 @@ class DataExportGui(QWidget):
             userSelection[0] = False
 
     def deleteAllResults(self):
-        for innerOp in self.topLevelOperator:
-            operatorView = innerOp
-            pathComp = PathComponents(operatorView.ExportPath.value, operatorView.WorkingDirectory.value)
-            if os.path.exists(pathComp.externalPath):
-                os.remove(pathComp.externalPath)
-            # we need to toggle the dirts state in order to enforce a frech dirty signal
+        for operatorView in self.topLevelOperator:
+            path = PathComponents(operatorView.ExportPath.value, operatorView.WorkingDirectory.value).externalPath
+            if os.path.exists(path):
+                if os.path.isdir(path) and (path.endswith(".zarr") or path.endswith(".n5")):
+                    shutil.rmtree(path)
+                else:
+                    os.remove(path)
+            # Toggle dirty state to enforce a fresh dirty signal
             operatorView.Dirty.setValue(False)
             operatorView.Dirty.setValue(True)
 
