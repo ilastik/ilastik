@@ -20,6 +20,8 @@
 ###############################################################################
 import pytest
 
+_ = pytest.importorskip("tiktorch", reason="These tests require tiktorch")
+
 from ilastik.applets.trainableDomainAdaptation.trainableDomainAdaptationGui import ConfigurableChannelSelector
 
 

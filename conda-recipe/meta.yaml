@@ -94,7 +94,6 @@ outputs:
         - pytest >4
         - pytest-qt
         - volumina
-        - tiktorch
 
       commands:
         - pytest -v

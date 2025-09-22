@@ -43,7 +43,6 @@ from .serverListWidget import ServerListWidget, ServerListModel
 from .configStorage import SERVER_CONFIG
 from . import types
 from ilastik import config
-import tiktorch
 
 
 class ServerConfigGui(QWidget):
