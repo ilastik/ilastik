@@ -251,6 +251,10 @@ class TestCarvingGui(ShellGuiTestCaseBase):
             op_carving.saveObjectAs("Object 1")
             op_carving.deleteObject("<not saved yet>")
 
+            op_carving.loadObject("Object 1")
+            # Need to save back because loading removes it from the completed segments layer (which we assert below...)
+            op_carving.saveObjectAs("Object 1")
+
             # export the mesh:
             req = gui.currentGui()._exportMeshes(["Object 1"], [self.output_obj_file])
             req.wait()
