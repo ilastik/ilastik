@@ -2,6 +2,9 @@ import grpc
 import os
 import platform
 import pytest
+
+_ = pytest.importorskip("tiktorch", reason="These tests require tiktorch")
+
 from unittest import mock
 
 from ilastik.workflows.neuralNetwork._localLauncher import LocalServerLauncher

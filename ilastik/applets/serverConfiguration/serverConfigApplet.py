@@ -19,6 +19,7 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import logging
+from typing import TYPE_CHECKING
 
 from ilastik.applets.base.standardApplet import StandardApplet
 from .opServerConfig import OpServerConfig
@@ -26,11 +27,13 @@ from .serverConfigSerializer import ServerConfigSerializer
 
 logger = logging.getLogger(__name__)
 
-from lazyflow.operators import tiktorch
+
+if TYPE_CHECKING:
+    from lazyflow.operators import tiktorch
 
 
 class ServerConfigApplet(StandardApplet):
-    def __init__(self, workflow, *, connectionFactory: tiktorch.IConnectionFactory):
+    def __init__(self, workflow, *, connectionFactory: "tiktorch.IConnectionFactory"):
         self._topLevelOperator = OpServerConfig(parent=workflow)
         super().__init__("Server configuration", workflow)
         self._serializableItems = [ServerConfigSerializer("ServerConfiguration", operator=self._topLevelOperator)]
@@ -45,7 +48,7 @@ class ServerConfigApplet(StandardApplet):
         self.appletStateUpdateRequested()
 
     @property
-    def connectionFactory(self) -> tiktorch.IConnectionFactory:
+    def connectionFactory(self) -> "tiktorch.IConnectionFactory":
         return self._connectionFactory
 
     @property
