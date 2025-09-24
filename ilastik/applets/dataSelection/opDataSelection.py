@@ -46,9 +46,9 @@ from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik import Project
 from ilastik.utility import OpMultiLaneWrapper
 from ilastik.workflow import Workflow
-from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import DEFAULT_SCALE_KEY
+from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, Multiscales
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
-from lazyflow.utility.helpers import get_default_axisordering
+from lazyflow.utility.helpers import get_default_axisordering, eq_shapes
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators import OpMissingDataSource
 from lazyflow.operators.ioOperators import OpH5N5WriterBigDataset
@@ -91,6 +91,10 @@ class UnsuitedAxistagsException(Exception):
         )
 
 
+class TransactionRequiredError(AssertionError):
+    pass
+
+
 class DatasetInfo(ABC):
     def __init__(
         self,
@@ -99,6 +103,7 @@ class DatasetInfo(ABC):
         laneDtype: type,
         default_tags: AxisTags,  # inferred from dataset or another data lane
         axistags: AxisTags = None,  # given through datasetInfoEditorWidget or cmdline
+        scales: Multiscales = None,
         allowLabels: bool = True,
         subvolume_roi: Tuple = None,
         display_mode: str = "default",
@@ -121,6 +126,7 @@ class DatasetInfo(ABC):
         self.laneDtype = laneDtype
         if isinstance(self.laneDtype, numpy.dtype):
             self.laneDtype = numpy.sctypeDict[self.laneDtype.name]
+        self.scales = scales or OrderedDict()
         self.allowLabels = allowLabels
         self.subvolume_roi = subvolume_roi
         self.drange = drange
@@ -131,7 +137,6 @@ class DatasetInfo(ABC):
         self.legacy_datasetId = self.generate_id()
         self.working_scale = working_scale
         self.scale_locked = scale_locked
-        self.scales = OrderedDict()  # {scale_key: tagged_scale_shape}, see MultiscaleStore.multiscales
 
     @property
     def shape5d(self) -> Shape5D:
@@ -551,6 +556,7 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
             laneShape=meta.shape,
             laneDtype=meta.dtype,
             axis_units=meta.axis_units,
+            scales=meta.scales,
             **info_kwargs,
         )
 
@@ -563,8 +569,13 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         return self.url
 
     def create_data_reader(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
-        scale_input_slot = getattr(parent, "ActiveScale", None)
-        op_reader = OpInputDataReader(parent=parent, graph=graph, FilePath=self.url, ActiveScale=scale_input_slot)
+        assert hasattr(parent, "ActiveScale"), "cannot make a multiscale dataset for consumer without scale"
+        active_scale = (
+            parent.ActiveScale.value
+            if parent.ActiveScale.ready() and parent.ActiveScale.value != DEFAULT_SCALE_KEY
+            else self.working_scale
+        )
+        op_reader = OpInputDataReader(parent=parent, graph=graph, FilePath=self.url, ActiveScale=active_scale)
         return op_reader.Output
 
     @property
@@ -594,6 +605,23 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         if "url" not in params:
             params["url"] = group["filePath"][()].decode()
         return super().from_h5_group(group, params)
+
+    def get_scale_matching_shape(self, target_shape: Dict[str, int]) -> str:
+        for scale, shape in self.scales.items():
+            if eq_shapes(shape, target_shape):
+                return scale
+        raise DatasetConstraintError("DataSelection", f"No scale matches shape {target_shape}")
+
+    def has_scale_matching_shape(self, target_shape: Dict[str, int]) -> bool:
+        return any(eq_shapes(shape, target_shape) for shape in self.scales.values())
+
+    def switch_to_scale_with_shape(self, target_shape: Dict[str, int]):
+        for scale, shape in self.scales.items():
+            if eq_shapes(shape, target_shape):
+                self.working_scale = scale
+                self.laneShape = tuple(self.scales[scale].values())
+                return
+        raise DatasetConstraintError("DataSelection", f"No scale matches shape {target_shape}")
 
     @staticmethod
     def _nickname_from_url(url: str) -> str:
@@ -800,6 +828,8 @@ class OpDataSelection(Operator):
     ProjectDataGroup = InputSlot(stype="string", optional=True)
     WorkingDirectory = InputSlot(stype="filestring")  # : The filesystem directory where the project file is located
     Dataset = InputSlot(stype="object")  # : A DatasetInfo object
+    # : Transaction slot to prevent setups of error states while changing scale across roles
+    ScaleChangeFinished = InputSlot(stype="bool", value=True)
     ActiveScale = InputSlot(stype="string", optional=True)  # : The currently selected scale (for multiscale data)
 
     # Outputs
@@ -846,7 +876,9 @@ class OpDataSelection(Operator):
         self.Dataset.notifyUnready(self._clean_up_all_children)
         self.Dataset.setOrConnectIfAvailable(Dataset)
 
-    def _clean_up_all_children(self, *args) -> None:
+        self.ScaleChangeFinished.notifyUnready(self._clean_up_all_children)
+
+    def _clean_up_all_children(self, *_) -> None:
         self.Image.disconnect()
         # This relies on self.children being in the same order as the graph.
         for op in reversed(self.children):
@@ -929,8 +961,10 @@ class OpDataSelectionGroup(Operator):
     WorkingDirectory = InputSlot(stype="filestring")
     DatasetRoles = InputSlot(stype="object")
 
-    # Must mark as optional because not all subslots are required.
-    DatasetGroup = InputSlot(stype="object", level=1, optional=True)  # "Group" as in group of slots
+    # Must mark as optional because not all subslots are required. "Group" as in group of slots
+    DatasetGroup = InputSlot(stype="object", level=1, optional=True)
+    # Transaction slot to prevent setups of error states while changing scale across roles
+    ScaleChangeFinished = InputSlot(stype="bool", value=True)
     ActiveScaleGroup = InputSlot(stype="string", level=1, optional=True, value=DEFAULT_SCALE_KEY)
 
     # Outputs
@@ -997,15 +1031,18 @@ class OpDataSelectionGroup(Operator):
                 OpDataSelection,
                 parent=self,
                 operator_kwargs={"forceAxisOrder": self._forceAxisOrder},
-                broadcastingSlotNames=["ProjectFile", "ProjectDataGroup", "WorkingDirectory"],
+                broadcastingSlotNames=["ProjectFile", "ProjectDataGroup", "WorkingDirectory", "ScaleChangeFinished"],
             )
             self.ImageGroup.connect(self._opDatasets.Image)
             self._opDatasets.Dataset.connect(self.DatasetGroup)
             self._opDatasets.ProjectFile.connect(self.ProjectFile)
             self._opDatasets.ProjectDataGroup.connect(self.ProjectDataGroup)
             self._opDatasets.WorkingDirectory.connect(self.WorkingDirectory)
+            self._opDatasets.ScaleChangeFinished.connect(self.ScaleChangeFinished)
             self._opDatasets.ActiveScale.connect(self.ActiveScaleGroup)
             self.DatasetGroupOut.connect(self._opDatasets.DatasetOut)
+
+            self.ActiveScaleGroup.notifyDirty(self._ensure_transaction_in_progress)
 
         for role_index, opDataSelection in enumerate(self._opDatasets):
             opDataSelection.RoleName.setValue(self._roles[role_index])
@@ -1028,6 +1065,13 @@ class OpDataSelectionGroup(Operator):
     def propagateDirty(self, slot, subindex, roi):
         # Output slots are directly connected to internal operators
         pass
+
+    def _ensure_transaction_in_progress(self, *_):
+        # Setting scale while the op is fully ready is forbidden.
+        # Doing this will set scale on the internal OpDataSelection for each data role one by one,
+        # causing setupOutputs throughout the workflow with different data roles providing different data shape.
+        if self.ScaleChangeFinished.ready():
+            raise TransactionRequiredError("must disconnect ScaleChangeFinished first before changing scale")
 
 
 class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):

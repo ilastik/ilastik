@@ -21,8 +21,8 @@
 from __future__ import division
 from builtins import range
 from functools import partial
-from PyQt5 import uic, QtWidgets, QtCore
-from PyQt5.QtGui import QColor, QTextCursor
+from qtpy import uic, QtWidgets
+from qtpy.QtGui import QColor, QTextCursor
 
 import os
 import sys
@@ -1142,9 +1142,9 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                         if len(div_at):
                             div_at = numpy.array(sorted(div_at, key=lambda a_entry: a_entry[0]))[::-1]
                             ds = tg.create_dataset("Splits", data=div_at[:, :-1], dtype=numpy.uint32, compression=1)
-                            ds.attrs[
-                                "Format"
-                            ] = "ancestor (previous file), descendant (current file), descendant (current file)"
+                            ds.attrs["Format"] = (
+                                "ancestor (previous file), descendant (current file), descendant (current file)"
+                            )
                             ds = tg.create_dataset(
                                 "Splits-Energy", data=div_at[:, -1], dtype=numpy.double, compression=1
                             )

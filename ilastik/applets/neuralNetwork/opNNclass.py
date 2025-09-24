@@ -29,6 +29,7 @@ from lazyflow.operators.tiktorch import (
     OpTikTorchClassifierPredict,
 )
 from lazyflow.operators.tiktorch.classifier import ModelSession
+from lazyflow.utility.helpers import eq_shapes
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
@@ -188,6 +189,14 @@ class OpNNClassification(Operator):
 
         self.InputImages.notifyInserted(handleNewInputImage)
 
+        def handleNewOverlayImage(multislot, index, *_):
+            def handleOverlayReady(_):
+                self._checkConstraints(index)
+
+            multislot[index].notifyReady(handleOverlayReady)
+
+        self.OverlayImages.notifyInserted(handleNewOverlayImage)
+
         # All input multi-slots should be kept in sync
         # Output multi-slots will auto-sync via the graph
         multiInputs = [s for s in list(self.inputs.values()) if s.level >= 1]
@@ -241,12 +250,21 @@ class OpNNClassification(Operator):
 
     def _checkConstraints(self, laneIndex):
         """
-        Ensure that all input images have the same number of channels.
+        Ensure that all input images have the same number of channels, and that overlay shapes match input shape.
         """
         if not self.InputImages[laneIndex].ready():
             return
 
         thisLaneTaggedShape = self.InputImages[laneIndex].meta.getTaggedShape()
+
+        if self.OverlayImages[laneIndex].ready():
+            if not eq_shapes(self.OverlayImages[laneIndex].meta.getTaggedShape(), thisLaneTaggedShape):
+                raise DatasetConstraintError(
+                    "Pixel Classification with CNNs",
+                    "The overlay image must have the same shape as the corresponding raw image (different channels are ok). "
+                    f"You tried to overlay an image with shape={self.OverlayImages[laneIndex].meta.shape} "
+                    f"onto a raw image with shape={self.InputImages[laneIndex].meta.shape}.",
+                )
 
         # Find a different lane and use it for comparison
         validShape = thisLaneTaggedShape

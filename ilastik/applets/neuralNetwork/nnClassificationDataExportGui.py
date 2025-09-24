@@ -24,7 +24,7 @@ from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
 from ilastik.utility import bind
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 
-from PyQt5.QtGui import QColor
+from qtpy.QtGui import QColor
 
 
 class NNClassificationDataExportGui(DataExportGui):

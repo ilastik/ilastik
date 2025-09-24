@@ -9,17 +9,17 @@ from __future__ import (
 )
 import sys
 
-from PyQt5.QtCore import pyqtSignal, QThread, Qt
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QProgressBar, QLabel
+from qtpy.QtCore import Signal, QThread, Qt
+from qtpy.QtWidgets import QDialog, QVBoxLayout, QProgressBar, QLabel
 
 from ilastik.utility.progress import DefaultProgressVisitor, CommandLineProgressVisitor
 from ilastik.utility.gui.threadRouter import ThreadRouter, threadRouted
 
 
 class TrackProgress(QThread):
-    done = pyqtSignal()
-    progress = pyqtSignal(float)
-    newStep = pyqtSignal(str)
+    done = Signal()
+    progress = Signal(float)
+    newStep = Signal(str)
 
     def __init__(self, parent=None):
         QThread.__init__(self, parent)
@@ -29,7 +29,7 @@ class TrackProgress(QThread):
 
 
 class TrackProgressDialog(QDialog):
-    finished = pyqtSignal()
+    finished = Signal()
 
     def __init__(self, parent=None, numStages=1):
         QDialog.__init__(self, parent)

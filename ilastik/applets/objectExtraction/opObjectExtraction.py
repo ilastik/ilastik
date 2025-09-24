@@ -391,17 +391,29 @@ class OpObjectExtractionBase(Operator, ABC):
 
         self.RawImage.notifyReady(self._checkConstraints)
         self.SegmentationImage.notifyReady(self._checkConstraints)
+        self.Atlas.notifyReady(self._checkConstraints)
 
     def _checkConstraints(self, *_):
-        if self.RawImage.ready() and self.SegmentationImage.ready():
-            rawTaggedShape = self.RawImage.meta.getTaggedShape()
-            segTaggedShape = self.SegmentationImage.meta.getTaggedShape()
-            rawTaggedShape["c"] = None
-            segTaggedShape["c"] = None
-            if dict(rawTaggedShape) != dict(segTaggedShape):
+        if not any((self.RawImage.ready(), self.SegmentationImage.ready(), self.Atlas.ready())):
+            return
+
+        input_pairs = [
+            (self.RawImage, self.SegmentationImage, "Raw data", "label data"),
+            (self.RawImage, self.Atlas, "Raw data", "atlas data"),
+            (self.SegmentationImage, self.Atlas, "Label data", "atlas data"),
+        ]
+
+        for slot1, slot2, name1, name2 in input_pairs:
+            if not (slot1.ready() and slot2.ready()):
+                continue
+            shape1 = slot1.meta.getTaggedShape()
+            shape2 = slot2.meta.getTaggedShape()
+            shape1["c"] = None
+            shape2["c"] = None
+            if dict(shape1) != dict(shape2):
                 msg = (
-                    "Raw data and label data must have equal dimensions (different channels are okay)."
-                    f"Your datasets have shapes: {self.RawImage.meta.shape} and {self.SegmentationImage.meta.shape}."
+                    f"{name1} and {name2} must have equal dimensions (different channels are okay). "
+                    f"Your datasets have shapes: {slot1.meta.shape} and {slot2.meta.shape}."
                 )
                 logger.info(msg)
                 raise DatasetConstraintError("Object Extraction", msg)

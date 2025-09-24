@@ -18,10 +18,12 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+from typing import List
+
 from past.utils import old_div
-from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QUrl, QObject, QEvent, QTimer
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import (
+from qtpy.QtCore import Signal, Slot, Qt, QUrl, QObject, QEvent
+from qtpy.QtGui import QIcon, QPalette
+from qtpy.QtWidgets import (
     QTableView,
     QHeaderView,
     QMenu,
@@ -184,13 +186,27 @@ class InlineAddButtonDelegate(QItemDelegate):
         super().paint(painter, option, index)
 
 
-class ElideRightDelegate(QStyledItemDelegate):
+class ScaleComboBoxOptionDelegate(QStyledItemDelegate):
+    """
+    Elides text, and greys out unavailable scale options
+    """
+
+    def __init__(self, parent, enabled_indices):
+        super().__init__(parent)
+        self.enabled_indices = enabled_indices
+
     def paint(self, painter, option, index):
         option.textElideMode = Qt.ElideRight
+        if index.row() not in self.enabled_indices:
+            option.palette.setColor(QPalette.Text, Qt.gray)
         super().paint(painter, option, index)
 
 
 class ScaleComboBoxDelegate(QStyledItemDelegate):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.enabled_scales: List[int] = []
+
     def paint(self, painter, option, index):
         scales = index.model().get_scale_options(index.row())
         if scales:
@@ -204,8 +220,9 @@ class ScaleComboBoxDelegate(QStyledItemDelegate):
         scale_options = model.get_scale_options(index.row())
         if not scale_options:
             return None
+        self.enabled_scales = model.get_common_scale_option_indices(index.row())
         combo = QComboBox(parent)
-        combo.setItemDelegate(ElideRightDelegate(combo))
+        combo.setItemDelegate(ScaleComboBoxOptionDelegate(combo, self.enabled_scales))
         for scale_key, scale in scale_options.items():
             combo.addItem(scale, scale_key)
         combo.currentIndexChanged.connect(partial(self.on_combo_selected, index))
@@ -218,13 +235,6 @@ class ScaleComboBoxDelegate(QStyledItemDelegate):
             with silent_qobject(editor):  # To avoid triggering on_combo_selected
                 editor.setCurrentIndex(current_selected)
 
-    def setModelData(self, editor, model, index, user_triggered=False):
-        if not user_triggered:
-            # De-focussing the combobox triggers setModelData.
-            # We only want to emit when the user actually selects from the combobox.
-            return
-        self.parent().scaleSelected.emit(index.row(), editor.currentData())
-
     def on_combo_selected(self, index):
         model = index.model()
         if model.is_scale_locked(index.row()):
@@ -234,32 +244,41 @@ class ScaleComboBoxDelegate(QStyledItemDelegate):
                 "another dataset, or create a new project."
             )
             QMessageBox.information(self.parent(), "Scale locked", message)
-            # Reset the combobox to the previous value
-            editor = self.sender()
-            previous_index = editor.findText(index.data(Qt.DisplayRole))
-            with silent_qobject(editor):  # To avoid re-triggering on_combo_selected
-                editor.setCurrentIndex(previous_index)
+            self.reset_currently_selected_option(index)
             return
-        self.setModelData(self.sender(), None, index, user_triggered=True)
-        changed_cell = model.index(index.row(), DatasetColumn.TaggedShape)
-        # dataChanged(topLeft, bottomRight); since we're editing one cell, topLeft == bottomRight
-        model.dataChanged.emit(changed_cell, changed_cell)
+        editor = self.sender()
+        if editor.currentIndex() not in self.enabled_scales:
+            message = "The dataset(s) in other roles have no scale corresponding to this one."
+            QMessageBox.information(self.parent(), "Scale unavailable", message)
+            self.reset_currently_selected_option(index)
+            return
+        self.parent().scaleSelected.emit(index.row(), editor.currentData())
+
+    def reset_currently_selected_option(self, index):
+        """
+        Reset the combobox to the previous value in case the user tried to change to an option that
+        wasn't available, or while the scale is locked.
+        """
+        editor = self.sender()
+        previous_index = editor.findText(index.data(Qt.DisplayRole))
+        with silent_qobject(editor):  # To avoid re-triggering on_combo_selected
+            editor.setCurrentIndex(previous_index)
 
 
 class DatasetDetailedInfoTableView(QTableView):
-    dataLaneSelected = pyqtSignal(object)  # Signature: (laneIndex)
-    scaleSelected = pyqtSignal(int, str)  # Signature: (lane_index, scale_key)
+    dataLaneSelected = Signal(object)  # Signature: (laneIndex)
+    scaleSelected = Signal(int, str)  # Signature: (lane_index, scale_key)
 
-    replaceWithFileRequested = pyqtSignal(int)  # Signature: (laneIndex), or (-1) to indicate "append requested"
-    replaceWithStackRequested = pyqtSignal(int)  # Signature: (laneIndex)
-    editRequested = pyqtSignal(object)  # Signature: (lane_index_list)
-    resetRequested = pyqtSignal(object)  # Signature: (lane_index_list)
+    replaceWithFileRequested = Signal(int)  # Signature: (laneIndex), or (-1) to indicate "append requested"
+    replaceWithStackRequested = Signal(int)  # Signature: (laneIndex)
+    editRequested = Signal(object)  # Signature: (lane_index_list)
+    resetRequested = Signal(object)  # Signature: (lane_index_list)
 
-    addFilesRequested = pyqtSignal(int)  # Signature: (lane_index)
-    addStackRequested = pyqtSignal(int)  # Signature: (lane_index)
-    addMultiscaleRequested = pyqtSignal(int)  # Signature: (lane_index)
-    addDvidVolumeRequested = pyqtSignal(int)  # Signature: (lane_index)
-    addFilesRequestedDrop = pyqtSignal(object, int)  # Signature: (filepath_list, lane_index)
+    addFilesRequested = Signal(int)  # Signature: (lane_index)
+    addStackRequested = Signal(int)  # Signature: (lane_index)
+    addMultiscaleRequested = Signal(int)  # Signature: (lane_index)
+    addDvidVolumeRequested = Signal(int)  # Signature: (lane_index)
+    addFilesRequestedDrop = Signal(object, int)  # Signature: (filepath_list, lane_index)
 
     def __init__(self, parent: "DataSelectionGui"):
         super().__init__(parent)
@@ -289,19 +308,19 @@ class DatasetDetailedInfoTableView(QTableView):
         self.horizontalHeader().installEventFilter(event_filter)
         self.verticalHeader().installEventFilter(event_filter)
 
-    @pyqtSlot(int)
+    @Slot(int)
     def handleCellAddFilesEvent(self, button):
         self.addFilesRequested.emit(button.index.row())
 
-    @pyqtSlot(int)
+    @Slot(int)
     def handleCellAddStackEvent(self, button):
         self.addStackRequested.emit(button.index.row())
 
-    @pyqtSlot(int)
+    @Slot(int)
     def handleCellAddDvidVolumeEvent(self, button):
         self.addDvidVolumeRequested.emit(button.index.row())
 
-    @pyqtSlot(int)
+    @Slot(int)
     def handleCellAddMultiscaleDatasetEvent(self, button):
         self.addMultiscaleRequested.emit(button.index.row())
 
@@ -495,3 +514,16 @@ class DatasetDetailedInfoTableView(QTableView):
         first_col_width = self.columnWidth(0)
         self.setColumnWidth(0, first_col_width + 1)
         self.setColumnWidth(0, first_col_width)
+
+    def refresh_scale_options(self):
+        """
+        To be called when switching input data tabs.
+        The available scales might have changed if the user added data to another role,
+        so need to refresh the scale select dropdown-boxes to disable scales not matching the other roles.
+        """
+        lane_count = self.model().rowCount() - 1
+        for lane in range(lane_count):
+            scale_cell = self.model().index(lane, DatasetColumn.Scale)
+            if self.isPersistentEditorOpen(scale_cell):
+                self.closePersistentEditor(scale_cell)
+                self.openPersistentEditor(scale_cell)

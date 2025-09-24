@@ -1,8 +1,8 @@
 from unittest.mock import Mock, patch
 
 import pytest
-from PyQt5.QtCore import QUrl
-from PyQt5.QtWidgets import QMessageBox
+from qtpy.QtCore import QUrl
+from qtpy.QtWidgets import QMessageBox
 
 from ilastik.shell.gui.ilastikShell import StartupContainer
 

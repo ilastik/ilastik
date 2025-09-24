@@ -1,6 +1,6 @@
-from PyQt5.QtCore import pyqtSignal, QObject
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QToolBox, QWidget, QStackedWidget
+from qtpy.QtCore import Signal, QObject
+from qtpy.QtGui import QIcon
+from qtpy.QtWidgets import QToolBox, QWidget, QStackedWidget
 
 from ilastik.shell.gui.iconMgr import ilastikIcons
 
@@ -50,7 +50,7 @@ class AppletBarManager(QObject):
     but they still need to be tracked, to provide convenient interface
     """
 
-    appletActivated = pyqtSignal(int)
+    appletActivated = Signal(int)
 
     def __init__(self, appletBar) -> None:
         super().__init__()

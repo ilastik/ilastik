@@ -18,13 +18,18 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import json
-from typing import Dict
 
-from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
+import json
+from collections import OrderedDict
+from functools import reduce
+from typing import Dict, List
+
+
+from qtpy.QtCore import Qt, QAbstractItemModel, QModelIndex
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from lazyflow.utility.helpers import bigintprod
+from lazyflow.utility.helpers import bigintprod, eq_shapes
+from lazyflow.utility.io_util.multiscaleStore import Multiscales
 from .opDataSelection import DatasetInfo
 from .dataLaneSummaryTableModel import rowOfButtonsProxy
 
@@ -241,23 +246,57 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
         raise NotImplementedError(f"Unknown column: row={index.row()}, column={index.column()}")
 
-    def get_scale_options(self, laneIndex) -> Dict[str, str]:
+    def get_scale_options(self, laneIndex) -> OrderedDict[str, str]:
+        """
+        Returns { scale_key : display string }
+        """
         try:
             datasetSlot = self._op.DatasetGroupOut[laneIndex][self._roleIndex]
         except IndexError:  # This can happen during "Save Project As"
-            return {}
+            return OrderedDict()
         if not datasetSlot.ready():
-            return {}
+            return OrderedDict()
         datasetInfo = datasetSlot.value
         if not datasetInfo.scales:
-            return {}
+            return OrderedDict()
         # Multiscale datasets always list scales from original (largest) to most-downscaled (smallest).
         # We display them in reverse order so that the default loaded scale (the smallest)
         # is the first option in the drop-down box
-        return {
-            key: _dims_to_display_string(tagged_shape, datasetInfo.axiskeys, datasetInfo.laneDtype)
-            for key, tagged_shape in reversed(datasetInfo.scales.items())
-        }
+        return OrderedDict(
+            {
+                key: _dims_to_display_string(tagged_shape, datasetInfo.axiskeys, datasetInfo.laneDtype)
+                for key, tagged_shape in reversed(datasetInfo.scales.items())
+            }
+        )
+
+    def get_common_scale_option_indices(self, laneIndex) -> List[int]:
+        """
+        Check all datasets and scales across all roles.
+        Return indices of the options from `get_scale_options` that have matching scales in all other roles.
+        """
+
+        def shapes_intersection(shapes1: List[Dict[str, int]], shapes2: List[Dict[str, int]]):
+            return [s1 for s1 in shapes1 if any(eq_shapes(s1, s2) for s2 in shapes2)]
+
+        # Checking if ready etc. shouldn't be necessary here because this should only be called
+        # while building the scale dropdown (by which point everything should be ready).
+        scale_shapes_per_role: List[List[OrderedDict[str, int]]] = [
+            (
+                list(role_slot.value.scales.values())
+                if role_slot.value.scales
+                else [dict(zip(role_slot.value.axistags.keys(), role_slot.value.laneShape))]
+            )
+            for role_slot in self._op.DatasetGroupOut[laneIndex]
+            if role_slot.ready()
+        ]
+        common_scale_shapes = reduce(shapes_intersection, scale_shapes_per_role)
+
+        scale_options: Multiscales = self._op.DatasetGroupOut[laneIndex][self._roleIndex].value.scales
+        indices_of_common_scales = []
+        for i, shape in enumerate(reversed(scale_options.values())):
+            if any(eq_shapes(shape, common_shape) for common_shape in common_scale_shapes):
+                indices_of_common_scales.append(i)
+        return indices_of_common_scales
 
     def is_scale_locked(self, laneIndex) -> bool:
         datasetSlot = self._op.DatasetGroupOut[laneIndex][self._roleIndex]

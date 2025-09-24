@@ -23,8 +23,8 @@ from functools import partial
 from typing import Dict, List, Set
 
 from ilastikrag.gui import FeatureSelectionDialog
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (
+from qtpy.QtCore import Qt
+from qtpy.QtWidgets import (
     QCheckBox,
     QDialog,
     QDialogButtonBox,
@@ -365,7 +365,7 @@ if __name__ == "__main__":
     os.environ["QT_MAC_WANTS_LAYER"] = "1"
     os.environ["VOLUMINA_SHOW_3D_WIDGET"] = "0"
 
-    from PyQt5.QtWidgets import QApplication
+    from qtpy.QtWidgets import QApplication
 
     app = QApplication([])
 

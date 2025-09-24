@@ -22,37 +22,31 @@ import logging
 import os
 import socket
 
-from PyQt5 import uic, QtCore
-from PyQt5.QtWidgets import QWidget, QStackedWidget, QListWidgetItem, QListWidget
-from PyQt5.QtCore import QStateMachine, QState, QSignalTransition, pyqtSignal
+from qtpy import uic
+from qtpy.QtWidgets import QWidget
+from qtpy.QtCore import Signal
 
 logger = logging.getLogger(__name__)
-from PyQt5.Qt import (
-    QIcon,
-    QStringListModel,
+from qtpy.QtCore import (
     QAbstractItemModel,
-    QAbstractItemDelegate,
     Qt,
     QModelIndex,
     QDataWidgetMapper,
-    pyqtProperty,
     QItemDelegate,
-    QAbstractListModel,
     QListWidgetItem,
-    pyqtSignal,
+    Signal,
 )
-from PyQt5.QtWidgets import QWidget, QComboBox, QToolButton, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QListWidget
+from qtpy.QtWidgets import QWidget, QVBoxLayout
 
 from .serverConfigForm import ServerConfigForm, ServerFormWorkflow
 from .serverListWidget import ServerListWidget, ServerListModel
 from .configStorage import SERVER_CONFIG
 from . import types
 from ilastik import config
-import tiktorch
 
 
 class ServerConfigGui(QWidget):
-    gotDevices = pyqtSignal()
+    gotDevices = Signal()
 
     def centralWidget(self):
         return self._centralWidget
@@ -127,8 +121,8 @@ class ServerFormItemDelegate(QItemDelegate):
 
 
 class ServerConfigurationEditor(QWidget):
-    currentConfigChanged = pyqtSignal(object)
-    saved = pyqtSignal()
+    currentConfigChanged = Signal(object)
+    saved = Signal()
 
     def __init__(self, connectionFactory, parent=None) -> None:
         super().__init__(parent)

@@ -28,8 +28,8 @@ from typing import Iterable, Sequence, Union
 import pytest
 from ilastik.ilastik_logging import default_config
 from volumina.imageView2D import ImageView2D
-from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
-from PyQt5.QtGui import (
+from qtpy.QtCore import QEvent, QPoint, QPointF, Qt
+from qtpy.QtGui import (
     QMouseEvent,
     QImage,
     QPainter,
@@ -37,7 +37,7 @@ from PyQt5.QtGui import (
     QOpenGLFramebufferObject,
     QOpenGLPaintDevice,
 )
-from PyQt5.QtWidgets import QAbstractScrollArea, QApplication, qApp, QOpenGLWidget
+from qtpy.QtWidgets import QAbstractScrollArea, QApplication, QOpenGLWidget
 
 from .mainThreadHelpers import wait_for_main_func
 
@@ -46,8 +46,9 @@ default_config.init(output_mode=default_config.OutputMode.CONSOLE)
 
 @atexit.register
 def quitApp():
-    if qApp is not None:
-        qApp.quit()
+    qapp = QApplication.instance()
+    if qapp is not None:
+        qapp.quit()
 
 
 class MainThreadException(Exception):

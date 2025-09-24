@@ -20,9 +20,8 @@
 ###############################################################################
 import copy
 
-from PyQt5 import QtCore
-from PyQt5.QtCore import QObject, QTimer
-from PyQt5.QtWidgets import QMessageBox
+from qtpy.QtCore import QObject, QTimer
+from qtpy.QtWidgets import QMessageBox
 
 
 class ErrorMessageFilter(QObject):

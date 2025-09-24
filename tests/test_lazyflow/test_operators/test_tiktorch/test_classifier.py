@@ -1,5 +1,9 @@
 from unittest import mock
 
+import pytest
+
+_ = pytest.importorskip("tiktorch", reason="These tests require tiktorch")
+
 from bioimageio.core import AxisId
 from bioimageio.spec import ModelDescr, ValidationContext
 from bioimageio.spec.common import FileDescr
@@ -21,7 +25,6 @@ from bioimageio.spec.model.v0_5 import (
 )
 from lazyflow.operators.tiktorch.classifier import ModelSession
 
-import pytest
 from tiktorch.proto import utils_pb2
 
 

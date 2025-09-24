@@ -6,6 +6,8 @@ import h5py
 import numpy
 import pytest
 
+_ = pytest.importorskip("tiktorch", reason="These tests require tiktorch")
+
 from ilastik import app
 from ilastik.workflows.neuralNetwork import LocalWorkflow
 

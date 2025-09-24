@@ -7,9 +7,9 @@ import os
 import numpy
 
 # import scipy
-from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtWidgets import QMessageBox, QApplication
-from PyQt5.QtGui import QCursor
+from qtpy import QtCore, QtWidgets
+from qtpy.QtWidgets import QMessageBox, QApplication
+from qtpy.QtGui import QCursor
 
 from volumina.widgets import layerwidget
 from volumina import volumeEditorWidget
@@ -97,9 +97,9 @@ class SuggestFeaturesResult:
 class SuggestFeaturesDialog(QtWidgets.QDialog):
 
     # publish the new feature_matrix, and compute_in_2d list
-    resultSelected = QtCore.pyqtSignal(numpy.ndarray, list)
+    resultSelected = QtCore.Signal(numpy.ndarray, list)
     # for testing purposes
-    _runComplete = QtCore.pyqtSignal()
+    _runComplete = QtCore.Signal()
 
     def __init__(self, current_opFeatureSelection, current_pixelClassificationApplet, labels_list_data, parent=None):
         """

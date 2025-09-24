@@ -1,6 +1,6 @@
 import pytest
 
-from PyQt5.Qt import Qt
+from qtpy.QtCore import Qt
 
 from ilastik.applets.serverConfiguration.serverListWidget import ServerListModel, ServerListWidget
 from types import SimpleNamespace

@@ -22,10 +22,9 @@ import os
 import logging
 from functools import partial
 
-from PyQt5 import uic
-from PyQt5.QtCore import Qt, QEvent
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QMessageBox
+from qtpy import uic
+from qtpy.QtCore import Qt, QEvent
+from qtpy.QtGui import QColor
 
 from volumina.api import createDataSource, ColortableLayer
 from volumina.colortables import create_default_16bit

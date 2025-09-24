@@ -19,11 +19,14 @@
 #           http://ilastik.org/license.html
 ###############################################################################
 import argparse
+from functools import partial
+
 import numpy as np
 import sys
 
 from ilastik.workflow import Workflow
 
+from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.wsdt import WsdtApplet
 from ilastik.applets.edgeTrainingWithMulticut import EdgeTrainingWithMulticutApplet
@@ -35,6 +38,7 @@ from lazyflow.graph import Graph
 from lazyflow.operators import OpRelabelConsecutive, OpSimpleStacker
 from lazyflow.operators.generic import OpConvertDtype, OpPixelOperator
 from lazyflow.operators.valueProviders import OpPrecomputedInput
+from lazyflow.utility.helpers import eq_shapes
 
 import logging
 
@@ -271,6 +275,22 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         opDataExport.Inputs[0].connect(opEdgeTrainingWithMulticut.Output)
         for slot in opDataExport.Inputs:
             assert slot.upstream_slot is not None
+
+        for data_slot in opDataSelection.ImageGroup:
+            data_slot.notifyReady(partial(self._checkShapes, laneIndex))
+
+    def _checkShapes(self, laneIndex, slot):
+        for i, role_slot in enumerate(self.dataSelectionApplet.topLevelOperator.getLane(laneIndex).ImageGroup):
+            if not role_slot.ready():
+                continue
+            if role_slot is not slot and not eq_shapes(slot.meta.getTaggedShape(), role_slot.meta.getTaggedShape()):
+                other_role_name = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex).DatasetRoles.value[i]
+                raise DatasetConstraintError(
+                    "Multicut Workflow",
+                    f"All input images must have the same shapes (different channels are ok). "
+                    f"You tried to add an image with shape={slot.meta.shape}, but your {other_role_name} image "
+                    f"has shape={role_slot.meta.shape}",
+                )
 
     def onProjectLoaded(self, projectManager):
         """

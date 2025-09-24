@@ -3,9 +3,9 @@ import pytest
 from unittest import mock
 
 from ilastik.widgets import appletDrawerToolBox as at
-from PyQt5.QtWidgets import QLabel, QApplication, QFrame, QVBoxLayout, QPushButton, QWidget
-from PyQt5.QtCore import QSize, QPropertyAnimation, QRect, QVariantAnimation
-from PyQt5.QtGui import QIcon, QImage
+from qtpy.QtWidgets import QLabel, QWidget
+from qtpy.QtCore import QSize
+from qtpy.QtGui import QIcon, QImage
 
 
 @pytest.fixture

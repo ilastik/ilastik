@@ -21,9 +21,7 @@ from __future__ import print_function
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import numpy
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtGui import QKeyEvent
-from PyQt5.QtCore import QEvent, Qt
+from qtpy.QtWidgets import QApplication
 from ilastik.workflows.counting import CountingWorkflow
 from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 from lazyflow.operators import OpPixelFeaturesPresmoothed

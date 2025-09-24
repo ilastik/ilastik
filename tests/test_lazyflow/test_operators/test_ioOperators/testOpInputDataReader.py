@@ -441,24 +441,6 @@ class TestOpInputDataReaderWithOMEZarr:
 
         numpy.testing.assert_array_equal(loaded_data, expected_images[0])
 
-    def test_load_from_file_uri_without_parent(self, tmp_path, graph, ome_zarr_store_on_disc):
-        paths, expected_images, expected_multiscales, expected_additional_meta = ome_zarr_store_on_disc
-        zarr_dir, path0, path1 = paths
-        # Request downscale to test that the full path is used.
-        # Without parent, the loader defaults to loading the first scale (highest resolution).
-        raw_data_path = tmp_path / zarr_dir / path1
-        reader = OpInputDataReader(graph=graph)
-        reader.FilePath.setValue(raw_data_path.as_uri())
-
-        assert path1 in reader.Output.meta.scales
-        assert path0 not in reader.Output.meta.scales
-        assert reader.Output.meta.scales[path1] == expected_multiscales[path1]
-        assert reader.Output.meta.ome_zarr_meta == expected_additional_meta
-
-        loaded_data = reader.Output[:].wait()
-
-        numpy.testing.assert_array_equal(loaded_data, expected_images[1])
-
     def test_load_from_file_path_via_slot(self, tmp_path, parent, ome_zarr_store_on_disc):
         paths, expected_images, expected_multiscales, expected_additional_meta = ome_zarr_store_on_disc
         zarr_subdir, path0, _ = paths

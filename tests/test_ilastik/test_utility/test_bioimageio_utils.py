@@ -1,6 +1,9 @@
 from collections import OrderedDict
 
 import pytest
+
+_ = pytest.importorskip("bioimageio", reason="These tests require bioimageio")
+
 from attr import dataclass
 from bioimageio.spec.model.v0_5 import (
     AxisId,

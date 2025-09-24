@@ -8,6 +8,7 @@ which is suitable for input into Blender.
 If --label=N is provided, then only the pixels with value N will be converted into the mesh.
 Otherwise, all nonzero pixels are used.
 """
+
 from __future__ import print_function
 
 # import os
@@ -23,8 +24,8 @@ from argparse import ArgumentParser
 from numpy import unique
 
 # import h5py
-# from PyQt5.QtCore import QTimer
-# from PyQt5.QtWidgets import QApplication
+# from qtpy.QtCore import QTimer
+# from qtpy.QtWidgets import QApplication
 
 from h5py import File
 from volumina.view3d.meshgenerator import labeling_to_mesh, mesh_to_obj
