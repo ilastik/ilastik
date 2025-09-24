@@ -96,9 +96,25 @@ class VigraAxisTags(BaseModel):
 
 class DatasetInfo(BaseModel):
     axistags: Annotated[List[VigraAxisTags], BeforeValidator(deserialize_axistags_from_h5)]
+    allow_labels: Annotated[bool, BeforeValidator(lambda x: bool(x))] = Field(alias="allowLabels")
+    classname: Annotated[
+        Literal["ProjectInternalDatasetInfo", "FilesystemDatasetInfo", "RelativeFilesystemDatasetInfo"],
+        BeforeValidator(deserialize_string_from_h5),
+    ] = Field(alias="__class__")
+    dataset_id: Annotated[str, BeforeValidator(deserialize_string_from_h5)] = Field(alias="datasetId")
+    display_mode: Annotated[
+        Literal["default", "grayscale", "rgba", "random-colortable", "alpha-modulated", "binary-mask"],
+        BeforeValidator(deserialize_string_from_h5),
+    ]
+    file_path: Annotated[Path, BeforeValidator(deserialize_string_from_h5)] = Field(alias="filePath")
+    location: Annotated[Literal["FileSystem", "ProjectInternal"], BeforeValidator(deserialize_string_from_h5)]
+    nickname: Annotated[str, BeforeValidator(deserialize_string_from_h5)]
+    normalize_display: Annotated[bool, BeforeValidator(lambda x: bool(x))] = Field(alias="normalizeDisplay")
+    scale_locked: Annotated[bool, BeforeValidator(lambda x: bool(x))]
     shape: Annotated[
         NDShape, BeforeValidator(lambda x: tuple(x.tolist())), BeforeValidator(deserialize_arraylike_from_h5)
     ]
+    working_scale: Annotated[str, BeforeValidator(deserialize_string_from_h5)]
 
 
 class InputData(BaseModel):
