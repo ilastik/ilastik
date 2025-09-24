@@ -21,7 +21,7 @@
 # pyright: strict
 from collections import OrderedDict
 from pathlib import Path
-from typing import Annotated, Dict, List, Literal, Optional, Tuple, Type
+from typing import Annotated, Dict, List, Literal, Optional, Tuple
 
 import annotated_types
 import h5py
@@ -43,8 +43,11 @@ from ilastik.experimental.parser._h5helpers import (
 from ilastik.experimental.parser.types.base import LabelBlock, VigraAxisTags
 from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
-NDShape = Annotated[Tuple[int, ...], annotated_types.Len(2, 6)]
+BlockName = Annotated[str, StringConstraints(pattern=r"block\d{4}")]
 LaneName = Annotated[str, StringConstraints(pattern=r"lane\d{4}")]
+LaneNameLabel = Annotated[str, StringConstraints(pattern=r"labels\d{3}")]
+LaneNameNoPrefix = Annotated[str, StringConstraints(pattern=r"\d{4}")]
+NDShape = Annotated[Tuple[int, ...], annotated_types.Len(2, 6)]
 
 RELATIVE_CLASS = "RelativeFilesystemDatasetInfo"
 ABSOLUTE_CLASS = "FilesystemDatasetInfo"
@@ -105,11 +108,11 @@ class DatasetInfo(BaseModel):
     location: Annotated[Literal["FileSystem", "ProjectInternal"], BeforeValidator(deserialize_string_from_h5)]
     nickname: Annotated[str, BeforeValidator(deserialize_string_from_h5)]
     normalize_display: Annotated[bool, BeforeValidator(lambda x: bool(x))] = Field(alias="normalizeDisplay")
-    scale_locked: Annotated[bool, BeforeValidator(lambda x: bool(x))]
+    scale_locked: Annotated[bool, BeforeValidator(lambda x: bool(x))] = Field(default=False)
     shape: Annotated[
         NDShape, BeforeValidator(lambda x: tuple(x.tolist())), BeforeValidator(deserialize_arraylike_from_h5)
     ]
-    working_scale: Annotated[str, BeforeValidator(deserialize_string_from_h5)]
+    working_scale: Annotated[str, BeforeValidator(deserialize_string_from_h5)] = Field(default="")
 
 
 class InputData(BaseModel):
@@ -166,19 +169,33 @@ class FeatureMatrix(BaseModel):
     storage_version: Annotated[str, BeforeValidator(deserialize_string_from_h5)] = Field(alias="StorageVersion")
 
 
-class Classifier(BaseModel):
+class PixelClassification(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
     )
 
-    classifier_factory: Annotated[
-        LazyflowVectorwiseClassifierFactoryABC, BeforeValidator(deserialize_classifier_factory)
-    ] = Field(alias="ClassifierFactory")
+    bookmarks: OrderedDict[LaneNameNoPrefix, Annotated[bytes, BeforeValidator(lambda x: x[()].tobytes())]] = Field(
+        alias="Bookmarks"
+    )
+    """Values of this dict are pickled list probably, not really used in ilastik currently, deserializing as binary string"""
     classifier: Annotated[
         LazyflowVectorwiseClassifierABC,
         BeforeValidator(deserialize_classifier),
     ] = Field(alias="ClassifierForests")
+    classifier_factory: Annotated[
+        LazyflowVectorwiseClassifierFactoryABC, BeforeValidator(deserialize_classifier_factory)
+    ] = Field(alias="ClassifierFactory")
+    label_colors: Annotated[npt.NDArray[numpy.int64], BeforeValidator(deserialize_arraylike_from_h5)] = Field(
+        alias="LabelColors"
+    )
     label_names: List[str] = Field(alias="LabelNames")
+    label_sets: OrderedDict[
+        LaneNameLabel, OrderedDict[BlockName, Annotated[LabelBlock, BeforeValidator(deserialize_label_block_from_h5)]]
+    ] = Field(alias="LabelSets")
+    pmap_colors: Annotated[npt.NDArray[numpy.int64], BeforeValidator(deserialize_arraylike_from_h5)] = Field(
+        alias="PmapColors"
+    )
+    storage_version: Annotated[str, BeforeValidator(deserialize_string_from_h5)] = Field(alias="StorageVersion")
 
     @property
     def label_count(self) -> int:
