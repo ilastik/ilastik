@@ -18,22 +18,3 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-# pyright: strict
-
-from pydantic import BaseModel, Field
-
-from .types import applets
-
-
-class PixelClassificationProject(BaseModel):
-    input_data: applets.InputData = Field(alias="Input Data")
-    feature_matrix: applets.FeatureMatrix = Field(alias="FeatureSelections")
-    classifier: applets.PixelClassification = Field(alias="PixelClassification")
-
-
-class AutocontextProject(BaseModel):
-    input_data: applets.InputData = Field(alias="Input Data")
-    feature_matrix_stage1: applets.FeatureMatrix = Field(alias="FeatureSelections")
-    classifier_stage1: applets.PixelClassification = Field(alias="PixelClassification")
-    feature_matrix_stage2: applets.FeatureMatrix = Field(alias="FeatureSelections01")
-    classifier_stage2: applets.PixelClassification = Field(alias="PixelClassification01")

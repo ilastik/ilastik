@@ -25,13 +25,14 @@ from typing import Any, List, Union
 import h5py
 
 from ilastik.applets.base.appletSerializer.serializerUtils import deserialize_string_from_h5
+from ilastik.experimental.parser.types.base import LabelBlock, VigraAxisTags
 
 
 def deserialize_str_list_from_h5(str_list: h5py.Dataset) -> List[str]:
     return [x.decode() for x in str_list]
 
 
-def deserialize_axistags_from_h5(ds: h5py.Dataset) -> dict[str, Union[float, int, str]]:
+def deserialize_axistags_from_h5(ds: h5py.Dataset) -> VigraAxisTags:
     return json.loads(deserialize_string_from_h5(ds))["axes"]
 
 
@@ -75,3 +76,11 @@ def write_level(group, dict_repr):
             raise ValueError(f"No clue how to serialize {v} of {type(v)=} to hdf5.")
 
     return group
+
+
+def deserialize_label_block_from_h5(ds: h5py.Dataset) -> LabelBlock:
+    return LabelBlock(
+        axistags=[VigraAxisTags(**at) for at in json.loads(ds.attrs["axistags"])["axes"]],
+        block_slice=ds.attrs["blockSlice"],
+        label_data=deserialize_arraylike_from_h5(ds),
+    )

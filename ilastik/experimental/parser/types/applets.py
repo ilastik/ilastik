@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2024, the ilastik developers
+#       Copyright (C) 2011-2025, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -37,8 +37,10 @@ from ilastik.applets.base.appletSerializer.serializerUtils import deserialize_st
 from ilastik.experimental.parser._h5helpers import (
     deserialize_arraylike_from_h5,
     deserialize_axistags_from_h5,
+    deserialize_label_block_from_h5,
     deserialize_str_list_from_h5,
 )
+from ilastik.experimental.parser.types.base import LabelBlock, VigraAxisTags
 from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
 NDShape = Annotated[Tuple[int, ...], annotated_types.Len(2, 6)]
@@ -85,13 +87,6 @@ class ILPBase(BaseModel):
 
         write_level(h5group, python_model)
         return h5group
-
-
-class VigraAxisTags(BaseModel):
-    key: str
-    typeFlags: int
-    resolution: int
-    description: str
 
 
 class DatasetInfo(BaseModel):
