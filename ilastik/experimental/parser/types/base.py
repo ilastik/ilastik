@@ -18,22 +18,24 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-# pyright: strict
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, List
 
-from pydantic import BaseModel, Field
-
-from .types import applets
-
-
-class PixelClassificationProject(BaseModel):
-    input_data: applets.InputData = Field(alias="Input Data")
-    feature_matrix: applets.FeatureMatrix = Field(alias="FeatureSelections")
-    classifier: applets.PixelClassification = Field(alias="PixelClassification")
+if TYPE_CHECKING:
+    import numpy
+    import numpy.typing as npt
 
 
-class AutocontextProject(BaseModel):
-    input_data: applets.InputData = Field(alias="Input Data")
-    feature_matrix_stage1: applets.FeatureMatrix = Field(alias="FeatureSelections")
-    classifier_stage1: applets.PixelClassification = Field(alias="PixelClassification")
-    feature_matrix_stage2: applets.FeatureMatrix = Field(alias="FeatureSelections01")
-    classifier_stage2: applets.PixelClassification = Field(alias="PixelClassification01")
+@dataclass
+class VigraAxisTags:
+    key: str
+    typeFlags: int
+    resolution: int
+    description: str
+
+
+@dataclass
+class LabelBlock:
+    axistags: List[VigraAxisTags]
+    block_slice: str
+    label_data: "npt.NDArray[numpy.int64]"
