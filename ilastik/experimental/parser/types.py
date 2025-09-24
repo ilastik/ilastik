@@ -160,14 +160,15 @@ class FeatureMatrix(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
     )
-    names: Annotated[List[str], BeforeValidator(deserialize_arraylike_from_h5)] = Field(alias="FeatureIds")
+    compute_in_2d: Annotated[npt.NDArray[numpy.bool_], BeforeValidator(deserialize_arraylike_from_h5)] = Field(
+        alias="ComputeIn2d"
+    )
+    feature_ids: Annotated[List[str], BeforeValidator(deserialize_arraylike_from_h5)] = Field(alias="FeatureIds")
     scales: Annotated[List[float], BeforeValidator(deserialize_arraylike_from_h5)] = Field(alias="Scales")
     selections: Annotated[npt.NDArray[numpy.bool_], BeforeValidator(deserialize_arraylike_from_h5)] = Field(
         alias="SelectionMatrix"
     )
-    compute_in_2d: Annotated[npt.NDArray[numpy.bool_], BeforeValidator(deserialize_arraylike_from_h5)] = Field(
-        alias="ComputeIn2d"
-    )
+    storage_version: Annotated[str, BeforeValidator(deserialize_string_from_h5)] = Field(alias="StorageVersion")
 
 
 class Classifier(BaseModel):
