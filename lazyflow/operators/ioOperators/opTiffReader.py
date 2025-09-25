@@ -149,27 +149,7 @@ class OpTiffReader(Operator):
 
     def setPixelSizes(self, axes, ij_meta, ome_meta):
         with tifffile.TiffFile(self._filepath, mode="r") as f:
-            if ij_meta:
-                meta = f.pages[0].tags
-                resolution_keys = {"x": "XResolution", "y": "YResolution", "z": "spacing", "t": "finterval"}
-                unit_keys = {"x": "unit", "y": "yunit", "z": "zunit", "t": "tunit"}
-                for ax in axes:
-                    if ax == "c":
-                        continue
-                    self.Output.meta.axistags.setResolution(
-                        ax,
-                        (
-                            self.round_resolution_to_tiff_precision(meta.get(resolution_keys[ax], None))
-                            if ax in "xy"
-                            else ij_meta.get(resolution_keys[ax], 0)
-                        ),
-                    )
-                    # (TIFF format stores resolution values as Rational tuples (numerator, denominator))
-                    unit = self.handle_stringified_tuples(ij_meta.get(unit_keys[ax], ""))
-                    self.Output.meta.axis_units[ax] = tiff_encoding.from_ascii(unit) if unit else ""
-
-            # Look for OME-TIFF metadata (possible in FIJI hyperstacks)
-            else:
+            if ome_meta:
                 xml = ET.fromstring(ome_meta)
                 ns = {"ome": "http://www.openmicroscopy.org/Schemas/OME/2016-06"}
                 image = xml.find("ome:Image", ns)
@@ -193,6 +173,24 @@ class OpTiffReader(Operator):
                             self.Output.meta.axis_units[axis.lower()] = pixels.attrib.get(
                                 unit_keys[axis], ""
                             )  # OME uses unicode
+            else:
+                meta = f.pages[0].tags
+                resolution_keys = {"x": "XResolution", "y": "YResolution", "z": "spacing", "t": "finterval"}
+                unit_keys = {"x": "unit", "y": "yunit", "z": "zunit", "t": "tunit"}
+                for ax in axes:
+                    if ax == "c":
+                        continue
+                    self.Output.meta.axistags.setResolution(
+                        ax,
+                        (
+                            self.round_resolution_to_tiff_precision(meta.get(resolution_keys[ax], None))
+                            if ax in "xy"
+                            else ij_meta.get(resolution_keys[ax], 0)
+                        ),
+                    )
+                    # (TIFF format stores resolution values as Rational tuples (numerator, denominator))
+                    unit = self.handle_stringified_tuples(ij_meta.get(unit_keys[ax], ""))
+                    self.Output.meta.axis_units[ax] = tiff_encoding.from_ascii(unit) if unit else ""
 
     def round_resolution_to_tiff_precision(self, frac):
         """
