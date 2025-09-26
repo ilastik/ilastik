@@ -231,17 +231,28 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         if index.column() == DatasetColumn.PixelSize:
             if not datasetInfo.axis_units:
                 return UninitializedDisplayData[index.column()]
+
             axis_strings = []
             for tag in datasetInfo.axistags:
-                if tag.key.lower() == "c":
-                    if "c" in datasetInfo.axis_units:
-                        axis_strings.append("c: " + f" {datasetInfo.axis_units['c']}")
-                elif tag.key in datasetInfo.axis_units:
-                    axis_strings.append(
-                        f"{tag.key}: " + f"{round(tag.resolution, 2)} {datasetInfo.axis_units[tag.key]}"
-                    )
+                key = tag.key.lower()
+                unit = datasetInfo.axis_units.get(key, "")
+
+                if key == "c":
+                    if unit:
+                        axis_strings.append(f"c: {unit}")
+
+                elif key == "t":
+                    if unit:
+                        axis_strings.append(f"t: {round(tag.resolution, 2)} {unit}")
+                    elif tag.resolution:
+                        axis_strings.append(f"t: {round(tag.resolution, 2)} frames")
+
                 else:
-                    axis_strings.append(f"{tag.key}: " + f"{round(tag.resolution, 2)}")
+                    if unit:
+                        axis_strings.append(f"{tag.key}: {round(tag.resolution, 2)} {unit}")
+                    elif tag.resolution:
+                        axis_strings.append(f"{tag.key}: {round(tag.resolution, 2)} pixels")
+
             return ", ".join(axis_strings)
 
         raise NotImplementedError(f"Unknown column: row={index.row()}, column={index.column()}")
