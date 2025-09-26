@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+import json
 from abc import abstractmethod, ABC
 import glob
 import os
@@ -112,6 +113,7 @@ class DatasetInfo(ABC):
         drange: Tuple[Number, Number] = None,
         working_scale: str = DEFAULT_SCALE_KEY,
         scale_locked: bool = False,
+        axis_units: Dict[str, str] = None,  # { axis: physical unit string e.g. "micron" }
     ):
         if axistags and len(axistags) != len(laneShape):
             raise UnsuitedAxistagsException(axistags, laneShape)
@@ -119,6 +121,7 @@ class DatasetInfo(ABC):
             raise InconsistentAxisMetaException(default_tags, laneShape)
         self.default_tags = default_tags
         self.axistags = axistags or default_tags
+        self.axis_units = axis_units or {}
         self.laneShape = laneShape
         self.laneDtype = laneDtype
         if isinstance(self.laneDtype, numpy.dtype):
@@ -145,7 +148,7 @@ class DatasetInfo(ABC):
         pass
 
     def get_provider_slot(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
-        metadata = {"display_mode": self.display_mode, "axistags": self.axistags}
+        metadata = {"display_mode": self.display_mode, "axistags": self.axistags, "axis_units": self.axis_units}
 
         if self.drange is not None:
             metadata["drange"] = self.drange
@@ -171,6 +174,7 @@ class DatasetInfo(ABC):
 
     def to_json_data(self) -> Dict:
         return {
+            "axis_units": json.dumps(self.axis_units).encode("utf-8"),
             "axistags": self.axistags.toJSON().encode("utf-8"),
             "shape": self.laneShape,
             "allowLabels": self.allowLabels,
@@ -456,10 +460,18 @@ class ProjectInternalDatasetInfo(DatasetInfo):
 
 
 class PreloadedArrayDatasetInfo(DatasetInfo):
-    def __init__(self, *, preloaded_array: numpy.ndarray, axistags: AxisTags = None, nickname: str = "", **info_kwargs):
+    def __init__(
+        self,
+        *,
+        preloaded_array: numpy.ndarray,
+        axistags: AxisTags = None,
+        nickname: str = "",
+        **info_kwargs,
+    ):
         self.preloaded_array = vigra.taggedView(
             preloaded_array, axistags or get_default_axisordering(preloaded_array.shape)
         )
+
         super().__init__(
             nickname=nickname or "preloaded-{}-array".format(self.preloaded_array.dtype.name),
             default_tags=self.preloaded_array.axistags,
@@ -543,6 +555,7 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
             nickname=nickname or self._nickname_from_url(url),
             laneShape=meta.shape,
             laneDtype=meta.dtype,
+            axis_units=meta.axis_units,
             scales=meta.scales,
             **info_kwargs,
         )
@@ -684,7 +697,6 @@ class FilesystemDatasetInfo(DatasetInfo):
         )
         meta = op_reader.Output.meta.copy()
         op_reader.cleanUp()
-
         super().__init__(
             default_tags=meta.axistags,
             nickname=nickname or self.create_nickname(self.expanded_paths),
@@ -692,6 +704,7 @@ class FilesystemDatasetInfo(DatasetInfo):
             laneDtype=meta.dtype,
             drange=drange or meta.get("drange"),
             project_file=project_file,
+            axis_units=meta.axis_units,
             **info_kwargs,
         )
 

@@ -17,6 +17,7 @@ def sample_projects_dir(tmp_path_factory) -> Path:
 
     required_files = [
         "2d.h5",
+        "2d_with_pixel_sizes.tif",
         "2d3c.h5",
         "2d3c_Probabilities.h5",
         "3d1c.h5",
@@ -47,6 +48,11 @@ def pixel_classification_ilp_2d3c(sample_projects_dir: Path) -> Path:
 @pytest.fixture
 def object_classification_from_predictions_ilp_2d3c(sample_projects_dir: Path) -> Path:
     return sample_projects_dir / "ObjectClassification2d3c_wPred.ilp"
+
+
+@pytest.fixture
+def pixel_classification_ilp_2d_units(sample_projects_dir: Path) -> Path:
+    return sample_projects_dir / "PixelClassification2d_units.ilp"
 
 
 @pytest.fixture
