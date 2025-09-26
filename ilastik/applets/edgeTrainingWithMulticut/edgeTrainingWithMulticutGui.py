@@ -68,6 +68,9 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingMixin, LayerView
     def appletDrawer(self):
         return self._drawer
 
+    def secondaryControlsWidget(self):
+        return None
+
     @guiutil.threadRouted
     def _handle_train_edge_clf_box_clicked(self, checked):
         self._training_box.setEnabled(checked)

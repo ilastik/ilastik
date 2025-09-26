@@ -21,10 +21,13 @@
 # Built-in
 from builtins import range
 from builtins import filter
+from dataclasses import dataclass
 import os
 import re
 import logging
 from functools import partial
+from typing import Any, Optional, Union
+import warnings
 
 # Third-party
 import numpy
@@ -34,12 +37,14 @@ from qtpy.QtGui import QColor, QIcon
 from qtpy.QtWidgets import QApplication, QMessageBox, QAction
 
 # HCI
+from ilastik.applets.labeling.labelExplorer import LabelExplorerWidget
 from volumina.api import LazyflowSinkSource, ColortableLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager, preferences
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.widgets.labelListView import Label
 from ilastik.widgets.labelListModel import LabelListModel
 from volumina import colortables
+from lazyflow.slot import InputSlot, OutputSlot
 
 # ilastik
 from ilastik.utility import bind, log_exception
@@ -54,13 +59,35 @@ logger = logging.getLogger(__name__)
 # ===----------------------------------------------------------------------------------------------------------------===
 
 
-class Tool(object):
+class Tool:
     """Enumerate the types of toolbar buttons."""
 
     Navigation = 0  # Arrow
     Paint = 1
     Erase = 2
     Threshold = 3
+
+
+@dataclass
+class LabelingSlots:
+    """
+    This class serves as the parameter for the LabelingGui constructor.
+    It provides the slots that the labeling GUI uses to source labels to the display and sink labels from the
+    user's mouse clicks.
+    """
+
+    # Slot to insert elements onto
+    labelInput: InputSlot
+    # Slot to read elements from
+    labelOutput: OutputSlot
+    # Slot that determines which label value corresponds to erased values
+    labelEraserValue: InputSlot
+    # Slot that is used to request wholesale label deletion
+    labelDelete: InputSlot
+    # Slot that gives a list of label names
+    labelNames: OutputSlot
+    # Slot to notify about written blocks
+    nonzeroLabelBlocks: Optional[OutputSlot] = None
 
 
 class LabelingGui(LayerViewerGui):
@@ -78,6 +105,9 @@ class LabelingGui(LayerViewerGui):
 
     def appletDrawer(self):
         return self._labelControlUi
+
+    def secondaryControlsWidget(self) -> Union[LabelExplorerWidget, None]:
+        return self._show_label_explorer()
 
     def stopAndCleanUp(self):
         super(LabelingGui, self).stopAndCleanUp()
@@ -121,32 +151,13 @@ class LabelingGui(LayerViewerGui):
         Equivalent to clicking on the (labelIndex+1)'th position in the label widget."""
         self._labelControlUi.labelListModel.select(labelIndex)
 
-    class LabelingSlots(object):
-        """
-        This class serves as the parameter for the LabelingGui constructor.
-        It provides the slots that the labeling GUI uses to source labels to the display and sink labels from the
-        user's mouse clicks.
-        """
-
-        def __init__(self):
-            # Slot to insert elements onto
-            self.labelInput = None  # labelInput.setInSlot(xxx)
-            # Slot to read elements from
-            self.labelOutput = None  # labelOutput.get(roi)
-            # Slot that determines which label value corresponds to erased values
-            self.labelEraserValue = None  # labelEraserValue.setValue(xxx)
-            # Slot that is used to request wholesale label deletion
-            self.labelDelete = None  # labelDelete.setValue(xxx)
-            # Slot that gives a list of label names
-            self.labelNames = None  # labelNames.value
-
     def __init__(
         self,
         parentApplet,
-        labelingSlots,
+        labelingSlots: LabelingSlots,
         topLevelOperatorView,
-        drawerUiPath=None,
-        rawInputSlot=None,
+        drawerUiPath: Optional[str] = None,
+        rawInputSlot: Optional[InputSlot] = None,
         crosshair=True,
         is_3d_widget_visible=False,
     ):
@@ -161,7 +172,7 @@ class LabelingGui(LayerViewerGui):
                              (if provided).
         """
         # Do have have all the slots we need?
-        assert isinstance(labelingSlots, LabelingGui.LabelingSlots)
+        assert isinstance(labelingSlots, LabelingSlots)
         assert labelingSlots.labelInput is not None, "Missing a required slot."
         assert labelingSlots.labelOutput is not None, "Missing a required slot."
         assert labelingSlots.labelEraserValue is not None, "Missing a required slot."
@@ -204,6 +215,9 @@ class LabelingGui(LayerViewerGui):
         self.thunkEventHandler = ThunkEventHandler(self)
         self._changeInteractionMode(Tool.Navigation)
         self.layersUpdated.connect(self._handleLayersUpdated)
+
+        self.label_explorer_widget = None
+        self.__cleanup_fns.append(self._cleanup_label_explorer)
 
     def _initLabelUic(self, drawerUiPath):
         _labelControlUi = uic.loadUi(drawerUiPath)
@@ -346,11 +360,52 @@ class LabelingGui(LayerViewerGui):
         self.paintBrushSizeIndex = preferences.get("labeling", "paint brush size", default=0)
         self.eraserSizeIndex = preferences.get("labeling", "eraser brush size", default=4)
 
+    def _show_label_explorer(self):
+
+        if self.label_explorer_widget:
+            return self.label_explorer_widget
+
+        nonzero_slot = self._labelingSlots.nonzeroLabelBlocks
+        labelout_slot = self._labelingSlots.labelOutput
+
+        label_explorer_widget = LabelExplorerWidget(
+            nonzero_blocks_slot=nonzero_slot, label_slot=labelout_slot, parent=self
+        )
+
+        def _goto(position_dict: dict[str, int]):
+            # xyz
+            assert self.volumeEditorWidget.editor is not None
+            pos = [int(position_dict[k]) if k in position_dict else 0 for k in "xyz"]
+            self.volumeEditorWidget.editor.posModel.slicingPos = pos
+            self.volumeEditorWidget.editor.posModel.cursorPos = pos
+            self.volumeEditorWidget.editor.posModel.time = int(position_dict.get("t", 0))
+            self.volumeEditorWidget.editor.navCtrl.panSlicingViews(pos, [0, 1, 2])
+
+        label_explorer_widget.positionRequested.connect(_goto)
+
+        def update_labels(*args, **kwargs):
+            label_names = [x.name for x in self.labelListData]
+            label_explorer_widget._lookup_table = {str(i + 1): y for i, y in enumerate(label_names)}
+            label_explorer_widget.tableWidget.viewport().update()
+
+        update_labels()
+
+        self._labelControlUi.labelListModel.dataChanged.connect(update_labels)
+        self._labelControlUi.labelListModel.rowsRemoved.connect(update_labels)
+
+        return label_explorer_widget
+
+    def _cleanup_label_explorer(self):
+        wdgt = self.label_explorer_widget
+        if wdgt:
+            wdgt.cleanup()
+            self.label_explorer_widget = None
+            wdgt.deleteLater()
+
     def onLabelListDataChanged(self, topLeft, bottomRight):
         """Handle changes to the label list selections."""
         firstRow = topLeft.row()
         lastRow = bottomRight.row()
-
         firstCol = topLeft.column()
         lastCol = bottomRight.column()
 
@@ -943,9 +998,7 @@ class LabelingGui(LayerViewerGui):
             labellayer.ref_object = None
 
             labellayer.contexts.append(
-                QAction(
-                    "Import...", None, triggered=partial(import_labeling_layer, labellayer, self._labelingSlots, self)
-                )
+                QAction("Import...", None, triggered=partial(import_labeling_layer, self._labelingSlots, self))
             )
 
             labellayer.shortcutRegistration = (
