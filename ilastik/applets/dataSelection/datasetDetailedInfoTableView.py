@@ -337,7 +337,7 @@ class DatasetDetailedInfoTableView(QTableView):
         Disable the remove button overlay when mouse leaves this widget.
         """
         self.overlay.setVisible(False)
-        return super().enterEvent(event)
+        return super().leaveEvent(event)
 
     def mouseMoveEvent(self, event=None):
         """
