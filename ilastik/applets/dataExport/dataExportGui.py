@@ -235,7 +235,9 @@ class DataExportGui(QWidget):
         self.showSelectedDataset()
 
     def _chooseSettings(self):
-        opExportModelOp, opSubRegion = get_model_op(self.topLevelOperator)
+        opExportModelOp, exportSubregionMax = get_model_op(
+            self.topLevelOperator, self.batchOutputTableWidget.currentRow()
+        )
         if opExportModelOp is None:
             QMessageBox.information(
                 self,
@@ -246,30 +248,19 @@ class DataExportGui(QWidget):
             )
             return
 
-        settingsDlg = DataExportOptionsDlg(self, opExportModelOp, cfg["ilastik"]["output_filename_format"])
+        settingsDlg = DataExportOptionsDlg(
+            self, opExportModelOp, cfg["ilastik"]["output_filename_format"], exportSubregionMax
+        )
 
         if settingsDlg.exec_() == DataExportOptionsDlg.Accepted:
-            # Copy the settings from our 'model op' into the real op
-            setting_slots = [
-                opExportModelOp.RegionStart,
-                opExportModelOp.RegionStop,
-                opExportModelOp.InputMin,
-                opExportModelOp.InputMax,
-                opExportModelOp.ExportMin,
-                opExportModelOp.ExportMax,
-                opExportModelOp.ExportDtype,
-                opExportModelOp.OutputAxisOrder,
-                opExportModelOp.OutputFilenameFormat,
-                opExportModelOp.OutputInternalPath,
-                opExportModelOp.OutputFormat,
-            ]
-
             # Disconnect the special 'transaction' slot to prevent these
             #  settings from triggering many calls to setupOutputs.
             self.topLevelOperator.TransactionSlot.disconnect()
 
-            for model_slot in setting_slots:
-                real_inslot = getattr(self.topLevelOperator, model_slot.name)
+            # Copy the settings from our 'model op' into the real op
+            for slot_name in opExportModelOp.CONFIGURABLE_SETTINGS_SLOTS:
+                real_inslot = getattr(self.topLevelOperator, slot_name)
+                model_slot = getattr(opExportModelOp, slot_name)
                 if model_slot.ready():
                     real_inslot.setValue(model_slot.value)
                 else:
@@ -280,7 +271,6 @@ class DataExportGui(QWidget):
 
             # Discard the temporary model op
             opExportModelOp.cleanUp()
-            opSubRegion.cleanUp()
 
             # Update the gui with the new export paths
             for index, slot in enumerate(self.topLevelOperator.ExportPath):

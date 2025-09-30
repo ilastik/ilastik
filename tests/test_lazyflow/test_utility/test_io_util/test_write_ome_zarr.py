@@ -656,21 +656,36 @@ def test_match_target_scales_to_input(shape, input_scales, expected_shapes):
                 ]
             ),
         ),
-        (  # Export is cropped so tiny that matching downscales would be degenerate
-            tagged_shape("zyxc", (10, 7, 5, 3)),
+        (  # Export is cropped tiny (matching all downscales would lead to 0 shapes) + makes an axis singleton
+            tagged_shape("zyxc", (19, 7, 1, 3)),
             OrderedDict(
                 [
                     ("0", tagged_shape("czyx", (2, 225, 225, 225))),
                     ("source_scale", tagged_shape("czyx", (2, 75, 75, 75))),
                     ("2", tagged_shape("czyx", (2, 25, 25, 25))),
                     ("3", tagged_shape("czyx", (2, 8, 8, 8))),
+                    ("4", tagged_shape("czyx", (2, 2, 2, 2))),
                 ]
             ),
             OrderedDict(
                 [
-                    ("source_scale", tagged_shape("tczyx", (1, 3, 10, 7, 5))),
-                    ("2", tagged_shape("tczyx", (1, 3, 3, 2, 1))),  # Include even if one axis is singleton
-                    # "3" excluded because all axes become singleton (or 0 in case of x)
+                    ("source_scale", tagged_shape("tczyx", (1, 3, 19, 7, 1))),
+                    ("2", tagged_shape("tczyx", (1, 3, 6, 2, 1))),
+                ]
+            ),
+        ),
+        (  # Export cropped to 1px
+            tagged_shape("zyxc", (1, 1, 1, 2)),
+            OrderedDict(
+                [
+                    ("0", tagged_shape("czyx", (2, 225, 225, 225))),
+                    ("source_scale", tagged_shape("czyx", (2, 75, 75, 75))),
+                    ("2", tagged_shape("czyx", (2, 25, 25, 25))),
+                ]
+            ),
+            OrderedDict(
+                [
+                    ("source_scale", tagged_shape("tczyx", (1, 2, 1, 1, 1))),
                 ]
             ),
         ),

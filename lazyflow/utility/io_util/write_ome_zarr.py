@@ -58,13 +58,21 @@ SPATIAL_AXES: List[Axiskey] = ["z", "y", "x"]
 SINGE_SCALE_DEFAULT_KEY = "s0"
 
 
+def _rescale_size(size: int, factor: float) -> int:
+    """
+    Rescale a single dimension of a shape.
+    Floor-round to match behavior of OpResize, and ensure minimum size is 1.
+    """
+    return max(int(size / factor), 1)
+
+
 def match_target_scales_to_input_excluding_upscales(
     export_shape: TaggedShape, input_scales: Multiscales, input_key: str
 ) -> Multiscales:
     """We assume people don't generally want to upscale lower-resolution segmentations to raw scale."""
     # Since Multiscales is ordered largest-to-smallest, simply drop matching scales before input_key.
     all_matching_scales = _match_target_scales_to_input(export_shape, input_scales, input_key)
-    assert input_key in all_matching_scales
+    assert input_key in all_matching_scales, "generated scales don't include source scale"
     start = list(all_matching_scales.keys()).index(input_key)
     keep_scales = list(all_matching_scales.keys())[start:]
     return ODict((k, all_matching_scales[k]) for k in keep_scales)
@@ -72,7 +80,9 @@ def match_target_scales_to_input_excluding_upscales(
 
 def _match_target_scales_to_input(export_shape: TaggedShape, input_scales: Multiscales, input_key: str) -> Multiscales:
     def _eq_shape_permissive(test: TaggedShape, ref: TaggedShape) -> bool:
-        """Check if two shapes are equal, but allow reference shape to be missing axes, and ignore channel."""
+        """
+        Check if two shapes are equal. Ignore channel and allow `test` to have additional axes (but no dropped axes).
+        """
         return all(a not in ref or a == "c" or test[a] == ref[a] for a in test.keys())
 
     source_scale_shape = input_scales[input_key]
@@ -84,14 +94,16 @@ def _match_target_scales_to_input(export_shape: TaggedShape, input_scales: Multi
         # Get source multiscale's scaling factors relative to the (uncropped) input shape and compute cropped scale
         # shapes from that.
         input_scalings = _multiscales_to_scalings(input_scales, source_scale_shape, export_shape.keys())
-        target_shapes = []
+        target_scales_items = []
         for scale_key, scale_factors in input_scalings.items():
-            scaled_shape = ODict([(a, int(size / scale_factors[a])) for a, size in export_shape.items()])
-            spatials = [a for a in SPATIAL_AXES if a in scaled_shape]
-            if all(scaled_shape[a] <= 1 for a in spatials):
+            scaled_shape = ODict([(a, _rescale_size(size, scale_factors[a])) for a, size in export_shape.items()])
+            is_less_than_2d = len([a for a in SPATIAL_AXES if a in scaled_shape and scaled_shape[a] > 1]) < 2
+            if is_less_than_2d and scale_key != input_key:
+                # Avoid nonsense scales that aren't at least a 2d image,
+                # but make sure the source scale stays so we don't return only upscales
                 break
-            target_shapes.append(scaled_shape)
-        target_scales = ODict(zip(input_scales.keys(), target_shapes))
+            target_scales_items.append((scale_key, scaled_shape))
+        target_scales = ODict(target_scales_items)
 
     scales_items = []
     for scale_key, target_shape in target_scales.items():
@@ -118,7 +130,7 @@ def generate_default_target_scales(unscaled_shape: TaggedShape, dtype) -> Multis
         scaled_shape = []
         for axis, size in unscaled.items():
             if axis in SPATIAL_AXES:
-                scaled_shape.append(max(int(size // scale_factor), 1))
+                scaled_shape.append(_rescale_size(size, scale_factor))
             else:
                 scaled_shape.append(size)
         scaled_shape_tagged = ODict(zip(OME_ZARR_AXES, scaled_shape))
