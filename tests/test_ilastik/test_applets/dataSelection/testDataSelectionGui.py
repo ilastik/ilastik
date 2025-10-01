@@ -1,6 +1,7 @@
 # Data selection is already covered in workflow tests (e.g. testPixelClassificationGui.py)
 # Additional tests here should be workflow-agnostic.
 import os
+from collections import namedtuple
 import platform
 from typing import Tuple, List
 from unittest import mock
@@ -38,11 +39,40 @@ def dataset_table(qtbot) -> DatasetDetailedInfoTableView:
         m.get_scale_options = lambda _row: {"100_100_10": "100, 100, 10", "50_50_10": "50, 50, 10"} if _row > 0 else {}
         m.get_common_scale_option_indices = lambda _row: [0, 1] if _row > 0 else []
         m.is_scale_locked = lambda _row: _row == 2
+        data_row_t = namedtuple(
+            "data_row_t", ("nickname", "location", "internalID", "taggedShape", "pixelSize", "scale", "range")
+        )
         data_rows = [
-            ["image", "/usr/root/image.png", "", "z: 1, y: 10, x: 10", "", ""],
-            ["image", "precomputed://http://localhost:8000", "", "z: 1, y: 10, x: 10", "100, 100, 10", ""],
-            ["image", "precomputed://http://localhost:8000", "", "z: 1, y: 10, x: 10", "50, 50, 10", ""],
-            [],  # Empty row because the custom setModel replaces the model's last row with an AddFileButton
+            data_row_t(
+                nickname="image",
+                location="/usr/root/image.png",
+                internalID="",
+                taggedShape="z: 1, y: 10, x: 10",
+                pixelSize="",
+                scale="",
+                range="",
+            ),
+            data_row_t(
+                nickname="image",
+                location="precomputed://http://localhost:8000",
+                internalID="",
+                taggedShape="z: 1, y: 10, x: 10",
+                pixelSize="",
+                scale="100, 100, 10",
+                range="",
+            ),
+            data_row_t(
+                nickname="image",
+                location="precomputed://http://localhost:8000",
+                internalID="",
+                taggedShape="z: 1, y: 10, x: 10",
+                pixelSize="",
+                scale="50, 50, 10",
+                range="",
+            ),
+            data_row_t(
+                nickname="", location="", internalID="", taggedShape="", pixelSize="", scale="", range=""
+            ),  # Empty row because the custom setModel replaces the model's last row with an AddFileButton
         ]
         for i, row in enumerate(data_rows):
             m.insertRow(i, [QStandardItem(d) for d in row])
