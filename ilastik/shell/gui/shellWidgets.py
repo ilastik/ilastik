@@ -246,10 +246,9 @@ class HorizontalMainSplitter(QSplitter):
         self._clear_secondary_control_stack()
 
     def _clear_secondary_control_stack(self):
-        if self._secondaryStack is not None:
-            for i in reversed(list(range(self._secondaryStack.count()))):
-                lastWidget = self._secondaryStack.widget(i)
-                self._secondaryStack.removeWidget(lastWidget)
+        for i in reversed(list(range(self._secondaryStack.count()))):
+            lastWidget = self._secondaryStack.widget(i)
+            self._secondaryStack.removeWidget(lastWidget)
 
     @staticmethod
     def _setActiveStackWidget(stack, widget):
@@ -275,7 +274,6 @@ class HorizontalMainSplitter(QSplitter):
             return
 
         assert self.count() == 3
-        assert self._secondaryStack is not None
 
         if not self._secondaryStack.isVisible():
             self._secondaryStack.setVisible(True)
