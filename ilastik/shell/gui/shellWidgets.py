@@ -67,7 +67,7 @@ class LabeledHandle(QSplitterHandle):
         self.toggle_button = VerticalButton("Secondary controls", self)
         self.toggle_button.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.toggle_button.setFocusPolicy(Qt.NoFocus)
-        self.setToolTip("Secondary controls. Double click to show/hide, click and drag to resize.")
+        self.setToolTip("Double click to show/hide, click and drag to resize.")
 
     def resizeEvent(self, a0: QResizeEvent) -> None:
         super().resizeEvent(a0)
@@ -197,7 +197,8 @@ class HorizontalMainSplitter(QSplitter):
 
     Attrs:
       imageSelectionCombo: combobox for image index switching
-
+      appletBar: ui element for controlling applet activation/switching
+        used by AppletBarMgr in ilastikShell.
     """
 
     def __init__(self, parent):
@@ -206,7 +207,6 @@ class HorizontalMainSplitter(QSplitter):
             parent=parent,
         )
         self.setChildrenCollapsible(False)
-        self._secondary_handle = None
         self._mainControls = MainControls()
         self._viewerControlStack = self._mainControls.viewerControlStack
         self.appletBar = self._mainControls.appletBar
@@ -216,7 +216,7 @@ class HorizontalMainSplitter(QSplitter):
         self._centralStack = CentralWidgetStack()
 
         self._secondaryStack = SecondaryControlsStack()
-        self._secondary_controls_hadle = None
+        self._secondary_controls_handle = None
         self._secondaryStackSize = 0
 
         self._insertWidget(0, self._mainControls)
@@ -269,23 +269,22 @@ class HorizontalMainSplitter(QSplitter):
         self._setActiveStackWidget(self._centralStack, centralWidget)
 
     def setActiveSecondaryControls(self, secondaryControlsWidget: Union[QWidget, None]):
-        if secondaryControlsWidget is not None:
-
-            assert self.count() == 3
-
-            if not self._secondaryStack.isVisible():
-                self._secondaryStack.setVisible(True)
-
-            if self._secondaryStack.indexOf(secondaryControlsWidget) == -1:
-                self._secondaryStack.addWidget(secondaryControlsWidget)
-                if hasattr(secondaryControlsWidget, "sync_state"):
-                    secondaryControlsWidget.sync_state()
-                    self.splitterMoved.connect(secondaryControlsWidget.sync_state)
-            self._secondaryStack.setCurrentWidget(secondaryControlsWidget)
-            self._secondary_controls_hadle.setButtonText(secondaryControlsWidget.display_text)
-
-        else:
+        if secondaryControlsWidget is None:
             self._secondaryStack.setVisible(False)
+            return
+
+        assert self.count() == 3
+
+        if not self._secondaryStack.isVisible():
+            self._secondaryStack.setVisible(True)
+
+        if self._secondaryStack.indexOf(secondaryControlsWidget) == -1:
+            self._secondaryStack.addWidget(secondaryControlsWidget)
+            if hasattr(secondaryControlsWidget, "sync_state"):
+                secondaryControlsWidget.sync_state()
+                self.splitterMoved.connect(secondaryControlsWidget.sync_state)
+        self._secondaryStack.setCurrentWidget(secondaryControlsWidget)
+        self._secondary_controls_handle.setButtonText(secondaryControlsWidget.display_text)
 
     def setMainControlsVisible(self, visible: bool):
         self._mainControls.setVisible(visible)
@@ -297,9 +296,9 @@ class HorizontalMainSplitter(QSplitter):
         n_widgets = self.count()
 
         if n_widgets == 2:
-            if self._secondary_controls_hadle is None:
-                self._secondary_controls_hadle = LabeledHandle(self.orientation(), self)
-            return self._secondary_controls_hadle
+            if self._secondary_controls_handle is None:
+                self._secondary_controls_handle = LabeledHandle(self.orientation(), self)
+            return self._secondary_controls_handle
         else:
             return QSplitterHandle(self.orientation(), self)
 

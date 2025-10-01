@@ -29,6 +29,13 @@ from lazyflow.utility.io_util.write_ome_zarr import SPATIAL_AXES
 
 
 class Neighbourhood(IntEnum):
+    """
+    Connectivity paradigm describing the search space for neighbours of a block.
+
+    The value corresponds to the number of hops, as in the connectivity parameter
+    for skimage.measure.label (see their docs for more context).
+    """
+
     NONE = 0
     SINGLE = 1  # Axis aligned, 2D: 4, 3D: 6
     NDIM = 2  # Full block, 2D: 8, 3D: 26
@@ -82,7 +89,7 @@ _Boundaries = {
 }
 
 
-@dataclass(slots=True, frozen=True)
+@dataclass(frozen=True)
 class Region:
     """
     Representation of the bounding box belonging to a certain label
@@ -92,12 +99,14 @@ class Region:
     slices: Tuple[slice, ...]
     label: int
 
+    __slots__ = "axistags", "slices", "label"
+
     def __post_init__(self):
         if len(self.axistags) != len(self.slices):
             raise ValueError(f"{self.axistags=} and {self.slices=} not matching in length")
 
         if any(_is_unbound(sl) for sl in self.slices):
-            raise ValueError(f"Cannot construct region with unbound slicing")
+            raise ValueError("Cannot construct region with unbound slicing")
 
     @property
     def tagged_slicing(self) -> Dict[str, slice]:
@@ -138,29 +147,28 @@ class Region:
         """
         return hash(tuple((sl.start, sl.stop) for sl in self.slices))
 
-    @classmethod
-    def with_slices(cls, reg: "Region", tagged_slices: Dict[str, slice]) -> "Region":
+    def with_slices(self, tagged_slices: Dict[str, slice]) -> "Region":
         axistags = [k for k in tagged_slices]
         slices = tuple([v for v in tagged_slices.values()])
-        return Region(axistags=axistags, slices=slices, label=reg.label)
+        return Region(axistags=axistags, slices=slices, label=self.label)
 
 
 @dataclass(frozen=True)
 class Block:
     """
-    Single block, as part of a larger blocking (knows about neighbors starting points)
+    Single block, as part of a larger blocking (knows about neighbours starting points)
 
     Args:
       axistags: up to 5D (tzyxc)
       slices: Block position. Neighbours are expected to start at block stops
       regions: Block-local regions (as in slices be within limits of block size)
-      neighborhood: Neighborhood to consider for finding neighboring blocks
+      neighbourhood: Neighborhood to consider for finding neighboring blocks
     """
 
     axistags: Sequence[str]
     slices: Tuple[slice, ...]
     regions: Sequence[Region]
-    neigbourhood: Neighbourhood = Neighbourhood.NDIM
+    neighbourhood: Neighbourhood = Neighbourhood.NDIM
 
     @property
     def block_start(self) -> Tuple[int, ...]:
@@ -179,7 +187,7 @@ class Block:
         return {tag: sl.start for tag, sl in zip(self.axistags, self.slices)}
 
     def boundary_regions(self, boundary: BoundaryDescrRelative, label: Optional[int] = None) -> Iterator[Region]:
-        if self.neigbourhood == Neighbourhood.NONE:
+        if self.neighbourhood == Neighbourhood.NONE:
             return
 
         def _boundary_index_from_slice(sl: slice, boundary: BlockBoundary) -> Union[int, None]:
@@ -195,7 +203,7 @@ class Block:
             tagged_boundary[at] = _boundary_index_from_slice(self.tagged_slices[at], bd)
 
         def _labelmatch(region_label: Union[int, None]) -> bool:
-            if label == None:
+            if label is None:
                 return True
             else:
                 return region_label == label
@@ -208,11 +216,12 @@ class Block:
         n_spatial = len(self.spatial_axes)
         assert n_spatial in (2, 3)
 
-        boundary_iter = _Boundaries[(self.neigbourhood, n_spatial)]
+        boundary_iter = _Boundaries[(self.neighbourhood, n_spatial)]
 
         for boundary in boundary_iter:
-            if all(x == BlockBoundary.NONE for x in boundary):
-                continue
+            assert not all(
+                x == BlockBoundary.NONE for x in boundary
+            ), f"Unexpected, nonsensical BlockBoundary value {boundary}."
 
             yield dict(zip(self.spatial_axes, boundary))
 
@@ -240,7 +249,7 @@ class Block:
                 neighbour_start[k] = sl.stop
             else:
                 # unreachable
-                raise NotImplemented()
+                raise NotImplementedError()
 
         return tuple(neighbour_start[k] for k in self.axistags)
 
@@ -255,7 +264,7 @@ class Block:
             else:
                 world_sl[k] = tagged_block_sl[k]
 
-        return region.with_slices(region, world_sl)
+        return region.with_slices(world_sl)
 
 
 def add_tagged_coords(t1: Dict[str, float], t2: Dict[str, float]) -> Dict[str, float]:
@@ -328,6 +337,11 @@ def connect_regions(block_dict: Dict[Tuple[int, ...], Block]) -> Dict[Region, Re
     regions_dict: Dict[Region, Region] = {}  # region_world: region_world, updated with anchor as value
 
     def get_anchor(region):
+        """An anchor is the representative for a connected region.
+
+        Currently it is the first already seen region connected to `region` through
+        any number of other regions.
+        """
         if region not in regions_dict:
             return region
 

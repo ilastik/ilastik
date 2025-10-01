@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from typing import Iterator, Tuple
+from typing import Iterator, Literal, Tuple
 from unittest.mock import patch
 
 import numpy
@@ -83,7 +83,12 @@ def label_explorer_non_blocked(
         pytest.param("label_explorer_non_blocked", Neighbourhood.NONE, id="non-blocked"),
     ],
 )
-def test_construct(qtbot, gui_variant, expected_neighbourhood, request):
+def test_construct(
+    qtbot,
+    gui_variant: Literal["label_explorer_blocked", "label_explorer_non_blocked"],
+    expected_neighbourhood: Neighbourhood,
+    request,
+):
     label_explorer: LabelExplorerWidget
     _islot, label_explorer = request.getfixturevalue(gui_variant)
     with patch.object(
@@ -109,11 +114,11 @@ def test_construct(qtbot, gui_variant, expected_neighbourhood, request):
 )
 def test_update_on_update(
     qtbot,
-    gui_variant,
-    request,
+    gui_variant: Literal["label_explorer_blocked", "label_explorer_non_blocked"],
     expected_n_blocks: int,
+    request,
 ):
-    islot = InputSlot
+    islot: InputSlot
     label_explorer: LabelExplorerWidget
     islot, label_explorer = request.getfixturevalue(gui_variant)
     with patch.object(
@@ -138,8 +143,10 @@ def test_update_on_update(
         pytest.param("label_explorer_non_blocked", 1, id="non-blocked"),
     ],
 )
-def test_no_update_on_update_when_not_shown(qtbot, gui_variant: str, expected_n_blocks: int, request):
-    islot = InputSlot
+def test_no_update_on_update_when_not_shown(
+    qtbot, gui_variant: Literal["label_explorer_blocked", "label_explorer_non_blocked"], expected_n_blocks: int, request
+):
+    islot: InputSlot
     label_explorer: LabelExplorerWidget
     islot, label_explorer = request.getfixturevalue(gui_variant)
     with patch.object(
@@ -236,7 +243,7 @@ def test_delete_labels_empty_table_blocked(
 )
 def test_sync_position(
     qtbot,
-    gui_variant: str,
+    gui_variant: Literal["label_explorer_blocked", "label_explorer_non_blocked"],
     request,
 ):
     islot: InputSlot

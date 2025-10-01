@@ -77,7 +77,7 @@ def test_region_with_slices():
     region = Region(axistags="xy", slices=(slice(1, 2), slice(0, 42)), label=1)
 
     new_slices = {"x": slice(5, 6), "y": slice(42, 10)}
-    region2 = Region.with_slices(region, tagged_slices=new_slices)
+    region2 = region.with_slices(tagged_slices=new_slices)
     assert region2.tagged_slicing == new_slices
 
 
@@ -119,12 +119,12 @@ def test_region_at_boundary(boundary_descr: BoundaryDescr, result: bool):
         ),
     ],
 )
-def test_block_neighbourhood_types(neighbourhood, expected_neighbours):
+def test_block_neighbourhood_types(neighbourhood: Neighbourhood, expected_neighbours: BoundaryDescrRelative):
     block = Block(
         axistags=("t", "y", "x", "c"),
         slices=(slice(10, 11), slice(100, 200), slice(200, 250), slice(0, 1)),
         regions=(),
-        neigbourhood=neighbourhood,
+        neighbourhood=neighbourhood,
     )
 
     assert list(block.boundaries_positive()) == expected_neighbours
@@ -143,7 +143,7 @@ def test_block_neighbourhood_types(neighbourhood, expected_neighbours):
         {"x": BlockBoundary.STOP, "y": BlockBoundary.STOP},
         {"x": BlockBoundary.NONE, "y": BlockBoundary.NONE},
     ],
-    ids=["left", "right", "top", "bottom", "top-left", "top-right", "bottom-left", "bottom_right", "none"],
+    ids=["left", "right", "top", "bottom", "top-left", "top-right", "bottom-left", "bottom-right", "none"],
 )
 def test_block_no_region_at_boundary_2d(boundary: BoundaryDescrRelative):
     axistags = "yx"
@@ -213,7 +213,7 @@ def test_block_no_region_at_boundary_2d(boundary: BoundaryDescrRelative):
         pytest.param(
             {"x": BlockBoundary.STOP, "y": BlockBoundary.STOP},
             [Region(axistags="xy", slices=(slice(1, 10, None), slice(5, 10, None)), label=7)],
-            id="bottom_right",
+            id="bottom-right",
         ),
     ],
 )
@@ -292,7 +292,7 @@ def test_block_boundary_regions_2d(boundary: BoundaryDescrRelative, expected_reg
             {"x": BlockBoundary.STOP, "y": BlockBoundary.STOP},
             7,
             [Region(axistags="xy", slices=(slice(1, 10, None), slice(5, 10, None)), label=7)],
-            id="bottom_right",
+            id="bottom-right",
         ),
     ],
 )
