@@ -19,7 +19,7 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 from itertools import zip_longest
-from typing import Dict
+from typing import Dict, List
 
 import numpy
 import pytest
@@ -159,19 +159,65 @@ def test_block_no_region_at_boundary_2d(boundary: BoundaryDescrRelative):
 @pytest.mark.parametrize(
     "boundary, expected_regions",
     [
-        ({"x": BlockBoundary.START, "y": BlockBoundary.NONE}, 3),
-        ({"x": BlockBoundary.STOP, "y": BlockBoundary.NONE}, 3),
-        ({"x": BlockBoundary.NONE, "y": BlockBoundary.START}, 3),
-        ({"x": BlockBoundary.NONE, "y": BlockBoundary.STOP}, 3),
-        ({"x": BlockBoundary.START, "y": BlockBoundary.START}, 1),
-        ({"x": BlockBoundary.STOP, "y": BlockBoundary.START}, 1),
-        ({"x": BlockBoundary.START, "y": BlockBoundary.STOP}, 1),
-        ({"x": BlockBoundary.STOP, "y": BlockBoundary.STOP}, 1),
+        pytest.param(
+            {"x": BlockBoundary.START, "y": BlockBoundary.NONE},
+            [
+                Region(axistags="xy", slices=(slice(0, 9, None), slice(1, 2, None)), label=1),
+                Region(axistags="xy", slices=(slice(0, 3, None), slice(0, 2, None)), label=3),
+                Region(axistags="xy", slices=(slice(0, 3, None), slice(4, 10, None)), label=6),
+            ],
+            id="left",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.STOP, "y": BlockBoundary.NONE},
+            [
+                Region(axistags="xy", slices=(slice(1, 10, None), slice(1, 2, None)), label=1),
+                Region(axistags="xy", slices=(slice(5, 10, None), slice(0, 4, None)), label=4),
+                Region(axistags="xy", slices=(slice(1, 10, None), slice(5, 10, None)), label=7),
+            ],
+            id="right",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.NONE, "y": BlockBoundary.START},
+            [
+                Region(axistags="xy", slices=(slice(3, 6, None), slice(0, 4, None)), label=2),
+                Region(axistags="xy", slices=(slice(0, 3, None), slice(0, 2, None)), label=3),
+                Region(axistags="xy", slices=(slice(5, 10, None), slice(0, 4, None)), label=4),
+            ],
+            id="top",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.NONE, "y": BlockBoundary.STOP},
+            [
+                Region(axistags="xy", slices=(slice(2, 4, None), slice(1, 10, None)), label=42),
+                Region(axistags="xy", slices=(slice(0, 3, None), slice(4, 10, None)), label=6),
+                Region(axistags="xy", slices=(slice(1, 10, None), slice(5, 10, None)), label=7),
+            ],
+            id="bottom",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.START, "y": BlockBoundary.START},
+            [Region(axistags="xy", slices=(slice(0, 3, None), slice(0, 2, None)), label=3)],
+            id="top-left",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.STOP, "y": BlockBoundary.START},
+            [Region(axistags="xy", slices=(slice(5, 10, None), slice(0, 4, None)), label=4)],
+            id="top-right",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.START, "y": BlockBoundary.STOP},
+            [Region(axistags="xy", slices=(slice(0, 3, None), slice(4, 10, None)), label=6)],
+            id="bottom-left",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.STOP, "y": BlockBoundary.STOP},
+            [Region(axistags="xy", slices=(slice(1, 10, None), slice(5, 10, None)), label=7)],
+            id="bottom_right",
+        ),
     ],
-    ids=["left", "right", "top", "bottom", "top-left", "top-right", "bottom-left", "bottom_right"],
 )
-def test_block_boundary_regions_2d(boundary: BoundaryDescrRelative, expected_regions):
-    # TODO: test that the correct regions are returned!
+def test_block_boundary_regions_2d(boundary: BoundaryDescrRelative, expected_regions: List[Region]):
     axistags = "xy"
 
     r_left = Region(axistags=axistags, slices=(slice(0, 9), slice(1, 2)), label=1)
@@ -191,25 +237,68 @@ def test_block_boundary_regions_2d(boundary: BoundaryDescrRelative, expected_reg
         regions=(r_left, r_right, r_top, r_bottom, r_topleft, r_topright, r_bottomleft, r_bottomright),
     )
 
-    assert len(list(block.boundary_regions(boundary))) == expected_regions
+    assert list(block.boundary_regions(boundary)) == expected_regions
 
 
 @pytest.mark.parametrize(
     "boundary, label, expected_regions",
     [
-        ({"x": BlockBoundary.START, "y": BlockBoundary.NONE}, 1, 1),
-        ({"x": BlockBoundary.STOP, "y": BlockBoundary.NONE}, 1, 1),
-        ({"x": BlockBoundary.NONE, "y": BlockBoundary.START}, 2, 2),
-        ({"x": BlockBoundary.NONE, "y": BlockBoundary.STOP}, 42, 1),
-        ({"x": BlockBoundary.START, "y": BlockBoundary.START}, 2, 1),
-        ({"x": BlockBoundary.STOP, "y": BlockBoundary.START}, 4, 1),
-        ({"x": BlockBoundary.START, "y": BlockBoundary.STOP}, 6, 1),
-        ({"x": BlockBoundary.STOP, "y": BlockBoundary.STOP}, 7, 1),
+        pytest.param(
+            {"x": BlockBoundary.START, "y": BlockBoundary.NONE},
+            1,
+            [Region(axistags="xy", slices=(slice(0, 9, None), slice(1, 2, None)), label=1)],
+            id="left",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.STOP, "y": BlockBoundary.NONE},
+            1,
+            [Region(axistags="xy", slices=(slice(1, 10, None), slice(1, 2, None)), label=1)],
+            id="right",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.NONE, "y": BlockBoundary.START},
+            2,
+            [
+                Region(axistags="xy", slices=(slice(3, 6, None), slice(0, 4, None)), label=2),
+                Region(axistags="xy", slices=(slice(0, 3, None), slice(0, 2, None)), label=2),
+            ],
+            id="top",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.NONE, "y": BlockBoundary.STOP},
+            42,
+            [Region(axistags="xy", slices=(slice(2, 4, None), slice(1, 10, None)), label=42)],
+            id="bottom",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.START, "y": BlockBoundary.START},
+            2,
+            [Region(axistags="xy", slices=(slice(0, 3, None), slice(0, 2, None)), label=2)],
+            id="top-left",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.STOP, "y": BlockBoundary.START},
+            4,
+            [Region(axistags="xy", slices=(slice(5, 10, None), slice(0, 4, None)), label=4)],
+            id="top-right",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.START, "y": BlockBoundary.STOP},
+            6,
+            [Region(axistags="xy", slices=(slice(0, 3, None), slice(4, 10, None)), label=6)],
+            id="bottom-left",
+        ),
+        pytest.param(
+            {"x": BlockBoundary.STOP, "y": BlockBoundary.STOP},
+            7,
+            [Region(axistags="xy", slices=(slice(1, 10, None), slice(5, 10, None)), label=7)],
+            id="bottom_right",
+        ),
     ],
-    ids=["left", "right", "top", "bottom", "top-left", "top-right", "bottom-left", "bottom_right"],
 )
-def test_block_boundary_regions_per_label_2d(boundary, label, expected_regions):
-    # TODO: test that the correct regions are returned!
+def test_block_boundary_regions_per_label_2d(
+    boundary: BoundaryDescrRelative, label: int, expected_regions: List[Region]
+):
     axistags = "xy"
 
     r_left = Region(axistags=axistags, slices=(slice(0, 9), slice(1, 2)), label=1)
@@ -229,7 +318,7 @@ def test_block_boundary_regions_per_label_2d(boundary, label, expected_regions):
         regions=(r_left, r_right, r_top, r_bottom, r_topleft, r_topright, r_bottomleft, r_bottomright),
     )
 
-    assert len(list(block.boundary_regions(boundary, label=label))) == expected_regions
+    assert list(block.boundary_regions(boundary, label=label)) == expected_regions
 
 
 def test_extract_annotations():
