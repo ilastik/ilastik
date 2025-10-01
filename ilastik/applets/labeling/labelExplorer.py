@@ -60,10 +60,13 @@ class LabelExplorerWidget(QWidget):
       * if `label_slot.meta.is_blocked_cache` is True it is assumed to be connected to a blocked cache
         (as in Pixel Classification and derived workflows).
         `label_slot.meta.ideal_blockshape` must be set and should correspond to the block size signaled
-        through `nonzero_block_slot`.
+        through `nonzero_block_slot`. -> Neighbourhood.SINGLE
+        Note: Neighbourhood.NDIM would lead to perfect results in every situation. In practice considering
+        Neighbourhood,SINGLE would diverge from the perfect result only if the label has exactly 1Pixel wide
+        annotations in diagonal blocks.
       * if `label_slot.meta.is_blocked_cache` is not True it indicates a non-blocked cache - as used in
         Carving and Counting. In this case it is assumed that any update will require update of the
-        whole label array.
+        whole label array. -> Neighbourhood.NONE
 
     The ui is lazy. Calculations are only done if this widget is shown. If changes to the
     label slot are detected without the ui being visible, `_table_initialized` is set to
@@ -122,10 +125,12 @@ class LabelExplorerWidget(QWidget):
 
     def _setupUi(self):
         layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
         self.tableWidget = QTableWidget()
         self.tableWidget.setColumnCount(len(self._display_axistags) + 1)
         self.tableWidget.setHorizontalHeaderLabels(self._display_axistags + ["label"])
         self.tableWidget.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.tableWidget.setSelectionMode(QAbstractItemView.SingleSelection)
         self.tableWidget.horizontalHeader().setStretchLastSection(True)
         self.tableWidget.setSortingEnabled(True)
         self.tableWidget.setItemDelegateForColumn(
@@ -178,7 +183,7 @@ class LabelExplorerWidget(QWidget):
             block_regions = extract_annotations(labels_data)
 
             block = Block(
-                axistags="".join(self._axistags), slices=roi, regions=block_regions, neigbourhood=self._neighbourhood
+                axistags="".join(self._axistags), slices=roi, regions=block_regions, neighbourhood=self._neighbourhood
             )
 
             if block_regions:
