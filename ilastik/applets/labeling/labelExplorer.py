@@ -30,10 +30,10 @@ from qtpy.QtWidgets import QAbstractItemView, QStyledItemDelegate, QTableWidget,
 from qtpy.QtCore import QTimer
 
 from ilastik.utility.gui import silent_qobject
+from lazyflow.base import SPATIAL_AXES
 from lazyflow.request.request import Request, RequestPool
 from lazyflow.roi import getIntersectingBlocks, roiToSlice
 from lazyflow.slot import OutputSlot
-from lazyflow.utility.io_util.write_ome_zarr import SPATIAL_AXES
 from lazyflow.utility.timer import timeLogged
 
 from .connectBlockedLabels import Block, Neighbourhood, SpatialAxesKeys, connect_regions, extract_annotations
