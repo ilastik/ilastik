@@ -25,7 +25,7 @@ from typing import Dict, Iterator, List, Optional, Sequence, Tuple, Union
 import vigra
 from vigra.analysis import extractRegionFeatures
 
-from lazyflow.utility.io_util.write_ome_zarr import SPATIAL_AXES
+from lazyflow.base import SPATIAL_AXES
 
 
 class Neighbourhood(IntEnum):
