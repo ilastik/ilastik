@@ -225,8 +225,9 @@ def test_delete_labels_empty_table_blocked(
         assert len(label_explorer._block_cache) == 2
         assert label_explorer.tableWidget.rowCount() == 1
 
-        # delete labels of val 2
-        label_pipeline_blocked.clearLabel(2)
+        # delete labels of val 2, but this time go via the slot method
+        label_pipeline_blocked.deleteLabel.setValue(2)
+        label_pipeline_blocked.deleteLabel.setValue(-1)
         # again a 2 increment of the counter, as clearing touches two blocks
         assert wrapped_populate_table.call_count == 7
         assert len(label_explorer._block_cache) == 0
