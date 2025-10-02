@@ -23,7 +23,7 @@ install:
         }
   - cmd: set PATH=%MINIFORGE%;%MINIFORGE%\Scripts;%MINIFORGE%\Library\bin;%PATH%
   - cmd: conda config --set always_yes yes --set changeps1 no --set channel_priority strict
-  - cmd: conda update -n base -c conda-forge conda
+  - cmd: conda update -n base -c conda-forge conda conda-libmamba-solver
   - cmd: conda install -n base -c conda-forge setuptools_scm
   - |
     conda env create --name %ENV_NAME% --file dev\environment-dev.yml
