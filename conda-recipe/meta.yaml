@@ -56,6 +56,8 @@ outputs:
         - pyqt 5.15.*
         # previous versions would set thread limits globally with side effects
         - python-elf >=0.4.8
+        # for neuroglancer precomputed chunks
+        - requests
         # s3fs allows zarr.storage.FSStore to read s3:// URIs
         - s3fs >=2022.8.2
         - scikit-image
