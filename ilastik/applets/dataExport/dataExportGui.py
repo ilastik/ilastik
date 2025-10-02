@@ -83,6 +83,9 @@ class DataExportGui(QWidget):
     def viewerControlWidget(self):
         return self._viewerControlWidgetStack
 
+    def secondaryControlsWidget(self):
+        return None
+
     def setImageIndex(self, index):
         pass
 

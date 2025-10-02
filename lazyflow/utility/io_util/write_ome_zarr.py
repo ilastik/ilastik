@@ -23,7 +23,7 @@ import logging
 from collections import OrderedDict as ODict
 from functools import partial
 from pathlib import Path
-from typing import List, Tuple, Dict, OrderedDict, Optional, Literal, Iterable, Any, Union
+from typing import List, Tuple, Dict, OrderedDict, Optional, Iterable, Any, Union
 
 import numpy
 import zarr
@@ -31,6 +31,7 @@ from zarr.storage import FSStore
 
 from ilastik import __version__ as ilastik_version
 from lazyflow import USER_LOGLEVEL
+from lazyflow.base import SPATIAL_AXES, Axiskey, Shape, TaggedShape
 from lazyflow.operators import OpReorderAxes
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.opResize import OpResize
@@ -46,15 +47,11 @@ from lazyflow.utility.io_util.multiscaleStore import Multiscales
 
 logger = logging.getLogger(__name__)
 
-Shape = Tuple[int, ...]
-Axiskey = Literal["t", "z", "y", "x", "c"]
-TaggedShape = OrderedDict[Axiskey, int]  # { axis: size }
 OrderedScaling = OrderedTranslation = OrderedDict[Axiskey, float]  # { axis: scaling }
 ScalingsByScaleKey = OrderedDict[str, OrderedScaling]  # { scale_key: { axis: scaling } }
 
 OME_ZARR_V_0_4_KWARGS = dict(dimension_separator="/")
 OME_ZARR_AXES: List[Axiskey] = ["t", "c", "z", "y", "x"]
-SPATIAL_AXES: List[Axiskey] = ["z", "y", "x"]
 SINGE_SCALE_DEFAULT_KEY = "s0"
 
 

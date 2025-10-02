@@ -89,6 +89,9 @@ class DataSelectionGui(QWidget):
     def viewerControlWidget(self):
         return self._viewerControlWidgetStack
 
+    def secondaryControlsWidget(self):
+        return None
+
     def setImageIndex(self, imageIndex):
         if imageIndex is not None:
             self.laneSummaryTableView.selectRow(imageIndex)

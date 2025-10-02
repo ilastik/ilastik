@@ -1,3 +1,4 @@
+from typing import List, Tuple, Union
 from qtpy.QtCore import Signal, QObject
 from qtpy.QtGui import QIcon
 from qtpy.QtWidgets import QToolBox, QWidget, QStackedWidget
@@ -14,32 +15,32 @@ class AppletDrawerToolBox(QToolBox):
         self._prevActive = None
         self.currentChanged.connect(self._toggleCollapsedMarker)
 
-    def _toggleCollapsedMarker(self, newActiveIdx):
+    def _toggleCollapsedMarker(self, newActiveIdx: int) -> None:
         if self._prevActive is not None:
             self._refreshCollapsedMarker(self._prevActive)
 
         self._refreshCollapsedMarker(newActiveIdx)
         self._prevActive = newActiveIdx
 
-    def _refreshCollapsedMarker(self, idx):
+    def _refreshCollapsedMarker(self, idx: int) -> None:
         if self.currentIndex() == idx:
             self.setItemIcon(idx, self.ICON_OPEN)
         else:
             self.setItemIcon(idx, self.ICON_CLOSED)
 
-    def setItemText(self, idx, text):
+    def setItemText(self, idx: int, text: str) -> None:
         """
         Override to set human readable number in tab title
         """
         super().setItemText(idx, f"{idx + 1}. {text}")
 
-    def addItem(self, widget, text):
+    def addItem(self, widget: QStackedWidget, text: str) -> int:
         idx = super().addItem(widget, text)
         self.setItemText(idx, text)
         self._refreshCollapsedMarker(idx)
         return idx
 
-    def items(self):
+    def items(self) -> List[Tuple[int, QStackedWidget]]:
         return [(i, self.widget(i)) for i in range(self.count())]
 
 
@@ -52,15 +53,15 @@ class AppletBarManager(QObject):
 
     appletActivated = Signal(int)
 
-    def __init__(self, appletBar) -> None:
+    def __init__(self, appletBar: AppletDrawerToolBox) -> None:
         super().__init__()
 
-        self._toolbarIdByAppletId = {}
-        self._appletIdByToolbarId = {}
+        self._toolbarIdByAppletId: dict[int, Union[int, None]] = {}
+        self._appletIdByToolbarId: dict[int, int] = {}
         self._toolbox = appletBar
         self._toolbox.currentChanged.connect(self._handleCurrentChanged)
 
-    def _handleCurrentChanged(self, toolboxId):
+    def _handleCurrentChanged(self, toolboxId: int) -> None:
         """
         Emit applet activated signal on toolbox switch
         """
@@ -98,7 +99,7 @@ class AppletBarManager(QObject):
 
         self._toolbox.setCurrentIndex(toolboxId)
 
-    def updateAppletTitle(self, appletId: int, newTitle: str):
+    def updateAppletTitle(self, appletId: int, newTitle: str) -> None:
         toolboxId = self._toolbarIdByAppletId.get(appletId)
 
         if toolboxId is None:
@@ -118,7 +119,7 @@ class AppletBarManager(QObject):
 
         stackedWidget.setCurrentWidget(newWidget)
 
-    def setEnabled(self, appletId: int, value: bool):
+    def setEnabled(self, appletId: int, value: bool) -> None:
         toolboxId = self._toolbarIdByAppletId.get(appletId)
 
         if toolboxId is None:
@@ -139,4 +140,5 @@ class AppletBarManager(QObject):
             w.setParent(None)
             self._toolbox.removeItem(idx)
             appletId = self._appletIdByToolbarId.pop(idx, None)
-            self._toolbarIdByAppletId.pop(appletId, None)
+            if appletId:
+                self._toolbarIdByAppletId.pop(appletId, None)

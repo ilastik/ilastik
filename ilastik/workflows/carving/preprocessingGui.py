@@ -179,6 +179,9 @@ class PreprocessingGui(QMainWindow):
     def appletDrawer(self):
         return self.drawer
 
+    def secondaryControlsWidget(self):
+        return None
+
     def menus(self):
         return []
 
