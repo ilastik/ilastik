@@ -32,6 +32,7 @@ from ilastik.applets.labeling.connectBlockedLabels import (
     BoundaryDescrRelative,
     Neighbourhood,
     Region,
+    RelativeBoundaries,
     SpatialAxesKeys,
     add_tagged_coords,
     connect_regions,
@@ -127,7 +128,7 @@ def test_block_neighbourhood_types(neighbourhood: Neighbourhood, expected_neighb
         neighbourhood=neighbourhood,
     )
 
-    assert list(block.boundaries_positive()) == expected_neighbours
+    assert list(RelativeBoundaries.positive_boundaries(block.spatial_axes, block.neighbourhood)) == expected_neighbours
 
 
 @pytest.mark.parametrize(

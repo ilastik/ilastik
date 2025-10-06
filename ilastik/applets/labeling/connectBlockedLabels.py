@@ -34,6 +34,15 @@ class Neighbourhood(IntEnum):
 
     The value corresponds to the number of hops, as in the connectivity parameter
     for skimage.measure.label (see their docs for more context).
+
+    Example for 2d, for the centerpixel P, N is considered part of the neighbourhood:
+
+    . . .    . N .      N N N
+    . P .    N P N      N P N
+    . . .    . N .      N N N
+
+    NONE     SINGLE     NDIM
+
     """
 
     NONE = 0
@@ -53,39 +62,72 @@ class SpatialAxesKeys(StrEnum):
     z = "z"
 
 
-_Boundaries2D_SINGLE = ((BlockBoundary.NONE, BlockBoundary.STOP), (BlockBoundary.STOP, BlockBoundary.NONE))
-_Boundaries2D_NDIM = _Boundaries2D_SINGLE + ((BlockBoundary.STOP, BlockBoundary.STOP),)
-
-
-_Boundaries3D_SINGLE = (
-    (BlockBoundary.NONE, BlockBoundary.NONE, BlockBoundary.STOP),
-    (BlockBoundary.NONE, BlockBoundary.STOP, BlockBoundary.NONE),
-    (BlockBoundary.STOP, BlockBoundary.NONE, BlockBoundary.NONE),
-)
-_Boundaries3D_NDIM = _Boundaries3D_SINGLE + (
-    (BlockBoundary.NONE, BlockBoundary.STOP, BlockBoundary.STOP),
-    (BlockBoundary.STOP, BlockBoundary.NONE, BlockBoundary.STOP),
-    (BlockBoundary.STOP, BlockBoundary.STOP, BlockBoundary.NONE),
-    (BlockBoundary.STOP, BlockBoundary.STOP, BlockBoundary.STOP),
-)
-
-
 BoundaryDescrRelative = Dict[SpatialAxesKeys, BlockBoundary]
 BoundaryDescr = Dict[SpatialAxesKeys, Union[int, None]]
+
+
+class RelativeBoundaries:
+    """
+    This class contains only boundaries that can be reached by a positive increment
+    along at least one axis.
+
+    For 2D, where B is the "current", and N denotes neighbouring blocks.
+
+    . . .    . . .      . . N
+    . B .    . B N      . B N
+    . . .    . N .      N N N
+
+    NONE     SINGLE     NDIM
+
+    Boundary descriptions here are used to access these neighbouring blocks.
+    """
+
+    @staticmethod
+    def positive_boundaries(
+        spatial_axes: List[SpatialAxesKeys], neighbourhood: Neighbourhood
+    ) -> Iterator[BoundaryDescrRelative]:
+
+        _Boundaries2D_SINGLE = ((BlockBoundary.NONE, BlockBoundary.STOP), (BlockBoundary.STOP, BlockBoundary.NONE))
+        _Boundaries2D_NDIM = _Boundaries2D_SINGLE + ((BlockBoundary.STOP, BlockBoundary.STOP),)
+
+        _Boundaries3D_SINGLE = (
+            (BlockBoundary.NONE, BlockBoundary.NONE, BlockBoundary.STOP),
+            (BlockBoundary.NONE, BlockBoundary.STOP, BlockBoundary.NONE),
+            (BlockBoundary.STOP, BlockBoundary.NONE, BlockBoundary.NONE),
+        )
+        _Boundaries3D_NDIM = _Boundaries3D_SINGLE + (
+            (BlockBoundary.NONE, BlockBoundary.STOP, BlockBoundary.STOP),
+            (BlockBoundary.STOP, BlockBoundary.NONE, BlockBoundary.STOP),
+            (BlockBoundary.STOP, BlockBoundary.STOP, BlockBoundary.NONE),
+            (BlockBoundary.STOP, BlockBoundary.STOP, BlockBoundary.STOP),
+        )
+
+        _Boundaries = {
+            (Neighbourhood.NONE, 2): (),
+            (Neighbourhood.NONE, 3): (),
+            (Neighbourhood.SINGLE, 2): _Boundaries2D_SINGLE,
+            (Neighbourhood.SINGLE, 3): _Boundaries3D_SINGLE,
+            (Neighbourhood.NDIM, 2): _Boundaries2D_NDIM,
+            (Neighbourhood.NDIM, 3): _Boundaries3D_NDIM,
+        }
+
+        n_spatial = len(spatial_axes)
+        assert n_spatial in (2, 3)
+
+        boundary_iter = _Boundaries[(neighbourhood, n_spatial)]
+
+        for boundary in boundary_iter:
+            assert not all(
+                x == BlockBoundary.NONE for x in boundary
+            ), f"Unexpected, nonsensical BlockBoundary value {boundary}."
+
+            yield dict(zip(spatial_axes, boundary))
+
 
 _INVERTED_BOUNDARIES: dict[BlockBoundary, BlockBoundary] = {
     BlockBoundary.NONE: BlockBoundary.NONE,
     BlockBoundary.START: BlockBoundary.STOP,
     BlockBoundary.STOP: BlockBoundary.START,
-}
-
-_Boundaries = {
-    (Neighbourhood.NONE, 2): (),
-    (Neighbourhood.NONE, 3): (),
-    (Neighbourhood.SINGLE, 2): _Boundaries2D_SINGLE,
-    (Neighbourhood.SINGLE, 3): _Boundaries3D_SINGLE,
-    (Neighbourhood.NDIM, 2): _Boundaries2D_NDIM,
-    (Neighbourhood.NDIM, 3): _Boundaries3D_NDIM,
 }
 
 
@@ -212,21 +254,8 @@ class Block:
             if region.is_at_boundary(tagged_boundary) and _labelmatch(region.label):
                 yield region
 
-    def boundaries_positive(self) -> Iterator[BoundaryDescrRelative]:
-        n_spatial = len(self.spatial_axes)
-        assert n_spatial in (2, 3)
-
-        boundary_iter = _Boundaries[(self.neighbourhood, n_spatial)]
-
-        for boundary in boundary_iter:
-            assert not all(
-                x == BlockBoundary.NONE for x in boundary
-            ), f"Unexpected, nonsensical BlockBoundary value {boundary}."
-
-            yield dict(zip(self.spatial_axes, boundary))
-
     def boundary_regions_positive(self) -> Iterator[Tuple[BoundaryDescrRelative, Region]]:
-        for boundary in self.boundaries_positive():
+        for boundary in RelativeBoundaries.positive_boundaries(self.spatial_axes, self.neighbourhood):
             for boundary_region in self.boundary_regions(boundary):
                 yield boundary, boundary_region
 
