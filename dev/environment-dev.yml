@@ -54,6 +54,9 @@ dependencies:
   - pytorch 2.7.*
   - tiktorch 25.4.0
 
+  # TODO: investigate pytorch-3dunet dependency changes 1.9.3 and up #3079
+  - pytorch-3dunet 1.9.2
+
   # Third-party object feature plugins
   - sphericaltexture_plugin
   # TODO: sphericaltexture 0.1.1 currently times out in the tests
