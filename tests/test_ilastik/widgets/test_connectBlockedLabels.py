@@ -30,7 +30,7 @@ from ilastik.applets.labeling.connectBlockedLabels import (
     BlockBoundary,
     BoundaryDescr,
     BoundaryDescrRelative,
-    Neighbourhood,
+    Neighborhood,
     Region,
     RelativeBoundaries,
     SpatialAxesKeys,
@@ -103,15 +103,15 @@ def test_region_at_boundary(boundary_descr: BoundaryDescr, result: bool):
 
 
 @pytest.mark.parametrize(
-    "neighbourhood, expected_neighbours",
+    "neighborhood, expected_neighbors",
     [
-        (Neighbourhood.NONE, []),
+        (Neighborhood.NONE, []),
         (
-            Neighbourhood.SINGLE,
+            Neighborhood.SINGLE,
             [{"y": BlockBoundary.NONE, "x": BlockBoundary.STOP}, {"y": BlockBoundary.STOP, "x": BlockBoundary.NONE}],
         ),
         (
-            Neighbourhood.NDIM,
+            Neighborhood.NDIM,
             [
                 {"y": BlockBoundary.NONE, "x": BlockBoundary.STOP},
                 {"y": BlockBoundary.STOP, "x": BlockBoundary.NONE},
@@ -120,15 +120,15 @@ def test_region_at_boundary(boundary_descr: BoundaryDescr, result: bool):
         ),
     ],
 )
-def test_block_neighbourhood_types(neighbourhood: Neighbourhood, expected_neighbours: BoundaryDescrRelative):
+def test_block_neighborhood_types(neighborhood: Neighborhood, expected_neighbors: BoundaryDescrRelative):
     block = Block(
         axistags=("t", "y", "x", "c"),
         slices=(slice(10, 11), slice(100, 200), slice(200, 250), slice(0, 1)),
         regions=(),
-        neighbourhood=neighbourhood,
+        neighborhood=neighborhood,
     )
 
-    assert list(RelativeBoundaries.positive_boundaries(block.spatial_axes, block.neighbourhood)) == expected_neighbours
+    assert list(RelativeBoundaries.positive_boundaries(block.spatial_axes, block.neighborhood)) == expected_neighbors
 
 
 @pytest.mark.parametrize(

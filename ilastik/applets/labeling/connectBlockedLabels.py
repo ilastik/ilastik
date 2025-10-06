@@ -28,14 +28,14 @@ from vigra.analysis import extractRegionFeatures
 from lazyflow.base import SPATIAL_AXES
 
 
-class Neighbourhood(IntEnum):
+class Neighborhood(IntEnum):
     """
-    Connectivity paradigm describing the search space for neighbours of a block.
+    Connectivity paradigm describing the search space for neighbors of a block.
 
     The value corresponds to the number of hops, as in the connectivity parameter
     for skimage.measure.label (see their docs for more context).
 
-    Example for 2d, for the centerpixel P, N is considered part of the neighbourhood:
+    Example for 2d, for the centerpixel P, N is considered part of the neighborhood:
 
     . . .    . N .      N N N
     . P .    N P N      N P N
@@ -71,7 +71,7 @@ class RelativeBoundaries:
     This class contains only boundaries that can be reached by a positive increment
     along at least one axis.
 
-    For 2D, where B is the "current", and N denotes neighbouring blocks.
+    For 2D, where B is the "current", and N denotes neighboring blocks.
 
     . . .    . . .      . . N
     . B .    . B N      . B N
@@ -79,12 +79,12 @@ class RelativeBoundaries:
 
     NONE     SINGLE     NDIM
 
-    Boundary descriptions here are used to access these neighbouring blocks.
+    Boundary descriptions here are used to access these neighboring blocks.
     """
 
     @staticmethod
     def positive_boundaries(
-        spatial_axes: List[SpatialAxesKeys], neighbourhood: Neighbourhood
+        spatial_axes: List[SpatialAxesKeys], neighborhood: Neighborhood
     ) -> Iterator[BoundaryDescrRelative]:
 
         _Boundaries2D_SINGLE = ((BlockBoundary.NONE, BlockBoundary.STOP), (BlockBoundary.STOP, BlockBoundary.NONE))
@@ -103,18 +103,18 @@ class RelativeBoundaries:
         )
 
         _Boundaries = {
-            (Neighbourhood.NONE, 2): (),
-            (Neighbourhood.NONE, 3): (),
-            (Neighbourhood.SINGLE, 2): _Boundaries2D_SINGLE,
-            (Neighbourhood.SINGLE, 3): _Boundaries3D_SINGLE,
-            (Neighbourhood.NDIM, 2): _Boundaries2D_NDIM,
-            (Neighbourhood.NDIM, 3): _Boundaries3D_NDIM,
+            (Neighborhood.NONE, 2): (),
+            (Neighborhood.NONE, 3): (),
+            (Neighborhood.SINGLE, 2): _Boundaries2D_SINGLE,
+            (Neighborhood.SINGLE, 3): _Boundaries3D_SINGLE,
+            (Neighborhood.NDIM, 2): _Boundaries2D_NDIM,
+            (Neighborhood.NDIM, 3): _Boundaries3D_NDIM,
         }
 
         n_spatial = len(spatial_axes)
         assert n_spatial in (2, 3)
 
-        boundary_iter = _Boundaries[(neighbourhood, n_spatial)]
+        boundary_iter = _Boundaries[(neighborhood, n_spatial)]
 
         for boundary in boundary_iter:
             assert not all(
@@ -198,19 +198,19 @@ class Region:
 @dataclass(frozen=True)
 class Block:
     """
-    Single block, as part of a larger blocking (knows about neighbours starting points)
+    Single block, as part of a larger blocking (knows about neighbors starting points)
 
     Args:
       axistags: up to 5D (tzyxc)
-      slices: Block position. Neighbours are expected to start at block stops
+      slices: Block position. Neighbors are expected to start at block stops
       regions: Block-local regions (as in slices be within limits of block size)
-      neighbourhood: Neighborhood to consider for finding neighboring blocks
+      neighborhood: Neighborhood to consider for finding neighboring blocks
     """
 
     axistags: Sequence[str]
     slices: Tuple[slice, ...]
     regions: Sequence[Region]
-    neighbourhood: Neighbourhood = Neighbourhood.NDIM
+    neighborhood: Neighborhood = Neighborhood.NDIM
 
     @property
     def block_start(self) -> Tuple[int, ...]:
@@ -229,7 +229,7 @@ class Block:
         return {tag: sl.start for tag, sl in zip(self.axistags, self.slices)}
 
     def boundary_regions(self, boundary: BoundaryDescrRelative, label: Optional[int] = None) -> Iterator[Region]:
-        if self.neighbourhood == Neighbourhood.NONE:
+        if self.neighborhood == Neighborhood.NONE:
             return
 
         def _boundary_index_from_slice(sl: slice, boundary: BlockBoundary) -> Union[int, None]:
@@ -255,32 +255,32 @@ class Block:
                 yield region
 
     def boundary_regions_positive(self) -> Iterator[Tuple[BoundaryDescrRelative, Region]]:
-        for boundary in RelativeBoundaries.positive_boundaries(self.spatial_axes, self.neighbourhood):
+        for boundary in RelativeBoundaries.positive_boundaries(self.spatial_axes, self.neighborhood):
             for boundary_region in self.boundary_regions(boundary):
                 yield boundary, boundary_region
 
-    def neighbour_start_coordinates(self, boundary: BoundaryDescrRelative) -> Tuple[int, ...]:
+    def neighbor_start_coordinates(self, boundary: BoundaryDescrRelative) -> Tuple[int, ...]:
         tagged_slices = self.tagged_slices
 
-        neighbour_start: dict[str, int] = {}
+        neighbor_start: dict[str, int] = {}
         for k, sl in tagged_slices.items():
             if k not in SPATIAL_AXES:
-                neighbour_start[k] = sl.start
+                neighbor_start[k] = sl.start
                 continue
 
             ks = SpatialAxesKeys(k)
             b = boundary[ks]
             if b == BlockBoundary.NONE:
-                neighbour_start[k] = sl.start
+                neighbor_start[k] = sl.start
             elif b == BlockBoundary.START:
-                neighbour_start[k] = sl.start - (sl.stop - sl.start)
+                neighbor_start[k] = sl.start - (sl.stop - sl.start)
             elif b == BlockBoundary.STOP:
-                neighbour_start[k] = sl.stop
+                neighbor_start[k] = sl.stop
             else:
                 # unreachable
                 raise NotImplementedError()
 
-        return tuple(neighbour_start[k] for k in self.axistags)
+        return tuple(neighbor_start[k] for k in self.axistags)
 
     def region_in_world(self, region: Region) -> Region:
         tagged_region_sl = region.tagged_slicing
@@ -389,19 +389,19 @@ def connect_regions(block_dict: Dict[Tuple[int, ...], Block]) -> Dict[Region, Re
 
         for boundary, region in block.boundary_regions_positive():
             region_world = block.region_in_world(region)
-            block_start = block.neighbour_start_coordinates(boundary)
+            block_start = block.neighbor_start_coordinates(boundary)
             if block_start not in block_dict:
                 continue
 
-            neighbour_block = block_dict[block_start]
-            boundary_in_neighbour = {k: _INVERTED_BOUNDARIES[v] for k, v in boundary.items()}
-            for reg in neighbour_block.boundary_regions(boundary_in_neighbour, label=region.label):
-                neighbour_region_world = neighbour_block.region_in_world(reg)
-                if check_overlap(region_world, neighbour_region_world):
-                    anchor_neighbour = get_anchor(neighbour_region_world)
+            neighbor_block = block_dict[block_start]
+            boundary_in_neighbor = {k: _INVERTED_BOUNDARIES[v] for k, v in boundary.items()}
+            for reg in neighbor_block.boundary_regions(boundary_in_neighbor, label=region.label):
+                neighbor_region_world = neighbor_block.region_in_world(reg)
+                if check_overlap(region_world, neighbor_region_world):
+                    anchor_neighbor = get_anchor(neighbor_region_world)
                     anchor_reg = get_anchor(region_world)
 
-                    regions_dict[anchor_neighbour] = anchor_reg
+                    regions_dict[anchor_neighbor] = anchor_reg
 
     return regions_dict
 

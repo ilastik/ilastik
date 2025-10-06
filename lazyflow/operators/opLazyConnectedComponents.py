@@ -213,8 +213,8 @@ class _LabelManager(object):
 #   - put all requested chunks in the processing queue
 #   - for each chunk in processing queue:
 #       * label the chunk, store the labels
-#       * for each neighbour of chunk:
-#           + identify objects extending to this neighbour, call makeUnion()
+#       * for each neighbor of chunk:
+#           + identify objects extending to this neighbor, call makeUnion()
 #           + if there were such objects, put chunk in processing queue
 #
 # In addition to this short algorithm, there is some bookkeeping going
@@ -357,7 +357,7 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
 
             # get the labels in use by this chunk
             # (no need to label this chunk, has been done already because it
-            # was labeled as a neighbour of the last chunk, and the first chunk
+            # was labeled as a neighbor of the last chunk, and the first chunk
             # was labeled above)
             localLabels = np.arange(1, self._numIndices[currentChunk] + 1)
             localLabels = localLabels.astype(_LABEL_TYPE)
@@ -370,7 +370,7 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
             # other process is going to finalize
 
             # start merging adjacent regions
-            otherChunks = self._generateNeighbours(currentChunk)
+            otherChunks = self._generateNeighbors(currentChunk)
             for other in otherChunks:
                 self._label(other)
                 a, b = self._orderPair(currentChunk, other)
@@ -379,12 +379,12 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
                 myLabels, otherLabels = res[me], res[1 - me]
 
                 # determine which objects from this chunk continue in the
-                # neighbouring chunk
+                # neighboring chunk
                 extendingLabels = np.array([b for a, b in zip(myLabels, otherLabels) if a in actualLabels]).astype(
                     myLabels.dtype
                 )
 
-                # add the neighbour to our processing queue only if it actually
+                # add the neighbor to our processing queue only if it actually
                 # shares objects
                 if extendingLabels.size > 0:
                     extendingLabels = np.sort(vigra.analysis.unique(extendingLabels)).astype(_LABEL_TYPE)
@@ -611,10 +611,10 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
             return roiA, roiB
 
     # generate a list of adjacent chunks
-    def _generateNeighbours(self, chunkIndex):
+    def _generateNeighbors(self, chunkIndex):
         n = []
         idx = np.asarray(chunkIndex, dtype=np.int64)
-        # only spatial neighbours are considered
+        # only spatial neighbors are considered
         for i in range(1, 4):
             if idx[i] > 0:
                 new = idx.copy()

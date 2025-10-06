@@ -36,7 +36,7 @@ from lazyflow.roi import getIntersectingBlocks, roiToSlice
 from lazyflow.slot import OutputSlot
 from lazyflow.utility.timer import timeLogged
 
-from .connectBlockedLabels import Block, Neighbourhood, SpatialAxesKeys, connect_regions, extract_annotations
+from .connectBlockedLabels import Block, Neighborhood, SpatialAxesKeys, connect_regions, extract_annotations
 
 logger = logging.getLogger(__name__)
 
@@ -60,13 +60,13 @@ class LabelExplorerWidget(QWidget):
       * if `label_slot.meta.is_blocked_cache` is True it is assumed to be connected to a blocked cache
         (as in Pixel Classification and derived workflows).
         `label_slot.meta.ideal_blockshape` must be set and should correspond to the block size signaled
-        through `nonzero_block_slot`. -> Neighbourhood.SINGLE
-        Note: Neighbourhood.NDIM would lead to perfect results in every situation. In practice considering
-        Neighbourhood,SINGLE would diverge from the perfect result only if the label has exactly 1Pixel wide
+        through `nonzero_block_slot`. -> Neighborhood.SINGLE
+        Note: Neighborhood.NDIM would lead to perfect results in every situation. In practice considering
+        Neighborhood,SINGLE would diverge from the perfect result only if the label has exactly 1Pixel wide
         annotations in diagonal blocks.
       * if `label_slot.meta.is_blocked_cache` is not True it indicates a non-blocked cache - as used in
         Carving and Counting. In this case it is assumed that any update will require update of the
-        whole label array. -> Neighbourhood.NONE
+        whole label array. -> Neighborhood.NONE
 
     The ui is lazy. Calculations are only done if this widget is shown. If changes to the
     label slot are detected without the ui being visible, `_table_initialized` is set to
@@ -94,8 +94,8 @@ class LabelExplorerWidget(QWidget):
         self._item_flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemNeverHasChildren
         self._label_slot = label_slot
         self._block_cache: Dict[Tuple[int, ...], Block] = {}
-        self._neighbourhood = (
-            Neighbourhood.SINGLE if getattr(self._label_slot.meta, "is_blocked_cache", False) else Neighbourhood.NONE
+        self._neighborhood = (
+            Neighborhood.SINGLE if getattr(self._label_slot.meta, "is_blocked_cache", False) else Neighborhood.NONE
         )
 
         self._setupUi()
@@ -160,7 +160,7 @@ class LabelExplorerWidget(QWidget):
 
         as reaction to dirty notification from output slot.
         """
-        if self._neighbourhood is Neighbourhood.NONE:
+        if self._neighborhood is Neighborhood.NONE:
             self._clear_blocking()
             non_zero_slicings: List[Tuple[slice, ...]] = self._nonzero_blocks_slot.value
             self.populate_table(non_zero_slicings)
@@ -183,7 +183,7 @@ class LabelExplorerWidget(QWidget):
             block_regions = extract_annotations(labels_data)
 
             block = Block(
-                axistags="".join(self._axistags), slices=roi, regions=block_regions, neighbourhood=self._neighbourhood
+                axistags="".join(self._axistags), slices=roi, regions=block_regions, neighborhood=self._neighborhood
             )
 
             if block_regions:

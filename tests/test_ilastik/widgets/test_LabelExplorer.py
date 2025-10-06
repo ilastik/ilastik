@@ -25,7 +25,7 @@ import numpy
 import pytest
 import vigra
 
-from ilastik.applets.labeling.connectBlockedLabels import Neighbourhood
+from ilastik.applets.labeling.connectBlockedLabels import Neighborhood
 from ilastik.applets.labeling.labelExplorer import LabelExplorerWidget
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.opCompressedUserLabelArray import OpCompressedUserLabelArray
@@ -77,16 +77,16 @@ def label_explorer_non_blocked(
 
 
 @pytest.mark.parametrize(
-    "gui_variant, expected_neighbourhood",
+    "gui_variant, expected_neighborhood",
     [
-        pytest.param("label_explorer_blocked", Neighbourhood.SINGLE, id="blocked"),
-        pytest.param("label_explorer_non_blocked", Neighbourhood.NONE, id="non-blocked"),
+        pytest.param("label_explorer_blocked", Neighborhood.SINGLE, id="blocked"),
+        pytest.param("label_explorer_non_blocked", Neighborhood.NONE, id="non-blocked"),
     ],
 )
 def test_construct(
     qtbot,
     gui_variant: Literal["label_explorer_blocked", "label_explorer_non_blocked"],
-    expected_neighbourhood: Neighbourhood,
+    expected_neighborhood: Neighborhood,
     request,
 ):
     label_explorer: LabelExplorerWidget
@@ -99,7 +99,7 @@ def test_construct(
         wrapped_initialize_table.assert_not_called()
         label_explorer.show()
         qtbot.waitExposed(label_explorer)
-        assert label_explorer._neighbourhood == expected_neighbourhood
+        assert label_explorer._neighborhood == expected_neighborhood
         assert label_explorer._block_cache == {}
         # After being shown, method should be called
         wrapped_initialize_table.assert_called_once()
