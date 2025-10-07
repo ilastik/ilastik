@@ -56,6 +56,16 @@
        </property>
       </widget>
      </item>
+     <item row="2" column="0" colspan="2">
+      <widget class="QCheckBox" name="linkColorCheckBox">
+       <property name="statusTip">
+        <string>Toggle linking colors for drawing annotations and predictions.</string>
+       </property>
+       <property name="text">
+        <string>Link drawing and probability colors</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
    <item>

@@ -20,41 +20,74 @@
 ###############################################################################
 import os
 from functools import partial
+from typing import Union
 
 from qtpy import uic
 from qtpy.QtCore import Qt, Signal
 from qtpy.QtGui import QColor
-from qtpy.QtWidgets import QColorDialog, QVBoxLayout, QPushButton, QDialog, QWidget, QMenu, QMessageBox
+from qtpy.QtWidgets import QColorDialog, QDialog, QMenu, QMessageBox, QPushButton, QVBoxLayout, QWidget
 
-from .labelListModel import LabelListModel, Label
+from .labelListModel import Label, LabelListModel
 from .listView import ListView
 
 
 class ColorDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, brushcolor: QColor, pmapcolor: QColor, parent=None):
         QDialog.__init__(self, parent)
-        self._brushColor = None
-        self._pmapColor = None
+        self._brushColor: QColor = brushcolor
+        self._pmapColor: QColor = pmapcolor
         self.ui = uic.loadUi(os.path.join(os.path.split(__file__)[0], "color_dialog.ui"), self)
+
         self.ui.brushColorButton.clicked.connect(self.onBrushColor)
         self.ui.pmapColorButton.clicked.connect(self.onPmapColor)
+        self.ui.linkColorCheckBox.setChecked(self._brushColor == self._pmapColor)
+        self.ui.linkColorCheckBox.toggled.connect(self.onLinkColorButton)
 
-    def setBrushColor(self, c):
-        self._brushColor = c
-        self.ui.brushColorButton.setStyleSheet("background-color: {}".format(c.name()))
+        # initializes all button / indicator states:
+        self.update_state()
+
+    def onLinkColorButton(self, checked: bool):
+        if checked:
+            self._pmapColor = self._brushColor
+
+        self.update_state()
+
+    def update_state(self):
+        self.ui.brushColorButton.setStyleSheet(f"background-color: {self._brushColor.name()}")
+        self.ui.pmapColorButton.setStyleSheet(f"background-color: {self._pmapColor.name()}")
+
+    def _getColor(self, initial: QColor) -> Union[QColor, None]:
+        dlg = QColorDialog(initial, self)
+        res = dlg.exec() != 0
+        return dlg.selectedColor() if res else None
 
     def onBrushColor(self):
-        self.setBrushColor(QColorDialog().getColor())
+        color = self._getColor(self._brushColor)
+
+        if color is None:
+            return
+
+        self._brushColor = color
+
+        if self.ui.linkColorCheckBox.isChecked():
+            self._pmapColor = color
+
+        self.update_state()
 
     def brushColor(self):
         return self._brushColor
 
-    def setPmapColor(self, c):
-        self._pmapColor = c
-        self.ui.pmapColorButton.setStyleSheet("background-color: {}".format(c.name()))
-
     def onPmapColor(self):
-        self.setPmapColor(QColorDialog().getColor())
+        color = self._getColor(self._pmapColor)
+
+        if color is None:
+            return
+
+        self._pmapColor = color
+        if self.ui.linkColorCheckBox.isChecked():
+            self._brushColor = color
+
+        self.update_state()
 
     def pmapColor(self):
         return self._pmapColor
@@ -67,15 +100,18 @@ class LabelListView(ListView):
     def __init__(self, parent=None):
         super(LabelListView, self).__init__(parent=parent)
         self.support_merges = False
-        self._colorDialog = ColorDialog(self)
         self.resetEmptyMessage("no labels defined yet")
 
     def tableViewCellDoubleClicked(self, modelIndex):
         if modelIndex.column() == self.model.ColumnID.Color:
-            self._colorDialog.setBrushColor(self._table.model()[modelIndex.row()].brushColor())
-            self._colorDialog.setPmapColor(self._table.model()[modelIndex.row()].pmapColor())
-            self._colorDialog.exec_()
-            self.model.setData(modelIndex, (self._colorDialog.brushColor(), self._colorDialog.pmapColor()))
+            colorDialog = ColorDialog(
+                brushcolor=self._table.model()[modelIndex.row()].brushColor(),
+                pmapcolor=self._table.model()[modelIndex.row()].pmapColor(),
+                parent=self,
+            )
+            res = colorDialog.exec_()
+            if res:
+                self.model.setData(modelIndex, (colorDialog.brushColor(), colorDialog.pmapColor()))
 
     def tableViewCellClicked(self, modelIndex):
         if modelIndex.row() in self.model.unremovable_rows:
@@ -124,8 +160,9 @@ class LabelListView(ListView):
 
 
 if __name__ == "__main__":
-    import numpy
     import sys
+
+    import numpy
     from qtpy.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
