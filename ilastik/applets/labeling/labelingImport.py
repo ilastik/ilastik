@@ -23,10 +23,14 @@
 from builtins import range
 import collections
 import os
+from typing import TYPE_CHECKING
 import numpy
 import vigra
 
 import logging
+
+if TYPE_CHECKING:
+    from ilastik.applets.labeling.labelingGui import LabelingSlots
 
 logger = logging.getLogger(__name__)
 
@@ -47,23 +51,19 @@ from qtpy.QtWidgets import (
 # lazyflow
 import lazyflow
 from lazyflow.utility import chunked_bincount
-from lazyflow.roi import TinyVector, roiToSlice, roiFromShape
+from lazyflow.roi import roiToSlice, roiFromShape
 from lazyflow.operators.ioOperators import OpInputDataReader
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.valueProviders import OpMetadataInjector
 
 # ilastik
-from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui
 from ilastik.widgets.ImageFileDialog import ImageFileDialog
 
 
-def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
+def import_labeling_layer(labelingSlots: "LabelingSlots", parent_widget=None):
     """
     Prompt the user for layer import settings, and perform the layer import.
-    :param labelLayer: The top label layer source
-    :param labelingSlots: An instance of LabelingGui.LabelingSlots
-    :param parent_widget: The Qt GUI parent object
     """
     writeSeeds = labelingSlots.labelInput
     assert isinstance(writeSeeds, lazyflow.graph.Slot), "slot is of type %r" % (type(writeSeeds))

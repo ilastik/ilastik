@@ -24,7 +24,11 @@ from string import ascii_uppercase
 from ilastik.shell.shellAbc import ShellABC
 import logging
 
-from typing import Tuple, Type, Iterator, Optional
+from typing import List, Tuple, Type, TYPE_CHECKING, Iterator, Optional, Union
+
+if TYPE_CHECKING:
+    from qtpy.QtWidgets import QMenu
+
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +180,7 @@ class Workflow(Operator):
         # Clean up the graph as usual.
         super(Workflow, self).cleanUp()
 
-    def menus(self):
+    def menus(self) -> Union[List["QMenu"], None]:
         """
         Returns an iterable of QMenus to be added to the GUI
 

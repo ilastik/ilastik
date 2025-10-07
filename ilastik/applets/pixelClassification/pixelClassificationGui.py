@@ -1,7 +1,3 @@
-from __future__ import print_function
-from __future__ import absolute_import
-from __future__ import division
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -23,7 +19,6 @@ from __future__ import division
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
-from past.utils import old_div
 import os
 from typing import Optional
 import logging
@@ -49,10 +44,11 @@ from qtpy.QtWidgets import (
     QSizePolicy,
     QMenu,
 )
-from qtpy.QtGui import QColor, QIcon, QCursor
+from qtpy.QtGui import QColor
 
 
 # HCI
+from ilastik.applets.pixelClassification.opPixelClassification import OpPixelClassification
 from volumina.api import createDataSource, AlphaModulatedLayer, GrayscaleLayer, ColortableLayer
 from volumina.utility import ShortcutManager
 
@@ -67,7 +63,7 @@ from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted, silent_qobject
 from ilastik.shell.gui.iconMgr import ilastikIcons
-from ilastik.applets.labeling.labelingGui import LabelingGui
+from ilastik.applets.labeling.labelingGui import LabelingGui, LabelingSlots
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, SubvolumeSelectionDlg
 from ilastik.widgets.ImageFileDialog import ImageFileDialog
 from ilastik.shell.gui.variableImportanceDialog import VariableImportanceDialog
@@ -430,18 +426,20 @@ class PixelClassificationGui(LabelingGui):
     ###########################################
     ###########################################
 
-    def __init__(self, parentApplet, topLevelOperatorView, labelingDrawerUiPath=None):
+    def __init__(self, parentApplet, topLevelOperatorView: OpPixelClassification, labelingDrawerUiPath=None):
         self.parentApplet = parentApplet
         self.isInitialized = (
             False  # need this flag in pixelClassificationApplet where initialization is terminated with label selection
         )
         # Tell our base class which slots to monitor
-        labelSlots = LabelingGui.LabelingSlots()
-        labelSlots.labelInput = topLevelOperatorView.LabelInputs
-        labelSlots.labelOutput = topLevelOperatorView.LabelImages
-        labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
-        labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.DeleteLabel
-        labelSlots.labelNames = topLevelOperatorView.LabelNames
+        labelSlots = LabelingSlots(
+            labelInput=topLevelOperatorView.LabelInputs,
+            labelOutput=topLevelOperatorView.LabelImages,
+            labelEraserValue=topLevelOperatorView.opLabelPipeline.opLabelArray.eraser,
+            labelDelete=topLevelOperatorView.opLabelPipeline.DeleteLabel,
+            labelNames=topLevelOperatorView.LabelNames,
+            nonzeroLabelBlocks=topLevelOperatorView.NonzeroLabelBlocks,
+        )
 
         self.__cleanup_fns = []
 
@@ -494,6 +492,7 @@ class PixelClassificationGui(LabelingGui):
             lambda *args: self.setLiveUpdateEnabled()
         )
         self.__cleanup_fns.append(unsub_callback)
+
         self.setLiveUpdateEnabled()
 
     def initSuggestFeaturesDialog(self):
@@ -942,6 +941,7 @@ class PixelClassificationGui(LabelingGui):
                 indices = numpy.where(vol != 0)
                 newvolume[indices] = label
 
+        assert self._renderMgr is not None
         self._renderMgr.volume = newvolume
         self._update_colors()
         self._renderMgr.update()
@@ -953,5 +953,6 @@ class PixelClassificationGui(LabelingGui):
             except KeyError:
                 continue
             color = layer.tintColor
-            color = (old_div(color.red(), 255.0), old_div(color.green(), 255.0), old_div(color.blue(), 255.0))
+            color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
+            assert self._renderMgr is not None
             self._renderMgr.setColor(label, color)

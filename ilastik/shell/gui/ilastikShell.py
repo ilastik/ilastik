@@ -37,25 +37,35 @@ import numpy
 # PyQt
 from qtpy import uic
 from qtpy.QtCore import Signal, QObject, Qt, QUrl, QTimer
-from qtpy.QtGui import QKeySequence, QIcon, QFont, QDesktopServices, QPixmap
+from qtpy.QtGui import (
+    QDesktopServices,
+    QKeySequence,
+    QIcon,
+    QFont,
+    QDesktopServices,
+    QPixmap,
+)
 from qtpy.QtWidgets import (
     QMainWindow,
     QWidget,
     QMenu,
     QApplication,
     QPushButton,
+    QDialogButtonBox,
     QFileDialog,
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
+    QMainWindow,
+    QMenu,
     QMessageBox,
     QProgressBar,
-    QInputDialog,
+    QPushButton,
+    QSpinBox,
+    QTextEdit,
     QToolButton,
     QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QDialog,
-    QSpinBox,
-    QDialogButtonBox,
-    QTextEdit,
+    QWidget,
 )
 
 # lazyflow
@@ -1369,6 +1379,7 @@ class IlastikShell(QMainWindow):
             # Select the appropriate central widget, menu widget, and viewer control widget for this applet
             self.showCentralWidget(applet_index)
             self.showViewerControlWidget(applet_index)
+            self.showSecondaryControls(applet_index)
             self.showMenus(applet_index)
             self.refreshAppletDrawer(applet_index)
 
@@ -1388,14 +1399,25 @@ class IlastikShell(QMainWindow):
     def showCentralWidget(self, applet_index: int):
         if applet_index < len(self._applets):
             centralWidget = self._applets[applet_index].getMultiLaneGui().centralWidget()
-            centralWidget.setObjectName(f"centralWidget_applet_{applet_index}_lane_{self.currentImageIndex}")
+            if centralWidget:
+                centralWidget.setObjectName(f"centralWidget_applet_{applet_index}_lane_{self.currentImageIndex}")
             self.mainSplitter.setActiveCentralWidget(centralWidget)
 
     def showViewerControlWidget(self, applet_index):
         if applet_index < len(self._applets):
             viewerControlWidget = self._applets[applet_index].getMultiLaneGui().viewerControlWidget()
-            viewerControlWidget.setObjectName(f"viewerControls_applet_{applet_index}_lane_{self.currentImageIndex}")
+            if viewerControlWidget:
+                viewerControlWidget.setObjectName(f"viewerControls_applet_{applet_index}_lane_{self.currentImageIndex}")
             self.mainSplitter.setActiveViewerControls(viewerControlWidget)
+
+    def showSecondaryControls(self, applet_index):
+        if applet_index < len(self._applets):
+            secondaryControlsWidget = self._applets[applet_index].getMultiLaneGui().secondaryControlsWidget()
+            if secondaryControlsWidget:
+                secondaryControlsWidget.setObjectName(
+                    f"secondaryControls_applet_{applet_index}_lane_{self.currentImageIndex}"
+                )
+            self.mainSplitter.setActiveSecondaryControls(secondaryControlsWidget)
 
     def refreshAppletDrawer(self, applet_index):
         if applet_index < len(self._applets):

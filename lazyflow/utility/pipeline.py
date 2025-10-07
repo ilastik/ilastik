@@ -21,10 +21,13 @@
 ###############################################################################
 
 from collections import abc
-from typing import Any, Callable
+from typing import Any, Callable, TypeVar
 
 from lazyflow.operator import Operator
 from lazyflow.slot import Slot
+
+
+T = TypeVar("T", bound=Operator)
 
 
 class Pipeline(abc.Sequence):
@@ -57,7 +60,7 @@ class Pipeline(abc.Sequence):
         self._op_init_kwargs = op_init_kwargs
         self._ops = []
 
-    def add(self, opfunc: Callable[..., Operator], **slots: Any) -> Operator:
+    def add(self, opfunc: Callable[..., T], **slots: Any) -> T:
         """Add a new operator to the end of this pipeline.
 
         The operator instance is created with the ``**op_init_kwargs`` previously passed to ``__init__``,
@@ -76,14 +79,16 @@ class Pipeline(abc.Sequence):
         """
         op = opfunc(**self._op_init_kwargs)
 
+        default_connect = self and hasattr(op, "Input") and hasattr(self[-1], "Output")
         if self:
             if "Input" in slots:
                 raise ValueError('slot with the name "Input" cannot be manually assigned for non-first operator')
-            if not hasattr(op, "Input"):
+            if not hasattr(op, "Input") and not slots:
                 raise ValueError(f'new operator {op} does not have a slot with the name "Input"')
-            if not hasattr(self[-1], "Output"):
+            if not hasattr(self[-1], "Output") and not slots:
                 raise ValueError(f'previous operator {self[-1]} does not have a slot with the name "Output"')
-            op.Input.connect(self[-1].Output)
+            if default_connect:
+                op.Input.connect(self[-1].Output)
 
         for name, value in slots.items():
             if isinstance(value, Slot):
