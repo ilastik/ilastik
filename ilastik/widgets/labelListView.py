@@ -78,7 +78,7 @@ class ColorDialog(QDialog):
         return self._brushColor
 
     def onPmapColor(self):
-        color = self._getColor(self._brushColor)
+        color = self._getColor(self._pmapColor)
 
         if color is None:
             return

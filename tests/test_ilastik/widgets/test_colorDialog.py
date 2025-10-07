@@ -19,7 +19,7 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 
-from typing import NamedTuple, Tuple
+from typing import NamedTuple
 from unittest.mock import patch
 
 import pytest
@@ -68,60 +68,74 @@ def color_dialog_nonmatching(qtbot, nonmatching_colors: ColorTuple) -> ColorDial
 
 
 def test_construct(color_dialog: ColorDialog, default_colors: ColorTuple):
-    assert color_dialog.brushColor() == default_colors.brush_color
-    assert color_dialog.pmapColor() == default_colors.pmap_color
-    assert color_dialog.brushColor() == color_dialog.pmapColor()
+    assert color_dialog.brushColor().name() == default_colors.brush_color.name()
+    assert color_dialog.pmapColor().name() == default_colors.pmap_color.name()
+    assert color_dialog.brushColor().name() == color_dialog.pmapColor().name()
     assert color_dialog.ui.linkColorCheckBox.checkState()
 
 
 @patch("ilastik.widgets.labelListView.ColorDialog._getColor", lambda *x: QColor("yellow"))
 def test_sync_brush_color(color_dialog: ColorDialog, default_colors: ColorTuple):
     color_dialog.onBrushColor()
-    assert color_dialog.brushColor() == QColor("yellow")
-    assert color_dialog.pmapColor() == QColor("yellow")
+    assert color_dialog.brushColor().name() == QColor("yellow").name()
+    assert color_dialog.pmapColor().name() == QColor("yellow").name()
 
 
-@patch("ilastik.widgets.labelListView.ColorDialog._getColor", lambda *x: QColor("rose"))
+@patch("ilastik.widgets.labelListView.ColorDialog._getColor", lambda *x: QColor("magenta"))
 def test_sync_pmap_color(color_dialog: ColorDialog, default_colors: ColorTuple):
     color_dialog.onPmapColor()
-    assert color_dialog.brushColor() == QColor("rose")
-    assert color_dialog.pmapColor() == QColor("rose")
+    assert color_dialog.brushColor().name() == QColor("magenta").name()
+    assert color_dialog.pmapColor().name() == QColor("magenta").name()
 
 
 def test_construct_nonmatching(color_dialog_nonmatching: ColorDialog, nonmatching_colors: ColorTuple):
-    assert color_dialog_nonmatching.brushColor() == nonmatching_colors.brush_color
-    assert color_dialog_nonmatching.pmapColor() == nonmatching_colors.pmap_color
+    assert color_dialog_nonmatching.brushColor().name() == nonmatching_colors.brush_color.name()
+    assert color_dialog_nonmatching.pmapColor().name() == nonmatching_colors.pmap_color.name()
     assert not color_dialog_nonmatching.ui.linkColorCheckBox.checkState()
 
 
 @patch("ilastik.widgets.labelListView.ColorDialog._getColor", lambda *x: QColor("yellow"))
 def test_sync_off_brush_color(color_dialog_nonmatching: ColorDialog, nonmatching_colors: ColorTuple):
     color_dialog_nonmatching.onBrushColor()
-    assert color_dialog_nonmatching.brushColor() == QColor("yellow")
-    assert color_dialog_nonmatching.pmapColor() == nonmatching_colors.pmap_color
+    assert color_dialog_nonmatching.brushColor().name() == QColor("yellow").name()
+    assert color_dialog_nonmatching.pmapColor().name() == nonmatching_colors.pmap_color.name()
 
 
-@patch("ilastik.widgets.labelListView.ColorDialog._getColor", lambda *x: QColor("rose"))
+@patch("ilastik.widgets.labelListView.ColorDialog._getColor", lambda *x: QColor("magenta"))
 def test_sync_off_pmap_color(color_dialog_nonmatching: ColorDialog, nonmatching_colors: ColorTuple):
     color_dialog_nonmatching.onPmapColor()
-    assert color_dialog_nonmatching.brushColor() == nonmatching_colors.brush_color
-    assert color_dialog_nonmatching.pmapColor() == QColor("rose")
+    assert color_dialog_nonmatching.brushColor().name() == nonmatching_colors.brush_color.name()
+    assert color_dialog_nonmatching.pmapColor().name() == QColor("magenta").name()
 
 
-def test_sync_toggle(color_dialog: ColorDialog, default_colors: ColorTuple):
-    assert color_dialog.brushColor() == default_colors.brush_color
-    assert color_dialog.pmapColor() == default_colors.pmap_color
+def test_sync_toggle_to_sync(color_dialog_nonmatching: ColorDialog, nonmatching_colors: ColorTuple):
+    """Go from unsynced to synced stated for the two colors"""
+    assert color_dialog_nonmatching.brushColor().name() == nonmatching_colors.brush_color.name()
+    assert color_dialog_nonmatching.pmapColor().name() == nonmatching_colors.pmap_color.name()
+
+    color_dialog_nonmatching.ui.linkColorCheckBox.toggle()
+    assert color_dialog_nonmatching.brushColor().name() == nonmatching_colors.brush_color.name()
+    assert color_dialog_nonmatching.pmapColor().name() == nonmatching_colors.brush_color.name()
+
+
+@patch("ilastik.widgets.labelListView.ColorDialog._getColor", lambda *x: QColor("salmon"))
+def test_sync_toggle_to_desync(color_dialog: ColorDialog, default_colors: ColorTuple):
+    assert color_dialog.brushColor().name() == default_colors.brush_color.name()
+    assert color_dialog.pmapColor().name() == default_colors.pmap_color.name()
 
     color_dialog.ui.linkColorCheckBox.toggle()
-    assert color_dialog.brushColor() == default_colors.brush_color
-    assert color_dialog.pmapColor() == default_colors.brush_color
+    assert color_dialog.brushColor().name() == color_dialog.pmapColor().name() == default_colors.brush_color.name()
+
+    color_dialog.onBrushColor()
+    assert color_dialog.brushColor().name() == QColor("salmon").name()
+    assert color_dialog.pmapColor().name() == default_colors.brush_color.name()
 
 
 @patch("ilastik.widgets.labelListView.ColorDialog._getColor", lambda *x: None)
 def test_cancel_color_selection_no_color_change(color_dialog: ColorDialog, default_colors: ColorTuple):
-    assert color_dialog.brushColor() == default_colors.brush_color
-    assert color_dialog.pmapColor() == default_colors.pmap_color
+    assert color_dialog.brushColor().name() == default_colors.brush_color.name()
+    assert color_dialog.pmapColor().name() == default_colors.pmap_color.name()
 
     color_dialog.onBrushColor()
-    assert color_dialog.brushColor() == default_colors.brush_color
-    assert color_dialog.pmapColor() == default_colors.brush_color
+    assert color_dialog.brushColor().name() == default_colors.brush_color.name()
+    assert color_dialog.pmapColor().name() == default_colors.brush_color.name()
