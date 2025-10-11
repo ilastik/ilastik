@@ -278,7 +278,9 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         assert False
 
     @classmethod
-    def createStandardLayerFromSlot(cls, slot, lastChannelIsAlpha=False, name=None, opacity=1.0, visible=True):
+    def createStandardLayerFromSlot(
+        cls, slot, lastChannelIsAlpha=False, name=None, opacity=1.0, visible=True, request_priority: int = 0
+    ):
         """
         Convenience function.
         Generates a volumina layer using the given slot.
@@ -316,20 +318,22 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
 
         if display_mode == "grayscale":
             assert not lastChannelIsAlpha, "Can't have an alpha channel if there is no color channel"
-            layer = cls._create_grayscale_layer_from_slot(slot, numChannels)
+            layer = cls._create_grayscale_layer_from_slot(slot, numChannels, request_priority=request_priority)
         elif display_mode == "rgba":
             assert numChannels > 2 or (
                 numChannels == 2 and not lastChannelIsAlpha
             ), "Unhandled combination of channels.  numChannels={}, lastChannelIsAlpha={}, axistags={}".format(
                 numChannels, lastChannelIsAlpha, slot.meta.axistags
             )
-            layer = cls._create_rgba_layer_from_slot(slot, numChannels, lastChannelIsAlpha)
+            layer = cls._create_rgba_layer_from_slot(
+                slot, numChannels, lastChannelIsAlpha, request_priority=request_priority
+            )
         elif display_mode == "random-colortable":
-            layer = cls._create_random_colortable_layer_from_slot(slot)
+            layer = cls._create_random_colortable_layer_from_slot(slot, request_priority=request_priority)
         elif display_mode == "alpha-modulated":
-            layer = cls._create_alpha_modulated_layer_from_slot(slot)
+            layer = cls._create_alpha_modulated_layer_from_slot(slot, request_priority=request_priority)
         elif display_mode == "binary-mask":
-            layer = cls._create_binary_mask_layer_from_slot(slot)
+            layer = cls._create_binary_mask_layer_from_slot(slot, request_priority=request_priority)
         else:
             raise RuntimeError(f"unknown channel display mode: {display_mode}")
 
@@ -340,40 +344,42 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         return layer
 
     @classmethod
-    def _create_grayscale_layer_from_slot(cls, slot, n_channels):
+    def _create_grayscale_layer_from_slot(cls, slot, n_channels, request_priority=0):
         # FIXME: move all of this stuff into the class constructor. Same for all
         # _create_*layer_from_slot methods.
         source = createDataSource(slot)
-        layer = GrayscaleLayer(source, window_leveling=True)
+        layer = GrayscaleLayer(source, window_leveling=True, request_priority=request_priority)
         layer.numberOfChannels = n_channels
         layer.set_normalize(0, (slot.meta.normalizeDisplay and slot.meta.drange) or None)
         return layer
 
     @classmethod
-    def _create_random_colortable_layer_from_slot(cls, slot, num_colors=256):
+    def _create_random_colortable_layer_from_slot(cls, slot, num_colors=256, request_priority=0):
         colortable = generateRandomColors(num_colors, clamp={"v": 1.0, "s": 0.5}, zeroIsTransparent=True)
-        layer = ColortableLayer(createDataSource(slot), colortable)
+        layer = ColortableLayer(createDataSource(slot), colortable, request_priority=request_priority)
         layer.colortableIsRandom = True
         return layer
 
     @classmethod
-    def _create_alpha_modulated_layer_from_slot(cls, slot):
-        layer = AlphaModulatedLayer(createDataSource(slot), tintColor=QColor(Qt.cyan), normalize=(0.0, 1.0))
+    def _create_alpha_modulated_layer_from_slot(cls, slot, request_priority=0):
+        layer = AlphaModulatedLayer(
+            createDataSource(slot), tintColor=QColor(Qt.cyan), normalize=(0.0, 1.0), request_priority=request_priority
+        )
         return layer
 
     @classmethod
-    def _create_binary_mask_layer_from_slot(cls, slot):
+    def _create_binary_mask_layer_from_slot(cls, slot, request_priority=0):
         # 0: black, 1-255: transparent
         # This works perfectly for uint8.
         # For uint32, etc., values of 256,512, etc. will be appear 'off'.
         # But why would you use uint32 for a binary mask anyway?
         colortable = [QColor(0, 0, 0, 255).rgba()]
         colortable += 255 * [QColor(0, 0, 0, 0).rgba()]
-        layer = ColortableLayer(createDataSource(slot), colortable)
+        layer = ColortableLayer(createDataSource(slot), colortable, request_priority=request_priority)
         return layer
 
     @classmethod
-    def _create_rgba_layer_from_slot(cls, slot, numChannels, lastChannelIsAlpha):
+    def _create_rgba_layer_from_slot(cls, slot, numChannels, lastChannelIsAlpha, request_priority=0):
         bindex = aindex = None
         rindex, gindex = 0, 1
         if numChannels > 3 or (numChannels == 3 and not lastChannelIsAlpha):
@@ -420,7 +426,9 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
             alphaSource = createDataSource(alphaProvider.Output)
             alphaSource.additional_owned_ops.append(alphaProvider)
 
-        layer = RGBALayer(red=redSource, green=greenSource, blue=blueSource, alpha=alphaSource)
+        layer = RGBALayer(
+            red=redSource, green=greenSource, blue=blueSource, alpha=alphaSource, request_priority=request_priority
+        )
         for i in range(4):
             if [redSource, greenSource, blueSource, alphaSource][i]:
                 layer.set_normalize(i, (slot.meta.normalizeDisplay and slot.meta.drange) or None)
