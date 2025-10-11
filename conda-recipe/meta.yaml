@@ -72,7 +72,7 @@ outputs:
         - tiktorch 25.4.0
         # TODO: investigate pytorch-3dunet dependency changes 1.9.3 and up #3079
         - pytorch-3dunet 1.9.2
-        - volumina >=1.3.16
+        - volumina >=1.3.20
         # TODO: sphericaltexture 0.1.1 currently times out in the tests
         - sphericaltexture 0.0.4
         # pyshtools 4.10 conflicts with pytorch via openmp on windows

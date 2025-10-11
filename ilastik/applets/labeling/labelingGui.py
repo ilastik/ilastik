@@ -19,15 +19,12 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
-from builtins import range
-from builtins import filter
 from dataclasses import dataclass
 import os
 import re
 import logging
 from functools import partial
-from typing import Any, Optional, Union
-import warnings
+from typing import Optional, Union
 
 # Third-party
 import numpy
@@ -49,7 +46,7 @@ from lazyflow.slot import InputSlot, OutputSlot
 # ilastik
 from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThunkEventHandler, is_qt_dark_mode, threadRouted
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui, LayerPriority
 
 from ilastik.applets.labeling.labelingImport import import_labeling_layer
 
@@ -993,7 +990,9 @@ class LabelingGui(LayerViewerGui):
             # Add the layer to draw the labels, but don't add any labels
             labelsrc = LazyflowSinkSource(self._labelingSlots.labelOutput, self._labelingSlots.labelInput)
 
-            labellayer = ColortableLayer(labelsrc, colorTable=self._colorTable16, direct=direct)
+            labellayer = ColortableLayer(
+                labelsrc, colorTable=self._colorTable16, direct=direct, priority=LayerPriority.LABELS
+            )
             labellayer.name = "Labels"
             labellayer.ref_object = None
 
@@ -1039,7 +1038,7 @@ class LabelingGui(LayerViewerGui):
 
         # Raw Input Layer
         if self._rawInputSlot is not None and self._rawInputSlot.ready():
-            layer = self.createStandardLayerFromSlot(self._rawInputSlot, name="Raw Input")
+            layer = self.createStandardLayerFromSlot(self._rawInputSlot, name="Raw Input", priority=LayerPriority.RAW)
             layers.append(layer)
 
             if isinstance(layer, GrayscaleLayer):
