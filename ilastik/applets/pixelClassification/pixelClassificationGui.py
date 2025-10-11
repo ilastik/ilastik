@@ -781,6 +781,8 @@ class PixelClassificationGui(LabelingGui):
         if checked:
             self._viewerControlUi.checkShowPredictions.setChecked(True)
             self.handleShowPredictionsClicked()
+        else:
+            self.editor.clearPendingRequestQueueAndReferesh()
 
         num_label_classes = self._labelControlUi.labelListModel.rowCount()
         self.labelingDrawerUi.labelListView.allowDelete = not checked and num_label_classes > self.minLabelNumber
