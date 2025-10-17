@@ -41,7 +41,7 @@ ilastik is also available as a conda package on our `ilastik-forge` conda channe
 You can install it from the commandline using [conda][conda]:
 
 ```bash
-conda create -n ilastik --override-channels -c pytorch -c ilastik-forge -c conda-forge ilastik
+ conda create -n ilastik --override-channels -c ilastik-forge/label/patched-2 -c conda-forge -c ilastik-forge ilastik
 
 # activate ilastik environment and start ilastik
 conda activate ilastik
