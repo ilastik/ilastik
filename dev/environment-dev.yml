@@ -32,6 +32,7 @@ dependencies:
   # previous versions would set thread limits globally with side effects
   - python-elf >= 0.4.8
   - qimage2ndarray
+  - qtpy
   - scikit-image
   # There seems to be a problem with scikit-learn 1.7.0, test testContourMWTExport breaks
   - scikit-learn <=1.6.1
