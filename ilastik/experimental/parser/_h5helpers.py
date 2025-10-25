@@ -19,20 +19,68 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 import json
+import numbers
 from typing import Any, List, Union
 
 import h5py
 
 from ilastik.applets.base.appletSerializer.serializerUtils import deserialize_string_from_h5
+from ilastik.experimental.parser.types.base import LabelBlock, VigraAxisTags
 
 
 def deserialize_str_list_from_h5(str_list: h5py.Dataset) -> List[str]:
     return [x.decode() for x in str_list]
 
 
-def deserialize_axistags_from_h5(ds: h5py.Dataset) -> dict[str, Union[float, int, str]]:
+def deserialize_axistags_from_h5(ds: h5py.Dataset) -> VigraAxisTags:
     return json.loads(deserialize_string_from_h5(ds))["axes"]
 
 
 def deserialize_arraylike_from_h5(ds: h5py.Dataset) -> Any:
     return ds[()]
+
+
+def ensure_encoded(val: Union[str, bytes]) -> bytes:
+    if isinstance(val, str):
+        val = val.encode("utf-8")
+
+    return val
+
+
+def write_level(group, dict_repr):
+    for k, v in dict_repr.items():
+        if isinstance(v, dict):
+            new_group = group.create_group(k)
+
+            write_level(new_group, v)
+            continue
+        # TODO: check optional inputs, these should be empty dicts, not None
+        if v is None:
+            new_group = group.create_group(k)
+            continue
+
+        if isinstance(v, (str, bytes)):
+            group.create_dataset(name=k, data=ensure_encoded(v))
+        elif isinstance(v, (list, tuple)):
+            data = []
+            for val in v:
+                if isinstance(val, (str, bytes)):
+                    data.append(ensure_encoded(val))
+                else:
+                    data.append(val)
+
+            group.create_dataset(name=k, data=v)
+        elif isinstance(v, numbers.Number):
+            group.create_dataset(name=k, data=v)
+        else:
+            raise ValueError(f"No clue how to serialize {v} of {type(v)=} to hdf5.")
+
+    return group
+
+
+def deserialize_label_block_from_h5(ds: h5py.Dataset) -> LabelBlock:
+    return LabelBlock(
+        axistags=[VigraAxisTags(**at) for at in json.loads(ds.attrs["axistags"])["axes"]],
+        block_slice=ds.attrs["blockSlice"],
+        label_data=deserialize_arraylike_from_h5(ds),
+    )
