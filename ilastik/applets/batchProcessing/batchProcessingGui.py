@@ -144,6 +144,9 @@ class BatchProcessingGui(QTabWidget):
     def viewerControlWidget(self):
         return QWidget(parent=self)  # No viewer, so no viewer controls.
 
+    def secondaryControlsWidget(self):
+        return None
+
     # This applet doesn't care what image is selected in the interactive flow
     def setImageIndex(self, index):
         pass

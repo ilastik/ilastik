@@ -60,6 +60,9 @@ class ServerConfigGui(QWidget):
     def viewerControlWidget(self):
         return None
 
+    def secondaryControlsWidget(self):
+        return None
+
     def getServerIdFromOp(self):
         if self.topLevelOp.ServerId.ready():
             return self.topLevelOp.ServerId.value
