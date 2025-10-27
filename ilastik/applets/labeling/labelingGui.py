@@ -1039,7 +1039,7 @@ class LabelingGui(LayerViewerGui):
 
         # Raw Input Layer
         if self._rawInputSlot is not None and self._rawInputSlot.ready():
-            layer = self.createStandardLayerFromSlot(self._rawInputSlot, name="Raw Input")
+            layer = self.createStandardLayerFromSlot(self._rawInputSlot, name="Raw Input", request_priority=10)
             layers.append(layer)
 
             if isinstance(layer, GrayscaleLayer):
