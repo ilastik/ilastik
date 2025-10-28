@@ -252,7 +252,14 @@ class WsdtGui(LayerViewerGui):
             op.Threshold.setValue(self.threshold_box.value())
             op.Sigma.setValue(self.sigma_box.value())
             op.MinSize.setValue(self.min_size_box.value())
-            op.Alpha.setValue(self.alpha_box.value())
+            # Alpha blends the probability map with the distance transform
+            # Historically users could load project files with Alpha outside
+            # the desired [0,1] range; keep supporting loading those values,
+            # but prevent the GUI from setting values outside [0,1]. Clamp
+            # the value we write back to the operator to the valid range.
+            alpha_val = float(self.alpha_box.value())
+            alpha_clamped = min(max(alpha_val, 0.0), 1.0)
+            op.Alpha.setValue(alpha_clamped)
             op.EnableDebugOutputs.setValue(self.enable_debug_box.isChecked())
 
         # The GUI may need to respond to some changes in the operator outputs.
