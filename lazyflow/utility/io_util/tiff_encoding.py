@@ -8,7 +8,7 @@ def to_ome(val, axis):
             return val
         if val.lower() in ome_time_units:
             return ome_time_units[val.lower()]
-        return "frame"
+        return ""
     if val in case_sensitive_lengths:
         return val
     if val.lower() in ome_length_units:
