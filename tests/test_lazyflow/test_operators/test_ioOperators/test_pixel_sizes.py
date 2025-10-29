@@ -92,7 +92,7 @@ def test_read_OpTiffReader(image_path, expected_meta, inputdata_dir):
             ["t", "z", "c", "y", "x"],
             (6, 2, 3, 3, 5),
             [120, 0.54321, 0.0, 6.000024000096, 13],
-            ["frame", "pixel", "", "pixel", "pixel"],
+            ["", "pixel", "", "pixel", "pixel"],
         ),
         (
             ["t", "z", "c", "y", "x"],
@@ -139,15 +139,23 @@ def test_write_OpExportMultipageTiff(graph, tmp_path, axes, shape, resolutions, 
             "t": ("TimeIncrement", "TimeIncrementUnit"),
         }
 
-        comp_axes = "".join(axes).upper()
-        assert comp_axes == f.series[0].axes
+        expected_axes = "".join(axes).upper()
+        assert expected_axes == f.series[0].axes
 
         for axis in axes:
             if axis.lower() == "c":
                 assert "c" not in sizes.keys()  # Channel sizes are not written to TIFF
                 continue
-            assert pixels.attrib.get(sizes[axis][1], "") == units[axes.index(axis)]
-            assert float(pixels.attrib.get(sizes[axis][0], 0)) == resolutions[axes.index(axis)]
+            expected_resolution = resolutions[axes.index(axis)]
+            expected_unit = units[axes.index(axis)]
+            if not expected_resolution:
+                assert sizes[axis][0] not in pixels
+            else:
+                assert np.isclose(float(pixels.attrib[sizes[axis][0]]), expected_resolution, atol=1e-15)
+            if not expected_unit:
+                assert sizes[axis][1] not in pixels
+            else:
+                assert pixels.attrib[sizes[axis][1]] == expected_unit
 
 
 def test_write_read_roundtrip_tiff_OpExportMultipageTiff(graph, tmp_path):
@@ -242,7 +250,7 @@ def test_write_read_roundtrip_tiff_OpExportMultipageTiff(graph, tmp_path):
             (6, 2, 3, 3, 5),
             [120, 0.54321, 0.0, 6.000024000096, 13],
             ["", "", "", "", ""],
-            ["frame", "pixel", "pixel", "pixel", "pixel"],
+            ["", "pixel", "pixel", "pixel", "pixel"],
         ),
     ],
 )
@@ -270,15 +278,23 @@ def test_unit_conversion_OpExportMultipageTiff(graph, tmp_path, axes, shape, res
             "t": ("TimeIncrement", "TimeIncrementUnit"),
         }
 
-        comp_axes = "".join(axes).upper()
-        assert comp_axes == f.series[0].axes
+        expected_axes = "".join(axes).upper()
+        assert expected_axes == f.series[0].axes
 
         for axis in axes:
             if axis.lower() == "c":
                 assert "c" not in sizes.keys()  # Channel sizes are not written to TIFF
                 continue
-            assert pixels.attrib.get(sizes[axis][1], "pixel") == converted_units[axes.index(axis)]
-            assert float(pixels.attrib.get(sizes[axis][0], 0)) == resolutions[axes.index(axis)]
+            expected_resolution = resolutions[axes.index(axis)]
+            expected_unit = converted_units[axes.index(axis)]
+            if not expected_resolution:
+                assert sizes[axis][0] not in pixels
+            else:
+                assert np.isclose(float(pixels.attrib[sizes[axis][0]]), expected_resolution, atol=1e-15)
+            if not expected_unit:
+                assert sizes[axis][1] not in pixels
+            else:
+                assert pixels.attrib[sizes[axis][1]] == expected_unit
 
 
 @pytest.mark.parametrize(
