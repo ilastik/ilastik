@@ -38,7 +38,12 @@ def get_data_op_with_pixel_size_meta(graph, axes, shape, resolutions, units):
         ("/pix_res/2d_stringified_tuple.tif", {"x": (5, "cm"), "y": (6.000024000096, "nm")}),
         ("/pix_res/3d.tif", {"x": (11.000011000011, "cm"), "y": (6.000024000096, "mm"), "z": (2, "pm")}),
         ("/pix_res/2d_t.tif", {"x": (50, "μm"), "y": (3.000003000003, "pm"), "t": (3, "min")}),
-        ("/pix_res/3d_t.tif", {"x": (3.000003000003, "mm"), "y": (5, ""), "z": (7, ""), "t": (3, "")}),
+        (
+            # x, y and z unit are the same.
+            # ImageJ convention is not to store y and z unit in this case, so reader should transfer.
+            "/pix_res/3d_t.tif",  # The file doesn't actually contain "mm" for y and z
+            {"x": (3.000003000003, "mm"), "y": (5, "mm"), "z": (7, "mm"), "t": (3, "")},
+        ),
         ("/pix_res/3d_c.tif", {"x": (2, "μm"), "y": (11.000011000011, "nm"), "z": (13, "cm"), "c": (0.0, "")}),
         (
             "/pix_res/5d.tif",

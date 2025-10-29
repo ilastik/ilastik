@@ -185,6 +185,10 @@ class OpTiffReader(Operator):
                 "z": self._get_imagej_unit(ij_meta, "zunit"),
                 "t": self._get_imagej_unit(ij_meta, "tunit"),
             }
+            if units["x"] and resolutions["y"] and not units["y"]:
+                units["y"] = units["x"]  # ImageJ convention: y-unit not written when identical to x-unit
+            if units["x"] and resolutions["z"] and not units["z"]:
+                units["z"] = units["x"]  # Same for z
         else:
             return
 
