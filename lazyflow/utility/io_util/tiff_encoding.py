@@ -1,7 +1,3 @@
-def from_ascii(raw_string: str):  # necessary for nonstandard unit characters, e.g. mu
-    return raw_string.encode("ascii").decode("unicode_escape")
-
-
 def to_ome(val, axis):
     if axis.lower() == "t":
         if val in case_sensitive_times:
