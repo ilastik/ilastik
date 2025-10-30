@@ -20,6 +20,7 @@
 ###############################################################################
 from collections import defaultdict
 import logging
+from typing import Dict, Optional
 
 import numpy
 import xml.etree.ElementTree as ET
@@ -66,6 +67,7 @@ class OpTiffReader(Operator):
     def setupOutputs(self):
         self._filepath = self.Filepath.value
         with tifffile.TiffFile(self._filepath, mode="r") as tiff_file:
+            tifftags = tiff_file.pages[0].tags
             ij_meta = tiff_file.imagej_metadata
             ome_meta = tiff_file.ome_metadata
             series = tiff_file.series[0]
@@ -107,7 +109,7 @@ class OpTiffReader(Operator):
         self.Output.meta.axis_units = {key: "" for key in axes}
 
         if ij_meta or ome_meta:
-            self.setPixelSizes(axes, ij_meta, ome_meta)
+            self._set_pixel_size(axes, tifftags, ij_meta, ome_meta)
 
         blockshape = defaultdict(lambda: 1, zip(self._page_axes, self._page_shape))
         # optimization: reading bigger blockshapes in z means much smoother user experience
@@ -147,74 +149,86 @@ class OpTiffReader(Operator):
 
                 result[roi_page_ndindex] = page_data[roiToSlice(*roi_within_page)]
 
-    def setPixelSizes(self, axes, ij_meta, ome_meta):
-        with tifffile.TiffFile(self._filepath, mode="r") as f:
-            if ome_meta:
-                xml = ET.fromstring(ome_meta)
-                ns = {"ome": "http://www.openmicroscopy.org/Schemas/OME/2016-06"}
-                image = xml.find("ome:Image", ns)
-                pixels = image.find("ome:Pixels", ns)
-                if pixels:
-                    size_keys = {"x": "PhysicalSizeX", "y": "PhysicalSizeY", "z": "PhysicalSizeZ", "t": "TimeIncrement"}
-                    unit_keys = {
-                        "x": "PhysicalSizeXUnit",
-                        "y": "PhysicalSizeYUnit",
-                        "z": "PhysicalSizeZUnit",
-                        "t": "TimeIncrementUnit",
-                    }
+    def _set_pixel_size(self, axes: str, tifftags: tifffile.TiffTags, ij_meta: Dict, ome_meta: str):
+        if ome_meta:
+            # OME-TIFF (prefer to interpret as OME-TIFF if both ome and imagej metadata exist)
+            xml = ET.fromstring(ome_meta)
+            ns = {"ome": "http://www.openmicroscopy.org/Schemas/OME/2016-06"}
+            image = xml.find("ome:Image", ns)
+            pixels = image.find("ome:Pixels", ns)
+            if not pixels:
+                return
 
-                    for axis in axes:
-                        if axis.lower() == "c":
-                            continue
-                        else:
-                            self.Output.meta.axistags.setResolution(
-                                axis.lower(), float(pixels.attrib.get(size_keys[axis], 0))
-                            )
-                            self.Output.meta.axis_units[axis.lower()] = pixels.attrib.get(
-                                unit_keys[axis], ""
-                            )  # OME uses unicode
-            else:
-                meta = f.pages[0].tags
-                resolution_keys = {"x": "XResolution", "y": "YResolution", "z": "spacing", "t": "finterval"}
-                unit_keys = {"x": "unit", "y": "yunit", "z": "zunit", "t": "tunit"}
-                for ax in axes:
-                    if ax == "c":
-                        continue
-                    self.Output.meta.axistags.setResolution(
-                        ax,
-                        (
-                            self.round_resolution_to_tiff_precision(meta.get(resolution_keys[ax], None))
-                            if ax in "xy"
-                            else ij_meta.get(resolution_keys[ax], 0)
-                        ),
-                    )
-                    # (TIFF format stores resolution values as Rational tuples (numerator, denominator))
-                    unit = self.handle_stringified_tuples(ij_meta.get(unit_keys[ax], ""))
-                    self.Output.meta.axis_units[ax] = tiff_encoding.from_ascii(unit) if unit else ""
+            resolutions = {
+                "x": float(pixels.attrib.get("PhysicalSizeX", 0)),
+                "y": float(pixels.attrib.get("PhysicalSizeY", 0)),
+                "z": float(pixels.attrib.get("PhysicalSizeZ", 0)),
+                "t": float(pixels.attrib.get("TimeIncrement", 0)),
+            }
+            units = {  # OME uses unicode
+                "x": pixels.attrib.get("PhysicalSizeXUnit", ""),
+                "y": pixels.attrib.get("PhysicalSizeYUnit", ""),
+                "z": pixels.attrib.get("PhysicalSizeZUnit", ""),
+                "t": pixels.attrib.get("TimeIncrementUnit", ""),
+            }
+        elif tifftags and ij_meta:
+            # ImageJ-TIFF (not a standard, just ImageJ convention)
+            resolutions = {
+                "x": self._round_resolution_to_tiff_precision(tifftags.get("XResolution")),
+                "y": self._round_resolution_to_tiff_precision(tifftags.get("YResolution")),
+                "z": ij_meta.get("spacing", 0.0),
+                "t": ij_meta.get("finterval", 0.0),
+            }
+            units = {
+                "x": self._get_imagej_unit(ij_meta, "unit"),
+                "y": self._get_imagej_unit(ij_meta, "yunit"),
+                "z": self._get_imagej_unit(ij_meta, "zunit"),
+                "t": self._get_imagej_unit(ij_meta, "tunit"),
+            }
+            if units["x"] and resolutions["y"] and not units["y"]:
+                units["y"] = units["x"]  # ImageJ convention: y-unit not written when identical to x-unit
+            if units["x"] and resolutions["z"] and not units["z"]:
+                units["z"] = units["x"]  # Same for z
+        else:
+            return
 
-    def round_resolution_to_tiff_precision(self, frac):
+        for ax in axes:
+            if ax == "c":
+                continue
+            self.Output.meta.axistags.setResolution(ax, resolutions[ax])
+            self.Output.meta.axis_units[ax] = units[ax]
+
+    @staticmethod
+    def _round_resolution_to_tiff_precision(frac: Optional[tifffile.TiffTag]) -> float:
         """
-        Rounding is employed for axes with resolutions deviating extremely slightly from integer values.
+        Round resolutions deviating slightly from integer values.
         This is because the TIFF standard introduces floating-point precision errors
         by storing resolutions as numerator/denominator pairs.
         """
+        # frac.value: Tuple[int, int]
         if frac and frac.value[0] != 0:
             resolution = frac.value[1] / frac.value[0]
             if abs(resolution - round(resolution)) < 1e-8:
                 resolution = round(resolution)
             return resolution
-        return 0
+        return 0.0
 
-    def handle_stringified_tuples(self, unit):
-        """
-        Necessary because sometimes FIJI units are stored as 1-item tuples,
-        and thus the unit needs to be extracted from the enveloping tuple syntax.
-        """
-        if isinstance(unit, str) and unit.startswith("('") and unit.endswith("',)"):
-            if len(unit) > 5:
+    @staticmethod
+    def _get_imagej_unit(ij_meta: Dict, key: str) -> str:
+        def handle_stringified_tuple(unit: str) -> str:
+            """
+            Necessary because sometimes FIJI units are stored as 1-item tuples,
+            and thus the unit needs to be extracted from the enveloping tuple syntax.
+            """
+            if len(unit) > 5 and unit.startswith("('") and unit.endswith("',)"):
                 return unit[2:-3]
-            return ""
-        return unit
+            return unit
+
+        def from_ascii(raw_string: str):
+            # necessary for nonstandard unit characters, e.g. mu
+            return raw_string.encode("ascii").decode("unicode_escape")
+
+        return from_ascii(handle_stringified_tuple((ij_meta.get(key, ""))))
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Filepath:
