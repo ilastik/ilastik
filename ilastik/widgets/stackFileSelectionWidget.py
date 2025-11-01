@@ -294,7 +294,7 @@ class StackFileSelectionWidget(QDialog):
         ):
             msg += "Cannot create stack: You only chose a single file.  "
             msg += "If your stack is contained in a single file (e.g. a multi-page tiff) "
-            msg += 'please use the "Add File" button.'
+            msg += 'please use the "Add New → Add separate image(s)" option.'
             QMessageBox.warning(self, "Invalid selection", msg)
             return None
 
