@@ -143,8 +143,3 @@ jobs:
           conda build --test --override-channels ^
             -c ./pkgs -c ilastik-forge/label/patched-2 -c conda-forge -c ilastik-forge ^
             ./pkgs/noarch/%ILASTIK_PACKAGE_NAME%
-        # HACK: due to a bug in conda-build need to point to
-        # libarchive explicitly.
-        # https://github.com/conda/conda/issues/12563#issuecomment-1494264704
-        env:
-          LIBARCHIVE: C:\Miniconda\Library\bin\archive.dll
