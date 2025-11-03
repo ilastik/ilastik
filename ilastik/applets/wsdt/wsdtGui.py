@@ -40,6 +40,7 @@ from qtpy.QtWidgets import (
     QMenu,
     QAction,
     QCheckBox,
+    QMessageBox,
 )
 
 from ilastik.utility.gui import threadRouted
@@ -79,6 +80,7 @@ class WsdtGui(LayerViewerGui):
     def __init__(self, parentApplet, topLevelOperatorView):
         self.__cleanup_fns = []
         self._currently_updating = False
+        self._last_alpha_value = None  # Track last alpha value to detect changes
         self.topLevelOperatorView = topLevelOperatorView
         super(WsdtGui, self).__init__(parentApplet, topLevelOperatorView)
 
@@ -167,7 +169,8 @@ class WsdtGui(LayerViewerGui):
         alpha_box.setSingleStep(0.1)
         configure_update_handlers(alpha_box.valueChanged, op.Alpha)
         alpha_box.setToolTip(
-            "Used to blend boundaries and the distance transform in order to obtain the watershed weight map"
+            "Used to blend boundaries and the distance transform in order to obtain the watershed weight map. "
+            "Valid range is [0.0, 1.0]. Legacy project files with values > 1.0 are preserved for compatibility."
         )
         drawer_layout.addLayout(control_layout("Alpha", alpha_box))
         self.alpha_box = alpha_box
@@ -232,7 +235,9 @@ class WsdtGui(LayerViewerGui):
             self.threshold_box.setValue(op.Threshold.value)
             self.min_size_box.setValue(op.MinSize.value)
             self.sigma_box.setValue(op.Sigma.value)
-            self.alpha_box.setValue(op.Alpha.value)
+            alpha_value = op.Alpha.value
+            self.alpha_box.setValue(alpha_value)
+            self._last_alpha_value = alpha_value  # Track the value loaded from operator
             self.enable_debug_box.setChecked(op.EnableDebugOutputs.value)
             self.update_ws_button.setEnabled(op.Superpixels.ready())
 
@@ -252,14 +257,38 @@ class WsdtGui(LayerViewerGui):
             op.Threshold.setValue(self.threshold_box.value())
             op.Sigma.setValue(self.sigma_box.value())
             op.MinSize.setValue(self.min_size_box.value())
-            # Alpha blends the probability map with the distance transform
-            # Historically users could load project files with Alpha outside
-            # the desired [0,1] range; keep supporting loading those values,
-            # but prevent the GUI from setting values outside [0,1]. Clamp
-            # the value we write back to the operator to the valid range.
+            
+            # Handle Alpha value with validation and user confirmation
             alpha_val = float(self.alpha_box.value())
-            alpha_clamped = min(max(alpha_val, 0.0), 1.0)
-            op.Alpha.setValue(alpha_clamped)
+            
+            # Only apply clamping logic if alpha value has actually changed
+            if self._last_alpha_value is None or alpha_val != self._last_alpha_value:
+                # Check if value is outside valid range [0, 1]
+                if alpha_val < 0.0 or alpha_val > 1.0:
+                    # Show confirmation dialog
+                    msg = QMessageBox(self)
+                    msg.setIcon(QMessageBox.Warning)
+                    msg.setWindowTitle("Alpha Value Out of Range")
+                    msg.setText(
+                        f"The Alpha value {alpha_val:.1f} is outside the valid range [0.0, 1.0].\n\n"
+                        "Alpha blends probability maps with the distance transform and should be in [0, 1]."
+                    )
+                    msg.setInformativeText("Would you like to clamp the value to the valid range?")
+                    
+                    clamp_button = msg.addButton("Clamp to Valid Range", QMessageBox.AcceptRole)
+                    keep_button = msg.addButton("Keep Current Value", QMessageBox.RejectRole)
+                    msg.setDefaultButton(clamp_button)
+                    
+                    msg.exec_()
+                    
+                    if msg.clickedButton() == clamp_button:
+                        # User chose to clamp
+                        alpha_val = min(max(alpha_val, 0.0), 1.0)
+                    # else: keep the out-of-range value (for legacy compatibility)
+                
+                self._last_alpha_value = alpha_val
+            
+            op.Alpha.setValue(alpha_val)
             op.EnableDebugOutputs.setValue(self.enable_debug_box.isChecked())
 
         # The GUI may need to respond to some changes in the operator outputs.
