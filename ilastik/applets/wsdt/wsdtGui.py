@@ -57,6 +57,39 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _process_alpha_change(alpha_val, last_alpha, confirm_fn=None):
+    """Process an alpha change and optionally ask for confirmation when out-of-range.
+
+    Parameters
+    - alpha_val: float, the new alpha value from the GUI
+    - last_alpha: float or None, the previously recorded alpha value
+    - confirm_fn: callable(alpha_val) -> bool, called when alpha is out-of-range;
+      should return True to clamp the value, False to keep it. If None, defaults
+      to clamping.
+
+    Returns (alpha_to_set, updated_last_alpha)
+    """
+    # If value hasn't changed, do nothing
+    if last_alpha is not None and alpha_val == last_alpha:
+        return alpha_val, last_alpha
+
+    # If out of valid range, consult confirm_fn
+    if alpha_val < 0.0 or alpha_val > 1.0:
+        if confirm_fn is None:
+            clamp = True
+        else:
+            try:
+                clamp = bool(confirm_fn(alpha_val))
+            except Exception:
+                clamp = True
+
+        if clamp:
+            alpha_val = min(max(alpha_val, 0.0), 1.0)
+
+    # Update last_alpha to the value we will now consider canonical
+    return alpha_val, alpha_val
+
+
 class WsdtGui(LayerViewerGui):
 
     ###########################################
@@ -261,38 +294,27 @@ class WsdtGui(LayerViewerGui):
             # Handle Alpha value with validation and user confirmation
             alpha_val = float(self.alpha_box.value())
 
-            # Only apply clamping logic if alpha value has actually changed
-            if self._last_alpha_value is None or alpha_val != self._last_alpha_value:
-                # Check if value is outside valid range [0, 1]
-                if alpha_val < 0.0 or alpha_val > 1.0:
-                    # Show confirmation dialog
-                    msg = QMessageBox(self)
-                    msg.setIcon(QMessageBox.Warning)
-                    msg.setWindowTitle("Alpha Value Out of Range")
-                    msg.setText(
-                        f"The Alpha value {alpha_val:.1f} is outside the valid range [0.0, 1.0].\n\n"
-                        "Alpha blends probability maps with the distance transform and should be in [0, 1]."
-                    )
-                    msg.setInformativeText(
-                        "Would you like to clamp the value to the valid range?"
-                    )
+            def _confirm_fn(v):
+                # Show confirmation dialog and return True to clamp, False to keep
+                msg = QMessageBox(self)
+                msg.setIcon(QMessageBox.Warning)
+                msg.setWindowTitle("Alpha Value Out of Range")
+                msg.setText(
+                    f"The Alpha value {v:.1f} is outside the valid range [0.0, 1.0].\n\n"
+                    "Alpha blends probability maps with the distance transform and should be in [0, 1]."
+                )
+                msg.setInformativeText("Would you like to clamp the value to the valid range?")
 
-                    clamp_button = msg.addButton(
-                        "Clamp to Valid Range", QMessageBox.AcceptRole
-                    )
-                    keep_button = msg.addButton(
-                        "Keep Current Value", QMessageBox.RejectRole
-                    )
-                    msg.setDefaultButton(clamp_button)
+                clamp_button = msg.addButton("Clamp to Valid Range", QMessageBox.AcceptRole)
+                keep_button = msg.addButton("Keep Current Value", QMessageBox.RejectRole)
+                msg.setDefaultButton(clamp_button)
 
-                    msg.exec_()
+                msg.exec_()
+                return msg.clickedButton() == clamp_button
 
-                    if msg.clickedButton() == clamp_button:
-                        # User chose to clamp
-                        alpha_val = min(max(alpha_val, 0.0), 1.0)
-                    # else: keep the out-of-range value (for legacy compatibility)
-
-                self._last_alpha_value = alpha_val
+            alpha_val, self._last_alpha_value = _process_alpha_change(
+                alpha_val, self._last_alpha_value, confirm_fn=_confirm_fn
+            )
 
             op.Alpha.setValue(alpha_val)
             op.EnableDebugOutputs.setValue(self.enable_debug_box.isChecked())
