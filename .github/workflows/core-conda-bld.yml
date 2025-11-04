@@ -17,14 +17,13 @@ jobs:
           fetch-depth: 0
       - uses: conda-incubator/setup-miniconda@v3
         with:
+          auto-update-conda: true
           auto-activate-base: true
           activate-environment: ""
           channel-priority: strict
           miniforge-version: latest
           conda-solver: libmamba
           conda-remove-defaults: "true"
-      - name: update conda
-        run: conda update -n base -c conda-forge conda conda-libmamba-solver
       - name: install xvfb/deps
         run: |
           sudo apt-get update
@@ -86,6 +85,7 @@ jobs:
       - uses: conda-incubator/setup-miniconda@v3
         if: matrix.os != 'windows-latest'
         with:
+          auto-update-conda: true
           auto-activate-base: true
           activate-environment: ""
           channel-priority: strict
@@ -98,6 +98,7 @@ jobs:
         # ref: https://github.com/conda-incubator/setup-miniconda/issues/380
         if: matrix.os == 'windows-latest'
         with:
+          auto-update-conda: true
           auto-activate-base: true
           activate-environment: ""
           channel-priority: strict
@@ -105,8 +106,6 @@ jobs:
           conda-solver: libmamba
           conda-remove-defaults: "true"
           run-post: false
-      - name: update conda
-        run: conda update -n base -c conda-forge conda conda-libmamba-solver
       - name: install xvfb/deps
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -143,8 +142,3 @@ jobs:
           conda build --test --override-channels ^
             -c ./pkgs -c ilastik-forge/label/patched-2 -c conda-forge -c ilastik-forge ^
             ./pkgs/noarch/%ILASTIK_PACKAGE_NAME%
-        # HACK: due to a bug in conda-build need to point to
-        # libarchive explicitly.
-        # https://github.com/conda/conda/issues/12563#issuecomment-1494264704
-        env:
-          LIBARCHIVE: C:\Miniconda\Library\bin\archive.dll
