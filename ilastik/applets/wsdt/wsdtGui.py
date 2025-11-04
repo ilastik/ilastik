@@ -260,7 +260,7 @@ class WsdtGui(LayerViewerGui):
             
             # Handle Alpha value with validation and user confirmation
             alpha_val = float(self.alpha_box.value())
-            
+
             # Only apply clamping logic if alpha value has actually changed
             if self._last_alpha_value is None or alpha_val != self._last_alpha_value:
                 # Check if value is outside valid range [0, 1]
@@ -273,21 +273,27 @@ class WsdtGui(LayerViewerGui):
                         f"The Alpha value {alpha_val:.1f} is outside the valid range [0.0, 1.0].\n\n"
                         "Alpha blends probability maps with the distance transform and should be in [0, 1]."
                     )
-                    msg.setInformativeText("Would you like to clamp the value to the valid range?")
-                    
-                    clamp_button = msg.addButton("Clamp to Valid Range", QMessageBox.AcceptRole)
-                    keep_button = msg.addButton("Keep Current Value", QMessageBox.RejectRole)
+                    msg.setInformativeText(
+                        "Would you like to clamp the value to the valid range?"
+                    )
+
+                    clamp_button = msg.addButton(
+                        "Clamp to Valid Range", QMessageBox.AcceptRole
+                    )
+                    keep_button = msg.addButton(
+                        "Keep Current Value", QMessageBox.RejectRole
+                    )
                     msg.setDefaultButton(clamp_button)
-                    
+
                     msg.exec_()
-                    
+
                     if msg.clickedButton() == clamp_button:
                         # User chose to clamp
                         alpha_val = min(max(alpha_val, 0.0), 1.0)
                     # else: keep the out-of-range value (for legacy compatibility)
-                
+
                 self._last_alpha_value = alpha_val
-            
+
             op.Alpha.setValue(alpha_val)
             op.EnableDebugOutputs.setValue(self.enable_debug_box.isChecked())
 
