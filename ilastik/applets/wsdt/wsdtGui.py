@@ -57,39 +57,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def _process_alpha_change(alpha_val, last_alpha, confirm_fn=None):
-    """Process an alpha change and optionally ask for confirmation when out-of-range.
-
-    Parameters
-    - alpha_val: float, the new alpha value from the GUI
-    - last_alpha: float or None, the previously recorded alpha value
-    - confirm_fn: callable(alpha_val) -> bool, called when alpha is out-of-range;
-      should return True to clamp the value, False to keep it. If None, defaults
-      to clamping.
-
-    Returns (alpha_to_set, updated_last_alpha)
-    """
-    # If value hasn't changed, do nothing
-    if last_alpha is not None and alpha_val == last_alpha:
-        return alpha_val, last_alpha
-
-    # If out of valid range, consult confirm_fn
-    if alpha_val < 0.0 or alpha_val > 1.0:
-        if confirm_fn is None:
-            clamp = True
-        else:
-            try:
-                clamp = bool(confirm_fn(alpha_val))
-            except Exception:
-                clamp = True
-
-        if clamp:
-            alpha_val = min(max(alpha_val, 0.0), 1.0)
-
-    # Update last_alpha to the value we will now consider canonical
-    return alpha_val, alpha_val
-
-
 class WsdtGui(LayerViewerGui):
 
     ###########################################
@@ -113,7 +80,6 @@ class WsdtGui(LayerViewerGui):
     def __init__(self, parentApplet, topLevelOperatorView):
         self.__cleanup_fns = []
         self._currently_updating = False
-        self._last_alpha_value = None  # Track last alpha value to detect changes
         self.topLevelOperatorView = topLevelOperatorView
         super(WsdtGui, self).__init__(parentApplet, topLevelOperatorView)
 
@@ -268,9 +234,7 @@ class WsdtGui(LayerViewerGui):
             self.threshold_box.setValue(op.Threshold.value)
             self.min_size_box.setValue(op.MinSize.value)
             self.sigma_box.setValue(op.Sigma.value)
-            alpha_value = op.Alpha.value
-            self.alpha_box.setValue(alpha_value)
-            self._last_alpha_value = alpha_value  # Track the value loaded from operator
+            self.alpha_box.setValue(op.Alpha.value)
             self.enable_debug_box.setChecked(op.EnableDebugOutputs.value)
             self.update_ws_button.setEnabled(op.Superpixels.ready())
 
@@ -290,31 +254,24 @@ class WsdtGui(LayerViewerGui):
             op.Threshold.setValue(self.threshold_box.value())
             op.Sigma.setValue(self.sigma_box.value())
             op.MinSize.setValue(self.min_size_box.value())
-            
+
             # Handle Alpha value with validation and user confirmation
             alpha_val = float(self.alpha_box.value())
 
-            def _confirm_fn(v):
-                # Show confirmation dialog and return True to clamp, False to keep
-                msg = QMessageBox(self)
-                msg.setIcon(QMessageBox.Warning)
-                msg.setWindowTitle("Alpha Value Out of Range")
-                msg.setText(
-                    f"The Alpha value {v:.1f} is outside the valid range [0.0, 1.0].\n\n"
-                    "Alpha blends probability maps with the distance transform and should be in [0, 1]."
+            # Check if alpha is out of valid range and ask user what to do
+            if not (0.0 <= alpha_val <= 1.0):
+                response = QMessageBox.warning(
+                    self,
+                    "Alpha Value Out of Range",
+                    f"<p>The Alpha value <b>{alpha_val:.1f}</b> is outside the valid range [0.0, 1.0].</p>"
+                    f"<p>Alpha blends probability maps with the distance transform and should be in [0, 1].</p>"
+                    f"<p>Do you want to clamp the value to the valid range?</p>"
+                    f"<p><i>Click 'Cancel' to keep the current value (for legacy compatibility).</i></p>",
+                    QMessageBox.Ok | QMessageBox.Cancel,
+                    QMessageBox.Ok,
                 )
-                msg.setInformativeText("Would you like to clamp the value to the valid range?")
-
-                clamp_button = msg.addButton("Clamp to Valid Range", QMessageBox.AcceptRole)
-                keep_button = msg.addButton("Keep Current Value", QMessageBox.RejectRole)
-                msg.setDefaultButton(clamp_button)
-
-                msg.exec_()
-                return msg.clickedButton() == clamp_button
-
-            alpha_val, self._last_alpha_value = _process_alpha_change(
-                alpha_val, self._last_alpha_value, confirm_fn=_confirm_fn
-            )
+                if response == QMessageBox.Ok:
+                    alpha_val = max(0.0, min(alpha_val, 1.0))
 
             op.Alpha.setValue(alpha_val)
             op.EnableDebugOutputs.setValue(self.enable_debug_box.isChecked())
