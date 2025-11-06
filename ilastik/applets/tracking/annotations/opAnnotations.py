@@ -37,7 +37,6 @@ class OpAnnotations(Operator):
     name = "Training"
     category = "other"
 
-    BinaryImage = InputSlot()
     LabelImage = InputSlot()
     RawImage = InputSlot()
     ActiveTrack = InputSlot(stype="int", value=0)
@@ -58,6 +57,7 @@ class OpAnnotations(Operator):
 
     # Use a slot for storing the export settings in the project file.
     ExportSettings = OutputSlot()
+
     # Override functions ExportingOperator mixin
     def configure_table_export_settings(self, settings, selected_features):
         self.ExportSettings.setValue((settings, selected_features))
@@ -83,7 +83,7 @@ class OpAnnotations(Operator):
         self.Disappearances.setValue({})
 
         self.RawImage.notifyReady(self._checkConstraints)
-        self.BinaryImage.notifyReady(self._checkConstraints)
+        self.LabelImage.notifyReady(self._checkConstraints)
 
         self.export_progress_dialog = None
         self.ExportSettings.setValue((None, None))
@@ -151,7 +151,7 @@ class OpAnnotations(Operator):
                     "For tracking, the raw data and the prediction maps must contain the same "
                     "number of timesteps and the same shape.   "
                     "Your raw image has a shape of (t, x, y, z, c) = {}, whereas your prediction image has a "
-                    "shape of (t, x, y, z, c) = {}".format(self.RawImage.meta.shape, self.BinaryImage.meta.shape),
+                    "shape of (t, x, y, z, c) = {}".format(self.RawImage.meta.shape, self.LabelImage.meta.shape),
                 )
 
     def execute(self, slot, subindex, roi, result):
@@ -228,7 +228,7 @@ class OpAnnotations(Operator):
             if label in replace and len(replace[label]) > 0:
                 l = list(replace[label])[-1]
                 if l == -1:
-                    mp[label] = 2 ** 16 - 1
+                    mp[label] = 2**16 - 1
                 else:
                     mp[label] = l
         return mp[volume]
