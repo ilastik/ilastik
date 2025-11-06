@@ -630,10 +630,24 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         remove anything that looks like an extension ('.zarr') and replace remaining dots
         to ensure exporting logic does not mistake them for file extensions.
         """
-        last_url_component = url.rstrip("/").rpartition("/")[2]
-        filename_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", last_url_component)
-        extensionless = os.path.splitext(filename_safe)[0]
-        return extensionless
+        parts = url.rstrip("/").split("/")
+        last = parts[-1]
+
+        # helper to make a component filename-safe and strip an extension
+        def safe_base(name: str) -> str:
+            name_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", name)
+            return os.path.splitext(name_safe)[0]
+
+        # If the URL points explicitly to an internal scale (e.g. ".../container.zarr/s1"),
+        # prefer a compound nickname like "container-s1" rather than just "s1".
+        if len(parts) >= 2:
+            penult = parts[-2]
+            # heuristics: penultimate looks like a container when it contains a dot (has an extension)
+            if "." in penult:
+                return f"{safe_base(penult)}-{safe_base(last)}"
+
+        # fallback: use only the last URL component (as before)
+        return safe_base(last)
 
 
 class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
