@@ -7,6 +7,8 @@ import pytest
 import tifffile
 import vigra
 
+from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification
+from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 from lazyflow.graph import Graph
 from lazyflow.operators import OpArrayPiper
 from lazyflow.operators.ioOperators import (
@@ -423,3 +425,97 @@ def test_write_read_roundtrip_h5(
     for axis in axes:
         assert meta.axistags[axis].resolution == resolutions[axes.index(axis)]
         assert meta.axis_units[axis] == units[axes.index(axis)]
+
+
+@pytest.fixture
+def tagged_data(data):
+    return vigra.taggedView(data, axistags="tzyxc")
+
+
+@pytest.fixture
+def op_pixel_size(graph, data, tagged_data):
+    op = OpArrayPiper(graph=graph)
+    op.Input.setValue(tagged_data.astype(np.uint32))
+    for tag in op.Output.meta.axistags:
+        op.Output.meta.axistags.setResolution(tag.key, 4.2)
+    op.Output.meta.axis_units = {"t": "sec", "x": "nm", "y": "nm", "z": "nm"}
+    return op
+
+
+def test_carryover_OpObjectExtraction_raw_data(graph, tagged_data, op_pixel_size):
+    features = {"Standard Object Features": {"Mean": {}}}
+    op_obj_extract = OpObjectExtraction(graph=graph)
+    op_obj_extract.Features.setValue(features)
+
+    # Segmentation does not get pixel size meta
+    op_obj_extract.SegmentationImage.setValue(tagged_data.astype(np.uint32))
+    assert not op_obj_extract.SegmentationImage.meta.axis_units
+    # Raw data gets pixel size meta
+    op_obj_extract.RawImage.connect(op_pixel_size.Output)
+    assert_eq_pixel_size(op_obj_extract.RawImage, op_pixel_size.Output)
+
+    assert op_obj_extract.LabelImage.ready()
+    assert op_obj_extract.ObjectCenterImage.ready()
+    assert_eq_pixel_size(op_obj_extract.LabelImage, op_pixel_size.Output)
+    assert_eq_pixel_size(op_obj_extract.ObjectCenterImage, op_pixel_size.Output)
+
+
+def test_carryover_OpObjectExtraction_segmentation(graph, tagged_data, op_pixel_size):
+    features = {"Standard Object Features": {"Mean": {}}}
+    op_obj_extract = OpObjectExtraction(graph=graph)
+    op_obj_extract.Features.setValue(features)
+
+    # Raw data does not get pixel size meta
+    op_obj_extract.RawImage.setValue(tagged_data)
+    assert not op_obj_extract.RawImage.meta.axis_units
+    # Segmentation gets pixel size meta
+    op_obj_extract.SegmentationImage.connect(op_pixel_size.Output)
+    assert_eq_pixel_size(op_obj_extract.SegmentationImage, op_pixel_size.Output)
+
+    assert op_obj_extract.LabelImage.ready()
+    assert op_obj_extract.ObjectCenterImage.ready()
+    assert_eq_pixel_size(op_obj_extract.LabelImage, op_pixel_size.Output)
+    assert_eq_pixel_size(op_obj_extract.ObjectCenterImage, op_pixel_size.Output)
+
+
+@pytest.fixture
+def op_obj_class(graph, tagged_data):
+    label_names = ["1", "2"]
+    labels = {0: np.array([0, 1, 2]), 1: np.array([0, 1, 1, 2])}
+    features = {"Standard Object Features": {"Mean": {}}}
+    op_obj_class = OpObjectClassification(graph=graph)
+    op_obj_class.RawImages.setValues([tagged_data])
+    op_obj_class.SegmentationImages.setValues([tagged_data.astype(np.uint32)])
+    op_obj_class.LabelNames.setValue(label_names)
+    op_obj_class.LabelInputs.setValues([labels])
+    op_obj_class.ObjectFeatures.setValues([features])
+    op_obj_class.ComputedFeatureNames.setValue(features)
+    op_obj_class.SelectedFeatures.setValue(features)
+    assert op_obj_class.Classifier.ready()
+    return op_obj_class
+
+
+def test_carryover_OpObjectClassification_raw_data(graph, tagged_data, op_pixel_size, op_obj_class):
+    op_obj_class.RawImages[0].connect(op_pixel_size.Output)
+    assert op_obj_class.UncachedPredictionImages.ready()
+    assert op_obj_class.ProbabilityChannelImage.ready()
+    assert op_obj_class.SegmentationImagesOut.ready()
+    assert_eq_pixel_size(op_obj_class.UncachedPredictionImages[0], op_pixel_size.Output)
+    assert_eq_pixel_size(op_obj_class.ProbabilityChannelImage[0], op_pixel_size.Output)
+    assert_eq_pixel_size(op_obj_class.SegmentationImagesOut[0], op_pixel_size.Output)
+
+
+def test_carryover_OpObjectClassification_segmentation(graph, tagged_data, op_pixel_size, op_obj_class):
+    op_obj_class.SegmentationImages[0].connect(op_pixel_size.Output)
+    assert op_obj_class.UncachedPredictionImages.ready()
+    assert op_obj_class.ProbabilityChannelImage.ready()
+    assert op_obj_class.SegmentationImagesOut.ready()
+    assert_eq_pixel_size(op_obj_class.UncachedPredictionImages[0], op_pixel_size.Output)
+    assert_eq_pixel_size(op_obj_class.ProbabilityChannelImage[0], op_pixel_size.Output)
+    assert_eq_pixel_size(op_obj_class.SegmentationImagesOut[0], op_pixel_size.Output)
+
+
+def assert_eq_pixel_size(test_slot, expect_slot):
+    for tag in test_slot.meta.axistags:
+        assert np.isclose(tag.resolution, expect_slot.meta.axistags[tag.key].resolution, atol=1e-15)
+    assert test_slot.meta.axis_units == expect_slot.meta.axis_units
