@@ -127,7 +127,7 @@ class OpLabelVolume(OpLabelBase):
             self._opLabel = self._labelOps[method](parent=self)
             if method == "vigra":
                 self._opLabel.BypassModeEnabled.connect(self.BypassModeEnabled)
-            self._opLabel.SerializationInput.connect(self.SerializationInput)
+                self._opLabel.SerializationInput.connect(self.SerializationInput)
 
         if input_dtype == np.uint16:
             self._opDtypeConvert.Function.setValue(lambda x: x.astype("uint32"))
