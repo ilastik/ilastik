@@ -37,7 +37,7 @@ from lazyflow.rtype import List, SubRegion
 from lazyflow.roi import roiToSlice
 from lazyflow.operators.opLabelBase import OpLabelBase
 from lazyflow.operators.opRelabelConsecutive import OpRelabelConsecutive
-from lazyflow.operators import OpLabelVolume, OpCompressedCache, OpBlockedArrayCache
+from lazyflow.operators import OpLabelVolume, OpCompressedCache, OpBlockedArrayCache, OpMetadataInjector
 from itertools import groupby, count
 
 import logging
@@ -397,6 +397,22 @@ class OpObjectExtractionBase(Operator, ABC):
             if k == "t" or k == "c":
                 taggedShape[k] = 1
         self._opCenterCache.BlockShape.setValue(tuple(taggedShape.values()))
+
+        if self._has_pixel_size_meta(self.RawImage) and not self._has_pixel_size_meta(self.SegmentationImage):
+            # Pixel size metadata should carry over to outputs from raw or from segmentation,
+            # whichever is available. Segmentation feeds into outputs, so carries over automatically.
+            # Metadata from raw data needs extra work to carry over.
+            meta = {"axistags": self.RawImage.meta.axistags, "axis_units": self.RawImage.meta.axis_units}
+            op_inject = OpMetadataInjector(parent=self)
+            op_inject.Input.connect(self.SegmentationImage)
+            op_inject.Metadata.setValue(meta)
+            self._opLabelVolume.Input.connect(op_inject.Output)
+
+    @staticmethod
+    def _has_pixel_size_meta(slot):
+        has_units = "axis_units" in slot.meta and slot.meta.axis_units and any(u for u in slot.meta.axis_units.values())
+        has_res = any(not numpy.isclose(tag.resolution, 0.0, atol=1e-15) for tag in slot.meta.axistags)
+        return has_units or has_res
 
     def _checkConstraints(self, *_):
         if not any((self.RawImage.ready(), self.SegmentationImage.ready(), self.Atlas.ready())):

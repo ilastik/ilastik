@@ -479,10 +479,14 @@ def test_carryover_OpObjectExtraction_segmentation(graph, tagged_data, op_pixel_
 
 
 @pytest.fixture
-def op_obj_class(graph, tagged_data):
+def features():
+    return {"Standard Object Features": {"Mean": {}}}
+
+
+@pytest.fixture
+def op_obj_class(graph, tagged_data, features):
     label_names = ["1", "2"]
     labels = {0: np.array([0, 1, 2]), 1: np.array([0, 1, 1, 2])}
-    features = {"Standard Object Features": {"Mean": {}}}
     op_obj_class = OpObjectClassification(graph=graph)
     op_obj_class.RawImages.setValues([tagged_data])
     op_obj_class.SegmentationImages.setValues([tagged_data.astype(np.uint32)])
@@ -495,8 +499,19 @@ def op_obj_class(graph, tagged_data):
     return op_obj_class
 
 
-def test_carryover_OpObjectClassification_raw_data(graph, tagged_data, op_pixel_size, op_obj_class):
-    op_obj_class.RawImages[0].connect(op_pixel_size.Output)
+def test_carryover_OpObjectClassification_raw_data(graph, tagged_data, features, op_pixel_size, op_obj_class):
+    """
+    Metadata carryover is implemented in OpObjectExtraction.
+    At the level of OpObjectClassification, it will work when chained as in ObjectClassificationWorkflow.
+    """
+    op_extract = OpObjectExtraction(graph=graph)
+    op_extract.SegmentationImage.setValue(tagged_data.astype(np.uint32))
+    op_extract.Features.setValue(features)
+    op_extract.RawImage.connect(op_pixel_size.Output)
+    assert op_extract.RegionFeatures.ready()
+
+    op_obj_class.SegmentationImages.connect(op_extract.LabelImage)
+
     assert op_obj_class.UncachedPredictionImages.ready()
     assert op_obj_class.ProbabilityChannelImage.ready()
     assert op_obj_class.SegmentationImagesOut.ready()
