@@ -293,28 +293,6 @@ class ObjectClassificationWorkflow(Workflow):
         rawslot, segmentation_slot = self.connectInputs(laneIndex)
         atlas_slot = self.createAtlasSourceSlot(laneIndex)
 
-        from lazyflow.operator import Operator
-        from lazyflow.slot import InputSlot, OutputSlot
-
-        class OpFixMeta(Operator):
-            RawData = InputSlot()
-            Segmentation = InputSlot()
-            Output = OutputSlot()
-
-            def setupOutputs(self):
-                self.Output.meta.assignFrom(self.Segmentation.meta)
-                if self.RawData.meta.axis_units != self.Output.meta.axis_units:
-                    self.Output.meta.axis_units = self.RawData.meta.axis_units
-
-            def execute(self, slot, subindex, roi, result):
-                assert slot is self.Output, "nonsense"
-                result[roi.toSlice()] = self.Segmentation[roi.toSlice()].wait()
-
-        opFixMeta = OpFixMeta(parent=self)
-        opFixMeta.RawData.connect(rawslot)
-        opFixMeta.Segmentation.connect(segmentation_slot)
-        segmentation_slot = opFixMeta.Output
-
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
 
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
