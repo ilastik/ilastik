@@ -338,7 +338,7 @@ class OpObjectExtractionBase(Operator, ABC):
     # For other workflows, output has rtype=ArrayLike, indexed by (t)
 
     CleanLabelBlocks = OutputSlot()
-    LabelImageCacheInput = InputSlot()
+    LabelImageCacheInput = InputSlot(optional=True)
     RelabelCacheInput = InputSlot(optional=True)
     RelabelCacheOutput = OutputSlot()
 
@@ -484,18 +484,16 @@ class OpObjectExtraction(OpObjectExtractionBase):
         opLabelVolume.Background.connect(self.BackgroundLabels)
         # TODO: investigate if Bypassing the cache in headless is a good idea at all!
         opLabelVolume.BypassModeEnabled.connect(self.BypassModeEnabled)
+        opLabelVolume.SerializationInput.connect(self.LabelImageCacheInput)
 
         return opLabelVolume
 
     def setupOutputs(self):
-        # Setup LabelImageCacheInput for the serialization of the compressed cache
-        self._opLabelVolume._opLabel._cache.Input.connect(self.LabelImageCacheInput)
-
         taggedShape = self.RawImage.meta.getTaggedShape()
         for k in list(taggedShape.keys()):
             if k == "t" or k == "c":
                 taggedShape[k] = 1
-        self._opCenterCache.blockShape.setValue(tuple(taggedShape.values()))
+        self._opCenterCache.BlockShape.setValue(tuple(taggedShape.values()))
 
 
 class OpRegionFeatures(Operator):

@@ -28,6 +28,8 @@ class OpLabelBase(Operator):
     Input = InputSlot()
     """Volume to (re)label, up to 5D"""
 
+    SerializationInput = InputSlot(optional=True)
+
     CachedOutput = OutputSlot()
     """Cached label image - internally always whole time slices are stored
     Axistags and shape are the same as on the Input, dtype is an integer
