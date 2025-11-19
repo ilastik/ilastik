@@ -389,9 +389,14 @@ class OpObjectExtractionBase(Operator, ABC):
         self.BlockwiseRegionFeatures.connect(self._opRegFeats.Output)
         self.CleanLabelBlocks.connect(self._opLabelVolume.CleanBlocks)
 
-        self.RawImage.notifyReady(self._checkConstraints)
-        self.SegmentationImage.notifyReady(self._checkConstraints)
-        self.Atlas.notifyReady(self._checkConstraints)
+    def setupOutputs(self):
+        self._checkConstraints()
+
+        taggedShape = self.RawImage.meta.getTaggedShape()
+        for k in list(taggedShape.keys()):
+            if k == "t" or k == "c":
+                taggedShape[k] = 1
+        self._opCenterCache.BlockShape.setValue(tuple(taggedShape.values()))
 
     def _checkConstraints(self, *_):
         if not any((self.RawImage.ready(), self.SegmentationImage.ready(), self.Atlas.ready())):
@@ -462,13 +467,6 @@ class OpObjectExtractionFromLabels(OpObjectExtractionBase):
 
         return opLabelVolume
 
-    def setupOutputs(self):
-        taggedShape = self.RawImage.meta.getTaggedShape()
-        for k in list(taggedShape.keys()):
-            if k == "t" or k == "c":
-                taggedShape[k] = 1
-        self._opCenterCache.BlockShape.setValue(tuple(taggedShape.values()))
-
 
 class OpObjectExtraction(OpObjectExtractionBase):
     """The top-level operator for the object extraction applet.
@@ -487,13 +485,6 @@ class OpObjectExtraction(OpObjectExtractionBase):
         opLabelVolume.SerializationInput.connect(self.LabelImageCacheInput)
 
         return opLabelVolume
-
-    def setupOutputs(self):
-        taggedShape = self.RawImage.meta.getTaggedShape()
-        for k in list(taggedShape.keys()):
-            if k == "t" or k == "c":
-                taggedShape[k] = 1
-        self._opCenterCache.BlockShape.setValue(tuple(taggedShape.values()))
 
 
 class OpRegionFeatures(Operator):
