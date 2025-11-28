@@ -18,43 +18,42 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+import errno
+import glob
 import itertools
 import json
-from abc import abstractmethod, ABC
-import glob
 import os
-import uuid
-from collections import OrderedDict
-from typing import List, Tuple, Dict, Optional, Union, Callable, Set
-from numbers import Number
 import re
+import uuid
+from abc import abstractmethod, ABC
+from collections import OrderedDict
+from numbers import Number
 from pathlib import Path
-import errno
+from typing import List, Tuple, Dict, Optional, Union, Callable, Set
 
+import h5py
 import numpy
 import vigra
-from vigra import AxisTags
-import h5py
 import z5py
 from ndstructs import Shape5D
-
-from lazyflow.base import Axiskey
-from lazyflow.graph import InputSlot, OutputSlot, OperatorWrapper, Slot
-from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
-from lazyflow.operators.ioOperators import OpInputDataReader
-from lazyflow.operators.opArrayPiper import OpArrayPiper
-from ilastik.applets.base.applet import DatasetConstraintError
+from vigra import AxisTags
 
 from ilastik import Project
+from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.utility import OpMultiLaneWrapper
 from ilastik.workflow import Workflow
-from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, Multiscales
-from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
-from lazyflow.utility.helpers import get_default_axisordering, eq_shapes
-from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.base import Axiskey
+from lazyflow.graph import Graph, Operator
+from lazyflow.graph import InputSlot, OutputSlot, OperatorWrapper, Slot
 from lazyflow.operators import OpMissingDataSource
 from lazyflow.operators.ioOperators import OpH5N5WriterBigDataset
-from lazyflow.graph import Graph, Operator
+from lazyflow.operators.ioOperators import OpInputDataReader
+from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
+from lazyflow.operators.opArrayPiper import OpArrayPiper
+from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.utility.helpers import get_default_axisordering, eq_shapes
+from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, Multiscales
+from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
 
 
 def getTypeRange(numpy_type):
