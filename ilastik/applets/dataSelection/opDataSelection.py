@@ -1084,7 +1084,7 @@ class OpDataSelectionGroup(Operator):
         if not roles_with_pixel_size:
             return
         eq_all_with_pixel_size = all(
-            self._eq_pixel_size_spatial(slot1, slot2)
+            self.eq_pixel_size_spatial(slot1, slot2)
             for slot1, slot2 in itertools.combinations(roles_with_pixel_size, 2)
         )
         if eq_all_with_pixel_size:
@@ -1129,7 +1129,7 @@ class OpDataSelectionGroup(Operator):
             target.meta[OpDataSelectionGroup.META_COPY_KEY] = source_role
 
     @staticmethod
-    def _eq_pixel_size_spatial(slot1: Slot, slot2: Slot):
+    def eq_pixel_size_spatial(slot1: Slot, slot2: Slot):
         eq_res = OpDataSelectionGroup._eq_resolutions(slot1, slot2)
         eq_units = OpDataSelectionGroup._eq_units(slot1, slot2)
         return eq_res and eq_units
