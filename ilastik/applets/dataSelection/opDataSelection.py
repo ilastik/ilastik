@@ -626,28 +626,67 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
     @staticmethod
     def _nickname_from_url(url: str) -> str:
         """
-        Take the part after the last /, make it safe for use as a file name,
-        remove anything that looks like an extension ('.zarr') and replace remaining dots
-        to ensure exporting logic does not mistake them for file extensions.
+        Generate a nickname from a URL, using the pattern:
+        "last URI segment with .zarr (or .ome.zarr) plus all segments after it"
+        
+        For multiscale datasets, this creates descriptive nicknames like:
+        - "multiscale" for .../multiscale.zarr
+        - "container-multiscale" for .../container.zarr/multiscale
+        - "multiscale-scale1" for .../multiscale.zarr/scale1
+        
+        Args:
+            url: The URL to generate a nickname from
+            
+        Returns:
+            A filename-safe nickname string
         """
-        parts = url.rstrip("/").split("/")
-        last = parts[-1]
-
-        # helper to make a component filename-safe and strip an extension
-        def safe_base(name: str) -> str:
-            name_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", name)
-            return os.path.splitext(name_safe)[0]
-
-        # If the URL points explicitly to an internal scale (e.g. ".../container.zarr/s1"),
-        # prefer a compound nickname like "container-s1" rather than just "s1".
-        if len(parts) >= 2:
-            penult = parts[-2]
-            # heuristics: penultimate looks like a container when it contains a dot (has an extension)
-            if "." in penult:
-                return f"{safe_base(penult)}-{safe_base(last)}"
-
-        # fallback: use only the last URL component (as before)
-        return safe_base(last)
+        # Remove trailing slashes and split into segments
+        url = url.rstrip("/")
+        
+        # Split the URL into segments (handle both file:// and https:// URLs)
+        # Remove protocol prefix for parsing
+        path_part = url
+        if "://" in url:
+            path_part = url.split("://", 1)[1]
+        
+        segments = path_part.split("/")
+        
+        # Find the last segment with .zarr or .ome.zarr extension
+        zarr_extensions = [".ome.zarr", ".zarr"]
+        zarr_index = -1
+        
+        for i in range(len(segments) - 1, -1, -1):
+            for ext in zarr_extensions:
+                if segments[i].endswith(ext):
+                    zarr_index = i
+                    break
+            if zarr_index != -1:
+                break
+        
+        # Build the nickname based on whether we found a .zarr container
+        if zarr_index == -1:
+            # No .zarr found, just use the last segment
+            nickname_parts = [segments[-1]]
+        else:
+            # Found .zarr container - collect segments from zarr_index onwards
+            nickname_parts = []
+            for i in range(zarr_index, len(segments)):
+                segment = segments[i]
+                # Strip .zarr or .ome.zarr extension from container name
+                for ext in zarr_extensions:
+                    if segment.endswith(ext):
+                        segment = segment[:-len(ext)]
+                        break
+                if segment:  # Only add non-empty segments
+                    nickname_parts.append(segment)
+        
+        # Join parts with hyphens
+        nickname = "-".join(nickname_parts) if nickname_parts else "dataset"
+        
+        # Make filename-safe (but preserve hyphens and underscores)
+        nickname = re.sub(r"[^a-zA-Z0-9_.-]", "_", nickname)
+        
+        return nickname
 
 
 class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
