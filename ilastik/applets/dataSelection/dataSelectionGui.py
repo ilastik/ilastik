@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+import itertools
 import logging
 import os
 import threading
@@ -40,6 +41,7 @@ from ilastik.widgets.ImageFileDialog import ImageFileDialog
 from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, SubvolumeSelectionDlg
 from lazyflow.slot import Slot
 from lazyflow.utility.helpers import eq_shapes
+from . import OpDataSelectionGroup
 from .dataLaneSummaryTableModel import DataLaneSummaryTableModel
 from .datasetDetailedInfoTableModel import DatasetDetailedInfoTableModel
 from .datasetDetailedInfoTableView import DatasetDetailedInfoTableView
@@ -509,12 +511,34 @@ class DataSelectionGui(QWidget):
                                 revert()
                                 return False
                             new_info = info_editor.edited_infos[0]
+            self._check_pixel_size_mismatch()
             return True
         except Exception as e:
             revert()
             raise e
         finally:
             self.parentApplet.appletStateUpdateRequested()
+
+    def _check_pixel_size_mismatch(self):
+        for lane_index in range(self.getNumLanes()):
+            lane_op = self.topLevelOperator.getLane(lane_index)
+            lane_image_slots = [slot for slot in lane_op.ImageGroup if slot.ready()]
+            mismatching_role_pairs = [
+                (slot1, slot2)
+                for slot1, slot2 in itertools.combinations(lane_image_slots, 2)
+                if not OpDataSelectionGroup.eq_pixel_size_spatial(slot1, slot2)
+            ]
+            if mismatching_role_pairs:
+                slot1, slot2 = mismatching_role_pairs[0]
+                role1 = lane_op.DatasetRoles.value[lane_op.ImageGroup.index(slot1)]
+                role2 = lane_op.DatasetRoles.value[lane_op.ImageGroup.index(slot2)]
+                msg = (
+                    f"The {role1} and {role2} datasets have different physical pixel sizes. "
+                    "You can continue with them, but please make sure you selected "
+                    "the correct images, and verify the pixel size when you load "
+                    "exported datasets in other tools."
+                )
+                QMessageBox.warning(self, "Pixel size mismatch", msg)
 
     def _switch_scale_in_other_roles_to_match(self, new_info: DatasetInfo, new_slot: Slot):
         """

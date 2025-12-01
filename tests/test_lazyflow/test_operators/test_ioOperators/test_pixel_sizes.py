@@ -2,6 +2,8 @@ import json
 import os
 import xml.etree.ElementTree as ET
 from typing import Dict, List, Tuple, Union
+from unittest import mock
+from unittest.mock import ANY
 
 import h5py
 import numpy as np
@@ -9,8 +11,9 @@ import pytest
 import tifffile
 import vigra
 
-from ilastik.applets.dataSelection.opDataSelection import OpDataSelectionGroup, FilesystemDatasetInfo
+from ilastik.applets.dataSelection import DataSelectionApplet, OpDataSelectionGroup, FilesystemDatasetInfo
 from lazyflow.graph import Graph
+from lazyflow.operator import Operator
 from lazyflow.operators import OpArrayPiper
 from lazyflow.operators.ioOperators import (
     OpTiffReader,
@@ -529,6 +532,31 @@ def test_DataSelection_roles_detects_conflict(
         assert_eq_spatial_pixel_size(op_data.ImageGroup[i], dataset_infos[i].axistags, dataset_infos[i].axis_units)
 
 
+def test_DataSelection_roles_warns_on_conflict(
+    graph, dataset_with_pixel_size, dataset_no_pixel_size, dataset_other_pixel_size
+):
+    workflow = Operator(graph=graph)
+    workflow.handleNewLanesAdded = mock.Mock()
+    workflow.shell = mock.Mock()
+    applet = DataSelectionApplet(workflow, "Input Data", "Input Data")
+    applet.topLevelOperator.WorkingDirectory.setValue(dataset_with_pixel_size.base_dir)
+    applet.topLevelOperator.DatasetRoles.setValue(["Raw Data", "Secondary", "Tertiary"])
+    gui = applet.getMultiLaneGui()
+
+    warn_mock = mock.Mock()
+    with mock.patch("qtpy.QtWidgets.QMessageBox.warning", warn_mock):
+        gui.addLanes([dataset_with_pixel_size], 0, None)
+    warn_mock.assert_not_called()
+
+    with mock.patch("qtpy.QtWidgets.QMessageBox.warning", warn_mock):
+        gui.addLanes([dataset_no_pixel_size], 1, 0)
+    warn_mock.assert_not_called()
+
+    with mock.patch("qtpy.QtWidgets.QMessageBox.warning", warn_mock):
+        gui.addLanes([dataset_other_pixel_size], 2, 0)
+    warn_mock.assert_called_once_with(gui, "Pixel size mismatch", ANY)
+
+
 def test_DataSelection_roles_rolls_back(
     graph, dataset_with_pixel_size, dataset_no_pixel_size, dataset_other_pixel_size
 ):
@@ -588,7 +616,7 @@ def test_eq_pixel_size_ignores_singletons_and_channel(graph, shape1, res1, units
     op_data1 = get_data_op_with_pixel_size_meta(graph, axes1, shape1, res1, units1 or [])
     op_data2 = get_data_op_with_pixel_size_meta(graph, axes2, shape2, res2, units2 or [])
 
-    assert OpDataSelectionGroup._eq_pixel_size_spatial(op_data1.Output, op_data2.Output)
+    assert OpDataSelectionGroup.eq_pixel_size_spatial(op_data1.Output, op_data2.Output)
 
 
 @pytest.mark.parametrize(
@@ -615,7 +643,7 @@ def test_eq_pixel_size_true_negatives(graph, shape1, res1, units1, shape2, res2,
     op_data1 = get_data_op_with_pixel_size_meta(graph, axes1, shape1, res1, units1 or [])
     op_data2 = get_data_op_with_pixel_size_meta(graph, axes2, shape2, res2, units2 or [])
 
-    assert not OpDataSelectionGroup._eq_pixel_size_spatial(op_data1.Output, op_data2.Output)
+    assert not OpDataSelectionGroup.eq_pixel_size_spatial(op_data1.Output, op_data2.Output)
 
 
 @pytest.mark.parametrize(
@@ -646,4 +674,4 @@ def test_eq_pixel_size_empty(graph, expect_eq, res1, units1, res2, units2):
     if not units2:
         del op_data2.Output.meta["axis_units"]
 
-    assert OpDataSelectionGroup._eq_pixel_size_spatial(op_data1.Output, op_data2.Output) == expect_eq
+    assert OpDataSelectionGroup.eq_pixel_size_spatial(op_data1.Output, op_data2.Output) == expect_eq
