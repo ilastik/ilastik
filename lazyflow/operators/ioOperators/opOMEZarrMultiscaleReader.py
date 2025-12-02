@@ -20,7 +20,9 @@
 #          http://ilastik.org/license/
 ###############################################################################
 import logging
+from collections import OrderedDict
 
+from lazyflow.base import TaggedShape
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore
 from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY
@@ -64,9 +66,8 @@ class OpOMEZarrMultiscaleReader(Operator):
         self.Output.meta.scales = self._store.multiscales
         # Used to correlate export with input scale, to feed back to DatasetInfo, and in execute
         self.Output.meta.active_scale = active_scale
-        # Many public OME-Zarr datasets are chunked as full xy slices,
-        # so orthoviews lead to downloading the entire dataset.
-        self.Output.meta.prefer_2d = True
+        chunk_shape = OrderedDict(zip(self.Output.meta.axistags.keys(), self._store.get_chunk_size(active_scale)))
+        self.Output.meta.prefer_2d = not self._is_nearly_cube(chunk_shape)
         # Add OME-Zarr metadata to slot so that it can be ported over to an export
         self.Output.meta.ome_zarr_meta = self._store.ome_meta_for_export
 
@@ -76,3 +77,9 @@ class OpOMEZarrMultiscaleReader(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty(slice(None))
+
+    @staticmethod
+    def _is_nearly_cube(shape: TaggedShape, min_ratio=0.75) -> bool:
+        if "z" not in shape:
+            return False
+        return shape["z"] >= min_ratio * min(shape["y"], shape["x"])
