@@ -109,7 +109,7 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
             uri=volume_url,
             dtype=dtype,
             axistags=axistags,
-            multiscales=scale_metadata,
+            multiscale=scale_metadata,
             lowest_resolution_key=lowest_resolution_key,
             highest_resolution_key=highest_resolution_key,
         )
@@ -233,7 +233,7 @@ if __name__ == "__main__":
     volume_url = "precomputed://http://localhost:8080/precomputed/cremi"
     cvol = RESTfulPrecomputedChunkedVolume(volume_url=volume_url)
     print(f"dtype: {cvol.dtype}")
-    print(f"scales: {len(cvol.multiscales)}")
+    print(f"scales: {len(cvol.multiscale)}")
     print(f"block_shape: {cvol.get_chunk_size()}")
     print(f"shape: {cvol.get_shape()}")
     block_start = [1, 128, 64, 256]

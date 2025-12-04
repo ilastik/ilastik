@@ -43,7 +43,7 @@ from lazyflow.utility.io_util.OMEZarrStore import (
     OMEZarrMultiscaleMeta,
     InvalidTransformationError,
 )
-from lazyflow.utility.io_util.multiscaleStore import Multiscales
+from lazyflow.utility.io_util.multiscaleStore import Multiscale
 
 logger = logging.getLogger(__name__)
 
@@ -64,10 +64,10 @@ def _rescale_size(size: int, factor: float) -> int:
 
 
 def match_target_scales_to_input_excluding_upscales(
-    export_shape: TaggedShape, input_scales: Multiscales, input_key: str
-) -> Multiscales:
+    export_shape: TaggedShape, input_scales: Multiscale, input_key: str
+) -> Multiscale:
     """We assume people don't generally want to upscale lower-resolution segmentations to raw scale."""
-    # Since Multiscales is ordered largest-to-smallest, simply drop matching scales before input_key.
+    # Since Multiscale is ordered largest-to-smallest, simply drop matching scales before input_key.
     all_matching_scales = _match_target_scales_to_input(export_shape, input_scales, input_key)
     assert input_key in all_matching_scales, "generated scales don't include source scale"
     start = list(all_matching_scales.keys()).index(input_key)
@@ -75,7 +75,7 @@ def match_target_scales_to_input_excluding_upscales(
     return ODict((k, all_matching_scales[k]) for k in keep_scales)
 
 
-def _match_target_scales_to_input(export_shape: TaggedShape, input_scales: Multiscales, input_key: str) -> Multiscales:
+def _match_target_scales_to_input(export_shape: TaggedShape, input_scales: Multiscale, input_key: str) -> Multiscale:
     def _eq_shape_permissive(test: TaggedShape, ref: TaggedShape) -> bool:
         """
         Check if two shapes are equal. Ignore channel and allow `test` to have additional axes (but no dropped axes).
@@ -90,7 +90,7 @@ def _match_target_scales_to_input(export_shape: TaggedShape, input_scales: Multi
         # Export shape is modified (cropped).
         # Get source multiscale's scaling factors relative to the (uncropped) input shape and compute cropped scale
         # shapes from that.
-        input_scalings = _multiscales_to_scalings(input_scales, source_scale_shape, export_shape.keys())
+        input_scalings = _multiscale_to_scalings(input_scales, source_scale_shape, export_shape.keys())
         target_scales_items = []
         for scale_key, scale_factors in input_scalings.items():
             scaled_shape = ODict([(a, _rescale_size(size, scale_factors[a])) for a, size in export_shape.items()])
@@ -112,7 +112,7 @@ def _match_target_scales_to_input(export_shape: TaggedShape, input_scales: Multi
     return ODict(scales_items)
 
 
-def generate_default_target_scales(unscaled_shape: TaggedShape, dtype) -> Multiscales:
+def generate_default_target_scales(unscaled_shape: TaggedShape, dtype) -> Multiscale:
     """
     Default target scales are isotropic 2x downscaling along x, y and z if present.
     The smallest scale included is just small enough for the entire image to fit into one chunk (per t and c).
@@ -160,16 +160,16 @@ def _get_chunk_shape(tagged_image_shape: TaggedShape, dtype) -> Shape:
     return chunk_shape
 
 
-def _multiscales_to_scalings(
-    multiscales: Multiscales,
+def _multiscale_to_scalings(
+    multiscale: Multiscale,
     base_shape: TaggedShape,
     output_axiskeys: Iterable[Axiskey],
 ) -> ScalingsByScaleKey:
-    """Multiscales and base_shape may have arbitrary axes.
+    """Multiscale and base_shape may have arbitrary axes.
     Output are scaling factors relative to base_shape, with axes output_axiskeys.
     Scale factor 1.0 for axes not present in scale or base shape, and for channel."""
     factors = []
-    for scale_shape in multiscales.values():
+    for scale_shape in multiscale.values():
         common_axes = [a for a in scale_shape if a in base_shape]
         scale_values = [scale_shape[a] for a in common_axes]
         base_values = [base_shape[a] for a in common_axes]
@@ -181,7 +181,7 @@ def _multiscales_to_scalings(
             [(a, relative_factors[a] if a in relative_factors and a != "c" else 1.0) for a in output_axiskeys]
         )
         factors.append(axes_matched_factors)
-    return ODict(zip(multiscales.keys(), factors))
+    return ODict(zip(multiscale.keys(), factors))
 
 
 def _create_empty_zarray(
@@ -320,7 +320,7 @@ def _combine_offsets(
 def _get_datasets_meta(
     export_scalings: ScalingsByScaleKey,
     export_offset: Optional[TaggedShape],
-    input_scales: Optional[Multiscales],
+    input_scales: Optional[Multiscale],
     input_scale_key: Optional[str],
     input_ome_meta: Optional[OMEZarrMultiscaleMeta],
 ):
@@ -334,7 +334,7 @@ def _get_datasets_meta(
     export_axiskeys = list(next(iter(export_scalings.values())).keys())
     raw_scale = _get_raw_scale_key(input_scales) if input_scales else None
     input_scalings = (
-        _multiscales_to_scalings(input_scales, input_scales[raw_scale], export_axiskeys) if raw_scale else None
+        _multiscale_to_scalings(input_scales, input_scales[raw_scale], export_axiskeys) if raw_scale else None
     )
     input_scaling_rel_raw = input_scalings[input_scale_key] if input_scalings else None
     input_scaling_ome, input_translation = _get_input_transforms_reordered(
@@ -407,7 +407,7 @@ def _write_ome_zarr_and_ilastik_metadata(
     export_scalings: ScalingsByScaleKey,
     interpolation_order: int,
     export_offset: Optional[TaggedShape],
-    input_scales: Optional[Multiscales],
+    input_scales: Optional[Multiscale],
     input_scale_key: Optional[str],
     input_ome_meta: Optional[OMEZarrMultiscaleMeta],
     ilastik_meta: Dict,
@@ -441,7 +441,7 @@ def write_ome_zarr(
     image_source_slot: Slot,
     progress_signal: OrderedSignal,
     export_offset: Union[Shape, None],
-    target_scales: Optional[Multiscales] = None,
+    target_scales: Optional[Multiscale] = None,
 ):
     pc = PathComponents(export_path)
     if pc.internalPath:
@@ -476,11 +476,11 @@ def write_ome_zarr(
 
         if target_scales is None:  # single-scale export
             single_target_key = input_scale_key if input_scale_key else SINGE_SCALE_DEFAULT_KEY
-            target_scales = Multiscales({single_target_key: export_shape})
+            target_scales = Multiscale({single_target_key: export_shape})
 
         chunk_shape = _get_chunk_shape(export_shape, export_dtype)
 
-        export_scalings = _multiscales_to_scalings(target_scales, export_shape, export_shape.keys())
+        export_scalings = _multiscale_to_scalings(target_scales, export_shape, export_shape.keys())
         combined_scaling_mag = {key: numpy.prod(list(scale.values())) for key, scale in export_scalings.items()}
 
         # Upscales/raw - uncached (maybe this helps keep unscaled computation cache warm)

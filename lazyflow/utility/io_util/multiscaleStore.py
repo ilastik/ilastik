@@ -26,7 +26,7 @@ import numpy
 import vigra
 
 # See MultiscaleStore docstring for details
-Multiscales = OrderedDict[str, OrderedDict[Literal["t", "c", "z", "y", "x"], int]]
+Multiscale = OrderedDict[str, OrderedDict[Literal["t", "c", "z", "y", "x"], int]]
 DEFAULT_SCALE_KEY = ""
 
 
@@ -46,7 +46,7 @@ class MultiscaleStore(metaclass=ABCMeta):
         uri: str,
         dtype: numpy.dtype,
         axistags: vigra.AxisTags,
-        multiscales: Multiscales,
+        multiscale: Multiscale,
         lowest_resolution_key: str,
         highest_resolution_key: str,
     ):
@@ -54,28 +54,28 @@ class MultiscaleStore(metaclass=ABCMeta):
         :param uri: Location where this store was initialized (as passed to __init__).
         :param dtype: The dataset's numpy dtype.
         :param axistags: vigra.AxisTags describing the dataset's axes.
-        :param multiscales: Dict of scales for GUI and OME-Zarr export, {key: tagged shape}
+        :param multiscale: Dict of scales for GUI and OME-Zarr export, {key: tagged shape}
             Order from highest to lowest resolution (i.e. largest to smallest shape).
             Keys: absolute identifiers for each scale as found in the dataset.
             Values: tagged shape dicts ({axis: size}) of the image at each scale.
             Axis order in shape dicts must match axistags.
-        :param lowest_resolution_key: Key of the lowest-resolution scale within the multiscales dict.
+        :param lowest_resolution_key: Key of the lowest-resolution scale within the multiscale dict.
             This acts as the default scale after load until the user selects a different one.
         :param highest_resolution_key: Used to infer the maximum dataset size, and for legacy HBP-mode projects.
         """
         self.uri = uri
         self.dtype = dtype
         self.axistags = axistags
-        self.multiscales = multiscales
+        self.multiscale = multiscale
         self.lowest_resolution_key = lowest_resolution_key
         self.highest_resolution_key = highest_resolution_key
-        scale_keys = list(self.multiscales.keys())
+        scale_keys = list(self.multiscale.keys())
         assert (
             self.highest_resolution_key == scale_keys[0] and self.lowest_resolution_key == scale_keys[-1]
-        ), "Multiscales dict must be ordered from highest to lowest resolution (i.e. largest to smallest shape)"
+        ), "Multiscale dict must be ordered from highest to lowest resolution (i.e. largest to smallest shape)"
         assert all(
-            list(scale_shape.keys()) == axistags.keys() for scale_shape in self.multiscales.values()
-        ), "Multiscales values must be shape dicts for the given axistags"
+            list(scale_shape.keys()) == axistags.keys() for scale_shape in self.multiscale.values()
+        ), "Multiscale values must be shape dicts for the given axistags"
 
     @abstractmethod
     def get_shape(self, scale_key: str) -> Tuple[int]:

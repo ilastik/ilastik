@@ -891,7 +891,7 @@ class TestOpDataSelection_PrecomputedChunks:
             ]
         )
 
-        # Switch to original unscaled resolution (first in the list, see multiscaleStore.multiscales)
+        # Switch to original unscaled resolution (first in the list, see multiscaleStore.multiscale)
         scale_keys = list(op.Image.meta.scales.keys())
         op.ActiveScale.setValue(scale_keys[0])
         loaded_scale1 = op.Image[:].wait()
@@ -1044,7 +1044,7 @@ class TestOpDataSelection_OMEZarr:
             ]
         )
 
-        # Switch to original unscaled resolution (first in the list, see multiscaleStore.multiscales)
+        # Switch to original unscaled resolution (first in the list, see multiscaleStore.multiscale)
         scale_keys = list(op.Image.meta.scales.keys())
         op.ActiveScale.setValue(scale_keys[0])
         loaded_scale1 = op.Image[:].wait()

@@ -474,7 +474,7 @@ def _fetch_and_validate_ome_zarr_spec(uri: str, sort_uri: Optional[str] = None) 
 
 
 def _introspect_for_multiscales_root(uri: str) -> Tuple[OME_ZARR_SPEC, str, Optional[str]]:
-    """URI may point to an OME-Zarr multiscale root or to a specific scale.
+    """URI may point to an OME-Zarr "multiscales" root or to a specific scale.
     Try to find OME-Zarr spec first at URI, then search parent directories.
     Returns spec and root URI of the validated multiscales spec, and scale sub-URI (if any)"""
     uri = uri.rstrip("/")
@@ -579,7 +579,7 @@ class OMEZarrStore(MultiscaleStore):
             uri=uri,
             dtype=dtype,
             axistags=axistags,
-            multiscales=scale_metadata,
+            multiscale=scale_metadata,
             lowest_resolution_key=list(scale_metadata.keys())[-1],
             highest_resolution_key=list(scale_metadata.keys())[0],
         )
@@ -608,6 +608,6 @@ class OMEZarrStore(MultiscaleStore):
         Internally, ilastik and lazyflow should never directly access the ZarrArray.
         """
         if scale_key not in self._scale_data:
-            msg = f"No scale named {scale_key} in this store. Please inspect `.multiscales` to see available scales."
+            msg = f"No scale named {scale_key} in this store. Please inspect `.multiscale` to see available scales."
             raise KeyError(msg)
         return self._scale_data[scale_key]["zarray"]

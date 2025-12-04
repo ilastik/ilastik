@@ -70,7 +70,7 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
         self.Output.meta.shape = tuple(self._volume_object.get_shape(active_scale))
         self.Output.meta.dtype = numpy.dtype(self._volume_object.dtype).type
         self.Output.meta.axistags = self._volume_object.axistags
-        self.Output.meta.scales = self._volume_object.multiscales
+        self.Output.meta.scales = self._volume_object.multiscale
         self.Output.meta.active_scale = active_scale  # Used by export to correlate export with input scale
 
     @staticmethod

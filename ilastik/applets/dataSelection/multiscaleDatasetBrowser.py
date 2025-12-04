@@ -229,7 +229,7 @@ class MultiscaleDatasetBrowser(QDialog):
         scale_info_html = "\n".join(
             [
                 f"<li>Scale \"{key}\", shape: {' / '.join(map(str, shape.values()))}</li>"
-                for key, shape in store.multiscales.items()
+                for key, shape in store.multiscale.items()
             ]
         )
         self.result_text_box.setHtml(

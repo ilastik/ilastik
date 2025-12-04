@@ -61,7 +61,7 @@ class OpOMEZarrMultiscaleReader(Operator):
         self.Output.meta.shape = self._store.get_shape(active_scale)
         self.Output.meta.dtype = self._store.dtype
         self.Output.meta.axistags = self._store.axistags
-        self.Output.meta.scales = self._store.multiscales
+        self.Output.meta.scales = self._store.multiscale
         # Used to correlate export with input scale, to feed back to DatasetInfo, and in execute
         self.Output.meta.active_scale = active_scale
         # Many public OME-Zarr datasets are chunked as full xy slices,
