@@ -28,6 +28,7 @@ from typing import Dict, List, Optional, Union, Literal, Tuple, Any
 from urllib.parse import unquote_to_bytes
 
 import jsonschema
+import numpy
 import s3fs
 import vigra
 from aiohttp import ClientConnectorError, ClientResponseError
@@ -37,6 +38,7 @@ from zarr.errors import ArrayNotFoundError
 from zarr.storage import FSStore, LRUStoreCache
 
 from lazyflow import rtype
+from lazyflow.base import Axiskey
 from lazyflow.utility import Timer, Memory
 from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SCALE_KEY, Scale
 
@@ -241,6 +243,42 @@ def _axistags_from_multiscale(multiscale: OME_ZARR_MULTISCALE) -> vigra.AxisTags
         # v0.1 and v0.2 did not allow variable axes
         axis_keys = ["t", "c", "z", "y", "x"]
     return vigra.defaultAxistags("".join(axis_keys))
+
+
+def _units_from_multiscale(multiscale: OME_ZARR_MULTISCALE) -> OrderedDict[Axiskey, str]:
+    axis_keys = _axistags_from_multiscale(multiscale).keys()
+    if "axes" in multiscale and "name" in multiscale["axes"][0]:
+        # v0.4: Each axis entry may contain a unit key
+        units = [a["unit"] if "unit" in a else "" for a in multiscale["axes"]]
+    else:
+        # v0.1 to v0.3 did not provide a standard for keeping unit metadata
+        units = ["" for _ in axis_keys]
+    return OrderedDict(zip(axis_keys, units))
+
+
+def _resolution_from_multiscale(multiscale: OME_ZARR_MULTISCALE, dataset: str) -> OrderedDict[Axiskey, float]:
+    def has_valid_resolution(transforms: Union[None, ValidTransformations, InvalidTransformationError]):
+        return isinstance(transforms, tuple) and transforms[0].values and len(transforms[0].values) == len(axis_keys)
+
+    axis_keys = _axistags_from_multiscale(multiscale).keys()
+    try:
+        dataset_spec = next(d for d in multiscale["datasets"] if d["path"] == dataset)
+    except StopIteration:
+        raise ValueError(f'Dataset "{dataset}" not defined in OME-Zarr "datasets" metadata:\n{multiscale["datasets"]}')
+    dataset_transforms = _validate_transforms(dataset_spec.get("coordinateTransformations"))
+    if not has_valid_resolution(dataset_transforms):
+        default_resolution = [0.0 for _ in axis_keys]
+        return OrderedDict(zip(axis_keys, default_resolution))
+
+    dataset_resolution = dataset_transforms[0].values
+
+    multiscale_transforms = _validate_transforms(multiscale.get("coordinateTransformations"))
+    if not has_valid_resolution(multiscale_transforms):
+        return OrderedDict(zip(axis_keys, dataset_resolution))
+    else:
+        multiscale_resolution = multiscale_transforms[0].values
+        combined_resolution = numpy.array(multiscale_resolution) * numpy.array(dataset_resolution)
+        return OrderedDict(zip(axis_keys, combined_resolution))
 
 
 def _get_multiscale_for_dataset(ome_spec: OME_ZARR_SPEC, dataset_subpath: str) -> OME_ZARR_MULTISCALE:
@@ -569,8 +607,8 @@ class OMEZarrStore(MultiscaleStore):
                 dtype = zarray.dtype.type
                 scale_metadata[scale_key] = Scale(
                     shape=OrderedDict(zip([tag.key for tag in axistags], zarray.shape)),
-                    resolution=OrderedDict([(tag.key, 0.0) for tag in axistags]),
-                    units=OrderedDict([(tag.key, "") for tag in axistags]),
+                    resolution=_resolution_from_multiscale(self._multiscale_spec, scale_key),
+                    units=_units_from_multiscale(self._multiscale_spec),
                 )
                 self._scale_data[scale_key] = {
                     "zarray": zarray,

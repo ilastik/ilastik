@@ -1,6 +1,7 @@
 import json
 import os
 import xml.etree.ElementTree as ET
+from contextlib import contextmanager
 from typing import Dict, List, Tuple, Union
 from unittest import mock
 from unittest.mock import ANY
@@ -19,6 +20,7 @@ from lazyflow.operators.ioOperators import (
     OpTiffReader,
     OpExportMultipageTiff,
     OpH5N5WriterBigDataset,
+    OpOMEZarrMultiscaleReader,
     OpStreamingH5N5Reader,
 )
 from lazyflow.slot import Slot
@@ -674,3 +676,110 @@ def test_eq_pixel_size_empty(graph, expect_eq, res1, units1, res2, units2):
     op_data2 = get_data_op_with_pixel_size_meta(graph, axes2, shape2, res2, units2 or [])
 
     assert OpDataSelectionGroup.eq_resolution_and_units_xyzt(op_data1.Output, op_data2.Output) == expect_eq
+
+
+@contextmanager
+def patch_ome_zarr(ome_spec: Dict, uri: str, array: np.ndarray):
+    with (
+        mock.patch(
+            "lazyflow.utility.io_util.OMEZarrStore._introspect_for_multiscales_root",
+            lambda _uri: (ome_spec, uri, None),
+        ),
+        mock.patch("lazyflow.utility.io_util.OMEZarrStore.ZarrArray", lambda **_: array),
+    ):
+        yield
+
+
+def test_read_ome_zarr_v0_3(graph):
+    """No pixel size metadata possible in OME-Zarr v0.3 or earlier"""
+    axes = ["t", "c", "z", "y", "x"]
+    ome_spec_v0_3 = {"multiscales": [{"datasets": [{"path": "boop"}], "axes": axes}]}
+    array_mock = mock.Mock()
+    array_mock.shape = (3, 2, 11, 10, 9)
+
+    reader = OpOMEZarrMultiscaleReader(graph=graph)
+    with patch_ome_zarr(ome_spec_v0_3, "file:///noop", array_mock):
+        reader.Uri.setValue("file:///noop")
+
+    assert reader.Output.ready()
+    assert "axis_units" not in reader.Output.meta
+    assert reader.Output.meta.getAxisKeys() == axes
+    for tag in reader.Output.meta.axistags:
+        assert tag.resolution == 0.0
+
+
+def test_read_ome_zarr_v0_4(graph):
+    pyramid_scale = {"t": 0.1, "c": 0, "z": 1, "y": 1, "x": 1}
+    dataset_scale = {"t": 1.0, "c": 0, "z": 2.0, "y": 0.3, "x": 4.0}
+    units = {"t": "sec", "c": "", "z": "mm", "y": "beep", "x": "metres"}
+    ome_spec_v0_4 = {
+        "multiscales": [
+            {
+                "datasets": [
+                    {
+                        "path": "boop",
+                        "coordinateTransformations": [
+                            {"scale": list(dataset_scale.values()), "type": "scale"},
+                        ],
+                    }
+                ],
+                "axes": [
+                    {"name": "t", "type": "time", "unit": units["t"]},
+                    {"name": "c", "type": "channel"},
+                    {"name": "z", "type": "space", "unit": units["z"]},
+                    {"name": "y", "type": "space", "unit": units["y"]},
+                    {"name": "x", "type": "space", "unit": units["x"]},
+                ],
+                "coordinateTransformations": [
+                    {"scale": list(pyramid_scale.values()), "type": "scale"},
+                ],
+            }
+        ]
+    }
+    array_mock = mock.Mock()
+    array_mock.shape = (3, 2, 11, 10, 9)
+
+    reader = OpOMEZarrMultiscaleReader(graph=graph)
+    with patch_ome_zarr(ome_spec_v0_4, "file:///noop", array_mock):
+        reader.Uri.setValue("file:///noop")
+
+    assert reader.Output.ready()
+    assert "axis_units" in reader.Output.meta
+    assert reader.Output.meta.axis_units == units
+    assert reader.Output.meta.getAxisKeys() == list(dataset_scale.keys())
+    for tag in reader.Output.meta.axistags:
+        expected_resolution = pyramid_scale[tag.key] * dataset_scale[tag.key]
+        assert tag.resolution == expected_resolution
+
+
+def test_read_ome_zarr_v0_4_no_units(graph):
+    dataset_scale = {"t": 1.0, "c": 0, "z": 2.0, "y": 0.3, "x": 4.0}
+    ome_spec_v0_4 = {
+        "multiscales": [
+            {
+                "axes": [{"name": "t"}, {"name": "c"}, {"name": "z"}, {"name": "y"}, {"name": "x"}],
+                "datasets": [
+                    {
+                        "path": "boop",
+                        "coordinateTransformations": [
+                            {"scale": list(dataset_scale.values()), "type": "scale"},
+                        ],
+                    }
+                ],
+            }
+        ]
+    }
+    array_mock = mock.Mock()
+    array_mock.shape = (3, 2, 11, 10, 9)
+
+    reader = OpOMEZarrMultiscaleReader(graph=graph)
+    with patch_ome_zarr(ome_spec_v0_4, "file:///noop", array_mock):
+        reader.Uri.setValue("file:///noop")
+
+    assert reader.Output.ready()
+    # GUI uses presence of axis_units as indicator that pixel size exists
+    assert "axis_units" in reader.Output.meta
+    assert reader.Output.meta.axis_units == {a: "" for a in dataset_scale}
+    assert reader.Output.meta.getAxisKeys() == list(dataset_scale.keys())
+    for tag in reader.Output.meta.axistags:
+        assert tag.resolution == dataset_scale[tag.key]
