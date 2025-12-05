@@ -21,6 +21,7 @@ from lazyflow.operators.ioOperators import (
     OpExportMultipageTiff,
     OpH5N5WriterBigDataset,
     OpOMEZarrMultiscaleReader,
+    OpRESTfulPrecomputedChunkedVolumeReader,
     OpStreamingH5N5Reader,
 )
 from lazyflow.slot import Slot
@@ -783,3 +784,36 @@ def test_read_ome_zarr_v0_4_no_units(graph):
     assert reader.Output.meta.getAxisKeys() == list(dataset_scale.keys())
     for tag in reader.Output.meta.axistags:
         assert tag.resolution == dataset_scale[tag.key]
+
+
+def test_read_precomputed(graph):
+    resolution = [801, 802, 70]
+    tagged_resolution = {"c": 0, "z": 70, "y": 802, "x": 801}
+    precomputed_info = {
+        "@type": "neuroglancer_multiscale_volume",
+        "type": "image",
+        "data_type": "uint16",
+        "num_channels": 1,
+        "scales": [
+            {
+                "key": "some_key",
+                "size": [4, 5, 6],
+                "resolution": resolution,
+                "chunk_sizes": [[4, 5, 6]],
+            },
+        ],
+    }
+    mock_response = mock.Mock()
+    mock_response.status_code = 200
+    mock_response.content = json.dumps(precomputed_info)
+
+    reader = OpRESTfulPrecomputedChunkedVolumeReader(graph=graph)
+    with mock.patch("requests.get", lambda _url: mock_response):
+        reader.BaseUrl.setValue("precomputed://https://noop")
+
+    assert reader.Output.ready()
+    assert "axis_units" in reader.Output.meta
+    assert reader.Output.meta.axis_units == {"c": "", "z": "nm", "y": "nm", "x": "nm"}
+    assert reader.Output.meta.getAxisKeys() == ["c", "z", "y", "x"]
+    for tag in reader.Output.meta.axistags:
+        assert tag.resolution == tagged_resolution[tag.key]

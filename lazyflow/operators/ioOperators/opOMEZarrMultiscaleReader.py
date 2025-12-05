@@ -20,11 +20,10 @@
 #          http://ilastik.org/license/
 ###############################################################################
 import logging
-from collections import OrderedDict
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore
-from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY
+from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, set_multiscale_meta
 
 logger = logging.getLogger(__name__)
 
@@ -62,15 +61,7 @@ class OpOMEZarrMultiscaleReader(Operator):
         self.Output.meta.shape = self._store.get_shape(active_scale)
         self.Output.meta.dtype = self._store.dtype
         self.Output.meta.axistags = self._store.axistags
-        if any(self._store.multiscale[active_scale].units.values()) or any(
-            v != 0 for v in self._store.multiscale[active_scale].resolution.values()
-        ):
-            for axis, res in self._store.multiscale[active_scale].resolution.items():
-                self.Output.meta.axistags.setResolution(axis, res)
-            self.Output.meta.axis_units = self._store.multiscale[active_scale].units
-        self.Output.meta.scales = OrderedDict([(key, scale.shape) for key, scale in self._store.multiscale.items()])
-        # Used to correlate export with input scale, to feed back to DatasetInfo, and in execute
-        self.Output.meta.active_scale = active_scale
+        set_multiscale_meta(self.Output, self._store.multiscale, active_scale)
         # Many public OME-Zarr datasets are chunked as full xy slices,
         # so orthoviews lead to downloading the entire dataset.
         self.Output.meta.prefer_2d = True

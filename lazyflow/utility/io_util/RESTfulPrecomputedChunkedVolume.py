@@ -40,7 +40,7 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
     The description can be found at `http://url.to/image/info`, which is a json
     file. Information can be found here:
 
-    https://github.com/google/neuroglancer/tree/master/src/neuroglancer/datasource/precomputed
+    https://github.com/google/neuroglancer/tree/master/src/datasource/precomputed/volume.md
 
     Does not inherit from RESTfulVolume as no functions could be shared.
 
@@ -69,6 +69,7 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
                     "properties": {
                         "key": {"type": "string"},
                         "size": {"type": "array", "items": {"type": "number"}},
+                        "resolution": {"type": "array", "items": {"type": "number"}},
                     },
                 },
             },
@@ -103,8 +104,8 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
         internal_scales = [
             Scale(
                 shape=OrderedDict(zip("czyx", [self.n_channels] + scale["size"][::-1])),
-                resolution=OrderedDict(zip("czyx", [0.0, 0.0, 0.0, 0.0])),
-                units=OrderedDict(zip("czyx", ["", "", "", ""])),
+                resolution=OrderedDict(zip("czyx", [0.0] + scale["resolution"][::-1])),
+                units=OrderedDict(zip("czyx", ["", "nm", "nm", "nm"])),
             )
             for scale in self._json_info["scales"]
         ]

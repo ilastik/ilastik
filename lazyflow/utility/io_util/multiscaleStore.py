@@ -27,10 +27,23 @@ import numpy
 import vigra
 
 from lazyflow.base import Axiskey, TaggedShape
+from lazyflow.slot import OutputSlot
 
 # See MultiscaleStore docstring for details
 Multiscale = OrderedDict[str, "Scale"]
 DEFAULT_SCALE_KEY = ""
+
+
+def set_multiscale_meta(slot: OutputSlot, multiscale: Multiscale, active_scale_key: str):
+    """Updates slot.meta with multiscale, and pixel size for active scale."""
+    assert active_scale_key in multiscale, f"Tried to set slot meta for non-existent scale {active_scale_key}"
+    active_scale = multiscale[active_scale_key]
+    if any(active_scale.units.values()) or any(v != 0 for v in active_scale.resolution.values()):
+        for axis, res in active_scale.resolution.items():
+            slot.meta.axistags.setResolution(axis, res)
+        slot.meta.axis_units = active_scale.units
+    slot.meta.scales = OrderedDict([(key, scale.shape) for key, scale in multiscale.items()])
+    slot.meta.active_scale = active_scale_key  # Used by export to correlate export with input scale
 
 
 @dataclass(frozen=True, slots=True)
