@@ -20,6 +20,7 @@
 #          http://ilastik.org/license/
 ###############################################################################
 import logging
+from collections import OrderedDict
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore
@@ -61,7 +62,7 @@ class OpOMEZarrMultiscaleReader(Operator):
         self.Output.meta.shape = self._store.get_shape(active_scale)
         self.Output.meta.dtype = self._store.dtype
         self.Output.meta.axistags = self._store.axistags
-        self.Output.meta.scales = self._store.multiscale
+        self.Output.meta.scales = OrderedDict([(key, scale.shape) for key, scale in self._store.multiscale.items()])
         # Used to correlate export with input scale, to feed back to DatasetInfo, and in execute
         self.Output.meta.active_scale = active_scale
         # Many public OME-Zarr datasets are chunked as full xy slices,

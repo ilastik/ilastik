@@ -38,7 +38,7 @@ from zarr.storage import FSStore, LRUStoreCache
 
 from lazyflow import rtype
 from lazyflow.utility import Timer, Memory
-from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SCALE_KEY
+from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SCALE_KEY, Scale
 
 logger = logging.getLogger(__name__)
 
@@ -567,7 +567,11 @@ class OMEZarrStore(MultiscaleStore):
                         f"\nTrying to load multiscale:\n{self._multiscale_spec}"
                     ) from e
                 dtype = zarray.dtype.type
-                scale_metadata[scale_key] = OrderedDict(zip([tag.key for tag in axistags], zarray.shape))
+                scale_metadata[scale_key] = Scale(
+                    shape=OrderedDict(zip([tag.key for tag in axistags], zarray.shape)),
+                    resolution=OrderedDict([(tag.key, 0.0) for tag in axistags]),
+                    units=OrderedDict([(tag.key, "") for tag in axistags]),
+                )
                 self._scale_data[scale_key] = {
                     "zarray": zarray,
                     "chunks": zarray.chunks,

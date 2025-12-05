@@ -43,12 +43,12 @@ from lazyflow.utility.io_util.OMEZarrStore import (
     OMEZarrMultiscaleMeta,
     InvalidTransformationError,
 )
-from lazyflow.utility.io_util.multiscaleStore import Multiscale
 
 logger = logging.getLogger(__name__)
 
 OrderedScaling = OrderedTranslation = OrderedDict[Axiskey, float]  # { axis: scaling }
 ScalingsByScaleKey = OrderedDict[str, OrderedScaling]  # { scale_key: { axis: scaling } }
+ShapesByScaleKey = OrderedDict[str, TaggedShape]  # { scale_key: { axis: size } }
 
 OME_ZARR_V_0_4_KWARGS = dict(dimension_separator="/")
 OME_ZARR_AXES: List[Axiskey] = ["t", "c", "z", "y", "x"]
@@ -64,10 +64,10 @@ def _rescale_size(size: int, factor: float) -> int:
 
 
 def match_target_scales_to_input_excluding_upscales(
-    export_shape: TaggedShape, input_scales: Multiscale, input_key: str
-) -> Multiscale:
+    export_shape: TaggedShape, input_scales: ShapesByScaleKey, input_key: str
+) -> ShapesByScaleKey:
     """We assume people don't generally want to upscale lower-resolution segmentations to raw scale."""
-    # Since Multiscale is ordered largest-to-smallest, simply drop matching scales before input_key.
+    # Since input_scales is ordered largest-to-smallest, simply drop matching scales before input_key.
     all_matching_scales = _match_target_scales_to_input(export_shape, input_scales, input_key)
     assert input_key in all_matching_scales, "generated scales don't include source scale"
     start = list(all_matching_scales.keys()).index(input_key)
@@ -75,7 +75,9 @@ def match_target_scales_to_input_excluding_upscales(
     return ODict((k, all_matching_scales[k]) for k in keep_scales)
 
 
-def _match_target_scales_to_input(export_shape: TaggedShape, input_scales: Multiscale, input_key: str) -> Multiscale:
+def _match_target_scales_to_input(
+    export_shape: TaggedShape, input_scales: ShapesByScaleKey, input_key: str
+) -> ShapesByScaleKey:
     def _eq_shape_permissive(test: TaggedShape, ref: TaggedShape) -> bool:
         """
         Check if two shapes are equal. Ignore channel and allow `test` to have additional axes (but no dropped axes).
@@ -112,7 +114,7 @@ def _match_target_scales_to_input(export_shape: TaggedShape, input_scales: Multi
     return ODict(scales_items)
 
 
-def generate_default_target_scales(unscaled_shape: TaggedShape, dtype) -> Multiscale:
+def generate_default_target_scales(unscaled_shape: TaggedShape, dtype) -> ShapesByScaleKey:
     """
     Default target scales are isotropic 2x downscaling along x, y and z if present.
     The smallest scale included is just small enough for the entire image to fit into one chunk (per t and c).
@@ -161,7 +163,7 @@ def _get_chunk_shape(tagged_image_shape: TaggedShape, dtype) -> Shape:
 
 
 def _multiscale_to_scalings(
-    multiscale: Multiscale,
+    multiscale: ShapesByScaleKey,
     base_shape: TaggedShape,
     output_axiskeys: Iterable[Axiskey],
 ) -> ScalingsByScaleKey:
@@ -320,7 +322,7 @@ def _combine_offsets(
 def _get_datasets_meta(
     export_scalings: ScalingsByScaleKey,
     export_offset: Optional[TaggedShape],
-    input_scales: Optional[Multiscale],
+    input_scales: Optional[ShapesByScaleKey],
     input_scale_key: Optional[str],
     input_ome_meta: Optional[OMEZarrMultiscaleMeta],
 ):
@@ -407,7 +409,7 @@ def _write_ome_zarr_and_ilastik_metadata(
     export_scalings: ScalingsByScaleKey,
     interpolation_order: int,
     export_offset: Optional[TaggedShape],
-    input_scales: Optional[Multiscale],
+    input_scales: Optional[ShapesByScaleKey],
     input_scale_key: Optional[str],
     input_ome_meta: Optional[OMEZarrMultiscaleMeta],
     ilastik_meta: Dict,
@@ -441,7 +443,7 @@ def write_ome_zarr(
     image_source_slot: Slot,
     progress_signal: OrderedSignal,
     export_offset: Union[Shape, None],
-    target_scales: Optional[Multiscale] = None,
+    target_scales: Optional[ShapesByScaleKey] = None,
 ):
     pc = PathComponents(export_path)
     if pc.internalPath:
@@ -476,7 +478,7 @@ def write_ome_zarr(
 
         if target_scales is None:  # single-scale export
             single_target_key = input_scale_key if input_scale_key else SINGE_SCALE_DEFAULT_KEY
-            target_scales = Multiscale({single_target_key: export_shape})
+            target_scales = ShapesByScaleKey({single_target_key: export_shape})
 
         chunk_shape = _get_chunk_shape(export_shape, export_dtype)
 

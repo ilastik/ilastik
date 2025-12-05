@@ -9,9 +9,9 @@ import zarr
 
 from lazyflow.operators import OpArrayPiper
 from lazyflow.utility.data_semantics import ImageTypes
-from lazyflow.utility.io_util import multiscaleStore
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrMultiscaleMeta
 from lazyflow.utility.io_util.write_ome_zarr import (
+    ShapesByScaleKey,
     write_ome_zarr,
     generate_default_target_scales,
     _match_target_scales_to_input,
@@ -142,7 +142,7 @@ def test_match_input_scale_metadata_single_scale_export(tmp_path, tiny_5d_vigra_
     source_op = tiny_5d_vigra_array_piper
     progress = mock.Mock()
     input_axes = ["t", "z", "y", "x"]
-    multiscale: multiscaleStore.Multiscale = OrderedDict(
+    multiscale: ShapesByScaleKey = OrderedDict(
         [
             ("raw_scale", tagged_shape(input_axes, (2, 15, 15, 15))),
             ("matching_scale", tagged_shape(input_axes, (2, 5, 5, 5))),
@@ -175,7 +175,7 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
     export_path = tmp_path / "test_multi_to_single.zarr"
     source_op = tiny_5d_vigra_array_piper
     progress = mock.Mock()
-    multiscale: multiscaleStore.Multiscale = OrderedDict(
+    multiscale: ShapesByScaleKey = OrderedDict(
         [
             ("raw_scale", tagged_shape("tzyx", (2, 17, 17, 17))),
             ("matching_scale", tagged_shape("tzyx", (2, 9, 9, 9))),
@@ -255,13 +255,13 @@ def test_scale_resized_export_relative_base(tmp_path, tiny_5d_vigra_array_piper)
     source_op = tiny_5d_vigra_array_piper
     progress = mock.Mock()
     input_axes = ["c", "z", "y", "x"]  # Neuroglancer Precomputed axes for a change
-    input_scales: multiscaleStore.Multiscale = OrderedDict(
+    input_scales: ShapesByScaleKey = OrderedDict(
         [
             ("raw_scale", tagged_shape(input_axes, (2, 15, 15, 15))),
             ("downscale", tagged_shape(input_axes, (2, 5, 5, 5))),
         ]
     )
-    target_scales: multiscaleStore.Multiscale = OrderedDict(
+    target_scales: ShapesByScaleKey = OrderedDict(
         [
             ("resized_scale", tagged_shape("tczyx", (2, 2, 10, 10, 10))),
         ]
@@ -291,7 +291,7 @@ def test_match_raw_input_scale_metadata_multi_scale_export(tmp_path, tiny_5d_vig
     progress = mock.Mock()
     # The tiny_5d_array is 5x5x5; in this test it represents a subregion of source_scale after a 3/3/3 offset
     export_offset = (0, 0, 3, 3, 3)
-    multiscale: multiscaleStore.Multiscale = OrderedDict(
+    multiscale: ShapesByScaleKey = OrderedDict(
         [  # Include c to make sure export metadata ignores it as it should
             ("upscale", tagged_shape("tzyxc", (2, 34, 34, 34, 3))),
             ("raw_scale", tagged_shape("tzyxc", (2, 17, 17, 17, 3))),
@@ -305,7 +305,7 @@ def test_match_raw_input_scale_metadata_multi_scale_export(tmp_path, tiny_5d_vig
     # The export image is (2,2,5,5,5), (simulating a 0,_,3,3,3 crop of source_scale),
     # so downscale and upscale shapes here need to be relative to that shape.
     # Also make up-scaling factors anisotropic and non-integer for good measure.
-    target_scales: multiscaleStore.Multiscale = OrderedDict(
+    target_scales: ShapesByScaleKey = OrderedDict(
         [
             ("weird_upscale", tagged_shape("tczyx", (2, 2, 13, 12, 12))),
             ("downscale", tagged_shape("tczyx", (2, 2, 2, 2, 2))),
@@ -348,7 +348,7 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
     progress = mock.Mock()
     # The tiny_5d_array is 5x5x5; in this test it represents a subregion of source_scale after a 3/3/3 offset
     export_offset = (0, 0, 3, 3, 3)
-    multiscale: multiscaleStore.Multiscale = OrderedDict(
+    multiscale: ShapesByScaleKey = OrderedDict(
         [  # Include c to make sure export metadata ignores it as it should
             ("upscale", tagged_shape("tzyxc", (2, 34, 34, 34, 3))),
             ("raw_scale", tagged_shape("tzyxc", (2, 17, 17, 17, 3))),
@@ -399,7 +399,7 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
             ],
         }
     )
-    target_scales: multiscaleStore.Multiscale = OrderedDict(
+    target_scales: ShapesByScaleKey = OrderedDict(
         [
             ("weird_upscale", tagged_shape("tczyx", (2, 2, 13, 12, 12))),
             ("downscale", tagged_shape("tczyx", (2, 2, 2, 2, 2))),
@@ -451,7 +451,7 @@ def test_respects_interpolation_order(tmp_path, tiny_5d_vigra_array_piper):
     export_path = tmp_path
     source_op = tiny_5d_vigra_array_piper
     progress = mock.Mock()
-    target_scales: multiscaleStore.Multiscale = OrderedDict(
+    target_scales: ShapesByScaleKey = OrderedDict(
         [
             ("0", tagged_shape("tczyx", (2, 2, 5, 5, 5))),
             ("1", tagged_shape("tczyx", (2, 2, 2, 2, 2))),
