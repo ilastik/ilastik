@@ -32,13 +32,15 @@ from lazyflow.slot import OutputSlot
 # See MultiscaleStore docstring for details
 Multiscale = OrderedDict[str, "Scale"]
 DEFAULT_SCALE_KEY = ""
+DEFAULT_DISPLAY_RESOLUTION = 1
+DEFAULT_VIGRA_RESOLUTION = 0
 
 
 def set_multiscale_meta(slot: OutputSlot, multiscale: Multiscale, active_scale_key: str):
     """Updates slot.meta with multiscale, and pixel size for active scale."""
     assert active_scale_key in multiscale, f"Tried to set slot meta for non-existent scale {active_scale_key}"
     active_scale = multiscale[active_scale_key]
-    if any(active_scale.units.values()) or any(v != 0 for v in active_scale.resolution.values()):
+    if active_scale.has_pixel_size():
         for axis, res in active_scale.resolution.items():
             slot.meta.axistags.setResolution(axis, res)
         slot.meta.axis_units = active_scale.units
@@ -54,7 +56,9 @@ class Scale:
 
     def __post_init__(self):
         if self.resolution is None:
-            object.__setattr__(self, "resolution", OrderedDict([(k, 0.0) for k in self.shape]))
+            object.__setattr__(
+                self, "resolution", OrderedDict([(k, float(DEFAULT_VIGRA_RESOLUTION)) for k in self.shape])
+            )
         if self.units is None:
             object.__setattr__(self, "units", OrderedDict([(k, "") for k in self.shape]))
         if self.shape.keys() != self.resolution.keys() or self.shape.keys() != self.units.keys():
@@ -62,6 +66,30 @@ class Scale:
                 f"Tried to set up invalid scale: Axiskeys differ "
                 f"(shape={self.shape.keys()}, resolution={self.resolution.keys()}, units={self.units.keys()})"
             )
+
+    def has_pixel_size(self):
+        return any(self.units.values()) or any(res != DEFAULT_VIGRA_RESOLUTION for res in self.resolution.values())
+
+    def to_display_string(self, name=""):
+        shape = ", ".join(f"{axis}: {size}" for axis, size in self.shape.items())
+        name_and_shape = f'"{name}" ({shape})' if name else f"{shape}"
+        pixel_size = ""
+        if self.has_pixel_size():
+            axis_strings = []
+            for axis in self.shape.keys():
+                if axis == "c":
+                    continue
+                res = self.resolution[axis]
+                if res == DEFAULT_VIGRA_RESOLUTION:
+                    res = DEFAULT_DISPLAY_RESOLUTION
+                unit = ""
+                if self.units[axis]:
+                    unit = f" {self.units[axis]}"
+                elif axis != "t":
+                    unit = " px"
+                axis_strings.append(f"{axis}: {res:g}{unit}")
+            pixel_size = " at pixel size: " + ", ".join(axis_strings)
+        return f"{name_and_shape}{pixel_size}"
 
 
 class MultiscaleStore(metaclass=ABCMeta):

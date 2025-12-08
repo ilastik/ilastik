@@ -227,10 +227,7 @@ class MultiscaleDatasetBrowser(QDialog):
                 "The ilastik documentation contains some performance tips that might be helpful.</p>"
             )
         scale_info_html = "\n".join(
-            [
-                f"<li>Scale \"{key}\", shape: {' / '.join(map(str, scale.shape.values()))}</li>"
-                for key, scale in store.multiscale.items()
-            ]
+            [f"<li>{scale.to_display_string(name)}</li>" for name, scale in store.multiscale.items()]
         )
         self.result_text_box.setHtml(
             f"<p>{time_text}<br>"
