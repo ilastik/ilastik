@@ -237,11 +237,6 @@ def _get_input_transforms_reordered(
         input_axiskeys = input_ome_meta.axis_units.keys() if input_ome_meta else None
         input_transforms = input_ome_meta.dataset_transformations[scale_key]
         if isinstance(input_transforms, InvalidTransformationError):
-            logger.warning(
-                "The input OME-Zarr dataset contained invalid pixel resolution or crop "
-                f'position metadata for scale "{scale_key}". '
-                "The exported data should be fine, but please check its metadata."
-            )
             return None, None
         input_scale = dict(zip(input_axiskeys, input_transforms[0].values))
         reordered_scale = _reorder(input_scale, axes, 1.0)
@@ -384,11 +379,6 @@ def _get_multiscale_transformations(
                 }
             )
         return transforms_axis_matched
-    elif input_ome_meta and input_ome_meta.multiscale_transformations is not None:
-        logger.warning(
-            "The input OME-Zarr dataset contained invalid pixel resolution or crop position metadata. "
-            "The exported data should be fine, but please check its metadata."
-        )
 
 
 def _get_scaling_method_metadata(export_scalings: ScalingsByScaleKey, interpolation_order: int) -> Optional[Dict]:

@@ -267,6 +267,7 @@ def _resolution_from_multiscale(multiscale: OME_ZARR_MULTISCALE, dataset: str) -
         raise ValueError(f'Dataset "{dataset}" not defined in OME-Zarr "datasets" metadata:\n{multiscale["datasets"]}')
     dataset_transforms = _validate_transforms(dataset_spec.get("coordinateTransformations"))
     if not has_valid_resolution(dataset_transforms):
+        logger.warning(f"Missing or invalid pixel resolution metadata for dataset={dataset_spec['path']}.")
         default_resolution = [0.0 for _ in axis_keys]
         return OrderedDict(zip(axis_keys, default_resolution))
 
@@ -274,6 +275,8 @@ def _resolution_from_multiscale(multiscale: OME_ZARR_MULTISCALE, dataset: str) -
 
     multiscale_transforms = _validate_transforms(multiscale.get("coordinateTransformations"))
     if not has_valid_resolution(multiscale_transforms):
+        if multiscale_transforms is not None:
+            logger.warning("Pixel resolution metadata at pyramid level was invalid.")
         return OrderedDict(zip(axis_keys, dataset_resolution))
     else:
         multiscale_resolution = multiscale_transforms[0].values
