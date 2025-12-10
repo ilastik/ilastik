@@ -43,6 +43,7 @@ from lazyflow.utility.io_util.OMEZarrStore import (
     OMEZarrMultiscaleMeta,
     InvalidTransformationError,
 )
+from lazyflow.utility.io_util.multiscaleStore import DEFAULT_VIGRA_RESOLUTION
 
 logger = logging.getLogger(__name__)
 
@@ -208,20 +209,22 @@ def _write_block(zarray: zarr.Array, roi, data):
 
 def _write_to_dataset_attrs(ilastik_meta: Dict, za: zarr.Array):
     za.attrs["axistags"] = ilastik_meta["axistags"].toJSON()
+    if ilastik_meta["axis_units"]:
+        za.attrs["axis_units"] = ilastik_meta["axis_units"]
     if ilastik_meta["display_mode"]:
         za.attrs["display_mode"] = ilastik_meta["display_mode"]
     if ilastik_meta["drange"]:
         za.attrs["drange"] = ilastik_meta["drange"]
 
 
-def _get_axes_meta(export_axiskeys, input_ome_meta):
+def _get_axes_meta(export_axiskeys, ilastik_meta):
     axis_types = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
     axes = [{"name": a, "type": axis_types[a]} for a in export_axiskeys]
-    if input_ome_meta:
-        # Add unit metadata if available
+    # Don't write empty unit entries
+    if ilastik_meta["axis_units"]:
         for a in axes:
-            if a["name"] in input_ome_meta.axis_units and input_ome_meta.axis_units[a["name"]]:
-                a["unit"] = input_ome_meta.axis_units[a["name"]]
+            if a["name"] in ilastik_meta["axis_units"] and ilastik_meta["axis_units"][a["name"]]:
+                a["unit"] = ilastik_meta["axis_units"][a["name"]]
     return axes
 
 
@@ -282,7 +285,7 @@ def _combine_scalings(
 
 def _combine_offsets(
     export_axiskeys: List[Axiskey],
-    export_offset: TaggedShape,
+    export_offset: Optional[TaggedShape],
     input_scaling_rel: Optional[OrderedScaling],
     input_scaling_abs: Optional[OrderedScaling],
     input_translation: Optional[OrderedTranslation],
@@ -292,31 +295,34 @@ def _combine_offsets(
     Need to convert pixels to absolute units, reorder to export axes,
     and pad with 0.0 for axes missing in input / source slot.
     :param export_offset: Offset in pixels, ordered as original export source slot.
-    :param input_scaling_abs, input_translation: In absolute units, already reordered to export_axiskeys
+    :param input_scaling_abs, input_translation: In absolute (physical) units
     """
     noop_translation: OrderedTranslation = ODict(zip(export_axiskeys, [0.0] * len(export_axiskeys)))
     reordered_export_offset = noop_translation.copy()
-    if input_translation is None:
-        input_translation = noop_translation.copy()
-    assert list(input_translation.keys()) == export_axiskeys
+    reordered_input_translation = noop_translation.copy()
+    if input_translation is not None:
+        reordered_input_translation = _reorder(input_translation, export_axiskeys, 0.0)
     if export_offset:
         # Export offset in pixels needs to be adapted to absolute input scale if available (OME-Zarr),
         # otherwise to relative input scale if available (Precomputed).
         # Also match export axis order.
         input_scaling_rel = input_scaling_rel if input_scaling_rel else ODict()
-        reordered_input_scaling_rel = _reorder(input_scaling_rel, export_axiskeys, 1.0)
-        input_scaling_abs = input_scaling_abs if input_scaling_abs else reordered_input_scaling_rel
-        assert list(input_scaling_abs.keys()) == export_axiskeys
+        input_scaling_abs = input_scaling_abs if input_scaling_abs else input_scaling_rel
+        reordered_input_scaling_abs = _reorder(input_scaling_abs, export_axiskeys, 1.0)
         reordered_export_offset = ODict(
-            [(a, export_offset[a] * input_scaling_abs[a] if a in export_offset else 0.0) for a in export_axiskeys]
+            [
+                (a, export_offset[a] * reordered_input_scaling_abs[a] if a in export_offset else 0.0)
+                for a in export_axiskeys
+            ]
         )
-    combined_translation = ODict([(a, reordered_export_offset[a] + input_translation[a]) for a in export_axiskeys])
+    combined_translation = ODict(
+        [(a, reordered_export_offset[a] + reordered_input_translation[a]) for a in export_axiskeys]
+    )
     return combined_translation
 
 
 def _get_datasets_meta(
     export_scalings: ScalingsByScaleKey,
-    export_offset: Optional[TaggedShape],
     input_scales: Optional[ShapesByScaleKey],
     input_scale_key: Optional[str],
     input_ome_meta: Optional[OMEZarrMultiscaleMeta],
@@ -342,9 +348,7 @@ def _get_datasets_meta(
         combined_scaling = _combine_scalings(
             export_axiskeys, scaling, input_scaling_rel_raw, input_scaling_ome, key_matches_input
         )
-        combined_translation = _combine_offsets(
-            export_axiskeys, export_offset, input_scaling_rel_raw, input_scaling_ome, input_translation
-        )
+        combined_translation = _combine_offsets(export_axiskeys, None, None, None, input_translation)
         dataset = {
             "path": scale_key,
             "coordinateTransformations": [{"type": "scale", "scale": list(combined_scaling.values())}],
@@ -359,26 +363,71 @@ def _get_datasets_meta(
 
 
 def _get_multiscale_transformations(
-    input_ome_meta: Optional[OMEZarrMultiscaleMeta], export_axiskeys: Iterable[Axiskey]
+    export_axiskeys: List[Axiskey],
+    ilastik_meta: Dict,
+    export_scalings: ScalingsByScaleKey,
+    input_scales: Optional[ShapesByScaleKey],
+    export_offset: Optional[TaggedShape],
+    input_ome_meta: Optional[OMEZarrMultiscaleMeta],
 ) -> Optional[List[Dict]]:
-    """Extracts multiscale transformations from input OME-Zarr metadata, if available.
-    Returns None or the transformations adjusted to export axes as OME-Zarr conforming dicts."""
-    if input_ome_meta and isinstance(input_ome_meta.multiscale_transformations, tuple):
-        transforms_axis_matched = []
-        for transform in input_ome_meta.multiscale_transformations:
-            if transform is None:
-                continue
-            tagged_transform = ODict(zip(input_ome_meta.axis_units.keys(), transform.values))
-            default_value = 0.0 if transform.type == "translation" else 1.0
-            transforms_axis_matched.append(
-                {
-                    "type": transform.type,
-                    transform.type: [
-                        tagged_transform[a] if a in tagged_transform else default_value for a in export_axiskeys
-                    ],
-                }
-            )
-        return transforms_axis_matched
+    """
+    Multiscale-level scale transform = pixel size along unscaled axes (usually t).
+    Multiscale-level translation = export offset + input translation.
+    In OME-Zarr 0.4 (and at least 0.5), it makes no difference whether transformations are
+    recorded at multiscale-level, or dataset-level. Our treatment of scale fits convention;
+    for translation, there is no convention. We interpret export_offset as a global translation
+    of the multiscale export, so multiscale-level seems appropriate.
+
+    Params:
+    export_scalings and input_scales to determine which axes are unscaled.
+    export_offset and input_ome_meta to determine multiscale translation.
+
+    Returns None or the transformations adjusted to export axes as OME-Zarr conforming dicts.
+    """
+
+    def is_unscaled_axis(axis):
+        """Scaled = shape along this axis changes across either export target scales, or input scales.
+        Check input in case of single-scale export."""
+        is_unscaled_in_input = True  # input is single-scale, or this axis is absent/singleton in it
+        if input_scales:
+            first_scale_shape = next(iter(input_scales.values()))
+            if axis in first_scale_shape:
+                is_unscaled_in_input = all(
+                    scale_shape[axis] == first_scale_shape[axis] for scale_shape in input_scales.values()
+                )
+        return is_unscaled_in_input and all(scale[axis] == 1 for scale in export_scalings.values())
+
+    assert export_axiskeys == [tag.key for tag in ilastik_meta["axistags"]], "wat"
+
+    # No combining with input metadata required. That's already factored into the axistags resolution.
+    input_scaling_values = [
+        tag.resolution if tag.resolution != DEFAULT_VIGRA_RESOLUTION else 1.0 for tag in ilastik_meta["axistags"]
+    ]
+    input_scaling_abs = ODict(zip(export_axiskeys, input_scaling_values))
+    # Resolution for scaled axes goes in dataset transformations instead
+    multiscale_scale_values = [input_scaling_abs[a] if is_unscaled_axis(a) else 1.0 for a in export_axiskeys]
+
+    # Translation: Sum of input translation (if exists) + offset from export settings
+    input_translation = None
+    if (
+        input_ome_meta
+        and isinstance(input_ome_meta.multiscale_transformations, tuple)
+        and input_ome_meta.multiscale_transformations[1]
+    ):
+        input_axiskeys = input_ome_meta.axis_units.keys()
+        input_translation_values = input_ome_meta.multiscale_transformations[1].values
+        input_translation = dict(zip(input_axiskeys, input_translation_values))
+    combined_translation = _combine_offsets(export_axiskeys, export_offset, None, input_scaling_abs, input_translation)
+
+    multiscale_transforms = []
+    if any(v != 1 for v in multiscale_scale_values):
+        multiscale_transforms.append({"type": "scale", "scale": multiscale_scale_values})
+    if any(v != 0 for v in combined_translation.values()):
+        if not multiscale_transforms:
+            # Must have a scale transform before translation transform
+            multiscale_transforms.append({"type": "scale", "scale": [1.0] * len(export_axiskeys)})
+        multiscale_transforms.append({"type": "translation", "translation": list(combined_translation.values())})
+    return multiscale_transforms or None
 
 
 def _get_scaling_method_metadata(export_scalings: ScalingsByScaleKey, interpolation_order: int) -> Optional[Dict]:
@@ -407,11 +456,13 @@ def _write_ome_zarr_and_ilastik_metadata(
     ilastik_signature = {"name": "ilastik", "version": ilastik_version, "ome_zarr_exporter_version": 2}
     export_axiskeys = list(next(iter(export_scalings.values())).keys())
 
-    axes = _get_axes_meta(export_axiskeys, input_ome_meta)
-    datasets = _get_datasets_meta(export_scalings, export_offset, input_scales, input_scale_key, input_ome_meta)
+    axes = _get_axes_meta(export_axiskeys, ilastik_meta)
+    datasets = _get_datasets_meta(export_scalings, input_scales, input_scale_key, input_ome_meta)
     ome_zarr_multiscale_meta = {"axes": axes, "datasets": datasets, "version": "0.4"}
 
-    multiscale_transformations = _get_multiscale_transformations(input_ome_meta, export_axiskeys)
+    multiscale_transformations = _get_multiscale_transformations(
+        export_axiskeys, ilastik_meta, export_scalings, input_scales, export_offset, input_ome_meta
+    )
     if multiscale_transformations:
         ome_zarr_multiscale_meta["coordinateTransformations"] = multiscale_transformations
 
@@ -534,6 +585,7 @@ def write_ome_zarr(
             input_ome_meta,
             {
                 "axistags": reordered_source.meta.axistags,
+                "axis_units": reordered_source.meta.get("axis_units"),
                 "display_mode": reordered_source.meta.get("display_mode"),
                 "drange": reordered_source.meta.get("drange"),
             },

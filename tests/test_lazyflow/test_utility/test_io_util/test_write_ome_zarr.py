@@ -186,22 +186,33 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
     export_offset = (0, 0, 4, 4, 4)
     source_op.Output.meta.scales = multiscale
     source_op.Output.meta.active_scale = "matching_scale"
-    expected_multiscale_transform = [{"type": "scale", "scale": [0.1, 1.0, 1.0, 1.0, 1.0]}]
+    resolution_t = 0.1
+    resolution_xyz = 2.0
+    units = {"t": "second", "z": "micrometer", "y": "micrometer", "x": "micrometer"}
+    source_op.Output.meta.axistags.setResolution("t", resolution_t)
+    source_op.Output.meta.axistags.setResolution("z", resolution_xyz)
+    source_op.Output.meta.axistags.setResolution("y", resolution_xyz)
+    source_op.Output.meta.axistags.setResolution("x", resolution_xyz)
+    source_op.Output.meta.axis_units = units
+    expected_multiscale_transform = [
+        {"type": "scale", "scale": [resolution_t, 1.0, 1.0, 1.0, 1.0]},
+        {"type": "translation", "translation": [0.0, 0.0, 8.0, 8.0, 8.0]},  # offset * input scale
+    ]
     # When no actual scaling is done by ilastik, input scale should be carried over unmodified even if imprecise.
     expected_matching_scale_transform = [
-        {"type": "scale", "scale": [1.0, 1.0, 2.0, 2.0, 2.0]},
-        {"type": "translation", "translation": [0.1, 0.0, 11.2, 9.0, 9.0]},  # input translation + (offset*input scale)
+        {"type": "scale", "scale": [1.0, 1.0, resolution_xyz, resolution_xyz, resolution_xyz]},
+        {"type": "translation", "translation": [0.1, 0.0, 3.2, 1.0, 1.0]},
     ]
     source_op.Output.meta.ome_zarr_meta = OMEZarrMultiscaleMeta.from_multiscale_spec(
         {
             "name": "wonderful_pyramid",
             "axes": [
-                {"name": "t", "type": "time", "unit": "second"},
-                {"name": "z", "type": "space", "unit": "micrometer"},
-                {"name": "y", "type": "space", "unit": "micrometer"},
-                {"name": "x", "type": "space", "unit": "micrometer"},
+                {"name": "t", "type": "time", "unit": units["t"]},
+                {"name": "z", "type": "space", "unit": units["z"]},
+                {"name": "y", "type": "space", "unit": units["y"]},
+                {"name": "x", "type": "space", "unit": units["x"]},
             ],  # Input metadata tzyx, but e.g. Probabilities output would be tczyx
-            "coordinateTransformations": [{"type": "scale", "scale": [0.1, 1.0, 1.0, 1.0]}],
+            "coordinateTransformations": [{"type": "scale", "scale": [resolution_t, 1.0, 1.0, 1.0]}],
             "datasets": [
                 {
                     "path": "raw_scale",
@@ -213,7 +224,7 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
                 {
                     "path": "matching_scale",
                     "coordinateTransformations": [
-                        {"type": "scale", "scale": [1.0, 2.0, 2.0, 2.0]},
+                        {"type": "scale", "scale": [1.0, resolution_xyz, resolution_xyz, resolution_xyz]},
                         {"type": "translation", "translation": [0.1, 3.2, 1.0, 1.0]},
                     ],
                 },
@@ -301,6 +312,13 @@ def test_match_raw_input_scale_metadata_multi_scale_export(tmp_path, tiny_5d_vig
     )
     source_op.Output.meta.scales = multiscale
     source_op.Output.meta.active_scale = "source_scale"
+    # Both Precomputed and OME-Zarr readers would read the pixel size of the source scale from the source metadata.
+    # A hypothetical multiscale reader with no direct pixel size meta should still provide
+    # the input scaling factor as axistags resolution.
+    s = 34 / 8  # source scaling = base shape / uncropped source shape
+    source_op.Output.meta.axistags.setResolution("z", s)
+    source_op.Output.meta.axistags.setResolution("y", s)
+    source_op.Output.meta.axistags.setResolution("x", s)
     # Boundary conditions: Do not export source scale, but export downscale and a new upscale.
     # The export image is (2,2,5,5,5), (simulating a 0,_,3,3,3 crop of source_scale),
     # so downscale and upscale shapes here need to be relative to that shape.
@@ -312,12 +330,14 @@ def test_match_raw_input_scale_metadata_multi_scale_export(tmp_path, tiny_5d_vig
         ]
     )
     # Expected output scaling: source scale * target scaling relative to source
-    s = 34 / 8  # source scale = base shape / uncropped source shape
     expected_upscale = [1.0, 1.0, s * 5 / 13, s * 5 / 12, s * 5 / 12]  # cropped source shape / target shape
     # 2px would be the result of scaling 5px by 2.0.
     # The scaling implementation in OpResize is precise though, so metadata should not be rounded.
     expected_downscale = [1.0, 1.0, s * 5 / 2, s * 5 / 2, s * 5 / 2]
-    expected_translation = [0.0, 0.0, s * 3, s * 3, s * 3]  # offset in pixels * source scaling
+    expected_multiscale_transforms = [
+        {"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0, 1.0]},
+        {"type": "translation", "translation": [0.0, 0.0, s * 3, s * 3, s * 3]},
+    ]  # offset in pixels * source scaling
 
     write_ome_zarr(str(export_path), source_op.Output, progress, export_offset, target_scales)
 
@@ -327,14 +347,13 @@ def test_match_raw_input_scale_metadata_multi_scale_export(tmp_path, tiny_5d_vig
     assert "datasets" in m and "path" in m["datasets"][0]
     assert len(m["datasets"]) == 2
     assert m["datasets"][0]["path"] == "weird_upscale"
+    assert m["coordinateTransformations"] == expected_multiscale_transforms
     # The factor calculations come out unequal at 1e-16
     upscale_transforms = m["datasets"][0]["coordinateTransformations"]
     numpy.testing.assert_allclose(upscale_transforms[0]["scale"], expected_upscale, atol=1e-15)
-    numpy.testing.assert_allclose(upscale_transforms[1]["translation"], expected_translation, atol=1e-15)
     assert m["datasets"][1]["path"] == "downscale"
     downscale_transforms = m["datasets"][1]["coordinateTransformations"]
     numpy.testing.assert_allclose(downscale_transforms[0]["scale"], expected_downscale, atol=1e-15)
-    numpy.testing.assert_allclose(downscale_transforms[1]["translation"], expected_translation, atol=1e-15)
 
 
 def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array_piper):
@@ -358,16 +377,24 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
     )
     source_op.Output.meta.scales = multiscale
     source_op.Output.meta.active_scale = "source_scale"
+    resolution_t = 0.1
+    resolution_xyz = 2.0  # Writers might round scaling factors. We have to assume this is intentional and maintain it.
+    units = {"t": "second", "z": "micrometer", "y": "micrometer", "x": "micrometer"}
+    source_op.Output.meta.axistags.setResolution("t", resolution_t)
+    source_op.Output.meta.axistags.setResolution("z", resolution_xyz)
+    source_op.Output.meta.axistags.setResolution("y", resolution_xyz)
+    source_op.Output.meta.axistags.setResolution("x", resolution_xyz)
+    source_op.Output.meta.axis_units = units
     source_op.Output.meta.ome_zarr_meta = OMEZarrMultiscaleMeta.from_multiscale_spec(
         {
             "name": "wonderful_pyramid",
             "axes": [
-                {"name": "t", "type": "time", "unit": "second"},
-                {"name": "z", "type": "space", "unit": "micrometer"},
-                {"name": "y", "type": "space", "unit": "micrometer"},
-                {"name": "x", "type": "space", "unit": "micrometer"},
+                {"name": "t", "type": "time", "unit": units["t"]},
+                {"name": "z", "type": "space", "unit": units["z"]},
+                {"name": "y", "type": "space", "unit": units["y"]},
+                {"name": "x", "type": "space", "unit": units["x"]},
             ],  # Input metadata tzyx, but e.g. Probabilities output would be tczyx
-            "coordinateTransformations": [{"type": "scale", "scale": [0.1, 1.0, 1.0, 1.0]}],
+            "coordinateTransformations": [{"type": "scale", "scale": [resolution_t, 1.0, 1.0, 1.0]}],
             "datasets": [
                 {
                     "path": "upscale",  # The first scale is usually the raw data, but not necessarily
@@ -385,7 +412,7 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
                 {
                     "path": "source_scale",
                     "coordinateTransformations": [
-                        {"type": "scale", "scale": [1.0, 2.0, 2.0, 2.0]},
+                        {"type": "scale", "scale": [1.0, resolution_xyz, resolution_xyz, resolution_xyz]},
                         {"type": "translation", "translation": [3.1, 3.2, 2.1, 1.0]},
                     ],
                 },
@@ -405,11 +432,14 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
             ("downscale", tagged_shape("tczyx", (2, 2, 2, 2, 2))),
         ]
     )
-    expected_multiscale_transform = [{"type": "scale", "scale": [0.1, 1.0, 1.0, 1.0, 1.0]}]
+    expected_multiscale_transform = [
+        {"type": "scale", "scale": [0.1, 1.0, 1.0, 1.0, 1.0]},
+        {"type": "translation", "translation": [0.0, 0.0, 6.0, 6.0, 6.0]},  # offset * input scale
+    ]
     s_abs = 2.0  # Even if OpResize scales precisely, output should be computed based on the input's metadata.
     upscale = [1.0, 1.0, s_abs * 5 / 13, s_abs * 5 / 12, s_abs * 5 / 12]
     downscale = [1.0, 1.0, s_abs * 5 / 2, s_abs * 5 / 2, s_abs * 5 / 2]
-    translation = [3.1, 0.0, s_abs * 3 + 3.2, s_abs * 3 + 2.1, s_abs * 3 + 1.0]
+    translation = [3.1, 0.0, 3.2, 2.1, 1.0]
     expected_upscale_transform = [
         {"type": "scale", "scale": upscale},
         {"type": "translation", "translation": translation},
