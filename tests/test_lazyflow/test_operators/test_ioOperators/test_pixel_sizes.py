@@ -1,6 +1,7 @@
 import json
 import os
 import xml.etree.ElementTree as ET
+from collections import OrderedDict
 from contextlib import contextmanager
 from typing import Dict, List, Tuple, Union
 from unittest import mock
@@ -11,6 +12,7 @@ import numpy as np
 import pytest
 import tifffile
 import vigra
+import zarr
 
 from ilastik.applets.dataSelection import DataSelectionApplet, OpDataSelectionGroup, FilesystemDatasetInfo
 from lazyflow.graph import Graph
@@ -25,6 +27,7 @@ from lazyflow.operators.ioOperators import (
     OpStreamingH5N5Reader,
 )
 from lazyflow.slot import Slot
+from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr, ShapesByScaleKey
 from ..test_ioOperators.testOpStreamingH5N5Reader import h5n5_file, data
 
 
@@ -784,6 +787,82 @@ def test_read_ome_zarr_v0_4_no_units(graph):
     assert reader.Output.meta.getAxisKeys() == list(dataset_scale.keys())
     for tag in reader.Output.meta.axistags:
         assert tag.resolution == dataset_scale[tag.key]
+
+
+def test_write_ome_zarr_single_scale(graph, tmp_path):
+    """
+    Smoke test of the simplest case.
+    Combinatorics of single/multiscale input to single/multiscale export are tested in test_write_ome_zarr.
+    """
+    op_data = get_data_op_with_pixel_size_meta(
+        graph,
+        ["t", "z", "y", "x", "c"],
+        (6, 5, 4, 3, 2),
+        [0.4, 5.0, 0.3, 6.4, 8.99991],
+        ["sec", "um", "nm", "mm", "noodles"],
+    )
+    export_path = tmp_path / "test.zarr"
+    progress = mock.Mock()
+    expected_axes = [  # Expect copied strings. TODO: Normalize https://ngff.openmicroscopy.org/0.4/#axes-md
+        {"name": "t", "type": "time", "unit": "sec"},
+        {"name": "c", "type": "channel", "unit": "noodles"},  # obviously non-standard, but allowed
+        {"name": "z", "type": "space", "unit": "um"},
+        {"name": "y", "type": "space", "unit": "nm"},
+        {"name": "x", "type": "space", "unit": "mm"},
+    ]
+    # Dataset scale is mandatory, but should be noop here. In single-scale export from a single-scale source,
+    # pixel size should be written on multiscale-level. This isn't a spec requirement, but a generalisation of the
+    # convention of writing scale for the t-axis into the multiscale-level transforms.
+    expected_multiscale_transform = [{"type": "scale", "scale": [0.4, 8.99991, 5.0, 0.3, 6.4]}]  # tczyx
+    expected_dataset_transform = [{"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0, 1.0]}]
+
+    write_ome_zarr(str(export_path), op_data.Output, progress, None)
+
+    group = zarr.open(str(export_path))
+    assert "multiscales" in group.attrs
+    m = group.attrs["multiscales"][0]
+    assert "axes" in m
+    assert m["axes"] == expected_axes
+    assert "coordinateTransformations" in m
+    assert m["coordinateTransformations"] == expected_multiscale_transform
+    assert "datasets" in m and "path" in m["datasets"][0]
+    assert len(m["datasets"]) == 1
+    assert m["datasets"][0]["coordinateTransformations"] == expected_dataset_transform
+
+
+def test_write_read_roundtrip_ome_zarr(graph, tmp_path):
+    axes = ["t", "z", "y", "x", "c"]
+    source_shape = OrderedDict(zip(axes, (6, 5, 4, 3, 2)))
+    resolutions = OrderedDict(zip(axes, [0.4, 5.0, 0.3, 6.4, 8.99991]))
+    units = ["sec", "um", "nm", "mm", "noodles"]
+    op_data = get_data_op_with_pixel_size_meta(graph, axes, tuple(source_shape.values()), resolutions.values(), units)
+    export_path = tmp_path / "test_pixel_size.zarr"
+    progress = mock.Mock()
+    target_shape_up = OrderedDict(zip("tczyx", (6, 2, 16, 15, 13)))  # ome-zarr standard
+    target_shape_down = OrderedDict(zip("tczyx", (6, 2, 3, 2, 3)))
+    target_scales: ShapesByScaleKey = OrderedDict([("upscale", target_shape_up), ("downscale", target_shape_down)])
+
+    write_ome_zarr(str(export_path), op_data.Output, progress, None, target_scales)
+
+    reader = OpOMEZarrMultiscaleReader(graph=graph, Uri=export_path.as_uri(), Scale="downscale")
+
+    assert reader.Output.ready()
+    assert "axis_units" in reader.Output.meta
+    assert reader.Output.meta.axis_units == dict(zip(axes, units))
+    assert reader.Output.meta.getAxisKeys() == list("tczyx")
+    assert reader.Output.meta.scales == target_scales
+    for tag in reader.Output.meta.axistags:
+        scaling = source_shape[tag.key] / target_shape_down[tag.key]
+        expected_resolution = scaling * resolutions[tag.key]
+        assert tag.resolution == expected_resolution
+
+    reader = OpOMEZarrMultiscaleReader(graph=graph, Uri=export_path.as_uri(), Scale="upscale")
+
+    assert reader.Output.ready()
+    for tag in reader.Output.meta.axistags:
+        scaling = source_shape[tag.key] / target_shape_up[tag.key]
+        expected_resolution = scaling * resolutions[tag.key]
+        assert tag.resolution == expected_resolution
 
 
 def test_read_precomputed(graph):

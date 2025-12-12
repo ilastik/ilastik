@@ -20,6 +20,7 @@
 #          http://ilastik.org/license/
 ###############################################################################
 import logging
+from typing import Optional
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore
@@ -44,9 +45,12 @@ class OpOMEZarrMultiscaleReader(Operator):
 
     Output = OutputSlot()
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, Uri: Optional[str] = None, Scale: Optional[str] = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._store = None
+
+        self.Uri.setOrConnectIfAvailable(Uri)
+        self.Scale.setOrConnectIfAvailable(Scale)
 
     def setupOutputs(self):
         if self._store is not None and self._store.base_uri in self.Uri.value:
