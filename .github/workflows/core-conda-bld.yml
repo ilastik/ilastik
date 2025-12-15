@@ -120,6 +120,8 @@ jobs:
             pkgs/channeldata.json
           key: ${{ github.sha }}-packages
           enableCrossOsArchive: true
+      - name: Check disk usage
+        run: df -h
       - name: linux test
         # if: matrix.os == 'ubuntu-latest'
         shell: bash -l {0}
@@ -142,5 +144,7 @@ jobs:
           conda build --test --override-channels ^
             -c ./pkgs -c ilastik-forge/label/patched-2 -c conda-forge -c ilastik-forge ^
             ./pkgs/noarch/%ILASTIK_PACKAGE_NAME%
+      - name: Check disk usage
+        run: df -h
       - name: cleanup
         run: conda clean -tipy

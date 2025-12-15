@@ -170,7 +170,7 @@ outputs:
       run:
         - python 3.11.*
         - {{ pin_subpackage("ilastik-core", exact=True) }}
-        - pytorch >=2,<2.9
+        - pytorch >=2,<2.8
         - pytorch *=*cuda*
         - tiktorch
         - torchvision
