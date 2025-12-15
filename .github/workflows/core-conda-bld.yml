@@ -142,3 +142,5 @@ jobs:
           conda build --test --override-channels ^
             -c ./pkgs -c ilastik-forge/label/patched-2 -c conda-forge -c ilastik-forge ^
             ./pkgs/noarch/%ILASTIK_PACKAGE_NAME%
+      - name: cleanup
+        run: conda clean -tipy
