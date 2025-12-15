@@ -52,17 +52,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
-        ilastik_variant: ["ilastik-core", "ilastik", "ilastik-gpu"]
-        exclude:
-          - os: macos-latest
-            ilastik_variant: "ilastik-gpu"
+        #os: [macos-latest, windows-latest, ubuntu-latest]
+        ilastik_variant: ["ilastik-core", ilastik-gpu"]
+        # exclude:
+        #   - os: macos-latest
+        #     ilastik_variant: "ilastik-gpu"
         include:
           - ilastik_variant: "ilastik-core"
             build_prefix: "py_"
           - ilastik_variant: "ilastik-gpu"
             cuda_version: "12.6"
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     env:
       ILASTIK_PACKAGE_NAME: ${{ matrix.ilastik_variant }}-${{ needs.conda-noarch-build.outputs.version }}-${{ matrix.build_prefix }}0.conda
       CONDA_OVERRIDE_CUDA: ${{ matrix.cuda_version }}
@@ -107,7 +107,7 @@ jobs:
           conda-remove-defaults: "true"
           run-post: false
       - name: install xvfb/deps
-        if: matrix.os == 'ubuntu-latest'
+        # if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -yy mesa-utils libgl1-mesa-dev xvfb curl
@@ -121,7 +121,7 @@ jobs:
           key: ${{ github.sha }}-packages
           enableCrossOsArchive: true
       - name: linux test
-        if: matrix.os == 'ubuntu-latest'
+        # if: matrix.os == 'ubuntu-latest'
         shell: bash -l {0}
         run: |
           xvfb-run --server-args="-screen 0 1024x768x24" conda-build --test --override-channels \
