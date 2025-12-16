@@ -654,7 +654,6 @@ class PixelClassificationGui(LabelingGui):
         # Show the mask over everything except labels
         maskSlot = self.topLevelOperatorView.PredictionMasks
         if maskSlot.ready():
-            print("!!! DEBUG: I AM RUNNING THE NEW CODE !!!")
             op_cast_mask = OpPixelOperator(parent=maskSlot.operator)
             op_cast_mask.Input.connect(maskSlot)
             op_cast_mask.Function.setValue(lambda x: x.astype(numpy.uint32))
