@@ -189,6 +189,7 @@ outputs:
         - pytest >4
         - pytest-qt
         - pytorch 2.*
+        - libtorch 2.7.0
 
       imports:
         - ilastik
