@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -94,7 +92,8 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
         pass
 
     def setInSlot(self, slot, subindex, key, value):
-        pass  # Nothing to do here: Input is connected to an internal operator
+        assert slot == self.Input, "No other slot should require this"
+        pass
 
     # ======= mimic cache interface for wrapping operators =======
 

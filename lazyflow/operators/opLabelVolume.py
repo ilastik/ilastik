@@ -21,6 +21,8 @@
 ###############################################################################
 import sys
 
+from lazyflow.roi import roiToSlice
+
 
 if sys.version_info.major >= 3:
     unicode = str
@@ -225,9 +227,6 @@ class OpLabelingABC(with_metaclass(ABCMeta, Operator)):
         self._cache.name = "OpLabelVolume.OutputCache"
         self._cache.BypassModeEnabled.connect(self.BypassModeEnabled)
         self._cache.Input.connect(self.Output)
-        if self.SerializationInput.ready():
-            # Setup LabelImageCacheInput for the serialization of the compressed cache
-            self._cache.Input.connect(self.SerializationInput)
         self.CachedOutput.connect(self._cache.Output)
         self.CleanBlocks.connect(self._cache.CleanBlocks)
 
@@ -269,7 +268,8 @@ class OpLabelingABC(with_metaclass(ABCMeta, Operator)):
         # Nothing to do here.
         # Our Input slots are directly fed into the cache,
         #  so all calls to __setitem__ are forwarded automatically
-        pass
+        assert slot == self.SerializationInput
+        self._cache.Input[roiToSlice(roi.start, roi.stop)] = value
 
     def execute(self, slot, subindex, roi, result):
         if slot == self.Output:

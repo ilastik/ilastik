@@ -38,6 +38,7 @@ from lazyflow.operators import (
 )
 from ilastik.applets.base.applet import DatasetConstraintError
 from lazyflow.operators.generic import OpConvertDtype, OpPixelOperator
+from lazyflow.roi import roiToSlice
 from lazyflow.utility.data_semantics import ImageTypes
 
 # local
@@ -224,7 +225,7 @@ class OpThresholdTwoLevels(Operator):
             self.opSumInputs.Inputs[0].connect(self.opFinalChannelSelector.Output)
 
     def setInSlot(self, slot, subindex, roi, value):
-        self.opCache.setInSlot(self.opCache.Input, subindex, roi, value)
+        self.opCache.Input[roiToSlice(roi.start, roi.stop)] = value
 
     def execute(self, slot, subindex, roi, destination):
         assert False, "Shouldn't get here."
