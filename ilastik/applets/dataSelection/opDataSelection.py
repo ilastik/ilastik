@@ -149,12 +149,18 @@ class DatasetInfo(ABC):
         pass
 
     def get_provider_slot(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
-        metadata = {"display_mode": self.display_mode, "axis_units": self.axis_units}
+        """
+        - Delegate reader creation to subclass.create_data_reader
+        - Add/overwrite slot metadata that the user might have changed via the dataset properties editor or
+        command-line parameters.
+        """
+        metadata = {"display_mode": self.display_mode}
 
         if self.axistags != self.default_tags:
-            # Force axistags onto operator only if they have been modified by the user.
-            # This also overwrites potential pixel size metadata on `tag.resolution`.
+            # Dataset's stored axistags (default_tags) are overridden (axistags).
+            # This makes any existing pixel size metadata meaningless (units and tag.resolution on self.default_tags).
             metadata["axistags"] = self.axistags
+            metadata["axis_units"] = {}
         if self.drange is not None:
             metadata["drange"] = self.drange
         elif self.laneDtype == numpy.uint8:
