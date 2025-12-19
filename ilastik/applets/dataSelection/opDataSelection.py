@@ -149,8 +149,12 @@ class DatasetInfo(ABC):
         pass
 
     def get_provider_slot(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
-        metadata = {"display_mode": self.display_mode, "axistags": self.axistags, "axis_units": self.axis_units}
+        metadata = {"display_mode": self.display_mode, "axis_units": self.axis_units}
 
+        if self.axistags != self.default_tags:
+            # Force axistags onto operator only if they have been modified by the user.
+            # This also overwrites potential pixel size metadata on `tag.resolution`.
+            metadata["axistags"] = self.axistags
         if self.drange is not None:
             metadata["drange"] = self.drange
         elif self.laneDtype == numpy.uint8:
@@ -904,7 +908,11 @@ class OpDataSelection(Operator):
                 meta = {"channel_names": [role_name]}
             data_provider.meta.update(meta)
             if data_provider.meta.scales:
+                # datasetInfo may contain metadata of the default scale.
+                # Update from data slot (which might be at a different scale)
                 datasetInfo.laneShape = data_provider.meta.shape
+                datasetInfo.axistags = data_provider.meta.axistags
+                datasetInfo.axis_units = data_provider.meta.axis_units
                 datasetInfo.scales = data_provider.meta.scales
                 datasetInfo.working_scale = data_provider.meta.active_scale
 
