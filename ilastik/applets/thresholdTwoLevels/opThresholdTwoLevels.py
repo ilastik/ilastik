@@ -224,7 +224,7 @@ class OpThresholdTwoLevels(Operator):
             self.opSumInputs.Inputs.resize(1)
             self.opSumInputs.Inputs[0].connect(self.opFinalChannelSelector.Output)
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot, subindex, roi, value):
         self.opCache.Input[roiToSlice(roi.start, roi.stop)] = value
 
     def execute(self, slot, subindex, roi, destination):

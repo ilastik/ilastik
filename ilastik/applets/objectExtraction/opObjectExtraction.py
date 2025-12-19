@@ -174,7 +174,7 @@ class OpCachedRegionFeatures(Operator):
         blockshape = (1,) * len(self._opRegionFeatures.Output.meta.shape)
         self._opCache.BlockShape.setValue(blockshape)
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot, subindex, roi, value):
         assert slot == self.CacheInput
         slicing = roiToSlice(roi.start, roi.stop)
         self._opCache.Input[slicing] = value
@@ -423,12 +423,12 @@ class OpObjectExtractionBase(Operator, ABC):
                 logger.info(msg)
                 raise DatasetConstraintError("Object Extraction", msg)
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot, subindex, roi, value):
         assert slot in [
             self.RegionFeaturesCacheInput,
             self.LabelImageCacheInput,
             self.RelabelCacheInput,
-        ], "Invalid slot for setInSlot(): {}".format(slot.name)
+        ], "Invalid slot for _setInSlot(): {}".format(slot.name)
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here."

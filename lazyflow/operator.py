@@ -28,10 +28,14 @@ import sys
 from abc import ABCMeta
 from contextlib import contextmanager
 from traceback import walk_tb, FrameSummary, format_list
+from typing import TYPE_CHECKING, Any
 
 # lazyflow
 from lazyflow.slot import InputSlot, OutputSlot, Slot
 from lazyflow.utility import exception_chain
+
+if TYPE_CHECKING:
+    from lazyflow.rtype import Roi
 
 
 class InputDict(collections.OrderedDict):
@@ -628,9 +632,15 @@ class Operator(metaclass=OperatorMetaClass):
 
         raise NotImplementedError("Operator {} does not implement execute()".format(self.name))
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot: InputSlot, subindex: int, roi: "Roi", value: Any):
+        """This method called via a slot on slot.__setitem__
+
+        is implemented in caching operators for deserialization.
+
+        Operator.SomeInputSlot[slicing] = value will trigger this method oInputSlots.
+        """
         raise NotImplementedError(
-            "Can't use __setitem__ with Operator {} because it doesn't implement setInSlot()".format(self.name)
+            "Can't use __setitem__ with Operator {} because it doesn't implement _setInSlot()".format(self.name)
         )
 
     @property

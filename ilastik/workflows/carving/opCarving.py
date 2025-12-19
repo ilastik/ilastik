@@ -545,7 +545,7 @@ class OpCarving(Operator):
             raise RuntimeError("unknown slot")
         return temp  # avoid copying data
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot, subindex, roi, value):
         assert slot == self.WriteSeeds, f"Invalid input slot: {slot.name}"
 
         with Timer() as timer:

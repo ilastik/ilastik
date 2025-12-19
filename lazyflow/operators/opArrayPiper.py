@@ -53,7 +53,7 @@ class OpArrayPiper(Operator):
             # then mark the entire output dirty.  This is the correct behavior for e.g. 'sigma' inputs.
             self.outputs["Output"].setDirty(slice(None))
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot, subindex, roi, value):
         # Implementations of this method is only needed to satisfy the flow of
         # the __setitem__ method for input slots. Nothing needs to be done here
         # as the input of the value slot is manipulated directly. When the

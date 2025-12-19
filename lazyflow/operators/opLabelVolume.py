@@ -168,8 +168,8 @@ class OpLabelVolume(OpLabelBase):
             # internal operator
             self._setBG()
 
-    def setInSlot(self, slot, subindex, roi, value):
-        #    "Invalid slot for setInSlot(): {}".format( slot.name )
+    def _setInSlot(self, slot, subindex, roi, value):
+        #    "Invalid slot for _setInSlot(): {}".format( slot.name )
         # Nothing to do here.
         # Our Input slots are directly fed into the cache,
         #  so all calls to __setitem__ are forwarded automatically
@@ -263,8 +263,8 @@ class OpLabelingABC(with_metaclass(ABCMeta, Operator)):
             self.Output.setDirty(outroi)
             self.CachedOutput.setDirty(outroi)
 
-    def setInSlot(self, slot, subindex, roi, value):
-        #    "Invalid slot for setInSlot(): {}".format( slot.name )
+    def _setInSlot(self, slot, subindex, roi, value):
+        #    "Invalid slot for _setInSlot(): {}".format( slot.name )
         # Nothing to do here.
         # Our Input slots are directly fed into the cache,
         #  so all calls to __setitem__ are forwarded automatically

@@ -81,7 +81,7 @@ class OpCroppingTopLevel(Operator):
         #  internal operators that handle their own dirty propagation.
         pass
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__
         #   are directly connected to internal operators.
         pass
@@ -207,7 +207,7 @@ class OpCroppingSingleLane(Operator):
         #  internal operators that handle their own dirty propagation.
         pass
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__
         #   are directly connected to internal operators.
         pass
