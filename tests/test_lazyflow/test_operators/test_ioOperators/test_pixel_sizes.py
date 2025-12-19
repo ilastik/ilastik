@@ -477,20 +477,6 @@ def dataset_other_pixel_size(inputdata_dir) -> FilesystemDatasetInfo:
 
 
 def test_DataSelection_roles_copies_from_raw_data(graph, dataset_with_pixel_size, dataset_no_pixel_size):
-    dataset_infos = [dataset_with_pixel_size, dataset_no_pixel_size, dataset_no_pixel_size]
-    op_data = setup_op_data_lane(dataset_infos, graph)
-
-    for i in range(3):
-        assert_eq_spatial_pixel_size(
-            op_data.ImageGroup[i], dataset_with_pixel_size.axistags, dataset_with_pixel_size.axis_units
-        )
-    assert OpDataSelectionGroup.META_COPY_KEY in op_data.ImageGroup[1].meta
-    assert op_data.ImageGroup[1].meta[OpDataSelectionGroup.META_COPY_KEY] == "Raw Data"
-    assert OpDataSelectionGroup.META_COPY_KEY in op_data.ImageGroup[2].meta
-    assert op_data.ImageGroup[2].meta[OpDataSelectionGroup.META_COPY_KEY] == "Raw Data"
-
-
-def test_DataSelection_roles_copies_from_raw_data_2roles(graph, dataset_with_pixel_size, dataset_no_pixel_size):
     dataset_infos = [dataset_with_pixel_size, dataset_no_pixel_size, None]
     op_data = setup_op_data_lane(dataset_infos, graph)
 
@@ -498,11 +484,27 @@ def test_DataSelection_roles_copies_from_raw_data_2roles(graph, dataset_with_pix
         assert_eq_spatial_pixel_size(
             op_data.ImageGroup[i], dataset_with_pixel_size.axistags, dataset_with_pixel_size.axis_units
         )
+    assert OpDataSelectionGroup.META_COPY_KEY not in op_data.ImageGroup[0].meta
     assert OpDataSelectionGroup.META_COPY_KEY in op_data.ImageGroup[1].meta
     assert op_data.ImageGroup[1].meta[OpDataSelectionGroup.META_COPY_KEY] == "Raw Data"
     assert "axistags" not in op_data.ImageGroup[2].meta
     assert "axis_units" not in op_data.ImageGroup[2].meta
     assert OpDataSelectionGroup.META_COPY_KEY not in op_data.ImageGroup[2].meta
+
+
+def test_DataSelection_roles_copies_from_raw_data_to_tertiary(graph, dataset_with_pixel_size, dataset_no_pixel_size):
+    dataset_infos = [dataset_with_pixel_size, dataset_no_pixel_size, dataset_no_pixel_size]
+    op_data = setup_op_data_lane(dataset_infos, graph)
+
+    for i in range(3):
+        assert_eq_spatial_pixel_size(
+            op_data.ImageGroup[i], dataset_with_pixel_size.axistags, dataset_with_pixel_size.axis_units
+        )
+    assert OpDataSelectionGroup.META_COPY_KEY not in op_data.ImageGroup[0].meta
+    assert OpDataSelectionGroup.META_COPY_KEY in op_data.ImageGroup[1].meta
+    assert op_data.ImageGroup[1].meta[OpDataSelectionGroup.META_COPY_KEY] == "Raw Data"
+    assert OpDataSelectionGroup.META_COPY_KEY in op_data.ImageGroup[2].meta
+    assert op_data.ImageGroup[2].meta[OpDataSelectionGroup.META_COPY_KEY] == "Raw Data"
 
 
 def test_DataSelection_roles_copies_from_secondary(graph, dataset_with_pixel_size, dataset_no_pixel_size):
@@ -515,6 +517,7 @@ def test_DataSelection_roles_copies_from_secondary(graph, dataset_with_pixel_siz
         )
     assert OpDataSelectionGroup.META_COPY_KEY in op_data.ImageGroup[0].meta
     assert op_data.ImageGroup[0].meta[OpDataSelectionGroup.META_COPY_KEY] == "Secondary"
+    assert OpDataSelectionGroup.META_COPY_KEY not in op_data.ImageGroup[1].meta
     assert OpDataSelectionGroup.META_COPY_KEY in op_data.ImageGroup[2].meta
     assert op_data.ImageGroup[2].meta[OpDataSelectionGroup.META_COPY_KEY] == "Secondary"
 
@@ -532,7 +535,7 @@ def test_DataSelection_roles_detects_conflict(
         assert_eq_spatial_pixel_size(op_data.ImageGroup[i], dataset_infos[i].axistags, dataset_infos[i].axis_units)
 
 
-def test_DataSelection_roles_warns_on_conflict(
+def test_DataSelection_roles_gui_warns_on_conflict(
     graph, dataset_with_pixel_size, dataset_no_pixel_size, dataset_other_pixel_size
 ):
     workflow = Operator(graph=graph)
@@ -616,7 +619,7 @@ def test_eq_pixel_size_ignores_singletons_and_channel(graph, shape1, res1, units
     op_data1 = get_data_op_with_pixel_size_meta(graph, axes1, shape1, res1, units1 or [])
     op_data2 = get_data_op_with_pixel_size_meta(graph, axes2, shape2, res2, units2 or [])
 
-    assert OpDataSelectionGroup.eq_pixel_size_spatial(op_data1.Output, op_data2.Output)
+    assert OpDataSelectionGroup.eq_resolution_and_units_xyzt(op_data1.Output, op_data2.Output)
 
 
 @pytest.mark.parametrize(
@@ -643,7 +646,7 @@ def test_eq_pixel_size_true_negatives(graph, shape1, res1, units1, shape2, res2,
     op_data1 = get_data_op_with_pixel_size_meta(graph, axes1, shape1, res1, units1 or [])
     op_data2 = get_data_op_with_pixel_size_meta(graph, axes2, shape2, res2, units2 or [])
 
-    assert not OpDataSelectionGroup.eq_pixel_size_spatial(op_data1.Output, op_data2.Output)
+    assert not OpDataSelectionGroup.eq_resolution_and_units_xyzt(op_data1.Output, op_data2.Output)
 
 
 @pytest.mark.parametrize(
@@ -669,9 +672,5 @@ def test_eq_pixel_size_empty(graph, expect_eq, res1, units1, res2, units2):
     shape2 = default_shape[: len(res2)]
     op_data1 = get_data_op_with_pixel_size_meta(graph, axes1, shape1, res1, units1 or [])
     op_data2 = get_data_op_with_pixel_size_meta(graph, axes2, shape2, res2, units2 or [])
-    if not units1:
-        del op_data1.Output.meta["axis_units"]
-    if not units2:
-        del op_data2.Output.meta["axis_units"]
 
-    assert OpDataSelectionGroup.eq_pixel_size_spatial(op_data1.Output, op_data2.Output) == expect_eq
+    assert OpDataSelectionGroup.eq_resolution_and_units_xyzt(op_data1.Output, op_data2.Output) == expect_eq
