@@ -13,6 +13,17 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
+        # Need to free up space for the GPU job to finish - pytorch/libtorch got quite big from 2.8.0
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
       - uses: conda-incubator/setup-miniconda@v3
         with:
           auto-update-conda: true
