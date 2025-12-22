@@ -524,7 +524,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         taggedShape["c"] = 1
         self.UncertaintyEstimateImage.meta.shape = tuple(taggedShape.values())
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot, subindex, roi, value):
         pass
 
     def propagateDirty(self, slot, subindex, roi):

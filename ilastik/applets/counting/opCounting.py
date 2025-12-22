@@ -149,7 +149,7 @@ class OpUpperBound(Operator):
     def execute(self, slot, subindex, roi, result):
 
         sigma = self.Sigma.value
-        result[...] = old_div(3, (2 * math.pi * sigma ** 2))
+        result[...] = old_div(3, (2 * math.pi * sigma**2))
         return result
 
     def propagateDirty(self, slot, subindex, roi):
@@ -410,7 +410,7 @@ class OpCounting(Operator):
         self.BoxLabelInputs[imageIndex].meta.shape = tuple(shapeList)
         self.BoxLabelInputs[imageIndex].meta.axistags = inputSlot.meta.axistags
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__
         #   are directly connected to internal operators.
         pass
@@ -539,11 +539,11 @@ class OpLabelPipeline(Operator):
 
         # Aim for blocks with roughly the same size as in pixel classification,
         # taking into account that counting will be 2d: 40 ** 3 = 256 ** 2
-        block_shape = determineBlockShape(list(tagged_shape.values()), 256 ** 2)
+        block_shape = determineBlockShape(list(tagged_shape.values()), 256**2)
         self.opLabelArray.blockShape.setValue(block_shape)
         self.opBoxArray.blockShape.setValue(block_shape)
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__
         #   are directly connected to internal operators.
         pass

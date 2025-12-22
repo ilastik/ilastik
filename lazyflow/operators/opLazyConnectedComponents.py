@@ -330,11 +330,11 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
         self._setDefaultInternals()
         self.Output.setDirty(slice(None))
 
-    def setInSlot(self, slot, subindex, key, value):
+    def _setInSlot(self, slot, subindex, key, value):
         if slot == self.InputHdf5:
             self._setInSlotInputHdf5(slot, subindex, key, value)
         else:
-            raise ValueError("setInSlot() not supported for slot {}".format(slot))
+            raise ValueError("_setInSlot() not supported for slot {}".format(slot))
 
     # grow the requested region such that all labels inside that region are
     # final

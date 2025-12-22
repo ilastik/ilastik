@@ -102,9 +102,9 @@ class OpRelabelConsecutive(OpLabelBase):
         # all outputs connected directly
         pass
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot, subindex, roi, value):
         assert slot == self.SerializationInput, f"Got unexpected slot {slot.name=}"
-        # setInSlot handled by downstream input slots
+        # _setInSlot handled by downstream input slots
         pass
 
 
@@ -362,7 +362,7 @@ class OpRelabelConsecutive5D(OpUnblockedArrayCache):
             self._block_locks: Dict[RoiTuple, RequestLock] = {}
             self._last_access_times: Dict[RoiTuple, float] = collections.defaultdict(float)
 
-    def setInSlot(self, slot, subindex, roi, block_data: Tuple[npt.NDArray, Dict[int, int]]):
+    def _setInSlot(self, slot, subindex, roi, block_data: Tuple[npt.NDArray, Dict[int, int]]):
         """
         Load cached data via the SerializationInput slot.
 

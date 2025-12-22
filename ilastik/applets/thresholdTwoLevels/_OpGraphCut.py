@@ -238,4 +238,4 @@ if __name__ == "__main__":
     # print(test._removeInnerOperator)
     print(test._setupOutputs)
     print(test.execute)
-    print(test.setInSlot)
+    print(test._setInSlot)

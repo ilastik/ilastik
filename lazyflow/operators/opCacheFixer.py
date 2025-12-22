@@ -64,7 +64,7 @@ class OpCacheFixer(Operator):
         else:
             self.Input(roi.start, roi.stop).writeInto(result).wait()
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot, subindex, roi, value):
         # Forward to the output
         self.Output[roiToSlice(roi.start, roi.stop)] = value
 

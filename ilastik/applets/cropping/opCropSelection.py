@@ -186,7 +186,7 @@ class OpCropPipeline(Operator):
         block_shape = determineBlockShape(list(tagged_shape.values()), 1e6)
         self.opCropArray.blockShape.setValue(block_shape)
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__
         #   are directly connected to internal operators.
         pass

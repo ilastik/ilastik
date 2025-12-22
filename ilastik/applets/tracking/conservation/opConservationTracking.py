@@ -253,10 +253,10 @@ class OpConservationTracking(Operator):
             result[0] = all_block_rois
             return result
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot, subindex, roi, value):
         assert (
             slot == self.InputHdf5 or slot == self.MergerInputHdf5 or slot == self.RelabeledInputHdf5
-        ), "Invalid slot for setInSlot(): {}".format(slot.name)
+        ), "Invalid slot for _setInSlot(): {}".format(slot.name)
 
     def _createHypothesesGraph(self):
         """

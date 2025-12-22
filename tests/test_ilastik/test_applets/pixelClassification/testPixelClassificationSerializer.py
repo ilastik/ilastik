@@ -125,7 +125,7 @@ class OpMockPixelClassifier(Operator):
 
         self.Classifier.connect(self.opClassifier.Classifier)
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot, subindex, roi, value):
         key = roi.toSlice()
         assert slot.name == "LabelInputs"
         self._data[subindex[0]][key] = value

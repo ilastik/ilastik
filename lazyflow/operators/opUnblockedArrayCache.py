@@ -192,7 +192,7 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
             block_slicings = list(starmap(roiToSlice, block_rois))
             result[0] = block_slicings
 
-    def setInSlot(self, slot, subindex, roi, block_data):
+    def _setInSlot(self, slot, subindex, roi, block_data):
         assert slot == self.Input
         block_roi = (tuple(roi.start), tuple(roi.stop))
 

@@ -98,7 +98,7 @@ class OpDenseLabelArray(Operator):
             self.Output.setDirty()
             self.NonzeroBlocks.setDirty()
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot, subindex, roi, value):
         if slot == self.LabelSinkInput:
             # Extract the data to modify
             orig_block = self._cache[roiToSlice(roi.start, roi.stop)]

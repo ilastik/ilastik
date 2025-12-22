@@ -174,7 +174,7 @@ class OpCachedRegionFeatures(Operator):
         blockshape = (1,) * len(self._opRegionFeatures.Output.meta.shape)
         self._opCache.BlockShape.setValue(blockshape)
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot, subindex, roi, value):
         assert slot == self.CacheInput
         slicing = roiToSlice(roi.start, roi.stop)
         self._opCache.Input[slicing] = value
@@ -423,12 +423,12 @@ class OpObjectExtractionBase(Operator, ABC):
                 logger.info(msg)
                 raise DatasetConstraintError("Object Extraction", msg)
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot, subindex, roi, value):
         assert slot in [
             self.RegionFeaturesCacheInput,
             self.LabelImageCacheInput,
             self.RelabelCacheInput,
-        ], "Invalid slot for setInSlot(): {}".format(slot.name)
+        ], "Invalid slot for _setInSlot(): {}".format(slot.name)
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here."
@@ -520,17 +520,18 @@ class OpRegionFeatures(Operator):
 
     def setupOutputs(self):
         if self.LabelVolume.meta.axistags != self.RawVolume.meta.axistags:
-            raise Exception(
-                f"raw and label axis tags do not match ({self.RawVolume.meta.axistags} != {self.LabelVolume.meta.axistags})."
+            raise DatasetConstraintError(
+                "Object Feature Selection",
+                f"Raw and label axis tags do not match ({self.RawVolume.meta.axistags} != {self.LabelVolume.meta.axistags}).",
             )
 
         taggedOutputShape = self.LabelVolume.meta.getTaggedShape()
         taggedRawShape = self.RawVolume.meta.getTaggedShape()
 
         if not numpy.all(list(taggedOutputShape.get(k, 0) == taggedRawShape.get(k, 0) for k in "txyz")):
-            raise Exception(
-                "shapes do not match. label volume shape: {}."
-                " raw data shape: {}".format(self.LabelVolume.meta.shape, self.RawVolume.meta.shape)
+            raise DatasetConstraintError(
+                "Object Feature Selection",
+                f"Shapes do not match. Label volume shape: {self.LabelVolume.meta.shape} Raw data shape: {self.RawVolume.meta.shape}.",
             )
 
         self.Output.meta.shape = (taggedOutputShape["t"],)

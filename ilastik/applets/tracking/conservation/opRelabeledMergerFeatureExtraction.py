@@ -64,8 +64,8 @@ class OpDifference(Operator):
         if inputSlot is self.ImageA or inputSlot is self.ImageB:
             self.Output.setDirty(roi)
 
-    def setInSlot(self, slot, subindex, roi, value):
-        assert False, "OpDifference does not allow setInSlot()"
+    def _setInSlot(self, slot, subindex, roi, value):
+        assert False, "OpDifference does not allow _setInSlot()"
 
 
 class OpZeroBasedConsecutiveIndexRelabeling(Operator):
@@ -119,8 +119,8 @@ class OpZeroBasedConsecutiveIndexRelabeling(Operator):
         if inputSlot is self.LabelImage:
             self.Output.setDirty(roi)
 
-    def setInSlot(self, slot, subindex, roi, value):
-        assert False, "OpZeroBasedConsecutiveIndexRelabeling does not allow setInSlot()"
+    def _setInSlot(self, slot, subindex, roi, value):
+        assert False, "OpZeroBasedConsecutiveIndexRelabeling does not allow _setInSlot()"
 
     def cleanUp(self):
         self.LabelImage.disconnect()
@@ -225,8 +225,8 @@ class OpRelabeledMergerFeatureExtraction(Operator):
             self.RegionFeatures.setDirty(roi)
             self.RegionFeaturesVigra.setDirty(roi)
 
-    def setInSlot(self, slot, subindex, roi, value):
-        assert False, "Invalid slot for setInSlot(): {}".format(slot.name)
+    def _setInSlot(self, slot, subindex, roi, value):
+        assert False, "Invalid slot for _setInSlot(): {}".format(slot.name)
 
     def _checkConstraints(self, *args):
         if self.RawImage.ready():
