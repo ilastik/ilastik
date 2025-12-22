@@ -24,6 +24,10 @@ jobs:
           large-packages: true
           docker-images: true
           swap-storage: true
+      - name: install xvfb/deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -yy mesa-utils libgl1-mesa-dev xvfb curl
       - uses: conda-incubator/setup-miniconda@v3
         with:
           auto-update-conda: true
