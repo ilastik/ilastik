@@ -9,6 +9,8 @@ jobs:
   package:
     runs-on: ubuntu-latest
     environment: conda-deploy
+    env:
+      CONDA_OVERRIDE_CUDA: "12.6"
     steps:
       - uses: actions/checkout@v6
         with:
