@@ -704,7 +704,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         opClassify.CachedFeatureImages.connect(opTrainingFeatures.CachedOutputImage)
 
         op5raw = OpReorderAxes(parent=self, AxisOrder="txyzc", Input=rawslot)
-        op5pred = OpReorderAxes(parent=self, AxisOrder="txyzc", Input=opClassify.CachedPredictionProbabilities)
+        op5pred = OpReorderAxes(parent=self, AxisOrder="txyzc", Input=opClassify.BlockCachedPredictionProbabilities)
 
         opThreshold.RawInput.connect(op5raw.Output)
         opThreshold.InputImage.connect(op5pred.Output)

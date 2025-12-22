@@ -30,6 +30,7 @@ import numpy
 import vigra
 
 # lazyflow
+from lazyflow.operators.opSimpleBlockedArrayCache import OpSimpleBlockedArrayCache
 from lazyflow.roi import determineBlockShape
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators import (
@@ -99,7 +100,10 @@ class OpPixelClassification(Operator):
 
     CachedPredictionProbabilities = OutputSlot(
         level=1
-    )  # Classification predictions (via feature cache AND prediction cache)
+    )  # Classification predictions from sliced cache for gui (via feature cache AND prediction cache)
+    BlockCachedPredictionProbabilities = OutputSlot(
+        level=1
+    )  # classification predictions from blocked cache for downstream processing, as in PC + OC
 
     HeadlessPredictionProbabilities = OutputSlot(
         level=1
@@ -204,6 +208,7 @@ class OpPixelClassification(Operator):
         self.PredictionProbabilities.connect(self.opPredictionPipeline.PredictionProbabilities)
         self.PredictionProbabilitiesAutocontext.connect(self.opPredictionPipeline.PredictionProbabilitiesAutocontext)
         self.CachedPredictionProbabilities.connect(self.opPredictionPipeline.CachedPredictionProbabilities)
+        self.BlockCachedPredictionProbabilities.connect(self.opPredictionPipeline.BlockCachedPredictionProbabilities)
         self.HeadlessPredictionProbabilities.connect(self.opPredictionPipeline.HeadlessPredictionProbabilities)
         self.HeadlessUint8PredictionProbabilities.connect(
             self.opPredictionPipeline.HeadlessUint8PredictionProbabilities
@@ -221,6 +226,7 @@ class OpPixelClassification(Operator):
                 self.NonzeroLabelBlocks.resize(0)
                 self.PredictionProbabilities.resize(0)
                 self.CachedPredictionProbabilities.resize(0)
+                self.BlockCachedPredictionProbabilities.resize(0)
 
         self.InputImages.notifyResized(inputResizeHandler)
 
@@ -558,6 +564,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
 
     PredictionProbabilities = OutputSlot()
     CachedPredictionProbabilities = OutputSlot()
+    BlockCachedPredictionProbabilities = OutputSlot()
 
     PredictionProbabilitiesAutocontext = OutputSlot()
 
@@ -588,6 +595,12 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.prediction_cache_gui.inputs["fixAtCurrent"].connect(self.FreezePredictions)
         self.prediction_cache_gui.inputs["Input"].connect(self.predict.PMaps)
         self.CachedPredictionProbabilities.connect(self.prediction_cache_gui.Output)
+
+        # Blocked cache for downstream processing
+        self.prediction_cache_blocked = OpSimpleBlockedArrayCache(parent=self)
+        self.prediction_cache_blocked.name = f"prediction_cache_blocked"
+        self.prediction_cache_blocked.Input.connect(self.predict.PMaps)
+        self.BlockCachedPredictionProbabilities.connect(self.prediction_cache_blocked.Output)
 
         # Also provide each prediction channel as a separate layer (for the GUI)
         self.opPredictionSlicer = OpMultiArraySlicer2(parent=self)
@@ -637,6 +650,25 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
 
         self.prediction_cache_gui.BlockShape.setValue((blockShapeX, blockShapeY, blockShapeZ))
         self.opUncertaintyCache.BlockShape.setValue((blockShapeX, blockShapeY, blockShapeZ))
+
+        pmap_shape = self.predict.PMaps.meta.getTaggedShape()
+        is_data_3d = all(pmap_shape[ax] > 3 for ax in "xyz" if ax in pmap_shape)
+        if is_data_3d:
+            block_size = 64
+        else:
+            block_size = 512
+
+        block_shape = []
+        for ax, sz in pmap_shape.items():
+            if ax in "xyz":
+                block_shape.append(block_size)
+            elif ax == "c":
+                block_shape.append(sz)
+            elif ax == "t":
+                block_shape.append(1)
+            else:
+                raise ValueError(f"Got unexpected axis {ax} with size {sz}, only expected `tzyxc`.")
+        self.prediction_cache_blocked.BlockShape.setValue(tuple(block_shape))
 
 
 class OpEnsembleMargin(Operator):
