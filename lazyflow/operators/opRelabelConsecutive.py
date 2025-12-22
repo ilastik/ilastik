@@ -65,7 +65,6 @@ class OpRelabelConsecutive(OpLabelBase):
 
     CompressionEnabled = InputSlot(value=False)
 
-    SerializationInput = InputSlot(optional=True)
     SerializationOutput = OutputSlot()
 
     supportedDtypes = [numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64]

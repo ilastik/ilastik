@@ -127,6 +127,7 @@ class OpLabelVolume(OpLabelBase):
             self._opLabel = self._labelOps[method](parent=self)
             if method == "vigra":
                 self._opLabel.BypassModeEnabled.connect(self.BypassModeEnabled)
+                self._opLabel.SerializationInput.connect(self.SerializationInput)
 
         if input_dtype == np.uint16:
             self._opDtypeConvert.Function.setValue(lambda x: x.astype("uint32"))
@@ -202,6 +203,8 @@ class OpLabelingABC(with_metaclass(ABCMeta, Operator)):
     # Bypass cache (for headless mode)
     BypassModeEnabled = InputSlot(value=False)
 
+    SerializationInput = InputSlot(optional=True)
+
     Output = OutputSlot()
     CachedOutput = OutputSlot()
 
@@ -222,6 +225,9 @@ class OpLabelingABC(with_metaclass(ABCMeta, Operator)):
         self._cache.name = "OpLabelVolume.OutputCache"
         self._cache.BypassModeEnabled.connect(self.BypassModeEnabled)
         self._cache.Input.connect(self.Output)
+        if self.SerializationInput.ready():
+            # Setup LabelImageCacheInput for the serialization of the compressed cache
+            self._cache.Input.connect(self.SerializationInput)
         self.CachedOutput.connect(self._cache.Output)
         self.CleanBlocks.connect(self._cache.CleanBlocks)
 

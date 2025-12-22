@@ -79,6 +79,20 @@ jobs:
         if: |
           matrix.os == 'windows-latest' &&
           matrix.ilastik_variant == 'ilastik-gpu'
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
+        # Need to free up space for the GPU job to finish - pytorch/libtorch got quite big from 2.8.0
+        if: |
+          matrix.os == 'ubuntu-latest' &&
+          matrix.ilastik_variant == 'ilastik-gpu'
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0

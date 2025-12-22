@@ -18,41 +18,42 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-import json
-from abc import abstractmethod, ABC
-import glob
-import os
-import uuid
-from collections import OrderedDict
-from typing import List, Tuple, Dict, Optional, Union, Callable
-from numbers import Number
-import re
-from pathlib import Path
 import errno
+import glob
+import itertools
+import json
+import os
+import re
+import uuid
+from abc import abstractmethod, ABC
+from collections import OrderedDict
+from numbers import Number
+from pathlib import Path
+from typing import List, Tuple, Dict, Optional, Union, Callable, Set
 
+import h5py
 import numpy
 import vigra
-from vigra import AxisTags
-import h5py
 import z5py
 from ndstructs import Shape5D
-
-from lazyflow.graph import InputSlot, OutputSlot, OperatorWrapper
-from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
-from lazyflow.operators.ioOperators import OpInputDataReader
-from lazyflow.operators.opArrayPiper import OpArrayPiper
-from ilastik.applets.base.applet import DatasetConstraintError
+from vigra import AxisTags
 
 from ilastik import Project
+from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.utility import OpMultiLaneWrapper
 from ilastik.workflow import Workflow
-from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, Multiscales
-from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
-from lazyflow.utility.helpers import get_default_axisordering, eq_shapes
-from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.base import Axiskey
+from lazyflow.graph import Graph, Operator
+from lazyflow.graph import InputSlot, OutputSlot, OperatorWrapper, Slot
 from lazyflow.operators import OpMissingDataSource
 from lazyflow.operators.ioOperators import OpH5N5WriterBigDataset
-from lazyflow.graph import Graph, Operator
+from lazyflow.operators.ioOperators import OpInputDataReader
+from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
+from lazyflow.operators.opArrayPiper import OpArrayPiper
+from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.utility.helpers import get_default_axisordering, eq_shapes
+from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, Multiscales
+from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
 
 
 def getTypeRange(numpy_type):
@@ -950,10 +951,13 @@ class OpDataSelection(Operator):
 class OpDataSelectionGroup(Operator):
     """
     Handles a single data lane, i.e. a row, across the different tabs in the input data table.
-    This primarily means managing copies of slots for all roles (Raw Data, Prediction Mask,...) in the lane.
-    User actions that affect all roles in the lane also interact with this operator,
-    e.g. changing axistags (through DatasetInfos passed into .configure()).
+    This means setting up and managing a group of OpDataSelection,
+    one per role / tab like Raw Data, Segmentation etc. (DatasetRoles).
+    User interactions that affect all roles interface here, e.g. coordinating scales for
+    multiscale datasets, or common metadata like physical pixel size.
     """
+
+    META_COPY_KEY = "pixel_size_source"
 
     # Inputs
     ProjectFile = InputSlot(stype="object", optional=True)
@@ -1046,6 +1050,7 @@ class OpDataSelectionGroup(Operator):
 
         for role_index, opDataSelection in enumerate(self._opDatasets):
             opDataSelection.RoleName.setValue(self._roles[role_index])
+            opDataSelection.Image.notifyReady(self._unify_pixel_size)
 
         if len(self._opDatasets.Image) > 0:
             self.Image.connect(self._opDatasets.Image[0])
@@ -1072,6 +1077,109 @@ class OpDataSelectionGroup(Operator):
         # causing setupOutputs throughout the workflow with different data roles providing different data shape.
         if self.ScaleChangeFinished.ready():
             raise TransactionRequiredError("must disconnect ScaleChangeFinished first before changing scale")
+
+    def _unify_pixel_size(self, *_):
+        role_slots = [slot for slot in self._opDatasets.Image if slot.ready()]
+        roles_with_pixel_size = [slot for slot in role_slots if self._has_pixel_size(slot)]
+        if not roles_with_pixel_size:
+            return
+        eq_all_with_pixel_size = all(
+            self.eq_resolution_and_units_xyzt(slot1, slot2)
+            for slot1, slot2 in itertools.combinations(roles_with_pixel_size, 2)
+        )
+        if eq_all_with_pixel_size:
+            roles_without_pixel_size = [slot for slot in role_slots if slot not in roles_with_pixel_size]
+            source = next(slot for slot in roles_with_pixel_size if self.META_COPY_KEY not in slot.meta)
+            source_role_index = list(self._opDatasets.Image).index(source)
+            source_role = self.DatasetRoles.value[source_role_index]
+            self._copy_pixel_size(source, roles_without_pixel_size, source_role)
+        else:
+            roles_previously_copied = [slot for slot in roles_with_pixel_size if self.META_COPY_KEY in slot.meta]
+            self._remove_pixel_size(roles_previously_copied)
+
+    @staticmethod
+    def _has_pixel_size(slot: Slot):
+        if "axistags" not in slot.meta:
+            return False
+        has_units = "axis_units" in slot.meta and slot.meta.axis_units and any(u for u in slot.meta.axis_units.values())
+        has_res = any(not numpy.isclose(tag.resolution, 0.0, atol=1e-15) for tag in slot.meta.axistags)
+        return has_units or has_res
+
+    @staticmethod
+    def _remove_pixel_size(targets: List[Slot]):
+        for target in targets:
+            assert (
+                OpDataSelectionGroup.META_COPY_KEY in target.meta
+            ), "Can only remove pixel size meta from slots that copied it from another one"
+            for tag in target.meta.axistags:
+                tag.resolution = 0.0
+            if "axis_units" in target.meta:
+                del target.meta["axis_units"]
+            del target.meta[OpDataSelectionGroup.META_COPY_KEY]
+
+    @staticmethod
+    def _copy_pixel_size(source: Slot, targets: List[Slot], source_role: str):
+        for target in targets:
+            for target_tag in target.meta.axistags:
+                ax = target_tag.key
+                if ax in source.meta.axistags:
+                    target_tag.resolution = source.meta.axistags[ax].resolution
+            if "axis_units" in source.meta and source.meta.axis_units:
+                target.meta.axis_units = source.meta.axis_units
+            target.meta[OpDataSelectionGroup.META_COPY_KEY] = source_role
+
+    @staticmethod
+    def eq_resolution_and_units_xyzt(slot1: Slot, slot2: Slot):
+        eq_res = OpDataSelectionGroup._eq_resolutions(slot1, slot2)
+        eq_units = OpDataSelectionGroup._eq_units(slot1, slot2)
+        return eq_res and eq_units
+
+    @staticmethod
+    def _get_singletons(slot1: Slot, slot2: Slot) -> Set[Axiskey]:
+        singletons1 = [a for a, s in slot1.meta.getTaggedShape().items() if s == 1]
+        singletons2 = [a for a, s in slot2.meta.getTaggedShape().items() if s == 1]
+        all_singletons = set(singletons1 + singletons2)
+        return all_singletons
+
+    @staticmethod
+    def _eq_resolutions(slot1: Slot, slot2: Slot, atol=1e-8):
+        tags1 = slot1.meta.axistags
+        tags2 = slot2.meta.axistags
+        singletons = OpDataSelectionGroup._get_singletons(slot1, slot2)
+        axiskeys = set(tags1.keys() + tags2.keys()) - singletons
+        axiskeys.discard("c")
+        for key in axiskeys:
+            res1 = tags1[key].resolution if key in tags1 else 0.0
+            res2 = tags2[key].resolution if key in tags2 else 0.0
+            if not numpy.isclose(res1, res2, atol=atol):
+                return False
+        return True
+
+    @staticmethod
+    def _eq_units(slot1: Slot, slot2: Slot):
+        def _empty(meta):
+            return (
+                "axis_units" not in meta
+                or meta.axis_units is None
+                or not meta.axis_units
+                or all(not v for v in meta.axis_units.values())
+            )
+
+        if _empty(slot1.meta) and _empty(slot2.meta):
+            return True
+        if _empty(slot1.meta) or _empty(slot2.meta):
+            return False
+        units1 = slot1.meta.axis_units
+        units2 = slot2.meta.axis_units
+        singletons = OpDataSelectionGroup._get_singletons(slot1, slot2)
+        axiskeys = set(units1.keys()) & set(units2.keys()) - singletons
+        axiskeys.discard("c")
+        for key in axiskeys:
+            unit1 = units1.get(key, "")
+            unit2 = units2.get(key, "")
+            if unit1 != unit2:
+                return False
+        return True
 
 
 class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):
