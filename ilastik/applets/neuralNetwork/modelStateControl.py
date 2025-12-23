@@ -408,7 +408,7 @@ class ModelStateControl(QWidget):
 
     @threadRouted
     def _showErrorMessage(self, exc):
-        logger.error("".join(traceback.format_exception(etype=type(exc), value=exc, tb=exc.__traceback__)))
+        logger.error("".join(traceback.format_exception(type(exc), value=exc, tb=exc.__traceback__)))
         QMessageBox.critical(
             self, "ilastik detected a problem with your model", f"Failed to initialize model:\n {type(exc)} {exc}"
         )
