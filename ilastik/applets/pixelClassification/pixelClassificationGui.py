@@ -57,6 +57,7 @@ from lazyflow.roi import slicing_to_string
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.ioOperators import OpInputDataReader
 from lazyflow.operators import OpFeatureMatrixCache
+from lazyflow.operators.generic import OpPixelOperator
 
 # ilastik
 from ilastik.config import cfg as ilastik_config
@@ -653,7 +654,11 @@ class PixelClassificationGui(LabelingGui):
         # Show the mask over everything except labels
         maskSlot = self.topLevelOperatorView.PredictionMasks
         if maskSlot.ready():
-            maskLayer = self._create_binary_mask_layer_from_slot(maskSlot)
+            op_cast_mask = OpPixelOperator(parent=maskSlot.operator)
+            op_cast_mask.Input.connect(maskSlot)
+            op_cast_mask.Function.setValue(lambda x: x.astype(numpy.uint32))
+            maskLayer = self._create_binary_mask_layer_from_slot(op_cast_mask.Output)
+
             maskLayer.name = "Mask"
             maskLayer.visible = True
             maskLayer.opacity = 1.0
