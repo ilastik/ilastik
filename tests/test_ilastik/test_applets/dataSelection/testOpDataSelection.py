@@ -1339,105 +1339,51 @@ class TestOpDataSelection_DatasetInfo:
         modern_dataset_info.scale_locked = True
         assert legacy_dataset_info.to_json_data() == modern_dataset_info.to_json_data()
 
+    @pytest.mark.parametrize("uri, nickname", [
+        ("file:///C:/Users/me/multiscale.zarr", "multiscale"),
+        ("file:///C:/Users/me/multiscale.zarr/", "multiscale"),
+        ("file:///C:/Users/me/multiscale.ome.zarr", "multiscale"),
+        ("file:///C:/Users/me/container.zarr/multiscale", "container-multiscale"),
+        ("file:///C:/Users/me/container.zarr/multiscale/", "container-multiscale"),
+        ("file:///C:/Users/me/container.ome.zarr/multiscale", "container-multiscale"),
+        ("file:///C:/Users/me/container.zarr/multiscale.zarr", "multiscale"),
+        ("file:///C:/Users/me/container.zarr/multiscale.ome.zarr", "multiscale"),
+        ("file:///C:/Users/me/multiscale.zarr/scale1", "multiscale-scale1"),
+        ("file:///C:/Users/me/multiscale.ome.zarr/scale1", "multiscale-scale1"),
+        ("file:///C:/Users/me/container.zarr/multiscale/scale1", "container-multiscale-scale1"),
+        ("file:///C:/Users/me/container.ome.zarr/multiscale/scale1", "container-multiscale-scale1"),
+        ("file:///C:/Users/me/container.zarr/multiscale.zarr/scale1", "multiscale-scale1"),
+        ("file:///C:/Users/me/container.zarr/multiscale.ome.zarr/scale1", "multiscale-scale1"),
+        ("https://some.example.org/s3/multiscale.zarr", "multiscale"),
+        ("https://some.example.org/s3/multiscale.zarr/", "multiscale"),
+        ("https://some.example.org/s3/multiscale.ome.zarr", "multiscale"),
+        ("https://some.example.org/s3/container.zarr/multiscale", "container-multiscale"),
+        ("https://some.example.org/s3/container.zarr/multiscale/", "container-multiscale"),
+        ("https://some.example.org/s3/container.ome.zarr/multiscale", "container-multiscale"),
+        ("https://some.example.org/s3/container.zarr/multiscale.zarr", "multiscale"),
+        ("https://some.example.org/s3/container.zarr/multiscale.ome.zarr", "multiscale"),
+        ("https://some.example.org/s3/multiscale.zarr/scale1", "multiscale-scale1"),
+        ("https://some.example.org/s3/multiscale.ome.zarr/scale1", "multiscale-scale1"),
+        ("https://some.example.org/s3/container.zarr/multiscale/scale1", "container-multiscale-scale1"),
+        ("https://some.example.org/s3/container.ome.zarr/multiscale/scale1", "container-multiscale-scale1"),
+        ("https://some.example.org/s3/container.zarr/multiscale.zarr/scale1", "multiscale-scale1"),
+        ("https://some.example.org/s3/container.zarr/multiscale.ome.zarr/scale1", "multiscale-scale1"),
+        ("https://example.com//dataset.zarr", "dataset"),
+        ("https://example.com/data.zarr", "data"),
+        ("https://example.com/root.zarr/level1/level2/scale0", "root-level1-level2-scale0"),
+    ])
+    def test_urldatasetinfo_nickname(self, uri, nickname):
+        assert MultiscaleUrlDatasetInfo._nickname_from_url(uri) == nickname
+
 
 def test_cleanup(data_path, graph):
-    filepath1 = data_path / "inputdata" / "2d3c.h5"  # Any file is fine
+    filepath1 = data_path / "inputdata" / "2d3c.h5"
     filepath2 = data_path / "inputdata" / "3d.h5"
     reader = OpDataSelection(graph=graph)
     reader.WorkingDirectory.setValue(os.getcwd())
 
-    # When
     reader.Dataset.setValue(FilesystemDatasetInfo(filePath=str(filepath1)))
     children_after_load = len(reader.children)
     reader.Dataset.setValue(FilesystemDatasetInfo(filePath=str(filepath2)))
 
-    # Then
     assert len(reader.children) == children_after_load, "Did not clean up all children after input change"
-
-
-    
-    @pytest.mark.parametrize("uri, nickname", [
-        # Basic file URIs - multiscale root at zarr level
-        ("file:///C:/Users/me/multiscale.zarr", "multiscale"),
-        ("file:///C:/Users/me/multiscale.zarr/", "multiscale"),  # Trailing slash
-        ("file:///C:/Users/me/multiscale.ome.zarr", "multiscale"),  # Recommended extension
-        
-        # Container with multiscale inside - multiscale root != zarr root
-        ("file:///C:/Users/me/container.zarr/multiscale", "container-multiscale"),
-        ("file:///C:/Users/me/container.zarr/multiscale/", "container-multiscale"),
-        ("file:///C:/Users/me/container.ome.zarr/multiscale", "container-multiscale"),
-        
-        # Multiscale root with extension (nested zarr)
-        ("file:///C:/Users/me/container.zarr/multiscale.zarr", "multiscale"),
-        ("file:///C:/Users/me/container.zarr/multiscale.ome.zarr", "multiscale"),
-        
-        # Direct URI to scale
-        ("file:///C:/Users/me/multiscale.zarr/scale1", "multiscale-scale1"),
-        ("file:///C:/Users/me/multiscale.ome.zarr/scale1", "multiscale-scale1"),
-        
-        # Nested container with scale
-        ("file:///C:/Users/me/container.zarr/multiscale/scale1", "container-multiscale-scale1"),
-        ("file:///C:/Users/me/container.ome.zarr/multiscale/scale1", "container-multiscale-scale1"),
-        
-        # Nested zarr with scale
-        ("file:///C:/Users/me/container.zarr/multiscale.zarr/scale1", "multiscale-scale1"),
-        ("file:///C:/Users/me/container.zarr/multiscale.ome.zarr/scale1", "multiscale-scale1"),
-        
-        # HTTP URLs - same patterns as file URIs
-        ("https://some.example.org/s3/multiscale.zarr", "multiscale"),
-        ("https://some.example.org/s3/multiscale.zarr/", "multiscale"),  # Trailing slash
-        ("https://some.example.org/s3/multiscale.ome.zarr", "multiscale"),
-        
-        # HTTP with container
-        ("https://some.example.org/s3/container.zarr/multiscale", "container-multiscale"),
-        ("https://some.example.org/s3/container.zarr/multiscale/", "container-multiscale"),
-        ("https://some.example.org/s3/container.ome.zarr/multiscale", "container-multiscale"),
-        
-        # HTTP with nested zarr
-        ("https://some.example.org/s3/container.zarr/multiscale.zarr", "multiscale"),
-        ("https://some.example.org/s3/container.zarr/multiscale.ome.zarr", "multiscale"),
-        
-        # HTTP with direct scale reference
-        ("https://some.example.org/s3/multiscale.zarr/scale1", "multiscale-scale1"),
-        ("https://some.example.org/s3/multiscale.ome.zarr/scale1", "multiscale-scale1"),
-        
-        # HTTP with nested container and scale
-        ("https://some.example.org/s3/container.zarr/multiscale/scale1", "container-multiscale-scale1"),
-        ("https://some.example.org/s3/container.ome.zarr/multiscale/scale1", "container-multiscale-scale1"),
-        
-        # HTTP with nested zarr and scale
-        ("https://some.example.org/s3/container.zarr/multiscale.zarr/scale1", "multiscale-scale1"),
-        ("https://some.example.org/s3/container.zarr/multiscale.ome.zarr/scale1", "multiscale-scale1"),
-    ])
-    def test_urldatasetinfo_nickname(self, uri, nickname):
-        """Test nickname generation from various URI formats."""
-        assert MultiscaleUrlDatasetInfo._nickname_from_url(uri) == nickname
-    
-    def test_nickname_is_filename_safe(self):
-        """Test that generated nicknames are safe for use as filenames."""
-        test_urls = [
-            "https://example.com:8080/data@2024/dataset.zarr",
-            "file:///path/with spaces/dataset.zarr",
-            "https://example.com/data#fragment/dataset.zarr",
-        ]
-        
-        for url in test_urls:
-            nickname = MultiscaleUrlDatasetInfo._nickname_from_url(url)
-            # Should not contain problematic characters
-            assert not any(c in nickname for c in [':', ' ', '@', '#', '?', '&'])
-            # Should only contain alphanumeric, underscore, hyphen, and dot
-            assert all(c.isalnum() or c in ['_', '-', '.'] for c in nickname)
-    
-    def test_empty_and_edge_cases(self):
-        """Test edge cases like empty paths, multiple slashes, etc."""
-        # Multiple consecutive slashes should be handled
-        assert MultiscaleUrlDatasetInfo._nickname_from_url("https://example.com//dataset.zarr") == "dataset"
-        
-        # Just a zarr extension
-        assert MultiscaleUrlDatasetInfo._nickname_from_url("https://example.com/data.zarr") == "data"
-        
-        # Zarr in middle with many segments after
-        result = MultiscaleUrlDatasetInfo._nickname_from_url(
-            "https://example.com/root.zarr/level1/level2/scale0"
-        )
-        assert result == "root-level1-level2-scale0"

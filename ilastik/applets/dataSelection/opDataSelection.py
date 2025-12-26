@@ -625,52 +625,24 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
 
     @staticmethod
     def _nickname_from_url(url: str) -> str:
-        """
-        Generate a nickname from a URL, using the pattern:
-        "last URI segment with .zarr (or .ome.zarr) plus all segments after it"
-        
-        For multiscale datasets, this creates descriptive nicknames like:
-        - "multiscale" for .../multiscale.zarr
-        - "container-multiscale" for .../container.zarr/multiscale
-        - "multiscale-scale1" for .../multiscale.zarr/scale1
-        
-        Args:
-            url: The URL to generate a nickname from
-            
-        Returns:
-            A filename-safe nickname string
-        """
-        # Remove trailing slashes and split into segments
         url = url.rstrip("/")
-        
-        
+        path_part = re.sub(r"^[a-zA-Z][a-zA-Z0-9+.-]*://[^/]+", "", url)
         segments = path_part.split("/")
         
-        # Find the last segment with .zarr or .ome.zarr extension
-        zarr_extensions = [".ome.zarr", ".zarr"]
         zarr_index = -1
-        
         for i in range(len(segments) - 1, -1, -1):
-            for ext in zarr_extensions:
-                if segments[i].endswith(ext):
-                    zarr_index = i
-                    break
-            if zarr_index != -1:
+            if segments[i].endswith(".ome.zarr") or segments[i].endswith(".zarr"):
+                zarr_index = i
                 break
         
-        if not zarr_segments:
+        if zarr_index == -1:
             nickname_parts = [segments[-1]]
         else:
-            last_zarr = zarr_segments[-1]
-            parts_after_last_zarr = "".join(url.rpartition(last_zarr)[1:]).split("/")
-            nickname_parts = [seg.removesuffix(".zarr").removesuffix(".ome") for seg in parts_after_last_zarr]
+            nickname_parts = segments[zarr_index:]
+            nickname_parts[0] = nickname_parts[0].removesuffix(".zarr").removesuffix(".ome")
         
-        # Join parts with hyphens
         nickname = "-".join(nickname_parts)
-        
-        filename_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", nickname)
-        
-        return filename_safe
+        return re.sub(r"[^a-zA-Z0-9_.-]", "_", nickname)
 
 
 class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
