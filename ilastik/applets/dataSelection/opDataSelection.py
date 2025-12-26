@@ -666,7 +666,7 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
             nickname_parts = [seg.removesuffix(".zarr").removesuffix(".ome") for seg in parts_after_last_zarr]
         
         # Join parts with hyphens
-        nickname = "-".join(nickname_parts) if nickname_parts else "dataset"
+        nickname = "-".join(nickname_parts)
         
         filename_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", nickname)
         
