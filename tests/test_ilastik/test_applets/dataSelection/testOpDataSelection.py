@@ -1339,17 +1339,51 @@ class TestOpDataSelection_DatasetInfo:
         modern_dataset_info.scale_locked = True
         assert legacy_dataset_info.to_json_data() == modern_dataset_info.to_json_data()
 
+    @pytest.mark.parametrize("uri, nickname", [
+        ("file:///C:/Users/me/multiscale.zarr", "multiscale"),
+        ("file:///C:/Users/me/multiscale.zarr/", "multiscale"),
+        ("file:///C:/Users/me/multiscale.ome.zarr", "multiscale"),
+        ("file:///C:/Users/me/container.zarr/multiscale", "container-multiscale"),
+        ("file:///C:/Users/me/container.zarr/multiscale/", "container-multiscale"),
+        ("file:///C:/Users/me/container.ome.zarr/multiscale", "container-multiscale"),
+        ("file:///C:/Users/me/container.zarr/multiscale.zarr", "multiscale"),
+        ("file:///C:/Users/me/container.zarr/multiscale.ome.zarr", "multiscale"),
+        ("file:///C:/Users/me/multiscale.zarr/scale1", "multiscale-scale1"),
+        ("file:///C:/Users/me/multiscale.ome.zarr/scale1", "multiscale-scale1"),
+        ("file:///C:/Users/me/container.zarr/multiscale/scale1", "container-multiscale-scale1"),
+        ("file:///C:/Users/me/container.ome.zarr/multiscale/scale1", "container-multiscale-scale1"),
+        ("file:///C:/Users/me/container.zarr/multiscale.zarr/scale1", "multiscale-scale1"),
+        ("file:///C:/Users/me/container.zarr/multiscale.ome.zarr/scale1", "multiscale-scale1"),
+        ("https://some.example.org/s3/multiscale.zarr", "multiscale"),
+        ("https://some.example.org/s3/multiscale.zarr/", "multiscale"),
+        ("https://some.example.org/s3/multiscale.ome.zarr", "multiscale"),
+        ("https://some.example.org/s3/container.zarr/multiscale", "container-multiscale"),
+        ("https://some.example.org/s3/container.zarr/multiscale/", "container-multiscale"),
+        ("https://some.example.org/s3/container.ome.zarr/multiscale", "container-multiscale"),
+        ("https://some.example.org/s3/container.zarr/multiscale.zarr", "multiscale"),
+        ("https://some.example.org/s3/container.zarr/multiscale.ome.zarr", "multiscale"),
+        ("https://some.example.org/s3/multiscale.zarr/scale1", "multiscale-scale1"),
+        ("https://some.example.org/s3/multiscale.ome.zarr/scale1", "multiscale-scale1"),
+        ("https://some.example.org/s3/container.zarr/multiscale/scale1", "container-multiscale-scale1"),
+        ("https://some.example.org/s3/container.ome.zarr/multiscale/scale1", "container-multiscale-scale1"),
+        ("https://some.example.org/s3/container.zarr/multiscale.zarr/scale1", "multiscale-scale1"),
+        ("https://some.example.org/s3/container.zarr/multiscale.ome.zarr/scale1", "multiscale-scale1"),
+        ("https://example.com//dataset.zarr", "dataset"),
+        ("https://example.com/data.zarr", "data"),
+        ("https://example.com/root.zarr/level1/level2/scale0", "root-level1-level2-scale0"),
+    ])
+    def test_urldatasetinfo_nickname(self, uri, nickname):
+        assert MultiscaleUrlDatasetInfo._nickname_from_url(uri) == nickname
+
 
 def test_cleanup(data_path, graph):
-    filepath1 = data_path / "inputdata" / "2d3c.h5"  # Any file is fine
+    filepath1 = data_path / "inputdata" / "2d3c.h5"
     filepath2 = data_path / "inputdata" / "3d.h5"
     reader = OpDataSelection(graph=graph)
     reader.WorkingDirectory.setValue(os.getcwd())
 
-    # When
     reader.Dataset.setValue(FilesystemDatasetInfo(filePath=str(filepath1)))
     children_after_load = len(reader.children)
     reader.Dataset.setValue(FilesystemDatasetInfo(filePath=str(filepath2)))
 
-    # Then
     assert len(reader.children) == children_after_load, "Did not clean up all children after input change"

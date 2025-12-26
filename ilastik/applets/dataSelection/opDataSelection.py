@@ -626,15 +626,24 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
 
     @staticmethod
     def _nickname_from_url(url: str) -> str:
-        """
-        Take the part after the last /, make it safe for use as a file name,
-        remove anything that looks like an extension ('.zarr') and replace remaining dots
-        to ensure exporting logic does not mistake them for file extensions.
-        """
-        last_url_component = url.rstrip("/").rpartition("/")[2]
-        filename_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", last_url_component)
-        extensionless = os.path.splitext(filename_safe)[0]
-        return extensionless
+        url = url.rstrip("/")
+        path_part = re.sub(r"^[a-zA-Z][a-zA-Z0-9+.-]*://[^/]+", "", url)
+        segments = path_part.split("/")
+        
+        zarr_index = -1
+        for i in range(len(segments) - 1, -1, -1):
+            if segments[i].endswith(".ome.zarr") or segments[i].endswith(".zarr"):
+                zarr_index = i
+                break
+        
+        if zarr_index == -1:
+            nickname_parts = [segments[-1]]
+        else:
+            nickname_parts = segments[zarr_index:]
+            nickname_parts[0] = nickname_parts[0].removesuffix(".zarr").removesuffix(".ome")
+        
+        nickname = "-".join(nickname_parts)
+        return re.sub(r"[^a-zA-Z0-9_.-]", "_", nickname)
 
 
 class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
