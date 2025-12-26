@@ -40,6 +40,7 @@ from qtpy.QtWidgets import (
     QMenu,
     QAction,
     QCheckBox,
+    QMessageBox,
 )
 
 from ilastik.utility.gui import threadRouted
@@ -167,7 +168,8 @@ class WsdtGui(LayerViewerGui):
         alpha_box.setSingleStep(0.1)
         configure_update_handlers(alpha_box.valueChanged, op.Alpha)
         alpha_box.setToolTip(
-            "Used to blend boundaries and the distance transform in order to obtain the watershed weight map"
+            "Used to blend boundaries and the distance transform in order to obtain the watershed weight map. "
+            "Valid range is [0.0, 1.0]. Legacy project files with values > 1.0 are preserved for compatibility."
         )
         drawer_layout.addLayout(control_layout("Alpha", alpha_box))
         self.alpha_box = alpha_box
@@ -252,7 +254,26 @@ class WsdtGui(LayerViewerGui):
             op.Threshold.setValue(self.threshold_box.value())
             op.Sigma.setValue(self.sigma_box.value())
             op.MinSize.setValue(self.min_size_box.value())
-            op.Alpha.setValue(self.alpha_box.value())
+
+            # Handle Alpha value with validation and user confirmation
+            alpha_val = float(self.alpha_box.value())
+
+            # Check if alpha is out of valid range and ask user what to do
+            if not (0.0 <= alpha_val <= 1.0):
+                response = QMessageBox.warning(
+                    self,
+                    "Alpha Value Out of Range",
+                    f"<p>The Alpha value <b>{alpha_val:.1f}</b> is outside the valid range [0.0, 1.0].</p>"
+                    f"<p>Alpha blends probability maps with the distance transform and should be in [0, 1].</p>"
+                    f"<p>Do you want to clamp the value to the valid range?</p>"
+                    f"<p><i>Click 'Cancel' to keep the current value (for legacy compatibility).</i></p>",
+                    QMessageBox.Ok | QMessageBox.Cancel,
+                    QMessageBox.Ok,
+                )
+                if response == QMessageBox.Ok:
+                    alpha_val = max(0.0, min(alpha_val, 1.0))
+
+            op.Alpha.setValue(alpha_val)
             op.EnableDebugOutputs.setValue(self.enable_debug_box.isChecked())
 
         # The GUI may need to respond to some changes in the operator outputs.
