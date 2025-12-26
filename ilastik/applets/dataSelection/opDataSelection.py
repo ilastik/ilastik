@@ -668,10 +668,9 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         # Join parts with hyphens
         nickname = "-".join(nickname_parts) if nickname_parts else "dataset"
         
-        # Make filename-safe (but preserve hyphens and underscores)
-        nickname = re.sub(r"[^a-zA-Z0-9_.-]", "_", nickname)
+        filename_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", nickname)
         
-        return nickname
+        return filename_safe
 
 
 class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
