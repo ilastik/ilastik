@@ -1355,20 +1355,6 @@ def test_cleanup(data_path, graph):
     assert len(reader.children) == children_after_load, "Did not clean up all children after input change"
 
 
-class TestMultiscaleUrlDatasetInfo_Nickname:
-    """
-    Test suite for MultiscaleUrlDatasetInfo._nickname_from_url() method.
-    
-    Tests the nickname generation logic for multiscale datasets, ensuring proper handling
-    of various URL formats including:
-    - File URIs (Windows and Unix paths)
-    - HTTP/HTTPS URLs
-    - Zarr containers with different extensions (.zarr, .ome.zarr)
-    - Nested multiscale datasets
-    - Direct scale references
-    
-    The pattern is: "last URI segment with .zarr plus all segments after it"
-    """
     
     @pytest.mark.parametrize("uri, nickname", [
         # Basic file URIs - multiscale root at zarr level
