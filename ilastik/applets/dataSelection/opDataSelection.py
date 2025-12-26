@@ -658,22 +658,12 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
             if zarr_index != -1:
                 break
         
-        # Build the nickname based on whether we found a .zarr container
-        if zarr_index == -1:
-            # No .zarr found, just use the last segment
+        if not zarr_segments:
             nickname_parts = [segments[-1]]
         else:
-            # Found .zarr container - collect segments from zarr_index onwards
-            nickname_parts = []
-            for i in range(zarr_index, len(segments)):
-                segment = segments[i]
-                # Strip .zarr or .ome.zarr extension from container name
-                for ext in zarr_extensions:
-                    if segment.endswith(ext):
-                        segment = segment[:-len(ext)]
-                        break
-                if segment:  # Only add non-empty segments
-                    nickname_parts.append(segment)
+            last_zarr = zarr_segments[-1]
+            parts_after_last_zarr = "".join(url.rpartition(last_zarr)[1:]).split("/")
+            nickname_parts = [seg.removesuffix(".zarr").removesuffix(".ome") for seg in parts_after_last_zarr]
         
         # Join parts with hyphens
         nickname = "-".join(nickname_parts) if nickname_parts else "dataset"
