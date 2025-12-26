@@ -643,11 +643,6 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         # Remove trailing slashes and split into segments
         url = url.rstrip("/")
         
-        # Split the URL into segments (handle both file:// and https:// URLs)
-        # Remove protocol prefix for parsing
-        path_part = url
-        if "://" in url:
-            path_part = url.split("://", 1)[1]
         
         segments = path_part.split("/")
         
