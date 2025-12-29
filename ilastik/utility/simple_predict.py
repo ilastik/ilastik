@@ -40,7 +40,7 @@ def main():
 def load_and_predict(
     input_data_or_path, classifier_filepath, feature_list_json_path, output_path=None, compute_blockwise=False
 ):
-    assert output_path is None or isinstance(output_path, basestring)
+    assert output_path is None or isinstance(output_path, str)
 
     # Load
     input_data = load_data(input_data_or_path)
@@ -378,7 +378,7 @@ def load_data(input_data):
     Read from .h5 or .npy, drop channel axis (if any), and convert to float32.
     """
     # Load input data
-    if isinstance(input_data, basestring):
+    if isinstance(input_data, str):
         logger.info("Loading {}".format(input_data))
         input_path = input_data
         if ".h5" in input_path:
