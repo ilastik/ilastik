@@ -44,6 +44,7 @@ from ilastik.applets.batchProcessing import BatchProcessingApplet
 
 from lazyflow.graph import Graph, OutputSlot
 from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.operators.opSimpleBlockedArrayCache import OpSimpleBlockedArrayCache
 from lazyflow.roi import TinyVector
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.utility import SlotNameEnum
@@ -687,7 +688,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         if not self._headless:
             self._shell.currentAppletChanged.connect(self.handle_applet_changed)
 
-    def connectInputs(self, laneIndex):
+    def connectInputs(self, laneIndex: int):
         ## Access applet operators
         opTrainingFeatures = self.featureSelectionApplet.topLevelOperator.getLane(laneIndex)
         opClassify = self.pcApplet.topLevelOperator.getLane(laneIndex)
@@ -703,8 +704,12 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         opClassify.FeatureImages.connect(opTrainingFeatures.OutputImage)
         opClassify.CachedFeatureImages.connect(opTrainingFeatures.CachedOutputImage)
 
+        opPredCache = OpSimpleBlockedArrayCache(parent=self)
+        opPredCache.name = f"PixelProbabilityCache_lane{laneIndex:04d}"
+        opPredCache.Input.connect(opClassify.PredictionProbabilities)
+        op5pred = OpReorderAxes(parent=self, AxisOrder="txyzc", Input=opPredCache.Output)
+
         op5raw = OpReorderAxes(parent=self, AxisOrder="txyzc", Input=rawslot)
-        op5pred = OpReorderAxes(parent=self, AxisOrder="txyzc", Input=opClassify.CachedPredictionProbabilities)
 
         opThreshold.RawInput.connect(op5raw.Output)
         opThreshold.InputImage.connect(op5pred.Output)
