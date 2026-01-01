@@ -169,12 +169,16 @@ class OpFeatureSelectionNoCache(Operator):
             if invalid_scales or invalid_z_scales:
                 invalid_z_scales = [s for s in invalid_z_scales if s not in invalid_scales]  # 'do not complain twice'
 
-                if self.parent.parent.featureSelectionApplet._gui is None:
+                # Removing (.parent.featureSelectionApplet) in both places 
+                # so the Operator asks its direct parent (the Applet) for the GUI, 
+                # instead of climbing up to the Workflow level which doesn't have the attribute it looking for.
+
+                if self.parent._gui is None:
                     # headless
                     fix_dlgs = []
                 else:
                     fix_dlgs = [
-                        self.parent.parent.featureSelectionApplet._gui.currentGui(
+                        self.parent._gui.currentGui(
                             fallback_on_lane_0=True
                         ).onFeatureButtonClicked
                     ]
