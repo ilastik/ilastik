@@ -114,6 +114,9 @@ class NewAutocontextWorkflowBase(Workflow):
         for i in range(n_stages):
             self.featureSelectionApplets.append(self.createFeatureSelectionApplet(i))
             self.pcApplets.append(self.createPixelClassificationApplet(i))
+             
+        #it adds back the attribute that the operator is contractually allowed to assume exists.
+        self.featureSelectionApplet = self.featureSelectionApplets[0]
         opFinalClassify = self.pcApplets[-1].topLevelOperator
 
         # If *any* stage enters 'live update' mode, make sure they all enter live update mode.
