@@ -172,6 +172,12 @@ class OpFeatureSelectionNoCache(Operator):
                 # Check if the parent has a _gui attribute and if it is not None
                 parent_gui = getattr(self.parent, '_gui', None)
 
+                # If not found, check if we are wrapped (look at the grandparent)
+                # In the test environment, the operator is wrapped in OpMultiLaneWrapper,
+                # so accessing the grandparent (the Applet) allows us to find the GUI.
+                if parent_gui is None and hasattr(self.parent, 'parent'):
+                    parent_gui = getattr(self.parent.parent, '_gui', None)
+
                 if parent_gui is None:
                     # headless or wrapped in an operator that does not expose GUI
                     fix_dlgs = []
