@@ -169,12 +169,16 @@ class OpFeatureSelectionNoCache(Operator):
             if invalid_scales or invalid_z_scales:
                 invalid_z_scales = [s for s in invalid_z_scales if s not in invalid_scales]  # 'do not complain twice'
 
-                if self.parent.parent.featureSelectionApplet._gui is None:
-                    # headless
+                # Check if the parent has a _gui attribute and if it is not None
+                parent_gui = getattr(self.parent, '_gui', None)
+
+                if parent_gui is None:
+                    # headless or wrapped in an operator that does not expose GUI
                     fix_dlgs = []
                 else:
+                    # GUI is available
                     fix_dlgs = [
-                        self.parent.parent.featureSelectionApplet._gui.currentGui(
+                        parent_gui.currentGui(
                             fallback_on_lane_0=True
                         ).onFeatureButtonClicked
                     ]
