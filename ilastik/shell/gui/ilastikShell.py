@@ -1519,23 +1519,33 @@ class IlastikShell(QMainWindow):
 
             self.createAndLoadNewProject(newProjectFilePath, workflow_class)
 
-    def createAndLoadNewProject(self, newProjectFilePath, workflow_class, h5_file_kwargs={}):
+    def createAndLoadNewProject(self, newProjectFilePath, workflow_class, h5_file_kwargs=None):
         """Create a new project file for the given workflow and open the workflow in the shell.
-
-        To create an in-memory project file call it as follows (the filename is irrelevant in this case):
-        createAndLoadNewProject( "tmp.ilp", MyWorkflowClass, h5_file_kwargs={'driver': 'core', 'backing_store': False})
-
-        :param h5_file_kwargs: Passed directly to h5py.File.__init__() of the project file; all standard params except 'mode' are allowed.
         """
+        if h5_file_kwargs is None:
+            h5_file_kwargs = {}
+            
+        try:
+            newProjectFile = ProjectManager.createBlankProjectFile(
+                newProjectFilePath,
+                workflow_class,
+                self._workflow_cmdline_args,
+                h5_file_kwargs,
+            )
+        except ProjectManager.ProjectFileLockedError as e:
+            QMessageBox.critical(
+                self,
+                "Project File Locked",
+                str(e),
+            )
+            return
 
-        newProjectFile = ProjectManager.createBlankProjectFile(
-            newProjectFilePath, workflow_class, self._workflow_cmdline_args, h5_file_kwargs
-        )
         self._loadProject(newProjectFile, newProjectFilePath, workflow_class, readOnly=False)
 
         # If load failed, projectManager is None
         if self.projectManager:
-            self.projectManager.saveProject()
+            self.projectManager.saveProject()   
+
 
     def getProjectPathToCreate(self, defaultPath=None, caption="Create Ilastik Project"):
         """
