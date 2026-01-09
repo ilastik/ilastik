@@ -40,10 +40,7 @@ from lazyflow.roi import determineBlockShape, roiFromShape, roiToSlice
 from lazyflow.slot import Slot
 from lazyflow.utility import OrderedSignal, PathComponents, BigRequestStreamer
 from lazyflow.utility.data_semantics import ImageTypes
-from lazyflow.utility.io_util.OMEZarrStore import (
-    OMEZarrMultiscaleMeta,
-    InvalidTransformationError,
-)
+from lazyflow.utility.io_util.OMEZarrStore import OMEZarrTranslations
 from lazyflow.utility.io_util.multiscaleStore import DEFAULT_VIGRA_RESOLUTION
 
 logger = logging.getLogger(__name__)
@@ -264,7 +261,7 @@ def _get_multiscale_transformations(
     export_offset: Optional[TaggedShape],
     export_axiskeys: List[Axiskey],
     ilastik_meta: Dict,
-    input_ome_meta: Optional[OMEZarrMultiscaleMeta],
+    input_ome_meta: Optional[OMEZarrTranslations],
     input_scale_key: Optional[str],
 ) -> Optional[List[Dict]]:
     """
@@ -288,56 +285,33 @@ def _get_multiscale_transformations(
     Returns None or the transformations adjusted to export axes as OME-Zarr conforming dicts.
     """
 
-    def get_dataset_translation(
-        ome: Optional[OMEZarrMultiscaleMeta], key: str, axes: List[Axiskey]
-    ) -> Union[OrderedTranslation, None]:
-        reordered_translation = None
-        if ome and isinstance(ome.dataset_transformations.get(key), tuple) and ome.dataset_transformations[key][1]:
-            input_axiskeys = ome.axis_units.keys()
-            input_translation_values = ome.dataset_transformations[key][1].values
-            tagged_translation = dict(zip(input_axiskeys, input_translation_values))
-            reordered_translation = _reorder(tagged_translation, axes, 0.0)
-        return reordered_translation
-
-    def get_multiscale_translation(ome: Optional[OMEZarrMultiscaleMeta], axes: List[Axiskey]):
-        reordered_translation = None
-        if ome and isinstance(ome.multiscale_transformations, tuple) and ome.multiscale_transformations[1]:
-            input_axiskeys = ome.axis_units.keys()
-            input_translation_values = ome.multiscale_transformations[1].values
-            tagged_translation = dict(zip(input_axiskeys, input_translation_values))
-            reordered_translation = _reorder(tagged_translation, axes, 0.0)
-        return reordered_translation
-
     def combine_offsets(
         axes: List[Axiskey],
         offset: Optional[TaggedShape],
         resolution: OrderedScaling,
-        input_dataset_translation: Optional[OrderedTranslation],
-        input_multiscale_translation: Optional[OrderedTranslation],
+        input_ome_meta: Optional[OMEZarrTranslations],
     ) -> OrderedTranslation:
         """
         Translation = offset from export settings + input translation (if exists).
         Need to convert offset pixels to absolute units and reorder to export axes (with 0 for missing axes).
-
         """
-        if not offset and not input_dataset_translation and not input_multiscale_translation:
-            return ODict()
         sum_translation: OrderedTranslation = ODict(zip(axes, [0.0] * len(axes)))
         if offset:
             reordered_offset = _reorder(offset, axes, 0)
             sum_translation = ODict([(a, reordered_offset[a] * resolution[a]) for a in axes])
-        if input_dataset_translation:
-            sum_translation = ODict([(a, sum_translation[a] + input_dataset_translation[a]) for a in axes])
-        if input_multiscale_translation:
-            sum_translation = ODict([(a, sum_translation[a] + input_multiscale_translation[a]) for a in axes])
+        if input_ome_meta:
+            input_dataset_translation = input_ome_meta.dataset_translations.get(input_scale_key)
+            input_multiscale_translation = input_ome_meta.multiscale_translation
+            if input_dataset_translation:
+                reordered_dataset = _reorder(input_dataset_translation, axes, 0.0)
+                sum_translation = ODict([(a, sum_translation[a] + reordered_dataset[a]) for a in axes])
+            if input_multiscale_translation:
+                reordered_multiscale = _reorder(input_multiscale_translation, axes, 0.0)
+                sum_translation = ODict([(a, sum_translation[a] + reordered_multiscale[a]) for a in axes])
         return sum_translation
 
     combined_translation = combine_offsets(
-        export_axiskeys,
-        export_offset,
-        _get_tagged_resolution(ilastik_meta["axistags"]),
-        get_dataset_translation(input_ome_meta, input_scale_key, export_axiskeys),
-        get_multiscale_translation(input_ome_meta, export_axiskeys),
+        export_axiskeys, export_offset, _get_tagged_resolution(ilastik_meta["axistags"]), input_ome_meta
     )
 
     multiscale_transforms = []
@@ -407,7 +381,7 @@ def _write_ome_zarr_and_ilastik_metadata(
     export_offset: Optional[TaggedShape],
     input_scales: Optional[ShapesByScaleKey],
     input_scale_key: Optional[str],
-    input_ome_meta: Optional[OMEZarrMultiscaleMeta],
+    input_ome_meta: Optional[OMEZarrTranslations],
     ilastik_meta: Dict,
 ):
     ilastik_signature = {"name": "ilastik", "version": ilastik_version, "ome_zarr_exporter_version": 2}

@@ -24,7 +24,7 @@ import logging
 import math
 import os
 from collections import OrderedDict
-from typing import Dict, List, Optional, Union, Literal, Tuple, Any
+from typing import Dict, List, Optional, Union, Literal, Tuple, Any, Sequence
 from urllib.parse import unquote_to_bytes
 
 import jsonschema
@@ -190,38 +190,44 @@ def _validate_transforms(
 
 
 @dataclass(frozen=True)
-class OMEZarrMultiscaleMeta:
+class OMEZarrTranslations:
     """
     Specifically for metadata that ilastik does _not_ use internally.
     It is used for porting metadata from an OME-Zarr input to export.
     """
 
-    axis_units: OrderedDict[Literal["t", "c", "z", "y", "x"], Optional[str]]  # { axis_key: axis_unit }
-    multiscale_name: Optional[str]
-    multiscale_transformations: Optional[TransformationsOrError]
-    dataset_transformations: OrderedDict[str, TransformationsOrError]  # { scale_key: transformations }
+    multiscale_translation: Optional[OrderedDict[Literal["t", "c", "z", "y", "x"], float]]  # {axis: translation}
+    dataset_translations: OrderedDict[
+        str, Optional[OrderedDict[Literal["t", "c", "z", "y", "x"], float]]
+    ]  # { scale_key: {axis: translation} }
 
     @classmethod
-    def from_multiscale_spec(cls, multiscale_spec: OME_ZARR_MULTISCALE) -> "OMEZarrMultiscaleMeta":
-        if "axes" in multiscale_spec and "name" in multiscale_spec["axes"][0]:
-            # In v0.4 OME-Zarr attrs, we might also receive units for each axis
-            axis_units = OrderedDict([(a["name"], a.get("unit")) for a in multiscale_spec["axes"]])
-        else:
-            axis_units = OrderedDict([(tag.key, None) for tag in _axistags_from_multiscale(multiscale_spec)])
-        invalid_transformations = []  # Ensure dataset transformations are never None (either valid or error)
+    def from_multiscale_spec(cls, multiscale_spec: OME_ZARR_MULTISCALE) -> "OMEZarrTranslations":
+        def get_translation(
+            transforms: Union[None, ValidTransformations, InvalidTransformationError],
+            axes: Sequence[Literal["t", "c", "z", "y", "x"]],
+        ) -> Union[OrderedDict[Literal["t", "c", "z", "y", "x"], float], None]:
+            translation = None
+            if transforms and isinstance(transforms, tuple) and transforms[1]:
+                translation = OrderedDict(zip(axes, transforms[1].values))
+            return translation
+
+        axes = [tag.key for tag in _axistags_from_multiscale(multiscale_spec)]
+        multiscale_translation = get_translation(
+            _validate_transforms(multiscale_spec.get("coordinateTransformations")), axes
+        )
+        dataset_translations = OrderedDict(
+            [
+                (
+                    scale["path"],
+                    get_translation(_validate_transforms(scale.get("coordinateTransformations", [])), axes),
+                )
+                for scale in multiscale_spec["datasets"]
+            ]
+        )
         return cls(
-            axis_units=axis_units,
-            multiscale_name=multiscale_spec.get("name"),
-            multiscale_transformations=_validate_transforms(multiscale_spec.get("coordinateTransformations")),
-            dataset_transformations=OrderedDict(
-                [
-                    (
-                        scale["path"],
-                        _validate_transforms(scale.get("coordinateTransformations", invalid_transformations)),
-                    )
-                    for scale in multiscale_spec["datasets"]
-                ]
-            ),
+            multiscale_translation=multiscale_translation,
+            dataset_translations=dataset_translations,
         )
 
 
@@ -619,7 +625,7 @@ class OMEZarrStore(MultiscaleStore):
                     "shape": zarray.shape,
                 }
                 logger.info(f"Initializing scale {scale_key} took {timer.seconds()*1000} ms.")
-        self.ome_meta_for_export = OMEZarrMultiscaleMeta.from_multiscale_spec(self._multiscale_spec)
+        self.ome_meta_for_export = OMEZarrTranslations.from_multiscale_spec(self._multiscale_spec)
         super().__init__(
             uri=uri,
             dtype=dtype,

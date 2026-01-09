@@ -37,7 +37,7 @@ from typing import Tuple, List
 from PIL import Image
 
 from lazyflow.utility.io_util.OMEZarrStore import (
-    OMEZarrMultiscaleMeta,
+    OMEZarrTranslations,
     InvalidTransformationError,
     NotAnOMEZarrMultiscale,
 )
@@ -316,7 +316,7 @@ class TestOpInputDataReaderWithOMEZarr:
     )
     def ome_zarr_store_on_disc(
         self, tmp_path, request, monkeypatch
-    ) -> Tuple[PathTuple, List[numpy.array], Multiscale, OMEZarrMultiscaleMeta]:
+    ) -> Tuple[PathTuple, List[numpy.array], Multiscale, OMEZarrTranslations]:
         """Sets up a zarr store of a random image at raw scale and a downscale.
         Returns dataset paths, datasets, and the metadata expected on the
         reader's output slot."""
@@ -398,7 +398,7 @@ class TestOpInputDataReaderWithOMEZarr:
         err_placeholder = InvalidTransformationError()
         monkeypatch.setattr(InvalidTransformationError, "__new__", lambda _: err_placeholder)
         # OME-Zarr metadata for export
-        expected_additional_meta = OMEZarrMultiscaleMeta.from_multiscale_spec(correct_multiscale_zattrs)
+        expected_additional_meta = OMEZarrTranslations.from_multiscale_spec(correct_multiscale_zattrs)
 
         return request.param, expected_images, expected_multiscale, expected_additional_meta
 
