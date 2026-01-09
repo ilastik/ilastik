@@ -468,18 +468,12 @@ def dataset_with_pixel_size(inputdata_dir) -> FilesystemDatasetInfo:
 
 @pytest.fixture
 def dataset_no_pixel_size(inputdata_dir) -> FilesystemDatasetInfo:
-    info = FilesystemDatasetInfo(filePath=inputdata_dir + "/pix_res/3d_t.tif", axistags=vigra.defaultAxistags("tzyx"))
-    info.axis_units = None
-    return info
+    return FilesystemDatasetInfo(filePath=inputdata_dir + "/pix_res/3d_t_no_meta.tif")
 
 
 @pytest.fixture
 def dataset_other_pixel_size(inputdata_dir) -> FilesystemDatasetInfo:
-    info = FilesystemDatasetInfo(filePath=inputdata_dir + "/pix_res/3d_t.tif")
-    for tag in info.axistags:
-        info.axistags.setResolution(tag.key, 3.1415)
-    info.axis_units = {"t": "sec", "x": "nm", "y": "cm", "z": "micron"}
-    return info
+    return FilesystemDatasetInfo(filePath=inputdata_dir + "/pix_res/3d_t_other_meta.tif")
 
 
 def test_DataSelection_roles_copies_from_raw_data(graph, dataset_with_pixel_size, dataset_no_pixel_size):

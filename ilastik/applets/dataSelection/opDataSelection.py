@@ -122,7 +122,7 @@ class DatasetInfo(ABC):
             raise InconsistentAxisMetaException(default_tags, laneShape)
         self.default_tags = default_tags
         self.axistags = axistags or default_tags
-        self.axis_units = axis_units or {}
+        self.axis_units = axis_units
         self.laneShape = laneShape
         self.laneDtype = laneDtype
         if isinstance(self.laneDtype, numpy.dtype):
@@ -160,7 +160,7 @@ class DatasetInfo(ABC):
             # Dataset's stored axistags (default_tags) are overridden (axistags).
             # This makes any existing pixel size metadata meaningless (units and tag.resolution on self.default_tags).
             metadata["axistags"] = self.axistags
-            metadata["axis_units"] = {}
+            metadata["axis_units"] = None
         if self.drange is not None:
             metadata["drange"] = self.drange
         elif self.laneDtype == numpy.uint8:
