@@ -106,8 +106,6 @@ class OpTiffReader(Operator):
         self.Output.meta.axistags = vigra.defaultAxistags(axes)
         self.Output.meta.dtype = numpy.dtype(dtype_code).type
 
-        self.Output.meta.axis_units = {key: "" for key in axes}
-
         if ij_meta or ome_meta:
             self._set_pixel_size(axes, tifftags, ij_meta, ome_meta)
 
@@ -192,6 +190,9 @@ class OpTiffReader(Operator):
         else:
             return
 
+        if not any(resolutions.values()) and not any(units.values()):
+            return
+        self.Output.meta.axis_units = {key: "" for key in axes}
         for ax in axes:
             if ax == "c":
                 continue

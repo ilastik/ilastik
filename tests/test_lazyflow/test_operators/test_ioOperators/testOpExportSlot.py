@@ -110,10 +110,7 @@ class TestOpExportSlot(object):
             read_data = opRead.Output[:].wait()
             numpy.testing.assert_array_equal(read_data, expected_data)
             written_file = z5py.ZarrFile(str(expected_export_path), "r")
-            assert (
-                written_file.attrs["multiscales"][0]["datasets"][0]["coordinateTransformations"]
-                == expected_transformations
-            )
+            assert written_file.attrs["multiscales"][0]["coordinateTransformations"] == expected_transformations
         finally:
             opRead.cleanUp()
 
@@ -139,7 +136,7 @@ class TestOpExportSlot(object):
         assert Path(opExport.ExportPath.value) == expected_export_path
 
         assert opExport.TargetScales.ready()
-        expected_scales: multiscaleStore.Multiscales = OrderedDict(
+        expected_scales: multiscaleStore.Multiscale = OrderedDict(
             {
                 "s0": OrderedDict(zip("tczyx", (1, 1, 1, 550, 510))),
                 "s1": OrderedDict(zip("tczyx", (1, 1, 1, 275, 255))),
@@ -158,13 +155,18 @@ class TestOpExportSlot(object):
                 if scale == "s0":  # only assert written data at raw scale here (scaling covered in OpResize)
                     numpy.testing.assert_array_equal(read_data, expected_data)
                 written_file = z5py.ZarrFile(str(expected_export_path), "r")
-                expected_transformations = [
-                    {"type": "scale", "scale": [1.0, 1.0, 1.0, 2.0**i, 2.0**i]},
+                expected_multiscale_transformations = [
+                    {"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0, 1.0]},
                     {"type": "translation", "translation": [0.0, 0.0, 0.0, 10.0, 20.0]},
                 ]
                 assert (
+                    written_file.attrs["multiscales"][0]["coordinateTransformations"]
+                    == expected_multiscale_transformations
+                )
+                expected_dataset_transformations = [{"type": "scale", "scale": [1.0, 1.0, 1.0, 2.0**i, 2.0**i]}]
+                assert (
                     written_file.attrs["multiscales"][0]["datasets"][i]["coordinateTransformations"]
-                    == expected_transformations
+                    == expected_dataset_transformations
                 )
         finally:
             opRead.cleanUp()
@@ -214,16 +216,9 @@ class TestOpExportSlot(object):
                     {"name": "y", "type": "space", "unit": "nanometer"},
                     {"name": "x", "type": "space", "unit": "nanometer"},
                 ],
-                "coordinateTransformations": [
-                    {"scale": [1.0, 1.0, 1.0, 1.0, 1.0], "type": "scale"},
-                    {"translation": [0.0, 0.0, 0.0, 0.0, 0.0], "type": "translation"},
-                ],
                 "datasets": [
                     {
-                        "coordinateTransformations": [
-                            {"scale": [1.0, 1.0, 1.0, 0.2, 0.2], "type": "scale"},
-                            {"translation": [0.0, 0.0, 0.0, 0.0, 0.0], "type": "translation"},
-                        ],
+                        "coordinateTransformations": [{"scale": [1.0, 1.0, 1.0, 0.2, 0.2], "type": "scale"}],
                         "path": "s0",
                     }
                 ],
@@ -241,14 +236,11 @@ class TestOpExportSlot(object):
                 ],
                 "coordinateTransformations": [
                     {"scale": [1.0, 1.0, 1.0, 1.0, 1.0], "type": "scale"},
-                    {"translation": [0.0, 0.0, 0.0, 0.0, 0.0], "type": "translation"},
+                    {"translation": [0.0, 0.0, 0.0, 7.62, 8.49], "type": "translation"},
                 ],
                 "datasets": [
                     {
-                        "coordinateTransformations": [
-                            {"scale": [1.0, 1.0, 1.0, 1.4, 1.4], "type": "scale"},
-                            {"translation": [0.0, 0.0, 0.0, 7.62, 8.49], "type": "translation"},
-                        ],
+                        "coordinateTransformations": [{"scale": [1.0, 1.0, 1.0, 1.4, 1.4], "type": "scale"}],
                         "path": "s1",
                     }
                 ],
