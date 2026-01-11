@@ -317,7 +317,16 @@ class ExportObjectInfoDialog(QDialog):
     def file_format_changed(self, index):
         path = str(self.ui.exportPath.text())
         match = path.rsplit(".", 1)
-        path = "%s.%s" % (match[0], FILE_TYPES[index])
+        base = match[0]
+
+        # If the path contains the {nickname} placeholder but does not
+        # include the _table suffix, prefer the safer {nickname}_table
+        # form so switching formats won't accidentally produce
+        # {nickname}.h5 which could overwrite the input file.
+        if "{nickname}" in base and "_table" not in base:
+            base = base.replace("{nickname}", "{nickname}_table", 1)
+
+        path = "%s.%s" % (base, FILE_TYPES[index])
         self.ui.exportPath.setText(path)
 
         for widget in (self.ui.includeRaw, self.ui.marginLabel, self.ui.addMargin):
