@@ -34,7 +34,11 @@ RAW_LAYER_SIZE_LIMIT = 1000000
 ALLOWED_EXTENSIONS = ["hdf5", "hd5", "h5", "csv"]
 DEFAULT_REQUIRED_FEATURES = ["Count", "Coord<Minimum>", "Coord<Maximum>", "RegionCenter"]
 DIALOG_FILTERS = {"h5": "HDF 5 (*.h5 *.hd5 *.hdf5)", "csv": "CSV (*.csv)", "any": "Any (*.*)"}
-DEFAULT_EXPORT_PATH = "{dataset_dir}/{nickname}.csv"
+# Use a suffix for feature table defaults to avoid accidentally overwriting
+# an input HDF5 file that has the same base name as the dataset nickname.
+# This will become {dataset_dir}/{nickname}_table.csv by default and will
+# correctly switch to .h5 when the user selects HDF5 in the dialog.
+DEFAULT_EXPORT_PATH = "{dataset_dir}/{nickname}_table.csv"
 
 
 class ExportObjectInfoDialog(QDialog):
