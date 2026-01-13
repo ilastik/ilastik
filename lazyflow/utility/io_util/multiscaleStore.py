@@ -32,13 +32,14 @@ from lazyflow.slot import OutputSlot
 # See MultiscaleStore docstring for details
 Multiscale = OrderedDict[str, "Scale"]
 DEFAULT_SCALE_KEY = ""
-DEFAULT_DISPLAY_RESOLUTION = 1
-DEFAULT_VIGRA_RESOLUTION = 0
+DEFAULT_DISPLAY_RESOLUTION = 1.0
+DEFAULT_VIGRA_RESOLUTION = 0.0
 
 
 def set_multiscale_meta(slot: OutputSlot, multiscale: Multiscale, active_scale_key: str):
     """Updates slot.meta with multiscale, and pixel size for active scale."""
     assert active_scale_key in multiscale, f"Tried to set slot meta for non-existent scale {active_scale_key}"
+    assert slot.meta.axistags is not None, "multiscale can not be used to update slot metadata missing axistags."
     active_scale = multiscale[active_scale_key]
     if active_scale.has_pixel_size():
         for axis, res in active_scale.resolution.items():
@@ -56,9 +57,7 @@ class Scale:
 
     def __post_init__(self):
         if self.resolution is None:
-            object.__setattr__(
-                self, "resolution", OrderedDict([(k, float(DEFAULT_VIGRA_RESOLUTION)) for k in self.shape])
-            )
+            object.__setattr__(self, "resolution", OrderedDict([(k, DEFAULT_VIGRA_RESOLUTION) for k in self.shape]))
         if self.units is None:
             object.__setattr__(self, "units", OrderedDict([(k, "") for k in self.shape]))
         if self.shape.keys() != self.resolution.keys() or self.shape.keys() != self.units.keys():

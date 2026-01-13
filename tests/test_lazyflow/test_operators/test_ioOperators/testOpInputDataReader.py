@@ -418,7 +418,7 @@ class TestOpInputDataReaderWithOMEZarr:
         reader.WorkingDirectory.setValue(str(zarr_dir))
 
         assert reader.Output.meta.scales == expected_multiscale
-        assert reader.Output.meta.ome_zarr_meta == expected_additional_meta
+        assert reader.Output.meta.ome_zarr_translations == expected_additional_meta
 
         loaded_data = reader.Output[:].wait()
 
@@ -435,7 +435,7 @@ class TestOpInputDataReaderWithOMEZarr:
         reader.WorkingDirectory.setValue(str(zarr_dir))
 
         assert reader.Output.meta.scales == expected_multiscale
-        assert reader.Output.meta.ome_zarr_meta == expected_additional_meta
+        assert reader.Output.meta.ome_zarr_translations == expected_additional_meta
 
         loaded_data = reader.Output[:].wait()
 
@@ -450,7 +450,7 @@ class TestOpInputDataReaderWithOMEZarr:
         reader.WorkingDirectory.setValue(zarr_dir)
 
         assert reader.Output.meta.scales == expected_multiscale
-        assert reader.Output.meta.ome_zarr_meta == expected_additional_meta
+        assert reader.Output.meta.ome_zarr_translations == expected_additional_meta
 
         loaded_data = reader.Output[:].wait()
 
@@ -465,7 +465,7 @@ class TestOpInputDataReaderWithOMEZarr:
         reader.WorkingDirectory.setValue(zarr_dir)
 
         assert reader.Output.meta.scales == expected_multiscale
-        assert reader.Output.meta.ome_zarr_meta == expected_additional_meta
+        assert reader.Output.meta.ome_zarr_translations == expected_additional_meta
 
         loaded_data = reader.Output[:].wait()
 

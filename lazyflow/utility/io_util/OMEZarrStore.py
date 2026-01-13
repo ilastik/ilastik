@@ -192,8 +192,8 @@ def _validate_transforms(
 @dataclass(frozen=True)
 class OMEZarrTranslations:
     """
-    Specifically for metadata that ilastik does _not_ use internally.
-    It is used for porting metadata from an OME-Zarr input to export.
+    Used for porting translation metadata from an OME-Zarr input to export.
+    Consider renaming/generalising this if using slot.meta.ome_zarr_translations for other purposes.
     """
 
     multiscale_translation: Optional[OrderedDict[Literal["t", "c", "z", "y", "x"], float]]  # {axis: translation}
@@ -205,22 +205,19 @@ class OMEZarrTranslations:
     def from_multiscale_spec(cls, multiscale_spec: OME_ZARR_MULTISCALE) -> "OMEZarrTranslations":
         def get_translation(
             transforms: Union[None, ValidTransformations, InvalidTransformationError],
-            axes: Sequence[Literal["t", "c", "z", "y", "x"]],
         ) -> Union[OrderedDict[Literal["t", "c", "z", "y", "x"], float], None]:
+            axes = [tag.key for tag in _axistags_from_multiscale(multiscale_spec)]
             translation = None
             if transforms and isinstance(transforms, tuple) and transforms[1]:
                 translation = OrderedDict(zip(axes, transforms[1].values))
             return translation
 
-        axes = [tag.key for tag in _axistags_from_multiscale(multiscale_spec)]
-        multiscale_translation = get_translation(
-            _validate_transforms(multiscale_spec.get("coordinateTransformations")), axes
-        )
+        multiscale_translation = get_translation(_validate_transforms(multiscale_spec.get("coordinateTransformations")))
         dataset_translations = OrderedDict(
             [
                 (
                     scale["path"],
-                    get_translation(_validate_transforms(scale.get("coordinateTransformations", [])), axes),
+                    get_translation(_validate_transforms(scale.get("coordinateTransformations", []))),
                 )
                 for scale in multiscale_spec["datasets"]
             ]
@@ -625,7 +622,7 @@ class OMEZarrStore(MultiscaleStore):
                     "shape": zarray.shape,
                 }
                 logger.info(f"Initializing scale {scale_key} took {timer.seconds()*1000} ms.")
-        self.ome_meta_for_export = OMEZarrTranslations.from_multiscale_spec(self._multiscale_spec)
+        self.ome_zarr_translations = OMEZarrTranslations.from_multiscale_spec(self._multiscale_spec)
         super().__init__(
             uri=uri,
             dtype=dtype,

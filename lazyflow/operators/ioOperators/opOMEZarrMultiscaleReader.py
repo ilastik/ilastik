@@ -70,7 +70,7 @@ class OpOMEZarrMultiscaleReader(Operator):
         # so orthoviews lead to downloading the entire dataset.
         self.Output.meta.prefer_2d = True
         # Add OME-Zarr metadata to slot so that it can be ported over to an export
-        self.Output.meta.ome_zarr_meta = self._store.ome_meta_for_export
+        self.Output.meta.ome_zarr_translations = self._store.ome_zarr_translations
 
     def execute(self, slot, subindex, roi, result):
         result[...] = self._store.request(roi, self.Output.meta.active_scale)

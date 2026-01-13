@@ -174,7 +174,7 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
     expected_source_scale_transform = [
         {"type": "scale", "scale": [1.0, 1.0, resolution_xyz, resolution_xyz, resolution_xyz]},
     ]
-    source_op.Output.meta.ome_zarr_meta = OMEZarrTranslations.from_multiscale_spec(
+    source_op.Output.meta.ome_zarr_translations = OMEZarrTranslations.from_multiscale_spec(
         {
             "name": "wonderful_pyramid",
             "axes": [
@@ -346,7 +346,7 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
     source_op.Output.meta.axistags.setResolution("y", resolution_xyz)
     source_op.Output.meta.axistags.setResolution("x", resolution_xyz)
     source_op.Output.meta.axis_units = units
-    source_op.Output.meta.ome_zarr_meta = OMEZarrTranslations.from_multiscale_spec(
+    source_op.Output.meta.ome_zarr_translations = OMEZarrTranslations.from_multiscale_spec(
         {
             "name": "wonderful_pyramid",
             "axes": [
