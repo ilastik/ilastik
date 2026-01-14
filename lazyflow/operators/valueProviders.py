@@ -236,7 +236,7 @@ class OpValueCache(Operator, ObservableCache):
         def handle_unready(slot):
             self._dirty = True
 
-        self.Input.notifyUnready(handle_unready)
+        self.Input.notifyDisconnect(handle_unready)
 
     def usedMemory(self):
         if isinstance(self._value, numpy.ndarray):

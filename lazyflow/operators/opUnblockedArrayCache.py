@@ -69,7 +69,7 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
         self._lock = RequestLock()
         self._resetBlocks()
 
-        self.Input.notifyUnready(self._resetBlocks)
+        self.Input.notifyDisconnect(self._resetBlocks)
 
         # Now that we're initialized, it's safe to register with the memory manager
         self.registerWithMemoryManager()
