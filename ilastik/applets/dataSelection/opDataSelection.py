@@ -642,7 +642,8 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
             nickname_parts[0] = nickname_parts[0].removesuffix(".zarr").removesuffix(".ome")
         
         nickname = "-".join(nickname_parts)
-        return re.sub(r"[^a-zA-Z0-9_.-]", "_", nickname)
+        filename_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", nickname)
+        return filename_safe
 
 
 class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
