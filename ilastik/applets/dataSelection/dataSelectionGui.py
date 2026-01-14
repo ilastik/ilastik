@@ -466,6 +466,7 @@ class DataSelectionGui(QWidget):
                 self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
                 return
 
+            self._check_pixel_size_mismatch(startingLaneNum, endingLaneNum)
             self._checkDataFormatWarnings(roleIndex, startingLaneNum, endingLaneNum)
 
             # Show the first image
@@ -511,7 +512,6 @@ class DataSelectionGui(QWidget):
                                 revert()
                                 return False
                             new_info = info_editor.edited_infos[0]
-            self._check_pixel_size_mismatch()
             return True
         except Exception as e:
             revert()
@@ -519,9 +519,9 @@ class DataSelectionGui(QWidget):
         finally:
             self.parentApplet.appletStateUpdateRequested()
 
-    def _check_pixel_size_mismatch(self):
+    def _check_pixel_size_mismatch(self, first_lane, last_lane):
         mismatches = []
-        for lane_index in range(self.getNumLanes()):
+        for lane_index in range(first_lane, last_lane + 1):
             lane_op = self.topLevelOperator.getLane(lane_index)
             lane_image_slots = [slot for slot in lane_op.ImageGroup if slot.ready()]
             mismatching_role_pairs = [
