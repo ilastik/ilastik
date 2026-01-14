@@ -626,7 +626,6 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
     @staticmethod
     def _nickname_from_url(url: str) -> str:
         url = url.rstrip("/")
-        path_part = re.sub(r"^[a-zA-Z][a-zA-Z0-9+.-]*://[^/]+", "", url)
         segments = path_part.split("/")
         
         zarr_index = -1
