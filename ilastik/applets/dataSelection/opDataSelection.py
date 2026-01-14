@@ -630,7 +630,7 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         segments = path_part.split("/")
         
         zarr_index = -1
-        for i in range(len(segments) - 1, -1, -1):
+        for i in reversed(range(len(segments))):
             if segments[i].endswith(".ome.zarr") or segments[i].endswith(".zarr"):
                 zarr_index = i
                 break
