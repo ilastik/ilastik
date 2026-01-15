@@ -551,6 +551,8 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         self.url = url
         op_reader = OpInputDataReader(graph=Graph(), FilePath=self.url)
         meta = op_reader.Output.meta.copy()
+        # remember whether nickname was auto-generated so we don't overwrite user edits
+        self._auto_nickname = not bool(nickname)
         super().__init__(
             default_tags=meta.axistags,
             nickname=nickname or self._nickname_from_url(url),
@@ -621,6 +623,12 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
             if eq_shapes(shape, target_shape):
                 self.working_scale = scale
                 self.laneShape = tuple(self.scales[scale].values())
+                # If nickname was auto-generated, update it to include the chosen scale/internal path
+                try:
+                    if getattr(self, "_auto_nickname", False):
+                        self._update_nickname()
+                except Exception:
+                    pass
                 return
         raise DatasetConstraintError("DataSelection", f"No scale matches shape {target_shape}")
 
@@ -631,10 +639,54 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         remove anything that looks like an extension ('.zarr') and replace remaining dots
         to ensure exporting logic does not mistake them for file extensions.
         """
-        last_url_component = url.rstrip("/").rpartition("/")[2]
+        # If the URL points to an internal path inside a multiscale container (e.g. .../container.zarr/s1)
+        # prefer a nickname that contains both the container base name and the internal path joined with '-'.
+        stripped = url.rstrip("/")
+        parts = stripped.split("/")
+        if len(parts) >= 2:
+            penult = parts[-2]
+            last = parts[-1]
+            penult_name = re.sub(r"[^a-zA-Z0-9_.-]", "_", penult)
+            penult_base = os.path.splitext(penult_name)[0]
+            # if the penultimate part looks like a file/container with an extension, and there is an internal
+            # path after it, include both in the nickname
+            if os.path.splitext(penult)[1]:
+                internal_safe = re.sub(r"[^a-zA-Z0-9_.-/]", "_", last)
+                internal_safe = internal_safe.replace("/", "-")
+                return penult_base + ("-" + internal_safe if internal_safe else "")
+        # fallback: use last component as before (strip extensions and make it filename-safe)
+        last_url_component = parts[-1]
         filename_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", last_url_component)
         extensionless = os.path.splitext(filename_safe)[0]
         return extensionless
+
+    def _update_nickname(self) -> None:
+        """
+        Recompute an automatic nickname to reflect the current working_scale or internal path.
+        Only updates if this DatasetInfo was created with an auto-generated nickname.
+        """
+        if not getattr(self, "_auto_nickname", False):
+            return
+        stripped = self.url.rstrip("/")
+        parts = stripped.split("/")
+        # base container name
+        base = parts[-1]
+        base_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", base)
+        base_name = os.path.splitext(base_safe)[0]
+        # prefer to use explicit working_scale if set and not default
+        if getattr(self, "working_scale", None) and self.working_scale != DEFAULT_SCALE_KEY:
+            internal = self.working_scale.replace("/", "-")
+            self.nickname = f"{base_name}-{internal}"
+            return
+        # otherwise, if URL already contains an internal path after a container, use that
+        if len(parts) >= 2 and os.path.splitext(parts[-2])[1]:
+            internal_parts = parts[parts.index(parts[-2]) + 1 :]
+            if internal_parts:
+                internal_safe = "-".join(re.sub(r"[^a-zA-Z0-9_.-]", "_", p) for p in internal_parts)
+                self.nickname = f"{base_name}-{internal_safe}"
+                return
+        # fallback
+        self.nickname = base_name
 
 
 class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
@@ -907,6 +959,15 @@ class OpDataSelection(Operator):
                 datasetInfo.laneShape = data_provider.meta.shape
                 datasetInfo.scales = data_provider.meta.scales
                 datasetInfo.working_scale = data_provider.meta.active_scale
+                # If this is a multiscale URL dataset and its nickname was auto-generated,
+                # refresh the nickname to reflect the active/internal path (e.g. container-s1).
+                try:
+                    # avoid importing name at top-level; class is defined in this module
+                    if isinstance(datasetInfo, MultiscaleUrlDatasetInfo) and getattr(datasetInfo, "_auto_nickname", False):
+                        datasetInfo._update_nickname()
+                except Exception:
+                    # best-effort: don't fail setup due to nickname update
+                    pass
 
             output_order = self._get_output_axis_order(data_provider)
             # Export applet assumes this OpReorderAxes exists.
