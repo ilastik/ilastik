@@ -19,13 +19,13 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-import numpy
-from lazyflow.graph import Operator, InputSlot
-
-from lazyflow.roi import roiToSlice, roiFromShape
-from lazyflow.utility import BigRequestStreamer, OrderedSignal
-
 import logging
+
+import numpy
+
+from lazyflow.graph import InputSlot, Operator
+from lazyflow.roi import roiFromShape, roiToSlice
+from lazyflow.utility import BigRequestStreamer, OrderedSignal
 
 logger = logging.getLogger(__name__)
 

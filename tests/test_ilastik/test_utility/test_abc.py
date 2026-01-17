@@ -2,8 +2,9 @@ from abc import ABC, abstractmethod
 from contextlib import nullcontext as does_not_raise
 
 import pytest
-from ilastik.utility.abc import StrictABC
 from pytest import raises
+
+from ilastik.utility.abc import StrictABC
 
 
 class SpamABC(StrictABC):

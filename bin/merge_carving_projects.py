@@ -1,8 +1,9 @@
-import h5py
-import os
-from shutil import copyfile
 import argparse
+import os
 import warnings
+from shutil import copyfile
+
+import h5py
 
 parser = argparse.ArgumentParser(description="Merge ilastik carving projects.")
 parser.add_argument(

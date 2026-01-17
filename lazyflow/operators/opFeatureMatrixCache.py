@@ -20,18 +20,19 @@
 # 		   http://ilastik.org/license/
 ###############################################################################
 from __future__ import division
+
+import logging
 from builtins import map
 from functools import partial
-import logging
 
 logger = logging.getLogger(__name__)
 
 import numpy
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.request import RequestLock, Request, RequestPool
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.request import Request, RequestLock, RequestPool
+from lazyflow.roi import determineBlockShape, getBlockBounds, getIntersectingBlocks
 from lazyflow.utility import OrderedSignal
-from lazyflow.roi import getBlockBounds, getIntersectingBlocks, determineBlockShape
 
 
 class OpFeatureMatrixCache(Operator):
@@ -130,7 +131,7 @@ class OpFeatureMatrixCache(Operator):
                 # A block should never span multiple time slices.
                 # For txy volumes, that could lead to lots of extra features being computed.
                 tagged_shape["t"] = 1
-            blockshape = determineBlockShape(list(tagged_shape.values()), 40 ** 3)
+            blockshape = determineBlockShape(list(tagged_shape.values()), 40**3)
 
         # Don't span more than 256 px along any axis
         blockshape = tuple(min(x, 256) for x in blockshape)

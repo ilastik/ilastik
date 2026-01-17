@@ -18,19 +18,19 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+import logging
 import os
-import tempfile
 import pickle as pickle
+import tempfile
 from itertools import starmap
 
+import h5py
 import numpy
 import vigra
-import h5py
 
-from .lazyflowClassifier import LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
 from lazyflow.utility.helpers import bigintprod
 
-import logging
+from .lazyflowClassifier import LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
 
 logger = logging.getLogger(__name__)
 

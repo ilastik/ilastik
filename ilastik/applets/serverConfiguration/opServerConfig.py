@@ -18,11 +18,11 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
-from ilastik.utility.operatorSubView import OperatorSubView
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow import stype
+from typing import Dict, Optional
 
-from typing import Optional, Dict
+from ilastik.utility.operatorSubView import OperatorSubView
+from lazyflow import stype
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 
 from .configStorage import SERVER_CONFIG
 

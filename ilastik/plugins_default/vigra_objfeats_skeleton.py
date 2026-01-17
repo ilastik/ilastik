@@ -18,10 +18,12 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.plugins import ObjectFeaturesPlugin
-import vigra
-import numpy
 import logging
+
+import numpy
+import vigra
+
+from ilastik.plugins import ObjectFeaturesPlugin
 
 logger = logging.getLogger(__name__)
 

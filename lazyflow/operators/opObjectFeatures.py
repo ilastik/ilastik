@@ -1,5 +1,9 @@
 from __future__ import print_function
+
 from builtins import range
+
+import numpy
+import vigra
 
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
@@ -22,10 +26,8 @@ from builtins import range
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.stype import ArrayLike, Opaque
-import numpy
-import vigra
 
 
 class OpObjectFeatures(Operator):

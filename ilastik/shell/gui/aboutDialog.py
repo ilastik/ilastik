@@ -19,20 +19,12 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 import os
-from qtpy.QtGui import QPixmap
-from qtpy.QtWidgets import (
-    QApplication,
-    QDialog,
-    QDialogButtonBox,
-    QHBoxLayout,
-    QLabel,
-    QVBoxLayout,
-)
-from qtpy.QtCore import Qt
 
+from qtpy.QtCore import Qt
+from qtpy.QtGui import QPixmap
+from qtpy.QtWidgets import QApplication, QDialog, QDialogButtonBox, QHBoxLayout, QLabel, QVBoxLayout
 
 import ilastik
-
 
 about_text = f"""
     <p>ilastik version {ilastik.__version__}</p>

@@ -19,10 +19,10 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from qtpy.QtDesigner import QPyDesignerCustomWidgetPlugin
-from qtpy.QtGui import QPixmap, QIcon, QColor
+from qtpy.QtGui import QColor, QIcon, QPixmap
 
-from ilastik.widgets.cropListView import CropListView
 from ilastik.widgets.cropListModel import Crop, CropListModel
+from ilastik.widgets.cropListView import CropListView
 
 
 class PyCropListViewPlugin(QPyDesignerCustomWidgetPlugin):

@@ -28,7 +28,7 @@ import numpy
 import requests
 import vigra
 
-from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SCALE_KEY, Scale
+from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, MultiscaleStore, Scale
 
 logger = logging.getLogger(__file__)
 

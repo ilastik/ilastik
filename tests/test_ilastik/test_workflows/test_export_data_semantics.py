@@ -22,10 +22,10 @@ import pytest
 
 from ilastik.shell.headless.headlessShell import HeadlessShell
 from ilastik.workflows import (
-    PixelClassificationWorkflow,
     AutocontextTwoStage,
-    ObjectClassificationWorkflowPrediction,
     CountingWorkflow,
+    ObjectClassificationWorkflowPrediction,
+    PixelClassificationWorkflow,
 )
 from lazyflow.utility.data_semantics import ImageTypes
 

@@ -1,5 +1,3 @@
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,12 +20,12 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import copy
-
+from builtins import object
 from unittest import mock
 
 import numpy
 
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, OperatorWrapper
+from lazyflow.graph import Graph, InputSlot, Operator, OperatorWrapper, OutputSlot
 
 
 class OpSimple(Operator):

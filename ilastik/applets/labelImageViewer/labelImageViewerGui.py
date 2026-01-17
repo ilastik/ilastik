@@ -18,11 +18,12 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from lazyflow.operators import OpMultiArraySlicer2
-from volumina.api import createDataSource, ColortableLayer
 from volumina import colortables
-from ilastik.utility import bind
+from volumina.api import ColortableLayer, createDataSource
+
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.utility import bind
+from lazyflow.operators import OpMultiArraySlicer2
 
 
 class LabelImageViewerGui(LayerViewerGui):

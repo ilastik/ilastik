@@ -19,14 +19,16 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-import os
 import copy
+import logging
+import os
 import tempfile
+
 import h5py
 import vigra
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.utility.io_util.RESTfulVolume import RESTfulVolume
-import logging
 
 logger = logging.getLogger(__name__)
 

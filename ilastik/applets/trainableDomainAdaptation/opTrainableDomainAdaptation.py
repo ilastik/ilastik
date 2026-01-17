@@ -1,15 +1,14 @@
 import logging
 
-from lazyflow import stype
-from lazyflow.graph import InputSlot, OutputSlot
-from lazyflow.operators.generic import OpMultiChannelSelector
-from lazyflow.utility.helpers import eq_shapes
-
 from ilastik.applets.neuralNetwork.opNNclass import DatasetConstraintError
 from ilastik.applets.neuralNetwork.opNNclass import OpBlockShape as OpNNBlockShape
 from ilastik.applets.neuralNetwork.opNNclass import OpPredictionPipeline as OpNNPredictionPipeline
 from ilastik.applets.pixelClassification.opPixelClassification import OpPixelClassification
 from ilastik.utility import OpMultiLaneWrapper
+from lazyflow import stype
+from lazyflow.graph import InputSlot, OutputSlot
+from lazyflow.operators.generic import OpMultiChannelSelector
+from lazyflow.utility.helpers import eq_shapes
 
 logger = logging.getLogger(__name__)
 

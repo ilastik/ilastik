@@ -23,9 +23,6 @@ import logging
 
 import numpy as np
 
-# Note: bioimageio imports are delayed as to prevent https request to
-# github and bioimage.io on ilastik startup
-
 from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
     SerialBlockSlot,
@@ -35,6 +32,11 @@ from ilastik.applets.base.appletSerializer import (
 )
 
 from .tiktorchController import BIOModelData, ModelInfo
+
+# Note: bioimageio imports are delayed as to prevent https request to
+# github and bioimage.io on ilastik startup
+
+
 
 logger = logging.getLogger(__name__)
 

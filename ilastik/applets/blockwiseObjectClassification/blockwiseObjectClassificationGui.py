@@ -19,20 +19,20 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
-import os
 import logging
+import os
 from functools import partial
 
 # Qt
 from qtpy import uic
-from qtpy.QtCore import Qt, QEvent
+from qtpy.QtCore import QEvent, Qt
 from qtpy.QtGui import QColor
-
-from ilastik.utility.gui import threadRouted
-from volumina.api import createDataSource, ColortableLayer
 from volumina import colortables
+from volumina.api import ColortableLayer, createDataSource
 from volumina.utility import ShortcutManager
+
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.utility.gui import threadRouted
 
 logger = logging.getLogger(__name__)
 

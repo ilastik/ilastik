@@ -38,16 +38,8 @@ from lazyflow.slot import InputSlot, OutputSlot, Slot
 from lazyflow.utility import timeLogged
 
 from . import jsonSerializerRegistry
-from .legacyClassifiers import (
-    deserialize_classifier_type,
-    deserialize_classifier_factory,
-)
-from .serializerUtils import (
-    deleteIfPresent,
-    slicingToString,
-    stringToSlicing,
-)
-
+from .legacyClassifiers import deserialize_classifier_factory, deserialize_classifier_type
+from .serializerUtils import deleteIfPresent, slicingToString, stringToSlicing
 
 logger = logging.getLogger(__name__)
 

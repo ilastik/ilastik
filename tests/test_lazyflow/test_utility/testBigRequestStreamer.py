@@ -19,23 +19,23 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-import os
 import gc
+import logging
+import os
 import sys
+import threading
 import time
+import unittest
+import weakref
+
 import numpy
 import psutil
-import weakref
-import threading
-import unittest
+
 from lazyflow.graph import Graph, Operator, OutputSlot
-from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpArrayPiper
 from lazyflow.request import Request
-
+from lazyflow.roi import roiToSlice
 from lazyflow.utility import BigRequestStreamer
-
-import logging
 
 logger = logging.getLogger(__name__)
 

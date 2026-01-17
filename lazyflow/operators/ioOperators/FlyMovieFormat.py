@@ -1,27 +1,22 @@
 # FlyMovieFormat.py
 # KMB 11/06/2008
 from __future__ import division
-from builtins import zip
 
-from builtins import range
-from builtins import object
 import sys
+from builtins import object, range, zip
 
 if sys.version_info.major >= 3:
     unicode = str
 
-import struct
-import warnings
+import logging
+import math
 import os.path
+import struct
+import time
+import warnings
 
 import numpy as nx
 from numpy import nan
-
-import time
-
-import math
-
-import logging
 
 logger = logging.getLogger(__name__)
 

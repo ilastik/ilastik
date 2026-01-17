@@ -2,7 +2,7 @@ from unittest import mock
 
 import pytest
 
-from ilastik.shell.gui.reportIssueDialog import _mask_file_paths, FILE_PATH_MASK, ReportIssueDialog, FORUM_URI
+from ilastik.shell.gui.reportIssueDialog import FILE_PATH_MASK, FORUM_URI, ReportIssueDialog, _mask_file_paths
 
 
 @pytest.mark.parametrize(

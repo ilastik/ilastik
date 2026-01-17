@@ -1,6 +1,7 @@
+import logging
+
 import numpy
 import vigra
-import logging
 
 logger = logging.getLogger(__name__)
 

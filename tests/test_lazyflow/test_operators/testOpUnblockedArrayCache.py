@@ -1,15 +1,14 @@
-from builtins import range
-from builtins import object
+import logging
+from builtins import object, range
+
 import numpy as np
 import vigra
 
-from lazyflow.request import RequestPool
 from lazyflow.graph import Graph
-from lazyflow.roi import roiToSlice
 from lazyflow.operators.opUnblockedArrayCache import OpUnblockedArrayCache
+from lazyflow.request import RequestPool
+from lazyflow.roi import roiToSlice
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
-
-import logging
 
 logger = logging.getLogger(__name__)
 cacheLogger = logging.getLogger("lazyflow.operators.opUnblockedArrayCache")

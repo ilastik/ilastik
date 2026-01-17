@@ -24,14 +24,15 @@ from collections import OrderedDict
 from functools import reduce
 from typing import Dict, List
 
+from qtpy.QtCore import QAbstractItemModel, QModelIndex, Qt
 
-from qtpy.QtCore import Qt, QAbstractItemModel, QModelIndex
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from lazyflow.utility.helpers import bigintprod, eq_shapes
 from lazyflow.utility.io_util.multiscaleStore import Multiscale
-from .opDataSelection import DatasetInfo
+
 from .dataLaneSummaryTableModel import rowOfButtonsProxy
+from .opDataSelection import DatasetInfo
 
 
 class DatasetColumn:

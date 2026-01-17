@@ -1,10 +1,8 @@
 from future import standard_library
 
 standard_library.install_aliases()
-from builtins import zip
-from builtins import map
-from builtins import object
-
+import copy
+import logging
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -27,13 +25,13 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import os
-import copy
+import platform
 import shutil
 import threading
-import platform
-import numpy
+from builtins import map, object, zip
+
 import h5py
-import logging
+import numpy
 
 logger = logging.getLogger(__name__)
 
@@ -60,11 +58,10 @@ def vectorized_pickle_loads(a):
     return out
 
 
+from lazyflow.roi import TinyVector, getBlockBounds, getIntersectingBlocks, getIntersection, roiToSlice
+from lazyflow.utility import FileLock, PathComponents, getPathVariants
 from lazyflow.utility.jsonConfig import AutoEval, FormattedField, JsonConfigParser
 from lazyflow.utility.log_exception import log_exception
-from lazyflow.roi import getIntersection, roiToSlice
-from lazyflow.utility import PathComponents, getPathVariants, FileLock
-from lazyflow.roi import getIntersectingBlocks, getBlockBounds, TinyVector
 
 try:
     import vigra

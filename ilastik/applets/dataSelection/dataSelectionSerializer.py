@@ -29,16 +29,18 @@ from ilastik.applets.base.appletSerializer import AppletSerializer, deleteIfPres
 from ilastik.exceptions import UserAbort
 from ilastik.utility import bind
 from lazyflow.utility import PathComponents
-from lazyflow.utility.pathHelpers import getPathVariants, isUrl, isRelative
+from lazyflow.utility.pathHelpers import getPathVariants, isRelative, isUrl
 from lazyflow.utility.timer import timeLogged
+
 from .opDataSelection import (
-    FilesystemDatasetInfo,
-    RelativeFilesystemDatasetInfo,
     DummyDatasetInfo,
+    FilesystemDatasetInfo,
     MultiscaleUrlDatasetInfo,
+    PreloadedArrayDatasetInfo,
+    ProjectInternalDatasetInfo,
+    RelativeFilesystemDatasetInfo,
     UrlDatasetInfo,
 )
-from .opDataSelection import PreloadedArrayDatasetInfo, ProjectInternalDatasetInfo
 
 logger = logging.getLogger(__name__)
 
@@ -271,6 +273,7 @@ class DataSelectionSerializer(AppletSerializer):
                 return (DummyDatasetInfo.from_h5_group(infoGroup), True)
 
             from qtpy.QtWidgets import QMessageBox
+
             from ilastik.widgets.ImageFileDialog import ImageFileDialog
 
             repaired_paths = []

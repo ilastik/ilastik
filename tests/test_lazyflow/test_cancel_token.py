@@ -1,5 +1,6 @@
 import logging
 from unittest import mock
+
 from lazyflow import cancel_token as ct
 
 

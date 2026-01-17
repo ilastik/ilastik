@@ -1,8 +1,10 @@
-from builtins import range
 import os.path
+from builtins import range
+
 import numpy as np
-from ilastik.plugins import TrackingExportFormatPlugin
 import vigra
+
+from ilastik.plugins import TrackingExportFormatPlugin
 
 
 class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
@@ -11,7 +13,7 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
     exportsToFile = True
 
     def checkFilesExist(self, filename):
-        """ Check whether the files we want to export are already present """
+        """Check whether the files we want to export are already present"""
         return os.path.exists(filename + ".csv")
 
     def export(self, filename, hypothesesGraph, pluginExportContext):

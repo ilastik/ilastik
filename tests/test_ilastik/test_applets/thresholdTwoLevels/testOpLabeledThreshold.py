@@ -1,8 +1,8 @@
 import numpy as np
 import vigra
 
-from lazyflow.graph import Graph
 from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels import OpLabeledThreshold, ThresholdMethod, _has_graphcut
+from lazyflow.graph import Graph
 
 
 class TestOpLabeledThreshold(object):

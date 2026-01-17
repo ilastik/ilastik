@@ -18,25 +18,23 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
+import logging
 import sys
 from functools import partial
+
 import numpy as np
 
-from ilastik.workflow import Workflow
-
+from ilastik.applets.batchProcessing import BatchProcessingApplet
+from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
-from ilastik.applets.wsdt import WsdtApplet
 from ilastik.applets.edgeTraining import EdgeTrainingApplet
 from ilastik.applets.multicut import MulticutApplet
-from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
-from ilastik.applets.batchProcessing import BatchProcessingApplet
-
+from ilastik.applets.wsdt import WsdtApplet
+from ilastik.workflow import Workflow
 from lazyflow.graph import Graph
 from lazyflow.operators import OpSimpleStacker
 from lazyflow.operators.generic import OpConvertDtype
 from lazyflow.operators.valueProviders import OpPrecomputedInput
-
-import logging
 
 logger = logging.getLogger(__name__)
 

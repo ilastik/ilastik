@@ -1,5 +1,3 @@
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,6 +20,8 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 from abc import ABCMeta, abstractmethod
+from builtins import object
+
 from future.utils import with_metaclass
 
 

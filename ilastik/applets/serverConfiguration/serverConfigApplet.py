@@ -22,6 +22,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from ilastik.applets.base.standardApplet import StandardApplet
+
 from .opServerConfig import OpServerConfig
 from .serverConfigSerializer import ServerConfigSerializer
 

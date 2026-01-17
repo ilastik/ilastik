@@ -19,13 +19,14 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 from __future__ import annotations
+
 import dataclasses
 import enum
 import io
 import json
 import logging
 from hashlib import blake2b
-from typing import Dict, List, Sequence, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List, Sequence, Union
 
 from lazyflow.operators.tiktorch.classifier import ModelSession
 

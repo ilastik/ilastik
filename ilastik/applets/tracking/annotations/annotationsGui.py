@@ -19,37 +19,36 @@
 #                 http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
-from builtins import range
-from qtpy import uic, QtWidgets
-from qtpy.QtGui import QColor, QPixmap, QIcon, QTextCursor
-
-import sys
-import os
-import numpy
-import vigra
-from functools import partial
 
 import logging
-from lazyflow.rtype import SubRegion
+import os
+import sys
+from builtins import range
 from copy import copy
+from functools import partial
+
+import numpy
+import vigra
+from qtpy import QtWidgets, uic
+from qtpy.QtGui import QColor, QIcon, QPixmap, QTextCursor
+
 from ilastik.utility.gui.threadRouter import threadRouted
 from lazyflow.request.request import Request
+from lazyflow.rtype import SubRegion
 
 logger = logging.getLogger(__name__)
 
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-from ilastik.utility import log_exception
-from ilastik.utility import bind
-from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
-from ilastik.applets.base.applet import DatasetConstraintError
+import copy
 
 import volumina.colortables as colortables
-from volumina.api import createDataSource, GrayscaleLayer, ColortableLayer
+from volumina.api import ColortableLayer, GrayscaleLayer, createDataSource
 from volumina.utility import ShortcutManager
 
+from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.config import cfg as ilastik_config
-
-import copy
+from ilastik.utility import bind, log_exception
 
 
 class AnnotationsGui(LayerViewerGui):

@@ -20,12 +20,18 @@
 ###############################################################################
 from functools import wraps
 
-from qtpy.QtCore import Qt, QAbstractItemModel, QModelIndex
+from qtpy.QtCore import QAbstractItemModel, QModelIndex, Qt
 
-from lazyflow.utility import PathComponents
 from ilastik.utility import bind
-from .opDataSelection import RelativeFilesystemDatasetInfo, FilesystemDatasetInfo
-from .opDataSelection import PreloadedArrayDatasetInfo, ProjectInternalDatasetInfo, MultiscaleUrlDatasetInfo
+from lazyflow.utility import PathComponents
+
+from .opDataSelection import (
+    FilesystemDatasetInfo,
+    MultiscaleUrlDatasetInfo,
+    PreloadedArrayDatasetInfo,
+    ProjectInternalDatasetInfo,
+    RelativeFilesystemDatasetInfo,
+)
 
 
 class LaneColumn(object):

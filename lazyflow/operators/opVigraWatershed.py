@@ -1,4 +1,10 @@
+import logging
+import threading
+import warnings
 from builtins import zip
+
+import numpy
+import vigra
 
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
@@ -21,13 +27,7 @@ from builtins import zip
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-
-import numpy
-import vigra
-import logging
-import threading
-import warnings
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 
 logger = logging.getLogger(__name__)
 

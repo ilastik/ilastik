@@ -18,39 +18,27 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import re
-import os
-import time
-import pathlib
-from functools import partial
-import weakref
 import logging
 import numbers
+import os
+import pathlib
 import platform
+import re
 import threading
+import time
 import warnings
+import weakref
+from functools import partial
 from typing import Optional, Type, Union
 
 # SciPy
 import numpy
-
 # PyQt
 from qtpy import uic
-from qtpy.QtCore import Signal, QObject, Qt, QUrl, QTimer
-from qtpy.QtGui import (
-    QDesktopServices,
-    QKeySequence,
-    QIcon,
-    QFont,
-    QDesktopServices,
-    QPixmap,
-)
+from qtpy.QtCore import QObject, Qt, QTimer, QUrl, Signal
+from qtpy.QtGui import QDesktopServices, QFont, QIcon, QKeySequence, QPixmap
 from qtpy.QtWidgets import (
-    QMainWindow,
-    QWidget,
-    QMenu,
     QApplication,
-    QPushButton,
     QDialogButtonBox,
     QFileDialog,
     QHBoxLayout,
@@ -67,48 +55,43 @@ from qtpy.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-
-# lazyflow
-from ilastik.shell.gui.shellWidgets import HorizontalMainSplitter
-from ilastik.widgets.collapsibleWidget import CollapsibleWidget
-from lazyflow.roi import TinyVector
-from lazyflow.graph import Operator
-import lazyflow.tools.schematic
-from lazyflow.operators import cacheMemoryManager
-from lazyflow.utility import timeLogged, isUrl
-from lazyflow.request import Request
-from lazyflow import USER_LOGLEVEL
-
 # volumina
-from volumina.utility import preferences, ShortcutManagerDlg, ShortcutManager
+from volumina.utility import ShortcutManager, ShortcutManagerDlg, preferences
 
 # ilastik
 import ilastik.ilastik_logging.default_config
-from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName, Workflow
-from ilastik.utility import bind, log_exception
-from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
-from ilastik.exceptions import UserAbort
+# Import all known workflows now to make sure they are all registered with getWorkflowFromName()
+import ilastik.workflows
+import lazyflow.tools.schematic
 from ilastik.applets.base.applet import Applet, ShellRequest
 from ilastik.applets.base.appletGuiInterface import AppletGuiInterface, VolumeViewerGui
 from ilastik.applets.base.singleToMultiGuiAdapter import SingleToMultiGuiAdapter
-from ilastik.shell.projectManager import ProjectManager
 from ilastik.config import cfg as ilastik_config
-from .iconMgr import ilastikIcons
-from ilastik.shell.gui.errorMessageFilter import ErrorMessageFilter
-from ilastik.shell.gui.memUsageDialog import MemUsageDialog
-from ilastik.shell.shellAbc import ShellABC
-from ilastik.shell.headless.headlessShell import HeadlessShell
-
+from ilastik.exceptions import UserAbort
 from ilastik.shell.gui.aboutDialog import AboutDialog
+from ilastik.shell.gui.errorMessageFilter import ErrorMessageFilter
 from ilastik.shell.gui.licenseDialog import LicenseDialog
+from ilastik.shell.gui.memUsageDialog import MemUsageDialog
 from ilastik.shell.gui.reportIssueDialog import ReportIssueDialog
-
-from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox, AppletBarManager
+# lazyflow
+from ilastik.shell.gui.shellWidgets import HorizontalMainSplitter
+from ilastik.shell.headless.headlessShell import HeadlessShell
+from ilastik.shell.projectManager import ProjectManager
+from ilastik.shell.shellAbc import ShellABC
+from ilastik.utility import bind, log_exception
+from ilastik.utility.gui import ThreadRouter, ThunkEventHandler, threadRouted
+from ilastik.widgets.appletDrawerToolBox import AppletBarManager, AppletDrawerToolBox
+from ilastik.widgets.collapsibleWidget import CollapsibleWidget
 from ilastik.widgets.filePathButton import FilePathButton
+from ilastik.workflow import Workflow, getAvailableWorkflows, getWorkflowFromName
+from lazyflow import USER_LOGLEVEL
+from lazyflow.graph import Operator
+from lazyflow.operators import cacheMemoryManager
+from lazyflow.request import Request
+from lazyflow.roi import TinyVector
+from lazyflow.utility import isUrl, timeLogged
 
-
-# Import all known workflows now to make sure they are all registered with getWorkflowFromName()
-import ilastik.workflows
+from .iconMgr import ilastikIcons
 
 try:
     import libdvid
@@ -734,8 +717,8 @@ class IlastikShell(QMainWindow):
             key = "vynfgvxunyybjrra"
             clearkey = enc(key)[0].encode()
 
-            import zipfile
             import tempfile
+            import zipfile
 
             with tempfile.TemporaryDirectory() as tmp_dir:
                 with zipfile.ZipFile(os.path.join(localDir, "ilastik-logo-alternative.zip"), "r") as z:

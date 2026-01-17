@@ -19,35 +19,32 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Python
-from abc import ABC, abstractmethod
-from copy import copy, deepcopy
 import collections
+import logging
+from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from copy import copy, deepcopy
 from functools import partial
+from itertools import count, groupby
 from typing import Dict, Optional
 
 import numpy
 import vigra
 
 # lazyflow
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.request import Request, RequestPool
-from lazyflow.stype import Opaque
-from lazyflow.rtype import List, SubRegion
-from lazyflow.roi import roiToSlice
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.operators import OpBlockedArrayCache, OpCompressedCache, OpLabelVolume
 from lazyflow.operators.opLabelBase import OpLabelBase
 from lazyflow.operators.opRelabelConsecutive import OpRelabelConsecutive
-from lazyflow.operators import OpLabelVolume, OpCompressedCache, OpBlockedArrayCache
-from itertools import groupby, count
-
-import logging
+from lazyflow.request import Request, RequestPool
+from lazyflow.roi import roiToSlice
+from lazyflow.rtype import List, SubRegion
+from lazyflow.stype import Opaque
 
 logger = logging.getLogger(__name__)
 
-from ilastik.plugins.manager import pluginManager
-
-
 from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.plugins.manager import pluginManager
 
 # These features are always calculated, but not used for prediction.
 # They are needed by our gui, or by downstream applets.

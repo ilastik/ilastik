@@ -19,15 +19,15 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 
+import collections
+import logging
+import os
 # Python
 from builtins import range
-import collections
-import os
 from typing import TYPE_CHECKING
+
 import numpy
 import vigra
-
-import logging
 
 if TYPE_CHECKING:
     from ilastik.applets.labeling.labelingGui import LabelingSlots
@@ -36,29 +36,20 @@ logger = logging.getLogger(__name__)
 
 # Qt
 from qtpy import uic
-from qtpy.QtCore import Qt, QEvent
-from qtpy.QtGui import QValidator, QCloseEvent
-from qtpy.QtWidgets import (
-    QDialog,
-    QDialogButtonBox,
-    QCheckBox,
-    QSpinBox,
-    QLabel,
-    QProgressDialog,
-    QApplication,
-)
+from qtpy.QtCore import QEvent, Qt
+from qtpy.QtGui import QCloseEvent, QValidator
+from qtpy.QtWidgets import QApplication, QCheckBox, QDialog, QDialogButtonBox, QLabel, QProgressDialog, QSpinBox
 
 # lazyflow
 import lazyflow
-from lazyflow.utility import chunked_bincount
-from lazyflow.roi import roiToSlice, roiFromShape
-from lazyflow.operators.ioOperators import OpInputDataReader
-from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
-from lazyflow.operators.valueProviders import OpMetadataInjector
-
 # ilastik
 from ilastik.widgets.ImageFileDialog import ImageFileDialog
+from lazyflow.operators.ioOperators import OpInputDataReader
+from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
+from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.operators.valueProviders import OpMetadataInjector
+from lazyflow.roi import roiFromShape, roiToSlice
+from lazyflow.utility import chunked_bincount
 
 
 def import_labeling_layer(labelingSlots: "LabelingSlots", parent_widget=None):

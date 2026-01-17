@@ -22,16 +22,15 @@ from __future__ import absolute_import
 ###############################################################################
 import functools
 import platform
-from pathlib import Path
-
 # make the program quit on Ctrl+C
 import signal
+from pathlib import Path
 
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-from qtpy.QtWidgets import QApplication, QSplashScreen
 from qtpy.QtCore import Qt, QTimer
 from qtpy.QtGui import QPixmap
+from qtpy.QtWidgets import QApplication, QSplashScreen
 
 import ilastik
 import ilastik.config

@@ -18,9 +18,8 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-
 from ilastik.applets.base.applet import DatasetConstraintError
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 
 
 class OpLayerViewer(Operator):

@@ -25,15 +25,13 @@ Eventually it could be integrated to the bioimageio packages.
 
 from __future__ import annotations
 
-from functools import partial
 import pathlib
 import tempfile
-from typing_extensions import TypeGuard, assert_never
+from collections import OrderedDict
+from functools import partial
+from typing import Callable, List, Literal, Mapping, Optional, Sequence, Union
 
 import numpy as np
-from typing import Callable, Sequence, Union, List, Literal, Mapping, Optional
-from collections import OrderedDict
-
 from bioimageio.spec import ResourceDescr, load_description
 from bioimageio.spec.model.v0_5 import (
     AxisId,
@@ -52,6 +50,7 @@ from bioimageio.spec.model.v0_5 import (
     TensorDescr,
     WithHalo,
 )
+from typing_extensions import TypeGuard, assert_never
 
 SPEC_AXES_KEYS = Literal["batch", "time", "y", "x", "z", "channel"]
 VIGRA_AXES_KEYS = Literal["b", "t", "y", "x", "z", "c"]

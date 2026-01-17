@@ -4,18 +4,16 @@
 # from builtins import chr
 #
 
-import struct
 import collections
-import warnings
 import hashlib
+import logging
 import os
+import struct
+import warnings
 
 import numpy
-import logging
-
 
 from . import FlyMovieFormat as FMF
-
 
 logger = logging.getLogger(__name__)
 
@@ -1512,7 +1510,7 @@ class UfmfSaverV3(UfmfSaverBase):
             ## rects = minimize_rectangle_coverage(
             ##     rects, rectangle_penalty=self.min_bytes )
 
-            for (xmin, ymin, xmax, ymax) in rects:
+            for xmin, ymin, xmax, ymax in rects:
                 roi = origframe[ymin:ymax, xmin:xmax]
                 regions.append((xmin, ymin, roi))
 

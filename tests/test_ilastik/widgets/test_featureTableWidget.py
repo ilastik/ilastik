@@ -3,7 +3,7 @@ from unittest import mock
 import pytest
 from qtpy.QtCore import Qt
 
-from ilastik.widgets.featureTableWidget import FeatureTableWidget, FeatureEntry
+from ilastik.widgets.featureTableWidget import FeatureEntry, FeatureTableWidget
 
 
 @pytest.fixture

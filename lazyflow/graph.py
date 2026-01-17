@@ -19,18 +19,17 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-import threading
 import logging
-from lazyflow.utility import OrderedSignal
+import threading
 
 from lazyflow import rtype
-from lazyflow.request import Request
-from lazyflow.stype import ArrayLike
-from lazyflow.utility import slicingtools, Tracer, Singleton
-from lazyflow.slot import InputSlot, OutputSlot, Slot
-from lazyflow.operator import Operator, InputDict, OutputDict, OperatorMetaClass
-from lazyflow.operatorWrapper import OperatorWrapper
 from lazyflow.metaDict import MetaDict
+from lazyflow.operator import InputDict, Operator, OperatorMetaClass, OutputDict
+from lazyflow.operatorWrapper import OperatorWrapper
+from lazyflow.request import Request
+from lazyflow.slot import InputSlot, OutputSlot, Slot
+from lazyflow.stype import ArrayLike
+from lazyflow.utility import OrderedSignal, Singleton, Tracer, slicingtools
 
 logger = logging.getLogger(__name__)
 

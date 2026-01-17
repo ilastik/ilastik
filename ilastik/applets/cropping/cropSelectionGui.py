@@ -1,5 +1,8 @@
 from __future__ import division
 
+import copy
+import logging
+import os
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,24 +24,20 @@ from __future__ import division
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-from past.utils import old_div
-import os
-import copy
 from functools import partial
 
 import numpy
+from past.utils import old_div
+from qtpy.QtCore import Qt, Slot
 from qtpy.QtGui import QColor
-from qtpy.QtWidgets import QVBoxLayout, QSpacerItem, QSizePolicy
-from qtpy.QtCore import Slot, Qt
+from qtpy.QtWidgets import QSizePolicy, QSpacerItem, QVBoxLayout
 
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-from ilastik.widgets.cropListView import CropListView
 from ilastik.applets.cropping.croppingGui import CroppingGui
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
 from ilastik.widgets.cropListModel import CropListModel
-
-import logging
+from ilastik.widgets.cropListView import CropListView
 
 logger = logging.getLogger(__name__)
 

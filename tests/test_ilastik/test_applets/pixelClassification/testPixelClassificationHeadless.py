@@ -19,29 +19,28 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import print_function
+
+import imp
+import logging
 import os
 import sys
-import imp
-import numpy
-import vigra
-import h5py
 import tempfile
 
-from lazyflow.graph import Graph
-from lazyflow.operators.ioOperators import OpStackLoader
-from lazyflow.operators.opReorderAxes import OpReorderAxes
+import h5py
+import numpy
+import vigra
 
 import ilastik
 from ilastik import app
 from ilastik.applets.dataSelection.opDataSelection import PreloadedArrayDatasetInfo
-from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
-from lazyflow.utility.timer import timeLogged
-from ilastik.utility.slicingtools import sl, slicing2shape
-from ilastik.shell.projectManager import ProjectManager
 from ilastik.shell.headless.headlessShell import HeadlessShell
+from ilastik.shell.projectManager import ProjectManager
+from ilastik.utility.slicingtools import sl, slicing2shape
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
-
-import logging
+from lazyflow.graph import Graph
+from lazyflow.operators.ioOperators import OpStackLoader
+from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.utility.timer import timeLogged
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)

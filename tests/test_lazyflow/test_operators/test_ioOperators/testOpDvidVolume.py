@@ -1,8 +1,8 @@
 from future import standard_library
 
 standard_library.install_aliases()
-from builtins import zip
-
+import http.client
+import json
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -25,17 +25,16 @@ from builtins import zip
 # 		   http://ilastik.org/license/
 ###############################################################################
 import os
-import http.client
-import json
+import platform
 import shutil
 import tempfile
 import unittest
-import platform
+from builtins import zip
 
-import numpy
-import vigra
 import h5py
+import numpy
 import pytest
+import vigra
 
 from lazyflow.graph import Graph
 
@@ -44,9 +43,10 @@ if TEST_DVID_SERVER is None:
     pytest.skip("skipping DVID tests, Environment variable TEST_DVID_SERVER is not specified", allow_module_level=True)
 
 try:
-    from lazyflow.operators.ioOperators.opDvidVolume import OpDvidVolume
-    from libdvid import DVIDConnection, ConnectionMethod, DVIDNodeService
+    from libdvid import ConnectionMethod, DVIDConnection, DVIDNodeService
     from libdvid.voxels import VoxelsMetadata
+
+    from lazyflow.operators.ioOperators.opDvidVolume import OpDvidVolume
 
     def get_testrepo_root_uuid():
         connection = DVIDConnection(TEST_DVID_SERVER)
@@ -81,7 +81,6 @@ try:
                 "/api/repo/{uuid}/{dataname}?imsure=true".format(uuid=uuid, dataname=str(instance_name)),
                 ConnectionMethod.DELETE,
             )
-
 
 except ImportError:
     have_dvid = False

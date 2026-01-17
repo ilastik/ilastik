@@ -19,17 +19,17 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 
-import pytest
-import numpy as np
-import vigra
-
-from pytest import raises
 from contextlib import nullcontext as does_not_raise
-from lazyflow.graph import Graph
-from lazyflow.utility import is_root_cause
-from lazyflow.request import RequestError
+
+import numpy as np
+import pytest
+import vigra
+from pytest import raises
 
 from ilastik.workflows.carving.opPreprocessing import OpSimpleBlockwiseWatershed
+from lazyflow.graph import Graph
+from lazyflow.request import RequestError
+from lazyflow.utility import is_root_cause
 
 
 @pytest.mark.parametrize(

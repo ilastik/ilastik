@@ -20,28 +20,28 @@
 #           http://ilastik.org/license/
 ###############################################################################
 from __future__ import division
+
 from future import standard_library
 
 standard_library.install_aliases()
 
-from builtins import zip
-import os
-import http.client
 import collections
+import http.client
 import logging
+import os
 import warnings
-from itertools import groupby, chain
+from builtins import zip
+from itertools import chain, groupby
 
-import numpy
 import h5py
+import numpy
 import vigra
+from libdvid import DVIDException, DVIDNodeService, ErrMsg
+from libdvid.voxels import DVID_BLOCK_WIDTH
 
 from lazyflow.graph import Operator, OutputSlot
 from lazyflow.roi import determineBlockShape, roiToSlice
 from lazyflow.utility import blockwise_view
-
-from libdvid import DVIDException, ErrMsg, DVIDNodeService
-from libdvid.voxels import DVID_BLOCK_WIDTH
 
 logger = logging.getLogger(__name__)
 

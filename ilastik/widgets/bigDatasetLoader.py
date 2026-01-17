@@ -1,5 +1,4 @@
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
@@ -26,33 +25,28 @@ import signal
 
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-import os, sys
-
-import numpy as np
-from qtpy.QtWidgets import QApplication, QMainWindow
-
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
-from volumina.api import createDataSource, ConstantSource
-from volumina.pixelpipeline._testing import OpDataProvider
-from volumina._testing.from_lazyflow import OpDataProvider5D, OpDelay
-from volumina.layer import GrayscaleLayer, RGBALayer, ColortableLayer
-from volumina.widgets.layerwidget import LayerWidget
-from volumina.layerstack import LayerStackModel
-from volumina.volumeEditor import VolumeEditor
-from volumina.volumeEditorWidget import VolumeEditorWidget
-from volumina.api import ArraySource, LazyflowSinkSource
-
-
-from .labelListView import LabelListView, Label
-from .labelListModel import LabelListModel
-
-from qtpy import QtCore, QtWidgets, uic
-
-from .featureDlg import *
+import os
+import sys
 
 import numpy
+import numpy as np
+from qtpy import QtCore, QtWidgets, uic
+from qtpy.QtWidgets import QApplication, QMainWindow
+from volumina._testing.from_lazyflow import OpDataProvider5D, OpDelay
+from volumina.api import ArraySource, ConstantSource, LazyflowSinkSource, createDataSource
+from volumina.layer import ColortableLayer, GrayscaleLayer, RGBALayer
+from volumina.layerstack import LayerStackModel
+from volumina.pixelpipeline._testing import OpDataProvider
+from volumina.volumeEditor import VolumeEditor
+from volumina.volumeEditorWidget import VolumeEditorWidget
+from volumina.widgets.layerwidget import LayerWidget
 
 from lazyflow import operators as op
+from lazyflow.graph import Graph, InputSlot, Operator, OutputSlot
+
+from .featureDlg import *
+from .labelListModel import LabelListModel
+from .labelListView import Label, LabelListView
 
 
 class Main(QMainWindow):

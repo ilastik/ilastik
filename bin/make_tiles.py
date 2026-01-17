@@ -4,12 +4,14 @@
 Input: hdf5 volume
 Output: directory of .png tiles representing the volume.
 """
+
 if __name__ == "__main__":
+    import argparse
+    import logging
     import sys
+
     import h5py
 
-    import logging
-    import argparse
     from lazyflow.utility import PathComponents, export_to_tiles
 
     logger = logging.getLogger()

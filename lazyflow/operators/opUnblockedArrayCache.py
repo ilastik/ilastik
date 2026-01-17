@@ -20,8 +20,9 @@
 # 		   http://ilastik.org/license/
 ###############################################################################
 
-import time
 import collections
+import logging
+import time
 from itertools import starmap
 from typing import Tuple, Union
 
@@ -29,12 +30,10 @@ import numpy
 import numpy.typing as npt
 import vigra
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.operators.opCache import ManagedBlockedCache
 from lazyflow.request import RequestLock
-from lazyflow.roi import getIntersection, roiFromShape, roiToSlice, containing_rois
-
-import logging
+from lazyflow.roi import containing_rois, getIntersection, roiFromShape, roiToSlice
 
 logger = logging.getLogger(__name__)
 

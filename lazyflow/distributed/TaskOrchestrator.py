@@ -1,8 +1,9 @@
-from mpi4py import MPI
 import enum
-from typing import Iterable, TypeVar, Generic, Callable, Tuple
-import uuid
 import logging
+import uuid
+from typing import Callable, Generic, Iterable, Tuple, TypeVar
+
+from mpi4py import MPI
 
 logger = logging.getLogger(__name__)
 

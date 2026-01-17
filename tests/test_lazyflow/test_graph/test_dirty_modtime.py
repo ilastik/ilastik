@@ -1,7 +1,8 @@
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-
 from unittest import mock
+
 import pytest
+
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 
 
 class MockOp(Operator):

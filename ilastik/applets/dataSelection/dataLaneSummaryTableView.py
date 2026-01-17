@@ -22,11 +22,12 @@ from __future__ import absolute_import
 ###############################################################################
 from builtins import range
 from functools import partial
-from qtpy.QtCore import Signal, Qt
-from qtpy.QtWidgets import QTableView, QMenu, QAction
 
-from .dataLaneSummaryTableModel import DataLaneSummaryTableModel, LaneColumn, DatasetInfoColumn
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtWidgets import QAction, QMenu, QTableView
+
 from .addFileButton import AddFileButton
+from .dataLaneSummaryTableModel import DataLaneSummaryTableModel, DatasetInfoColumn, LaneColumn
 
 
 class DataLaneSummaryTableView(QTableView):

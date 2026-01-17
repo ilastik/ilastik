@@ -19,21 +19,21 @@
 #           http://ilastik.org/license.html
 ###############################################################################
 
-import h5py
-import ilastik
 import imp
 import itertools
 import logging
-import numpy
 import os
 import sys
 import tempfile
-import vigra
 import warnings
 import zipfile
 
+import h5py
+import numpy
 import pytest
+import vigra
 
+import ilastik
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpInputDataReader
 from lazyflow.operators.ioOperators.opFormattedDataExport import OpFormattedDataExport

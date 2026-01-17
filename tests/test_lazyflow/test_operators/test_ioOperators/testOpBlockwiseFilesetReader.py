@@ -1,5 +1,4 @@
-from builtins import object
-
+import logging
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,20 +21,19 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import os
-import sys
-import shutil
-import tempfile
 import platform
+import shutil
+import sys
+import tempfile
+from builtins import object
 
 import numpy
 import pytest
 
 from lazyflow.graph import Graph
+from lazyflow.operators.ioOperators import OpBlockwiseFilesetReader
 from lazyflow.roi import getIntersectingBlocks
 from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset
-from lazyflow.operators.ioOperators import OpBlockwiseFilesetReader
-
-import logging
 
 logger = logging.getLogger(__name__)
 

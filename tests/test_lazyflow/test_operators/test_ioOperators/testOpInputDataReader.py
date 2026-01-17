@@ -19,29 +19,29 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-from lazyflow.operators.ioOperators import OpInputDataReader
-from lazyflow.operator import Operator
 import json
 import os
-import numpy
-import vigra
-import lazyflow.graph
-import tempfile
 import shutil
-import h5py
-import pytest
-import zarr
-
+import tempfile
 from collections import OrderedDict
-from typing import Tuple, List
+from typing import List, Tuple
+
+import h5py
+import numpy
+import pytest
+import vigra
+import zarr
 from PIL import Image
 
+import lazyflow.graph
+from lazyflow.operator import Operator
+from lazyflow.operators.ioOperators import OpInputDataReader
+from lazyflow.utility.io_util.multiscaleStore import Multiscale
 from lazyflow.utility.io_util.OMEZarrStore import (
-    OMEZarrTranslations,
     InvalidTransformationError,
     NotAnOMEZarrMultiscale,
+    OMEZarrTranslations,
 )
-from lazyflow.utility.io_util.multiscaleStore import Multiscale
 from lazyflow.utility.io_util.write_ome_zarr import OME_ZARR_V_0_4_KWARGS
 
 

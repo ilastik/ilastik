@@ -1,5 +1,13 @@
+import logging
+import os
+import platform
+import shutil
+import sys
+import tempfile
 from builtins import object
 
+import h5py
+import numpy
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,17 +30,8 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import pytest
-import os
-import sys
-import shutil
-import tempfile
-import numpy
-import h5py
-import platform
 
 from lazyflow.roi import sliceToRoi
-
-import logging
 
 logger = logging.getLogger(__name__)
 

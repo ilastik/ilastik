@@ -20,16 +20,15 @@
 # 		   http://ilastik.org/license/
 ###############################################################################
 from __future__ import division
-from builtins import map
-from builtins import range
-from builtins import object
-import threading
-from functools import partial
 
 import os
-import numpy
-import h5py
+import threading
+from builtins import map, object, range
+from functools import partial
+
 import greenlet
+import h5py
+import numpy
 
 
 class TestH5Py(object):

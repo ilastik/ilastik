@@ -18,40 +18,36 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ##############################################################################
-from functools import partial
+import logging
 from contextlib import contextmanager
+from functools import partial
 
 import numpy as np
-
 from qtpy.QtCore import Qt
-from qtpy.QtGui import QColor, QPen, QIcon
+from qtpy.QtGui import QColor, QIcon, QPen
 from qtpy.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QSpacerItem,
-    QSizePolicy,
-    QPushButton,
-    QMessageBox,
     QAction,
+    QHBoxLayout,
     QMenu,
+    QMessageBox,
+    QPushButton,
+    QSizePolicy,
+    QSpacerItem,
+    QVBoxLayout,
+    QWidget,
 )
-
-from .simpleEdgeFeatureSelection import SimpleEdgeFeatureSelection
-from lazyflow.utility.orderedSignal import OrderedSignal
-
-from ilastik.utility.gui import threadRouted, silent_qobject
-from ilastik.shell.gui.iconMgr import ilastikIcons
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-from ilastik.config import cfg as ilastik_config
-
 from volumina.api import createDataSource
-from volumina.layer import SegmentationEdgesLayer, LabelableSegmentationEdgesLayer
+from volumina.layer import LabelableSegmentationEdgesLayer, SegmentationEdgesLayer
 from volumina.utility import ShortcutManager
 
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.config import cfg as ilastik_config
+from ilastik.shell.gui.iconMgr import ilastikIcons
+from ilastik.utility.gui import silent_qobject, threadRouted
 from lazyflow.request import Request
+from lazyflow.utility.orderedSignal import OrderedSignal
 
-import logging
+from .simpleEdgeFeatureSelection import SimpleEdgeFeatureSelection
 
 logger = logging.getLogger(__name__)
 

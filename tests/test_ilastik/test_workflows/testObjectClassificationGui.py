@@ -18,7 +18,6 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from collections import namedtuple
 import csv
 import logging
 import os
@@ -26,21 +25,19 @@ import shutil
 import sys
 import tempfile
 import zipfile
-
-from qtpy.QtWidgets import QApplication
+from collections import namedtuple
 
 import h5py
 import numpy
 import pytest
+from qtpy.QtWidgets import QApplication
+from volumina.layer import AlphaModulatedLayer
 
-from ilastik.workflows import ObjectClassificationWorkflowPrediction
 from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
-from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog, FILE_TYPES
-
+from ilastik.widgets.exportObjectInfoDialog import FILE_TYPES, ExportObjectInfoDialog
+from ilastik.workflows import ObjectClassificationWorkflowPrediction
 from lazyflow.utility.timer import Timer
 from tests.test_ilastik.helpers import ShellGuiTestCaseBase
-
-from volumina.layer import AlphaModulatedLayer
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stdout))

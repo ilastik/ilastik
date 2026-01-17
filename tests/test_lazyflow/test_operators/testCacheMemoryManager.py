@@ -1,4 +1,25 @@
+import gc
+import logging
+import time
+import unittest
 from builtins import object
+
+import numpy as np
+import pytest
+import vigra
+
+import lazyflow
+from lazyflow.graph import Graph
+from lazyflow.operators.cacheMemoryManager import _CacheMemoryManager, default_refresh_interval
+from lazyflow.operators.filterOperators import OpGaussianSmoothing
+from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
+from lazyflow.operators.opCache import Cache
+from lazyflow.operators.opSplitRequestsBlockwise import OpSplitRequestsBlockwise
+from lazyflow.request import Request
+from lazyflow.roi import enlargeRoiForHalo, roiToSlice
+from lazyflow.rtype import SubRegion
+from lazyflow.utility import BigRequestStreamer, Memory
+from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
@@ -22,32 +43,11 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 
-import gc
-import time
 
-import numpy as np
-import vigra
-import pytest
 
-import unittest
 
-import lazyflow
-from lazyflow.graph import Graph
-from lazyflow.roi import enlargeRoiForHalo, roiToSlice
-from lazyflow.rtype import SubRegion
-from lazyflow.request import Request
-from lazyflow.utility import BigRequestStreamer
-from lazyflow.operators.cacheMemoryManager import _CacheMemoryManager
-from lazyflow.utility import Memory
-from lazyflow.operators.cacheMemoryManager import default_refresh_interval
-from lazyflow.operators.opCache import Cache
-from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
-from lazyflow.operators.opSplitRequestsBlockwise import OpSplitRequestsBlockwise
-from lazyflow.operators.filterOperators import OpGaussianSmoothing
 
-from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 
-import logging
 
 logger = logging.getLogger("tests.testCacheMemoryManager")
 mgrLogger = logging.getLogger("lazyflow.operators.cacheMemoryManager")
@@ -56,7 +56,7 @@ mgrLogger = logging.getLogger("lazyflow.operators.cacheMemoryManager")
 class NonRegisteredCache(object):
     def __init__(self, name):
         self.name = name
-        self._randn = np.random.randint(2 ** 16)
+        self._randn = np.random.randint(2**16)
 
 
 Cache.register(NonRegisteredCache)

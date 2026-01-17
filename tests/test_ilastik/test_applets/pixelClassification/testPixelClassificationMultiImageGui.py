@@ -18,15 +18,16 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
 import os
+from builtins import range
+
 import numpy
 from qtpy.QtWidgets import QApplication
-from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
-from tests.test_ilastik.helpers import ShellGuiTestCaseBase
-from lazyflow.operators import OpPixelFeaturesPresmoothed
 
 from ilastik.applets.pixelClassification.pixelClassificationApplet import PixelClassificationApplet
+from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
+from lazyflow.operators import OpPixelFeaturesPresmoothed
+from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 
 PIXEL_CLASSIFICATION_INDEX = 2
 

@@ -1,7 +1,8 @@
 from typing import List, Tuple, Union
-from qtpy.QtCore import Signal, QObject
+
+from qtpy.QtCore import QObject, Signal
 from qtpy.QtGui import QIcon
-from qtpy.QtWidgets import QToolBox, QWidget, QStackedWidget
+from qtpy.QtWidgets import QStackedWidget, QToolBox, QWidget
 
 from ilastik.shell.gui.iconMgr import ilastikIcons
 

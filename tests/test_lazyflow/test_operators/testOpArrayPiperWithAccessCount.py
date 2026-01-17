@@ -27,13 +27,12 @@ __date__ = "$Mar 06, 2015 12:14:39 EST$"
 
 
 import numpy
-
 import pytest
 import vigra
 
 from lazyflow.graph import Graph
-from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 from lazyflow.roi import roiFromShape, roiToSlice
+from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 
 
 class AllowMaskException(Exception):

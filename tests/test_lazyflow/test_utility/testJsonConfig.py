@@ -1,5 +1,13 @@
+import collections
+import copy
+import logging
+import os
+import shutil
+import sys
+import tempfile
 from builtins import object
 
+import numpy
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,16 +30,8 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import pytest
-import os
-import sys
-import copy
-import tempfile
-import shutil
-import collections
-import numpy
-from lazyflow.utility.jsonConfig import Namespace, JsonConfigParser, AutoEval, RoiTuple, FormattedField
 
-import logging
+from lazyflow.utility.jsonConfig import AutoEval, FormattedField, JsonConfigParser, Namespace, RoiTuple
 
 logger = logging.getLogger(__name__)
 

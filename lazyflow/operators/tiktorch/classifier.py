@@ -20,33 +20,28 @@
 #          http://ilastik.org/license/
 ###############################################################################
 from __future__ import annotations
+
 import logging
 import socket
-import numpy
 import warnings
 from collections import defaultdict
-from typing import Callable, Dict, Iterable, Sequence, Tuple, Union, TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Callable, Dict, Iterable, List, Sequence, Tuple, Union
 
-import xarray
 import grpc
-
-from lazyflow.request import Request
-from lazyflow.roi import roiToSlice
-from lazyflow.futures_utils import MappableFuture, map_future
-
+import numpy
+import xarray
 from tiktorch import converters
 from tiktorch.proto import data_store_pb2, data_store_pb2_grpc, inference_pb2, inference_pb2_grpc, utils_pb2
-
 from vigra import AxisTags
+
+from lazyflow.futures_utils import MappableFuture, map_future
+from lazyflow.request import Request
+from lazyflow.roi import roiToSlice
 
 from . import _base
 
 if TYPE_CHECKING:
-    from bioimageio.spec.model.v0_5 import (
-        ModelDescr,
-        InputTensorDescr,
-        OutputTensorDescr,
-    )
+    from bioimageio.spec.model.v0_5 import InputTensorDescr, ModelDescr, OutputTensorDescr
 
 logger = logging.getLogger(__name__)
 

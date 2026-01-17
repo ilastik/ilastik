@@ -31,8 +31,9 @@ original issue: https://github.com/ilastik/ilastik/issues/2152
 pull request: https://github.com/ilastik/ilastik/pull/2160
 """
 import pathlib
-import pytest
 import sys
+
+import pytest
 
 from ilastik import app
 

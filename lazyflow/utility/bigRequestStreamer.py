@@ -1,7 +1,8 @@
-from __future__ import absolute_import
-from __future__ import division
-from builtins import next
-from builtins import object
+from __future__ import absolute_import, division
+
+import logging
+import warnings
+from builtins import next, object
 
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
@@ -25,19 +26,18 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import numpy
+
 from lazyflow.request import Request
-from lazyflow.utility import RoiRequestBatch
-from lazyflow.utility.helpers import bigintprod
 from lazyflow.roi import (
-    getIntersectingBlocks,
-    getBlockBounds,
-    getIntersection,
     determine_optimal_request_blockshape,
     determineBlockShape,
+    getBlockBounds,
+    getIntersectingBlocks,
+    getIntersection,
 )
+from lazyflow.utility import RoiRequestBatch
+from lazyflow.utility.helpers import bigintprod
 
-import logging
-import warnings
 from .memory import Memory
 
 logger = logging.getLogger(__name__)

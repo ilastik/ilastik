@@ -38,11 +38,11 @@ from qtpy.QtWidgets import (
 )
 
 import ilastik.config
+from ilastik.applets.base.applet import ShellRequest
 from ilastik.utility import log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.widgets.ImageFileDialog import ImageFileDialog
 from lazyflow.request import Request
-from ilastik.applets.base.applet import ShellRequest
 
 logger = logging.getLogger(__name__)
 

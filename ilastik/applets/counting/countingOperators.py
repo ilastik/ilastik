@@ -20,27 +20,25 @@
 ###############################################################################
 
 from __future__ import division
-from builtins import range
+
 import logging
+from builtins import range
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
-import numpy as np
-import time
 import copy
 import importlib
+import time
 from functools import partial
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
-from lazyflow.request import Request, RequestPool
-from lazyflow.utility import traceLogged
-from lazyflow.operators import OpPixelOperator
+import numpy as np
 
 from ilastik.applets.counting.countingsvr import SVR
-
-
+from lazyflow.graph import InputSlot, Operator, OrderedSignal, OutputSlot
+from lazyflow.operators import OpPixelOperator, OpReorderAxes
 from lazyflow.operators.filterOperators import OpGaussianSmoothing
-from lazyflow.operators import OpReorderAxes
+from lazyflow.request import Request, RequestPool
+from lazyflow.utility import traceLogged
 
 
 class OpLabelPreviewer(Operator):

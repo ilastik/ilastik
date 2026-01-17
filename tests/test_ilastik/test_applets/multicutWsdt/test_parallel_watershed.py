@@ -1,10 +1,9 @@
 import numpy
 import pytest
-
 from elf.parallel.common import get_blocking
-from lazyflow.roi import roiToSlice
 
 from ilastik.applets.wsdt.opWsdt import parallel_watershed
+from lazyflow.roi import roiToSlice
 
 
 @pytest.fixture

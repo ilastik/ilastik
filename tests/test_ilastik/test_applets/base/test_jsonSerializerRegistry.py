@@ -1,12 +1,13 @@
-import pytest
 import json
 
+import pytest
+
 from ilastik.applets.base.appletSerializer.jsonSerializerRegistry import (
-    _DictSerialzierRegistry,
-    IDictSerializer,
     DeserializationError,
     DuplicateEntryError,
+    IDictSerializer,
     RegistryError,
+    _DictSerialzierRegistry,
 )
 
 
@@ -111,19 +112,15 @@ class TestDictSerializerRegistry:
 
             @registry.register_serializer(MyObj)
             class MyDummySerializer(IDictSerializer):
-                def serialize(self, obj: MyObj):
-                    ...
+                def serialize(self, obj: MyObj): ...
 
-                def deserialize(self, dct):
-                    ...
+                def deserialize(self, dct): ...
 
     def test_registration_raises_if_not_subclass_of_IDictSerializer(self, registry, serializer):
         with pytest.raises(TypeError) as e:
 
             @registry.register_serializer(MyObj)
             class MyDummySerializer:
-                def serialize(self, obj: MyObj):
-                    ...
+                def serialize(self, obj: MyObj): ...
 
-                def deserialize(self, dct):
-                    ...
+                def deserialize(self, dct): ...

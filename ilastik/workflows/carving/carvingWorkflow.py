@@ -25,18 +25,17 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from ilastik.applets.dataSelection import DataSelectionApplet
+# ilastik
+from ilastik.workflow import Workflow
+from ilastik.workflows.carving.opPreprocessing import OpFilter, OpPreprocessing
 # lazyflow
 from lazyflow.graph import Graph
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
-# ilastik
-from ilastik.workflow import Workflow
-from ilastik.applets.dataSelection import DataSelectionApplet
-
 # this workflow: carving
 from .carvingApplet import CarvingApplet
 from .preprocessingApplet import PreprocessingApplet
-from ilastik.workflows.carving.opPreprocessing import OpPreprocessing, OpFilter
 
 # ===----------------------------------------------------------------------------------------------------------------===
 

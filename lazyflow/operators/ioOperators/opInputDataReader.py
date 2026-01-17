@@ -21,34 +21,34 @@
 ###############################################################################
 from pathlib import Path
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.operators import OpBlockedArrayCache, OpMetadataInjector, OpSubRegion
-from .opNpyFileReader import OpNpyFileReader
 from lazyflow.operators.ioOperators import (
     OpBlockwiseFilesetReader,
+    OpCachedTiledVolumeReader,
+    OpImageReader,
     OpKlbReader,
+    OpRawBinaryFileReader,
     OpRESTfulBlockwiseFilesetReader,
+    OpRESTfulPrecomputedChunkedVolumeReader,
+    OpStackLoader,
     OpStreamingH5N5Reader,
-    OpStreamingH5N5SequenceReaderS,
     OpStreamingH5N5SequenceReaderM,
+    OpStreamingH5N5SequenceReaderS,
     OpTiffReader,
     OpTiffSequenceReader,
-    OpCachedTiledVolumeReader,
-    OpRawBinaryFileReader,
-    OpStackLoader,
-    OpRESTfulPrecomputedChunkedVolumeReader,
-    OpImageReader,
 )
-from lazyflow.utility.jsonConfig import JsonConfigParser
-from lazyflow.utility.pathHelpers import lsH5N5, isRelative, splitPath, PathComponents, isUrl
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore
-from .opOMEZarrMultiscaleReader import OpOMEZarrMultiscaleReader
+from lazyflow.utility.jsonConfig import JsonConfigParser
+from lazyflow.utility.pathHelpers import PathComponents, isRelative, isUrl, lsH5N5, splitPath
 
-from .opStreamingUfmfReader import OpStreamingUfmfReader
+from .opNpyFileReader import OpNpyFileReader
+from .opOMEZarrMultiscaleReader import OpOMEZarrMultiscaleReader
 from .opStreamingMmfReader import OpStreamingMmfReader
+from .opStreamingUfmfReader import OpStreamingUfmfReader
 
 try:
-    from lazyflow.operators.ioOperators import OpDvidVolume, OpDvidRoi
+    from lazyflow.operators.ioOperators import OpDvidRoi, OpDvidVolume
 
     _supports_dvid = True
 except ImportError as ex:
@@ -63,12 +63,13 @@ try:
 except ImportError as ex:
     _supports_h5blockreader = False
 
-import h5py
-import vigra
+import logging
 import os
 import re
-import logging
-from typing import Tuple, Optional
+from typing import Optional, Tuple
+
+import h5py
+import vigra
 
 from lazyflow.utility.io_util.multiprocessHdf5File import MultiProcessHdf5File
 

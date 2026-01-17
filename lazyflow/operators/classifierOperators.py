@@ -1,5 +1,7 @@
 from __future__ import absolute_import
 
+import copy
+import logging
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -23,27 +25,24 @@ from __future__ import absolute_import
 ###############################################################################
 # Python
 from abc import abstractmethod
-import copy
-import logging
 
 # SciPy
 import numpy
 
-# lazyflow
-from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal, OperatorWrapper
-from lazyflow.roi import sliceToRoi, roiToSlice, getIntersection, roiFromShape, nonzero_bounding_box, enlargeRoiForHalo
-from lazyflow.utility import Timer
 from lazyflow.classifiers import (
-    LazyflowVectorwiseClassifierABC,
-    LazyflowVectorwiseClassifierFactoryABC,
     LazyflowPixelwiseClassifierABC,
     LazyflowPixelwiseClassifierFactoryABC,
+    LazyflowVectorwiseClassifierABC,
+    LazyflowVectorwiseClassifierFactoryABC,
 )
-
+# lazyflow
+from lazyflow.graph import InputSlot, Operator, OperatorWrapper, OrderedSignal, OutputSlot
+from lazyflow.roi import enlargeRoiForHalo, getIntersection, nonzero_bounding_box, roiFromShape, roiToSlice, sliceToRoi
+from lazyflow.utility import Timer
 from lazyflow.utility.helpers import bigintprod
 
-from .opFeatureMatrixCache import OpFeatureMatrixCache
 from .opConcatenateFeatureMatrices import OpConcatenateFeatureMatrices
+from .opFeatureMatrixCache import OpFeatureMatrixCache
 
 logger = logging.getLogger(__name__)
 

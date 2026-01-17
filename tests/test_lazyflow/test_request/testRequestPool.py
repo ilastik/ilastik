@@ -14,19 +14,17 @@
 #
 # Copyright 2011-2014, the ilastik developers
 
+import logging
 import sys
 import time
 from functools import partial
-import numpy
 
+import numpy
 import pytest
-from lazyflow.utility import is_root_cause
 
 from lazyflow.request.request import Request, RequestError, RequestPool
-
 from lazyflow.testing import fail_after_timeout
-
-import logging
+from lazyflow.utility import is_root_cause
 
 handler = logging.StreamHandler(sys.stdout)
 formatter = logging.Formatter("%(levelname)s %(name)s %(message)s")
@@ -101,9 +99,9 @@ def _impl_test_pool_results_discarded():
     """
     After a RequestPool executes, none of its data should linger if the user didn't hang on to it.
     """
+    import threading
     import weakref
     from functools import partial
-    import threading
 
     result_refs = []
 

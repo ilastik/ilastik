@@ -18,9 +18,10 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from qtpy.QtCore import QObject, QEvent
-from qtpy.QtWidgets import QApplication
 from functools import partial
+
+from qtpy.QtCore import QEvent, QObject
+from qtpy.QtWidgets import QApplication
 
 
 class ThunkEvent(QEvent):

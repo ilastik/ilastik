@@ -1,19 +1,20 @@
 from __future__ import (
-    print_function,
     absolute_import,
-    nested_scopes,
-    generators,
     division,
-    with_statement,
+    generators,
+    nested_scopes,
+    print_function,
     unicode_literals,
+    with_statement,
 )
+
 import sys
 
-from qtpy.QtCore import Signal, QThread, Qt
-from qtpy.QtWidgets import QDialog, QVBoxLayout, QProgressBar, QLabel
+from qtpy.QtCore import Qt, QThread, Signal
+from qtpy.QtWidgets import QDialog, QLabel, QProgressBar, QVBoxLayout
 
-from ilastik.utility.progress import DefaultProgressVisitor, CommandLineProgressVisitor
 from ilastik.utility.gui.threadRouter import ThreadRouter, threadRouted
+from ilastik.utility.progress import CommandLineProgressVisitor, DefaultProgressVisitor
 
 
 class TrackProgress(QThread):

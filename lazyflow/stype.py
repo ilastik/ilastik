@@ -19,13 +19,13 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-import numpy
-import vigra
 import collections
 
-from .roi import roiToSlice
-
 import h5py
+import numpy
+import vigra
+
+from .roi import roiToSlice
 
 
 class InvalidResult(ValueError):

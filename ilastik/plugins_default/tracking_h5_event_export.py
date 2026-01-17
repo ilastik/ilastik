@@ -1,24 +1,24 @@
-from builtins import range
+import logging
 import os
-import numpy as np
-import h5py
+from builtins import range
 from functools import partial
-from lazyflow.request import Request, RequestPool
+
+import h5py
+import numpy as np
 
 from ilastik.plugins import TrackingExportFormatPlugin
-
-import logging
+from lazyflow.request import Request, RequestPool
 
 logger = logging.getLogger(__name__)
 
 try:
     from hytra.core.jsongraph import (
+        getDetectionsPerTimestep,
+        getDivisionsPerTimestep,
+        getLinksPerTimestep,
         getMappingsBetweenUUIDsAndTraxels,
         getMergersDetectionsLinksDivisions,
         getMergersPerTimestep,
-        getLinksPerTimestep,
-        getDetectionsPerTimestep,
-        getDivisionsPerTimestep,
     )
 except ImportError:
     logger.warning("Could not load hytra. Event exporting plugin not loaded.")
@@ -73,9 +73,9 @@ else:
 
                 if div is not None and len(div) > 0:
                     ds = tg.create_dataset("Splits", data=div, dtype=np.int32)
-                    ds.attrs[
-                        "Format"
-                    ] = "ancestor (previous file), descendant (current file), descendant (current file)"
+                    ds.attrs["Format"] = (
+                        "ancestor (previous file), descendant (current file), descendant (current file)"
+                    )
 
                 if mer is not None and len(mer) > 0:
                     ds = tg.create_dataset("Mergers", data=mer, dtype=np.int32)
@@ -95,7 +95,7 @@ else:
         exportsToFile = False
 
         def checkFilesExist(self, filename):
-            """ Check whether the files we want to export are already present """
+            """Check whether the files we want to export are already present"""
             return os.path.exists(filename)
 
         def export(self, filename, hypothesesGraph, pluginExportContext):

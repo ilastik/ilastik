@@ -22,9 +22,9 @@
 import logging
 from typing import Optional
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, set_multiscale_meta
+from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore
 
 logger = logging.getLogger(__name__)
 

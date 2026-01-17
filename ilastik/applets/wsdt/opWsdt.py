@@ -1,23 +1,21 @@
-from collections import OrderedDict
-import numpy as np
-from typing import Optional, Sequence
-
-from elf.segmentation.watershed import distance_transform_watershed
-from elf.parallel.common import get_blocking
-
-import vigra
-
-from lazyflow.utility import OrderedSignal
-from lazyflow.request import Request
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import roiToSlice
-from lazyflow.operators import OpBlockedArrayCache, OpMetadataInjector
-from lazyflow.operators.generic import OpPixelOperator
-from lazyflow.utility.timer import Timer
-
-from concurrent.futures import ThreadPoolExecutor
 import concurrent.futures
 import logging
+from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
+from typing import Optional, Sequence
+
+import numpy as np
+import vigra
+from elf.parallel.common import get_blocking
+from elf.segmentation.watershed import distance_transform_watershed
+
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.operators import OpBlockedArrayCache, OpMetadataInjector
+from lazyflow.operators.generic import OpPixelOperator
+from lazyflow.request import Request
+from lazyflow.roi import roiToSlice
+from lazyflow.utility import OrderedSignal
+from lazyflow.utility.timer import Timer
 
 logger = logging.getLogger(__name__)
 

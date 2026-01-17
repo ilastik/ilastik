@@ -82,13 +82,12 @@ of the authors and should not be interpreted as representing official policies,
 either expressed or implied, of the FreeBSD Project.
 """
 from __future__ import print_function
-from builtins import range
-from builtins import object
 
+import errno
 import os
 import sys
 import time
-import errno
+from builtins import object, range
 
 
 class FileLock(object):
@@ -192,10 +191,10 @@ class FileLock(object):
 
 
 if __name__ == "__main__":
-    import sys
     import functools
-    import threading
+    import sys
     import tempfile
+    import threading
 
     temp_dir = tempfile.mkdtemp()
     protected_filepath = os.path.join(temp_dir, "somefile.txt")

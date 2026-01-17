@@ -1,9 +1,10 @@
-from ilastik.plugins import ObjectFeaturesPlugin
-from ilastik.plugins_default.convex_hull_feature_description import fill_feature_description
-import vigra
-import numpy
 import logging
 
+import numpy
+import vigra
+
+from ilastik.plugins import ObjectFeaturesPlugin
+from ilastik.plugins_default.convex_hull_feature_description import fill_feature_description
 
 logger = logging.getLogger(__name__)
 

@@ -1,10 +1,11 @@
 from builtins import object
+
 import numpy
 import vigra
 
+from lazyflow.classifiers import VigraRfLazyflowClassifier, VigraRfLazyflowClassifierFactory
 from lazyflow.graph import Graph
 from lazyflow.operators.classifierOperators import OpTrainClassifierBlocked
-from lazyflow.classifiers import VigraRfLazyflowClassifierFactory, VigraRfLazyflowClassifier
 
 
 class TestOpTrainRandomForestBlocked(object):

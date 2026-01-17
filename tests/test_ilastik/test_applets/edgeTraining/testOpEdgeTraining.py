@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-
 from ilastikrag.util import generate_random_voronoi
 
 from ilastik.applets.edgeTraining import OpEdgeTraining

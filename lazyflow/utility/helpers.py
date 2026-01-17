@@ -20,11 +20,12 @@
 # 		   http://ilastik.org/license/
 ###############################################################################
 
+import numbers
+import sys
 from functools import reduce
 from operator import mul
-from typing import Iterable, Tuple, Type, Union, Dict
-import sys
-import numbers
+from typing import Dict, Iterable, Tuple, Type, Union
+
 import numpy
 
 

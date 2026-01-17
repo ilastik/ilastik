@@ -1,10 +1,11 @@
 from builtins import object
+
 import numpy
 import vigra
 
 from lazyflow.graph import Graph
-from lazyflow.operators.opFeatureMatrixCache import OpFeatureMatrixCache
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
+from lazyflow.operators.opFeatureMatrixCache import OpFeatureMatrixCache
 
 
 class TestOpFeatureMatrixCache(object):

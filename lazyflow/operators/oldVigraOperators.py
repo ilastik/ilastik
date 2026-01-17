@@ -24,34 +24,34 @@
 # todo: remove this code after testing period
 
 # Python
-from __future__ import absolute_import
-from __future__ import division
-from builtins import zip
+from __future__ import absolute_import, division
 
-from builtins import range
-import os
-from collections import deque
-import itertools
-import math
-import traceback
-from functools import partial
-import logging
 import copy
+import itertools
+import logging
+import math
+import os
 import time
+import traceback
+from builtins import range, zip
+from collections import deque
+from functools import partial
 
 logger = logging.getLogger(__name__)
 
 # SciPy
-import numpy, vigra
+import numpy
+import vigra
 
-# lazyflow
-from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
 from lazyflow import roi
-from lazyflow.roi import sliceToRoi, roiToSlice
+# lazyflow
+from lazyflow.graph import InputSlot, Operator, OrderedSignal, OutputSlot
 from lazyflow.request import RequestPool
-from .operators import OpArrayPiper
+from lazyflow.roi import roiToSlice, sliceToRoi
 from lazyflow.rtype import SubRegion
+
 from .generic import OpMultiArrayStacker, popFlagsFromTheKey
+from .operators import OpArrayPiper
 
 # Sven's fast filters
 try:
@@ -1171,15 +1171,12 @@ class OpLaplacianOfGaussian(OpBaseFilter):
 ###############################################################################
 import h5py
 
-# lazyflow
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import roiToSlice
-from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2
-from lazyflow.operators import OpReorderAxes
-from lazyflow.operatorWrapper import OperatorWrapper
-
 from ilastik.applets.featureSelection import FeatureSelectionConstraintError
-
+# lazyflow
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.operators import OpMultiArraySlicer2, OpReorderAxes, OpSlicedBlockedArrayCache
+from lazyflow.operatorWrapper import OperatorWrapper
+from lazyflow.roi import roiToSlice
 
 # Constants
 ScalesList = [0.3, 0.7, 1.0, 1.6, 3.5, 5.0, 10.0]

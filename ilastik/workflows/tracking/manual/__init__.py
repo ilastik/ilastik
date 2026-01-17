@@ -1,5 +1,7 @@
 from __future__ import absolute_import
 
+import logging
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,7 +23,6 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 
-import logging
 
 logger = logging.getLogger(__name__)
 

@@ -3,14 +3,14 @@ import platform
 import re
 import webbrowser
 from functools import partial
+from urllib.parse import quote
 
-from qtpy.QtCore import QUrl, Qt
+from qtpy.QtCore import Qt, QUrl
 from qtpy.QtGui import QDesktopServices
+from qtpy.QtWidgets import QApplication, QDialog, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QTextEdit, QVBoxLayout
 
 from ilastik import __version__ as ilastik_version
 from ilastik import ilastik_logging
-from qtpy.QtWidgets import QApplication, QDialog, QVBoxLayout, QLabel, QTextEdit, QPushButton, QHBoxLayout, QSizePolicy
-from urllib.parse import quote
 
 FORUM_URI = "https://forum.image.sc/tag/ilastik"
 TEAM_EMAIL = "team@ilastik.org"

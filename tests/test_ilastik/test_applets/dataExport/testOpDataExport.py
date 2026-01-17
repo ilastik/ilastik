@@ -19,20 +19,19 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import os
-import tempfile
 import shutil
+import tempfile
 from pathlib import Path
 
 import numpy
 import pytest
 import vigra
 
-from lazyflow.graph import Graph
-from lazyflow.roi import roiToSlice
-from lazyflow.operators.ioOperators import OpInputDataReader
+from ilastik.applets.dataExport.opDataExport import DataExportPathFormatter, OpDataExport
 from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
-
-from ilastik.applets.dataExport.opDataExport import OpDataExport, DataExportPathFormatter
+from lazyflow.graph import Graph
+from lazyflow.operators.ioOperators import OpInputDataReader
+from lazyflow.roi import roiToSlice
 
 
 class TestOpDataExport(object):

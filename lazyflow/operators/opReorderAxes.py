@@ -1,6 +1,3 @@
-from builtins import map
-from builtins import zip
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -25,12 +22,13 @@ from builtins import zip
 import collections
 import copy
 import logging
+from builtins import map, zip
+from functools import partial
+
 import numpy
 import vigra
 
-from functools import partial
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 
 logger = logging.getLogger(__name__)
 

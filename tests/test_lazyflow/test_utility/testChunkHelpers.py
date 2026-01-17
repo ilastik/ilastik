@@ -21,8 +21,10 @@
 ###############################################################################
 
 import unittest
-from lazyflow.utility.chunkHelpers import chooseChunkShape
+
 from numpy.testing import assert_array_equal
+
+from lazyflow.utility.chunkHelpers import chooseChunkShape
 
 
 class TestChunkHelpers(unittest.TestCase):

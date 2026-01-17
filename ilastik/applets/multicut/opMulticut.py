@@ -1,19 +1,16 @@
+import logging
 import warnings
 
+import nifty
 import numpy as np
+from elf.segmentation.multicut import get_available_solver_names, get_multicut_solver
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.operators import OpBlockedArrayCache, OpValueCache
 from lazyflow.utility import Timer
-
-import nifty
-from elf.segmentation.multicut import get_multicut_solver, get_available_solver_names
-
 from lazyflow.utility.data_semantics import ImageTypes
+
 from .multicutLegacy import LEGACY_SOLVER_NAMES, legacy_nifty_fm_greedy_solver
-
-
-import logging
 
 logger = logging.getLogger(__name__)
 

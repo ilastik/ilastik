@@ -18,16 +18,15 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from qtpy.QtWidgets import QPushButton
 from qtpy.QtGui import QColor
-
-
-from ilastik.applets.objectClassification.opObjectClassification import TableExporter
-from volumina.api import createDataSource, ColortableLayer, AlphaModulatedLayer
+from qtpy.QtWidgets import QPushButton
 from volumina import colortables
+from volumina.api import AlphaModulatedLayer, ColortableLayer, createDataSource
+
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
-from lazyflow.operators import OpMultiArraySlicer2
+from ilastik.applets.objectClassification.opObjectClassification import TableExporter
 from ilastik.utility.exportingOperator import ExportingGui
+from lazyflow.operators import OpMultiArraySlicer2
 
 
 class ObjectClassificationDataExportGui(DataExportGui, ExportingGui):

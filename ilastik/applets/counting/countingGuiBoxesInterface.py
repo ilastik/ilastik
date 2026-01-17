@@ -27,10 +27,6 @@ import warnings
 from typing import Iterable, TextIO, Tuple
 
 import numpy as np
-
-from ilastik.utility.gui import roi2rect, silent_qobject
-from ilastik.widgets.boxListModel import BoxLabel
-from lazyflow.operators.generic import OpSubRegion
 from past.utils import old_div
 from qtpy.QtCore import QEvent, QObject, QPoint, QPointF, QRect, QRectF, Qt, Signal, Slot
 from qtpy.QtGui import QBrush, QColor, QFont, QPen
@@ -46,6 +42,10 @@ from qtpy.QtWidgets import (
 from volumina import colortables
 from volumina.eventswitch import InterpreterABC
 from volumina.positionModel import PositionModel
+
+from ilastik.utility.gui import roi2rect, silent_qobject
+from ilastik.widgets.boxListModel import BoxLabel
+from lazyflow.operators.generic import OpSubRegion
 
 logger = logging.getLogger(__name__)
 

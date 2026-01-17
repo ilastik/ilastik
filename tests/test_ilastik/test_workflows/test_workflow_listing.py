@@ -1,8 +1,9 @@
-import ilastik.workflows
-import ilastik.workflow
-
 from unittest.mock import Mock
+
 import pytest
+
+import ilastik.workflow
+import ilastik.workflows
 
 
 @pytest.mark.parametrize(

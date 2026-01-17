@@ -21,12 +21,12 @@ from __future__ import absolute_import
 #      http://ilastik.org/license.html
 ###############################################################################
 import re
+from typing import List, Optional
 
 ################################
 # # Add Submodules to sys.path ##
 ################################
 import h5py
-from typing import Optional, List
 from packaging.version import parse
 
 try:

@@ -1,7 +1,8 @@
 import numpy
-from lazyflow.graph import Operator, InputSlot
-from lazyflow.utility import BigRequestStreamer, OrderedSignal
+
+from lazyflow.graph import InputSlot, Operator
 from lazyflow.roi import roiFromShape, roiToSlice
+from lazyflow.utility import BigRequestStreamer, OrderedSignal
 
 
 class OpExportToArray(Operator):

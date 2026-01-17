@@ -18,13 +18,10 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.workflow import Workflow
-
-from lazyflow.graph import Graph
-
 from ilastik.applets.dataSelection import DataSelectionApplet
-from ilastik.applets.labeling import LabelingApplet
-from ilastik.applets.labeling import LabelingSingleLaneApplet
+from ilastik.applets.labeling import LabelingApplet, LabelingSingleLaneApplet
+from ilastik.workflow import Workflow
+from lazyflow.graph import Graph
 
 
 class LabelingWorkflow(Workflow):

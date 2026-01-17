@@ -21,8 +21,6 @@
 import logging
 from typing import Optional
 
-from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction, OpObjectExtractionFromLabels
-from lazyflow.roi import roiToSlice
 import numpy
 import numpy.typing as npt
 
@@ -34,10 +32,11 @@ from ilastik.applets.base.appletSerializer import (
     SerialSlot,
     deleteIfPresent,
 )
+from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction, OpObjectExtractionFromLabels
 from ilastik.plugins.manager import pluginManager
 from ilastik.utility.commandLineProcessing import convertStringToList
+from lazyflow.roi import roiToSlice
 from lazyflow.slot import InputSlot, OutputSlot
-
 
 logger = logging.getLogger(__name__)
 

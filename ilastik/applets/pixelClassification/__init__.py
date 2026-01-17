@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+from .opPixelClassificationDataExport import OpPixelClassificationDataExport
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -22,4 +23,3 @@ from __future__ import absolute_import
 ###############################################################################
 from .pixelClassificationApplet import *
 from .pixelClassificationDataExportApplet import *
-from .opPixelClassificationDataExport import OpPixelClassificationDataExport

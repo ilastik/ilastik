@@ -19,13 +19,14 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-from qtpy.QtGui import QColor
 
-from lazyflow.operators import OpMultiArraySlicer2
-from volumina.api import createDataSource, AlphaModulatedLayer
+from qtpy.QtGui import QColor
 from volumina import colortables
-from ilastik.utility import bind
+from volumina.api import AlphaModulatedLayer, createDataSource
+
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.utility import bind
+from lazyflow.operators import OpMultiArraySlicer2
 
 
 class PredictionViewerGui(LayerViewerGui):

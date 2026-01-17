@@ -1,14 +1,9 @@
-from ilastik.applets.base.appletSerializer import (
-    AppletSerializer,
-    SerialBlockSlot,
-    SerialObjectFeatureNamesSlot,
-)
-from ilastik.applets.objectExtraction.objectExtractionSerializer import (
-    SerialObjectFeaturesSlot,
-)
+import collections
 
 import numpy as np
-import collections
+
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialBlockSlot, SerialObjectFeatureNamesSlot
+from ilastik.applets.objectExtraction.objectExtractionSerializer import SerialObjectFeaturesSlot
 
 
 class TrackingFeatureExtractionSerializer(AppletSerializer):

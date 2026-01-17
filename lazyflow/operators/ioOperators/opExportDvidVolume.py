@@ -14,17 +14,15 @@
 #
 # Copyright 2011-2014, the ilastik developers
 import contextlib
+import logging
 
 import numpy
-
-from lazyflow.graph import Operator, InputSlot
-from lazyflow.utility import OrderedSignal, BigRequestStreamer
-from lazyflow.roi import roiFromShape
-
 from libdvid import DVIDException
 from libdvid.voxels import VoxelsAccessor, VoxelsMetadata
 
-import logging
+from lazyflow.graph import InputSlot, Operator
+from lazyflow.roi import roiFromShape
+from lazyflow.utility import BigRequestStreamer, OrderedSignal
 
 logger = logging.getLogger(__name__)
 

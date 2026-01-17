@@ -1,5 +1,5 @@
-from builtins import object
-
+import errno
+import fnmatch
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,15 +22,14 @@ from builtins import object
 #                 http://ilastik.org/license/
 ###############################################################################
 import os
-import re
-import fnmatch
-import errno
 import pathlib
+import re
+from builtins import object
 from typing import List
 
 import h5py
-import z5py
 import numpy
+import z5py
 
 
 class PathComponents(object):

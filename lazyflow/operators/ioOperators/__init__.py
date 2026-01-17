@@ -21,45 +21,42 @@ from __future__ import absolute_import
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-from .ioOperators import OpImageReader, OpStackLoader, OpStackWriter, OpStackToH5Writer, OpH5N5WriterBigDataset
-
+from .ioOperators import OpH5N5WriterBigDataset, OpImageReader, OpStackLoader, OpStackToH5Writer, OpStackWriter
+from .opBlockwiseFilesetReader import OpBlockwiseFilesetReader
+from .opCachedTiledVolumeReader import OpCachedTiledVolumeReader
+from .opKlbReader import OpKlbReader
+from .opNpyFileReader import OpNpyFileReader
+from .opRawBinaryFileReader import OpRawBinaryFileReader
+from .opRESTfulBlockwiseFilesetReader import OpRESTfulBlockwiseFilesetReader
+from .opRESTfulPrecomputedChunkedVolumeReader import OpRESTfulPrecomputedChunkedVolumeReader
+from .opStreamingH5N5Reader import OpStreamingH5N5Reader
+from .opStreamingH5N5SequenceReaderM import OpStreamingH5N5SequenceReaderM
+from .opStreamingH5N5SequenceReaderS import OpStreamingH5N5SequenceReaderS
 # All "Read" operators must come before OpInputDataReader, which uses them.
 from .opStreamingMmfReader import OpStreamingMmfReader
 from .opStreamingUfmfReader import OpStreamingUfmfReader
-from .opRawBinaryFileReader import OpRawBinaryFileReader
-from .opNpyFileReader import OpNpyFileReader
-from .opStreamingH5N5Reader import OpStreamingH5N5Reader
-from .opStreamingH5N5SequenceReaderS import OpStreamingH5N5SequenceReaderS
-from .opStreamingH5N5SequenceReaderM import OpStreamingH5N5SequenceReaderM
-from .opBlockwiseFilesetReader import OpBlockwiseFilesetReader
-from .opRESTfulBlockwiseFilesetReader import OpRESTfulBlockwiseFilesetReader
-from .opTiledVolumeReader import OpTiledVolumeReader
-from .opCachedTiledVolumeReader import OpCachedTiledVolumeReader
-from .opKlbReader import OpKlbReader
 from .opTiffReader import OpTiffReader
 from .opTiffSequenceReader import OpTiffSequenceReader
-from .opRESTfulPrecomputedChunkedVolumeReader import OpRESTfulPrecomputedChunkedVolumeReader
+from .opTiledVolumeReader import OpTiledVolumeReader
 
 # Try to import the dvid-related operator.
 # If it fails, that's okay.
 try:
-    from .opDvidVolume import OpDvidVolume
     from .opDvidRoi import OpDvidRoi
+    from .opDvidVolume import OpDvidVolume
     from .opExportDvidVolume import OpExportDvidVolume
 except ImportError as ex:
     # If the exception was not related to libdvid, then re-raise it.
     if "libdvid" not in ex.args[0]:
         raise
 
-from .opInputDataReader import *
-
-from .opNpyWriter import OpNpyWriter
+from .hdf5SerializerKnime import *
 from .opExport2DImage import OpExport2DImage
 from .opExportMultipageTiff import OpExportMultipageTiff
 from .opExportMultipageTiffSequence import OpExportMultipageTiffSequence
-from .opExportToArray import OpExportToArray
 from .opExportSlot import OpExportSlot
-from .opFormattedDataExport import OpFormattedDataExport
-
-from .hdf5SerializerKnime import *
+from .opExportToArray import OpExportToArray
 from .opExportToKnime import OpExportToKnime
+from .opFormattedDataExport import OpFormattedDataExport
+from .opInputDataReader import *
+from .opNpyWriter import OpNpyWriter

@@ -20,26 +20,23 @@
 #          http://ilastik.org/license/
 ###############################################################################
 from __future__ import division
-from builtins import next
-from builtins import map
 
-from builtins import zip
-from builtins import range
-from builtins import object
-import numpy as np
-import vigra
-import h5py
+import itertools
+from builtins import map, next, object, range, zip
+from collections import defaultdict
+from functools import partial, wraps
 from threading import Condition
 from threading import Lock as HardLock
 
-from collections import defaultdict
-from functools import partial, wraps
-import itertools
+import h5py
+import numpy as np
+import vigra
 
-from lazyflow.operator import Operator, InputSlot, OutputSlot
-from lazyflow.rtype import SubRegion
+from lazyflow.operator import InputSlot, Operator, OutputSlot
 from lazyflow.operators.opCache import ObservableCache
+from lazyflow.rtype import SubRegion
 from lazyflow.utility.data_semantics import ImageTypes
+
 from .opReorderAxes import OpReorderAxes
 
 # the lazyflow lock seems to have deadlock issues sometimes

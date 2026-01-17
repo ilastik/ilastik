@@ -21,11 +21,11 @@
 from future import standard_library
 
 standard_library.install_aliases()
-import sys
-import traceback
-import threading
 import io
 import logging
+import sys
+import threading
+import traceback
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

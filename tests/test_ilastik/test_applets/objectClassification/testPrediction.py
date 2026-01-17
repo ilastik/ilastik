@@ -19,25 +19,26 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
+
 import ilastik.ilastik_logging
 
 ilastik.ilastik_logging.default_config.init()
 
 import unittest
-import numpy
-import vigra
-from lazyflow.graph import Graph
-from ilastik.applets.objectClassification.opObjectClassification import (
-    OpRelabelSegmentation,
-    OpObjectTrain,
-    OpObjectPredict,
-    OpObjectClassification,
-)
-
-from ilastik.applets import objectExtraction
-from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures, OpAdaptTimeListRoi, OpObjectExtraction
 
 import h5py
+import numpy
+import vigra
+
+from ilastik.applets import objectExtraction
+from ilastik.applets.objectClassification.opObjectClassification import (
+    OpObjectClassification,
+    OpObjectPredict,
+    OpObjectTrain,
+    OpRelabelSegmentation,
+)
+from ilastik.applets.objectExtraction.opObjectExtraction import OpAdaptTimeListRoi, OpObjectExtraction, OpRegionFeatures
+from lazyflow.graph import Graph
 
 
 class TestWithCube(unittest.TestCase):

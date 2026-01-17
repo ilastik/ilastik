@@ -18,11 +18,11 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+import os
+
 from qtpy import uic
 
-import os
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-
 from ilastik.utility import bind
 
 

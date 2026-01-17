@@ -18,9 +18,9 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from qtpy.QtGui import QPixmap, QPainter, QBrush, QPen, QPalette
-from qtpy.QtWidgets import QGraphicsView, QVBoxLayout, QLabel, QGraphicsScene
-from qtpy.QtCore import Qt, QRect, QSize, QEvent
+from qtpy.QtCore import QEvent, QRect, QSize, Qt
+from qtpy.QtGui import QBrush, QPainter, QPalette, QPen, QPixmap
+from qtpy.QtWidgets import QGraphicsScene, QGraphicsView, QLabel, QVBoxLayout
 
 
 # ===============================================================================

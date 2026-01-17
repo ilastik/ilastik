@@ -1,6 +1,6 @@
 import enum
-from typing import List, Tuple
 from itertools import chain
+from typing import List, Tuple
 
 
 class SlotNameEnum(enum.IntEnum):

@@ -21,11 +21,12 @@
 ###############################################################################
 
 import unittest
-from lazyflow.utility import Memory
-from lazyflow.utility.memory import FormatError
 from functools import partial
 
 from numpy.testing import assert_equal
+
+from lazyflow.utility import Memory
+from lazyflow.utility.memory import FormatError
 
 
 class TestMemory(unittest.TestCase):
@@ -74,7 +75,7 @@ class TestMemory(unittest.TestCase):
         assert_equal(d, 1024)
 
         d = parse("2.25MiB")
-        assert_equal(d, int(2.25 * 1024 ** 2))
+        assert_equal(d, int(2.25 * 1024**2))
 
         with self.assertRaises(FormatError):
             d = parse("bla")
@@ -85,7 +86,7 @@ class TestMemory(unittest.TestCase):
     def testScientific(self):
         sci = Memory.toScientific
 
-        x = 2.2 * 1024 ** 3
+        x = 2.2 * 1024**3
         (mant, exp) = sci(x)
         assert_equal(mant, 2.2)
         assert_equal(exp, 3)

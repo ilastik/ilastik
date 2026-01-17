@@ -12,20 +12,20 @@ from bioimageio.spec.model.v0_5 import (
     BatchAxis,
     ChannelAxis,
     CiteEntry,
-    OutputTensorDescr,
-    TorchscriptWeightsDescr,
-    TensorId,
     Identifier,
     InputTensorDescr,
     LicenseId,
+    OutputTensorDescr,
     SizeReference,
     SpaceInputAxis,
     SpaceOutputAxisWithHalo,
+    TensorId,
+    TorchscriptWeightsDescr,
     WeightsDescr,
 )
-from lazyflow.operators.tiktorch.classifier import ModelSession
-
 from tiktorch.proto import utils_pb2
+
+from lazyflow.operators.tiktorch.classifier import ModelSession
 
 
 @pytest.fixture

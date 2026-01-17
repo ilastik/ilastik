@@ -18,14 +18,13 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+import logging
+
 import numpy
 
 from ilastik.applets.base.appletSerializer import AppletSerializer, deleteIfPresent
-
 from ilastik.utility import bind
 from lazyflow.utility.timer import timeLogged
-
-import logging
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,5 @@
-import pytest
-
 import numpy
+import pytest
 
 from lazyflow.operators import OpArrayPiper
 

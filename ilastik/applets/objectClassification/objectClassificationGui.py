@@ -18,8 +18,17 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+import copy
+import logging
+import os
+import weakref
+from functools import partial
+
+import numpy
+import numpy.typing as npt
+import vigra
 from qtpy import uic
-from qtpy.QtCore import Slot, Qt
+from qtpy.QtCore import Qt, Slot
 from qtpy.QtGui import QColor, QIcon
 from qtpy.QtWidgets import (
     QAction,
@@ -39,37 +48,22 @@ from qtpy.QtWidgets import (
 
 from ilastik.applets.objectClassification.opObjectClassification import InvalidObjectIndex
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
-
-import os
-import copy
-import vigra
-
-import numpy
-import numpy.typing as npt
-import weakref
-from functools import partial
-
 from ilastik.config import cfg as ilastik_config
+from ilastik.plugins.manager import pluginManager
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from ilastik.plugins.manager import pluginManager
-
 from lazyflow.request import Request, RequestPool
-
-import logging
-
 from lazyflow.slot import InputSlot
 
 logger = logging.getLogger(__name__)
 
-from ilastik.applets.labeling.labelingGui import LabelingGui, LabelingSlots
-from ilastik.shell.gui.iconMgr import ilastikIcons
-
 import volumina.colortables as colortables
-from volumina.api import createDataSource, ColortableLayer, AlphaModulatedLayer, LazyflowSinkSource
-
+from volumina.api import AlphaModulatedLayer, ColortableLayer, LazyflowSinkSource, createDataSource
 from volumina.interpreter import ClickInterpreter
 from volumina.utility import ShortcutManager
+
+from ilastik.applets.labeling.labelingGui import LabelingGui, LabelingSlots
+from ilastik.shell.gui.iconMgr import ilastikIcons
 
 
 def _listReplace(old, new):

@@ -1,6 +1,5 @@
 import pytest
 
-
 from ilastik.utility.itertools import pairwise
 
 

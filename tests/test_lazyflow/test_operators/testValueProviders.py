@@ -19,27 +19,28 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-import time
 import threading
+import time
 from functools import partial
+
 import numpy
+import pytest
 import vigra
+
 import lazyflow.graph
-from lazyflow.utility import is_root_cause
 from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.valueProviders import (
-    OpMetadataInjector,
-    OpOutputProvider,
-    OpMetadataSelector,
-    OpValueCache,
-    OpMetadataMerge,
-    OpZeroDefault,
-    OpMissingDataSource,
     MissingDataAccessError,
+    OpMetadataInjector,
+    OpMetadataMerge,
+    OpMetadataSelector,
+    OpMissingDataSource,
+    OpOutputProvider,
+    OpValueCache,
+    OpZeroDefault,
 )
-import pytest
-
 from lazyflow.request.request import RequestError
+from lazyflow.utility import is_root_cause
 
 
 class TestOpMetadataInjector:

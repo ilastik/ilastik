@@ -1,6 +1,5 @@
-import pytest
-
 import numpy
+import pytest
 
 from ilastik.utility.slottools import DtypeConvertFunction
 

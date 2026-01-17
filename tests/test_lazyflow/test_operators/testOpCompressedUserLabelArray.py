@@ -1,5 +1,4 @@
-from builtins import map
-from builtins import object
+from builtins import map, object
 
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
@@ -24,10 +23,10 @@ from builtins import object
 ###############################################################################
 import numpy
 import vigra
-from lazyflow.graph import Graph
-from lazyflow.operators.opArrayPiper import OpArrayPiper
-from lazyflow.operators import OpCompressedUserLabelArray
 
+from lazyflow.graph import Graph
+from lazyflow.operators import OpCompressedUserLabelArray
+from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.utility.slicingtools import slicing2shape
 
 

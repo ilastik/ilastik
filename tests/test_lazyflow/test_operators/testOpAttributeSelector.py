@@ -1,3 +1,4 @@
+import copy
 from builtins import object
 
 ###############################################################################
@@ -22,7 +23,6 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import lazyflow.graph
-import copy
 from lazyflow.operators import OpAttributeSelector
 
 

@@ -25,15 +25,15 @@
 from future import standard_library
 
 standard_library.install_aliases()
-import queue
 import argparse
+import datetime
 import functools
 import logging
 import os
+import queue
 import subprocess
 import sys
 import threading
-import datetime
 
 # Start with logging so other import warnings are logged.
 import ilastik.ilastik_logging
@@ -42,18 +42,16 @@ ilastik.ilastik_logging.default_config.init(output_mode=ilastik.ilastik_logging.
 ilastik.ilastik_logging.startUpdateInterval(10)  # 10 second periodic refresh
 logger = logging.getLogger(__name__)
 
-# HCI
-from lazyflow.graph import OperatorWrapper
-
+import ilastik.monkey_patches
+import ilastik.workflows  # Load all known workflow modules
 # ilastik
 from ilastik import app
-import ilastik.monkey_patches
-from lazyflow.utility.timer import timeLogged
 from ilastik.clusterConfig import parseClusterConfigFile
 from ilastik.clusterOps import OpClusterize, OpTaskWorker
 from ilastik.utility import log_exception
-
-import ilastik.workflows  # Load all known workflow modules
+# HCI
+from lazyflow.graph import OperatorWrapper
+from lazyflow.utility.timer import timeLogged
 
 
 @timeLogged(logger, logging.INFO)

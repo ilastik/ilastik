@@ -1,5 +1,10 @@
 from __future__ import absolute_import
 
+import ilastik.config
+from ilastik.applets.dataSelection import DataSelectionApplet
+from ilastik.applets.featureSelection import FeatureSelectionApplet
+from ilastik.applets.pixelClassification import PixelClassificationApplet
+from ilastik.workflow import Workflow
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,20 +26,11 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from lazyflow.graph import Graph
-from lazyflow.operators.opReorderAxes import OpReorderAxes
-
-from ilastik.workflow import Workflow
-
-from ilastik.applets.dataSelection import DataSelectionApplet
-from ilastik.applets.featureSelection import FeatureSelectionApplet
-from ilastik.applets.pixelClassification import PixelClassificationApplet
-
 from lazyflow.operators import OpSingleChannelSelector
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 from .carvingApplet import CarvingApplet
 from .preprocessingApplet import PreprocessingApplet
-
-import ilastik.config
 
 if ilastik.config.cfg.getboolean("ilastik", "debug"):
 

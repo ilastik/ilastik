@@ -18,15 +18,15 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
+import logging
 import os
 import sys
-import numpy as np
+
 import h5py
+import numpy as np
 import pytest
 
 from lazyflow.utility.timer import timeLogged
-
-import logging
 
 logger = logging.getLogger(__name__)
 

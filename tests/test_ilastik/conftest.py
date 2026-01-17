@@ -1,9 +1,8 @@
+import importlib
 import pathlib
+import sys
 
 import pytest
-
-import importlib
-import sys
 
 
 @pytest.fixture(scope="session")

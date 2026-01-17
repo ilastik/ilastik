@@ -11,7 +11,8 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os
+import os
+import sys
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -267,7 +268,7 @@ texinfo_documents = [
 
 # The default str and repr functions for Slot are not ideal for documentation output.
 # Replace them with something better, so that autoclass output is cleaner.
-from lazyflow.graph import Slot, InputSlot
+from lazyflow.graph import InputSlot, Slot
 
 defaultSlot = Slot()
 

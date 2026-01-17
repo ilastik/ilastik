@@ -23,28 +23,28 @@ import sys
 
 from lazyflow.roi import roiToSlice
 
-
 if sys.version_info.major >= 3:
     unicode = str
 
-from functools import partial
-from abc import ABCMeta, abstractmethod, abstractproperty
 import logging
+from abc import ABCMeta, abstractmethod, abstractproperty
+from functools import partial
 
 import numpy as np
 import vigra
+from future.utils import with_metaclass
 
 from lazyflow.operator import Operator
-from lazyflow.slot import InputSlot, OutputSlot
-from lazyflow.rtype import SubRegion
+from lazyflow.operators.opLabelBase import OpLabelBase
 from lazyflow.request import Request, RequestPool
+from lazyflow.rtype import SubRegion
+from lazyflow.slot import InputSlot, OutputSlot
 from lazyflow.utility.data_semantics import ImageTypes
-from .opReorderAxes import OpReorderAxes
+
+from .generic import OpPixelOperator
 from .opBlockedArrayCache import OpBlockedArrayCache
 from .opLazyConnectedComponents import OpLazyConnectedComponents
-from .generic import OpPixelOperator
-from lazyflow.operators.opLabelBase import OpLabelBase
-from future.utils import with_metaclass
+from .opReorderAxes import OpReorderAxes
 
 logger = logging.getLogger(__name__)
 

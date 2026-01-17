@@ -19,9 +19,10 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
-from .opNNclass import OpNNClassification
+
 from .nnClassSerializer import NNClassificationSerializer
-from .tiktorchController import TiktorchController, TiktorchOperatorModel, ALLOW_TRAINING
+from .opNNclass import OpNNClassification
+from .tiktorchController import ALLOW_TRAINING, TiktorchController, TiktorchOperatorModel
 
 
 class NNClassApplet(StandardApplet):

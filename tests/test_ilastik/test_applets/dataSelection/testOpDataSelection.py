@@ -21,41 +21,40 @@
 import json
 import os
 import shutil
-from collections import defaultdict, OrderedDict
+import tempfile
+from collections import OrderedDict, defaultdict
+from pathlib import Path
 from typing import Tuple
 from unittest import mock
 from unittest.mock import Mock
 
+import h5py
 import numpy
+import pytest
 import requests
 import vigra
-import h5py
-from pathlib import Path
 import zarr
 from PIL import Image
 
-from lazyflow.utility.io_util.write_ome_zarr import OME_ZARR_V_0_4_KWARGS
-from lazyflow.utility.io_util.OMEZarrStore import ScaleNotFoundError
-from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY
-from lazyflow.utility.pathHelpers import PathComponents
-from lazyflow.graph import Operator, OperatorWrapper, InputSlot, OutputSlot
-from lazyflow.operators.generic import OpMultiArrayMerger
-from ilastik.applets.dataSelection.opDataSelection import (
-    OpMultiLaneDataSelectionGroup,
-    OpDataSelectionGroup,
-    OpDataSelection,
-    MultiscaleUrlDatasetInfo,
-    RelativeFilesystemDatasetInfo,
-    FilesystemDatasetInfo,
-    ProjectInternalDatasetInfo,
-    UrlDatasetInfo,
-    TransactionRequiredError,
-)
-from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 from ilastik.applets.base.applet import DatasetConstraintError
-
-import tempfile
-import pytest
+from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
+from ilastik.applets.dataSelection.opDataSelection import (
+    FilesystemDatasetInfo,
+    MultiscaleUrlDatasetInfo,
+    OpDataSelection,
+    OpDataSelectionGroup,
+    OpMultiLaneDataSelectionGroup,
+    ProjectInternalDatasetInfo,
+    RelativeFilesystemDatasetInfo,
+    TransactionRequiredError,
+    UrlDatasetInfo,
+)
+from lazyflow.graph import InputSlot, Operator, OperatorWrapper, OutputSlot
+from lazyflow.operators.generic import OpMultiArrayMerger
+from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY
+from lazyflow.utility.io_util.OMEZarrStore import ScaleNotFoundError
+from lazyflow.utility.io_util.write_ome_zarr import OME_ZARR_V_0_4_KWARGS
+from lazyflow.utility.pathHelpers import PathComponents
 
 TOP_GROUP_NAME = "some_group"
 

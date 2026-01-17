@@ -18,9 +18,10 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import pytest
 import threading
 from functools import partial
+
+import pytest
 
 mainThreadPauseEvent = threading.Event()
 mainFunc = None

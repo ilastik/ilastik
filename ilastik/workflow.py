@@ -18,13 +18,13 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from abc import abstractproperty, abstractmethod
-from lazyflow.graph import Operator, Graph
-from string import ascii_uppercase
-from ilastik.shell.shellAbc import ShellABC
 import logging
+from abc import abstractmethod, abstractproperty
+from string import ascii_uppercase
+from typing import TYPE_CHECKING, Iterator, List, Optional, Tuple, Type, Union
 
-from typing import List, Tuple, Type, TYPE_CHECKING, Iterator, Optional, Union
+from ilastik.shell.shellAbc import ShellABC
+from lazyflow.graph import Graph, Operator
 
 if TYPE_CHECKING:
     from qtpy.QtWidgets import QMenu

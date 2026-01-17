@@ -19,12 +19,12 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 
-from lazyflow.operators.generic import OpMultiArraySlicer2
-from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
-from ilastik.utility import bind
-from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
-
 from qtpy.QtGui import QColor
+from volumina.api import AlphaModulatedLayer, ColortableLayer, LazyflowSource
+
+from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
+from ilastik.utility import bind
+from lazyflow.operators.generic import OpMultiArraySlicer2
 
 
 class NNClassificationDataExportGui(DataExportGui):

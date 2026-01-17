@@ -22,9 +22,10 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import numpy
+
 from lazyflow.graph import Graph
-from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.generic import OpSubRegion
+from lazyflow.operators.opArrayPiper import OpArrayPiper
 
 
 class TestOpSubRegion(object):

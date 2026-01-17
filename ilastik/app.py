@@ -24,12 +24,13 @@ import importlib
 import logging
 import os
 import sys
-from typing import List, Optional, Sequence, Tuple
 from pathlib import Path
+from typing import List, Optional, Sequence, Tuple
 
 import ilastik.config
 from ilastik import __version__
-from ilastik.config import cfg as ilastik_config, runtime_cfg
+from ilastik.config import cfg as ilastik_config
+from ilastik.config import runtime_cfg
 from ilastik.utility.commandLineProcessing import OptionalFlagAction
 
 logger = logging.getLogger(__name__)
@@ -287,7 +288,7 @@ def _update_tiktorch_executable_location(parsed_args):
 
 
 def _init_logging(parsed_args):
-    from ilastik.ilastik_logging import default_config, startUpdateInterval, DEFAULT_LOGFILE_PATH
+    from ilastik.ilastik_logging import DEFAULT_LOGFILE_PATH, default_config, startUpdateInterval
 
     logfile_path = parsed_args.logfile or DEFAULT_LOGFILE_PATH
     process_name = ""
@@ -354,8 +355,8 @@ def _prepare_lazyflow_config(parsed_args):
         def _configure_lazyflow_settings():
             import lazyflow
             import lazyflow.request
-            from lazyflow.utility import Memory
             from lazyflow.operators import cacheMemoryManager
+            from lazyflow.utility import Memory
 
             if status_interval_secs:
                 memory_logger = logging.getLogger("lazyflow.operators.cacheMemoryManager")

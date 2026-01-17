@@ -1,8 +1,9 @@
 from __future__ import print_function
-import signal
+
 import functools
-import threading
 import platform
+import signal
+import threading
 
 
 class TimeoutError(Exception):

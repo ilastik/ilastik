@@ -18,37 +18,35 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from abc import abstractmethod
-import sys
-import os
-import enum
 import argparse
 import csv
+import enum
+import logging
+import os
+import sys
 import warnings
+from abc import abstractmethod
 
-import numpy
 import h5py
+import numpy
 
-from ilastik.applets.objectExtraction.objectExtractionApplet import ObjectExtractionAppletFromLabels
-from ilastik.workflow import Workflow
+from ilastik.applets.batchProcessing import BatchProcessingApplet
+from ilastik.applets.blockwiseObjectClassification import BlockwiseObjectClassificationApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
-from ilastik.applets.pixelClassification import PixelClassificationApplet
-from ilastik.applets.thresholdTwoLevels import ThresholdTwoLevelsApplet
-from ilastik.applets.objectExtraction import ObjectExtractionApplet
+from ilastik.applets.fillMissingSlices import FillMissingSlicesApplet
 from ilastik.applets.objectClassification import ObjectClassificationApplet, ObjectClassificationDataExportApplet
 from ilastik.applets.objectClassification.opObjectClassification import TableExporter
-from ilastik.applets.fillMissingSlices import FillMissingSlicesApplet
-from ilastik.applets.blockwiseObjectClassification import BlockwiseObjectClassificationApplet
-from ilastik.applets.batchProcessing import BatchProcessingApplet
-
+from ilastik.applets.objectExtraction import ObjectExtractionApplet
+from ilastik.applets.objectExtraction.objectExtractionApplet import ObjectExtractionAppletFromLabels
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
+from ilastik.applets.pixelClassification import PixelClassificationApplet
+from ilastik.applets.thresholdTwoLevels import ThresholdTwoLevelsApplet
+from ilastik.utility import SlotNameEnum
+from ilastik.workflow import Workflow
 from lazyflow.graph import Graph, OutputSlot
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.roi import TinyVector
-from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
-from ilastik.utility import SlotNameEnum
-
-import logging
 
 logger = logging.getLogger(__name__)
 

@@ -13,6 +13,7 @@ Usage example:
 Idea behind a concept to separate client code that can cancel request (owner of CancellationTokenSource)
 and cancellable procedure that only can query state of cancellation token
 """
+
 import logging
 from typing import Callable, List
 
@@ -23,8 +24,7 @@ Thunk = Callable[[], None]
 
 class CancellationToken:
     @property
-    def cancelled(self):
-        ...
+    def cancelled(self): ...
 
     def add_callback(self, fn: Thunk) -> None:
         pass

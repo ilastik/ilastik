@@ -1,5 +1,5 @@
-from builtins import object
-
+import random
+import threading
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,16 +22,17 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import time
-import random
-import threading
+from builtins import object
 from functools import partial
+
 import numpy
 import vigra
+
 import lazyflow.graph
-from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operator import Operator
-from lazyflow.slot import InputSlot, OutputSlot
+from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operatorWrapper import OperatorWrapper
+from lazyflow.slot import InputSlot, OutputSlot
 
 
 class OpA(Operator):

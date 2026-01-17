@@ -1,7 +1,6 @@
 from __future__ import division
-from builtins import map
-from builtins import zip
 
+import collections
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -24,23 +23,22 @@ from builtins import zip
 # 		   http://ilastik.org/license/
 ###############################################################################
 import os
-import collections
 import warnings
+from builtins import map, zip
 from functools import partial
+from pathlib import Path
+from typing import Tuple, Type, TypeVar
 
 import numpy
-from typing import Tuple, TypeVar, Type
-from pathlib import Path
-
 import z5py
 from ndstructs import Slice5D
 
-from lazyflow.utility import format_known_keys
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import roiFromShape
-from lazyflow.operators.generic import OpSubRegion, OpPixelOperator
-from lazyflow.operators.valueProviders import OpMetadataInjector
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.operators.generic import OpPixelOperator, OpSubRegion
 from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.operators.valueProviders import OpMetadataInjector
+from lazyflow.roi import roiFromShape
+from lazyflow.utility import format_known_keys
 
 from .opExportSlot import OpExportSlot
 

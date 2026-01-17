@@ -1,9 +1,10 @@
-import pytest
 import pathlib
 
+import pytest
+
 import lazyflow
-from lazyflow.operator import format_operator_stack
 from lazyflow.graph import Graph
+from lazyflow.operator import format_operator_stack
 
 
 @pytest.fixture(scope="module")

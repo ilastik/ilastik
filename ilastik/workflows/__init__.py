@@ -24,20 +24,18 @@ logger = logging.getLogger(__name__)
 
 import ilastik.config
 
+from .newAutocontext.newAutocontextWorkflow import AutocontextTwoStage
 from .pixelClassification import PixelClassificationWorkflow
 
-
-from .newAutocontext.newAutocontextWorkflow import AutocontextTwoStage
-
 if ilastik.config.cfg.getboolean("ilastik", "debug"):
-    from .newAutocontext.newAutocontextWorkflow import AutocontextThreeStage, AutocontextFourStage
+    from .newAutocontext.newAutocontextWorkflow import AutocontextFourStage, AutocontextThreeStage
 
 
 try:
     from .objectClassification.objectClassificationWorkflow import (
+        ObjectClassificationWorkflowBinary,
         ObjectClassificationWorkflowPixel,
         ObjectClassificationWorkflowPrediction,
-        ObjectClassificationWorkflowBinary,
     )
 except ImportError as e:
     logger.warning("Failed to import object workflow; check dependencies: " + str(e))
@@ -48,13 +46,13 @@ except (ImportError, AttributeError) as e:
     logger.warning("Failed to import tracking workflow; check pgmlink dependency: " + str(e))
 
 try:
-    from .tracking.conservation.conservationTrackingWorkflow import (
-        ConservationTrackingWorkflowFromBinary,
-        ConservationTrackingWorkflowFromPrediction,
-    )
     from .tracking.conservation.animalConservationTrackingWorkflow import (
         AnimalConservationTrackingWorkflowFromBinary,
         AnimalConservationTrackingWorkflowFromPrediction,
+    )
+    from .tracking.conservation.conservationTrackingWorkflow import (
+        ConservationTrackingWorkflowFromBinary,
+        ConservationTrackingWorkflowFromPrediction,
     )
 except ImportError as e:
     logger.warning(
@@ -93,8 +91,10 @@ from .examples.dataConversion.dataConversionWorkflow import DataConversionWorkfl
 try:
     if ilastik.config.runtime_cfg.tiktorch_executable:
         from .neuralNetwork import LocalWorkflow
-        from .trainableDomainAdaptation import LocalTrainableDomainAdaptationWorkflow
-        from .trainableDomainAdaptation import LocalTrainableDomainAdaptationWorkflowLegacy
+        from .trainableDomainAdaptation import (
+            LocalTrainableDomainAdaptationWorkflow,
+            LocalTrainableDomainAdaptationWorkflowLegacy,
+        )
 
         logger.debug(ilastik.config.runtime_cfg)
 
@@ -104,8 +104,4 @@ except ImportError as e:
 # Examples
 if ilastik.config.cfg.getboolean("ilastik", "debug"):
     from . import wsdt
-    from .examples import layerViewer
-    from .examples import thresholdMasking
-    from .examples import deviationFromMean
-    from .examples import labeling
-    from .examples import connectedComponents
+    from .examples import connectedComponents, deviationFromMean, labeling, layerViewer, thresholdMasking

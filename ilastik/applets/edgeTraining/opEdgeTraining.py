@@ -1,23 +1,19 @@
+import logging
 from builtins import range
-
 from functools import partial
 
+import ilastikrag
 import numpy as np
 import pandas as pd
 import vigra
 
-import ilastikrag
-
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import roiToSlice
-from lazyflow.operators import OpValueCache, OpBlockedArrayCache
-from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
-
 from ilastik.applets.base.applet import DatasetConstraintError
-from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
-
-import logging
+from ilastik.utility.operatorSubView import OperatorSubView
+from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.operators import OpBlockedArrayCache, OpValueCache
+from lazyflow.roi import roiToSlice
 
 logger = logging.getLogger(__name__)
 

@@ -18,12 +18,12 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.plugins import ObjectFeaturesPlugin
-import ilastik.applets.objectExtraction.opObjectExtraction
-
+import numpy as np
 # from ilastik.applets.objectExtraction.opObjectExtraction import make_bboxes, max_margin
 import vigra
-import numpy as np
+
+import ilastik.applets.objectExtraction.opObjectExtraction
+from ilastik.plugins import ObjectFeaturesPlugin
 from lazyflow.request import Request, RequestPool
 
 

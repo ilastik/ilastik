@@ -1,4 +1,8 @@
+import unittest
 from builtins import object
+
+from lazyflow.graph import Graph, Operator
+from lazyflow.operators.opCache import Cache, ManagedBlockedCache, ManagedCache, MemInfoNode, ObservableCache
 
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
@@ -22,15 +26,8 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 
-import unittest
 
-from lazyflow.graph import Graph, Operator
 
-from lazyflow.operators.opCache import Cache
-from lazyflow.operators.opCache import ObservableCache
-from lazyflow.operators.opCache import ManagedCache
-from lazyflow.operators.opCache import ManagedBlockedCache
-from lazyflow.operators.opCache import MemInfoNode
 
 
 def iterSubclasses(cls):

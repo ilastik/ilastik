@@ -27,23 +27,23 @@ from functools import partial
 import numpy
 import vigra
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.operators.ioOperators import (
-    OpH5N5WriterBigDataset,
-    OpStreamingH5N5Reader,
-    OpNpyWriter,
     OpExport2DImage,
-    OpStackWriter,
     OpExportMultipageTiff,
     OpExportMultipageTiffSequence,
     OpExportToArray,
+    OpH5N5WriterBigDataset,
+    OpNpyWriter,
+    OpStackWriter,
+    OpStreamingH5N5Reader,
 )
 from lazyflow.roi import roiFromShape
-from lazyflow.utility import OrderedSignal, format_known_keys, PathComponents, mkdir_p, isUrl
+from lazyflow.utility import OrderedSignal, PathComponents, format_known_keys, isUrl, mkdir_p
 from lazyflow.utility.io_util.write_ome_zarr import (
-    write_ome_zarr,
     generate_default_target_scales,
     match_target_scales_to_input_excluding_upscales,
+    write_ome_zarr,
 )
 
 try:

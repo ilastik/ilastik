@@ -20,14 +20,14 @@
 ###############################################################################
 import unittest
 
-from ilastik.applets.objectClassification.opObjectClassification import (
-    OpObjectClassification,
-    OpObjectTrain,
-    OpObjectPredict,
-)
-
 import numpy
 import vigra
+
+from ilastik.applets.objectClassification.opObjectClassification import (
+    OpObjectClassification,
+    OpObjectPredict,
+    OpObjectTrain,
+)
 from lazyflow.graph import Graph
 
 

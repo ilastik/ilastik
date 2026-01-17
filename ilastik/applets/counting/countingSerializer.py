@@ -19,20 +19,21 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
-from builtins import range
-from ilastik.applets.base.appletSerializer import (
-    AppletSerializer,
-    deleteIfPresent,
-    SerialSlot,
-    SerialCountingSlot,
-    SerialBlockSlot,
-    SerialListSlot,
-)
-from lazyflow.operators.ioOperators import OpStreamingH5N5Reader, OpH5N5WriterBigDataset
-from lazyflow.utility.orderedSignal import OrderedSignal
-import threading
 
 import logging
+import threading
+from builtins import range
+
+from ilastik.applets.base.appletSerializer import (
+    AppletSerializer,
+    SerialBlockSlot,
+    SerialCountingSlot,
+    SerialListSlot,
+    SerialSlot,
+    deleteIfPresent,
+)
+from lazyflow.operators.ioOperators import OpH5N5WriterBigDataset, OpStreamingH5N5Reader
+from lazyflow.utility.orderedSignal import OrderedSignal
 
 logger = logging.getLogger(__name__)
 

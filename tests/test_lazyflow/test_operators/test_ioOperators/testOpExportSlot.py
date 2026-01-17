@@ -20,8 +20,8 @@
 # 		   http://ilastik.org/license/
 ###############################################################################
 import os
-import tempfile
 import shutil
+import tempfile
 from collections import OrderedDict
 from pathlib import Path
 
@@ -31,12 +31,12 @@ import z5py
 
 from lazyflow.graph import Graph
 from lazyflow.operator import Operator
-from lazyflow.utility import PathComponents, Pipeline
-from lazyflow.operators.operators import OpArrayPiper
 from lazyflow.operators import OpBlockedArrayCache
-from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.operators.ioOperators import OpInputDataReader, OpExportSlot, OpStackLoader
+from lazyflow.operators.ioOperators import OpExportSlot, OpInputDataReader, OpStackLoader
 from lazyflow.operators.ioOperators.opTiffSequenceReader import OpTiffSequenceReader
+from lazyflow.operators.operators import OpArrayPiper
+from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.utility import PathComponents, Pipeline
 from lazyflow.utility.io_util import multiscaleStore
 
 

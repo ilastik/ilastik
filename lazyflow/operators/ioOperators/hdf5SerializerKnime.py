@@ -10,8 +10,8 @@ import sys
 if sys.version_info.major >= 3:
     unicode = str
 
-import numpy
 import h5py
+import numpy
 
 
 def write_numpy_structured_array_to_HDF5(fid, internalPath, data, overwrite=False):

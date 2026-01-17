@@ -21,9 +21,9 @@
 import os
 
 from qtpy import uic
-from qtpy.QtWidgets import QVBoxLayout, QSpacerItem, QSizePolicy
-
+from qtpy.QtWidgets import QSizePolicy, QSpacerItem, QVBoxLayout
 from volumina.widgets.thresholdingWidget import ThresholdingWidget
+
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 

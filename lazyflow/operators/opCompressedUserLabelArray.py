@@ -1,7 +1,6 @@
 from __future__ import division
-from builtins import map
-from builtins import zip
 
+import collections
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -25,7 +24,7 @@ from builtins import zip
 ###############################################################################
 # Built-in
 import logging
-import collections
+from builtins import map, zip
 
 # Third-party
 import numpy
@@ -33,16 +32,16 @@ import vigra
 
 # Lazyflow
 from lazyflow.graph import InputSlot, OutputSlot
+from lazyflow.operators.opCompressedCache import OpUnmanagedCompressedCache
 from lazyflow.roi import (
     TinyVector,
+    getBlockBounds,
     getIntersectingBlocks,
     getIntersectingRois,
-    getBlockBounds,
-    roiToSlice,
     getIntersection,
     roiFromShape,
+    roiToSlice,
 )
-from lazyflow.operators.opCompressedCache import OpUnmanagedCompressedCache
 from lazyflow.rtype import SubRegion
 from lazyflow.utility.data_semantics import ImageTypes
 

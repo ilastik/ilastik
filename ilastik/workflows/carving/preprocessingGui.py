@@ -19,8 +19,8 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Python
-import os
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +31,7 @@ from qtpy.QtWidgets import QMainWindow, QMessageBox
 # ilastik
 from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
+
 from .preprocessingViewerGui import PreprocessingViewerGui
 
 

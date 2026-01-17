@@ -22,12 +22,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from lazyflow.roi import TinyVector
-from lazyflow.graph import Graph
-from ilastik.workflow import Workflow
-from ilastik.applets.dataSelection import DataSelectionApplet
-from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
+from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
+from ilastik.applets.dataSelection import DataSelectionApplet
+from ilastik.workflow import Workflow
+from lazyflow.graph import Graph
+from lazyflow.roi import TinyVector
 
 RAW_DATA_ROLE_INDEX = 0
 

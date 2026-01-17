@@ -1,8 +1,8 @@
 import os
 from unittest import mock
 
-from qtpy.QtCore import Qt
 from pytest import fixture
+from qtpy.QtCore import Qt
 
 from ilastik.shell.gui.licenseDialog import LicenseDialog
 

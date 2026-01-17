@@ -1,10 +1,11 @@
 from __future__ import print_function
-from builtins import zip
-from builtins import range
-from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
+
+from builtins import range, zip
+
+from lazyflow.graph import InputSlot, Operator, OperatorWrapper, OutputSlot
+from lazyflow.operators.classifierOperators import OpClassifierPredict, OpTrainClassifierBlocked
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.opCompressedUserLabelArray import OpCompressedUserLabelArray
-from lazyflow.operators.classifierOperators import OpTrainClassifierBlocked, OpClassifierPredict
 from lazyflow.operators.valueProviders import OpValueCache
 
 
@@ -142,19 +143,19 @@ class OpSimplePixelClassification(Operator):
 
 # Example usage.
 if __name__ == "__main__":
-    import sys
-    import numpy
-    import vigra
-    from lazyflow.graph import Graph
-    from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
-
     ## These lines can be used to disable parallelism in lazyflow entirely
     ## (useful for debugging)
     # from lazyflow.request import Request
     # Request.reset_thread_pool(0)
-
     # Let's configure the logging module to show us debugging log messages from modules of interest.
     import logging
+    import sys
+
+    import numpy
+    import vigra
+
+    from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
+    from lazyflow.graph import Graph
 
     formatter = logging.Formatter("%(name)s: %(message)s")
     handler = logging.StreamHandler(sys.stdout)

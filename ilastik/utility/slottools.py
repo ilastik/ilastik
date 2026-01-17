@@ -18,8 +18,9 @@
 # on the ilastik web site at:
 #        http://ilastik.org/license.html
 ###############################################################################
-import numpy
 import typing
+
+import numpy
 
 
 class DtypeConvertFunction:

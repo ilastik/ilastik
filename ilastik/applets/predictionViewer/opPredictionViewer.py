@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from lazyflow.graph import Operator, InputSlot
+from lazyflow.graph import InputSlot, Operator
 
 
 class OpPredictionViewer(Operator):

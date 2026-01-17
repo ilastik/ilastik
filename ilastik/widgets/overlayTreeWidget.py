@@ -19,8 +19,9 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-from qtpy.QtWidgets import QTreeWidgetItem, QTreeWidget, QTreeWidgetItemIterator
-from qtpy.QtCore import Signal, Qt, QEvent
+
+from qtpy.QtCore import QEvent, Qt, Signal
+from qtpy.QtWidgets import QTreeWidget, QTreeWidgetItem, QTreeWidgetItemIterator
 
 
 class OverlayTreeWidgetIter(QTreeWidgetItemIterator):
@@ -163,10 +164,9 @@ class OverlayEntry(object):
 
 
 if __name__ == "__main__":
-    import sys
-
     # make the program quit on Ctrl+C
     import signal
+    import sys
 
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     from qtpy.QtWidgets import *

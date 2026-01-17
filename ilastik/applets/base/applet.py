@@ -18,9 +18,11 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from abc import ABCMeta, abstractproperty, abstractmethod
+from abc import ABCMeta, abstractmethod, abstractproperty
 from enum import Enum, auto
+
 from future.utils import with_metaclass
+
 from lazyflow.utility.orderedSignal import OrderedSignal
 
 

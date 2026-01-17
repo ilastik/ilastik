@@ -18,10 +18,9 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.workflow import Workflow
-
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.labelImageViewer import LabelImageViewerApplet
+from ilastik.workflow import Workflow
 from lazyflow.graph import Graph
 
 

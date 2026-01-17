@@ -1,13 +1,15 @@
 from __future__ import print_function
-import os
-import copy
-import h5py
-from lazyflow.utility import PathComponents
-from lazyflow.graph import Graph
-from lazyflow.operators.ioOperators import OpInputDataReader, OpFormattedDataExport
 
-from ilastik.applets.pixelClassification.opPixelClassification import OpEnsembleMargin
+import copy
+import os
+
+import h5py
+
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
+from ilastik.applets.pixelClassification.opPixelClassification import OpEnsembleMargin
+from lazyflow.graph import Graph
+from lazyflow.operators.ioOperators import OpFormattedDataExport, OpInputDataReader
+from lazyflow.utility import PathComponents
 
 
 def convert_predictions_to_uncertainties(input_path, parsed_export_args):
@@ -59,8 +61,8 @@ def all_dataset_internal_paths(f):
 
 
 if __name__ == "__main__":
-    import sys
     import argparse
+    import sys
 
     # Construct a parser with all the 'normal' export options, and add arg for input_path.
     parser = DataExportApplet.make_cmdline_parser(argparse.ArgumentParser())

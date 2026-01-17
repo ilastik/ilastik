@@ -19,24 +19,24 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Python
+import logging
+import time
 from builtins import range
 from enum import IntEnum, unique
-import time
-import numpy, h5py
 
+import h5py
+import numpy
+
+from ilastik.applets.base.applet import DatasetConstraintError
 # Lazyflow
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.stype import Opaque
-from lazyflow.rtype import List
-from lazyflow.roi import roiToSlice
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
 from lazyflow.operators.valueProviders import OpValueCache
-
+from lazyflow.roi import roiToSlice
+from lazyflow.rtype import List
+from lazyflow.stype import Opaque
 # ilastik
 from lazyflow.utility.timer import Timer
-from ilastik.applets.base.applet import DatasetConstraintError
-
-import logging
 
 logger = logging.getLogger(__name__)
 

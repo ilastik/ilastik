@@ -1,8 +1,9 @@
-from unittest import mock
 from concurrent.futures import Future
-from lazyflow.futures_utils import MappableFuture, map_future
+from unittest import mock
 
 import pytest
+
+from lazyflow.futures_utils import MappableFuture, map_future
 
 
 class MyTestException(Exception):

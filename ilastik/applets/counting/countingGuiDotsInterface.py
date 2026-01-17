@@ -1,5 +1,17 @@
 from __future__ import absolute_import
 
+import logging
+
+import numpy as np
+import vigra
+from qtpy.QtCore import QEvent, QObject, Qt, Signal
+from qtpy.QtGui import QBrush, QColor, QMouseEvent, QPen
+from qtpy.QtWidgets import QApplication, QGraphicsEllipseItem
+from volumina.api import Viewer, createDataSource
+from volumina.brushingcontroller import BrushingController, BrushingInterpreter
+from volumina.colortables import jet
+from volumina.layer import ColortableLayer
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -30,21 +42,10 @@ from __future__ import absolute_import
 # ===============================================================================
 
 
-from qtpy.QtGui import QBrush, QColor, QMouseEvent, QPen, QBrush
-from qtpy.QtCore import Qt, QObject, Signal, QEvent
-from qtpy.QtWidgets import QApplication, QGraphicsEllipseItem
 
 
-from volumina.api import createDataSource
-from volumina.api import Viewer
-from volumina.layer import ColortableLayer
-from volumina.colortables import jet
-from volumina.brushingcontroller import BrushingController, BrushingInterpreter
 
-import numpy as np
-import vigra
 
-import logging
 
 logger = logging.getLogger(__name__)
 

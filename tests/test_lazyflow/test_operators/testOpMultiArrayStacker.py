@@ -20,26 +20,23 @@
 # 		   http://ilastik.org/license/
 ###############################################################################
 import copy
-import pytest
-import vigra
-import numpy
+import signal
 import threading
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, OperatorWrapper, MetaDict
-from lazyflow import operators
-from lazyflow.operators.generic import OpMultiArrayStacker
-from lazyflow.operators.opArrayPiper import OpArrayPiper
-from lazyflow.utility import is_root_cause
-
-from lazyflow.request.request import RequestError
-from lazyflow.roi import roiToSlice, sliceToRoi
-
-from lazyflow.operators.valueProviders import OpOutputProvider
-
-from numpy.testing import assert_array_equal
-
 import unittest
 
-import signal
+import numpy
+import pytest
+import vigra
+from numpy.testing import assert_array_equal
+
+from lazyflow import operators
+from lazyflow.graph import Graph, InputSlot, MetaDict, Operator, OperatorWrapper, OutputSlot
+from lazyflow.operators.generic import OpMultiArrayStacker
+from lazyflow.operators.opArrayPiper import OpArrayPiper
+from lazyflow.operators.valueProviders import OpOutputProvider
+from lazyflow.request.request import RequestError
+from lazyflow.roi import roiToSlice, sliceToRoi
+from lazyflow.utility import is_root_cause
 
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 

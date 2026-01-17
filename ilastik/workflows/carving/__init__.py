@@ -1,5 +1,7 @@
 from __future__ import absolute_import
 
+import ilastik.config
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,8 +23,6 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from .carvingWorkflow import CarvingWorkflow
-
-import ilastik.config
 
 if ilastik.config.cfg.getboolean("ilastik", "debug"):
     try:

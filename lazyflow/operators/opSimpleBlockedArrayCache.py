@@ -1,14 +1,18 @@
 from __future__ import absolute_import
-from builtins import zip
+
 import sys
-import numpy
+from builtins import zip
 from functools import partial
-from lazyflow.graph import Operator, InputSlot
-from .opUnblockedArrayCache import OpUnblockedArrayCache
+
+import numpy
+
+from lazyflow.graph import InputSlot, Operator
 from lazyflow.request import Request, RequestPool
 from lazyflow.roi import getIntersectingRois, roiToSlice
 from lazyflow.rtype import SubRegion
 from lazyflow.utility.helpers import get_ram_per_element
+
+from .opUnblockedArrayCache import OpUnblockedArrayCache
 
 
 class OpSimpleBlockedArrayCache(OpUnblockedArrayCache):

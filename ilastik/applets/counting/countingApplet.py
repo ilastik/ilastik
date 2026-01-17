@@ -22,8 +22,8 @@ from __future__ import absolute_import
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from .opCounting import OpCounting
 from .countingSerializer import CountingSerializer
+from .opCounting import OpCounting
 
 
 class CountingApplet(StandardApplet):

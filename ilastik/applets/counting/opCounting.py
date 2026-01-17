@@ -1,5 +1,9 @@
 from __future__ import division
 
+import copy
+import itertools
+import math
+import threading
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -22,40 +26,34 @@ from __future__ import division
 ###############################################################################
 # Python
 from builtins import range
-from past.utils import old_div
-import copy
 from functools import partial
-import itertools
-import math
 
 # SciPy
 import numpy
 import vigra
+from past.utils import old_div
 
+from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.applets.counting.countingOperators import OpLabelPreviewer, OpPredictCounter, OpTrainCounter
+from ilastik.utility import OpMultiLaneWrapper
+from ilastik.utility.operatorSubView import OperatorSubView
 # lazyflow
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.operators import (
-    OpValueCache,
     OpBlockedArrayCache,
-    OpPrecomputedInput,
-    OpPixelOperator,
-    OpReorderAxes,
     OpCompressedUserLabelArray,
+    OpPixelOperator,
+    OpPrecomputedInput,
+    OpReorderAxes,
+    OpValueCache,
 )
 from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
-
 from lazyflow.request import Request, RequestPool
-from lazyflow.roi import roiToSlice, sliceToRoi, determineBlockShape
+from lazyflow.roi import determineBlockShape, roiToSlice, sliceToRoi
 from lazyflow.utility.helpers import bigintprod
-
-from ilastik.applets.counting.countingOperators import OpTrainCounter, OpPredictCounter, OpLabelPreviewer
 
 # ilastik
 
-from ilastik.utility.operatorSubView import OperatorSubView
-from ilastik.utility import OpMultiLaneWrapper
-import threading
-from ilastik.applets.base.applet import DatasetConstraintError
 
 
 class OpVolumeOperator(Operator):

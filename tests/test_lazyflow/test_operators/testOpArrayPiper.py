@@ -27,7 +27,6 @@ __date__ = "$Feb 06, 2015 12:28:04 EST$"
 
 
 import numpy
-
 import pytest
 import vigra
 

@@ -23,7 +23,7 @@ import logging
 from collections import OrderedDict as ODict
 from functools import partial
 from pathlib import Path
-from typing import List, Tuple, Dict, OrderedDict, Optional, Iterable, Union
+from typing import Dict, Iterable, List, Optional, OrderedDict, Tuple, Union
 
 import numpy
 import vigra
@@ -38,10 +38,10 @@ from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.opResize import OpResize
 from lazyflow.roi import determineBlockShape, roiFromShape, roiToSlice
 from lazyflow.slot import Slot
-from lazyflow.utility import OrderedSignal, PathComponents, BigRequestStreamer
+from lazyflow.utility import BigRequestStreamer, OrderedSignal, PathComponents
 from lazyflow.utility.data_semantics import ImageTypes
-from lazyflow.utility.io_util.OMEZarrStore import OMEZarrTranslations
 from lazyflow.utility.io_util.multiscaleStore import DEFAULT_VIGRA_RESOLUTION
+from lazyflow.utility.io_util.OMEZarrStore import OMEZarrTranslations
 
 logger = logging.getLogger(__name__)
 

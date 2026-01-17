@@ -24,12 +24,12 @@ import os
 import threading
 from functools import partial
 from pathlib import Path
-from typing import Dict, List, Set, Union, Optional
+from typing import Dict, List, Optional, Set, Union
 
 import h5py
 from qtpy import uic
-from qtpy.QtWidgets import QDialog, QMessageBox, QStackedWidget, QWidget, QApplication
 from qtpy.QtCore import Qt
+from qtpy.QtWidgets import QApplication, QDialog, QMessageBox, QStackedWidget, QWidget
 from vigra import AxisTags
 from volumina.utility import preferences
 
@@ -41,17 +41,14 @@ from ilastik.widgets.ImageFileDialog import ImageFileDialog
 from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, SubvolumeSelectionDlg
 from lazyflow.slot import Slot
 from lazyflow.utility.helpers import eq_shapes
+
 from . import OpDataSelectionGroup
 from .dataLaneSummaryTableModel import DataLaneSummaryTableModel
 from .datasetDetailedInfoTableModel import DatasetDetailedInfoTableModel
 from .datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 from .datasetInfoEditorWidget import DatasetInfoEditorWidget
-from .opDataSelection import (
-    DatasetInfo,
-    ProjectInternalDatasetInfo,
-    MultiscaleUrlDatasetInfo,
-)
 from .multiscaleDatasetBrowser import MultiscaleDatasetBrowser
+from .opDataSelection import DatasetInfo, MultiscaleUrlDatasetInfo, ProjectInternalDatasetInfo
 
 logger = logging.getLogger(__name__)
 

@@ -1,24 +1,24 @@
-from builtins import range
-import numpy as np
+import collections
+import logging
 import math
+from builtins import range
+
+import numpy as np
 import vigra
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.stype import Opaque
-from lazyflow.rtype import SubRegion, List
-from lazyflow.operators import OpBlockedArrayCache
-from lazyflow.roi import roiToSlice
+from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.objectExtraction.opObjectExtraction import (
+    OpAdaptTimeListRoi,
     OpObjectExtraction,
     default_features_key,
-    OpAdaptTimeListRoi,
 )
 from ilastik.applets.trackingFeatureExtraction import config
 from ilastik.applets.trackingFeatureExtraction.trackingFeatures import FeatureManager
-
-import logging
-import collections
-from ilastik.applets.base.applet import DatasetConstraintError
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.operators import OpBlockedArrayCache
+from lazyflow.roi import roiToSlice
+from lazyflow.rtype import List, SubRegion
+from lazyflow.stype import Opaque
 
 logger = logging.getLogger(__name__)
 

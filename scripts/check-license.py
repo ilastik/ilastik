@@ -1,5 +1,8 @@
 from __future__ import print_function
 
+import glob
+import os
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -22,8 +25,6 @@ from __future__ import print_function
 ###############################################################################
 #!/usr/bin/env/python
 
-import os
-import glob
 
 gplv2orlater = """###############################################################################
 #   ilastik: interactive learning and segmentation toolkit

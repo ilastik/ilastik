@@ -1,10 +1,11 @@
-from builtins import object
-import tempfile
 import shutil
-import pytest
-import numpy as np
-from lazyflow.graph import Graph
+import tempfile
+from builtins import object
 
+import numpy as np
+import pytest
+
+from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpKlbReader
 
 pyklb = pytest.importorskip("pyklb")

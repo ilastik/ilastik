@@ -19,17 +19,15 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import numpy
-from numpy.testing import assert_array_equal
 import vigra
+from numpy.testing import assert_array_equal
 
 np = numpy
 
+import ilastik.ilastik_logging
+from ilastik.applets.thresholdTwoLevels.thresholdingTools import OpAnisotropicGaussianSmoothing5d
 from lazyflow.graph import Graph
 from lazyflow.operators import OpReorderAxes
-
-from ilastik.applets.thresholdTwoLevels.thresholdingTools import OpAnisotropicGaussianSmoothing5d
-
-import ilastik.ilastik_logging
 
 ilastik.ilastik_logging.default_config.init()
 import unittest

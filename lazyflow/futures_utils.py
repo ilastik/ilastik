@@ -1,7 +1,6 @@
 from concurrent.futures import CancelledError, Future
 from typing import Callable, Generic, TypeVar
 
-
 T = TypeVar("T")
 S = TypeVar("S")
 

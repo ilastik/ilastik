@@ -18,12 +18,12 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from qtpy.QtCore import Signal, QModelIndex
-from qtpy.QtWidgets import QMenu, QPushButton
-from qtpy.QtGui import QIcon
-
 # this is used to find the location of the icon file
 import os.path
+
+from qtpy.QtCore import QModelIndex, Signal
+from qtpy.QtGui import QIcon
+from qtpy.QtWidgets import QMenu, QPushButton
 
 FILEPATH = os.path.split(__file__)[0]
 

@@ -1,8 +1,8 @@
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
-from lazyflow.operators.ioOperators import OpTiledVolumeReader
-
 import logging
+
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.operators.ioOperators import OpTiledVolumeReader
+from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 
 logger = logging.getLogger(__name__)
 

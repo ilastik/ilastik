@@ -9,7 +9,7 @@ import threading
 import time
 from functools import partial
 from pathlib import Path
-from typing import Dict, Optional, Union, Tuple
+from typing import Dict, Optional, Tuple, Union
 
 import h5py
 import numpy

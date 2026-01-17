@@ -1,5 +1,6 @@
 from __future__ import division
 
+import os
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,18 +22,18 @@ from __future__ import division
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-from past.utils import old_div
-import os
-import numpy
+
 import h5py
+import numpy
 import vigra
-from lazyflow.roi import roiToSlice
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpTrainClassifierBlocked, OpValueCache
-from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
-from ilastik.applets.pixelClassification.pixelClassificationSerializer import PixelClassificationSerializer
+from past.utils import old_div
 
 import ilastik.ilastik_logging
+from ilastik.applets.pixelClassification.pixelClassificationSerializer import PixelClassificationSerializer
+from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
+from lazyflow.graph import Graph, InputSlot, Operator, OutputSlot
+from lazyflow.operators import OpTrainClassifierBlocked, OpValueCache
+from lazyflow.roi import roiToSlice
 
 ilastik.ilastik_logging.default_config.init()
 

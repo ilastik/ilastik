@@ -1,18 +1,16 @@
-from multiprocessing import cpu_count
+import logging
 from concurrent.futures import ThreadPoolExecutor
-from math import ceil
 from functools import partial
+from math import ceil
+from multiprocessing import cpu_count
 
-import numpy
-import vigra
 import fastfilters
-
 import nifty
-import nifty.tools
 import nifty.graph.agglo
 import nifty.graph.rag
-
-import logging
+import nifty.tools
+import numpy
+import vigra
 
 logger = logging.getLogger(__name__)
 

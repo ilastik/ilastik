@@ -19,55 +19,52 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
-import os
-from typing import Optional
 import logging
+import os
 from collections import OrderedDict
 from functools import partial
+from typing import Optional
 
 # Third-party
 import numpy
 from qtpy import uic
-from qtpy.QtCore import Qt, Slot, QSize
+from qtpy.QtCore import QSize, Qt, Slot
+from qtpy.QtGui import QColor
 from qtpy.QtWidgets import (
-    QMessageBox,
-    QVBoxLayout,
+    QAction,
+    QDialog,
     QDialogButtonBox,
+    QLineEdit,
     QListWidget,
     QListWidgetItem,
-    QAction,
+    QMenu,
+    QMessageBox,
     QPushButton,
-    QLineEdit,
-    QDialog,
+    QSizePolicy,
     QTreeWidget,
     QTreeWidgetItem,
-    QSizePolicy,
-    QMenu,
+    QVBoxLayout,
 )
-from qtpy.QtGui import QColor
-
-
-# HCI
-from ilastik.applets.pixelClassification.opPixelClassification import OpPixelClassification
-from volumina.api import createDataSource, AlphaModulatedLayer, GrayscaleLayer, ColortableLayer
+from volumina.api import AlphaModulatedLayer, ColortableLayer, GrayscaleLayer, createDataSource
 from volumina.utility import ShortcutManager
 
-from lazyflow.utility import PathComponents
-from lazyflow.roi import slicing_to_string
-from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.operators.ioOperators import OpInputDataReader
-from lazyflow.operators import OpFeatureMatrixCache
-
+from ilastik.applets.dataSelection import DatasetInfo
+from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, SubvolumeSelectionDlg
+from ilastik.applets.labeling.labelingGui import LabelingGui, LabelingSlots
+# HCI
+from ilastik.applets.pixelClassification.opPixelClassification import OpPixelClassification
 # ilastik
 from ilastik.config import cfg as ilastik_config
-from ilastik.utility import bind
-from ilastik.utility.gui import threadRouted, silent_qobject
 from ilastik.shell.gui.iconMgr import ilastikIcons
-from ilastik.applets.labeling.labelingGui import LabelingGui, LabelingSlots
-from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, SubvolumeSelectionDlg
-from ilastik.widgets.ImageFileDialog import ImageFileDialog
 from ilastik.shell.gui.variableImportanceDialog import VariableImportanceDialog
-from ilastik.applets.dataSelection import DatasetInfo
+from ilastik.utility import bind
+from ilastik.utility.gui import silent_qobject, threadRouted
+from ilastik.widgets.ImageFileDialog import ImageFileDialog
+from lazyflow.operators import OpFeatureMatrixCache
+from lazyflow.operators.ioOperators import OpInputDataReader
+from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.roi import slicing_to_string
+from lazyflow.utility import PathComponents
 
 # import IPython
 from .suggestFeaturesDialog import SuggestFeaturesDialog
@@ -123,25 +120,25 @@ class ClassifierSelectionDlg(QDialog):
     def _get_available_classifier_factories(self):
         # FIXME: Replace this logic with a proper plugin mechanism
         from lazyflow.classifiers import (
-            VigraRfLazyflowClassifierFactory,
-            SklearnLazyflowClassifierFactory,
-            ParallelVigraRfLazyflowClassifierFactory,
-            VigraRfPixelwiseClassifierFactory,
-            LazyflowVectorwiseClassifierFactoryABC,
             LazyflowPixelwiseClassifierFactoryABC,
+            LazyflowVectorwiseClassifierFactoryABC,
+            ParallelVigraRfLazyflowClassifierFactory,
+            SklearnLazyflowClassifierFactory,
+            VigraRfLazyflowClassifierFactory,
+            VigraRfPixelwiseClassifierFactory,
         )
 
         classifiers = OrderedDict()
         classifiers["Parallel Random Forest (VIGRA)"] = ParallelVigraRfLazyflowClassifierFactory(100)
 
         try:
-            from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
-            from sklearn.naive_bayes import GaussianNB
-            from sklearn.tree import DecisionTreeClassifier
-            from sklearn.neighbors import KNeighborsClassifier
             from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
             from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis as QDA
+            from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
+            from sklearn.naive_bayes import GaussianNB
+            from sklearn.neighbors import KNeighborsClassifier
             from sklearn.svm import SVC, NuSVC
+            from sklearn.tree import DecisionTreeClassifier
 
             classifiers["Random Forest (scikit-learn)"] = SklearnLazyflowClassifierFactory(RandomForestClassifier, 100)
             classifiers["Gaussian Naive Bayes (scikit-learn)"] = SklearnLazyflowClassifierFactory(GaussianNB)

@@ -25,16 +25,16 @@ started after changes are committed.
 
 Also this can be used as a basis for further headless-mode testing.
 """
+import logging
 import os
 import sys
 import tempfile
 
-from ilastik import app
-from ilastik.workflow import getAvailableWorkflows
-from ilastik.shell.projectManager import ProjectManager
-
-import logging
 import pytest
+
+from ilastik import app
+from ilastik.shell.projectManager import ProjectManager
+from ilastik.workflow import getAvailableWorkflows
 
 logger = logging.getLogger(__name__)
 

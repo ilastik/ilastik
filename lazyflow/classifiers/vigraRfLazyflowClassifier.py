@@ -18,18 +18,17 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-import os
-import tempfile
-import pickle as pickle
 import collections
+import logging
+import os
+import pickle as pickle
+import tempfile
 
+import h5py
 import numpy
 import vigra
-import h5py
 
 from .lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -93,8 +92,8 @@ class VigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
         columns += ["   Overall"]
         columns += ["      Gini"]
 
-        import sys
         import io
+        import sys
 
         if sys.version_info.major == 2:
             output = io.BytesIO()

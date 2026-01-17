@@ -1,10 +1,10 @@
-from builtins import range
-from builtins import object
+import logging
+import random
 import sys
 import time
-import random
-import logging
+from builtins import object, range
 from functools import partial
+
 from lazyflow.request import Request, SimpleRequestCondition
 
 logger = logging.getLogger("tests.testSimpleRequestCondition")

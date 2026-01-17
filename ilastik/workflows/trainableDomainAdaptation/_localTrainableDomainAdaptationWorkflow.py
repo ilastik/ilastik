@@ -30,7 +30,6 @@ from ilastik.utility import SlotNameEnum
 from ilastik.workflows.neuralNetwork._localLauncher import LocalServerLauncher
 from ilastik.workflows.neuralNetwork._nnWorkflowBase import _NNWorkflowBase
 from lazyflow.operators import tiktorch
-
 # TODO (k-dominik): check if tinyvector is of any benefit here
 from lazyflow.roi import TinyVector
 

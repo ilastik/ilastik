@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, SerialPickleableSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialDictSlot, SerialPickleableSlot, SerialSlot
 
 
 class StructuredTrackingSerializer(AppletSerializer):

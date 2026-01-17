@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 import argparse
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -30,6 +29,7 @@ import numpy
 from ilastik.applets.base.applet import Applet
 from ilastik.utility import OpMultiLaneWrapper
 from ilastik.utility.commandLineProcessing import ParseListFromString
+
 from .dataExportSerializer import DataExportSerializer
 from .opDataExport import OpDataExport
 

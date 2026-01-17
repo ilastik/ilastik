@@ -25,17 +25,17 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from typing import Tuple
+
 # SciPy
 import numpy
 import vigra
 
-# lazyflow
-from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow import roi
-from lazyflow.roi import roiToSlice, sliceToRoi, TinyVector, getIntersection, InvalidRoiException
+# lazyflow
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.request import RequestPool
-
-from typing import Tuple
+from lazyflow.roi import InvalidRoiException, TinyVector, getIntersection, roiToSlice, sliceToRoi
 
 
 # Utility functions

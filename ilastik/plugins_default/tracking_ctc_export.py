@@ -1,10 +1,11 @@
-import os
-import numpy as np
-import vigra
-import tifffile
-from ilastik.plugins import TrackingExportFormatPlugin
-
 import logging
+import os
+
+import numpy as np
+import tifffile
+import vigra
+
+from ilastik.plugins import TrackingExportFormatPlugin
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,7 @@ class TrackingCTCExportFormatPlugin(TrackingExportFormatPlugin):
     exportsToFile = False
 
     def checkFilesExist(self, filename):
-        """ Check whether the files we want to export are already present """
+        """Check whether the files we want to export are already present"""
         return os.path.exists(filename)
 
     def export(self, filename, hypothesesGraph, pluginExportContext):

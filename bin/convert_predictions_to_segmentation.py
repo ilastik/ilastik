@@ -1,13 +1,15 @@
 from __future__ import print_function
-import os
-import copy
-import h5py
-from lazyflow.utility import PathComponents
-from lazyflow.graph import Graph
-from lazyflow.operators.ioOperators import OpInputDataReader, OpFormattedDataExport
 
-from ilastik.applets.pixelClassification.opPixelClassification import OpArgmaxChannel
+import copy
+import os
+
+import h5py
+
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
+from ilastik.applets.pixelClassification.opPixelClassification import OpArgmaxChannel
+from lazyflow.graph import Graph
+from lazyflow.operators.ioOperators import OpFormattedDataExport, OpInputDataReader
+from lazyflow.utility import PathComponents
 
 
 def convert_predictions_to_segmentation(input_paths, parsed_export_args):
@@ -69,11 +71,10 @@ def all_dataset_internal_paths(f):
 
 
 if __name__ == "__main__":
-    import sys
     import argparse
+    import sys
 
     # sys.argv += "/tmp/example_slice.h5/data /tmp/example_slice2.h5/data --export_drange=(0,255) --output_format=png --pipeline_result_drange=(1,2)".split()
-
     # Construct a parser with all the 'normal' export options, and add arg for prediction_image_paths.
     parser = DataExportApplet.make_cmdline_parser(argparse.ArgumentParser())
     parser.add_argument("prediction_image_paths", nargs="+", help="Path(s) to your exported predictions.")

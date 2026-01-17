@@ -1,4 +1,4 @@
-from qtpy.QtWidgets import QMenu, QLabel, QWidgetAction
+from qtpy.QtWidgets import QLabel, QMenu, QWidgetAction
 
 
 def TitledMenu(titles, padding=5, with_separator=True):

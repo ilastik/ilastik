@@ -18,33 +18,28 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+import itertools
+import logging
+import time
+from collections import OrderedDict, defaultdict
+from functools import partial
 from typing import Tuple
+
 import numpy
 import numpy.typing as npt
-import time
-import itertools
-from collections import defaultdict, OrderedDict
-from functools import partial
-
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.stype import Opaque
-from lazyflow.rtype import List
-from lazyflow.operators import OpValueCache, OpSlicedBlockedArrayCache, OpMultiArrayStacker
-from lazyflow.operatorWrapper import OperatorWrapper
-from lazyflow.request import Request, RequestPool, RequestLock
-
-from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
-
-from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWrapper
-from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default
-from ilastik.utility.exportingOperator import ExportingOperator
-from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
-
 
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
-
-import logging
+from ilastik.utility import MultiLaneOperatorABC, OperatorSubView, OpMultiLaneWrapper
+from ilastik.utility.exportFile import Default, ExportFile, Mode, ilastik_ids, objects_per_frame
+from ilastik.utility.exportingOperator import ExportingOperator
+from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.operators import OpMultiArrayStacker, OpSlicedBlockedArrayCache, OpValueCache
+from lazyflow.operatorWrapper import OperatorWrapper
+from lazyflow.request import Request, RequestLock, RequestPool
+from lazyflow.rtype import List
+from lazyflow.stype import Opaque
 
 logger = logging.getLogger(__name__)
 
@@ -778,8 +773,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         """
         For all images with labels, export object bounding boxes and label classes as JSON.
         """
-        import json
         import collections
+        import json
 
         logger.info("Exporting label information as json to: {}".format(file_path))
 

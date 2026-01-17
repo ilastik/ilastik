@@ -19,8 +19,8 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
-from ilastik.applets.neuralNetwork.opNNClassificationDataExport import OpNNClassificationDataExport
 from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
+from ilastik.applets.neuralNetwork.opNNClassificationDataExport import OpNNClassificationDataExport
 from ilastik.utility import OpMultiLaneWrapper
 
 

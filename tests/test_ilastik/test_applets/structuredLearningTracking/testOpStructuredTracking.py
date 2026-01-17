@@ -1,7 +1,8 @@
-import pytest
 import networkx as nx
+import pytest
 from hytra.core.hypothesesgraph import HypothesesGraph
 from hytra.core.probabilitygenerator import Traxel
+
 from ilastik.applets.tracking.structured.opStructuredTracking import (
     AnnotationHypothesisgraphMismatchException,
     OpStructuredTracking,

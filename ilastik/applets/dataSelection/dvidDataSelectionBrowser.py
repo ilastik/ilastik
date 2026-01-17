@@ -1,16 +1,16 @@
 from __future__ import print_function
-import socket
+
 import logging
+import socket
 
 import numpy
-from qtpy.QtCore import Qt, QEvent
-from qtpy.QtWidgets import QVBoxLayout, QGroupBox, QSizePolicy, QMessageBox, QDialogButtonBox
-
-from libdvid import DVIDException, ErrMsg, DVIDNodeService
-from libdvid.voxels import VoxelsAccessor, VoxelsMetadata, DVID_BLOCK_WIDTH
+from libdvid import DVIDException, DVIDNodeService, ErrMsg
 from libdvid.gui.contents_browser import ContentsBrowser
-
+from libdvid.voxels import DVID_BLOCK_WIDTH, VoxelsAccessor, VoxelsMetadata
+from qtpy.QtCore import QEvent, Qt
+from qtpy.QtWidgets import QDialogButtonBox, QGroupBox, QMessageBox, QSizePolicy, QVBoxLayout
 from volumina.widgets.subregionRoiWidget import SubregionRoiWidget
+
 from ilastik.utility import log_exception
 
 logger = logging.getLogger(__name__)

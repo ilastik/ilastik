@@ -1,16 +1,16 @@
 from __future__ import print_function
+
 from future import standard_library
 
 standard_library.install_aliases()
-from builtins import zip
-from builtins import range
-from builtins import object
-import os
 import copy
-import h5py
+import multiprocessing
+import os
 import threading
 import warnings
-import multiprocessing
+from builtins import object, range, zip
+
+import h5py
 import numpy
 
 from lazyflow.utility.helpers import bigintprod
@@ -55,7 +55,7 @@ class ReaderProcess(multiprocessing.Process):
         self.daemon = True
 
         if METHOD == "shared-array":
-            self.available_bytes = 100 * 1024 ** 2
+            self.available_bytes = 100 * 1024**2
             self.transfer_buffer = multiprocessing.RawArray("b", self.available_bytes)
 
     def run(self):
@@ -369,8 +369,9 @@ def expandSlicing(s, shape):
 # TODO: Write some proper unit tests...
 #
 if __name__ == "__main__":
-    import numpy
     from functools import partial
+
+    import numpy
 
     filepath = "/tmp/testfile.h5"
     datapath = "mygroup/bigdata"

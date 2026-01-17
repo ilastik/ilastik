@@ -1,7 +1,8 @@
-from builtins import zip
-from builtins import range
+from builtins import range, zip
+
 import numpy as np
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.request import RequestPool
 from lazyflow.roi import roiToSlice
 

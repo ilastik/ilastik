@@ -1,8 +1,6 @@
 from future import standard_library
 
 standard_library.install_aliases()
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -25,6 +23,7 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import textwrap
+from builtins import object
 
 
 def header():

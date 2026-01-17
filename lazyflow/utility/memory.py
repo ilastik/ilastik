@@ -21,13 +21,13 @@
 ###############################################################################
 
 from __future__ import division
+
+import logging
+import os
+import platform
 from builtins import object
 
-import os
 import psutil
-import platform
-import logging
-
 
 logger = logging.getLogger(__name__)
 this_process = psutil.Process(os.getpid())
@@ -46,7 +46,7 @@ class Memory(object):
 
     # keep 1GiB reserved for other apps
     # (systems with less than 1GiB RAM are not a target platform)
-    _default_allowed_ram = max(_physically_available_ram - 1024.0 ** 3, 0)
+    _default_allowed_ram = max(_physically_available_ram - 1024.0**3, 0)
     _default_cache_fraction = 0.25
     _allowed_ram = _default_allowed_ram
     _user_limits_specified = {"total": False, "caches": False}
@@ -167,7 +167,7 @@ class Memory(object):
     def toScientific(ram, base=1024, expstep=1, explimit=4):
         exp = 0
         mant = float(ram)
-        step = base ** expstep
+        step = base**expstep
         while mant >= step and exp + expstep <= explimit:
             mant /= step
             exp += expstep
@@ -190,7 +190,7 @@ class Memory(object):
             for d in Memory._magnitude_strings:
                 if Memory._magnitude_strings[d] == mag:
 
-                    return int(x * 1024 ** d)
+                    return int(x * 1024**d)
         raise FormatError("invalid format for memory string: {}".format(s))
 
 

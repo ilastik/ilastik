@@ -21,10 +21,10 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.labeling.labelingApplet import LabelingApplet
-
 from ilastik.utility import OpMultiLaneWrapper
-from .opCarving import OpCarving
+
 from .carvingSerializer import CarvingSerializer
+from .opCarving import OpCarving
 
 
 class CarvingApplet(LabelingApplet):

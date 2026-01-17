@@ -1,8 +1,9 @@
 import os.path
 
 import numpy as np
-from ilastik.plugins import TrackingExportFormatPlugin
 from mamutexport.mamutxmlbuilder import MamutXmlBuilder
+
+from ilastik.plugins import TrackingExportFormatPlugin
 
 
 def convertKeyName(key):
@@ -13,7 +14,7 @@ def convertKeyName(key):
 
 
 def getShortname(string):
-    """ convert name to shortname"""
+    """convert name to shortname"""
     shortname = string[0:2]
     for i, l in enumerate(string):
         try:
@@ -37,7 +38,7 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
     exportsToFile = True
 
     def checkFilesExist(self, filename):
-        """ Check whether the files we want to export are already present """
+        """Check whether the files we want to export are already present"""
         return (
             os.path.exists(filename + "_mamut.xml")
             or os.path.exists(filename + "_bdv.xml")

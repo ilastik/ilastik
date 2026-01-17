@@ -21,9 +21,11 @@
 ###############################################################################
 import os
 import re
+
 import numpy
 import vigra
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.utility.helpers import get_default_axisordering
 
 

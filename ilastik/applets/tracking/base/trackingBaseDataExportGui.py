@@ -18,20 +18,18 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from qtpy.QtWidgets import QPushButton, QMessageBox
-from ilastik.utility.exportingOperator import ExportingGui
-from ilastik.plugins.manager import pluginManager
-from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
-from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
-import volumina.colortables as colortables
-from volumina.api import createDataSource, ColortableLayer
-
-
-from ilastik.applets.tracking.base.pluginExportOptionsDlg import PluginExportOptionsDlg
-from ilastik.applets.dataExport.opDataExport import get_model_op
-
-
 import logging
+
+import volumina.colortables as colortables
+from qtpy.QtWidgets import QMessageBox, QPushButton
+from volumina.api import ColortableLayer, createDataSource
+
+from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
+from ilastik.applets.dataExport.opDataExport import get_model_op
+from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
+from ilastik.applets.tracking.base.pluginExportOptionsDlg import PluginExportOptionsDlg
+from ilastik.plugins.manager import pluginManager
+from ilastik.utility.exportingOperator import ExportingGui
 
 logger = logging.getLogger(__name__)
 

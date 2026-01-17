@@ -18,20 +18,19 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
-    QDialogButtonBox,
     QButtonGroup,
+    QCheckBox,
     QComboBox,
     QDialog,
+    QDialogButtonBox,
     QLabel,
     QLineEdit,
     QTextEdit,
     QVBoxLayout,
     QWidget,
-    QCheckBox,
 )
-
-from qtpy.QtCore import Qt
 
 from lazyflow.utility import globList
 

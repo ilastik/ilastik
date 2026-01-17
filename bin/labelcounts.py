@@ -21,8 +21,9 @@
 """
 Give the histogram of labels in a project file.
 """
-import sys
 import os
+import sys
+
 import h5py
 import numpy
 

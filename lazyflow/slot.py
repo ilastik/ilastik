@@ -1,12 +1,10 @@
-from builtins import next
-
-from builtins import range
-from builtins import object
 import sys
+from builtins import next, object, range
 
 if sys.version_info.major >= 3:
     unicode = str
 
+import itertools
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -30,24 +28,22 @@ if sys.version_info.major >= 3:
 ###############################################################################
 # Python
 import logging
-import itertools
-from functools import partial, wraps
-from contextlib import contextmanager
-import warnings
 import time
+import warnings
+from contextlib import contextmanager
+from functools import partial, wraps
 
 # SciPy
 import numpy
-
 import vigra
 
 # lazyflow
 from lazyflow import rtype
-from lazyflow.roi import TinyVector
-from lazyflow.request import Request
-from lazyflow.stype import ArrayLike, Opaque
 from lazyflow.metaDict import MetaDict
-from lazyflow.utility import slicingtools, OrderedSignal
+from lazyflow.request import Request
+from lazyflow.roi import TinyVector
+from lazyflow.stype import ArrayLike, Opaque
+from lazyflow.utility import OrderedSignal, slicingtools
 
 module_logger = logging.getLogger(__name__)
 

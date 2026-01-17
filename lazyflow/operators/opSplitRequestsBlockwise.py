@@ -20,12 +20,13 @@
 #          http://ilastik.org/license/
 ###############################################################################
 
-import numpy
 from functools import partial
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import getIntersectingRois, roiToSlice
+import numpy
+
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.request import RequestPool
+from lazyflow.roi import getIntersectingRois, roiToSlice
 from lazyflow.utility.helpers import get_ram_per_element
 
 

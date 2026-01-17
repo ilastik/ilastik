@@ -18,17 +18,19 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import platformdirs
+import logging.config
 import os
 import re
-import logging.config
 import warnings
-
 from datetime import datetime
-from typing import Optional
 from pathlib import Path
-from . import loggingHelpers
+from typing import Optional
+
+import platformdirs
+
 from ilastik.config import cfg as ilastik_config
+
+from . import loggingHelpers
 
 SESSION_FILEHANDLER_NAME = "session_file"
 SESSION_LOGFILE_NAME = "log_%Y%m%d_%H%M%S.txt"

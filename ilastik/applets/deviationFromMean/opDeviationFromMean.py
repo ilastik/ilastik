@@ -18,11 +18,12 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from __future__ import division
-from __future__ import print_function
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from __future__ import division, print_function
+
 import numpy
+
 from ilastik.utility import MultiLaneOperatorABC, OperatorSubView
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 
 
 class OpDeviationFromMean(Operator):

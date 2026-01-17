@@ -1,14 +1,12 @@
-import os
 import logging
-
+import os
 from contextlib import contextmanager
 
 from qtpy import uic
-from qtpy.QtCore import QStateMachine, QState, QSignalTransition, Signal, Qt, QEvent
-from qtpy.QtWidgets import QWidget, QLineEdit, QListWidget, QMessageBox, QListWidgetItem
+from qtpy.QtCore import QEvent, QSignalTransition, QState, QStateMachine, Qt, Signal
+from qtpy.QtWidgets import QLineEdit, QListWidget, QListWidgetItem, QMessageBox, QWidget
 
 from . import types
-
 
 logger = logging.getLogger(__name__)
 

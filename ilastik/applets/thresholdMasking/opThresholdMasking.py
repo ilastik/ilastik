@@ -18,9 +18,9 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-
 import numpy
+
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 
 
 class OpThresholdMasking(Operator):

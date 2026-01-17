@@ -21,16 +21,15 @@
 
 
 import unittest
-import numpy as np
-import vigra
-import pytest
 
+import numpy as np
+import pytest
+import vigra
 from numpy.testing import assert_array_equal
 
+from ilastik.applets.thresholdTwoLevels.opGraphcutSegment import haveGraphCut
 from lazyflow.graph import Graph
 from lazyflow.operators.opArrayPiper import OpArrayPiper
-
-from ilastik.applets.thresholdTwoLevels.opGraphcutSegment import haveGraphCut
 
 
 def getTestVolume():
@@ -81,7 +80,7 @@ def getTinyTestVolume():
 
 
 if haveGraphCut():
-    from ilastik.applets.thresholdTwoLevels.opGraphcutSegment import OpObjectsSegment, OpGraphCut
+    from ilastik.applets.thresholdTwoLevels.opGraphcutSegment import OpGraphCut, OpObjectsSegment
 
 
 @pytest.mark.skipif(not haveGraphCut(), reason="GraphCut not available")

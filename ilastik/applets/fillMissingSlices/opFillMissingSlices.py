@@ -18,11 +18,11 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpInterpMissingData, OpBlockedArrayCache
-from lazyflow.stype import Opaque
-
 import logging
+
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.operators import OpBlockedArrayCache, OpInterpMissingData
+from lazyflow.stype import Opaque
 
 loggerName = __name__
 logger = logging.getLogger(loggerName)

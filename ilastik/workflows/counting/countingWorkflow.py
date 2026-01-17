@@ -20,18 +20,15 @@
 ###############################################################################
 import argparse
 import itertools
+import logging
 
-from ilastik.workflow import Workflow
-
+from ilastik.applets.batchProcessing import BatchProcessingApplet
+from ilastik.applets.counting import CountingApplet, CountingDataExportApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
-from ilastik.applets.counting import CountingApplet, CountingDataExportApplet
-from ilastik.applets.batchProcessing import BatchProcessingApplet
-
-from lazyflow.roi import TinyVector
+from ilastik.workflow import Workflow
 from lazyflow.graph import Graph
-
-import logging
+from lazyflow.roi import TinyVector
 
 logger = logging.getLogger(__name__)
 

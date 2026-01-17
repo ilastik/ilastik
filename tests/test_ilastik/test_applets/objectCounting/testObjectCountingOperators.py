@@ -27,28 +27,28 @@ import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
 
 import unittest
+
 import numpy as np
 import vigra
-from lazyflow.graph import Graph
-from ilastik.applets.objectClassification.opObjectClassification import (
-    OpRelabelSegmentation,
-    OpObjectTrain,
-    OpObjectPredict,
-    OpObjectClassification,
-    OpBadObjectsToWarningMessage,
-    OpMaxLabel,
-)
 
+from ilastik.applets.counting.countingOperators import OpLabelPreviewer, OpPredictCounter, OpTrainCounter
 from ilastik.applets.counting.opCounting import (
     OpCounting,
-    OpMean,
-    OpVolumeOperator,
     OpLabelPipeline,
-    OpPredictionPipelineNoCache,
+    OpMean,
     OpPredictionPipeline,
+    OpPredictionPipelineNoCache,
+    OpVolumeOperator,
 )
-
-from ilastik.applets.counting.countingOperators import OpTrainCounter, OpPredictCounter, OpLabelPreviewer
+from ilastik.applets.objectClassification.opObjectClassification import (
+    OpBadObjectsToWarningMessage,
+    OpMaxLabel,
+    OpObjectClassification,
+    OpObjectPredict,
+    OpObjectTrain,
+    OpRelabelSegmentation,
+)
+from lazyflow.graph import Graph
 
 
 # def segImage():

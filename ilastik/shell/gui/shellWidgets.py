@@ -20,7 +20,7 @@
 ###############################################################################
 from typing import Optional, Union
 
-from qtpy.QtCore import Qt, QSize
+from qtpy.QtCore import QSize, Qt
 from qtpy.QtGui import QColor, QMouseEvent, QPaintEvent, QPalette, QResizeEvent
 from qtpy.QtWidgets import (
     QComboBox,

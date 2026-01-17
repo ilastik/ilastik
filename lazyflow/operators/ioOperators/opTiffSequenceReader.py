@@ -1,13 +1,11 @@
+import glob
+import logging
+import os
 from builtins import zip
 
-import os
-import glob
-
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.operators.generic import OpMultiArrayStacker
 from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
-
-import logging
 
 logger = logging.getLogger(__name__)
 

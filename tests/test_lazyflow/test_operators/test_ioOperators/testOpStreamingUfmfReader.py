@@ -1,6 +1,3 @@
-from builtins import range
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -24,11 +21,13 @@ from builtins import object
 ###############################################################################
 import os
 import tempfile
+from builtins import object, range
+
 import numpy as np
 import vigra
+
 from lazyflow.graph import Graph
-from lazyflow.operators.ioOperators import OpStreamingUfmfReader
-from lazyflow.operators.ioOperators import UfmfParser
+from lazyflow.operators.ioOperators import OpStreamingUfmfReader, UfmfParser
 
 VERSION = 3
 WIDTH = 640

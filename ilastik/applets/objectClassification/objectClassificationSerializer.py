@@ -20,11 +20,11 @@
 ###############################################################################
 from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
-    SerialSlot,
-    SerialDictSlot,
     SerialClassifierSlot,
+    SerialDictSlot,
     SerialListSlot,
     SerialPickleableSlot,
+    SerialSlot,
 )
 
 

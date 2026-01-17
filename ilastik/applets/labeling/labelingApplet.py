@@ -21,8 +21,9 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
-from .opLabeling import OpLabelingTopLevel
+
 from .labelingSerializer import LabelingSerializer
+from .opLabeling import OpLabelingTopLevel
 
 
 class LabelingApplet(StandardApplet):

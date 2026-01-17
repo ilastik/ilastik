@@ -19,7 +19,7 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
+from lazyflow.graph import Graph, InputSlot, Operator, OutputSlot
 
 
 class OpA(Operator):

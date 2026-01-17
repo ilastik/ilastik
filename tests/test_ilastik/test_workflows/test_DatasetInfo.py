@@ -1,9 +1,10 @@
 import os
-from pathlib import Path
-import numpy
 import tempfile
-import pytest
+from pathlib import Path
+
 import h5py
+import numpy
+import pytest
 import z5py
 from PIL import Image as PilImage
 

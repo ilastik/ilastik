@@ -1,6 +1,7 @@
 import unittest
-import numpy
+
 import fastfilters
+import numpy
 
 
 class TestCarvingTools(unittest.TestCase):
@@ -29,7 +30,7 @@ class TestCarvingTools(unittest.TestCase):
         # TODO test that labels in individual blocks are indeed different
 
     def test_agglomerate_labels_2d(self):
-        from ilastik.workflows.carving.carvingTools import parallel_watershed, agglomerate_labels
+        from ilastik.workflows.carving.carvingTools import agglomerate_labels, parallel_watershed
 
         shape = (200,) * 2
         x = numpy.random.rand(*shape).astype("float32")
@@ -42,7 +43,7 @@ class TestCarvingTools(unittest.TestCase):
         ), f"Expect number of labels after {max_id2} to be less than before {max_id1} agglomeration"
 
     def test_agglomerate_labels_3d(self):
-        from ilastik.workflows.carving.carvingTools import parallel_watershed, agglomerate_labels
+        from ilastik.workflows.carving.carvingTools import agglomerate_labels, parallel_watershed
 
         shape = (100,) * 3
         x = numpy.random.rand(*shape).astype("float32")

@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+from . import helpers, io_util, jsonConfig, slicingtools, testing
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -21,29 +22,23 @@ from __future__ import absolute_import
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-from .alternative_numpy_functions import vigra_bincount, chunked_bincount
-from .exception_helpers import is_root_cause, exception_chain
-from .memory import Memory
-from . import helpers
-from . import jsonConfig
-from . import slicingtools
-from .singleton import Singleton
-from .orderedSignal import OrderedSignal
+from .alternative_numpy_functions import chunked_bincount, vigra_bincount
+from .bigRequestStreamer import BigRequestStreamer
+from .blockwise_view import blockwise_view
+from .exception_helpers import exception_chain, is_root_cause
+from .export_to_tiles import export_to_tiles
 from .fileLock import FileLock
-from .tracer import Tracer, traceLogged
-from .pathHelpers import PathComponents, getPathVariants, isUrl, make_absolute, globH5N5, globList, mkdir_p, lsH5N5
-
+from .format_known_keys import format_known_keys
+from .log_exception import log_exception
+from .memory import Memory
+from .orderedSignal import OrderedSignal
+from .pathHelpers import PathComponents, getPathVariants, globH5N5, globList, isUrl, lsH5N5, make_absolute, mkdir_p
+from .pipeline import Pipeline
+from .ramMeasurementContext import RamMeasurementContext
+from .reorderAxesDecorator import reorder, reorder_options
 from .roiRequestBatch import RoiRequestBatch, RoiRequestBatchException
 from .roiRequestBuffer import RoiRequestBufferIter
-from .bigRequestStreamer import BigRequestStreamer
-from . import io_util
-from .format_known_keys import format_known_keys
+from .singleton import Singleton
 from .timer import Timer, timeLogged
-from . import testing
-from .ramMeasurementContext import RamMeasurementContext
-from .export_to_tiles import export_to_tiles
-from .blockwise_view import blockwise_view
-from .log_exception import log_exception
+from .tracer import Tracer, traceLogged
 from .transposed_view import TransposedView
-from .reorderAxesDecorator import reorder_options, reorder
-from .pipeline import Pipeline

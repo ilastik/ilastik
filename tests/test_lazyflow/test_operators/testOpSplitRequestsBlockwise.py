@@ -24,14 +24,12 @@ import unittest
 
 import numpy as np
 import vigra
+from numpy.testing import assert_array_equal
 
 from lazyflow.graph import Graph
-from lazyflow.rtype import SubRegion
 from lazyflow.operators.opSplitRequestsBlockwise import OpSplitRequestsBlockwise
-
-from lazyflow.utility.testing import OpArrayPiperWithAccessCount
-from lazyflow.utility.testing import OpCallWhenDirty
-from numpy.testing import assert_array_equal
+from lazyflow.rtype import SubRegion
+from lazyflow.utility.testing import OpArrayPiperWithAccessCount, OpCallWhenDirty
 
 
 class TestOpSplitRequestsBlockwise(unittest.TestCase):

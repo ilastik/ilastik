@@ -19,23 +19,23 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
+import collections
+import logging
 import os
+import pickle as pickle
+import random
 import tempfile
 from functools import partial
-import pickle as pickle
-import collections
 
+import h5py
 import numpy
 import vigra
-import h5py
-import random
 
 from lazyflow import USER_LOGLEVEL
+from lazyflow.request import Request, RequestLock, RequestPool
 from lazyflow.utility import Timer
-from lazyflow.request import Request, RequestPool, RequestLock
-from .lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
-import logging
+from .lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
 logger = logging.getLogger(__name__)
 
@@ -266,8 +266,8 @@ def generate_importance_table(named_importances_dict, sort=None, export_path=Non
     columns += ["   Overall"]
     columns += ["      Gini"]
 
-    import sys
     import io
+    import sys
 
     if sys.version_info.major == 2:
         output = io.BytesIO()

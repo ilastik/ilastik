@@ -1,14 +1,13 @@
-import numpy
-import pytest
 from unittest import mock
 
+import numpy
+import pytest
 import vigra
-from lazyflow.utility import is_root_cause
 
-from lazyflow.operators import OpArrayPiper
-from lazyflow.utility import RoiRequestBufferIter, RoiRequestBatchException
-from lazyflow.utility.roiRequestBuffer import _RoiIter
 import lazyflow.utility.roiRequestBuffer
+from lazyflow.operators import OpArrayPiper
+from lazyflow.utility import RoiRequestBatchException, RoiRequestBufferIter, is_root_cause
+from lazyflow.utility.roiRequestBuffer import _RoiIter
 
 
 class ProcessingException(Exception):

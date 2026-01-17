@@ -18,17 +18,15 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+import logging
 from builtins import range
-from ilastik.workflow import Workflow
 
-from lazyflow.graph import Graph
-from lazyflow.roi import TinyVector
-
+from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.layerViewer import LayerViewerApplet
-from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
-
-import logging
+from ilastik.workflow import Workflow
+from lazyflow.graph import Graph
+from lazyflow.roi import TinyVector
 
 logger = logging.getLogger(__name__)
 

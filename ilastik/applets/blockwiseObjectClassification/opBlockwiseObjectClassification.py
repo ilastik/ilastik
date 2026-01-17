@@ -20,30 +20,30 @@
 ###############################################################################
 # Built-in
 from __future__ import division
+
 import logging
-from typing import Tuple, Sequence
+from typing import Sequence, Tuple
 
 # Third-party
 import numpy
 
-# lazyflow
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.request import RequestLock, RequestPool
-from lazyflow.roi import getIntersectingBlocks, getBlockBounds, getIntersection, roiToSlice, TinyVector
-from lazyflow.operators import OpSubRegion, OpMultiArrayStacker, OpBlockedArrayCache
-from lazyflow.stype import Opaque
-from lazyflow.rtype import List
-
-# ilastik
-from ilastik.utility import bind
-from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
+from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.objectClassification.opObjectClassification import (
-    OpObjectPredict,
-    OpRelabelSegmentation,
     OpMaxLabel,
     OpMultiRelabelSegmentation,
+    OpObjectPredict,
+    OpRelabelSegmentation,
 )
-from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
+# ilastik
+from ilastik.utility import bind
+# lazyflow
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.operators import OpBlockedArrayCache, OpMultiArrayStacker, OpSubRegion
+from lazyflow.request import RequestLock, RequestPool
+from lazyflow.roi import TinyVector, getBlockBounds, getIntersectingBlocks, getIntersection, roiToSlice
+from lazyflow.rtype import List
+from lazyflow.stype import Opaque
 
 logger = logging.getLogger(__name__)
 

@@ -1,23 +1,23 @@
-from builtins import range
+import logging
 import os
-from lazyflow.graph import Graph
-from ilastik.workflow import Workflow
+from builtins import range
+
+from ilastik.applets.batchProcessing import BatchProcessingApplet
 from ilastik.applets.dataSelection import DataSelectionApplet, DatasetInfo
-from ilastik.applets.tracking.conservation.conservationTrackingApplet import ConservationTrackingApplet
 from ilastik.applets.objectClassification.objectClassificationApplet import ObjectClassificationApplet
 from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
-from lazyflow.operators.opReorderAxes import OpReorderAxes
-from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet import TrackingFeatureExtractionApplet
-from ilastik.applets.trackingFeatureExtraction import config
-from ilastik.applets.tracking.conservation import config as configConservation
-from lazyflow.operators.opReorderAxes import OpReorderAxes
-from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
 from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
-from ilastik.applets.batchProcessing import BatchProcessingApplet
-from ilastik.plugins.manager import pluginManager
+from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
+from ilastik.applets.tracking.conservation import config as configConservation
+from ilastik.applets.tracking.conservation.conservationTrackingApplet import ConservationTrackingApplet
+from ilastik.applets.trackingFeatureExtraction import config
+from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet import TrackingFeatureExtractionApplet
 from ilastik.config import cfg as ilastik_config
+from ilastik.plugins.manager import pluginManager
+from ilastik.workflow import Workflow
 from ilastik.workflows.tracking.common import DIVISION_CLASSIFIER_LABEL_NAMES
-import logging
+from lazyflow.graph import Graph
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 logger = logging.getLogger(__name__)
 

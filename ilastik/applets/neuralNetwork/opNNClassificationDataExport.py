@@ -18,8 +18,8 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from lazyflow.graph import InputSlot
 from ilastik.applets.dataExport.opDataExport import OpDataExport
+from lazyflow.graph import InputSlot
 
 
 class OpNNClassificationDataExport(OpDataExport):

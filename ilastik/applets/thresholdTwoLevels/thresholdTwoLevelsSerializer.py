@@ -20,7 +20,8 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, SerialBlockSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialBlockSlot, SerialDictSlot, SerialSlot
+
 from .opThresholdTwoLevels import ThresholdMethod
 
 

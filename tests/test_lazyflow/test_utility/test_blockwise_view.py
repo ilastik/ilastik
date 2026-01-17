@@ -1,6 +1,7 @@
-from builtins import range
-import numpy
 import logging
+from builtins import range
+
+import numpy
 
 from lazyflow.utility import blockwise_view
 

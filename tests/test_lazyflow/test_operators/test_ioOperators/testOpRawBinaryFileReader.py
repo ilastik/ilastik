@@ -1,6 +1,3 @@
-from builtins import map
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -23,10 +20,12 @@ from builtins import object
 #           http://ilastik.org/license/
 ###############################################################################
 import os
-import tempfile
 import shutil
+import tempfile
+from builtins import map, object
 
 import numpy
+
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpRawBinaryFileReader
 

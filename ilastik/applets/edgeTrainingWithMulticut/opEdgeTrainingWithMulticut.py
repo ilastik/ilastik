@@ -1,8 +1,7 @@
-from lazyflow.graph import Operator, InputSlot, OutputSlot
 from ilastik.applets.edgeTraining.opEdgeTraining import OpEdgeTraining
-from ilastik.applets.multicut.opMulticut import OpMulticut, DEFAULT_SOLVER_NAME
-
-from ilastik.utility import OpMultiLaneWrapper, OperatorSubView
+from ilastik.applets.multicut.opMulticut import DEFAULT_SOLVER_NAME, OpMulticut
+from ilastik.utility import OperatorSubView, OpMultiLaneWrapper
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 
 
 class OpEdgeTrainingWithMulticut(Operator):

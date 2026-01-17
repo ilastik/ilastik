@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+from .autocleaned_tempdir import autocleaned_tempdir
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,10 +22,9 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from .bind import bind
+from .log_exception import log_exception
 from .multiLaneOperator import MultiLaneOperatorABC
 from .operatorSubView import OperatorSubView
 from .opMultiLaneWrapper import OpMultiLaneWrapper
-from .log_exception import log_exception
-from .autocleaned_tempdir import autocleaned_tempdir
 from .slot_name_enum import SlotNameEnum
 from .slottools import DtypeConvertFunction
