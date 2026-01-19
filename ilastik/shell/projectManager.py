@@ -77,6 +77,11 @@ class ProjectManager(object):
         """
 
         pass
+    
+    class ProjectFileLockedError(RuntimeError):
+        """Raised when a project file is locked by another ilastik instance.
+        """
+        pass
 
     class SaveError(RuntimeError):
         """
@@ -148,7 +153,15 @@ class ProjectManager(object):
         if "mode" in h5_file_kwargs:
             raise ValueError("ProjectManager.createBlankProjectFile(): 'mode' is not allowed as a h5py.File kwarg")
         os.makedirs(os.path.dirname(projectFilePath), exist_ok=True)
-        h5File = h5py.File(projectFilePath, mode="w", **h5_file_kwargs)
+        try:
+            h5File = h5py.File(projectFilePath, mode="w", **h5_file_kwargs)
+        except OSError as e:
+            msg = str(e).lower()
+            if "lock" in msg or "unable to lock file" in msg:
+                raise ProjectFileLockedError(
+                    f"Project file is currently open in another ilastik instance:\n{projectFilePath}"
+                ) from e
+            raise
         h5File.create_dataset("ilastikVersion", data=ilastik.__version__.encode("utf-8"))
         h5File.create_dataset("time", data=time.ctime().encode("utf-8"))
         if workflow_class is not None:
