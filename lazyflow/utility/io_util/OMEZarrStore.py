@@ -38,9 +38,9 @@ from zarr.errors import ArrayNotFoundError
 from zarr.storage import FSStore, LRUStoreCache
 
 from lazyflow import rtype
-from lazyflow.base import Axiskey
 from lazyflow.utility import Timer, Memory
-from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SCALE_KEY, Scale
+from lazyflow.utility.io_util.clearscale import Scale, Shape, Spacing, Unit
+from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SCALE_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -248,7 +248,7 @@ def _axistags_from_multiscale(multiscale: OME_ZARR_MULTISCALE) -> vigra.AxisTags
     return vigra.defaultAxistags("".join(axis_keys))
 
 
-def _units_from_multiscale(multiscale: OME_ZARR_MULTISCALE) -> OrderedDict[Axiskey, str]:
+def _units_from_multiscale(multiscale: OME_ZARR_MULTISCALE) -> Unit:
     axis_keys = _axistags_from_multiscale(multiscale).keys()
     if "axes" in multiscale and "name" in multiscale["axes"][0]:
         # v0.4: Each axis entry may contain a unit key
@@ -256,10 +256,10 @@ def _units_from_multiscale(multiscale: OME_ZARR_MULTISCALE) -> OrderedDict[Axisk
     else:
         # v0.1 to v0.3 did not provide a standard for keeping unit metadata
         units = ["" for _ in axis_keys]
-    return OrderedDict(zip(axis_keys, units))
+    return Unit(zip(axis_keys, units))
 
 
-def _resolution_from_multiscale(multiscale: OME_ZARR_MULTISCALE, dataset: str) -> OrderedDict[Axiskey, float]:
+def _spacing_from_multiscale(multiscale: OME_ZARR_MULTISCALE, dataset: str) -> Spacing:
     def has_valid_resolution(transforms: Union[None, ValidTransformations, InvalidTransformationError]):
         return isinstance(transforms, tuple) and transforms[0].values and len(transforms[0].values) == len(axis_keys)
 
@@ -271,8 +271,7 @@ def _resolution_from_multiscale(multiscale: OME_ZARR_MULTISCALE, dataset: str) -
     dataset_transforms = _validate_transforms(dataset_spec.get("coordinateTransformations"))
     if not has_valid_resolution(dataset_transforms):
         logger.warning(f"Missing or invalid pixel resolution metadata for dataset={dataset_spec['path']}.")
-        default_resolution = [0.0 for _ in axis_keys]
-        return OrderedDict(zip(axis_keys, default_resolution))
+        return Spacing.fromkeys(axis_keys)
 
     dataset_resolution = dataset_transforms[0].values
 
@@ -280,11 +279,11 @@ def _resolution_from_multiscale(multiscale: OME_ZARR_MULTISCALE, dataset: str) -
     if not has_valid_resolution(multiscale_transforms):
         if multiscale_transforms is not None:
             logger.warning("Pixel resolution metadata at pyramid level was invalid.")
-        return OrderedDict(zip(axis_keys, dataset_resolution))
+        return Spacing(zip(axis_keys, dataset_resolution))
     else:
         multiscale_resolution = multiscale_transforms[0].values
         combined_resolution = numpy.array(multiscale_resolution) * numpy.array(dataset_resolution)
-        return OrderedDict(zip(axis_keys, combined_resolution))
+        return Spacing(zip(axis_keys, combined_resolution))
 
 
 def _get_multiscale_for_dataset(ome_spec: OME_ZARR_SPEC, dataset_subpath: str) -> OME_ZARR_MULTISCALE:
@@ -612,9 +611,9 @@ class OMEZarrStore(MultiscaleStore):
                     ) from e
                 dtype = zarray.dtype.type
                 scale_metadata[scale_key] = Scale(
-                    shape=OrderedDict(zip([tag.key for tag in axistags], zarray.shape)),
-                    resolution=_resolution_from_multiscale(self._multiscale_spec, scale_key),
-                    units=_units_from_multiscale(self._multiscale_spec),
+                    shape=Shape(zip([tag.key for tag in axistags], zarray.shape)),
+                    spacing=_spacing_from_multiscale(self._multiscale_spec, scale_key),
+                    unit=_units_from_multiscale(self._multiscale_spec),
                 )
                 self._scale_data[scale_key] = {
                     "zarray": zarray,
