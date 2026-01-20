@@ -23,10 +23,9 @@ import logging
 from collections import OrderedDict as ODict
 from functools import partial
 from pathlib import Path
-from typing import List, Tuple, Dict, OrderedDict, Optional, Iterable, Union
+from typing import List, Tuple, Dict, OrderedDict, Optional, Union, TypeVar, Sequence
 
 import numpy
-import vigra
 import zarr
 from zarr.storage import FSStore
 
@@ -41,25 +40,18 @@ from lazyflow.slot import Slot
 from lazyflow.utility import OrderedSignal, PathComponents, BigRequestStreamer
 from lazyflow.utility.data_semantics import ImageTypes
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrTranslations
-from lazyflow.utility.io_util.multiscaleStore import DEFAULT_VIGRA_RESOLUTION
+from lazyflow.utility.io_util.clearscale import Spacing, Shape as MShape, Translation, Factor, Offset
 
 logger = logging.getLogger(__name__)
 
 OrderedScaling = OrderedTranslation = OrderedDict[Axiskey, float]  # { axis: scaling }
 ScalingsByScaleKey = OrderedDict[str, OrderedScaling]  # { scale_key: { axis: scaling } }
 ShapesByScaleKey = OrderedDict[str, TaggedShape]  # { scale_key: { axis: size } }
+AxisKey = TypeVar("AxisKey", bound=Axiskey)
 
 OME_ZARR_V_0_4_KWARGS = dict(dimension_separator="/")
 OME_ZARR_AXES: List[Axiskey] = ["t", "c", "z", "y", "x"]
 SINGE_SCALE_DEFAULT_KEY = "s0"
-
-
-def _rescale_size(size: int, factor: float) -> int:
-    """
-    Rescale a single dimension of a shape.
-    Floor-round to match behavior of OpResize, and ensure minimum size is 1.
-    """
-    return max(int(size / factor), 1)
 
 
 def match_target_scales_to_input_excluding_upscales(
@@ -91,12 +83,12 @@ def _match_target_scales_to_input(
         # Export shape is modified (cropped).
         # Get source multiscale's scaling factors relative to the (uncropped) input shape and compute cropped scale
         # shapes from that.
-        input_scalings = _multiscale_to_scalings(input_scales, source_scale_shape, export_shape.keys())
+        input_scalings = _multiscale_to_scalings(input_scales, source_scale_shape, list(export_shape.keys()))
         target_scales_items = []
         for scale_key, scale_factors in input_scalings.items():
-            scaled_shape = ODict([(a, _rescale_size(size, scale_factors[a])) for a, size in export_shape.items()])
-            is_less_than_2d = len([a for a in SPATIAL_AXES if a in scaled_shape and scaled_shape[a] > 1]) < 2
-            if is_less_than_2d and scale_key != input_key:
+            scaled_shape = MShape(export_shape).scale_by(scale_factors, f_round=int)
+            remaining_spatial = len(scaled_shape.singletons(SPATIAL_AXES))
+            if remaining_spatial < 2 and scale_key != input_key:
                 # Avoid nonsense scales that aren't at least a 2d image,
                 # but make sure the source scale stays so we don't return only upscales
                 break
@@ -105,11 +97,8 @@ def _match_target_scales_to_input(
 
     scales_items = []
     for scale_key, target_shape in target_scales.items():
-        reordered_shape = _reorder(target_shape, OME_ZARR_AXES, 1)
-        if "c" in export_shape:
-            reordered_shape["c"] = export_shape["c"]
-        reordered_item = (scale_key, reordered_shape)
-        scales_items.append(reordered_item)
+        export_scale_shape = MShape(target_shape).reorder(OME_ZARR_AXES).overwrite_with(export_shape, axes="c")
+        scales_items.append((scale_key, export_scale_shape))
     return ODict(scales_items)
 
 
@@ -118,32 +107,19 @@ def generate_default_target_scales(unscaled_shape: TaggedShape, dtype) -> Shapes
     Default target scales are isotropic 2x downscaling along x, y and z if present.
     The smallest scale included is just small enough for the entire image to fit into one chunk (per t and c).
     """
-    unscaled = _reorder(unscaled_shape, OME_ZARR_AXES, 1)
-    chunk_shape_tagged = ODict(zip(OME_ZARR_AXES, _get_chunk_shape(unscaled, dtype)))
+    unscaled = MShape(unscaled_shape).reorder(OME_ZARR_AXES)
+    chunk_shape_tagged = ODict(zip(unscaled.keys(), _get_chunk_shape(unscaled, dtype)))
     scales_items = []
     sanity_limit = 42
     for i in range(0, sanity_limit):
         scale_key = f"s{i}"
         scale_factor = 2**i
-        scaled_shape = []
-        for axis, size in unscaled.items():
-            if axis in SPATIAL_AXES:
-                scaled_shape.append(_rescale_size(size, scale_factor))
-            else:
-                scaled_shape.append(size)
-        scaled_shape_tagged = ODict(zip(OME_ZARR_AXES, scaled_shape))
-        item = (scale_key, scaled_shape_tagged)
-        scales_items.append(item)
-        if all(scaled_shape_tagged[axis] <= chunk_shape_tagged[axis] for axis in SPATIAL_AXES):
+        scaling = Factor.uniform(unscaled.keys(), scale_factor).with_ones_except(SPATIAL_AXES)
+        scaled_shape = unscaled.scale_by(scaling, f_round=int)
+        scales_items.append((scale_key, scaled_shape))
+        if all(scaled_shape[axis] <= chunk_shape_tagged[axis] for axis in SPATIAL_AXES):
             break
     return ODict(scales_items)
-
-
-def _reorder(
-    shape: Dict[Axiskey, Union[int, float]], axes: Iterable[Axiskey], default_value: Union[int, float]
-) -> TaggedShape:
-    """Reorder a tagged shape to `axes`, using `default_value` for axes missing in `shape`."""
-    return ODict([(a, shape[a] if a in shape else default_value) for a in axes])
 
 
 def _get_chunk_shape(tagged_image_shape: TaggedShape, dtype) -> Shape:
@@ -154,9 +130,7 @@ def _get_chunk_shape(tagged_image_shape: TaggedShape, dtype) -> Shape:
     if isinstance(dtype, numpy.dtype):  # Extract raw type class
         dtype = dtype.type
     dtype_bytes = dtype().nbytes
-    tagged_maxshape = tagged_image_shape.copy()
-    tagged_maxshape["t"] = 1
-    tagged_maxshape["c"] = 1
+    tagged_maxshape = MShape(tagged_image_shape).with_ones("tc")
     chunk_shape = determineBlockShape(list(tagged_maxshape.values()), target_max_size / dtype_bytes)
     return chunk_shape
 
@@ -164,24 +138,15 @@ def _get_chunk_shape(tagged_image_shape: TaggedShape, dtype) -> Shape:
 def _multiscale_to_scalings(
     multiscale: ShapesByScaleKey,
     base_shape: TaggedShape,
-    output_axiskeys: Iterable[Axiskey],
+    output_axiskeys: Sequence[Axiskey],
 ) -> ScalingsByScaleKey:
     """Multiscale and base_shape may have arbitrary axes.
     Output are scaling factors relative to base_shape, with axes output_axiskeys.
     Scale factor 1.0 for axes not present in scale or base shape, and for channel."""
-    factors = []
-    for scale_shape in multiscale.values():
-        common_axes = [a for a in scale_shape if a in base_shape]
-        scale_values = [scale_shape[a] for a in common_axes]
-        base_values = [base_shape[a] for a in common_axes]
-        # This scale's scaling relative to base_shape.
-        # Scaling "factors" are technically divisors for the shape (factor 2.0 means half the shape).
-        relative_factors = {a: base / s for a, s, base in zip(common_axes, scale_values, base_values)}
-        # Pad with 1.0 for requested axes not present in scale/base, and c
-        axes_matched_factors = ODict(
-            [(a, relative_factors[a] if a in relative_factors and a != "c" else 1.0) for a in output_axiskeys]
-        )
-        factors.append(axes_matched_factors)
+    factors = [
+        MShape(base_shape).scaling_to(scale_shape, fixed="c").reorder(output_axiskeys)
+        for scale_shape in multiscale.values()
+    ]
     return ODict(zip(multiscale.keys(), factors))
 
 
@@ -241,19 +206,14 @@ def _get_datasets_meta(
     :param export_resolution: pixel size
     """
     datasets = []
-    export_axiskeys = list(next(iter(export_scalings.values())).keys())
     for scale_key, scaling in export_scalings.items():
-        absolute_scaling = ODict([(a, scaling[a] * export_resolution[a]) for a in export_axiskeys])
+        absolute_scaling = Factor(scaling).to_physical(export_resolution)
         dataset = {
             "path": scale_key,
             "coordinateTransformations": [{"type": "scale", "scale": list(absolute_scaling.values())}],
         }
         datasets.append(dataset)
     return datasets
-
-
-def _get_tagged_resolution(axistags: vigra.AxisTags) -> OrderedScaling:
-    return ODict([(tag.key, tag.resolution if tag.resolution != DEFAULT_VIGRA_RESOLUTION else 1.0) for tag in axistags])
 
 
 def _get_multiscale_transformations(
@@ -286,35 +246,33 @@ def _get_multiscale_transformations(
     """
 
     axes = export_axiskeys
-    resolution = _get_tagged_resolution(ilastik_meta["axistags"])
-    sum_translation: OrderedTranslation = ODict(zip(axes, [0.0] * len(axes)))
+    resolution = Spacing.from_vigra(ilastik_meta["axistags"])
+    sum_translation = Translation.identity(axes)
     if export_offset:
         # Convert offset pixels to absolute units
-        reordered_offset = _reorder(export_offset, axes, 0)
-        sum_translation = ODict([(a, reordered_offset[a] * resolution[a]) for a in axes])
+        sum_translation = Offset(export_offset).reorder(axes).to_physical(resolution)
     if input_translations:
         input_dataset_translation = input_translations.dataset_translations.get(input_scale_key)
         input_multiscale_translation = input_translations.multiscale_translation
         if input_dataset_translation:
-            reordered_dataset = _reorder(input_dataset_translation, axes, 0.0)
-            sum_translation = ODict([(a, sum_translation[a] + reordered_dataset[a]) for a in axes])
+            reordered_dataset = Translation(input_dataset_translation).reorder(axes)
+            sum_translation = sum_translation + reordered_dataset
         if input_multiscale_translation:
-            reordered_multiscale = _reorder(input_multiscale_translation, axes, 0.0)
-            sum_translation = ODict([(a, sum_translation[a] + reordered_multiscale[a]) for a in axes])
+            reordered_multiscale = Translation(input_multiscale_translation).reorder(axes)
+            sum_translation = sum_translation + reordered_multiscale
 
     multiscale_transforms = []
-    if any(v != 1 for v in export_resolution_along_unscaled.values()):
+    if not Factor(export_resolution_along_unscaled).is_identity():
         multiscale_transforms.append({"type": "scale", "scale": list(export_resolution_along_unscaled.values())})
-    if any(v != 0 for v in sum_translation.values()):
+    if not sum_translation.is_identity():
         if not multiscale_transforms:
             # Must have a scale transform before translation transform
-            multiscale_transforms.append({"type": "scale", "scale": [1.0] * len(export_axiskeys)})
+            multiscale_transforms.append({"type": "scale", "scale": list(Factor.identity(export_axiskeys).values())})
         multiscale_transforms.append({"type": "translation", "translation": list(sum_translation.values())})
     return multiscale_transforms or None
 
 
 def _get_resolution_as_split_scaling(
-    export_axiskeys: List[Axiskey],
     ilastik_meta: Dict,
     export_scalings: ScalingsByScaleKey,
     input_scales: Optional[ShapesByScaleKey],
@@ -342,11 +300,8 @@ def _get_resolution_as_split_scaling(
             return False
         return any(scale_shape[axis] != base_size for scale_shape in tagged_shapes)
 
-    assert export_axiskeys == [tag.key for tag in ilastik_meta["axistags"]], "wat"
-    tagged_resolution = _get_tagged_resolution(ilastik_meta["axistags"])
-    resolution_scaled = ODict([(a, tagged_resolution[a] if is_scaling_axis(a) else 1.0) for a in export_axiskeys])
-    resolution_unscaled = ODict([(a, tagged_resolution[a] if not is_scaling_axis(a) else 1.0) for a in export_axiskeys])
-    return resolution_scaled, resolution_unscaled
+    resolution = Spacing.from_vigra(ilastik_meta["axistags"])
+    return resolution.partition(is_scaling_axis)
 
 
 def _get_scaling_method_metadata(export_scalings: ScalingsByScaleKey, interpolation_order: int) -> Optional[Dict]:
@@ -375,7 +330,7 @@ def _write_ome_zarr_and_ilastik_metadata(
     ilastik_signature = {"name": "ilastik", "version": ilastik_version, "ome_zarr_exporter_version": 2}
     export_axiskeys = list(next(iter(export_scalings.values())).keys())
     export_resolution_along_scaled, export_resolution_along_unscaled = _get_resolution_as_split_scaling(
-        export_axiskeys, ilastik_meta, export_scalings, input_scales
+        ilastik_meta, export_scalings, input_scales
     )
 
     axes = _get_axes_meta(export_axiskeys, ilastik_meta)
@@ -425,9 +380,7 @@ def write_ome_zarr(
             "Appending to an existing OME-Zarr store is not yet implemented."
             f"\nPath: {abs_export_path}."
         )
-    export_offset: TaggedShape = (
-        ODict(zip(image_source_slot.meta.getAxisKeys(), export_offset)) if export_offset else None
-    )
+    export_offset = MShape(zip(image_source_slot.meta.getAxisKeys(), export_offset)) if export_offset else None
     op_reorder = OpReorderAxes(parent=image_source_slot.operator)
     op_reorder.AxisOrder.setValue("".join(OME_ZARR_AXES))
     ops_to_clean = [op_reorder]
@@ -450,7 +403,7 @@ def write_ome_zarr(
 
         chunk_shape = _get_chunk_shape(export_shape, export_dtype)
 
-        export_scalings = _multiscale_to_scalings(target_scales, export_shape, export_shape.keys())
+        export_scalings = _multiscale_to_scalings(target_scales, export_shape, list(export_shape.keys()))
         combined_scaling_mag = {key: numpy.prod(list(scale.values())) for key, scale in export_scalings.items()}
 
         # Upscales/raw - uncached (maybe this helps keep unscaled computation cache warm)
