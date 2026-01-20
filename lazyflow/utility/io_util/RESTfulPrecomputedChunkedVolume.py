@@ -28,7 +28,8 @@ import numpy
 import requests
 import vigra
 
-from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SCALE_KEY, Scale
+from lazyflow.utility.io_util.clearscale import Scale, Shape, Spacing, Unit
+from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SCALE_KEY
 
 logger = logging.getLogger(__file__)
 
@@ -103,9 +104,9 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
         self.n_channels = self._json_info["num_channels"]
         internal_scales = [
             Scale(
-                shape=OrderedDict(zip("czyx", [self.n_channels] + scale["size"][::-1])),
-                resolution=OrderedDict(zip("czyx", [0.0] + scale["resolution"][::-1])),
-                units=OrderedDict(zip("czyx", ["", "nm", "nm", "nm"])),
+                shape=Shape(zip("czyx", [self.n_channels] + scale["size"][::-1])),
+                spacing=Spacing(zip("czyx", [0.0] + scale["resolution"][::-1])),
+                unit=Unit(zip("czyx", ["", "nm", "nm", "nm"])),
             )
             for scale in self._json_info["scales"]
         ]
