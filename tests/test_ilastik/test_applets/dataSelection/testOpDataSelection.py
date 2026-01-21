@@ -1360,6 +1360,18 @@ import pytest
 from ilastik.applets.dataSelection.opDataSelection import nickname_from_url
 
 
+def test_urldatasetinfo_has_nickname_helper():
+    """Ensure UrlDatasetInfo exposes the legacy `_nickname_from_url` attribute.
+
+    This guards the backward-compatibility shim added to `opDataSelection.py` so
+    that legacy consumers (and tests) that reference this attribute continue to work.
+    """
+    from ilastik.applets.dataSelection.opDataSelection import UrlDatasetInfo
+
+    assert hasattr(UrlDatasetInfo, "_nickname_from_url")
+    assert callable(getattr(UrlDatasetInfo, "_nickname_from_url"))
+
+
 @pytest.mark.parametrize(
     "uri",
     [
