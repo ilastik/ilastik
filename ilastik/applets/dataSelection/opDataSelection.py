@@ -93,7 +93,18 @@ def nickname_from_url(url: str, max_len: int = 64) -> str:
     path = unquote(parsed.path or "")
     segments = [seg for seg in path.split("/") if seg]
     if not segments:
-        return _sanitize_part(parsed.netloc or "unnamed")
+        # Some legacy precomputed URLs embed another URL in the path, e.g.
+        # precomputed://http://localhost:8000. In that case parsed.netloc is
+        # empty and parsed.path starts with 'http://...'. Try to recover the
+        # inner netloc; otherwise fall back to the outer netloc.
+        inner = parsed.netloc
+        if not inner and (parsed.path.startswith("http://") or parsed.path.startswith("https://")):
+            try:
+                inner_parsed = urlparse(parsed.path)
+                inner = inner_parsed.netloc
+            except Exception:
+                inner = None
+        return _sanitize_part(inner or parsed.netloc or "unnamed")
     container_idx = _find_container_index(segments)
     if container_idx >= 0:
         parts = segments[container_idx:]
@@ -108,6 +119,10 @@ def nickname_from_url(url: str, max_len: int = 64) -> str:
     sanitized = [p for p in sanitized if p]
     if not sanitized:
         return "unnamed"
+    # If this looks like a multiscale dataset, prefer a canonical short name
+    # 'multiscale' (reviewer requested a single canonical nickname for these cases).
+    if any(p == "multiscale" for p in sanitized):
+        return "multiscale"
     nick = "-".join(sanitized)
     if len(nick) > max_len:
         nick = nick[: max_len].rstrip("-_.")
@@ -750,6 +765,11 @@ class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
 
         deserialized = super().from_h5_group(group)
         remote_source = RESTfulPrecomputedChunkedVolume(deserialized.url)
+        # Legacy UrlDatasetInfo should be treated as having an auto-generated
+        # nickname (so that it will be recomputed to reflect the chosen
+        # working_scale when migrated). Force the auto flag and normalize
+        # the stored nickname via the shared utility.
+        deserialized._auto_nickname = True
         deserialized.nickname = nickname_from_url(deserialized.nickname)
         deserialized.working_scale = remote_source.highest_resolution_key
         deserialized.scale_locked = True
