@@ -25,6 +25,7 @@ import json
 import os
 import re
 import uuid
+import logging
 from abc import abstractmethod, ABC
 from collections import OrderedDict
 from numbers import Number
@@ -111,6 +112,9 @@ def nickname_from_url(url: str, max_len: int = 64) -> str:
     if len(nick) > max_len:
         nick = nick[: max_len].rstrip("-_.")
     return nick
+
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -670,7 +674,8 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         if "auto_nickname" in group:
             try:
                 params["_auto_nickname"] = bool(group["auto_nickname"][()])
-            except Exception:
+            except Exception as e:
+                logger.debug("Failed to read auto_nickname from group: %s", e, exc_info=True)
                 params["_auto_nickname"] = False
         return super().from_h5_group(group, params)
 
@@ -749,6 +754,12 @@ class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
         deserialized.working_scale = remote_source.highest_resolution_key
         deserialized.scale_locked = True
         return deserialized
+
+
+# Backwards compatibility: some code (and tests) expect a class-level
+# helper called `_nickname_from_url` on `UrlDatasetInfo`.
+# Provide it as a staticmethod delegating to the module-level utility.
+UrlDatasetInfo._nickname_from_url = staticmethod(nickname_from_url)
 
 
 class FilesystemDatasetInfo(DatasetInfo):
