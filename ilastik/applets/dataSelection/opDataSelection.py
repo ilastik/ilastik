@@ -54,7 +54,63 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.utility.helpers import get_default_axisordering, eq_shapes
 from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, Multiscales
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
-from ilastik.applets.dataSelection.url_nickname import nickname_from_url
+# Inline small URL->nickname helper per reviewer preference (keep logic simple & local)
+from urllib.parse import urlparse, unquote
+
+
+KNOWN_CONTAINER_EXTS = (
+    ".ome.zarr",
+    ".zarr",
+    ".n5",
+    ".ome.n5",
+    ".h5",
+    ".hdf5",
+    ".ilp",
+)
+
+
+def _sanitize_part(part: str) -> str:
+    s = re.sub(r"[^a-zA-Z0-9_.-]", "_", part)
+    s = re.sub(r"_+", "_", s)
+    s = s.strip("_.-")
+    return s.lower()
+
+
+def _find_container_index(segments):
+    last_idx = -1
+    for i, seg in enumerate(segments):
+        seg_low = seg.lower()
+        for ext in KNOWN_CONTAINER_EXTS:
+            if seg_low.endswith(ext):
+                last_idx = i
+                break
+    return last_idx
+
+
+def nickname_from_url(url: str, max_len: int = 64) -> str:
+    parsed = urlparse(url)
+    path = unquote(parsed.path or "")
+    segments = [seg for seg in path.split("/") if seg]
+    if not segments:
+        return _sanitize_part(parsed.netloc or "unnamed")
+    container_idx = _find_container_index(segments)
+    if container_idx >= 0:
+        parts = segments[container_idx:]
+    else:
+        parts = [segments[-1]]
+    first = parts[0]
+    for ext in KNOWN_CONTAINER_EXTS:
+        if first.lower().endswith(ext):
+            first = first[: -len(ext)]
+            break
+    sanitized = [_sanitize_part(first)] + [_sanitize_part(p) for p in parts[1:]]
+    sanitized = [p for p in sanitized if p]
+    if not sanitized:
+        return "unnamed"
+    nick = "-".join(sanitized)
+    if len(nick) > max_len:
+        nick = nick[: max_len].rstrip("-_.")
+    return nick
 
 
 
