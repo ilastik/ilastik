@@ -1,6 +1,30 @@
+import importlib
+import importlib.util
+from pathlib import Path
+
 import pytest
 
-from ilastik.applets.dataSelection.url_nickname import nickname_from_url
+
+def _load_nickname_helper():
+    """Try importing the package helper; if that fails (missing heavy deps locally)
+    load the module directly from the file path so tests remain runnable locally.
+    """
+    try:
+        # Prefer the installed/package import (used in CI)
+        from ilastik.applets.dataSelection.url_nickname import nickname_from_url
+
+        return nickname_from_url
+    except Exception:
+        # Fallback: load by path relative to repo layout
+        repo_root = Path(__file__).parents[4]
+        helper_path = repo_root / "ilastik" / "applets" / "dataSelection" / "url_nickname.py"
+        spec = importlib.util.spec_from_file_location("url_nickname", str(helper_path))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.nickname_from_url
+
+
+nickname_from_url = _load_nickname_helper()
 
 
 @pytest.mark.parametrize(

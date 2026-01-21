@@ -53,8 +53,9 @@ from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.utility.helpers import get_default_axisordering, eq_shapes
 from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, Multiscales
-from .url_nickname import nickname_from_url
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
+from ilastik.applets.dataSelection.url_nickname import nickname_from_url
+
 
 
 def getTypeRange(numpy_type):
@@ -640,7 +641,7 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
                 return
         raise DatasetConstraintError("DataSelection", f"No scale matches shape {target_shape}")
 
-    # nickname_from_url utility is used instead (see ilastik/applets/dataSelection/url_nickname.py)
+    # _nickname_from_url behaviour is delegated to ilastik.applets.dataSelection.url_nickname.nickname_from_url
 
     def _update_nickname(self) -> None:
         """
@@ -688,7 +689,7 @@ class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
 
         deserialized = super().from_h5_group(group)
         remote_source = RESTfulPrecomputedChunkedVolume(deserialized.url)
-        deserialized.nickname = cls._nickname_from_url(deserialized.nickname)
+        deserialized.nickname = nickname_from_url(deserialized.nickname)
         deserialized.working_scale = remote_source.highest_resolution_key
         deserialized.scale_locked = True
         return deserialized
