@@ -53,8 +53,9 @@ from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.utility.helpers import get_default_axisordering, eq_shapes
 from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, Multiscales
-from .url_nickname import nickname_from_url
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
+from ilastik.applets.dataSelection.url_nickname import nickname_from_url
+
 
 
 def getTypeRange(numpy_type):
@@ -601,7 +602,6 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
     def to_json_data(self) -> Dict:
         out = super().to_json_data()
         out["url"] = self.url
-        out["auto_nickname"] = bool(getattr(self, "_auto_nickname", False))
         return out
 
     @classmethod
@@ -609,12 +609,6 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         params = params or {}
         if "url" not in params:
             params["url"] = group["filePath"][()].decode()
-        # preserve whether nickname was auto-generated when loading from project
-        if "auto_nickname" in group:
-            try:
-                params["_auto_nickname"] = bool(group["auto_nickname"][()])
-            except Exception:
-                params["_auto_nickname"] = False
         return super().from_h5_group(group, params)
 
     def get_scale_matching_shape(self, target_shape: Dict[str, int]) -> str:
@@ -640,7 +634,7 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
                 return
         raise DatasetConstraintError("DataSelection", f"No scale matches shape {target_shape}")
 
-    # nickname_from_url utility is used instead (see ilastik/applets/dataSelection/url_nickname.py)
+    # _nickname_from_url behaviour is delegated to ilastik.applets.dataSelection.url_nickname.nickname_from_url
 
     def _update_nickname(self) -> None:
         """
@@ -649,13 +643,26 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         """
         if not getattr(self, "_auto_nickname", False):
             return
-        # Recompute using the shared utility; include working_scale when available
+        stripped = self.url.rstrip("/")
+        parts = stripped.split("/")
+        # base container name
+        base = parts[-1]
+        base_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", base)
+        base_name = os.path.splitext(base_safe)[0]
+        # prefer to use explicit working_scale if set and not default
         if getattr(self, "working_scale", None) and self.working_scale != DEFAULT_SCALE_KEY:
-            # create a synthetic URL that ends with the working_scale so nickname_from_url includes it
-            synthetic = self.url.rstrip("/") + "/" + self.working_scale
-            self.nickname = nickname_from_url(synthetic)
+            internal = self.working_scale.replace("/", "-")
+            self.nickname = f"{base_name}-{internal}"
             return
-        self.nickname = nickname_from_url(self.url)
+        # otherwise, if URL already contains an internal path after a container, use that
+        if len(parts) >= 2 and os.path.splitext(parts[-2])[1]:
+            internal_parts = parts[parts.index(parts[-2]) + 1 :]
+            if internal_parts:
+                internal_safe = "-".join(re.sub(r"[^a-zA-Z0-9_.-]", "_", p) for p in internal_parts)
+                self.nickname = f"{base_name}-{internal_safe}"
+                return
+        # fallback
+        self.nickname = base_name
 
 
 class UrlDatasetInfo(MultiscaleUrlDatasetInfo):

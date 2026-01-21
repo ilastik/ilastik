@@ -1353,3 +1353,4 @@ def test_cleanup(data_path, graph):
 
     # Then
     assert len(reader.children) == children_after_load, "Did not clean up all children after input change"
+
