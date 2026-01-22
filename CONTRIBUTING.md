@@ -125,6 +125,8 @@ Therefore, *for some changes you need to repeat the instructions twice in the co
 
    - If your changes require feedback, create a draft pull request (select the type from the dropdown list on the green button).
 
+1. Our CI pipeline will run the test suite on your code changes. If it turns up red, click on the respective CI step to find out what went wrong. The interface can be a bit overwhelming at first, so feel free to ask for clarifications if you're not sure what a failure means.
+
 1. Discuss your work with the other people, and wait for the approval from maintainers.
 
 1. After your pull request has been merged, remove your local branches:
@@ -138,6 +140,20 @@ Therefore, *for some changes you need to repeat the instructions twice in the co
    ```
    git push --delete origin your-branch-name-here
    ```
+
+## Pull request guidelines
+
+When you start a PR, the description will show a template with a checklist.
+Check your PR against these steps.
+If you notice that any of them require some more changes to your code, proceed as you feel more comfortable:
+You can either
+- hold off on opening the PR until it is ready, or
+- choose "Create draft pull request", make the changes, check the boxes in the description, and then mark the PR as ready for review.
+
+Your PR description should include what *behavior* you changed, and how this improves ilastik.
+If your PR addresses a GitHub issue, a clear title and a link to the issue can be sufficient.
+Don't describe what *code* you changed - we can see your code changes.
+Do explain *why* you chose to go about it as you did.
 
 ## Coding style
 
