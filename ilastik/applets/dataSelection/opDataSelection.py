@@ -55,6 +55,12 @@ from lazyflow.utility.helpers import get_default_axisordering, eq_shapes
 from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, Multiscale
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
 
+# -----------------------------------------------------------------------------
+# Config option: allow users to disable pixel size mismatch warnings
+# Default is True to preserve existing behavior
+# -----------------------------------------------------------------------------
+WARN_ON_PIXEL_SIZE_MISMATCH = True
+
 
 def getTypeRange(numpy_type):
     type_info = numpy.iinfo(numpy_type)
@@ -1093,10 +1099,15 @@ class OpDataSelectionGroup(Operator):
             raise TransactionRequiredError("must disconnect ScaleChangeFinished first before changing scale")
 
     def _unify_pixel_size(self, *_):
+        # Allow users to opt out of pixel size mismatch warnings
+        if not WARN_ON_PIXEL_SIZE_MISMATCH:
+            return
+
         role_slots = [slot for slot in self._opDatasets.Image if slot.ready()]
         roles_with_pixel_size = [slot for slot in role_slots if self._has_pixel_size(slot)]
         if not roles_with_pixel_size:
             return
+
         eq_all_with_pixel_size = all(
             self.eq_resolution_and_units_xyzt(slot1, slot2)
             for slot1, slot2 in itertools.combinations(roles_with_pixel_size, 2)
