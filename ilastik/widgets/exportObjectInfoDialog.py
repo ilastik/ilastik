@@ -34,7 +34,7 @@ RAW_LAYER_SIZE_LIMIT = 1000000
 ALLOWED_EXTENSIONS = ["hdf5", "hd5", "h5", "csv"]
 DEFAULT_REQUIRED_FEATURES = ["Count", "Coord<Minimum>", "Coord<Maximum>", "RegionCenter"]
 DIALOG_FILTERS = {"h5": "HDF 5 (*.h5 *.hd5 *.hdf5)", "csv": "CSV (*.csv)", "any": "Any (*.*)"}
-DEFAULT_EXPORT_PATH = "{dataset_dir}/{nickname}.csv"
+DEFAULT_EXPORT_PATH = "{dataset_dir}/{nickname}_table.csv"
 
 
 class ExportObjectInfoDialog(QDialog):
@@ -313,7 +313,17 @@ class ExportObjectInfoDialog(QDialog):
     def file_format_changed(self, index):
         path = str(self.ui.exportPath.text())
         match = path.rsplit(".", 1)
-        path = "%s.%s" % (match[0], FILE_TYPES[index])
+        base = match[0]
+
+        # include the {nickname}_table suffix, prefer the safer
+        # {nickname}_table form so switching formats won't accidentally
+        # produce {nickname}.h5 which could overwrite the input file.
+        # Check specifically for the placeholder with suffix to avoid
+        # false positives when `_table` appears elsewhere in the path.
+        if "{nickname}" in base and "{nickname}_table" not in base:
+            base = base.replace("{nickname}", "{nickname}_table", 1)
+
+        path = "%s.%s" % (base, FILE_TYPES[index])
         self.ui.exportPath.setText(path)
 
         for widget in (self.ui.includeRaw, self.ui.marginLabel, self.ui.addMargin):

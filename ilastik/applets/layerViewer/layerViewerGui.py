@@ -392,6 +392,31 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         # This works perfectly for uint8.
         # For uint32, etc., values of 256,512, etc. will be appear 'off'.
         # But why would you use uint32 for a binary mask anyway?
+        # If the mask is a floating-point image (e.g. prediction mask with values
+        # in [0.0, 1.0]) volumina's ColorTableSource expects integer indices and
+        # will raise. In that case, visualize as a grayscale layer with
+        # normalization instead of a colortable.
+        try:
+            if numpy.issubdtype(slot.meta.dtype, numpy.floating):
+                src = createDataSource(slot)
+                layer = GrayscaleLayer(src, window_leveling=True, priority=priority)
+                layer.numberOfChannels = 1
+                # For float-valued masks, default normalization should be (0.0, 1.0)
+                # unless the slot metadata requests a different drange via normalizeDisplay.
+                layer.set_normalize(0, (slot.meta.normalizeDisplay and slot.meta.drange) or (0.0, 1.0))
+                return layer
+        except (AttributeError, TypeError) as exc:
+            # If anything goes wrong with dtype detection or constructing the
+            # grayscale layer (e.g., missing meta attributes or unexpected
+            # types), log and fall back to the original colortable behaviour
+            # so we at least show something instead of crashing.
+            logger.exception(
+                "Failed to create grayscale layer for binary mask from slot %r; falling back to colortable.\n%s",
+                slot,
+                exc,
+            )
+
+        # Fallback / integer-index visualization: 0 => black, 1-255 => transparent
         colortable = [QColor(0, 0, 0, 255).rgba()]
         colortable += 255 * [QColor(0, 0, 0, 0).rgba()]
         layer = ColortableLayer(createDataSource(slot), colortable, priority=priority)
