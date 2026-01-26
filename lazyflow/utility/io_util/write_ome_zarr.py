@@ -20,7 +20,6 @@
 # 		   http://ilastik.org/license/
 ###############################################################################
 import logging
-from collections import OrderedDict as ODict
 from functools import partial
 from pathlib import Path
 from typing import List, Tuple, Dict, OrderedDict, Optional, Union, TypeVar, Sequence
@@ -40,7 +39,7 @@ from lazyflow.slot import Slot
 from lazyflow.utility import OrderedSignal, PathComponents, BigRequestStreamer
 from lazyflow.utility.data_semantics import ImageTypes
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrTranslations
-from lazyflow.utility.io_util.clearscale import Spacing, Shape as MShape, Translation, Factor, Offset
+from lazyflow.utility.io_util.clearscale import Spacing, Shape as MShape, Translation, Factor, Offset, BlueprintShapes
 
 logger = logging.getLogger(__name__)
 
@@ -86,8 +85,8 @@ def _match_target_scales_to_input(
         input_scalings = _multiscale_to_scalings(input_scales, source_scale_shape, list(export_shape.keys()))
         target_scales_items = []
         for scale_key, scale_factors in input_scalings.items():
-            scaled_shape = MShape(export_shape).scale_by(scale_factors, f_round=int)
-            remaining_spatial = len(scaled_shape.singletons(SPATIAL_AXES))
+            scaled_shape = MShape(export_shape).scale_by(scale_factors, rounding=int)
+            remaining_spatial = len(scaled_shape.singleton_axes(SPATIAL_AXES))
             if remaining_spatial < 2 and scale_key != input_key:
                 # Avoid nonsense scales that aren't at least a 2d image,
                 # but make sure the source scale stays so we don't return only upscales
@@ -108,18 +107,11 @@ def generate_default_target_scales(unscaled_shape: TaggedShape, dtype) -> Shapes
     The smallest scale included is just small enough for the entire image to fit into one chunk (per t and c).
     """
     unscaled = MShape(unscaled_shape).reorder(OME_ZARR_AXES)
-    chunk_shape_tagged = ODict(zip(unscaled.keys(), _get_chunk_shape(unscaled, dtype)))
-    scales_items = []
-    sanity_limit = 42
-    for i in range(0, sanity_limit):
-        scale_key = f"s{i}"
-        scale_factor = 2**i
-        scaling = Factor.uniform(unscaled.keys(), scale_factor).with_ones_except(SPATIAL_AXES)
-        scaled_shape = unscaled.scale_by(scaling, f_round=int)
-        scales_items.append((scale_key, scaled_shape))
-        if all(scaled_shape[axis] <= chunk_shape_tagged[axis] for axis in SPATIAL_AXES):
-            break
-    return ODict(scales_items)
+    chunk_shape_tagged = dict(zip(unscaled.keys(), _get_chunk_shape(unscaled, dtype)))
+    shapes = BlueprintShapes.downscale_powers_of_2_xyz(
+        base_shape=unscaled, shape_limit=chunk_shape_tagged, rounding="floor"
+    )
+    return shapes.to_dict()
 
 
 def _get_chunk_shape(tagged_image_shape: TaggedShape, dtype) -> Shape:
@@ -380,7 +372,7 @@ def write_ome_zarr(
             "Appending to an existing OME-Zarr store is not yet implemented."
             f"\nPath: {abs_export_path}."
         )
-    export_offset = MShape(zip(image_source_slot.meta.getAxisKeys(), export_offset)) if export_offset else None
+    export_offset = Offset(zip(image_source_slot.meta.getAxisKeys(), export_offset)) if export_offset else None
     op_reorder = OpReorderAxes(parent=image_source_slot.operator)
     op_reorder.AxisOrder.setValue("".join(OME_ZARR_AXES))
     ops_to_clean = [op_reorder]
