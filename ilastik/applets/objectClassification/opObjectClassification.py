@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2025, the ilastik developers
+#       Copyright (C) 2011-2026, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from typing import Tuple
+from typing import Set, Tuple
 import numpy
 import numpy.typing as npt
 import time
@@ -1020,6 +1020,33 @@ class OpObjectTrain(Operator):
         super(OpObjectTrain, self).__init__(*args, **kwargs)
         self._tree_count = 100
 
+        self._touched_slots: Set[int] = set()
+
+        def handle_new_lane(multislot, index, newlength):
+            def handle_dirty_lane(slot, roi):
+                if index in self._touched_slots:
+                    # we want to avoid checking the actual value contained in the LabelsSlot
+                    # if the slot has seen "real" labels before
+                    return
+                sv = slot.value
+
+                # OpObjectClassification._resetLabelInputs defines empty labels as np.zeros((2,)) for each timepoint
+                if any(time_slice_array.any() for time_slice_array in sv.values()):
+                    self._touched_slots.add(index)
+
+            multislot[index].notifyDirty(handle_dirty_lane)
+
+        self.Labels.notifyInserted(handle_new_lane)
+
+        def handle_remove_lane(multislot, index, newlength):
+            # If the lane we're removing contained
+            # label data, then mark the downstream dirty
+            if index in self._touched_slots:
+                self.Classifier.setDirty()
+                self._touched_slots.remove(index)
+
+        self.Labels.notifyRemove(handle_remove_lane)
+
     def setupOutputs(self):
         self.Classifier.meta.dtype = object
         self.Classifier.meta.shape = (1,)
@@ -1128,8 +1155,13 @@ class OpObjectTrain(Operator):
         return result
 
     def propagateDirty(self, slot, subindex, roi):
-        slcs = (slice(0, self.ForestCount.value, None),)
-        self.outputs["Classifier"].setDirty(slcs)
+        if slot in [self.Labels, self.Features]:
+            # avoids setting classifier dirty if no labels have been set (empty _touched_slots)
+            # or affected slot had no labels
+            if not self._touched_slots or (subindex and subindex[0] not in self._touched_slots):
+                return
+
+        self.Classifier.setDirty(())
 
     def _warnBadObjects(self, bad_objects, bad_feats):
         if len(bad_feats) > 0 or any([len(bad_objects[i]) > 0 for i in list(bad_objects.keys())]):
