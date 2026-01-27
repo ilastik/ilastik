@@ -137,7 +137,6 @@ class TestOpObjectTrain(unittest.TestCase):
         self.op.Features.resize(1)
         self.op.Features[0].connect(self._opRegFeatsAdaptOutput.Output)
         self.op.SelectedFeatures.setValue(feats)
-        self.op.FixClassifier.setValue(False)
         self.op.ForestCount.setValue(self.nRandomForests)
 
     def test_train(self):
@@ -240,7 +239,6 @@ class TestOpObjectPredict(unittest.TestCase):
         self.trainop.LabelsCount.setValue(2)
         self.trainop.Labels.resize(1)
         self.trainop.Labels.setValues([labels])
-        self.trainop.FixClassifier.setValue(False)
         self.trainop.ForestCount.setValue(1)
         self.assertTrue(
             self.trainop.Classifier.ready(),
@@ -350,7 +348,6 @@ class TestFeatureSelection(unittest.TestCase):
         self.trainop.LabelsCount.setValue(2)
         self.trainop.Labels.resize(1)
         self.trainop.Labels.setValues([labels])
-        self.trainop.FixClassifier.setValue(False)
         self.trainop.ForestCount.setValue(1)
 
         assert self.trainop.Classifier.ready()

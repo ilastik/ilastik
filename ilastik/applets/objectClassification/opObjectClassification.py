@@ -295,7 +295,6 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         # connect inputs
         self.opTrain.Features.connect(self.ObjectFeatures)
         self.opTrain.Labels.connect(self.LabelInputs)
-        self.opTrain.FixClassifier.setValue(False)
         self.opTrain.SelectedFeatures.connect(self.SelectedFeatures)
 
         self.classifier_cache.Input.connect(self.opTrain.Classifier)
@@ -1012,7 +1011,6 @@ class OpObjectTrain(Operator):
     LabelsCount = InputSlot(stype="int")
     Features = InputSlot(level=1, rtype=List, stype=Opaque)
     SelectedFeatures = InputSlot(rtype=List, stype=Opaque)
-    FixClassifier = InputSlot(stype="bool")
     ForestCount = InputSlot(stype="int", value=1)
 
     Classifier = OutputSlot()
@@ -1021,13 +1019,11 @@ class OpObjectTrain(Operator):
     def __init__(self, *args, **kwargs):
         super(OpObjectTrain, self).__init__(*args, **kwargs)
         self._tree_count = 100
-        self.FixClassifier.setValue(False)
 
     def setupOutputs(self):
-        if self.FixClassifier.value == False:
-            self.Classifier.meta.dtype = object
-            self.Classifier.meta.shape = (1,)
-            self.Classifier.meta.axistags = None
+        self.Classifier.meta.dtype = object
+        self.Classifier.meta.shape = (1,)
+        self.Classifier.meta.axistags = None
 
         self.BadObjects.meta.shape = (1,)
         self.BadObjects.meta.dtype = object
@@ -1132,9 +1128,8 @@ class OpObjectTrain(Operator):
         return result
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot is not self.FixClassifier and self.inputs["FixClassifier"].value == False:
-            slcs = (slice(0, self.ForestCount.value, None),)
-            self.outputs["Classifier"].setDirty(slcs)
+        slcs = (slice(0, self.ForestCount.value, None),)
+        self.outputs["Classifier"].setDirty(slcs)
 
     def _warnBadObjects(self, bad_objects, bad_feats):
         if len(bad_feats) > 0 or any([len(bad_objects[i]) > 0 for i in list(bad_objects.keys())]):
