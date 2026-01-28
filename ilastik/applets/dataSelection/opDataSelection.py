@@ -705,6 +705,8 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
                     if getattr(self, "_auto_nickname", False):
                         self._update_nickname()
                 except Exception:
+                    # Nickname updates are a best-effort UI feature; failures here
+                    # must not interfere with switching scales or using the dataset.
                     pass
                 return
         raise DatasetConstraintError("DataSelection", f"No scale matches shape {target_shape}")
