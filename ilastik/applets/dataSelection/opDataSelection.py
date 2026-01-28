@@ -637,31 +637,10 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
 
     @staticmethod
     def _nickname_from_url(url: str) -> str:
-        """
-        Take the part after the last /, make it safe for use as a file name,
-        remove anything that looks like an extension ('.zarr') and replace remaining dots
-        to ensure exporting logic does not mistake them for file extensions.
-        """
-        # If the URL points to an internal path inside a multiscale container (e.g. .../container.zarr/s1)
-        # prefer a nickname that contains both the container base name and the internal path joined with '-'.
-        stripped = url.rstrip("/")
-        parts = stripped.split("/")
-        if len(parts) >= 2:
-            penult = parts[-2]
-            last = parts[-1]
-            penult_name = re.sub(r"[^a-zA-Z0-9_.-]", "_", penult)
-            penult_base = os.path.splitext(penult_name)[0]
-            # if the penultimate part looks like a file/container with an extension, and there is an internal
-            # path after it, include both in the nickname
-            if os.path.splitext(penult)[1]:
-                internal_safe = re.sub(r"[^a-zA-Z0-9_.-/]", "_", last)
-                internal_safe = internal_safe.replace("/", "-")
-                return penult_base + ("-" + internal_safe if internal_safe else "")
-        # fallback: use last component as before (strip extensions and make it filename-safe)
-        last_url_component = parts[-1]
-        filename_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", last_url_component)
-        extensionless = os.path.splitext(filename_safe)[0]
-        return extensionless
+        # Delegate to the canonical helper in url_nickname.py. This avoids
+        # duplicating nickname logic (and any special-cases) here so the
+        # behavior remains consistent across callers and tests.
+        return nickname_from_url(url)
 
     def _update_nickname(self) -> None:
         """
