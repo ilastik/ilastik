@@ -709,7 +709,7 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
                 return
         raise DatasetConstraintError("DataSelection", f"No scale matches shape {target_shape}")
 
-    # _nickname_from_url behaviour is delegated to ilastik.applets.dataSelection.url_nickname.nickname_from_url
+    # Nickname generation is handled by the local nickname_from_url helper defined in this module.
 
     def _update_nickname(self) -> None:
         """
