@@ -759,6 +759,8 @@ class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
             try:
                 deserialized._auto_nickname = True
             except Exception:
+                # Best-effort: for some legacy project entries, `_auto_nickname` may be
+                # missing or read-only; in that case we silently keep the default behavior.
                 pass
         deserialized.nickname = nickname_from_url(deserialized.nickname)
         deserialized.working_scale = remote_source.highest_resolution_key
