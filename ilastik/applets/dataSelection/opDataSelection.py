@@ -25,7 +25,6 @@ import json
 import os
 import re
 import uuid
-import logging
 from abc import abstractmethod, ABC
 from collections import OrderedDict
 from numbers import Number
@@ -55,82 +54,9 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.utility.helpers import get_default_axisordering, eq_shapes
 from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, Multiscales
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
-# Inline small URL->nickname helper per reviewer preference (keep logic simple & local)
-from urllib.parse import urlparse, unquote
-
-
-KNOWN_CONTAINER_EXTS = (
-    ".ome.zarr",
-    ".zarr",
-    ".n5",
-    ".ome.n5",
-    ".h5",
-    ".hdf5",
-    ".ilp",
-)
-
-
-def _sanitize_part(part: str) -> str:
-    s = re.sub(r"[^a-zA-Z0-9_.-]", "_", part)
-    s = re.sub(r"_+", "_", s)
-    s = s.strip("_.-")
-    return s.lower()
-
-
-def _find_container_index(segments):
-    last_idx = -1
-    for i, seg in enumerate(segments):
-        seg_low = seg.lower()
-        for ext in KNOWN_CONTAINER_EXTS:
-            if seg_low.endswith(ext):
-                last_idx = i
-                break
-    return last_idx
-
-
-def nickname_from_url(url: str, max_len: int = 64) -> str:
-    parsed = urlparse(url)
-    path = unquote(parsed.path or "")
-    segments = [seg for seg in path.split("/") if seg]
-    if not segments:
-        # Some legacy precomputed URLs embed another URL in the path, e.g.
-        # precomputed://http://localhost:8000. In that case parsed.netloc is
-        # empty and parsed.path starts with 'http://...'. Try to recover the
-        # inner netloc; otherwise fall back to the outer netloc.
-        inner = parsed.netloc
-        if not inner and (parsed.path.startswith("http://") or parsed.path.startswith("https://")):
-            try:
-                inner_parsed = urlparse(parsed.path)
-                inner = inner_parsed.netloc
-            except Exception:
-                inner = None
-        return _sanitize_part(inner or parsed.netloc or "unnamed")
-    container_idx = _find_container_index(segments)
-    if container_idx >= 0:
-        parts = segments[container_idx:]
-    else:
-        parts = [segments[-1]]
-    first = parts[0]
-    for ext in KNOWN_CONTAINER_EXTS:
-        if first.lower().endswith(ext):
-            first = first[: -len(ext)]
-            break
-    sanitized = [_sanitize_part(first)] + [_sanitize_part(p) for p in parts[1:]]
-    sanitized = [p for p in sanitized if p]
-    if not sanitized:
-        return "unnamed"
-    # If this looks like a multiscale dataset, prefer a canonical short name
-    # 'multiscale' (reviewer requested a single canonical nickname for these cases).
-    if any(p == "multiscale" for p in sanitized):
-        return "multiscale"
-    nick = "-".join(sanitized)
-    if len(nick) > max_len:
-        nick = nick[: max_len].rstrip("-_.")
-    return nick
-
-
-logger = logging.getLogger(__name__)
-
+# Backwards-compatibility shim: expose the canonical nickname helper from the
+# dedicated module so legacy callers can import it from opDataSelection.
+from .url_nickname import nickname_from_url as nickname_from_url
 
 
 def getTypeRange(numpy_type):
@@ -632,7 +558,7 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         self._auto_nickname = not bool(nickname)
         super().__init__(
             default_tags=meta.axistags,
-            nickname=nickname or nickname_from_url(url),
+            nickname=nickname or self._nickname_from_url(url),
             laneShape=meta.shape,
             laneDtype=meta.dtype,
             axis_units=meta.axis_units,
@@ -677,7 +603,6 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
     def to_json_data(self) -> Dict:
         out = super().to_json_data()
         out["url"] = self.url
-        out["auto_nickname"] = bool(getattr(self, "_auto_nickname", False))
         return out
 
     @classmethod
@@ -685,13 +610,6 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         params = params or {}
         if "url" not in params:
             params["url"] = group["filePath"][()].decode()
-        # preserve whether nickname was auto-generated when loading from project
-        if "auto_nickname" in group:
-            try:
-                params["_auto_nickname"] = bool(group["auto_nickname"][()])
-            except Exception as e:
-                logger.debug("Failed to read auto_nickname from group: %s", e, exc_info=True)
-                params["_auto_nickname"] = False
         return super().from_h5_group(group, params)
 
     def get_scale_matching_shape(self, target_shape: Dict[str, int]) -> str:
@@ -717,7 +635,33 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
                 return
         raise DatasetConstraintError("DataSelection", f"No scale matches shape {target_shape}")
 
-    # _nickname_from_url behaviour is delegated to ilastik.applets.dataSelection.url_nickname.nickname_from_url
+    @staticmethod
+    def _nickname_from_url(url: str) -> str:
+        """
+        Take the part after the last /, make it safe for use as a file name,
+        remove anything that looks like an extension ('.zarr') and replace remaining dots
+        to ensure exporting logic does not mistake them for file extensions.
+        """
+        # If the URL points to an internal path inside a multiscale container (e.g. .../container.zarr/s1)
+        # prefer a nickname that contains both the container base name and the internal path joined with '-'.
+        stripped = url.rstrip("/")
+        parts = stripped.split("/")
+        if len(parts) >= 2:
+            penult = parts[-2]
+            last = parts[-1]
+            penult_name = re.sub(r"[^a-zA-Z0-9_.-]", "_", penult)
+            penult_base = os.path.splitext(penult_name)[0]
+            # if the penultimate part looks like a file/container with an extension, and there is an internal
+            # path after it, include both in the nickname
+            if os.path.splitext(penult)[1]:
+                internal_safe = re.sub(r"[^a-zA-Z0-9_.-/]", "_", last)
+                internal_safe = internal_safe.replace("/", "-")
+                return penult_base + ("-" + internal_safe if internal_safe else "")
+        # fallback: use last component as before (strip extensions and make it filename-safe)
+        last_url_component = parts[-1]
+        filename_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", last_url_component)
+        extensionless = os.path.splitext(filename_safe)[0]
+        return extensionless
 
     def _update_nickname(self) -> None:
         """
@@ -726,13 +670,26 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         """
         if not getattr(self, "_auto_nickname", False):
             return
-        # Recompute using the shared utility; include working_scale when available
+        stripped = self.url.rstrip("/")
+        parts = stripped.split("/")
+        # base container name
+        base = parts[-1]
+        base_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", base)
+        base_name = os.path.splitext(base_safe)[0]
+        # prefer to use explicit working_scale if set and not default
         if getattr(self, "working_scale", None) and self.working_scale != DEFAULT_SCALE_KEY:
-            # create a synthetic URL that ends with the working_scale so nickname_from_url includes it
-            synthetic = self.url.rstrip("/") + "/" + self.working_scale
-            self.nickname = nickname_from_url(synthetic)
+            internal = self.working_scale.replace("/", "-")
+            self.nickname = f"{base_name}-{internal}"
             return
-        self.nickname = nickname_from_url(self.url)
+        # otherwise, if URL already contains an internal path after a container, use that
+        if len(parts) >= 2 and os.path.splitext(parts[-2])[1]:
+            internal_parts = parts[parts.index(parts[-2]) + 1 :]
+            if internal_parts:
+                internal_safe = "-".join(re.sub(r"[^a-zA-Z0-9_.-]", "_", p) for p in internal_parts)
+                self.nickname = f"{base_name}-{internal_safe}"
+                return
+        # fallback
+        self.nickname = base_name
 
 
 class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
@@ -765,21 +722,10 @@ class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
 
         deserialized = super().from_h5_group(group)
         remote_source = RESTfulPrecomputedChunkedVolume(deserialized.url)
-        # Legacy UrlDatasetInfo should be treated as having an auto-generated
-        # nickname (so that it will be recomputed to reflect the chosen
-        # working_scale when migrated). Force the auto flag and normalize
-        # the stored nickname via the shared utility.
-        deserialized._auto_nickname = True
-        deserialized.nickname = nickname_from_url(deserialized.nickname)
+        deserialized.nickname = cls._nickname_from_url(deserialized.nickname)
         deserialized.working_scale = remote_source.highest_resolution_key
         deserialized.scale_locked = True
         return deserialized
-
-
-# Backwards compatibility: some code (and tests) expect a class-level
-# helper called `_nickname_from_url` on `UrlDatasetInfo`.
-# Provide it as a staticmethod delegating to the module-level utility.
-UrlDatasetInfo._nickname_from_url = staticmethod(nickname_from_url)
 
 
 class FilesystemDatasetInfo(DatasetInfo):
