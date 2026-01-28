@@ -671,13 +671,20 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         if "url" not in params:
             params["url"] = group["filePath"][()].decode()
         # preserve whether nickname was auto-generated when loading from project
+        auto_nickname_flag = False
         if "auto_nickname" in group:
             try:
-                params["_auto_nickname"] = bool(group["auto_nickname"][()])
+                auto_nickname_flag = bool(group["auto_nickname"][()])
             except Exception as e:
                 logger.debug("Failed to read auto_nickname from group: %s", e, exc_info=True)
-                params["_auto_nickname"] = False
-        return super().from_h5_group(group, params)
+                auto_nickname_flag = False
+        info = super().from_h5_group(group, params)
+        try:
+            setattr(info, "_auto_nickname", auto_nickname_flag)
+        except Exception:
+            # If for some reason the attribute cannot be set, silently continue
+            pass
+        return info
 
     def get_scale_matching_shape(self, target_shape: Dict[str, int]) -> str:
         for scale, shape in self.scales.items():
