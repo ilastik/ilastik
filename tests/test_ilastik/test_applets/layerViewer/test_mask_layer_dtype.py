@@ -106,7 +106,7 @@ def test_float_mask_with_custom_drange_uses_that_normalization(monkeypatch):
     # slot requests normalization and provides a custom drange
     slot = DummySlot(np.dtype('float32'), normalizeDisplay=True, drange=(0.0, 2.0))
 
-    layer = lvmod.LayerViewerGui._create_binary_mask_layer_from_slot(slot)
+    lvmod.LayerViewerGui._create_binary_mask_layer_from_slot(slot)
 
     assert created.get('type') == 'gray'
     assert created.get('normalize') == (0, (0.0, 2.0))
