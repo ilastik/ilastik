@@ -750,6 +750,16 @@ class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
 
         deserialized = super().from_h5_group(group)
         remote_source = RESTfulPrecomputedChunkedVolume(deserialized.url)
+        # Legacy UrlDatasetInfo entries (older project files) did not store whether
+        # the nickname was auto-generated. For backwards compatibility we treat
+        # absence of the 'auto_nickname' field as meaning the nickname was
+        # originally auto-generated so that behavior matches modern
+        # MultiscaleUrlDatasetInfo instances.
+        if "auto_nickname" not in group:
+            try:
+                deserialized._auto_nickname = True
+            except Exception:
+                pass
         deserialized.nickname = nickname_from_url(deserialized.nickname)
         deserialized.working_scale = remote_source.highest_resolution_key
         deserialized.scale_locked = True

@@ -58,25 +58,43 @@ def nickname_from_url(url: str, max_len: int = 64) -> str:
     if not segments:
         return _sanitize_part(parsed.netloc or "unnamed")
 
-    container_idx = _find_container_index(segments)
-    if container_idx >= 0:
-        parts = segments[container_idx:]
-    else:
-        # fallback: use the last segment only
-        parts = [segments[-1]]
+    # Prefer the most informative single segment:
+    # - if there's a 'scale<N>' segment, use the segment before it (e.g. .../multiscale/scale1 -> 'multiscale')
+    # - otherwise prefer the last path segment that looks like a container (has known ext),
+    #   stripped of its extension (e.g. multiscale.zarr -> 'multiscale').
+    # - fallback to the last segment.
+    scale_re = re.compile(r"^scale\d+$", re.IGNORECASE)
+    candidate: str | None = None
 
-    # strip extensions on the first part if any
-    first = parts[0]
-    for ext in KNOWN_CONTAINER_EXTS:
-        if first.lower().endswith(ext):
-            first = first[: -len(ext)]
+    # 1) find a segment that precedes a scale segment (searching left-to-right)
+    for i, seg in enumerate(segments):
+        if scale_re.match(seg) and i > 0:
+            candidate = segments[i - 1]
             break
-    sanitized = [_sanitize_part(first)] + [_sanitize_part(p) for p in parts[1:]]
-    # drop empty parts
-    sanitized = [p for p in sanitized if p]
-    if not sanitized:
+
+    # 2) if none found, prefer the last container-like segment
+    if candidate is None:
+        for seg in reversed(segments):
+            for ext in KNOWN_CONTAINER_EXTS:
+                if seg.lower().endswith(ext):
+                    candidate = seg[: -len(ext)]
+                    break
+            if candidate:
+                break
+
+    # 3) fallback: use the last segment
+    if candidate is None:
+        candidate = segments[-1]
+
+    # strip known container extensions if present on the candidate
+    for ext in KNOWN_CONTAINER_EXTS:
+        if candidate.lower().endswith(ext):
+            candidate = candidate[: -len(ext)]
+            break
+
+    nick = _sanitize_part(candidate)
+    if not nick:
         return "unnamed"
-    nick = "-".join(sanitized)
     if len(nick) > max_len:
         nick = nick[: max_len].rstrip("-_.")
     return nick
