@@ -699,9 +699,14 @@ class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
         """
         from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
 
-        deserialized = super().from_h5_group(group)
-        remote_source = RESTfulPrecomputedChunkedVolume(deserialized.url)
-        deserialized.nickname = cls._nickname_from_url(deserialized.nickname)
+    deserialized = super().from_h5_group(group)
+    remote_source = RESTfulPrecomputedChunkedVolume(deserialized.url)
+    # Normalize legacy nicknames to the canonical form derived from the URL.
+    # Old projects sometimes stored abbreviated nicknames (e.g. a port number "8000").
+    # We want UrlDatasetInfo (legacy) to be equivalent to MultiscaleUrlDatasetInfo,
+    # so generate the canonical nickname from the dataset's URL instead of reusing
+    # the possibly-legacy stored nickname string.
+    deserialized.nickname = cls._nickname_from_url(deserialized.url)
         deserialized.working_scale = remote_source.highest_resolution_key
         deserialized.scale_locked = True
         return deserialized
