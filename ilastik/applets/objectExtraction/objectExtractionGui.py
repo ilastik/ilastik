@@ -229,6 +229,25 @@ class FeatureSelectionDialog(QDialog):
                     if getattr(child, "group_name", ""):
                         if child.group_name != "Location":
                             child.setCheckState(0, val)
+                
+    @staticmethod 
+    def updateParentCheckState(item):
+        """Update parent checkbox state based on children's states"""
+        if item.parent() is None:
+            return
+            
+        parent = item.parent()
+        child_states = [parent.child(i).checkState(0) for i in range(parent.childCount())]
+        
+        if all(state == Qt.Checked for state in child_states):
+            parent.setCheckState(0, Qt.Checked)
+        elif all(state == Qt.Unchecked for state in child_states):
+            parent.setCheckState(0, Qt.Unchecked)
+        else:
+            parent.setCheckState(0, Qt.PartiallyChecked)
+        
+        # Recursively update parents up the tree
+        FeatureSelectionDialog.updateParentCheckState(parent)
 
     def updateTree(self, item, col):
         # Clicking on the CheckBox OR Text of a QTreeWidgetItem should change the check.
@@ -407,7 +426,17 @@ class FeatureSelectionDialog(QDialog):
             plugin.setCheckState(0, Qt.Checked)
             FeatureSelectionDialog.recursiveCheckChildren(plugin, Qt.Checked, exclude_location=True)
 
-            self.countChecked[pluginName] = self.countAll[pluginName]
+            self.updateParentCheckState(plugin)
+
+            # Update counter and tooltip
+            checked_count = 0
+            for child_id in range(plugin.childCount()):
+                child = plugin.child(child_id)
+                if child.checkState(0) == Qt.Checked:
+                    checked_count += 1
+
+
+            self.countChecked[pluginName] = checked_count
             self.updateToolTip(plugin)
 
     def _setAll(self, val: Qt.CheckState):
