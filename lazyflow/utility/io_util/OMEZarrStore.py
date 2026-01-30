@@ -39,7 +39,8 @@ from zarr.storage import FSStore, LRUStoreCache
 
 from lazyflow import rtype
 from lazyflow.utility import Timer, Memory
-from lazyflow.utility.io_util.clearscale import Scale, Shape, Spacing, Unit
+from lazyflow.utility.io_util.clearscale import Scale, Shape, Spacing, Unit, Translation
+from lazyflow.utility.io_util.clearscale._axis_values import Axes
 from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SCALE_KEY
 
 logger = logging.getLogger(__name__)
@@ -226,6 +227,16 @@ class OMEZarrTranslations:
             multiscale_translation=multiscale_translation,
             dataset_translations=dataset_translations,
         )
+
+    def resolve_at_scale(self, scale: str, axiskeys: Axes) -> Translation:
+        dataset = self.dataset_translations.get(scale)
+        if dataset is None and self.multiscale_translation is None:
+            return Translation.identity(axiskeys)
+        if dataset is None:
+            return Translation(self.multiscale_translation).reorder(axiskeys)
+        if self.multiscale_translation is None:
+            return Translation(dataset).reorder(axiskeys)
+        return (Translation(self.multiscale_translation) + Translation(dataset)).reorder(axiskeys)
 
 
 def _axistags_from_multiscale(multiscale: OME_ZARR_MULTISCALE) -> vigra.AxisTags:
