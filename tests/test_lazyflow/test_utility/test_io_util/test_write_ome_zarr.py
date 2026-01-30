@@ -567,6 +567,26 @@ def test_generate_default_target_scales(shape, expected_shapes):
                 ]
             ),
         ),
+        (
+            # Weird case: input is a framerate multiscale, export crops t.
+            # OpResize refuses to scale along t, so all output scales need to be identical.
+            # Note that OME-Zarr allows identical shapes at different scales.
+            tagged_shape("tyxc", (5, 25, 25, 2)),
+            OrderedDict(
+                [
+                    ("0", tagged_shape("cyxt", (3, 25, 25, 32))),
+                    ("source_scale", tagged_shape("cyxt", (3, 25, 25, 11))),
+                    ("2", tagged_shape("cyxt", (3, 25, 25, 3))),
+                ]
+            ),
+            OrderedDict(
+                [
+                    ("0", tagged_shape("tczyx", (5, 2, 1, 25, 25))),
+                    ("source_scale", tagged_shape("tczyx", (5, 2, 1, 25, 25))),
+                    ("2", tagged_shape("tczyx", (5, 2, 1, 25, 25))),
+                ]
+            ),
+        ),
     ],
 )
 def test_match_target_scales_to_input(shape, input_scales, expected_shapes):
