@@ -163,16 +163,13 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
     source_op.Output.meta.axistags.setResolution("y", resolution_xyz)
     source_op.Output.meta.axistags.setResolution("x", resolution_xyz)
     source_op.Output.meta.axis_units = units
-    expected_multiscale_transform = [
-        {"type": "scale", "scale": [resolution_t, 1.0, 1.0, 1.0, 1.0]},
+    # When no actual scaling is done by ilastik, input scale should be carried over unmodified even if imprecise.
+    expected_source_scale_transform = [
+        {"type": "scale", "scale": [resolution_t, 1.0, resolution_xyz, resolution_xyz, resolution_xyz]},
         {
             "type": "translation",
             "translation": [0.1, 0.0, 11.2, 9.0, 9.0],
         },  # offset * input scale + source scale translation
-    ]
-    # When no actual scaling is done by ilastik, input scale should be carried over unmodified even if imprecise.
-    expected_source_scale_transform = [
-        {"type": "scale", "scale": [1.0, 1.0, resolution_xyz, resolution_xyz, resolution_xyz]},
     ]
     source_op.Output.meta.ome_zarr_translations = OMEZarrTranslations.from_multiscale_spec(
         {
@@ -225,7 +222,7 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
         {"name": "y", "type": "space", "unit": "micrometer"},
         {"name": "x", "type": "space", "unit": "micrometer"},
     ]  # Axis units should be carried over
-    assert m["coordinateTransformations"] == expected_multiscale_transform
+    assert "coordinateTransformations" not in m
     assert m["datasets"][0]["path"] == "source_scale"
     assert m["datasets"][0]["coordinateTransformations"] == expected_source_scale_transform
 
@@ -280,7 +277,7 @@ def test_transformations_multi_scale_export(tmp_path, tiny_5d_vigra_array_piper)
     progress = mock.Mock()
     # The tiny_5d_array is 5x5x5; in this test it represents a subregion of source_scale after a 3/3/3 offset
     export_offset = (0, 0, 3, 3, 3)
-    source_op.Output.meta.scales = OrderedDict({"noop": {"boop": "should be irrelevant"}})
+    source_op.Output.meta.scales = OrderedDict({"noop": {"should be irrelevant": 1}})
     source_op.Output.meta.active_scale = "source_scale"
     # Both Precomputed and OME-Zarr readers would read the pixel size of the source scale from the source metadata.
     # A hypothetical multiscale reader with no direct pixel size meta should still provide
@@ -336,7 +333,7 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
     progress = mock.Mock()
     # The tiny_5d_array is 5x5x5; in this test it represents a subregion of source_scale after a 3/3/3 offset
     export_offset = (0, 0, 3, 3, 3)
-    source_op.Output.meta.scales = OrderedDict({"noop": {"boop": "should be irrelevant"}})
+    source_op.Output.meta.scales = OrderedDict({"noop": {"should be irrelevant": 1}})
     source_op.Output.meta.active_scale = "source_scale"
     resolution_t = 0.1
     resolution_xyz = 2.0  # Writers might round scaling factors. We have to assume this is intentional and maintain it.
