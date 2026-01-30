@@ -811,8 +811,7 @@ def test_write_ome_zarr_single_scale(graph, tmp_path):
     # Dataset scale is mandatory, but should be noop here. In single-scale export from a single-scale source,
     # pixel size should be written on multiscale-level. This isn't a spec requirement, but a generalisation of the
     # convention of writing scale for the t-axis into the multiscale-level transforms.
-    expected_multiscale_transform = [{"type": "scale", "scale": [0.4, 8.99991, 5.0, 0.3, 6.4]}]  # tczyx
-    expected_dataset_transform = [{"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0, 1.0]}]
+    expected_dataset_transform = [{"type": "scale", "scale": [0.4, 8.99991, 5.0, 0.3, 6.4]}]  # tczyx
 
     write_ome_zarr(str(export_path), op_data.Output, progress, None)
 
@@ -821,8 +820,7 @@ def test_write_ome_zarr_single_scale(graph, tmp_path):
     m = group.attrs["multiscales"][0]
     assert "axes" in m
     assert m["axes"] == expected_axes
-    assert "coordinateTransformations" in m
-    assert m["coordinateTransformations"] == expected_multiscale_transform
+    assert "coordinateTransformations" not in m
     assert "datasets" in m and "path" in m["datasets"][0]
     assert len(m["datasets"]) == 1
     assert m["datasets"][0]["coordinateTransformations"] == expected_dataset_transform

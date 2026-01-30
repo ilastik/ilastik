@@ -110,7 +110,10 @@ class TestOpExportSlot(object):
             read_data = opRead.Output[:].wait()
             numpy.testing.assert_array_equal(read_data, expected_data)
             written_file = z5py.ZarrFile(str(expected_export_path), "r")
-            assert written_file.attrs["multiscales"][0]["coordinateTransformations"] == expected_transformations
+            assert (
+                written_file.attrs["multiscales"][0]["datasets"][0]["coordinateTransformations"]
+                == expected_transformations
+            )
         finally:
             opRead.cleanUp()
 
@@ -234,13 +237,12 @@ class TestOpExportSlot(object):
                     {"name": "y", "type": "space", "unit": "nanometer"},
                     {"name": "x", "type": "space", "unit": "nanometer"},
                 ],
-                "coordinateTransformations": [
-                    {"scale": [1.0, 1.0, 1.0, 1.0, 1.0], "type": "scale"},
-                    {"translation": [0.0, 0.0, 0.0, 7.62, 8.49], "type": "translation"},
-                ],
                 "datasets": [
                     {
-                        "coordinateTransformations": [{"scale": [1.0, 1.0, 1.0, 1.4, 1.4], "type": "scale"}],
+                        "coordinateTransformations": [
+                            {"scale": [1.0, 1.0, 1.0, 1.4, 1.4], "type": "scale"},
+                            {"translation": [0.0, 0.0, 0.0, 7.62, 8.49], "type": "translation"},
+                        ],
                         "path": "s1",
                     }
                 ],
