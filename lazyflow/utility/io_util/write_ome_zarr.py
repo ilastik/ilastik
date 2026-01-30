@@ -22,7 +22,7 @@
 import logging
 from functools import partial
 from pathlib import Path
-from typing import List, Tuple, Dict, OrderedDict, Optional, Union, TypeVar, Sequence
+from typing import List, Tuple, Dict, OrderedDict, Optional, Union, TypeVar
 
 import numpy
 import zarr
@@ -39,12 +39,18 @@ from lazyflow.slot import Slot
 from lazyflow.utility import OrderedSignal, PathComponents, BigRequestStreamer
 from lazyflow.utility.data_semantics import ImageTypes
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrTranslations
-from lazyflow.utility.io_util.clearscale import Spacing, Shape as MShape, Translation, Factor, Offset, BlueprintShapes
+from lazyflow.utility.io_util.clearscale import (
+    Spacing,
+    Shape as MShape,
+    Translation,
+    Factor,
+    Offset,
+    BlueprintShapes,
+    BlueprintFactors,
+)
 
 logger = logging.getLogger(__name__)
 
-OrderedScaling = OrderedTranslation = OrderedDict[Axiskey, float]  # { axis: scaling }
-ScalingsByScaleKey = OrderedDict[str, OrderedScaling]  # { scale_key: { axis: scaling } }
 ShapesByScaleKey = OrderedDict[str, TaggedShape]  # { scale_key: { axis: size } }
 AxisKey = TypeVar("AxisKey", bound=Axiskey)
 
@@ -60,45 +66,31 @@ def match_target_scales_to_input_excluding_upscales(
     # Since input_scales is ordered largest-to-smallest, simply drop matching scales before input_key.
     all_matching_scales = _match_target_scales_to_input(export_shape, input_scales, input_key)
     assert input_key in all_matching_scales, "generated scales don't include source scale"
-    start = list(all_matching_scales.keys()).index(input_key)
-    keep_scales = list(all_matching_scales.keys())[start:]
-    return ODict((k, all_matching_scales[k]) for k in keep_scales)
+    return all_matching_scales.drop_before(input_key)
 
 
 def _match_target_scales_to_input(
     export_shape: TaggedShape, input_scales: ShapesByScaleKey, input_key: str
-) -> ShapesByScaleKey:
-    def _eq_shape_permissive(test: TaggedShape, ref: TaggedShape) -> bool:
-        """
-        Check if two shapes are equal. Ignore channel and allow `test` to have additional axes (but no dropped axes).
-        """
-        return all(a not in ref or a == "c" or test[a] == ref[a] for a in test.keys())
-
+) -> BlueprintShapes:
     source_scale_shape = input_scales[input_key]
-    if _eq_shape_permissive(export_shape, source_scale_shape):
-        # Export shape is unmodified from its source scale - then all other scales shapes should be identical.
-        target_scales = input_scales
+    export_shape = MShape(export_shape)
+    if export_shape.matches(source_scale_shape, only=SPATIAL_AXES):
+        # Export shape is unmodified from its source scale -> output shapes = input shapes
+        export_shapes = BlueprintShapes(input_scales).reorder(OME_ZARR_AXES).with_sizes(export_shape, axes="tc")
     else:
-        # Export shape is modified (cropped).
-        # Get source multiscale's scaling factors relative to the (uncropped) input shape and compute cropped scale
-        # shapes from that.
-        input_scalings = _multiscale_to_scalings(input_scales, source_scale_shape, list(export_shape.keys()))
-        target_scales_items = []
-        for scale_key, scale_factors in input_scalings.items():
-            scaled_shape = MShape(export_shape).scale_by(scale_factors, rounding=int)
-            remaining_spatial = len(scaled_shape.singleton_axes(SPATIAL_AXES))
-            if remaining_spatial < 2 and scale_key != input_key:
-                # Avoid nonsense scales that aren't at least a 2d image,
-                # but make sure the source scale stays so we don't return only upscales
-                break
-            target_scales_items.append((scale_key, scaled_shape))
-        target_scales = ODict(target_scales_items)
+        # Export shape is modified (cropped) -> apply input scaling factors to export shape
+        def two_spatials_or_is_input(scale: str, shape: MShape):
+            remaining_spatial = len(shape.non_singleton_axes(SPATIAL_AXES))
+            return remaining_spatial > 1 or scale == input_key
 
-    scales_items = []
-    for scale_key, target_shape in target_scales.items():
-        export_scale_shape = MShape(target_shape).reorder(OME_ZARR_AXES).overwrite_with(export_shape, axes="c")
-        scales_items.append((scale_key, export_scale_shape))
-    return ODict(scales_items)
+        input_scalings = BlueprintFactors.from_shapes(input_scales, reference=source_scale_shape).with_identity("tc")
+        export_shapes = (
+            input_scalings.to_shapes(reference=export_shape, rounding="floor")
+            .reorder(OME_ZARR_AXES)
+            .filter_items(two_spatials_or_is_input)
+        )
+
+    return export_shapes
 
 
 def generate_default_target_scales(unscaled_shape: TaggedShape, dtype) -> ShapesByScaleKey:
@@ -125,21 +117,6 @@ def _get_chunk_shape(tagged_image_shape: TaggedShape, dtype) -> Shape:
     tagged_maxshape = MShape(tagged_image_shape).with_ones("tc")
     chunk_shape = determineBlockShape(list(tagged_maxshape.values()), target_max_size / dtype_bytes)
     return chunk_shape
-
-
-def _multiscale_to_scalings(
-    multiscale: ShapesByScaleKey,
-    base_shape: TaggedShape,
-    output_axiskeys: Sequence[Axiskey],
-) -> ScalingsByScaleKey:
-    """Multiscale and base_shape may have arbitrary axes.
-    Output are scaling factors relative to base_shape, with axes output_axiskeys.
-    Scale factor 1.0 for axes not present in scale or base shape, and for channel."""
-    factors = [
-        MShape(base_shape).scaling_to(scale_shape, fixed="c").reorder(output_axiskeys)
-        for scale_shape in multiscale.values()
-    ]
-    return ODict(zip(multiscale.keys(), factors))
 
 
 def _create_empty_zarray(
@@ -184,8 +161,8 @@ def _get_axes_meta(export_axiskeys, ilastik_meta):
 
 
 def _get_datasets_meta(
-    export_scalings: ScalingsByScaleKey,
-    export_resolution: OrderedScaling,
+    export_scalings: BlueprintFactors,
+    export_resolution: Spacing,
 ):
     """
     Dataset metadata consists of (1) path, (2) coordinate transformations (scale and translation).
@@ -209,7 +186,7 @@ def _get_datasets_meta(
 
 
 def _get_multiscale_transformations(
-    export_resolution_along_unscaled: OrderedScaling,
+    export_resolution_along_unscaled: Spacing,
     export_offset: Optional[TaggedShape],
     export_axiskeys: List[Axiskey],
     ilastik_meta: Dict,
@@ -266,9 +243,9 @@ def _get_multiscale_transformations(
 
 def _get_resolution_as_split_scaling(
     ilastik_meta: Dict,
-    export_scalings: ScalingsByScaleKey,
+    export_scalings: BlueprintFactors,
     input_scales: Optional[ShapesByScaleKey],
-) -> Tuple[OrderedScaling, OrderedScaling]:
+) -> Tuple[Spacing, Spacing]:
     """
     Extract resolution from axistags and split it to return
     - axes that are scaled in either the export (if it's multiscale) or the input (if it's multiscale)
@@ -296,7 +273,7 @@ def _get_resolution_as_split_scaling(
     return resolution.partition(is_scaling_axis)
 
 
-def _get_scaling_method_metadata(export_scalings: ScalingsByScaleKey, interpolation_order: int) -> Optional[Dict]:
+def _get_scaling_method_metadata(export_scalings: BlueprintFactors, interpolation_order: int) -> Optional[Dict]:
     combined_scaling_mag = [numpy.prod(list(scale.values())) for scale in export_scalings.values()]
     if all(numpy.isclose(m, 1.0) for m in combined_scaling_mag):
         return None
@@ -311,7 +288,7 @@ def _get_scaling_method_metadata(export_scalings: ScalingsByScaleKey, interpolat
 
 def _write_ome_zarr_and_ilastik_metadata(
     abs_export_path: str,
-    export_scalings: ScalingsByScaleKey,
+    export_scalings: BlueprintFactors,
     interpolation_order: int,
     export_offset: Optional[TaggedShape],
     input_scales: Optional[ShapesByScaleKey],
@@ -395,7 +372,7 @@ def write_ome_zarr(
 
         chunk_shape = _get_chunk_shape(export_shape, export_dtype)
 
-        export_scalings = _multiscale_to_scalings(target_scales, export_shape, list(export_shape.keys()))
+        export_scalings = BlueprintShapes(target_scales).reorder(export_shape).to_factors(export_shape)
         combined_scaling_mag = {key: numpy.prod(list(scale.values())) for key, scale in export_scalings.items()}
 
         # Upscales/raw - uncached (maybe this helps keep unscaled computation cache warm)
