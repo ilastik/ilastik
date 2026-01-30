@@ -51,7 +51,7 @@ outputs:
         - pandas 2.*
         - platformdirs
         - psutil
-        - pydantic 2.*
+        - pydantic 2.9.*
         - pyopengl
         - pyqt 5.15.*
         # previous versions would set thread limits globally with side effects
