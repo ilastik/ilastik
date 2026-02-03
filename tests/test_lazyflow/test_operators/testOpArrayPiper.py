@@ -83,7 +83,7 @@ class TestOpArrayPiper(object):
 
         assert (output == 0).all()
 
-        # Try setInSlot
+        # Try _setInSlot
         data_shape_roi = roiFromShape(data.shape)
         data_shape_slice = roiToSlice(*data_shape_roi)
         self.operator_identity.Input[data_shape_slice] = data
@@ -152,7 +152,7 @@ class TestOpArrayPiper2(object):
         assert data.mask.shape == output.mask.shape
         assert (output.mask == False).all()
 
-        # Try setInSlot
+        # Try _setInSlot
         data_shape_roi = roiFromShape(data.shape)
         data_shape_slice = roiToSlice(*data_shape_roi)
         self.operator_identity.Input[data_shape_slice] = data
@@ -228,7 +228,7 @@ class TestOpArrayPiper3(object):
         assert data.mask.shape == output.mask.shape
         assert (output.mask == False).all()
 
-        # Try setInSlot
+        # Try _setInSlot
         data_shape_roi = roiFromShape(data.shape)
         data_shape_slice = roiToSlice(*data_shape_roi)
         self.operator_identity.Input[data_shape_slice] = data

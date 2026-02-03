@@ -28,7 +28,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.utility.helpers import bigintprod
 from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
-from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY
+from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, set_multiscale_meta
 
 logger = logging.getLogger(__name__)
 
@@ -70,8 +70,7 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
         self.Output.meta.shape = tuple(self._volume_object.get_shape(active_scale))
         self.Output.meta.dtype = numpy.dtype(self._volume_object.dtype).type
         self.Output.meta.axistags = self._volume_object.axistags
-        self.Output.meta.scales = self._volume_object.multiscales
-        self.Output.meta.active_scale = active_scale  # Used by export to correlate export with input scale
+        set_multiscale_meta(self.Output, self._volume_object.multiscale, active_scale)
 
     @staticmethod
     def get_intersecting_blocks(blockshape, roi, shape):

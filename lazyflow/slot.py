@@ -1025,7 +1025,7 @@ class Slot(object):
             # the chain
             self.setDirty(roi)
         if self._type == "input":
-            self.operator.setInSlot(self.top_level_slot, self.subindex, roi, value)
+            self.operator._setInSlot(self.top_level_slot, self.subindex, roi, value)
 
         # Forward to downstream_slots
         for p in self.downstream_slots:

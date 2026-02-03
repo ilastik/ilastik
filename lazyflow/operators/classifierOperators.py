@@ -134,7 +134,7 @@ class OpTrainPixelwiseClassifierBlocked(Operator):
 
         def handle_new_lane(multislot, index, newlength):
             def handle_dirty_lane(slot, roi):
-                self._touched_slots.add(slot)
+                self._touched_slots.add(index)
 
             multislot[index].notifyDirty(handle_dirty_lane)
 
@@ -143,9 +143,9 @@ class OpTrainPixelwiseClassifierBlocked(Operator):
         def handle_remove_lane(multislot, index, newlength):
             # If the lane we're removing contained
             # label data, then mark the downstream dirty
-            if multislot[index] in self._touched_slots:
+            if index in self._touched_slots:
                 self.Classifier.setDirty()
-                self._touched_slots.remove(multislot[index])
+                self._touched_slots.remove(index)
 
         self.Labels.notifyRemove(handle_remove_lane)
 
@@ -238,7 +238,17 @@ class OpTrainPixelwiseClassifierBlocked(Operator):
                 )
 
     def propagateDirty(self, slot, subindex, roi):
-        self.propagateDirtyIfNewModTime()
+        if slot in [self.ClassifierFactory, self.MaxLabel] or (subindex and subindex[0] in self._touched_slots):
+            self.propagateDirtyIfNewModTime()
+
+    def handleInputBecameUnready(self, slot: InputSlot):
+        # Operator does not become unready if the subslot was not used for computing the output
+        if slot not in [self.ClassifierFactory, self.MaxLabel] and (
+            self._touched_slots and slot.subindex not in self._touched_slots
+        ):
+            return
+
+        super().handleInputBecameUnready(slot)
 
 
 class OpTrainVectorwiseClassifierBlocked(Operator):

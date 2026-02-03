@@ -255,9 +255,9 @@ class OpPixelFeaturesPresmoothed(Operator):
                     self.Features[featureCount - 1].meta.axistags[
                         "c"
                     ].description = ""  # Discard any semantics related to the input channels
-                    self.Features[
-                        featureCount - 1
-                    ].meta.display_mode = ""  # Discard any semantics related to the input channels
+                    self.Features[featureCount - 1].meta.display_mode = (
+                        ""  # Discard any semantics related to the input channels
+                    )
                     self.featureOutputChannels.append((channelCount, channelCount + featureChannels))
                     channelCount += featureChannels
 
@@ -474,7 +474,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                         continue
                     destSigma = 1.0
                     if self.scales[j] > destSigma:
-                        tempSigma = math.sqrt(self.scales[j] ** 2 - destSigma ** 2)
+                        tempSigma = math.sqrt(self.scales[j] ** 2 - destSigma**2)
                     else:
                         destSigma = 0.0
                         tempSigma = self.scales[j]
@@ -915,7 +915,7 @@ class OpBaseFilter(Operator):
             # then mark the entire output dirty.  This is the correct behavior for e.g. 'sigma' inputs.
             self.Output.setDirty(slice(None))
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot, subindex, roi, value):
         # Forward to output
         assert subindex == ()
         assert slot == self.Input
@@ -964,7 +964,7 @@ def coherenceOrientationOfStructureTensor(image, sigma0, sigma1, window_size, ou
     else:
         res = numpy.ndarray((image.shape[0], image.shape[1], 2))
 
-    res[:, :, 0] = numpy.sqrt((i22 - i11) ** 2 + 4 * (i12 ** 2)) / (i11 - i22)
+    res[:, :, 0] = numpy.sqrt((i22 - i11) ** 2 + 4 * (i12**2)) / (i11 - i22)
     res[:, :, 1] = (numpy.arctan(2 * i12 / (i22 - i11)) / numpy.pi) + 0.5
 
     return res

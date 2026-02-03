@@ -52,7 +52,7 @@ from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.utility.helpers import get_default_axisordering, eq_shapes
-from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, Multiscales
+from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, Multiscale
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
 
 
@@ -104,7 +104,7 @@ class DatasetInfo(ABC):
         laneDtype: type,
         default_tags: AxisTags,  # inferred from dataset or another data lane
         axistags: AxisTags = None,  # given through datasetInfoEditorWidget or cmdline
-        scales: Multiscales = None,
+        scales: Multiscale = None,
         allowLabels: bool = True,
         subvolume_roi: Tuple = None,
         display_mode: str = "default",
@@ -122,7 +122,7 @@ class DatasetInfo(ABC):
             raise InconsistentAxisMetaException(default_tags, laneShape)
         self.default_tags = default_tags
         self.axistags = axistags or default_tags
-        self.axis_units = axis_units or {}
+        self.axis_units = axis_units
         self.laneShape = laneShape
         self.laneDtype = laneDtype
         if isinstance(self.laneDtype, numpy.dtype):
@@ -149,8 +149,18 @@ class DatasetInfo(ABC):
         pass
 
     def get_provider_slot(self, parent: Optional[Operator] = None, graph: Optional[Graph] = None) -> OutputSlot:
-        metadata = {"display_mode": self.display_mode, "axistags": self.axistags, "axis_units": self.axis_units}
+        """
+        - Delegate reader creation to subclass.create_data_reader
+        - Add/overwrite slot metadata that the user might have changed via the dataset properties editor or
+        command-line parameters.
+        """
+        metadata = {"display_mode": self.display_mode}
 
+        if self.axistags != self.default_tags:
+            # Dataset's stored axistags (default_tags) are overridden (axistags).
+            # This makes any existing pixel size metadata meaningless (units and tag.resolution on self.default_tags).
+            metadata["axistags"] = self.axistags
+            metadata["axis_units"] = None
         if self.drange is not None:
             metadata["drange"] = self.drange
         elif self.laneDtype == numpy.uint8:
@@ -904,7 +914,11 @@ class OpDataSelection(Operator):
                 meta = {"channel_names": [role_name]}
             data_provider.meta.update(meta)
             if data_provider.meta.scales:
+                # datasetInfo may contain metadata of the default scale.
+                # Update from data slot (which might be at a different scale)
                 datasetInfo.laneShape = data_provider.meta.shape
+                datasetInfo.axistags = data_provider.meta.axistags
+                datasetInfo.axis_units = data_provider.meta.axis_units
                 datasetInfo.scales = data_provider.meta.scales
                 datasetInfo.working_scale = data_provider.meta.active_scale
 

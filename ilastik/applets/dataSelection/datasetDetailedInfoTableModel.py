@@ -29,7 +29,7 @@ from qtpy.QtCore import Qt, QAbstractItemModel, QModelIndex
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from lazyflow.utility.helpers import bigintprod, eq_shapes
-from lazyflow.utility.io_util.multiscaleStore import Multiscales
+from lazyflow.utility.io_util.multiscaleStore import Multiscale
 from .opDataSelection import DatasetInfo
 from .dataLaneSummaryTableModel import rowOfButtonsProxy
 
@@ -302,7 +302,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         ]
         common_scale_shapes = reduce(shapes_intersection, scale_shapes_per_role)
 
-        scale_options: Multiscales = self._op.DatasetGroupOut[laneIndex][self._roleIndex].value.scales
+        scale_options: Multiscale = self._op.DatasetGroupOut[laneIndex][self._roleIndex].value.scales
         indices_of_common_scales = []
         for i, shape in enumerate(reversed(scale_options.values())):
             if any(eq_shapes(shape, common_shape) for common_shape in common_scale_shapes):

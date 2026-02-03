@@ -280,7 +280,7 @@ class OperatorWrapper(Operator):
             "You can only ask for data from SUBslots, not the outer multi-slots themselves."
         )
 
-    def setInSlot(self, slot, subindex, key, value):
+    def _setInSlot(self, slot, subindex, key, value):
         # Nothing to do here. Calls to Slot.setitem are already
         # forwarded to all downstream partners.
         pass

@@ -87,7 +87,7 @@ def import_labeling_layer(labelingSlots: "LabelingSlots", parent_widget=None):
 
         # Set up the pipeline as follows:
         #
-        #   opImport --> (opCache) --> opMetadataInjector --------> opReorderAxes --(inject via setInSlot)--> labelInput
+        #   opImport --> (opCache) --> opMetadataInjector --------> opReorderAxes --(inject via _setInSlot)--> labelInput
         #                             /                            /
         #     User-specified axisorder    labelInput.meta.axistags
         opImport.FilePath.setValue(fileNames[0] if len(fileNames) == 1 else os.path.pathsep.join(fileNames))

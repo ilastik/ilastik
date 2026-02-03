@@ -53,7 +53,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
     """
     A subclass of OpUnmanagedCompressedCache that is suitable for storing user-drawn label pixels.
     (This is not a 'managed' cache because its data must never be deleted by the memory manager.)
-    Note that setInSlot has special functionality (only non-zero pixels are written, and there is also an "eraser" pixel value).
+    Note that _setInSlot has special functionality (only non-zero pixels are written, and there is also an "eraser" pixel value).
 
     See note below about blockshape changes.
     """
@@ -385,7 +385,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
                 destination[destination_relative_intersection_slicing] = 0
 
     def propagateDirty(self, slot, subindex, roi):
-        # The other way to make the  Output dirty is via setInSlot()
+        # The other way to make the  Output dirty is via _setInSlot()
         if slot is self.deleteLabel and slot.ready():
             # Are we being told to delete a label?
             new_purge_label = self.deleteLabel.value
@@ -394,12 +394,12 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
                 if self._label_to_purge > 0:
                     self._purge_label(self._label_to_purge, True)
 
-    def setInSlot(self, slot, subindex, roi, new_pixels):
+    def _setInSlot(self, slot, subindex, roi, new_pixels):
         if slot is self.Input:
             self._setInSlotInput(slot, subindex, roi, new_pixels)
         else:
             # We don't yet support the InputHdf5 slot in this function.
-            assert False, "Unsupported slot for setInSlot: {}".format(slot.name)
+            assert False, "Unsupported slot for _setInSlot: {}".format(slot.name)
 
     def _setInSlotInput(self, slot, subindex, roi, new_pixels):
         """
@@ -470,7 +470,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
     def ingestData(self, slot):
         """
         Read the data from the given slot and copy it into this cache.
-        The rules about special pixel meanings apply here, just like setInSlot
+        The rules about special pixel meanings apply here, just like _setInSlot
 
         Returns: the max label found in the slot.
         """

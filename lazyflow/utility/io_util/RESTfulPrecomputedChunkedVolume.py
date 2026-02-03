@@ -28,7 +28,7 @@ import numpy
 import requests
 import vigra
 
-from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SCALE_KEY
+from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SCALE_KEY, Scale
 
 logger = logging.getLogger(__file__)
 
@@ -40,7 +40,7 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
     The description can be found at `http://url.to/image/info`, which is a json
     file. Information can be found here:
 
-    https://github.com/google/neuroglancer/tree/master/src/neuroglancer/datasource/precomputed
+    https://github.com/google/neuroglancer/tree/master/src/datasource/precomputed/volume.md
 
     Does not inherit from RESTfulVolume as no functions could be shared.
 
@@ -69,6 +69,7 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
                     "properties": {
                         "key": {"type": "string"},
                         "size": {"type": "array", "items": {"type": "number"}},
+                        "resolution": {"type": "array", "items": {"type": "number"}},
                     },
                 },
             },
@@ -100,16 +101,21 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
         highest_resolution_key = self._json_info["scales"][0]["key"]
         self._scales = {scale["key"]: scale for scale in self._json_info["scales"]}
         self.n_channels = self._json_info["num_channels"]
-        scale_shapes = [
-            OrderedDict(zip("czyx", [self.n_channels] + scale["size"][::-1])) for scale in self._json_info["scales"]
+        internal_scales = [
+            Scale(
+                shape=OrderedDict(zip("czyx", [self.n_channels] + scale["size"][::-1])),
+                resolution=OrderedDict(zip("czyx", [0.0] + scale["resolution"][::-1])),
+                units=OrderedDict(zip("czyx", ["", "nm", "nm", "nm"])),
+            )
+            for scale in self._json_info["scales"]
         ]
-        scale_metadata = OrderedDict(zip(self._scales.keys(), scale_shapes))
+        scale_metadata = OrderedDict(zip(self._scales.keys(), internal_scales))
 
         super().__init__(
             uri=volume_url,
             dtype=dtype,
             axistags=axistags,
-            multiscales=scale_metadata,
+            multiscale=scale_metadata,
             lowest_resolution_key=lowest_resolution_key,
             highest_resolution_key=highest_resolution_key,
         )
@@ -233,7 +239,7 @@ if __name__ == "__main__":
     volume_url = "precomputed://http://localhost:8080/precomputed/cremi"
     cvol = RESTfulPrecomputedChunkedVolume(volume_url=volume_url)
     print(f"dtype: {cvol.dtype}")
-    print(f"scales: {len(cvol.multiscales)}")
+    print(f"scales: {len(cvol.multiscale)}")
     print(f"block_shape: {cvol.get_chunk_size()}")
     print(f"shape: {cvol.get_shape()}")
     block_start = [1, 128, 64, 256]

@@ -20,14 +20,75 @@
 ###############################################################################
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
-from typing import Literal, Tuple
+from dataclasses import dataclass
+from typing import Tuple, Optional
 
 import numpy
 import vigra
 
+from lazyflow.base import Axiskey, TaggedShape
+from lazyflow.slot import OutputSlot
+
 # See MultiscaleStore docstring for details
-Multiscales = OrderedDict[str, OrderedDict[Literal["t", "c", "z", "y", "x"], int]]
+Multiscale = OrderedDict[str, "Scale"]
 DEFAULT_SCALE_KEY = ""
+DEFAULT_DISPLAY_RESOLUTION = 1.0
+DEFAULT_VIGRA_RESOLUTION = 0.0
+
+
+def set_multiscale_meta(slot: OutputSlot, multiscale: Multiscale, active_scale_key: str):
+    """Updates slot.meta with multiscale, and pixel size for active scale."""
+    assert active_scale_key in multiscale, f"Tried to set slot meta for non-existent scale {active_scale_key}"
+    assert slot.meta.axistags is not None, "multiscale can not be used to update slot metadata missing axistags."
+    active_scale = multiscale[active_scale_key]
+    if active_scale.has_pixel_size():
+        for axis, res in active_scale.resolution.items():
+            slot.meta.axistags.setResolution(axis, res)
+        slot.meta.axis_units = active_scale.units
+    slot.meta.scales = OrderedDict([(key, scale.shape) for key, scale in multiscale.items()])
+    slot.meta.active_scale = active_scale_key  # Used by export to correlate export with input scale
+
+
+@dataclass(frozen=True, slots=True)
+class Scale:
+    shape: TaggedShape
+    resolution: Optional[OrderedDict[Axiskey, float]] = None
+    units: Optional[OrderedDict[Axiskey, str]] = None
+
+    def __post_init__(self):
+        if self.resolution is None:
+            object.__setattr__(self, "resolution", OrderedDict([(k, DEFAULT_VIGRA_RESOLUTION) for k in self.shape]))
+        if self.units is None:
+            object.__setattr__(self, "units", OrderedDict([(k, "") for k in self.shape]))
+        if self.shape.keys() != self.resolution.keys() or self.shape.keys() != self.units.keys():
+            raise ValueError(
+                f"Tried to set up invalid scale: Axiskeys differ "
+                f"(shape={self.shape.keys()}, resolution={self.resolution.keys()}, units={self.units.keys()})"
+            )
+
+    def has_pixel_size(self):
+        return any(self.units.values()) or any(res != DEFAULT_VIGRA_RESOLUTION for res in self.resolution.values())
+
+    def to_display_string(self, name=""):
+        shape = ", ".join(f"{axis}: {size}" for axis, size in self.shape.items())
+        name_and_shape = f'"{name}" ({shape})' if name else f"{shape}"
+        pixel_size = ""
+        if self.has_pixel_size():
+            axis_strings = []
+            for axis in self.shape.keys():
+                if axis == "c":
+                    continue
+                res = self.resolution[axis]
+                if res == DEFAULT_VIGRA_RESOLUTION:
+                    res = DEFAULT_DISPLAY_RESOLUTION
+                unit = ""
+                if self.units[axis]:
+                    unit = f" {self.units[axis]}"
+                elif axis != "t":
+                    unit = " px"
+                axis_strings.append(f"{axis}: {res:g}{unit}")
+            pixel_size = " at pixel size: " + ", ".join(axis_strings)
+        return f"{name_and_shape}{pixel_size}"
 
 
 class MultiscaleStore(metaclass=ABCMeta):
@@ -46,7 +107,7 @@ class MultiscaleStore(metaclass=ABCMeta):
         uri: str,
         dtype: numpy.dtype,
         axistags: vigra.AxisTags,
-        multiscales: Multiscales,
+        multiscale: Multiscale,
         lowest_resolution_key: str,
         highest_resolution_key: str,
     ):
@@ -54,28 +115,27 @@ class MultiscaleStore(metaclass=ABCMeta):
         :param uri: Location where this store was initialized (as passed to __init__).
         :param dtype: The dataset's numpy dtype.
         :param axistags: vigra.AxisTags describing the dataset's axes.
-        :param multiscales: Dict of scales for GUI and OME-Zarr export, {key: tagged shape}
+        :param multiscale: Dict of scales for GUI and OME-Zarr export, {key: tagged shape}
             Order from highest to lowest resolution (i.e. largest to smallest shape).
             Keys: absolute identifiers for each scale as found in the dataset.
-            Values: tagged shape dicts ({axis: size}) of the image at each scale.
-            Axis order in shape dicts must match axistags.
-        :param lowest_resolution_key: Key of the lowest-resolution scale within the multiscales dict.
+            Axis order of all scales must match axistags.
+        :param lowest_resolution_key: Key of the lowest-resolution scale within the multiscale dict.
             This acts as the default scale after load until the user selects a different one.
         :param highest_resolution_key: Used to infer the maximum dataset size, and for legacy HBP-mode projects.
         """
         self.uri = uri
         self.dtype = dtype
         self.axistags = axistags
-        self.multiscales = multiscales
+        self.multiscale = multiscale
         self.lowest_resolution_key = lowest_resolution_key
         self.highest_resolution_key = highest_resolution_key
-        scale_keys = list(self.multiscales.keys())
+        scale_keys = list(self.multiscale.keys())
         assert (
             self.highest_resolution_key == scale_keys[0] and self.lowest_resolution_key == scale_keys[-1]
-        ), "Multiscales dict must be ordered from highest to lowest resolution (i.e. largest to smallest shape)"
+        ), "Multiscale dict must be ordered from highest to lowest resolution (i.e. largest to smallest shape)"
         assert all(
-            list(scale_shape.keys()) == axistags.keys() for scale_shape in self.multiscales.values()
-        ), "Multiscales values must be shape dicts for the given axistags"
+            list(scale.shape.keys()) == axistags.keys() for scale in self.multiscale.values()
+        ), "Multiscale values must match given axistags"
 
     @abstractmethod
     def get_shape(self, scale_key: str) -> Tuple[int]:

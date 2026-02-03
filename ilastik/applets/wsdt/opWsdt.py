@@ -326,7 +326,7 @@ class OpCachedWsdt(Operator):
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here"
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot, subindex, roi, value):
         # Write the data into the cache
         assert slot is self.SuperpixelCacheInput
         slicing = roiToSlice(roi.start, roi.stop)

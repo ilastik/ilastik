@@ -20,10 +20,11 @@
 #          http://ilastik.org/license/
 ###############################################################################
 import logging
+from typing import Optional
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore
-from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY
+from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, set_multiscale_meta
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +45,12 @@ class OpOMEZarrMultiscaleReader(Operator):
 
     Output = OutputSlot()
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, Uri: Optional[str] = None, Scale: Optional[str] = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._store = None
+
+        self.Uri.setOrConnectIfAvailable(Uri)
+        self.Scale.setOrConnectIfAvailable(Scale)
 
     def setupOutputs(self):
         if self._store is not None and self._store.base_uri in self.Uri.value:
@@ -61,14 +65,12 @@ class OpOMEZarrMultiscaleReader(Operator):
         self.Output.meta.shape = self._store.get_shape(active_scale)
         self.Output.meta.dtype = self._store.dtype
         self.Output.meta.axistags = self._store.axistags
-        self.Output.meta.scales = self._store.multiscales
-        # Used to correlate export with input scale, to feed back to DatasetInfo, and in execute
-        self.Output.meta.active_scale = active_scale
+        set_multiscale_meta(self.Output, self._store.multiscale, active_scale)
         # Many public OME-Zarr datasets are chunked as full xy slices,
         # so orthoviews lead to downloading the entire dataset.
         self.Output.meta.prefer_2d = True
         # Add OME-Zarr metadata to slot so that it can be ported over to an export
-        self.Output.meta.ome_zarr_meta = self._store.ome_meta_for_export
+        self.Output.meta.ome_zarr_translations = self._store.ome_zarr_translations
 
     def execute(self, slot, subindex, roi, result):
         result[...] = self._store.request(roi, self.Output.meta.active_scale)

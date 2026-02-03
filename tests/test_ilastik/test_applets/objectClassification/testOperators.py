@@ -194,6 +194,38 @@ class TestOpObjectTrain(unittest.TestCase):
             print("Tried to compute features for time step w/o labels!")
             raise
 
+    def test_label_lane_tracking(self):
+        classifier_dirty = 0
+
+        def cl_dirty(*args, **kwargs):
+            nonlocal classifier_dirty
+            classifier_dirty += 1
+
+        self.op.Classifier.notifyDirty(cl_dirty)
+
+        labels_empty = {0: np.array([0.0, 0.0])}
+        labels = {0: np.array([0, 1.0, 2.0]), 1: np.array([0.0, 1.0, 1.0, 2.0])}
+
+        self.op.LabelsCount.setValue(2)
+        self.op.Labels.resize(1)
+
+        assert self.op._touched_slots == set()
+
+        # setting "empty" labels should not dirty classifier
+        self.op.Labels[0].setValue(labels_empty)
+        assert classifier_dirty == 0
+        assert self.op._touched_slots == set()
+
+        # setting actual labels will require training
+        self.op.Labels[0].setValue(labels)
+        assert self.op._touched_slots == {0}
+        assert classifier_dirty == 1
+
+        # slot removal clears _touched_slots
+        self.op.Labels.resize(0)
+        assert self.op._touched_slots == set()
+        assert classifier_dirty == 2
+
 
 class TestOpObjectPredict(unittest.TestCase):
     def setUp(self):

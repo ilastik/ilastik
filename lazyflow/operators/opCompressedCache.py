@@ -78,7 +78,7 @@ class OpUnmanagedCompressedCache(Operator):
       * it is not safe to reuse this cache #FIXME
     """
 
-    # Also used to asynchronously force data into the cache via __setitem__ (see setInSlot(), below()
+    # Also used to asynchronously force data into the cache via __setitem__ (see _setInSlot(), below()
     Input = InputSlot(allow_mask=True)
 
     # shape of internal in-memory hdf5 files (defaults to the whole volume)
@@ -319,7 +319,7 @@ class OpUnmanagedCompressedCache(Operator):
 
         dtypeBytes = self._getDtypeBytes(self.Output.meta.dtype)
 
-        desiredSpace = 1024 ** 2 / float(dtypeBytes)
+        desiredSpace = 1024**2 / float(dtypeBytes)
 
         if bigintprod(blockshape) <= desiredSpace:
             return blockshape
@@ -468,7 +468,7 @@ class OpUnmanagedCompressedCache(Operator):
                 self.OutputHdf5._sig_value_changed()
                 self.CleanBlocks._sig_value_changed()
 
-    def setInSlot(self, slot, subindex, roi, value):
+    def _setInSlot(self, slot, subindex, roi, value):
         """
         Overridden from Operator
         """
@@ -477,7 +477,7 @@ class OpUnmanagedCompressedCache(Operator):
         elif slot == self.InputHdf5:
             self._setInSlotInputHdf5(slot, subindex, roi, value)
         else:
-            assert False, "Invalid input slot for setInSlot(): {}".format(slot.name)
+            assert False, "Invalid input _slot for setInSlot(): {}".format(slot.name)
 
     def _setInSlotInput(self, slot, subindex, roi, value, store_zero_blocks=True):
         """
