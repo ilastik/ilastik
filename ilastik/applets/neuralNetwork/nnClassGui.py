@@ -735,8 +735,8 @@ class NNClassGui(LabelingGui):
         self.cancel_src.cancel()
 
     @threadRouted
-    def _showErrorMessage(self, exc):
-        logger.error("".join(traceback.format_exception(etype=type(exc), value=exc, tb=exc.__traceback__)))
+    def _showErrorMessage(self, exc: Exception):
+        logger.error("".join(traceback.format_exception(exc)))
         QMessageBox.critical(
             self, "ilastik detected a problem with your model", f"Failed to initialize model:\n {type(exc)} {exc}"
         )
