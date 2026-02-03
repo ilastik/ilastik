@@ -21,14 +21,13 @@
 ###############################################################################
 import json
 import logging
-from collections import OrderedDict
 
 import jsonschema
 import numpy
 import requests
 import vigra
 
-from lazyflow.utility.io_util.clearscale import Scale, Shape, Spacing, Unit
+from lazyflow.utility.io_util.clearscale import Multiscale
 from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SCALE_KEY
 
 logger = logging.getLogger(__file__)
@@ -102,21 +101,12 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
         highest_resolution_key = self._json_info["scales"][0]["key"]
         self._scales = {scale["key"]: scale for scale in self._json_info["scales"]}
         self.n_channels = self._json_info["num_channels"]
-        internal_scales = [
-            Scale(
-                shape=Shape(zip("czyx", [self.n_channels] + scale["size"][::-1])),
-                spacing=Spacing(zip("czyx", [0.0] + scale["resolution"][::-1])),
-                unit=Unit(zip("czyx", ["", "nm", "nm", "nm"])),
-            )
-            for scale in self._json_info["scales"]
-        ]
-        scale_metadata = OrderedDict(zip(self._scales.keys(), internal_scales))
 
         super().__init__(
             uri=volume_url,
             dtype=dtype,
             axistags=axistags,
-            multiscale=scale_metadata,
+            multiscale=Multiscale.from_precomputed(self._json_info),
             lowest_resolution_key=lowest_resolution_key,
             highest_resolution_key=highest_resolution_key,
         )
