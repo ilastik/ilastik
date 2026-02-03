@@ -36,11 +36,7 @@ from collections import OrderedDict
 from typing import Tuple, List
 from PIL import Image
 
-from lazyflow.utility.io_util.OMEZarrStore import (
-    OMEZarrTranslations,
-    InvalidTransformationError,
-    NotAnOMEZarrMultiscale,
-)
+from lazyflow.utility.io_util.OMEZarrStore import OMEZarrTranslations, NotAnOMEZarrMultiscale
 from lazyflow.utility.io_util.multiscaleStore import Multiscale
 from lazyflow.utility.io_util.write_ome_zarr import OME_ZARR_V_0_4_KWARGS
 
@@ -394,11 +390,8 @@ class TestOpInputDataReaderWithOMEZarr:
                 (path1, OrderedDict(zip("cyx", scaled_shape))),
             ]
         )
-        # Singleton the error so that OMEZarrMultiscaleMeta objects can be eq compared
-        err_placeholder = InvalidTransformationError()
-        monkeypatch.setattr(InvalidTransformationError, "__new__", lambda _: err_placeholder)
         # OME-Zarr metadata for export
-        expected_additional_meta = OMEZarrTranslations.from_multiscale_spec(correct_multiscale_zattrs)
+        expected_additional_meta = OMEZarrTranslations.from_multiscale_spec(correct_multiscale_zattrs, "cyx")
 
         return request.param, expected_images, expected_multiscale, expected_additional_meta
 

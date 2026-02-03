@@ -204,7 +204,8 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
                     ],
                 },
             ],
-        }
+        },
+        axes="tzyx",
     )
 
     write_ome_zarr(str(export_path), source_op.Output, progress, export_offset)
@@ -382,7 +383,8 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
                     ],
                 },
             ],
-        }
+        },
+        axes="tzyx",
     )
     target_scales: ShapesByScaleKey = OrderedDict(
         [
