@@ -235,7 +235,7 @@ class PixelClassificationWorkflow(Workflow):
         """
         # Restore classifier we saved in prepareForNewLane() (if any)
         if self.stored_classifier:
-            self.pcApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifier)
+            self.pcApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifier, set_dirty=False)
             # Release reference
             self.stored_classifier = None
 
