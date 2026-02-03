@@ -43,7 +43,7 @@ from lazyflow.utility.io_util.clearscale import (
     Spacing,
     Shape as MShape,
     Translation,
-    Offset,
+    PixelOffset,
     BlueprintShapes,
     BlueprintFactors,
     Scale,
@@ -76,7 +76,7 @@ def _match_target_scales_to_input(
     export_shape = MShape(export_shape)
     if export_shape.matches(source_scale_shape, only=SPATIAL_AXES):
         # Export shape is unmodified from its source scale -> output shapes = input shapes
-        export_shapes = BlueprintShapes(input_scales).reorder(OME_ZARR_AXES).with_sizes(export_shape, axes="tc")
+        export_shapes = BlueprintShapes(input_scales).with_axes(OME_ZARR_AXES).with_sizes(export_shape, axes="tc")
     else:
         # Export shape is modified (cropped) -> apply input scaling factors to export shape
         def two_spatials_or_is_input(scale: str, shape: MShape):
@@ -86,7 +86,7 @@ def _match_target_scales_to_input(
         input_scalings = BlueprintFactors.from_shapes(input_scales, reference=source_scale_shape).with_identity("tc")
         export_shapes = (
             input_scalings.to_shapes(reference=export_shape, rounding="floor")
-            .reorder(OME_ZARR_AXES)
+            .with_axes(OME_ZARR_AXES)
             .filter_items(two_spatials_or_is_input)
         )
 
@@ -98,7 +98,7 @@ def generate_default_target_scales(unscaled_shape: TaggedShape, dtype) -> Shapes
     Default target scales are isotropic 2x downscaling along x, y and z if present.
     The smallest scale included is just small enough for the entire image to fit into one chunk (per t and c).
     """
-    unscaled = MShape(unscaled_shape).reorder(OME_ZARR_AXES)
+    unscaled = MShape(unscaled_shape).with_axes(OME_ZARR_AXES)
     chunk_shape_tagged = dict(zip(unscaled.keys(), _get_chunk_shape(unscaled, dtype)))
     shapes = BlueprintShapes.downscale_powers_of_2_xyz(
         base_shape=unscaled, shape_limit=chunk_shape_tagged, rounding="floor"
@@ -153,7 +153,7 @@ def _resolve_translations(export_axiskeys, export_offset, export_spacing, input_
     export_translation = Translation.identity(export_axiskeys)
     input_translation = Translation.identity(export_axiskeys)
     if export_offset:
-        export_translation = export_offset.reorder(export_axiskeys).to_physical(export_spacing)
+        export_translation = export_offset.with_axes(export_axiskeys).to_physical(export_spacing)
     if input_translations:
         input_translation = input_translations.resolve_at_scale(input_scale_key, export_axiskeys)
     sum_translation = export_translation + input_translation
@@ -177,7 +177,7 @@ def _write_ome_zarr_and_ilastik_metadata(
     export_shape: TaggedShape,
     export_blueprint: BlueprintShapes,
     interpolation_order: int,
-    export_offset: Optional[Offset],
+    export_offset: Optional[PixelOffset],
     input_scale_key: Optional[str],
     input_translations: Optional[OMEZarrTranslations],
     ilastik_meta: Dict,
@@ -185,7 +185,7 @@ def _write_ome_zarr_and_ilastik_metadata(
     ilastik_signature = {"name": "ilastik", "version": ilastik_version, "ome_zarr_exporter_version": 2}
     export_spacing = Spacing.from_vigra(ilastik_meta["axistags"])
     if ilastik_meta["axis_units"]:
-        export_unit = Unit(ilastik_meta["axis_units"]).reorder(export_spacing)
+        export_unit = Unit(ilastik_meta["axis_units"]).with_axes(export_spacing)
     else:
         export_unit = Unit.empty(export_spacing)
     export_translation = _resolve_translations(
@@ -228,7 +228,7 @@ def write_ome_zarr(
             "Appending to an existing OME-Zarr store is not yet implemented."
             f"\nPath: {abs_export_path}."
         )
-    export_offset = Offset(zip(image_source_slot.meta.getAxisKeys(), export_offset)) if export_offset else None
+    export_offset = PixelOffset(zip(image_source_slot.meta.getAxisKeys(), export_offset)) if export_offset else None
     op_reorder = OpReorderAxes(parent=image_source_slot.operator)
     op_reorder.AxisOrder.setValue("".join(OME_ZARR_AXES))
     ops_to_clean = [op_reorder]
@@ -250,7 +250,7 @@ def write_ome_zarr(
 
         chunk_shape = _get_chunk_shape(export_shape, export_dtype)
 
-        export_blueprint = BlueprintShapes(target_scales).reorder(export_shape)
+        export_blueprint = BlueprintShapes(target_scales).with_axes(export_shape)
         export_scalings = export_blueprint.to_factors(export_shape)
         combined_scaling_mag = {key: factor.magnitude() for key, factor in export_scalings.items()}
 
