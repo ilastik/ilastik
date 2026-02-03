@@ -1023,6 +1023,27 @@ class OpObjectTrain(Operator):
         self._tree_count = 100
         self.FixClassifier.setValue(False)
 
+        self._touched_slots = set()
+
+        def handle_new_lane(multislot: InputSlot, index: int, newlength: int):
+            def handle_dirty_lane(slot, roi):
+                annotations_per_timeframe = slot.value
+                if any(numpy.any(annotations) for annotations in annotations_per_timeframe.values()):
+                    self._touched_slots.add(index)
+
+            multislot[index].notifyDirty(handle_dirty_lane)
+
+        self.Labels.notifyInserted(handle_new_lane)
+
+        def handle_remove_lane(multislot: InputSlot, index: int, newlength: int):
+            # If the lane we're removing contained
+            # label data, then mark the downstream dirty
+            if index in self._touched_slots:
+                self.Classifier.setDirty()
+                self._touched_slots.remove(index)
+
+        self.Labels.notifyRemove(handle_remove_lane)
+
     def setupOutputs(self):
         if self.FixClassifier.value == False:
             self.Classifier.meta.dtype = object
@@ -1132,9 +1153,15 @@ class OpObjectTrain(Operator):
         return result
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot is not self.FixClassifier and self.inputs["FixClassifier"].value == False:
-            slcs = (slice(0, self.ForestCount.value, None),)
-            self.outputs["Classifier"].setDirty(slcs)
+        if slot == self.SelectedFeatures or (subindex and subindex[0] in self._touched_slots):
+            self.Classifier.setDirty(())
+
+    def handleInputBecameUnready(self, slot: InputSlot):
+        # Operator does not become unready if the subslot was not used for computing the output
+        if slot != self.SelectedFeatures and (self._touched_slots and slot.subindex not in self._touched_slots):
+            return
+
+        super().handleInputBecameUnready(slot)
 
     def _warnBadObjects(self, bad_objects, bad_feats):
         if len(bad_feats) > 0 or any([len(bad_objects[i]) > 0 for i in list(bad_objects.keys())]):
