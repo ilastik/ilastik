@@ -233,10 +233,10 @@ class OMEZarrTranslations:
         if dataset is None and self.multiscale_translation is None:
             return Translation.identity(axiskeys)
         if dataset is None:
-            return Translation(self.multiscale_translation).reorder(axiskeys)
+            return Translation(self.multiscale_translation).with_axes(axiskeys)
         if self.multiscale_translation is None:
-            return Translation(dataset).reorder(axiskeys)
-        return (Translation(self.multiscale_translation) + Translation(dataset)).reorder(axiskeys)
+            return Translation(dataset).with_axes(axiskeys)
+        return (Translation(self.multiscale_translation) + Translation(dataset)).with_axes(axiskeys)
 
 
 def _axistags_from_multiscale(multiscale: OME_ZARR_MULTISCALE) -> vigra.AxisTags:
