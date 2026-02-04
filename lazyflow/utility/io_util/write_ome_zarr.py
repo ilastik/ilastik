@@ -30,7 +30,7 @@ from zarr.storage import FSStore
 
 from ilastik import __version__ as ilastik_version
 from lazyflow import USER_LOGLEVEL
-from lazyflow.base import SPATIAL_AXES, Axiskey, Shape, TaggedShape
+from lazyflow.base import SPATIAL_AXES, Axiskey, Shape as ShapeTuple, TaggedShape
 from lazyflow.operators import OpReorderAxes
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.opResize import OpResize
@@ -41,7 +41,7 @@ from lazyflow.utility.data_semantics import ImageTypes
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrTranslations
 from lazyflow.utility.io_util.clearscale import (
     Spacing,
-    Shape as MShape,
+    Shape,
     Translation,
     PixelOffset,
     BlueprintShapes,
@@ -72,14 +72,14 @@ def match_target_scales_to_input_excluding_upscales(
 def _match_target_scales_to_input(
     export_shape: TaggedShape, input_scales: ShapesByScaleKey, input_key: str
 ) -> BlueprintShapes:
-    source_scale_shape = input_scales[input_key]
-    export_shape = MShape(export_shape)
+    source_scale_shape = Shape(input_scales[input_key])
+    export_shape = Shape(export_shape)
     if export_shape.matches(source_scale_shape, only=SPATIAL_AXES):
         # Export shape is unmodified from its source scale -> output shapes = input shapes
         export_shapes = BlueprintShapes(input_scales).with_axes(OME_ZARR_AXES).with_sizes(export_shape, axes="tc")
     else:
         # Export shape is modified (cropped) -> apply input scaling factors to export shape
-        def two_spatials_or_is_input(scale: str, shape: MShape):
+        def two_spatials_or_is_input(scale: str, shape: Shape):
             remaining_spatial = len(shape.non_singleton_axes(SPATIAL_AXES))
             return remaining_spatial > 1 or scale == input_key
 
@@ -98,15 +98,13 @@ def generate_default_target_scales(unscaled_shape: TaggedShape, dtype) -> Shapes
     Default target scales are isotropic 2x downscaling along x, y and z if present.
     The smallest scale included is just small enough for the entire image to fit into one chunk (per t and c).
     """
-    unscaled = MShape(unscaled_shape).with_axes(OME_ZARR_AXES)
-    chunk_shape_tagged = dict(zip(unscaled.keys(), _get_chunk_shape(unscaled, dtype)))
-    shapes = BlueprintShapes.downscale_powers_of_2_xyz(
-        base_shape=unscaled, shape_limit=chunk_shape_tagged, rounding="floor"
-    )
+    unscaled = Shape(unscaled_shape).with_axes(OME_ZARR_AXES)
+    chunk_shape = _get_chunk_shape(unscaled, dtype)
+    shapes = BlueprintShapes.downscale_powers_of_2_xyz(base_shape=unscaled, shape_limit=chunk_shape, rounding="floor")
     return shapes.to_dict()
 
 
-def _get_chunk_shape(tagged_image_shape: TaggedShape, dtype) -> Shape:
+def _get_chunk_shape(tagged_image_shape: Shape, dtype) -> Shape:
     """Determine chunk shape for OME-Zarr storage. 1 for t and c,
     ilastik default rules for zyx, with a max of 1MB uncompressed per chunk.
     This results in (y: 506 x: 505) for 32-bit 2D and (z: 63 y: 64 x: 63) for 32-bit 3D."""
@@ -114,9 +112,9 @@ def _get_chunk_shape(tagged_image_shape: TaggedShape, dtype) -> Shape:
     if isinstance(dtype, numpy.dtype):  # Extract raw type class
         dtype = dtype.type
     dtype_bytes = dtype().nbytes
-    tagged_maxshape = MShape(tagged_image_shape).with_ones("tc")
-    chunk_shape = determineBlockShape(tagged_maxshape.to_list(), target_max_size / dtype_bytes)
-    return chunk_shape
+    tagged_maxshape = tagged_image_shape.with_ones("tc")
+    chunk_shape: ShapeTuple = determineBlockShape(tagged_maxshape.to_list(), target_max_size / dtype_bytes)
+    return Shape(zip(tagged_maxshape.keys(), chunk_shape))
 
 
 def _create_empty_zarray(
@@ -127,9 +125,11 @@ def _create_empty_zarray(
     export_dtype,
 ) -> zarr.Array:
     """Creates folders and zarr-internal (not OME) metadata files."""
-    assert len(chunk_shape) == len(scale_shape), "chunk and image shape must have same dimensions"
+    assert list(chunk_shape.keys()) == list(scale_shape.keys()), "chunk and image shape must have same axes"
     store = FSStore(abs_export_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
-    zarray = zarr.creation.zeros(scale_shape, store=store, path=scale_key, chunks=chunk_shape, dtype=export_dtype)
+    zarray = zarr.creation.zeros(
+        scale_shape.to_tuple(), store=store, path=scale_key, chunks=chunk_shape.to_tuple(), dtype=export_dtype
+    )
     return zarray
 
 
@@ -174,7 +174,7 @@ def _get_scaling_method_metadata(export_blueprint: BlueprintShapes, interpolatio
 
 def _write_ome_zarr_and_ilastik_metadata(
     abs_export_path: str,
-    export_shape: TaggedShape,
+    export_shape: Shape,
     export_blueprint: BlueprintShapes,
     interpolation_order: int,
     export_offset: Optional[PixelOffset],
@@ -213,7 +213,7 @@ def write_ome_zarr(
     export_path: str,
     image_source_slot: Slot,
     progress_signal: OrderedSignal,
-    export_offset: Union[Shape, None],
+    export_offset: Union[ShapeTuple, None],
     target_scales: Optional[ShapesByScaleKey] = None,
 ):
     pc = PathComponents(export_path)
@@ -236,7 +236,7 @@ def write_ome_zarr(
         op_reorder.Input.connect(image_source_slot)
         reordered_source = op_reorder.Output
         progress_signal(25)
-        export_shape = MShape(reordered_source.meta.getTaggedShape())
+        export_shape = Shape(reordered_source.meta.getTaggedShape())
         export_dtype = reordered_source.meta.dtype
         input_scale_key = reordered_source.meta.get("active_scale")
         input_translations = reordered_source.meta.get("ome_zarr_translations")
@@ -260,13 +260,13 @@ def write_ome_zarr(
         for upscale_key, v in reversed(sorted(upscale_mags.items(), key=lambda x: x[1])):
             scale_type = "upscaled data" if v < 1.0 else "unscaled data"
             logger.log(USER_LOGLEVEL, f"Exporting {scale_type} to scale path '{upscale_key}'")
-            target_shape = export_blueprint[upscale_key].to_tuple()
+            target_shape = export_blueprint[upscale_key]
             op_scale = None
             try:
                 op_scale = OpResize(
                     parent=image_source_slot.operator,
                     RawImage=reordered_source,
-                    TargetShape=target_shape,
+                    TargetShape=target_shape.to_tuple(),
                     InterpolationOrder=interpolation_order,
                 )
                 requester = BigRequestStreamer(op_scale.ResizedImage, roiFromShape(op_scale.ResizedImage.meta.shape))
@@ -282,21 +282,21 @@ def write_ome_zarr(
         downscale_mags = {k: v for k, v in combined_scaling_mag.items() if v > 1.0}
         prev_slot = reordered_source
         for downscale_key, _ in sorted(downscale_mags.items(), key=lambda x: x[1]):
-            target_shape = export_blueprint[downscale_key].to_tuple()
+            target_shape = export_blueprint[downscale_key]
             logger.log(USER_LOGLEVEL, f"Exporting downscale to scale path '{downscale_key}'")
             op_scale = OpResize(
                 parent=image_source_slot.operator,
                 RawImage=prev_slot,
-                TargetShape=target_shape,
+                TargetShape=target_shape.to_tuple(),
                 InterpolationOrder=interpolation_order,
             )
             ops_to_clean.append(op_scale)
             op_cache = OpBlockedArrayCache(parent=image_source_slot.operator)
             ops_to_clean.append(op_cache)
             op_cache.Input.connect(op_scale.ResizedImage)
-            op_cache.BlockShape.setValue(chunk_shape)
+            op_cache.BlockShape.setValue(chunk_shape.to_tuple())
             requester = BigRequestStreamer(
-                op_cache.Output, roiFromShape(op_cache.Output.meta.shape), blockshape=chunk_shape
+                op_cache.Output, roiFromShape(op_cache.Output.meta.shape), blockshape=chunk_shape.to_tuple()
             )
             zarray = _create_empty_zarray(abs_export_path, downscale_key, target_shape, chunk_shape, export_dtype)
             requester.resultSignal.subscribe(partial(_write_block, zarray))
