@@ -372,7 +372,7 @@ class NewAutocontextWorkflowBase(Workflow):
             invalid_classifier = (
                 opPixelClassification.classifier_cache.fixAtCurrent.value
                 and opPixelClassification.classifier_cache.Output.ready()
-                and opPixelClassification.classifier_cache.Output.value is None
+                and not opPixelClassification.classifier_cache.hasCacheValue()
             )
 
             predictions_ready = (

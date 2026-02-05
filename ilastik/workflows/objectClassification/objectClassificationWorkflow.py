@@ -424,7 +424,7 @@ class ObjectClassificationWorkflow(Workflow):
         opObjectClassification = self.objectClassificationApplet.topLevelOperator
         valid_classifier = (
             opObjectClassification.classifier_cache.Output.ready()
-            and opObjectClassification.classifier_cache.Output.value is not None
+            and opObjectClassification.classifier_cache.hasCacheValue()
         )
 
         opDataExport = self.dataExportApplet.topLevelOperator
@@ -437,14 +437,11 @@ class ObjectClassificationWorkflow(Workflow):
             and (TinyVector(opDataExport.Inputs[0][self.ExportNames.OBJECT_PREDICTIONS].meta.shape) > 0).all()
         )
 
-        object_classification_ready = predictions_ready and valid_classifier
-
-        cumulated_readyness = cumulated_readyness and object_classification_ready
+        cumulated_readyness = cumulated_readyness and predictions_ready
         self._shell.setAppletEnabled(self.dataExportApplet, cumulated_readyness)
 
         if self.batch:
-            object_prediction_ready = True  # TODO is that so?
-            cumulated_readyness = cumulated_readyness and object_prediction_ready
+            cumulated_readyness = cumulated_readyness
 
             self._shell.setAppletEnabled(self.blockwiseObjectClassificationApplet, cumulated_readyness)
             self._shell.setAppletEnabled(self.batchProcessingApplet, cumulated_readyness)
@@ -704,7 +701,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         opClassify.CachedFeatureImages.connect(opTrainingFeatures.CachedOutputImage)
 
         op5raw = OpReorderAxes(parent=self, AxisOrder="txyzc", Input=rawslot)
-        op5pred = OpReorderAxes(parent=self, AxisOrder="txyzc", Input=opClassify.CachedPredictionProbabilities)
+        op5pred = OpReorderAxes(parent=self, AxisOrder="txyzc", Input=opClassify.BlockCachedPredictionProbabilities)
 
         opThreshold.RawInput.connect(op5raw.Output)
         opThreshold.InputImage.connect(op5pred.Output)
