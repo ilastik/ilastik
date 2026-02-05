@@ -460,6 +460,7 @@ def write_ome_zarr(
             scale_type = "upscaled data" if v < 1.0 else "unscaled data"
             logger.log(USER_LOGLEVEL, f"Exporting {scale_type} to scale path '{upscale_key}'")
             target_shape = tuple(target_scales[upscale_key].values())
+            op_scale = None
             try:
                 op_scale = OpResize(
                     parent=image_source_slot.operator,
@@ -473,7 +474,8 @@ def write_ome_zarr(
                 requester.progressSignal.subscribe(progress_signal)
                 requester.execute()
             finally:
-                op_scale.cleanUp()
+                if op_scale is not None:
+                    op_scale.cleanUp()
 
         # Downscales - cached to avoid recomputation (noop for single-scale export)
         downscale_mags = {k: v for k, v in combined_scaling_mag.items() if v > 1.0}
