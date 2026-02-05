@@ -262,6 +262,12 @@ class OpValueCache(Operator, ObservableCache):
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
 
+    def hasCacheValue(self) -> bool:
+        """Cache value has been either forced or Output already requested - no upstream computation will be triggered"""
+        if self._value is not None and not self._dirty:
+            return True
+        return False
+
     def execute(self, slot, subindex, roi, result):
         if self.fixAtCurrent.value is True or self._dirty is False:
             if result.shape == (1,):

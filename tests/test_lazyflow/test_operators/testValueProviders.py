@@ -173,7 +173,9 @@ class TestOpValueCache:
         op = OpValueCache(graph=graph)
         op.Input.setValue("Hello")
         assert op._dirty
+        assert not op.hasCacheValue()
         assert op.Output.value == "Hello"
+        assert op.hasCacheValue()
 
         outputDirtyCount = [0]
 
@@ -185,6 +187,7 @@ class TestOpValueCache:
         op.forceValue("Goodbye")
         # The cache itself isn't dirty (won't ask input for value)
         assert not op._dirty
+        assert op.hasCacheValue()
         assert op.Output.value == "Goodbye"
 
         # But the cache notified downstream slots that his value changed

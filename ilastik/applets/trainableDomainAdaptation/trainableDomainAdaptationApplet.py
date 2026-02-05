@@ -18,7 +18,7 @@ class TrainableDomainAdaptationApplet(PixelClassificationApplet):
             if (
                 self._topLevelOperator.classifier_cache.Output.ready()
                 and self._topLevelOperator.classifier_cache.fixAtCurrent.value is True
-                and self._topLevelOperator.classifier_cache.Output.value is None
+                and not self._topLevelOperator.classifier_cache.hasCacheValue()
             ):
                 # When the classifier is deleted (e.g. because the number of features has changed,
                 #  then notify the workflow. (Export applet should be disabled.)
