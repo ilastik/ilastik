@@ -20,22 +20,20 @@
 # 		   http://ilastik.org/license/
 ###############################################################################
 from __future__ import division
-from builtins import zip
-from builtins import map
-from builtins import range
-import os
+
+import logging
 import math
+import os
+from builtins import map, range, zip
 
 import numpy
 
-from lazyflow.graph import Operator, InputSlot
-from lazyflow.utility import OrderedSignal
-from lazyflow.roi import roiFromShape
+from lazyflow.graph import InputSlot, Operator
 from lazyflow.operators.generic import OpSubRegion
+from lazyflow.roi import roiFromShape
+from lazyflow.utility import OrderedSignal
 
 from .opExportMultipageTiff import OpExportMultipageTiff
-
-import logging
 
 logger = logging.getLogger(__name__)
 

@@ -1,14 +1,12 @@
 import typing
-
 from configparser import ConfigParser
 
 import attr
-
-from ilastik import config
 from volumina.utility import preferences
 
-from . import types
+from ilastik import config
 
+from . import types
 
 SERVER_CONFIG_GROUP = "ServerConfig"
 SERVER_CONFIG_LIST_KEY = "Servers"

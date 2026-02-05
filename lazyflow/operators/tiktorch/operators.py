@@ -21,19 +21,14 @@
 ###############################################################################
 # Python
 import logging
-from lazyflow.operators.tiktorch.classifier import ModelSession
 
 # SciPy
 import numpy
 
 # lazyflow
-from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
-from lazyflow.roi import (
-    sliceToRoi,
-    roiToSlice,
-    enlargeRoiForHalo,
-    getIntersectingBlocks,
-)
+from lazyflow.graph import InputSlot, Operator, OrderedSignal, OutputSlot
+from lazyflow.operators.tiktorch.classifier import ModelSession
+from lazyflow.roi import enlargeRoiForHalo, getIntersectingBlocks, roiToSlice, sliceToRoi
 
 logger = logging.getLogger(__name__)
 
@@ -134,11 +129,13 @@ class OpTikTorchTrainClassifierBlocked(Operator):
                 axis_keys = label_slot.meta.getAxisKeys()
                 block_slicings = [
                     [
-                        slice(None)
-                        if axis == "c"
-                        else slice(dmax - dblock, dmax)
-                        if dstart + dblock > dmax
-                        else slice(dstart, dstart + dblock)
+                        (
+                            slice(None)
+                            if axis == "c"
+                            else (
+                                slice(dmax - dblock, dmax) if dstart + dblock > dmax else slice(dstart, dstart + dblock)
+                            )
+                        )
                         for dstart, dblock, dmax, axis in zip(block_start, block_shape, label_shape, axis_keys)
                     ]
                     for block_start in block_starts

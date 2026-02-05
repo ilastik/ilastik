@@ -18,30 +18,27 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+import glob
 import os
 import sys
-import glob
 from functools import partial
 
-from qtpy import uic
-from qtpy.QtCore import Qt, QEvent
-from qtpy.QtWidgets import QDialog, QFileDialog, QMessageBox
-
 import vigra
-
+from qtpy import uic
+from qtpy.QtCore import QEvent, Qt
+from qtpy.QtWidgets import QDialog, QFileDialog, QMessageBox
 from volumina.utility import preferences
 
 import ilastik.config
 from ilastik.widgets.hdf5SubvolumeSelectionDialog import H5N5StackingDlg, SubvolumeSelectionDlg
-
 from lazyflow.operators.ioOperators import (
+    OpInputDataReader,
     OpStackLoader,
     OpStreamingH5N5Reader,
     OpStreamingH5N5SequenceReaderM,
     OpStreamingH5N5SequenceReaderS,
-    OpInputDataReader,
 )
-from lazyflow.utility import lsH5N5, PathComponents
+from lazyflow.utility import PathComponents, lsH5N5
 
 
 class StackFileSelectionWidget(QDialog):

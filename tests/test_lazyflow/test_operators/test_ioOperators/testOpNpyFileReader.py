@@ -1,6 +1,3 @@
-from builtins import range
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -24,7 +21,10 @@ from builtins import object
 ###############################################################################
 import os
 import tempfile
+from builtins import object, range
+
 import numpy
+
 import lazyflow.graph
 from lazyflow.operators.ioOperators import OpNpyFileReader
 

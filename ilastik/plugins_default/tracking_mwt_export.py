@@ -1,15 +1,16 @@
 from __future__ import division
-from builtins import range
-from past.utils import old_div
+
 import os.path
-import numpy as np
-from ilastik.plugins import TrackingExportFormatPlugin
-import vigra
-
+from builtins import range
 from functools import partial
-from lazyflow.request import Request, RequestPool
 
+import numpy as np
+import vigra
+from past.utils import old_div
 from skimage import measure
+
+from ilastik.plugins import TrackingExportFormatPlugin
+from lazyflow.request import Request, RequestPool
 
 
 class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):

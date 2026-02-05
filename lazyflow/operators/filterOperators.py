@@ -21,11 +21,12 @@
 ###############################################################################
 import copy
 import logging
+
 import numpy
 import vigra
 
 from lazyflow import roi
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.roi import roiToSlice
 
 logger = logging.getLogger(__name__)
@@ -380,7 +381,7 @@ def coherenceOrientationOfStructureTensor(image, sigma0, sigma1, window_size, ou
     else:
         res = numpy.ndarray((image.shape[0], image.shape[1], 2))
 
-    res[:, :, 0] = numpy.sqrt((i22 - i11) ** 2 + 4 * (i12 ** 2)) / (i11 - i22)
+    res[:, :, 0] = numpy.sqrt((i22 - i11) ** 2 + 4 * (i12**2)) / (i11 - i22)
     res[:, :, 1] = (numpy.arctan(2 * i12 / (i22 - i11)) / numpy.pi) + 0.5
 
     return res

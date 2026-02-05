@@ -1,16 +1,15 @@
+import logging
 from builtins import object
-import numpy
+
 import h5py
+import numpy
 
 from lazyflow.graph import Graph
-from lazyflow.operators.ioOperators import OpTiledVolumeReader, OpCachedTiledVolumeReader
-from lazyflow.utility import PathComponents
+from lazyflow.operators.ioOperators import OpCachedTiledVolumeReader, OpTiledVolumeReader
 from lazyflow.roi import roiToSlice
-
+from lazyflow.utility import PathComponents
 # We use the SAME data setup as in the test for TiledVolume
 from tests.test_lazyflow.test_utility.test_io_util import testTiledVolume
-
-import logging
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,7 @@
 from __future__ import division
 
+import logging
+import sys
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -23,18 +25,15 @@ from __future__ import division
 ###############################################################################
 # Python
 import time
-import logging
-import sys
 
 # SciPy
 import numpy
 
 # lazyflow
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
+from lazyflow.operators.opCache import MemInfoNode, ObservableCache
 from lazyflow.roi import sliceToRoi
-from lazyflow.operators.opCache import MemInfoNode
-from lazyflow.operators.opCache import ObservableCache
 from lazyflow.utility.helpers import get_ram_per_element
 
 

@@ -19,15 +19,16 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 
-from lazyflow.operators.generic import OpMultiArraySlicer2
-from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
-from ilastik.utility import bind
+from volumina.api import AlphaModulatedLayer, ColortableLayer, LazyflowSource
+
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 from ilastik.applets.neuralNetwork.nnClassificationDataExportGui import (
     NNClassificationDataExportGui,
     NNClassificationResultsViewer,
 )
+from ilastik.utility import bind
 from ilastik.workflows.trainableDomainAdaptation import LocalTrainableDomainAdaptationWorkflow
+from lazyflow.operators.generic import OpMultiArraySlicer2
 
 
 class TdaDataExportGui(NNClassificationDataExportGui):

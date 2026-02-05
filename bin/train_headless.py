@@ -29,10 +29,14 @@ Note: This script does not make any attempt to be efficient with RAM usage.
       (The entire label volume is loaded at once.)  As a result, each image volume you
       train with must be significantly smaller than the available RAM on your machine.
 """
+
 from __future__ import print_function
-from builtins import range
+
 import os
+from builtins import range
+
 import numpy as np
+
 
 def main():
     # Cmd-line args to this script.
@@ -92,7 +96,6 @@ def prepare_feature_selections():
     #                            [False, False, False, False, False, False, False],
     #                            [False, False, False, False, False, False, False],
     #                            [False, False, False, False, False, False, False]] )
-
     # Start with an all-False matrix and apply the features we want.
     selections = numpy.zeros((len(FeatureIds), len(ScalesList)), dtype=bool)
 
@@ -131,12 +134,11 @@ def generate_trained_project_file(
     from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
     from lazyflow.graph import Graph
     from lazyflow.operators.ioOperators import OpInputDataReader
-    from lazyflow.roi import roiToSlice, roiFromShape
+    from lazyflow.roi import roiFromShape, roiToSlice
 
     ##
     ## CREATE PROJECT
     ##
-
     # Manually configure the arguments to ilastik, as if they were parsed from the command line.
     # (Start with empty args and fill in below.)
     ilastik_args = app.parse_args([])

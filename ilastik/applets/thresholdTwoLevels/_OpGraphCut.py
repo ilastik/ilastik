@@ -30,24 +30,24 @@ logger.addHandler(logging.NullHandler())  # noqa
 
 # required numerical modules
 import numpy as np
-import vigra
 import opengm
+import vigra
 
+from lazyflow.graph import Graph
 # basic lazyflow types
 from lazyflow.operator import Operator
-from lazyflow.slot import InputSlot, OutputSlot
+# required lazyflow operators
+from lazyflow.operators.opCompressedCache import OpCompressedCache
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.rtype import SubRegion
+from lazyflow.slot import InputSlot, OutputSlot
+from lazyflow.utility.reorderAxesDecorator import reorder, reorder_options
 
 # from lazyflow.stype import Opaque
 # from lazyflow.request import Request, RequestPool
 
-# required lazyflow operators
-from lazyflow.operators.opCompressedCache import OpCompressedCache
-from lazyflow.operators.opReorderAxes import OpReorderAxes
 
-from lazyflow.graph import Graph
 
-from lazyflow.utility.reorderAxesDecorator import reorder, reorder_options
 
 
 # This operator implements an interface to compute Graph Cut segmentations

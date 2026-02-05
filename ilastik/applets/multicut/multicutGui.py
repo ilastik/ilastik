@@ -18,39 +18,35 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ##############################################################################
-from functools import partial
-from contextlib import contextmanager
+import logging
 import threading
+from contextlib import contextmanager
+from functools import partial
 
 import numpy as np
-
 from qtpy.QtCore import Qt
-from qtpy.QtGui import QColor, QPen, QIcon
+from qtpy.QtGui import QColor, QIcon, QPen
 from qtpy.QtWidgets import (
-    QWidget,
-    QLabel,
-    QDoubleSpinBox,
     QComboBox,
-    QVBoxLayout,
+    QDoubleSpinBox,
     QHBoxLayout,
-    QSpacerItem,
-    QSizePolicy,
+    QLabel,
     QPushButton,
+    QSizePolicy,
+    QSpacerItem,
+    QVBoxLayout,
+    QWidget,
 )
-
-from ilastik.utility.gui import threadRouted, silent_qobject
 from volumina.api import createDataSource
 from volumina.layer import SegmentationEdgesLayer
 from volumina.utility import ShortcutManager
 
-from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.multicut.opMulticut import AVAILABLE_SOLVER_NAMES, DEFAULT_SOLVER_NAME
 from ilastik.config import cfg as ilastik_config
-
+from ilastik.shell.gui.iconMgr import ilastikIcons
+from ilastik.utility.gui import silent_qobject, threadRouted
 from lazyflow.request import Request
-
-import logging
 
 logger = logging.getLogger(__name__)
 

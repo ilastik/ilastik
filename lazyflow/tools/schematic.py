@@ -1,7 +1,13 @@
-from __future__ import absolute_import
-from __future__ import division
-from builtins import hex
+from __future__ import absolute_import, division
 
+import itertools
+import logging
+from builtins import hex
+from functools import partial
+
+import numpy
+
+from . import svg
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -23,13 +29,7 @@ from builtins import hex
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-from .schematic_abc import DrawableABC, ConnectableABC
-from . import svg
-import numpy
-from functools import partial
-import itertools
-
-import logging
+from .schematic_abc import ConnectableABC, DrawableABC
 
 logger = logging.getLogger(__name__)
 
@@ -449,7 +449,7 @@ def get_column_within_parent(op):
 if __name__ == "__main__":
     canvas = svg.SvgCanvas("")
 
-    from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
+    from lazyflow.graph import Graph, InputSlot, Operator, OutputSlot
 
     class OpChild(Operator):
         name = "OpChild"
@@ -538,8 +538,8 @@ if __name__ == "__main__":
                 result[...] += slot.get(roi).wait()
             return result
 
-    from lazyflow.operators import OpArrayPiper
     from lazyflow.graph import OperatorWrapper
+    from lazyflow.operators import OpArrayPiper
 
     opGenericMultiOut = OperatorWrapper(OpArrayPiper, graph=graph)
     opGenericMultiOut.Input.resize(3)

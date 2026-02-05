@@ -1,12 +1,12 @@
 import contextlib
-import tempfile
 import shutil
+import tempfile
 
 import numpy
+import vigra
 
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpTiffSequenceReader
-import vigra
 
 
 @contextlib.contextmanager

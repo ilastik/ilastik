@@ -1,11 +1,12 @@
+import logging
+
 from ilastik.applets.base.standardApplet import StandardApplet
 from ilastik.applets.tracking.structured.structuredTrackingSerializer import StructuredTrackingSerializer
-
-import logging
 
 logger = logging.getLogger(__name__)
 
 import hytra
+
 from ilastik.applets.tracking.structured.opStructuredTracking import OpStructuredTracking
 
 

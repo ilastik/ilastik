@@ -1,11 +1,11 @@
-import pytest
-
 from unittest import mock
 
-from ilastik.widgets import appletDrawerToolBox as at
-from qtpy.QtWidgets import QLabel, QWidget
+import pytest
 from qtpy.QtCore import QSize
 from qtpy.QtGui import QIcon, QImage
+from qtpy.QtWidgets import QLabel, QWidget
+
+from ilastik.widgets import appletDrawerToolBox as at
 
 
 @pytest.fixture

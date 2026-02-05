@@ -1,6 +1,7 @@
-from lazyflow.utility.testing import build_multi_output_mock_op, SlotDesc
-from lazyflow.graph import Operator, OutputSlot
 import numpy
+
+from lazyflow.graph import Operator, OutputSlot
+from lazyflow.utility.testing import SlotDesc, build_multi_output_mock_op
 
 
 def test_empty(graph):

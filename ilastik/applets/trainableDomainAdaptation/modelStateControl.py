@@ -21,7 +21,6 @@
 import logging
 
 import requests
-
 from qtpy.QtCore import Signal
 from qtpy.QtWidgets import QComboBox, QHBoxLayout, QSizePolicy, QToolButton
 

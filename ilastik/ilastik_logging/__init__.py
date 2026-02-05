@@ -22,4 +22,4 @@ from __future__ import absolute_import
 ###############################################################################
 from . import default_config
 from .default_config import DEFAULT_LOGFILE_PATH, get_logfile_path, get_session_logfile_path
-from .loggingHelpers import updateFromConfigFile, startUpdateInterval, stopUpdates
+from .loggingHelpers import startUpdateInterval, stopUpdates, updateFromConfigFile

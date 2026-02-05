@@ -19,10 +19,10 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from qtpy.QtDesigner import QPyDesignerCustomWidgetPlugin
-from qtpy.QtGui import QPixmap, QIcon, QColor
+from qtpy.QtGui import QColor, QIcon, QPixmap
 
-from ilastik.widgets.labelListView import LabelListView
 from ilastik.widgets.labelListModel import Label, LabelListModel
+from ilastik.widgets.labelListView import LabelListView
 
 
 class PyLabelListViewPlugin(QPyDesignerCustomWidgetPlugin):

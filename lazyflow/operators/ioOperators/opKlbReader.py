@@ -1,7 +1,9 @@
 from __future__ import print_function
+
 import numpy
 import vigra
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 
 try:
     import pyklb

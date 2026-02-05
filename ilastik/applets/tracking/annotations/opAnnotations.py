@@ -18,17 +18,16 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+import logging
 from builtins import range
-from ilastik.applets.base.applet import DatasetConstraintError
-
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.rtype import List, SubRegion
-from lazyflow.stype import Opaque
 
 import numpy as np
 import vigra
 
-import logging
+from ilastik.applets.base.applet import DatasetConstraintError
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.rtype import List, SubRegion
+from lazyflow.stype import Opaque
 
 logger = logging.getLogger(__name__)
 

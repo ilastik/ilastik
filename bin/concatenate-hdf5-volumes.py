@@ -1,6 +1,7 @@
 from __future__ import print_function
-import numpy
+
 import h5py
+import numpy
 import vigra
 
 

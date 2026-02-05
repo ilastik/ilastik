@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+import os
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -22,12 +24,11 @@ from __future__ import print_function
 ###############################################################################
 import numpy
 from qtpy.QtWidgets import QApplication
-from ilastik.workflows.counting import CountingWorkflow
-from tests.test_ilastik.helpers import ShellGuiTestCaseBase
-from lazyflow.operators import OpPixelFeaturesPresmoothed
-import os
 
 from ilastik.applets.counting.countingApplet import CountingApplet
+from ilastik.workflows.counting import CountingWorkflow
+from lazyflow.operators import OpPixelFeaturesPresmoothed
+from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 
 COUNTING_APPLET_INDEX = 2
 

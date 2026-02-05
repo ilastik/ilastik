@@ -9,12 +9,15 @@ NOTE: This test only works properly
 """
 
 from __future__ import print_function
-import sys
-import os
+
 import imp
+import os
+import sys
+
+import pytest
+
 import ilastik
 import ilastik.utility
-import pytest
 
 
 @pytest.mark.skipif(__name__ != "__main__", reason=f"This test must be run independently: python {__file__}")

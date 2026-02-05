@@ -27,7 +27,7 @@ import pytest
 import s3fs
 from aiohttp import ClientResponseError
 
-from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore, NoOMEZarrMetaFound
+from lazyflow.utility.io_util.OMEZarrStore import NoOMEZarrMetaFound, OMEZarrStore
 
 
 def test_handles_wrapped_connection_error(monkeypatch):

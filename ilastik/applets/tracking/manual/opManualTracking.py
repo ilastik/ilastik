@@ -18,23 +18,22 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+import logging
+import os
 from builtins import range
-from ilastik.applets.base.applet import DatasetConstraintError
-from ilastik.utility.exportingOperator import ExportingOperator
-from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default
-from operator import itemgetter
-from itertools import compress
 from functools import partial
-
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.rtype import List, SubRegion
-from lazyflow.stype import Opaque
+from itertools import compress
+from operator import itemgetter
 
 import numpy as np
 import vigra
 
-import os
-import logging
+from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.utility.exportFile import Default, ExportFile, Mode, ilastik_ids, objects_per_frame
+from ilastik.utility.exportingOperator import ExportingOperator
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.rtype import List, SubRegion
+from lazyflow.stype import Opaque
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +56,7 @@ class OpManualTracking(Operator, ExportingOperator):
 
     # Use a slot for storing the export settings in the project file.
     ExportSettings = OutputSlot()
+
     # Override functions ExportingOperator mixin
     def configure_table_export_settings(self, settings, selected_features):
         self.ExportSettings.setValue((settings, selected_features))
@@ -166,7 +166,7 @@ class OpManualTracking(Operator, ExportingOperator):
             if label in replace and len(replace[label]) > 0:
                 l = list(replace[label])[-1]
                 if l == -1:
-                    mp[label] = 2 ** 16 - 1
+                    mp[label] = 2**16 - 1
                 else:
                     mp[label] = l
         return mp[volume]

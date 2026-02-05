@@ -31,14 +31,13 @@ if list(map(int, psutil.__version__.split("."))) < [0, 6]:
 
 # lazyflow
 import lazyflow
-from lazyflow.rtype import SubRegion
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import sliceToRoi, roiToSlice, TinyVector, getBlockBounds
 from lazyflow import request
-from lazyflow.utility import Tracer
-
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 # various cache operators
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.opSlicedBlockedArrayCache import OpSlicedBlockedArrayCache
 from lazyflow.operators.opUnblockedArrayCache import OpUnblockedArrayCache
+from lazyflow.roi import TinyVector, getBlockBounds, roiToSlice, sliceToRoi
+from lazyflow.rtype import SubRegion
+from lazyflow.utility import Tracer

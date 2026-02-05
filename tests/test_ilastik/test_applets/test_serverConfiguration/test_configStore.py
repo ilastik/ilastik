@@ -3,12 +3,12 @@ from io import StringIO
 
 import pytest
 
+from ilastik.applets.serverConfiguration import types
 from ilastik.applets.serverConfiguration.configStorage import (
-    ServerConfigStorage,
     SERVER_CONFIG_GROUP,
     SERVER_CONFIG_LIST_KEY,
+    ServerConfigStorage,
 )
-from ilastik.applets.serverConfiguration import types
 
 
 class PreferencesStub:

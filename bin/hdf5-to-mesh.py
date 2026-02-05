@@ -11,6 +11,15 @@ Otherwise, all nonzero pixels are used.
 
 from __future__ import print_function
 
+from argparse import ArgumentParser
+from os.path import splitext
+from sys import exit as sysexit
+from sys import stderr
+
+from h5py import File
+from numpy import unique
+from volumina.view3d.meshgenerator import labeling_to_mesh, mesh_to_obj
+
 # import os
 # import sys
 # import argparse
@@ -18,17 +27,11 @@ from __future__ import print_function
 # import shutil
 # import tempfile
 
-from os.path import splitext
-from sys import stderr, exit as sysexit
-from argparse import ArgumentParser
-from numpy import unique
 
 # import h5py
 # from qtpy.QtCore import QTimer
 # from qtpy.QtWidgets import QApplication
 
-from h5py import File
-from volumina.view3d.meshgenerator import labeling_to_mesh, mesh_to_obj
 
 
 if __name__ == "__main__":

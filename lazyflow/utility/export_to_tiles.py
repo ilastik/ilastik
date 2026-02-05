@@ -1,11 +1,12 @@
+import logging
 import os
 import sys
+
 import vigra
-import logging
 
 logger = logging.getLogger(__name__)
 
-from lazyflow.roi import getIntersectingBlocks, roiFromShape, getBlockBounds, roiToSlice
+from lazyflow.roi import getBlockBounds, getIntersectingBlocks, roiFromShape, roiToSlice
 
 
 def export_to_tiles(volume, tile_size, output_dir, print_progress=True):

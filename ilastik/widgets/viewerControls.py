@@ -24,7 +24,6 @@ import os
 # Third-party
 from qtpy import uic
 from qtpy.QtWidgets import QWidget
-
 from volumina.widgets.exportHelper import prompt_export_settings_and_export_layer
 
 

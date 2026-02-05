@@ -1,9 +1,7 @@
 from __future__ import division
-from builtins import zip
 
-from builtins import next
-from builtins import map
-
+import collections
+import itertools
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -27,20 +25,19 @@ from builtins import map
 ###############################################################################
 # Built-in
 import logging
-from functools import partial
-import collections
-import itertools
 import time
+from builtins import map, next, zip
+from functools import partial
 
+import h5py
 # Third-party
 import numpy
-import h5py
 
-# Lazyflow
-from lazyflow.request import Request, RequestPool, RequestLock
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import TinyVector, getIntersectingBlocks, getBlockBounds, roiToSlice, getIntersection
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.operators.opCache import ManagedBlockedCache
+# Lazyflow
+from lazyflow.request import Request, RequestLock, RequestPool
+from lazyflow.roi import TinyVector, getBlockBounds, getIntersectingBlocks, getIntersection, roiToSlice
 from lazyflow.utility.chunkHelpers import chooseChunkShape
 from lazyflow.utility.helpers import bigintprod
 

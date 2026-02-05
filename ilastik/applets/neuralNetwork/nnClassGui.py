@@ -27,15 +27,7 @@ from functools import partial
 import numpy
 import yaml
 from qtpy import uic
-from qtpy.QtCore import (
-    QModelIndex,
-    QPersistentModelIndex,
-    QStringListModel,
-    Qt,
-    QTimer,
-    Signal,
-    Slot,
-)
+from qtpy.QtCore import QModelIndex, QPersistentModelIndex, QStringListModel, Qt, QTimer, Signal, Slot
 from qtpy.QtGui import QColor, QIcon
 from qtpy.QtWidgets import (
     QAction,

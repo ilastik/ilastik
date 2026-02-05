@@ -25,11 +25,11 @@ import json
 import os
 import re
 import uuid
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 from collections import OrderedDict
 from numbers import Number
 from pathlib import Path
-from typing import List, Tuple, Dict, Optional, Union, Callable, Set
+from typing import Callable, Dict, List, Optional, Set, Tuple, Union
 
 import h5py
 import numpy
@@ -43,17 +43,14 @@ from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.utility import OpMultiLaneWrapper
 from ilastik.workflow import Workflow
 from lazyflow.base import Axiskey
-from lazyflow.graph import Graph, Operator
-from lazyflow.graph import InputSlot, OutputSlot, OperatorWrapper, Slot
+from lazyflow.graph import Graph, InputSlot, Operator, OperatorWrapper, OutputSlot, Slot
 from lazyflow.operators import OpMissingDataSource
-from lazyflow.operators.ioOperators import OpH5N5WriterBigDataset
-from lazyflow.operators.ioOperators import OpInputDataReader
-from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
+from lazyflow.operators.ioOperators import OpH5N5WriterBigDataset, OpInputDataReader, OpStreamingH5N5Reader
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.utility.helpers import get_default_axisordering, eq_shapes
+from lazyflow.utility.helpers import eq_shapes, get_default_axisordering
 from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, Multiscale
-from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
+from lazyflow.utility.pathHelpers import PathComponents, globH5N5, globNpz, splitPath, uri_to_Path
 
 
 def getTypeRange(numpy_type):

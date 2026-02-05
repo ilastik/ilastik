@@ -3,9 +3,10 @@ import pathlib
 from pathlib import Path
 
 import pytest
-from ilastik.widgets.ImageFileDialog import ImageFileDialog
 from qtpy.QtWidgets import QFileDialog
 from volumina.utility import preferences
+
+from ilastik.widgets.ImageFileDialog import ImageFileDialog
 
 
 @pytest.fixture(autouse=True)

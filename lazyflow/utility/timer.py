@@ -1,8 +1,8 @@
-from __future__ import print_function
-from __future__ import division
-from builtins import range
-from builtins import object
+from __future__ import division, print_function
 
+import datetime
+import functools
+import logging
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -25,9 +25,7 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import time
-import datetime
-import functools
-import logging
+from builtins import object, range
 
 
 class Timer(object):

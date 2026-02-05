@@ -1,5 +1,5 @@
-from builtins import object
-
+import glob
+import logging
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,22 +22,20 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import os
-import glob
 import shutil
+import sys
 import tempfile
+from builtins import object
 
+import h5py
 import numpy
 import vigra
-import h5py
 
 import lazyflow.graph
-from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.ioOperators import OpExportMultipageTiffSequence, OpStackLoader
 from lazyflow.operators.ioOperators.opTiffSequenceReader import OpTiffSequenceReader
-
-import sys
-import logging
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 logger = logging.getLogger("tests.testOpExportMultipageTiffSequence")
 

@@ -1,6 +1,7 @@
-from __future__ import print_function
-from __future__ import division
+from __future__ import division, print_function
 
+import unittest
+import warnings
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -22,16 +23,15 @@ from __future__ import division
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-from past.utils import old_div
-import unittest
+
 import numpy as np
 import vigra
+from past.utils import old_div
+
+from ilastik.applets.objectExtraction.opObjectExtraction import OpAdaptTimeListRoi, OpObjectExtraction, OpRegionFeatures
+from ilastik.plugins.manager import pluginManager
 from lazyflow.graph import Graph
 from lazyflow.operators import OpLabelVolume
-from ilastik.applets.objectExtraction.opObjectExtraction import OpAdaptTimeListRoi, OpRegionFeatures, OpObjectExtraction
-from ilastik.plugins.manager import pluginManager
-
-import warnings
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 

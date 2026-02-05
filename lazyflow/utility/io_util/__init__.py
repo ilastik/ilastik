@@ -22,6 +22,6 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license/
 ###############################################################################
 from .blockwiseFileset import BlockwiseFileset, BlockwiseFilesetFactory
-from .RESTfulVolume import RESTfulVolume
 from .RESTfulBlockwiseFileset import RESTfulBlockwiseFileset
+from .RESTfulVolume import RESTfulVolume
 from .tiledVolume import TiledVolume

@@ -19,26 +19,26 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
-from builtins import range
-import enum
-import sys
-import copy
+
 import argparse
+import copy
+import enum
 import itertools
 import logging
+import sys
+from builtins import range
 
 logger = logging.getLogger(__name__)
 
 import numpy
 
-from ilastik.config import cfg as ilastik_config
-from ilastik.workflow import Workflow
+from ilastik.applets.batchProcessing import BatchProcessingApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.pixelClassification import PixelClassificationApplet, PixelClassificationDataExportApplet
-from ilastik.applets.batchProcessing import BatchProcessingApplet
+from ilastik.config import cfg as ilastik_config
 from ilastik.utility import SlotNameEnum
-
+from ilastik.workflow import Workflow
 from lazyflow.graph import Graph
 from lazyflow.roi import TinyVector, fullSlicing
 

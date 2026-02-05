@@ -21,11 +21,10 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
-
-from .opFillMissingSlices import OpFillMissingSlices
-from .fillMissingSlicesSerializer import FillMissingSlicesSerializer
-
 from lazyflow.operatorWrapper import OperatorWrapper
+
+from .fillMissingSlicesSerializer import FillMissingSlicesSerializer
+from .opFillMissingSlices import OpFillMissingSlices
 
 
 class FillMissingSlicesApplet(StandardApplet):

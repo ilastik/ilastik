@@ -19,14 +19,15 @@
 #                  http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
-from qtpy import uic
-from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QDialog, QFileDialog, QMessageBox, QTreeWidgetItem, QTreeWidgetItemIterator
 
 import os.path
 import re
-from operator import mul
 from functools import reduce
+from operator import mul
+
+from qtpy import uic
+from qtpy.QtCore import Qt
+from qtpy.QtWidgets import QDialog, QFileDialog, QMessageBox, QTreeWidgetItem, QTreeWidgetItemIterator
 
 FILE_TYPES = ["csv", "h5"]
 REQ_MSG = " (REQUIRED)"
@@ -34,7 +35,7 @@ RAW_LAYER_SIZE_LIMIT = 1000000
 ALLOWED_EXTENSIONS = ["hdf5", "hd5", "h5", "csv"]
 DEFAULT_REQUIRED_FEATURES = ["Count", "Coord<Minimum>", "Coord<Maximum>", "RegionCenter"]
 DIALOG_FILTERS = {"h5": "HDF 5 (*.h5 *.hd5 *.hdf5)", "csv": "CSV (*.csv)", "any": "Any (*.*)"}
-DEFAULT_EXPORT_PATH = "{dataset_dir}/{nickname}.csv"
+DEFAULT_EXPORT_PATH = "{dataset_dir}/{nickname}_table.csv"
 
 
 class ExportObjectInfoDialog(QDialog):

@@ -19,6 +19,6 @@
 # This information is also available on the ilastik web site at:
 #          http://ilastik.org/license/
 ###############################################################################
-from .operators import OpTikTorchClassifierPredict, OpTikTorchTrainClassifierBlocked
-from ._base import IConnectionFactory, IConnection
+from ._base import IConnection, IConnectionFactory
 from .classifier import TiktorchConnectionFactory
+from .operators import OpTikTorchClassifierPredict, OpTikTorchTrainClassifierBlocked

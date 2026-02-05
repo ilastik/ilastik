@@ -19,24 +19,17 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-import z5py
 import json
+
 import numpy as np
+import z5py
 
 # This level can be used to issue user-facing log messages
 # log messages at this level get special treatment in ilastik:
 # those are shown in the status bar
 USER_LOGLEVEL = 23
 
-from . import utility
-from . import request
-from . import classifiers
-from . import roi
-from . import rtype
-from . import stype
-from . import graph
-from . import slot
-from . import operators
+from . import classifiers, graph, operators, request, roi, rtype, slot, stype, utility
 
 
 class N5JsonEncoder(json.JSONEncoder):

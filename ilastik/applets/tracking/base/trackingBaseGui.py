@@ -18,35 +18,31 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
-from functools import partial
-from qtpy.QtWidgets import QMessageBox
-from qtpy.QtGui import QColor, QIcon
-
-
-from volumina.api import createDataSource, ColortableLayer
-import volumina.colortables as colortables
-
-from lazyflow.operators.generic import axisTagsToString
-from lazyflow.rtype import SubRegion
-
 import logging
 import os
+from builtins import range
+from functools import partial
+
+import h5py
 import numpy as np
 import vigra
-import h5py
-from ilastik.applets.labeling.labelingGui import LabelingGui
-from ilastik.applets.tracking.base.trackingUtilities import relabel, write_events
+import volumina.colortables as colortables
+from qtpy.QtGui import QColor, QIcon
+from qtpy.QtWidgets import QMessageBox
+from volumina.api import ColortableLayer, createDataSource
 from volumina.layer import GrayscaleLayer
 from volumina.utility import ShortcutManager
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
+from ilastik.applets.labeling.labelingGui import LabelingGui
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.applets.tracking.base.trackingUtilities import relabel, write_events
 from ilastik.config import cfg as ilastik_config
-from lazyflow.request.request import Request
+from ilastik.utility import log_exception
 from ilastik.utility.gui.threadRouter import threadRouted
 from ilastik.utility.gui.titledMenu import TitledMenu
-from ilastik.utility import log_exception
-
+from lazyflow.operators.generic import axisTagsToString
+from lazyflow.request.request import Request
+from lazyflow.rtype import SubRegion
 
 logger = logging.getLogger(__name__)
 

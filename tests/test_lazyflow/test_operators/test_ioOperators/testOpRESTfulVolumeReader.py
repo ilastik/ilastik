@@ -1,5 +1,4 @@
-from builtins import object
-
+import logging
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -24,12 +23,13 @@ from builtins import object
 import os
 import sys
 import tempfile
+from builtins import object
+
 import h5py
 import pytest
-from lazyflow.operators.ioOperators.opRESTfulVolumeReader import OpRESTfulVolumeReader
-from lazyflow.graph import Graph
 
-import logging
+from lazyflow.graph import Graph
+from lazyflow.operators.ioOperators.opRESTfulVolumeReader import OpRESTfulVolumeReader
 
 logger = logging.getLogger(__name__)
 

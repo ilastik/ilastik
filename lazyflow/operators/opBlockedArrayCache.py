@@ -22,11 +22,11 @@
 
 import copy
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.utility import RamMeasurementContext
 
-from .opCacheFixer import OpCacheFixer
 from .opCache import ManagedBlockedCache
+from .opCacheFixer import OpCacheFixer
 from .opSimpleBlockedArrayCache import OpSimpleBlockedArrayCache
 
 

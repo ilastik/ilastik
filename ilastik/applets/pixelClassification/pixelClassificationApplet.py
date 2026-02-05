@@ -21,8 +21,9 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
+
 from .opPixelClassification import OpPixelClassification
-from .pixelClassificationSerializer import PixelClassificationSerializer, Ilastik05ImportDeserializer
+from .pixelClassificationSerializer import Ilastik05ImportDeserializer, PixelClassificationSerializer
 
 
 class PixelClassificationApplet(StandardApplet):

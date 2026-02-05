@@ -19,9 +19,9 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from qtpy.QtDesigner import QPyDesignerCustomWidgetPlugin
-from qtpy.QtGui import QPixmap, QIcon
+from qtpy.QtGui import QIcon, QPixmap
 
-from ilastik.widgets.featureTableWidget import FeatureTableWidget, FeatureEntry
+from ilastik.widgets.featureTableWidget import FeatureEntry, FeatureTableWidget
 
 
 class PyFeatureTableWidgetPlugin(QPyDesignerCustomWidgetPlugin):

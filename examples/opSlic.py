@@ -8,9 +8,12 @@ a cache can be used to force every request to be taken from a global result.
 See the __main__ section, below.
 It also includes a brief demonstration of lazyflow's OperatorWrapper mechanism.
 """
+
 from __future__ import print_function
+
 import skimage.segmentation
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.operators import OpBlockedArrayCache
 
 
@@ -124,8 +127,9 @@ class OpSlicCached(Operator):
 if __name__ == "__main__":
     # Let's try a quick test of the above operators
     import numpy
-    import vigra
     import skimage.measure
+    import vigra
+
     from lazyflow.graph import Graph
 
     test_image = numpy.zeros((100, 100, 1), dtype=numpy.uint8)

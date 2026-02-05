@@ -1,9 +1,8 @@
 import pytest
-
 from qtpy.QtCore import Qt
 
-from ilastik.applets.serverConfiguration.serverConfigForm import ServerConfigForm
 from ilastik.applets.serverConfiguration import types
+from ilastik.applets.serverConfiguration.serverConfigForm import ServerConfigForm
 
 
 class TestServerConfigForm:

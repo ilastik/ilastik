@@ -1,13 +1,13 @@
 from __future__ import print_function
-from builtins import range
-import copy
-import collections
 
-from qtpy.QtCore import Signal, Qt, QEvent
-from qtpy.QtWidgets import QTableWidget, QDoubleSpinBox, QLineEdit
+import collections
+import copy
+from builtins import range
 
 import numpy
 import vigra
+from qtpy.QtCore import QEvent, Qt, Signal
+from qtpy.QtWidgets import QDoubleSpinBox, QLineEdit, QTableWidget
 
 RowWidgets = collections.namedtuple("RowWidgets", "resolution_box description_edit")
 
@@ -104,6 +104,7 @@ class AxistagsEditorWidget(QTableWidget):
 
 if __name__ == "__main__":
     from functools import partial
+
     from qtpy.QtCore import QTimer
     from qtpy.QtWidgets import QApplication
 

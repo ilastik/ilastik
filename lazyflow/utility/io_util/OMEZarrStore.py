@@ -18,13 +18,13 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from dataclasses import dataclass
 import json
 import logging
 import math
 import os
 from collections import OrderedDict
-from typing import Dict, List, Optional, Union, Literal, Tuple, Any, Sequence
+from dataclasses import dataclass
+from typing import Any, Dict, List, Literal, Optional, Sequence, Tuple, Union
 from urllib.parse import unquote_to_bytes
 
 import jsonschema
@@ -32,15 +32,15 @@ import numpy
 import s3fs
 import vigra
 from aiohttp import ClientConnectorError, ClientResponseError
-from botocore.exceptions import NoCredentialsError, EndpointConnectionError
+from botocore.exceptions import EndpointConnectionError, NoCredentialsError
 from zarr.core import Array as ZarrArray
 from zarr.errors import ArrayNotFoundError
 from zarr.storage import FSStore, LRUStoreCache
 
 from lazyflow import rtype
 from lazyflow.base import Axiskey
-from lazyflow.utility import Timer, Memory
-from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SCALE_KEY, Scale
+from lazyflow.utility import Memory, Timer
+from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, MultiscaleStore, Scale
 
 logger = logging.getLogger(__name__)
 

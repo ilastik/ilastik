@@ -1,6 +1,4 @@
-from builtins import range
-from builtins import object
-
+from builtins import object, range
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -23,11 +21,13 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 from functools import partial
+
 import numpy
 import vigra
-from lazyflow.graph import Graph, OperatorWrapper, InputSlot, OutputSlot, Operator
-from lazyflow.rtype import SubRegion
+
+from lazyflow.graph import Graph, InputSlot, Operator, OperatorWrapper, OutputSlot
 from lazyflow.operators import OpArrayPiper, OpMultiArraySlicer2
+from lazyflow.rtype import SubRegion
 
 
 class TestOpMultiArraySlicer2(object):

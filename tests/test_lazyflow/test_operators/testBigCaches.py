@@ -1,7 +1,9 @@
 from builtins import object
+
 import numpy
 import vigra
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
+
+from lazyflow.graph import Graph, InputSlot, Operator, OutputSlot
 from lazyflow.operators.operators import OpBlockedArrayCache
 
 

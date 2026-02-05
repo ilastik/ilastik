@@ -21,21 +21,20 @@
 ###############################################################################
 # Built-in
 import collections
-import sys
-import heapq
 import functools
+import heapq
+import io
 import itertools
-import threading
+import logging
 import multiprocessing
 import platform
+import sys
+import threading
 import traceback
-import io
 from random import randrange
 from typing import Callable
+
 from numpy import ma
-
-
-import logging
 
 logger = logging.getLogger(__name__)
 

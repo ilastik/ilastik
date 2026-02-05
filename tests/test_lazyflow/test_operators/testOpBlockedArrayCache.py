@@ -1,6 +1,20 @@
 from __future__ import print_function
 
+import gc
+import unittest
+import weakref
 from builtins import object
+from functools import reduce
+
+import numpy
+import pytest
+import vigra
+
+from lazyflow.graph import Graph
+from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
+from lazyflow.operators.opCache import MemInfoNode
+from lazyflow.roi import roiToSlice, sliceToRoi
+from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
@@ -24,21 +38,9 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 
-import weakref
-import gc
-import unittest
 
-import numpy
-import pytest
-import vigra
-from lazyflow.graph import Graph
 
-from lazyflow.roi import sliceToRoi, roiToSlice
-from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
-from lazyflow.operators.opCache import MemInfoNode
 
-from lazyflow.utility.testing import OpArrayPiperWithAccessCount
-from functools import reduce
 
 
 # from lazyflow.request import Request

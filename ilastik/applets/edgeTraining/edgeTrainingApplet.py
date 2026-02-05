@@ -22,8 +22,8 @@ from __future__ import absolute_import
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from .opEdgeTraining import OpEdgeTraining
 from .edgeTrainingSerializer import EdgeTrainingSerializer
+from .opEdgeTraining import OpEdgeTraining
 
 
 class EdgeTrainingApplet(StandardApplet):

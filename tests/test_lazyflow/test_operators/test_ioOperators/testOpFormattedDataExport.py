@@ -1,5 +1,4 @@
-from builtins import object
-
+import shutil
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,16 +21,16 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import tempfile
-import shutil
+from builtins import object
 
 import numpy
 import pytest
 import vigra
 
 from lazyflow.graph import Graph
+from lazyflow.operators.ioOperators import OpFormattedDataExport, OpInputDataReader
 from lazyflow.operators.ioOperators.opFormattedDataExport import normalize
 from lazyflow.roi import roiToSlice
-from lazyflow.operators.ioOperators import OpInputDataReader, OpFormattedDataExport
 
 
 @pytest.mark.parametrize(

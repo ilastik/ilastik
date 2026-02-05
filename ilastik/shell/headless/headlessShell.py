@@ -18,15 +18,15 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+import logging
 import os
 import re
-import logging
 
 logger = logging.getLogger(__name__)
 
-from lazyflow.utility import isUrl
-from ilastik.shell.shellAbc import ShellABC
 from ilastik.shell.projectManager import ProjectManager
+from ilastik.shell.shellAbc import ShellABC
+from lazyflow.utility import isUrl
 
 
 @ShellABC.register

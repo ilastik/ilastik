@@ -18,8 +18,8 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from lazyflow.graph import OperatorWrapper
 from ilastik.utility import OperatorSubView
+from lazyflow.graph import OperatorWrapper
 
 
 class OpMultiLaneWrapper(OperatorWrapper):
@@ -51,8 +51,8 @@ class OpMultiLaneWrapper(OperatorWrapper):
 
 
 if __name__ == "__main__":
-    from lazyflow.graph import Graph, Operator, InputSlot
     from ilastik.utility import MultiLaneOperatorABC
+    from lazyflow.graph import Graph, InputSlot, Operator
 
     class Op(Operator):
         Input = InputSlot()

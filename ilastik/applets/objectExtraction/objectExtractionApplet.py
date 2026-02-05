@@ -20,8 +20,8 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 from ilastik.applets.objectExtraction.objectExtractionSerializer import (
-    ObjectExtractionSerializer,
     ObjectExtractionFromLabelsSerializer,
+    ObjectExtractionSerializer,
 )
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction, OpObjectExtractionFromLabels
 

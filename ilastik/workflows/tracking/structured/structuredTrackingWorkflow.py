@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+import logging
+import os
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,28 +23,24 @@ from __future__ import print_function
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-import os
-from lazyflow.graph import Graph
-from ilastik.workflow import Workflow
+
+from ilastik.applets.batchProcessing import BatchProcessingApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
-from ilastik.applets.tracking.annotations.annotationsApplet import AnnotationsApplet
-from ilastik.applets.tracking.structured.structuredTrackingApplet import StructuredTrackingApplet
+from ilastik.applets.objectClassification.objectClassificationApplet import ObjectClassificationApplet
 from ilastik.applets.objectExtraction.objectExtractionApplet import ObjectExtractionApplet
 from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
-from ilastik.applets.objectClassification.objectClassificationApplet import ObjectClassificationApplet
-from ilastik.applets.trackingFeatureExtraction import config
-from ilastik.applets.tracking.conservation import config as configConservation
-
-
-from lazyflow.operators.opReorderAxes import OpReorderAxes
-from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
-from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet import TrackingFeatureExtractionApplet
+from ilastik.applets.tracking.annotations.annotationsApplet import AnnotationsApplet
 from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
-from ilastik.applets.batchProcessing import BatchProcessingApplet
+from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
+from ilastik.applets.tracking.conservation import config as configConservation
+from ilastik.applets.tracking.structured.structuredTrackingApplet import StructuredTrackingApplet
+from ilastik.applets.trackingFeatureExtraction import config
+from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet import TrackingFeatureExtractionApplet
 from ilastik.plugins.manager import pluginManager
+from ilastik.workflow import Workflow
 from ilastik.workflows.tracking.common import DIVISION_CLASSIFIER_LABEL_NAMES
-
-import logging
+from lazyflow.graph import Graph
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 logger = logging.getLogger(__name__)
 

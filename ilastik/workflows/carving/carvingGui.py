@@ -19,36 +19,31 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Python
+import logging
 import os
 import re
 import string
-from functools import partial
 from collections import defaultdict
+from functools import partial
 from typing import List
-import numpy
 
+import numpy
 # PyQt
 from qtpy import uic
 from qtpy.QtGui import QColor
-from qtpy.QtWidgets import QMenu, QMessageBox, QFileDialog
-
-# lazyflow
-from lazyflow.request import Request
-
+from qtpy.QtWidgets import QFileDialog, QMenu, QMessageBox
 # volumina
-from volumina.api import createDataSource, ArraySource
+from volumina.api import ArraySource, createDataSource
 from volumina.layer import ColortableLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager, preferences
-
-from volumina.view3d.meshgenerator import mesh_to_obj, labeling_to_mesh
+from volumina.view3d.meshgenerator import labeling_to_mesh, mesh_to_obj
 from volumina.view3d.volumeRendering import RenderingManager
 
+from ilastik.applets.labeling.labelingGui import LabelingGui, LabelingSlots
 # ilastik
 from ilastik.utility import bind
-from ilastik.applets.labeling.labelingGui import LabelingGui, LabelingSlots
-
-
-import logging
+# lazyflow
+from lazyflow.request import Request
 
 logger = logging.getLogger(__name__)
 

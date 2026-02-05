@@ -1,9 +1,8 @@
 from __future__ import division
 
-from builtins import zip
-from builtins import range
-from builtins import object
-
+import functools
+import gc
+import logging
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -26,28 +25,24 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import os
+import shutil
 import sys
-import logging
+import tempfile
 import threading
-import functools
 import time
 import weakref
-import gc
-import tempfile
-import shutil
+from builtins import object, range, zip
 
-import numpy
 import h5py
+import numpy
 import pytest
 import vigra
-
 from numpy.testing import assert_array_equal
 
 from lazyflow.graph import Graph
-from lazyflow.operators import OpCompressedCache, OpArrayPiper
-from lazyflow.utility.slicingtools import slicing2shape
+from lazyflow.operators import OpArrayPiper, OpCompressedCache
 from lazyflow.operators.opCache import MemInfoNode
-
+from lazyflow.utility.slicingtools import slicing2shape
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 
 logger = logging.getLogger("tests.testOpCompressedCache")

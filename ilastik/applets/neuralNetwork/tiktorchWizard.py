@@ -19,12 +19,12 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 import os
+
+import yaml
 from qtpy import QtWidgets
 from qtpy.QtCore import Qt, Signal
-from qtpy.QtWidgets import QLineEdit, QFileDialog
-
-from tiktorch.build_spec import TikTorchSpec, BuildSpec
-import yaml
+from qtpy.QtWidgets import QFileDialog, QLineEdit
+from tiktorch.build_spec import BuildSpec, TikTorchSpec
 
 
 class QIComboBox(QtWidgets.QComboBox):

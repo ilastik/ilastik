@@ -18,14 +18,15 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import numpy
-from qtpy.QtWidgets import QApplication
-from ilastik.workflows.counting import CountingWorkflow
-from tests.test_ilastik.helpers import ShellGuiTestCaseBase
-from lazyflow.operators import OpPixelFeaturesPresmoothed
 import os
 
+import numpy
+from qtpy.QtWidgets import QApplication
+
 from ilastik.applets.counting.countingApplet import CountingApplet
+from ilastik.workflows.counting import CountingWorkflow
+from lazyflow.operators import OpPixelFeaturesPresmoothed
+from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 
 COUNTING_APPLET_INDEX = 2
 

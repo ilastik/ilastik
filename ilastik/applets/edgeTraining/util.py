@@ -1,13 +1,12 @@
 from __future__ import print_function
-from builtins import range
+
 import logging
+from builtins import range
 
-
-import numpy as np
 import networkx as nx
+import numpy as np
 import vigra
-
-from ilastikrag.util import edge_mask_for_axis, edge_ids_for_axis, unique_edge_labels, label_vol_mapping
+from ilastikrag.util import edge_ids_for_axis, edge_mask_for_axis, label_vol_mapping, unique_edge_labels
 
 logger = logging.getLogger(__name__)
 

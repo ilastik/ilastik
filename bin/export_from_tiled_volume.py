@@ -1,11 +1,12 @@
-import os
-import numpy
-import h5py
-from lazyflow.utility import Timer
-from lazyflow.utility.io_util import TiledVolume
-from lazyflow.utility.helpers import bigintprod
-
 import logging
+import os
+
+import h5py
+import numpy
+
+from lazyflow.utility import Timer
+from lazyflow.utility.helpers import bigintprod
+from lazyflow.utility.io_util import TiledVolume
 
 logger = logging.getLogger(__name__)
 
@@ -57,11 +58,10 @@ def export_from_tiled_volume(tiles_description_json_path, roi, output_hdf5_path,
 # EXAMPLE USAGE:
 # python lazyflow/bin/export_from_tiled_volume.py fib-19-description.json "(10000,4000,8000)" "(10100,4100,8100)" /tmp/exported.h5 cutout_data
 if __name__ == "__main__":
-    import sys
     import argparse
-
     # Make the program quit on Ctrl+C
     import signal
+    import sys
 
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 

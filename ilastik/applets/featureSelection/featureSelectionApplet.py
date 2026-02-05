@@ -19,8 +19,9 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
-from .opFeatureSelection import OpFeatureSelection
+
 from .featureSelectionSerializer import FeatureSelectionSerializer, Ilastik05FeatureSelectionDeserializer
+from .opFeatureSelection import OpFeatureSelection
 
 
 class FeatureSelectionApplet(StandardApplet):

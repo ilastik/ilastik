@@ -1,5 +1,10 @@
 from __future__ import absolute_import
 
+from ilastik.applets.base.standardApplet import StandardApplet
+
+from .cropSelectionSerializer import CropSelectionSerializer
+from .opCropSelection import OpCropSelection
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,9 +26,6 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 
-from ilastik.applets.base.standardApplet import StandardApplet
-from .opCropSelection import OpCropSelection
-from .cropSelectionSerializer import CropSelectionSerializer
 
 
 class CropSelectionApplet(StandardApplet):

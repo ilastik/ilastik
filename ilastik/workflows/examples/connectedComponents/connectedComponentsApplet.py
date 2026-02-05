@@ -21,7 +21,6 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
-
 from lazyflow.operators import OpLabelVolume
 
 

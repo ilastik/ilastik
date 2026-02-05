@@ -1,10 +1,9 @@
 import io
-
-from qtpy.QtCore import QThread, Signal
-from bioimageio.spec import ValidationContext, get_resource_package_content
-from tqdm.auto import tqdm as std_tqdm
-
 import logging
+
+from bioimageio.spec import ValidationContext, get_resource_package_content
+from qtpy.QtCore import QThread, Signal
+from tqdm.auto import tqdm as std_tqdm
 
 logger = logging.getLogger(__file__)
 
@@ -53,8 +52,8 @@ class BioImageDownloader(QThread):
             # Note: bioimageio imports are delayed as to prevent https request to
             # github and bioimage.io on ilastik startup
             from bioimageio.spec import load_description, save_bioimageio_package_to_stream
-            from bioimageio.spec.common import HttpUrl
             from bioimageio.spec._internal.io import download
+            from bioimageio.spec.common import HttpUrl
 
             logger.debug(f"Downloading model from {self._model_uri}")
             rd = load_description(self._model_uri, format_version="latest", perform_io_checks=False)

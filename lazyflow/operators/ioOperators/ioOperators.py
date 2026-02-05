@@ -21,27 +21,26 @@
 ###############################################################################
 from __future__ import division
 
-import json
-from builtins import zip
-from builtins import range
-import os
-import math
-import logging
 import glob
+import json
+import logging
+import math
+import os
+from builtins import range, zip
+from collections import OrderedDict
+
 import h5py
 import z5py
-from collections import OrderedDict
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
 
-import psutil
-
 import numpy
+import psutil
 import vigra
 
-from lazyflow.graph import OrderedSignal, Operator, OutputSlot, InputSlot
-from lazyflow.roi import roiToSlice, roiFromShape, determineBlockShape
+from lazyflow.graph import InputSlot, Operator, OrderedSignal, OutputSlot
+from lazyflow.roi import determineBlockShape, roiFromShape, roiToSlice
 from lazyflow.utility.bigRequestStreamer import BigRequestStreamer
 from lazyflow.utility.helpers import bigintprod
 
@@ -685,9 +684,11 @@ class OpH5N5WriterBigDataset(Operator):
 
 
 if __name__ == "__main__":
-    from lazyflow.graph import Graph
-    import h5py
     import sys
+
+    import h5py
+
+    from lazyflow.graph import Graph
 
     traceLogger.addHandler(logging.StreamHandler(sys.stdout))
     traceLogger.setLevel(logging.DEBUG)

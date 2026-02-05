@@ -18,22 +18,20 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+import logging
 import sys
 import tempfile
 import unittest
 
+import h5py
 import numpy
 import vigra
-import h5py
 
+from ilastik.applets.blockwiseObjectClassification import OpBlockwiseObjectClassification
+from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification
+from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 from lazyflow.graph import Graph
 from lazyflow.operators.opReorderAxes import OpReorderAxes
-
-from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
-from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification
-from ilastik.applets.blockwiseObjectClassification import OpBlockwiseObjectClassification
-
-import logging
 
 handler = logging.StreamHandler(sys.stdout)
 formatter = logging.Formatter("%(levelname)s %(name)s %(message)s")

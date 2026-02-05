@@ -1,22 +1,20 @@
+import gc
+import unittest
+import weakref
 from builtins import range
+
 import numpy as np
 import pytest
 import vigra
-
-import unittest
-import weakref
-import gc
-
-from lazyflow.graph import Graph
-from lazyflow.operators import OpLabelVolume, OpArrayPiper
-from lazyflow.operator import Operator
-from lazyflow.slot import InputSlot, OutputSlot
-from lazyflow.rtype import SubRegion
-from lazyflow.utility.testing import assertEquivalentLabeling
-
 from numpy.testing import assert_array_equal
 
+from lazyflow.graph import Graph
+from lazyflow.operator import Operator
+from lazyflow.operators import OpArrayPiper, OpLabelVolume
 from lazyflow.operators.opLabelVolume import haveBlocked
+from lazyflow.rtype import SubRegion
+from lazyflow.slot import InputSlot, OutputSlot
+from lazyflow.utility.testing import assertEquivalentLabeling
 
 
 @pytest.mark.usefixtures("cacheMemoryManager")

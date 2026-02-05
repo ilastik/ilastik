@@ -1,5 +1,5 @@
-from contextlib import contextmanager
 import socket as socket_api
+from contextlib import contextmanager
 
 
 @contextmanager

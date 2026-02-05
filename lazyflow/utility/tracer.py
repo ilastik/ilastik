@@ -1,9 +1,11 @@
 from __future__ import print_function
-from builtins import object
+
 import sys
+from builtins import object
 
 if sys.version_info.major >= 3:
     unicode = str
+import inspect
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -26,7 +28,6 @@ if sys.version_info.major >= 3:
 # 		   http://ilastik.org/license/
 ###############################################################################
 import logging
-import inspect
 
 
 class Tracer(object):

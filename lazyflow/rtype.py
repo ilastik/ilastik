@@ -1,11 +1,12 @@
 from future import standard_library
 
 standard_library.install_aliases()
-from builtins import map
-from builtins import zip
-
-from builtins import range
-from builtins import object
+import copy
+import logging
+import pickle as pickle
+import sys
+from builtins import map, object, range, zip
+from collections.abc import Iterable
 
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
@@ -28,16 +29,11 @@ from builtins import object
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-import numpy, copy
-import pickle as pickle
-from collections.abc import Iterable
-import sys
-
-from lazyflow.roi import TinyVector, sliceToRoi, roiToSlice, roiFromShape
-from lazyflow.utility import slicingtools
-
-import logging
+import numpy
 from future.utils import with_metaclass
+
+from lazyflow.roi import TinyVector, roiFromShape, roiToSlice, sliceToRoi
+from lazyflow.utility import slicingtools
 
 logger = logging.getLogger(__name__)
 

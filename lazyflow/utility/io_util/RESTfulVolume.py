@@ -2,8 +2,7 @@ from future import standard_library
 
 standard_library.install_aliases()
 
-from builtins import object
-
+import logging
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -26,13 +25,15 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import sys
-import urllib.request, urllib.parse, urllib.error
+import urllib.error
+import urllib.parse
+import urllib.request
+from builtins import object
+
 import numpy
 
 from lazyflow.utility import PathComponents
-from lazyflow.utility.jsonConfig import JsonConfigParser, AutoEval, FormattedField
-
-import logging
+from lazyflow.utility.jsonConfig import AutoEval, FormattedField, JsonConfigParser
 
 logger = logging.getLogger(__name__)
 
@@ -201,6 +202,7 @@ if __name__ == "__main__":
 """
     import os
     import tempfile
+
     import numpy
 
     # Write test to a temp file

@@ -18,12 +18,11 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
 import random
-from lazyflow.graph import Graph, Operator, OperatorWrapper, InputSlot, OutputSlot
-from ilastik.utility import OpMultiLaneWrapper
+from builtins import range
 
-from ilastik.utility import OperatorSubView
+from ilastik.utility import OperatorSubView, OpMultiLaneWrapper
+from lazyflow.graph import Graph, InputSlot, Operator, OperatorWrapper, OutputSlot
 
 
 class OpSum(Operator):

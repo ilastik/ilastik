@@ -18,13 +18,11 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.workflow import Workflow
-
-from lazyflow.graph import Graph
-
+from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.thresholdMasking import ThresholdMaskingApplet
-from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
+from ilastik.workflow import Workflow
+from lazyflow.graph import Graph
 
 
 class ThresholdMaskingWorkflow(Workflow):

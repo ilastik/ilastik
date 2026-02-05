@@ -1,7 +1,7 @@
-from builtins import object
 import os
-import tempfile
 import shutil
+import tempfile
+from builtins import object
 
 import numpy
 import vigra

@@ -1,12 +1,11 @@
-import pytest
 import numpy
+import pytest
 import vigra
-from lazyflow.utility import is_root_cause
 
 from lazyflow.operators import OpArrayPiper, OpMaxChannelIndicatorOperator
 from lazyflow.request.request import RequestError
 from lazyflow.roi import InvalidRoiException
-from lazyflow.utility import Pipeline
+from lazyflow.utility import Pipeline, is_root_cause
 
 
 def test_OpMaxChannelIndicatorOperator_all_zeros(graph):

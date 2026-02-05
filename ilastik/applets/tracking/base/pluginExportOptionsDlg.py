@@ -23,12 +23,13 @@ import os
 
 import numpy
 from qtpy import uic
-from qtpy.QtCore import Qt, QEvent
+from qtpy.QtCore import QEvent, Qt
 from qtpy.QtWidgets import QDialog, QFileDialog, QMessageBox
+
 from ilastik.plugins.manager import pluginManager
 
 try:
-    from lazyflow.graph import Operator, InputSlot, OutputSlot
+    from lazyflow.graph import InputSlot, Operator, OutputSlot
 
     _has_lazyflow = True
 except:
@@ -249,8 +250,9 @@ class PluginExportOptionsDlg(QDialog):
 if __name__ == "__main__":
     import vigra
     from qtpy.QtWidgets import QApplication
-    from lazyflow.graph import Graph
+
     from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
+    from lazyflow.graph import Graph
 
     data = numpy.zeros((10, 20, 30, 3), dtype=numpy.float32)
     data = vigra.taggedView(data, "xyzc")

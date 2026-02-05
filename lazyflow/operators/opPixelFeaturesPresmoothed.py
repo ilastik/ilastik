@@ -22,27 +22,27 @@
 import copy
 import logging
 import math
+from functools import partial
+
 import numpy
 import vigra
 
-from functools import partial
-
 from lazyflow import roi
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.request import RequestPool
-from lazyflow.roi import sliceToRoi, roiToSlice
+from lazyflow.roi import roiToSlice, sliceToRoi
 from lazyflow.rtype import SubRegion
 
-from .operators import OpArrayPiper
 from .filterOperators import (
-    OpGaussianSmoothing,
-    OpDifferenceOfGaussians,
-    OpHessianOfGaussianEigenvalues,
-    OpStructureTensorEigenvalues,
-    OpGaussianGradientMagnitude,
-    OpLaplacianOfGaussian,
     WITH_FAST_FILTERS,
+    OpDifferenceOfGaussians,
+    OpGaussianGradientMagnitude,
+    OpGaussianSmoothing,
+    OpHessianOfGaussianEigenvalues,
+    OpLaplacianOfGaussian,
+    OpStructureTensorEigenvalues,
 )
+from .operators import OpArrayPiper
 
 if WITH_FAST_FILTERS:
     import fastfilters

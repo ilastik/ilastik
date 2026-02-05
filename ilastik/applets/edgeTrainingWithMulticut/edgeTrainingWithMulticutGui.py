@@ -1,11 +1,11 @@
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QSpacerItem, QSizePolicy, QCheckBox
 from qtpy.QtCore import Signal
+from qtpy.QtWidgets import QCheckBox, QGroupBox, QSizePolicy, QSpacerItem, QVBoxLayout, QWidget
 
-from lazyflow.slot import valueContext
-from ilastik.applets.edgeTraining.edgeTrainingGui import EdgeTrainingMixin
-from ilastik.applets.multicut.multicutGui import MulticutGuiMixin
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 import ilastik.utility.gui as guiutil
+from ilastik.applets.edgeTraining.edgeTrainingGui import EdgeTrainingMixin
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.applets.multicut.multicutGui import MulticutGuiMixin
+from lazyflow.slot import valueContext
 
 
 class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingMixin, LayerViewerGui):

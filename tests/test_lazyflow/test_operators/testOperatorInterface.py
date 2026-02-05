@@ -19,22 +19,16 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-import weakref
 import gc
 import types
-
+import weakref
 from unittest import mock
-
-from lazyflow import graph
-from lazyflow import stype
-from lazyflow import slot
-from lazyflow import operators
-from lazyflow import operator
-from lazyflow.graph import OperatorWrapper
 
 import numpy
 import pytest
 
+from lazyflow import graph, operator, operators, slot, stype
+from lazyflow.graph import OperatorWrapper
 from lazyflow.utility.exception_helpers import is_root_cause
 
 

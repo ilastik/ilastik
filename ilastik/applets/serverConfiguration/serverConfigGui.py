@@ -23,26 +23,19 @@ import os
 import socket
 
 from qtpy import uic
-from qtpy.QtWidgets import QWidget
 from qtpy.QtCore import Signal
+from qtpy.QtWidgets import QWidget
 
 logger = logging.getLogger(__name__)
-from qtpy.QtCore import (
-    QAbstractItemModel,
-    Qt,
-    QModelIndex,
-    QDataWidgetMapper,
-    QItemDelegate,
-    QListWidgetItem,
-    Signal,
-)
-from qtpy.QtWidgets import QWidget, QVBoxLayout
+from qtpy.QtCore import QAbstractItemModel, QDataWidgetMapper, QItemDelegate, QListWidgetItem, QModelIndex, Qt, Signal
+from qtpy.QtWidgets import QVBoxLayout, QWidget
 
-from .serverConfigForm import ServerConfigForm, ServerFormWorkflow
-from .serverListWidget import ServerListWidget, ServerListModel
-from .configStorage import SERVER_CONFIG
-from . import types
 from ilastik import config
+
+from . import types
+from .configStorage import SERVER_CONFIG
+from .serverConfigForm import ServerConfigForm, ServerFormWorkflow
+from .serverListWidget import ServerListModel, ServerListWidget
 
 
 class ServerConfigGui(QWidget):

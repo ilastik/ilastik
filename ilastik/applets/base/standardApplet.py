@@ -18,9 +18,9 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.utility import MultiLaneOperatorABC, OpMultiLaneWrapper
 from ilastik.applets.base.applet import Applet
 from ilastik.applets.base.singleToMultiGuiAdapter import SingleToMultiGuiAdapter
+from ilastik.utility import MultiLaneOperatorABC, OpMultiLaneWrapper
 
 
 class StandardApplet(Applet):

@@ -22,10 +22,9 @@
 # Python
 import copy
 import logging
-import threading
-
-from builtins import object
 import sys
+import threading
+from builtins import object
 
 if sys.version_info.major >= 3:
     unicode = str
@@ -33,10 +32,10 @@ if sys.version_info.major >= 3:
 # SciPy
 import numpy
 
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.operators.opCache import ObservableCache
 # lazyflow
 from lazyflow.request import Request
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators.opCache import ObservableCache
 
 
 class ListToMultiOperator(Operator):

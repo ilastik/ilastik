@@ -19,9 +19,11 @@
 #                  http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
-from builtins import range
-import numpy as np
+
 import math
+from builtins import range
+
+import numpy as np
 import vigra
 
 
@@ -301,8 +303,8 @@ class FeatureManager(object):
 
 
 if __name__ == "__main__":
-    import vigra
     import numpy as np
+    import vigra
 
     img_cur = vigra.readImage("/home/mschiegg/tmp/segmentImage.tif")
     img_next = img_cur

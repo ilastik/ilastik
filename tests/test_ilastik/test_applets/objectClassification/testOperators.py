@@ -21,27 +21,28 @@ from __future__ import print_function
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
+
 import ilastik.ilastik_logging
 
 ilastik.ilastik_logging.default_config.init()
 
 import unittest
+
 import numpy as np
 import vigra
-from lazyflow.graph import Graph
-from ilastik.applets.objectClassification.opObjectClassification import (
-    OpRelabelSegmentation,
-    OpObjectTrain,
-    OpObjectPredict,
-    OpObjectClassification,
-    OpBadObjectsToWarningMessage,
-    OpMaxLabel,
-)
-
-from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier
 
 from ilastik.applets import objectExtraction
-from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures, OpAdaptTimeListRoi, OpObjectExtraction
+from ilastik.applets.objectClassification.opObjectClassification import (
+    OpBadObjectsToWarningMessage,
+    OpMaxLabel,
+    OpObjectClassification,
+    OpObjectPredict,
+    OpObjectTrain,
+    OpRelabelSegmentation,
+)
+from ilastik.applets.objectExtraction.opObjectExtraction import OpAdaptTimeListRoi, OpObjectExtraction, OpRegionFeatures
+from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier
+from lazyflow.graph import Graph
 
 
 def segImage():

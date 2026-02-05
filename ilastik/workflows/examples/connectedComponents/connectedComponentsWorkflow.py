@@ -1,5 +1,10 @@
 from __future__ import absolute_import
 
+import argparse
+import logging
+import os
+import sys
+import warnings
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,19 +26,12 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-import sys
-import os
-import warnings
-import argparse
 
-from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
-
+from ilastik.workflow import Workflow
 from lazyflow.graph import Graph, OperatorWrapper
 
 from .connectedComponentsApplet import ConnectedComponentsApplet
-
-import logging
 
 logger = logging.getLogger(__name__)
 

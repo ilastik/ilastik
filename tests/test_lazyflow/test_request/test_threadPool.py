@@ -1,12 +1,11 @@
+import itertools
+import random
 import threading
 import time
-import random
-import itertools
 
 import pytest
 
 from lazyflow.request.threadPool import ThreadPool
-
 
 NUM_WORKERS = 4
 

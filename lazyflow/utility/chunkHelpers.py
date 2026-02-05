@@ -1,5 +1,7 @@
 from __future__ import division
 
+import numpy as np
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,7 +24,6 @@ from __future__ import division
 # 		   http://ilastik.org/license/
 ###############################################################################
 
-import numpy as np
 
 
 def chooseChunkShape(outerShape, desiredChunkSize):

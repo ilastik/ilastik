@@ -1,10 +1,11 @@
 from builtins import object
+
 import numpy
 import vigra
 
+from lazyflow.classifiers import VigraRfPixelwiseClassifier, VigraRfPixelwiseClassifierFactory
 from lazyflow.graph import Graph
-from lazyflow.operators.classifierOperators import OpTrainPixelwiseClassifierBlocked, OpPixelwiseClassifierPredict
-from lazyflow.classifiers import VigraRfPixelwiseClassifierFactory, VigraRfPixelwiseClassifier
+from lazyflow.operators.classifierOperators import OpPixelwiseClassifierPredict, OpTrainPixelwiseClassifierBlocked
 
 
 class TestOpTrainPixelwiseClassifierBlocked(object):

@@ -18,11 +18,7 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import (
-    AppletSerializer,
-    SerialSlot,
-    deleteIfPresent,
-)
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, deleteIfPresent
 
 
 class SerialDivisionsSlot(SerialSlot):

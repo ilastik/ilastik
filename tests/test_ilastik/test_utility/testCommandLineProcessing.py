@@ -20,12 +20,12 @@
 #                 http://ilastik.org/license/
 ###############################################################################
 
-import unittest
-from ilastik.utility.commandLineProcessing import ParseListFromString
 import argparse
-import sys
-
 import logging
+import sys
+import unittest
+
+from ilastik.utility.commandLineProcessing import ParseListFromString
 
 logger = logging.getLogger(__name__)
 

@@ -18,33 +18,33 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
-import sys
-import copy
 import argparse
-import warnings
-import itertools
 import collections
-from functools import partial
+import copy
+import itertools
 import logging
+import sys
+import warnings
+from builtins import range
+from functools import partial
+
 from ilastik.applets.pixelClassification.opPixelClassification import OpPixelClassification
 
 logger = logging.getLogger(__name__)
 
 import numpy as np
 
-from ilastik.config import cfg as ilastik_config
-from ilastik.workflow import Workflow
 from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.applets.batchProcessing import BatchProcessingApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.pixelClassification import PixelClassificationApplet, PixelClassificationDataExportApplet
-from ilastik.applets.batchProcessing import BatchProcessingApplet
-
+from ilastik.config import cfg as ilastik_config
+from ilastik.workflow import Workflow
 from lazyflow.graph import Graph
-from lazyflow.roi import TinyVector, sliceToRoi, roiToSlice
 from lazyflow.operators.generic import OpMultiArrayStacker
 from lazyflow.operators.valueProviders import OpMetadataInjector
+from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
 
 
 class NewAutocontextWorkflowBase(Workflow):
@@ -636,7 +636,7 @@ class NewAutocontextWorkflowBase(Workflow):
                 super(LabelDistributionOptionsDlg, self).__init__(*args, **kwargs)
 
                 from qtpy.QtCore import Qt
-                from qtpy.QtWidgets import QGroupBox, QCheckBox, QRadioButton, QDialogButtonBox
+                from qtpy.QtWidgets import QCheckBox, QDialogButtonBox, QGroupBox, QRadioButton
 
                 self.setWindowTitle("Distributing from Stage {}".format(source_stage_index + 1))
 

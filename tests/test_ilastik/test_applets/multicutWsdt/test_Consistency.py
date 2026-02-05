@@ -18,20 +18,17 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import numpy as np
-import vigra
-import h5py
-
 import os
 
+import h5py
+import numpy as np
 import pytest
+import vigra
 
+from ilastik.applets.wsdt.opWsdt import OpCachedWsdt, parallel_watershed
 from lazyflow.graph import Graph
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.utility import Pipeline
-
-from ilastik.applets.wsdt.opWsdt import OpCachedWsdt, parallel_watershed
-
 
 DATA_PATH = os.path.join(os.path.split(__file__)[0], "../../data/inputdata/3d2c_Probabilities.h5")
 DATASET_NAME = "exported_data"

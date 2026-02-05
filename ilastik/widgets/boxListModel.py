@@ -22,9 +22,10 @@
 import logging
 import os
 
-from ilastik.widgets.listModel import _NPIXELS, ListElement, ListModel
 from qtpy.QtCore import QItemSelectionModel, QModelIndex, Qt, Signal
 from qtpy.QtGui import QColor, QIcon, QPixmap
+
+from ilastik.widgets.listModel import _NPIXELS, ListElement, ListModel
 
 logger = logging.getLogger(__name__)
 

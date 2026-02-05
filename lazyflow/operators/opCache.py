@@ -1,4 +1,10 @@
+from abc import ABCMeta, abstractmethod
 from builtins import object
+
+from future.utils import with_metaclass
+
+# lazyflow
+from lazyflow.operators import cacheMemoryManager
 
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
@@ -22,11 +28,7 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 
-from abc import abstractmethod, ABCMeta
 
-# lazyflow
-from lazyflow.operators import cacheMemoryManager
-from future.utils import with_metaclass
 
 
 class Cache(with_metaclass(ABCMeta, object)):

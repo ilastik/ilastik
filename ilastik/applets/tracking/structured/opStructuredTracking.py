@@ -1,20 +1,19 @@
 from __future__ import division
-from builtins import range
-from past.utils import old_div
-import math
-
-from lazyflow.graph import InputSlot, OutputSlot
-from lazyflow.stype import Opaque
-from lazyflow.rtype import List
-from ilastik.utility import bind
-
-from ilastik.applets.tracking.conservation.opConservationTracking import OpConservationTracking
-from ilastik.applets.base.applet import DatasetConstraintError
-from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
-
-from ilastik.utility.progress import DefaultProgressVisitor, CommandLineProgressVisitor
 
 import logging
+import math
+from builtins import range
+
+from past.utils import old_div
+
+from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
+from ilastik.applets.tracking.conservation.opConservationTracking import OpConservationTracking
+from ilastik.utility import bind
+from ilastik.utility.progress import CommandLineProgressVisitor, DefaultProgressVisitor
+from lazyflow.graph import InputSlot, OutputSlot
+from lazyflow.rtype import List
+from lazyflow.stype import Opaque
 
 logger = logging.getLogger(__name__)
 

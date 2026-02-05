@@ -24,7 +24,7 @@ from functools import partial
 from time import perf_counter
 from typing import Type
 
-from qtpy.QtCore import Signal, QThread
+from qtpy.QtCore import QThread, Signal
 from qtpy.QtWidgets import (
     QComboBox,
     QDialog,
@@ -36,12 +36,12 @@ from qtpy.QtWidgets import (
     QTextBrowser,
     QVBoxLayout,
 )
-from requests.exceptions import SSLError, ConnectionError
+from requests.exceptions import ConnectionError, SSLError
 
 from lazyflow.utility import isUrl
+from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore
 from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
-from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore
 from lazyflow.utility.pathHelpers import uri_to_Path
 
 logger = logging.getLogger(__name__)

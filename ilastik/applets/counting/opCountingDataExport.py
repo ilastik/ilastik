@@ -18,9 +18,9 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from lazyflow.graph import InputSlot, OutputSlot
-from ilastik.applets.dataExport.opDataExport import OpDataExport
 from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.applets.dataExport.opDataExport import OpDataExport
+from lazyflow.graph import InputSlot, OutputSlot
 
 
 class OpCountingDataExport(OpDataExport):

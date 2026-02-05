@@ -1,12 +1,13 @@
 from __future__ import (
-    print_function,
     absolute_import,
-    nested_scopes,
-    generators,
     division,
-    with_statement,
+    generators,
+    nested_scopes,
+    print_function,
     unicode_literals,
+    with_statement,
 )
+
 import sys
 
 

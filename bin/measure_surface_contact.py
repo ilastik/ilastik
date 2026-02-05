@@ -1,4 +1,5 @@
 from __future__ import print_function
+
 import numpy
 import vigra
 
@@ -66,8 +67,10 @@ def measure_surface_contact_B(label_volume, object_label_1, object_label_2, cont
 
 
 if __name__ == "__main__":
-    import h5py
     import argparse
+
+    import h5py
+
     from lazyflow.utility import PathComponents
 
     parser = argparse.ArgumentParser()

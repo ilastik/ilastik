@@ -1,5 +1,6 @@
 import os
 import platform
+
 import pytest
 
 from ilastik.applets.dataSelection import multiscaleDatasetBrowser

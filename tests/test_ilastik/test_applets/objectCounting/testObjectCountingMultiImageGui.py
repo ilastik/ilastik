@@ -1,5 +1,18 @@
 from __future__ import division
 
+import os
+from builtins import range
+
+import numpy
+import vigra
+from past.utils import old_div
+from qtpy.QtWidgets import QApplication
+
+from ilastik.applets.counting.countingApplet import CountingApplet
+from ilastik.workflows.counting import CountingWorkflow
+from lazyflow.operators import OpPixelFeaturesPresmoothed
+from tests.test_ilastik.helpers import ShellGuiTestCaseBase
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -26,18 +39,8 @@ from __future__ import division
 # - interaction with boxes : move them around etc...
 
 
-from builtins import range
-from past.utils import old_div
-import os
-import numpy
-import vigra
 
-from qtpy.QtWidgets import QApplication
-from ilastik.workflows.counting import CountingWorkflow
-from tests.test_ilastik.helpers import ShellGuiTestCaseBase
-from lazyflow.operators import OpPixelFeaturesPresmoothed
 
-from ilastik.applets.counting.countingApplet import CountingApplet
 
 COUNTING_APPLET_INDEX = 2
 

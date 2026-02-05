@@ -1,21 +1,25 @@
 import os
-from typing import List, Tuple
-from numbers import Number
-from pathlib import Path
-import pytest
-import requests
 import tempfile
 import uuid
-import h5py
+from numbers import Number
+from pathlib import Path
+from typing import List, Tuple
 
+import h5py
 import numpy
+import pytest
+import requests
 from qtpy.QtCore import Qt
 
-from ilastik.applets.dataSelection.datasetInfoEditorWidget import DatasetInfoEditorWidget
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
-from ilastik.applets.dataSelection.opDataSelection import OpDataSelectionGroup
-from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, FilesystemDatasetInfo, FilesystemDatasetInfo
-from ilastik.applets.dataSelection.opDataSelection import RelativeFilesystemDatasetInfo, ProjectInternalDatasetInfo
+from ilastik.applets.dataSelection.datasetInfoEditorWidget import DatasetInfoEditorWidget
+from ilastik.applets.dataSelection.opDataSelection import (
+    DatasetInfo,
+    FilesystemDatasetInfo,
+    OpDataSelectionGroup,
+    ProjectInternalDatasetInfo,
+    RelativeFilesystemDatasetInfo,
+)
 from lazyflow.graph import Graph
 
 

@@ -18,13 +18,13 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+import logging
+import os.path as path
 from builtins import range
+
 import h5py
 import numpy as np
-import os.path as path
 import vigra
-
-import logging
 
 logger = logging.getLogger(__name__)
 

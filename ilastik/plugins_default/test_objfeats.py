@@ -19,8 +19,10 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-from ilastik.plugins import ObjectFeaturesPlugin
+
 import numpy
+
+from ilastik.plugins import ObjectFeaturesPlugin
 
 
 class TestFeatures(ObjectFeaturesPlugin):

@@ -1,8 +1,9 @@
-import os.path
-import numpy as np
-from ilastik.plugins import TrackingExportFormatPlugin
-
 import logging
+import os.path
+
+import numpy as np
+
+from ilastik.plugins import TrackingExportFormatPlugin
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ else:
         exportsToFile = True
 
         def checkFilesExist(self, filename):
-            """ Check whether the files we want to export are already present """
+            """Check whether the files we want to export are already present"""
             return os.path.exists(filename + "_graph.json") or os.path.exists(filename + "_result.json")
 
         def export(self, filename, hypothesesGraph, pluginExportContext):

@@ -18,24 +18,20 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+import logging
 from functools import partial
+
 import numpy
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from ilastik.applets.pixelClassification.opPixelClassification import DatasetConstraintError, OpLabelPipeline
+from ilastik.utility import OpMultiLaneWrapper
+from ilastik.utility.operatorSubView import OperatorSubView
 from lazyflow import stype
-from lazyflow.operators import OpMultiArraySlicer2, OpValueCache, OpBlockedArrayCache
-from lazyflow.operators.tiktorch import (
-    OpTikTorchTrainClassifierBlocked,
-    OpTikTorchClassifierPredict,
-)
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.operators import OpBlockedArrayCache, OpMultiArraySlicer2, OpValueCache
+from lazyflow.operators.tiktorch import OpTikTorchClassifierPredict, OpTikTorchTrainClassifierBlocked
 from lazyflow.operators.tiktorch.classifier import ModelSession
 from lazyflow.utility.helpers import eq_shapes
-from ilastik.utility.operatorSubView import OperatorSubView
-from ilastik.utility import OpMultiLaneWrapper
-
-from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline, DatasetConstraintError
-
-import logging
 
 logger = logging.getLogger(__name__)
 

@@ -19,10 +19,12 @@
 # This information is also available on the ilastik web site at:
 #           http://ilastik.org/license/
 ###############################################################################
-import vigra
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.utility.io_util.tiledVolume import TiledVolume
 import logging
+
+import vigra
+
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.utility.io_util.tiledVolume import TiledVolume
 
 logger = logging.getLogger(__name__)
 

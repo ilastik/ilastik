@@ -22,12 +22,11 @@
 import collections
 import functools
 import logging
-import threading
 import sys
-
+import threading
 from abc import ABCMeta
 from contextlib import contextmanager
-from traceback import walk_tb, FrameSummary, format_list
+from traceback import FrameSummary, format_list, walk_tb
 from typing import TYPE_CHECKING, Any
 
 # lazyflow
@@ -134,9 +133,9 @@ class OperatorMetaClass(ABCMeta):
             err += "The exception was:\n"
             err += str(e)
             err += "\nTraceback:\n"
-            import traceback
-            import sys
             import io
+            import sys
+            import traceback
 
             if sys.version_info.major == 2:
                 s = io.BytesIO()

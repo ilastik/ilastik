@@ -1,5 +1,6 @@
-from builtins import range
-
+# Use logging instead of print statements ...
+import logging
+import random
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,21 +23,16 @@ from builtins import range
 # 		   http://ilastik.org/license/
 ###############################################################################
 import unittest
-import random
-import vigra
+from builtins import range
+
 import numpy
-
 import pytest
+import vigra
 
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
-from lazyflow.request.request import RequestError
-from lazyflow.roi import TinyVector
-from lazyflow.roi import roiToSlice
-
+from lazyflow.graph import Graph, InputSlot, Operator, OutputSlot
 from lazyflow.operators.opReorderAxes import OpReorderAxes
-
-# Use logging instead of print statements ...
-import logging
+from lazyflow.request.request import RequestError
+from lazyflow.roi import TinyVector, roiToSlice
 
 logger = logging.getLogger(__name__)
 

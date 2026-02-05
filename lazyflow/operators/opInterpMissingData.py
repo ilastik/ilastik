@@ -1,10 +1,8 @@
-from __future__ import absolute_import
-from __future__ import division
+from __future__ import absolute_import, division
+
 from future import standard_library
 
 standard_library.install_aliases()
-from builtins import range
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -27,20 +25,19 @@ from builtins import range
 # 		   http://ilastik.org/license/
 ###############################################################################
 import logging
-from functools import partial
 import pickle as pickle
 import tempfile
-
-
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.stype import Opaque
-from lazyflow.rtype import SubRegion
-from lazyflow.request import Request, RequestPool
-from lazyflow.roi import roiToSlice
+from builtins import range
+from functools import partial
 
 import numpy as np
-
 import vigra
+
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.request import Request, RequestPool
+from lazyflow.roi import roiToSlice
+from lazyflow.rtype import SubRegion
+from lazyflow.stype import Opaque
 
 from .opDetectMissingData import *
 from .opDetectMissingData import _histogramIntersectionKernel
@@ -278,7 +275,7 @@ def _cubic_mat(n=1):
     x = -1 / (n + 1)
     y = (n + 2) / (n + 1)
 
-    A = [[1, x, x ** 2, x ** 3], [1, 0, 0, 0], [1, 1, 1, 1], [1, y, y ** 2, y ** 3]]
+    A = [[1, x, x**2, x**3], [1, 0, 0, 0], [1, 1, 1, 1], [1, y, y**2, y**3]]
 
     # TODO we could implement the direct inverse here, but it's a bit lengthy
     # compare to http://www.wolframalpha.com/input/?i=invert+matrix%28[1%2Cx%2Cx^2%2Cx^3]%2C[1%2C0%2C0%2C0]%2C[1%2C1%2C1%2C1]%2C[1%2Cy%2Cy^2%2Cy^3]%29
@@ -431,7 +428,7 @@ class OpInterpolate(Operator):
                 # interpolate every slice
                 x = xs[i + 1]
                 volume[minZ + i + 2, minY : maxY + 1, minX : maxX + 1] = self._cast(
-                    F[..., 0] + F[..., 1] * x + F[..., 2] * x ** 2 + F[..., 3] * x ** 3
+                    F[..., 0] + F[..., 1] * x + F[..., 2] * x**2 + F[..., 3] * x**3
                 )
 
         else:  # constant

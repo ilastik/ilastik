@@ -26,4 +26,4 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from .structuredTrackingWorkflow import StructuredTrackingWorkflowFromPrediction, StructuredTrackingWorkflowFromBinary
+from .structuredTrackingWorkflow import StructuredTrackingWorkflowFromBinary, StructuredTrackingWorkflowFromPrediction

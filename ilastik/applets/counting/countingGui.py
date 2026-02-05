@@ -23,6 +23,14 @@ import logging
 import os
 
 import numpy
+from qtpy import uic
+from qtpy.QtCore import Qt, Slot
+from qtpy.QtGui import QColor, QIcon
+from qtpy.QtWidgets import QApplication, QFileDialog, QMessageBox
+from volumina.api import ColortableLayer, LazyflowSinkSource, createDataSource
+from volumina.colortables import matplotlib_to_qt4_colortable
+from volumina.navigationController import NavigationInterpreter
+from volumina.utility import ShortcutManager
 
 from ilastik.applets.counting.countingGuiBoxesInterface import BoxController, BoxInterpreter, Tool
 from ilastik.applets.counting.countingGuiDotsInterface import DotCrosshairController, DotInterpreter
@@ -33,14 +41,6 @@ from ilastik.utility.gui import roi2rect, threadRouted
 from ilastik.widgets.boxListModel import BoxListModel
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.utility import traceLogged
-from qtpy import uic
-from qtpy.QtCore import Qt, Slot
-from qtpy.QtGui import QColor, QIcon
-from qtpy.QtWidgets import QApplication, QFileDialog, QMessageBox
-from volumina.api import ColortableLayer, LazyflowSinkSource, createDataSource
-from volumina.navigationController import NavigationInterpreter
-from volumina.utility import ShortcutManager
-from volumina.colortables import matplotlib_to_qt4_colortable
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)

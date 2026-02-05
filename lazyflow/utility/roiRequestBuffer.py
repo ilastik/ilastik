@@ -1,12 +1,11 @@
-from typing import Any, Dict, Iterator, Tuple, Type
 from queue import Queue
+from typing import Any, Dict, Iterator, Tuple, Type
 
 import numpy
 
 from lazyflow.graph import Slot
 from lazyflow.utility import RoiRequestBatch, RoiRequestBatchException
 from lazyflow.utility.helpers import bigintprod
-
 
 ROI = Tuple[int, int, int, int, int]
 SHAPE = ROI

@@ -19,8 +19,9 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from abc import ABCMeta, abstractmethod
-from future.utils import with_metaclass
 from typing import TYPE_CHECKING, List, Union
+
+from future.utils import with_metaclass
 
 if TYPE_CHECKING:
     from qtpy.QtWidgets import QMenu, QWidget

@@ -1,6 +1,6 @@
 import contextlib
-import tempfile
 import shutil
+import tempfile
 
 
 @contextlib.contextmanager

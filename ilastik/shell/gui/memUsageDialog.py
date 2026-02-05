@@ -1,6 +1,6 @@
-from __future__ import print_function
-from __future__ import division
+from __future__ import division, print_function
 
+import warnings
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -23,18 +23,16 @@ from __future__ import division
 ###############################################################################
 # SciPy
 from builtins import range
-from past.utils import old_div
-import numpy
 
+import numpy
+from past.utils import old_div
 # PyQt
-from qtpy.QtCore import QTimer, Qt
-from qtpy.QtWidgets import QDialog, QVBoxLayout, QTreeWidget, QTreeWidgetItem
+from qtpy.QtCore import Qt, QTimer
+from qtpy.QtWidgets import QDialog, QTreeWidget, QTreeWidgetItem, QVBoxLayout
 
 # lazyflow
 from lazyflow.operators import cacheMemoryManager
 from lazyflow.operators.opCache import MemInfoNode
-
-import warnings
 
 # ===------------------------------------------------------------------------===
 # === MemUsageDialog                                                         ===
@@ -179,8 +177,9 @@ class MemUsageDialog(QDialog):
 
 
 if __name__ == "__main__":
-    from qtpy.QtWidgets import QApplication
     import pickle
+
+    from qtpy.QtWidgets import QApplication
 
     app = QApplication([])
 

@@ -1,8 +1,7 @@
-from __future__ import print_function, division
-from builtins import zip
-from builtins import range
-from builtins import object
+from __future__ import division, print_function
 
+import copy
+import operator  # This is the Python standard operator module, not lazyflow.operator!
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -25,9 +24,10 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import sys
-import copy
-import operator  # This is the Python standard operator module, not lazyflow.operator!
+from builtins import object, range, zip
+
 import numpy
+
 from lazyflow.roi import TinyVector
 
 

@@ -1,16 +1,17 @@
-import grpc
 import os
 import platform
+
+import grpc
 import pytest
 
 _ = pytest.importorskip("tiktorch", reason="These tests require tiktorch")
 
 from unittest import mock
 
-from ilastik.workflows.neuralNetwork._localLauncher import LocalServerLauncher
-
-from tiktorch.proto.utils_pb2 import Empty
 from tiktorch.proto.inference_pb2_grpc import FlightControlStub
+from tiktorch.proto.utils_pb2 import Empty
+
+from ilastik.workflows.neuralNetwork._localLauncher import LocalServerLauncher
 
 
 @pytest.fixture

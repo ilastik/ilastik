@@ -22,8 +22,8 @@ from __future__ import absolute_import
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from .opObjectClassification import OpObjectClassification
 from .objectClassificationSerializer import ObjectClassificationSerializer
+from .opObjectClassification import OpObjectClassification
 
 
 class ObjectClassificationApplet(StandardApplet):

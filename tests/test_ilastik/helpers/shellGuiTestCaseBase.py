@@ -26,18 +26,19 @@ import threading
 from typing import Iterable, Sequence, Union
 
 import pytest
-from ilastik.ilastik_logging import default_config
-from volumina.imageView2D import ImageView2D
 from qtpy.QtCore import QEvent, QPoint, QPointF, Qt
 from qtpy.QtGui import (
-    QMouseEvent,
     QImage,
-    QPainter,
-    QOpenGLFramebufferObjectFormat,
+    QMouseEvent,
     QOpenGLFramebufferObject,
+    QOpenGLFramebufferObjectFormat,
     QOpenGLPaintDevice,
+    QPainter,
 )
 from qtpy.QtWidgets import QAbstractScrollArea, QApplication, QOpenGLWidget
+from volumina.imageView2D import ImageView2D
+
+from ilastik.ilastik_logging import default_config
 
 from .mainThreadHelpers import wait_for_main_func
 

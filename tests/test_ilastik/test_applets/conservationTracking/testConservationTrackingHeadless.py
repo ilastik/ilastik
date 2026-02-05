@@ -18,19 +18,18 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
+import logging
 import os
+import shutil
+import sys
 from pathlib import Path
 
-import numpy as np
 import h5py
-import sys
+import numpy as np
 import pytest
-import shutil
 import vigra
 
 from lazyflow.utility.timer import timeLogged
-
-import logging
 
 logger = logging.getLogger(__name__)
 

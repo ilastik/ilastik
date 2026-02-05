@@ -1,16 +1,13 @@
 import platform
-from unittest import mock
 from contextlib import contextmanager, nullcontext
+from unittest import mock
 
 import pytest
 from pytestqt.exceptions import capture_exceptions
-from ilastik.applets.batchProcessing.batchProcessingGui import (
-    BatchProcessingGui,
-    BatchRoleWidget,
-    FileListWidget,
-)
-from ilastik.applets.dataSelection.dataSelectionApplet import RoleMismatchException
 from qtpy.QtCore import Qt, QUrl
+
+from ilastik.applets.batchProcessing.batchProcessingGui import BatchProcessingGui, BatchRoleWidget, FileListWidget
+from ilastik.applets.dataSelection.dataSelectionApplet import RoleMismatchException
 
 
 def prepare_widget(qtbot, widget):

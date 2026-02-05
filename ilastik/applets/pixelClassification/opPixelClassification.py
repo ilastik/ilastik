@@ -19,42 +19,38 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Python
-from builtins import range
 import copy
+from builtins import range
 from functools import partial
 
+import ilastik_feature_selection
 # SciPy
 import numpy
-
+import numpy as np
 # import IPython
 import vigra
 
-# lazyflow
-from lazyflow.roi import determineBlockShape
-from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
-from lazyflow.operators import (
-    OpValueCache,
-    OpTrainClassifierBlocked,
-    OpClassifierPredict,
-    OpSlicedBlockedArrayCache,
-    OpMultiArraySlicer2,
-    OpPixelOperator,
-    OpMaxChannelIndicatorOperator,
-    OpCompressedUserLabelArray,
-    OpFeatureMatrixCache,
-)
-from lazyflow.utility.data_semantics import ImageTypes
-
-import ilastik_feature_selection
-import numpy as np
-
-from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
-
 # ilastik
 from ilastik.applets.base.applet import DatasetConstraintError
-from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
+from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility.slottools import DtypeConvertFunction
+from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
+from lazyflow.graph import InputSlot, Operator, OperatorWrapper, OutputSlot
+from lazyflow.operators import (
+    OpClassifierPredict,
+    OpCompressedUserLabelArray,
+    OpFeatureMatrixCache,
+    OpMaxChannelIndicatorOperator,
+    OpMultiArraySlicer2,
+    OpPixelOperator,
+    OpSlicedBlockedArrayCache,
+    OpTrainClassifierBlocked,
+    OpValueCache,
+)
+# lazyflow
+from lazyflow.roi import determineBlockShape
+from lazyflow.utility.data_semantics import ImageTypes
 
 
 class OpPixelClassification(Operator):

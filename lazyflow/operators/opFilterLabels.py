@@ -19,10 +19,11 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+import logging
 
 import numpy
-import logging
+
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.utility import vigra_bincount
 from lazyflow.utility.helpers import bigintprod
 

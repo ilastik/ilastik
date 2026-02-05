@@ -19,11 +19,11 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 
-from typing import Callable, Iterable, Union
 from contextlib import contextmanager
+from typing import Callable, Iterable, Union
 
-from qtpy.QtWidgets import QWidget
 from qtpy.QtCore import QObject
+from qtpy.QtWidgets import QWidget
 
 from lazyflow.slot import Slot
 

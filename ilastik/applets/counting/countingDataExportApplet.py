@@ -1,5 +1,13 @@
 from __future__ import absolute_import
 
+import logging
+
+from ilastik.applets.base.appletSerializer import SerialSlot
+from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
+from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
+from ilastik.utility import OpMultiLaneWrapper, log_exception
+from lazyflow.request import Request
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,14 +29,6 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from .opCountingDataExport import OpCountingDataExport
-from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
-from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
-from ilastik.applets.base.appletSerializer import SerialSlot
-
-from ilastik.utility import OpMultiLaneWrapper, log_exception
-from lazyflow.request import Request
-
-import logging
 
 logger = logging.getLogger(__name__)
 

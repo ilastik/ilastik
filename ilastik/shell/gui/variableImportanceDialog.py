@@ -1,11 +1,12 @@
 from __future__ import division
-from past.utils import old_div
-import collections
 
-from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QDialog, QPushButton, QWidget, QLabel, QTableWidget, QTableWidgetItem, QGridLayout
-from qtpy.QtGui import QColor
+import collections
 import re
+
+from past.utils import old_div
+from qtpy.QtCore import Qt
+from qtpy.QtGui import QColor
+from qtpy.QtWidgets import QDialog, QGridLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem, QWidget
 
 
 # Overload QTableWidgetItem class to allow comparisons of float instead of strings

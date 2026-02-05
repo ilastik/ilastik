@@ -1,5 +1,17 @@
 from __future__ import division
 
+import atexit
+import functools
+# Python
+import gc
+import logging
+import threading
+import warnings
+import weakref
+
+# lazyflow
+from lazyflow.utility import Memory, OrderedSignal, log_exception
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,22 +34,10 @@ from __future__ import division
 # 		   http://ilastik.org/license/
 ###############################################################################
 
-# Python
-import gc
-import threading
-import weakref
-import functools
-import atexit
-import warnings
 
 
-# lazyflow
-from lazyflow.utility import OrderedSignal
-from lazyflow.utility import log_exception
-from lazyflow.utility import Memory
 
 
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -138,10 +138,7 @@ class _CacheMemoryManager(threading.Thread):
         remove them from the manager.
         """
         # late import to prevent import loop
-        from lazyflow.operators.opCache import Cache
-        from lazyflow.operators.opCache import ObservableCache
-        from lazyflow.operators.opCache import ManagedCache
-        from lazyflow.operators.opCache import ManagedBlockedCache
+        from lazyflow.operators.opCache import Cache, ManagedBlockedCache, ManagedCache, ObservableCache
 
         assert isinstance(cache, Cache), "Only Cache instances can be managed by CacheMemoryManager"
         self._caches.add(cache)
@@ -194,8 +191,8 @@ class _CacheMemoryManager(threading.Thread):
 
             logger.debug(
                 "Process memory usage is {:0.2f} GB out of {:0.2f} (caches are {}, {:.1f}% of allowed)".format(
-                    Memory.getMemoryUsage() / 2.0 ** 30,
-                    Memory.getAvailableRam() / 2.0 ** 30,
+                    Memory.getMemoryUsage() / 2.0**30,
+                    Memory.getAvailableRam() / 2.0**30,
                     Memory.format(total),
                     cache_pct,
                 )

@@ -1,12 +1,11 @@
 from __future__ import division
 
-import os
-from builtins import range
-from builtins import object
-import time
-import random
 import logging
+import os
+import random
 import threading
+import time
+from builtins import object, range
 
 import pytest
 

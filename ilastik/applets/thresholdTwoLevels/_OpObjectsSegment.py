@@ -29,17 +29,16 @@ from threading import Lock as ThreadLock
 
 # required numerical modules
 import numpy as np
-import vigra
 import opengm
+import vigra
+from _OpGraphCut import OpGraphCut, segmentGC
 
 # basic lazyflow types
 from lazyflow.operator import Operator
-from lazyflow.slot import InputSlot, OutputSlot
-from lazyflow.rtype import SubRegion
-from lazyflow.stype import Opaque
 from lazyflow.request import Request, RequestPool
-
-from _OpGraphCut import segmentGC, OpGraphCut
+from lazyflow.rtype import SubRegion
+from lazyflow.slot import InputSlot, OutputSlot
+from lazyflow.stype import Opaque
 
 
 # segment predictions with pre-thresholding

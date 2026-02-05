@@ -18,24 +18,23 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import os
-import gc
 import copy
+import gc
+import logging
+import os
 import platform
-from typing import Optional, List, Type, Dict
+import tempfile
+import time
+from typing import Dict, List, Optional, Type
 
 import h5py
-import logging
-import time
-import tempfile
 
 logger = logging.getLogger(__name__)
 
 import ilastik
-from ilastik import Project
-from ilastik import isVersionCompatible
+from ilastik import Project, isVersionCompatible
 from ilastik.utility import log_exception
-from ilastik.workflow import getWorkflowFromName, Workflow
+from ilastik.workflow import Workflow, getWorkflowFromName
 from lazyflow.utility.timer import Timer, timeLogged
 
 try:

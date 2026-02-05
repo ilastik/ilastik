@@ -1,14 +1,14 @@
-from builtins import zip
 import itertools
-from functools import partial
 import logging
+from builtins import zip
+from functools import partial
 
 logger = logging.getLogger(__name__)
 
 import numpy
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.request import RequestPool, RequestLock
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.request import RequestLock, RequestPool
 from lazyflow.utility import OrderedSignal
 
 

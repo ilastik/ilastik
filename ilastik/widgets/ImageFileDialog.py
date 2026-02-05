@@ -1,10 +1,10 @@
 import os
-from typing import List
 from pathlib import Path
+from typing import List
 
 from qtpy.QtWidgets import QFileDialog
-
 from volumina.utility import preferences
+
 from ilastik.applets.dataSelection.opDataSelection import OpDataSelection
 
 

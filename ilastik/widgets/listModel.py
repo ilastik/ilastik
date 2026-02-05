@@ -18,11 +18,12 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from qtpy.QtGui import QIcon
-from qtpy.QtCore import QObject, QAbstractTableModel, QItemSelectionModel, Qt, QModelIndex, Signal
-from ilastik.shell.gui.iconMgr import ilastikIcons
-
 import logging
+
+from qtpy.QtCore import QAbstractTableModel, QItemSelectionModel, QModelIndex, QObject, Qt, Signal
+from qtpy.QtGui import QIcon
+
+from ilastik.shell.gui.iconMgr import ilastikIcons
 
 logger = logging.getLogger(__name__)
 

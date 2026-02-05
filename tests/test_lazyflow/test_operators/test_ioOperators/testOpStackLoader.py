@@ -1,6 +1,3 @@
-from builtins import range
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -25,15 +22,15 @@ from builtins import object
 import os
 import shutil
 import tempfile
+from builtins import object, range
 
+# from lazyflow.operators.ioOperators import OpInputDataReader
+import h5py
 import numpy
 import vigra
 
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStackLoader
-
-# from lazyflow.operators.ioOperators import OpInputDataReader
-import h5py
 
 
 class TestOpStackLoader(object):

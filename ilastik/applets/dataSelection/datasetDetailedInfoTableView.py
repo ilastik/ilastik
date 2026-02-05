@@ -18,32 +18,31 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+from functools import partial
+from pathlib import Path
 from typing import List
 
 from past.utils import old_div
-from qtpy.QtCore import Signal, Slot, Qt, QUrl, QObject, QEvent
+from qtpy.QtCore import QEvent, QObject, Qt, QUrl, Signal, Slot
 from qtpy.QtGui import QIcon, QPalette
 from qtpy.QtWidgets import (
-    QTableView,
-    QHeaderView,
-    QMenu,
     QAction,
-    QWidget,
-    QHBoxLayout,
-    QPushButton,
-    QItemDelegate,
     QComboBox,
-    QStyledItemDelegate,
+    QHBoxLayout,
+    QHeaderView,
+    QItemDelegate,
+    QMenu,
     QMessageBox,
+    QPushButton,
+    QStyledItemDelegate,
+    QTableView,
+    QWidget,
 )
 
-from .datasetDetailedInfoTableModel import DatasetColumn
-from .addFileButton import AddFileButton, FILEPATH
-
-from pathlib import Path
-from functools import partial
-
 from ilastik.utility.gui import silent_qobject
+
+from .addFileButton import FILEPATH, AddFileButton
+from .datasetDetailedInfoTableModel import DatasetColumn
 
 
 class RemoveButtonOverlay(QPushButton):

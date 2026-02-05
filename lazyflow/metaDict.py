@@ -1,5 +1,3 @@
-from builtins import zip
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -23,10 +21,11 @@ from builtins import zip
 ###############################################################################
 # Python
 import copy
-from typing import Dict, List
 import warnings
-
+from builtins import zip
 from collections import OrderedDict, defaultdict
+from typing import Dict, List
+
 from ndstructs import Shape5D
 
 

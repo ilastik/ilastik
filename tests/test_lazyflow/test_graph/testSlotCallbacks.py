@@ -1,5 +1,8 @@
 from builtins import object
 
+import numpy
+
+from lazyflow import operators, stype
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -21,10 +24,7 @@ from builtins import object
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
-from lazyflow import stype
-from lazyflow import operators
-import numpy
+from lazyflow.graph import Graph, InputSlot, Operator, OutputSlot
 
 
 class OpS(Operator):

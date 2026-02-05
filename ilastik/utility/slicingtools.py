@@ -35,6 +35,7 @@ not wrapped in a sequence.
 
 """
 from builtins import range
+
 import numpy as np
 
 # *******************************************************************************
@@ -82,7 +83,7 @@ def unbox(slicing, axis=0):
 
 
 def is_bounded(slicing):
-    """For all dimensions: stop value of slice is not None """
+    """For all dimensions: stop value of slice is not None"""
     slicing = box(slicing)
     return all((sl.stop != None for sl in slicing))
 

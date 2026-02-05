@@ -18,13 +18,12 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import os
-import sys
+import atexit
+import json
 import logging
 import logging.config
-import json
-import atexit
-
+import os
+import sys
 import threading
 from functools import partial
 

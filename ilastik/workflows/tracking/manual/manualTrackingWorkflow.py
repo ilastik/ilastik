@@ -19,14 +19,15 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-from lazyflow.graph import Graph
-from ilastik.workflow import Workflow
+
 from ilastik.applets.dataSelection import DataSelectionApplet, DatasetInfo
-from ilastik.applets.tracking.manual.manualTrackingApplet import ManualTrackingApplet
 from ilastik.applets.objectExtraction.objectExtractionApplet import ObjectExtractionApplet
 from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
-from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
+from ilastik.applets.tracking.manual.manualTrackingApplet import ManualTrackingApplet
+from ilastik.workflow import Workflow
+from lazyflow.graph import Graph
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 
 class ManualTrackingWorkflow(Workflow):

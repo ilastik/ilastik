@@ -19,9 +19,10 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from functools import partial
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialListSlot
+
 import numpy
 
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialListSlot, SerialSlot
 
 _ALLOWED_TYPES = [
     numpy.uint8,

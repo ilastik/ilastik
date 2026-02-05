@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+from .opThresholdTwoLevels import OpThresholdTwoLevels
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,4 +22,3 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from .thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
-from .opThresholdTwoLevels import OpThresholdTwoLevels

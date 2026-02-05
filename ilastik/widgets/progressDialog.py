@@ -1,10 +1,11 @@
 import os
+import platform
+from enum import IntEnum, auto
+from os.path import split as split_path
+
 from qtpy import uic
 from qtpy.QtCore import QObject, Signal
 from qtpy.QtWidgets import QDialog, QMessageBox
-from os.path import split as split_path
-import platform
-from enum import IntEnum, auto
 
 
 class ProgressDialog(QDialog):
@@ -155,8 +156,9 @@ class PercentProgressDialog(QDialog):
 
 
 if __name__ == "__main__":
-    from qtpy.QtWidgets import QApplication
     from time import sleep
+
+    from qtpy.QtWidgets import QApplication
 
     app = QApplication([])
 

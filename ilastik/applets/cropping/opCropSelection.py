@@ -19,10 +19,10 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from ilastik.utility import OpMultiLaneWrapper
-
 import numpy
+
+from ilastik.utility import OpMultiLaneWrapper
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.operators import OpCompressedUserLabelArray
 
 

@@ -19,6 +19,7 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 import pytest
+
 from lazyflow.utility.exception_helpers import exception_chain, is_root_cause, root_cause
 
 

@@ -1,5 +1,22 @@
-from __future__ import print_function
-from __future__ import division
+from __future__ import division, print_function
+
+import gc
+import logging
+# Built-in
+from builtins import range
+
+# Third-party
+import numpy
+import numpy as np
+import psutil
+import vigra
+from past.utils import old_div
+
+# Lazyflow
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.roi import TinyVector, enlargeRoiForHalo
+# ilastik
+from lazyflow.utility import Timer, vigra_bincount
 
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
@@ -22,25 +39,10 @@ from __future__ import division
 # 		   http://ilastik.org/license.html
 ##############################################################################
 
-# Built-in
-from builtins import range
-from past.utils import old_div
-import gc
-import logging
-
-# Third-party
-import numpy
-import numpy as np
-import vigra
-import psutil
 
 
-# Lazyflow
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import enlargeRoiForHalo, TinyVector
 
-# ilastik
-from lazyflow.utility import Timer, vigra_bincount
+
 
 logger = logging.getLogger(__name__)
 

@@ -18,20 +18,18 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-import h5py
 import logging
-import numpy
 import sys
 
-# lazyflow
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import roiToSlice
-from lazyflow.operators import OpSlicedBlockedArrayCache
-from lazyflow.operators import OpPixelFeaturesPresmoothed
-from lazyflow.operators import OpReorderAxes
-from lazyflow.operatorWrapper import OperatorWrapper
+import h5py
+import numpy
 
 from ilastik.applets.featureSelection import FeatureSelectionConstraintError
+# lazyflow
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.operators import OpPixelFeaturesPresmoothed, OpReorderAxes, OpSlicedBlockedArrayCache
+from lazyflow.operatorWrapper import OperatorWrapper
+from lazyflow.roi import roiToSlice
 
 logger = logging.getLogger(__name__)
 

@@ -22,4 +22,4 @@ from __future__ import absolute_import
 ###############################################################################
 from .labelingApplet import LabelingApplet
 from .labelingSingleLaneApplet import LabelingSingleLaneApplet
-from .opLabeling import OpLabelingTopLevel, OpLabelingSingleLane
+from .opLabeling import OpLabelingSingleLane, OpLabelingTopLevel

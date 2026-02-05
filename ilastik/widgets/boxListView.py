@@ -22,11 +22,12 @@
 import logging
 import os
 
-from ilastik.widgets.listView import ListView
 from qtpy import uic
 from qtpy.QtCore import Qt, Signal
 from qtpy.QtGui import QColor
 from qtpy.QtWidgets import QAction, QColorDialog, QDialog, QLabel, QMenu, QPushButton, QVBoxLayout, QWidget
+
+from ilastik.widgets.listView import ListView
 
 logger = logging.getLogger(__name__)
 
@@ -247,10 +248,12 @@ class BoxListView(ListView):
 
 
 if __name__ == "__main__":
-    from .boxListModel import BoxListModel, BoxLabel
-    import numpy
     import sys
+
+    import numpy
     from qtpy.QtWidgets import QApplication
+
+    from .boxListModel import BoxLabel, BoxListModel
 
     app = QApplication(sys.argv)
 

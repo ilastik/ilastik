@@ -1,28 +1,24 @@
 # -*- coding: utf-8 -*-
 __author__ = "fabian"
 
-from contextlib import ExitStack
+import logging
 import os
+import time
+from contextlib import ExitStack
 
 import numpy
-
 # import scipy
 from qtpy import QtCore, QtWidgets
-from qtpy.QtWidgets import QMessageBox, QApplication
 from qtpy.QtGui import QCursor
-
-from volumina.widgets import layerwidget
+from qtpy.QtWidgets import QApplication, QMessageBox
 from volumina import volumeEditorWidget
-from volumina.layer import ColortableLayer, GrayscaleLayer, RGBALayer
 from volumina.api import createDataSource
+from volumina.layer import ColortableLayer, GrayscaleLayer, RGBALayer
+from volumina.widgets import layerwidget
 
-from ilastik.applets.pixelClassification import opPixelClassification
 from ilastik.applets.featureSelection import FeatureSelectionConstraintError
+from ilastik.applets.pixelClassification import opPixelClassification
 from lazyflow import graph
-
-import time
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -646,9 +642,10 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
         :param feat:
         :return:
         """
-        from . import opSimplePixelClassification
         from lazyflow import graph
         from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
+
+        from . import opSimplePixelClassification
 
         self.opSimpleClassification = opSimplePixelClassification.OpSimplePixelClassification(
             parent=self.opPixelClassification.parent.pcApplet.topLevelOperator
@@ -749,8 +746,8 @@ class SuggestFeaturesDialog(QtWidgets.QDialog):
         :param feature_order: ordered list of feature IDs
         :return: optimal number of selected features
         """
-        from sklearn.ensemble import RandomForestClassifier
         from ilastik_feature_selection.wrapper_feature_selection import EvaluationFunction
+        from sklearn.ensemble import RandomForestClassifier
 
         feature_order = numpy.array(feature_order)
 

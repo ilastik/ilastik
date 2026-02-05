@@ -26,6 +26,7 @@ from qtpy.QtCore import Qt, Signal, Slot
 from qtpy.QtGui import QColor
 from qtpy.QtWidgets import (
     QAction,
+    QActionGroup,
     QColorDialog,
     QFileDialog,
     QGridLayout,
@@ -33,16 +34,15 @@ from qtpy.QtWidgets import (
     QLabel,
     QMenu,
     QPushButton,
-    QActionGroup,
     QSizePolicy,
 )
 from volumina.api import AlphaModulatedLayer, LazyflowSource
 from volumina.colortables import default16_new
 
-from ilastik.applets.pixelClassification.pixelClassificationGui import PixelClassificationGui
-
-from ilastik.applets.pixelClassification.suggestFeaturesDialog import SuggestFeaturesDialog
 from ilastik.applets.neuralNetwork.tiktorchController import TiktorchOperatorModel
+from ilastik.applets.pixelClassification.pixelClassificationGui import PixelClassificationGui
+from ilastik.applets.pixelClassification.suggestFeaturesDialog import SuggestFeaturesDialog
+
 from .modelStateControl import EnhancerModelStateControl
 
 logger = logging.getLogger(__name__)

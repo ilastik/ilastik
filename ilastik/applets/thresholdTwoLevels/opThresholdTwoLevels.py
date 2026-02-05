@@ -1,6 +1,6 @@
-from __future__ import absolute_import
-from __future__ import division
+from __future__ import absolute_import, division
 
+import logging
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -22,28 +22,27 @@ from __future__ import division
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-from past.utils import old_div
-import logging
 
 import numpy as np
 import vigra
+from past.utils import old_div
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from ilastik.applets.base.applet import DatasetConstraintError
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.operators import (
     OpBlockedArrayCache,
-    OpSingleChannelSelector,
-    OpReorderAxes,
     OpFilterLabels,
     OpMultiArrayMerger,
+    OpReorderAxes,
+    OpSingleChannelSelector,
 )
-from ilastik.applets.base.applet import DatasetConstraintError
 from lazyflow.operators.generic import OpConvertDtype, OpPixelOperator
 from lazyflow.roi import roiToSlice
 from lazyflow.utility.data_semantics import ImageTypes
 
+from .ipht import threshold_from_cores
 # local
 from .thresholdingTools import OpAnisotropicGaussianSmoothing5d, select_labels
-from .ipht import threshold_from_cores
 
 try:
     from ._OpGraphCut import segmentGC

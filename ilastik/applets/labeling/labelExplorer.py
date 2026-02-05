@@ -18,16 +18,15 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from contextlib import contextmanager
 import logging
+from contextlib import contextmanager
 from functools import partial
 from typing import Dict, List, Tuple
 
 import vigra
-from qtpy.QtCore import Qt, Signal
+from qtpy.QtCore import Qt, QTimer, Signal
 from qtpy.QtGui import QPaintEvent, QShowEvent
 from qtpy.QtWidgets import QAbstractItemView, QStyledItemDelegate, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
-from qtpy.QtCore import QTimer
 
 from ilastik.utility.gui import silent_qobject
 from lazyflow.base import SPATIAL_AXES

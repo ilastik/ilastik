@@ -1,4 +1,5 @@
 from builtins import object
+from functools import partial
 
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
@@ -22,7 +23,7 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import numpy
-from functools import partial
+
 from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators import OpArrayPiper, OpPixelOperator, OpPrecomputedInput
 

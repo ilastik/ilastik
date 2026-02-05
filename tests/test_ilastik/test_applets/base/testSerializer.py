@@ -29,13 +29,13 @@ from unittest import mock
 import h5py
 import numpy
 import pytest
+import vigra
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
 from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC, NuSVC
 from sklearn.tree import DecisionTreeClassifier
-import vigra
 
 from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
@@ -44,8 +44,8 @@ from ilastik.applets.base.appletSerializer import (
     SerialDictSlot,
     SerialListSlot,
     SerialObjectFeatureNamesSlot,
-    SerialSlot,
     SerialRelabeledDataSlot,
+    SerialSlot,
     jsonSerializerRegistry,
 )
 from ilastik.applets.base.appletSerializer.slotSerializer import SerialClassifierFactorySlot

@@ -21,16 +21,15 @@
 ###############################################################################
 import logging
 import os
-import vigra
 import tempfile
 
-from lazyflow.graph import Graph, Operator, OperatorWrapper, InputSlot, OutputSlot
+import vigra
+
+from lazyflow.graph import Graph, InputSlot, Operator, OperatorWrapper, OutputSlot
 from lazyflow.stype import ArrayLike
 from lazyflow.tools.schematic import generateSvgFileForOperator
+from lazyflow.utility import reorder, reorder_options
 from lazyflow.utility.timer import timeLogged
-
-from lazyflow.utility import reorder_options, reorder
-
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -66,7 +65,7 @@ class OpSum(Operator):
 @reorder
 @reorder_options(inner_order, [], outer_order)
 class LazyOp(Operator):
-    """ test op """
+    """test op"""
 
     name = "LazyOp"
 

@@ -18,11 +18,12 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from lazyflow.graph import OperatorWrapper, InputDict, OutputDict
-from ilastik.utility import MultiLaneOperatorABC
-
 import logging
+
 from future.utils import with_metaclass
+
+from ilastik.utility import MultiLaneOperatorABC
+from lazyflow.graph import InputDict, OperatorWrapper, OutputDict
 
 logger = logging.getLogger(__name__)
 

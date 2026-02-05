@@ -18,24 +18,25 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+import logging
 from builtins import range
-from packaging.version import parse
+from typing import List, Tuple
+
 import numpy
 import vigra
+from ndstructs import Array5D, Slice5D
+from packaging.version import parse
+
 from ilastik import Project
 from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
-    SerialClassifierSlot,
     SerialBlockSlot,
-    SerialListSlot,
     SerialClassifierFactorySlot,
+    SerialClassifierSlot,
+    SerialListSlot,
     SerialPickleableSlot,
 )
 from lazyflow.slot import OutputSlot
-from typing import List, Tuple
-from ndstructs import Array5D, Slice5D
-
-import logging
 
 logger = logging.getLogger(__name__)
 

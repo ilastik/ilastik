@@ -19,19 +19,18 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
+
 import numpy
 import vigra
 
 np = numpy
 
-from lazyflow.graph import Graph
-from lazyflow.operators import OpArrayPiper
+import ilastik.ilastik_logging
+from ilastik.applets.thresholdTwoLevels.opGraphcutSegment import haveGraphCut
 from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels import OpThresholdTwoLevels
 from ilastik.applets.thresholdTwoLevels.thresholdingTools import OpSelectLabels
-
-from ilastik.applets.thresholdTwoLevels.opGraphcutSegment import haveGraphCut
-
-import ilastik.ilastik_logging
+from lazyflow.graph import Graph
+from lazyflow.operators import OpArrayPiper
 
 ilastik.ilastik_logging.default_config.init()
 import unittest
@@ -41,6 +40,7 @@ import unittest
 ##       but now those operators don't exist any more.  The tests all just exercise the 'top-level' operator instead.
 ##       Therefore, some of these tests are redundant now.
 ##
+
 
 ## for testing ThresholdOneLevel
 class Generator1(unittest.TestCase):
@@ -717,7 +717,7 @@ class TestThresholdTwoLevels(Generator2):
 #         out5d = oper5d.CachedOutput[:].wait()
 
 
-from lazyflow.operator import Operator, InputSlot
+from lazyflow.operator import InputSlot, Operator
 
 
 class DirtyAssert(Operator):

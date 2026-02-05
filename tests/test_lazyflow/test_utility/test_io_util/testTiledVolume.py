@@ -1,25 +1,26 @@
 from __future__ import print_function
+
 from future import standard_library
 
 standard_library.install_aliases()
-from builtins import object
-import os
-import sys
-import tempfile
-import numpy
-import h5py
 import copy
 import http.server
-import socket
-import socketserver
-
-from lazyflow.utility.io_util.tiledVolume import TiledVolume
-from lazyflow.utility import PathComponents, export_to_tiles
-from lazyflow.utility.jsonConfig import JsonConfigParser
-from lazyflow.roi import roiToSlice
-
 # See 'main' section below for logging configuration.
 import logging
+import os
+import socket
+import socketserver
+import sys
+import tempfile
+from builtins import object
+
+import h5py
+import numpy
+
+from lazyflow.roi import roiToSlice
+from lazyflow.utility import PathComponents, export_to_tiles
+from lazyflow.utility.io_util.tiledVolume import TiledVolume
+from lazyflow.utility.jsonConfig import JsonConfigParser
 
 logger = logging.getLogger(__name__)
 

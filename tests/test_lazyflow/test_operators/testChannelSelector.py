@@ -1,6 +1,9 @@
-from builtins import range
-from builtins import object
+from builtins import object, range
 
+import numpy
+import vigra
+
+from lazyflow.graph import Graph
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -23,8 +26,6 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 from lazyflow.operators.generic import OpSingleChannelSelector
-import numpy, vigra
-from lazyflow.graph import Graph
 
 
 class TestSingleChannelSelector(object):

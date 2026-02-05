@@ -18,40 +18,37 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ##############################################################################
-from builtins import range
-from functools import partial
-from contextlib import contextmanager
+import logging
 import threading
+from builtins import range
+from contextlib import contextmanager
+from functools import partial
 
 import numpy as np
-
 import qtpy.compat
 from qtpy.QtGui import QColor
 from qtpy.QtWidgets import (
-    QWidget,
-    QLabel,
-    QSpinBox,
-    QDoubleSpinBox,
-    QVBoxLayout,
-    QHBoxLayout,
-    QSpacerItem,
-    QSizePolicy,
-    QPushButton,
-    QMenu,
     QAction,
     QCheckBox,
+    QDoubleSpinBox,
+    QHBoxLayout,
+    QLabel,
+    QMenu,
+    QPushButton,
+    QSizePolicy,
+    QSpacerItem,
+    QSpinBox,
+    QVBoxLayout,
+    QWidget,
 )
-
-from ilastik.utility.gui import threadRouted
-from volumina.api import createDataSource, ArraySource
-from volumina.layer import GrayscaleLayer, ColortableLayer, generateRandomColors
+from volumina.api import ArraySource, createDataSource
+from volumina.layer import ColortableLayer, GrayscaleLayer, generateRandomColors
 from volumina.utility import ShortcutManager
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.utility.gui import threadRouted
 from lazyflow.request import Request
 from lazyflow.utility import TransposedView
-
-import logging
 
 logger = logging.getLogger(__name__)
 

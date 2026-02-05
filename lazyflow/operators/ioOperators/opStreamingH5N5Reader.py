@@ -23,18 +23,18 @@
 import contextlib
 import json
 import logging
+import os
 import time
 from collections import OrderedDict
 from typing import Union
 
-import vigra
 import h5py
+import vigra
 import z5py
-import os
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.utility import Timer
-from lazyflow.utility.helpers import get_default_axisordering, bigintprod
+from lazyflow.utility.helpers import bigintprod, get_default_axisordering
 
 logger = logging.getLogger(__name__)
 

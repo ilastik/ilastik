@@ -18,37 +18,35 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+import logging
 import os
-import threading
 import shutil
+import threading
 from functools import partial
 
 import qtpy.compat
 from qtpy import uic
+from qtpy.QtGui import QIcon
 from qtpy.QtWidgets import (
     QApplication,
-    QWidget,
     QHeaderView,
+    QMessageBox,
+    QPushButton,
     QStackedWidget,
     QTableWidgetItem,
-    QPushButton,
-    QMessageBox,
+    QWidget,
 )
-from qtpy.QtGui import QIcon
-
-from lazyflow.graph import Slot
-
-from ilastik.config import cfg
-from ilastik.utility import bind, log_exception
-from lazyflow.utility import PathComponents
-from ilastik.utility.gui import ThreadRouter, threadRouted, ThunkEvent, ThunkEventHandler, threadRoutedWithRouter
-from ilastik.shell.gui.iconMgr import ilastikIcons
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-
-from .opDataExport import get_model_op
 from volumina.widgets.dataExportOptionsDlg import DataExportOptionsDlg
 
-import logging
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.config import cfg
+from ilastik.shell.gui.iconMgr import ilastikIcons
+from ilastik.utility import bind, log_exception
+from ilastik.utility.gui import ThreadRouter, ThunkEvent, ThunkEventHandler, threadRouted, threadRoutedWithRouter
+from lazyflow.graph import Slot
+from lazyflow.utility import PathComponents
+
+from .opDataExport import get_model_op
 
 logger = logging.getLogger(__name__)
 

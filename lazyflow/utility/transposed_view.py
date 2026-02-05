@@ -1,6 +1,4 @@
-from builtins import zip
-from builtins import range
-from builtins import object
+from builtins import object, range, zip
 
 
 class TransposedView(object):
@@ -46,7 +44,7 @@ class TransposedView(object):
             args = (args,)
         # Reorder the args in the same order as the base
         baseargs = [slice(None)] * self.base.ndim
-        for (p, arg) in zip(self._permutation, args):
+        for p, arg in zip(self._permutation, args):
             if p is not None:
                 baseargs[p] = arg
         baseargs = tuple(baseargs)

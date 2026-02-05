@@ -1,55 +1,50 @@
-from __future__ import print_function
-from __future__ import absolute_import
-from __future__ import division
-from builtins import range
-from past.utils import old_div
-import numpy as np
+from __future__ import absolute_import, division, print_function
+
+import logging
 import os
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-
-from ilastik.plugins import TrackingExportFormatPlugin
-from ilastik.plugins.manager import PluginExportContext
-from lazyflow.rtype import List
-from lazyflow.stype import Opaque
-
-from ilastik.applets.base.applet import DatasetConstraintError
-from ilastik.applets.objectExtraction.opObjectExtraction import (
-    default_features_key,
-    OpRegionFeatures,
-    OpAdaptTimeListRoi,
-)
-from lazyflow.operators import OpBlockedArrayCache
-from lazyflow.operators.valueProviders import OpZeroDefault
-from lazyflow.roi import sliceToRoi
-from .opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
-
+from builtins import range
 from functools import partial
-from lazyflow.request import Request, RequestPool
 
+import numpy as np
+import vigra
+from hytra.core.fieldofview import FieldOfView
+from hytra.core.ilastikhypothesesgraph import IlastikHypothesesGraph
+from hytra.core.ilastikmergerresolver import IlastikMergerResolver
 from hytra.core.jsongraph import (
+    getDetectionsPerTimestep,
+    getDivisionsPerTimestep,
+    getLinksPerTimestep,
     getMappingsBetweenUUIDsAndTraxels,
     getMergersDetectionsLinksDivisions,
     getMergersPerTimestep,
-    getLinksPerTimestep,
-    getDetectionsPerTimestep,
-    getDivisionsPerTimestep,
 )
-from hytra.core.ilastikhypothesesgraph import IlastikHypothesesGraph
-from hytra.core.fieldofview import FieldOfView
-from hytra.core.ilastikmergerresolver import IlastikMergerResolver
-from hytra.core.probabilitygenerator import ProbabilityGenerator
-from hytra.core.probabilitygenerator import Traxel
+from hytra.core.probabilitygenerator import ProbabilityGenerator, Traxel
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
-from ilastik.utility.progress import DefaultProgressVisitor, CommandLineProgressVisitor
+from past.utils import old_div
 
-import vigra
+from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.applets.objectExtraction.opObjectExtraction import (
+    OpAdaptTimeListRoi,
+    OpRegionFeatures,
+    default_features_key,
+)
+from ilastik.plugins import TrackingExportFormatPlugin
+from ilastik.plugins.manager import PluginExportContext
+from ilastik.utility.progress import CommandLineProgressVisitor, DefaultProgressVisitor
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.operators import OpBlockedArrayCache
+from lazyflow.operators.valueProviders import OpZeroDefault
+from lazyflow.request import Request, RequestPool
+from lazyflow.roi import sliceToRoi
+from lazyflow.rtype import List
+from lazyflow.stype import Opaque
 
-import logging
+from .opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
 
 logger = logging.getLogger(__name__)
 
-import hytra
 import dpct
+import hytra
 
 try:
     import multiHypoTracking_with_cplex as mht

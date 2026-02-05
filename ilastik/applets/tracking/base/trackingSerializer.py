@@ -18,9 +18,9 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialDictSlot, SerialPickleableSlot
-
 import hytra
+
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialDictSlot, SerialPickleableSlot
 
 
 class TrackingSerializer(AppletSerializer):

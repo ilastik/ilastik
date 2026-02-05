@@ -19,11 +19,13 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import os
-import numpy
+
 import h5py
-from lazyflow.graph import Graph
-from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection, getFeatureIdOrder
+import numpy
+
 from ilastik.applets.featureSelection.featureSelectionSerializer import FeatureSelectionSerializer
+from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection, getFeatureIdOrder
+from lazyflow.graph import Graph
 
 
 class TestFeatureSelectionSerializer(object):

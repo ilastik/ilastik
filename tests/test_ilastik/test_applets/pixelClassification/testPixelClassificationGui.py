@@ -19,24 +19,23 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import os
-from pathlib import Path
 import sys
 import tempfile
-import pytest
+from pathlib import Path
+
 import numpy
+import pytest
 from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QApplication, QAction
+from qtpy.QtWidgets import QAction, QApplication
 from volumina.layer import AlphaModulatedLayer
-from ilastik.widgets.stackFileSelectionWidget import SubvolumeSelectionDlg
-
-from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
-from lazyflow.utility.timer import Timer, timeLogged
-
-from tests.test_ilastik.helpers import ShellGuiTestCaseBase
-from tests.test_ilastik.helpers.wait import wait_until, wait_signal, wait_slot_ready
 
 from ilastik.applets.pixelClassification.pixelClassificationApplet import PixelClassificationApplet
 from ilastik.applets.pixelClassification.suggestFeaturesDialog import SuggestFeaturesDialog
+from ilastik.widgets.stackFileSelectionWidget import SubvolumeSelectionDlg
+from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
+from lazyflow.utility.timer import Timer, timeLogged
+from tests.test_ilastik.helpers import ShellGuiTestCaseBase
+from tests.test_ilastik.helpers.wait import wait_signal, wait_slot_ready, wait_until
 
 DATA_SELECTION_INDEX = 0
 PIXEL_CLASSIFICATION_INDEX = 2

@@ -18,25 +18,24 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+import logging
 import os
-import h5py
-import vigra
-import numpy
 import tempfile
-from pathlib import Path
 import unittest
-import pytest
+from pathlib import Path
 
+import h5py
+import numpy
+import pytest
+import vigra
+
+from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 from ilastik.applets.dataSelection.opDataSelection import (
-    OpMultiLaneDataSelectionGroup,
     DatasetInfo,
+    FilesystemDatasetInfo,
+    OpMultiLaneDataSelectionGroup,
     ProjectInternalDatasetInfo,
 )
-from ilastik.applets.dataSelection.opDataSelection import ProjectInternalDatasetInfo, FilesystemDatasetInfo
-from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
-
-
-import logging
 
 logger = logging.getLogger(__name__)
 

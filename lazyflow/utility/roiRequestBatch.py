@@ -19,18 +19,16 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
+import logging
 import sys
 from functools import partial
 
 import numpy
 
 import lazyflow.stype
+from lazyflow.request import Request, SimpleRequestCondition, log_exception
 from lazyflow.utility import OrderedSignal
 from lazyflow.utility.helpers import bigintprod
-from lazyflow.request import Request, SimpleRequestCondition, log_exception
-
-
-import logging
 
 logger = logging.getLogger(__name__)
 

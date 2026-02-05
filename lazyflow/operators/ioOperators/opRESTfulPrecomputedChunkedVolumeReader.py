@@ -24,11 +24,11 @@ import logging
 import numpy
 
 import lazyflow.roi
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.utility.helpers import bigintprod
-from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
 from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, set_multiscale_meta
+from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
 
 logger = logging.getLogger(__name__)
 

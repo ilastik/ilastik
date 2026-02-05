@@ -5,7 +5,7 @@ import vigra
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from lazyflow.graph import Graph
 from lazyflow.operator import Operator
-from lazyflow.slot import OutputSlot, InputSlot
+from lazyflow.slot import InputSlot, OutputSlot
 
 
 class OpPassthrough(Operator):

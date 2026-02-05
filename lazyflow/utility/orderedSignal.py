@@ -19,8 +19,8 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-from collections import OrderedDict
 import logging
+from collections import OrderedDict
 
 logger = logging.getLogger("lazyflow.signals")
 

@@ -19,30 +19,26 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Python
+import logging
 from builtins import range
-from past.utils import old_div
 
 # SciPy
 import numpy
 import vigra
+from past.utils import old_div
 
+from ilastik.applets.base.applet import DatasetConstraintError
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.operators import OpBlockedArrayCache
+from lazyflow.request import Request
 # lazyflow
 from lazyflow.roi import roiFromShape
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpBlockedArrayCache
-
-from lazyflow.request import Request
-
 from lazyflow.utility.helpers import eq_shapes
 from lazyflow.utility.timer import Timer
-from ilastik.applets.base.applet import DatasetConstraintError
 
+from .carvingTools import parallel_filter, watershed_and_agglomerate
 # carving backend in ilastiktools
 from .watershed_segmentor import WatershedSegmentor
-
-from .carvingTools import watershed_and_agglomerate, parallel_filter
-
-import logging
 
 logger = logging.getLogger(__name__)
 

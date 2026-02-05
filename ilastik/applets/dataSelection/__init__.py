@@ -20,5 +20,5 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from .dataSelectionApplet import OpMultiLaneDataSelectionGroup, DataSelectionApplet
-from .opDataSelection import OpDataSelectionGroup, DatasetInfo, FilesystemDatasetInfo, ProjectInternalDatasetInfo
+from .dataSelectionApplet import DataSelectionApplet, OpMultiLaneDataSelectionGroup
+from .opDataSelection import DatasetInfo, FilesystemDatasetInfo, OpDataSelectionGroup, ProjectInternalDatasetInfo

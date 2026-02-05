@@ -14,21 +14,22 @@ import tifffile
 import vigra
 import zarr
 
-from ilastik.applets.dataSelection import DataSelectionApplet, OpDataSelectionGroup, FilesystemDatasetInfo
+from ilastik.applets.dataSelection import DataSelectionApplet, FilesystemDatasetInfo, OpDataSelectionGroup
 from lazyflow.graph import Graph
 from lazyflow.operator import Operator
 from lazyflow.operators import OpArrayPiper
 from lazyflow.operators.ioOperators import (
-    OpTiffReader,
     OpExportMultipageTiff,
     OpH5N5WriterBigDataset,
     OpOMEZarrMultiscaleReader,
     OpRESTfulPrecomputedChunkedVolumeReader,
     OpStreamingH5N5Reader,
+    OpTiffReader,
 )
 from lazyflow.slot import Slot
-from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr, ShapesByScaleKey
-from ..test_ioOperators.testOpStreamingH5N5Reader import h5n5_file, data
+from lazyflow.utility.io_util.write_ome_zarr import ShapesByScaleKey, write_ome_zarr
+
+from ..test_ioOperators.testOpStreamingH5N5Reader import data, h5n5_file
 
 
 def get_data_op_with_pixel_size_meta(

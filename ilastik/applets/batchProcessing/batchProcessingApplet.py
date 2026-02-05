@@ -1,12 +1,13 @@
-import logging
-import weakref
-from typing import Callable, Dict, List, Optional, Union
-import numpy.typing as npt
-from ndstructs import Slice5D
-from functools import partial
 import argparse
 import ast
+import logging
 import textwrap
+import weakref
+from functools import partial
+from typing import Callable, Dict, List, Optional, Union
+
+import numpy.typing as npt
+from ndstructs import Slice5D
 
 from ilastik.applets.base.applet import Applet
 from ilastik.applets.dataExport.opDataExport import OpDataExport

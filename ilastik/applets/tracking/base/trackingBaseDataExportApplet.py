@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import logging
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,17 +22,15 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import os
-import logging
-
 from typing import Callable, Optional
 
-from ilastik.applets.base.appletSerializer import SerialSlot, SerialDictSlot
+from ilastik.applets.base.appletSerializer import SerialDictSlot, SerialSlot
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
-from ilastik.applets.dataExport.opDataExport import DataExportPathFormatter
 from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
+from ilastik.applets.dataExport.opDataExport import DataExportPathFormatter
 from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
-from ilastik.plugins.manager import pluginManager
 from ilastik.plugins import TrackingExportFormatPlugin
+from ilastik.plugins.manager import pluginManager
 from ilastik.utility import OpMultiLaneWrapper
 from lazyflow.slot import InputSlot
 

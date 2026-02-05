@@ -18,40 +18,32 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from qtpy.QtWidgets import QTreeWidgetItem, QMessageBox
-from qtpy.QtGui import QColor, QMouseEvent
-from qtpy import uic
-from qtpy.QtCore import Qt, QEvent
-
-from lazyflow.rtype import SubRegion
+import logging
 import os
-from collections import defaultdict, Counter
-from copy import deepcopy
-
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-from functools import partial
-from itertools import chain
-from ilastik.applets.objectExtraction.opObjectExtraction import max_margin
-
-from ilastik.plugins.manager import pluginManager
-from ilastik.utility.gui import threadRouted
-from ilastik.utility import log_exception
-from ilastik.config import cfg as ilastik_config
-
-from volumina.api import createDataSource, GrayscaleLayer, ColortableLayer
-from volumina.utility import ShortcutManager
-import volumina.colortables as colortables
-from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
-
-import vigra
-import numpy
-
-from qtpy.QtWidgets import QDialog, QFileDialog
-
 import pickle as pickle
 import threading
+from collections import Counter, defaultdict
+from copy import deepcopy
+from functools import partial
+from itertools import chain
 
-import logging
+import numpy
+import vigra
+import volumina.colortables as colortables
+from qtpy import uic
+from qtpy.QtCore import QEvent, Qt
+from qtpy.QtGui import QColor, QMouseEvent
+from qtpy.QtWidgets import QDialog, QFileDialog, QMessageBox, QTreeWidgetItem
+from volumina.api import ColortableLayer, GrayscaleLayer, createDataSource
+from volumina.utility import ShortcutManager
+
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key, max_margin
+from ilastik.config import cfg as ilastik_config
+from ilastik.plugins.manager import pluginManager
+from ilastik.utility import log_exception
+from ilastik.utility.gui import threadRouted
+from lazyflow.rtype import SubRegion
 
 logger = logging.getLogger(__name__)
 
@@ -756,8 +748,8 @@ class ObjectExtractionGuiNonInteractive(QWidget):
 # Quick GUI testing...
 #
 if __name__ == "__main__":
-    from qtpy.QtWidgets import QApplication
     from qtpy.QtCore import QTimer
+    from qtpy.QtWidgets import QApplication
 
     app = QApplication([])
 

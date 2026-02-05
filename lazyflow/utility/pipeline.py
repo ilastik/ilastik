@@ -26,7 +26,6 @@ from typing import Any, Callable, TypeVar
 from lazyflow.operator import Operator
 from lazyflow.slot import Slot
 
-
 T = TypeVar("T", bound=Operator)
 
 

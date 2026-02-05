@@ -21,6 +21,7 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.layerViewer import LayerViewerApplet
+
 from .opLabelImageViewer import OpLabelImageViewer
 
 

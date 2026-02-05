@@ -1,24 +1,26 @@
 from __future__ import print_function
 
-from builtins import range
 import sys
+from builtins import range
 
 if sys.version_info.major >= 3:
     unicode = str
 
-# lazyflow
-from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
-from lazyflow.stype import Opaque
-from lazyflow.rtype import List
 import logging
+
+# lazyflow
+from lazyflow.graph import InputSlot, Operator, OperatorWrapper, OutputSlot
+from lazyflow.rtype import List
+from lazyflow.stype import Opaque
 
 logger = logging.getLogger(__name__)
 
-import os
-import h5py
-import vigra
-import numpy
 import math
+import os
+
+import h5py
+import numpy
+import vigra
 
 
 def write_numpy_structured_array_to_HDF5(fid, internalPath, data, overwrite=False):

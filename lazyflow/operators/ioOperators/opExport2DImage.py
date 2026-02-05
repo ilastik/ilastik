@@ -24,7 +24,7 @@ import os
 import numpy
 import vigra
 
-from lazyflow.graph import Operator, InputSlot
+from lazyflow.graph import InputSlot, Operator
 
 from .opExportToArray import OpExportToArray
 

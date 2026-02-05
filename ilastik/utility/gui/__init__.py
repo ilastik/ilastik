@@ -20,7 +20,6 @@
 ###############################################################################
 from qtpy.QtWidgets import QApplication
 
-
 from .roi import roi2rect
 from .threadRouter import ThreadRouter, threadRouted, threadRoutedWithRouter
 from .thunkEvent import ThunkEvent, ThunkEventHandler

@@ -1,7 +1,8 @@
 from __future__ import print_function
-import sys
-import logging
+
 import argparse
+import logging
+import sys
 
 import h5py
 import numpy as np

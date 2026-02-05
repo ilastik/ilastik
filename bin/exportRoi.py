@@ -31,10 +31,10 @@ Two export formats are supported:
 """
 from __future__ import print_function
 
+import argparse
+import logging
 import os
 import sys
-import logging
-import argparse
 
 from lazyflow.utility.io_util import BlockwiseFileset, BlockwiseFilesetFactory
 

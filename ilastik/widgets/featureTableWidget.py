@@ -19,7 +19,9 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 import enum
-from qtpy.QtGui import QBrush, QColor, QFont, QIcon, QPainter, QPen, QPixmap, QPolygon, QKeyEvent
+
+from qtpy.QtCore import QPoint, QRect, QSize, Qt
+from qtpy.QtGui import QBrush, QColor, QFont, QIcon, QKeyEvent, QPainter, QPen, QPixmap, QPolygon
 from qtpy.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -30,7 +32,6 @@ from qtpy.QtWidgets import (
     QTableWidgetItem,
     QTableWidgetSelectionRange,
 )
-from qtpy.QtCore import QPoint, QRect, QSize, Qt
 
 from ilastik.utility.gui import is_qt_dark_mode
 

@@ -30,10 +30,10 @@ from ilastik.applets.batchProcessing import BatchProcessingApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.neuralNetwork import NNClassificationDataExportApplet, tiktorchController
 from ilastik.config import runtime_cfg
+from ilastik.utility import SlotNameEnum
 from ilastik.workflow import Workflow
 from lazyflow.cancel_token import CancellationTokenSource
 from lazyflow.graph import Graph
-from ilastik.utility import SlotNameEnum
 
 logger = logging.getLogger(__name__)
 

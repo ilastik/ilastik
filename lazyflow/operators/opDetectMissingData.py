@@ -1,12 +1,8 @@
 from __future__ import division
+
 from future import standard_library
 
 standard_library.install_aliases()
-from builtins import zip
-
-from builtins import range
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -29,24 +25,23 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import logging
-from functools import partial
 import pickle as pickle
-import tempfile
-from threading import Lock as ThreadLock
 import re
-
-
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.stype import Opaque
-from lazyflow.rtype import SubRegion
-from lazyflow.request import Request, RequestPool
-from lazyflow.roi import roiToSlice
+import tempfile
+from builtins import object, range, zip
+from functools import partial
+from threading import Lock as ThreadLock
 
 import h5py
 import numpy as np
-from sklearn.svm import SVC
 import vigra
+from sklearn.svm import SVC
 
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.request import Request, RequestPool
+from lazyflow.roi import roiToSlice
+from lazyflow.rtype import SubRegion
+from lazyflow.stype import Opaque
 
 logger = logging.getLogger(__name__)
 
@@ -774,13 +769,12 @@ def extractHistograms(volume, labels, patchSize=64, haloSize=0, nBins=30, intRan
 if __name__ == "__main__":
 
     import argparse
-    import os.path
-    from sys import exit
-    import time
     import csv
+    import os.path
+    import time
+    from sys import exit
 
     from lazyflow.graph import Graph
-
     from lazyflow.operators.opDetectMissingData import _histogramIntersectionKernel
 
     logging.basicConfig()

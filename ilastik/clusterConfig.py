@@ -20,7 +20,7 @@ from __future__ import print_function
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from lazyflow.utility.jsonConfig import JsonConfigParser, AutoEval, FormattedField
+from lazyflow.utility.jsonConfig import AutoEval, FormattedField, JsonConfigParser
 
 #: Schema for all cluster config options
 #: (Doesn't specify which are required and which aren't.)

@@ -1,9 +1,10 @@
+import unittest
+
 import numpy as np
 import vigra
-import unittest
-from lazyflow.graph import Graph
-from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures
 
+from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures
+from lazyflow.graph import Graph
 
 feats_2D = {
     "2D Convex Hull Features": {

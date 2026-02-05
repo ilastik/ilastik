@@ -1,11 +1,12 @@
 from builtins import object
+
 import numpy
 import vigra
 
+from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier, ParallelVigraRfLazyflowClassifierFactory
 from lazyflow.graph import Graph
-from lazyflow.operators.opFeatureMatrixCache import OpFeatureMatrixCache
 from lazyflow.operators.classifierOperators import OpTrainClassifierFromFeatureVectors
-from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory, ParallelVigraRfLazyflowClassifier
+from lazyflow.operators.opFeatureMatrixCache import OpFeatureMatrixCache
 
 
 class TestOpTrainClassifierFromFeatureVectors(object):

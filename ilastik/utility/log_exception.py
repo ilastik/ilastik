@@ -1,10 +1,10 @@
 from future import standard_library
 
 standard_library.install_aliases()
-import traceback
 import io
-import sys
 import logging
+import sys
+import traceback
 
 
 def log_exception(logger, msg=None, exc_info=None, level=logging.ERROR):

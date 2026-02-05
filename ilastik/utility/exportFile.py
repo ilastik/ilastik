@@ -1,16 +1,16 @@
+import logging
 from collections.abc import Iterable
+from sys import stdout
+from typing import Iterator, List, Tuple
+from zipfile import ZipFile
+
+import h5py
 import numpy as np
 import numpy.lib.recfunctions as nlr
-import h5py
 from vigra import AxisTags
-from lazyflow.utility import OrderedSignal
-from sys import stdout
-from zipfile import ZipFile
+
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
-import logging
-
-from typing import Iterator, List, Tuple
-
+from lazyflow.utility import OrderedSignal
 
 logger = logging.getLogger(__name__)
 
@@ -495,7 +495,10 @@ class ExportFile(object):
                 base, ext = f_name
             file_names = []
             for table_name, table in self.table_dict.items():
-                file_names.append("{name}_{table}.{ext}".format(name=base, table=table_name, ext=ext))
+                if table_name == "table" and base.endswith("_table"):
+                    file_names.append("{name}.{ext}".format(name=base, ext=ext))
+                else:
+                    file_names.append("{name}_{table}.{ext}".format(name=base, table=table_name, ext=ext))
                 with open(file_names[-1], "w") as fout:
                     self._make_csv_table(fout, table)
                     count += 1

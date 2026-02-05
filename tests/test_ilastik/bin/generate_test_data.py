@@ -19,13 +19,14 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
-from builtins import range
+
+import argparse
 import os
 import sys
-import argparse
+from builtins import range
 
-import numpy
 import h5py
+import numpy
 import vigra
 
 

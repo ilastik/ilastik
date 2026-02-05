@@ -19,14 +19,14 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.utility.helpers import get_default_axisordering
-
-import vigra
-import numpy
 import copy
-
 import logging
+
+import numpy
+import vigra
+
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.utility.helpers import get_default_axisordering
 
 logger = logging.getLogger(__name__)
 

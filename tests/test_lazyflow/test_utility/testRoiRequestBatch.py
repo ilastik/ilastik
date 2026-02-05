@@ -19,20 +19,18 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-import pytest
+import logging
+import threading
 
 import numpy
-import threading
-from lazyflow.graph import Graph
-from lazyflow.utility import is_root_cause
-from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiToSlice
-from lazyflow.operators import OpArrayPiper
+import pytest
 
-from lazyflow.utility import RoiRequestBatch, RoiRequestBatchException
+from lazyflow.graph import Graph
+from lazyflow.operators import OpArrayPiper
+from lazyflow.roi import getBlockBounds, getIntersectingBlocks, roiToSlice
+from lazyflow.utility import RoiRequestBatch, RoiRequestBatchException, is_root_cause
 
 from .conftest import ProcessingException
-
-import logging
 
 logger = logging.getLogger("tests.testRoiRequestBatch")
 

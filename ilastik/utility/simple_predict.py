@@ -1,16 +1,17 @@
 from __future__ import division
-from past.utils import old_div
-import sys
-import json
-import logging
+
 import argparse
 import collections
-from itertools import starmap
+import json
+import logging
+import sys
 from functools import partial, wraps
+from itertools import starmap
 
-import numpy as np
 import h5py
+import numpy as np
 import vigra
+from past.utils import old_div
 
 from lazyflow.request import Request, RequestPool
 
@@ -349,7 +350,7 @@ def get_filter_channel_ranges(filter_spec_list, ndim):
     # For N filters, output_channel_steps will contain N+1 integers,
     # starting with 0 and ending with the total channel count.
     output_channel_steps = [0]
-    for (filter_name, scale) in filter_spec_list:
+    for filter_name, scale in filter_spec_list:
         filter = FilterFunctions[filter_name]
         if filter.is_vector_valued:
             num_output_channels = ndim

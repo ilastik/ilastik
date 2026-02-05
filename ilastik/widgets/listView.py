@@ -18,11 +18,11 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
-from qtpy.QtWidgets import QTableView, QAbstractItemView, QHeaderView, QStackedWidget, QLabel, QSizePolicy
-from qtpy.QtCore import Qt
-
 import logging
+from builtins import range
+
+from qtpy.QtCore import Qt
+from qtpy.QtWidgets import QAbstractItemView, QHeaderView, QLabel, QSizePolicy, QStackedWidget, QTableView
 
 logger = logging.getLogger(__name__)
 

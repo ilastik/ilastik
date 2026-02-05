@@ -50,7 +50,7 @@ ilastik
 
 #### Python compatibility notes
 
-The current version of ilastik (up to the stable release `1.4.1`) is developed for Python `3.9`.
+The current version of ilastik supports Python versions `3.8` to `3.11`.
 Versions of ilastik until `1.4.1b2` are based on, and only compatible with Python `3.7`
 Starting from ilastik `1.4.1b3` ilastik environments can be created with Python versions `3.7` to `3.9`.
 Limitations when going with Python `3.7`: please use a version of tifffile `>2020.9.22,<=2021.11.2` (see also note in [environment-dev.yml](dev/environment-dev.yml)).

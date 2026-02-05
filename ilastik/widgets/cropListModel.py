@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import logging
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,11 +22,11 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-from qtpy.QtGui import QColor, QPixmap, QIcon, QImage
-from qtpy.QtCore import Qt, Signal, QModelIndex, QItemSelectionModel
-from .listModel import ListModel, ListElement, _NPIXELS
 
-import logging
+from qtpy.QtCore import QItemSelectionModel, QModelIndex, Qt, Signal
+from qtpy.QtGui import QColor, QIcon, QImage, QPixmap
+
+from .listModel import _NPIXELS, ListElement, ListModel
 
 logger = logging.getLogger(__name__)
 

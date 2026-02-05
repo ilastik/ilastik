@@ -1,18 +1,17 @@
 import os
-from lazyflow.graph import Graph
-from ilastik.workflow import Workflow
-from ilastik.workflows.tracking.conservation.conservationTrackingWorkflow import ConservationTrackingWorkflowBase
-from ilastik.applets.dataSelection import DataSelectionApplet, DatasetInfo
-from ilastik.applets.tracking.conservation.conservationTrackingApplet import ConservationTrackingApplet
-from ilastik.applets.objectClassification.objectClassificationApplet import ObjectClassificationApplet
 
+from ilastik.applets.dataSelection import DataSelectionApplet, DatasetInfo
+from ilastik.applets.objectClassification.objectClassificationApplet import ObjectClassificationApplet
 # from ilastik.applets.opticalTranslation.opticalTranslationApplet import OpticalTranslationApplet
 from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
-from lazyflow.operators.opReorderAxes import OpReorderAxes
-from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet import TrackingFeatureExtractionApplet
-from ilastik.applets.trackingFeatureExtraction import config
-from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
+from ilastik.applets.tracking.conservation.conservationTrackingApplet import ConservationTrackingApplet
+from ilastik.applets.trackingFeatureExtraction import config
+from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet import TrackingFeatureExtractionApplet
+from ilastik.workflow import Workflow
+from ilastik.workflows.tracking.conservation.conservationTrackingWorkflow import ConservationTrackingWorkflowBase
+from lazyflow.graph import Graph
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 
 class AnimalConservationTrackingWorkflowBase(ConservationTrackingWorkflowBase):

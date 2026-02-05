@@ -18,20 +18,19 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
 import os
 import sys
+from builtins import range
+
 import numpy
 import pytest
-
 from qtpy.QtWidgets import QApplication
-from tests.test_ilastik.helpers import ShellGuiTestCaseBase
-from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
-from lazyflow.operators import OpPixelFeaturesPresmoothed
-
-from lazyflow.utility.timer import Timer
 
 from ilastik.applets.pixelClassification.pixelClassificationApplet import PixelClassificationApplet
+from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
+from lazyflow.operators import OpPixelFeaturesPresmoothed
+from lazyflow.utility.timer import Timer
+from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 
 PIXEL_CLASSIFICATION_INDEX = 2
 

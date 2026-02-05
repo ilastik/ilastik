@@ -1,8 +1,9 @@
 from future import standard_library
 
 standard_library.install_aliases()
-from builtins import range
-
+import errno
+import functools
+import logging
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -25,19 +26,18 @@ from builtins import range
 # 		   http://ilastik.org/license/
 ###############################################################################
 import os
-import time
-import errno
-import functools
-import threading
-import numpy
 import queue
-from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset, BlockwiseFilesetFactory
-from lazyflow.utility.io_util.RESTfulVolume import RESTfulVolume
+import threading
+import time
+from builtins import range
+
+import numpy
+
 from lazyflow.roi import getIntersectingBlocks
 from lazyflow.utility import FileLock
+from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset, BlockwiseFilesetFactory
+from lazyflow.utility.io_util.RESTfulVolume import RESTfulVolume
 from lazyflow.utility.jsonConfig import JsonConfigParser
-
-import logging
 
 logger = logging.getLogger(__name__)
 

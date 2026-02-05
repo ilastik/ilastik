@@ -1,14 +1,15 @@
-import pytest
 import re
-
-from ilastik.ilastik_logging.default_config import (
-    _delete_old_session_logs,
-    SESSION_LOGFILE_NAME_PATTERN,
-    KEEP_SESSION_LOGS,
-    DEFAULT_LOG_NAME,
-)
 from pathlib import Path
 from typing import List
+
+import pytest
+
+from ilastik.ilastik_logging.default_config import (
+    DEFAULT_LOG_NAME,
+    KEEP_SESSION_LOGS,
+    SESSION_LOGFILE_NAME_PATTERN,
+    _delete_old_session_logs,
+)
 
 
 @pytest.fixture

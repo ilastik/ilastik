@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import List, Union, Iterable
+from typing import Iterable, List, Union
 from unittest import mock
 
 import numpy
@@ -12,10 +12,10 @@ from lazyflow.utility.data_semantics import ImageTypes
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrTranslations
 from lazyflow.utility.io_util.write_ome_zarr import (
     ShapesByScaleKey,
-    write_ome_zarr,
-    generate_default_target_scales,
     _match_target_scales_to_input,
+    generate_default_target_scales,
     match_target_scales_to_input_excluding_upscales,
+    write_ome_zarr,
 )
 
 

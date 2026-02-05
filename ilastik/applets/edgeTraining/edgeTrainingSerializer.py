@@ -18,13 +18,14 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
+import logging
+
 import numpy as np
 import vigra
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, SerialClassifierSlot
 from ilastikrag import Rag
 from ilastikrag.util import dataframe_from_hdf5, dataframe_to_hdf5
 
-import logging
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialDictSlot, SerialSlot
 
 logger = logging.getLogger(__file__)
 

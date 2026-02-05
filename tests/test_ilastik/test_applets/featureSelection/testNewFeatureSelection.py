@@ -1,10 +1,10 @@
 import logging
+
 import numpy
 import vigra
 
-from lazyflow.graph import Graph, OperatorWrapper
-
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
+from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators.oldVigraOperators import OpFeatureSelection as OpFeatureSelectionOld
 
 DEBUG = False

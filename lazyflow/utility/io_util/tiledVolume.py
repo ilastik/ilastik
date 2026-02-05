@@ -2,14 +2,20 @@ from future import standard_library
 
 standard_library.install_aliases()
 
-from builtins import zip
-from builtins import object
-import sys
+import logging
 import os
-import numpy
-import vigra
+import sys
+from builtins import object, zip
 from functools import partial
 from io import BytesIO
+
+import numpy
+import vigra
+
+from lazyflow.request import Request, RequestPool
+from lazyflow.roi import getBlockBounds, getIntersectingBlocks, getIntersection, roiToSlice
+from lazyflow.utility.jsonConfig import AutoEval, FormattedField, JsonConfigParser
+from lazyflow.utility.timer import Timer
 
 ## Instead of importing requests and PIL here,
 ## use late imports (below) so people who don't use TiledVolume don't have to have them
@@ -20,13 +26,8 @@ from io import BytesIO
 # Use PIL instead of vigra since it allows us to open images in-memory
 # from PIL import Image
 
-from lazyflow.utility.timer import Timer
-from lazyflow.utility.jsonConfig import JsonConfigParser, AutoEval, FormattedField
-from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiToSlice, getIntersection
 
-from lazyflow.request import Request, RequestPool
 
-import logging
 
 logger = logging.getLogger(__name__)
 

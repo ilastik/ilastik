@@ -1,10 +1,10 @@
-from builtins import zip
-from builtins import object
 import sys
+from builtins import object, zip
 
 if sys.version_info.major >= 3:
     unicode = str
 
+import collections
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -28,7 +28,7 @@ if sys.version_info.major >= 3:
 ###############################################################################
 import json
 import re
-import collections
+
 import numpy  # We import numpy here so that eval() understands names like "numpy.uint8"
 
 
@@ -112,7 +112,7 @@ class AutoEval(object):
 
     def __call__(self, x):
         # Support these special type names without the need for a numpy prefix.
-        from numpy import uint8, uint16, uint32, uint64, int8, int16, int32, int64, float32, float64
+        from numpy import float32, float64, int8, int16, int32, int64, uint8, uint16, uint32, uint64
 
         if type(x) is self._t:
             return x

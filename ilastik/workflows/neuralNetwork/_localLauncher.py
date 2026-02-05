@@ -30,8 +30,8 @@ from typing import List, Optional
 
 import grpc
 import psutil
-from tiktorch.proto.utils_pb2 import Empty
 from tiktorch.proto.inference_pb2_grpc import FlightControlStub
+from tiktorch.proto.utils_pb2 import Empty
 
 logger = logging.getLogger(__name__)
 

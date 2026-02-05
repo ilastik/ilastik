@@ -25,7 +25,6 @@ import sys
 
 import h5py
 import numpy as np
-
 import vigra
 
 try:
@@ -237,7 +236,7 @@ class SVR(object):
 
     options = [
         {"method": "RandomForest", "gui": ["default", "rf"], "req": ["sklearn"], "boxes": False},
-        {"method": "svrBoxed-gurobi", "gui": ["default", "svr"], "req": ["gurobipy"]}
+        {"method": "svrBoxed-gurobi", "gui": ["default", "svr"], "req": ["gurobipy"]},
         # {"optimization" : "svr-sklearn", "kernel" : "rbf","gui":["default","svr"], "req":["sklearn"]},
         # {"method" : "svr-gurobi", "gui":["default", "svr"], "req":["gurobipy"]}
         # {"optimization" : "svr-gurobi", "gui":["default", "svr"], "req":["dummy"]}

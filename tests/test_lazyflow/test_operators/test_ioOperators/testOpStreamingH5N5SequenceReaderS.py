@@ -1,15 +1,15 @@
-import unittest
-import tempfile
 import os
 import pathlib
+import tempfile
+import unittest
 
 import h5py
-import z5py
 import numpy
+import vigra
+import z5py
 
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStreamingH5N5SequenceReaderS
-import vigra
 
 
 class TestOpStreamingH5N5SequenceReaderS(unittest.TestCase):

@@ -21,13 +21,13 @@
 ###############################################################################
 import logging
 from enum import IntEnum
-from typing import List, Union, Tuple
+from typing import List, Tuple, Union
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy import ndimage as scipy_ndimage
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot, Slot
+from lazyflow.graph import InputSlot, Operator, OutputSlot, Slot
 from lazyflow.roi import enlargeRoiForHalo, roiToSlice
 from lazyflow.rtype import SubRegion
 from lazyflow.utility.data_semantics import ImageTypes

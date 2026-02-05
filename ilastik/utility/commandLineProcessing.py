@@ -26,6 +26,7 @@ import argparse
 import configparser
 import json
 from typing import Optional
+
 import vigra
 
 

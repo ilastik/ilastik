@@ -21,8 +21,9 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
-from .opDeviationFromMean import OpDeviationFromMean
+
 from .deviationFromMeanSerializer import DeviationFromMeanSerializer
+from .opDeviationFromMean import OpDeviationFromMean
 
 
 class DeviationFromMeanApplet(StandardApplet):

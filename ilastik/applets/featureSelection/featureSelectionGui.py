@@ -19,36 +19,30 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 import logging
-import numpy
 import os
-
 from functools import partial
 
+import numpy
 # PyQt
 from qtpy import uic
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QCursor
-from qtpy.QtWidgets import QApplication, QAbstractItemView, QFileDialog, QMessageBox
-
-# lazyflow
-import lazyflow.operators.filterOperators as filterOps
-from lazyflow.operators.generic import OpSubRegion
-
+from qtpy.QtWidgets import QAbstractItemView, QApplication, QFileDialog, QMessageBox
 # volumina
 from volumina.utility import preferences
 from volumina.widgets.layercontextmenu import layercontextmenu
 
-# ilastik
-from ilastik.widgets.featureTableWidget import FeatureEntry
-from ilastik.widgets.featureDlg import FeatureDlg
-from ilastik.utility import bind
+# lazyflow
+import lazyflow.operators.filterOperators as filterOps
+from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.config import cfg as ilastik_config
-
-from ilastik.applets.base.applet import DatasetConstraintError
-
-from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
-
+from ilastik.utility import bind
+from ilastik.widgets.featureDlg import FeatureDlg
+# ilastik
+from ilastik.widgets.featureTableWidget import FeatureEntry
+from lazyflow.operators.generic import OpSubRegion
 
 logger = logging.getLogger(__name__)
 

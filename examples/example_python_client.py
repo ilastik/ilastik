@@ -4,12 +4,14 @@ PixelClassification project can be used to generate predictions
 from within Python, without the need to read/write data from disk.
 Once the project is loaded, this script doesn't touch the hard-disk.
 """
+
 from __future__ import print_function
+
+import os
 from collections import OrderedDict
 
 import numpy
 import vigra
-import os
 
 from ilastik import app
 from ilastik.applets.dataSelection import DatasetInfo

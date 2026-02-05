@@ -1,5 +1,3 @@
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,16 +20,18 @@ from builtins import object
 #                 http://ilastik.org/license/
 ###############################################################################
 import os
+from builtins import object
+
 import h5py
 import pytest
 
 from lazyflow.utility.pathHelpers import (
+    PathComponents,
     compressPathForDisplay,
     getPathVariants,
-    PathComponents,
     globH5N5,
-    splitPath,
     isUrl,
+    splitPath,
 )
 
 

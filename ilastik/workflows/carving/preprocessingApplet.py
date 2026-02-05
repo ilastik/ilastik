@@ -20,8 +20,8 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from .preprocessingSerializer import PreprocessingSerializer
 from .opPreprocessing import OpPreprocessing
+from .preprocessingSerializer import PreprocessingSerializer
 
 
 class PreprocessingApplet(StandardApplet):

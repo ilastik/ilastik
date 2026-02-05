@@ -23,6 +23,7 @@ from builtins import object
 ###############################################################################
 import numpy
 import vigra
+
 from lazyflow.graph import Graph
 from lazyflow.operators import OpVigraWatershed
 from lazyflow.utility.slicingtools import slicing2shape

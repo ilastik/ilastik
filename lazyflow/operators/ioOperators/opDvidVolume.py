@@ -1,10 +1,12 @@
 from __future__ import division
+
 from future import standard_library
 
 standard_library.install_aliases()
 
-from builtins import zip
-
+import collections
+import http.client
+import logging
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -27,18 +29,16 @@ from builtins import zip
 # 		   http://ilastik.org/license/
 ###############################################################################
 import os
-import http.client
-import collections
-import logging
+from builtins import zip
 
 import numpy
 import vigra
+from libdvid import DVIDException, ErrMsg
+from libdvid.voxels import VoxelsAccessor
+
 from lazyflow.graph import Operator, OutputSlot
 from lazyflow.roi import determineBlockShape
 from lazyflow.utility.helpers import bigintprod
-
-from libdvid import DVIDException, ErrMsg
-from libdvid.voxels import VoxelsAccessor
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +120,7 @@ class OpDvidVolume(Operator):
 
         # To avoid requesting extremely large blocks, limit each request to 500MB each.
         # Note that this isn't a hard max: halos, etc. may increase this somewhat.
-        max_pixels = 2 ** 29 // self.Output.meta.dtype().nbytes
+        max_pixels = 2**29 // self.Output.meta.dtype().nbytes
         max_blockshape = determineBlockShape(self.Output.meta.shape, max_pixels)
         self.Output.meta.max_blockshape = max_blockshape
         self.Output.meta.ideal_blockshape = max_blockshape

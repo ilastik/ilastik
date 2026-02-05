@@ -1,36 +1,33 @@
 from __future__ import division
+
+import logging
+import math
+import os
+import random
+import re
+import sys
+import traceback
 from builtins import range
+
 from past.utils import old_div
-from qtpy import uic, QtWidgets
+from qtpy import QtWidgets, uic
 from qtpy.QtGui import QColor
 
-import os
-import logging
-import sys
-import re
-import traceback
-import math
-import random
-
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
-from ilastik.utility.gui.progress import TrackProgressDialog
-from ilastik.utility.exportingOperator import ExportingGui
-from ilastik.utility.gui.threadRouter import threadRouted
-from ilastik.utility.gui.titledMenu import TitledMenu
 from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
-
-from lazyflow.request.request import Request
-
-from ilastik.utility.gui.progress import GuiProgressVisitor
+from ilastik.utility.exportingOperator import ExportingGui
+from ilastik.utility.gui.progress import GuiProgressVisitor, TrackProgressDialog
+from ilastik.utility.gui.threadRouter import threadRouted
+from ilastik.utility.gui.titledMenu import TitledMenu
 from ilastik.utility.progress import DefaultProgressVisitor
+from lazyflow.request.request import Request
 
 logger = logging.getLogger(__name__)
 
-import hytra
-
 # Import solvers for HyTra
 import dpct
+import hytra
 
 try:
     import multiHypoTracking_with_cplex as mht

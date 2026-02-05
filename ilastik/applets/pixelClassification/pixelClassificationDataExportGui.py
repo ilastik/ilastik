@@ -20,11 +20,12 @@
 ###############################################################################
 import warnings
 
-from ilastik.utility import bind
-from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
-from lazyflow.operators.generic import OpMultiArraySlicer2
 from qtpy.QtGui import QColor
-from volumina.api import createDataSource, AlphaModulatedLayer, ColortableLayer
+from volumina.api import AlphaModulatedLayer, ColortableLayer, createDataSource
+
+from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
+from ilastik.utility import bind
+from lazyflow.operators.generic import OpMultiArraySlicer2
 
 
 class PixelClassificationDataExportGui(DataExportGui):

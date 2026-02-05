@@ -1,4 +1,15 @@
+import gc
+import weakref
 from builtins import object
+
+import numpy
+import pytest
+import vigra
+
+from lazyflow.graph import Graph
+from lazyflow.operators.opSlicedBlockedArrayCache import OpSlicedBlockedArrayCache
+from lazyflow.roi import roiToSlice
+from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
@@ -22,16 +33,7 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 
-import weakref
-import gc
 
-import numpy
-import pytest
-import vigra
-from lazyflow.graph import Graph
-from lazyflow.roi import roiToSlice
-from lazyflow.utility.testing import OpArrayPiperWithAccessCount
-from lazyflow.operators.opSlicedBlockedArrayCache import OpSlicedBlockedArrayCache
 
 
 class KeyMaker(object):

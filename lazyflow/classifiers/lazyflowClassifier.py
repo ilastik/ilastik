@@ -19,11 +19,9 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 import abc
-
 from typing import Type, TypeVar
 
 import h5py
-
 
 T = TypeVar("T", bound="LazyflowVectorwiseClassifierABC")
 

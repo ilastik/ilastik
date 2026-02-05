@@ -18,16 +18,16 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import tempfile
-import shutil
 import os
+import shutil
+import tempfile
 from typing import Tuple
 
 import numpy
 import vigra
+
+from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, FilesystemDatasetInfo, OpDataSelectionGroup
 from lazyflow.graph import Graph
-from ilastik.applets.dataSelection.opDataSelection import OpDataSelectionGroup, DatasetInfo
-from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
 
 
 class TestOpDataSelectionGroup(object):

@@ -19,27 +19,29 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 import argparse
-import logging
-from typing import List, Dict, Optional, Union, Sequence
 import itertools
-from pathlib import Path
+import logging
 import tempfile
+from pathlib import Path
+from typing import Dict, List, Optional, Sequence, Union
 
 logger = logging.getLogger(__name__)  # noqa
 
-import vigra
 import h5py
-from lazyflow.utility import isUrl
-from ilastik.utility.commandLineProcessing import parse_axiskeys
+import vigra
+
 from ilastik.applets.base.applet import Applet
+from ilastik.utility.commandLineProcessing import parse_axiskeys
+from lazyflow.utility import isUrl
+
+from .dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
 from .opDataSelection import (
-    OpMultiLaneDataSelectionGroup,
     DatasetInfo,
-    RelativeFilesystemDatasetInfo,
     MultiscaleUrlDatasetInfo,
     OpDataSelectionGroup,
+    OpMultiLaneDataSelectionGroup,
+    RelativeFilesystemDatasetInfo,
 )
-from .dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
 
 
 class RoleMismatchException(Exception):

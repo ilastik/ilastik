@@ -2,9 +2,9 @@ import numpy
 import pytest
 import vigra
 
+from lazyflow.graph import InputSlot
 from lazyflow.operators.filterOperators import OpBaseFilter
 from lazyflow.roi import sliceToRoi
-from lazyflow.graph import InputSlot
 from lazyflow.rtype import SubRegion
 
 

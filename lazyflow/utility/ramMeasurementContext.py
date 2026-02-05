@@ -1,6 +1,8 @@
 from __future__ import division
-from builtins import object
+
 import os
+from builtins import object
+
 import psutil
 
 this_process = psutil.Process(os.getpid())

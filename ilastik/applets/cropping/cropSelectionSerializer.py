@@ -19,11 +19,8 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import numpy
-from ilastik.applets.base.appletSerializer import (
-    AppletSerializer,
-    SerialDictSlot,
-    SerialSlot,
-)
+
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialDictSlot, SerialSlot
 
 
 class CropSelectionSerializer(AppletSerializer):

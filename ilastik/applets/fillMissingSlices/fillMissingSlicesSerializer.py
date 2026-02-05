@@ -19,7 +19,6 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot
-
 from lazyflow.operators.opInterpMissingData import OpDetectMissing
 
 

@@ -18,10 +18,10 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpCompressedUserLabelArray
-from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
+from ilastik.utility.operatorSubView import OperatorSubView
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.operators import OpCompressedUserLabelArray
 
 
 class OpLabelingTopLevel(Operator):

@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import warnings
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,22 +22,18 @@ from __future__ import print_function
 #           http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
+from functools import partial
+
 import numpy as np
 import vigra
 
-from lazyflow.graph import Graph
-from lazyflow.operators import OpLabelVolume
-from lazyflow.utility import Timer
-from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
-from lazyflow.request import Request, RequestPool
-
-from functools import partial
-
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-
-import warnings
+from lazyflow.graph import Graph, InputSlot, Operator, OutputSlot
+from lazyflow.operators import OpLabelVolume
+from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
+from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.request import Request, RequestPool
+from lazyflow.utility import Timer
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 

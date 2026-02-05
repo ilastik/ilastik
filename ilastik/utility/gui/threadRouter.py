@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import logging
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,11 +22,9 @@ from __future__ import print_function
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import threading
-import logging
-
 from functools import partial, wraps
-from qtpy.QtCore import QObject, Signal, Qt
 
+from qtpy.QtCore import QObject, Qt, Signal
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +104,7 @@ threadRouted = threadRoutedWithRouter(None)
 
 if __name__ == "__main__":
     import time
+
     from qtpy.QtWidgets import QApplication
 
     class TestObject(QObject):

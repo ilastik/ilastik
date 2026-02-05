@@ -20,8 +20,9 @@
 # 		   http://ilastik.org/license/
 ###############################################################################
 
-from collections.abc import Iterable
+import logging
 import numbers
+from collections.abc import Iterable
 from functools import partial
 from itertools import combinations
 from math import ceil, floor, log10, pow
@@ -30,9 +31,6 @@ from typing import Sequence, Tuple, Union
 import numpy
 
 from lazyflow.utility.helpers import bigintprod
-
-import logging
-
 
 logger = logging.getLogger(__file__)
 

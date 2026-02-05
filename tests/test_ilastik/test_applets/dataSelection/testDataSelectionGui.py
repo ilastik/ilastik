@@ -1,13 +1,13 @@
 # Data selection is already covered in workflow tests (e.g. testPixelClassificationGui.py)
 # Additional tests here should be workflow-agnostic.
 import os
-from collections import namedtuple
 import platform
-from typing import Tuple, List
+from collections import namedtuple
+from typing import List, Tuple
 from unittest import mock
 
 import pytest
-from qtpy.QtGui import QStandardItemModel, QStandardItem
+from qtpy.QtGui import QStandardItem, QStandardItemModel
 from qtpy.QtWidgets import QComboBox, QMessageBox
 
 from ilastik.applets.dataSelection.datasetDetailedInfoTableModel import DatasetColumn

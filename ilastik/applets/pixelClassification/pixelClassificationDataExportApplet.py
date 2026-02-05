@@ -1,5 +1,9 @@
 from __future__ import absolute_import
 
+from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
+from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
+from ilastik.utility import OpMultiLaneWrapper
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,10 +25,6 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from .opPixelClassificationDataExport import OpPixelClassificationDataExport
-from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
-from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
-
-from ilastik.utility import OpMultiLaneWrapper
 
 
 class PixelClassificationDataExportApplet(DataExportApplet):

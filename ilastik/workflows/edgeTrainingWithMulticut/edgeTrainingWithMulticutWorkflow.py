@@ -19,28 +19,25 @@
 #           http://ilastik.org/license.html
 ###############################################################################
 import argparse
+import logging
+import sys
 from functools import partial
 
 import numpy as np
-import sys
-
-from ilastik.workflow import Workflow
 
 from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.applets.batchProcessing import BatchProcessingApplet
+from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
-from ilastik.applets.wsdt import WsdtApplet
 from ilastik.applets.edgeTrainingWithMulticut import EdgeTrainingWithMulticutApplet
 from ilastik.applets.edgeTrainingWithMulticut.opEdgeTrainingWithMulticut import OpEdgeTrainingWithMulticut
-from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
-from ilastik.applets.batchProcessing import BatchProcessingApplet
-
+from ilastik.applets.wsdt import WsdtApplet
+from ilastik.workflow import Workflow
 from lazyflow.graph import Graph
 from lazyflow.operators import OpRelabelConsecutive, OpSimpleStacker
 from lazyflow.operators.generic import OpConvertDtype, OpPixelOperator
 from lazyflow.operators.valueProviders import OpPrecomputedInput
 from lazyflow.utility.helpers import eq_shapes
-
-import logging
 
 logger = logging.getLogger(__name__)
 

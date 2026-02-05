@@ -19,6 +19,7 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
+
 import numpy
 import vigra
 

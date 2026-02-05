@@ -1,8 +1,8 @@
 from typing import Any, Mapping
 
 import h5py
-
 import pytest
+
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
 from lazyflow.graph import Graph
 from lazyflow.operator import Operator

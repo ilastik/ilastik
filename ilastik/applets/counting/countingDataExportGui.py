@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import logging
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,21 +22,18 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import os
+
 from qtpy.QtWidgets import QFileDialog
-
-from lazyflow.operators.generic import OpMultiArraySlicer2
-
-from volumina.api import createDataSource, ColortableLayer
 from volumina import colortables
-from .countingGui import countingColorTable
+from volumina.api import ColortableLayer, createDataSource
 
+from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
-from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
-
+from lazyflow.operators.generic import OpMultiArraySlicer2
 from lazyflow.request import Request
 
-import logging
+from .countingGui import countingColorTable
 
 logger = logging.getLogger(__name__)
 

@@ -22,6 +22,7 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import numpy
+
 from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators import OpArrayPiper, OpMultiInputConcatenater
 

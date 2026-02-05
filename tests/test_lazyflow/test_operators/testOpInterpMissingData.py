@@ -1,5 +1,9 @@
-from builtins import zip
-from builtins import range
+import unittest
+from builtins import range, zip
+
+import numpy as np
+import vigra
+from numpy.testing import assert_array_almost_equal, assert_array_equal
 
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
@@ -23,13 +27,7 @@ from builtins import range
 # 		   http://ilastik.org/license/
 ###############################################################################
 from lazyflow.graph import Graph
-
-import numpy as np
-import vigra
-from lazyflow.operators.opInterpMissingData import OpInterpMissingData, OpInterpolate, OpDetectMissing
-
-import unittest
-from numpy.testing import assert_array_almost_equal, assert_array_equal
+from lazyflow.operators.opInterpMissingData import OpDetectMissing, OpInterpMissingData, OpInterpolate
 
 try:
     from scipy.interpolate import UnivariateSpline

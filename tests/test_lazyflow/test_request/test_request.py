@@ -1,14 +1,14 @@
-import time
 import threading
-from unittest import mock
+import time
 from functools import partial
+from unittest import mock
 
-import pytest
 import numpy as np
+import pytest
 from numpy.testing import assert_array_equal
-from lazyflow.utility import is_root_cause
 
-from lazyflow.request.request import Request, SimpleSignal, RequestError
+from lazyflow.request.request import Request, RequestError, SimpleSignal
+from lazyflow.utility import is_root_cause
 
 
 class TExc(Exception):

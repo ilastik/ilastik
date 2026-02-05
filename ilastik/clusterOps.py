@@ -1,5 +1,14 @@
 from __future__ import division
 
+import collections
+import copy
+import functools
+import hashlib
+import logging
+import os
+import subprocess
+
+import numpy
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,28 +30,16 @@ from __future__ import division
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from past.utils import old_div
-import os
-import copy
-import subprocess
-import collections
-import hashlib
-import functools
-
-import numpy
-
-from lazyflow.rtype import Roi, SubRegion
-from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
-from lazyflow.utility import BigRequestStreamer
-from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset
-from lazyflow.utility.timer import Timer
-from lazyflow.utility.pathHelpers import getPathVariants
-from lazyflow.utility.helpers import bigintprod
-
 
 from ilastik.clusterConfig import parseClusterConfigFile
 from ilastik.workflow import Workflow
-
-import logging
+from lazyflow.graph import InputSlot, Operator, OrderedSignal, OutputSlot
+from lazyflow.rtype import Roi, SubRegion
+from lazyflow.utility import BigRequestStreamer
+from lazyflow.utility.helpers import bigintprod
+from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset
+from lazyflow.utility.pathHelpers import getPathVariants
+from lazyflow.utility.timer import Timer
 
 logger = logging.getLogger(__name__)
 

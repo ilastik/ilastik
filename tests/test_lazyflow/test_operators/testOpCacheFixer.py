@@ -24,14 +24,12 @@ import unittest
 
 import numpy as np
 import vigra
+from numpy.testing import assert_array_equal
 
 from lazyflow.graph import Graph
-from lazyflow.rtype import SubRegion
 from lazyflow.operators import OpCacheFixer
-
-from lazyflow.utility.testing import OpArrayPiperWithAccessCount
-from lazyflow.utility.testing import OpCallWhenDirty
-from numpy.testing import assert_array_equal
+from lazyflow.rtype import SubRegion
+from lazyflow.utility.testing import OpArrayPiperWithAccessCount, OpCallWhenDirty
 
 
 class TestOpCacheFixer(unittest.TestCase):
@@ -56,6 +54,7 @@ class TestOpCacheFixer(unittest.TestCase):
 
     def testPassThroughAndFixed(self):
         self.op.fixAtCurrent.setValue(False)
+
         # we want the last operator to throw an exception when its
         # propagateDirty is called, so we can catch it below
         def foo():

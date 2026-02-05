@@ -22,7 +22,7 @@ from ilastik.workflows.edgeTrainingWithMulticut import EdgeTrainingWithMulticutW
 from lazyflow.classifiers.parallelVigraRfLazyflowClassifier import ParallelVigraRfLazyflowClassifier
 from lazyflow.utility.timer import Timer
 from tests.test_ilastik.helpers import ShellGuiTestCaseBase
-from tests.test_ilastik.helpers.wait import wait_until, wait_process_events
+from tests.test_ilastik.helpers.wait import wait_process_events, wait_until
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stdout))

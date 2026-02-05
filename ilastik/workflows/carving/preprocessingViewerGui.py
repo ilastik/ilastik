@@ -19,10 +19,9 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from functools import partial
+
 import numpy
-
 from qtpy.QtGui import QColor
-
 from volumina.api import createDataSource
 from volumina.layer import ColortableLayer
 from volumina.utility import ShortcutManager

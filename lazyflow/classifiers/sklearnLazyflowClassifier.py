@@ -18,12 +18,13 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+import logging
 import pickle as pickle
+
 import numpy
 import vigra
-from .lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
-import logging
+from .lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
 logger = logging.getLogger(__name__)
 

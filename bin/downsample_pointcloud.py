@@ -1,14 +1,14 @@
 from __future__ import division
-from past.utils import old_div
-import sys
-import os
+
 import csv
+import logging
+import os
+import sys
 
 import numpy
+from past.utils import old_div
 
 from ilastik.utility.commandLineProcessing import ParseListFromString
-
-import logging
 
 logger = logging.getLogger(__name__)
 

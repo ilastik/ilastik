@@ -1,5 +1,3 @@
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,8 +20,9 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import os
-import tempfile
 import shutil
+import tempfile
+from builtins import object
 
 import numpy
 import vigra

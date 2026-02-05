@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import logging
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,27 +22,25 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 import os
-from pathlib import Path
-from typing import List, Tuple, Optional
-from numbers import Number
 from functools import partial
+from numbers import Number
+from pathlib import Path
+from typing import List, Optional, Tuple
 
 import numpy
 import vigra
-
 from qtpy import uic
 from qtpy.QtWidgets import QDialog
 
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
+
 from .opDataSelection import (
     DatasetInfo,
-    ProjectInternalDatasetInfo,
     FilesystemDatasetInfo,
-    RelativeFilesystemDatasetInfo,
     MultiscaleUrlDatasetInfo,
+    ProjectInternalDatasetInfo,
+    RelativeFilesystemDatasetInfo,
 )
-
-import logging
 
 logger = logging.getLogger(__name__)
 

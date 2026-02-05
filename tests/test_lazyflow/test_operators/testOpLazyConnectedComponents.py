@@ -20,23 +20,20 @@
 #          http://ilastik.org/license/
 ###############################################################################
 import sys
-
-import numpy as np
-import vigra
-import h5py
 import unittest
 
-from numpy.testing import assert_array_equal, assert_array_almost_equal
-
-from lazyflow.utility.testing import assertEquivalentLabeling
-from lazyflow.operators.opLazyConnectedComponents import OpLazyConnectedComponents as OpLazyCC
+import h5py
+import numpy as np
+import vigra
+from numpy.testing import assert_array_almost_equal, assert_array_equal
 
 from lazyflow.graph import Graph
 from lazyflow.operator import Operator
-from lazyflow.slot import InputSlot, OutputSlot
-from lazyflow.rtype import SubRegion
-
 from lazyflow.operators import OpArrayPiper, OpCompressedCache
+from lazyflow.operators.opLazyConnectedComponents import OpLazyConnectedComponents as OpLazyCC
+from lazyflow.rtype import SubRegion
+from lazyflow.slot import InputSlot, OutputSlot
+from lazyflow.utility.testing import assertEquivalentLabeling
 
 
 class DirtyAssert(Operator):

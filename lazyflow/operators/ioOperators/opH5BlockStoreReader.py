@@ -1,11 +1,12 @@
-import os
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
 import numpy as np
 import vigra
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 
 try:
     from quilted.h5blockstore import H5BlockStore

@@ -1,6 +1,7 @@
-from __future__ import absolute_import
-from __future__ import division
+from __future__ import absolute_import, division
 
+import logging
+import os
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -22,23 +23,20 @@ from __future__ import division
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-from past.utils import old_div
 from enum import Enum
-import os
-import logging
 from functools import partial
 
 import numpy as np
-
+from past.utils import old_div
 from qtpy import uic
-from qtpy.QtCore import Qt, QEvent
-from qtpy.QtGui import QColor, QPixmap, QIcon
+from qtpy.QtCore import QEvent, Qt
+from qtpy.QtGui import QColor, QIcon, QPixmap
 from qtpy.QtWidgets import QMessageBox
-
-from volumina.api import createDataSource, AlphaModulatedLayer, ColortableLayer
 from volumina import colortables
+from volumina.api import AlphaModulatedLayer, ColortableLayer, createDataSource
 from volumina.colortables import create_default_16bit
 from volumina.utility import ShortcutManager
+
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted

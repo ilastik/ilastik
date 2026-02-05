@@ -18,14 +18,13 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+import logging
 from typing import TYPE_CHECKING
 
-from ilastik.applets.base.appletSerializer import AppletSerializer, deleteIfPresent, SerialSlot
 import numpy
 
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, deleteIfPresent
 from lazyflow.roi import roiFromShape, roiToSlice
-
-import logging
 
 logger = logging.getLogger(__name__)
 

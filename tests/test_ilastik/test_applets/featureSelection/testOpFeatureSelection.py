@@ -18,21 +18,22 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
 import os
+from builtins import range
+
 import numpy
-from lazyflow.roi import sliceToRoi
-from lazyflow.graph import Graph, OperatorWrapper
-from lazyflow.operators.ioOperators import OpInputDataReader
-from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
 import vigra
 
 import ilastik.ilastik_logging
+from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
+from lazyflow.graph import Graph, OperatorWrapper
+from lazyflow.operators.ioOperators import OpInputDataReader
+from lazyflow.roi import sliceToRoi
 
 ilastik.ilastik_logging.default_config.init()
 
-import unittest
 import tempfile
+import unittest
 
 
 class TestOpFeatureSelection(unittest.TestCase):

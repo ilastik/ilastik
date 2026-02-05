@@ -19,10 +19,10 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
-from dataclasses import dataclass
+import logging
 import os
 import re
-import logging
+from dataclasses import dataclass
 from functools import partial
 from typing import Optional, Union
 
@@ -31,24 +31,22 @@ import numpy
 from qtpy import uic
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QColor, QIcon
-from qtpy.QtWidgets import QApplication, QMessageBox, QAction
+from qtpy.QtWidgets import QAction, QApplication, QMessageBox
+from volumina import colortables
+from volumina.api import ColortableLayer, GrayscaleLayer, LazyflowSinkSource
+from volumina.utility import ShortcutManager, preferences
 
 # HCI
 from ilastik.applets.labeling.labelExplorer import LabelExplorerWidget
-from volumina.api import LazyflowSinkSource, ColortableLayer, GrayscaleLayer
-from volumina.utility import ShortcutManager, preferences
+from ilastik.applets.labeling.labelingImport import import_labeling_layer
+from ilastik.applets.layerViewer.layerViewerGui import LayerPriority, LayerViewerGui
 from ilastik.shell.gui.iconMgr import ilastikIcons
-from ilastik.widgets.labelListView import Label
-from ilastik.widgets.labelListModel import LabelListModel
-from volumina import colortables
-from lazyflow.slot import InputSlot, OutputSlot
-
 # ilastik
 from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThunkEventHandler, is_qt_dark_mode, threadRouted
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui, LayerPriority
-
-from ilastik.applets.labeling.labelingImport import import_labeling_layer
+from ilastik.widgets.labelListModel import LabelListModel
+from ilastik.widgets.labelListView import Label
+from lazyflow.slot import InputSlot, OutputSlot
 
 # Loggers
 logger = logging.getLogger(__name__)

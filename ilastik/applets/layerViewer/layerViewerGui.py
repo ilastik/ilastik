@@ -19,51 +19,48 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Python
-from enum import IntEnum
-import os
-from functools import partial
 import logging
+import os
+from enum import IntEnum
+from functools import partial
 from typing import Union
+
 from future.utils import with_metaclass
 
 logger = logging.getLogger(__name__)
 
 # SciPy
 import numpy
-
+import vigra
+from qtpy import uic
 # PyQt
 from qtpy.QtCore import Qt, Signal
-from qtpy.QtWidgets import QWidget
 from qtpy.QtGui import QColor
-from qtpy import uic
-
-import vigra
-
-# lazyflow
-from lazyflow.stype import ArrayLike
-from lazyflow.operators import OpSingleChannelSelector, OpWrapSlot
-from lazyflow.operators.opReorderAxes import OpReorderAxes
-
+from qtpy.QtWidgets import QWidget
 # volumina
 from volumina.api import (
-    createDataSource,
-    GrayscaleLayer,
-    RGBALayer,
-    ColortableLayer,
     AlphaModulatedLayer,
+    ColortableLayer,
+    GrayscaleLayer,
     LayerStackModel,
+    RGBALayer,
+    createDataSource,
     generateRandomColors,
 )
-from volumina.volumeEditor import VolumeEditor
-from volumina.utility import ShortcutManager
 from volumina.interpreter import ClickReportingInterpreter
+from volumina.utility import ShortcutManager
+from volumina.volumeEditor import VolumeEditor
 from volumina.volumeEditorWidget import VolumeEditorWidget
 
+from ilastik.config import cfg as ilastik_config
 # ilastik
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from ilastik.config import cfg as ilastik_config
 from ilastik.widgets.viewerControls import ViewerControls
+from lazyflow.operators import OpSingleChannelSelector, OpWrapSlot
+from lazyflow.operators.opReorderAxes import OpReorderAxes
+# lazyflow
+from lazyflow.stype import ArrayLike
 
 # ===----------------------------------------------------------------------------------------------------------------===
 
@@ -388,13 +385,21 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
 
     @classmethod
     def _create_binary_mask_layer_from_slot(cls, slot, priority: LayerPriority = LayerPriority.BASE):
-        # 0: black, 1-255: transparent
-        # This works perfectly for uint8.
-        # For uint32, etc., values of 256,512, etc. will be appear 'off'.
-        # But why would you use uint32 for a binary mask anyway?
-        colortable = [QColor(0, 0, 0, 255).rgba()]
-        colortable += 255 * [QColor(0, 0, 0, 0).rgba()]
-        layer = ColortableLayer(createDataSource(slot), colortable, priority=priority)
+        from volumina.layer import GrayscaleLayer
+
+        dtype = slot.meta.dtype
+        if numpy.issubdtype(dtype, numpy.floating):
+            # For float masks, use GrayscaleLayer
+            layer = GrayscaleLayer(createDataSource(slot), priority=priority)
+            layer.normalize = (0.0, 1.0)
+        else:
+            # 0: black, 1-255: transparent
+            # This works perfectly for uint8.
+            # For uint32, etc., values of 256,512, etc. will be appear 'off'.
+            # But why would you use uint32 for a binary mask anyway?
+            colortable = [QColor(0, 0, 0, 255).rgba()]
+            colortable += 255 * [QColor(0, 0, 0, 0).rgba()]
+            layer = ColortableLayer(createDataSource(slot), colortable, priority=priority)
         return layer
 
     @classmethod

@@ -18,14 +18,15 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-import sys
 import os
-import numpy
-from . import preView
+import sys
 
+import numpy
+import qimage2ndarray
 from qtpy import uic
 from qtpy.QtWidgets import QDialog
-import qimage2ndarray
+
+from . import preView
 
 
 class FeatureDlg(QDialog):
@@ -95,8 +96,8 @@ if __name__ == "__main__":
     import signal
 
     signal.signal(signal.SIGINT, signal.SIG_DFL)
-    from qtpy.QtWidgets import QApplication
     from featureTableWidget import FeatureEntry
+    from qtpy.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
 

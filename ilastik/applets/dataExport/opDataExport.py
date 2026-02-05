@@ -18,8 +18,8 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-import os
 import collections
+import os
 from collections import OrderedDict
 from typing import Tuple, Union
 
@@ -27,10 +27,9 @@ import numpy
 from ndstructs import Slice5D
 
 from ilastik.config import cfg
-
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.utility import PathComponents, getPathVariants, format_known_keys
+from lazyflow.graph import InputSlot, Operator, OutputSlot
 from lazyflow.operators.ioOperators import OpFormattedDataExport
+from lazyflow.utility import PathComponents, format_known_keys, getPathVariants
 
 
 class DataExportPathFormatter:

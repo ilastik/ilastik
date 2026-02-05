@@ -4,14 +4,14 @@ from unittest import TestCase
 import numpy
 
 from lazyflow.roi import (
-    determineBlockShape,
-    determine_optimal_request_blockshape,
-    getIntersection,
-    enlargeRoiForHalo,
     TinyVector,
-    nonzero_bounding_box,
     containing_rois,
+    determine_optimal_request_blockshape,
+    determineBlockShape,
+    enlargeRoiForHalo,
     getIntersectingBlocks,
+    getIntersection,
+    nonzero_bounding_box,
 )
 
 

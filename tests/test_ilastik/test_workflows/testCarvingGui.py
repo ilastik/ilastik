@@ -1,33 +1,31 @@
-from tests.test_ilastik.helpers import ShellGuiTestCaseBase
-import h5py
 import logging
-import numpy
 import os
-import sys
 import shutil
+import sys
 import tempfile
 import threading
 import zipfile
 
+import h5py
+import numpy
 from qtpy.QtWidgets import QApplication
+from volumina.widgets.exportHelper import get_export_operator
 
 from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
 from ilastik.workflows.carving import CarvingWorkflow
-from lazyflow.utility.timer import Timer
-
-from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.operators.ioOperators import OpInputDataReader
 from lazyflow import roi
-
-from volumina.widgets.exportHelper import get_export_operator
+from lazyflow.operators.ioOperators import OpInputDataReader
+from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.utility.timer import Timer
+from tests.test_ilastik.helpers import ShellGuiTestCaseBase
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 logger.setLevel(logging.DEBUG)
 
 import platform
-import pytest
 
+import pytest
 
 if os.environ.get("ON_CIRCLE_CI"):
     pytest.skip("These tests are too flaky on circleCI", allow_module_level=True)

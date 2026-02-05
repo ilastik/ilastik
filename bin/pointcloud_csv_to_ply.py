@@ -1,13 +1,12 @@
-import sys
-import csv
-import textwrap
 import collections
+import csv
+import logging
+import sys
+import textwrap
 
 import numpy
 
 from ilastik.utility.commandLineProcessing import ParseListFromString
-
-import logging
 
 logger = logging.getLogger(__name__)
 

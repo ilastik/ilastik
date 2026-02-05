@@ -19,6 +19,7 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from abc import ABCMeta, abstractmethod
+
 from future.utils import with_metaclass
 
 

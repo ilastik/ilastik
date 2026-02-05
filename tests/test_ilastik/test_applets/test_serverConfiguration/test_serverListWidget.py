@@ -1,9 +1,9 @@
-import pytest
+from types import SimpleNamespace
 
+import pytest
 from qtpy.QtCore import Qt
 
 from ilastik.applets.serverConfiguration.serverListWidget import ServerListModel, ServerListWidget
-from types import SimpleNamespace
 
 
 class DummyStore:

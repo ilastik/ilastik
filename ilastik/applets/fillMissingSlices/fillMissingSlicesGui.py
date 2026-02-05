@@ -18,20 +18,17 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-
+import logging
 import os.path
 import sys
-
-from qtpy.QtWidgets import QFileDialog
-from qtpy.QtCore import QDir
+from builtins import range
 
 import qtpy
+from qtpy.QtCore import QDir
+from qtpy.QtWidgets import QFileDialog
 
-import logging
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from lazyflow.operators.opInterpMissingData import logger as remoteLogger
-
 
 remoteLogger.setLevel(logging.DEBUG)
 loggerName = __name__

@@ -1,5 +1,3 @@
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,9 +20,12 @@ from builtins import object
 # 		   http://ilastik.org/license/
 ###############################################################################
 import os
+from builtins import object
+
 import numpy as np
-import vigra
 import pytest
+import vigra
+
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStreamingMmfReader
 

@@ -19,32 +19,31 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
-from builtins import range
+import itertools
+import logging
 import os
 import re
-import logging
-import itertools
+from builtins import range
 from functools import partial
 
 # Third-party
 import numpy
 from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QApplication
 from qtpy.QtGui import QColor
-
-# HCI
-from volumina.api import LazyflowSinkSource, ColortableLayer
-from volumina.utility import ShortcutManager
+from qtpy.QtWidgets import QApplication
 from volumina import colortables
-from ilastik.shell.gui.iconMgr import ilastikIcons
-from ilastik.widgets.cropListView import Crop
-from ilastik.widgets.cropListModel import CropListModel
-from ilastik.applets.cropping.cropSelectionWidget import CropSelectionWidget
+# HCI
+from volumina.api import ColortableLayer, LazyflowSinkSource
+from volumina.utility import ShortcutManager
 
+from ilastik.applets.cropping.cropSelectionWidget import CropSelectionWidget
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.shell.gui.iconMgr import ilastikIcons
 # ilastik
 from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThunkEventHandler, threadRouted
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.widgets.cropListModel import CropListModel
+from ilastik.widgets.cropListView import Crop
 
 # Loggers
 logger = logging.getLogger(__name__)

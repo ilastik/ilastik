@@ -19,9 +19,9 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from qtpy.QtDesigner import QPyDesignerCustomWidgetPlugin
-from qtpy.QtGui import QPixmap, QIcon, QColor
+from qtpy.QtGui import QColor, QIcon, QPixmap
 
-from ilastik.widgets.overlayTreeWidget import OverlayTreeWidget, OverlayEntry
+from ilastik.widgets.overlayTreeWidget import OverlayEntry, OverlayTreeWidget
 
 
 class PyOverlayTreeWidgetPlugin(QPyDesignerCustomWidgetPlugin):

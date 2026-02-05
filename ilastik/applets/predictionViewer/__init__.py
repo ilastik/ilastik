@@ -21,5 +21,5 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from .opPredictionViewer import OpPredictionViewer
-from .predictionViewerSerializer import PredictionViewerSerializer
 from .predictionViewerApplet import PredictionViewerApplet
+from .predictionViewerSerializer import PredictionViewerSerializer

@@ -1,6 +1,18 @@
 from __future__ import absolute_import
 
+import copy
+import logging
+import threading
+import time
 from builtins import range
+
+import numpy
+import vigra
+
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.utility import Timer
+
+from . import UfmfParser
 
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
@@ -24,18 +36,9 @@ from builtins import range
 #           http://ilastik.org/license/
 ###############################################################################
 
-import logging
-import time
-import threading
 
-import numpy
-import vigra
-import copy
 
-from . import UfmfParser
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.utility import Timer
 
 logger = logging.getLogger(__name__)
 

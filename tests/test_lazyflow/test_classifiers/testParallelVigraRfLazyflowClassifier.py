@@ -1,6 +1,8 @@
 from builtins import object
+
 import numpy
-from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory, ParallelVigraRfLazyflowClassifier
+
+from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier, ParallelVigraRfLazyflowClassifierFactory
 
 
 class TestParallelVigraRfLazyflowClassifier(object):

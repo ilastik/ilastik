@@ -1,6 +1,5 @@
 import itertools
 
-
 not_set = object()
 
 

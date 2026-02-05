@@ -1,5 +1,10 @@
 from __future__ import absolute_import
 
+import os
+
+import h5py
+import numpy
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,9 +26,6 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.appletSerializer import AppletSerializer, deleteIfPresent
-import h5py
-import numpy
-import os
 
 from .watershed_segmentor import WatershedSegmentor
 

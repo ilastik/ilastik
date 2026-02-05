@@ -22,8 +22,8 @@ from __future__ import absolute_import
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from .opAnnotations import OpAnnotations
 from .annotationsSerializer import AnnotationsSerializer
+from .opAnnotations import OpAnnotations
 
 
 class AnnotationsApplet(StandardApplet):

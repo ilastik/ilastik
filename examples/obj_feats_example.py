@@ -1,12 +1,15 @@
 from __future__ import division
+
 from builtins import range
-from past.utils import old_div
-from ilastik.plugins import ObjectFeaturesPlugin
-import ilastik.applets.objectExtraction.opObjectExtraction
-import vigra
+
 import numpy
-from lazyflow.operators.opInterpMissingData import OpDetectMissing
+import vigra
+from past.utils import old_div
+
+import ilastik.applets.objectExtraction.opObjectExtraction
+from ilastik.plugins import ObjectFeaturesPlugin
 from lazyflow.graph import Graph
+from lazyflow.operators.opInterpMissingData import OpDetectMissing
 
 
 class ExampleObjFeats(ObjectFeaturesPlugin):

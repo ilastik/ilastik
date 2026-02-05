@@ -19,21 +19,20 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-from lazyflow.request.request import Request, RequestError, RequestLock, RequestPool
-import time
+import logging
 import random
-import numpy
-from functools import partial
+import sys
+import threading
+import time
 import unittest
+from functools import partial
 
+import numpy
 import pytest
 
-from lazyflow.utility.tracer import traceLogged
+from lazyflow.request.request import Request, RequestError, RequestLock, RequestPool
 from lazyflow.utility import is_root_cause
-
-import threading
-import sys
-import logging
+from lazyflow.utility.tracer import traceLogged
 
 handler = logging.StreamHandler(sys.stdout)
 formatter = logging.Formatter("%(levelname)s %(name)s %(message)s")
@@ -148,6 +147,7 @@ class TestRequest(unittest.TestCase):
         requestCounter = [0]
         requestLock = threading.Lock()
         allRequests = []
+
         # This closure randomly chooses to either (a) return immediately or (b) fire off more work
         def someWork(depth, force=False, i=-1):
             # print 'depth=', depth, 'i=', i

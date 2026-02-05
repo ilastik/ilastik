@@ -19,13 +19,14 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-import os
-import vigra
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset
-from lazyflow.operators import OpDummyData
-
 import logging
+import os
+
+import vigra
+
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.operators import OpDummyData
+from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset
 
 logger = logging.getLogger(__name__)
 

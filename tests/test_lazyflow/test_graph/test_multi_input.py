@@ -19,7 +19,7 @@
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-from lazyflow.operator import Operator, InputSlot, OutputSlot
+from lazyflow.operator import InputSlot, Operator, OutputSlot
 
 
 class OpSimpleInput(Operator):

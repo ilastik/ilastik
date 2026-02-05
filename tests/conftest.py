@@ -1,13 +1,12 @@
-from pathlib import Path
+import itertools
 import os
+import platform
+import queue
 import tempfile
 import threading
-import queue
 import warnings
-import platform
-import itertools
-
 from concurrent import futures
+from pathlib import Path
 
 # https://bugreports.qt.io/browse/QTBUG-87014
 if platform.system().lower() == "darwin":
@@ -18,22 +17,20 @@ if platform.system().lower() == "darwin":
         os.environ["VOLUMINA_SHOW_3D_WIDGET"] = "0"
 
 
-import pytest
 import h5py
-import z5py
-from PIL import Image as PilImage
 import numpy
-
-from qtpy.QtWidgets import QApplication
-from qtpy.QtCore import QTimer, Qt
+import pytest
+import z5py
 from _pytest.main import pytest_runtestloop as _pytest_runtestloop
+from PIL import Image as PilImage
+from qtpy.QtCore import Qt, QTimer
+from qtpy.QtWidgets import QApplication
 
 import ilastik.config
-
 import lazyflow.operators
+from ilastik.shell.gui.startShellGui import launchShell
 from ilastik.utility.gui.threadRouter import ThreadRouter
 from ilastik.utility.itertools import pairwise
-from ilastik.shell.gui.startShellGui import launchShell
 from lazyflow.graph import Graph
 from lazyflow.operators.cacheMemoryManager import _CacheMemoryManager
 

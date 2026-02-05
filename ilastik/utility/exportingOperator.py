@@ -1,9 +1,10 @@
-from builtins import range
 import logging
-from ilastik.utility.exportFile import ProgressPrinter
-from ilastik.utility import log_exception
-from lazyflow.request import Request
+from builtins import range
 from functools import partial
+
+from ilastik.utility import log_exception
+from ilastik.utility.exportFile import ProgressPrinter
+from lazyflow.request import Request
 
 logger = logging.getLogger(__name__)
 

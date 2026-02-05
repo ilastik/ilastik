@@ -19,16 +19,16 @@
 # This information is also available on the ilastik web site at:
 #          http://ilastik.org/license/
 ###############################################################################
+import logging
 import os
-
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators.generic import OpMultiArrayStacker
-from lazyflow.operators.ioOperators.opStreamingH5N5Reader import OpStreamingH5N5Reader
-from lazyflow.utility.pathHelpers import PathComponents, globH5N5
 
 import h5py
 import z5py
-import logging
+
+from lazyflow.graph import InputSlot, Operator, OutputSlot
+from lazyflow.operators.generic import OpMultiArrayStacker
+from lazyflow.operators.ioOperators.opStreamingH5N5Reader import OpStreamingH5N5Reader
+from lazyflow.utility.pathHelpers import PathComponents, globH5N5
 
 logger = logging.getLogger(__name__)
 
