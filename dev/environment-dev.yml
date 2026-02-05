@@ -28,7 +28,8 @@ dependencies:
   - pydantic
   - pyopengl
   - pyqt 5.15.*
-  - pyqtgraph
+  # pyqtgraph 0.14.0 results in non-functional 3dvp on win, no mesh display on mac
+  - pyqtgraph <0.14
   # previous versions would set thread limits globally with side effects
   - python-elf >= 0.4.8
   - qimage2ndarray
