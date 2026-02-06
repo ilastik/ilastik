@@ -104,3 +104,25 @@ def test_validate_uri_from_existing_Windows_path_with_special_characters(tmp_pat
 def test_validate_uri_from_Windows_path_raises(invalid_input):
     with pytest.raises(ValueError):
         multiscaleDatasetBrowser._validate_uri(invalid_input)
+
+@pytest.mark.parametrize(
+    "uri,expected",
+    [
+        (
+            "https://data.ilastik.org/2d_cells_apoptotic_1channel.zarr",
+            "2d_cells_apoptotic_1channel",
+        ),
+        (
+            "https://data.ilastik.org/2d_cells_apoptotic_1channel.zarr/s1",
+            "2d_cells_apoptotic_1channel-s1",
+        ),
+        (
+            "https://data.ilastik.org/2d_cells_apoptotic_1channel.zarr/labels",
+            "2d_cells_apoptotic_1channel",
+        ),
+    ],
+)
+def test_generate_nickname(uri, expected):
+    nickname = multiscaleDatasetBrowser.generate_nickname(uri)
+    assert nickname == expected
+

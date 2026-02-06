@@ -68,6 +68,28 @@ def _validate_uri(text: str) -> str:
             raise ValueError("Directory does not exist or URL is malformed. Please try copy-pasting the path directly.")
     return text
 
+def generate_nickname(uri: str) -> str:
+    """
+    Generate a nickname for multiscale dataset:
+    Examples:
+        https://data.ilastik.org/2d_cells_apoptotic_1channel.zarr -> 2d_cells_apoptotic_1channel
+        https://data.ilastik.org/2d_cells_apoptotic_1channel.zarr/s1 -> 2d_cells_apoptotic_1channel-s1
+    """
+    import os
+    from urllib.parse import urlparse, unquote
+    parsed = urlparse(uri)
+    path_parts = parsed.path.strip("/").split("/")
+
+    container = os.path.splitext(path_parts[0])[0] if path_parts else "dataset"
+    internal = path_parts[1] if len(path_parts) > 1 else ""
+
+    if internal.startswith("s") and internal[1:].isdigit():
+        nickname = f"{container}-{internal}"
+    else:
+        nickname = container
+
+    return nickname
+
 
 class CheckRemoteStoreWorker(QThread):
     success = Signal(object)  # returns MultiscaleStore
@@ -218,6 +240,8 @@ class MultiscaleDatasetBrowser(QDialog):
     def display_success(self, store: MultiscaleStore):
         self._set_inputs_enabled(True)
         self.selected_uri = store.uri
+        nickname = generate_nickname(store.uri)
+
         time_to_finish = perf_counter() - self._worker_start_time
         time_text = f"Finished check in {time_to_finish:.2f} seconds."
         if time_to_finish > 3:
@@ -231,6 +255,7 @@ class MultiscaleDatasetBrowser(QDialog):
         )
         self.result_text_box.setHtml(
             f"<p>{time_text}<br>"
+            f"Nickname: <b>{nickname}</b><br>"
             f"URL: {self.selected_uri}<br>"
             f"Data format: {store.NAME}<br>"
             f"Available scales:</p><ol>{scale_info_html}</ol>"
