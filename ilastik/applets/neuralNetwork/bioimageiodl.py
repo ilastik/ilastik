@@ -4,7 +4,6 @@ from typing import Any, Callable, Dict
 from qtpy.QtCore import QThread, Signal
 from bioimageio.spec import ValidationContext, get_resource_package_content
 from tqdm.auto import tqdm as std_tqdm
-from lazyflow.utility.debug import blah
 import logging
 
 logger = logging.getLogger(__file__)
