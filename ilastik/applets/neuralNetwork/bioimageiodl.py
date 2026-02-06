@@ -1,9 +1,9 @@
 import io
+from typing import Any, Callable, Dict
 
 from qtpy.QtCore import QThread, Signal
 from bioimageio.spec import ValidationContext, get_resource_package_content
 from tqdm.auto import tqdm as std_tqdm
-
 import logging
 
 logger = logging.getLogger(__file__)
@@ -62,9 +62,16 @@ class BioImageDownloader(QThread):
             with ValidationContext(perform_io_checks=False):
                 package_content = get_resource_package_content(rd, weights_priority_order=BIOIMAGEIO_WEIGHTS_PRIORITY)
 
+            def _callback(progress_signal: Signal) -> Callable[[int, int], None]:
+                def _cb(n: int, total: int, **kwargs):
+                    if total > 0:
+                        progress_signal.emit(int(n / total * 100))
+
+                return _cb
+
             for k, v in TqdmExt(
                 package_content.items(),
-                callback=lambda n, total, **kwargs: self.progress0.emit(int(n / total * 100)),
+                callback=_callback(self.progress0),
                 cancellation_token=self._cancellation_token,
             ):
                 if isinstance(v, HttpUrl):
@@ -74,7 +81,7 @@ class BioImageDownloader(QThread):
                         v,
                         progressbar=TqdmExt(
                             total=1,  # hack: it will be set later by HTTPDownloader, but it is needed for a valid tqdm
-                            callback=lambda n, total, **kwargs: self.progress1.emit(int(n / total * 100)),
+                            callback=_callback(self.progress1),
                             cancellation_token=self._cancellation_token,
                         ),
                     )

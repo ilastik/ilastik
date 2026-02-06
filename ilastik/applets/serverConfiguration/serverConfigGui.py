@@ -31,12 +31,9 @@ from qtpy.QtCore import (
     QAbstractItemModel,
     Qt,
     QModelIndex,
-    QDataWidgetMapper,
-    QItemDelegate,
-    QListWidgetItem,
     Signal,
 )
-from qtpy.QtWidgets import QWidget, QVBoxLayout
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QDataWidgetMapper, QItemDelegate
 
 from .serverConfigForm import ServerConfigForm, ServerFormWorkflow
 from .serverListWidget import ServerListWidget, ServerListModel
