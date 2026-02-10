@@ -131,8 +131,6 @@ class OpFeatureSelectionNoCache(Operator):
 
         # Get features from external file
         if self.FeatureListFilename.ready() and len(self.FeatureListFilename.value) > 0:
-            raise NotImplementedError("Not simplified yet!")
-
             self.OutputImage.disconnect()
             self.FeatureLayers.disconnect()
 
