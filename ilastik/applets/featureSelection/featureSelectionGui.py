@@ -297,7 +297,7 @@ class FeatureSelectionGui(LayerViewerGui):
         # the Output.meta.NOTREADY flag
         dummy_matrix = numpy.zeros((6, 7), dtype=bool)
         dummy_matrix[0, 0] = True
-        self.parentApplet.topLevelOperator.SelectionMatrix.setValue(True)
+        self.parentApplet.topLevelOperator.SelectionMatrix.setValue(dummy_matrix)
 
         # Notify the workflow that some applets may have changed state now.
         # (For example, the downstream pixel classification applet can
