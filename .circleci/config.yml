@@ -77,6 +77,7 @@ jobs:
             conda env create --name ${TEST_ENV_NAME} --file ilastik/dev/environment-dev.yml &&
             conda install --name ${TEST_ENV_NAME} --freeze-installed -c ilastik-forge -c conda-forge mpi4py pytest-cov volumina &&
             conda run -n ${TEST_ENV_NAME} pip install -e ilastik
+        no_output_timeout: 20m
 
     - run:
         name: start xvfb
