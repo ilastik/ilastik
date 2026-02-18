@@ -26,7 +26,7 @@ import pytest
 import vigra
 
 from ilastik.applets.labeling.connectBlockedLabels import Neighborhood
-from ilastik.applets.labeling.labelExplorer import LabelExplorerWidget
+from ilastik.applets.labeling.pixelLabelExplorer import PixelLabelExplorerWidget
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.opCompressedUserLabelArray import OpCompressedUserLabelArray
 from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
@@ -61,8 +61,8 @@ def label_pipeline_non_blocked(graph) -> Iterator[OpDenseLabelArray]:
 
 
 @pytest.fixture
-def label_explorer_blocked(qtbot, label_pipeline_blocked) -> Tuple[InputSlot, LabelExplorerWidget]:
-    ex = LabelExplorerWidget(label_pipeline_blocked.nonzeroBlocks, label_pipeline_blocked.Output)
+def label_explorer_blocked(qtbot, label_pipeline_blocked) -> Tuple[InputSlot, PixelLabelExplorerWidget]:
+    ex = PixelLabelExplorerWidget(label_pipeline_blocked.nonzeroBlocks, label_pipeline_blocked.Output)
     qtbot.addWidget(ex)
     return label_pipeline_blocked.Input, ex
 
@@ -70,8 +70,8 @@ def label_explorer_blocked(qtbot, label_pipeline_blocked) -> Tuple[InputSlot, La
 @pytest.fixture
 def label_explorer_non_blocked(
     qtbot, label_pipeline_non_blocked: OpDenseLabelArray
-) -> Tuple[InputSlot, LabelExplorerWidget]:
-    ex = LabelExplorerWidget(label_pipeline_non_blocked.NonzeroBlocks, label_pipeline_non_blocked.Output)
+) -> Tuple[InputSlot, PixelLabelExplorerWidget]:
+    ex = PixelLabelExplorerWidget(label_pipeline_non_blocked.NonzeroBlocks, label_pipeline_non_blocked.Output)
     qtbot.addWidget(ex)
     return label_pipeline_non_blocked.LabelSinkInput, ex
 
@@ -89,7 +89,7 @@ def test_construct(
     expected_neighborhood: Neighborhood,
     request,
 ):
-    label_explorer: LabelExplorerWidget
+    label_explorer: PixelLabelExplorerWidget
     _islot, label_explorer = request.getfixturevalue(gui_variant)
     with patch.object(
         label_explorer, "initialize_table", wraps=label_explorer.initialize_table
@@ -119,7 +119,7 @@ def test_update_on_update(
     request,
 ):
     islot: InputSlot
-    label_explorer: LabelExplorerWidget
+    label_explorer: PixelLabelExplorerWidget
     islot, label_explorer = request.getfixturevalue(gui_variant)
     with patch.object(
         label_explorer, "initialize_table", wraps=label_explorer.initialize_table
@@ -147,7 +147,7 @@ def test_no_update_on_update_when_not_shown(
     qtbot, gui_variant: Literal["label_explorer_blocked", "label_explorer_non_blocked"], expected_n_blocks: int, request
 ):
     islot: InputSlot
-    label_explorer: LabelExplorerWidget
+    label_explorer: PixelLabelExplorerWidget
     islot, label_explorer = request.getfixturevalue(gui_variant)
     with patch.object(
         label_explorer, "_populate_table", wraps=label_explorer._populate_table
@@ -169,9 +169,9 @@ def test_no_update_on_update_when_not_shown(
 def test_delete_labels_empty_table_non_blocked(
     qtbot,
     label_pipeline_non_blocked: OpDenseLabelArray,
-    label_explorer_non_blocked: Tuple[InputSlot, LabelExplorerWidget],
+    label_explorer_non_blocked: Tuple[InputSlot, PixelLabelExplorerWidget],
 ):
-    label_explorer: LabelExplorerWidget
+    label_explorer: PixelLabelExplorerWidget
     _islot, label_explorer = label_explorer_non_blocked
 
     with patch.object(
@@ -197,9 +197,9 @@ def test_delete_labels_empty_table_non_blocked(
 def test_delete_labels_empty_table_blocked(
     qtbot,
     label_pipeline_blocked: OpCompressedUserLabelArray,
-    label_explorer_blocked: Tuple[InputSlot, LabelExplorerWidget],
+    label_explorer_blocked: Tuple[InputSlot, PixelLabelExplorerWidget],
 ):
-    label_explorer: LabelExplorerWidget
+    label_explorer: PixelLabelExplorerWidget
     _islot, label_explorer = label_explorer_blocked
 
     with patch.object(
@@ -247,7 +247,7 @@ def test_sync_position(
     request,
 ):
     islot: InputSlot
-    label_explorer: LabelExplorerWidget
+    label_explorer: PixelLabelExplorerWidget
     islot, label_explorer = request.getfixturevalue(gui_variant)
 
     positions = []

@@ -34,7 +34,7 @@ from qtpy.QtGui import QColor, QIcon
 from qtpy.QtWidgets import QApplication, QMessageBox, QAction
 
 # HCI
-from ilastik.applets.labeling.labelExplorer import LabelExplorerWidget
+from ilastik.applets.labeling.pixelLabelExplorer import PixelLabelExplorerWidget
 from volumina.api import LazyflowSinkSource, ColortableLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager, preferences
 from ilastik.shell.gui.iconMgr import ilastikIcons
@@ -103,7 +103,7 @@ class LabelingGui(LayerViewerGui):
     def appletDrawer(self):
         return self._labelControlUi
 
-    def secondaryControlsWidget(self) -> Union[LabelExplorerWidget, None]:
+    def secondaryControlsWidget(self) -> Union[PixelLabelExplorerWidget, None]:
         return self._show_label_explorer()
 
     def stopAndCleanUp(self):
@@ -365,7 +365,7 @@ class LabelingGui(LayerViewerGui):
         nonzero_slot = self._labelingSlots.nonzeroLabelBlocks
         labelout_slot = self._labelingSlots.labelOutput
 
-        label_explorer_widget = LabelExplorerWidget(
+        label_explorer_widget = PixelLabelExplorerWidget(
             nonzero_blocks_slot=nonzero_slot, label_slot=labelout_slot, parent=self
         )
 
@@ -382,7 +382,7 @@ class LabelingGui(LayerViewerGui):
 
         def update_labels(*args, **kwargs):
             label_names = [x.name for x in self.labelListData]
-            label_explorer_widget._lookup_table = {str(i + 1): y for i, y in enumerate(label_names)}
+            label_explorer_widget.setLookupTable({str(i + 1): y for i, y in enumerate(label_names)})
             label_explorer_widget.tableWidget.viewport().update()
 
         update_labels()
