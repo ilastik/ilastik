@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+from typing import Union
 from qtpy import uic
 from qtpy.QtCore import Slot, Qt
 from qtpy.QtGui import QColor, QIcon
@@ -37,7 +38,8 @@ from qtpy.QtWidgets import (
     QUndoCommand,
 )
 
-from ilastik.applets.objectClassification.opObjectClassification import InvalidObjectIndex
+from ilastik.applets.objectClassification.objectLabelExplorer import ObjectLabelExplorerWidget
+from ilastik.applets.objectClassification.opObjectClassification import InvalidObjectIndex, OpObjectClassification
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
 import os
@@ -152,6 +154,9 @@ class ObjectClassificationGui(LabelingGui):
     def centralWidget(self):
         return self
 
+    def secondaryControlsWidget(self) -> Union[ObjectLabelExplorerWidget, None]:
+        return self._show_label_explorer()
+
     def stopAndCleanUp(self):
         # Unsubscribe to all signals
         for fn in self.__cleanup_fns:
@@ -166,7 +171,7 @@ class ObjectClassificationGui(LabelingGui):
     # temporary place for this operator, move somewhere else later
     _knime_exporter = None
 
-    def __init__(self, parentApplet, op):
+    def __init__(self, parentApplet, op: OpObjectClassification):
         self.parentApplet = parentApplet
         self.isInitialized = False  # Need this flag in objectClassificationApplet where initialization is terminated with label selection
         self.__cleanup_fns = []
@@ -274,13 +279,47 @@ class ObjectClassificationGui(LabelingGui):
         self.checkEnableButtons()
 
         self._labelAssistDialog = None
+        self._label_explorer_widget: Union[None, ObjectLabelExplorerWidget] = None
 
         self._undoStack = self.editor._undoStack
         fn = self.op.SegmentationImages.notifyDirty(lambda *_, **__: self._undoStack.clear())
         self.__cleanup_fns.append(fn)
 
-    def secondaryControlsWidget(self):
-        return None
+    def _show_label_explorer(self):
+
+        if self.label_explorer_widget:
+            return self.label_explorer_widget
+
+        features_slot = self.op.ObjectFeatures
+        label_slot = self.op.LabelInputs
+        axiskeys = self.op.RawImages.meta.getAxisKeys()
+
+        label_explorer_widget = ObjectLabelExplorerWidget(
+            features_slot=features_slot, label_slot=label_slot, axiskeys=axiskeys, parent=self
+        )
+
+        def _goto(position_dict: dict[str, int]):
+            # xyz
+            assert self.volumeEditorWidget.editor is not None
+            pos = [int(position_dict[k]) if k in position_dict else 0 for k in "xyz"]
+            self.volumeEditorWidget.editor.posModel.slicingPos = pos
+            self.volumeEditorWidget.editor.posModel.cursorPos = pos
+            self.volumeEditorWidget.editor.posModel.time = int(position_dict.get("t", 0))
+            self.volumeEditorWidget.editor.navCtrl.panSlicingViews(pos, [0, 1, 2])
+
+        label_explorer_widget.positionRequested.connect(_goto)
+
+        def update_labels(*args, **kwargs):
+            label_names = [x.name for x in self.labelListData]
+            label_explorer_widget.setLookupTable({str(i + 1): y for i, y in enumerate(label_names)})
+            label_explorer_widget.tableWidget.viewport().update()
+
+        update_labels()
+
+        self._labelControlUi.labelListModel.dataChanged.connect(update_labels)
+        self._labelControlUi.labelListModel.rowsRemoved.connect(update_labels)
+
+        return label_explorer_widget
 
     def menus(self):
         m = QMenu("&Export", self.volumeEditorWidget)
