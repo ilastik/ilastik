@@ -299,6 +299,132 @@ class TestOpExportSlot(object):
             written_file = z5py.ZarrFile(export_path, "r")
             assert written_file.attrs["multiscales"] == expected_meta_s1
 
+    def test_ome_zarr_roundtrip_multiscale(self):
+        """Ensure that loading an OME-Zarr dataset and then re-exporting one of
+        its scales produces the same data and metadata."""
+        input_meta = [
+            {
+                "name": "input.zarr",
+                "type": "sample",
+                "version": "0.4",
+                "axes": [
+                    {"type": "space", "name": "z", "unit": "micrometer"},
+                    {"type": "space", "name": "y", "unit": "nanometer"},
+                    {"type": "space", "name": "x", "unit": "nanometer"},
+                ],
+                "datasets": [
+                    {
+                        "path": "s0",
+                        "coordinateTransformations": [
+                            {"scale": [1.0, 0.2, 0.2], "type": "scale"},
+                            {"translation": [0.0, 0.0, 0.0], "type": "translation"},
+                        ],
+                    },
+                    {
+                        "path": "s1",
+                        "coordinateTransformations": [
+                            {"scale": [1.0, 1.4, 1.4], "type": "scale"},
+                            {"translation": [0.0, 7.62, 8.49], "type": "translation"},
+                        ],
+                    },
+                ],
+                "coordinateTransformations": [
+                    {"scale": [0.3, 1.0, 1.0], "type": "scale"},
+                    {"translation": [2.0, 0.6, 0.0], "type": "translation"},
+                ],
+            }
+        ]
+        # Expected written meta is the same as input, but tczyx, and with no name
+        expected_ms = {
+            "axes": [
+                {"name": "t", "type": "time"},
+                {"name": "c", "type": "channel"},
+                {"name": "z", "type": "space", "unit": "micrometer"},
+                {"name": "y", "type": "space", "unit": "nanometer"},
+                {"name": "x", "type": "space", "unit": "nanometer"},
+            ],
+            "datasets": [
+                {
+                    "coordinateTransformations": [{"scale": [1.0, 1.0, 1.0, 0.2, 0.2], "type": "scale"}],
+                    "path": "s0",
+                },
+                {
+                    "coordinateTransformations": [
+                        {"scale": [1.0, 1.0, 1.0, 0.6, 0.6], "type": "scale"},
+                        {"translation": [0.0, 0.0, 0.0, 7.62, 8.49], "type": "translation"},
+                    ],
+                    "path": "s1",
+                },
+            ],
+            "coordinateTransformations": [
+                {"scale": [1.0, 1.0, 0.3, 1.0, 1.0], "type": "scale"},
+                {"translation": [0.0, 0.0, 2.0, 0.6, 0.0], "type": "translation"},
+            ],
+            "version": "0.4",
+            "metadata": {
+                "description": "ilastik's lazyflow.operators.opResize.OpResize "
+                "is a lazy implementation of "
+                "skimage.transform.resize.",
+                "kwargs": {"anti_aliasing": True, "order": 1, "preserve_range": True},
+                "method": "skimage.transform.resize",
+                "version": "0.24.0",
+            },
+        }
+
+        input_path = self._tmpdir + "/input.zarr"
+        file = z5py.ZarrFile(input_path, "w")
+        data = numpy.random.random((16, 15, 15)).astype(numpy.float32)
+        downscale = data[:, ::3, ::3]
+        file.create_dataset("s0", data=data)
+        file.create_dataset("s1", data=downscale)
+        file.attrs["multiscales"] = input_meta
+
+        noop = Operator(graph=Graph())  # parent so that OpInputDataReader doesn't drop into single-scale mode
+
+        # Raw scale first
+        export_path = self._tmpdir + "/test_export_multi.zarr"
+        with Pipeline(parent=noop) as pipeline:
+            pipeline.add(OpInputDataReader, FilePath=input_path + "/s0")
+            opExport = pipeline.add(OpExportSlot, OutputFormat="multi-scale OME-Zarr", OutputFilenameFormat=export_path)
+            opExport.run_export()
+
+            assert os.path.exists(export_path)
+            written_file = z5py.ZarrFile(export_path, "r")
+            assert len(written_file.attrs["multiscales"]) == 1
+            written_ms = written_file.attrs["multiscales"][0]
+            assert written_ms["axes"] == expected_ms["axes"]
+            assert written_ms["metadata"] == expected_ms["metadata"]
+            assert written_ms["version"] == expected_ms["version"]
+            written_ms_transforms = written_ms["coordinateTransformations"]
+            expected_ms_transforms = expected_ms["coordinateTransformations"]
+            self._assert_transforms_eq(written_ms_transforms, expected_ms_transforms)
+            assert len(written_ms["datasets"]) == len(expected_ms["datasets"])
+            for written_ds, expected_ds in zip(written_ms["datasets"], expected_ms["datasets"]):
+                assert written_ds["path"] == expected_ds["path"]
+                written_ds_transforms = written_ds["coordinateTransformations"]
+                expected_ds_transforms = expected_ds["coordinateTransformations"]
+                assert len(written_ds_transforms) == len(
+                    expected_ds_transforms
+                ), f"expected {len(expected_ds_transforms)}"
+                self._assert_transforms_eq(written_ds_transforms, expected_ds_transforms)
+
+    @staticmethod
+    def _assert_transforms_eq(written_transforms, expected_transforms):
+        if len(expected_transforms) == 0:
+            return
+        assert "scale" in written_transforms[0]
+        written_ms_scale = written_transforms[0]["scale"]
+        expected_scale = expected_transforms[0]["scale"]
+        for written, expected in zip(written_ms_scale, expected_scale):
+            assert numpy.isclose(written, expected, atol=1e-15)
+        if len(expected_transforms) == 1:
+            return
+        assert "translation" in written_transforms[1]
+        written_ms_transl = written_transforms[1]["translation"]
+        expected_transl = expected_transforms[1]["translation"]
+        for written, expected in zip(written_ms_transl, expected_transl):
+            assert numpy.isclose(written, expected, atol=1e-15)
+
     def testBasic_Npy(self):
         data = numpy.random.random((100, 100)).astype(numpy.float32)
         data = vigra.taggedView(data, vigra.defaultAxistags("xy"))
