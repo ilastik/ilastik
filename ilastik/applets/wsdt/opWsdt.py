@@ -309,11 +309,18 @@ class OpCachedWsdt(Operator):
         self.SelectedInput.connect(self._opMetaInjector.Output)
 
         self._opThreshold = OpPixelOperator(parent=self)
+        # Attribute to track changes to thresholding function -> reduce unnecessary dirtiness
+        # Any change to this operator triggers setting of the thresholding function
+        # The lambda cannot be compared in a meaningful way in setValue -> threshold gets always dirty
+        self._opThreshold._last_threshold = None
         self._opThreshold.Input.connect(self._opSelectedInput.Output)
         self.ThresholdedInput.connect(self._opThreshold.Output)
 
     def setupOutputs(self):
-        self._opThreshold.Function.setValue(lambda a: (a >= self.Threshold.value).astype(np.uint8))
+        threshold = self.Threshold.value
+        if threshold != self._opThreshold._last_threshold:
+            self._opThreshold._last_threshold = threshold
+            self._opThreshold.Function.setValue(lambda a: (a >= self.Threshold.value).astype(np.uint8))
 
     @property
     def debug_results(self):
