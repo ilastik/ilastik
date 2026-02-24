@@ -71,7 +71,7 @@ outputs:
         - z5py
         - zarr 2.*
       run_constrained:
-        - tiktorch 26.2.0
+        - tiktorch 26.2.1
         # TODO: investigate pytorch-3dunet dependency changes 1.9.3 and up #3079
         - pytorch-3dunet 1.9.2
         - volumina >=1.3.20
