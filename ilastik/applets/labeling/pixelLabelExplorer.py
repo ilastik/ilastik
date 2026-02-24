@@ -147,5 +147,5 @@ class PixelLabelExplorerWidget(LabelExplorerBase):
         annotation_anchors: list[AnnotationAnchor] = []
         for k, v in self._regions_dict.items():
             if k == v:
-                annotation_anchors.append(AnnotationAnchor(label=k.label, position=k.tagged_center))
+                annotation_anchors.append(AnnotationAnchor(label=k.label, position=k.tagged_pixel_anchor))
         return annotation_anchors

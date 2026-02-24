@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from enum import IntEnum, StrEnum
 from typing import Dict, Iterator, List, Optional, Sequence, Tuple, Union
 
+import numpy
 import vigra
 from vigra.analysis import extractRegionFeatures
 
@@ -140,8 +141,9 @@ class Region:
     axistags: Sequence[str]
     slices: Tuple[slice, ...]
     label: int
+    pixel_anchor: Dict[str, float]
 
-    __slots__ = "axistags", "slices", "label"
+    __slots__ = "axistags", "slices", "label", "pixel_anchor"
 
     def __post_init__(self):
         if len(self.axistags) != len(self.slices):
@@ -161,6 +163,14 @@ class Region:
         Stop element is assumed to be exclusive.
         """
         return {k: (sl.stop - 1 - sl.start) / 2 + sl.start for k, sl in self.tagged_slicing.items()}
+
+    @property
+    def tagged_pixel_anchor(self) -> Dict[str, float]:
+        """Returns the center of the interval defined by slicing
+
+        Stop element is assumed to be exclusive.
+        """
+        return {k: sl.start + self.pixel_anchor.get(k, 0) for k, sl in self.tagged_slicing.items()}
 
     def is_at_boundary(self, boundary: BoundaryDescr) -> bool:
         """Return True if any bounding box coordinates match given integer in boundary description
@@ -192,7 +202,7 @@ class Region:
     def with_slices(self, tagged_slices: Dict[str, slice]) -> "Region":
         axistags = [k for k in tagged_slices]
         slices = tuple([v for v in tagged_slices.values()])
-        return Region(axistags=axistags, slices=slices, label=self.label)
+        return Region(axistags=axistags, slices=slices, label=self.label, pixel_anchor=self.pixel_anchor)
 
 
 @dataclass(frozen=True)
@@ -340,6 +350,9 @@ def extract_annotations(labels_data: vigra.VigraArray) -> Tuple[Region, ...]:
         features=["RegionCenter", "Coord<Maximum>", "Coord<Minimum>", "Minimum"],
     )
 
+    # we pass the label image as "image", so minimum will be the same label
+    labels = feats["Minimum"][1:].astype("uint32")
+    spatial_at = [at for at in axistags if at in SPATIAL_AXES]
     # shape: (n_objs, ndim), we +1 the maximum bounding box value to make it
     # compatible with slice objects, where the stop is exclusive
     # first object is ignored -> background object.
@@ -347,14 +360,17 @@ def extract_annotations(labels_data: vigra.VigraArray) -> Tuple[Region, ...]:
     min_bb = feats["Coord<Minimum>"][1:].astype("uint32")
 
     slices: list[Tuple[slice, ...]] = []
-    for min_, max_ in zip(min_bb, max_bb):
-        slices.append(tuple(slice(mi, ma) for mi, ma in zip(min_, max_)))
+    anchors: list[Tuple[float, ...]] = []
+    for min_, max_, label, oid in zip(min_bb, max_bb, labels, range(1, len(labels) + 1)):
+        local_slicing = tuple(slice(mi, ma) for mi, ma in zip(min_, max_))
+        annot_pixels = numpy.argwhere(connected_components[local_slicing] == oid)
+        anchors.append(dict(zip(spatial_at, annot_pixels[len(annot_pixels) // 2])))
+        slices.append(local_slicing)
 
-    # we pass the label image as "image", so minimum will be the same label
-    labels = feats["Minimum"][1:].astype("uint32")
-
-    spatial_at = [at for at in axistags if at in SPATIAL_AXES]
-    regions = tuple(Region(axistags=spatial_at, slices=sl, label=label) for sl, label in zip(slices, labels))
+    regions = tuple(
+        Region(axistags=spatial_at, slices=sl, label=label, pixel_anchor=anchor)
+        for sl, label, anchor in zip(slices, labels, anchors)
+    )
 
     return regions
 
