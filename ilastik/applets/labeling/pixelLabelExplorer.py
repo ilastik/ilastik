@@ -72,7 +72,7 @@ class PixelLabelExplorerWidget(LabelExplorerBase):
 
         self._setupUi()
 
-        self.unsubscribe_fns.append(label_slot.notifyDirty(self.update_table))
+        self.add_unsubscribe_fn(label_slot.notifyDirty(self.update_table))
 
     def _clear_blocking(self):
         self._block_cache = {}

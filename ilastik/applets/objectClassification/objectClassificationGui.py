@@ -154,7 +154,7 @@ class ObjectClassificationGui(LabelingGui):
     def centralWidget(self):
         return self
 
-    def secondaryControlsWidget(self) -> Union[ObjectLabelExplorerWidget, None]:
+    def secondaryControlsWidget(self) -> ObjectLabelExplorerWidget:
         return self._show_label_explorer()
 
     def stopAndCleanUp(self):

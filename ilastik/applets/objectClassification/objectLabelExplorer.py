@@ -23,6 +23,7 @@ import logging
 import numpy
 import numpy.typing as npt
 
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.widgets.labelExplorer import AnnotationAnchor, LabelExplorerBase
 from lazyflow.base import Axiskey
 from lazyflow.slot import Slot
@@ -52,7 +53,7 @@ class ObjectLabelExplorerWidget(LabelExplorerBase):
         self._label_slot = label_slot
         self._setupUi()
 
-        self.unsubscribe_fns.append(label_slot.notifyDirty(self.populate_table))
+        self.add_unsubscribe_fn(label_slot.notifyDirty(self.populate_table))
 
     def initialize_table(self):
         """
@@ -78,14 +79,14 @@ class ObjectLabelExplorerWidget(LabelExplorerBase):
                 labels_filtered[timestep] = nz[0]
 
         if not labels_filtered:
-            []
+            return []
 
         feats: dict[Timepoint, PluginDict] = self._features_slot(list(labels_filtered.keys())).wait()
 
         labs: list[AnnotationAnchor] = []
         for timepoint, non_zero_indices in labels_filtered.items():
             for n in non_zero_indices:
-                region_center = feats[timepoint]["Default features"]["RegionCenter"][n]
+                region_center = feats[timepoint][default_features_key]["RegionCenter"][n]
                 if region_center.shape == (2,):
                     z = 0.0
                     x, y = region_center

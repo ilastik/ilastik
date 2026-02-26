@@ -26,7 +26,7 @@ import pytest
 import vigra
 
 from ilastik.applets.objectClassification.objectLabelExplorer import ObjectLabelExplorerWidget
-from ilastik.applets.objectExtraction.opObjectExtraction import OpAdaptTimeListRoi
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key, OpAdaptTimeListRoi
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 
 
@@ -40,7 +40,9 @@ def label_op(graph) -> OpArrayPiper:
 
 @pytest.fixture
 def feature_op_2d(graph) -> OpAdaptTimeListRoi:
-    features = numpy.array([{"Default features": {"RegionCenter": numpy.array([[0.0, 0.0], [1.0, 2.0], [3.0, 4.0]])}}])
+    features = numpy.array(
+        [{default_features_key: {"RegionCenter": numpy.array([[0.0, 0.0], [1.0, 2.0], [3.0, 4.0]])}}]
+    )
     op_features = OpArrayPiper(graph=graph)
     op_features.Input.setValue(vigra.taggedView(features, axistags="t"))
     op_features_adapt = OpAdaptTimeListRoi(graph=graph)
@@ -51,7 +53,7 @@ def feature_op_2d(graph) -> OpAdaptTimeListRoi:
 @pytest.fixture
 def feature_op_3d(graph) -> OpAdaptTimeListRoi:
     features = numpy.array(
-        [{"Default features": {"RegionCenter": numpy.array([[0.0, 0.0, 0.0], [1.0, 2.0, 3.0], [6.0, 5.0, 4.0]])}}]
+        [{default_features_key: {"RegionCenter": numpy.array([[0.0, 0.0, 0.0], [1.0, 2.0, 3.0], [6.0, 5.0, 4.0]])}}]
     )
     op_features = OpArrayPiper(graph=graph)
     op_features.Input.setValue(vigra.taggedView(features, axistags="t"))
@@ -84,12 +86,7 @@ def label_explorer_3d(qtbot, label_op: OpArrayPiper, feature_op_3d: OpAdaptTimeL
     ],
 )
 class TestObjectLabelExplorer:
-    def test_construct(
-        self,
-        qtbot,
-        gui_variant,
-        request,
-    ):
+    def test_construct(self, qtbot, gui_variant, request):
         label_explorer = request.getfixturevalue(gui_variant)
         with patch.object(
             label_explorer, "initialize_table", wraps=label_explorer.initialize_table

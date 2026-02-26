@@ -22,6 +22,7 @@ from abc import ABCMeta
 import logging
 from contextlib import contextmanager
 from dataclasses import dataclass
+from typing import Any, Callable
 
 from qtpy.QtCore import Qt, QTimer, Signal
 from qtpy.QtGui import QPaintEvent, QShowEvent
@@ -96,7 +97,14 @@ class LabelExplorerBase(QWidget, metaclass=QABCMeta):
         # lookup label identifier to label display name, e.g. "0" -> "Foreground"
         self._lookup_table: dict[str, str] = {}
         self._item_flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemNeverHasChildren
-        self.unsubscribe_fns = []
+        self._unsubscribe_fns: list[Callable[..., Any]] = []
+
+    def add_unsubscribe_fn(self, fn: Callable[..., Any]):
+        """Functions to call before once gui is scheduled to be removed
+
+        e.g. unsubscribe from slot signals
+        """
+        self._unsubscribe_fns.append(fn)
 
     def _setupUi(self):
         """
@@ -170,7 +178,7 @@ class LabelExplorerBase(QWidget, metaclass=QABCMeta):
             self.sync_state()
 
     def cleanup(self):
-        for fn in self.unsubscribe_fns:
+        for fn in self._unsubscribe_fns:
             fn()
 
     def resize_columns_to_contents(self):
