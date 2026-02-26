@@ -173,7 +173,7 @@ class MainControls(QSplitter):
 class SecondaryControlsStack(QStackedWidget):
     """Stacked widget that will contain/show the secondary controls
 
-    currently LabelExplorerWidget for anything that does labeling
+    currently PixelLabelExplorerWidget for anything that does labeling
     """
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:

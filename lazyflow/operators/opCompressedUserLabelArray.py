@@ -122,7 +122,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         self.Output.meta.data_semantics = ImageTypes.Labels
 
         # is_blocked_cache attribute indicates that this cache gives block-wise
-        # updates when written to. Attribute used in LabelExplorerWidget.
+        # updates when written to. Attribute used in PixelLabelExplorerWidget.
         self.Output.meta.is_blocked_cache = True
         self.Output.meta.ideal_blockshape = self.BlockShape.value
         self.OutputHdf5.meta.assignFrom(self.Output.meta)
