@@ -593,6 +593,18 @@ class PixelClassificationGui(LabelingGui):
         )
 
         mgr.register(
+            "b",
+            ActionInfo(
+                shortcutGroupName,
+                "Toggle Probabilities",
+                "Toggle Probabilities Layer Visibility",
+                self._viewerControlUi.checkShowPredictions.click,
+                self._viewerControlUi.checkShowPredictions,
+                self._viewerControlUi.checkShowPredictions,
+            ),
+        )
+
+        mgr.register(
             "s",
             ActionInfo(
                 shortcutGroupName,
