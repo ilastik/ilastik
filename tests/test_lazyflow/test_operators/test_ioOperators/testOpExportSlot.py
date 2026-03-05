@@ -158,15 +158,11 @@ class TestOpExportSlot(object):
                 if scale == "s0":  # only assert written data at raw scale here (scaling covered in OpResize)
                     numpy.testing.assert_array_equal(read_data, expected_data)
                 written_file = z5py.ZarrFile(str(expected_export_path), "r")
-                expected_multiscale_transformations = [
-                    {"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0, 1.0]},
+                assert "coordinateTransformations" not in written_file.attrs["multiscales"][0]
+                expected_dataset_transformations = [
+                    {"type": "scale", "scale": [1.0, 1.0, 1.0, 2.0**i, 2.0**i]},
                     {"type": "translation", "translation": [0.0, 0.0, 0.0, 10.0, 20.0]},
                 ]
-                assert (
-                    written_file.attrs["multiscales"][0]["coordinateTransformations"]
-                    == expected_multiscale_transformations
-                )
-                expected_dataset_transformations = [{"type": "scale", "scale": [1.0, 1.0, 1.0, 2.0**i, 2.0**i]}]
                 assert (
                     written_file.attrs["multiscales"][0]["datasets"][i]["coordinateTransformations"]
                     == expected_dataset_transformations
@@ -300,8 +296,15 @@ class TestOpExportSlot(object):
             assert written_file.attrs["multiscales"] == expected_meta_s1
 
     def test_ome_zarr_roundtrip_multiscale(self):
-        """Ensure that loading an OME-Zarr dataset and then re-exporting one of
-        its scales produces the same data and metadata."""
+        """
+        Ensure metadata roundtrips correctly when re-exporting a multiscale dataset as-is.
+        Output metadata won't/shouldn't be *identical* to input. Even when just re-exporting
+        the loaded data unprocessed, the export is actually a new multiscale. It's just
+        scaled to the same scaling levels as the source pyramid. ilastik's scaling implementation
+        (OpResize) will not reproduce the downscaled source data.
+        The exported metadata must correctly describe the export, not carry over metadata
+        from the source falsely. See detailed comment below.
+        """
         input_meta = [
             {
                 "name": "input.zarr",
@@ -323,7 +326,7 @@ class TestOpExportSlot(object):
                     {
                         "path": "s1",
                         "coordinateTransformations": [
-                            {"scale": [1.0, 1.4, 1.4], "type": "scale"},
+                            {"scale": [1.0, 0.6, 0.6], "type": "scale"},
                             {"translation": [0.0, 7.62, 8.49], "type": "translation"},
                         ],
                     },
@@ -334,7 +337,11 @@ class TestOpExportSlot(object):
                 ],
             }
         ]
-        # Expected written meta is the same as input, but tczyx, and with no name
+        # Expected written meta is the same as input, but:
+        # - tczyx
+        # - no name
+        # - multiscale-global transformations are folded into datasets (similar to ome-zarr 0.6 convention)
+        # - "s1" transformations are discarded. The exported "s1" is a newly generated downscale.
         expected_ms = {
             "axes": [
                 {"name": "t", "type": "time"},
@@ -345,20 +352,19 @@ class TestOpExportSlot(object):
             ],
             "datasets": [
                 {
-                    "coordinateTransformations": [{"scale": [1.0, 1.0, 1.0, 0.2, 0.2], "type": "scale"}],
+                    "coordinateTransformations": [
+                        {"scale": [1.0, 1.0, 0.3, 0.2, 0.2], "type": "scale"},
+                        {"translation": [0.0, 0.0, 2.0, 0.6, 0.0], "type": "translation"},
+                    ],
                     "path": "s0",
                 },
                 {
                     "coordinateTransformations": [
-                        {"scale": [1.0, 1.0, 1.0, 0.6, 0.6], "type": "scale"},
-                        {"translation": [0.0, 0.0, 0.0, 7.62, 8.49], "type": "translation"},
+                        {"scale": [1.0, 1.0, 0.3, 0.6, 0.6], "type": "scale"},
+                        {"translation": [0.0, 0.0, 2.0, 0.6, 0.0], "type": "translation"},
                     ],
                     "path": "s1",
                 },
-            ],
-            "coordinateTransformations": [
-                {"scale": [1.0, 1.0, 0.3, 1.0, 1.0], "type": "scale"},
-                {"translation": [0.0, 0.0, 2.0, 0.6, 0.0], "type": "translation"},
             ],
             "version": "0.4",
             "metadata": {
@@ -395,9 +401,7 @@ class TestOpExportSlot(object):
             assert written_ms["axes"] == expected_ms["axes"]
             assert written_ms["metadata"] == expected_ms["metadata"]
             assert written_ms["version"] == expected_ms["version"]
-            written_ms_transforms = written_ms["coordinateTransformations"]
-            expected_ms_transforms = expected_ms["coordinateTransformations"]
-            self._assert_transforms_eq(written_ms_transforms, expected_ms_transforms)
+            assert "coordinateTransformations" not in written_ms
             assert len(written_ms["datasets"]) == len(expected_ms["datasets"])
             for written_ds, expected_ds in zip(written_ms["datasets"], expected_ms["datasets"]):
                 assert written_ds["path"] == expected_ds["path"]
