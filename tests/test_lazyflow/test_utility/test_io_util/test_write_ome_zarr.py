@@ -302,10 +302,7 @@ def test_transformations_multi_scale_export(tmp_path, tiny_5d_vigra_array_piper)
     # 2px would be the result of scaling 5px by 2.0.
     # The scaling implementation in OpResize is precise though, so metadata should not be rounded.
     expected_downscale = [1.0, 1.0, s * 5 / 2, s * 5 / 2, s * 5 / 2]
-    expected_multiscale_transforms = [
-        {"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0, 1.0]},
-        {"type": "translation", "translation": [0.0, 0.0, s * 3, s * 3, s * 3]},  # scaled offset
-    ]
+    expected_translation = {"type": "translation", "translation": [0.0, 0.0, s * 3, s * 3, s * 3]}  # scaled offset
 
     write_ome_zarr(str(export_path), source_op.Output, progress, export_offset, target_scales)
 
@@ -315,13 +312,15 @@ def test_transformations_multi_scale_export(tmp_path, tiny_5d_vigra_array_piper)
     assert "datasets" in m and "path" in m["datasets"][0]
     assert len(m["datasets"]) == 2
     assert m["datasets"][0]["path"] == "weird_upscale"
-    assert m["coordinateTransformations"] == expected_multiscale_transforms
+    assert "coordinateTransformations" not in m
     # The factor calculations come out unequal at 1e-16
     upscale_transforms = m["datasets"][0]["coordinateTransformations"]
     numpy.testing.assert_allclose(upscale_transforms[0]["scale"], expected_upscale, atol=1e-15)
+    assert upscale_transforms[1] == expected_translation
     assert m["datasets"][1]["path"] == "downscale"
     downscale_transforms = m["datasets"][1]["coordinateTransformations"]
     numpy.testing.assert_allclose(downscale_transforms[0]["scale"], expected_downscale, atol=1e-15)
+    assert downscale_transforms[1] == expected_translation
 
 
 def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array_piper):
@@ -392,18 +391,23 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
             ("downscale", tagged_shape("tczyx", (2, 2, 2, 2, 2))),
         ]
     )
-    expected_multiscale_transform = [
-        {"type": "scale", "scale": [0.1, 1.0, 1.0, 1.0, 1.0]},
+    s_abs = 2.0  # Even if OpResize scales precisely, output should be computed based on the input's metadata.
+    upscale = [0.1, 1.0, s_abs * 5 / 13, s_abs * 5 / 12, s_abs * 5 / 12]
+    downscale = [0.1, 1.0, s_abs * 5 / 2, s_abs * 5 / 2, s_abs * 5 / 2]
+    expected_upscale_transform = [
+        {"type": "scale", "scale": upscale},
         {
             "type": "translation",
             "translation": [3.1, 0.0, 9.2, 8.1, 7.0],
         },  # offset * input scale + source scale translation
     ]
-    s_abs = 2.0  # Even if OpResize scales precisely, output should be computed based on the input's metadata.
-    upscale = [1.0, 1.0, s_abs * 5 / 13, s_abs * 5 / 12, s_abs * 5 / 12]
-    downscale = [1.0, 1.0, s_abs * 5 / 2, s_abs * 5 / 2, s_abs * 5 / 2]
-    expected_upscale_transform = [{"type": "scale", "scale": upscale}]
-    expected_downscale_transform = [{"type": "scale", "scale": downscale}]
+    expected_downscale_transform = [
+        {"type": "scale", "scale": downscale},
+        {
+            "type": "translation",
+            "translation": [3.1, 0.0, 9.2, 8.1, 7.0],
+        },  # offset * input scale + source scale translation
+    ]
 
     write_ome_zarr(str(export_path), source_op.Output, progress, export_offset, target_scales)
 
@@ -420,7 +424,7 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
         {"name": "y", "type": "space", "unit": "micrometer"},
         {"name": "x", "type": "space", "unit": "micrometer"},
     ]  # Axis units should be carried over
-    assert m["coordinateTransformations"] == expected_multiscale_transform
+    assert "coordinateTransformations" not in m
     assert m["datasets"][0]["path"] == "weird_upscale"
     assert m["datasets"][0]["coordinateTransformations"] == expected_upscale_transform
     assert m["datasets"][1]["path"] == "downscale"
