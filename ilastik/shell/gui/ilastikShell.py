@@ -99,6 +99,7 @@ from ilastik.shell.gui.memUsageDialog import MemUsageDialog
 from ilastik.shell.shellAbc import ShellABC
 from ilastik.shell.headless.headlessShell import HeadlessShell
 
+from ilastik.shell.gui.awsCredentialsDialog import AwsCredentialsDialog
 from ilastik.shell.gui.aboutDialog import AboutDialog
 from ilastik.shell.gui.licenseDialog import LicenseDialog
 from ilastik.shell.gui.reportIssueDialog import ReportIssueDialog
@@ -1170,6 +1171,9 @@ class IlastikShell(QMainWindow):
         def editShortcuts():
             mgrDlg = ShortcutManagerDlg(self)
 
+        def editAwsCreds():
+            _ = AwsCredentialsDialog(self)
+
         def open_dir_func(path):
             path = pathlib.Path(path).absolute().parent
 
@@ -1185,6 +1189,8 @@ class IlastikShell(QMainWindow):
         logfile_path = ilastik.ilastik_logging.default_config.get_logfile_path()
         if logfile_path:
             menu.addAction("Open &Log Folder...").triggered.connect(open_dir_func(logfile_path))
+
+        menu.addAction("Set AWS credentials").triggered.connect(editAwsCreds)
 
         return menu
 
